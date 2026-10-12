@@ -34,6 +34,15 @@ Operasi baru (tidak memutus klien lama; tidak ada operasi lama yang diubah). Set
   `ChatReaction` HTTP) dan `RealtimeReactionCount`.
 - Contoh amplop diperbarui agar lolos skema payload; `entity_id` per jenis didokumentasikan di amplop dan
   `events/README.md`.
+- `notification.created` memakai nama field `InboxNotification` (`id`, `category`, `title`, `body`, `deep_link`,
+  `created_at`) ditambah `unread_count`, sehingga klien dapat memakai model kotak masuk yang sama.
+
+### Ketergantungan skema database (belum dibuat; pemilik skema/integrator)
+
+Kontrak moderasi membutuhkan perubahan aditif pada `packages/database` sebelum modul moderasi diimplementasikan:
+nilai enum `app.report_category` `appeal` (banding, PRD 3.12); kolom `reports.claimed_by_admin_id` (FK admins,
+ON DELETE SET NULL) dan `reports.claimed_at` untuk klaim; `reports.member_message` (pesan aman untuk anggota pada
+warn/suspend/banding, maksimal 500); `reports.message_removed_at` untuk `remove_message`.
 
 ## 0.2.0
 

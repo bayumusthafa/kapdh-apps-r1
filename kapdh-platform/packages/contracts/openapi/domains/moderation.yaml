@@ -74,13 +74,16 @@ paths:
       operationId: unblockMember
       summary: Buka blokir; idempoten (F-12).
       description: |
-        Menghapus blokir yang dibuat pemanggil saja; blokir dari pihak lain tetap berlaku. Blokir yang tidak ada
-        tetap 204. Undangan yang sudah dibatalkan tidak dipulihkan.
+        Menghapus blokir yang dibuat pemanggil saja; blokir dari pihak lain tetap berlaku sehingga pesan direct
+        tetap ditolak selama blokir pihak lain ada (AC F12-1). Blokir yang tidak ada tetap 204 (idempoten); user_id
+        bukan UUID atau diri sendiri -> 400 VALIDATION_ERROR. Undangan yang sudah dibatalkan tidak dipulihkan.
+        Perangkat pemanggil menerima `room.updated` (changes berisi send_permission) untuk room direct bila ada.
       x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/BlockedUserId"
       responses:
         "204": { description: Blokir dibuka. }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         default: { $ref: "#/components/responses/Error" }
@@ -171,6 +174,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ModerationReport" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
