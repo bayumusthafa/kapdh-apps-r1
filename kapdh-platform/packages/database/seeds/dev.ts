@@ -20,7 +20,6 @@ import { alumni, masterProfessions, masterSkills, membershipEvents } from "../sr
 import { paymentEvents, paymentMethods, payments } from "../src/schema/payments.js";
 import { auditLogs } from "../src/schema/platform.js";
 import { appSettings } from "../src/schema/settings.js";
-import { invokedDirectly, runSeedCli } from "./_cli.js";
 import { LEGAL_PAGE_SHELLS, seedReference } from "./reference.js";
 
 /** bcrypt(cost 10) dari "Kapdh#Dev2026". Hanya untuk fixture dev; tidak pernah dipakai di production. */
@@ -135,9 +134,16 @@ export async function seedDev(db: Database, options: { now?: Date } = {}): Promi
       .set({ active: true, updatedAt: now })
       .where(eq(masterProfessions.active, false));
     await tx.update(masterSkills).set({ active: true, updatedAt: now }).where(eq(masterSkills.active, false));
+    // Terbit = salin draf ke salinan tayang dan versi legal 1 (F-01, PRD 6.2), selaras app_settings `legal` di bawah.
     await tx
       .update(pages)
-      .set({ publishedAt: now, updatedAt: now })
+      .set({
+        publishedTitle: sql`${pages.title}`,
+        publishedBodyHtml: sql`${pages.bodyHtml}`,
+        publishedVersion: 1,
+        publishedAt: now,
+        updatedAt: now,
+      })
       .where(
         and(
           isNull(pages.publishedAt),
@@ -360,14 +366,4 @@ export async function seedDev(db: Database, options: { now?: Date } = {}): Promi
   });
 
   return { reference, alumni_inserted: alumniInserted };
-}
-
-if (invokedDirectly(import.meta.url)) {
-  try {
-    assertNotProduction();
-  } catch (e) {
-    process.stderr.write(`[seed:dev] ${(e as Error).message}\n`);
-    process.exit(1);
-  }
-  runSeedCli("seed:dev", (db) => seedDev(db));
 }

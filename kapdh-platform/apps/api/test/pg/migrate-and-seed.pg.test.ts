@@ -1,10 +1,42 @@
 import { MIGRATIONS_FOLDER, runMigrations } from "@kapdh/database";
 import { DEV_IDS, ProductionSeedRefused, seedDev } from "@kapdh/database/seeds/dev";
 import { REFERENCE_SETTINGS, seedReference } from "@kapdh/database/seeds/reference";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { spawn } from "node:child_process";
+import { lstatSync, readFileSync, realpathSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { createEmptyPgDatabase, createPgTestDatabase, type PgTestDatabase } from "./support.js";
+
+/**
+ * Paket database seperti di image production (`pnpm deploy`): dirujuk lewat symlink/junction pnpm
+ * apps/api/node_modules/@kapdh/database, bukan path aslinya.
+ */
+const LINKED_DATABASE_PKG = join(
+  resolve(dirname(fileURLToPath(import.meta.url)), "../.."),
+  "node_modules",
+  "@kapdh",
+  "database",
+);
+
+/** Menjalankan CLI paket database lewat symlink dengan env terkontrol; mengembalikan kode keluar dan output. */
+function runLinkedBin(
+  bin: "migrate" | "seed-reference" | "seed-dev",
+  env: Record<string, string | undefined>,
+): Promise<{ code: number | null; stdout: string; stderr: string }> {
+  return new Promise((resolveRun, reject) => {
+    const child = spawn(process.execPath, [join(LINKED_DATABASE_PKG, "dist", "bin", `${bin}.js`)], {
+      env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, ...env },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (d) => (stdout += String(d)));
+    child.stderr.on("data", (d) => (stderr += String(d)));
+    child.on("error", reject);
+    child.on("close", (code) => resolveRun({ code, stdout, stderr }));
+  });
+}
 
 const journal = JSON.parse(readFileSync(join(MIGRATIONS_FOLDER, "meta", "_journal.json"), "utf8")) as {
   entries: { tag: string }[];
@@ -45,15 +77,67 @@ describe("PRD 5.5: job migrasi tunggal dengan advisory lock pada PostgreSQL 17",
     const triggers = await tdb.sql<{ tgname: string }[]>`
       select tgname from pg_trigger where not tgisinternal order by tgname`;
     expect(triggers.map((t) => t.tgname)).toEqual([
+      "admins_check_user_kind",
       "admins_guard_last_super_admin",
       "admins_guard_truncate",
-      "admins_serialize_super_admin_changes",
+      "alumni_check_user_kind",
+      "alumni_guard_member_seq",
       "alumni_skills_limit",
       "audit_logs_append_only",
       "audit_logs_no_truncate",
       "payment_events_append_only",
       "payment_events_no_truncate",
+      "post_likes_count_delete",
+      "post_likes_count_insert",
+      "post_likes_forbid_update",
+      "post_likes_truncate_count",
+      "users_guard_last_super_admin",
+      "users_kind_immutable",
     ]);
+  });
+});
+
+describe("PRD 5.5: CLI migrasi dan seed dipanggil lewat symlink pnpm (tata letak image production)", () => {
+  it("paket @kapdh/database di apps/api memang symlink ke lokasi lain", () => {
+    expect(lstatSync(LINKED_DATABASE_PKG).isSymbolicLink()).toBe(true);
+    expect(realpathSync(LINKED_DATABASE_PKG)).not.toBe(LINKED_DATABASE_PKG);
+  });
+
+  it("database tidak terjangkau atau DATABASE_URL kosong: setiap CLI keluar bukan nol tanpa mencetak URL", async () => {
+    const unreachable = "postgres://kapdh_migrator:rahasia-uji@127.0.0.1:1/kapdh";
+    for (const bin of ["migrate", "seed-reference", "seed-dev"] as const) {
+      const result = await runLinkedBin(bin, { DATABASE_URL: unreachable, NODE_ENV: "development" });
+      expect(result.code).toBe(1);
+      expect(result.stderr).toMatch(/gagal/i);
+      expect(result.stdout + result.stderr).not.toContain("rahasia-uji");
+      expect((await runLinkedBin(bin, { NODE_ENV: "development" })).code).toBe(1);
+    }
+  });
+
+  it("migrate lewat symlink menerapkan journal lalu idempoten; seed lewat symlink berjalan; seed dev menolak production", async () => {
+    const empty = await createEmptyPgDatabase("cli_symlink");
+    databases.push(empty);
+    const first = await runLinkedBin("migrate", { DATABASE_URL: empty.url });
+    expect(first.code).toBe(0);
+    expect(first.stdout).toContain(`Diterapkan: ${journal.entries.length}.`);
+    const second = await runLinkedBin("migrate", { DATABASE_URL: empty.url });
+    expect(second.code).toBe(0);
+    expect(second.stdout).toContain("Diterapkan: 0.");
+
+    const reference = await runLinkedBin("seed-reference", {
+      DATABASE_URL: empty.url,
+      NODE_ENV: "production",
+    });
+    expect(reference.code).toBe(0);
+    const refused = await runLinkedBin("seed-dev", { DATABASE_URL: empty.url, NODE_ENV: "production" });
+    expect(refused.code).toBe(1);
+    expect(refused.stderr).toContain("NODE_ENV=production");
+    const [users] = await empty.sql<{ n: number }[]>`select count(*)::int as n from app.users`;
+    expect(users!.n).toBe(0);
+    const dev = await runLinkedBin("seed-dev", { DATABASE_URL: empty.url, NODE_ENV: "development" });
+    expect(dev.code).toBe(0);
+    const [seeded] = await empty.sql<{ n: number }[]>`select count(*)::int as n from app.alumni`;
+    expect(seeded!.n).toBe(3);
   });
 });
 

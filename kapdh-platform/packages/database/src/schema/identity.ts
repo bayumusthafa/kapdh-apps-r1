@@ -52,6 +52,10 @@ export type Permission = (typeof PERMISSIONS)[number];
  * Akun login. Tanpa NIK (N-09). Email disimpan ternormalisasi (huruf kecil, tanpa spasi tepi) dan unik per jenis
  * identitas selama akun belum terhapus: akun admin terpisah dari akun alumni pribadi (PRD 2.3, F-16), dan email
  * akun yang telah dihapus dapat dipakai mendaftar ulang (F-14).
+ *
+ * Trigger migrasi 0004: `kind` tidak dapat diubah (`users_kind_immutable_chk`), dan alumni/admins hanya boleh menunjuk
+ * akun berjenis yang sesuai. Trigger migrasi 0002: akun admin yang memiliki Super Admin aktif terakhir yang masih
+ * dapat login tidak dapat dinonaktifkan atau dihapus (`admins_last_super_admin_chk`, AC F16-2).
  */
 export const users = app.table(
   "users",
@@ -102,7 +106,8 @@ export const otpCodes = app.table(
   (t) => [
     index("otp_codes_user_id_purpose_idx").on(t.userId, t.purpose, t.createdAt),
     // Pengiriman ulang membatalkan kode sebelumnya untuk tujuan yang sama (PRD 2.5): paling banyak satu challenge
-    // aktif per akun dan tujuan; indeks ini juga dipakai untuk mencari challenge aktif.
+    // aktif per akun dan tujuan; indeks ini juga dipakai untuk mencari challenge aktif. Penerbit challenge wajib
+    // mengunci baris users (FOR NO KEY UPDATE) sebelum supersede + insert agar penerbit bersamaan berurutan.
     uniqueIndex("otp_codes_active_key")
       .on(t.userId, t.purpose)
       .where(sql`${t.consumedAt} is null and ${t.supersededAt} is null`),
@@ -174,7 +179,9 @@ export const mfaTotp = app.table(
 
 /**
  * Identitas admin terpisah dari akun alumni, ditautkan ke akun alumni untuk cek konflik kepentingan (PRD 2.3, F-16).
- * Super Admin aktif terakhir dijaga trigger `app.admins_guard_last_super_admin` (AC F16-2, migrasi 0002).
+ * user_id wajib akun berjenis `admin` dan linked_alumni_user_id wajib akun berjenis `alumni` (`admins_user_kind_chk`,
+ * `admins_linked_alumni_kind_chk`, migrasi 0004). Super Admin aktif terakhir yang dapat login (status admin dan akun
+ * `active`) dijaga trigger `app.admins_guard_last_super_admin` (AC F16-2, migrasi 0002).
  */
 export const admins = app.table(
   "admins",
@@ -236,6 +243,9 @@ export const adminPermissions = app.table(
   },
   (t) => [
     primaryKey({ columns: [t.adminId, t.permission] }),
+    index("admin_permissions_granted_by_admin_id_idx")
+      .on(t.grantedByAdminId)
+      .where(sql`${t.grantedByAdminId} is not null`),
     check("admin_permissions_permission_chk", sql`${t.permission} in (${sqlInList(PERMISSIONS)})`),
   ],
 );

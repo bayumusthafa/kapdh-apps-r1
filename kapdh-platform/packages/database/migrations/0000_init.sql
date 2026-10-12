@@ -87,6 +87,7 @@ CREATE TABLE "app"."reports" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "reports_description_chk" CHECK ("app"."reports"."description" is null or char_length("app"."reports"."description") <= 2000),
 	CONSTRAINT "reports_resolved_chk" CHECK ("app"."reports"."status" not in ('resolved','dismissed') or ("app"."reports"."resolved_at" is not null and "app"."reports"."action" is not null)),
+	CONSTRAINT "reports_resolution_note_chk" CHECK ("app"."reports"."status" not in ('resolved','dismissed') or ("app"."reports"."resolution_note" is not null and btrim("app"."reports"."resolution_note") <> '')),
 	CONSTRAINT "reports_dismissed_chk" CHECK ("app"."reports"."status" <> 'dismissed' or "app"."reports"."action" = 'dismiss')
 );
 --> statement-breakpoint
@@ -166,12 +167,16 @@ CREATE TABLE "app"."pages" (
 	"title" text NOT NULL,
 	"body_html" text NOT NULL,
 	"version" integer DEFAULT 1 NOT NULL,
+	"published_title" text,
+	"published_body_html" text,
+	"published_version" integer,
 	"published_at" timestamp with time zone,
 	"updated_by_admin_id" uuid,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "pages_slug_chk" CHECK ("app"."pages"."slug" ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
-	CONSTRAINT "pages_title_chk" CHECK (char_length(btrim("app"."pages"."title")) between 1 and 200)
+	CONSTRAINT "pages_title_chk" CHECK (char_length(btrim("app"."pages"."title")) between 1 and 200),
+	CONSTRAINT "pages_published_chk" CHECK (("app"."pages"."published_version" is null and "app"."pages"."published_at" is null and "app"."pages"."published_title" is null and "app"."pages"."published_body_html" is null) or ("app"."pages"."published_version" >= 1 and "app"."pages"."published_at" is not null and "app"."pages"."published_title" is not null and char_length(btrim("app"."pages"."published_title")) between 1 and 200 and "app"."pages"."published_body_html" is not null))
 );
 --> statement-breakpoint
 CREATE TABLE "app"."post_likes" (
@@ -805,25 +810,35 @@ CREATE INDEX "reports_reporter_id_idx" ON "app"."reports" USING btree ("reporter
 CREATE INDEX "reports_target_user_id_idx" ON "app"."reports" USING btree ("target_user_id") WHERE "app"."reports"."target_user_id" is not null;--> statement-breakpoint
 CREATE INDEX "reports_target_message_id_idx" ON "app"."reports" USING btree ("target_message_id") WHERE "app"."reports"."target_message_id" is not null;--> statement-breakpoint
 CREATE INDEX "reports_room_id_idx" ON "app"."reports" USING btree ("room_id") WHERE "app"."reports"."room_id" is not null;--> statement-breakpoint
+CREATE INDEX "reports_resolved_by_admin_id_idx" ON "app"."reports" USING btree ("resolved_by_admin_id") WHERE "app"."reports"."resolved_by_admin_id" is not null;--> statement-breakpoint
 CREATE INDEX "room_members_user_id_status_idx" ON "app"."room_members" USING btree ("user_id","status");--> statement-breakpoint
 CREATE INDEX "room_members_room_id_status_idx" ON "app"."room_members" USING btree ("room_id","status");--> statement-breakpoint
 CREATE INDEX "room_members_invited_by_idx" ON "app"."room_members" USING btree ("invited_by") WHERE "app"."room_members"."invited_by" is not null;--> statement-breakpoint
 CREATE INDEX "room_members_last_read_message_id_idx" ON "app"."room_members" USING btree ("last_read_message_id") WHERE "app"."room_members"."last_read_message_id" is not null;--> statement-breakpoint
 CREATE UNIQUE INDEX "rooms_direct_key_key" ON "app"."rooms" USING btree ("direct_key");--> statement-breakpoint
 CREATE INDEX "rooms_created_by_idx" ON "app"."rooms" USING btree ("created_by") WHERE "app"."rooms"."created_by" is not null;--> statement-breakpoint
+CREATE INDEX "rooms_avatar_file_id_idx" ON "app"."rooms" USING btree ("avatar_file_id") WHERE "app"."rooms"."avatar_file_id" is not null;--> statement-breakpoint
+CREATE INDEX "banners_image_file_id_idx" ON "app"."banners" USING btree ("image_file_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "categories_kind_slug_key" ON "app"."categories" USING btree ("kind","slug");--> statement-breakpoint
 CREATE UNIQUE INDEX "pages_slug_key" ON "app"."pages" USING btree ("slug");--> statement-breakpoint
+CREATE INDEX "pages_updated_by_admin_id_idx" ON "app"."pages" USING btree ("updated_by_admin_id") WHERE "app"."pages"."updated_by_admin_id" is not null;--> statement-breakpoint
 CREATE INDEX "post_likes_user_id_idx" ON "app"."post_likes" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "posts_slug_key" ON "app"."posts" USING btree ("slug");--> statement-breakpoint
 CREATE INDEX "posts_status_published_at_idx" ON "app"."posts" USING btree ("status","published_at");--> statement-breakpoint
 CREATE INDEX "posts_category_id_idx" ON "app"."posts" USING btree ("category_id");--> statement-breakpoint
+CREATE INDEX "posts_cover_file_id_idx" ON "app"."posts" USING btree ("cover_file_id") WHERE "app"."posts"."cover_file_id" is not null;--> statement-breakpoint
+CREATE INDEX "posts_author_admin_id_idx" ON "app"."posts" USING btree ("author_admin_id") WHERE "app"."posts"."author_admin_id" is not null;--> statement-breakpoint
 CREATE INDEX "events_status_starts_at_idx" ON "app"."events" USING btree ("status","starts_at");--> statement-breakpoint
 CREATE INDEX "events_category_id_idx" ON "app"."events" USING btree ("category_id");--> statement-breakpoint
+CREATE INDEX "events_cover_file_id_idx" ON "app"."events" USING btree ("cover_file_id") WHERE "app"."events"."cover_file_id" is not null;--> statement-breakpoint
+CREATE INDEX "events_created_by_admin_id_idx" ON "app"."events" USING btree ("created_by_admin_id") WHERE "app"."events"."created_by_admin_id" is not null;--> statement-breakpoint
 CREATE UNIQUE INDEX "tickets_user_id_event_id_active_key" ON "app"."tickets" USING btree ("user_id","event_id") WHERE "app"."tickets"."status" in ('awaiting_payment','awaiting_review','paid');--> statement-breakpoint
 CREATE UNIQUE INDEX "tickets_qr_code_key" ON "app"."tickets" USING btree ("qr_code");--> statement-breakpoint
 CREATE INDEX "tickets_event_id_status_idx" ON "app"."tickets" USING btree ("event_id","status");--> statement-breakpoint
 CREATE INDEX "tickets_status_hold_expires_at_idx" ON "app"."tickets" USING btree ("status","hold_expires_at");--> statement-breakpoint
 CREATE INDEX "tickets_user_id_created_at_idx" ON "app"."tickets" USING btree ("user_id","created_at");--> statement-breakpoint
+CREATE INDEX "tickets_checked_in_by_admin_id_idx" ON "app"."tickets" USING btree ("checked_in_by_admin_id") WHERE "app"."tickets"."checked_in_by_admin_id" is not null;--> statement-breakpoint
+CREATE INDEX "admin_permissions_granted_by_admin_id_idx" ON "app"."admin_permissions" USING btree ("granted_by_admin_id") WHERE "app"."admin_permissions"."granted_by_admin_id" is not null;--> statement-breakpoint
 CREATE UNIQUE INDEX "admins_user_id_key" ON "app"."admins" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "admins_linked_alumni_user_id_key" ON "app"."admins" USING btree ("linked_alumni_user_id") WHERE "app"."admins"."linked_alumni_user_id" is not null;--> statement-breakpoint
 CREATE UNIQUE INDEX "admins_invite_token_hash_key" ON "app"."admins" USING btree ("invite_token_hash") WHERE "app"."admins"."invite_token_hash" is not null;--> statement-breakpoint
@@ -844,6 +859,7 @@ CREATE INDEX "alumni_city_idx" ON "app"."alumni" USING btree (lower("city"));-->
 CREATE INDEX "alumni_full_name_idx" ON "app"."alumni" USING btree (lower("full_name") text_pattern_ops);--> statement-breakpoint
 CREATE INDEX "alumni_expires_at_idx" ON "app"."alumni" USING btree ("expires_at") WHERE "app"."alumni"."expires_at" is not null;--> statement-breakpoint
 CREATE INDEX "alumni_avatar_file_id_idx" ON "app"."alumni" USING btree ("avatar_file_id") WHERE "app"."alumni"."avatar_file_id" is not null;--> statement-breakpoint
+CREATE INDEX "alumni_suspended_by_admin_id_idx" ON "app"."alumni" USING btree ("suspended_by_admin_id") WHERE "app"."alumni"."suspended_by_admin_id" is not null;--> statement-breakpoint
 CREATE UNIQUE INDEX "alumni_professions_alumni_user_id_key" ON "app"."alumni_professions" USING btree ("alumni_user_id");--> statement-breakpoint
 CREATE INDEX "alumni_professions_profession_id_idx" ON "app"."alumni_professions" USING btree ("profession_id");--> statement-breakpoint
 CREATE INDEX "alumni_skills_skill_id_idx" ON "app"."alumni_skills" USING btree ("skill_id");--> statement-breakpoint
@@ -851,8 +867,9 @@ CREATE UNIQUE INDEX "master_professions_label_key" ON "app"."master_professions"
 CREATE UNIQUE INDEX "master_skills_label_key" ON "app"."master_skills" USING btree (lower("label"));--> statement-breakpoint
 CREATE UNIQUE INDEX "membership_events_payment_id_key" ON "app"."membership_events" USING btree ("payment_id");--> statement-breakpoint
 CREATE INDEX "membership_events_user_id_created_at_idx" ON "app"."membership_events" USING btree ("user_id","created_at");--> statement-breakpoint
+CREATE INDEX "membership_events_actor_admin_id_idx" ON "app"."membership_events" USING btree ("actor_admin_id") WHERE "app"."membership_events"."actor_admin_id" is not null;--> statement-breakpoint
 CREATE UNIQUE INDEX "device_tokens_token_key" ON "app"."device_tokens" USING btree ("token");--> statement-breakpoint
-CREATE INDEX "device_tokens_user_id_active_idx" ON "app"."device_tokens" USING btree ("user_id") WHERE "app"."device_tokens"."revoked_at" is null;--> statement-breakpoint
+CREATE INDEX "device_tokens_user_id_idx" ON "app"."device_tokens" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "device_tokens_session_id_idx" ON "app"."device_tokens" USING btree ("session_id") WHERE "app"."device_tokens"."session_id" is not null;--> statement-breakpoint
 CREATE INDEX "notification_deliveries_status_next_retry_at_idx" ON "app"."notification_deliveries" USING btree ("status","next_retry_at");--> statement-breakpoint
 CREATE INDEX "notification_deliveries_device_token_id_idx" ON "app"."notification_deliveries" USING btree ("device_token_id") WHERE "app"."notification_deliveries"."device_token_id" is not null;--> statement-breakpoint
@@ -861,12 +878,17 @@ CREATE INDEX "notifications_user_id_created_at_id_idx" ON "app"."notifications" 
 CREATE INDEX "notifications_user_id_unread_idx" ON "app"."notifications" USING btree ("user_id") WHERE "app"."notifications"."read_at" is null;--> statement-breakpoint
 CREATE INDEX "payment_adjustments_payment_id_idx" ON "app"."payment_adjustments" USING btree ("payment_id");--> statement-breakpoint
 CREATE INDEX "payment_adjustments_status_due_at_idx" ON "app"."payment_adjustments" USING btree ("status","due_at");--> statement-breakpoint
+CREATE INDEX "payment_adjustments_evidence_file_id_idx" ON "app"."payment_adjustments" USING btree ("evidence_file_id") WHERE "app"."payment_adjustments"."evidence_file_id" is not null;--> statement-breakpoint
+CREATE INDEX "payment_adjustments_created_by_admin_id_idx" ON "app"."payment_adjustments" USING btree ("created_by_admin_id") WHERE "app"."payment_adjustments"."created_by_admin_id" is not null;--> statement-breakpoint
+CREATE INDEX "payment_adjustments_completed_by_admin_id_idx" ON "app"."payment_adjustments" USING btree ("completed_by_admin_id") WHERE "app"."payment_adjustments"."completed_by_admin_id" is not null;--> statement-breakpoint
 CREATE INDEX "payment_events_payment_id_created_at_idx" ON "app"."payment_events" USING btree ("payment_id","created_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "payments_user_id_type_open_key" ON "app"."payments" USING btree ("user_id","type") WHERE "app"."payments"."status" in ('pending','rejected') and "app"."payments"."type" in ('registration','renewal');--> statement-breakpoint
-CREATE UNIQUE INDEX "payments_ticket_id_key" ON "app"."payments" USING btree ("ticket_id") WHERE "app"."payments"."type" = 'ticket';--> statement-breakpoint
+CREATE UNIQUE INDEX "payments_ticket_id_key" ON "app"."payments" USING btree ("ticket_id");--> statement-breakpoint
 CREATE INDEX "payments_status_submitted_at_idx" ON "app"."payments" USING btree ("status","submitted_at");--> statement-breakpoint
 CREATE INDEX "payments_user_id_created_at_idx" ON "app"."payments" USING btree ("user_id","created_at");--> statement-breakpoint
 CREATE INDEX "payments_proof_file_id_idx" ON "app"."payments" USING btree ("proof_file_id") WHERE "app"."payments"."proof_file_id" is not null;--> statement-breakpoint
+CREATE INDEX "payments_payment_method_id_idx" ON "app"."payments" USING btree ("payment_method_id") WHERE "app"."payments"."payment_method_id" is not null;--> statement-breakpoint
+CREATE INDEX "payments_decided_by_admin_id_idx" ON "app"."payments" USING btree ("decided_by_admin_id") WHERE "app"."payments"."decided_by_admin_id" is not null;--> statement-breakpoint
 CREATE UNIQUE INDEX "account_deletions_request_number_key" ON "app"."account_deletions" USING btree ("request_number");--> statement-breakpoint
 CREATE UNIQUE INDEX "account_deletions_user_id_open_key" ON "app"."account_deletions" USING btree ("user_id") WHERE "app"."account_deletions"."status" in ('pending','processing','failed');--> statement-breakpoint
 CREATE INDEX "account_deletions_user_id_idx" ON "app"."account_deletions" USING btree ("user_id");--> statement-breakpoint
@@ -881,4 +903,5 @@ CREATE INDEX "files_expires_at_idx" ON "app"."files" USING btree ("expires_at") 
 CREATE UNIQUE INDEX "idempotency_keys_scope_endpoint_key_key" ON "app"."idempotency_keys" USING btree ("scope","endpoint","key");--> statement-breakpoint
 CREATE INDEX "idempotency_keys_expires_at_idx" ON "app"."idempotency_keys" USING btree ("expires_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "outbox_events_dedup_key_key" ON "app"."outbox_events" USING btree ("dedup_key");--> statement-breakpoint
-CREATE INDEX "outbox_events_status_next_attempt_at_idx" ON "app"."outbox_events" USING btree ("status","next_attempt_at");
+CREATE INDEX "outbox_events_status_next_attempt_at_idx" ON "app"."outbox_events" USING btree ("status","next_attempt_at");--> statement-breakpoint
+CREATE INDEX "app_settings_updated_by_admin_id_idx" ON "app"."app_settings" USING btree ("updated_by_admin_id") WHERE "app"."app_settings"."updated_by_admin_id" is not null;

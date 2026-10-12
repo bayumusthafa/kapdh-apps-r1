@@ -57,6 +57,12 @@ export const events = app.table(
   (t) => [
     index("events_status_starts_at_idx").on(t.status, t.startsAt),
     index("events_category_id_idx").on(t.categoryId),
+    index("events_cover_file_id_idx")
+      .on(t.coverFileId)
+      .where(sql`${t.coverFileId} is not null`),
+    index("events_created_by_admin_id_idx")
+      .on(t.createdByAdminId)
+      .where(sql`${t.createdByAdminId} is not null`),
     check("events_title_chk", sql`char_length(btrim(${t.title})) between 1 and 200`),
     check("events_time_chk", sql`${t.endsAt} > ${t.startsAt}`),
     check(
@@ -114,6 +120,9 @@ export const tickets = app.table(
     // Job expiry reservasi (AC F09-2).
     index("tickets_status_hold_expires_at_idx").on(t.status, t.holdExpiresAt),
     index("tickets_user_id_created_at_idx").on(t.userId, t.createdAt),
+    index("tickets_checked_in_by_admin_id_idx")
+      .on(t.checkedInByAdminId)
+      .where(sql`${t.checkedInByAdminId} is not null`),
     check("tickets_total_snapshot_chk", sql`${t.totalSnapshot} >= 0`),
     check("tickets_hold_chk", sql`${t.status} <> 'awaiting_payment' or ${t.holdExpiresAt} is not null`),
     check("tickets_paid_qr_chk", sql`${t.status} <> 'paid' or ${t.qrCode} is not null`),

@@ -83,6 +83,9 @@ export const rooms = app.table(
     index("rooms_created_by_idx")
       .on(t.createdBy)
       .where(sql`${t.createdBy} is not null`),
+    index("rooms_avatar_file_id_idx")
+      .on(t.avatarFileId)
+      .where(sql`${t.avatarFileId} is not null`),
     check("rooms_direct_key_chk", sql`(${t.kind} = 'direct') = (${t.directKey} is not null)`),
     check(
       "rooms_direct_key_canonical_chk",
@@ -238,10 +241,19 @@ export const reports = app.table(
     index("reports_room_id_idx")
       .on(t.roomId)
       .where(sql`${t.roomId} is not null`),
+    index("reports_resolved_by_admin_id_idx")
+      .on(t.resolvedByAdminId)
+      .where(sql`${t.resolvedByAdminId} is not null`),
     check("reports_description_chk", sql`${t.description} is null or char_length(${t.description}) <= 2000`),
     check(
       "reports_resolved_chk",
       sql`${t.status} not in ('resolved','dismissed') or (${t.resolvedAt} is not null and ${t.action} is not null)`,
+    ),
+    // Setiap keputusan moderasi wajib beralasan (AC F12-3). resolved_by_admin_id sengaja tidak diwajibkan karena
+    // ON DELETE SET NULL; aktor keputusan tetap tercatat di audit.
+    check(
+      "reports_resolution_note_chk",
+      sql`${t.status} not in ('resolved','dismissed') or (${t.resolutionNote} is not null and btrim(${t.resolutionNote}) <> '')`,
     ),
     check("reports_dismissed_chk", sql`${t.status} <> 'dismissed' or ${t.action} = 'dismiss'`),
   ],

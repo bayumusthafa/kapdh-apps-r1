@@ -5,29 +5,43 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1791798565859,
+      "when": 1791800917589,
       "tag": "0000_init",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1791798569999,
+      "when": 1791800927736,
       "tag": "0001_append_only",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
-      "when": 1791798573916,
+      "when": 1791800930014,
       "tag": "0002_last_super_admin",
       "breakpoints": true
     },
     {
       "idx": 3,
       "version": "7",
-      "when": 1791798577328,
+      "when": 1791800932252,
       "tag": "0003_alumni_skills_limit",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791800934373,
+      "tag": "0004_identity_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791800936623,
+      "tag": "0005_post_like_count",
       "breakpoints": true
     }
   ]

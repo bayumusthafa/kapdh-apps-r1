@@ -1,12 +1,9 @@
-/** Utilitas bersama skrip seed: koneksi, pesan galat aman, dan deteksi eksekusi langsung. */
-import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+/**
+ * Utilitas bersama CLI seed (bin/seed-reference.ts, bin/seed-dev.ts): koneksi, pesan galat aman, kode keluar.
+ * Modul seed tidak pernah berjalan otomatis saat diimpor; titik masuk CLI selalu berada di bin/ sehingga perilakunya
+ * sama saat dipanggil lewat symlink pnpm (image production, PRD 5.5).
+ */
 import { createDb, type Database } from "../src/client.js";
-
-export function invokedDirectly(moduleUrl: string): boolean {
-  const entry = process.argv[1];
-  return Boolean(entry) && moduleUrl === pathToFileURL(resolve(entry!)).href;
-}
 
 /** Pesan galat tanpa parameter query (Drizzle menaruh parameter di message; N-14). */
 export function safeError(e: unknown): string {
@@ -15,10 +12,17 @@ export function safeError(e: unknown): string {
   return [inner?.code, inner?.message?.split("\n")[0]].filter(Boolean).join(" ");
 }
 
-/** Menjalankan seed terhadap DATABASE_URL lalu menutup pool; keluar dengan kode bukan nol bila gagal. */
-export function runSeedCli(label: string, run: (db: Database) => Promise<unknown>): void {
-  const url = process.env.DATABASE_URL;
-  const main = async () => {
+/**
+ * Menjalankan seed terhadap DATABASE_URL lalu menutup pool. Mengembalikan kode keluar: 0 sukses, 1 gagal (termasuk
+ * DATABASE_URL kosong/salah dan penolakan production pada seed dev). URL koneksi tidak pernah dicetak.
+ */
+export async function runSeedCli(
+  label: string,
+  run: (db: Database) => Promise<unknown>,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<number> {
+  try {
+    const url = env.DATABASE_URL;
     if (!url || !/^postgres(ql)?:\/\//.test(url))
       throw new Error("DATABASE_URL wajib diisi dengan URL postgres://.");
     const { db, sql } = createDb(url, { max: 1, applicationName: `kapdh-${label}` });
@@ -28,12 +32,9 @@ export function runSeedCli(label: string, run: (db: Database) => Promise<unknown
     } finally {
       await sql.end({ timeout: 5 });
     }
-  };
-  main().then(
-    () => process.exit(0),
-    (e) => {
-      process.stderr.write(`[${label}] gagal: ${safeError(e)}\n`);
-      process.exit(1);
-    },
-  );
+    return 0;
+  } catch (e) {
+    process.stderr.write(`[${label}] gagal: ${safeError(e)}\n`);
+    return 1;
+  }
 }

@@ -7,7 +7,7 @@
  *   - app_settings untuk seluruh kunci ARCHITECTURE §5.4 (nominal D4, periode/jendela D4, event D5/D6, chat v3.2).
  *   - Daftar awal master profesi dan keahlian berstatus USULAN: disisipkan NONAKTIF dan wajib ditinjau serta
  *     diaktifkan pengurus (master.manage) di web admin sebelum go-live. Nilai yang belum disahkan memblokir go-live.
- *   - Kerangka halaman legal/informasi berstatus DRAF (published_at null); naskah resmi diisi dan diterbitkan pengurus.
+ *   - Kerangka halaman legal/informasi berstatus DRAF (published_* null); naskah resmi diisi dan diterbitkan pengurus.
  * Tidak ada fixture, akun, atau metode bayar di sini: metode bayar dikelola bendahara lewat web admin (PRD 9.3).
  *
  *   DATABASE_URL=postgres://... pnpm --filter @kapdh/database seed:reference
@@ -18,7 +18,6 @@ import { pages } from "../src/schema/content.js";
 import { masterProfessions, masterSkills } from "../src/schema/membership.js";
 import { auditLogs } from "../src/schema/platform.js";
 import { type AppSettingKey, appSettings } from "../src/schema/settings.js";
-import { invokedDirectly, runSeedCli } from "./_cli.js";
 
 /** Nilai awal app_settings (ARCHITECTURE §5.4). Money berupa string desimal (ARCHITECTURE §2.5). */
 export const REFERENCE_SETTINGS: Record<AppSettingKey, Record<string, unknown>> = {
@@ -40,7 +39,7 @@ export const REFERENCE_SETTINGS: Record<AppSettingKey, Record<string, unknown>> 
   store_links: { android: null, ios: null },
   // PRD 8.3: kanal dukungan awal; nomor WhatsApp admin ditetapkan pengurus.
   support: { email: "bantuan@kapdh.or.id", whatsapp: null },
-  // Mencerminkan versi halaman legal yang sudah diterbitkan; null selama masih draf.
+  // Mencerminkan pages.published_version halaman legal yang sudah diterbitkan; null selama masih draf (F-01).
   legal: { privacy_version: null, terms_version: null, community_version: null },
 };
 
@@ -244,8 +243,4 @@ export async function seedReference(
     });
     return summary;
   });
-}
-
-if (invokedDirectly(import.meta.url)) {
-  runSeedCli("seed:reference", (db) => seedReference(db));
 }

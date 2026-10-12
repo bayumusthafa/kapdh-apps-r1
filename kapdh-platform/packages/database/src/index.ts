@@ -11,4 +11,10 @@ export * from "./schema/notifications.js";
 export * from "./schema/platform.js";
 export * from "./schema/relations.js";
 export { createDb, schema, type CreateDbOptions, type Database } from "./client.js";
-export { MIGRATIONS_FOLDER, MIGRATION_LOCK_KEY, runMigrations, type MigrateOptions } from "./migrate.js";
+export {
+  MIGRATIONS_FOLDER,
+  MIGRATION_LOCK_KEY,
+  runMigrateCli,
+  runMigrations,
+  type MigrateOptions,
+} from "./migrate.js";

@@ -19,7 +19,12 @@ function resolve(v) {
 
 function camel(...parts) {
   const words = parts.flatMap((p) => String(p).split(/[-_ ]/)).filter(Boolean);
-  const out = words[0].toLowerCase() + words.slice(1).map((w) => w.slice(0, 1).toUpperCase() + w.slice(1)).join("");
+  const out =
+    words[0].toLowerCase() +
+    words
+      .slice(1)
+      .map((w) => w.slice(0, 1).toUpperCase() + w.slice(1))
+      .join("");
   return /^\d/.test(out) ? "n" + out : out;
 }
 
@@ -40,7 +45,8 @@ css.push(`  --font-heading: ${T.font.family.heading};`);
 css.push(`  --font-sans: ${T.font.family.body};`);
 css.push(`  --font-mono: ${T.font.family.mono};`);
 for (const [k, v] of Object.entries(T.font.size)) css.push(`  --text-${k}: ${rem(v)}rem;`);
-for (const [k, v] of Object.entries(T.radius)) css.push(v < 999 ? `  --radius-${k}: ${v}px;` : `  --radius-${k}: 9999px;`);
+for (const [k, v] of Object.entries(T.radius))
+  css.push(v < 999 ? `  --radius-${k}: ${v}px;` : `  --radius-${k}: 9999px;`);
 for (const [k, v] of Object.entries(T.shadow)) css.push(`  --shadow-${k}: ${v};`);
 css.push("}", "", ":root {");
 for (const [k, v] of Object.entries(T.gradient)) css.push(`  --gradient-${k}: ${v};`);
@@ -67,9 +73,11 @@ const d = [
   "abstract final class KapdhColors {",
 ];
 for (const [k, v] of Object.entries(T.color.brand)) d.push(`  static const ${camel(k)} = ${dartColor(v)};`);
-for (const [k, v] of Object.entries(T.color.neutral)) d.push(`  static const ${camel("neutral", k)} = ${dartColor(v)};`);
+for (const [k, v] of Object.entries(T.color.neutral))
+  d.push(`  static const ${camel("neutral", k)} = ${dartColor(v)};`);
 d.push("");
-for (const [k, v] of Object.entries(T.color.semantic)) d.push(`  static const ${camel(k)} = ${dartColor(resolve(v))};`);
+for (const [k, v] of Object.entries(T.color.semantic))
+  d.push(`  static const ${camel(k)} = ${dartColor(resolve(v))};`);
 d.push("");
 for (const [k, v] of Object.entries(T.color.status)) d.push(`  static const ${camel(k)} = ${dartColor(v)};`);
 d.push("}", "");
@@ -88,7 +96,9 @@ d.push("}", "");
 d.push("abstract final class KapdhGradients {");
 d.push("  static const ktaCard = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,");
 d.push("      colors: [Color(0xFF020702), Color(0xFF0E280C), Color(0xFF215E1E)], stops: [0, 0.45, 1]);");
-d.push("  static const buttonPrimary = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,");
+d.push(
+  "  static const buttonPrimary = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,",
+);
 d.push("      colors: [Color(0xFF215E1E), Color(0xFF1A4B17)]);");
 d.push("}", "");
 d.push("abstract final class KapdhSpace {");

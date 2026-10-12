@@ -75,6 +75,16 @@ async function createDatabase(
   };
 }
 
+/**
+ * Koneksi nyata sebagai role LOGIN aplikasi (kapdh_app = API, kapdh_worker = worker) ke database uji, bukan superuser,
+ * sehingga grant dan keanggotaan role (infra/db/roles.sql) teruji persis seperti production. Pemanggil wajib end().
+ */
+export function connectAs(database: PgTestDatabase, role: "kapdh_app" | "kapdh_worker", poolSize = 2) {
+  const config = laneConfig();
+  const url = `postgres://${role}:${config.rolePassword}@${config.host}:${config.port}/${database.name}`;
+  return createDb(url, { max: poolSize, applicationName: `kapdh-pg-test-${role}` });
+}
+
 /** Penghalang sederhana: setiap peserta menunggu sampai semua peserta tiba. */
 export function barrier(parties: number): () => Promise<void> {
   let arrived = 0;
@@ -149,6 +159,14 @@ export async function insertAdmin(
   sql: Sql,
   opts: { role?: "super_admin" | "admin"; status?: "invited" | "active" | "disabled" } = {},
 ): Promise<string> {
+  return (await insertAdminAccount(sql, opts)).adminId;
+}
+
+/** Akun users berjenis admin + baris admins; mengembalikan keduanya (penjaga Super Admin memeriksa status akun). */
+export async function insertAdminAccount(
+  sql: Sql,
+  opts: { role?: "super_admin" | "admin"; status?: "invited" | "active" | "disabled" } = {},
+): Promise<{ adminId: string; userId: string }> {
   const userId = await insertUser(sql, { kind: "admin" });
   const adminId = id();
   const status = opts.status ?? "active";
@@ -156,7 +174,7 @@ export async function insertAdmin(
     insert into app.admins (id, user_id, display_name, role, status, activated_at, disabled_at)
     values (${adminId}, ${userId}, 'Admin Uji', ${opts.role ?? "admin"}, ${status},
             case when ${status !== "invited"} then now() end, case when ${status === "disabled"} then now() end)`;
-  return adminId;
+  return { adminId, userId };
 }
 
 export async function insertEvent(
