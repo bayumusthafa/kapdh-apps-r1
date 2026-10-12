@@ -9,3 +9,8 @@ pubspec.lock.bak
 android/key.properties
 android/app/*.jks
 ios/Pods/
+
+# Konfigurasi Firebase per lingkungan tidak di-commit; opsi dibaca dari --dart-define (config/<lingkungan>.json, CI).
+android/app/google-services.json
+android/app/src/*/google-services.json
+ios/Runner/GoogleService-Info.plist
