@@ -147,7 +147,8 @@ export class AuthGuard implements CanActivate {
       auth.adminId = admin.id;
       auth.adminRole = admin.role as AdminRole;
       auth.linkedAlumniUserId = admin.linkedAlumniUserId;
-      auth.permissions = admin.role === "super_admin" ? ALL_PERMISSIONS : await this.loadPermissions(admin.id);
+      auth.permissions =
+        admin.role === "super_admin" ? ALL_PERMISSIONS : await this.loadPermissions(admin.id);
       // Permintaan latar (polling) tidak dihitung sebagai aktivitas (AC F02-5).
       if (request.headers["x-background-request"] !== "1") {
         await this.db
@@ -193,7 +194,11 @@ export class AuthGuard implements CanActivate {
       .where(eq(alumni.userId, auth.userId))
       .limit(1);
     const status = effectiveStatus(
-      { accountStatus: "active", expiresAt: member?.expiresAt ?? null, suspendedAt: member?.suspendedAt ?? null },
+      {
+        accountStatus: "active",
+        expiresAt: member?.expiresAt ?? null,
+        suspendedAt: member?.suspendedAt ?? null,
+      },
       now,
     );
     auth.effectiveStatus = status;

@@ -145,7 +145,10 @@ class ProbeController {
   @HttpCode(200)
   @Public()
   echo(@Body() body: unknown) {
-    return validate(z.object({ name: z.string().min(2), nested: z.object({ n: z.number() }).optional() }), body);
+    return validate(
+      z.object({ name: z.string().min(2), nested: z.object({ n: z.number() }).optional() }),
+      body,
+    );
   }
 
   @Post("idem")
@@ -169,6 +172,16 @@ class ProbeController {
   idempotentPublic(@Body() body: unknown) {
     probeState.idempotentCalls++;
     return { call: probeState.idempotentCalls, body };
+  }
+
+  /** Kesalahan konfigurasi yang dijaga: respons berisi token tidak boleh tersimpan di idempotency_keys. */
+  @Post("idem-secret")
+  @HttpCode(200)
+  @Public()
+  @Idempotent()
+  idempotentSecret() {
+    probeState.idempotentCalls++;
+    return { session: { access_token: SECRET_MARKER, refresh_token: SECRET_MARKER } };
   }
 
   /** Memicu unique violation dengan parameter rahasia: log hanya boleh memuat tipe, SQLSTATE, constraint. */

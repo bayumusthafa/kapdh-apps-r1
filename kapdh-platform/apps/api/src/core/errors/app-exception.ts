@@ -42,8 +42,13 @@ export function versionConflict(
 }
 
 /** 429 RATE_LIMITED dengan Retry-After (PRD 2.5). */
-export function rateLimited(retryAfterSeconds: number, message = "Terlalu banyak percobaan. Coba lagi nanti."): AppException {
-  return new AppException(429, "RATE_LIMITED", message, { retryAfterSeconds: Math.max(1, retryAfterSeconds) });
+export function rateLimited(
+  retryAfterSeconds: number,
+  message = "Terlalu banyak percobaan. Coba lagi nanti.",
+): AppException {
+  return new AppException(429, "RATE_LIMITED", message, {
+    retryAfterSeconds: Math.max(1, retryAfterSeconds),
+  });
 }
 
 /** 400 VALIDATION_ERROR untuk satu field. */

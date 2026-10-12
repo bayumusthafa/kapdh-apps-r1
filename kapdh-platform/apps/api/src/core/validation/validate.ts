@@ -42,7 +42,9 @@ export const queryInt = (options: { min?: number; max?: number } = {}) => {
 
 /** Boolean dari query string: true/false/1/0. */
 export const queryBool = () =>
-  z.enum(["true", "false", "1", "0"], { message: "Gunakan true atau false" }).transform((v) => v === "true" || v === "1");
+  z
+    .enum(["true", "false", "1", "0"], { message: "Gunakan true atau false" })
+    .transform((v) => v === "true" || v === "1");
 
 /** Daftar dari query berulang (`?status=a&status=b`) atau dipisah koma (`?status=a,b`). */
 export const queryList = <T extends z.ZodType<unknown, string>>(item: T) =>

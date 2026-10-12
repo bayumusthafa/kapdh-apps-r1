@@ -7,13 +7,17 @@
 /** Segmen nama kunci (snake_case/camelCase) yang membuat kunci dibuang. */
 const SENSITIVE_SEGMENTS = new Set([
   "password",
+  "passwords",
   "passwd",
   "secret",
+  "secrets",
   "token",
+  "tokens",
   "otp",
   "totp",
   "hmac",
   "hash",
+  "hashes",
   "nik",
   "ktp",
   "cookie",
@@ -61,7 +65,9 @@ export function isSensitiveAuditKey(key: string): boolean {
 function clean(value: unknown, depth: number): unknown {
   if (value === null || value === undefined) return null;
   if (typeof value === "string")
-    return value.length > AUDIT_LIMITS.maxStringLength ? `${value.slice(0, AUDIT_LIMITS.maxStringLength)}…` : value;
+    return value.length > AUDIT_LIMITS.maxStringLength
+      ? `${value.slice(0, AUDIT_LIMITS.maxStringLength)}…`
+      : value;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "boolean") return value;
   if (typeof value === "bigint") return value.toString();
@@ -71,7 +77,8 @@ function clean(value: unknown, depth: number): unknown {
   if (depth >= AUDIT_LIMITS.maxDepth) return "[terlalu dalam]";
   if (Array.isArray(value)) {
     const items = value.slice(0, AUDIT_LIMITS.maxArrayItems).map((item) => clean(item, depth + 1));
-    if (value.length > AUDIT_LIMITS.maxArrayItems) items.push(`[+${value.length - AUDIT_LIMITS.maxArrayItems} item]`);
+    if (value.length > AUDIT_LIMITS.maxArrayItems)
+      items.push(`[+${value.length - AUDIT_LIMITS.maxArrayItems} item]`);
     return items;
   }
   const result: Record<string, unknown> = {};

@@ -103,14 +103,18 @@ export function pageOf<Row, Item = Row>(
   const items = options.toItem ? pageRows.map(options.toItem) : (pageRows as unknown as Item[]);
   const page: Page<Item> = {
     items,
-    next_cursor: hasMore && last !== undefined ? encodeCursor(serializePosition(options.cursorOf(last))) : null,
+    next_cursor:
+      hasMore && last !== undefined ? encodeCursor(serializePosition(options.cursorOf(last))) : null,
   };
   return options.total === undefined ? page : { ...page, total: options.total };
 }
 
 function serializePosition(position: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
-    Object.entries(position).map(([key, value]) => [key, value instanceof Date ? value.toISOString() : value]),
+    Object.entries(position).map(([key, value]) => [
+      key,
+      value instanceof Date ? value.toISOString() : value,
+    ]),
   );
 }
 

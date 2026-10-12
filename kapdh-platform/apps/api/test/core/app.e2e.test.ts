@@ -1,4 +1,5 @@
 import { outboxEvents } from "@kapdh/database";
+import { MemoryStorage } from "@kapdh/storage";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { v7 as uuidv7 } from "uuid";
 import { expectOperation } from "../support/contract.js";
@@ -28,12 +29,14 @@ describe("API dasar (PRD 5.2, 5.5, N-14)", () => {
     expectOperation("get", "/health", res);
   });
 
-  it("GET /health/ready: ping database dan umur outbox pending tertua (PRD 5.5)", async () => {
+  it("GET /health/ready: ping database dan storage, Redis dilewati, umur outbox pending tertua (PRD 5.5)", async () => {
     const empty = await api.get("/health/ready");
     expect(empty.statusCode).toBe(200);
-    expect(expectOperation("get", "/health/ready", empty)).toMatchObject({
+    expect(empty.headers["cache-control"]).toBe("no-store");
+    expect(expectOperation("get", "/health/ready", empty)).toEqual({
       status: "ok",
-      checks: { database: "ok", redis: "not_configured", outbox_oldest_pending_seconds: null },
+      time: t.clock.now().toISOString(),
+      checks: { database: "ok", redis: "skipped", storage: "ok", outbox_oldest_pending_seconds: null },
     });
     const created = new Date(t.clock.now().getTime() - 90_000);
     await t.db.insert(outboxEvents).values({
@@ -57,6 +60,7 @@ describe("API dasar (PRD 5.2, 5.5, N-14)", () => {
       store_links: { android: null, ios: null },
       support: { email: "bantuan@kapdh.or.id", whatsapp: null },
       legal: { privacy_version: null, terms_version: null, community_version: null },
+      server_time: t.clock.now().toISOString(),
     });
   });
 
@@ -77,7 +81,11 @@ describe("API dasar (PRD 5.2, 5.5, N-14)", () => {
     const res = await api.get("/tidak-ada", { headers: { "x-request-id": "klien-req-12345" } });
     expect(res.statusCode).toBe(404);
     const body = res.json();
-    expect(body).toEqual({ code: "NOT_FOUND", message: "Data tidak ditemukan.", request_id: body.request_id });
+    expect(body).toEqual({
+      code: "NOT_FOUND",
+      message: "Data tidak ditemukan.",
+      request_id: body.request_id,
+    });
     // X-Request-Id klien tidak dipakai sebagai korelasi audit (hanya dicatat di log sebagai client_request_id).
     expect(body.request_id).toMatch(UUID);
     expect(body.request_id).not.toBe("klien-req-12345");
@@ -101,6 +109,27 @@ describe("API dasar (PRD 5.2, 5.5, N-14)", () => {
     const res = await api.get("/health");
     expect(res.headers["strict-transport-security"]).toBeUndefined();
     expect(res.headers["x-content-type-options"]).toBe("nosniff");
+  });
+});
+
+describe("PRD 5.5: readiness gagal bila dependensi wajib tidak siap", () => {
+  it("storage tidak terjangkau → 503 dengan status per komponen tanpa pesan galat", async () => {
+    const broken = new MemoryStorage();
+    broken.stat = () => Promise.reject(new Error("ECONNREFUSED 10.0.0.5:9000 rahasia-host"));
+    const t = await createTestApp({ storage: broken });
+    try {
+      const res = await httpClient(t.app).get("/health/ready");
+      expect(res.statusCode).toBe(503);
+      expect(expectOperation("get", "/health/ready", res)).toMatchObject({
+        status: "unavailable",
+        checks: { database: "ok", redis: "skipped", storage: "fail" },
+      });
+      expect(res.body).not.toContain("rahasia-host");
+      // Liveness tetap 200: proses hidup walau dependensi bermasalah.
+      expect((await httpClient(t.app).get("/health")).statusCode).toBe(200);
+    } finally {
+      await t.app.close();
+    }
   });
 });
 

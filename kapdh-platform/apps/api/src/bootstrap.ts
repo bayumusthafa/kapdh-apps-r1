@@ -32,7 +32,10 @@ const HSTS_MAX_AGE_SECONDS = 31_536_000;
  * server, trust proxy per hop (TRUST_PROXY_HOPS), helmet dengan HSTS terkendali env (N-07), CORS hanya origin web
  * admin dan situs publik, hook konteks/maintenance/versi (ARCHITECTURE §4.3).
  */
-export async function createApp(deps: AppDeps, options: CreateAppOptions = {}): Promise<NestFastifyApplication> {
+export async function createApp(
+  deps: AppDeps,
+  options: CreateAppOptions = {},
+): Promise<NestFastifyApplication> {
   const logger = createRootLogger({
     level: options.logger === false ? "silent" : deps.env.LOG_LEVEL,
     service: "kapdh-api",
@@ -50,10 +53,18 @@ export async function createApp(deps: AppDeps, options: CreateAppOptions = {}): 
     bodyLimit: JSON_BODY_LIMIT,
   });
   const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule.forRoot(deps, { logger, rateLimitStore: options.rateLimitStore, extraModules: options.extraModules }),
+    AppModule.forRoot(deps, {
+      logger,
+      rateLimitStore: options.rateLimitStore,
+      extraModules: options.extraModules,
+    }),
     adapter,
-    { logger: new NestPinoLogger(logger) },
+    // Parser bawaan Nest (JSON + urlencoded) dimatikan: API hanya menerima application/json lewat parser Fastify
+    // (bodyLimit dan penolakan __proto__ tetap berlaku). Unggahan multipart dipasang modul files per rute.
+    { logger: new NestPinoLogger(logger), bodyParser: false },
   );
+  // text/plain dan tipe lain di luar JSON → 415 VALIDATION_ERROR (multipart → 415 FILE_INVALID), bukan body string.
+  adapter.getInstance().removeContentTypeParser("text/plain");
   app.setGlobalPrefix("api/v1");
   await app.register(helmet, {
     contentSecurityPolicy: false,

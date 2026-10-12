@@ -131,7 +131,10 @@ describe("PRD 2.2: @MemberAccess memakai effective_status per request", () => {
   it("AC F07-3: masa aktif habis saat sesi berjalan langsung menutup akses aktif tanpa menunggu worker", async () => {
     const { member, accessToken } = await memberToken("expiring");
     expect((await api.get("/__probe/member/active", { token: accessToken })).statusCode).toBe(200);
-    await t.db.update(alumni).set({ expiresAt: t.clock.now(), startsAt: new Date(t.clock.now().getTime() - 86_400_000) }).where(eq(alumni.userId, member.userId));
+    await t.db
+      .update(alumni)
+      .set({ expiresAt: t.clock.now(), startsAt: new Date(t.clock.now().getTime() - 86_400_000) })
+      .where(eq(alumni.userId, member.userId));
     const res = await api.get("/__probe/member/active", { token: accessToken });
     expect(res.json().code).toBe("MEMBERSHIP_REQUIRED");
   });
@@ -142,7 +145,9 @@ describe("PRD 2.2: @MemberAccess memakai effective_status per request", () => {
       .update(alumni)
       .set({ suspendedAt: t.clock.now(), suspensionReason: "uji", suspensionMessage: "Dibatasi." })
       .where(eq(alumni.userId, member.userId));
-    expect((await api.get("/__probe/member/active", { token: accessToken })).json().code).toBe("ACCOUNT_SUSPENDED");
+    expect((await api.get("/__probe/member/active", { token: accessToken })).json().code).toBe(
+      "ACCOUNT_SUSPENDED",
+    );
     expect((await api.get("/me", { token: accessToken })).json().effective_status).toBe("suspended");
   });
 });
@@ -183,7 +188,10 @@ describe("AC F15-1, F16-3: @RequirePermission dievaluasi dari database setiap re
     const { accessToken } = await signInAdmin(t, admin);
     const res = await api.get("/__probe/admin/payments", { token: accessToken });
     expect(res.json().linked_alumni_user_id).toBe(linked.userId);
-    await t.db.update(admins).set({ status: "disabled", disabledAt: t.clock.now() }).where(eq(admins.id, admin.adminId));
+    await t.db
+      .update(admins)
+      .set({ status: "disabled", disabledAt: t.clock.now() })
+      .where(eq(admins.id, admin.adminId));
     expect((await api.get("/__probe/admin/payments", { token: accessToken })).statusCode).toBe(403);
   });
 
@@ -197,7 +205,9 @@ describe("ARCHITECTURE §4.3: @RequireReauth (X-Reauth-Token aud kapdh-reauth, t
   async function reauthToken(accessToken: string, level = 1) {
     const claims = decodeJwt(accessToken);
     return (
-      await t.app.get(TokenService).signReauth({ userId: String(claims.sub), sessionId: String(claims.sid), level })
+      await t.app
+        .get(TokenService)
+        .signReauth({ userId: String(claims.sub), sessionId: String(claims.sid), level })
     ).token;
   }
 
@@ -206,19 +216,31 @@ describe("ARCHITECTURE §4.3: @RequireReauth (X-Reauth-Token aud kapdh-reauth, t
     const missing = await api.post("/__probe/sensitive", {}, { token: accessToken });
     expect(missing.statusCode).toBe(403);
     expect(missing.json().code).toBe("REAUTH_REQUIRED");
-    const broken = await api.post("/__probe/sensitive", {}, { token: accessToken, headers: { "x-reauth-token": "x" } });
+    const broken = await api.post(
+      "/__probe/sensitive",
+      {},
+      { token: accessToken, headers: { "x-reauth-token": "x" } },
+    );
     expect(broken.json().code).toBe("REAUTH_REQUIRED");
   });
 
   it("token reauth sesi ini diterima dan kedaluwarsa setelah 10 menit", async () => {
     const { accessToken } = await memberToken("verified");
     const reauth = await reauthToken(accessToken);
-    const ok = await api.post("/__probe/sensitive", {}, { token: accessToken, headers: { "x-reauth-token": reauth } });
+    const ok = await api.post(
+      "/__probe/sensitive",
+      {},
+      { token: accessToken, headers: { "x-reauth-token": reauth } },
+    );
     expect(ok.statusCode).toBe(200);
     expect(ok.json().reauthenticated).toBe(true);
     t.clock.advance(10 * 60_000 + 1000);
     // Access token masih berlaku (15 menit), reauth tidak.
-    const late = await api.post("/__probe/sensitive", {}, { token: accessToken, headers: { "x-reauth-token": reauth } });
+    const late = await api.post(
+      "/__probe/sensitive",
+      {},
+      { token: accessToken, headers: { "x-reauth-token": reauth } },
+    );
     expect(late.json().code).toBe("REAUTH_REQUIRED");
   });
 
@@ -227,12 +249,22 @@ describe("ARCHITECTURE §4.3: @RequireReauth (X-Reauth-Token aud kapdh-reauth, t
     const b = await memberToken("verified");
     const otherSession = await reauthToken(b.accessToken);
     expect(
-      (await api.post("/__probe/sensitive", {}, { token: a.accessToken, headers: { "x-reauth-token": otherSession } })).json()
-        .code,
+      (
+        await api.post(
+          "/__probe/sensitive",
+          {},
+          { token: a.accessToken, headers: { "x-reauth-token": otherSession } },
+        )
+      ).json().code,
     ).toBe("REAUTH_REQUIRED");
     expect(
-      (await api.post("/__probe/sensitive", {}, { token: a.accessToken, headers: { "x-reauth-token": a.accessToken } })).json()
-        .code,
+      (
+        await api.post(
+          "/__probe/sensitive",
+          {},
+          { token: a.accessToken, headers: { "x-reauth-token": a.accessToken } },
+        )
+      ).json().code,
     ).toBe("REAUTH_REQUIRED");
     // Token reauth tidak dapat dipakai sebagai access token.
     const reauth = await reauthToken(a.accessToken);
@@ -244,12 +276,23 @@ describe("ARCHITECTURE §4.3: @RequireReauth (X-Reauth-Token aud kapdh-reauth, t
     const { accessToken } = await signInAdmin(t, admin);
     const passwordOnly = await reauthToken(accessToken, 1);
     expect(
-      (await api.post("/__probe/sensitive", {}, { token: accessToken, headers: { "x-reauth-token": passwordOnly } })).json()
-        .code,
+      (
+        await api.post(
+          "/__probe/sensitive",
+          {},
+          { token: accessToken, headers: { "x-reauth-token": passwordOnly } },
+        )
+      ).json().code,
     ).toBe("REAUTH_REQUIRED");
     const withTotp = await reauthToken(accessToken, 2);
     expect(
-      (await api.post("/__probe/sensitive", {}, { token: accessToken, headers: { "x-reauth-token": withTotp } })).statusCode,
+      (
+        await api.post(
+          "/__probe/sensitive",
+          {},
+          { token: accessToken, headers: { "x-reauth-token": withTotp } },
+        )
+      ).statusCode,
     ).toBe(200);
   });
 });

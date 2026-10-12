@@ -80,8 +80,16 @@ export function installHttpHooks(fastify: FastifyInstance, gate: () => RequestGa
   fastify.addHook("onResponse", (request: FastifyRequest, reply: FastifyReply, done) => {
     const status = reply.statusCode;
     const route = request.routeOptions?.url;
-    const level = status >= 500 ? "error" : route?.endsWith("/health") || route?.endsWith("/health/ready") ? "debug" : "info";
-    reply.log[level]({ req: request, res: reply, response_time_ms: Math.round(reply.elapsedTime) }, "request selesai");
+    const level =
+      status >= 500
+        ? "error"
+        : route?.endsWith("/health") || route?.endsWith("/health/ready")
+          ? "debug"
+          : "info";
+    reply.log[level](
+      { req: request, res: reply, response_time_ms: Math.round(reply.elapsedTime) },
+      "request selesai",
+    );
     done();
   });
 }

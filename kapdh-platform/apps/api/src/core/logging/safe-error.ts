@@ -42,12 +42,32 @@ function typeName(error: Error): string {
   return error.constructor?.name || "Error";
 }
 
+/**
+ * Objek hasil safeError. Serializer logger (`error`/`err`) menerima objek ini apa adanya sehingga pemanggil boleh
+ * menulis `{ error: safeError(e) }` maupun `{ error: e }` tanpa serialisasi ganda (yang dulu mengubah hasil menjadi
+ * `{type: "object"}` dan menghilangkan SQLSTATE/constraint dari log).
+ */
+const produced = new WeakSet<object>();
+
+/** Serializer logger: Error/nilai apa pun → bentuk aman; hasil safeError diteruskan tanpa diubah. */
+export function serializeError(value: unknown): SafeErrorLog {
+  if (value !== null && typeof value === "object" && produced.has(value)) return value as SafeErrorLog;
+  return safeError(value);
+}
+
 export function safeError(error: unknown): SafeErrorLog {
+  if (error !== null && typeof error === "object" && produced.has(error)) return error as SafeErrorLog;
+  const log = buildSafeError(error);
+  produced.add(log);
+  return log;
+}
+
+function buildSafeError(error: unknown): SafeErrorLog {
   if (error instanceof AppException) {
     return { type: "AppException", error_code: error.code, status: error.status, message: error.message };
   }
   if (!(error instanceof Error)) {
-    return { type: typeof error };
+    return { type: error === null ? "null" : typeof error };
   }
   const log: SafeErrorLog = { type: typeName(error) };
   if (error instanceof HttpException) log.status = error.getStatus();

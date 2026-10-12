@@ -2,11 +2,18 @@ import { idempotencyKeys } from "@kapdh/database";
 import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { IDEMPOTENCY_STALE_MS, IDEMPOTENCY_TTL_MS, IdempotencyService } from "../../src/core/idempotency/idempotency.service.js";
+import { createHash } from "node:crypto";
+import {
+  canonicalJson,
+  IDEMPOTENCY_STALE_MS,
+  IDEMPOTENCY_TTL_MS,
+  IdempotencyService,
+  keyedPayloadHash,
+} from "../../src/core/idempotency/idempotency.service.js";
 import { createAlumni, signInAlumni } from "../support/factories.js";
 import { type HttpClient, httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import { ProbeModule, probeState } from "./probe.js";
+import { ProbeModule, probeState, SECRET_MARKER } from "./probe.js";
 
 let t: TestApp;
 let api: HttpClient;
@@ -49,7 +56,11 @@ describe("PRD 4.3: Idempotency-Key", () => {
     expect(second.headers["idempotent-replayed"]).toBe("true");
     expect(probeState.idempotentCalls).toBe(1);
     const [row] = await t.db.select().from(idempotencyKeys).where(eq(idempotencyKeys.key, key));
-    expect(row).toMatchObject({ status: "completed", responseStatus: 201, endpoint: "POST /api/v1/__probe/idem" });
+    expect(row).toMatchObject({
+      status: "completed",
+      responseStatus: 201,
+      endpoint: "POST /api/v1/__probe/idem",
+    });
   });
 
   it("key sama dengan payload berbeda → 409 IDEMPOTENCY_CONFLICT", async () => {
@@ -124,6 +135,37 @@ describe("PRD 4.3: Idempotency-Key", () => {
     expect(row!.scope).toBe("anon");
     const bad = await api.post("/__probe/idem-public", { x: 1 }, { headers: { "idempotency-key": "123" } });
     expect(bad.statusCode).toBe(400);
+  });
+
+  it("hash payload ber-kunci server (HMAC), bukan SHA-256 polos yang memungkinkan tebakan sandi offline", async () => {
+    const key = uuidv7();
+    const body = {
+      full_name: "Alumni Hash",
+      gender: "male",
+      email: `hash-${key.slice(-8)}@contoh.test`,
+      password: "Kapdh#2026",
+      cohort: 25,
+      class_in: 1,
+      class_out: 6,
+      accept_policy_version: "1",
+    };
+    const res = await api.post("/auth/register", body, { headers: { "idempotency-key": key } });
+    expect(res.statusCode).toBe(201);
+    const [row] = await t.db.select().from(idempotencyKeys).where(eq(idempotencyKeys.key, key));
+    const payload = { body, params: {} };
+    expect(row).toMatchObject({ scope: "anon", endpoint: "POST /api/v1/auth/register", status: "completed" });
+    expect(row!.payloadHash).toBe(keyedPayloadHash(t.env.OTP_HMAC_SECRET, payload));
+    expect(row!.payloadHash).not.toBe(createHash("sha256").update(canonicalJson(payload)).digest("hex"));
+    expect(JSON.stringify(row)).not.toContain("Kapdh#2026");
+  });
+
+  it("ARCHITECTURE §2.3: respons berisi token tidak pernah disimpan untuk diputar ulang", async () => {
+    const key = uuidv7();
+    const res = await api.post("/__probe/idem-secret", {}, { headers: { "idempotency-key": key } });
+    expect(res.statusCode).toBe(200);
+    expect(await t.db.select().from(idempotencyKeys).where(eq(idempotencyKeys.key, key))).toHaveLength(0);
+    const rows = await t.db.select({ body: idempotencyKeys.responseBody }).from(idempotencyKeys);
+    expect(JSON.stringify(rows)).not.toContain(SECRET_MARKER);
   });
 
   it("purgeExpired menghapus key kedaluwarsa (job maintenance.cleanup)", async () => {

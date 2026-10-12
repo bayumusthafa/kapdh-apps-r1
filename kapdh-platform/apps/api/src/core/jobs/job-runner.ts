@@ -48,14 +48,17 @@ export class JobRunner {
     const job = this.registry.scheduledJob(name);
     if (!job) throw new Error(`Job ${name} tidak terdaftar`);
     const jobId = `${name}:${uuidv7()}`;
-    await runAsSystem(async () => {
-      try {
-        await job.run();
-      } catch (error) {
-        this.logger.error({ job_id: jobId, job: name, error: safeError(error) }, "job terjadwal gagal");
-        throw error;
-      }
-    }, { jobId });
+    await runAsSystem(
+      async () => {
+        try {
+          await job.run();
+        } catch (error) {
+          this.logger.error({ job_id: jobId, job: name, error: safeError(error) }, "job terjadwal gagal");
+          throw error;
+        }
+      },
+      { jobId },
+    );
   }
 
   /** Mengklaim dan memproses event outbox yang jatuh tempo. */
@@ -138,7 +141,13 @@ export class JobRunner {
           })
           .where(owned);
         this.logger[dead ? "error" : "warn"](
-          { job_id: jobId, request_id: event.requestId, topic: event.topic, attempts: event.attempts, error: safe },
+          {
+            job_id: jobId,
+            request_id: event.requestId,
+            topic: event.topic,
+            attempts: event.attempts,
+            error: safe,
+          },
           dead ? "event outbox mati setelah percobaan maksimum" : "event outbox gagal; dijadwalkan ulang",
         );
         if (dead) result.dead++;

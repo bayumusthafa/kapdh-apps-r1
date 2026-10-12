@@ -3,7 +3,7 @@ import { appSettings } from "@kapdh/database";
 import { and, eq, sql } from "drizzle-orm";
 import { performance } from "node:perf_hooks";
 import type { Clock } from "../adapters/clock.js";
-import { AuditService } from "../audit/audit.service.js";
+import { type AuditEntry, AuditService } from "../audit/audit.service.js";
 import { ctx } from "../context/request-context.js";
 import { afterCommit } from "../db/tx.js";
 import type { Db, DbOrTx, Tx } from "../db/types.js";
@@ -101,13 +101,17 @@ export class SettingsService {
 
   /**
    * Memperbarui satu kunci dengan predikat versi. `expectedVersion` = versi yang dibaca klien (If-Match); 0 untuk kunci
-   * yang belum tersimpan. Menulis audit `settings.updated` dengan before/after dan mengembalikan entri baru.
+   * yang belum tersimpan. `actor` bawaan = aktor request (ctx, diisi AuthGuard). Menulis audit `settings.updated`
+   * dengan before/after dan mengembalikan entri baru; cache instance ini dibuang setelah commit.
+   *
+   *   await withTx(db, (tx) => settings.update(tx, "fees", body.value, parseIfMatch(req.headers["if-match"])));
    */
   async update<K extends SettingKey>(
     tx: Tx,
     key: K,
     value: unknown,
     expectedVersion: number,
+    actor?: NonNullable<AuditEntry["actor"]>,
     options: { reason?: string | null } = {},
   ): Promise<SettingEntry<K>> {
     if (READ_ONLY_SETTING_KEYS.has(key))
@@ -119,11 +123,15 @@ export class SettingsService {
       });
     const next = parsed.data as SettingValue<K>;
     const now = this.clock.now();
-    const actor = ctx().actor;
-    const updatedByAdminId = actor.kind === "admin" ? actor.adminId : null;
+    const by = actor ?? ctx().actor;
+    const updatedByAdminId = by.kind === "admin" ? by.adminId : null;
     // FOR UPDATE (bukan SHARE): dua pembaruan bersamaan berurutan tanpa deadlock peningkatan kunci.
     const current = await this.load(tx, key, "update");
-    const toCurrent = (entry: SettingEntry<K>) => ({ key, value: entry.value, version: String(entry.version) });
+    const toCurrent = (entry: SettingEntry<K>) => ({
+      key,
+      value: entry.value,
+      version: String(entry.version),
+    });
     if (current.version !== expectedVersion) throw versionConflict(toCurrent(current));
 
     let version: number;
@@ -146,6 +154,7 @@ export class SettingsService {
     }
 
     await this.audit.write(tx, {
+      actor: by,
       action: "settings.updated",
       entityType: "app_setting",
       entityId: key,

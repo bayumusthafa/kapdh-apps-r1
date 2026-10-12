@@ -1,12 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { idempotencyKeys } from "@kapdh/database";
 import { and, eq, lte } from "drizzle-orm";
-import { createHash } from "node:crypto";
+import { createHmac, hkdfSync } from "node:crypto";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../adapters/clock.js";
 import type { Db } from "../db/types.js";
 import { AppException } from "../errors/app-exception.js";
-import { CLOCK, DB } from "../tokens.js";
+import { CLOCK, DB, ENV } from "../tokens.js";
 
 /** Masa simpan kunci (PRD 4.3: usulan 24 jam). */
 export const IDEMPOTENCY_TTL_MS = 24 * 3600_000;
@@ -17,8 +17,7 @@ export const IDEMPOTENCY_TTL_MS = 24 * 3600_000;
 export const IDEMPOTENCY_STALE_MS = 2 * 60_000;
 
 export type IdempotencyBegin =
-  | { kind: "proceed"; recordId: string }
-  | { kind: "replay"; status: number; body: unknown };
+  { kind: "proceed"; recordId: string } | { kind: "replay"; status: number; body: unknown };
 
 export interface IdempotencyScope {
   /** id pengguna aktor, atau `anon` untuk endpoint tanpa autentikasi. */
@@ -42,8 +41,17 @@ export function canonicalJson(value: unknown): string {
   return `{${entries.map(([k, inner]) => `${JSON.stringify(k)}:${canonicalJson(inner)}`).join(",")}}`;
 }
 
-export function payloadHashOf(payload: unknown): string {
-  return createHash("sha256").update(canonicalJson(payload)).digest("hex");
+/** Label HKDF kunci hash payload; memisahkan kunci ini dari pemakaian OTP_HMAC_SECRET untuk OTP. */
+const PAYLOAD_KEY_INFO = "kapdh:idempotency-payload:v1";
+
+/**
+ * Hash payload ber-kunci (HMAC-SHA256 dengan kunci turunan HKDF dari secret server). Payload bisa memuat sandi
+ * (POST /auth/register): SHA-256 polos atas payload yang sebagian besar mudah ditebak sama dengan menyimpan hash cepat
+ * sandi di samping bcrypt, sehingga kebocoran tabel idempotency_keys memungkinkan tebakan sandi offline.
+ */
+export function keyedPayloadHash(secret: string, payload: unknown): string {
+  const key = Buffer.from(hkdfSync("sha256", secret, Buffer.alloc(0), PAYLOAD_KEY_INFO, 32));
+  return createHmac("sha256", key).update(canonicalJson(payload)).digest("hex");
 }
 
 /**
@@ -58,10 +66,22 @@ export function payloadHashOf(payload: unknown): string {
  */
 @Injectable()
 export class IdempotencyService {
+  private readonly payloadKeySecret: string | undefined;
+
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(CLOCK) private readonly clock: Clock,
-  ) {}
+    // ApiEnv di API; WorkerEnv tidak memegang OTP_HMAC_SECRET (worker hanya membersihkan kunci kedaluwarsa).
+    @Inject(ENV) env: { OTP_HMAC_SECRET?: string },
+  ) {
+    this.payloadKeySecret = env.OTP_HMAC_SECRET;
+  }
+
+  /** Hash payload (body + parameter path) yang dibandingkan antarpermintaan dengan key yang sama. */
+  hashPayload(payload: unknown): string {
+    if (!this.payloadKeySecret) throw new Error("Hash payload idempotensi hanya tersedia di runtime API");
+    return keyedPayloadHash(this.payloadKeySecret, payload);
+  }
 
   async begin(input: IdempotencyScope): Promise<IdempotencyBegin> {
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -127,13 +147,23 @@ export class IdempotencyService {
           .returning({ id: idempotencyKeys.id });
         if (taken.length > 0) return { kind: "proceed", recordId: existing.id };
       }
-      throw new AppException(409, "IDEMPOTENCY_CONFLICT", "Permintaan yang sama masih diproses. Coba lagi sebentar.", {
-        retryAfterSeconds: 2,
-      });
+      throw new AppException(
+        409,
+        "IDEMPOTENCY_CONFLICT",
+        "Permintaan yang sama masih diproses. Coba lagi sebentar.",
+        {
+          retryAfterSeconds: 2,
+        },
+      );
     }
-    throw new AppException(409, "IDEMPOTENCY_CONFLICT", "Permintaan yang sama masih diproses. Coba lagi sebentar.", {
-      retryAfterSeconds: 2,
-    });
+    throw new AppException(
+      409,
+      "IDEMPOTENCY_CONFLICT",
+      "Permintaan yang sama masih diproses. Coba lagi sebentar.",
+      {
+        retryAfterSeconds: 2,
+      },
+    );
   }
 
   /** Mencatat hasil sukses untuk diputar ulang. */

@@ -19,7 +19,9 @@ async function main() {
   loadDevelopmentEnvFile([resolve(process.cwd(), ".env"), resolve(process.cwd(), "../../.env")]);
   const env = loadApiEnv();
   if (!env.SMTP_URL && env.NODE_ENV !== "development")
-    throw new EnvValidationError("SMTP_URL wajib di luar development; OTP tidak boleh hanya dicetak ke log (N-14)");
+    throw new EnvValidationError(
+      "SMTP_URL wajib di luar development; OTP tidak boleh hanya dicetak ke log (N-14)",
+    );
   const { db, sql } = createDb(env.DATABASE_URL, { applicationName: "kapdh-api" });
   const redis = env.REDIS_URL ? createRedis(env.REDIS_URL, "kapdh-api") : null;
   const smtp = env.SMTP_URL ? new SmtpMailer(env.SMTP_URL, env.MAIL_FROM) : null;

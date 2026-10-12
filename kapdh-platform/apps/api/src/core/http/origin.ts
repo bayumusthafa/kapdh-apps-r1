@@ -8,5 +8,6 @@ import { forbidden } from "../errors/app-exception.js";
  */
 export function assertTrustedOrigin(request: Pick<FastifyRequest, "headers">, trustedOrigin: string): void {
   const origin = request.headers.origin;
-  if (typeof origin !== "string" || origin !== trustedOrigin) throw forbidden("Asal permintaan tidak diizinkan.");
+  if (typeof origin !== "string" || origin !== trustedOrigin)
+    throw forbidden("Asal permintaan tidak diizinkan.");
 }

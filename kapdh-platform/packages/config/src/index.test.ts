@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { parseEnv } from "node:util";
 import { describe, expect, it } from "vitest";
 import {
   loadApiEnv,
@@ -19,7 +22,10 @@ const api = {
   QR_SIGNING_KEYS: "k1:" + "z".repeat(32),
   TOTP_ENC_KEY: "a".repeat(64),
 };
-const fcmJson = JSON.stringify({ client_email: "push@kapdh.iam.test", private_key: "-----BEGIN PRIVATE KEY-----" });
+const fcmJson = JSON.stringify({
+  client_email: "push@kapdh.iam.test",
+  private_key: "-----BEGIN PRIVATE KEY-----",
+});
 const production = {
   ...api,
   NODE_ENV: "production",
@@ -77,9 +83,9 @@ describe("loadApiEnv", () => {
 
   it("memvalidasi QR_SIGNING_KEYS saat load", () => {
     expect(() => loadApiEnv({ ...api, QR_SIGNING_KEYS: "k1:pendek" })).toThrow(/QR_SIGNING_KEYS/);
-    expect(() => loadApiEnv({ ...api, QR_SIGNING_KEYS: `k1:${"a".repeat(32)},k1:${"b".repeat(32)}` })).toThrow(
-      /ganda/,
-    );
+    expect(() =>
+      loadApiEnv({ ...api, QR_SIGNING_KEYS: `k1:${"a".repeat(32)},k1:${"b".repeat(32)}` }),
+    ).toThrow(/ganda/);
   });
 
   it("mewajibkan SMTP, Redis, dan FCM di production", () => {
@@ -167,5 +173,30 @@ describe("loadDevelopmentEnvFile", () => {
   it("tidak membaca berkas apa pun di production", () => {
     expect(loadDevelopmentEnvFile(["/tidak/ada/.env"], { NODE_ENV: "production" })).toBeNull();
     expect(loadDevelopmentEnvFile(["/tidak/ada/.env"], { NODE_ENV: "development" })).toBeNull();
+  });
+});
+
+describe("nilai kosong dan .env.example", () => {
+  it("variabel opsional yang dikosongkan diperlakukan sebagai tidak diisi", () => {
+    const env = loadApiEnv({ ...api, S3_ENDPOINT: "", REDIS_URL: "", FCM_PROJECT_ID: " ", LOG_LEVEL: "" });
+    expect(env.S3_ENDPOINT).toBeUndefined();
+    expect(env.REDIS_URL).toBeUndefined();
+    expect(env.FCM_PROJECT_ID).toBeUndefined();
+    expect(env.LOG_LEVEL).toBe("info");
+  });
+
+  it("variabel wajib yang dikosongkan tetap ditolak", () => {
+    expect(() => loadApiEnv({ ...api, JWT_ACCESS_SECRET: "" })).toThrow(/JWT_ACCESS_SECRET/);
+  });
+
+  it(".env.example valid untuk API dan worker di development, dan ditolak apa adanya di production", () => {
+    const path = fileURLToPath(new URL("../../../.env.example", import.meta.url));
+    const example = parseEnv(readFileSync(path, "utf8"));
+    const apiEnv = loadApiEnv(example);
+    expect(apiEnv.NODE_ENV).toBe("development");
+    expect(apiEnv.TRUST_PROXY_HOPS).toBe(0);
+    expect(loadWorkerEnv(example).WORKER_CONCURRENCY).toBe(4);
+    // Placeholder dan kunci dev tidak pernah lolos sebagai konfigurasi production.
+    expect(() => loadApiEnv({ ...example, NODE_ENV: "production" })).toThrow();
   });
 });

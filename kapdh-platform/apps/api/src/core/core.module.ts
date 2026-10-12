@@ -98,7 +98,8 @@ export class CoreModule implements OnModuleInit {
 
   static forRoot(deps: CoreDeps, runtime: CoreRuntime): DynamicModule {
     const rateLimitStore =
-      runtime.rateLimitStore ?? (deps.redis ? new RedisRateLimitStore(deps.redis) : new MemoryRateLimitStore());
+      runtime.rateLimitStore ??
+      (deps.redis ? new RedisRateLimitStore(deps.redis) : new MemoryRateLimitStore());
     const values: Provider[] = [
       { provide: ENV, useValue: deps.env },
       { provide: DB, useValue: deps.db },

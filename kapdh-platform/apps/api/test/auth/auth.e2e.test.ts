@@ -267,7 +267,12 @@ describe("F-02 login, refresh, dan sesi", () => {
     const [row] = await db
       .select()
       .from(auditLogs)
-      .where(and(eq(auditLogs.action, "session.logout_all"), eq(auditLogs.requestId, String(res.headers["x-request-id"]))));
+      .where(
+        and(
+          eq(auditLogs.action, "session.logout_all"),
+          eq(auditLogs.requestId, String(res.headers["x-request-id"])),
+        ),
+      );
     expect(row?.effectiveRole).toBe("alumni");
     expect(row?.actorUserId).toBeTruthy();
     expect(row?.entityId).toBe(row?.actorUserId);
@@ -334,7 +339,10 @@ describe("PRD 2.5: OTP atomik dan registrasi ulang", () => {
     expect(res.statusCode).toBe(429);
     expect(res.json().retry_after_seconds).toBeGreaterThan(0);
     // Challenge pertama tetap berlaku dengan sandi pertama.
-    const ver = await post("/auth/otp/verify", { challenge_id: first.challenge_id, code: mailer.last(email)! });
+    const ver = await post("/auth/otp/verify", {
+      challenge_id: first.challenge_id,
+      code: mailer.last(email)!,
+    });
     expect(ver.statusCode).toBe(200);
     expect((await post("/auth/login", { email, password: PASSWORD })).statusCode).toBe(200);
   });
@@ -349,10 +357,14 @@ describe("PRD 2.5: OTP atomik dan registrasi ulang", () => {
     expect(replay.headers["idempotent-replayed"]).toBe("true");
     expect(replay.json()).toEqual(first.json());
     expect(mailer.sent.filter((m) => m.to === email)).toHaveLength(1);
-    const conflict = await post("/auth/register", registerBody(email, { cohort: 20 }), { "idempotency-key": key });
+    const conflict = await post("/auth/register", registerBody(email, { cohort: 20 }), {
+      "idempotency-key": key,
+    });
     expect(conflict.statusCode).toBe(409);
     expect(conflict.json().code).toBe("IDEMPOTENCY_CONFLICT");
-    const invalid = await post("/auth/register", registerBody(newEmail()), { "idempotency-key": "bukan-uuid" });
+    const invalid = await post("/auth/register", registerBody(newEmail()), {
+      "idempotency-key": "bukan-uuid",
+    });
     expect(invalid.statusCode).toBe(400);
     expect(invalid.json().field_errors["Idempotency-Key"]).toBeDefined();
   });
@@ -385,7 +397,10 @@ describe("F-02 admin dengan TOTP", () => {
       clock.advance((admin.lastTotpStep - step + 1) * 30_000);
       step = Math.floor(clock.now().getTime() / 30_000);
     }
-    const res = await post("/admin/auth/mfa", { mfa_token: login.mfa_token, totp_code: totp(admin.totpSecret, clock.now()) });
+    const res = await post("/admin/auth/mfa", {
+      mfa_token: login.mfa_token,
+      totp_code: totp(admin.totpSecret, clock.now()),
+    });
     expect(res.statusCode).toBe(200);
     admin.lastTotpStep = step;
     return { body: res.json(), cookie: String(res.headers["set-cookie"] ?? "") };
@@ -400,7 +415,9 @@ describe("F-02 admin dengan TOTP", () => {
   });
 
   it("akun admin tidak bisa masuk lewat login alumni, dan sebaliknya", async () => {
-    expect((await post("/auth/login", { email: admin.email, password: admin.password })).statusCode).toBe(401);
+    expect((await post("/auth/login", { email: admin.email, password: admin.password })).statusCode).toBe(
+      401,
+    );
     const { email } = await registerAndVerify();
     expect((await post("/admin/auth/login", { email, password: PASSWORD })).statusCode).toBe(401);
   });
@@ -420,7 +437,9 @@ describe("F-02 admin dengan TOTP", () => {
   it("TOTP salah ditolak", async () => {
     const login = (await post("/admin/auth/login", { email: admin.email, password: admin.password })).json();
     const wrong = totp(admin.totpSecret, new Date(clock.now().getTime() + 10 * 60_000));
-    expect((await post("/admin/auth/mfa", { mfa_token: login.mfa_token, totp_code: wrong })).statusCode).toBe(401);
+    expect((await post("/admin/auth/mfa", { mfa_token: login.mfa_token, totp_code: wrong })).statusCode).toBe(
+      401,
+    );
   });
 
   it("RFC 6238 §5.2: kode TOTP yang sama tidak dapat diputar ulang untuk sesi kedua", async () => {
@@ -441,7 +460,11 @@ describe("F-02 admin dengan TOTP", () => {
       .set({ backupCodeHashes: [backupCodeHash(testEnv.OTP_HMAC_SECRET, code)] })
       .where(eq(mfaTotp.userId, fixture.userId));
     const tokens = await Promise.all(
-      [1, 2].map(async () => (await post("/admin/auth/login", { email: fixture.email, password: fixture.password })).json().mfa_token as string),
+      [1, 2].map(
+        async () =>
+          (await post("/admin/auth/login", { email: fixture.email, password: fixture.password })).json()
+            .mfa_token as string,
+      ),
     );
     const results = await Promise.all(
       tokens.map((mfa_token) => post("/admin/auth/mfa", { mfa_token, backup_code: code.toLowerCase() })),
@@ -464,13 +487,13 @@ describe("F-02 admin dengan TOTP", () => {
     // Access token 15 menit sudah habis pada titik ini; uji idle memakai token baru.
     const fresh = await adminSession();
     clock.advance(10 * 60_000);
-    expect((await get("/admin/me", fresh.body.access_token, { "x-background-request": "1" })).statusCode).toBe(
-      200,
-    );
+    expect(
+      (await get("/admin/me", fresh.body.access_token, { "x-background-request": "1" })).statusCode,
+    ).toBe(200);
     clock.advance(4 * 60_000);
-    expect((await get("/admin/me", fresh.body.access_token, { "x-background-request": "1" })).statusCode).toBe(
-      200,
-    );
+    expect(
+      (await get("/admin/me", fresh.body.access_token, { "x-background-request": "1" })).statusCode,
+    ).toBe(200);
     clock.advance(17 * 60_000);
     const res = await get("/admin/me", fresh.body.access_token);
     expect(res.statusCode).toBe(401);
@@ -500,7 +523,10 @@ describe("F-02 admin dengan TOTP", () => {
   it("AC F16-3: admin yang dinonaktifkan tidak bisa refresh walau cookie masih berlaku", async () => {
     const fixture = await createAdmin({ db, clock });
     const session = await signInAdmin({ app, clock }, fixture);
-    await db.update(admins).set({ status: "disabled", disabledAt: clock.now() }).where(eq(admins.id, fixture.adminId));
+    await db
+      .update(admins)
+      .set({ status: "disabled", disabledAt: clock.now() })
+      .where(eq(admins.id, fixture.adminId));
     expect((await get("/admin/me", session.accessToken)).statusCode).toBe(403);
     const refreshed = await app.inject({
       method: "POST",
