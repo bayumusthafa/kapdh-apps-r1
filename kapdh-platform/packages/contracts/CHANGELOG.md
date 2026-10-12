@@ -4,6 +4,37 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 `package.json` dan `dart/kapdh_api/pubspec.yaml` selalu sama; rilis SDK memakai tag git `contracts-vX.Y.Z`
 (`pnpm contracts:release-sdk`, ADR-001). Perubahan yang memutus ditandai **[memutus]**.
 
+## Belum dirilis
+
+### Komunitas (C6: F-10, F-11, F-12)
+
+Operasi baru (tidak memutus klien lama; tidak ada operasi lama yang diubah). Setiap operasi membawa ekstensi
+`x-kapdh-access` (audience, member_access, permissions, idempotent) sesuai ARCHITECTURE §3.1/§4.3/§4.5.
+
+- `network.yaml` (tag Network): `GET /directory` (`searchDirectory`, total + keyset, privasi AC F10-2),
+  `GET /directory/{userId}` (`getMemberProfile`, field kontak tidak dikirim bila flag mati).
+- `chat.yaml` (tag Chat): room (`listChatRooms`, `createChatGroup`, `openDirectRoom`, `getChatRoom`,
+  `updateChatRoom`), anggota dan undangan (`listChatRoomMembers`, `updateChatRoomMember`, `removeChatRoomMember`,
+  `inviteChatMembers`, `listChatInvitations`, `acceptChatInvitation`, `declineChatInvitation`, `leaveChatRoom`,
+  `setChatRoomMute`), pesan (`listChatMessages` keyset before/after, `sendChatMessage` dengan `client_message_id`,
+  `deleteChatMessage`), reaksi (`addChatReaction`, `removeChatReaction`) dan read cursor (`markChatRoomRead`).
+- `moderation.yaml` (tag Moderation): blokir (`listBlocks`, `blockMember`, `unblockMember`), laporan
+  (`createReport`, `listMyReports`, `getMyReport`) dan banding (`createAppeal`, kategori laporan `appeal`).
+- `admin-moderation.yaml` (tag Admin Moderation): `adminListReports` (SLA/overdue, total, counts),
+  `adminGetReport` (bukti, akses diaudit), `adminClaimReport`, `adminResolveReport` (dismiss/warn/suspend/unsuspend).
+
+### Event realtime
+
+- **[memutus]** Kesepuluh jenis event kini memiliki payload bertipe (`events/<type>.schema.json`) dan
+  `x-kapdh-payload-pending` kosong. TS `RealtimePayloads[...]` berubah dari `Record<string, unknown>` menjadi tipe
+  `<Type>Payload`; Dart `<Type>Event.payload` berubah dari `Map` mentah menjadi model bertipe yang `fromJson`-nya
+  melempar `FormatException` bila field wajib hilang. Belum ada klien rilis yang memakai payload mentah.
+- Skema bersama baru: `RealtimeChatMessage`, `RealtimeChatUser`, `RealtimeChatImage`, `RealtimeChatReply`,
+  `RealtimeChatReaction` (bentuk JSON sama dengan `ChatMessage`, `ChatUserRef`, `ChatImage`, `ChatMessageReply`,
+  `ChatReaction` HTTP) dan `RealtimeReactionCount`.
+- Contoh amplop diperbarui agar lolos skema payload; `entity_id` per jenis didokumentasikan di amplop dan
+  `events/README.md`.
+
 ## 0.2.0
 
 Pemecahan `openapi/openapi.yaml` menjadi `openapi/root.yaml` + `openapi/domains/<domain>.yaml` (ARCHITECTURE §6),

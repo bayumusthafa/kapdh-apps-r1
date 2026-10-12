@@ -42,7 +42,29 @@ Setiap jenis di `properties.type.enum` amplop WAJIB berada di tepat satu keadaan
 | Tanpa payload | jenis tercantum di `x-kapdh-payload-less` amplop (payload selalu `{}`) | TS `Record<string, never>`, Dart tanpa `payload` |
 | Pending       | jenis tercantum di `x-kapdh-payload-pending` amplop (lint: peringatan) | TS `Record<string, unknown>`, Dart `Map` mentah  |
 
-Saat ini kesepuluh jenis masih pending. Untuk menulis payload:
+Kesepuluh jenis sudah bertipe (penulis kontrak C6). Ringkasan payload, `entity_id` dan kanal pengiriman:
+
+| Jenis                  | `entity_id`   | Kanal                                      | Payload (ringkas)                                                         |
+| ---------------------- | ------------- | ------------------------------------------ | ------------------------------------------------------------------------- |
+| `message.created`      | ID pesan      | `room:<id>`                                | `room_id`, `message` (`RealtimeChatMessage`, bentuk = `ChatMessage` HTTP) |
+| `message.deleted`      | ID pesan      | `room:<id>`                                | `room_id`, `message_id`, `deleted_at`                                     |
+| `reaction.updated`     | ID pesan      | `room:<id>`                                | `room_id`, `message_id`, `user_id`, `emoji`, `action`, `counts`           |
+| `read.updated`         | ID room       | `room:<id>`                                | `room_id`, `user_id`, `last_read_message_id`, `last_read_at`              |
+| `room.updated`         | ID room       | `room:<id>`; `user:<id>` untuk mute/blokir | `room_id`, `version`, `changes`, `name`, `avatar_url`, `closed_at`        |
+| `room.member_changed`  | ID room       | `room:<id>` + `user:<id>` yang terdampak   | `room_id`, `user_id`, `change`, `role`, `member_count`, `actor_user_id`   |
+| `typing`               | ID room       | `room:<id>` (kecuali pengirim)             | `room_id`, `user_id`, `ttl_seconds`                                       |
+| `presence`             | user_id       | anggota room yang sama                     | `user_id`, `status`, `ttl_seconds`                                        |
+| `notification.created` | ID notifikasi | `user:<id>`                                | sama dengan `InboxNotification` + `unread_count`                          |
+| `session.revoked`      | ID sesi       | socket sesi yang dicabut                   | `reason`, `all_sessions`                                                  |
+
+Skema bersama: `realtime-chat-message`, `realtime-chat-user`, `realtime-chat-image`, `realtime-chat-reply`,
+`realtime-chat-reaction` (bentuk JSON sama dengan `ChatMessage`, `ChatUserRef`, `ChatImage`, `ChatMessageReply`,
+`ChatReaction` di `openapi/domains/chat.yaml`; ubah keduanya bersamaan) dan `realtime-reaction-count`.
+
+Fixture generator (`scripts/lib/dart/fixture.mjs`) tetap memaksa `session.revoked` tanpa payload dan `typing`
+pending agar kedua keadaan itu terus teruji walaupun kontrak nyata sudah bertipe semua.
+
+Untuk menambah atau mengubah payload:
 
 1. Tambahkan `events/<type>.schema.json`, mis. `message.created.schema.json`, dengan `$id`
    `https://kapdh.or.id/contracts/events/<type>.schema.json`, `title` `<Type>Payload` (`MessageCreatedPayload`,

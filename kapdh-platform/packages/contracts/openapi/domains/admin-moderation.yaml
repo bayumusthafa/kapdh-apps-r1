@@ -1,8 +1,493 @@
-# Domain admin-moderation (C6 Community): antrean laporan, bukti terminimalkan dan penyelesaian
-# (izin moderation.read / moderation.resolve). Modul API: apps/api/src/modules/moderation.
-# Path ditambahkan oleh penulis kontrak C6.
+# Domain admin-moderation (C6 Community): antrean laporan, bukti terminimalkan dan penyelesaian moderasi oleh
+# pengurus (izin moderation.read / moderation.resolve, PRD 2.3). Modul API: apps/api/src/modules/moderation.
+#
+# Aturan bersama domain ini (PRD 3.12, 4.2, 4.5, ARCHITECTURE §4.3, §4.5):
+# - Sesi admin (audience admin, MFA selesai). Izin dievaluasi dari DB setiap request (AC F15-1, F16-3); super_admin
+#   memiliki semua izin. Moderasi hanya lewat web admin (v3.2).
+# - Target penanganan (v3.2, D8): urgent (violence_threat) 24 jam; lainnya 2 hari kerja (Senin-Jumat WIB) sejak
+#   laporan dibuat; `overdue` = status open/in_review dan waktu server >= due_at.
+# - Konflik kepentingan: bila akun alumni yang tertaut ke admin (admins.linked_alumni_user_id) adalah pihak terlapor
+#   atau pemohon banding, detail ditolak 403 FORBIDDEN agar identitas pelapor tidak terbuka kepada terlapor
+#   (AC F12-2); bila akun itu pelapor, detail boleh dibaca tetapi klaim/keputusan ditolak 403 FORBIDDEN.
+# - Setiap pembacaan bukti, klaim dan keputusan dicatat di audit dalam transaksi yang sama (AC F12-3, F17-1); isi
+#   bukti tidak disalin ke audit (ARCHITECTURE §2 butir 3).
 tags:
   - name: Admin Moderation
     description: Antrean laporan, bukti terminimalkan dan penyelesaian moderasi oleh pengurus (F-12, F-15).
 
-paths: {}
+paths:
+  /admin/reports:
+    get:
+      tags: [Admin Moderation]
+      operationId: adminListReports
+      summary: Antrean laporan dengan filter status, prioritas, kategori dan SLA (izin moderation.read, F-12).
+      description: |
+        Bawaan `status=active` (open + in_review) urut `due` (due_at naik, lalu created_at) sehingga laporan urgent
+        dan yang lewat target tampil lebih dulu. `overdue=true` hanya laporan aktif yang melewati due_at. `q`
+        mencari nama atau nomor anggota pihak terlapor/pemohon. Paging keyset dengan `total` sesuai filter dan
+        `counts` ringkas untuk badge menu (tidak terpengaruh filter). Item antrean tidak memuat bukti, deskripsi
+        pelapor maupun identitas pelapor (minimisasi, PRD 3.12); buka detail untuk menilai.
+      x-kapdh-access: { audience: admin, permissions: [moderation.read] }
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Saringan status; bawaan active (open + in_review).
+          schema: { $ref: "#/components/schemas/AdminModerationStatusFilter" }
+        - name: priority
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/ModerationReportPriority" }
+        - name: category
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/ModerationReportCategory" }
+        - name: target_type
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/ModerationTargetType" }
+        - name: overdue
+          in: query
+          required: false
+          description: true = hanya laporan aktif yang melewati target penanganan.
+          schema: { type: boolean }
+        - name: q
+          in: query
+          required: false
+          description: Nama atau nomor anggota pihak terlapor/pemohon.
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: sort
+          in: query
+          required: false
+          description: Urutan; bawaan due.
+          schema: { $ref: "#/components/schemas/AdminModerationSort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Antrean laporan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminModerationReportPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/reports/{reportId}:
+    get:
+      tags: [Admin Moderation]
+      operationId: adminGetReport
+      summary: Detail laporan beserta bukti terminimalkan; setiap akses diaudit (izin moderation.read, PRD 3.12).
+      description: |
+        Memuat bukti snapshot saat laporan dibuat (pesan dilaporkan dan konteks, profil, atau grup), pelapor,
+        pihak terlapor dengan status keanggotaan terkini, riwayat moderasi pihak terlapor, dan keputusan bila sudah
+        ada. Pengurus tidak dapat menjelajah chat lain di luar bukti (PRD 3.12). Setiap pembacaan menulis audit
+        `moderation.report_viewed` (aktor, laporan, request_id) sebelum respons dikirim; kegagalan audit membatalkan
+        respons (AC F17-1). URL gambar bukti bertanda tangan maksimal 10 menit. Data pihak yang akunnya sudah dihapus
+        tampil anonim (null) sesuai D2. Konflik kepentingan: lihat aturan domain (403 FORBIDDEN).
+      x-kapdh-access: { audience: admin, permissions: [moderation.read] }
+      parameters:
+        - $ref: "#/components/parameters/ModerationReportId"
+      responses:
+        "200":
+          description: Detail laporan untuk keputusan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminModerationReportDetail" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/reports/{reportId}/claim:
+    post:
+      tags: [Admin Moderation]
+      operationId: adminClaimReport
+      summary: Klaim laporan untuk ditinjau (status in_review) atau ambil alih klaim (moderation.resolve, F-12).
+      description: |
+        Mengubah open -> in_review dan mencatat pengurus peninjau (claimed_by, claimed_at) dengan UPDATE bersyarat
+        versi. Laporan in_review milik pengurus lain dapat diambil alih bila If-Match sama dengan versi yang dibaca
+        (pengurus sudah melihat klaim sebelumnya); klaim ulang oleh pengurus yang sama idempoten. Versi berbeda atau
+        laporan sudah diputus -> 409 VERSION_CONFLICT dengan `current` = AdminModerationReportDetail terbaru.
+        Konflik kepentingan -> 403 FORBIDDEN. Audit `moderation.report_claimed` dalam transaksi yang sama.
+      x-kapdh-access:
+        { audience: admin, permissions: [moderation.read, moderation.resolve], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ModerationReportId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Laporan sedang ditinjau pemanggil.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminModerationReportDetail" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/reports/{reportId}/resolve:
+    post:
+      tags: [Admin Moderation]
+      operationId: adminResolveReport
+      summary: Putus laporan dengan dismiss, warn, suspend atau unsuspend (moderation.resolve, AC F12-3..F12-5).
+      description: |
+        Satu keputusan per laporan: laporan wajib open/in_review dan versinya sama dengan If-Match; selain itu 409
+        VERSION_CONFLICT dengan `current` = AdminModerationReportDetail terbaru (keputusan pengurus lain menang).
+        Klaim lebih dulu tidak wajib. Konflik kepentingan -> 403 FORBIDDEN. Semuanya atomik dalam satu transaksi:
+        status laporan, efek keanggotaan, membership_events, audit (alasan, aktor, waktu, rujukan bukti; AC F12-3,
+        F17-1) dan outbox notifikasi.
+
+        Pihak yang dikenai tindakan (subjek) = target_user_id laporan; untuk laporan grup subjek wajib dipilih lewat
+        `subject_user_id` (anggota atau mantan anggota grup itu) dan disimpan sebagai pihak terlapor laporan.
+        - dismiss: tidak ada perubahan pada anggota; status dismissed. Untuk banding berarti banding ditolak.
+        - warn: membership_events kind warn tanpa mengubah starts_at/expires_at (AC F12-3); subjek menerima
+          notifikasi kategori account berisi `member_message`; status resolved.
+        - suspend (wajib `confirm: true`, PRD 4.5): subjek belum suspended (selain itu 400). Mengisi suspended_at,
+          suspension_reason = `note` (internal), suspension_message = `member_message` (ditampilkan ke anggota),
+          membership_events suspend; tanggal periode tidak dibuang (PRD 4.2). Setelah commit seluruh sesi umum
+          dicabut (`session.revoked` reason account_suspended) dan socket diputus, akses komunitas ditolak, profil
+          hilang dari direktori, verifikasi KTA menjadi Tidak aktif, dan tiket tidak berlaku (AC F12-4, PRD 2.2).
+        - unsuspend (wajib `confirm: true`): subjek sedang suspended (selain itu 400). Menghapus suspend dan
+          membership_events unsuspend; effective_status dihitung ulang dari expires_at sehingga anggota yang masa
+          aktifnya habis menjadi expired, bukan otomatis verified (AC F12-5).
+        Banding (kategori appeal) hanya boleh dismiss atau unsuspend. `remove_message=true` (hanya laporan pesan)
+        menjadikan pesan terlapor placeholder dan mengirim `message.deleted`; snapshot bukti tetap tersimpan.
+        Pelapor menerima notifikasi kategori account bahwa laporannya selesai ditinjau (tanpa rincian tindakan,
+        AC F12-2); pemohon banding menerima `member_message`.
+      x-kapdh-access:
+        { audience: admin, permissions: [moderation.read, moderation.resolve], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ModerationReportId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminModerationResolveRequest" }
+      responses:
+        "200":
+          description: Keputusan tersimpan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminModerationReportDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  schemas:
+    ModerationAction:
+      type: string
+      enum: [dismiss, warn, suspend, unsuspend]
+      description: Tindakan keputusan moderasi (reports.action, AC F12-3).
+
+    AdminModerationStatusFilter:
+      type: string
+      enum: [active, open, in_review, resolved, dismissed, all]
+      description: active = open + in_review (antrean kerja); all = semua status.
+
+    AdminModerationSort:
+      type: string
+      enum: [due, newest, oldest]
+      description: due = due_at naik (paling mendesak dulu); newest/oldest = created_at.
+
+    ModerationAdminRef:
+      type: object
+      required: [admin_id, display_name]
+      properties:
+        admin_id: { type: string, format: uuid }
+        display_name: { type: string, maxLength: 120 }
+
+    AdminModerationParty:
+      type: object
+      description: Identitas minimum anggota dalam moderasi (tanpa kontak). Null bila akun sudah dihapus (D2).
+      required: [user_id, full_name, member_number, cohort]
+      properties:
+        user_id: { type: string, format: uuid }
+        full_name: { type: string, maxLength: 120 }
+        member_number: { type: [string, "null"], examples: ["29.01.01.7"] }
+        cohort: { type: [integer, "null"] }
+
+    AdminModerationTargetMember:
+      allOf:
+        - $ref: "#/components/schemas/AdminModerationParty"
+        - type: object
+          description: Pihak terlapor/pemohon dengan status keanggotaan terkini untuk keputusan.
+          required: [effective_status, expires_at, suspended_at, suspension_message]
+          properties:
+            effective_status: { $ref: "#/components/schemas/EffectiveStatus" }
+            expires_at: { type: [string, "null"], format: date-time }
+            suspended_at: { type: [string, "null"], format: date-time }
+            suspension_message: { type: [string, "null"], maxLength: 500 }
+
+    AdminModerationReportItem:
+      type: object
+      description: Baris antrean moderasi (tanpa bukti, deskripsi, maupun identitas pelapor).
+      required:
+        [
+          id,
+          category,
+          priority,
+          status,
+          target_type,
+          subject,
+          room_name,
+          created_at,
+          due_at,
+          overdue,
+          claimed_by,
+          claimed_at,
+          action,
+          resolved_at,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        category: { $ref: "#/components/schemas/ModerationReportCategory" }
+        priority: { $ref: "#/components/schemas/ModerationReportPriority" }
+        status: { $ref: "#/components/schemas/ModerationReportStatus" }
+        target_type: { $ref: "#/components/schemas/ModerationTargetType" }
+        subject:
+          oneOf:
+            - $ref: "#/components/schemas/AdminModerationParty"
+            - type: "null"
+          description: Pihak terlapor atau pemohon banding; null untuk laporan grup tanpa subjek atau akun dihapus.
+        room_name:
+          { type: [string, "null"], description: Nama grup terkait (laporan grup atau pesan di grup). }
+        created_at: { type: string, format: date-time }
+        due_at: { type: string, format: date-time, description: Target penanganan (24 jam / 2 hari kerja). }
+        overdue: { type: boolean, description: Aktif dan melewati due_at (waktu server). }
+        claimed_by:
+          oneOf:
+            - $ref: "#/components/schemas/ModerationAdminRef"
+            - type: "null"
+        claimed_at: { type: [string, "null"], format: date-time }
+        action:
+          oneOf:
+            - $ref: "#/components/schemas/ModerationAction"
+            - type: "null"
+        resolved_at: { type: [string, "null"], format: date-time }
+
+    AdminModerationQueueCounts:
+      type: object
+      description: Ringkasan antrean untuk badge menu, tidak terpengaruh filter.
+      required: [open, in_review, overdue, urgent]
+      properties:
+        open: { type: integer, minimum: 0 }
+        in_review: { type: integer, minimum: 0 }
+        overdue: { type: integer, minimum: 0, description: Laporan aktif yang melewati due_at. }
+        urgent: { type: integer, minimum: 0, description: Laporan aktif berprioritas urgent. }
+
+    AdminModerationReportPage:
+      type: object
+      required: [items, total, counts]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminModerationReportItem" }
+        total: { type: integer, minimum: 0 }
+        next_cursor: { type: [string, "null"] }
+        counts: { $ref: "#/components/schemas/AdminModerationQueueCounts" }
+
+    AdminModerationEvidenceImage:
+      type: object
+      required: [file_id, url, url_expires_at]
+      properties:
+        file_id: { type: [string, "null"], format: uuid }
+        url:
+          type: [string, "null"]
+          format: uri
+          description: URL bertanda tangan maksimal 10 menit; null bila berkas sudah dihapus (AC F14-3).
+          x-sensitive: true
+        url_expires_at: { type: [string, "null"], format: date-time }
+
+    AdminModerationEvidenceMessage:
+      type: object
+      description: Snapshot pesan saat laporan dibuat.
+      required:
+        [
+          message_id,
+          reported,
+          sender_user_id,
+          sender_name,
+          kind,
+          body,
+          image,
+          created_at,
+          deleted_since_report,
+        ]
+      properties:
+        message_id: { type: string, format: uuid }
+        reported: { type: boolean, description: True untuk pesan yang dilaporkan; false untuk pesan konteks. }
+        sender_user_id: { type: [string, "null"], format: uuid }
+        sender_name: { type: [string, "null"], description: Null bila akun pengirim sudah dihapus (D2). }
+        kind: { $ref: "#/components/schemas/ChatMessageKind" }
+        body: { type: [string, "null"], maxLength: 4000, x-sensitive: true }
+        image:
+          oneOf:
+            - $ref: "#/components/schemas/AdminModerationEvidenceImage"
+            - type: "null"
+        created_at: { type: string, format: date-time }
+        deleted_since_report:
+          type: boolean
+          description: True bila pesan aslinya sudah dihapus setelah laporan dibuat; snapshot tetap utuh.
+
+    AdminModerationEvidenceRoom:
+      type: object
+      required: [room_id, kind, name, member_count]
+      properties:
+        room_id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/ChatRoomKind" }
+        name: { type: [string, "null"], maxLength: 80 }
+        member_count: { type: integer, minimum: 0, maximum: 100 }
+
+    AdminModerationEvidenceProfile:
+      type: object
+      description: Snapshot profil publik minimum pihak terlapor saat laporan dibuat.
+      required: [full_name, bio, avatar]
+      properties:
+        full_name: { type: [string, "null"], maxLength: 120 }
+        bio: { type: [string, "null"], maxLength: 500 }
+        avatar:
+          oneOf:
+            - $ref: "#/components/schemas/AdminModerationEvidenceImage"
+            - type: "null"
+
+    AdminModerationEvidence:
+      type: object
+      description: |
+        Bukti terminimalkan yang dicatat saat laporan dibuat (PRD 3.12, D2): hanya pesan yang dilaporkan dan konteks
+        pilihan pelapor, snapshot profil, atau metadata grup. Tidak ada akses ke riwayat chat lainnya.
+      required: [captured_at, messages, room, profile]
+      properties:
+        captured_at: { type: string, format: date-time }
+        messages:
+          type: array
+          maxItems: 6
+          items: { $ref: "#/components/schemas/AdminModerationEvidenceMessage" }
+        room:
+          oneOf:
+            - $ref: "#/components/schemas/AdminModerationEvidenceRoom"
+            - type: "null"
+        profile:
+          oneOf:
+            - $ref: "#/components/schemas/AdminModerationEvidenceProfile"
+            - type: "null"
+
+    ModerationHistoryKind:
+      type: string
+      enum: [warn, suspend, unsuspend]
+      description: Jenis keputusan moderasi pada riwayat keanggotaan (membership_events).
+
+    AdminModerationHistoryEntry:
+      type: object
+      required: [kind, reason, actor_name, created_at]
+      properties:
+        kind: { $ref: "#/components/schemas/ModerationHistoryKind" }
+        reason: { type: [string, "null"], maxLength: 1000, description: Alasan internal pengurus. }
+        actor_name:
+          { type: [string, "null"], description: Nama tampilan pengurus; null bila akun admin dihapus. }
+        created_at: { type: string, format: date-time }
+
+    AdminModerationResolution:
+      type: object
+      required: [action, note, member_message, message_removed, resolved_at, resolved_by]
+      properties:
+        action: { $ref: "#/components/schemas/ModerationAction" }
+        note: { type: string, maxLength: 1000, description: Alasan internal keputusan (AC F12-3). }
+        member_message: { type: [string, "null"], maxLength: 500, description: Pesan aman untuk anggota. }
+        message_removed: { type: boolean }
+        resolved_at: { type: string, format: date-time }
+        resolved_by:
+          oneOf:
+            - $ref: "#/components/schemas/ModerationAdminRef"
+            - type: "null"
+          description: Null bila akun admin sudah dihapus; aktor tetap tercatat di audit.
+
+    AdminModerationReportDetail:
+      allOf:
+        - $ref: "#/components/schemas/AdminModerationReportItem"
+        - type: object
+          required:
+            [
+              description,
+              reporter,
+              target_member,
+              room_id,
+              evidence,
+              target_history,
+              open_reports_against_target,
+              resolution,
+              conflict_of_interest,
+              version,
+            ]
+          properties:
+            description:
+              type: [string, "null"]
+              maxLength: 2000
+              description: Penjelasan pelapor atau alasan banding.
+              x-sensitive: true
+            reporter:
+              oneOf:
+                - $ref: "#/components/schemas/AdminModerationParty"
+                - type: "null"
+              description: Pelapor; null bila akunnya sudah dihapus (D2). Tidak pernah dibuka kepada terlapor.
+            target_member:
+              oneOf:
+                - $ref: "#/components/schemas/AdminModerationTargetMember"
+                - type: "null"
+            room_id: { type: [string, "null"], format: uuid }
+            evidence: { $ref: "#/components/schemas/AdminModerationEvidence" }
+            target_history:
+              type: array
+              description: Riwayat warn/suspend/unsuspend pihak terlapor, terbaru dulu (maksimal 20).
+              maxItems: 20
+              items: { $ref: "#/components/schemas/AdminModerationHistoryEntry" }
+            open_reports_against_target:
+              type: integer
+              minimum: 0
+              description: Laporan aktif lain terhadap pihak terlapor yang sama.
+            resolution:
+              oneOf:
+                - $ref: "#/components/schemas/AdminModerationResolution"
+                - type: "null"
+            conflict_of_interest:
+              type: boolean
+              description: True bila pemanggil tertaut ke pelapor; klaim/keputusan ditolak 403.
+            version: { type: string, description: Versi laporan untuk If-Match klaim/keputusan. }
+
+    AdminModerationResolveRequest:
+      type: object
+      required: [action, note]
+      properties:
+        action: { $ref: "#/components/schemas/ModerationAction" }
+        note:
+          type: string
+          minLength: 3
+          maxLength: 1000
+          description: Alasan keputusan untuk catatan internal dan audit; wajib, tidak boleh hanya spasi (AC F12-3).
+        member_message:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: |
+            Pesan aman untuk anggota yang dikenai keputusan (tanpa identitas pelapor). Wajib untuk warn dan suspend
+            serta untuk keputusan banding; opsional untuk dismiss laporan biasa dan unsuspend.
+        subject_user_id:
+          type: string
+          format: uuid
+          description: Hanya laporan grup; anggota/mantan anggota grup yang dikenai warn atau suspend.
+        remove_message:
+          type: boolean
+          default: false
+          description: Hanya laporan pesan; jadikan pesan terlapor placeholder.
+        confirm:
+          type: boolean
+          description: Wajib true untuk suspend dan unsuspend (konfirmasi eksplisit, PRD 4.5).
