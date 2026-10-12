@@ -1,7 +1,14 @@
 // Pembangkit kelas API Dart: satu kelas per tag, satu method per operasi (N-13).
 // Dio diinjeksi dari aplikasi sehingga interceptor auth/refresh aplikasi tetap berlaku (ARCHITECTURE §8.3).
 import { HTTP_METHODS } from "../assemble.mjs";
-import { dartString, headerParamName, pascalCase, safeMemberName, snakeCase } from "../names.mjs";
+import {
+  DART_RESERVED,
+  dartString,
+  headerParamName,
+  pascalCase,
+  safeMemberName,
+  snakeCase,
+} from "../names.mjs";
 import { GENERATED_HEADER } from "./runtime.mjs";
 import { doc } from "./model.mjs";
 
@@ -54,8 +61,17 @@ export function buildApis(bundle, registry) {
         continue;
       }
       const opId = op.operationId;
-      if (typeof opId !== "string" || !/^[a-z][A-Za-z0-9]*$/.test(opId) || RESERVED_METHOD_NAMES.has(opId)) {
-        registry.error(`${where}: operationId '${opId}' bukan nama method Dart yang valid`);
+      if (typeof opId !== "string" || !/^[a-z][A-Za-z0-9]*$/.test(opId)) {
+        registry.error(`${where}: operationId '${opId}' bukan nama method Dart yang valid (wajib camelCase)`);
+        continue;
+      }
+      // Kata tercadang Dart (new, default, switch, ...) dan anggota bawaan Object lolos aturan camelCase redocly
+      // tetapi menghasilkan kode Dart yang tidak dapat dikompilasi.
+      if (DART_RESERVED.has(opId) || RESERVED_METHOD_NAMES.has(opId)) {
+        registry.error(
+          `${where}: operationId '${opId}' adalah kata tercadang Dart atau anggota bawaan Object; ` +
+            "pakai operationId camelCase berawalan kata kerja lain (mis. createX, getX)",
+        );
         continue;
       }
       groups
@@ -184,7 +200,9 @@ function buildOperation(bundle, registry, { path, method, op, item, where }) {
     );
   }
   const result = withBody[0] ?? { kind: "none" };
-  const resultNullable = withBody.length > 0 && withBody.length < successes.length;
+  // Hasil nullable bila ada 2xx tanpa body (mis. 200 | 204) atau skema respons sendiri nullable.
+  const resultNullable =
+    (withBody.length > 0 && withBody.length < successes.length) || result.type?.nullable === true;
 
   const security = op.security ?? bundle.security ?? [];
   const authRequired = security.some((req) => isObject(req) && Object.keys(req).includes("bearerAuth"));
@@ -255,10 +273,14 @@ function renderOperation(registry, op) {
   lines.push(doc(fullDoc, "  ").trimEnd());
   if (op.deprecated) lines.push("  @Deprecated('Operasi ditandai deprecated di kontrak.')");
 
+  const baseResult =
+    op.result.kind === "json" ? registry.dartType({ ...op.result.type, nullable: false }) : op.result.key;
   const resultType =
     op.result.kind === "none"
       ? "void"
-      : `${op.result.kind === "json" ? registry.dartType(op.result.type) : op.result.key}${op.resultNullable ? "?" : ""}`;
+      : op.resultNullable && !baseResult.endsWith("?")
+        ? `${baseResult}?`
+        : baseResult;
 
   // Signature: path (posisional), body wajib (posisional), lalu parameter bernama.
   const positional = op.pathParams.map(
@@ -327,13 +349,23 @@ function renderOperation(registry, op) {
   let decode;
   if (op.result.kind === "none") decode = "(_) {}";
   else {
-    const fn =
-      op.result.kind === "json"
-        ? registry.decodeFn({ ...op.result.type, nullable: false }, 1)
-        : op.result.kind === "text"
-          ? "decodeString"
-          : "decodeBytes";
-    decode = op.resultNullable ? `(v0) => v0 == null || v0 == '' ? null : (${fn})(v0)` : fn;
+    const decodedType = op.result.kind === "json" ? { ...op.result.type, nullable: false } : null;
+    if (op.resultNullable) {
+      // 2xx dengan body dan 2xx tanpa body (mis. 200 | 204): body kosong menjadi null. Parameter closure bertipe
+      // eksplisit agar lolos strict-inference.
+      const value =
+        op.result.kind === "json"
+          ? registry.decodeExpr(decodedType, "v0", 1)
+          : `${op.result.kind === "text" ? "decodeString" : "decodeBytes"}(v0)`;
+      decode = `(Object? v0) => v0 == null || v0 == '' ? null : ${value}`;
+    } else {
+      decode =
+        op.result.kind === "json"
+          ? registry.decodeFn(decodedType, 0)
+          : op.result.kind === "text"
+            ? "decodeString"
+            : "decodeBytes";
+    }
   }
   lines.push(`        decode: ${decode},`);
   lines.push("        cancelToken: cancelToken,");

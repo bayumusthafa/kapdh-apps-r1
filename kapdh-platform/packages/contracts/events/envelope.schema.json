@@ -45,10 +45,24 @@
       "format": "date-time"
     },
     "payload": {
-      "description": "Payload minimum per jenis event (skema per jenis di events/<type>.schema.json).",
-      "type": "object"
+      "description": "Payload minimum per jenis event: skema events/<type>.schema.json (title <Type>Payload), selalu {} untuk jenis di x-kapdh-payload-less, objek bebas untuk jenis di x-kapdh-payload-pending. Tidak dicetak toString SDK (x-sensitive) karena dapat memuat isi chat (PRD 3.13, N-09).",
+      "type": "object",
+      "x-sensitive": true
     }
   },
+  "x-kapdh-payload-less": [],
+  "x-kapdh-payload-pending": [
+    "message.created",
+    "message.deleted",
+    "reaction.updated",
+    "read.updated",
+    "room.updated",
+    "room.member_changed",
+    "typing",
+    "presence",
+    "notification.created",
+    "session.revoked"
+  ],
   "examples": [
     {
       "v": 1,
@@ -56,7 +70,9 @@
       "type": "message.created",
       "entity_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e60",
       "ts": "2026-10-12T03:15:00.000Z",
-      "payload": { "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61" }
+      "payload": {
+        "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61"
+      }
     },
     {
       "v": 1,

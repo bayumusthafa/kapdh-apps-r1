@@ -22,6 +22,7 @@ export const PATHS = {
   bundle: join(PACKAGE_ROOT, "dist", "openapi.yaml"),
   tsOut: join(PACKAGE_ROOT, "src", "generated", "api.ts"),
   tsRealtimeOut: join(PACKAGE_ROOT, "src", "generated", "realtime.ts"),
+  tsRealtimeSchemasOut: join(PACKAGE_ROOT, "src", "generated", "realtime-schemas.ts"),
   tsEnumsOut: join(PACKAGE_ROOT, "src", "generated", "enums.ts"),
   eventsDir: join(PACKAGE_ROOT, "events"),
   dartPackage: join(PACKAGE_ROOT, "dart", "kapdh_api"),

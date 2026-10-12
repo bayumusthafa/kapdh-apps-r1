@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/contracts/events/message.created.schema.json",
+  "title": "MessageCreatedPayload",
+  "description": "Fixture generator (bukan kontrak produk): payload message.created yang merujuk skema bersama.",
+  "type": "object",
+  "required": ["room_id", "message"],
+  "additionalProperties": false,
+  "properties": {
+    "room_id": { "type": "string", "format": "uuid" },
+    "message": { "$ref": "fixture-chat-message.schema.json" }
+  },
+  "examples": [
+    {
+      "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61",
+      "message": {
+        "id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e60",
+        "body": "Assalamu'alaikum",
+        "created_at": "2026-10-12T03:15:00.000Z"
+      }
+    }
+  ]
+}
