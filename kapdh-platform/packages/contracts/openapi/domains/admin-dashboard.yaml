@@ -1,8 +1,346 @@
-# Domain admin-dashboard (C7 Admin & notifications): ringkasan pekerjaan sesuai izin (pembayaran menunggu,
-# antrean terlambat, laporan terbuka, event mendatang, job gagal). Modul API: apps/api/src/modules/admin.
-# Path ditambahkan oleh penulis kontrak C7.
+# Domain admin-dashboard (C7 Admin & notifications): ringkasan pekerjaan yang perlu tindakan dan statistik sesuai izin
+# (F-15, PRD 3.15, guideline hlm. 11-12). Modul API: apps/api/src/modules/admin.
+#
+# Setiap bagian hanya disertakan bila pemanggil memiliki izinnya; bagian tanpa izin DIHILANGKAN dari payload (bukan
+# null atau nol), sehingga admin pembayaran tanpa izin konten hanya menerima data pembayaran (AC F15-1). Izin dihitung
+# ulang dari database setiap request (AC F16-3).
 tags:
   - name: Admin Dashboard
-    description: Dasbor pengurus yang hanya memuat data sesuai izin (F-15, AC F15-1).
+    description: Dasbor pengurus yang hanya memuat data sesuai izin (F-15, AC F15-1, PRD 3.15).
 
-paths: {}
+paths:
+  /admin/dashboard:
+    get:
+      tags: [Admin Dashboard]
+      operationId: adminGetDashboard
+      summary: Dasbor pengurus sesuai izin, pekerjaan tertunda dan statistik (F-15, AC F15-1).
+      description: |
+        Bagian dan izin yang dibutuhkan (super_admin menerima semua bagian):
+
+        | bagian            | izin                              | isi                                                        |
+        | ----------------- | --------------------------------- | ---------------------------------------------------------- |
+        | `payments`        | payments.read                     | antrean bukti, terlambat/eskalasi, total lunas, riwayat    |
+        | `members`         | members.read                      | pengguna aktif dari total alumni, status, anggota terbaru  |
+        | `events`          | events.manage                     | tiket terjual semua event, penjualan tiket per event       |
+        | `upcoming_events` | events.manage atau events.checkin | event mendatang 30 hari                                    |
+        | `moderation`      | moderation.read                   | laporan terbuka, mendesak, lewat target                    |
+        | `jobs`            | notifications.manage              | pengiriman/outbox gagal, umur outbox tertua, deletion gagal |
+
+        Admin tanpa izin apa pun tetap menerima `generated_at` saja. Semua hitungan dihitung server pada
+        `generated_at` (UTC); usia antrean dihitung klien sebagai `generated_at` dikurangi waktu tertua agar tidak
+        bergantung pada jam perangkat. Aturan hari kerja sama dengan antrean pembayaran (AdminPaymentItem.overdue).
+        Untuk polling lencana menu gunakan GET /admin/dashboard/badges yang lebih ringan.
+      x-kapdh-access: { audience: admin }
+      responses:
+        "200":
+          description: Dasbor sesuai izin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminDashboard" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/MfaRequired" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/dashboard/badges:
+    get:
+      tags: [Admin Dashboard]
+      operationId: adminGetDashboardBadges
+      summary: Hitungan ringan untuk lencana menu, misalnya pembayaran menunggu (F-15, prototipe screen_8).
+      description: |
+        Dipanggil berkala oleh web admin dengan penanda permintaan latar belakang sehingga tidak memperpanjang idle
+        timeout sesi (AC F02-5). Field hanya ada bila pemanggil memiliki izinnya, sama dengan aturan bagian dasbor
+        (AC F15-1).
+      x-kapdh-access: { audience: admin }
+      responses:
+        "200":
+          description: Lencana menu.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminNavBadges" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/MfaRequired" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  schemas:
+    AdminDashboard:
+      type: object
+      required: [generated_at]
+      description: Bagian opsional dihilangkan bila izin tidak dimiliki (AC F15-1).
+      properties:
+        generated_at: { type: string, format: date-time }
+        payments: { $ref: "#/components/schemas/DashboardPayments" }
+        members: { $ref: "#/components/schemas/DashboardMembers" }
+        events: { $ref: "#/components/schemas/DashboardEvents" }
+        upcoming_events:
+          type: array
+          description: Event open/closed yang mulai dalam 30 hari ke depan, urut starts_at naik, maksimal 10.
+          items: { $ref: "#/components/schemas/DashboardUpcomingEvent" }
+        moderation: { $ref: "#/components/schemas/DashboardModeration" }
+        jobs: { $ref: "#/components/schemas/DashboardJobs" }
+
+    DashboardPaymentType:
+      type: string
+      enum: [registration, renewal, ticket]
+      description: Jenis pembayaran (sama dengan payments.type). Label UI Pendaftaran, Perpanjangan, Tiket event.
+
+    DashboardPaymentTypeCounts:
+      type: object
+      required: [registration, renewal, ticket]
+      properties:
+        registration: { type: integer, minimum: 0 }
+        renewal: { type: integer, minimum: 0 }
+        ticket: { type: integer, minimum: 0 }
+
+    DashboardMemberRef:
+      type: object
+      required: [user_id, full_name, member_number]
+      description: Identitas minimum pemilik transaksi; semua null bila akun sudah dihapus (anonim, D2).
+      properties:
+        user_id: { type: [string, "null"], format: uuid }
+        full_name: { type: [string, "null"] }
+        member_number: { type: [string, "null"], examples: ["09.02.01.5"] }
+
+    DashboardTransaction:
+      type: object
+      required: [payment_id, type, event_title, member, amount, paid_at]
+      description: Satu baris "Riwayat Transaksi" (guideline hlm. 12).
+      properties:
+        payment_id: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/DashboardPaymentType" }
+        event_title:
+          type: [string, "null"]
+          description: Judul event untuk type=ticket, misalnya "Mancing Bareng Alumni".
+        member: { $ref: "#/components/schemas/DashboardMemberRef" }
+        amount: { $ref: "#/components/schemas/Money" }
+        paid_at: { type: string, format: date-time, description: Waktu keputusan setuju (decided_at). }
+
+    DashboardPayments:
+      type: object
+      required:
+        - awaiting_review_count
+        - awaiting_review_by_type
+        - oldest_submitted_at
+        - overdue_count
+        - escalated_ticket_count
+        - awaiting_proof_count
+        - paid_total_amount
+        - paid_count
+        - recent_transactions
+      description: Bagian izin payments.read (F-04, F-15, guideline hlm. 12).
+      properties:
+        awaiting_review_count:
+          type: integer
+          minimum: 0
+          description: Payment pending yang buktinya sudah dikirim dan menunggu keputusan (lencana menu).
+        awaiting_review_by_type: { $ref: "#/components/schemas/DashboardPaymentTypeCounts" }
+        oldest_submitted_at:
+          type: [string, "null"]
+          format: date-time
+          description: Waktu kirim bukti tertua di antrean; null bila antrean kosong.
+        overdue_count:
+          type: integer
+          minimum: 0
+          description: Iuran (registration/renewal) menunggu lebih dari 1 hari kerja sejak bukti dikirim.
+        escalated_ticket_count:
+          type: integer
+          minimum: 0
+          description: Bukti tiket menunggu lebih dari 2 hari kerja; dieskalasi, bukan dibatalkan otomatis (D5, PRD 3.9).
+        awaiting_proof_count:
+          type: integer
+          minimum: 0
+          description: Payment pending yang belum memiliki bukti (informasi, bukan antrean admin).
+        paid_total_amount:
+          $ref: "#/components/schemas/Money"
+          description: Kartu "Total Transaksi" - jumlah bruto seluruh payment paid, sebelum penyesuaian/refund.
+        paid_count: { type: integer, minimum: 0 }
+        recent_transactions:
+          type: array
+          maxItems: 10
+          description: Payment paid terbaru menurut waktu keputusan, maksimal 10.
+          items: { $ref: "#/components/schemas/DashboardTransaction" }
+
+    DashboardMemberStatusCounts:
+      type: object
+      required: [unverified, verified, expiring, expired, suspended]
+      description: Partisi total_alumni menurut effective_status (PRD 2.2).
+      properties:
+        unverified: { type: integer, minimum: 0 }
+        verified: { type: integer, minimum: 0 }
+        expiring: { type: integer, minimum: 0 }
+        expired: { type: integer, minimum: 0 }
+        suspended: { type: integer, minimum: 0 }
+
+    DashboardMember:
+      type: object
+      required: [user_id, full_name, member_number, effective_status, linked_admin, registered_at]
+      description: Satu baris tabel "Pengguna" (guideline hlm. 12).
+      properties:
+        user_id: { type: string, format: uuid }
+        full_name: { type: string }
+        member_number: { type: [string, "null"], description: No. KTA; null bila belum teraktivasi. }
+        effective_status: { $ref: "#/components/schemas/EffectiveStatus" }
+        linked_admin:
+          type: boolean
+          description: Alumni tertaut ke identitas admin aktif; UI menampilkan label "Admin" di samping status.
+        registered_at: { type: string, format: date-time }
+
+    DashboardMembers:
+      type: object
+      required: [total_alumni, active_count, status_counts, latest_members]
+      description: Bagian izin members.read (F-15, guideline hlm. 12 dan 16).
+      properties:
+        total_alumni:
+          type: integer
+          minimum: 0
+          description: Profil alumni dengan akun active (email terverifikasi, tidak dinonaktifkan atau dihapus).
+        active_count:
+          type: integer
+          minimum: 0
+          description: Kartu "Pengguna Aktif" = verified + expiring, tidak suspended.
+        status_counts: { $ref: "#/components/schemas/DashboardMemberStatusCounts" }
+        latest_members:
+          type: array
+          maxItems: 10
+          description: Alumni terdaftar terbaru, maksimal 10.
+          items: { $ref: "#/components/schemas/DashboardMember" }
+
+    DashboardEventStatus:
+      type: string
+      enum: [draft, open, closed, done, cancelled]
+      description: Status event (sama dengan events.status, PRD 4.4). Label UI Draf, Dibuka, Ditutup, Selesai, Dibatalkan.
+
+    DashboardTicketSales:
+      type: object
+      required:
+        - event_id
+        - title
+        - status
+        - starts_at
+        - timezone
+        - seats_total
+        - sold_count
+        - held_count
+        - seats_available
+        - awaiting_review_count
+      description: Satu baris "Penjualan Tiket" (guideline hlm. 12).
+      properties:
+        event_id: { type: string, format: uuid }
+        title: { type: string }
+        status: { $ref: "#/components/schemas/DashboardEventStatus" }
+        starts_at: { type: string, format: date-time }
+        timezone: { type: string, examples: [Asia/Jakarta] }
+        seats_total: { type: integer, minimum: 1 }
+        sold_count: { type: integer, minimum: 0, description: Tiket paid (paid_quantity). }
+        held_count:
+          type: integer
+          minimum: 0
+          description: Kursi ditahan reservasi awaiting_payment/awaiting_review (held_quantity).
+        seats_available:
+          type: integer
+          minimum: 0
+          description: seats_total - held - paid (PRD 4.4).
+        awaiting_review_count: { type: integer, minimum: 0, description: Tiket awaiting_review. }
+
+    DashboardEvents:
+      type: object
+      required: [tickets_sold_count, ticket_sales]
+      description: Bagian izin events.manage (F-09, F-15, guideline hlm. 12).
+      properties:
+        tickets_sold_count:
+          type: integer
+          minimum: 0
+          description: Kartu "Tiket Terjual" - tiket berstatus paid di semua event.
+        ticket_sales:
+          type: array
+          maxItems: 10
+          description: Event selain draft, urut starts_at menurun, maksimal 10.
+          items: { $ref: "#/components/schemas/DashboardTicketSales" }
+
+    DashboardUpcomingEvent:
+      type: object
+      required:
+        - event_id
+        - title
+        - status
+        - starts_at
+        - ends_at
+        - timezone
+        - location_name
+        - seats_total
+        - sold_count
+        - held_count
+        - checked_in_count
+      properties:
+        event_id: { type: string, format: uuid }
+        title: { type: string }
+        status: { $ref: "#/components/schemas/DashboardEventStatus" }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        timezone: { type: string, examples: [Asia/Jakarta] }
+        location_name: { type: [string, "null"] }
+        seats_total: { type: integer, minimum: 1 }
+        sold_count: { type: integer, minimum: 0 }
+        held_count: { type: integer, minimum: 0 }
+        checked_in_count: { type: integer, minimum: 0 }
+
+    DashboardModeration:
+      type: object
+      required: [open_count, urgent_count, overdue_count, oldest_open_created_at]
+      description: Bagian izin moderation.read (F-12, F-15).
+      properties:
+        open_count:
+          type: integer
+          minimum: 0
+          description: Laporan open atau in_review.
+        urgent_count:
+          type: integer
+          minimum: 0
+          description: Laporan terbuka berprioritas urgent (target 24 jam, F-12).
+        overdue_count:
+          type: integer
+          minimum: 0
+          description: Laporan terbuka yang melewati due_at (24 jam urgent, 2 hari kerja lainnya, F-12).
+        oldest_open_created_at: { type: [string, "null"], format: date-time }
+
+    DashboardJobs:
+      type: object
+      required:
+        - failed_delivery_count
+        - failed_outbox_count
+        - dead_outbox_count
+        - oldest_pending_outbox_at
+        - failed_account_deletion_count
+      description: Bagian izin notifications.manage; job/kanal gagal (F-15, PRD 4.5, 5.5).
+      properties:
+        failed_delivery_count:
+          type: integer
+          minimum: 0
+          description: Pengiriman email/push berstatus failed (lihat GET /admin/notifications/deliveries).
+        failed_outbox_count: { type: integer, minimum: 0 }
+        dead_outbox_count: { type: integer, minimum: 0 }
+        oldest_pending_outbox_at:
+          type: [string, "null"]
+          format: date-time
+          description: created_at outbox pending tertua (umur outbox tertua, PRD 5.5); null bila kosong.
+        failed_account_deletion_count:
+          type: integer
+          minimum: 0
+          description: Job penghapusan akun berstatus failed yang menunggu retry (AC F14-2).
+
+    AdminNavBadges:
+      type: object
+      description: Field hanya ada bila izinnya dimiliki (AC F15-1).
+      properties:
+        payments_awaiting_review:
+          type: integer
+          minimum: 0
+          description: payments.read; sama dengan payments.awaiting_review_count.
+        reports_open:
+          type: integer
+          minimum: 0
+          description: moderation.read; laporan open atau in_review.
+        failed_jobs:
+          type: integer
+          minimum: 0
+          description: notifications.manage; pengiriman failed + outbox failed/dead.
