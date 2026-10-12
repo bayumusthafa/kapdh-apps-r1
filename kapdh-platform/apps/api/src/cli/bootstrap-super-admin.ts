@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { writeAudit } from "../core/audit/write-audit.js";
+import { ADVISORY_LOCK_KEYS, advisoryXactLock } from "../core/db/locks.js";
 import type { DbOrTx } from "../core/db/types.js";
 import {
   ADMIN_INVITE_TTL_MS,
@@ -11,9 +12,6 @@ import {
   randomToken,
 } from "../modules/auth/crypto.js";
 import { normalizeEmail } from "../modules/auth/auth.service.js";
-
-/** Kunci advisory bootstrap (berbeda dari kunci migrasi 4711000517 dan penjaga Super Admin 4711000518). */
-export const BOOTSTRAP_LOCK_KEY = 4711000519;
 
 export interface BootstrapSuperAdminInput {
   email: string;
@@ -73,7 +71,7 @@ export async function bootstrapSuperAdmin(
 
   return db.transaction(async (tx) => {
     // Semua eksekusi bootstrap berurutan di bawah kunci ini (cek "sudah ada" lalu tulis tanpa celah balapan).
-    await tx.execute(sql`select pg_advisory_xact_lock(${BOOTSTRAP_LOCK_KEY})`);
+    await advisoryXactLock(tx, ADVISORY_LOCK_KEYS.bootstrapSuperAdmin);
     const active = await tx
       .select({ id: admins.id })
       .from(admins)
