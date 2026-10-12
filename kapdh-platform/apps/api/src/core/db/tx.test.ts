@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { afterCommit, currentTx, setAfterCommitErrorReporter, withTx } from "../index.js";
+import { afterCommit, assertCommitAware, currentTx, setAfterCommitErrorReporter, withTx } from "../index.js";
 import type { Db, Tx } from "./types.js";
 
 /** Db tiruan: transaction() menjalankan fn dengan objek tx unik; galat fn = rollback (dilempar ulang). */
@@ -87,5 +87,32 @@ describe("withTx + afterCommit (ARCHITECTURE §4.2, PRD 5.2 'event dikirim sesud
     expect(result).toBe("ok");
     expect(reported).toHaveLength(1);
     expect(log).toContain("tetap-jalan");
+  });
+});
+
+describe("assertCommitAware (efek setelah commit wajib menunggu commit)", () => {
+  /** Tx tiruan dengan rollback() seperti PgTransaction Drizzle. */
+  function txLike(id: number): Tx {
+    return { id, rollback: () => undefined } as unknown as Tx;
+  }
+
+  it("menerima tx dari withTx dan db tanpa transaksi", async () => {
+    const db = {
+      transaction: <T>(fn: (tx: Tx) => Promise<T>) => fn(txLike(1)),
+    } as unknown as Db;
+    await withTx(db, async (tx) => {
+      expect(() => assertCommitAware(tx, "Uji")).not.toThrow();
+    });
+    expect(() => assertCommitAware(db, "Uji")).not.toThrow();
+  });
+
+  it("menolak transaksi mentah di luar withTx dan savepoint di dalam withTx", async () => {
+    expect(() => assertCommitAware(txLike(7), "Uji.layanan")).toThrow(/Uji\.layanan wajib dipanggil/);
+    const db = {
+      transaction: <T>(fn: (tx: Tx) => Promise<T>) => fn(txLike(2)),
+    } as unknown as Db;
+    await withTx(db, async () => {
+      expect(() => assertCommitAware(txLike(3), "Uji")).toThrow();
+    });
   });
 });

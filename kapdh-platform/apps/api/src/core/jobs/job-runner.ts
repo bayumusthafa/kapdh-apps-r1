@@ -7,7 +7,7 @@ import type { Clock } from "../adapters/clock.js";
 import { runAsSystem } from "../context/request-context.js";
 import type { Db } from "../db/types.js";
 import { safeError } from "../logging/safe-error.js";
-import { isOutboxTopic, OUTBOX_TOPICS } from "../outbox/topics.js";
+import { isOutboxTopic, OUTBOX_TOPICS, type OutboxTopic } from "../outbox/topics.js";
 import { CLOCK, DB, ROOT_LOGGER } from "../tokens.js";
 import { JobRegistry } from "./job-registry.js";
 
@@ -43,22 +43,40 @@ export class JobRunner {
     @Inject(ROOT_LOGGER) private readonly logger: Logger,
   ) {}
 
-  /** Menjalankan satu job terjadwal sekali (dipanggil scheduler worker atau uji). */
+  /** Menjalankan satu job terjadwal sekali (scheduler worker, atau uji: `await t.jobs.runScheduled(name)`). */
   async runScheduled(name: string): Promise<void> {
     const job = this.registry.scheduledJob(name);
     if (!job) throw new Error(`Job ${name} tidak terdaftar`);
     const jobId = `${name}:${uuidv7()}`;
+    const logger = this.logger.child({ job_id: jobId, job: name });
     await runAsSystem(
       async () => {
         try {
-          await job.run();
+          await job.run(this.clock.now(), { jobId, requestId: jobId, logger });
         } catch (error) {
-          this.logger.error({ job_id: jobId, job: name, error: safeError(error) }, "job terjadwal gagal");
+          logger.error({ error: safeError(error) }, "job terjadwal gagal");
           throw error;
         }
       },
       { jobId },
     );
+  }
+
+  /**
+   * Helper uji dan operasi manual: memproses outbox berulang (klaim seperti dispatcher, handler dijalankan inline)
+   * sampai tidak ada event jatuh tempo. Event yang gagal dijadwalkan ulang dengan backoff sehingga loop berhenti.
+   */
+  async drainOutbox(options: { maxRounds?: number } = {}): Promise<DispatchResult> {
+    const total: DispatchResult = { claimed: 0, dispatched: 0, failed: 0, dead: 0 };
+    for (let round = 0; round < (options.maxRounds ?? 20); round++) {
+      const result = await this.dispatchOutbox();
+      total.claimed += result.claimed;
+      total.dispatched += result.dispatched;
+      total.failed += result.failed;
+      total.dead += result.dead;
+      if (result.claimed === 0) break;
+    }
+    return total;
   }
 
   /** Mengklaim dan memproses event outbox yang jatuh tempo. */
@@ -110,16 +128,22 @@ export class JobRunner {
         const handler = this.registry.handlerFor(event.topic);
         if (!handler) throw new MissingHandlerError();
         const payload = OUTBOX_TOPICS[event.topic].parse(event.payload);
+        const requestId = event.requestId ?? event.id;
+        const logger = this.logger.child({ job_id: jobId, request_id: requestId, topic: event.topic });
         await runAsSystem(
           () =>
-            handler(payload, {
-              id: event.id,
-              topic: event.topic as never,
-              dedupKey: event.dedupKey,
-              attempts: event.attempts,
-              requestId: event.requestId,
-            }),
-          { requestId: event.requestId ?? event.id, jobId },
+            handler.handle(
+              {
+                id: event.id,
+                topic: event.topic as OutboxTopic,
+                dedupKey: event.dedupKey,
+                attempts: event.attempts,
+                requestId: event.requestId,
+                payload,
+              },
+              { jobId, requestId, logger },
+            ),
+          { requestId, jobId },
         );
         await this.db
           .update(outboxEvents)

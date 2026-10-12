@@ -2,6 +2,7 @@ import { createParamDecorator, type ExecutionContext, SetMetadata } from "@nestj
 import type { Reflector } from "@nestjs/core";
 import type { Permission } from "@kapdh/contracts";
 import { unauthenticated } from "../errors/app-exception.js";
+import type { MemberAccessLevel } from "../membership/access.js";
 import type { AuthContext, AuthedRequest } from "./auth-context.js";
 
 /**
@@ -17,13 +18,7 @@ export const REAUTH_KEY = "kapdh:reauth";
 
 export type RequiredAudience = "mobile" | "admin" | "any";
 
-/**
- * Tingkat akses anggota berdasarkan effective_status (PRD 2.2, ARCHITECTURE §3.1):
- * - `any`: unverified, verified, expiring, expired, suspended (/me, riwayat sendiri, pengaturan, legal, hapus akun)
- * - `nonsuspended`: unverified, verified, expiring, expired (pembayaran, kartu sendiri, ubah profil, tiket sendiri)
- * - `active`: verified, expiring (reservasi event, direktori, chat, like, laporan, blokir)
- */
-export type MemberAccessLevel = "any" | "nonsuspended" | "active";
+/** Tingkat akses anggota (PRD 2.2, ARCHITECTURE §3.1); tabelnya di core/membership/access.ts (MEMBER_ACCESS). */
 
 /** Tanpa autentikasi (endpoint publik dan bootstrap auth). */
 export const Public = () => SetMetadata(PUBLIC_KEY, true);

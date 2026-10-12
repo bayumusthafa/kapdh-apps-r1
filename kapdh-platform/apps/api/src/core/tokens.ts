@@ -1,6 +1,6 @@
 /**
  * Token DI adapter eksternal (ARCHITECTURE §4.2). Nilainya berasal dari AppDeps sehingga uji memasang tiruan
- * (PGlite, TestClock, MemoryMailer, FakePush, MemoryStorage) tanpa mock.
+ * (PGlite, TestClock, MemoryMailer, FakePush, MemoryDriver) tanpa mock.
  */
 
 /** Database Drizzle (`Db`). */
