@@ -3,7 +3,7 @@ import type { components } from "@kapdh/contracts";
 import type { ServerEnv } from "@kapdh/config";
 import { adminPermissions, admins, alumni, mfaTotp, otpCodes, sessions, users } from "@kapdh/database";
 import bcrypt from "bcryptjs";
-import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { AppException } from "../common/app-exception.js";
 import { writeAudit } from "../common/audit.js";
@@ -82,6 +82,9 @@ export class AuthService {
   // ------------------------------------------------------------------ OTP
 
   private toChallenge(row: typeof otpCodes.$inferSelect, email: string): OtpChallenge {
+    // Tujuan email_change (koreksi email, PRD 2.2) belum memiliki alur dan bentuk kontrak di irisan ini.
+    if (row.purpose === "email_change")
+      throw new AppException(400, "VALIDATION_ERROR", "Tujuan kode belum didukung.");
     return {
       challenge_id: row.id,
       purpose: row.purpose,
@@ -142,7 +145,10 @@ export class AuthService {
   async register(input: RegisterInput): Promise<OtpChallenge> {
     const email = normalizeEmail(input.email);
     const passwordHash = await bcrypt.hash(input.password, this.env.BCRYPT_COST);
-    const existing = await this.db.query.users.findFirst({ where: eq(users.email, email) });
+    // Email unik per jenis identitas selama akun belum terhapus (users_kind_email_key, PRD 2.3).
+    const existing = await this.db.query.users.findFirst({
+      where: and(eq(users.email, email), eq(users.kind, "alumni"), ne(users.status, "deleted")),
+    });
 
     if (existing && (existing.status !== "pending_otp" || existing.kind !== "alumni")) {
       throw new AppException(
@@ -190,7 +196,10 @@ export class AuthService {
         });
       } catch (e) {
         // Request ganda bersamaan: email unik menjamin satu akun (AC F01-4).
-        if (String((e as Error)?.message ?? e).includes("users_email_key")) return this.register(input);
+        // Drizzle membungkus galat driver; nama constraint ada di `cause` (postgres-js/PGlite).
+        const cause = (e as { cause?: { constraint_name?: string; constraint?: string } })?.cause;
+        if ((cause?.constraint_name ?? cause?.constraint) === "users_kind_email_key")
+          return this.register(input);
         throw e;
       }
       user = { id, email, passwordHash };
@@ -322,6 +331,8 @@ export class AuthService {
     if (challenge.purpose === "signup" && challenge.binding !== sha256(user.passwordHash)) {
       throw new AppException(410, "OTP_EXPIRED", "Kode ini sudah diganti kode yang lebih baru.");
     }
+    if (challenge.purpose === "email_change")
+      throw new AppException(400, "VALIDATION_ERROR", "Tujuan kode belum didukung.");
     return this.issueOtp(user, challenge.purpose);
   }
 
@@ -354,7 +365,9 @@ export class AuthService {
   private async checkPassword(emailRaw: string, password: string, ip: string, kind: "alumni" | "admin") {
     const email = normalizeEmail(emailRaw);
     this.assertLoginAllowed(email, ip);
-    const user = await this.db.query.users.findFirst({ where: eq(users.email, email) });
+    const user = await this.db.query.users.findFirst({
+      where: and(eq(users.email, email), eq(users.kind, kind), ne(users.status, "deleted")),
+    });
     // Bandingkan dengan hash tiruan bila user tidak ada agar waktu respons serupa.
     const ok = await bcrypt.compare(
       password,
@@ -530,7 +543,7 @@ export class AuthService {
   async adminLogin(emailRaw: string, password: string, ip: string) {
     const user = await this.checkPassword(emailRaw, password, ip, "admin");
     const admin = await this.db.query.admins.findFirst({ where: eq(admins.userId, user.id) });
-    if (!admin || !admin.active || user.status !== "active")
+    if (!admin || admin.status !== "active" || user.status !== "active")
       throw new AppException(401, "UNAUTHENTICATED", "Email atau password salah.");
     const totpRow = await this.db.query.mfaTotp.findFirst({ where: eq(mfaTotp.userId, user.id) });
     const mfa = await this.tokens.signMfa(user.id);
@@ -566,7 +579,7 @@ export class AuthService {
       this.db.query.admins.findFirst({ where: eq(admins.userId, userId) }),
       this.db.query.mfaTotp.findFirst({ where: eq(mfaTotp.userId, userId) }),
     ]);
-    if (!admin || !admin.active || !totpRow?.verifiedAt) throw unauth;
+    if (!admin || admin.status !== "active" || !totpRow?.verifiedAt) throw unauth;
 
     let ok = false;
     if (totpCode)
@@ -604,7 +617,8 @@ export class AuthService {
 
   async adminProfile(userId: string) {
     const admin = await this.db.query.admins.findFirst({ where: eq(admins.userId, userId) });
-    if (!admin || !admin.active) throw new AppException(403, "FORBIDDEN", "Akun admin tidak aktif.");
+    if (!admin || admin.status !== "active")
+      throw new AppException(403, "FORBIDDEN", "Akun admin tidak aktif.");
     const perms = await this.db
       .select({ p: adminPermissions.permission })
       .from(adminPermissions)

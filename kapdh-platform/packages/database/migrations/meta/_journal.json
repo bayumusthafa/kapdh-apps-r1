@@ -5,15 +5,29 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1791787745363,
+      "when": 1791798565859,
       "tag": "0000_init",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1791789618336,
-      "tag": "0001_otp_binding",
+      "when": 1791798569999,
+      "tag": "0001_append_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791798573916,
+      "tag": "0002_last_super_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791798577328,
+      "tag": "0003_alumni_skills_limit",
       "breakpoints": true
     }
   ]

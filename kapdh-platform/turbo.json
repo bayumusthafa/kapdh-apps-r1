@@ -15,6 +15,10 @@
     },
     "test": {
       "dependsOn": ["^build"]
+    },
+    "test:pg": {
+      "dependsOn": ["^build"],
+      "cache": false
     }
   },
   "agentGuidance": false
