@@ -3,8 +3,9 @@
 #
 # Vendor extension `x-kapdh-access` pada setiap operasi mencerminkan dekorator server (ARCHITECTURE §4.3):
 # audience (public|mobile|admin|any), member_access (any|nonsuspended|active, ARCHITECTURE §3.1), permissions
-# (semua wajib dimiliki, §4.5), role (super_admin bila tindakan khusus Super Admin), reauth (X-Reauth-Token),
-# idempotent (Idempotency-Key dihormati).
+# (semua wajib dimiliki, §4.5), permissions_any (cukup salah satu izin dimiliki; dipakai bila satu data dibutuhkan
+# dua area pengurus), role (super_admin bila tindakan khusus Super Admin), reauth (X-Reauth-Token), idempotent
+# (Idempotency-Key dihormati). super_admin selalu memenuhi permissions dan permissions_any.
 tags:
   - name: Me
     description: |
@@ -65,6 +66,8 @@ paths:
           FILE_INVALID (tanpa membedakan berkas milik orang lain dari berkas yang tidak ada, N-09).
         - Privasi: kontak dan tautan sosial bawaan tersembunyi (show_phone/show_email/show_social false, N-15);
           field tersembunyi tidak ikut payload direktori/profil anggota lain (AC F10-2).
+        - Keempat tautan sosial memakai aturan SocialHandle yang sama: nama pengguna atau URL https; skema lain
+          (javascript:, data:, http:, dll.) ditolak 400 VALIDATION_ERROR pada field tersebut (N-09, N-14).
         - Perubahan avatar/kota/profesi tercermin pada GET /me/card berikutnya.
         Versi berbeda dari If-Match menghasilkan 409 VERSION_CONFLICT dengan `current` berbentuk Me (AC F15-4).
       x-kapdh-access: { audience: mobile, member_access: nonsuspended }
@@ -182,6 +185,20 @@ components:
         perempuan, N nomor urut global dari sequence server tanpa nol di depan. Tidak pernah dikirim/ditentukan
         klien (AC F05-6).
       examples: ["29.01.01.7"]
+
+    SocialHandle:
+      type: string
+      minLength: 1
+      maxLength: 200
+      pattern: '^(?:@?[A-Za-z0-9._-]{1,100}|https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:[/?#][^\s<>"''`]*)?)$'
+      description: |
+        Aturan tunggal untuk tautan sosial (Instagram, X, Facebook, LinkedIn) pada profil sendiri dan koreksi
+        pengurus (F-10, N-09, N-14): nama pengguna (huruf, angka, titik, garis bawah, tanda hubung; @ di depan
+        opsional dan dibuang server) atau URL `https://` dengan nama host. Skema lain (javascript:, data:, http:,
+        mailto:, dll.), spasi dan karakter <>"'` ditolak 400 VALIDATION_ERROR. Server memeriksa ulang pola yang sama
+        (tidak bergantung pada klien) dan menyimpan nilai yang sudah dinormalkan; klien merender nama pengguna
+        sebagai tautan ke domain platform dan URL hanya sebagai tautan https.
+      examples: ["ahmad.islam", "https://www.linkedin.com/in/ahmad-islam"]
 
     Me:
       type: object
@@ -350,10 +367,12 @@ components:
         bio: { type: [string, "null"], maxLength: 500, description: Tentang saya. }
         last_education_institution: { type: [string, "null"], description: Lulusan terakhir (institusi). }
         last_education_city: { type: [string, "null"] }
-        social_instagram: { type: [string, "null"] }
-        social_x: { type: [string, "null"] }
-        social_facebook: { type: [string, "null"] }
-        social_linkedin: { type: [string, "null"] }
+        social_instagram:
+          type: [string, "null"]
+          description: Nilai tersimpan yang sudah lolos aturan SocialHandle (nama pengguna atau URL https).
+        social_x: { type: [string, "null"], description: Sama dengan social_instagram (SocialHandle). }
+        social_facebook: { type: [string, "null"], description: Sama dengan social_instagram (SocialHandle). }
+        social_linkedin: { type: [string, "null"], description: Sama dengan social_instagram (SocialHandle). }
         profession:
           oneOf:
             - $ref: "#/components/schemas/MasterItem"
@@ -393,13 +412,25 @@ components:
         last_education_institution: { type: [string, "null"], minLength: 1, maxLength: 120 }
         last_education_city: { type: [string, "null"], minLength: 1, maxLength: 80 }
         social_instagram:
-          type: [string, "null"]
-          minLength: 1
-          maxLength: 200
-          description: Nama pengguna atau URL https; skema URL lain ditolak server.
-        social_x: { type: [string, "null"], minLength: 1, maxLength: 200 }
-        social_facebook: { type: [string, "null"], minLength: 1, maxLength: 200 }
-        social_linkedin: { type: [string, "null"], minLength: 1, maxLength: 200 }
+          oneOf:
+            - $ref: "#/components/schemas/SocialHandle"
+            - type: "null"
+          description: Instagram (aturan SocialHandle); null mengosongkan.
+        social_x:
+          oneOf:
+            - $ref: "#/components/schemas/SocialHandle"
+            - type: "null"
+          description: X (aturan SocialHandle); null mengosongkan.
+        social_facebook:
+          oneOf:
+            - $ref: "#/components/schemas/SocialHandle"
+            - type: "null"
+          description: Facebook (aturan SocialHandle); null mengosongkan.
+        social_linkedin:
+          oneOf:
+            - $ref: "#/components/schemas/SocialHandle"
+            - type: "null"
+          description: LinkedIn (aturan SocialHandle); null mengosongkan.
         profession_id:
           type: [string, "null"]
           format: uuid
@@ -487,7 +518,9 @@ components:
           status_label,
           member_number,
           full_name,
+          cohort,
           cohort_code,
+          graduation_year,
           qr,
           expires_at,
           profession_label,
@@ -503,10 +536,15 @@ components:
         status_label: { $ref: "#/components/schemas/MemberCardStatus" }
         member_number: { $ref: "#/components/schemas/MemberNumber" }
         full_name: { type: string }
-        cohort: { type: integer, minimum: 1, maximum: 99, description: Angkatan (selalu dikirim server). }
+        cohort:
+          type: integer
+          minimum: 1
+          maximum: 99
+          description: Angkatan untuk baris "Angkatan n | Profesi" (PRD 3.5).
         cohort_code: { type: string, examples: ["KAPDH 29"] }
         graduation_year:
-          { type: integer, description: Tahun lulus ditampilkan terpisah (selalu dikirim server). }
+          type: integer
+          description: Tahun lulus (1996 + angkatan) yang ditampilkan terpisah di kartu (PRD 3.5).
         profession_label:
           type: [string, "null"]
           description: Profesi untuk baris "Angkatan n | Profesi"; label historis tetap tampil (AC F10-4).
