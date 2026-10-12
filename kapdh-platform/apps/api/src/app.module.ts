@@ -71,7 +71,11 @@ export class AppModule {
     return {
       module: AppModule,
       imports: [
-        CoreModule.forRoot(deps, { mode: "api", logger: runtime.logger, rateLimitStore: runtime.rateLimitStore }),
+        CoreModule.forRoot(deps, {
+          mode: "api",
+          logger: runtime.logger,
+          rateLimitStore: runtime.rateLimitStore,
+        }),
         ...DOMAIN_MODULES,
         ...(runtime.extraModules ?? []),
       ],

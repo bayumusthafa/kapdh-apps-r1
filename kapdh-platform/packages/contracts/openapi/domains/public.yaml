@@ -24,20 +24,22 @@ paths:
   /health/ready:
     get:
       tags: [Public]
-      operationId: getHealthReady
-      summary: Kesiapan melayani (ping PostgreSQL, Redis bila dipakai, umur outbox tertua; PRD 5.5).
+      operationId: getHealthReadiness
+      summary: Readiness; memeriksa PostgreSQL, Redis (bila dikonfigurasi) dan storage (PRD 5.5, N-05).
       description: |
-        Dipakai monitor (Uptime Kuma) dan orkestrator untuk readiness. 503 bila database atau Redis yang
-        dikonfigurasi tidak tersedia. Umur outbox tertua yang belum terkirim menandai worker macet (PRD 5.5).
+        Dipakai orkestrator (Coolify/Traefik) dan Uptime Kuma. 200 bila semua dependensi wajib siap, 503 bila
+        ada yang gagal. Hanya nama komponen dan status ok/fail/skipped, ditambah umur event outbox pending tertua
+        sebagai sinyal worker macet (PRD 5.5); tidak memuat pesan galat, host, versi atau data lain (N-14).
+        Tidak dicache.
       security: []
       responses:
         "200":
-          description: Siap melayani.
+          description: Semua dependensi wajib siap.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/HealthReadiness" }
         "503":
-          description: Dependensi wajib tidak tersedia.
+          description: Ada dependensi wajib yang tidak siap.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/HealthReadiness" }
@@ -47,7 +49,11 @@ paths:
     get:
       tags: [Public]
       operationId: getPublicConfig
-      summary: Versi aplikasi minimum, status maintenance, tautan toko dan kontak bantuan (PRD 4.5).
+      summary: Versi aplikasi minimum, status maintenance, tautan toko, kontak bantuan dan versi legal (PRD 4.5, 5.2).
+      description: |
+        Dibaca layar splash Flutter sebelum login (gerbang aplikasi, ARCHITECTURE §8.3) dan oleh situs publik.
+        Sumber: app_settings min_app_version, maintenance, store_links, support dan legal (ARCHITECTURE §5.4).
+        Tetap dilayani selama maintenance. Tidak memuat secret atau data pribadi.
       security: []
       responses:
         "200":
@@ -106,25 +112,40 @@ components:
         status: { type: string, const: ok }
         time: { type: string, format: date-time }
 
+    HealthCheckState:
+      type: string
+      enum: [ok, fail, skipped]
+      description: Status satu dependensi; skipped bila dependensi opsional tidak dikonfigurasi (mis. REDIS_URL kosong).
+
+    HealthReadinessStatus:
+      type: string
+      enum: [ok, unavailable]
+
+    HealthReadinessChecks:
+      type: object
+      required: [database, redis, storage]
+      properties:
+        database: { $ref: "#/components/schemas/HealthCheckState" }
+        redis: { $ref: "#/components/schemas/HealthCheckState" }
+        storage: { $ref: "#/components/schemas/HealthCheckState" }
+        outbox_oldest_pending_seconds:
+          type: [integer, "null"]
+          minimum: 0
+          description: |
+            Umur event outbox pending tertua dalam detik (sinyal worker macet, PRD 5.5); null bila tidak ada atau
+            database tidak dapat dibaca. Tidak memengaruhi status readiness API.
+
     HealthReadiness:
       type: object
       required: [status, time, checks]
       properties:
-        status: { type: string, enum: [ok, unavailable] }
+        status: { $ref: "#/components/schemas/HealthReadinessStatus" }
         time: { type: string, format: date-time }
-        checks:
-          type: object
-          required: [database, redis, outbox_oldest_pending_seconds]
-          properties:
-            database: { type: string, enum: [ok, unavailable] }
-            redis: { type: string, enum: [ok, unavailable, not_configured] }
-            outbox_oldest_pending_seconds:
-              type: [integer, "null"]
-              minimum: 0
-              description: Umur event outbox pending tertua dalam detik; null bila tidak ada.
+        checks: { $ref: "#/components/schemas/HealthReadinessChecks" }
 
     MinAppVersion:
       type: object
+      description: Versi minimum per platform (semver); mutasi dari versi lebih rendah ditolak 426 (PRD 4.5).
       required: [android, ios]
       properties:
         android: { type: string, examples: ["1.0.0"] }
@@ -132,29 +153,33 @@ components:
 
     MaintenanceStatus:
       type: object
-      required: [active]
+      required: [active, message, until]
       properties:
         active: { type: boolean }
-        message: { type: [string, "null"] }
-        until: { type: [string, "null"], format: date-time }
+        message: { type: [string, "null"], description: Penjelasan rentang/dampak untuk pengguna (PRD 4.5). }
+        until: { type: [string, "null"], format: date-time, description: Perkiraan selesai bila diketahui. }
 
     StoreLinks:
       type: object
+      description: Tautan toko aplikasi resmi untuk layar wajib update dan situs publik.
+      required: [android, ios]
       properties:
         android: { type: [string, "null"], format: uri }
         ios: { type: [string, "null"], format: uri }
 
     SupportContact:
       type: object
+      required: [email, whatsapp]
       properties:
         email: { type: string, format: email, examples: [bantuan@kapdh.or.id] }
-        whatsapp: { type: [string, "null"] }
+        whatsapp: { type: [string, "null"], description: Nomor WhatsApp admin dukungan (PRD 8.3). }
 
     LegalVersions:
       type: object
       description: |
-        Versi terbit dokumen legal yang berlaku (pages.published_version); null selama belum diterbitkan.
-        Klien membandingkan dengan versi yang disetujui pengguna (F-01, F-08).
+        Versi terbit halaman legal (published_version pages) yang dirujuk persetujuan pengguna (F-01); null bila
+        halaman belum pernah terbit.
+      required: [privacy_version, terms_version, community_version]
       properties:
         privacy_version: { type: [string, "null"] }
         terms_version: { type: [string, "null"] }
@@ -162,13 +187,17 @@ components:
 
     PublicConfig:
       type: object
-      required: [min_app_version, maintenance]
+      required: [min_app_version, maintenance, store_links, support, legal, server_time]
       properties:
         min_app_version: { $ref: "#/components/schemas/MinAppVersion" }
         maintenance: { $ref: "#/components/schemas/MaintenanceStatus" }
         store_links: { $ref: "#/components/schemas/StoreLinks" }
         support: { $ref: "#/components/schemas/SupportContact" }
         legal: { $ref: "#/components/schemas/LegalVersions" }
+        server_time:
+          type: string
+          format: date-time
+          description: Waktu server (UTC) untuk mendeteksi jam perangkat yang menyimpang.
 
     PublicPage:
       type: object

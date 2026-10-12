@@ -105,7 +105,11 @@ describe("N-14: log JSON tanpa rahasia", () => {
   it("galat database: 500 INTERNAL_ERROR, log hanya tipe + SQLSTATE + constraint (tanpa SQL/parameter)", async () => {
     const res = await api.post("/__probe/db-error", {});
     expect(res.statusCode).toBe(500);
-    expect(res.json()).toEqual({ code: "INTERNAL_ERROR", message: "Terjadi kesalahan. Coba lagi.", request_id: res.json().request_id });
+    expect(res.json()).toEqual({
+      code: "INTERNAL_ERROR",
+      message: "Terjadi kesalahan. Coba lagi.",
+      request_id: res.json().request_id,
+    });
     expect(res.body).not.toContain(SECRET_MARKER.toLowerCase());
     const errorLine = sink.lines.find((l) => l.msg === "galat tak tertangani");
     expect(errorLine).toMatchObject({
@@ -118,7 +122,10 @@ describe("N-14: log JSON tanpa rahasia", () => {
   });
 
   it("satu baris log per request: metode, path tanpa query, status, request_id, client_request_id", async () => {
-    await api.get("/__probe/page", { query: { limit: "5", cari: "Nama Pribadi" }, headers: { "x-request-id": "klien-1" } });
+    await api.get("/__probe/page", {
+      query: { limit: "5", cari: "Nama Pribadi" },
+      headers: { "x-request-id": "klien-1" },
+    });
     const line = sink.lines.find((l) => l.msg === "request selesai");
     expect(line).toMatchObject({
       level: "info",
@@ -148,7 +155,11 @@ describe("N-14: log JSON tanpa rahasia", () => {
 
   it("login gagal dan header Authorization tidak pernah tercatat", async () => {
     const member = await createAlumni(t, { status: "verified" });
-    await api.post("/auth/login", { email: member.email, password: `${DEFAULT_PASSWORD}-salah` }, { token: "token-rahasia-123" });
+    await api.post(
+      "/auth/login",
+      { email: member.email, password: `${DEFAULT_PASSWORD}-salah` },
+      { token: "token-rahasia-123" },
+    );
     expect(sink.text()).not.toContain(DEFAULT_PASSWORD);
     expect(sink.text()).not.toContain("token-rahasia-123");
     expect(sink.text()).not.toContain(member.email);

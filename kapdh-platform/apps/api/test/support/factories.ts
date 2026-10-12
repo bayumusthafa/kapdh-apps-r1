@@ -10,11 +10,18 @@
  *   const session = await signInAdmin(t, admin);
  */
 import type { Permission } from "@kapdh/contracts";
-import { adminPermissions, admins, alumni, appSettings, mfaTotp, paymentMethods, users } from "@kapdh/database";
+import {
+  adminPermissions,
+  admins,
+  alumni,
+  appSettings,
+  mfaTotp,
+  paymentMethods,
+  users,
+} from "@kapdh/database";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import bcrypt from "bcryptjs";
 import { eq, sql } from "drizzle-orm";
-import { randomBytes } from "node:crypto";
 import { v7 as uuidv7 } from "uuid";
 import { expect } from "vitest";
 import { rows } from "../../src/core/db/rows.js";
@@ -23,7 +30,14 @@ import { type Gender, memberNumber } from "../../src/core/membership/member-numb
 import { addCalendarMonthsJakarta } from "../../src/core/membership/period.js";
 import { SETTING_SCHEMAS, type SettingKey, type SettingValue } from "../../src/core/settings/keys.js";
 import type { SettingsService } from "../../src/core/settings/settings.service.js";
-import { encryptSecret, newTotpSecret, sha256, totp } from "../../src/modules/auth/crypto.js";
+import {
+  ADMIN_INVITE_TTL_MS,
+  adminInviteTokenHash,
+  encryptSecret,
+  newAdminInviteToken,
+  newTotpSecret,
+  totp,
+} from "../../src/modules/auth/crypto.js";
 import type { TestClock } from "./fakes.js";
 import { httpClient } from "./http.js";
 import { testEnv } from "./test-app.js";
@@ -56,7 +70,8 @@ interface Fixtures {
 // ------------------------------------------------------------------------------------------------ alumni
 
 /** effective_status yang dihasilkan fixture (PRD 2.2) + pending_otp (belum verifikasi email). */
-export type AlumniFixtureStatus = "pending_otp" | "unverified" | "verified" | "expiring" | "expired" | "suspended";
+export type AlumniFixtureStatus =
+  "pending_otp" | "unverified" | "verified" | "expiring" | "expired" | "suspended";
 
 export interface CreateAlumniOptions {
   status?: AlumniFixtureStatus;
@@ -139,7 +154,9 @@ export async function createAlumni(t: Fixtures, options: CreateAlumniOptions = {
     let memberSeq: number | null = null;
     let number: string | null = null;
     if (status !== "pending_otp") {
-      const [next] = rows<{ seq: string }>(await tx.execute(sql`select nextval('app.membership_no_seq')::text as seq`));
+      const [next] = rows<{ seq: string }>(
+        await tx.execute(sql`select nextval('app.membership_no_seq')::text as seq`),
+      );
       memberSeq = Number(next!.seq);
       number = memberNumber({ ...profile, seq: memberSeq });
     }
@@ -154,7 +171,8 @@ export async function createAlumni(t: Fixtures, options: CreateAlumniOptions = {
       expiresAt: period?.expiresAt ?? null,
       suspendedAt: status === "suspended" ? new Date(now.getTime() - 3600_000) : null,
       suspensionReason: status === "suspended" ? "Pelanggaran ketentuan komunitas (uji)" : null,
-      suspensionMessage: status === "suspended" ? (options.suspensionMessage ?? "Akun dibatasi sementara.") : null,
+      suspensionMessage:
+        status === "suspended" ? (options.suspensionMessage ?? "Akun dibatasi sementara.") : null,
       createdAt: now,
       updatedAt: now,
     });
@@ -211,12 +229,18 @@ export interface AdminFixture {
   email: string;
   password: string;
   role: "super_admin" | "admin";
+  /** Secret TOTP; null untuk admin `invited` (TOTP didaftarkan saat aktivasi, F-16). */
   totpSecret: string;
+  /** Token undangan mentah untuk admin `invited` (tautan /invite/<token>), selain itu null. */
+  inviteToken: string | null;
   /** Langkah TOTP terakhir yang dipakai fixture (anti replay di server). */
   lastTotpStep?: number;
 }
 
-/** Admin dengan TOTP terverifikasi dan izin tertentu (super_admin = semua izin tanpa baris admin_permissions). */
+/**
+ * Admin dengan izin tertentu (super_admin = semua izin tanpa baris admin_permissions). Status `active`/`disabled`:
+ * TOTP terverifikasi. Status `invited`: belum ada TOTP, token undangan 72 jam dikembalikan (alur aktivasi F-16).
+ */
 export async function createAdmin(t: Fixtures, options: CreateAdminOptions = {}): Promise<AdminFixture> {
   const now = t.clock.now();
   const role = options.role ?? "admin";
@@ -226,6 +250,7 @@ export async function createAdmin(t: Fixtures, options: CreateAdminOptions = {})
   const userId = uuidv7();
   const adminId = uuidv7();
   const totpSecret = newTotpSecret();
+  const inviteToken = status === "invited" ? newAdminInviteToken() : null;
   await t.db.transaction(async (tx) => {
     await tx.insert(users).values({
       id: userId,
@@ -246,8 +271,8 @@ export async function createAdmin(t: Fixtures, options: CreateAdminOptions = {})
       status,
       activatedAt: status === "invited" ? null : now,
       disabledAt: status === "disabled" ? now : null,
-      inviteTokenHash: status === "invited" ? sha256(randomBytes(32).toString("base64url")) : null,
-      inviteExpiresAt: status === "invited" ? new Date(now.getTime() + 7 * DAY_MS) : null,
+      inviteTokenHash: inviteToken ? adminInviteTokenHash(inviteToken) : null,
+      inviteExpiresAt: inviteToken ? new Date(now.getTime() + ADMIN_INVITE_TTL_MS) : null,
       createdAt: now,
       updatedAt: now,
     });
@@ -255,15 +280,16 @@ export async function createAdmin(t: Fixtures, options: CreateAdminOptions = {})
       await tx
         .insert(adminPermissions)
         .values(options.permissions.map((permission) => ({ adminId, permission, createdAt: now })));
-    await tx.insert(mfaTotp).values({
-      userId,
-      secretEncrypted: encryptSecret(totpSecret, testEnv.TOTP_ENC_KEY),
-      verifiedAt: now,
-      createdAt: now,
-      updatedAt: now,
-    });
+    if (status !== "invited")
+      await tx.insert(mfaTotp).values({
+        userId,
+        secretEncrypted: encryptSecret(totpSecret, testEnv.TOTP_ENC_KEY),
+        verifiedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
   });
-  return { adminId, userId, email, password, role, totpSecret };
+  return { adminId, userId, email, password, role, totpSecret, inviteToken };
 }
 
 export interface AdminSessionFixture {
@@ -356,6 +382,9 @@ export async function setSetting<K extends SettingKey>(
 
 /** Membaca versi app_settings saat ini (0 bila belum ada). */
 export async function settingVersion(t: { db: Db }, key: SettingKey): Promise<number> {
-  const [row] = await t.db.select({ version: appSettings.version }).from(appSettings).where(eq(appSettings.key, key));
+  const [row] = await t.db
+    .select({ version: appSettings.version })
+    .from(appSettings)
+    .where(eq(appSettings.key, key));
   return row?.version ?? 0;
 }

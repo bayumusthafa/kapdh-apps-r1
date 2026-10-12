@@ -61,12 +61,16 @@ export interface RouteAuthMeta {
 }
 
 /** Membaca metadata akses handler + kelas. Handler mengalahkan kelas; izin digabung dari keduanya. */
-export function routeAuthMeta(reflector: Reflector, targets: [handler: object, controller: object]): RouteAuthMeta {
+export function routeAuthMeta(
+  reflector: Reflector,
+  targets: [handler: object, controller: object],
+): RouteAuthMeta {
   const [handler, controller] = targets as [() => unknown, new () => unknown];
   const scopes = [handler, controller];
   const isPublic = reflector.getAllAndOverride<boolean | undefined>(PUBLIC_KEY, scopes) === true;
   const audience = reflector.getAllAndOverride<RequiredAudience | undefined>(AUDIENCE_KEY, scopes) ?? null;
-  const memberAccess = reflector.getAllAndOverride<MemberAccessLevel | undefined>(MEMBER_ACCESS_KEY, scopes) ?? null;
+  const memberAccess =
+    reflector.getAllAndOverride<MemberAccessLevel | undefined>(MEMBER_ACCESS_KEY, scopes) ?? null;
   const permissions = [...new Set(reflector.getAllAndMerge<Permission[]>(PERMISSIONS_KEY, scopes) ?? [])];
   const reauth = reflector.getAllAndOverride<boolean | undefined>(REAUTH_KEY, scopes) === true;
 

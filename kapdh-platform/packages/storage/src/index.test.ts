@@ -25,7 +25,12 @@ describe("MemoryStorage", () => {
     const storage = new MemoryStorage();
     const body = Buffer.from("isi berkas");
     const info = await storage.put("avatar/a.jpg", body, { contentType: "image/jpeg" });
-    expect(info).toEqual({ key: "avatar/a.jpg", bytes: body.byteLength, contentType: "image/jpeg", sha256: sha256Hex(body) });
+    expect(info).toEqual({
+      key: "avatar/a.jpg",
+      bytes: body.byteLength,
+      contentType: "image/jpeg",
+      sha256: sha256Hex(body),
+    });
     expect(await storage.stat("avatar/a.jpg")).toEqual(info);
     expect((await readAll(await storage.read("avatar/a.jpg"))).toString()).toBe("isi berkas");
     await storage.copy("avatar/a.jpg", "avatar/b.jpg");

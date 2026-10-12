@@ -146,7 +146,11 @@ export class TokenService {
         algorithms: ["HS256"],
         maxTokenAge: REAUTH_TTL_SECONDS,
       });
-      if (typeof payload.sub !== "string" || typeof payload.sid !== "string" || typeof payload.exp !== "number")
+      if (
+        typeof payload.sub !== "string" ||
+        typeof payload.sid !== "string" ||
+        typeof payload.exp !== "number"
+      )
         return null;
       return {
         userId: payload.sub,

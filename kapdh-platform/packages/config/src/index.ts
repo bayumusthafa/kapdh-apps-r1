@@ -126,7 +126,10 @@ function baseRules(env: z.infer<z.ZodObject<typeof baseShape>>): Issue[] {
   const production = env.NODE_ENV === "production";
   const deployed = production || env.NODE_ENV === "staging";
   if (production && !env.REDIS_URL)
-    issues.push({ path: "REDIS_URL", message: "wajib di production (rate limit lintas replica dan antrean)" });
+    issues.push({
+      path: "REDIS_URL",
+      message: "wajib di production (rate limit lintas replica dan antrean)",
+    });
   if (deployed && !env.SMTP_URL)
     issues.push({
       path: "SMTP_URL",
@@ -188,14 +191,19 @@ function apiRules(env: z.infer<z.ZodObject<typeof apiShape>>): Issue[] {
   try {
     const keys = parseSigningKeys(env.QR_SIGNING_KEYS);
     if (production && keys.some((k) => /^dev/i.test(k.keyId) || k.secret.includes(PLACEHOLDER)))
-      issues.push({ path: "QR_SIGNING_KEYS", message: "kunci development tidak boleh dipakai di production" });
+      issues.push({
+        path: "QR_SIGNING_KEYS",
+        message: "kunci development tidak boleh dipakai di production",
+      });
   } catch (e) {
     issues.push({ path: "QR_SIGNING_KEYS", message: (e as Error).message });
   }
   if (deployed) {
     for (const key of ["JWT_ACCESS_SECRET", "OTP_HMAC_SECRET"] as const)
-      if (env[key].includes(PLACEHOLDER)) issues.push({ path: key, message: "masih placeholder .env.example" });
-    if (/^0+$/.test(env.TOTP_ENC_KEY)) issues.push({ path: "TOTP_ENC_KEY", message: "tidak boleh nol semua" });
+      if (env[key].includes(PLACEHOLDER))
+        issues.push({ path: key, message: "masih placeholder .env.example" });
+    if (/^0+$/.test(env.TOTP_ENC_KEY))
+      issues.push({ path: "TOTP_ENC_KEY", message: "tidak boleh nol semua" });
   }
   if (production && env.BCRYPT_COST < 10)
     issues.push({ path: "BCRYPT_COST", message: "minimal 10 di production (PRD 2.5)" });
@@ -211,7 +219,8 @@ const workerShape = {
 };
 
 export const baseEnvSchema = z.object(baseShape).superRefine((env, ctx) => {
-  for (const issue of baseRules(env)) ctx.addIssue({ code: "custom", path: [issue.path], message: issue.message });
+  for (const issue of baseRules(env))
+    ctx.addIssue({ code: "custom", path: [issue.path], message: issue.message });
 });
 export type BaseEnv = z.infer<typeof baseEnvSchema>;
 
@@ -222,18 +231,18 @@ export type ApiEnv = Omit<z.infer<z.ZodObject<typeof apiShape>>, "TRUST_PROXY_HO
 export const apiEnvSchema = z
   .object(apiShape)
   .superRefine((env, ctx) => {
-    for (const issue of apiRules(env)) ctx.addIssue({ code: "custom", path: [issue.path], message: issue.message });
+    for (const issue of apiRules(env))
+      ctx.addIssue({ code: "custom", path: [issue.path], message: issue.message });
   })
-  .transform(
-    (env): ApiEnv => ({
-      ...env,
-      TRUST_PROXY_HOPS:
-        env.TRUST_PROXY_HOPS ?? (env.NODE_ENV === "production" || env.NODE_ENV === "staging" ? 1 : 0),
-    }),
-  );
+  .transform((env): ApiEnv => ({
+    ...env,
+    TRUST_PROXY_HOPS:
+      env.TRUST_PROXY_HOPS ?? (env.NODE_ENV === "production" || env.NODE_ENV === "staging" ? 1 : 0),
+  }));
 
 export const workerEnvSchema = z.object(workerShape).superRefine((env, ctx) => {
-  for (const issue of baseRules(env)) ctx.addIssue({ code: "custom", path: [issue.path], message: issue.message });
+  for (const issue of baseRules(env))
+    ctx.addIssue({ code: "custom", path: [issue.path], message: issue.message });
 });
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 
@@ -249,8 +258,19 @@ export class EnvValidationError extends Error {
   }
 }
 
+/**
+ * Nilai kosong (`S3_ENDPOINT=` di .env atau variabel Coolify yang dikosongkan) diperlakukan sama dengan tidak diisi,
+ * sehingga variabel opsional tidak gagal validasi format dan default tetap berlaku.
+ */
+function withoutEmptyValues(source: Record<string, string | undefined>): Record<string, string | undefined> {
+  const result: Record<string, string | undefined> = {};
+  for (const [key, value] of Object.entries(source))
+    if (value !== undefined && value.trim() !== "") result[key] = value;
+  return result;
+}
+
 function parseOrThrow<T>(schema: z.ZodType<T>, source: Record<string, string | undefined>, label: string): T {
-  const parsed = schema.safeParse(source);
+  const parsed = schema.safeParse(withoutEmptyValues(source));
   if (!parsed.success) {
     // Hanya path dan pesan aturan; nilai env (bisa berisi secret) tidak pernah dicetak.
     const fields = parsed.error.issues.map((i) => `${i.path.join(".") || "_"}: ${i.message}`).join("; ");

@@ -1,17 +1,23 @@
-import { Controller, Get, Header } from "@nestjs/common";
+import { Controller, Get, Header, Inject } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
+import type { Clock } from "../../core/adapters/clock.js";
 import { Public } from "../../core/guards/decorators.js";
 import { SettingsService } from "../../core/settings/settings.service.js";
+import { CLOCK } from "../../core/tokens.js";
 
 type PublicConfig = components["schemas"]["PublicConfig"];
 
 /**
- * GET /public/config (PRD 4.5, 5.2): versi aplikasi minimum, status maintenance, tautan toko, kontak bantuan, dan
- * versi dokumen legal yang berlaku. Sumbernya app_settings terversi (ARCHITECTURE §5.4), bukan env.
+ * GET /public/config (PRD 4.5, 5.2): versi aplikasi minimum, status maintenance, tautan toko, kontak bantuan, versi
+ * dokumen legal yang berlaku, dan waktu server. Sumbernya app_settings terversi (ARCHITECTURE §5.4), bukan env, sehingga
+ * perubahan pengurus berlaku tanpa deploy. Tetap dilayani selama maintenance (baca).
  */
 @Controller("public")
 export class PublicController {
-  constructor(private readonly settings: SettingsService) {}
+  constructor(
+    private readonly settings: SettingsService,
+    @Inject(CLOCK) private readonly clock: Clock,
+  ) {}
 
   @Get("config")
   @Public()
@@ -35,6 +41,7 @@ export class PublicController {
         terms_version: legal.terms_version,
         community_version: legal.community_version,
       },
+      server_time: this.clock.now().toISOString(),
     };
   }
 }

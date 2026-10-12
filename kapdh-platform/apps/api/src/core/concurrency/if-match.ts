@@ -16,11 +16,13 @@ export function parseIfMatch(header: string | string[] | undefined): number {
     new AppException(400, "VALIDATION_ERROR", "Periksa kembali isian yang ditandai.", {
       fieldErrors: { "If-Match": [message] },
     });
-  if (raw === undefined || raw.trim() === "") throw fail("Header If-Match wajib berisi versi data yang dibaca.");
-  const match = /^\s*(?:W\/)?"?(\d{1,9})"?\s*$/.exec(raw);
+  if (raw === undefined || raw.trim() === "")
+    throw fail("Header If-Match wajib berisi versi data yang dibaca.");
+  // Angka polos, atau ETag "N" / W/"N" dengan tanda kutip seimbang. Versi 0 = entri belum tersimpan (app_settings).
+  const match = /^\s*(?:(?:W\/)?"(\d{1,9})"|(\d{1,9}))\s*$/.exec(raw);
   if (!match) throw fail("Format If-Match tidak valid.");
-  const version = Number(match[1]);
-  if (!Number.isSafeInteger(version) || version < 1) throw fail("Format If-Match tidak valid.");
+  const version = Number(match[1] ?? match[2]);
+  if (!Number.isSafeInteger(version) || version < 0) throw fail("Format If-Match tidak valid.");
   return version;
 }
 

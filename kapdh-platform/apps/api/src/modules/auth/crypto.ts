@@ -33,6 +33,24 @@ export function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
+// ---------------------------------------------------------------- Token undangan admin (F-16, PRD 8.2)
+
+/** Masa berlaku token undangan admin (usulan 72 jam; kontrak admin-admins). */
+export const ADMIN_INVITE_TTL_MS = 72 * 3600_000;
+
+/** Token undangan admin sekali pakai: 256 bit acak, dikirim sebagai tautan `/invite/<token>` web admin. */
+export function newAdminInviteToken(): string {
+  return randomToken(32);
+}
+
+/**
+ * Hash token undangan yang disimpan di admins.invite_token_hash (token mentah tidak pernah disimpan atau dicatat).
+ * Awalan domain memisahkannya dari hash refresh token. Dipakai bootstrap CLI dan alur penerimaan undangan admin-auth.
+ */
+export function adminInviteTokenHash(token: string): string {
+  return sha256(`admin-invite:${token}`);
+}
+
 // ---------------------------------------------------------------- Base32 (RFC 4648) untuk secret TOTP
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -128,7 +146,9 @@ export function normalizeBackupCode(code: string): string {
  * pencarian offline ruang kode (audit domain). Disimpan di mfa_totp.backup_code_hashes.
  */
 export function backupCodeHash(serverSecret: string, code: string): string {
-  return createHmac("sha256", serverSecret).update(`backup:${normalizeBackupCode(code)}`).digest("hex");
+  return createHmac("sha256", serverSecret)
+    .update(`backup:${normalizeBackupCode(code)}`)
+    .digest("hex");
 }
 
 export function newTotpSecret(): string {

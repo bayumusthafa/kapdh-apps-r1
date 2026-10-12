@@ -101,7 +101,11 @@ export class AuthController {
   @Post("refresh")
   @HttpCode(200)
   @Public()
-  async refresh(@Body() body: unknown, @Req() req: AuthedRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async refresh(
+    @Body() body: unknown,
+    @Req() req: AuthedRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
     const input = validate(z.object({ refresh_token: z.string().min(10).max(512).optional() }), body);
     if (input.refresh_token) {
       const issued = await this.auth.refresh(input.refresh_token, "mobile");
