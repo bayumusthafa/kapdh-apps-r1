@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Token surface-dark dari packages/design-tokens (Guidelines KAPDH v1.0). -->
+    <color name="kapdh_surface_dark">#0E280C</color>
+</resources>
