@@ -3,29 +3,48 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Skema Drizzle PostgreSQL 17 dan migrasi SQL terversi (PRD bagian 6).",
+  "description": "Skema Drizzle PostgreSQL 17, migrasi SQL terversi, job migrasi, dan seed (PRD bagian 6).",
+  "files": [
+    "dist",
+    "migrations",
+    "README.md"
+  ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./seeds/reference": {
+      "types": "./dist/seeds/reference.d.ts",
+      "default": "./dist/seeds/reference.js"
+    },
+    "./seeds/dev": {
+      "types": "./dist/seeds/dev.d.ts",
+      "default": "./dist/seeds/dev.js"
     }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "lint": "eslint src seeds test",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "test": "echo \"uji integrasi dijalankan dari apps/api\""
+    "db:generate:custom": "drizzle-kit generate --custom",
+    "db:check": "drizzle-kit check",
+    "migrate": "node dist/src/migrate.js",
+    "seed:reference": "node dist/seeds/reference.js",
+    "seed:dev": "node dist/seeds/dev.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "drizzle-orm": "0.45.4",
-    "postgres": "3.4.9"
+    "postgres": "3.4.9",
+    "uuid": "14.0.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@types/node": "24.19.2",
     "drizzle-kit": "0.31.11",
     "typescript": "5.9.3",
-    "@types/node": "24.19.2",
-    "@electric-sql/pglite": "0.5.8"
+    "vitest": "5.0.3"
   }
 }

@@ -13,6 +13,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:pg": "turbo run test:pg",
     "contracts:lint": "pnpm --filter @kapdh/contracts lint",
     "contracts:gen": "pnpm --filter @kapdh/contracts generate",
     "tokens:gen": "node packages/design-tokens/build.mjs",
