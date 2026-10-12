@@ -227,9 +227,20 @@ describe("F-02 login, refresh, dan sesi", () => {
     expect(r1.statusCode).toBe(200);
     const newPair = r1.json();
     expect(newPair.refresh_token).not.toBe(session.refresh_token);
+    const userId = (await get("/me", newPair.access_token)).json().user_id as string;
 
     const reuse = await post("/auth/refresh", { refresh_token: session.refresh_token });
     expect(reuse.statusCode).toBe(401);
+    // F-17: pemakaian ulang tercatat sebagai kejadian keamanan (aktor anonim, entitas pemilik akun).
+    const [audit] = await db
+      .select()
+      .from(auditLogs)
+      .where(and(eq(auditLogs.action, "session.refresh_reuse_detected"), eq(auditLogs.entityId, userId)));
+    expect(audit).toMatchObject({
+      effectiveRole: "anonymous",
+      actorUserId: null,
+      after: { sessions_revoked: 1 },
+    });
     // Token hasil rotasi ikut dicabut.
     expect((await post("/auth/refresh", { refresh_token: newPair.refresh_token })).statusCode).toBe(401);
     expect((await get("/me", newPair.access_token)).statusCode).toBe(401);
