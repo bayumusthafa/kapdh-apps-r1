@@ -255,21 +255,123 @@ void main() {
           'payload': payload,
         };
 
+    const room = '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61';
+    const user = '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e71';
+    const message = '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e60';
+    const ts = '2026-10-12T03:15:00.000Z';
+    final messageJson = <String, Object?>{
+      'id': message,
+      'room_id': room,
+      'client_message_id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e90',
+      'kind': 'text',
+      'sender': <String, Object?>{'user_id': user, 'full_name': 'Ahmad Islam', 'avatar_url': null},
+      'body': 'Isi rahasia',
+      'image': null,
+      'reply_to': <String, Object?>{
+        'id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e5a',
+        'available': false,
+        'sender_name': null,
+        'preview': null,
+        'has_image': false,
+      },
+      'reactions': <Object?>[],
+      'created_at': ts,
+      'deleted_at': null,
+    };
+    // Payload minimum yang sah per jenis (events/<type>.schema.json).
+    final samplePayloads = <String, Map<String, Object?>>{
+      'message.created': <String, Object?>{'room_id': room, 'message': messageJson},
+      'message.deleted': <String, Object?>{'room_id': room, 'message_id': message, 'deleted_at': ts},
+      'reaction.updated': <String, Object?>{
+        'room_id': room,
+        'message_id': message,
+        'user_id': user,
+        'emoji': '👍',
+        'action': 'added',
+        'counts': <Object?>[
+          <String, Object?>{'emoji': '👍', 'count': 1},
+        ],
+      },
+      'read.updated': <String, Object?>{
+        'room_id': room,
+        'user_id': user,
+        'last_read_message_id': message,
+        'last_read_at': ts,
+      },
+      'room.updated': <String, Object?>{
+        'room_id': room,
+        'version': '2',
+        'changes': <Object?>['group_name'],
+        'name': 'Angkatan 29',
+        'avatar_url': null,
+        'closed_at': null,
+      },
+      'room.member_changed': <String, Object?>{
+        'room_id': room,
+        'user_id': user,
+        'change': 'joined',
+        'role': 'member',
+        'member_count': 3,
+        'actor_user_id': user,
+      },
+      'typing': <String, Object?>{'room_id': room, 'user_id': user, 'ttl_seconds': 5},
+      'presence': <String, Object?>{'user_id': user, 'status': 'online', 'ttl_seconds': 60},
+      'notification.created': <String, Object?>{
+        'id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4ea0',
+        'category': 'chat',
+        'title': 'Undangan grup baru',
+        'body': null,
+        'deep_link': 'kapdh://app/chat/invitations',
+        'created_at': ts,
+        'unread_count': 1,
+      },
+      'session.revoked': <String, Object?>{'reason': 'logout_all', 'all_sessions': true},
+    };
+
     test('setiap jenis kontrak menjadi subkelas sendiri dan switch exhaustive', () {
       for (final type in RealtimeEventType.values.where((t) => t != RealtimeEventType.unknown)) {
-        final event = RealtimeEvent.fromJson(eventJson(type.value, <String, Object?>{}));
+        final payload = samplePayloads[type.value];
+        expect(payload, isNotNull, reason: 'contoh payload ${type.value} belum ada');
+        final event = RealtimeEvent.fromJson(eventJson(type.value, payload!));
         expect(event.type, type);
         expect(event, isNot(isA<UnknownRealtimeEvent>()));
         expect(event.eventId, '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e5f');
         expect(event.ts, DateTime.utc(2026, 10, 12, 3, 15));
       }
-      final event = RealtimeEvent.fromJson(eventJson('session.revoked', <String, Object?>{}));
+      final event = RealtimeEvent.fromJson(eventJson('session.revoked', samplePayloads['session.revoked']!));
       final handled = switch (event) {
-        SessionRevokedEvent() => 'logout',
+        SessionRevokedEvent(:final payload) => payload.reason == SessionRevokedPayloadReason.logoutAll ? 'logout' : 'lain',
         UnknownRealtimeEvent() => 'abaikan',
         _ => 'lain',
       };
       expect(handled, 'logout');
+    });
+
+    test('message.created bertipe, isi pesan tidak tercetak, dan bentuknya sama dengan ChatMessage HTTP', () {
+      final event = RealtimeEvent.fromJson(eventJson('message.created', samplePayloads['message.created']!));
+      final realtime = switch (event) {
+        MessageCreatedEvent(:final payload) => payload.message,
+        _ => null,
+      };
+      expect(realtime, isNotNull);
+      expect(realtime!.body, 'Isi rahasia');
+      expect(realtime.kind, RealtimeChatMessageKind.text);
+      expect(realtime.sender?.fullName, 'Ahmad Islam');
+      expect(event.toString(), isNot(contains('Isi rahasia')));
+      expect(realtime.toString(), isNot(contains('Isi rahasia')));
+      // Klien menyimpan pesan realtime dengan model HTTP yang sama (chat.yaml ChatMessage).
+      final http = ChatMessage.fromJson(realtime.toJson());
+      expect(http.id, message);
+      expect(http.kind, ChatMessageKind.text);
+      expect(http.replyTo?.available, isFalse);
+      expect(http.reactions, isEmpty);
+    });
+
+    test('payload menyimpang (field wajib hilang) melempar FormatException', () {
+      expect(
+        () => RealtimeEvent.fromJson(eventJson('typing', <String, Object?>{'room_id': room})),
+        throwsFormatException,
+      );
     });
 
     test('jenis yang belum dikenal menjadi UnknownRealtimeEvent (kompatibilitas maju, N-13)', () {

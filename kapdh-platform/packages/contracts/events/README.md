@@ -32,6 +32,35 @@ dikompilasi Ajv mode strict; setiap contoh wajib lolos skemanya.
 Klien hanya mengirim `typing {room_id}` dan `presence.ping`. Autentikasi handshake `{token: <access JWT>}`;
 pencabutan sesi/izin memutus atau melepas langganan (AC F02-6, F11-6, F16-3).
 
+Emit klien (tidak memakai amplop; tidak ada endpoint HTTP untuk typing/presence, PRD 3.11):
+
+- `typing` dengan data `{ "room_id": "<uuid>" }`. Server memeriksa ulang sesi, effective_status aktif
+  (verified/expiring, tidak suspended) dan keanggotaan joined pada setiap emit; bila tidak lagi berizin emit
+  diabaikan dan subscription room dicabut (AC F11-4, F11-6). Diteruskan sebagai event `typing` (dibatasi laju).
+- `presence.ping` tanpa data, dikirim berkala selama aplikasi aktif dan lebih sering daripada `ttl_seconds` event
+  `presence` yang diterima. Presence dan typing hanya sementara (TTL), bukan bukti pesan dibaca.
+- Pesan TIDAK dikirim lewat socket: klien memakai `POST /chat/rooms/{roomId}/messages` (ack sesudah commit,
+  AC F11-2), lalu menerima `message.created`.
+
+## Sinkron setelah reconnect (AC F11-3, N-02)
+
+Event hanya sampai ke socket yang sedang tersambung dan event dari transaksi berbeda dapat tiba tidak berurutan.
+Aturan klien dan server berikut mencegah pesan atau penghapusan hilang:
+
+1. Server: setiap insert pesan (termasuk pesan sistem) mengunci baris room lebih dulu, mengisi `created_at` =
+   `greatest(clock_timestamp(), rooms.last_message_at + 1 mikrodetik)` dan memperbarui `rooms.last_message_at` dalam
+   transaksi yang sama. Urutan commit per room sama dengan urutan keyset `(created_at, id)`.
+2. Klien menyimpan jangkar sinkron per room = ID pesan terbaru dari respons HTTP
+   `GET /chat/rooms/{roomId}/messages` (halaman HTTP selalu tanpa celah). `message.created` tidak memajukan jangkar.
+3. Setelah reconnect klien memanggil `GET /chat/rooms/{roomId}/messages?after=<jangkar>` sampai `next_cursor` null,
+   menggabungkan berdasarkan `id` (pesan yang sudah diterima lewat event tidak terduplikasi), lalu memajukan jangkar.
+4. Penghapusan (`message.deleted`) dan reaksi (`reaction.updated`) pada pesan lama tidak ikut sinkron `after`.
+   Setelah reconnect dan setiap kali room dibuka, klien memuat ulang jendela pesan yang ditampilkan (halaman terbaru;
+   halaman lama lewat `before` saat digulir) dan mengganti salinan lokal. Salinan lokal hanya tampil sementara sampai
+   halaman HTTP tiba, sehingga placeholder penghapusan (termasuk AC F14-3) selalu diterapkan.
+5. Metadata room dan keanggotaan dimuat ulang lewat `GET /chat/rooms` dan `GET /chat/rooms/{roomId}` setelah
+   reconnect; undangan lewat `GET /chat/invitations`; kotak masuk lewat `GET /notifications`.
+
 ## Payload per jenis event (penulis kontrak C6)
 
 Setiap jenis di `properties.type.enum` amplop WAJIB berada di tepat satu keadaan:
@@ -42,7 +71,36 @@ Setiap jenis di `properties.type.enum` amplop WAJIB berada di tepat satu keadaan
 | Tanpa payload | jenis tercantum di `x-kapdh-payload-less` amplop (payload selalu `{}`) | TS `Record<string, never>`, Dart tanpa `payload` |
 | Pending       | jenis tercantum di `x-kapdh-payload-pending` amplop (lint: peringatan) | TS `Record<string, unknown>`, Dart `Map` mentah  |
 
-Saat ini kesepuluh jenis masih pending. Untuk menulis payload:
+Kesepuluh jenis sudah bertipe (penulis kontrak C6). Ringkasan payload, `entity_id` dan kanal pengiriman:
+
+| Jenis                  | `entity_id`   | Kanal                                      | Payload (ringkas)                                                         |
+| ---------------------- | ------------- | ------------------------------------------ | ------------------------------------------------------------------------- |
+| `message.created`      | ID pesan      | `room:<id>`                                | `room_id`, `message` (`RealtimeChatMessage`, bentuk = `ChatMessage` HTTP) |
+| `message.deleted`      | ID pesan      | `room:<id>`                                | `room_id`, `message_id`, `deleted_at`                                     |
+| `reaction.updated`     | ID pesan      | `room:<id>`                                | `room_id`, `message_id`, `user_id`, `emoji`, `action`, `counts`           |
+| `read.updated`         | ID room       | `room:<id>`                                | `room_id`, `user_id`, `last_read_message_id`, `last_read_at`              |
+| `room.updated`         | ID room       | `room:<id>`; `user:<id>` untuk mute/blokir | `room_id`, `version`, `changes`, `name`, `avatar_url`, `closed_at`        |
+| `room.member_changed`  | ID room       | lihat catatan kanal di bawah               | `room_id`, `user_id`, `change`, `role`, `member_count`, `actor_user_id`   |
+| `typing`               | ID room       | `room:<id>` (kecuali pengirim)             | `room_id`, `user_id`, `ttl_seconds`                                       |
+| `presence`             | user_id       | anggota room yang sama                     | `user_id`, `status`, `ttl_seconds`                                        |
+| `notification.created` | ID notifikasi | `user:<id>`                                | field `InboxNotification` (tanpa `read_at`) + `unread_count`              |
+| `session.revoked`      | ID sesi       | socket sesi yang dicabut                   | `reason`, `all_sessions`                                                  |
+
+Kanal `room.member_changed` (undangan tertunda hanya terlihat admin grup, PRD 3.11, N-09):
+
+- `joined`, `left`, `removed`, `role_changed`: `room:<room_id>` dan `user:<user_id>` pengguna yang terdampak.
+- `invited`, `invitation_cancelled`, `declined`: HANYA `user:<user_id>` calon anggota dan `user:<id>` setiap admin grup
+  yang joined; tidak pernah `room:<room_id>`. Pembatalan karena blokir, grup ditutup, atau penghapusan akun memakai
+  `actor_user_id` null agar blokir tidak terungkap.
+
+Skema bersama: `realtime-chat-message`, `realtime-chat-user`, `realtime-chat-image`, `realtime-chat-reply`,
+`realtime-chat-reaction` (bentuk JSON sama dengan `ChatMessage`, `ChatUserRef`, `ChatImage`, `ChatMessageReply`,
+`ChatReaction` di `openapi/domains/chat.yaml`; ubah keduanya bersamaan) dan `realtime-reaction-count`.
+
+Fixture generator (`scripts/lib/dart/fixture.mjs`) tetap memaksa `session.revoked` tanpa payload dan `typing`
+pending agar kedua keadaan itu terus teruji walaupun kontrak nyata sudah bertipe semua.
+
+Untuk menambah atau mengubah payload:
 
 1. Tambahkan `events/<type>.schema.json`, mis. `message.created.schema.json`, dengan `$id`
    `https://kapdh.or.id/contracts/events/<type>.schema.json`, `title` `<Type>Payload` (`MessageCreatedPayload`,
