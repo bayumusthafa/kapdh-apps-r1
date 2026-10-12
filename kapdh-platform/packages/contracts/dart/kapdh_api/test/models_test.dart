@@ -299,7 +299,7 @@ void main() {
       'typing': <String, Object?>{'room_id': room, 'user_id': user, 'ttl_seconds': 5},
       'presence': <String, Object?>{'user_id': user, 'status': 'online', 'ttl_seconds': 60},
       'notification.created': <String, Object?>{
-        'notification_id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4ea0',
+        'id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4ea0',
         'category': 'chat',
         'title': 'Undangan grup baru',
         'body': null,

@@ -132,7 +132,9 @@ paths:
       description: |
         Hanya anggota joined; selain itu 404 NOT_FOUND (AC F11-4). `can_send` false beserta `send_restriction`
         bila pengiriman ditolak server: blokir dua arah di room direct (AC F12-1), lawan bicara tidak lagi aktif,
-        atau grup ditutup. `peer_last_read_message_id` (room direct) dipakai untuk status "terbaca".
+        atau grup ditutup; blokir oleh lawan bicara dilaporkan sebagai peer_unavailable (lihat ChatSendRestriction).
+        `peer_last_read_message_id` (room direct) dipakai untuk status "terbaca". Riwayat lama tetap dapat dibaca
+        walaupun ada blokir (PRD 3.12).
       x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/ChatRoomId"
@@ -142,6 +144,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ChatRoom" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -151,11 +154,12 @@ paths:
       operationId: updateChatRoom
       summary: Ubah nama atau avatar grup; hanya admin grup (F-11).
       description: |
-        Hanya room group dan hanya anggota joined berperan admin; anggota biasa -> 403 FORBIDDEN, room direct ->
-        400 VALIDATION_ERROR, grup ditutup -> 409 VERSION_CONFLICT dengan `current`. Versi room wajib dikirim di
-        If-Match; versi berbeda -> 409 VERSION_CONFLICT dengan `current` = ChatRoom terbaru (AC F15-4 pola konflik).
-        Avatar memakai berkas purpose chat_image milik pemanggil; `avatar_file_id: null` menghapus avatar.
-        Perubahan dikirim ke anggota lewat event `room.updated`.
+        Hanya room group dan hanya anggota joined berperan admin (`can_manage` true); anggota biasa atau grup yang
+        sudah ditutup -> 403 FORBIDDEN, room direct -> 400 VALIDATION_ERROR. Versi room wajib dikirim di If-Match;
+        versi berbeda -> 409 VERSION_CONFLICT dengan `current` = ChatRoom terbaru (pola konflik AC F15-4). Nama
+        dipangkas server dan tidak boleh kosong (rooms_name_chk). Avatar memakai berkas purpose chat_image milik
+        pemanggil yang siap (status ready); `avatar_file_id: null` menghapus avatar. Perubahan dikirim ke anggota
+        lewat event `room.updated` (changes group_name/group_avatar) dan pesan sistem.
       x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/ChatRoomId"
@@ -342,6 +346,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ChatRoom" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -362,6 +367,7 @@ paths:
         - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "204": { description: Undangan ditolak. }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -528,6 +534,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ChatMessage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -577,6 +584,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ChatMessageReactions" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -675,8 +683,12 @@ components:
       type: string
       enum: [blocked, peer_unavailable, room_closed]
       description: |
-        Alasan pengiriman ditolak server: blocked = blokir dua arah di room direct (AC F12-1); peer_unavailable =
-        lawan bicara tidak lagi anggota aktif atau akunnya dihapus; room_closed = grup ditutup.
+        Alasan pengiriman ditolak server (room direct kecuali room_closed):
+        - blocked = pemanggil memblokir lawan bicara (AC F12-1); UI menawarkan "Buka blokir".
+        - peer_unavailable = lawan bicara tidak lagi anggota aktif, akunnya dihapus, ATAU lawan bicara memblokir
+          pemanggil. Blokir dari pihak lain sengaja dilaporkan sebagai peer_unavailable agar pihak yang diblokir
+          tidak mengetahuinya (sama dengan can_message di profil, N-09).
+        - room_closed = grup ditutup.
 
     ChatUserRef:
       type: object
@@ -696,7 +708,9 @@ components:
           properties:
             available:
               type: boolean
-              description: False bila lawan bicara tidak lagi anggota aktif (expired/suspended) atau akun dihapus.
+              description: |
+                False bila lawan bicara tidak lagi anggota aktif (expired/suspended), akunnya dihapus, atau ia
+                memblokir pemanggil; alasan sengaja tidak dibedakan (N-09, AC F12-1).
 
     ChatMessagePreview:
       type: object
