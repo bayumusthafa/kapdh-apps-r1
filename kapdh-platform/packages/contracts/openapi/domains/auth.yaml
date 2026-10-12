@@ -27,6 +27,12 @@
 # sifat sekali pakai dijamin transisi keadaan atomik yang membatalkan pengikatnya (reset mengganti password_hash yang
 # diikat token; konfirmasi hapus mengubah akun menjadi deletion_pending), di dalam transaksi dengan baris users
 # terkunci. Token tidak pernah dicatat di log atau audit (ARCHITECTURE §2 butir 3).
+#
+# Keluarga sesi (AC F02-3): setiap rotasi refresh membuat baris `sessions` baru dengan `family_id` yang sama. Identitas
+# yang terlihat klien (`Session.id`) dan semua keadaan yang harus bertahan selama rotasi melekat pada KELUARGA, bukan
+# pada baris: `reauthenticated_at` dan `last_activity_at` disalin ke baris baru saat rotasi, dan `reauth_token`
+# (POST /auth/reauth) terikat `family_id`, sehingga refresh di tengah alur sensitif tidak membatalkan reautentikasi
+# yang masih di bawah 10 menit (F-14, AC F15-3, F16-1). Mencabut keluarga membatalkan semuanya sekaligus.
 tags:
   - name: Auth
     description: |
@@ -53,10 +59,23 @@ paths:
         berubah), sehingga tidak ada akun ganda (AC F01-4). Idempotency-Key yang sama dengan payload sama
         mengembalikan challenge pertama (PRD 4.3). Nomor anggota belum dialokasikan sampai OTP terverifikasi.
 
-        Persetujuan privasi dan ketentuan dicatat bersama versi dan waktunya (F-01).
-        Galat: 400 VALIDATION_ERROR (field tidak valid, kelas keluar sebelum kelas masuk, angkatan di luar
-        rentang); 409 VALIDATION_ERROR `field_errors.email` bila email sudah dipakai akun alumni yang aktif,
-        dinonaktifkan atau sedang dihapus; 429 RATE_LIMITED (batas pengiriman OTP).
+        Persetujuan privasi dan ketentuan dicatat bersama versi dan waktunya (F-01). Klien menampilkan kedua
+        dokumen dari GET /public/pages lalu mengirim `consent.policy_version` (skema `LegalConsentVersions`,
+        domain content) apa adanya sebagai `accept_policy_version`. Server TIDAK mempercayai nilai klien: di dalam
+        transaksi register ia menyusun ulang nilai terkini dari `app_settings.legal`
+        (`privacy:<privacy_version>;terms:<terms_version>`) dan membandingkannya sebelum memeriksa email. Hanya nilai
+        yang sama persis yang disimpan di `users.policy_version`, dengan `users.policy_accepted_at` = waktu server
+        (Clock) saat request diterima; pendaftaran ulang akun `pending_otp` memperbarui keduanya. Tidak sama ->
+        409 VERSION_CONFLICT dengan `current` berisi `LegalConsentVersions` terkini: klien memuat ulang dokumen,
+        meminta persetujuan lagi, lalu mengirim ulang. Selama kebijakan privasi atau ketentuan belum pernah terbit,
+        `current.policy_version` null dan setiap registrasi ditolak 409 yang sama; klien menampilkan "Pendaftaran
+        belum dibuka" (PRD 8.2 langkah 4).
+
+        Galat: 400 VALIDATION_ERROR (field tidak valid, `accept_policy_version` tidak berpola, kelas keluar sebelum
+        kelas masuk, angkatan di luar rentang); 409 VERSION_CONFLICT (versi persetujuan usang atau dokumen legal
+        belum terbit, lihat di atas); 409 VALIDATION_ERROR `field_errors.email` bila email sudah dipakai akun
+        alumni yang aktif, dinonaktifkan atau sedang dihapus; 409 IDEMPOTENCY_CONFLICT; 429 RATE_LIMITED (batas
+        pengiriman OTP).
       security: []
       x-kapdh-access: { audience: public, idempotent: true }
       parameters:
@@ -75,9 +94,11 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "409":
           description: |
-            Email sudah terdaftar. Kode VALIDATION_ERROR dengan `field_errors.email` agar klien menampilkannya di field
-            email beserta tautan masuk atau lupa sandi (IDEMPOTENCY_CONFLICT bila key dipakai ulang dengan payload
-            berbeda).
+            VERSION_CONFLICT: `accept_policy_version` bukan versi persetujuan terkini atau dokumen legal belum terbit;
+            `current` berisi `LegalConsentVersions` (`policy_version` null = pendaftaran belum dibuka).
+            VALIDATION_ERROR: email sudah terdaftar, dengan `field_errors.email` agar klien menampilkannya di field
+            email beserta tautan masuk atau lupa sandi. IDEMPOTENCY_CONFLICT bila key dipakai ulang dengan payload
+            berbeda.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -98,9 +119,11 @@ paths:
 
         Challenge pemulihan sandi diverifikasi di POST /auth/password/forgot/verify dan challenge hapus akun di
         POST /public/deletion/verify. Challenge dengan tujuan lain, tidak dikenal, kedaluwarsa, sudah dipakai,
-        sudah diganti (resend, pendaftaran ulang, koreksi email), percobaan habis, atau sandi akun berubah setelah
-        kode dikirim, semuanya ditolak 410 OTP_EXPIRED tanpa membedakan penyebab; UI menawarkan challenge baru
-        sesuai cooldown (AC F01-3).
+        sudah diganti (resend, pendaftaran ulang, koreksi email), percobaan habis, sandi akun berubah setelah
+        kode dikirim, atau akun tidak lagi `pending_otp` (mis. pendaftaran dibatalkan lewat penghapusan web,
+        account.yaml), semuanya ditolak 410 OTP_EXPIRED tanpa membedakan penyebab; aktivasi memakai UPDATE
+        bersyarat `WHERE status = 'pending_otp'` dengan baris users terkunci sehingga tidak pernah balapan dengan
+        penghapusan. UI menawarkan challenge baru sesuai cooldown (AC F01-3).
 
         Hasil tidak diketahui (respons hilang, timeout, ketuk ganda; AC F01-4, PRD 4.5): verifikasi tidak dapat
         diulang karena kode sudah dikonsumsi, dan token sesi tidak pernah disimpan di penyimpanan idempotensi. Bila
@@ -160,7 +183,10 @@ paths:
         terdaftar atau tidak memenuhi syarat diperlakukan persis seperti challenge nyata: resend menghasilkan
         challenge pengganti baru dengan cooldown dan batas yang sama, tanpa mengirim email (PRD 2.5).
         410 OTP_EXPIRED bila challenge sudah dipakai, sudah diganti, tidak dikenal, atau akun tidak lagi pada
-        keadaan yang sesuai tujuan.
+        keadaan yang sesuai tujuan (`signup`/`email_change`: pending_otp; `password_reset`: active; `deletion`:
+        active, pending_otp, deletion_pending atau disabled). Resend selalu mengirim email dan memakai batas kirim;
+        untuk sekadar membaca keadaan challenge (layar yang dibuka dari tautan atau setelah aplikasi dimulai
+        ulang) gunakan POST /auth/otp/status.
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -171,6 +197,49 @@ paths:
       responses:
         "200":
           description: Challenge baru dibuat dan kode baru dikirim.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OtpChallenge" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "410":
+          description: Challenge sudah dipakai, diganti, atau tidak dikenal (OTP_EXPIRED); mulai ulang alurnya.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/otp/status:
+    post:
+      tags: [Auth]
+      operationId: getOtpChallengeStatus
+      summary: Baca keadaan challenge OTP tanpa mengirim, mengganti atau mengonsumsi kode (PRD 2.5, AC F16-4, F01-3).
+      description: |
+        Hanya-baca untuk semua tujuan. Dipakai layar OTP yang dibuka dari tautan email (pemulihan sandi yang
+        diinisiasi pengurus, AC F16-4, rute /forgot/otp) atau yang dipulihkan setelah aplikasi dimulai ulang, agar
+        dapat menampilkan email tujuan, masa berlaku 10 menit, "Sisa percobaan n dari 5" dan hitung mundur kirim
+        ulang (prototype screen_1_otp) tanpa memanggil POST /auth/otp/resend, yang akan ditolak cooldown 60 detik,
+        mengganti kode yang baru diterima pengguna, mengirim email lagi dan memakan batas 5 kirim per jam.
+
+        Tidak mengirim email, tidak membuat/membatalkan challenge, tidak menambah percobaan dan tidak dihitung ke
+        batas kirim OTP per email. Mengembalikan 200 tepat ketika POST /auth/otp/resend masih dapat menerima
+        challenge ini, termasuk challenge yang sudah kedaluwarsa (`expires_at` lampau) atau percobaannya habis
+        (`attempts_left` 0) sehingga UI langsung menawarkan kirim ulang; 410 OTP_EXPIRED tepat ketika resend juga
+        akan 410 (sudah dipakai, sudah diganti, tidak dikenal, atau akun tidak lagi pada keadaan yang sesuai
+        tujuan; tidak dibedakan). Challenge pengganti dari alur non-enumerasi (lupa sandi, hapus akun web)
+        menghasilkan bentuk, nilai dan waktu respons yang sama dengan challenge nyata (PRD 2.5).
+        challenge_id dikirim di body, tidak di path/query, agar tidak tercatat di log akses. Galat: 400
+        VALIDATION_ERROR; 410 OTP_EXPIRED; 429 RATE_LIMITED (batas per IP, terpisah dari batas kirim OTP).
+      security: []
+      x-kapdh-access: { audience: public }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OtpChallengeStatusRequest" }
+      responses:
+        "200":
+          description: Keadaan challenge saat ini.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/OtpChallenge" }
@@ -292,8 +361,10 @@ paths:
 
         Rotasi atomik: sesi baru dalam keluarga yang sama dibuat dan sesi lama ditandai `replaced_by` dengan
         UPDATE bersyarat; token yang sudah dirotasi atau dicabut, bila dipakai lagi, mencabut seluruh keluarga dan
-        menghasilkan 401 (AC F02-3). Refresh tidak dihitung sebagai aktivitas: sesi admin yang menganggur lebih
-        dari 30 menit ditolak 401 (AC F02-5, N-08). Akun `disabled`, `deletion_pending` atau `deleted` ditolak 401.
+        menghasilkan 401 (AC F02-3). Baris baru mewarisi keadaan keluarga dari baris yang dirotasi:
+        `reauthenticated_at`, `last_activity_at`, `mfa_level` dan `device_name` (kepala berkas), sehingga
+        X-Reauth-Token yang masih berlaku tetap diterima setelah refresh. Refresh tidak dihitung
+        sebagai aktivitas: sesi admin yang menganggur lebih dari 30 menit ditolak 401 (AC F02-5, N-08). Akun `disabled`, `deletion_pending` atau `deleted` ditolak 401.
         Refresh mobile memperbarui `app_version`/`platform` sesi dari header X-App-Version/X-App-Platform.
         403 FORBIDDEN bila Origin cookie admin tidak sesuai.
       security:
@@ -418,15 +489,18 @@ paths:
         sehingga respons, waktu dan 429 tidak membedakan keadaan akun. Cooldown kegagalan login tidak menutup alur
         ini (PRD 2.5). Akun admin memulihkan sandi melalui undangan ulang Super Admin (F-16), bukan endpoint ini.
 
-        Reset yang diinisiasi pengurus (AC F16-4, F-16; operasi milik domain admin-members, topik outbox
-        `member.password_reset_initiated`) mencabut seluruh sesi anggota, mengirim notifikasi keamanan, dan
-        menerbitkan challenge `password_reset` yang sama bentuknya HANYA ke email terverifikasi anggota. Email itu
-        memuat kode dan tautan `kapdh://app/forgot/otp?challenge_id=<uuid>` (rute /forgot/otp, ARCHITECTURE §8.4).
-        Tautan hanya membawa challenge_id, bukan kode, sehingga kode dari email tetap wajib dimasukkan di
-        POST /auth/password/forgot/verify. Layar yang dibuka dari tautan belum mengetahui sisa percobaan dan cooldown
-        sampai respons pertama (kode salah memuat sisa percobaan; POST /auth/otp/resend dengan challenge_id itu
-        mengembalikan OtpChallenge lengkap). Bila anggota justru memulai endpoint ini, challenge dari pengurus
-        dibatalkan dan diganti challenge baru ke email yang sama, yaitu kanal terverifikasi yang sama.
+        Reset yang diinisiasi pengurus (AC F16-4, F-16; operasi adminInitiateMemberPasswordReset milik domain
+        admin-members, topik outbox `member.password_reset_initiated`) mencabut seluruh sesi anggota, mengirim
+        notifikasi keamanan, dan menerbitkan challenge `password_reset` yang sama bentuknya HANYA ke email
+        terverifikasi anggota. Email itu memuat kode dan tautan aplikasi yang didefinisikan admin-members:
+        `${PUBLIC_WEB_URL}/app/forgot/otp?challenge=<challenge_id>` atau bentuk skema setara
+        `kapdh://app/forgot/otp?challenge=<challenge_id>` (rute /forgot/otp, ARCHITECTURE §4.7, §8.4). Tautan hanya
+        membawa challenge_id, bukan kode, sehingga kode dari email tetap wajib dimasukkan di
+        POST /auth/password/forgot/verify. Layar yang dibuka dari tautan memanggil POST /auth/otp/status dengan
+        challenge_id itu untuk menampilkan email, masa berlaku, sisa percobaan dan hitung mundur kirim ulang tanpa
+        mengganti kode yang baru diterima; POST /auth/otp/resend hanya dipanggil bila pengguna menekan "Kirim
+        ulang". Bila anggota justru memulai endpoint ini, challenge dari pengurus dibatalkan dan diganti challenge
+        baru ke email yang sama, yaitu kanal terverifikasi yang sama.
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -564,9 +638,24 @@ paths:
         Membuktikan ulang identitas pemilik sesi sebelum tindakan sensitif (hapus akun F-14, ubah biaya/metode/versi
         minimum AC F15-3, admin dan izin AC F16-1). Alumni: sandi. Admin: sandi DAN salah satu `totp_code`
         (kode yang sama tidak dapat dipakai dua kali, `mfa_totp.last_used_step`) atau `backup_code` (sekali pakai,
-        dikonsumsi atomik). `sessions.reauthenticated_at` diperbarui; `reauth_token` (JWT audience kapdh-reauth,
-        terikat sesi ini) dikirim lewat header X-Reauth-Token pada operasi sensitif dan berlaku maksimal 10 menit
-        (ARCHITECTURE §4.3). Anggota suspended tetap dapat reautentikasi untuk penghapusan akun (deletion-only).
+        dikonsumsi atomik). `reauth_token` dikirim lewat header X-Reauth-Token pada operasi sensitif dan berlaku
+        maksimal 10 menit (ARCHITECTURE §4.3); boleh dipakai berulang dalam jendela itu (mis. beberapa perubahan
+        pengaturan berturut-turut).
+
+        Pengikatan ke KELUARGA sesi, bukan baris sesi (kepala berkas): token adalah JWT audience `kapdh-reauth`
+        dengan `sub` = pengguna, `sid` = `family_id` sesi pemanggil (sama dengan `Session.id` di GET
+        /auth/sessions), `lvl` = tingkat MFA saat reautentikasi (2 bila TOTP/backup code dipakai) dan `iat` =
+        waktu reautentikasi; `sessions.reauthenticated_at` keluarga diperbarui ke waktu yang sama dan diwarisi
+        baris baru setiap rotasi refresh. Operasi `reauth: true` menerima token bila tanda tangan dan audience
+        sah, umur `iat` paling lama 10 menit, `sub` sama dengan pengguna access token, `sid` sama dengan
+        `family_id` sesi yang membawa access token (bukan id baris), dan untuk sesi admin `lvl` 2; selain itu 403
+        REAUTH_REQUIRED. Dengan demikian refresh access token 15 menit di tengah alur sensitif (mis. membaca
+        pengungkapan lalu POST /me/deletion, atau dialog reautentikasi Super Admin, AC F15-3, F16-1) tidak
+        memaksa reautentikasi ulang, sedangkan token dari keluarga lain (perangkat lain) selalu ditolak. Mencabut
+        keluarga (logout, revokeSession, logout-all, reset sandi, penghapusan akun) membuat access token keluarga
+        itu ditolak 401 sehingga reauth_token-nya tidak dapat dipakai lagi.
+
+        Anggota suspended tetap dapat reautentikasi untuk penghapusan akun (deletion-only).
         Kredensial salah adalah galat formulir 400 VALIDATION_ERROR (`field_errors.password`,
         `field_errors.totp_code` atau `field_errors.backup_code`), bukan 401; 5 kegagalan dalam 15 menit per sesi
         menghasilkan 429 RATE_LIMITED.
@@ -620,11 +709,15 @@ components:
           description: Kelas keluar; tidak boleh sebelum kelas masuk (`field_errors.class_out`).
         accept_policy_version:
           type: string
-          minLength: 1
+          pattern: "^privacy:[1-9][0-9]*;terms:[1-9][0-9]*$"
           maxLength: 64
+          examples: ["privacy:3;terms:1"]
           description: |
-            Versi kebijakan privasi dan ketentuan yang ditampilkan dan disetujui pengguna; dicatat di
-            `users.policy_version` beserta waktu persetujuan (F-01).
+            `LegalConsentVersions.policy_version` dari GET /public/pages (`consent`), dikirim apa adanya setelah
+            pengguna membaca dan menyetujui kebijakan privasi serta ketentuan layanan (F-01). Server
+            membandingkannya dengan nilai yang disusun ulang dari `app_settings.legal` di dalam transaksi register;
+            hanya nilai yang sama yang disimpan di `users.policy_version` beserta `policy_accepted_at`. Berbeda atau
+            dokumen belum terbit -> 409 VERSION_CONFLICT (lihat operasi register).
 
     OtpPurpose:
       type: string
@@ -632,7 +725,7 @@ components:
       description: |
         Tujuan challenge OTP; kode terikat akun, tujuan dan challenge_id (PRD 2.5). `signup` pendaftaran,
         `email_change` koreksi email akun pending_otp (PRD 2.2), `password_reset` lupa sandi (F-02), `deletion`
-        penghapusan/pemeriksaan status dari web (F-14). `signup` dan `email_change` berbagi satu slot aktivasi:
+        penghapusan/pemeriksaan status dari web (F-14), termasuk pembatalan pendaftaran `pending_otp`. `signup` dan `email_change` berbagi satu slot aktivasi:
         paling banyak satu dari keduanya aktif per akun.
 
     OtpChallenge:
@@ -686,6 +779,16 @@ components:
       required: [challenge_id]
       properties:
         challenge_id: { type: string, format: uuid }
+
+    OtpChallengeStatusRequest:
+      type: object
+      description: Permintaan baca keadaan challenge (POST /auth/otp/status); tidak memuat kode.
+      required: [challenge_id]
+      properties:
+        challenge_id:
+          type: string
+          format: uuid
+          description: Dari respons penerbit challenge atau parameter `challenge` tautan email pemulihan (AC F16-4).
 
     EmailCorrectionRequest:
       type: object
@@ -856,5 +959,14 @@ components:
       type: object
       required: [reauth_token, expires_at]
       properties:
-        reauth_token: { type: string, description: Dikirim lewat header X-Reauth-Token; terikat sesi ini. }
-        expires_at: { type: string, format: date-time, description: Maksimal 10 menit sejak reautentikasi. }
+        reauth_token:
+          type: string
+          x-sensitive: true
+          description: |
+            Dikirim lewat header X-Reauth-Token. Terikat pengguna dan keluarga sesi pemanggil (`sid` = `family_id`
+            = `Session.id`), sehingga tetap berlaku setelah rotasi refresh; tidak berlaku di keluarga sesi lain.
+            Simpan hanya di memori; jangan dicatat (ARCHITECTURE §2 butir 3).
+        expires_at:
+          type: string
+          format: date-time
+          description: Maksimal 10 menit sejak reautentikasi; tidak diperpanjang oleh refresh.
