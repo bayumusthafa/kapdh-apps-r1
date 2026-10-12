@@ -26,7 +26,8 @@ type Values = { code: string };
 
 /**
  * Masuk web admin tahap 2: TOTP 6 digit atau backup code sekali pakai (AC F02-2). Access token baru terbit
- * setelah tahap ini; refresh token disimpan server di cookie HttpOnly.
+ * setelah tahap ini; refresh token disimpan server di cookie HttpOnly. Kode salah ditampilkan pada isian kode
+ * (galat formulir 400 beserta sisa percobaan); mfa_token kedaluwarsa (401) meminta admin mulai ulang.
  */
 export function MfaPage() {
   const auth = useAuth();
@@ -45,11 +46,15 @@ export function MfaPage() {
       return;
     }
     form.setValue("code", "");
-    if (err.status === 401)
+    // Kontrak admin-auth: kode salah = 400 VALIDATION_ERROR dengan field_errors.totp_code/backup_code berisi sisa
+    // percobaan (mfa_token tetap berlaku); 401 hanya bila mfa_token tidak berlaku lagi.
+    const codeErrors = err.fieldErrors.totp_code ?? err.fieldErrors.backup_code;
+    if (err.code === "VALIDATION_ERROR" && codeErrors) {
+      form.setError("code", { type: "server", message: codeErrors.join(" ") }, { shouldFocus: true });
+    } else if (err.status === 401)
       form.setError("root.server", {
         type: "server",
-        message:
-          "Kode salah atau sesi masuk sudah kedaluwarsa. Coba lagi, atau mulai ulang dari halaman masuk.",
+        message: "Sesi masuk sudah kedaluwarsa. Mulai ulang dari halaman masuk.",
       });
     else
       form.setError("root.server", {

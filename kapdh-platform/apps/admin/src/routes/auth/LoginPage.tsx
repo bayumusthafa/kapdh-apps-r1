@@ -97,7 +97,8 @@ export function LoginPage() {
           Masuk
         </Button>
         <p className="text-xs text-text-muted">
-          Gunakan akun admin KAPDH. Akun alumni pribadi tidak dapat dipakai di web admin.
+          Gunakan akun admin KAPDH. Akun alumni pribadi tidak dapat dipakai di web admin. Belum menyelesaikan
+          aktivasi? Minta undangan ulang ke Super Admin.
         </p>
       </form>
     </AuthLayout>

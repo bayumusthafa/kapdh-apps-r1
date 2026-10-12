@@ -153,6 +153,14 @@ Map<String, Object?> tokenPairJson({
   'refresh_expires_at': _iso(testNow.add(const Duration(days: 30))),
 };
 
+/// `users.status` yang sesuai dengan effective_status uji (PRD 2.2): status autentikasi untuk pending_otp,
+/// disabled dan deletion_pending; selain itu akun `active`.
+String _accountStatusFor(String effectiveStatus) => switch (effectiveStatus) {
+  'pending_otp' || 'disabled' || 'deletion_pending' => effectiveStatus,
+  _ => 'active',
+};
+
+/// GET /me (`Me`, kontrak C2) dengan semua field wajib; field nullable dikirim null bila tidak berlaku.
 Map<String, Object?> meJson({
   String userId = 'user-1',
   String status = 'verified',
@@ -162,10 +170,18 @@ Map<String, Object?> meJson({
 }) => {
   'user_id': userId,
   'email': 'ahmad.islam@email.com',
+  'account_status': _accountStatusFor(status),
   'effective_status': status,
-  'member_number': '29.01.01.7',
-  'expires_at': ?expiresAt?.toUtc().toIso8601String(),
-  'suspension_message': ?suspensionMessage,
+  // Nomor anggota dialokasikan saat OTP pendaftaran terverifikasi (AC F01-2).
+  'member_number': status == 'pending_otp' ? null : '29.01.01.7',
+  'cohort_code': 'KAPDH 29',
+  'starts_at': expiresAt == null ? null : _iso(DateTime.utc(expiresAt.year - 1, expiresAt.month, expiresAt.day)),
+  'expires_at': expiresAt == null ? null : _iso(expiresAt),
+  'renewal_eligible': status == 'expiring' || status == 'expired',
+  'renewal_opens_at': expiresAt == null ? null : _iso(expiresAt.subtract(const Duration(days: 30))),
+  'registration_payment': null,
+  'renewal_payment': null,
+  'suspension_message': suspensionMessage,
   'version': '3',
   'profile': {
     'full_name': fullName,
@@ -177,6 +193,20 @@ Map<String, Object?> meJson({
     'entry_year': 2019,
     'exit_year': 2025,
     'education_status': '01',
+    'city': 'Pekanbaru',
+    'phone': null,
+    'bio': null,
+    'last_education_institution': null,
+    'last_education_city': null,
+    'social_instagram': null,
+    'social_x': null,
+    'social_facebook': null,
+    'social_linkedin': null,
+    'profession': null,
+    'skills': <Object?>[],
+    'avatar_file_id': null,
+    'avatar_url': null,
+    'privacy': {'show_in_directory': true, 'show_phone': false, 'show_email': false, 'show_social': false},
   },
 };
 
@@ -214,23 +244,37 @@ Map<String, Object?> memberCardJson({
   DateTime? syncedAt,
   DateTime? qrExpiresAt,
   bool withQr = true,
-}) => {
-  'status_label': status,
-  'member_number': '29.01.01.7',
-  'full_name': 'Ahmad Islam',
-  'cohort': 29,
-  'cohort_code': 'KAPDH 29',
-  'graduation_year': 2025,
-  'profession_label': 'Guru Bahasa Arab',
-  'city': 'Pekanbaru',
-  'expires_at': ?expiresAt?.toUtc().toIso8601String(),
-  if (withQr)
-    'qr': {
-      'url': 'https://kapdh.or.id/kta/29.01.01.7#t=token-uji',
-      'token_expires_at': _iso(qrExpiresAt ?? (syncedAt ?? testNow).add(const Duration(days: 7))),
+}) {
+  final synced = syncedAt ?? testNow;
+  final qrExpires = qrExpiresAt ?? synced.add(const Duration(days: 7));
+  // Batas tampilan offline = min(synced_at + 7 hari, expires_at, qr.token_expires_at); hanya kartu aktif ber-QR.
+  final offlineCandidates = [synced.add(const Duration(days: 7)), qrExpires, ?expiresAt];
+  final offlineValidUntil = withQr ? offlineCandidates.reduce((a, b) => a.isBefore(b) ? a : b) : null;
+  return {
+    'status_label': status,
+    'member_number': '29.01.01.7',
+    'full_name': 'Ahmad Islam',
+    'cohort': 29,
+    'cohort_code': 'KAPDH 29',
+    'graduation_year': 2025,
+    'profession_label': 'Guru Bahasa Arab',
+    'city': 'Pekanbaru',
+    'avatar_url': null,
+    'expires_at': expiresAt == null ? null : _iso(expiresAt),
+    'qr': withQr
+        ? {'url': 'https://kapdh.or.id/kta/29.01.01.7#t=token-uji', 'token_expires_at': _iso(qrExpires)}
+        : null,
+    'action': switch (status) {
+      'inactive' => 'pay_registration',
+      'expiring' || 'expired' => 'renew',
+      _ => null,
     },
-  'synced_at': _iso(syncedAt ?? testNow),
-};
+    'open_payment_id': null,
+    'renewal_opens_at': expiresAt == null ? null : _iso(expiresAt.subtract(const Duration(days: 30))),
+    'offline_valid_until': offlineValidUntil == null ? null : _iso(offlineValidUntil),
+    'synced_at': _iso(synced),
+  };
+}
 
 MemberCard cardOf({
   String status = 'active',
@@ -249,17 +293,21 @@ Map<String, Object?> publicConfigJson({
   String? maintenanceMessage,
   DateTime? maintenanceUntil,
   String? androidStore = 'https://play.google.com/store/apps/details?id=id.or.kapdh.app',
-  String? supportEmail = 'bantuan@kapdh.or.id',
+  String? iosStore,
+  String supportEmail = 'bantuan@kapdh.or.id',
   String? supportWhatsapp,
 }) => {
+  // `PublicConfig` kontrak C2: semua field wajib; field nullable dikirim null.
   'min_app_version': {'android': android, 'ios': ios},
   'maintenance': {
     'active': maintenance,
-    'message': ?maintenanceMessage,
-    'until': ?maintenanceUntil?.toUtc().toIso8601String(),
+    'message': maintenanceMessage,
+    'until': maintenanceUntil == null ? null : _iso(maintenanceUntil),
   },
-  'store_links': {'android': ?androidStore},
-  'support': {'email': ?supportEmail, 'whatsapp': ?supportWhatsapp},
+  'store_links': {'android': androidStore, 'ios': iosStore},
+  'support': {'email': supportEmail, 'whatsapp': supportWhatsapp},
+  'legal': {'privacy_version': '2', 'terms_version': '1', 'community_version': '1'},
+  'server_time': _iso(testNow),
 };
 
 PublicConfig configOf({

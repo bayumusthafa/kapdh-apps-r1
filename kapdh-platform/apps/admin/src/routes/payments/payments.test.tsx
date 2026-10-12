@@ -7,6 +7,10 @@ import { PAYMENT_POLL_MS } from "./VerificationTab";
 
 /** Data contoh prototipe screen_8 di server tiruan (src/api/mocks/payments.ts). */
 const AHMAD = "0199e000-0000-7000-8000-0000000000a2";
+/** Payment berbukti milik akun yang sudah dihapus (AC F14-4). */
+const DELETED = "0199e000-0000-7000-8000-0000000000a6";
+/** Payment tiket yang event-nya dibatalkan pengurus setelah bukti dikirim (D6). */
+const DEWI = "0199e000-0000-7000-8000-0000000000a8";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -37,30 +41,37 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
     expect(within(table).getByText("Lewat 1 hari kerja")).toBeInTheDocument();
     expect(within(table).getByText("Tiket: Halal bi Halal")).toBeInTheDocument();
     expect(within(table).getAllByText("Rp60.000").length).toBeGreaterThan(0);
-    expect(screen.getByText("Menampilkan 20 dari 26")).toBeInTheDocument();
+    expect(screen.getByText("Menampilkan 20 dari 28")).toBeInTheDocument();
+    // "Menunggu" = stage awaiting_review (kontrak C3), bukan status=pending yang ikut memuat instruksi tanpa bukti.
+    expect(listRequests()[0]?.query).toMatchObject({ stage: "awaiting_review" });
+    expect(listRequests()[0]?.query).not.toHaveProperty("status");
+    // Pill emas bersumber dari GET /admin/payments/summary dan sama dengan total "Menunggu".
     const nav = screen.getByRole("navigation", { name: "Menu admin" });
-    expect(within(nav).getByRole("link", { name: /Verifikasi Pembayaran/ })).toHaveTextContent("26");
+    await waitFor(() =>
+      expect(within(nav).getByRole("link", { name: /Verifikasi Pembayaran/ })).toHaveTextContent("28"),
+    );
+    expect(paymentRequests.some((r) => r.path === "/admin/payments/summary")).toBe(true);
   });
 
   it("paging kursor server: halaman berikutnya dan sebelumnya", async () => {
     const user = userEvent.setup();
     await openPayments(user);
-    await screen.findByText("Menampilkan 20 dari 26");
+    await screen.findByText("Menampilkan 20 dari 28");
     await user.click(screen.getByRole("button", { name: "Halaman berikutnya" }));
-    expect(await screen.findByText("Menampilkan 21–26 dari 26")).toBeInTheDocument();
+    expect(await screen.findByText("Menampilkan 21–28 dari 28")).toBeInTheDocument();
     // Halaman terakhir: tombol nonaktif tetapi tetap memegang fokus (aria-disabled, N-11).
     const next = screen.getByRole("button", { name: "Halaman berikutnya" });
     expect(next).toHaveAttribute("aria-disabled", "true");
     expect(next).toHaveFocus();
     expect(listRequests().at(-1)?.query.cursor).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Halaman sebelumnya" }));
-    expect(await screen.findByText("Menampilkan 20 dari 26")).toBeInTheDocument();
+    expect(await screen.findByText("Menampilkan 20 dari 28")).toBeInTheDocument();
   });
 
   it("pencarian di-debounce: mengetik cepat hanya mengirim satu permintaan dengan kata kunci akhir", async () => {
     const user = userEvent.setup();
     await openPayments(user);
-    await screen.findByText("Menampilkan 20 dari 26");
+    await screen.findByText("Menampilkan 20 dari 28");
     const before = listRequests().length;
     await user.type(screen.getByRole("searchbox", { name: "Cari" }), "Siti");
     await screen.findByText("Menampilkan 1 dari 1");
@@ -73,9 +84,9 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
   it("filter jenis tiket dan status Semua menampilkan kolom status", async () => {
     const user = userEvent.setup();
     await openPayments(user);
-    await screen.findByText("Menampilkan 20 dari 26");
+    await screen.findByText("Menampilkan 20 dari 28");
     await user.selectOptions(screen.getByRole("combobox", { name: "Jenis" }), "ticket");
-    await screen.findByText("Menampilkan 1 dari 1");
+    await screen.findByText("Menampilkan 2 dari 2");
     await user.selectOptions(screen.getByRole("combobox", { name: "Status" }), "all");
     const table = await screen.findByRole("table", { name: "Antrean pembayaran" });
     await waitFor(() =>
@@ -83,13 +94,34 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
     );
     expect(listRequests().at(-1)?.query).toMatchObject({ type: "ticket" });
     expect(listRequests().at(-1)?.query).not.toHaveProperty("status");
+    expect(listRequests().at(-1)?.query).not.toHaveProperty("stage");
+  });
+
+  it("status Semua memuat instruksi tanpa bukti dengan label tahap; histori menampilkan ganti rekening", async () => {
+    const user = userEvent.setup();
+    await openPayments(user);
+    await screen.findByText("Menampilkan 20 dari 28");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Status" }), "all");
+    // Instruksi tanpa bukti berada di akhir urutan (kontrak adminListPayments): halaman kedua.
+    await screen.findByText("Menampilkan 20 dari 29");
+    await user.click(screen.getByRole("button", { name: "Halaman berikutnya" }));
+    const table = await screen.findByRole("table", { name: "Antrean pembayaran" });
+    const row = (await within(table).findByRole("button", { name: /Hasan Basri/ })).closest("tr")!;
+    expect(within(row).getByText("Menunggu transfer")).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: /Hasan Basri/ }));
+    const panel = await screen.findByRole("article", { name: "Hasan Basri" });
+    // Belum ada bukti: tidak ada formulir keputusan (actions.can_decide false).
+    expect(within(panel).queryByRole("button", { name: "Setujui" })).toBeNull();
+    expect(within(panel).getByText("Belum ada berkas")).toBeInTheDocument();
+    await user.click(within(panel).getByText(/Riwayat lengkap/));
+    expect(within(panel).getByText("Rekening tujuan diganti")).toBeInTheDocument();
   });
 
   it("AC F02-5: hanya refetch polling yang membawa X-Background-Request", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await openPayments(user);
-    await screen.findByText("Menampilkan 20 dari 26");
+    await screen.findByText("Menampilkan 20 dari 28");
     const first = listRequests();
     expect(first.length).toBeGreaterThan(0);
     expect(first.every((r) => !r.background)).toBe(true);
@@ -203,6 +235,52 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
       decision: "reject",
       reason: "Nominal tidak sesuai",
     });
+  });
+
+  it("AC F14-4: payment berbukti milik akun terhapus tampil 'Akun dihapus' tanpa berkas dan tetap dapat diputus", async () => {
+    const user = userEvent.setup();
+    await openPayments(user);
+    const table = await screen.findByRole("table", { name: "Antrean pembayaran" });
+    await user.click(within(table).getByRole("button", { name: /Akun dihapus/ }));
+    const panel = await screen.findByRole("article", { name: "Akun dihapus" });
+    expect(within(panel).getByText(/Data pemilik sudah dihapus \| Pendaftaran/)).toBeInTheDocument();
+    expect(within(panel).getByRole("note")).toHaveTextContent(
+      "berkas bukti dan catatan transfer ikut dihapus",
+    );
+    expect(within(panel).queryByRole("img")).toBeNull();
+    await user.click(within(panel).getByRole("checkbox", { name: /dana Rp60\.000 sudah masuk/ }));
+    await user.click(within(panel).getByRole("button", { name: "Setujui" }));
+    expect(await within(panel).findByRole("status")).toHaveTextContent("Pembayaran disetujui.");
+    expect(mockPayments.get(DELETED)?.status).toBe("paid");
+    // Tanpa pemilik: tidak ada periode keanggotaan (PRD 4.4).
+    expect(mockPayments.get(DELETED)?.period).toBeNull();
+  });
+
+  it("PRD 4.4, D6: event dibatalkan ditandai di antrean; persetujuan mencatat refund penuh tanpa menghidupkan tiket", async () => {
+    const user = userEvent.setup();
+    await openPayments(user);
+    const table = await screen.findByRole("table", { name: "Antrean pembayaran" });
+    const row = within(table)
+      .getByRole("button", { name: /Dewi Lestari/ })
+      .closest("tr")!;
+    expect(within(row).getByText("Tiket: Seminar Karier Alumni")).toBeInTheDocument();
+    expect(within(row).getByText("Event dibatalkan")).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: /Dewi Lestari/ }));
+    const panel = await screen.findByRole("article", { name: "Dewi Lestari" });
+    const note = within(panel)
+      .getAllByRole("note")
+      .find((n) => n.textContent?.includes("Event sudah dibatalkan"));
+    expect(note).toHaveTextContent("tiket tidak diaktifkan kembali");
+    expect(note).toHaveTextContent("refund penuh Rp50.000");
+    await user.click(within(panel).getByRole("checkbox", { name: /dana Rp50\.000 sudah masuk/ }));
+    await user.click(within(panel).getByRole("button", { name: "Setujui" }));
+    expect(await within(panel).findByRole("status")).toHaveTextContent("Refund penuh tercatat");
+    const decided = mockPayments.get(DEWI);
+    expect(decided?.status).toBe("paid");
+    expect(decided?.ticket?.ticket_status).toBe("cancelled");
+    expect(decided?.adjustments).toMatchObject([
+      { kind: "refund", amount: "50000.00", status: "pending", created_by: null },
+    ]);
   });
 
   it("admin tanpa payments.decide hanya dapat melihat (tanpa tombol keputusan)", async () => {

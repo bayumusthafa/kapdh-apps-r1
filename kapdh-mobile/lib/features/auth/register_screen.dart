@@ -16,28 +16,18 @@ import '../../design/design.dart';
 import '../membership/academic.dart';
 import 'registration_draft.dart';
 
-/// Versi kebijakan yang disetujui pada pendaftaran (F-01): `kebijakan-privasi@<versi>;ketentuan@<versi>` dari
-/// halaman legal terbit (GET /public/pages/{slug}). Halaman yang belum diterbitkan pengurus dicatat `belum-terbit`.
-const String unpublishedPolicyVersion = 'belum-terbit';
-
-String policyVersionString({required String privacy, required String terms}) =>
-    '${AppRoutes.privacySlug}@$privacy;${AppRoutes.termsSlug}@$terms';
-
-/// Memuat versi kebijakan privasi dan ketentuan yang sedang terbit.
-final policyVersionProvider = FutureProvider.autoDispose<String>((ref) async {
-  final repo = ref.watch(publicRepositoryProvider);
-  Future<String> versionOf(String slug) async {
-    try {
-      return (await repo.getPage(slug)).version;
-    } on ApiException catch (error) {
-      if (error.code == ErrorCode.notFound) return unpublishedPolicyVersion;
-      rethrow;
-    }
-  }
-
-  final versions = await Future.wait([versionOf(AppRoutes.privacySlug), versionOf(AppRoutes.termsSlug)]);
-  return policyVersionString(privacy: versions[0], terms: versions[1]);
+/// Versi persetujuan pendaftaran (F-01, kontrak C4 `LegalConsentVersions`): `consent.policy_version` dari
+/// GET /public/pages, gabungan kanonis `privacy:<v>;terms:<v>` yang disusun server dan dikirim apa adanya sebagai
+/// `accept_policy_version`. Null berarti Kebijakan Privasi atau Ketentuan belum pernah terbit sehingga pendaftaran
+/// belum dibuka (PRD 8.2); klien tidak pernah menyusun nilai ini sendiri.
+final policyVersionProvider = FutureProvider.autoDispose<String?>((ref) async {
+  final consent = await ref.watch(publicRepositoryProvider).getConsentVersions();
+  return consent.policyVersion;
 }, retry: (retryCount, error) => null);
+
+/// Pesan bila dokumen legal belum terbit (`policy_version` null).
+const String registrationClosedMessage =
+    'Pendaftaran belum dibuka karena Kebijakan Privasi atau Ketentuan belum diterbitkan pengurus. Coba lagi nanti.';
 
 /// Langkah 1 pendaftaran: Data Diri (F-01, AC F01-1, F01-4; guideline hal. 5). Tanpa Nomor KTP (v3.3).
 ///
@@ -117,9 +107,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final formValid = _form.currentState?.validate() ?? false;
     setState(() => _consentError = _agree ? null : 'Setujui Kebijakan Privasi dan Ketentuan untuk melanjutkan.');
     if (!formValid || !_agree || _busy || _blockedFor > Duration.zero) return;
-    final policy = ref.read(policyVersionProvider).value;
-    if (policy == null) {
+    final consent = ref.read(policyVersionProvider);
+    if (!consent.hasValue) {
       setState(() => _error = 'Kebijakan privasi belum dimuat. Periksa koneksi lalu coba lagi.');
+      return;
+    }
+    final policy = consent.value;
+    if (policy == null) {
+      setState(() => _error = registrationClosedMessage);
       return;
     }
     _saveDraft();
@@ -152,6 +147,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (mounted) context.go(AppRoutes.registerOtp);
     } on ApiException catch (error) {
       if (!mounted) return;
+      if (error.code == ErrorCode.versionConflict) {
+        // 409 VERSION_CONFLICT (kontrak C1 register): Kebijakan Privasi atau Ketentuan baru diterbitkan setelah
+        // layar dibuka. Muat ulang versinya dan minta persetujuan ulang atas teks terbaru (F-01).
+        ref.invalidate(policyVersionProvider);
+        setState(() {
+          _agree = false;
+          _fieldErrors = const {};
+          _error = 'Kebijakan Privasi atau Ketentuan baru saja diperbarui. Baca ulang lalu setujui kembali.';
+        });
+        return;
+      }
       setState(() {
         _fieldErrors = error.fieldErrors;
         final general = error.fieldErrors['_']?.join(' ');
@@ -526,7 +532,9 @@ class _ConsentField extends StatelessWidget {
 
   final bool value;
   final ValueChanged<bool> onChanged;
-  final AsyncValue<String> policy;
+
+  /// `consent.policy_version`; nilai null berarti pendaftaran belum dibuka.
+  final AsyncValue<String?> policy;
   final VoidCallback onRetryPolicy;
   final String? errorText;
 
@@ -563,6 +571,12 @@ class _ConsentField extends StatelessWidget {
           InfoBox(
             tone: InfoBoxTone.warning,
             message: 'Versi kebijakan belum dapat dimuat. Periksa koneksi Anda.',
+            trailing: TextButton(onPressed: onRetryPolicy, child: const Text('Coba lagi')),
+          )
+        else if (policy.hasValue && policy.value == null && !policy.isLoading)
+          InfoBox(
+            tone: InfoBoxTone.warning,
+            message: registrationClosedMessage,
             trailing: TextButton(onPressed: onRetryPolicy, child: const Text('Coba lagi')),
           ),
         if (errorText != null)
