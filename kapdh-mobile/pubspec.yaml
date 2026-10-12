@@ -25,11 +25,29 @@ dependencies:
   # ref: contracts-vX.Y.Z}.
   kapdh_api:
     path: ../kapdh-platform/packages/contracts/dart/kapdh_api
+  qr_flutter: ^4.1.0
+  socket_io_client: ^3.1.6
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
+  flutter_local_notifications: ^22.3.2
+  image_picker: ^1.2.4
+  file_picker: ^10.2.4
+  cached_network_image: ^4.0.4
+  connectivity_plus: ^7.3.2
+  package_info_plus: ^9.0.1
+  url_launcher: ^6.3.3
+  shared_preferences: ^2.5.6
+  timezone: ^0.11.1
+  flutter_widget_from_html_core: ^0.17.4
+  uuid: ^4.6.0
+  pub_semver: ^2.2.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  mocktail: ^1.0.5
+  http_mock_adapter: ^0.6.1
 
 flutter:
   uses-material-design: true
