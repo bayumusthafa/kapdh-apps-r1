@@ -1,0 +1,20 @@
+# Domain events (C5 Events): daftar/detail event, reservasi kursi, bukti bayar tiket, tiket QR dan pembatalan
+# oleh anggota. Modul API: apps/api/src/modules/events. Path ditambahkan oleh penulis kontrak C5.
+tags:
+  - name: Events
+    description: Event, reservasi satu kursi, tiket QR dan pembatalan oleh anggota (F-09, PRD 4.4).
+
+paths: {}
+
+components:
+  schemas:
+    EventSummary:
+      type: object
+      required: [id, title, starts_at, timezone]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        starts_at: { type: string, format: date-time }
+        timezone: { type: string, examples: [Asia/Jakarta] }
+        location: { type: [string, "null"] }
+        cover_url: { type: [string, "null"], format: uri }

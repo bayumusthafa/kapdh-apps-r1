@@ -5,6 +5,11 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "@kapdh/contracts#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/shared/src/**"],
+      "outputs": ["dist/**", "src/generated/**", "dart/kapdh_api/lib/src/**"]
+    },
     "dev": {
       "cache": false,
       "persistent": true
@@ -13,12 +18,20 @@
     "typecheck": {
       "dependsOn": ["^build"]
     },
+    "@kapdh/contracts#typecheck": {
+      "dependsOn": ["build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/shared/src/**"]
+    },
     "test": {
       "dependsOn": ["^build"]
     },
     "test:pg": {
       "dependsOn": ["^build"],
       "cache": false
+    },
+    "@kapdh/contracts#test": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/shared/src/**"]
     }
   },
   "agentGuidance": false

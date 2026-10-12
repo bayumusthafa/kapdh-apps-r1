@@ -1,3 +1,4 @@
+# Aturan lint kontrak (ARCHITECTURE §6). Dijalankan pada hasil gabungan dist/openapi.yaml lewat `pnpm contracts:lint`.
 extends:
   - recommended
 rules:
@@ -5,3 +6,57 @@ rules:
   no-server-example.com: off
   # Setiap operasi memiliki respons `default` dengan skema Error baku (PRD 5.2), sehingga 4XX eksplisit tidak diwajibkan.
   operation-4xx-response: off
+  # Komponen bersama di root.yaml (mis. AccountStatus, respons UpgradeRequired, header X-App-Version) disiapkan
+  # untuk dipakai bertahap oleh domain. Komponen domain yang belum dirujuk dilaporkan assemble.mjs sebagai peringatan.
+  no-unused-components: off
+
+  # Body request/response wajib skema bernama agar nama kelas TypeScript dan Dart stabil.
+  rule/body-schema-must-be-ref:
+    subject:
+      type: MediaType
+      property: schema
+    message: Body request/response wajib $ref ke components.schemas bernama (bukan skema inline).
+    severity: error
+    assertions:
+      ref: true
+
+  # JSON snake_case di semua properti (ARCHITECTURE §2 butir 8).
+  rule/property-snake-case:
+    subject:
+      type: SchemaProperties
+    message: Nama properti JSON wajib snake_case.
+    severity: error
+    assertions:
+      casing: snake_case
+
+  # Satu operasi = satu tag = satu kelas API Dart.
+  rule/operation-single-tag:
+    subject:
+      type: Operation
+      property: tags
+    message: Setiap operasi wajib memiliki tepat satu tag (milik domainnya).
+    severity: error
+    assertions:
+      defined: true
+      minLength: 1
+      maxLength: 1
+
+  # operationId menjadi nama method TypeScript dan Dart.
+  rule/operation-id-camel-case:
+    subject:
+      type: Operation
+      property: operationId
+    message: operationId wajib camelCase dan diawali kata kerja (listX, getX, createX, adminX).
+    severity: error
+    assertions:
+      defined: true
+      casing: camelCase
+
+  # Nama skema PascalCase dan berprefiks domain bila ambigu (ARCHITECTURE §6).
+  rule/schema-name-pascal-case:
+    subject:
+      type: NamedSchemas
+    message: Nama komponen skema wajib PascalCase.
+    severity: error
+    assertions:
+      casing: PascalCase

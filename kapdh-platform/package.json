@@ -14,8 +14,11 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:pg": "turbo run test:pg",
+    "contracts:bundle": "pnpm --filter @kapdh/contracts bundle",
     "contracts:lint": "pnpm --filter @kapdh/contracts lint",
     "contracts:gen": "pnpm --filter @kapdh/contracts generate",
+    "contracts:test-dart": "pnpm --filter @kapdh/contracts test:dart",
+    "contracts:release-sdk": "pnpm --filter @kapdh/contracts release:dart",
     "tokens:gen": "node packages/design-tokens/build.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

@@ -1,0 +1,420 @@
+# Domain auth (C1 Identity): pendaftaran, OTP, login alumni, sesi, pemulihan sandi dan reautentikasi.
+# Modul API: apps/api/src/modules/auth. Rujukan komponen bersama memakai `#/components/...` dari root.yaml.
+tags:
+  - name: Auth
+    description: Pendaftaran, OTP, login, sesi, pemulihan sandi dan reautentikasi (F-01, F-02).
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Daftar akun alumni dan kirim OTP email (F-01).
+      description: |
+        Membuat akun pending_otp beserta data diri. Request ulang dengan email yang sama dan
+        akun masih pending_otp mengembalikan challenge yang sama atau baru (AC F01-4); tidak
+        membuat akun ganda. Nomor anggota belum dialokasikan sampai OTP terverifikasi.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "201":
+          description: Akun dibuat atau dilanjutkan; challenge OTP dikirim.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OtpChallenge" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "409":
+          description: |
+            Email sudah terdaftar dan aktif. Kode VALIDATION_ERROR dengan field_errors.email agar
+            klien menampilkannya di field email beserta tautan masuk atau lupa password.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/otp/verify:
+    post:
+      tags: [Auth]
+      operationId: verifyOtp
+      summary: Verifikasi OTP pendaftaran atau pemulihan (F-01, F-02).
+      description: |
+        Untuk purpose signup: akun menjadi active, nomor anggota AA.SS.JK.N dialokasikan
+        dan KTA berstatus Tidak Aktif, lalu token sesi diterbitkan.
+        Untuk purpose password_reset: mengembalikan reset_token sekali pakai.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OtpVerifyRequest" }
+      responses:
+        "200":
+          description: OTP benar.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OtpVerifyResponse" }
+        "400":
+          description: |
+            Kode salah (VALIDATION_ERROR). Pesan dan field_errors.code memuat sisa percobaan,
+            misalnya "Kode salah. Sisa percobaan 3.".
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "410":
+          description: |
+            OTP kedaluwarsa, sudah dipakai, diganti kode baru, percobaan habis, atau sandi akun
+            berubah setelah kode dikirim (OTP_EXPIRED).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/otp/resend:
+    post:
+      tags: [Auth]
+      operationId: resendOtp
+      summary: Kirim ulang OTP; kode lama dibatalkan. Cooldown 60 detik (PRD 2.5, AC F01-3).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OtpResendRequest" }
+      responses:
+        "200":
+          description: Challenge baru dibuat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OtpChallenge" }
+        "410":
+          description: Challenge sudah dipakai atau diganti (OTP_EXPIRED).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Login alumni dengan email dan sandi (F-02).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: |
+            Login berhasil. Jika akun masih pending_otp, respons berisi `next: verify_otp`
+            beserta challenge baru, tanpa token sesi (AC F02-1).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginResponse" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshSession
+      summary: Rotasi refresh token. Reuse token lama mencabut seluruh keluarga sesi (AC F02-3).
+      description: |
+        Flutter mengirim refresh_token di body. Web admin mengirim cookie HttpOnly
+        `kapdh_admin_rt` dan header Origin yang sama dengan ADMIN_ORIGIN; body boleh kosong.
+        Untuk admin, respons hanya berisi access token; refresh token baru dikirim lewat cookie.
+        Sesi admin yang menganggur lebih dari 30 menit ditolak 401 (N-08).
+      security:
+        - {}
+        - adminRefreshCookie: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RefreshRequest" }
+      responses:
+        "200":
+          description: Token baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenPair" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Cabut sesi saat ini dan nonaktifkan token push perangkat ini (AC F13-5).
+      responses:
+        "204": { description: Keluar. }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/logout-all:
+    post:
+      tags: [Auth]
+      operationId: logoutAll
+      summary: Cabut semua sesi dan socket pengguna (AC F02-6).
+      responses:
+        "204": { description: Semua sesi dicabut. }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/sessions:
+    get:
+      tags: [Auth]
+      operationId: listSessions
+      summary: Daftar sesi aktif pengguna (F-02).
+      responses:
+        "200":
+          description: Sesi.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionList" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/sessions/{sessionId}:
+    delete:
+      tags: [Auth]
+      operationId: revokeSession
+      summary: Cabut satu sesi milik sendiri (F-02).
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Dicabut. }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/password/forgot:
+    post:
+      tags: [Auth]
+      operationId: forgotPassword
+      summary: Minta OTP pemulihan. Respons selalu sama, tidak mengungkap apakah email terdaftar (PRD 2.5).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ForgotPasswordRequest" }
+      responses:
+        "202":
+          description: Bila email terdaftar, OTP dikirim.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OtpChallenge" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/password/reset:
+    post:
+      tags: [Auth]
+      operationId: resetPassword
+      summary: Simpan sandi baru dengan reset_token; seluruh sesi dicabut (AC F02-4).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResetPasswordRequest" }
+      responses:
+        "204": { description: Sandi diganti. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "410":
+          description: reset_token kedaluwarsa atau sudah dipakai (OTP_EXPIRED).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/password/change:
+    post:
+      tags: [Auth]
+      operationId: changePassword
+      summary: Ganti sandi dengan sandi lama; sesi lain dicabut (F-02).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChangePasswordRequest" }
+      responses:
+        "204": { description: Sandi diganti; sesi lain dicabut. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/reauth:
+    post:
+      tags: [Auth]
+      operationId: reauthenticate
+      summary: Reautentikasi untuk tindakan sensitif (hapus akun, ubah biaya, izin admin). Berlaku 10 menit.
+      description: Token dikirim kembali lewat header X-Reauth-Token pada operasi sensitif (ARCHITECTURE §4.3).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReauthRequest" }
+      responses:
+        "200":
+          description: Token reautentikasi.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReauthResponse" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [full_name, gender, email, password, cohort, class_in, class_out, accept_policy_version]
+      properties:
+        full_name: { type: string, minLength: 2, maxLength: 120 }
+        gender: { $ref: "#/components/schemas/Gender" }
+        email: { type: string, format: email, maxLength: 254 }
+        password: { $ref: "#/components/schemas/Password" }
+        cohort:
+          { type: integer, minimum: 1, maximum: 99, description: "Angkatan; tahun lulus = 1996 + angkatan." }
+        class_in: { $ref: "#/components/schemas/ClassLevel" }
+        class_out: { $ref: "#/components/schemas/ClassLevel" }
+        accept_policy_version:
+          { type: string, description: Versi kebijakan privasi dan ketentuan yang disetujui (F-01). }
+
+    OtpPurpose:
+      type: string
+      enum: [signup, password_reset, deletion]
+      description: Tujuan challenge OTP; kode terikat akun, tujuan dan challenge_id (PRD 2.5).
+
+    OtpChallenge:
+      type: object
+      required: [challenge_id, purpose, expires_at, resend_available_at, attempts_left]
+      properties:
+        challenge_id: { type: string, format: uuid }
+        purpose: { $ref: "#/components/schemas/OtpPurpose" }
+        email_masked: { type: string, examples: ["ah***@email.com"] }
+        expires_at: { type: string, format: date-time }
+        resend_available_at: { type: string, format: date-time }
+        attempts_left: { type: integer, minimum: 0, maximum: 5 }
+
+    OtpVerifyRequest:
+      type: object
+      required: [challenge_id, code]
+      properties:
+        challenge_id: { type: string, format: uuid }
+        code: { type: string, pattern: "^[0-9]{6}$", x-sensitive: true }
+        device_name: { type: string, maxLength: 80 }
+
+    OtpVerifyResponse:
+      type: object
+      properties:
+        session: { $ref: "#/components/schemas/TokenPair" }
+        reset_token: { type: string, description: Hanya untuk purpose password_reset. }
+
+    OtpResendRequest:
+      type: object
+      required: [challenge_id]
+      properties:
+        challenge_id: { type: string, format: uuid }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, maxLength: 128 }
+        device_name: { type: string, maxLength: 80 }
+
+    LoginNext:
+      type: string
+      enum: [home, verify_otp]
+      description: Langkah berikut setelah login; verify_otp bila akun masih pending_otp (AC F02-1).
+
+    LoginResponse:
+      type: object
+      required: [next]
+      properties:
+        next: { $ref: "#/components/schemas/LoginNext" }
+        session: { $ref: "#/components/schemas/TokenPair" }
+        challenge: { $ref: "#/components/schemas/OtpChallenge" }
+
+    RefreshRequest:
+      type: object
+      properties:
+        refresh_token: { type: string, description: Wajib untuk klien mobile; admin memakai cookie. }
+
+    TokenPair:
+      type: object
+      required: [access_token, access_expires_at]
+      properties:
+        access_token: { type: string }
+        access_expires_at: { type: string, format: date-time }
+        refresh_token: { type: string, description: Hanya untuk klien mobile; admin memakai cookie. }
+        refresh_expires_at: { type: string, format: date-time }
+
+    Session:
+      type: object
+      required: [id, device_name, created_at, last_seen_at, current]
+      properties:
+        id: { type: string, format: uuid }
+        device_name: { type: string }
+        platform: { type: string }
+        created_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+        current: { type: boolean }
+
+    SessionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Session" }
+
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+
+    ResetPasswordRequest:
+      type: object
+      required: [reset_token, new_password]
+      properties:
+        reset_token: { type: string }
+        new_password: { $ref: "#/components/schemas/Password" }
+
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string, maxLength: 128 }
+        new_password: { $ref: "#/components/schemas/Password" }
+
+    ReauthRequest:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string, maxLength: 128 }
+        totp_code:
+          { type: string, pattern: "^[0-9]{6}$", description: Wajib untuk sesi admin., x-sensitive: true }
+
+    ReauthResponse:
+      type: object
+      required: [reauth_token, expires_at]
+      properties:
+        reauth_token: { type: string }
+        expires_at: { type: string, format: date-time }

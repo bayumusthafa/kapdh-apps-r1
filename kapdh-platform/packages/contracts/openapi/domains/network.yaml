@@ -1,0 +1,7 @@
+# Domain network (C6 Community): direktori anggota dan profil anggota lain dengan privasi.
+# Modul API: apps/api/src/modules/network. Path ditambahkan oleh penulis kontrak C6.
+tags:
+  - name: Network
+    description: Direktori anggota aktif dan profil anggota lain; field tersembunyi tidak ikut payload (F-10, AC F10-2).
+
+paths: {}

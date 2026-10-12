@@ -1,0 +1,7 @@
+# Domain admin-events (C5 Events): CRUD event, kuota, pembatalan dan refund, peserta, serta check-in QR
+# (izin events.manage / events.checkin). Modul API: apps/api/src/modules/events. Path ditambahkan oleh penulis kontrak C5.
+tags:
+  - name: Admin Events
+    description: Pengelolaan event, kuota, pembatalan/refund, peserta dan check-in tiket oleh pengurus (F-09, F-15, AC F15-2).
+
+paths: {}

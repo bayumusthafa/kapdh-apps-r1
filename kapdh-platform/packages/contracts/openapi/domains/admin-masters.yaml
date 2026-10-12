@@ -1,0 +1,7 @@
+# Domain admin-masters (C2 Membership): CRUD master profesi dan keahlian (izin master.manage).
+# Modul API: apps/api/src/modules/network. Path ditambahkan oleh penulis kontrak C2.
+tags:
+  - name: Admin Masters
+    description: Pengelolaan master profesi dan keahlian; master terpakai dinonaktifkan, tidak dihapus (F-15, AC F10-4).
+
+paths: {}

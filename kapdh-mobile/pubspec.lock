@@ -269,6 +269,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.7"
+  kapdh_api:
+    dependency: "direct main"
+    description:
+      path: "../kapdh-platform/packages/contracts/dart/kapdh_api"
+      relative: true
+    source: path
+    version: "0.2.0"
   leak_tracker:
     dependency: transitive
     description:
