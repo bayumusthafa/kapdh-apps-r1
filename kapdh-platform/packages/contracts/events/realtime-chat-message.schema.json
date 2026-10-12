@@ -43,7 +43,11 @@
       "type": "array",
       "items": { "$ref": "realtime-chat-reaction.schema.json" }
     },
-    "created_at": { "type": "string", "format": "date-time" },
+    "created_at": {
+      "description": "Diisi server di bawah kunci baris room dan naik ketat per room; urutan (created_at, id) sama dengan urutan commit (AC F11-3).",
+      "type": "string",
+      "format": "date-time"
+    },
     "deleted_at": { "type": ["string", "null"], "format": "date-time" }
   },
   "examples": [

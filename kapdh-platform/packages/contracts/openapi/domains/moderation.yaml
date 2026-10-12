@@ -50,7 +50,9 @@ paths:
         - pengiriman pesan dan reaksi di room direct antara keduanya ditolak dari pihak mana pun (AC F12-1), walaupun
           room/socket sudah ada; riwayat lama tetap dapat dibaca kedua pemilik room;
         - undangan grup antara keduanya ditolak, dan undangan tertunda dari salah satu pihak kepada yang lain
-          dibatalkan;
+          dibatalkan (event `room.member_changed` change=invitation_cancelled dengan actor_user_id null hanya ke
+          kanal user calon anggota dan admin grup, sehingga pembatalan tidak dapat dibedakan dari tindakan sistem
+          lain);
         - di grup yang sama, blokir tidak mengubah aturan room atau menghapus pesan orang lain; gunakan mute atau
           laporan (PRD 3.12);
         - anggota yang diblokir tidak diberi tahu; perangkat pemanggil menerima `room.updated` untuk room direct
@@ -184,16 +186,26 @@ paths:
     post:
       tags: [Moderation]
       operationId: createAppeal
-      summary: Ajukan banding atas keputusan moderasi, termasuk saat disuspend (PRD 3.12 mekanisme banding).
+      summary: Ajukan banding atas suspend yang sedang berlaku dari portal pembatasan (PRD 3.12 mekanisme banding).
       description: |
         Banding dicatat sebagai laporan berkategori `appeal` dengan target_type user dan target = pemohon sendiri,
-        sehingga masuk antrean moderasi yang sama (prioritas normal, due_at 2 hari kerja). Tersedia untuk semua
-        status anggota termasuk suspended (portal pembatasan, PRD 2.2).
+        sehingga masuk antrean moderasi yang sama (prioritas normal, due_at 2 hari kerja). Dipanggil dari portal
+        pembatasan aplikasi (PRD 2.2), sehingga tersedia walaupun pemohon suspended (member_access: any).
 
-        Syarat: pemohon sedang disuspend atau pernah menerima keputusan moderasi warn/suspend; selain itu 403
-        FORBIDDEN. Bila masih ada banding aktif (open/in_review), banding itu dikembalikan (200) tanpa membuat yang
-        baru. Hasil dikirim lewat notifikasi kategori account dan tampil di GET /reports/{reportId}
-        (`outcome`, `decision_message`). Idempotency-Key mengembalikan hasil pertama saat diulang; laju dibatasi (429).
+        Yang dapat dibanding di R1.0 hanya suspend yang SEDANG berlaku (alumni.suspended_at terisi, dari jalur
+        mana pun: keputusan laporan atau menu anggota admin); selain itu 403 FORBIDDEN. Warn tidak dapat dibanding
+        lewat endpoint ini karena tidak membatasi akses maupun mengubah tanggal keanggotaan (AC F12-3); keberatan
+        atas peringatan disampaikan lewat kontak dukungan. Keputusan yang dibanding tidak dipilih klien: server
+        menyimpan snapshot suspend yang berlaku (membership_events suspend terbaru, suspended_at, suspension_message)
+        di bukti banding sehingga pengurus tahu persis keputusan mana yang dibanding.
+
+        Satu banding aktif per pemohon: bila masih ada banding open/in_review, banding itu dikembalikan (200) tanpa
+        membuat yang baru. Banding hanya dapat diputus dismiss (ditolak, outcome no_action) atau unsuspend
+        (dikabulkan, outcome action_taken). Bila suspend dicabut lewat jalur lain sebelum banding diputus, banding
+        aktif ditutup otomatis sebagai dikabulkan dalam transaksi pencabutan itu. Setelah banding ditolak, banding
+        baru boleh diajukan (dibatasi laju). Hasil dikirim lewat notifikasi kategori account dan tampil di
+        GET /reports/{reportId} (`outcome`, `decision_message`). Idempotency-Key mengembalikan hasil pertama saat
+        diulang; laju dibatasi (429).
       x-kapdh-access: { audience: mobile, member_access: any, idempotent: true }
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -287,7 +299,8 @@ components:
       enum: [no_action, action_taken]
       description: |
         Hasil yang terlihat pelapor tanpa merinci tindakan terhadap pihak lain (AC F12-2): no_action untuk dismiss,
-        action_taken untuk warn/suspend/unsuspend. Untuk banding, action_taken berarti pembatasan dicabut.
+        action_taken untuk warn/suspend/unsuspend. Untuk banding: action_taken = dikabulkan (suspend dicabut lewat
+        keputusan banding atau ditutup otomatis karena suspend dicabut lewat jalur lain), no_action = ditolak.
 
     ModerationReport:
       type: object
@@ -364,6 +377,10 @@ components:
 
     CreateAppealRequest:
       type: object
+      description: |
+        Banding atas suspend yang sedang berlaku. Keputusan yang dibanding ditentukan server (suspend aktif pemohon)
+        dan disimpan sebagai snapshot di bukti banding; klien tidak mengirim rujukan laporan agar keberadaan laporan
+        terhadap pemohon tidak terungkap (AC F12-2).
       required: [description]
       properties:
         description:

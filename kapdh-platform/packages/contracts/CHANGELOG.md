@@ -23,6 +23,21 @@ Operasi baru (tidak memutus klien lama; tidak ada operasi lama yang diubah). Set
 - `admin-moderation.yaml` (tag Admin Moderation): `adminListReports` (SLA/overdue, total, counts),
   `adminGetReport` (bukti, akses diaudit), `adminClaimReport`, `adminResolveReport` (dismiss/warn/suspend/unsuspend).
 
+Aturan perilaku yang mengikat implementasi (dicatat di sini karena tidak terlihat dari bentuk skema):
+
+- Chat: setiap insert pesan mengunci baris room dan mengisi `created_at` naik ketat per room di bawah kunci itu, agar
+  urutan commit = urutan keyset; jangkar sinkron klien hanya dari respons HTTP, dan jendela pesan yang tampil dimuat
+  ulang setelah reconnect agar penghapusan/reaksi saat offline diterapkan (AC F11-3, F14-3; `events/README.md`).
+- Chat: event `room.member_changed` invited/invitation_cancelled/declined hanya ke kanal `user:<id>` calon anggota dan
+  admin grup, tidak pernah ke `room:<id>`. `POST /chat/direct` menjawab 403 hanya bila pemanggil yang memblokir;
+  blokir oleh lawan bicara diperlakukan seperti lawan bicara tidak tersedia (404 / peer_unavailable).
+  `ChatRoomSummary.peer` kini wajib ada (null untuk grup).
+- Banding (`POST /appeals`) hanya untuk suspend yang sedang berlaku (warn tidak dapat dibanding di R1.0); snapshot
+  suspend disimpan di `AdminModerationEvidence.contested_suspension`. Setiap unsuspend (keputusan laporan atau menu
+  anggota admin) menutup banding aktif pemohon sebagai dikabulkan dalam transaksi yang sama.
+- Moderasi admin: laporan yang pihak terlapornya akun alumni tertaut pengurus pemanggil dikecualikan dari antrean
+  (item, total, counts, q) dan detail/klaim/keputusan menjawab 404; tertaut ke pelapor tetap 403 untuk klaim/keputusan.
+
 ### Event realtime
 
 - **[memutus]** Kesepuluh jenis event kini memiliki payload bertipe (`events/<type>.schema.json`) dan
@@ -39,10 +54,18 @@ Operasi baru (tidak memutus klien lama; tidak ada operasi lama yang diubah). Set
 
 ### Ketergantungan skema database (belum dibuat; pemilik skema/integrator)
 
-Kontrak moderasi membutuhkan perubahan aditif pada `packages/database` sebelum modul moderasi diimplementasikan:
-nilai enum `app.report_category` `appeal` (banding, PRD 3.12); kolom `reports.claimed_by_admin_id` (FK admins,
-ON DELETE SET NULL) dan `reports.claimed_at` untuk klaim; `reports.member_message` (pesan aman untuk anggota pada
-warn/suspend/banding, maksimal 500); `reports.message_removed_at` untuk `remove_message`.
+Kontrak moderasi membutuhkan perubahan pada `packages/database` sebelum modul moderasi diimplementasikan:
+
+- nilai enum `app.report_category` `appeal` (banding, PRD 3.12);
+- kolom `reports.claimed_by_admin_id` (FK admins, ON DELETE SET NULL, indeks parsial) dan `reports.claimed_at` untuk
+  klaim (opsional CHECK `status <> 'in_review' or claimed_at is not null`);
+- kolom `reports.member_message` (pesan aman untuk anggota pada warn/suspend/banding, maksimal 500);
+- kolom `reports.message_removed_at` untuk `remove_message`;
+- `reports.due_at` menjadi NOT NULL (kontrak `ModerationReport.due_at` dan `AdminModerationReportItem.due_at` wajib
+  non-null; server selalu menghitungnya saat insert: urgent 24 jam, lainnya 2 hari kerja). Belum ada baris produksi,
+  sehingga cukup `ALTER COLUMN due_at SET NOT NULL` pada migrasi aditif.
+
+Snapshot suspend yang dibanding disimpan di `reports.evidence` (jsonb) yang sudah ada; tidak perlu kolom baru.
 
 ## 0.2.0
 
