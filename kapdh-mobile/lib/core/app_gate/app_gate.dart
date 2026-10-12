@@ -31,7 +31,13 @@ enum GateStatus {
 
 @immutable
 class AppGateState {
-  const AppGateState({required this.status, this.config, this.maintenanceMessage, this.maintenanceUntil, this.checkedAt});
+  const AppGateState({
+    required this.status,
+    this.config,
+    this.maintenanceMessage,
+    this.maintenanceUntil,
+    this.checkedAt,
+  });
 
   const AppGateState.checking() : this(status: GateStatus.checking);
 
@@ -47,12 +53,12 @@ class AppGateState {
   StoreLinks? get storeLinks => config?.storeLinks;
 
   AppGateState copyWith({GateStatus? status, String? maintenanceMessage, DateTime? maintenanceUntil}) => AppGateState(
-        status: status ?? this.status,
-        config: config,
-        maintenanceMessage: maintenanceMessage ?? this.maintenanceMessage,
-        maintenanceUntil: maintenanceUntil ?? this.maintenanceUntil,
-        checkedAt: checkedAt,
-      );
+    status: status ?? this.status,
+    config: config,
+    maintenanceMessage: maintenanceMessage ?? this.maintenanceMessage,
+    maintenanceUntil: maintenanceUntil ?? this.maintenanceUntil,
+    checkedAt: checkedAt,
+  );
 
   @override
   bool operator ==(Object other) =>

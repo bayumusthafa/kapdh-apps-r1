@@ -74,10 +74,8 @@ class KtaCacheStore {
 
   /// Menyimpan kartu hasil GET /me/card untuk [userId]. Kartu berstatus dibatasi menggantikan cache lama sehingga
   /// kartu aktif lama tidak tampil lagi (AC F05-4).
-  Future<void> save({required String userId, required MemberCard card}) => _store.write(
-        storageKey,
-        jsonEncode(<String, Object?>{'user_id': userId, 'card': card.toJson()}),
-      );
+  Future<void> save({required String userId, required MemberCard card}) =>
+      _store.write(storageKey, jsonEncode(<String, Object?>{'user_id': userId, 'card': card.toJson()}));
 
   Future<KtaCacheResult> read({required String userId}) async {
     final raw = await _store.read(storageKey);
@@ -96,7 +94,13 @@ class KtaCacheStore {
       await clear();
       return const KtaCacheMiss(KtaCacheMissReason.otherAccount);
     }
-    return evaluate(card, now: _clock());
+    final result = evaluate(card, now: _clock());
+    if (result case KtaCacheMiss(:final reason) when reason != KtaCacheMissReason.clockSkew) {
+      // Data pribadi yang tidak boleh tampil lagi tidak disimpan lebih lama (AC F05-3, F05-4). Selisih jam tidak
+      // menghapus: cache kembali sah setelah jam perangkat benar.
+      await clear();
+    }
+    return result;
   }
 
   /// Aturan baca murni (diuji terpisah).

@@ -21,7 +21,8 @@ enum AppEnvironment {
 
 /// Konfigurasi API dari `--dart-define` (ARCHITECTURE §8.1, PRD 5.3).
 ///
-/// Flavor dipilih saat build dengan berkas di `config/`:
+/// Lingkungan ("flavor") dipilih saat build dengan berkas di `config/`, bukan flavor Gradle/Xcode, sehingga satu
+/// ID aplikasi dipakai dan perintah build sama di Android dan iOS:
 ///
 /// ```bash
 /// flutter run --dart-define-from-file=config/development.json
@@ -29,14 +30,14 @@ enum AppEnvironment {
 /// flutter build ipa --dart-define-from-file=config/production.json
 /// ```
 ///
-/// Kunci yang dibaca:
+/// Kunci yang dibaca di sini:
 /// - `KAPDH_ENV`: development | staging | production (bawaan development).
 /// - `API_BASE_URL`: URL API lengkap berakhiran `/api/v1`. Bila kosong dipakai bawaan per lingkungan.
-/// - `PUSH_ENABLED`: `true` untuk mengaktifkan FCM/APNs. Tanpa itu, atau bila berkas konfigurasi Firebase
-///   (google-services.json / GoogleService-Info.plist) tidak ada, aplikasi tetap berjalan tanpa push (AC F13-2).
+///
+/// Push dikonfigurasi terpisah oleh `PushConfig` (`PUSH_ENABLED`, `FIREBASE_*`).
 @immutable
 class ApiConfig {
-  ApiConfig({required this.environment, required this.baseUri, required this.pushEnabled}) {
+  ApiConfig({required this.environment, required this.baseUri}) {
     if (!baseUri.path.endsWith('/api/v1')) {
       throw ArgumentError.value(baseUri.toString(), 'API_BASE_URL', 'harus berakhiran /api/v1');
     }
@@ -49,33 +50,27 @@ class ApiConfig {
   factory ApiConfig.fromEnvironment() {
     const rawEnv = String.fromEnvironment('KAPDH_ENV', defaultValue: 'development');
     const rawBase = String.fromEnvironment('API_BASE_URL');
-    const push = bool.fromEnvironment('PUSH_ENABLED');
     final environment = AppEnvironment.parse(rawEnv);
     final base = rawBase.isNotEmpty ? rawBase : defaultBaseUrl(environment);
-    return ApiConfig(environment: environment, baseUri: Uri.parse(base), pushEnabled: push);
+    return ApiConfig(environment: environment, baseUri: Uri.parse(base));
   }
 
   /// URL bawaan per lingkungan (kontrak OpenAPI `servers`). `10.0.2.2` adalah alamat komputer dari emulator
   /// Android; perangkat fisik memakai `API_BASE_URL` berisi IP komputer di jaringan lokal.
   static String defaultBaseUrl(AppEnvironment environment) => switch (environment) {
-        AppEnvironment.development => 'http://10.0.2.2:3000/api/v1',
-        AppEnvironment.staging => 'https://staging-api.kapdh.or.id/api/v1',
-        AppEnvironment.production => 'https://api.kapdh.or.id/api/v1',
-      };
+    AppEnvironment.development => 'http://10.0.2.2:3000/api/v1',
+    AppEnvironment.staging => 'https://staging-api.kapdh.or.id/api/v1',
+    AppEnvironment.production => 'https://api.kapdh.or.id/api/v1',
+  };
 
   final AppEnvironment environment;
   final Uri baseUri;
-  final bool pushEnabled;
 
   String get baseUrl => baseUri.toString();
 
-  /// Namespace Socket.IO `/realtime` pada origin API (ARCHITECTURE §4.9).
-  Uri get realtimeUri => Uri(
-        scheme: baseUri.scheme,
-        host: baseUri.host,
-        port: baseUri.hasPort ? baseUri.port : null,
-        path: '/realtime',
-      );
+  /// Origin API (skema, host, port) tempat namespace Socket.IO `/realtime` berada (ARCHITECTURE §4.9).
+  Uri get realtimeUri =>
+      Uri(scheme: baseUri.scheme, host: baseUri.host, port: baseUri.hasPort ? baseUri.port : null, path: '/realtime');
 
   /// Path engine Socket.IO di server (bawaan Socket.IO).
   String get realtimePath => '/socket.io';

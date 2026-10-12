@@ -1,12 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
-import '../../core/api/api_exception.dart';
-import '../../core/auth/session.dart';
-import 'widgets/register_stepper.dart';
+import '../../core/api/api_providers.dart';
+import '../../core/format/formatters.dart';
+import '../../core/session/session_controller.dart';
+import '../../design/design.dart';
 
+/// Login alumni (F-02, AC F02-1; guideline hal. 5). Setelah token terbit, router mengarahkan sesuai effective_status
+/// (atau ke tujuan tertunda `?from=`); akun pending_otp diarahkan ke OTP dengan challenge baru.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -17,101 +24,182 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
-  bool _obscure = true;
   bool _busy = false;
   String? _error;
+  Map<String, List<String>> _fieldErrors = const {};
+  DateTime? _blockedUntil;
+  Timer? _ticker;
 
   @override
   void dispose() {
+    _ticker?.cancel();
     _email.dispose();
     _password.dispose();
     super.dispose();
   }
 
-  bool get _canSubmit => _email.text.trim().isNotEmpty && _password.text.isNotEmpty && !_busy;
+  DateTime _now() => ref.read(clockProvider)();
+
+  Duration get _blockedFor {
+    final until = _blockedUntil;
+    if (until == null) return Duration.zero;
+    final left = until.difference(_now());
+    return left.isNegative ? Duration.zero : left;
+  }
+
+  bool get _canSubmit =>
+      _email.text.trim().isNotEmpty && _password.text.isNotEmpty && !_busy && _blockedFor == Duration.zero;
+
+  void _startCountdown(Duration wait) {
+    _blockedUntil = _now().add(wait);
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      setState(() {});
+      if (_blockedFor == Duration.zero) timer.cancel();
+    });
+  }
 
   Future<void> _submit() async {
+    if (!_canSubmit) return;
+    FocusScope.of(context).unfocus();
     setState(() {
       _busy = true;
       _error = null;
+      _fieldErrors = const {};
     });
     try {
-      final challenge = await ref.read(sessionProvider.notifier).login(_email.text, _password.text);
-      if (challenge != null && mounted) context.go('/register/otp');
-    } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      final outcome = await ref.read(sessionProvider.notifier).login(email: _email.text, password: _password.text);
+      if (outcome == LoginOutcome.verifyOtp && mounted) context.go(AppRoutes.registerOtp);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _fieldErrors = error.fieldErrors;
+        _error = error.fieldErrors.isEmpty ? error.message : error.fieldErrors['_']?.join(' ');
+        final wait = error.retryAfter;
+        if (error.ui.action == ErrorUiAction.showCountdown && wait != null) _startCountdown(wait);
+      });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
+  String? _fieldError(String key) => _fieldErrors[key]?.join(' ');
+
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return BrandSheet(
-      header: Padding(
-        padding: const EdgeInsets.fromLTRB(KapdhSpace.s6, KapdhSpace.s6, KapdhSpace.s6, KapdhSpace.s8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+    final blocked = _blockedFor;
+    return BrandSheetScaffold(
+      overlap: KapdhSpace.s4,
+      header: BrandHeader(
+        padding: const EdgeInsets.fromLTRB(KapdhSpace.s6, KapdhSpace.s4, KapdhSpace.s4, KapdhSpace.s8 + KapdhSpace.s4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Selamat', style: text.headlineSmall?.copyWith(color: KapdhColors.textOnDark)),
-                  Text('Datang kembali', style: text.headlineSmall?.copyWith(color: KapdhColors.accent)),
-                  const SizedBox(height: KapdhSpace.s3),
-                  Text('Masuk untuk melanjutkan silaturahmi bersama alumni', style: text.bodyMedium?.copyWith(color: KapdhColors.textOnDark)),
-                ],
+            Align(
+              alignment: Alignment.topRight,
+              child: Image.asset('assets/logo-kapdh.png', width: 84, height: 84, semanticLabel: 'Logo KAPDH'),
+            ),
+            const SizedBox(height: KapdhSpace.s4),
+            Semantics(
+              header: true,
+              child: const Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Selamat\n',
+                      style: TextStyle(color: KapdhColors.textOnDark),
+                    ),
+                    TextSpan(
+                      text: 'Datang kembali !!!',
+                      style: TextStyle(color: KapdhColors.accent),
+                    ),
+                  ],
+                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, height: 1.3),
               ),
             ),
-            Image.asset('assets/logo-kapdh.png', width: 84, semanticLabel: 'Logo KAPDH'),
+            const SizedBox(height: KapdhSpace.s3),
+            const Text(
+              'Masuk untuk melanjutkan silaturahmi bersama alumni',
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textOnDark),
+            ),
           ],
         ),
       ),
-      child: ListView(
-        padding: const EdgeInsets.all(KapdhSpace.s6),
-        children: [
-          TextField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            autofillHints: const [AutofillHints.email],
-            decoration: const InputDecoration(labelText: 'Email', hintText: 'Masukkan email', prefixIcon: Icon(Icons.mail_outline)),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: KapdhSpace.s4),
-          TextField(
-            controller: _password,
-            obscureText: _obscure,
-            autofillHints: const [AutofillHints.password],
-            decoration: InputDecoration(
-              labelText: 'Password',
-              hintText: 'Masukkan password',
-              errorText: _error,
-              suffixIcon: IconButton(
-                tooltip: _obscure ? 'Tampilkan password' : 'Sembunyikan password',
-                icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-                onPressed: () => setState(() => _obscure = !_obscure),
-              ),
-            ),
-            onChanged: (_) => setState(() {}),
-            onSubmitted: (_) => _canSubmit ? _submit() : null,
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(onPressed: () => context.go('/forgot'), child: const Text('Lupa Password')),
-          ),
-          const SizedBox(height: KapdhSpace.s4),
-          FilledButton(onPressed: _canSubmit ? _submit : null, child: Text(_busy ? 'Memeriksa...' : 'Masuk')),
-          const SizedBox(height: KapdhSpace.s6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+      body: AutofillGroup(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s8, KapdhSpace.s5, KapdhSpace.s6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Belum ada akun?'),
-              TextButton(onPressed: () => context.go('/register'), child: const Text('Daftar')),
+              KapdhTextField(
+                key: const ValueKey('login-email'),
+                label: 'Email',
+                controller: _email,
+                hint: 'Masukkan Email',
+                prefixIcon: Icons.mail_outline,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.email],
+                errorText: _fieldError('email'),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: KapdhSpace.s4),
+              KapdhTextField(
+                key: const ValueKey('login-password'),
+                label: 'Password',
+                controller: _password,
+                hint: 'Masukkan Password',
+                obscurable: true,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.password],
+                errorText: _fieldError('password'),
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (_) => _submit(),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: KapdhLinkButton(label: 'Lupa Password', onPressed: () => context.go(AppRoutes.forgot)),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: KapdhSpace.s2),
+                Semantics(
+                  liveRegion: true,
+                  child: InfoBox(tone: InfoBoxTone.danger, message: _error!),
+                ),
+              ],
+              const SizedBox(height: KapdhSpace.s5),
+              KapdhButton(
+                key: const ValueKey('login-submit'),
+                label: blocked > Duration.zero ? 'Coba lagi dalam ${formatCountdown(blocked)}' : 'Masuk',
+                busyLabel: 'Memeriksa...',
+                busy: _busy,
+                onPressed: _canSubmit ? _submit : null,
+              ),
+              const SizedBox(height: KapdhSpace.s6),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  const Text('Belum ada akun?', style: TextStyle(fontSize: 13, color: KapdhColors.primary)),
+                  KapdhLinkButton(label: 'Daftar', onPressed: () => context.go(AppRoutes.register)),
+                ],
+              ),
+              const SizedBox(height: KapdhSpace.s2),
+              Wrap(
+                alignment: WrapAlignment.center,
+                children: [
+                  KapdhLinkButton(
+                    label: 'Kebijakan Privasi',
+                    onPressed: () => context.push(AppRoutes.legal(AppRoutes.privacySlug)),
+                  ),
+                  KapdhLinkButton(label: 'Bantuan', onPressed: () => context.push(AppRoutes.legal(AppRoutes.helpSlug))),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

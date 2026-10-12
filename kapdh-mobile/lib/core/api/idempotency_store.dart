@@ -16,9 +16,7 @@ import '../storage/secure_store.dart';
 ///
 /// Disimpan di secure storage karena sidik payload dapat diturunkan dari data pribadi/sandi.
 class IdempotencyStore {
-  IdempotencyStore(this._store, {Clock clock = systemClock, Uuid? uuid})
-      : _clock = clock,
-        _uuid = uuid ?? const Uuid();
+  IdempotencyStore(this._store, {Clock clock = systemClock, Uuid? uuid}) : _clock = clock, _uuid = uuid ?? const Uuid();
 
   static const storageKey = 'kapdh.idempotency.v1';
 
@@ -33,27 +31,27 @@ class IdempotencyStore {
   /// Key untuk [intent] (mis. `register`, `payment.create.registration`, `payment.proof.<id>`) dan [payload]
   /// (body JSON request). Mengembalikan key tersimpan bila payload sama dan belum kedaluwarsa.
   Future<String> keyFor(String intent, Object? payload) => _queue.run(() async {
-        final entries = await _readAll();
-        final fingerprint = payloadFingerprint(payload);
-        final now = _clock().toUtc();
-        final existing = entries[intent];
-        if (existing != null &&
-            existing.fingerprint == fingerprint &&
-            now.difference(existing.createdAt) < retention &&
-            !existing.createdAt.isAfter(now.add(const Duration(minutes: 5)))) {
-          return existing.key;
-        }
-        final entry = _Entry(key: _uuid.v4(), fingerprint: fingerprint, createdAt: now);
-        entries[intent] = entry;
-        await _writeAll(entries);
-        return entry.key;
-      });
+    final entries = await _readAll();
+    final fingerprint = payloadFingerprint(payload);
+    final now = _clock().toUtc();
+    final existing = entries[intent];
+    if (existing != null &&
+        existing.fingerprint == fingerprint &&
+        now.difference(existing.createdAt) < retention &&
+        !existing.createdAt.isAfter(now.add(const Duration(minutes: 5)))) {
+      return existing.key;
+    }
+    final entry = _Entry(key: _uuid.v4(), fingerprint: fingerprint, createdAt: now);
+    entries[intent] = entry;
+    await _writeAll(entries);
+    return entry.key;
+  });
 
   /// Hasil [intent] sudah pasti: key berikutnya untuk niat ini akan baru.
   Future<void> complete(String intent) => _queue.run(() async {
-        final entries = await _readAll();
-        if (entries.remove(intent) != null) await _writeAll(entries);
-      });
+    final entries = await _readAll();
+    if (entries.remove(intent) != null) await _writeAll(entries);
+  });
 
   /// Menghapus semua key (logout / berganti akun).
   Future<void> clear() => _queue.run(() => _store.delete(storageKey));
@@ -73,9 +71,12 @@ class IdempotencyStore {
   }
 
   /// Penolakan yang pasti tidak memproses mutasi atau key-nya tidak dapat dipakai lagi: galat baku 4xx selain
-  /// 408/429 (RATE_LIMITED berarti belum diproses; key yang sama aman dipakai ulang setelah jeda).
+  /// 408/429 (RATE_LIMITED berarti belum diproses; key yang sama aman dipakai ulang setelah jeda) dan selain
+  /// IDEMPOTENCY_CONFLICT. Konflik dengan sidik payload yang sama berarti permintaan pertama dengan key ini masih
+  /// diproses server; hasilnya belum diketahui sehingga key dipertahankan (PRD 4.3, 4.5 "Memeriksa status").
   static bool isDefinitiveFailure(ApiException error) {
     if (error.kind != ApiFailureKind.api) return false;
+    if (error.code == ErrorCode.idempotencyConflict) return false;
     final status = error.statusCode ?? 0;
     return status >= 400 && status < 500 && status != 408 && status != 429;
   }
