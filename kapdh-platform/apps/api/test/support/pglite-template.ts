@@ -8,7 +8,8 @@
  * dibuktikan di jalur `pnpm test:pg` (embedded PostgreSQL 17, test/pg).
  */
 import { PGlite } from "@electric-sql/pglite";
-import { MIGRATIONS_FOLDER } from "@kapdh/database";
+import { type Database, MIGRATIONS_FOLDER, schema } from "@kapdh/database";
+import { seedReference } from "@kapdh/database/seeds/reference";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -30,9 +31,19 @@ export async function migrateFreshPglite(): Promise<PGlite> {
   return pg;
 }
 
-/** Dump data directory PGlite yang sudah dimigrasi (tar tanpa kompresi). */
+/** Waktu seed referensi pada template (sebelum TestClock default 2026-10-13T02:00Z). */
+export const TEMPLATE_SEEDED_AT = new Date("2026-10-01T00:00:00Z");
+
+/**
+ * Dump data directory PGlite yang sudah dimigrasi DAN diisi seed referensi production (app_settings, master usulan
+ * nonaktif, kerangka halaman legal draf), sama seperti inisialisasi lingkungan PRD 8.2 langkah 2-4.
+ */
 export async function dumpMigratedTemplate(): Promise<Blob> {
   const pg = await migrateFreshPglite();
+  await seedReference(drizzle(pg, { schema }) as unknown as Database, {
+    now: TEMPLATE_SEEDED_AT,
+    requestId: "seed-reference-template-uji",
+  });
   try {
     return await pg.dumpDataDir("none");
   } finally {
