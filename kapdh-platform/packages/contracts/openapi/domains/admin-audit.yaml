@@ -1,0 +1,7 @@
+# Domain admin-audit (C7 Admin & notifications): pencarian audit dan ekspor CSV asinkron
+# (izin audit.read / audit.export). Modul API: apps/api/src/modules/admin. Path ditambahkan oleh penulis kontrak C7.
+tags:
+  - name: Admin Audit
+    description: Pencarian audit dan ekspor CSV asinkron dengan filter yang sama (F-17, AC F17-2..F17-4).
+
+paths: {}

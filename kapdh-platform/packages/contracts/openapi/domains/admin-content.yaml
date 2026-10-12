@@ -1,0 +1,7 @@
+# Domain admin-content (C4 Content): CRUD berita (draft/published/archived, terjadwal), banner, halaman dan
+# kategori (izin content.manage). Modul API: apps/api/src/modules/content. Path ditambahkan oleh penulis kontrak C4.
+tags:
+  - name: Admin Content
+    description: Pengelolaan berita terjadwal, banner, halaman informasi dan kategori oleh pengurus (F-08, F-15, AC F15-5).
+
+paths: {}

@@ -1,0 +1,9 @@
+# Domain admin-members (C2 Membership): daftar/detail anggota, koreksi identitas dan nomor, suspend/unsuspend,
+# inisiasi pemulihan sandi alumni. Modul API: apps/api/src/modules/admin. Path ditambahkan oleh penulis kontrak C2.
+tags:
+  - name: Admin Members
+    description: |
+      Pengelolaan anggota oleh pengurus: daftar, detail, koreksi identitas dan nomor (AC F05-6), suspend/unsuspend
+      (PRD 4.2) dan inisiasi pemulihan sandi alumni (AC F16-4) (F-15, F-16).
+
+paths: {}

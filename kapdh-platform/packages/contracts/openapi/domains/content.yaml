@@ -1,0 +1,153 @@
+# Domain content (C4 Content): beranda, berita, like dan banner untuk anggota.
+# Modul API: apps/api/src/modules/content.
+tags:
+  - name: Content
+    description: Beranda, berita, banner dan like (F-08).
+
+paths:
+  /home:
+    get:
+      tags: [Content]
+      operationId: getHome
+      summary: Beranda; banner aktif, event mendatang, dan berita terbaru (F-08, AC F08-2).
+      responses:
+        "200":
+          description: Beranda.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Home" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /posts:
+    get:
+      tags: [Content]
+      operationId: listPosts
+      summary: Daftar berita yang sudah terbit dan sudah waktunya tampil (AC F08-1).
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: category
+          in: query
+          description: Slug kategori berita.
+          schema: { type: string, maxLength: 80 }
+      responses:
+        "200":
+          description: Berita published.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PostPage" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /posts/{slug}:
+    get:
+      tags: [Content]
+      operationId: getPost
+      summary: Detail berita (F-08).
+      parameters:
+        - $ref: "#/components/parameters/PostSlug"
+      responses:
+        "200":
+          description: Berita.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Post" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /posts/{slug}/like:
+    put:
+      tags: [Content]
+      operationId: likePost
+      summary: Idempoten; maksimal satu like per pengguna (AC F08-3).
+      parameters:
+        - $ref: "#/components/parameters/PostSlug"
+      responses:
+        "200":
+          description: Status like.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LikeState" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Content]
+      operationId: unlikePost
+      summary: Batalkan like; idempoten (AC F08-3).
+      parameters:
+        - $ref: "#/components/parameters/PostSlug"
+      responses:
+        "200":
+          description: Status like.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LikeState" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  parameters:
+    PostSlug:
+      name: slug
+      in: path
+      required: true
+      schema: { type: string, maxLength: 160 }
+
+  schemas:
+    HomeBanner:
+      type: object
+      required: [id, image_url]
+      properties:
+        id: { type: string, format: uuid }
+        image_url: { type: string, format: uri }
+        title: { type: [string, "null"] }
+        target: { type: [string, "null"], description: Deep link aman atau URL luar bertanda (AC F08-2). }
+
+    PostSummary:
+      type: object
+      required: [slug, title, published_at, like_count]
+      properties:
+        slug: { type: string }
+        title: { type: string }
+        excerpt: { type: [string, "null"] }
+        cover_url: { type: [string, "null"], format: uri }
+        category: { type: [string, "null"] }
+        published_at: { type: string, format: date-time }
+        like_count: { type: integer }
+        liked_by_me: { type: boolean }
+
+    Post:
+      allOf:
+        - $ref: "#/components/schemas/PostSummary"
+        - type: object
+          required: [body_html]
+          properties:
+            body_html:
+              { type: string, description: HTML tersanitasi server; tautan luar diberi indikasi (F-08). }
+
+    PostPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PostSummary" }
+        next_cursor: { type: [string, "null"] }
+
+    LikeState:
+      type: object
+      required: [liked, like_count]
+      properties:
+        liked: { type: boolean }
+        like_count: { type: integer }
+
+    Home:
+      type: object
+      required: [banners, upcoming_events, posts]
+      properties:
+        banners:
+          type: array
+          items: { $ref: "#/components/schemas/HomeBanner" }
+        upcoming_events:
+          type: array
+          items: { $ref: "#/components/schemas/EventSummary" }
+        posts:
+          type: array
+          items: { $ref: "#/components/schemas/PostSummary" }
