@@ -1,0 +1,31 @@
+{
+  "name": "kapdh-platform",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Monorepo KAPDH Apps: API, worker, web admin, situs publik, dan paket bersama (PRD v3.5).",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "contracts:lint": "pnpm --filter @kapdh/contracts lint",
+    "contracts:gen": "pnpm --filter @kapdh/contracts generate",
+    "tokens:gen": "python3 packages/design-tokens/build.py",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "eslint": "9.39.5",
+    "globals": "16.5.0",
+    "prettier": "3.9.10",
+    "turbo": "2.11.7",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.1"
+  }
+}

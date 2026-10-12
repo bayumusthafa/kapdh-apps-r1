@@ -1,0 +1,77 @@
+import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res, UseGuards } from "@nestjs/common";
+import type { ServerEnv } from "@kapdh/config";
+import type { FastifyReply } from "fastify";
+import { z } from "zod";
+import { validate } from "../common/validate.js";
+import { AuthGuard, type AuthedRequest, RequireAuth } from "../auth/auth.guard.js";
+import { setAdminRefreshCookie } from "../auth/auth.controller.js";
+import { ADMIN_IDLE_MS, AuthService } from "../auth/auth.service.js";
+import { ENV } from "../infra/tokens.js";
+
+@Controller("admin")
+@UseGuards(AuthGuard)
+export class AdminAuthController {
+  constructor(
+    private readonly auth: AuthService,
+    @Inject(ENV) private readonly env: ServerEnv,
+  ) {}
+
+  @Post("auth/login")
+  @HttpCode(200)
+  login(@Body() body: unknown, @Req() req: AuthedRequest) {
+    const input = validate(
+      z.object({ email: z.string().trim().min(3).max(254), password: z.string().min(1).max(128) }),
+      body,
+    );
+    return this.auth.adminLogin(input.email, input.password, req.ip);
+  }
+
+  @Post("auth/mfa")
+  @HttpCode(200)
+  async mfa(
+    @Body() body: unknown,
+    @Req() req: AuthedRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const input = validate(
+      z
+        .object({
+          mfa_token: z.string().min(10),
+          totp_code: z
+            .string()
+            .regex(/^\d{6}$/)
+            .optional(),
+          backup_code: z.string().min(6).max(32).optional(),
+        })
+        .refine((v) => v.totp_code || v.backup_code, {
+          message: "Masukkan kode autentikator atau backup code",
+          path: ["totp_code"],
+        }),
+      body,
+    );
+    const issued = await this.auth.adminVerifyMfa(
+      input.mfa_token,
+      input.totp_code,
+      input.backup_code,
+      String(req.id),
+      req.ip,
+    );
+    setAdminRefreshCookie(
+      reply,
+      issued.refreshToken,
+      issued.refreshExpiresAt,
+      this.env.NODE_ENV !== "development" && this.env.NODE_ENV !== "test",
+    );
+    return {
+      access_token: issued.pair.access_token,
+      access_expires_at: issued.pair.access_expires_at,
+      idle_timeout_seconds: ADMIN_IDLE_MS / 1000,
+    };
+  }
+
+  @Get("me")
+  @RequireAuth("admin")
+  me(@Req() req: AuthedRequest) {
+    return this.auth.adminProfile(req.auth!.userId);
+  }
+}

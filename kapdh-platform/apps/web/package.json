@@ -1,0 +1,26 @@
+{
+  "name": "@kapdh/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Situs publik kapdh.or.id (Astro static): beranda, verifikasi KTA, hapus akun, legal.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src/scripts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@kapdh/contracts": "workspace:*",
+    "@kapdh/design-tokens": "workspace:*",
+    "astro": "7.3.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vitest": "5.0.3"
+  }
+}

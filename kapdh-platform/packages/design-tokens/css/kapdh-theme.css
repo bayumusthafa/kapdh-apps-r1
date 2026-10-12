@@ -1,0 +1,89 @@
+/* DIBANGKITKAN dari tokens.json oleh build.py. Jangan edit manual. */
+/* Pakai di apps/admin: @import "tailwindcss"; @import "@kapdh/design-tokens/css/kapdh-theme.css"; */
+@theme {
+  --color-green-950: #0E280C;
+  --color-green-900: #143A12;
+  --color-green-800: #1A4B17;
+  --color-green-700: #215E1E;
+  --color-green-600: #2D7A28;
+  --color-green-500: #3F9A38;
+  --color-green-100: #E3F0E1;
+  --color-green-50: #F1F8F0;
+  --color-gold-500: #E6D312;
+  --color-gold-400: #F0DD19;
+  --color-gold-100: #FBF6C9;
+  --color-cream: #FCF8F5;
+  --color-neutral-0: #FFFFFF;
+  --color-neutral-50: #FBFAFF;
+  --color-neutral-100: #F4F4F6;
+  --color-neutral-200: #E3E3E6;
+  --color-neutral-300: #C9C9C9;
+  --color-neutral-500: #8A8F87;
+  --color-neutral-600: #6B6B6B;
+  --color-neutral-700: #3F4A3E;
+  --color-neutral-900: #1C1B1F;
+  --color-primary: #1A4B17;
+  --color-on-primary: #FFFFFF;
+  --color-primary-hover: #215E1E;
+  --color-accent: #E6D312;
+  --color-on-accent: #0E280C;
+  --color-background: #FBFAFF;
+  --color-surface: #FFFFFF;
+  --color-surface-brand: #FCF8F5;
+  --color-surface-dark: #0E280C;
+  --color-text: #1C1B1F;
+  --color-text-muted: #6B6B6B;
+  --color-text-on-dark: #FFFFFF;
+  --color-text-highlight-on-dark: #E6D312;
+  --color-border: #8A8F87;
+  --color-divider: #E3E3E6;
+  --color-disabled-bg: #DCDCE0;
+  --color-disabled-text: #6B6B6B;
+  --color-focus-ring: #E6D312;
+  --color-success: #1E7A46;
+  --color-success-bg: #E8F7F0;
+  --color-warning: #8A5A00;
+  --color-warning-bg: #FFF4D6;
+  --color-danger: #B3261E;
+  --color-danger-bg: #FDECEA;
+  --color-info: #1F5FA8;
+  --color-info-bg: #E7F0FB;
+  --color-neutral: #3F4A3E;
+  --color-neutral-bg: #EEEFEE;
+  --font-heading: Telegraf, Poppins, system-ui, sans-serif;
+  --font-sans: Poppins, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --text-display: 2rem;
+  --text-h1: 1.5rem;
+  --text-h2: 1.25rem;
+  --text-h3: 1.125rem;
+  --text-body-lg: 1rem;
+  --text-body: 0.875rem;
+  --text-label: 0.875rem;
+  --text-caption: 0.75rem;
+  --text-overline: 0.6875rem;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 9999px;
+  --shadow-card: 0 1px 2px rgba(14,40,12,0.06), 0 4px 12px rgba(14,40,12,0.08);
+  --shadow-raised: 0 8px 24px rgba(14,40,12,0.16);
+}
+
+:root {
+  --gradient-kta-card: linear-gradient(135deg, #020702 0%, #0E280C 45%, #215E1E 100%);
+  --gradient-button-primary: linear-gradient(180deg, #215E1E 0%, #1A4B17 100%);
+  --gradient-header: linear-gradient(180deg, #215E1E 0%, #1A4B17 100%);
+}
+
+/* Badge status keanggotaan: selalu tampilkan label teks, bukan warna saja (PRD 4.5). */
+.badge-verified { color: #1E7A46; background: #E8F7F0; }
+.badge-expiring { color: #8A5A00; background: #FFF4D6; }
+.badge-expired { color: #B3261E; background: #FDECEA; }
+.badge-unverified { color: #B3261E; background: #FDECEA; }
+.badge-pending-review { color: #1F5FA8; background: #E7F0FB; }
+.badge-suspended { color: #3F4A3E; background: #EEEFEE; }
+.bg-kta-card { background: var(--gradient-kta-card); }
+.bg-button-primary { background: var(--gradient-button-primary); }
+:where(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }

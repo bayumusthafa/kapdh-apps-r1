@@ -1,0 +1,33 @@
+name: kapdh_mobile
+description: Aplikasi anggota KAPDH Apps (Android dan iOS). PRD v3.5.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.9.0 <4.0.0"
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_riverpod: ^3.0.0
+  go_router: ^16.0.0
+  dio: ^5.8.0
+  flutter_secure_storage: ^9.2.4
+  google_fonts: ^6.2.1
+  intl: ^0.20.2
+  # Klien terbangkit dari packages/contracts (dart-dio). Aktifkan setelah paket kapdh_api dipublikasikan bertag:
+  # kapdh_api:
+  #   git: { url: <repo kapdh-platform>, path: packages/contracts/generated/dart, ref: contracts-v0.1.0 }
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo-kapdh.png

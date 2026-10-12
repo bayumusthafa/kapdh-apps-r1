@@ -1,0 +1,7 @@
+extends:
+  - recommended
+rules:
+  info-license: off
+  no-server-example.com: off
+  # Setiap operasi memiliki respons `default` dengan skema Error baku (PRD 5.2), sehingga 4XX eksplisit tidak diwajibkan.
+  operation-4xx-response: off

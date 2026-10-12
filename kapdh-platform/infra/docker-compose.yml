@@ -1,0 +1,27 @@
+# Lingkungan pengembangan lokal (PRD 5.3). Production dan staging dideploy lewat Coolify dengan secrets terpisah.
+name: kapdh-dev
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: kapdh
+      POSTGRES_USER: kapdh
+      POSTGRES_PASSWORD: kapdh-dev-only
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kapdh -d kapdh"]
+      interval: 5s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["127.0.0.1:6379:6379"]
+    volumes: [redisdata:/data]
+  mailpit:
+    # Menangkap email OTP di lokal: buka http://localhost:8025
+    image: axllent/mailpit:v1.27
+    ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
+volumes:
+  pgdata: {}
+  redisdata: {}

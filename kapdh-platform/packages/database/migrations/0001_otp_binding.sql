@@ -1,0 +1,1 @@
+ALTER TABLE "app"."otp_codes" ADD COLUMN "binding" text;

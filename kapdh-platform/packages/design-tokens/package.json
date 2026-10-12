@@ -1,0 +1,18 @@
+{
+  "name": "@kapdh/design-tokens",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Token desain KAPDH dari Guidelines KAPDH Platform v1.0.",
+  "files": [
+    "tokens.json",
+    "css",
+    "flutter"
+  ],
+  "exports": {
+    "./tokens.json": "./tokens.json",
+    "./css/kapdh-theme.css": "./css/kapdh-theme.css"
+  },
+  "scripts": {
+    "build": "python3 build.py"
+  }
+}

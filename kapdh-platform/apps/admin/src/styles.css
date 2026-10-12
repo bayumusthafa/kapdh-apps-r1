@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@import "@kapdh/design-tokens/css/kapdh-theme.css";
+
+html,
+body {
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
