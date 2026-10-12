@@ -66,7 +66,12 @@ describe.each(drivers)("kontrak StorageDriver: %s", (_name, make) => {
     const driver = make();
     const body = Buffer.from("isi berkas uji");
     const info = await driver.put(key("a1"), body, { contentType: "image/jpeg" });
-    expect(info).toEqual({ key: key("a1"), bytes: body.byteLength, contentType: "image/jpeg", sha256: sha256Hex(body) });
+    expect(info).toEqual({
+      key: key("a1"),
+      bytes: body.byteLength,
+      contentType: "image/jpeg",
+      sha256: sha256Hex(body),
+    });
     expect((await readAll(await driver.get(key("a1")))).toString()).toBe("isi berkas uji");
     expect(await driver.exists(key("a1"))).toBe(true);
     expect(await driver.stat(key("a1"))).toMatchObject({ key: key("a1"), bytes: body.byteLength });
@@ -113,9 +118,7 @@ describe.each(drivers)("kontrak StorageDriver: %s", (_name, make) => {
 describe("LocalDriver (PRD 2.5: berkas privat tidak dilayani dari folder publik)", () => {
   it("menolak root relatif dan root di dalam folder publik", () => {
     expect(() => new LocalDriver("data/files")).toThrow(StorageConfigError);
-    expect(() => new LocalDriver(join(localRoot, "apps", "web", "public", "files"))).toThrow(
-      /folder publik/,
-    );
+    expect(() => new LocalDriver(join(localRoot, "apps", "web", "public", "files"))).toThrow(/folder publik/);
     expect(() => new LocalDriver(join(localRoot, "static"))).toThrow(StorageConfigError);
   });
 
@@ -153,7 +156,10 @@ describe("transferObject (perpindahan storage PRD 5.4)", () => {
     const body = Buffer.from("bukti bayar");
     const stored = await source.put("payment_proof/2026/10/m1", body, { contentType: "application/pdf" });
     await expect(
-      transferObject(source, target, stored.key, { contentType: "application/pdf", expectedSha256: stored.sha256 }),
+      transferObject(source, target, stored.key, {
+        contentType: "application/pdf",
+        expectedSha256: stored.sha256,
+      }),
     ).resolves.toMatchObject({ sha256: stored.sha256 });
     expect((await readAll(await target.get(stored.key))).equals(body)).toBe(true);
   });
@@ -163,7 +169,10 @@ describe("transferObject (perpindahan storage PRD 5.4)", () => {
     const target = new MemoryDriver();
     await source.put("avatar/2026/10/m2", Buffer.from("isi"), { contentType: "image/png" });
     await expect(
-      transferObject(source, target, "avatar/2026/10/m2", { contentType: "image/png", expectedSha256: "0".repeat(64) }),
+      transferObject(source, target, "avatar/2026/10/m2", {
+        contentType: "image/png",
+        expectedSha256: "0".repeat(64),
+      }),
     ).rejects.toThrow(/Checksum/);
     expect(await target.exists("avatar/2026/10/m2")).toBe(false);
   });
@@ -173,8 +182,12 @@ describe("MemoryDriver.failNext (injeksi kegagalan uji)", () => {
   it("operasi berikutnya gagal sekali lalu pulih", async () => {
     const driver = new MemoryDriver();
     driver.failNext("put");
-    await expect(driver.put("avatar/2026/10/f", Buffer.from("x"), { contentType: "image/png" })).rejects.toThrow();
-    await expect(driver.put("avatar/2026/10/f", Buffer.from("x"), { contentType: "image/png" })).resolves.toBeTruthy();
+    await expect(
+      driver.put("avatar/2026/10/f", Buffer.from("x"), { contentType: "image/png" }),
+    ).rejects.toThrow();
+    await expect(
+      driver.put("avatar/2026/10/f", Buffer.from("x"), { contentType: "image/png" }),
+    ).resolves.toBeTruthy();
   });
 });
 
@@ -194,7 +207,9 @@ describe("createStorageDriver", () => {
     ).toBeInstanceOf(S3Driver);
   });
   it("s3 tanpa kredensial ditolak", () => {
-    expect(() => createStorageDriver({ ...base, STORAGE_DRIVER: "s3", S3_BUCKET: "b" })).toThrow(StorageConfigError);
+    expect(() => createStorageDriver({ ...base, STORAGE_DRIVER: "s3", S3_BUCKET: "b" })).toThrow(
+      StorageConfigError,
+    );
   });
 });
 
@@ -202,8 +217,13 @@ describe("S3Driver ke server S3 tiruan", () => {
   it("objek tersimpan di bucket dengan content-type hasil deteksi", async () => {
     const driver = new S3Driver(s3Config);
     await driver.put("banner_image/2026/10/b1", Buffer.from("png"), { contentType: "image/png" });
-    expect(fakeS3.objects.get("kapdh-uji/banner_image/2026/10/b1")).toMatchObject({ contentType: "image/png" });
-    expect(await driver.stat("banner_image/2026/10/b1")).toMatchObject({ contentType: "image/png", bytes: 3 });
+    expect(fakeS3.objects.get("kapdh-uji/banner_image/2026/10/b1")).toMatchObject({
+      contentType: "image/png",
+    });
+    expect(await driver.stat("banner_image/2026/10/b1")).toMatchObject({
+      contentType: "image/png",
+      bytes: 3,
+    });
   });
 
   it("galat selain 404 diteruskan (bukan dianggap tidak ada)", async () => {

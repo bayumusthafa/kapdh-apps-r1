@@ -65,7 +65,12 @@ export class SessionValidator {
    * `session.revoked` yang dikirim ke klien sebelum diputus.
    */
   async revalidate(
-    entries: readonly { sessionId: string; userId: string; sessionVersion: number; audience: AccessClaims["audience"] }[],
+    entries: readonly {
+      sessionId: string;
+      userId: string;
+      sessionVersion: number;
+      audience: AccessClaims["audience"];
+    }[],
     now = this.clock.now(),
   ): Promise<Map<string, SessionRevokedReason | null>> {
     const found = await this.rows(entries.map((e) => e.sessionId));
