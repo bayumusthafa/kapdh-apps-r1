@@ -201,12 +201,15 @@ class _LoadingSkeletonState extends State<LoadingSkeleton> with SingleTickerProv
       height: height,
       decoration: BoxDecoration(color: KapdhColors.neutral200, borderRadius: BorderRadius.circular(radius)),
     );
+    // Pengguna yang mematikan animasi (aksesibilitas sistem) melihat kerangka statis (N-11).
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (reduceMotion && _controller.isAnimating) _controller.stop();
     return Semantics(
       label: widget.semanticsLabel,
       liveRegion: true,
       excludeSemantics: true,
       child: FadeTransition(
-        opacity: _controller,
+        opacity: reduceMotion ? const AlwaysStoppedAnimation<double>(0.7) : _controller,
         child: Padding(
           padding: const EdgeInsets.all(KapdhSpace.s5),
           child: Column(

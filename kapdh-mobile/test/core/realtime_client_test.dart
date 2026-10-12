@@ -162,6 +162,43 @@ void main() {
     await client.dispose();
   });
 
+  test('token hasil refresh juga ditolak: tidak me-refresh lagi, hanya backoff (cegah rotasi berulang)', () {
+    fakeAsync((async) {
+      // Penyimpanan token dibuat di dalam zona fakeAsync agar antrean microtask-nya ikut dikendalikan.
+      tokens = TokenStore(MemorySecureStore());
+      unawaited(
+        tokens.save(
+          StoredTokens(
+            accessToken: 'access-1',
+            accessExpiresAt: testNow.add(const Duration(minutes: 10)),
+            refreshToken: 'refresh-1',
+          ),
+        ),
+      );
+      async.flushMicrotasks();
+      final client = build(random: math.Random(5));
+      client.start();
+      async.flushMicrotasks();
+      sockets.last.listener.onConnectError({'message': 'UNAUTHENTICATED'});
+      async.flushMicrotasks();
+      async.elapse(const Duration(milliseconds: 50));
+      expect(refreshes, 1);
+      expect(sockets, hasLength(2));
+
+      sockets.last.listener.onConnectError({'message': 'UNAUTHENTICATED'});
+      async.flushMicrotasks();
+      expect(refreshes, 1);
+      expect(client.connectionState.value, RealtimeConnectionState.waitingRetry);
+      async.elapse(const Duration(seconds: 3));
+      expect(sockets, hasLength(3));
+      expect(refreshes, 1);
+
+      client.stop();
+      unawaited(client.dispose());
+      async.flushMicrotasks();
+    });
+  });
+
   test('refresh ditolak (sesi dicabut): berhenti tanpa sambung ulang', () async {
     nextPair = () => null;
     final client = build();
