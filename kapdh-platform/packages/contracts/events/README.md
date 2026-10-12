@@ -32,6 +32,17 @@ dikompilasi Ajv mode strict; setiap contoh wajib lolos skemanya.
 Klien hanya mengirim `typing {room_id}` dan `presence.ping`. Autentikasi handshake `{token: <access JWT>}`;
 pencabutan sesi/izin memutus atau melepas langganan (AC F02-6, F11-6, F16-3).
 
+Emit klien (tidak memakai amplop; tidak ada endpoint HTTP untuk typing/presence, PRD 3.11):
+
+- `typing` dengan data `{ "room_id": "<uuid>" }`. Server memeriksa ulang sesi, effective_status aktif
+  (verified/expiring, tidak suspended) dan keanggotaan joined pada setiap emit; bila tidak lagi berizin emit
+  diabaikan dan subscription room dicabut (AC F11-4, F11-6). Diteruskan sebagai event `typing` (dibatasi laju).
+- `presence.ping` tanpa data, dikirim berkala selama aplikasi aktif dan lebih sering daripada `ttl_seconds` event
+  `presence` yang diterima. Presence dan typing hanya sementara (TTL), bukan bukti pesan dibaca.
+- Pesan TIDAK dikirim lewat socket: klien memakai `POST /chat/rooms/{roomId}/messages` (ack sesudah commit,
+  AC F11-2), lalu menerima `message.created`. Setelah reconnect klien menyinkron lewat
+  `GET /chat/rooms/{roomId}/messages?after=<ID pesan terakhir>` (AC F11-3).
+
 ## Payload per jenis event (penulis kontrak C6)
 
 Setiap jenis di `properties.type.enum` amplop WAJIB berada di tepat satu keadaan:
@@ -54,7 +65,7 @@ Kesepuluh jenis sudah bertipe (penulis kontrak C6). Ringkasan payload, `entity_i
 | `room.member_changed`  | ID room       | `room:<id>` + `user:<id>` yang terdampak   | `room_id`, `user_id`, `change`, `role`, `member_count`, `actor_user_id`   |
 | `typing`               | ID room       | `room:<id>` (kecuali pengirim)             | `room_id`, `user_id`, `ttl_seconds`                                       |
 | `presence`             | user_id       | anggota room yang sama                     | `user_id`, `status`, `ttl_seconds`                                        |
-| `notification.created` | ID notifikasi | `user:<id>`                                | sama dengan `InboxNotification` + `unread_count`                          |
+| `notification.created` | ID notifikasi | `user:<id>`                                | field `InboxNotification` (tanpa `read_at`) + `unread_count`              |
 | `session.revoked`      | ID sesi       | socket sesi yang dicabut                   | `reason`, `all_sessions`                                                  |
 
 Skema bersama: `realtime-chat-message`, `realtime-chat-user`, `realtime-chat-image`, `realtime-chat-reply`,
