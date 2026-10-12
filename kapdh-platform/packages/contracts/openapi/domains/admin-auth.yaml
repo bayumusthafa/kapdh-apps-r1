@@ -4,9 +4,17 @@
 #
 # Siklus identitas admin (F-16, PRD 8.2, admins.status invited|active|disabled):
 #   1. Super Admin mengundang (domain admin-admins, C7), bootstrap CLI membuat Super Admin pertama, atau Super Admin
-#      mereset MFA (lihat bawah); semuanya menghasilkan tautan undangan sekali pakai `/invite/<token>` berbatas
-#      waktu (`invite_expires_at`) yang dikirim ke email admin (status invited, sandi awal acak yang tidak diketahui
-#      siapa pun).
+#      mereset MFA (lihat bawah); semuanya menghasilkan tautan undangan sekali pakai berbatas waktu
+#      (`invite_expires_at`) yang dikirim ke email admin (status invited, sandi awal acak yang tidak diketahui
+#      siapa pun). Bentuk tautan WAJIB `${ADMIN_ORIGIN}/invite#t=<token>`: token berada di fragmen URL, yang tidak
+#      pernah dikirim browser ke server, proxy (Traefik/nginx) maupun header Referer, sehingga tidak tercatat di log
+#      akses (ARCHITECTURE §2 butir 3; pola sama dengan QR KTA `#t=`, §3.2). Token TIDAK PERNAH ditaruh di path atau
+#      query (`/invite/<token>` atau `?token=` dilarang) karena preview tidak mengonsumsi token: siapa pun yang dapat
+#      membaca log dapat menerima undangan lebih dahulu, memilih sandi dan mendaftarkan autentikatornya sendiri.
+#      Halaman /invite membaca `t` dari `location.hash`, segera menghapus fragmen dari bilah alamat
+#      (`history.replaceState`) agar tidak tersimpan di riwayat atau tangkapan layar, menyimpan token hanya di
+#      memori, lalu mengirimnya di body JSON. Origin admin mengirim `Referrer-Policy: no-referrer` dan halaman
+#      /invite tidak memuat sumber pihak ketiga.
 #   2. POST /admin/auth/invitations/preview  -> tampilkan siapa/peran/izin undangan.
 #   3. POST /admin/auth/invitations/accept   -> sandi awal diganti; token undangan dikonsumsi; mfa_token PENDAFTARAN.
 #   4. POST /admin/auth/totp/enroll          -> secret + otpauth URI (QR).
@@ -133,8 +141,9 @@ paths:
       operationId: adminPreviewInvitation
       summary: Lihat undangan admin dari token sekali pakai sebelum menerima (F-16, PRD 8.2).
       description: |
-        Halaman `/invite/<token>` membaca token dari URL lalu mengirimnya di body (token tidak pernah ditaruh di
-        query/path API agar tidak tercatat di log akses). Tidak mengonsumsi token. Hanya hash token yang disimpan
+        Halaman `/invite` membaca token dari fragmen tautan `${ADMIN_ORIGIN}/invite#t=<token>` lalu mengirimnya di
+        body (kepala berkas): token tidak pernah ada di path/query halaman maupun API sehingga tidak tercatat di log
+        akses server atau proxy. Tidak mengonsumsi token. Hanya hash token yang disimpan
         (`admins.invite_token_hash`). 410 OTP_EXPIRED bila token tidak dikenal, kedaluwarsa, sudah dipakai, atau
         undangan dibatalkan (tidak dibedakan); 429 RATE_LIMITED per IP.
       security: []
@@ -205,14 +214,22 @@ paths:
       summary: Mulai pendaftaran TOTP; menghasilkan secret dan otpauth URI untuk QR (F-02, F-16).
       description: |
         Hanya dengan mfa_token pendaftaran dari POST /admin/auth/invitations/accept (audience `kapdh-admin-enroll`,
-        30 menit); mfa_token login ditolak 401. Token dianggap tidak berlaku bila admin tidak lagi `invited`, undangan
-        ulang telah diterbitkan (`invite_token_hash` terisi lagi), akun users tidak `active`, atau password_hash tidak
-        lagi sama dengan pengikat token. Membuat secret TOTP baru (disimpan terenkripsi AES-GCM di `mfa_totp`,
-        `verified_at` kosong) dan menggantikan secret yang belum terverifikasi sebelumnya; boleh diulang selama token
-        berlaku (mis. QR gagal dipindai) tanpa memperpanjang masa berlakunya. Secret hanya ditampilkan di respons ini
-        dan tidak pernah dicatat di log atau audit (ARCHITECTURE §2 butir 3). Galat: 401 UNAUTHENTICATED mfa_token
-        tidak berlaku atau kedaluwarsa (minta undangan ulang); 403 FORBIDDEN bila TOTP sudah terverifikasi
-        (pendaftaran ulang hanya melalui reset MFA oleh Super Admin, yaitu undangan ulang); 429 RATE_LIMITED.
+        30 menit). Membuat secret TOTP baru (disimpan terenkripsi AES-GCM di `mfa_totp`, `verified_at` kosong) dan
+        menggantikan secret yang belum terverifikasi sebelumnya; boleh diulang selama token berlaku (mis. QR gagal
+        dipindai) tanpa memperpanjang masa berlakunya. Secret hanya ditampilkan di respons ini dan tidak pernah
+        dicatat di log atau audit (ARCHITECTURE §2 butir 3).
+
+        Urutan pemeriksaan (sama dengan /totp/confirm, baris admin terkunci):
+        1. Token: tanda tangan, audience `kapdh-admin-enroll` (mfa_token login ditolak), belum kedaluwarsa, admin
+           subjek ada, dan pengikat HMAC sama dengan password_hash saat ini. Gagal -> 401 UNAUTHENTICATED.
+        2. Aktivasi sudah selesai: admin `active` dengan TOTP terverifikasi (mis. /totp/confirm sebelumnya berhasil
+           tetapi responsnya hilang, atau konfirmasi bersamaan menang) -> 403 FORBIDDEN "Aktivasi sudah selesai.
+           Masuk dengan sandi dan kode autentikator." UI mengarahkan ke /login (bukan meminta undangan ulang).
+        3. Selain itu admin harus masih `invited`, tanpa undangan ulang (`invite_token_hash` kosong), dan akun
+           users `active`; bila tidak (dinonaktifkan, dipulihkan/diundang ulang) -> 401 UNAUTHENTICATED, UI
+           menyarankan meminta undangan ulang ke Super Admin.
+        Pendaftaran ulang TOTP admin yang sudah aktif hanya melalui pemulihan oleh Super Admin (undangan ulang).
+        Galat lain: 429 RATE_LIMITED.
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -227,8 +244,18 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminTotpEnrollment" }
         "400": { $ref: "#/components/responses/ValidationError" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "401":
+          description: |
+            UNAUTHENTICATED: mfa_token pendaftaran tidak sah/kedaluwarsa, atau admin tidak lagi dalam pendaftaran
+            (dinonaktifkan, diundang ulang); minta undangan ulang ke Super Admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: FORBIDDEN "Aktivasi sudah selesai"; admin sudah aktif dengan TOTP terverifikasi, arahkan ke /login.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/RateLimited" }
         default: { $ref: "#/components/responses/Error" }
 
@@ -238,17 +265,29 @@ paths:
       operationId: adminConfirmTotpEnrollment
       summary: Konfirmasi kode TOTP pertama; admin aktif, backup code diterbitkan, sesi admin dibuat (F-16, PRD 8.2).
       description: |
-        Memakai mfa_token pendaftaran yang sama dengan /totp/enroll (syarat berlakunya sama; mfa_token login ditolak
-        401). Dalam satu transaksi dengan baris admin terkunci dan status masih `invited` tanpa undangan ulang
+        Memakai mfa_token pendaftaran yang sama dengan /totp/enroll dengan urutan pemeriksaan yang sama (lihat
+        operasi itu): token tidak sah -> 401; aktivasi sudah selesai -> 403; admin tidak lagi `invited` tanpa
+        undangan ulang atau akun tidak aktif -> 401. Pemeriksaan dilakukan setelah baris admin dikunci
+        (FOR UPDATE), sehingga konfirmasi bersamaan diserialkan: yang menang mengaktifkan admin dan yang kalah
+        melihat langkah 2 (403 aktivasi sudah selesai), bukan 401.
+
+        Dalam satu transaksi dengan baris admin terkunci dan status masih `invited` tanpa undangan ulang
         (UPDATE bersyarat): kode diverifikasi terhadap secret yang belum terverifikasi (anti-replay langkah), TOTP
-        ditandai `verified_at` dengan UPDATE bersyarat (hanya satu konfirmasi menang), 10 backup code baru dibuat
-        (hanya hash yang disimpan), admin `invited` menjadi `active` dengan `activated_at`, audit
-        `admin.activated`/`admin.mfa_enrolled` ditulis, email pemberitahuan keamanan dijadwalkan lewat outbox
-        (`admin.security_notice`), dan sesi admin `mfa_level` 2 dibuat (refresh cookie). Backup code hanya
-        ditampilkan sekali di respons ini.
+        ditandai `verified_at` dengan UPDATE bersyarat, 10 backup code baru dibuat (hanya hash yang disimpan),
+        admin `invited` menjadi `active` dengan `activated_at`, audit `admin.activated`/`admin.mfa_enrolled` dan
+        `admin.login` (login pertama, dasar `previous_login_at`) ditulis, email pemberitahuan keamanan dijadwalkan
+        lewat outbox (`admin.security_notice`), dan sesi admin `mfa_level` 2 dibuat (refresh cookie). Backup code
+        hanya ditampilkan sekali di respons ini.
+
+        Hasil tidak diketahui (respons hilang, timeout, klik ganda; PRD 4.5): mengulang dengan token yang sama
+        menghasilkan 403 "Aktivasi sudah selesai" bila percobaan sebelumnya berhasil. UI lalu mengarahkan admin ke
+        /login (sandi + kode autentikator yang baru didaftarkan) dan memberi tahu bahwa backup code yang belum
+        sempat disimpan dapat dibuat ulang di halaman Akun lewat POST /admin/auth/backup-codes (reautentikasi
+        sandi + TOTP); backup code lama yang tidak pernah terlihat menjadi tidak berlaku saat dibuat ulang.
         Galat: 400 VALIDATION_ERROR `field_errors.totp_code` kode salah atau pendaftaran belum dimulai; 401
-        UNAUTHENTICATED mfa_token tidak berlaku; 403 FORBIDDEN TOTP sudah terverifikasi (termasuk konfirmasi
-        bersamaan yang kalah); 429 RATE_LIMITED setelah 5 kode salah dalam 15 menit.
+        UNAUTHENTICATED mfa_token tidak berlaku atau admin tidak lagi dalam pendaftaran; 403 FORBIDDEN aktivasi
+        sudah selesai (termasuk pengulangan setelah respons hilang dan konfirmasi bersamaan yang kalah); 429
+        RATE_LIMITED setelah 5 kode salah dalam 15 menit.
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -267,8 +306,21 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminTotpEnrollmentResult" }
         "400": { $ref: "#/components/responses/ValidationError" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "401":
+          description: |
+            UNAUTHENTICATED: mfa_token pendaftaran tidak sah/kedaluwarsa, atau admin tidak lagi dalam pendaftaran
+            (dinonaktifkan, diundang ulang); minta undangan ulang ke Super Admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: |
+            FORBIDDEN "Aktivasi sudah selesai": admin sudah aktif dengan TOTP terverifikasi (pengulangan setelah
+            respons hilang atau konfirmasi bersamaan yang kalah). Arahkan ke /login; backup code dapat dibuat ulang
+            setelah masuk.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/RateLimited" }
         default: { $ref: "#/components/responses/Error" }
 
@@ -434,11 +486,23 @@ components:
       description: |
         Identitas admin untuk shell web admin (nama dan peran di sidebar, menu berizin). Tidak memuat data akun
         alumni tertaut selain penanda keberadaannya.
+
+        `email`, `has_linked_alumni` dan `backup_codes_remaining` WAJIB dikirim server pada setiap respons 200
+        (F-16, PRD 2.3); di skema masih opsional hanya karena implementasi API saat ini belum mengisinya dan uji
+        kontrak `expectSchema("AdminProfile")` memvalidasinya. Modul admin-auth fase C mengisinya dan menjadikannya
+        wajib di kontrak dalam perubahan yang sama (perubahan opsional -> wajib pada respons tidak memutus klien
+        di kabel, N-13). Klien yang menerima respons tanpa field ini memperlakukannya sebagai "tidak diketahui":
+        petunjuk konflik kepentingan tidak ditampilkan dan saran backup code tidak muncul; penolakan memutus
+        pembayaran akun tertaut tetap ditegakkan server (ARCHITECTURE §3.3).
       required: [admin_id, display_name, role, permissions, permissions_version]
       properties:
         admin_id: { type: string, format: uuid }
         display_name: { type: string, maxLength: 120 }
-        email: { type: string, format: email, maxLength: 254, description: Email login admin. }
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          description: Email login admin; selalu dikirim server (lihat deskripsi skema).
         role: { $ref: "#/components/schemas/AdminRole" }
         permissions:
           type: array
@@ -448,23 +512,37 @@ components:
         has_linked_alumni:
           type: boolean
           description: |
-            True bila identitas admin ditautkan ke akun alumni untuk pemeriksaan konflik kepentingan; pembayaran
-            milik akun itu tidak dapat diputus admin ini (PRD 2.3, ARCHITECTURE §3.3).
+            True bila identitas admin ditautkan ke akun alumni (`admins.linked_alumni_user_id` terisi) untuk
+            pemeriksaan konflik kepentingan; pembayaran milik akun itu tidak dapat diputus admin ini (PRD 2.3,
+            ARCHITECTURE §3.3). Selalu dikirim server (lihat deskripsi skema).
         backup_codes_remaining:
           type: integer
           minimum: 0
           maximum: 10
-          description: Sisa backup code yang belum dipakai; UI menyarankan buat ulang bila sedikit.
-        last_login_at:
+          description: |
+            Sisa backup code yang belum dipakai (panjang `mfa_totp.backup_code_hashes`); UI menyarankan buat ulang
+            bila sedikit. Selalu dikirim server (lihat deskripsi skema).
+        previous_login_at:
           type: [string, "null"]
           format: date-time
-          description: Login berhasil sebelumnya (setelah MFA), untuk deteksi akses yang tidak dikenal.
+          description: |
+            Waktu login admin berhasil SEBELUM sesi saat ini, untuk deteksi akses yang tidak dikenal (F-02, N-08).
+            Bukan `users.last_login_at`, yang sudah ditimpa oleh login sesi ini. Server mengambil audit
+            `admin.login` terbaru milik admin ini (ditulis POST /admin/auth/mfa dan /admin/auth/totp/confirm; indeks
+            `audit_logs_actor_admin_id_created_at_idx`) yang lebih awal dari awal keluarga sesi pemanggil
+            (`created_at` terkecil baris dengan family_id yang sama). Null bila sesi ini login pertama atau audit tersebut
+            sudah tidak ada. Daftar perangkat yang masih masuk ada di GET /auth/sessions.
 
     AdminInvitationTokenRequest:
       type: object
       required: [invite_token]
       properties:
-        invite_token: { type: string, minLength: 16, maxLength: 512 }
+        invite_token:
+          type: string
+          minLength: 16
+          maxLength: 512
+          x-sensitive: true
+          description: Nilai `t` dari fragmen tautan `/invite#t=<token>`; tidak pernah dari path atau query.
 
     AdminInvitationPreview:
       type: object
@@ -488,7 +566,12 @@ components:
       type: object
       required: [invite_token, password]
       properties:
-        invite_token: { type: string, minLength: 16, maxLength: 512 }
+        invite_token:
+          type: string
+          minLength: 16
+          maxLength: 512
+          x-sensitive: true
+          description: Nilai `t` dari fragmen tautan `/invite#t=<token>`; tidak pernah dari path atau query.
         password: { $ref: "#/components/schemas/Password" }
 
     AdminTotpEnrollmentRequest:
