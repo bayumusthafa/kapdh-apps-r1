@@ -206,13 +206,16 @@ components:
 
     NetworkSocialLinks:
       type: object
-      description: Tautan sosial; seluruh objek hanya dikirim bila show_social=true (AC F10-2).
+      description: |
+        Tautan sosial; seluruh objek hanya dikirim bila show_social=true (AC F10-2). Batas panjang sama dengan aturan
+        tulis SocialHandle (me.yaml, maksimal 200 untuk keempat jaringan) agar nilai tersimpan yang sah selalu lolos
+        kontrak baca ini (N-13); ubah keduanya bersamaan.
       required: [instagram, x, facebook, linkedin]
       additionalProperties: false
       properties:
-        instagram: { type: [string, "null"], maxLength: 120 }
-        x: { type: [string, "null"], maxLength: 120 }
-        facebook: { type: [string, "null"], maxLength: 120 }
+        instagram: { type: [string, "null"], maxLength: 200 }
+        x: { type: [string, "null"], maxLength: 200 }
+        facebook: { type: [string, "null"], maxLength: 200 }
         linkedin: { type: [string, "null"], maxLength: 200 }
 
     NetworkMemberProfile:
@@ -263,8 +266,10 @@ components:
           description: Hanya dikirim bila show_email=true (AC F10-2).
         phone:
           type: [string, "null"]
-          maxLength: 20
-          description: Hanya dikirim bila show_phone=true; bila false kunci ini tidak ada (AC F10-2).
+          maxLength: 24
+          description: |
+            Hanya dikirim bila show_phone=true; bila false kunci ini tidak ada (AC F10-2). Batas panjang sama dengan
+            aturan tulis ProfileUpdate.phone (me.yaml) dan koreksi pengurus (admin-members.yaml), maksimal 24.
         social: { $ref: "#/components/schemas/NetworkSocialLinks" }
         is_me: { type: boolean, description: True bila profil milik pemanggil (pratinjau tampilan publik). }
         is_blocked_by_me:

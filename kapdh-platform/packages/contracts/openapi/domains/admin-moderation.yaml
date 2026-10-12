@@ -16,6 +16,15 @@
 #      kepada terlapor. super_admin tidak dikecualikan; laporan itu ditangani pengurus lain yang berizin.
 #   b) Pelapor: akun tertaut adalah reports.reporter_id. Laporan tetap tampil dan detail boleh dibaca
 #      (`conflict_of_interest` true), tetapi klaim/keputusan ditolak 403 FORBIDDEN.
+#   c) Hitungan di luar domain ini: SETIAP angka atau ringkasan laporan yang dikirim ke pengurus wajib memakai
+#      aturan visibilitas butir a yang sama (satu fungsi bersama modul moderation, mis.
+#      ModerationVisibility.visibleReportsFor(admin), bukan query sendiri), agar tidak dapat dibandingkan dengan
+#      `counts` antrean untuk menyimpulkan adanya laporan tersembunyi terhadap pemanggil. Berlaku untuk
+#      DashboardModeration (open_count, urgent_count, overdue_count, oldest_open_created_at) dan
+#      AdminNavBadges.reports_open di admin-dashboard.yaml, yang wajib selalu sama dengan
+#      AdminModerationQueueCounts pemanggil yang sama, serta AdminMemberDetail.moderation
+#      (open_report_count, total_report_count) di admin-members.yaml saat pemanggil membuka akun alumni tertautnya
+#      sendiri. Perubahan pada domain lain itu tercatat di CHANGELOG (ketergantungan lintas domain C6).
 # - Setiap pembacaan bukti, klaim dan keputusan dicatat di audit dalam transaksi yang sama (AC F12-3, F17-1); isi
 #   bukti tidak disalin ke audit (ARCHITECTURE §2 butir 3).
 tags:
@@ -38,7 +47,8 @@ paths:
         Konflik kepentingan (aturan domain butir a): laporan yang pihak terlapornya adalah akun alumni tertaut
         pemanggil dikecualikan dari `items`, `total`, `counts` dan hasil `q`, termasuk laporan grup yang pemanggilnya
         anggota joined grup itu dan laporan yang subjeknya kemudian ditetapkan lewat subject_user_id. Pemanggil tidak
-        melihat baris, kategori, maupun jumlahnya.
+        melihat baris, kategori, maupun jumlahnya. Hitungan laporan di dasbor dan lencana menu memakai aturan yang
+        sama (aturan domain butir c) sehingga selalu sama dengan `counts` di sini.
       x-kapdh-access: { audience: admin, permissions: [moderation.read] }
       parameters:
         - name: status
@@ -170,17 +180,29 @@ paths:
           membership_events suspend; tanggal periode tidak dibuang (PRD 4.2). Setelah commit seluruh sesi umum
           dicabut (`session.revoked` reason account_suspended) dan socket diputus, akses komunitas ditolak, profil
           hilang dari direktori, verifikasi KTA menjadi Tidak aktif, dan tiket tidak berlaku (AC F12-4, PRD 2.2).
-        - unsuspend (wajib `confirm: true`): subjek sedang suspended (selain itu 400). Menghapus suspend dan
-          membership_events unsuspend; effective_status dihitung ulang dari expires_at sehingga anggota yang masa
-          aktifnya habis menjadi expired, bukan otomatis verified (AC F12-5). Dalam transaksi yang sama, banding
-          aktif lain milik subjek ditutup sebagai dikabulkan (status resolved, action unsuspend, catatan merujuk
-          laporan ini) dan pemohonnya menerima hasilnya; jalur unsuspend lain (menu anggota admin) wajib melakukan
-          hal yang sama.
+        - unsuspend (wajib `confirm: true`): subjek sedang suspended (selain itu 400, kecuali banding usang di
+          bawah). Menghapus suspend dan membership_events unsuspend; effective_status dihitung ulang dari expires_at
+          sehingga anggota yang masa aktifnya habis menjadi expired, bukan otomatis verified (AC F12-5). Dalam
+          transaksi yang sama (di bawah kunci baris alumni subjek), banding aktif lain milik subjek ditutup sebagai
+          dikabulkan (status resolved, action unsuspend, catatan merujuk laporan ini) dan pemohonnya menerima
+          hasilnya (notifikasi kategori account, outcome action_taken).
         Banding (kategori appeal) hanya boleh dismiss (banding ditolak; suspend tetap berlaku) atau unsuspend
-        (banding dikabulkan); tindakan lain -> 400 VALIDATION_ERROR. Banding selalu menyangkut suspend yang sedang
-        berlaku (snapshot `evidence.contested_suspension`) karena banding aktif ditutup otomatis saat suspend
-        dicabut. `remove_message=true` (hanya laporan pesan)
-        menjadikan pesan terlapor placeholder dan mengirim `message.deleted`; snapshot bukti tetap tersimpan.
+        (banding dikabulkan); tindakan lain -> 400 VALIDATION_ERROR. Banding usang =
+        `evidence.contested_suspension.in_force` false, yaitu suspend yang dibanding sudah dicabut lewat jalur yang
+        tidak menutup bandingnya (lihat ketergantungan di bawah). Untuk banding usang hanya `unsuspend` yang
+        diterima: banding ditutup sebagai dikabulkan TANPA mengubah keanggotaan (tidak ada membership_events, tidak
+        ada pencabutan sesi, suspend baru yang mungkin berlaku tidak dicabut; audit mencatat keanggotaan tidak
+        berubah). `dismiss` atas banding usang -> 400 VALIDATION_ERROR pada field action, karena pemohon tidak boleh
+        menerima "banding ditolak" untuk suspend yang sudah dicabut.
+
+        Ketergantungan lintas domain (MEMBLOKIR rilis modul moderasi; belum tercantum di admin-members.yaml):
+        adminUnsuspendMember dan setiap jalur unsuspend lain wajib memakai fungsi kernel keanggotaan yang sama
+        dengan keputusan ini (mis. MembershipKernel.unsuspend) yang, dalam transaksi pencabutan itu, juga menutup
+        banding aktif subjek sebagai dikabulkan dan menjadwalkan notifikasi hasilnya. Aturan banding usang di atas
+        dan di POST /appeals hanya jaring pengaman bila ketergantungan itu terlewat.
+
+        `remove_message=true` (hanya laporan pesan) menjadikan pesan terlapor placeholder dan mengirim
+        `message.deleted`; snapshot bukti tetap tersimpan.
         Pelapor menerima notifikasi kategori account bahwa laporannya selesai ditinjau (tanpa rincian tindakan,
         AC F12-2); pemohon banding menerima `member_message`.
       x-kapdh-access:
@@ -302,7 +324,11 @@ components:
 
     AdminModerationQueueCounts:
       type: object
-      description: Ringkasan antrean untuk badge menu, tidak terpengaruh filter.
+      description: |
+        Ringkasan antrean untuk badge menu, tidak terpengaruh filter, setelah pengecualian konflik kepentingan
+        (aturan domain butir a). Sumber acuan semua hitungan laporan untuk pengurus: DashboardModeration dan
+        AdminNavBadges.reports_open wajib dihitung dengan aturan visibilitas yang sama sehingga angkanya selalu
+        sama untuk pemanggil yang sama (aturan domain butir c).
       required: [open, in_review, overdue, urgent]
       properties:
         open: { type: integer, minimum: 0 }
@@ -366,11 +392,24 @@ components:
 
     AdminModerationEvidenceRoom:
       type: object
-      required: [room_id, kind, name, member_count]
+      description: |
+        Snapshot metadata grup saat laporan dibuat (PRD 3.12): nama, avatar dan jumlah anggota, sehingga konteks
+        tidak hilang walaupun admin grup kemudian mengganti nama/avatar atau grup ditutup.
+      required: [room_id, kind, name, avatar, member_count]
       properties:
         room_id: { type: string, format: uuid }
         kind: { $ref: "#/components/schemas/ChatRoomKind" }
         name: { type: [string, "null"], maxLength: 80 }
+        avatar:
+          oneOf:
+            - $ref: "#/components/schemas/AdminModerationEvidenceImage"
+            - type: "null"
+          description: |
+            Avatar grup yang berlaku saat laporan dibuat (avatar itu sendiri dapat menjadi konten yang dilaporkan).
+            Snapshot menyimpan rujukan berkas avatar saat itu, bukan avatar grup terkini; berkas yang dirujuk bukti
+            ditahan selama laporan disimpan walaupun avatar grup diganti atau dihapus. URL bertanda tangan maksimal
+            10 menit. Null bila grup tidak memiliki avatar saat laporan dibuat; bila berkasnya sudah dihapus sesuai
+            retensi D2, objek tetap ada dengan url null.
         member_count: { type: integer, minimum: 0, maximum: 100 }
 
     AdminModerationEvidenceProfile:
@@ -415,10 +454,17 @@ components:
     AdminModerationContestedSuspension:
       type: object
       description: |
-        Snapshot suspend yang sedang berlaku saat banding diajukan (PRD 3.12). Bandingkan `suspended_at` dengan
-        target_member.suspended_at untuk memastikan suspend yang sama masih berlaku.
-      required: [membership_event_id, suspended_at, suspension_reason, suspension_message, suspended_by]
+        Snapshot suspend yang sedang berlaku saat banding diajukan (PRD 3.12). `in_force` menyatakan apakah suspend
+        yang sama masih berlaku sekarang.
+      required:
+        [membership_event_id, suspended_at, suspension_reason, suspension_message, suspended_by, in_force]
       properties:
+        in_force:
+          type: boolean
+          description: |
+            Dihitung saat dibaca: true bila alumni.suspended_at pemohon sama dengan `suspended_at` snapshot. False
+            berarti banding usang (suspend yang dibanding sudah dicabut); hanya dapat ditutup dengan unsuspend
+            sebagai dikabulkan tanpa mengubah keanggotaan (lihat POST /admin/reports/{reportId}/resolve).
         membership_event_id:
           type: [string, "null"]
           format: uuid
