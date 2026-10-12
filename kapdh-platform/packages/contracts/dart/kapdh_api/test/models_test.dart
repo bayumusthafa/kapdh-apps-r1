@@ -26,6 +26,8 @@ Map<String, Object?> paymentJson({String status = 'pending'}) => <String, Object
       'rejection_reason': null,
       'created_at': '2026-10-12T03:00:00.000Z',
       'version': '3',
+      'stage': 'awaiting_review',
+      'actions': <String, Object?>{'can_submit_proof': true, 'can_change_method': false, 'can_cancel': false},
     };
 
 void main() {
@@ -62,9 +64,16 @@ void main() {
       final detail = PaymentDetail.fromJson(<String, Object?>{
         ...paymentJson(),
         'events': <Object?>[
-          <String, Object?>{'at': '2026-10-12T03:00:00.000Z', 'kind': 'created'},
-          <String, Object?>{'at': '2026-10-12T03:15:00.000Z', 'kind': 'proof_submitted', 'proof_version': 1},
+          <String, Object?>{'at': '2026-10-12T03:00:00.000Z', 'kind': 'created', 'actor': 'member'},
+          <String, Object?>{
+            'at': '2026-10-12T03:15:00.000Z',
+            'kind': 'proof_submitted',
+            'actor': 'member',
+            'proof_version': 1,
+          },
         ],
+        'adjustments': <Object?>[],
+        'method_active': true,
       });
       final Payment asPayment = detail;
       expect(asPayment.amount, '60000.00');
