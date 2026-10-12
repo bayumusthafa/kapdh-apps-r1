@@ -4,6 +4,7 @@ import type { MemoryMailer } from "../../src/core/adapters/mailer.js";
 import type { Db } from "../../src/core/db/types.js";
 import { totp } from "../../src/modules/auth/crypto.js";
 import {
+  accessMismatches,
   ajv,
   expectOperation,
   expectSchema,
@@ -12,6 +13,7 @@ import {
   routesMissingFromContract,
 } from "../support/contract.js";
 import { createAdmin } from "../support/factories.js";
+import { routeAccessList } from "../support/routes.js";
 import { createTestApp, type TestClock } from "../support/test-app.js";
 
 /**
@@ -58,6 +60,38 @@ describe("kontrak dan rute terdaftar (ARCHITECTURE §6)", () => {
       routesMissingFromContract(routes),
       "rute tanpa operasi kontrak; tambahkan ke openapi/domains/<domain>.yaml",
     ).toEqual([]);
+  });
+
+  it("dekorator akses server cocok dengan x-kapdh-access kontrak bila dideklarasikan (ARCHITECTURE §4.3)", () => {
+    expect(accessMismatches(routeAccessList(app))).toEqual([]);
+  });
+
+  it("pembanding x-kapdh-access mendeteksi setiap perbedaan deklarasi", () => {
+    const meta = {
+      isPublic: false,
+      audience: "mobile",
+      memberAccess: "active",
+      permissions: [],
+      reauth: false,
+    };
+    const route = { name: "Uji.handler", method: "post", path: "/uji/{id}", meta, idempotent: false };
+    const paths = {
+      "/uji/{itemId}": {
+        post: {
+          "x-kapdh-access": {
+            audience: "admin",
+            permissions: ["payments.read"],
+            reauth: true,
+            idempotent: true,
+          },
+        },
+      },
+      "/tanpa-anotasi": { post: {} },
+    };
+    expect(accessMismatches([route], paths)).toHaveLength(5);
+    const same = { audience: "mobile", member_access: "active" };
+    expect(accessMismatches([route], { "/uji/{x}": { post: { "x-kapdh-access": same } } })).toEqual([]);
+    expect(accessMismatches([{ ...route, path: "/tanpa-anotasi" }], paths)).toEqual([]);
   });
 
   it("rute yang belum ada di kontrak terdeteksi", () => {

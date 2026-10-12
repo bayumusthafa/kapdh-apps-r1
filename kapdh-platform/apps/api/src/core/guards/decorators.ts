@@ -31,7 +31,10 @@ export const Public = () => SetMetadata(PUBLIC_KEY, true);
 /** Sesi terautentikasi dengan audience tertentu: "mobile" (alumni), "admin" (web admin, wajib TOTP), atau "any". */
 export const Audience = (audience: RequiredAudience) => SetMetadata(AUDIENCE_KEY, audience);
 
-/** Khusus mobile: membatasi menurut effective_status (403 ACCOUNT_SUSPENDED / MEMBERSHIP_REQUIRED). */
+/**
+ * Membatasi sesi mobile menurut effective_status (403 ACCOUNT_SUSPENDED / MEMBERSHIP_REQUIRED). Dengan
+ * `@Audience("any")`, hanya dievaluasi untuk sesi mobile (kontrak `x-kapdh-access.member_access`); sesi admin lolos.
+ */
 export const MemberAccess = (level: MemberAccessLevel) => SetMetadata(MEMBER_ACCESS_KEY, level);
 
 /** Khusus admin: SEMUA izin wajib dimiliki, dievaluasi dari database setiap request (AC F15-1, F16-3). */
@@ -79,7 +82,8 @@ export function routeAuthMeta(
   if (!isPublic && !audience) problems.push("rute tanpa @Public atau @Audience");
   if (isPublic && (memberAccess || permissions.length > 0 || reauth))
     problems.push("@Public tidak boleh memakai @MemberAccess/@RequirePermission/@RequireReauth");
-  if (memberAccess && audience !== "mobile") problems.push("@MemberAccess hanya untuk @Audience('mobile')");
+  if (memberAccess && audience !== "mobile" && audience !== "any")
+    problems.push("@MemberAccess hanya untuk @Audience('mobile') atau @Audience('any')");
   if (permissions.length > 0 && audience !== "admin")
     problems.push("@RequirePermission hanya untuk @Audience('admin')");
   return { isPublic, audience, memberAccess, permissions, reauth, problems };
