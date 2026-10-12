@@ -23,7 +23,12 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
   `current` bertipe `AdminCheckinTicket`, jendela check-in) agar alasan penolakan check-in dapat ditindaklanjuti
   (AC F09-6).
 - Setiap operasi domain ini membawa `x-kapdh-access` (`audience`, `member_access`, `permissions`, `idempotent`)
-  yang mencerminkan dekorator API (ARCHITECTURE §4.3).
+  yang mencerminkan dekorator API (ARCHITECTURE §4.3). `permissions` memuat izin dasar; izin bersyarat ditulis di
+  deskripsi: `adminCancelTicket` dengan `refund=true` juga memerlukan `payments.decide` dan ditolak untuk tiket akun
+  alumni tertaut pemanggil (PRD 2.3). `getEvent` memakai `nonsuspended` dengan pengecualian di service (anggota
+  nonaktif hanya membuka event yang ia punya tiketnya).
+- Urutan kunci global event -> tiket -> payment (PRD 6.4) didokumentasikan di kepala `events.yaml` dan mengikat
+  modul pembayaran untuk payment `type=ticket`.
 
 ## 0.2.0
 
