@@ -175,15 +175,29 @@ dicatat sebagai garis dasar gerbang N-13.
   `adminGetEvent`, `adminUpdateEvent`, `adminDeleteEvent`, `adminSetEventStatus`, `adminCancelEvent`,
   `adminGetEventStats`, `adminListEventTickets`, `adminCancelTicket`, `adminListCheckinEvents`,
   `adminCheckInTicket`.
-- Respons 409 `POST /admin/checkin` memakai skema `AdminCheckinRejection` (Error baku + `rejection_reason`,
-  `current` bertipe `AdminCheckinTicket`, jendela check-in) agar alasan penolakan check-in dapat ditindaklanjuti
-  (AC F09-6).
+- Respons 409 `POST /admin/checkin` memakai skema `AdminCheckinRejection`: Error baku ARCHITECTURE §4.4 tanpa field
+  tingkat atas tambahan, dengan `current` bertipe `AdminCheckinRejectionDetail` (`rejection_reason`, `ticket`,
+  `checkin_opens_at`, `checkin_closes_at`) agar alasan penolakan check-in dapat ditindaklanjuti (AC F09-6).
+- Operasi baru `adminUploadEventCover` (`POST /admin/event-covers`, izin events.manage) membuat berkas purpose
+  `event_cover` untuk `cover_file_id`; `POST /files` tidak menerima purpose itu.
+- `createEventReservation`: semua 409 bisnis (EVENT_SOLD_OUT, RESERVATION_EXPIRED, VERSION_CONFLICT termasuk tiket
+  aktif yang sudah ada) membawa `current` = `EventDetail`; urutan prioritas `reservation_blocked_reason`
+  didokumentasikan.
+- `TicketDetail.refund` dan `AdminEventTicket.refund` (objek tunggal) diganti `refunds` (array `TicketRefundInfo`,
+  urut terbaru) karena satu payment dapat memiliki beberapa refund; `TicketRefundInfo` mendapat `cancelled_at` dan
+  `created_at`. `AdminTicketPayment.review_due_at` baru dan `AdminEventTicket.review_overdue` memakai rumus yang
+  sama dengan antrean pembayaran (C3). Semua operasi C5 belum diimplementasikan, sehingga tidak ada migrasi klien.
+- Proyeksi baca kursi: hold kedaluwarsa yang belum dilepas job tidak dihitung pada `seats_available`,
+  `registration_state`, `can_reserve`, `held_quantity`, `min_seats_total` dan statistik (AC F09-1, F09-2).
+- Aturan lintas modul (proyeksi kursi, urutan kunci global, aturan payment tiket yang selaras dengan
+  `submitPaymentProof`: 410 RESERVATION_EXPIRED untuk hold lewat, 409 PAYMENT_STATE_CONFLICT untuk tiket
+  cancelled/rejected) dipindah dari komentar ke deskripsi tag Events agar ikut bundel, tipe TS dan dokumentasi SDK.
 - Setiap operasi domain ini membawa `x-kapdh-access` (`audience`, `member_access`, `permissions`, `idempotent`)
   yang mencerminkan dekorator API (ARCHITECTURE §4.3). `permissions` memuat izin dasar; izin bersyarat ditulis di
   deskripsi: `adminCancelTicket` dengan `refund=true` juga memerlukan `payments.decide` dan ditolak untuk tiket akun
   alumni tertaut pemanggil (PRD 2.3). `getEvent` memakai `nonsuspended` dengan pengecualian di service (anggota
   nonaktif hanya membuka event yang ia punya tiketnya).
-- Urutan kunci global event -> tiket -> payment (PRD 6.4) didokumentasikan di kepala `events.yaml` dan mengikat
+- Urutan kunci global event -> tiket -> payment (PRD 6.4) didokumentasikan di deskripsi tag Events dan mengikat
   modul pembayaran untuk payment `type=ticket`.
 
 ### Komunitas (C6: F-10, F-11, F-12)
