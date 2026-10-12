@@ -11,6 +11,8 @@
 # - Bukti laporan disimpan diminimalkan saat laporan dibuat (snapshot pesan/profil/room yang relevan) agar konteks
 #   tidak hilang ketika pesan dihapus; bukti hanya dapat dibaca pengurus berizin moderation.read dan setiap akses
 #   diaudit (PRD 3.12, D2). Bukti tidak pernah dikembalikan ke pelapor.
+# - Skema respons untuk anggota memakai additionalProperties: false sehingga uji kontrak (expectOperation) menolak
+#   respons yang membocorkan field di luar kontrak (bukti, identitas pengurus, catatan internal; N-09).
 tags:
   - name: Moderation
     description: Blokir pengguna, pelaporan penyalahgunaan dan banding oleh anggota (F-12).
@@ -125,7 +127,9 @@ paths:
           konteks. Bukti: snapshot pesan (isi, gambar, pengirim, waktu) sehingga tetap tersedia walaupun pesan
           kemudian dihapus. Pengirim pesan menjadi pihak terlapor.
         - room: `room_id`, grup tempat pelapor anggota joined; room direct -> 400 (laporkan pengguna/pesannya).
-          Bukti: nama, avatar dan jumlah anggota grup.
+          Bukti: nama, avatar (rujukan berkas avatar saat itu) dan jumlah anggota grup.
+        Berkas yang dirujuk bukti (gambar pesan, avatar profil/grup) ditahan selama laporan disimpan walaupun pesan
+        dihapus atau avatar diganti; hanya dihapus sesuai retensi D2.
         Melaporkan diri sendiri -> 400 (gunakan POST /appeals untuk banding).
 
         Prioritas dan target penanganan dihitung server (v3.2): violence_threat = urgent, due_at 24 jam; kategori lain
@@ -199,11 +203,19 @@ paths:
         menyimpan snapshot suspend yang berlaku (membership_events suspend terbaru, suspended_at, suspension_message)
         di bukti banding sehingga pengurus tahu persis keputusan mana yang dibanding.
 
-        Satu banding aktif per pemohon: bila masih ada banding open/in_review, banding itu dikembalikan (200) tanpa
-        membuat yang baru. Banding hanya dapat diputus dismiss (ditolak, outcome no_action) atau unsuspend
-        (dikabulkan, outcome action_taken). Bila suspend dicabut lewat jalur lain sebelum banding diputus, banding
-        aktif ditutup otomatis sebagai dikabulkan dalam transaksi pencabutan itu. Setelah banding ditolak, banding
-        baru boleh diajukan (dibatasi laju). Hasil dikirim lewat notifikasi kategori account dan tampil di
+        Satu banding aktif per pemohon. Transaksi mengunci baris alumni pemohon lebih dulu (SELECT ... FOR UPDATE,
+        kunci yang sama dengan jalur suspend/unsuspend) sehingga pengajuan paralel dan pencabutan suspend
+        berurutan. Bila masih ada banding open/in_review atas suspend yang SAMA (snapshot suspended_at = suspended_at
+        yang berlaku), banding itu dikembalikan (200) tanpa membuat yang baru. Banding hanya dapat diputus dismiss
+        (ditolak, outcome no_action) atau unsuspend (dikabulkan, outcome action_taken).
+
+        Setiap jalur unsuspend menutup banding aktif pemohon sebagai dikabulkan dalam transaksi pencabutan itu
+        (ketergantungan lintas domain, lihat POST /admin/reports/{reportId}/resolve). Jaring pengaman bila jalur itu
+        terlewat: banding aktif yang usang (suspend yang dibandingnya sudah dicabut, lalu pemohon disuspend lagi
+        dengan suspended_at berbeda) tidak pernah dikembalikan; dalam transaksi yang sama banding usang ditutup
+        sebagai dikabulkan (status resolved, action unsuspend, outcome action_taken, tanpa perubahan keanggotaan)
+        dan banding baru untuk suspend yang berlaku dibuat (201). Setelah banding ditolak, banding baru boleh
+        diajukan (dibatasi laju). Hasil dikirim lewat notifikasi kategori account dan tampil di
         GET /reports/{reportId} (`outcome`, `decision_message`). Idempotency-Key mengembalikan hasil pertama saat
         diulang; laju dibatasi (429).
       x-kapdh-access: { audience: mobile, member_access: any, idempotent: true }
@@ -249,7 +261,9 @@ components:
   schemas:
     BlockedMember:
       type: object
+      description: Anggota yang diblokir pemanggil; identitas minimum tanpa kontak (N-09).
       required: [user_id, full_name, avatar_url, blocked_at]
+      additionalProperties: false
       properties:
         user_id: { type: string, format: uuid }
         full_name: { type: string, maxLength: 120 }
@@ -259,6 +273,7 @@ components:
     BlockedMemberPage:
       type: object
       required: [items]
+      additionalProperties: false
       properties:
         items:
           type: array
@@ -304,7 +319,11 @@ components:
 
     ModerationReport:
       type: object
-      description: Laporan atau banding dari sudut pandang pelapor; tanpa bukti dan tanpa identitas pengurus.
+      description: |
+        Laporan atau banding dari sudut pandang pelapor; tanpa bukti, tanpa identitas pengurus, tanpa catatan
+        internal keputusan, dan tanpa reporter_id/target_user_id (AC F12-2). additionalProperties: false agar uji
+        kontrak menolak respons yang membocorkan field tersebut.
+      additionalProperties: false
       required:
         [
           id,
@@ -348,6 +367,7 @@ components:
     ModerationReportPage:
       type: object
       required: [items]
+      additionalProperties: false
       properties:
         items:
           type: array
