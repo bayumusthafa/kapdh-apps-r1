@@ -56,11 +56,11 @@ tz.Location _location(String zone) {
 
 /// Singkatan zona Indonesia (WIB/WITA/WIT); zona lain memakai singkatan basis data tz.
 String zoneAbbreviation(tz.TZDateTime local) => switch (local.location.name) {
-      'Asia/Jakarta' || 'Asia/Pontianak' => 'WIB',
-      'Asia/Makassar' => 'WITA',
-      'Asia/Jayapura' => 'WIT',
-      _ => local.timeZoneName,
-    };
+  'Asia/Jakarta' || 'Asia/Pontianak' => 'WIB',
+  'Asia/Makassar' => 'WITA',
+  'Asia/Jayapura' => 'WIT',
+  _ => local.timeZoneName,
+};
 
 /// `12 Okt 2026, 14.20 WIB` (prototipe layar 4, 7). [zone] untuk event dengan zona sendiri (PRD 2.1).
 String formatDateTime(DateTime instant, {String zone = jakartaZone}) {

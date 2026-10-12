@@ -25,6 +25,9 @@ class AuthRepository {
 
   Future<void> logout() => _api.logout();
 
+  /// Mencabut semua sesi dan socket pengguna (AC F02-6).
+  Future<void> logoutAll() => _api.logoutAll();
+
   Future<ReauthResponse> reauthenticate(String password) => _api.reauthenticate(ReauthRequest(password: password));
 }
 

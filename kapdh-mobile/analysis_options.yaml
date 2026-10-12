@@ -1,4 +1,9 @@
 include: package:flutter_lints/flutter.yaml
+
+# `dart format` memakai lebar 120 kolom (gaya kode kapdh-platform).
+formatter:
+  page_width: 120
+
 analyzer:
   exclude:
     - build/**

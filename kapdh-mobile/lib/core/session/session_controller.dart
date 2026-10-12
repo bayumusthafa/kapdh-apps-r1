@@ -42,7 +42,7 @@ class SessionController extends Notifier<SessionState> {
   SessionState build() {
     final invalidated = ref.watch(refreshCoordinatorProvider).invalidated.listen((_) => unawaited(_onInvalidated()));
     final signals = ref.watch(apiSignalsProvider).stream.listen((signal) {
-      if (signal is StatusStaleSignal && state.hasSession) unawaited(_refreshQuietly());
+      if (signal is StatusStaleSignal && state.hasSession) unawaited(refreshQuietly());
     });
     ref.onDispose(() {
       unawaited(invalidated.cancel());
@@ -70,7 +70,8 @@ class SessionController extends Notifier<SessionState> {
     final tokens = await _tokens.read();
     if (tokens == null) {
       await _snapshots.clear();
-      state = const SessionState.anonymous();
+      // Challenge OTP/pemulihan yang sedang berjalan di memori dipertahankan (mis. kembali dari latar belakang).
+      if (state.phase != SessionPhase.anonymous) state = const SessionState.anonymous();
       return;
     }
     await _loadMe(fallbackToSnapshot: true);
@@ -89,18 +90,19 @@ class SessionController extends Notifier<SessionState> {
     return future;
   }
 
-  Future<void> _refreshQuietly() async {
+  /// [refreshMe] tanpa melempar galat; dipakai pemicu latar (sinyal status usang, kembali online, event realtime).
+  Future<void> refreshQuietly() async {
     try {
       await refreshMe();
     } on ApiException {
-      // Sinyal latar: kegagalan ditampilkan oleh layar yang memicu request.
+      // Kegagalan ditampilkan oleh layar yang memicu request; sesi tidak berubah.
     }
   }
 
-  Future<void> _loadMe({required bool fallbackToSnapshot, bool rethrowErrors = false}) async {
+  Future<void> _loadMe({required bool fallbackToSnapshot, bool rethrowErrors = false, String? previousUserId}) async {
     try {
       final me = await _meRepo.getMe();
-      await _acceptMe(me);
+      await _acceptMe(me, previousUserId: previousUserId);
     } on ApiException catch (error) {
       if (await _tokens.read() == null) {
         // Refresh ditolak server (UNAUTHENTICATED): koordinator sudah menghapus token.
@@ -119,14 +121,15 @@ class SessionController extends Notifier<SessionState> {
     }
   }
 
-  Future<void> _acceptMe(Me me) async {
-    final previous = await _snapshots.read();
-    if (previous != null && previous.me.userId != me.userId) {
+  Future<void> _acceptMe(Me me, {String? previousUserId}) async {
+    final previous = previousUserId ?? (await _snapshots.read())?.me.userId;
+    if (previous != null && previous != me.userId) {
       // Berganti akun: data privat akun sebelumnya tidak boleh tampil (AC F05-3, F13-5).
       await _ktaCache.clear();
       await ref.read(idempotencyStoreProvider).clear();
     }
-    if (me.effectiveStatus case EffectiveStatus.suspended || EffectiveStatus.disabled || EffectiveStatus.deletionPending) {
+    if (me.effectiveStatus
+        case EffectiveStatus.suspended || EffectiveStatus.disabled || EffectiveStatus.deletionPending) {
       // Kartu offline tidak boleh tampil aktif setelah status dibatasi (AC F05-4).
       await _ktaCache.clear();
     }
@@ -159,10 +162,13 @@ class SessionController extends Notifier<SessionState> {
 
   Future<void> _establish(TokenPair pair) async {
     if (pair.refreshToken == null) throw _invalidResponse('session');
+    // Snapshot akun sebelumnya tidak boleh menjadi cadangan offline akun baru; id-nya diingat untuk mendeteksi
+    // pergantian akun setelah /me dimuat.
+    final previousUserId = (await _snapshots.read())?.me.userId;
     await _snapshots.clear();
     await _tokens.save(StoredTokens.fromPair(pair));
     state = const SessionState.unknown();
-    await _loadMe(fallbackToSnapshot: true);
+    await _loadMe(fallbackToSnapshot: true, previousUserId: previousUserId);
   }
 
   /// Challenge OTP yang sedang berjalan (signup setelah register/login, atau password_reset).
@@ -183,13 +189,21 @@ class SessionController extends Notifier<SessionState> {
     state = const SessionState.anonymous();
   }
 
-  /// Keluar dari perangkat ini. POST /auth/logout mencabut sesi dan menonaktifkan token push perangkat (AC F13-5);
-  /// data lokal tetap dihapus walau server tidak terjangkau.
-  Future<void> logout() async {
-    try {
-      if (await _tokens.read() != null) await _auth.logout();
-    } on ApiException {
-      // Best effort: sesi server berakhir sendiri sesuai TTL; token lokal tetap dihapus.
+  /// Keluar dari perangkat ini, atau dari semua perangkat bila [allDevices] (AC F02-6). POST /auth/logout mencabut
+  /// sesi dan menonaktifkan token push perangkat (AC F13-5); data lokal tetap dihapus walau server tidak terjangkau.
+  ///
+  /// Untuk keluar dari semua perangkat, kegagalan server dilempar (pengguna harus tahu sesi lain belum dicabut)
+  /// dan sesi lokal tidak diubah.
+  Future<void> logout({bool allDevices = false}) async {
+    final hasTokens = await _tokens.read() != null;
+    if (allDevices) {
+      if (hasTokens) await _auth.logoutAll();
+    } else {
+      try {
+        if (hasTokens) await _auth.logout();
+      } on ApiException {
+        // Best effort: sesi server berakhir sendiri sesuai TTL; token lokal tetap dihapus.
+      }
     }
     await _tokens.clear();
     await _wipePrivateData();

@@ -35,9 +35,7 @@ class AppHeadersInterceptor extends Interceptor {
 /// refresh di koordinator, bukan mengantre lalu me-refresh berulang. Operasi publik kontrak (login, register, OTP,
 /// refresh, lupa sandi; `kapdhAuthRequiredKey == false`) tidak diberi token dan tidak pernah memicu refresh.
 class AuthInterceptor extends Interceptor {
-  AuthInterceptor({required Dio dio, required RefreshCoordinator coordinator})
-      : _dio = dio,
-        _coordinator = coordinator;
+  AuthInterceptor({required Dio dio, required RefreshCoordinator coordinator}) : _dio = dio, _coordinator = coordinator;
 
   final Dio _dio;
   final RefreshCoordinator _coordinator;
@@ -89,8 +87,9 @@ class AuthInterceptor extends Interceptor {
       fresh = await _coordinator.refreshAfterRejection(rejected);
     } on ApiException catch (refreshError) {
       // Refresh gagal karena jaringan/server: token tetap ada; request asli gagal dengan sebab refresh agar UI
-      // menampilkan offline/coba lagi, bukan "sesi berakhir".
-      handler.reject(_fromRefreshFailure(options, refreshError));
+      // menampilkan offline/coba lagi, bukan "sesi berakhir". Diteruskan (bukan reject) agar sinyal global
+      // (mis. MAINTENANCE) tetap terpancar.
+      handler.next(_fromRefreshFailure(options, refreshError));
       return;
     }
     if (fresh == null) {
@@ -99,9 +98,12 @@ class AuthInterceptor extends Interceptor {
       return;
     }
 
-    final retry = retryableRequest(options);
-    retry.headers['Authorization'] = 'Bearer $fresh';
-    retry.extra[authRetriedKey] = true;
+    // Salinan baru (FormData diklon oleh retryableRequest); request asli tidak diubah. X-Request-Id tetap sama.
+    final base = retryableRequest(options);
+    final retry = base.copyWith(
+      headers: <String, dynamic>{...base.headers, 'Authorization': 'Bearer $fresh'},
+      extra: <String, dynamic>{...base.extra, authRetriedKey: true},
+    );
     try {
       handler.resolve(await _dio.fetch<Object?>(retry));
     } on DioException catch (retryError) {
@@ -133,6 +135,10 @@ class ErrorSignalsInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (err.type == DioExceptionType.cancel) {
+      handler.next(err);
+      return;
+    }
     final error = ApiException.fromDio(err, operationId: err.requestOptions.extra[kapdhOperationIdKey] as String?);
     switch (error.ui.action) {
       case ErrorUiAction.showMaintenance:
