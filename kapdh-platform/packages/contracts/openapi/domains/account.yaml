@@ -1,20 +1,69 @@
-# Domain account (C1 Identity): penghapusan akun dari aplikasi dan dari situs /delete-account.
-# Modul API: apps/api/src/modules/account.
+# Domain account (C1 Identity): penghapusan akun dari aplikasi (F-14) dan dari situs /delete-account tanpa aplikasi,
+# termasuk pengungkapan retensi (D2, N-15) dan pemeriksaan status dengan challenge terbatas (PRD 2.2).
+# Modul API: apps/api/src/modules/account (+ job account.deletion). `x-kapdh-access` dijelaskan di kepala auth.yaml.
+#
+# Alur aplikasi : GET /me/deletion/disclosure -> POST /auth/reauth -> POST /me/deletion (X-Reauth-Token, konfirmasi).
+# Alur web      : POST /public/deletion/challenge -> POST /public/deletion/verify (OTP; status + pengungkapan +
+#                 deletion_token) -> POST /public/deletion/confirm (deletion_token, konfirmasi).
+# Status        : akun deletion_pending tidak memiliki sesi. Statusnya terlihat lewat POST /auth/login
+#                 (next=deletion_pending, sandi sebagai challenge) atau alur web challenge -> verify (OTP).
 tags:
   - name: Account
-    description: Penghapusan akun dari aplikasi dan web beserta statusnya (F-14).
+    description: |
+      Penghapusan akun dari aplikasi dan web beserta pengungkapan retensi dan pemeriksaan status (F-14, PRD 2.2, D2,
+      N-15). Kebijakan D2: tanpa periode retensi data pribadi; catatan keuangan, tiket, laporan moderasi dan audit
+      hanya disimpan anonim; backup harian berotasi 30 hari dengan deletion ledger (AC F14-6).
 
 paths:
+  /me/deletion/disclosure:
+    get:
+      tags: [Account]
+      operationId: getAccountDeletionDisclosure
+      summary: Pengungkapan sebelum hapus akun; data yang dihapus/dianonimkan dan peringatan refund tiket (F-14, N-15).
+      description: |
+        Ditampilkan di layar /account/delete sebelum reautentikasi dan konfirmasi (N-15: retensi dan penggunaan data
+        dijelaskan sebelum pengguna menyetujui). Memuat kategori data yang dihapus dan yang tersisa anonim (D2),
+        perkiraan penyelesaian maksimal 7 hari kalender, rotasi backup 30 hari, serta peringatan pribadi: tiket aktif
+        dengan hak refund menurut D6 (akun dihapus -> tiket hangus; pengguna diberi tahu untuk mengajukan refund lebih
+        dahulu, PRD 3.9), pembayaran yang masih menunggu verifikasi, grup chat yang admin tunggalnya pengguna
+        (AC F14-5), dan identitas pengurus tertaut. `version` wajib dikirim kembali saat konfirmasi.
+        Tersedia untuk semua effective_status termasuk suspended (penghapusan deletion-only, F-14).
+      x-kapdh-access: { audience: mobile, member_access: any }
+      responses:
+        "200":
+          description: Pengungkapan terkini.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountDeletionDisclosure" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Error" }
+
   /me/deletion:
     post:
       tags: [Account]
       operationId: requestAccountDeletion
-      summary: Minta penghapusan akun; perlu reautentikasi maksimal 10 menit (F-14).
+      summary: Minta penghapusan akun dari aplikasi; perlu reautentikasi maksimal 10 menit dan konfirmasi (AC F14-1).
       description: |
-        Token reautentikasi dikirim lewat header X-Reauth-Token (ARCHITECTURE §4.3). Semua sesi dicabut
-        setelah permintaan dibuat; proses lanjutan dijalankan worker dan dapat dilanjutkan setelah gagal (N-15).
+        Wajib header X-Reauth-Token (POST /auth/reauth, maksimal 10 menit, terikat sesi) dan `confirm: true` dengan
+        `acknowledged_disclosure_version` sama dengan `version` pengungkapan terkini. Dalam satu transaksi dengan
+        baris users terkunci: satu permintaan `account_deletions` dibuat (nomor DEL-YYYY-XXXX, sumber `app`, batas
+        7 hari), akun menjadi `deletion_pending`, semua sesi dicabut dan `session_version` naik, audit
+        `account.deletion_requested` ditulis, dan outbox `account.deletion.requested` (job) serta email konfirmasi
+        berisi nomor permintaan dijadwalkan. Setelah commit seluruh socket diputus (AC F14-1). Klien menampilkan
+        nomor permintaan lalu menghapus token, cache KTA dan data privat lokal. Bila respons hilang, sesi sudah
+        dicabut: klien masuk kembali dan POST /auth/login mengembalikan `next: deletion_pending` beserta status.
+
+        Satu permintaan terbuka per akun (`account_deletions_user_id_open_key`); request bersamaan atau ulangan
+        dengan Idempotency-Key yang sama mengembalikan permintaan yang sama. Anggota suspended dapat menghapus akun
+        tanpa akses komunitas (F-14). Akun alumni pengurus tetap dapat dihapus; identitas admin tertaut tidak ikut
+        terhapus dan diputus tautannya oleh job (PRD 3.14). Job dapat dilanjutkan setelah gagal (AC F14-2, N-15).
+        Galat: 400 VALIDATION_ERROR (`confirm` bukan true); 403 REAUTH_REQUIRED; 409 VERSION_CONFLICT bila
+        pengungkapan berubah (mis. tiket baru) dengan `current` berisi AccountDeletionDisclosure terkini, atau
+        IDEMPOTENCY_CONFLICT.
+      x-kapdh-access: { audience: mobile, member_access: any, reauth: true, idempotent: true }
       parameters:
         - $ref: "#/components/parameters/ReauthToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -22,20 +71,32 @@ paths:
             schema: { $ref: "#/components/schemas/AccountDeletionRequest" }
       responses:
         "202":
-          description: Permintaan dibuat; sesi dicabut.
+          description: Permintaan dibuat; akun deletion_pending dan semua sesi dicabut.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AccountDeletion" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/ReauthRequired" }
+        "409": { $ref: "#/components/responses/Conflict" }
         default: { $ref: "#/components/responses/Error" }
 
   /public/deletion/challenge:
     post:
       tags: [Account]
       operationId: startWebDeletion
-      summary: Mulai penghapusan dari situs /delete-account tanpa aplikasi; OTP dikirim ke email (F-14).
+      summary: Mulai penghapusan atau cek status dari situs /delete-account; OTP dikirim ke email (F-14, PRD 2.2).
+      description: |
+        Dipakai situs publik /delete-account (tanpa aplikasi) dan layar status penghapusan aplikasi. Bila email
+        milik akun alumni `active` (semua effective_status termasuk suspended: challenge deletion-only tanpa akses
+        komunitas), `deletion_pending` (cek status) atau `disabled` (cek status), challenge `deletion` dibuat
+        (baris users dikunci, challenge lama dibatalkan) dan kode dikirim ke email. Untuk email lain (tidak
+        terdaftar, `pending_otp`, akun admin, akun yang sudah selesai dihapus) server mengembalikan challenge
+        pengganti berbentuk sama tanpa email; respons, waktu dan batas 429 identik (non-enumerasi, PRD 2.5).
+        Kirim ulang memakai POST /auth/otp/resend. Galat: 400 VALIDATION_ERROR email tidak valid; 429 RATE_LIMITED
+        (5 pengiriman per jam per email plus batas IP).
       security: []
+      x-kapdh-access: { audience: public }
       requestBody:
         required: true
         content:
@@ -47,6 +108,48 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/OtpChallenge" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /public/deletion/verify:
+    post:
+      tags: [Account]
+      operationId: verifyWebDeletion
+      summary: Verifikasi OTP penghapusan; tampilkan status dan pengungkapan, terbitkan deletion_token terbatas (F-14).
+      description: |
+        Kode `deletion` benar dikonsumsi sekali secara atomik. Respons adalah challenge terbatas (PRD 2.2): tidak ada
+        sesi, hanya status permintaan penghapusan terbuka (`deletion`) dan, bila akun dapat dihapus, pengungkapan
+        retensi/peringatan (`disclosure`) serta `deletion_token` (acak, disimpan sebagai hash, berlaku maksimal
+        10 menit, sekali pakai, hanya untuk POST /public/deletion/confirm). Akun `deletion_pending` -> `deletable`
+        false, `blocked_reason: deletion_in_progress`, `deletion` terisi. Akun `disabled` -> `deletable` false,
+        `blocked_reason: account_disabled` (pemulihan atau penghapusan melalui kanal bantuan, PRD 2.2).
+        Challenge pengganti dari email tak terdaftar selalu diperlakukan sebagai kode salah sampai percobaan habis.
+        Galat: 400 VALIDATION_ERROR kode salah dengan sisa percobaan di `field_errors.code`; 410 OTP_EXPIRED
+        (kedaluwarsa, dipakai, diganti, percobaan habis, tujuan lain); 429 RATE_LIMITED.
+      security: []
+      x-kapdh-access: { audience: public }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WebDeletionVerifyRequest" }
+      responses:
+        "200":
+          description: OTP benar; status dan pilihan penghapusan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebDeletionVerification" }
+        "400":
+          description: Kode salah (VALIDATION_ERROR) dengan sisa percobaan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "410":
+          description: Challenge tidak berlaku (OTP_EXPIRED); minta kode baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/RateLimited" }
         default: { $ref: "#/components/responses/Error" }
 
@@ -54,8 +157,20 @@ paths:
     post:
       tags: [Account]
       operationId: confirmWebDeletion
-      summary: Konfirmasi penghapusan dari web dengan OTP (F-14).
+      summary: Konfirmasi penghapusan dari web dengan deletion_token; nomor permintaan ditampilkan (AC F14-1).
+      description: |
+        Halaman web benar-benar menerima permintaan, bukan hanya menyarankan menghubungi pengurus (F-14).
+        `deletion_token` dikonsumsi dengan UPDATE bersyarat; `confirm: true` dan `acknowledged_disclosure_version`
+        wajib sama dengan pengungkapan terkini. Efek sama dengan POST /me/deletion (sumber `web`): akun
+        `deletion_pending`, sesi/socket dicabut, audit, job dan email konfirmasi lewat outbox. Request bersamaan
+        atau ulangan dengan Idempotency-Key sama menghasilkan satu permintaan yang sama.
+        Galat: 400 VALIDATION_ERROR; 409 VERSION_CONFLICT bila pengungkapan berubah (`current` berisi
+        AccountDeletionDisclosure terkini; token tetap berlaku sampai kedaluwarsa) atau IDEMPOTENCY_CONFLICT;
+        410 OTP_EXPIRED bila deletion_token kedaluwarsa atau sudah dipakai; 429 RATE_LIMITED.
       security: []
+      x-kapdh-access: { audience: public, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -63,38 +178,232 @@ paths:
             schema: { $ref: "#/components/schemas/WebDeletionConfirmRequest" }
       responses:
         "202":
-          description: Permintaan dibuat.
+          description: Permintaan dibuat (atau permintaan terbuka yang sama dikembalikan).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AccountDeletion" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "409": { $ref: "#/components/responses/Conflict" }
         "410":
-          description: OTP tidak berlaku (OTP_EXPIRED).
+          description: deletion_token tidak berlaku (OTP_EXPIRED); ulangi verifikasi email.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         default: { $ref: "#/components/responses/Error" }
 
 components:
   schemas:
     AccountDeletionRequest:
       type: object
-      required: [confirm]
+      description: Konfirmasi eksplisit penghapusan dari aplikasi (F-14).
+      required: [confirm, acknowledged_disclosure_version]
       properties:
         confirm: { type: boolean, const: true, description: Konfirmasi eksplisit pengguna. }
+        acknowledged_disclosure_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: "`version` dari AccountDeletionDisclosure yang ditampilkan kepada pengguna."
 
     AccountDeletionStatus:
       type: string
-      enum: [pending, processing, completed]
-      description: Tahap penghapusan akun yang dijalankan worker (F-14).
+      enum: [pending, processing, failed, completed]
+      description: |
+        Tahap permintaan penghapusan (account_deletions.status). `failed` berarti langkah terakhir gagal dan akan
+        dicoba ulang otomatis tanpa mengulang langkah yang selesai (AC F14-2, N-15); UI menampilkannya sebagai
+        "Sedang diproses ulang".
+
+    AccountDeletionSource:
+      type: string
+      enum: [app, web]
+      description: Kanal permintaan penghapusan (F-14).
 
     AccountDeletion:
       type: object
-      required: [request_number, status, requested_at]
+      description: Status permintaan penghapusan akun tanpa data pribadi (AC F14-1).
+      required: [request_number, status, source, requested_at, estimated_completion_at, completed_at]
       properties:
-        request_number: { type: string, examples: ["DEL-2026-000123"] }
+        request_number:
+          type: string
+          pattern: "^DEL-[0-9]{4}-[0-9A-Z]{4,}$"
+          examples: ["DEL-2026-7K3Q9X"]
+          description: Nomor permintaan yang ditampilkan kepada pengguna dan dipakai dalam komunikasi bantuan.
         status: { $ref: "#/components/schemas/AccountDeletionStatus" }
+        source: { $ref: "#/components/schemas/AccountDeletionSource" }
         requested_at: { type: string, format: date-time }
-        estimated_completion_at: { type: string, format: date-time }
+        estimated_completion_at:
+          type: string
+          format: date-time
+          description: Batas penyelesaian otomatis, maksimal 7 hari kalender sejak permintaan (F-14).
+        completed_at: { type: [string, "null"], format: date-time }
+
+    AccountDeletionDataCategory:
+      type: string
+      enum:
+        - credentials
+        - profile
+        - contacts
+        - avatar
+        - private_uploads
+        - payment_proofs
+        - chat_content
+        - device_tokens
+        - sessions
+        - notifications
+        - preferences
+      description: |
+        Kategori data yang dihapus atau menjadi placeholder tanpa isi (AC F14-3, D2): kredensial, profil, kontak,
+        avatar, unggahan pribadi, file bukti transfer, isi chat buatan pengguna, token perangkat, sesi, kotak masuk
+        notifikasi, dan preferensi.
+
+    AccountDeletionDataItem:
+      type: object
+      required: [category, description]
+      properties:
+        category: { $ref: "#/components/schemas/AccountDeletionDataCategory" }
+        description: { type: string, description: Penjelasan singkat Bahasa Indonesia untuk ditampilkan. }
+
+    AccountDeletionRetainedCategory:
+      type: string
+      enum: [payments, tickets, membership_history, moderation_reports, audit_logs]
+      description: |
+        Catatan yang tetap ada dalam bentuk anonim tanpa nama, email, telepon, foto atau snapshot identitas
+        (AC F14-4, D2): jumlah, tanggal, status dan referensi transaksi minimum.
+
+    AccountDeletionRetainedItem:
+      type: object
+      required: [category, description]
+      properties:
+        category: { $ref: "#/components/schemas/AccountDeletionRetainedCategory" }
+        description: { type: string, description: "Apa yang tersisa dan mengapa, dalam Bahasa Indonesia." }
+
+    AccountDeletionTicketStatus:
+      type: string
+      enum: [awaiting_payment, awaiting_review, paid]
+      description: Status tiket aktif yang akan hangus saat akun dihapus (PRD 3.9, 4.4).
+
+    AccountDeletionTicketWarning:
+      type: object
+      description: |
+        Tiket aktif (menahan atau memakai kursi) pada event yang belum selesai, termasuk event yang dibatalkan dan
+        belum direfund. Akun dihapus -> tiket hangus; refund harus diajukan lebih dahulu (PRD 3.9, D6).
+      required:
+        - ticket_id
+        - event_id
+        - event_title
+        - event_starts_at
+        - event_timezone
+        - event_cancelled
+        - status
+        - total
+        - refund_eligible
+        - self_cancel_deadline_at
+      properties:
+        ticket_id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid }
+        event_title: { type: string, maxLength: 200 }
+        event_starts_at: { type: string, format: date-time }
+        event_timezone:
+          { type: string, examples: [Asia/Jakarta], description: Zona tampilan event (PRD 2.1). }
+        event_cancelled: { type: boolean, description: "Event dibatalkan pengurus (refund penuh, D6)." }
+        status: { $ref: "#/components/schemas/AccountDeletionTicketStatus" }
+        total: { $ref: "#/components/schemas/Money" }
+        refund_eligible:
+          type: boolean
+          description: |
+            True bila tiket berbayar masih berhak refund penuh menurut D6: event dibatalkan, atau pembatalan sendiri
+            sebelum `self_cancel_deadline_at` (H-3). Tiket gratis dan pembatalan setelah H-3 tidak direfund.
+        self_cancel_deadline_at:
+          type: [string, "null"]
+          format: date-time
+          description: Batas pembatalan sendiri dengan refund penuh (mulai event - 3 hari); null untuk event gratis.
+
+    AccountDeletionPaymentType:
+      type: string
+      enum: [registration, renewal, ticket]
+      description: Jenis pembayaran yang masih terbuka (PRD 3.3).
+
+    AccountDeletionPaymentWarning:
+      type: object
+      description: |
+        Pembayaran `pending` yang akan dibatalkan saat penghapusan. Dana yang sudah ditransfer tidak otomatis
+        dianggap dikembalikan; pengguna menghubungi bendahara sebelum menghapus (PRD 4.4).
+      required: [payment_id, type, amount, proof_submitted, created_at]
+      properties:
+        payment_id: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/AccountDeletionPaymentType" }
+        amount: { $ref: "#/components/schemas/Money" }
+        proof_submitted:
+          { type: boolean, description: True bila bukti transfer sudah diunggah (dana mungkin terkirim). }
+        created_at: { type: string, format: date-time }
+
+    AccountDeletionDisclosure:
+      type: object
+      description: |
+        Pengungkapan wajib sebelum konfirmasi penghapusan (N-15, D2, F-14) beserta peringatan pribadi pemilik akun.
+        Hanya untuk pemilik akun (sesi sendiri atau challenge email terverifikasi).
+      required:
+        - version
+        - estimated_completion_days
+        - backup_retention_days
+        - deleted_data
+        - retained_data
+        - privacy_policy_slug
+        - privacy_policy_version
+        - active_tickets
+        - open_payments
+        - sole_admin_group_count
+        - linked_admin_identity
+      properties:
+        version:
+          type: string
+          maxLength: 128
+          description: |
+            Versi opaque dari isi pengungkapan dan peringatan pribadi; berubah bila tiket/pembayaran/kebijakan berubah.
+            Dikirim kembali sebagai `acknowledged_disclosure_version`.
+        estimated_completion_days:
+          type: integer
+          minimum: 1
+          examples: [7]
+          description: Penyelesaian otomatis maksimal 7 hari kalender lalu pemberitahuan email (F-14).
+        backup_retention_days:
+          type: integer
+          minimum: 0
+          examples: [30]
+          description: Backup harian berotasi 30 hari; deletion ledger diterapkan ulang saat restore (D2, AC F14-6).
+        deleted_data:
+          type: array
+          items: { $ref: "#/components/schemas/AccountDeletionDataItem" }
+        retained_data:
+          type: array
+          items: { $ref: "#/components/schemas/AccountDeletionRetainedItem" }
+        privacy_policy_slug:
+          type: string
+          examples: [kebijakan-privasi]
+          description: Slug halaman kebijakan privasi (GET /public/pages/{slug}).
+        privacy_policy_version:
+          type: [string, "null"]
+          description: Versi terbit kebijakan privasi yang menjadi dasar pengungkapan; null bila belum terbit.
+        active_tickets:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/AccountDeletionTicketWarning" }
+        open_payments:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/AccountDeletionPaymentWarning" }
+        sole_admin_group_count:
+          type: integer
+          minimum: 0
+          description: |
+            Jumlah grup chat yang admin tunggalnya pengguna; kewenangan dialihkan ke anggota aktif atau grup ditutup
+            otomatis tanpa menunggu respons anggota lain (AC F14-5).
+        linked_admin_identity:
+          type: boolean
+          description: |
+            True bila akun alumni ini ditautkan ke identitas pengurus. Identitas admin tidak ikut terhapus; pengalihan
+            kewenangan pengurus dilakukan Super Admin (PRD 3.14).
 
     WebDeletionStartRequest:
       type: object
@@ -102,10 +411,62 @@ components:
       properties:
         email: { type: string, format: email, maxLength: 254 }
 
-    WebDeletionConfirmRequest:
+    WebDeletionVerifyRequest:
       type: object
-      required: [challenge_id, code, confirm]
+      required: [challenge_id, code]
       properties:
         challenge_id: { type: string, format: uuid }
         code: { type: string, pattern: "^[0-9]{6}$", x-sensitive: true }
-        confirm: { type: boolean, const: true }
+
+    WebDeletionVerification:
+      type: object
+      description: |
+        Hasil challenge terbatas penghapusan (PRD 2.2): status permintaan terbuka dan, bila dapat dihapus,
+        pengungkapan serta deletion_token. Tidak memberi sesi atau akses lain.
+      required:
+        - email_masked
+        - deletable
+        - blocked_reason
+        - deletion
+        - disclosure
+        - deletion_token
+        - deletion_token_expires_at
+      properties:
+        email_masked: { type: string, maxLength: 254, examples: ["ah***@email.com"] }
+        deletable: { type: boolean, description: True bila permintaan penghapusan baru dapat dikonfirmasi. }
+        blocked_reason:
+          type: [string, "null"]
+          enum: [deletion_in_progress, account_disabled, null]
+          description: |
+            Alasan tidak dapat membuat permintaan baru: `deletion_in_progress` (lihat `deletion`), `account_disabled`
+            (hubungi bantuan, PRD 2.2); null bila `deletable`.
+        deletion:
+          description: Permintaan penghapusan terbuka (status pending/processing/failed); null bila tidak ada.
+          oneOf:
+            - $ref: "#/components/schemas/AccountDeletion"
+            - type: "null"
+        disclosure:
+          description: Pengungkapan dan peringatan pribadi; hanya bila `deletable`.
+          oneOf:
+            - $ref: "#/components/schemas/AccountDeletionDisclosure"
+            - type: "null"
+        deletion_token:
+          type: [string, "null"]
+          maxLength: 512
+          description: Token sekali pakai untuk POST /public/deletion/confirm; hanya bila `deletable`.
+        deletion_token_expires_at:
+          type: [string, "null"]
+          format: date-time
+          description: Maksimal 10 menit sejak verifikasi (sama dengan batas reautentikasi F-14).
+
+    WebDeletionConfirmRequest:
+      type: object
+      required: [deletion_token, confirm, acknowledged_disclosure_version]
+      properties:
+        deletion_token: { type: string, minLength: 16, maxLength: 512 }
+        confirm: { type: boolean, const: true, description: Konfirmasi eksplisit pengguna. }
+        acknowledged_disclosure_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: "`version` dari AccountDeletionDisclosure yang ditampilkan kepada pengguna."
