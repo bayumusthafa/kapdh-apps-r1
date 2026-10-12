@@ -83,7 +83,7 @@ export class AuthGuard implements CanActivate {
         );
       }
       const admin = await this.db.query.admins.findFirst({ where: eq(admins.userId, user.id) });
-      if (!admin?.active) throw new AppException(403, "FORBIDDEN", "Akun admin tidak aktif.");
+      if (admin?.status !== "active") throw new AppException(403, "FORBIDDEN", "Akun admin tidak aktif.");
       auth.adminId = admin.id;
       // Permintaan latar tidak dihitung sebagai aktivitas (AC F02-5).
       if (req.headers["x-background-request"] !== "1") {

@@ -2,6 +2,12 @@ packages:
   - "apps/*"
   - "packages/*"
 onlyBuiltDependencies:
+  # Biner PostgreSQL 17 untuk jalur uji test:pg; postinstall memulihkan symlink pustaka (Linux/macOS).
+  - "@embedded-postgres/darwin-arm64"
+  - "@embedded-postgres/darwin-x64"
+  - "@embedded-postgres/linux-arm64"
+  - "@embedded-postgres/linux-x64"
+  - "@embedded-postgres/windows-x64"
   - "@swc/core"
   - esbuild
   - sharp
