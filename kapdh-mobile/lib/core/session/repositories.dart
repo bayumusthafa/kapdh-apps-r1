@@ -40,15 +40,19 @@ class MeRepository {
   Future<Me> getMe() => _api.getMe();
 }
 
-/// Repositori konfigurasi publik untuk gerbang aplikasi dan dukungan (PRD 4.5).
+/// Repositori data publik tanpa login: konfigurasi untuk gerbang aplikasi dan dukungan (PRD 4.5) serta versi
+/// persetujuan legal untuk registrasi (F-01). Halaman legal milik domain konten (kontrak C4, `KapdhApi.content`).
 class PublicRepository {
-  PublicRepository(this._api);
+  PublicRepository(this._public, this._content);
 
-  final PublicApi _api;
+  final PublicApi _public;
+  final ContentApi _content;
 
-  Future<PublicConfig> getConfig() => _api.getPublicConfig();
+  Future<PublicConfig> getConfig() => _public.getPublicConfig();
 
-  Future<PublicPage> getPage(String slug) => _api.getPublicPage(slug);
+  /// `consent` dari GET /public/pages: `policy_version` gabungan kanonis `privacy:<v>;terms:<v>` yang dikirim apa
+  /// adanya sebagai `accept_policy_version`; null bila salah satu dokumen belum pernah terbit.
+  Future<LegalConsentVersions> getConsentVersions() async => (await _content.listPublicPages()).consent;
 }
 
 final authRepositoryProvider = Provider<AuthRepository>(
@@ -58,5 +62,5 @@ final authRepositoryProvider = Provider<AuthRepository>(
 final meRepositoryProvider = Provider<MeRepository>((ref) => MeRepository(ref.watch(kapdhApiProvider).me));
 
 final publicRepositoryProvider = Provider<PublicRepository>(
-  (ref) => PublicRepository(ref.watch(kapdhApiProvider).public),
+  (ref) => PublicRepository(ref.watch(kapdhApiProvider).public, ref.watch(kapdhApiProvider).content),
 );

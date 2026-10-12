@@ -9,6 +9,12 @@ export const PAYMENT_TYPE_LABEL: Record<PaymentType, string> = {
   ticket: "Tiket event",
 };
 
+/**
+ * Pengganti nama pemilik bila akunnya sudah dihapus dan datanya dianonimkan (`member` null; D2, AC F14-4). Payment
+ * berbukti milik akun seperti itu tetap di antrean dan wajib diputus (PRD 4.4).
+ */
+export const DELETED_ACCOUNT_LABEL = "Akun dihapus";
+
 /** Label peran admin untuk header "Masuk sebagai <nama> (<peran>)" (F-16). */
 export const ADMIN_ROLE_LABEL: Record<AdminRole, string> = {
   super_admin: "Super Admin",

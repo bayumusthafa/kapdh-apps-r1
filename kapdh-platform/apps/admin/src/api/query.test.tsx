@@ -36,7 +36,7 @@ describe("useApiQuery", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await signInViaApi();
     renderWithProviders(<PollingList />);
-    expect(await screen.findByText("total 26")).toBeInTheDocument();
+    expect(await screen.findByText("total 29")).toBeInTheDocument();
     const list = () => paymentRequests.filter((r) => r.path === "/admin/payments");
     expect(list()).toHaveLength(1);
     expect(list()[0]!.background).toBe(false);
@@ -68,7 +68,7 @@ describe("useApiQuery", () => {
       return <p>{q.data ? `total ${q.data.total}` : "memuat"}</p>;
     }
     renderWithProviders(<FlakyPolling />);
-    expect(await screen.findByText("total 26")).toBeInTheDocument();
+    expect(await screen.findByText("total 29")).toBeInTheDocument();
     expect(sent[0]).toEqual({});
     await act(async () => {
       vi.advanceTimersByTime(30_500);
@@ -283,13 +283,17 @@ describe("ReauthDialog + useApiMutation (AC F15-3, ARCHITECTURE §4.3)", () => {
     const password = within(dialog).getByLabelText(/^Sandi/);
     expect(password).toHaveFocus();
 
-    // Kode salah: dialog tetap terbuka dengan pesan.
+    // Kode salah (400 VALIDATION_ERROR per isian, kontrak auth): dialog tetap terbuka, pesan di isian kode.
     await user.type(password, MOCK_CREDENTIALS.password);
-    await user.type(within(dialog).getByLabelText(/^Kode autentikator/), "000000");
+    const code = within(dialog).getByLabelText(/^Kode autentikator/);
+    await user.type(code, "000000");
     await user.click(within(dialog).getByRole("button", { name: "Konfirmasi" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Sandi atau kode autentikator salah.");
+    await waitFor(() =>
+      expect(code).toHaveAccessibleDescription(/Kode autentikator salah\. Sisa percobaan 4\./),
+    );
+    expect(code).toHaveValue("");
 
-    await user.type(within(dialog).getByLabelText(/^Kode autentikator/), MOCK_CREDENTIALS.totp);
+    await user.type(code, MOCK_CREDENTIALS.totp);
     await user.click(within(dialog).getByRole("button", { name: "Konfirmasi" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(await screen.findByText("status success")).toBeInTheDocument();

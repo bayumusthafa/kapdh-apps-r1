@@ -30,8 +30,9 @@ class KtaCardData {
     final active = card.statusLabel == MemberCardStatus.active || card.statusLabel == MemberCardStatus.expiring;
     final qr = card.qr;
     final showQr = active && qr != null && qrUsable;
-    final detail = card.professionLabel ?? (card.graduationYear != null ? 'Lulus ${card.graduationYear}' : null);
-    final cohort = card.cohort != null ? 'Angkatan ${card.cohort}' : card.cohortCode;
+    // Kontrak C2: `cohort` dan `graduation_year` wajib; profesi tampil bila ada, selain itu tahun lulus (PRD 3.5).
+    final detail = card.professionLabel ?? 'Lulus ${card.graduationYear}';
+    final cohort = 'Angkatan ${card.cohort}';
     final expiresAt = card.expiresAt;
     final validity = switch (card.statusLabel) {
       MemberCardStatus.inactive => 'Berlaku sampai: belum aktif',
@@ -41,7 +42,7 @@ class KtaCardData {
     };
     return KtaCardData(
       fullName: card.fullName,
-      subtitle: detail == null ? cohort : '$cohort | $detail',
+      subtitle: '$cohort | $detail',
       cohortCode: card.cohortCode,
       memberNumber: card.memberNumber,
       city: card.city,

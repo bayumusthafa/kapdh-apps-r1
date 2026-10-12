@@ -86,6 +86,25 @@ export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   return <StatusBadge status={status} map={PAYMENT_STATUS} />;
 }
 
+type PaymentStage = components["schemas"]["PaymentStage"];
+
+/**
+ * Tahap pembayaran yang dihitung server (`stage`, kontrak C3): membedakan pending tanpa bukti dari pending yang
+ * siap diputus, dan penolakan iuran yang masih dapat diperbaiki dari penolakan tiket yang final (PRD 4.3, 4.4).
+ */
+export const PAYMENT_STAGE: Record<PaymentStage, StatusStyle> = {
+  awaiting_transfer: { label: "Menunggu transfer", tone: "neutral", icon: <Hourglass /> },
+  awaiting_review: { label: "Menunggu verifikasi", tone: "info", icon: <Clock /> },
+  needs_fix: { label: "Perlu perbaikan", tone: "warning", icon: <TriangleAlert /> },
+  rejected_final: { label: "Ditolak final", tone: "danger", icon: <CircleX /> },
+  paid: { label: "Disetujui", tone: "success", icon: <CircleCheck /> },
+  cancelled: { label: "Dibatalkan", tone: "neutral", icon: <Ban /> },
+};
+
+export function PaymentStageBadge({ stage }: { stage: PaymentStage }) {
+  return <StatusBadge status={stage} map={PAYMENT_STAGE} />;
+}
+
 /**
  * Status keanggotaan efektif (PRD 2.2) memakai kelas token `.badge-*` dari @kapdh/design-tokens dan label
  * katalog bersama (sama dengan aplikasi Flutter).
