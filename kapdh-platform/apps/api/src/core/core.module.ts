@@ -27,7 +27,10 @@ import { safeError } from "./logging/safe-error.js";
 import { MembershipKernel } from "./membership/membership.kernel.js";
 import { NotificationService } from "./notifications-kernel/notification.service.js";
 import { OutboxService } from "./outbox/outbox.service.js";
-import { MembershipPaymentHandlers, PaymentHandlerRegistry } from "./payments-kernel/payment-handler.registry.js";
+import {
+  MembershipPaymentHandlers,
+  PaymentHandlerRegistry,
+} from "./payments-kernel/payment-handler.registry.js";
 import { BlockPolicy } from "./policy/block.policy.js";
 import { QrTokenService } from "./qr/qr-token.service.js";
 import { RateLimitService } from "./rate-limit/rate-limit.service.js";
@@ -132,7 +135,8 @@ export class CoreModule implements OnModuleInit {
     });
     // Worker tidak memiliki gateway: event realtime dari job dikirim lewat emitter Redis ke adapter gateway API.
     // Tanpa Redis (development/test) event worker tidak dikirim; klien memuat ulang lewat HTTP (PRD 5.2).
-    if (this.mode === "worker" && this.redis) this.realtime.useTransport(new RedisEmitterTransport(this.redis));
+    if (this.mode === "worker" && this.redis)
+      this.realtime.useTransport(new RedisEmitterTransport(this.redis));
   }
 
   static forRoot(deps: CoreDeps, runtime: CoreRuntime): DynamicModule {

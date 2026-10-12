@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import { EnvValidationError, loadApiEnv, loadDevelopmentEnvFile } from "@kapdh/config";
+import { createStorageDriver, S3Driver } from "@kapdh/storage";
 import { createDb } from "@kapdh/database";
 import { resolve } from "node:path";
 import { createApp } from "./bootstrap.js";
@@ -26,6 +27,8 @@ async function main() {
   const redis = env.REDIS_URL ? createRedis(env.REDIS_URL, "kapdh-api") : null;
   const smtp = env.SMTP_URL ? new SmtpMailer(env.SMTP_URL, env.MAIL_FROM) : null;
   const mailer: Mailer = smtp ?? new DevLogMailer();
+  // Storage berkas (PRD 5.4): path lokal relatif diselesaikan dari folder kerja proses; root di folder publik ditolak.
+  const storage = createStorageDriver({ ...env, STORAGE_LOCAL_ROOT: resolve(env.STORAGE_LOCAL_ROOT) });
   const app = await createApp({
     env,
     db: db as unknown as Db,
@@ -33,13 +36,14 @@ async function main() {
     clock: systemClock,
     push: createPushSender(env),
     redis,
-    storage: null,
+    storage,
   });
   app
     .getHttpAdapter()
     .getInstance()
     .addHook("onClose", async () => {
       smtp?.close();
+      if (storage instanceof S3Driver) storage.destroy();
       await redis?.quit().catch(() => undefined);
       await sql.end({ timeout: 5 });
     });

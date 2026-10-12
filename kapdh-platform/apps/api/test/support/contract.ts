@@ -110,8 +110,17 @@ export function expectOperation(method: HttpMethod, path: string, res: InjectRes
     response = resolvePointer(pointer);
   }
   const content = response.content as Record<string, unknown> | undefined;
-  if (!content?.["application/json"]) {
+  if (!content) {
     expect(res.body, `${where}: kontrak tidak mendeklarasikan body`).toBe("");
+    return undefined;
+  }
+  if (!content["application/json"]) {
+    // Respons biner (isi berkas): media type wajib salah satu yang dideklarasikan kontrak.
+    const type = String(res.headers["content-type"] ?? "")
+      .split(";")[0]!
+      .trim()
+      .toLowerCase();
+    expect(Object.keys(content), `${where}: content-type ${type} tidak dideklarasikan`).toContain(type);
     return undefined;
   }
   expect(String(res.headers["content-type"] ?? ""), `${where}: content-type`).toMatch(/^application\/json/);

@@ -7,7 +7,8 @@ tags:
     description: |
       Unggah dan akses berkas dengan purpose dan izin berbeda (PRD 2.5, 5.4, N-10). Berkas privat tidak pernah
       dilayani dari folder publik: isi dibuka lewat URL bertanda tangan <= 10 menit yang terikat berkas, purpose,
-      dan penerima, setelah pemeriksaan izin. Berkas publik (cover berita/event, banner) memakai URL tetap.
+      dan penerima, setelah pemeriksaan izin. Berkas publik (cover berita/event, banner, avatar publik) memakai URL
+      tetap.
 
 paths:
   /files:
@@ -16,12 +17,18 @@ paths:
       operationId: uploadFile
       summary: Unggah berkas dengan purpose tertentu (N-10).
       description: |
-        Multipart dengan field `purpose` dan satu berkas pada field `file`. Tipe ditentukan dari magic bytes (bukan
-        ekstensi atau Content-Type klien); ekstensi/Content-Type yang menyamarkan tipe ditolak 415. Gambar JPG/PNG/WebP
-        <= 5 MB didekode aman (dimensi/piksel berlebihan ditolak 422), diputar sesuai orientasi lalu di-encode ulang
-        sehingga EXIF/GPS terbuang. PDF <= 10 MB hanya untuk `payment_proof`; PDF berskrip/berlampiran ditolak 422.
-        Kuota: maksimal 10 unggahan berhasil per purpose per pengguna per 24 jam bergulir → 429 RATE_LIMITED dengan
-        `retry_after_seconds`.
+        Multipart dengan field `purpose` lalu satu berkas pada field `file`. Field `purpose` WAJIB dikirim sebelum
+        `file` (urutan bagian multipart) agar hak unggah dan kuota diperiksa sebelum isi dibaca; urutan terbalik
+        → 400 VALIDATION_ERROR. Batas baca stream per purpose: 5 MB untuk purpose gambar, 10 MB untuk
+        `payment_proof`; lebih besar → 413 FILE_INVALID.
+
+        Tipe ditentukan dari magic bytes (bukan ekstensi atau Content-Type klien); ekstensi/Content-Type yang
+        menyamarkan tipe ditolak 415. Gambar JPG/PNG/WebP <= 5 MB didekode aman (dimensi/piksel berlebihan ditolak
+        422), diputar sesuai orientasi lalu di-encode ulang sehingga EXIF/GPS terbuang. PDF <= 10 MB hanya untuk
+        `payment_proof`; PDF berskrip/berlampiran ditolak 422.
+
+        Kuota: maksimal 10 unggahan berhasil per purpose per pengguna per 24 jam bergulir, ditambah batas 30
+        percobaan per jam → 429 RATE_LIMITED dengan `retry_after_seconds`.
 
         Hak unggah per purpose:
         - anggota (sesi aplikasi): `avatar` dan `payment_proof` (effective_status selain suspended), `chat_image`
@@ -63,10 +70,10 @@ paths:
       summary: URL baca berkas setelah pemeriksaan izin (PRD 5.4).
       description: |
         Berkas privat: kebijakan akses purpose diperiksa lebih dulu (pemilik; pengurus `payments.read` untuk bukti
-        bayar; `members.read` untuk avatar; anggota room untuk gambar chat; dst.), lalu URL bertanda tangan berumur
-        <= 10 menit terikat berkas + purpose + sesi pemanggil. URL berhenti berlaku bila sesi dicabut (logout,
-        suspend). Berkas publik: URL tetap dan `expires_at` null. Berkas yang tidak ada, belum siap, atau tidak boleh
-        dibuka → 404 tanpa membedakan alasannya (N-09).
+        bayar dan bukti penyesuaian; `members.read` untuk avatar; aturan modul seperti anggota room untuk gambar chat),
+        lalu URL bertanda tangan berumur <= 10 menit terikat berkas + purpose + sesi pemanggil. URL berhenti berlaku
+        bila sesi dicabut (logout, logout semua perangkat, suspend). Berkas publik: URL tetap dan `expires_at` null.
+        Berkas yang tidak ada, belum siap, atau tidak boleh dibuka → 404 tanpa membedakan alasannya (N-09).
       x-kapdh-access: { audience: any, member_access: nonsuspended }
       parameters:
         - $ref: "#/components/parameters/FileId"
@@ -81,23 +88,28 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         default: { $ref: "#/components/responses/Error" }
 
-  /files/{fileId}/content:
+  /files/content/{token}:
     get:
       tags: [Files]
       operationId: getFileContent
-      summary: Isi berkas privat lewat token URL bertanda tangan (dipakai sebagai URL gambar/unduhan).
+      summary: Isi berkas privat lewat token URL bertanda tangan (dipakai langsung sebagai URL gambar/unduhan).
       description: |
-        Tanpa header Authorization: token di path adalah kredensial berumur <= 10 menit hasil `getFileAccess` atau URL
-        yang disematkan API. Token rusak/kedaluwarsa, sesi penerima dicabut, atau berkas sudah dihapus → 404.
-        Respons `Cache-Control: private, no-store`; gambar ditampilkan inline, PDF dan CSV diunduh sebagai lampiran.
+        Tanpa header Authorization: token di path adalah kredensial berumur <= 10 menit hasil `getFileAccess` atau
+        URL yang disematkan API; klien memakai `url` apa adanya. Token rusak/diubah/kedaluwarsa, sesi penerima
+        dicabut, atau berkas sudah dihapus → 404. Respons `Cache-Control: private, no-store` (cache publik tidak
+        boleh menyimpan bukti, chat, atau ekspor, PRD 5.4); gambar ditampilkan inline, PDF dan CSV diunduh sebagai
+        lampiran.
       x-kapdh-access: { audience: public }
       security: []
       parameters:
-        - $ref: "#/components/parameters/FileId"
         - $ref: "#/components/parameters/FileContentToken"
       responses:
         "200":
           description: Isi berkas.
+          headers:
+            Cache-Control:
+              description: Selalu `private, no-store`.
+              schema: { type: string }
           content:
             image/jpeg:
               schema: { $ref: "#/components/schemas/FileBinary" }
@@ -112,14 +124,15 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         default: { $ref: "#/components/responses/Error" }
 
-  /public/files/{fileId}:
+  /files/public/{fileId}:
     get:
       tags: [Files]
       operationId: getPublicFile
-      summary: Isi berkas publik (cover berita/event, banner) dengan cache publik.
+      summary: Isi berkas publik (cover berita/event, banner, avatar publik) dengan cache publik.
       description: |
-        Hanya berkas bervisibilitas publik yang siap; selain itu 404. Respons `Cache-Control: public, max-age=86400`
-        dan `ETag` (sha256 isi); `If-None-Match` yang cocok → 304.
+        Hanya berkas bervisibilitas publik yang siap; selain itu 404 (berkas privat tidak pernah dilayani di sini).
+        Isi berkas tidak pernah berubah untuk id yang sama, sehingga respons `Cache-Control: public, max-age=86400`
+        dan `ETag` (sha256 isi); `If-None-Match` yang cocok → 304 tanpa isi.
       x-kapdh-access: { audience: public }
       security: []
       parameters:
@@ -127,6 +140,13 @@ paths:
       responses:
         "200":
           description: Isi gambar publik.
+          headers:
+            ETag:
+              description: Validator kuat dari sha256 isi.
+              schema: { type: string }
+            Cache-Control:
+              description: "`public, max-age=86400`."
+              schema: { type: string }
           content:
             image/jpeg:
               schema: { $ref: "#/components/schemas/FileBinary" }
@@ -147,17 +167,30 @@ components:
       required: true
       schema: { type: string, format: uuid }
     FileContentToken:
-      name: t
-      in: query
+      name: token
+      in: path
       required: true
-      description: Token URL bertanda tangan (bukan access token sesi).
-      schema: { type: string, minLength: 16, maxLength: 1024, pattern: "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$" }
+      description: Token URL bertanda tangan (JWT HS256 kompak; bukan access token sesi).
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 1024
+        pattern: "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
 
   schemas:
     FilePurpose:
       type: string
       enum:
-        [avatar, chat_image, post_cover, banner_image, event_cover, payment_proof, adjustment_evidence, audit_export]
+        [
+          avatar,
+          chat_image,
+          post_cover,
+          banner_image,
+          event_cover,
+          payment_proof,
+          adjustment_evidence,
+          audit_export,
+        ]
       description: |
         Purpose berkas (sama dengan files.purpose). `audit_export` hanya dibangkitkan sistem (ekspor audit, AC F17-4)
         dan tidak dapat diunggah.
@@ -170,7 +203,9 @@ components:
     FileVisibility:
       type: string
       enum: [public, private]
-      description: Publik hanya untuk post_cover, banner_image, event_cover; lainnya privat (PRD 5.4).
+      description: |
+        Publik untuk post_cover, banner_image, event_cover, dan avatar yang dijadikan publik sesuai pengaturan
+        privasi pemiliknya; lainnya selalu privat (PRD 5.4).
 
     FileUploadRequest:
       type: object
@@ -180,7 +215,7 @@ components:
         file:
           type: string
           format: binary
-          description: Isi berkas (JPG/PNG/WebP <= 5 MB, atau PDF <= 10 MB khusus payment_proof).
+          description: Isi berkas (JPG/PNG/WebP <= 5 MB, atau PDF <= 10 MB khusus payment_proof). Dikirim setelah purpose.
 
     FileRef:
       type: object
@@ -204,7 +239,10 @@ components:
       type: object
       required: [url, expires_at]
       properties:
-        url: { type: string, format: uri }
+        url:
+          type: string
+          format: uri
+          description: URL absolut yang langsung dapat dibuka (gambar/unduhan) tanpa header Authorization.
         expires_at:
           type: [string, "null"]
           format: date-time

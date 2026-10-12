@@ -27,6 +27,7 @@ export const testEnv: ApiEnv = {
   REDIS_URL: undefined,
   LOG_LEVEL: "error",
   PUBLIC_WEB_URL: "http://web.test",
+  API_PUBLIC_URL: "http://api.test",
   ADMIN_ORIGIN: "http://admin.test",
   SMTP_URL: undefined,
   MAIL_FROM: "test@kapdh.test",

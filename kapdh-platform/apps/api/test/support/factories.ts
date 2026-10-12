@@ -17,6 +17,7 @@ import {
   appSettings,
   mfaTotp,
   paymentMethods,
+  payments,
   users,
 } from "@kapdh/database";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
@@ -387,4 +388,50 @@ export async function settingVersion(t: { db: Db }, key: SettingKey): Promise<nu
     .from(appSettings)
     .where(eq(appSettings.key, key));
   return row?.version ?? 0;
+}
+
+// -------------------------------------------------------------------------------------------- pembayaran
+
+export interface CreateMembershipPaymentOptions {
+  userId: string;
+  type?: "registration" | "renewal";
+  /** pending = bukti sudah dikirim, menunggu keputusan; paid = sudah disetujui pada `decidedAt`. */
+  status?: "pending" | "paid";
+  amount?: string;
+  decidedAt?: Date;
+}
+
+/**
+ * Payment iuran registration/renewal dengan snapshot sintetis (F-03) untuk menguji kernel keanggotaan dan handler
+ * payment tanpa alur modul payments. Status paid memenuhi payments_paid_chk (bukti versi 1, decided_at terisi).
+ */
+export async function createMembershipPayment(t: Fixtures, options: CreateMembershipPaymentOptions) {
+  const now = t.clock.now();
+  const type = options.type ?? "registration";
+  const status = options.status ?? "paid";
+  const amount = options.amount ?? (type === "registration" ? "60000.00" : "10000.00");
+  const [row] = await t.db
+    .insert(payments)
+    .values({
+      id: uuidv7(),
+      userId: options.userId,
+      type,
+      status,
+      amount,
+      linesSnapshot: [{ code: type, label: "Iuran (uji)", amount }],
+      methodSnapshot: {
+        kind: "bank",
+        provider: "Bank Uji",
+        account_number: "7000123456",
+        account_holder: "KAPDH (uji)",
+      },
+      settingsVersion: 1,
+      proofVersion: 1,
+      submittedAt: now,
+      decidedAt: status === "paid" ? (options.decidedAt ?? now) : null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+  return row!;
 }

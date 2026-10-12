@@ -10,7 +10,7 @@ export type FileRow = typeof files.$inferSelect;
  */
 export type FileViewer = Pick<
   AuthContext,
-  "userId" | "sessionId" | "audience" | "adminId" | "permissions" | "effectiveStatus"
+  "userId" | "sessionId" | "sessionVersion" | "audience" | "adminId" | "permissions" | "effectiveStatus"
 >;
 
 export interface FileAccessRequest {

@@ -16,6 +16,7 @@ import type { AuthContext } from "../../core/guards/auth-context.js";
 import { ADMIN_IDLE_MS } from "../../core/guards/auth.guard.js";
 import { MembershipKernel } from "../../core/membership/membership.kernel.js";
 import { RateLimitService } from "../../core/rate-limit/rate-limit.service.js";
+import { RealtimeService } from "../../core/realtime/realtime.service.js";
 import { CLOCK, DB, ENV, MAILER } from "../../core/tokens.js";
 import {
   backupCodeHash,
@@ -107,6 +108,7 @@ export class AuthService {
     private readonly limits: RateLimitService,
     private readonly audit: AuditService,
     private readonly membership: MembershipKernel,
+    private readonly realtime: RealtimeService,
   ) {}
 
   private now() {
@@ -634,7 +636,7 @@ export class AuthService {
    */
   private async revokeFamilyOnReuse(session: { userId: string; familyId: string; audience: string }) {
     const now = this.now();
-    await this.db.transaction(async (tx) => {
+    const revokedIds = await this.db.transaction(async (tx) => {
       const revoked = await tx
         .update(sessions)
         .set({ revokedAt: now })
@@ -646,7 +648,10 @@ export class AuthService {
         entityId: session.userId,
         after: { audience: session.audience, sessions_revoked: revoked.length },
       });
+      return revoked.map((row) => row.id);
     });
+    // Setelah commit: socket sesi keluarga yang dicabut diputus (AC F02-3, F02-6).
+    for (const id of revokedIds) this.realtime.disconnectSession(id, "refresh_reuse_detected");
   }
 
   async logout(sessionId: string) {
@@ -654,6 +659,8 @@ export class AuthService {
       .update(sessions)
       .set({ revokedAt: this.now() })
       .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)));
+    // Socket realtime sesi ini menerima session.revoked lalu diputus (ARCHITECTURE §4.9).
+    this.realtime.disconnectSession(sessionId, "logout");
   }
 
   /** Keluar semua perangkat: semua sesi dicabut dan session_version naik sehingga access token lama ditolak (AC F02-6). */
@@ -676,6 +683,8 @@ export class AuthService {
         after: { sessions_revoked: revoked.length },
       });
     });
+    // Setelah commit: semua socket pengguna menerima session.revoked lalu diputus (AC F02-6).
+    this.realtime.disconnectUser(userId, "logout_all");
   }
 
   // ------------------------------------------------------------------ Admin (F-02, F-16)

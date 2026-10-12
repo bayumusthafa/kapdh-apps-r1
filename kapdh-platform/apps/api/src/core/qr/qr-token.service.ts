@@ -47,7 +47,8 @@ export function qrBindingMatches(
   member: { userId: string; memberSeq: number | null },
   numberFromUrl?: string,
 ): boolean {
-  if (member.memberSeq === null || claims.userId !== member.userId || claims.seq !== member.memberSeq) return false;
+  if (member.memberSeq === null || claims.userId !== member.userId || claims.seq !== member.memberSeq)
+    return false;
   return numberFromUrl === undefined || memberSeqOf(numberFromUrl) === claims.seq;
 }
 
@@ -81,7 +82,11 @@ export class QrTokenService {
    * Menandatangani token untuk anggota dengan masa berlaku `membershipExpiresAt`. null bila keanggotaan sudah habis
    * (tidak ada QR aktif untuk kartu yang tidak berlaku).
    */
-  async sign(input: { userId: string; memberSeq: number; membershipExpiresAt: Date }): Promise<SignedQrToken | null> {
+  async sign(input: {
+    userId: string;
+    memberSeq: number;
+    membershipExpiresAt: Date;
+  }): Promise<SignedQrToken | null> {
     if (!UUID_PATTERN.test(input.userId)) throw new Error("userId token QR wajib UUID");
     if (!Number.isSafeInteger(input.memberSeq) || input.memberSeq < 1)
       throw new Error("memberSeq token QR wajib bilangan bulat positif");

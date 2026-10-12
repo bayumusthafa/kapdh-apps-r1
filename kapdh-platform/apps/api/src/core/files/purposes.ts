@@ -7,7 +7,7 @@ export { FILE_PURPOSES, type FilePurpose };
 /** Batas ukuran N-10: gambar <= 5 MB, PDF <= 10 MB. */
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_PDF_BYTES = 10 * 1024 * 1024;
-/** Batas terbesar yang dibaca dari multipart sebelum purpose dan tipe diketahui. */
+/** Batas terbesar yang dibaca dari multipart (batas busboy global); batas per purpose lebih ketat. */
 export const MAX_UPLOAD_BYTES = MAX_PDF_BYTES;
 /** N-10: maksimal 10 unggahan berhasil per purpose per pengguna per rolling 24 jam. */
 export const UPLOAD_QUOTA = 10;
@@ -23,8 +23,13 @@ export interface FilePurposeSpec {
   purpose: FilePurpose;
   /** Jenis isi yang diterima. PDF hanya untuk bukti bayar (PRD 2.5). */
   kinds: readonly FileKind[];
-  /** Visibilitas: publik hanya untuk gambar yang memang tampil umum (files_private_purpose_chk). */
+  /** Visibilitas awal: publik hanya untuk gambar yang memang tampil umum (files_private_purpose_chk). */
   visibility: FileVisibility;
+  /**
+   * Boleh dijadikan publik lewat `FilesService.setVisibility` (avatar publik sesuai pengaturan privasi pemiliknya,
+   * PRD 5.4). Harus sejalan dengan files_private_purpose_chk.
+   */
+  publicAllowed: boolean;
   /** Siapa yang boleh mengunggah lewat POST /files: anggota (sesi mobile), pengurus, atau hanya sistem. */
   uploader: "member" | "admin" | "system";
   /** Anggota: tingkat effective_status minimum (PRD 2.2). */
@@ -34,26 +39,31 @@ export interface FilePurposeSpec {
 }
 
 export const FILE_PURPOSE_SPECS: Readonly<Record<FilePurpose, FilePurposeSpec>> = {
-  // Foto profil/KTA; dibuka lewat URL bertanda tangan setelah kebijakan akses (anggota lain, pengurus).
+  // Foto profil/KTA: privat bawaan; dibuka lewat URL bertanda tangan setelah kebijakan akses (pemilik, pengurus,
+  // dan aturan modul seperti direktori). Modul profil dapat menjadikannya publik sesuai pengaturan privasi.
   avatar: {
     purpose: "avatar",
     kinds: ["image"],
     visibility: "private",
+    publicAllowed: true,
     uploader: "member",
     memberAccess: "nonsuspended",
   },
-  // Gambar chat dan avatar grup: hanya anggota aktif (chat PRD 2.2).
+  // Gambar chat dan avatar grup: hanya anggota aktif (chat PRD 2.2); tidak pernah publik.
   chat_image: {
     purpose: "chat_image",
     kinds: ["image"],
     visibility: "private",
+    publicAllowed: false,
     uploader: "member",
     memberAccess: "active",
   },
+  // Satu-satunya purpose yang menerima PDF (PRD 2.5); tidak pernah publik (PRD 5.4).
   payment_proof: {
     purpose: "payment_proof",
     kinds: ["image", "pdf"],
     visibility: "private",
+    publicAllowed: false,
     uploader: "member",
     memberAccess: "nonsuspended",
   },
@@ -61,6 +71,7 @@ export const FILE_PURPOSE_SPECS: Readonly<Record<FilePurpose, FilePurposeSpec>> 
     purpose: "post_cover",
     kinds: ["image"],
     visibility: "public",
+    publicAllowed: true,
     uploader: "admin",
     permissions: ["content.manage"],
   },
@@ -68,6 +79,7 @@ export const FILE_PURPOSE_SPECS: Readonly<Record<FilePurpose, FilePurposeSpec>> 
     purpose: "banner_image",
     kinds: ["image"],
     visibility: "public",
+    publicAllowed: true,
     uploader: "admin",
     permissions: ["content.manage"],
   },
@@ -75,6 +87,7 @@ export const FILE_PURPOSE_SPECS: Readonly<Record<FilePurpose, FilePurposeSpec>> 
     purpose: "event_cover",
     kinds: ["image"],
     visibility: "public",
+    publicAllowed: true,
     uploader: "admin",
     permissions: ["events.manage"],
   },
@@ -83,11 +96,18 @@ export const FILE_PURPOSE_SPECS: Readonly<Record<FilePurpose, FilePurposeSpec>> 
     purpose: "adjustment_evidence",
     kinds: ["image"],
     visibility: "private",
+    publicAllowed: false,
     uploader: "admin",
     permissions: ["payments.decide"],
   },
-  // Dibangkitkan job ekspor audit (AC F17-4); tidak dapat diunggah.
-  audit_export: { purpose: "audit_export", kinds: ["csv"], visibility: "private", uploader: "system" },
+  // Dibangkitkan job ekspor audit (AC F17-4); tidak dapat diunggah dan tidak pernah publik.
+  audit_export: {
+    purpose: "audit_export",
+    kinds: ["csv"],
+    visibility: "private",
+    publicAllowed: false,
+    uploader: "system",
+  },
 };
 
 /** Purpose yang dapat diunggah lewat POST /files. */
@@ -99,4 +119,12 @@ export function isFilePurpose(value: unknown): value is FilePurpose {
 
 export function maxBytesFor(kind: FileKind): number {
   return kind === "pdf" ? MAX_PDF_BYTES : MAX_IMAGE_BYTES;
+}
+
+/**
+ * Batas byte yang dibaca dari stream unggahan untuk purpose (N-10): 5 MB untuk purpose khusus gambar, 10 MB untuk
+ * `payment_proof` (PDF); gambar bukti bayar tetap dibatasi 5 MB setelah tipe dideteksi.
+ */
+export function maxStreamBytesFor(spec: FilePurposeSpec): number {
+  return Math.max(...spec.kinds.map(maxBytesFor));
 }
