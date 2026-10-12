@@ -111,6 +111,11 @@ class GreetingHeader extends StatelessWidget {
 
 /// Tata letak "lembar" KAPDH: pita hijau di atas dan lembar terang membulat 20 px yang menumpuk pita (prototipe
 /// layar 1 sampai 5; guideline hal. 5). Tanpa [header] dipakai pita tipis 28 px.
+///
+/// Dengan [scrollable], pita ikut bergulir bersama isi lembar dalam satu scroll view. Wajib untuk kepala yang tinggi
+/// (logo dan sapaan login): saat keyboard terbuka dan teks diperbesar 200 %, kepala yang tidak bergulir saja sudah
+/// melebihi ruang yang tersisa (N-11). Pada mode ini [body] TIDAK boleh berupa scroll view; isinya disusun dalam
+/// Column biasa.
 class BrandSheetScaffold extends StatelessWidget {
   const BrandSheetScaffold({
     super.key,
@@ -119,10 +124,14 @@ class BrandSheetScaffold extends StatelessWidget {
     this.overlap = KapdhSpace.s3,
     this.bottomBar,
     this.resizeToAvoidBottomInset = true,
+    this.scrollable = false,
   });
 
   final Widget body;
   final Widget? header;
+
+  /// Pita dan isi bergulir bersama (lihat dokumentasi kelas).
+  final bool scrollable;
 
   /// Seberapa jauh lembar menumpuk pita.
   final double overlap;
@@ -131,9 +140,67 @@ class BrandSheetScaffold extends StatelessWidget {
   final Widget? bottomBar;
   final bool resizeToAvoidBottomInset;
 
+  Widget _sheet({required Widget content}) => Transform.translate(
+    offset: Offset(0, -overlap),
+    // Material (bukan DecoratedBox) agar efek sentuh ListTile/InkWell di dalam lembar tetap terlihat.
+    child: Material(
+      color: KapdhColors.background,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(KapdhRadius.xl))),
+      clipBehavior: Clip.antiAlias,
+      child: SafeArea(top: false, child: content),
+    ),
+  );
+
+  Widget? _bottomBar() => bottomBar == null
+      ? null
+      : Padding(
+          // Lembar digeser ke atas sejauh overlap; jarak bawah tampak tetap 24 px (prototipe).
+          padding: EdgeInsets.fromLTRB(
+            KapdhSpace.s5,
+            KapdhSpace.s3,
+            KapdhSpace.s5,
+            (KapdhSpace.s6 - overlap).clamp(KapdhSpace.s2, KapdhSpace.s6),
+          ),
+          child: bottomBar,
+        );
+
   @override
   Widget build(BuildContext context) {
     final band = header ?? BrandHeader(pattern: false, padding: EdgeInsets.only(bottom: overlap), minHeight: 28);
+    if (scrollable) {
+      final bar = _bottomBar();
+      final topInset = MediaQuery.paddingOf(context).top;
+      return Scaffold(
+        // Sewarna lembar: ruang di bawah lembar yang pendek tampak menyatu dengan lembar.
+        backgroundColor: KapdhColors.background,
+        resizeToAvoidBottomInset: resizeToAvoidBottomInset,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    band,
+                    _sheet(
+                      content: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [body, ?bar]),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Area status bar tetap hijau saat pita tergulir ke atas, agar ikon status bar terang tetap terbaca.
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: topInset,
+              child: ColoredBox(color: KapdhExtraColors.bandGradient.colors.first),
+            ),
+          ],
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: KapdhColors.background,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
@@ -142,35 +209,13 @@ class BrandSheetScaffold extends StatelessWidget {
         children: [
           band,
           Expanded(
-            child: Transform.translate(
-              offset: Offset(0, -overlap),
-              // Material (bukan DecoratedBox) agar efek sentuh ListTile/InkWell di dalam lembar tetap terlihat.
-              child: Material(
-                color: KapdhColors.background,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(KapdhRadius.xl)),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: SafeArea(
-                  top: false,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(child: body),
-                      if (bottomBar != null)
-                        Padding(
-                          // Lembar digeser ke atas sejauh overlap; jarak bawah tampak tetap 24 px (prototipe).
-                          padding: EdgeInsets.fromLTRB(
-                            KapdhSpace.s5,
-                            KapdhSpace.s3,
-                            KapdhSpace.s5,
-                            (KapdhSpace.s6 - overlap).clamp(KapdhSpace.s2, KapdhSpace.s6),
-                          ),
-                          child: bottomBar,
-                        ),
-                    ],
-                  ),
-                ),
+            child: _sheet(
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: body),
+                  ?_bottomBar(),
+                ],
               ),
             ),
           ),

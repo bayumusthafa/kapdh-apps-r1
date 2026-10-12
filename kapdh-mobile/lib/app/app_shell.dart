@@ -23,7 +23,8 @@ class ShellTab {
 
 /// Cangkang navigasi bawah (ARCHITECTURE §8.4; guideline hal. 7): Beranda, Event, KTA, Jejaring, Akun. Tab yang
 /// belum boleh dibuka status anggota (PRD 2.2) tetap terlihat dengan ikon gembok dan menjelaskan cara membukanya,
-/// bukan menghilang diam-diam. Status offline ditampilkan di atas navigasi.
+/// bukan menghilang diam-diam. Pita Offline/Pemeliharaan ditampilkan tiap layar tepat di bawah app bar
+/// (AppStatusBanners + AppScaffold), bukan di cangkang.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -45,16 +46,7 @@ class AppShell extends ConsumerWidget {
     final locked = [for (final tab in tabs) !isLocationAllowed(redirectState, tab.location)];
 
     return Scaffold(
-      body: Column(
-        children: [
-          Expanded(child: navigationShell),
-          if (session.isOffline)
-            OfflineBanner(
-              syncedAt: session.syncedAt,
-              onRetry: () => ref.read(sessionProvider.notifier).refreshQuietly(),
-            ),
-        ],
-      ),
+      body: navigationShell,
       bottomNavigationBar: DecoratedBox(
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: KapdhColors.divider)),

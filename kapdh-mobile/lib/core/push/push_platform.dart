@@ -46,7 +46,8 @@ abstract interface class PushPlatform {
   /// Notifikasi sistem diketuk saat aplikasi di latar belakang.
   Stream<PushMessage> get onMessageOpenedApp;
 
-  /// Notifikasi yang membuka aplikasi dari keadaan mati.
+  /// Notifikasi yang membuka aplikasi dari keadaan mati: notifikasi FCM, atau notifikasi lokal (pesan latar depan
+  /// Android yang masih ada di baki saat aplikasi ditutup) yang diketuk (AC F13-3).
   Future<PushMessage?> getInitialMessage();
 
   /// Menampilkan [message] sebagai notifikasi lokal (latar depan Android).
@@ -160,7 +161,12 @@ class FirebasePushPlatform implements PushPlatform {
   @override
   Future<PushMessage?> getInitialMessage() async {
     final message = await _messaging.getInitialMessage();
-    return message == null ? null : _fromRemote(message);
+    if (message != null) return _fromRemote(message);
+    // Ketukan notifikasi lokal yang menghidupkan aplikasi tidak melewati onDidReceiveNotificationResponse.
+    final launch = await _local.getNotificationAppLaunchDetails();
+    final route = launch?.notificationResponse?.payload;
+    if (launch == null || !launch.didNotificationLaunchApp || route == null) return null;
+    return PushMessage(route: route);
   }
 
   @override

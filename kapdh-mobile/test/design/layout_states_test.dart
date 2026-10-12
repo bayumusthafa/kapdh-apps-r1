@@ -69,9 +69,47 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     expect(find.text('Kartu Tanda Anggota'), findsOneWidget);
     expect(find.textContaining('Offline'), findsOneWidget);
+    // Panah kiri di app bar (prototipe layar 6, 7; guideline hal. 6).
+    expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_left), findsNothing);
     await tester.tap(find.byTooltip('Kembali'));
     await tester.pumpAndSettle();
     expect(find.text('beranda'), findsOneWidget);
+  });
+
+  testWidgets('AppBannerScope: pita global di bawah app bar; pita milik layar menggantikannya (tanpa pita ganda)', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    Widget app(Widget screen) => MaterialApp(
+      builder: (context, child) => AppBannerScope(banner: const MaintenanceBanner(), child: child!),
+      home: screen,
+    );
+    await tester.pumpWidget(app(const AppScaffold(title: 'Tiket', showBack: false, body: Text('isi'))));
+    expect(find.byType(MaintenanceBanner), findsOneWidget);
+    expect(find.textContaining('Perubahan data ditunda sementara.', findRichText: true), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.byType(MaintenanceBanner)).dy,
+      closeTo(tester.getBottomLeft(find.byType(AppBar)).dy, 1),
+    );
+
+    await tester.pumpWidget(
+      app(
+        AppScaffold(
+          title: 'KTA',
+          showBack: false,
+          banner: OfflineBanner(syncedAt: testNow),
+          body: const Text('isi'),
+        ),
+      ),
+    );
+    expect(find.byType(MaintenanceBanner), findsNothing);
+    expect(find.byType(OfflineBanner), findsOneWidget);
+
+    await tester.pumpWidget(
+      app(const AppScaffold(title: 'Tanpa pita', showBack: false, showGlobalBanner: false, body: Text('isi'))),
+    );
+    expect(find.byType(MaintenanceBanner), findsNothing);
   });
 
   testWidgets('BrandSheetScaffold dan GreetingHeader (prototipe layar 4)', (tester) async {

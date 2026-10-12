@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
@@ -60,7 +61,21 @@ class SessionController extends Notifier<SessionState> {
 
   /// Dipanggil saat aplikasi dibuka dan dari tombol "Coba lagi" di splash.
   Future<void> bootstrap() {
-    return _loading ??= _bootstrap().whenComplete(() => _loading = null);
+    return _loading ??= _guardStorage(_bootstrap).whenComplete(() => _loading = null);
+  }
+
+  /// Kegagalan secure storage (PlatformException dari Keystore/Keychain) tidak boleh membuat splash berputar tanpa
+  /// jalan keluar: sesi menjadi `unknown` dengan masalah `storage` sehingga splash menampilkan "Coba lagi"
+  /// (PRD 4.5, 4.6). Token tidak dihapus karena kegagalan baca.
+  Future<void> _guardStorage(Future<void> Function() body) async {
+    try {
+      await body();
+    } on ApiException {
+      rethrow;
+    } on Object catch (error) {
+      debugPrint('sesi: penyimpanan aman perangkat gagal dibaca (${error.runtimeType})');
+      if (!state.hasSession) state = const SessionState.unknown(issue: SessionIssue.storage);
+    }
   }
 
   Future<void> _bootstrap() async {
@@ -112,7 +127,7 @@ class SessionController extends Notifier<SessionState> {
       }
       final issue = error.isNetwork ? SessionIssue.offline : SessionIssue.serverError;
       if (fallbackToSnapshot) {
-        final snapshot = await _snapshots.read();
+        final snapshot = await _safeSnapshot();
         state = snapshot != null
             ? SessionState.offlineLastKnown(snapshot.me, syncedAt: snapshot.fetchedAt, issue: issue)
             : SessionState.unknown(issue: issue);
@@ -122,7 +137,7 @@ class SessionController extends Notifier<SessionState> {
   }
 
   Future<void> _acceptMe(Me me, {String? previousUserId}) async {
-    final previous = previousUserId ?? (await _snapshots.read())?.me.userId;
+    final previous = previousUserId ?? await _snapshotUserId();
     if (previous != null && previous != me.userId) {
       // Berganti akun: data privat akun sebelumnya tidak boleh tampil (AC F05-3, F13-5).
       await _ktaCache.clear();
@@ -134,8 +149,26 @@ class SessionController extends Notifier<SessionState> {
       await _ktaCache.clear();
     }
     final now = _now();
-    await _snapshots.save(me, now);
+    try {
+      await _snapshots.save(me, now);
+    } on Object catch (error) {
+      // Snapshot hanya cadangan offline; gagal menyimpannya tidak menghalangi sesi yang sudah divalidasi server.
+      debugPrint('sesi: snapshot /me gagal disimpan (${error.runtimeType})');
+    }
     state = SessionState.authenticated(me, syncedAt: now);
+  }
+
+  /// Pemilik snapshot /me tersimpan. Pada jalur bootstrap token dan snapshot berasal dari sesi yang sama, sehingga
+  /// snapshot yang gagal dibaca diperlakukan sebagai tidak ada (bukan pergantian akun).
+  Future<String?> _snapshotUserId() async => (await _safeSnapshot())?.me.userId;
+
+  Future<MeSnapshot?> _safeSnapshot() async {
+    try {
+      return await _snapshots.read();
+    } on Object catch (error) {
+      debugPrint('sesi: snapshot /me gagal dibaca (${error.runtimeType})');
+      return null;
+    }
   }
 
   /// Login alumni (F-02, AC F02-1). Akun pending_otp mendapat challenge OTP baru.
@@ -166,7 +199,7 @@ class SessionController extends Notifier<SessionState> {
     // pergantian akun setelah /me dimuat.
     final previousUserId = (await _snapshots.read())?.me.userId;
     await _snapshots.clear();
-    await _tokens.save(StoredTokens.fromPair(pair));
+    await _tokens.save(StoredTokens.received(pair, ref.read(serverClockProvider)));
     state = const SessionState.unknown();
     await _loadMe(fallbackToSnapshot: true, previousUserId: previousUserId);
   }

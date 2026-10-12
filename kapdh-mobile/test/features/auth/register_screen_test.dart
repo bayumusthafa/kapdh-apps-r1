@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kapdh_mobile/app/theme/kapdh_tokens.dart';
 import 'package:kapdh_mobile/core/session/session_controller.dart';
 import 'package:kapdh_mobile/features/auth/register_screen.dart';
 
@@ -138,6 +139,23 @@ void main() {
     await openRegister(tester, apiRoutes({'/public/pages/kebijakan-privasi': (_) => FakeResponse.network()}));
     await scrollTo(tester, find.text('Versi kebijakan belum dapat dimuat. Periksa koneksi Anda.'));
     expect(find.text('Versi kebijakan belum dapat dimuat. Periksa koneksi Anda.'), findsOneWidget);
+  });
+
+  testWidgets('penghitung sandi menunjukkan kemajuan menuju minimum 8 (guideline hal. 5 "0/8" merah)', (tester) async {
+    await openRegister(tester, apiRoutes({}));
+    await scrollTo(tester, fieldOf('register-password'));
+    Color counterColor(String text) => tester.widget<Text>(find.text(text)).style!.color!;
+
+    expect(find.text('0/8'), findsOneWidget);
+    expect(counterColor('0/8'), KapdhColors.danger);
+    await tester.enterText(fieldOf('register-password'), 'Kapdh');
+    await tester.pump();
+    expect(find.text('5/8'), findsOneWidget);
+    await tester.enterText(fieldOf('register-password'), 'Kapdh#2026');
+    await tester.pump();
+    expect(find.text('8/8'), findsOneWidget);
+    expect(counterColor('8/8'), KapdhColors.textMuted);
+    expect(find.textContaining('/72'), findsNothing, reason: 'batas 72 byte baru tampil saat mendekatinya');
   });
 
   testWidgets('teks 200 % tanpa meluap', (tester) async {

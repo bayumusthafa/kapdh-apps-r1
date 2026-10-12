@@ -11,6 +11,7 @@ import 'package:kapdh_mobile/core/api/api_providers.dart';
 import 'package:kapdh_mobile/core/config/api_config.dart';
 import 'package:kapdh_mobile/core/config/app_info.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
+import 'package:kapdh_mobile/core/storage/token_store.dart';
 
 /// Identitas build uji: Android 1.2.0.
 const testAppInfo = AppInfo(version: '1.2.0', buildNumber: '7', platform: DevicePlatform.android);
@@ -88,6 +89,34 @@ class FakeHttpAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+/// Secure storage yang gagal dibaca [failures] kali (Keystore/Keychain sementara tidak tersedia).
+class FlakySecureStore implements SecureStore {
+  FlakySecureStore(this.inner, {this.failures = 1, this.failingKey = TokenStore.storageKey});
+
+  final MemorySecureStore inner;
+
+  /// Kunci yang pembacaannya gagal (bawaan: token sesi).
+  final String failingKey;
+  int failures;
+  int reads = 0;
+
+  @override
+  Future<String?> read(String key) async {
+    reads++;
+    if (key == failingKey && failures > 0) {
+      failures--;
+      throw Exception('keystore sementara gagal (uji)');
+    }
+    return inner.read(key);
+  }
+
+  @override
+  Future<void> write(String key, String value) => inner.write(key, value);
+
+  @override
+  Future<void> delete(String key) => inner.delete(key);
 }
 
 /// Kontainer Riverpod uji dengan adapter HTTP, secure storage memori dan jam uji.

@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 import '../app/theme/kapdh_tokens.dart';
 import '../core/format/formatters.dart';
 
-/// Garis putus-putus berujung membulat untuk [UploadTile].
-class _DashedBorderPainter extends CustomPainter {
-  const _DashedBorderPainter({required this.color, required this.radius});
+/// Garis tepi putus-putus 1 px bersudut membulat (prototipe layar 3: `border: 1px dashed`). Dipasang sebagai
+/// `foregroundPainter` agar tidak tertutup isian latar tile.
+class DashedBorderPainter extends CustomPainter {
+  const DashedBorderPainter({required this.color, required this.radius});
 
   final Color color;
   final double radius;
@@ -32,7 +33,7 @@ class _DashedBorderPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_DashedBorderPainter oldDelegate) => oldDelegate.color != color || oldDelegate.radius != radius;
+  bool shouldRepaint(DashedBorderPainter oldDelegate) => oldDelegate.color != color || oldDelegate.radius != radius;
 }
 
 /// Tile unggah bukti/berkas bergaris putus-putus hijau (prototipe layar 3 "Bukti transfer"; N-10).
@@ -87,8 +88,10 @@ class UploadTile extends StatelessWidget {
           label: hasFile ? 'Berkas terpilih $title. $actionLabel berkas' : '$emptyTitle. $emptySubtitle',
           excludeSemantics: true,
           onTap: uploading ? null : onPick,
+          // Garis dilukis DI ATAS isian Material (foregroundPainter); bila sebagai painter biasa, isian hijau muda
+          // menutupinya sepenuhnya.
           child: CustomPaint(
-            painter: _DashedBorderPainter(color: borderColor, radius: 12),
+            foregroundPainter: DashedBorderPainter(color: borderColor, radius: 12),
             child: Material(
               color: hasError ? KapdhColors.dangerBg : KapdhColors.green50,
               borderRadius: BorderRadius.circular(12),

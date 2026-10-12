@@ -41,7 +41,7 @@ Future<AppHarness> pumpApp(
   WidgetTester tester, {
   required FakeHandler handler,
   StoredTokens? tokens,
-  MemorySecureStore? store,
+  SecureStore? store,
   TestClock? clock,
   double textScale = 1,
   List<Override> overrides = const [],

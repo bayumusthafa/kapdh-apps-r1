@@ -33,6 +33,9 @@ flutter build appbundle --dart-define-from-file=config/staging.json
 
 - `API_BASE_URL` wajib berakhiran `/api/v1`; staging/production wajib HTTPS (N-07). HTTP lokal hanya diizinkan build
   debug ke `10.0.2.2`/`localhost` (`android/app/src/debug/res/xml/network_security_config.xml`).
+- Build RILIS wajib menyebut `KAPDH_ENV` staging atau production dan API https. Build rilis yang lupa
+  `--dart-define-from-file` (atau memakai development/http) berhenti di layar "Aplikasi belum dapat dijalankan"
+  (`ApiConfig.resolve`, `ConfigErrorApp`), bukan diam-diam mengarah ke API pengembangan.
 - Push opsional: `PUSH_ENABLED=true` plus `FIREBASE_PROJECT_ID`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_API_KEY`,
   `FIREBASE_ANDROID_APP_ID`, `FIREBASE_IOS_APP_ID` (diisi CI, proyek Firebase terpisah per lingkungan, PRD 5.3). Tanpa
   itu, atau bila inisialisasi Firebase gagal, aplikasi berjalan tanpa push (AC F13-2). Berkas
@@ -47,8 +50,11 @@ lib/
                               app_shell.dart (tab Beranda/Event/KTA/Jejaring/Akun), app_services.dart (push+realtime
                               terikat sesi), routes.dart, theme/
   core/
-    api/        Dio + interceptor (X-App-Version, X-App-Platform, X-Request-Id; auth + refresh; sinyal galat),
-                RefreshCoordinator (satu refresh untuk HTTP, socket dan push), IdempotencyStore, ErrorPresenter
+    api/        Dio + interceptor (jam server dari header Date; X-App-Version, X-App-Platform, X-Request-Id; auth +
+                refresh; sinyal galat), RefreshCoordinator (satu refresh untuk HTTP, socket dan push),
+                IdempotencyStore, ErrorPresenter
+    config/     ApiConfig, PushConfig, ServerClock (perkiraan jam server; stempel server tidak dibandingkan dengan jam
+                perangkat)
     app_gate/   GET /public/config: wajib update (semver) dan maintenance
     session/    SessionController (unknown, anonymous, authenticated, offlineLastKnown), AuthRepository, MeRepository
     cache/      KtaCacheStore (aturan offline 7 hari, AC F05-2..F05-4)
@@ -71,6 +77,19 @@ Aturan yang wajib diikuti fitur:
 - Navigasi status ditentukan router; layar tidak menghitung effective_status. Tambah rute baru di `routes.dart`,
   `router.dart` dan matriks `redirect.dart` beserta ujinya.
 - Teks pengguna dan komentar berbahasa Indonesia dengan rujukan PRD; status selalu label + ikon (`StatusBadge`).
+- Stempel absolut dari server (`expires_at`, `resend_available_at`, `access_expires_at`) dinilai dengan
+  `serverClockProvider` (`ServerClock.now()`), BUKAN jam perangkat; durasi relatif (retry_after_seconds) diukur
+  dengan `ServerClock.deviceNow()`. Jam perangkat bisa melenceng berjam-jam (PRD 2.1).
+- Pita Offline dan Pemeliharaan tampil otomatis tepat di bawah app bar setiap `AppScaffold` (`AppBannerScope`,
+  dipasang di `MaterialApp.builder`). Layar yang memberi `AppScaffold(banner:)` sendiri menggantikan pita global
+  (mis. KTA offline dengan waktu sinkron kartu); layar tanpa `AppScaffold` (mis. beranda dengan kepala sapaan)
+  menampilkan `AppBannerScope.of(context)` di bawah kepalanya.
+- Maintenance (PRD 4.5) adalah mode baca terkendali: rute baca yang diizinkan status tetap terbuka, alur khusus
+  mutasi (`isMutationOnlyRoute`: auth, `/payments/new/*`, `/renewal`, `/account/password`, `/account/delete`,
+  `/chat/new-group`) diarahkan ke `/maintenance`. Rute baru yang hanya berisi mutasi wajib ditambahkan ke daftar itu.
+  Simpan yang ditolak 503 ditampilkan ErrorPresenter sebagai snackbar.
+- `BrandSheetScaffold(scrollable: true)` untuk kepala pita yang tinggi (logo/sapaan): pita ikut bergulir sehingga
+  teks 200 % dengan keyboard terbuka tidak meluap (N-11); `body` pada mode ini berupa Column, bukan scroll view.
 
 ## Uji
 
@@ -83,7 +102,9 @@ secure storage memori; `test/support/app_harness.dart`: aplikasi lengkap dari sp
 - Bundel TTF Poppins sebagai aset dan matikan `GoogleFonts.config.allowRuntimeFetching` (saat ini Poppins diunduh
   saat runtime dengan font sistem sebagai cadangan; ARCHITECTURE §8.1).
 - Android: kunci rilis (`android/key.properties`), `assetlinks.json` di kapdh.or.id untuk App Links, ikon notifikasi
-  monokrom.
+  monokrom dan ikon tema monokrom Android 13 (`<monochrome>` pada `mipmap-anydpi-v26/ic_launcher.xml`). Ikon
+  peluncur Android/iOS saat ini dibangkitkan dari `assets/logo-kapdh.png` di atas hijau gelap surface-dark
+  (`tool/generate_launcher_icons.ps1`); ganti dengan berkas desain resmi bila tersedia.
 - iOS: tim Apple, entitlement Push Notifications (`aps-environment`) dan Associated Domains `applinks:kapdh.or.id`
   untuk Universal Links; kunci APNs di proyek Firebase.
 - Tidak ada build APK/IPA di mesin pengembang ini (tanpa Java/Xcode); verifikasi build dilakukan CI.

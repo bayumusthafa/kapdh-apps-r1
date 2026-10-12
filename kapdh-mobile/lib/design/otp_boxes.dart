@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
 import '../app/theme/kapdh_tokens.dart';
@@ -78,6 +81,17 @@ class _OtpBoxesState extends State<OtpBoxes> {
       (oldWidget.focusNode ?? _ownFocus)?.removeListener(_rebuild);
       _focus.addListener(_rebuild);
     }
+    final error = widget.errorText;
+    if (error != null && error != oldWidget.errorText) _announce(error);
+  }
+
+  /// Galat baru diumumkan pembaca layar walau fokus sudah lepas dari kotak (mis. setelah verifikasi). Android
+  /// memakai live region pada teks galat; iOS tidak mengenal live region sehingga diumumkan eksplisit (N-11).
+  void _announce(String message) {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return;
+    final view = View.maybeOf(context);
+    if (view == null) return;
+    unawaited(SemanticsService.sendAnnouncement(view, message, Directionality.of(context)));
   }
 
   @override
@@ -162,6 +176,8 @@ class _OtpBoxesState extends State<OtpBoxes> {
               Positioned.fill(
                 child: Semantics(
                   label: 'Kode OTP ${widget.length} digit',
+                  // Galat melekat pada field seperti KapdhTextField, sehingga terbaca saat field difokuskan lagi.
+                  hint: widget.errorText,
                   child: TextSelectionTheme(
                     data: const TextSelectionThemeData(
                       selectionColor: Colors.transparent,
@@ -207,9 +223,13 @@ class _OtpBoxesState extends State<OtpBoxes> {
         ),
         if (hasError) ...[
           const SizedBox(height: KapdhSpace.s2),
-          Text(
-            widget.errorText!,
-            style: const TextStyle(color: KapdhColors.danger, fontSize: KapdhFontSize.caption),
+          Semantics(
+            liveRegion: true,
+            container: true,
+            child: Text(
+              widget.errorText!,
+              style: const TextStyle(color: KapdhColors.danger, fontSize: KapdhFontSize.caption),
+            ),
           ),
         ],
       ],

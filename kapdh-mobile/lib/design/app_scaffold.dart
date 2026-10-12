@@ -3,8 +3,27 @@ import 'package:go_router/go_router.dart';
 
 import '../app/theme/kapdh_tokens.dart';
 
+/// Pita status global (Offline, Pemeliharaan) yang dipasang aplikasi di atas Navigator (`MaterialApp.builder`).
+///
+/// Setiap [AppScaffold] menampilkannya tepat di bawah app bar, sesuai prototipe layar 7, sehingga semua layar
+/// dalam aplikasi (tab shell maupun detail) memakai posisi yang sama dan tidak ada pita ganda. Layar yang tidak
+/// memakai [AppScaffold] (mis. beranda dengan kepala sapaan) menampilkan [AppBannerScope.of] sendiri di bawah
+/// kepalanya.
+class AppBannerScope extends InheritedWidget {
+  const AppBannerScope({super.key, required this.banner, required super.child});
+
+  /// Pita yang berlaku saat ini; null bila tidak ada.
+  final Widget? banner;
+
+  static Widget? of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<AppBannerScope>()?.banner;
+
+  @override
+  bool updateShouldNotify(AppBannerScope oldWidget) => oldWidget.banner != banner;
+}
+
 /// Kerangka layar dalam aplikasi (prototipe layar 6, 7; guideline hal. 6): app bar putih 56 px bergaris bawah,
-/// judul di tengah, tombol kembali 48 px, pita opsional (mis. OfflineBanner) di bawah app bar.
+/// judul di tengah, tombol kembali panah kiri 48 px, pita di bawah app bar: [banner] milik layar atau pita global
+/// [AppBannerScope] (Offline/Pemeliharaan).
 class AppScaffold extends StatelessWidget {
   const AppScaffold({
     super.key,
@@ -14,6 +33,7 @@ class AppScaffold extends StatelessWidget {
     this.fallbackLocation = '/',
     this.actions,
     this.banner,
+    this.showGlobalBanner = true,
     this.bottomNavigationBar,
     this.floatingActionButton,
     this.backgroundColor = KapdhColors.background,
@@ -27,8 +47,12 @@ class AppScaffold extends StatelessWidget {
   final String fallbackLocation;
   final List<Widget>? actions;
 
-  /// Ditampilkan tepat di bawah app bar dan tidak ikut bergulir.
+  /// Ditampilkan tepat di bawah app bar dan tidak ikut bergulir. Bila diisi, menggantikan pita global (layar yang
+  /// memberi pita Offline sendiri, mis. KTA dengan waktu sinkron kartu, tidak menampilkan dua pita).
   final Widget? banner;
+
+  /// Tampilkan pita global [AppBannerScope] bila [banner] kosong.
+  final bool showGlobalBanner;
   final Widget? bottomNavigationBar;
   final Widget? floatingActionButton;
   final Color backgroundColor;
@@ -48,6 +72,7 @@ class AppScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveBanner = banner ?? (showGlobalBanner ? AppBannerScope.of(context) : null);
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
@@ -56,18 +81,20 @@ class AppScaffold extends StatelessWidget {
         leading: showBack
             ? IconButton(
                 tooltip: 'Kembali',
-                icon: const Icon(Icons.chevron_left, size: 28),
+                // Panah kiri di app bar (prototipe layar 6, 7; guideline hal. 6). Chevron hanya untuk baris judul di
+                // dalam lembar (prototipe layar 1, 3).
+                icon: const Icon(Icons.arrow_back, size: 24),
                 onPressed: () => _back(context),
               )
             : null,
         actions: actions,
         bottom: const PreferredSize(preferredSize: Size.fromHeight(1), child: Divider(height: 1)),
       ),
-      body: banner == null
+      body: effectiveBanner == null
           ? body
           : Column(
               children: [
-                banner!,
+                effectiveBanner,
                 Expanded(child: body),
               ],
             ),

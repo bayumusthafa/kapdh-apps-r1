@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show HttpDate;
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 import 'package:kapdh_mobile/core/api/api_providers.dart';
 import 'package:kapdh_mobile/core/api/refresh_coordinator.dart';
+import 'package:kapdh_mobile/core/config/server_clock.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/core/storage/token_store.dart';
 
@@ -189,9 +191,9 @@ void main() {
     late int calls;
     late Completer<TokenPair> pending;
 
-    RefreshCoordinator build({SessionRefresher? refresher}) => RefreshCoordinator(
+    RefreshCoordinator build({SessionRefresher? refresher, ServerClock? serverClock}) => RefreshCoordinator(
       store: tokenStore,
-      clock: () => testNow,
+      serverClock: serverClock ?? ServerClock(clock: () => testNow),
       refresher:
           refresher ??
           (refreshToken) {
@@ -291,6 +293,129 @@ void main() {
     test('tanpa sesi tersimpan validAccessToken mengembalikan null', () async {
       await tokenStore.clear();
       expect(await build().validAccessToken(), isNull);
+    });
+  });
+
+  group('jam perangkat melenceng dari server (PRD 2.1, AC F02-1)', () {
+    late TokenStore tokenStore;
+    // Jam perangkat 20 menit lebih cepat daripada server (TTL access token 15 menit).
+    final deviceNow = testNow.add(const Duration(minutes: 20));
+    TokenPair serverPair(int n) => TokenPair.fromJson(
+      tokenPairJson(
+        access: 'access-$n',
+        refresh: 'refresh-$n',
+        accessExpiresAt: testNow.add(const Duration(minutes: 15)),
+      ),
+    );
+
+    setUp(() => tokenStore = TokenStore(MemorySecureStore()));
+
+    test('jam server diketahui (header Date): token baru dipakai ulang tanpa refresh di setiap request', () async {
+      final clock = ServerClock(clock: () => deviceNow)..observe(testNow);
+      await tokenStore.save(StoredTokens.received(serverPair(1), clock));
+      var n = 1;
+      final coordinator = RefreshCoordinator(
+        store: tokenStore,
+        serverClock: clock,
+        refresher: (_) async => serverPair(++n),
+      );
+      for (var i = 0; i < 5; i++) {
+        expect(await coordinator.validAccessToken(leeway: const Duration(seconds: 10)), 'access-1');
+      }
+      expect(coordinator.refreshCount, 0);
+    });
+
+    test('jam server belum diketahui: token baru yang tampak sudah habis tidak memicu refresh berulang', () async {
+      final clock = ServerClock(clock: () => deviceNow);
+      // Data lama tanpa batas menurut jam perangkat: tampak kedaluwarsa, satu refresh.
+      await tokenStore.save(
+        StoredTokens(
+          accessToken: 'access-0',
+          accessExpiresAt: testNow.add(const Duration(minutes: 10)),
+          refreshToken: 'r0',
+        ),
+      );
+      var n = 0;
+      final coordinator = RefreshCoordinator(
+        store: tokenStore,
+        serverClock: clock,
+        refresher: (_) async => serverPair(++n),
+      );
+      for (var i = 0; i < 5; i++) {
+        await coordinator.validAccessToken(leeway: const Duration(seconds: 10));
+      }
+      expect(coordinator.refreshCount, 1);
+      final stored = await tokenStore.read();
+      expect(stored?.clockSkewSuspected, isTrue);
+      expect(stored?.deviceExpiresAt, isNull, reason: 'hanya jalur 401 yang me-refresh pasangan ini');
+      // Server menolak token: refresh reaktif tetap berjalan.
+      expect(await coordinator.refreshAfterRejection('access-1'), 'access-2');
+    });
+
+    test('lewat Dio: header Date menyinkronkan jam, lima request hanya memicu satu refresh', () async {
+      final dateHeader = {'date': HttpDate.format(testNow)};
+      final adapter = FakeHttpAdapter((options) {
+        if (options.path == '/auth/refresh') {
+          return FakeResponse.json(
+            200,
+            tokenPairJson(
+              access: 'access-2',
+              refresh: 'refresh-2',
+              accessExpiresAt: testNow.add(const Duration(minutes: 15)),
+            ),
+            dateHeader,
+          );
+        }
+        return FakeResponse.json(200, meJson(), dateHeader);
+      });
+      final container = makeContainer(adapter: adapter, clock: TestClock(deviceNow));
+      await container
+          .read(tokenStoreProvider)
+          .save(
+            StoredTokens(
+              accessToken: 'access-1',
+              accessExpiresAt: testNow.add(const Duration(minutes: 10)),
+              refreshToken: 'refresh-1',
+            ),
+          );
+      final api = container.read(kapdhApiProvider);
+      for (var i = 0; i < 5; i++) {
+        await api.me.getMe();
+      }
+      expect(adapter.requestsTo('/auth/refresh'), hasLength(1));
+      expect(adapter.requestsTo('/me').map(bearer).skip(1), everyElement('Bearer access-2'));
+      expect(container.read(serverClockProvider).isSynced, isTrue);
+    });
+  });
+
+  group('ServerClock', () {
+    test('header Date menjadi selisih jam server terhadap perangkat', () {
+      final clock = ServerClock(clock: () => testNow.add(const Duration(hours: 7)));
+      expect(clock.isSynced, isFalse);
+      expect(clock.now(), testNow.add(const Duration(hours: 7)));
+      clock.observeDateHeader(HttpDate.format(testNow));
+      expect(clock.isSynced, isTrue);
+      final drift = clock.now().difference(testNow);
+      expect(drift.inMilliseconds, inInclusiveRange(0, 1000), reason: 'resolusi header satu detik');
+      expect(
+        clock.toDeviceTime(testNow).difference(testNow.add(const Duration(hours: 7))).inSeconds.abs(),
+        lessThan(1),
+      );
+    });
+
+    test('respons dari cache perantara: umur cache (Age) ditambahkan', () {
+      final clock = ServerClock(clock: () => testNow)
+        ..observeDateHeader(HttpDate.format(testNow.subtract(const Duration(minutes: 5))), age: '300');
+      expect(clock.now().difference(testNow).inMilliseconds.abs(), lessThanOrEqualTo(1000));
+    });
+
+    test('header kosong atau rusak diabaikan', () {
+      final clock = ServerClock(clock: () => testNow)
+        ..observeDateHeader(null)
+        ..observeDateHeader('')
+        ..observeDateHeader('bukan tanggal');
+      expect(clock.isSynced, isFalse);
+      expect(clock.offset, Duration.zero);
     });
   });
 }

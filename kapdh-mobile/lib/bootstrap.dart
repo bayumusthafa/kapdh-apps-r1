@@ -11,6 +11,7 @@ import 'core/api/api_providers.dart';
 import 'core/config/api_config.dart';
 import 'core/config/app_info.dart';
 import 'core/format/formatters.dart';
+import 'features/system/config_error_app.dart';
 
 /// Inisialisasi aplikasi sebelum frame pertama (PRD 4.6 splash, N-03): format tanggal Indonesia dan zona waktu,
 /// identitas build untuk X-App-Version/X-App-Platform, konfigurasi API dari `--dart-define`. Push dimulai setelah
@@ -29,9 +30,18 @@ Future<void> bootstrap() async {
   };
 
   await initFormatting();
+  final ApiConfig config;
+  try {
+    config = ApiConfig.fromEnvironment();
+  } on ApiConfigException catch (error) {
+    // Build rilis tanpa lingkungan staging/production atau tanpa https: berhenti di layar galat konfigurasi
+    // (PRD 5.3, N-07), bukan berjalan diam-diam ke API pengembangan.
+    debugPrint(error.toString());
+    runApp(ConfigErrorApp(detail: error.message));
+    return;
+  }
   final package = await PackageInfo.fromPlatform();
   final info = AppInfo(version: package.version, buildNumber: package.buildNumber, platform: AppInfo.currentPlatform());
-  final config = ApiConfig.fromEnvironment();
 
   final container = ProviderContainer(
     overrides: [appInfoProvider.overrideWithValue(info), apiConfigProvider.overrideWithValue(config)],
