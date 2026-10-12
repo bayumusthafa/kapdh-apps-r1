@@ -1,0 +1,151 @@
+# Domain admin-payments (C3 Finance): antrean, detail dan keputusan pembayaran oleh pengurus, metode bayar
+# dan penyesuaian. Modul API: apps/api/src/modules/payments.
+tags:
+  - name: Admin Payments
+    description: Antrean, keputusan, metode bayar dan penyesuaian pembayaran oleh pengurus (F-04, F-15).
+
+paths:
+  /admin/payments:
+    get:
+      tags: [Admin Payments]
+      operationId: adminListPayments
+      summary: Antrean pembayaran (izin payments.read, F-04).
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/PaymentStatus" }
+        - name: type
+          in: query
+          schema: { $ref: "#/components/schemas/PaymentType" }
+        - name: q
+          in: query
+          description: Nama atau nomor anggota.
+          schema: { type: string, maxLength: 100 }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Antrean.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentPage" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/payments/{paymentId}:
+    get:
+      tags: [Admin Payments]
+      operationId: adminGetPayment
+      summary: Detail pembayaran untuk keputusan admin (F-04).
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+      responses:
+        "200":
+          description: Detail untuk keputusan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentDetail" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/payments/{paymentId}/decision:
+    post:
+      tags: [Admin Payments]
+      operationId: adminDecidePayment
+      summary: Setujui atau tolak (izin payments.decide). Satu keputusan berlaku (AC F04-3, F04-4).
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PaymentDecision" }
+      responses:
+        "200":
+          description: Keputusan tersimpan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: PAYMENT_STATE_CONFLICT atau PROOF_VERSION_CONFLICT; body berisi status terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  schemas:
+    AdminPaymentMember:
+      type: object
+      required: [full_name]
+      properties:
+        full_name: { type: string }
+        member_number: { type: [string, "null"] }
+        cohort: { type: [integer, "null"] }
+
+    AdminPaymentItem:
+      type: object
+      required: [id, type, status, amount, member, submitted_at, proof_version, overdue]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/PaymentType" }
+        status: { $ref: "#/components/schemas/PaymentStatus" }
+        amount: { $ref: "#/components/schemas/Money" }
+        member: { $ref: "#/components/schemas/AdminPaymentMember" }
+        event_title: { type: [string, "null"] }
+        submitted_at: { type: [string, "null"], format: date-time }
+        proof_version: { type: integer }
+        overdue: { type: boolean, description: Lewat 1 hari kerja sejak bukti dikirim. }
+
+    AdminPaymentPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminPaymentItem" }
+        total: { type: integer }
+        next_cursor: { type: [string, "null"] }
+
+    AdminPaymentDetail:
+      allOf:
+        - $ref: "#/components/schemas/AdminPaymentItem"
+        - type: object
+          required: [lines, method, events, proof_file_id, version, conflict_of_interest]
+          properties:
+            lines:
+              type: array
+              items: { $ref: "#/components/schemas/PaymentLine" }
+            method: { $ref: "#/components/schemas/PaymentMethod" }
+            proof_file_id: { type: [string, "null"], format: uuid }
+            transfer_note: { type: [string, "null"] }
+            events:
+              type: array
+              items: { $ref: "#/components/schemas/PaymentEvent" }
+            conflict_of_interest:
+              { type: boolean, description: True bila payment milik alumni yang tertaut ke admin ini. }
+            version: { type: string }
+
+    PaymentDecisionKind:
+      type: string
+      enum: [approve, reject]
+
+    PaymentDecision:
+      type: object
+      required: [decision, expected_proof_version, expected_version]
+      properties:
+        decision: { $ref: "#/components/schemas/PaymentDecisionKind" }
+        expected_proof_version: { type: integer }
+        expected_version: { type: string }
+        funds_verified: { type: boolean, description: Wajib true untuk approve. }
+        reason:
+          {
+            type: string,
+            minLength: 3,
+            maxLength: 500,
+            description: Wajib dan tidak boleh hanya spasi untuk reject.,
+          }

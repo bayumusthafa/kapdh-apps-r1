@@ -1,0 +1,269 @@
+# Domain me (C2 Membership): profil sendiri, effective_status, KTA, periode keanggotaan dan master baca.
+# Modul API: apps/api/src/modules/membership.
+tags:
+  - name: Me
+    description: Profil, status keanggotaan, KTA dan periode milik sendiri serta master terkontrol (F-05, F-07, PRD 2.2).
+
+paths:
+  /me:
+    get:
+      tags: [Me]
+      operationId: getMe
+      summary: Profil sendiri dan effective_status yang menentukan rute klien (PRD 2.2).
+      responses:
+        "200":
+          description: Profil.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/profile:
+    patch:
+      tags: [Me]
+      operationId: updateMyProfile
+      summary: Ubah profil umum sendiri (F-10, PRD 4.6 profil minimum).
+      description: |
+        Angkatan, kelas masuk/keluar dan jenis kelamin hanya bisa diubah sendiri selama
+        effective_status unverified; setelah itu hanya admin (members.manage). Prefix nomor
+        dihitung ulang oleh server; nomor urut tetap (AC F05-6).
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProfileUpdate" }
+      responses:
+        "200":
+          description: Profil terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/card:
+    get:
+      tags: [Me]
+      operationId: getMyCard
+      summary: Data KTA dan token QR bertanda tangan server (F-05).
+      description: |
+        Token QR hanya ada bila KTA aktif (verified atau expiring). Klien menyimpan respons ini sebagai cache
+        offline maksimal 7 hari dan tidak melewati expires_at (AC F05-2..F05-4).
+      responses:
+        "200":
+          description: KTA.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberCard" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/membership:
+    get:
+      tags: [Me]
+      operationId: getMyMembership
+      summary: Periode keanggotaan, kelayakan perpanjangan, dan histori (F-07).
+      responses:
+        "200":
+          description: Keanggotaan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Membership" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /masters/{kind}:
+    get:
+      tags: [Me]
+      operationId: listMasters
+      summary: Master data terkontrol aktif (profesi, keahlian) untuk profil dan filter direktori (F-10).
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/MasterKind" }
+      responses:
+        "200":
+          description: Daftar master aktif.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MasterItemList" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  schemas:
+    Me:
+      type: object
+      required: [user_id, email, effective_status, profile, version]
+      properties:
+        user_id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        effective_status: { $ref: "#/components/schemas/EffectiveStatus" }
+        pending_payment_id: { type: [string, "null"], format: uuid }
+        profile: { $ref: "#/components/schemas/Profile" }
+        member_number: { type: [string, "null"], examples: ["29.01.01.7"] }
+        expires_at: { type: [string, "null"], format: date-time }
+        suspension_message: { type: [string, "null"], description: Alasan aman untuk ditampilkan. }
+        version: { type: string }
+
+    EducationStatus:
+      type: string
+      enum: ["01", "02", "03"]
+      description: 01 tamat MTs dan Aliyah, 02 tamat salah satu, 03 tidak tamat (PRD 3.5).
+
+    ProfilePrivacy:
+      type: object
+      description: Flag privasi direktori; bawaan tersembunyi (N-15, AC F10-2).
+      properties:
+        show_in_directory: { type: boolean }
+        show_phone: { type: boolean }
+        show_social: { type: boolean }
+
+    Profile:
+      type: object
+      required:
+        [
+          full_name,
+          gender,
+          cohort,
+          class_in,
+          class_out,
+          graduation_year,
+          entry_year,
+          exit_year,
+          education_status,
+        ]
+      properties:
+        full_name: { type: string }
+        gender: { $ref: "#/components/schemas/Gender" }
+        cohort: { type: integer }
+        class_in: { $ref: "#/components/schemas/ClassLevel" }
+        class_out: { $ref: "#/components/schemas/ClassLevel" }
+        graduation_year: { type: integer, description: 1996 + cohort. }
+        entry_year: { type: integer }
+        exit_year: { type: integer }
+        education_status: { $ref: "#/components/schemas/EducationStatus" }
+        city: { type: [string, "null"] }
+        profession: { $ref: "#/components/schemas/MasterItem" }
+        skills:
+          type: array
+          items: { $ref: "#/components/schemas/MasterItem" }
+        avatar_file_id: { type: [string, "null"], format: uuid }
+        privacy: { $ref: "#/components/schemas/ProfilePrivacy" }
+
+    ProfileUpdate:
+      type: object
+      description: Hanya field yang dikirim yang diubah; null pada field nullable berarti mengosongkan.
+      properties:
+        full_name: { type: string, minLength: 2, maxLength: 120 }
+        city: { type: string, maxLength: 80 }
+        phone: { type: string, maxLength: 20 }
+        profession_id: { type: [string, "null"], format: uuid }
+        skill_ids:
+          type: array
+          maxItems: 10
+          items: { type: string, format: uuid }
+        avatar_file_id: { type: [string, "null"], format: uuid }
+        gender: { $ref: "#/components/schemas/Gender" }
+        cohort: { type: integer, minimum: 1, maximum: 99 }
+        class_in: { $ref: "#/components/schemas/ClassLevel" }
+        class_out: { $ref: "#/components/schemas/ClassLevel" }
+        privacy: { $ref: "#/components/schemas/ProfilePrivacy" }
+
+    MasterKind:
+      type: string
+      enum: [professions, skills]
+      description: Jenis master terkontrol (master_professions, master_skills; PRD 6.2).
+
+    MasterItem:
+      type: object
+      required: [id, label]
+      properties:
+        id: { type: string, format: uuid }
+        label: { type: string }
+        active:
+          { type: boolean, description: Master nonaktif tetap tampil sebagai label historis (AC F10-4). }
+
+    MasterItemList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/MasterItem" }
+
+    MemberCardStatus:
+      type: string
+      enum: [active, expiring, inactive, expired, suspended]
+      description: >-
+        Label status kartu, selalu ditampilkan dengan teks, bukan warna saja (PRD 4.5). active = KTA Aktif
+        (verified); expiring = tetap aktif dengan tanggal habis; inactive = KTA Tidak Aktif (unverified, iuran
+        pendaftaran belum dibayar, F-05); expired = kartu berlabel kedaluwarsa dengan ajakan perpanjang (PRD 2.2);
+        suspended = dibatasi.
+
+    MemberCardQr:
+      type: object
+      description: Ada hanya bila KTA aktif (F-05).
+      required: [url, token_expires_at]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL verifikasi berisi token QR bertanda tangan di fragmen; jangan dicatat di log.
+          examples: ["https://kapdh.or.id/kta/29.01.01.7#t=eyJ..."]
+          x-sensitive: true
+        token_expires_at: { type: string, format: date-time }
+
+    MemberCard:
+      type: object
+      required: [status_label, member_number, full_name, cohort_code, synced_at]
+      properties:
+        status_label: { $ref: "#/components/schemas/MemberCardStatus" }
+        member_number: { type: string, examples: ["29.01.01.7"] }
+        full_name: { type: string }
+        cohort: { type: integer }
+        cohort_code: { type: string, examples: ["KAPDH 29"] }
+        graduation_year: { type: integer }
+        profession_label: { type: [string, "null"] }
+        city: { type: [string, "null"] }
+        avatar_url: { type: [string, "null"], format: uri }
+        expires_at: { type: [string, "null"], format: date-time }
+        qr:
+          oneOf:
+            - $ref: "#/components/schemas/MemberCardQr"
+            - type: "null"
+        synced_at:
+          {
+            type: string,
+            format: date-time,
+            description: Waktu server; klien menyimpan untuk aturan offline 7 hari.,
+          }
+
+    MembershipPeriodKind:
+      type: string
+      enum: [registration, renewal]
+
+    MembershipPeriod:
+      type: object
+      required: [starts_at, expires_at, kind]
+      properties:
+        kind: { $ref: "#/components/schemas/MembershipPeriodKind" }
+        starts_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        payment_id: { type: string, format: uuid }
+
+    Membership:
+      type: object
+      required: [effective_status, renewal_eligible, periods]
+      properties:
+        effective_status: { $ref: "#/components/schemas/EffectiveStatus" }
+        starts_at: { type: [string, "null"], format: date-time }
+        expires_at: { type: [string, "null"], format: date-time }
+        renewal_eligible: { type: boolean }
+        renewal_opens_at: { type: [string, "null"], format: date-time }
+        periods:
+          type: array
+          items: { $ref: "#/components/schemas/MembershipPeriod" }

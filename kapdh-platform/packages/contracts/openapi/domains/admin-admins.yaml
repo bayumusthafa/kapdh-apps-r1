@@ -1,0 +1,7 @@
+# Domain admin-admins (C7 Admin & notifications): undangan admin, peran dan izin (izin admins.manage,
+# MFA + reautentikasi). Modul API: apps/api/src/modules/admin. Path ditambahkan oleh penulis kontrak C7.
+tags:
+  - name: Admin Admins
+    description: Undangan admin, penugasan peran dan izin oleh Super Admin dengan MFA dan reautentikasi (F-16, AC F16-1..F16-3).
+
+paths: {}

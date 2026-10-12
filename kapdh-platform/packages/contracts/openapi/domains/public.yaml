@@ -1,0 +1,163 @@
+# Domain public (C2 Membership): endpoint tanpa autentikasi untuk gerbang aplikasi, halaman informasi,
+# verifikasi KTA, dan health check. Modul API: apps/api/src/modules/public (+ membership/content untuk KTA/halaman).
+tags:
+  - name: Public
+    description: |
+      Konfigurasi publik (versi minimum, maintenance, tautan toko), halaman informasi, verifikasi KTA dan health
+      check (F-06, F-08, PRD 4.5).
+
+paths:
+  /health:
+    get:
+      tags: [Public]
+      operationId: getHealth
+      summary: Health check untuk monitor eksternal dan orkestrator (PRD 5.5, N-05).
+      security: []
+      responses:
+        "200":
+          description: API hidup.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /public/config:
+    get:
+      tags: [Public]
+      operationId: getPublicConfig
+      summary: Versi aplikasi minimum, status maintenance, tautan toko dan kontak bantuan (PRD 4.5).
+      security: []
+      responses:
+        "200":
+          description: Konfigurasi.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicConfig" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /public/pages/{slug}:
+    get:
+      tags: [Public]
+      operationId: getPublicPage
+      summary: Halaman legal dan informasi (privasi, ketentuan, bantuan, tentang) yang dapat dibaca sebelum aktivasi (F-08).
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string, maxLength: 120 }
+      responses:
+        "200":
+          description: Halaman.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicPage" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /public/kta/verify:
+    post:
+      tags: [Public]
+      operationId: verifyKta
+      summary: Verifikasi token QR KTA; status selalu dari server (F-06).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/KtaVerifyRequest" }
+      responses:
+        "200":
+          description: Hasil verifikasi.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KtaVerification" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, time]
+      properties:
+        status: { type: string, const: ok }
+        time: { type: string, format: date-time }
+
+    MinAppVersion:
+      type: object
+      required: [android, ios]
+      properties:
+        android: { type: string, examples: ["1.0.0"] }
+        ios: { type: string, examples: ["1.0.0"] }
+
+    MaintenanceStatus:
+      type: object
+      required: [active]
+      properties:
+        active: { type: boolean }
+        message: { type: [string, "null"] }
+        until: { type: [string, "null"], format: date-time }
+
+    StoreLinks:
+      type: object
+      properties:
+        android: { type: [string, "null"], format: uri }
+        ios: { type: [string, "null"], format: uri }
+
+    SupportContact:
+      type: object
+      properties:
+        email: { type: string, format: email, examples: [bantuan@kapdh.or.id] }
+        whatsapp: { type: [string, "null"] }
+
+    PublicConfig:
+      type: object
+      required: [min_app_version, maintenance]
+      properties:
+        min_app_version: { $ref: "#/components/schemas/MinAppVersion" }
+        maintenance: { $ref: "#/components/schemas/MaintenanceStatus" }
+        store_links: { $ref: "#/components/schemas/StoreLinks" }
+        support: { $ref: "#/components/schemas/SupportContact" }
+
+    PublicPage:
+      type: object
+      required: [slug, title, body_html, version, published_at]
+      properties:
+        slug: { type: string }
+        title: { type: string }
+        body_html: { type: string, description: HTML tersanitasi server. }
+        version: { type: string }
+        published_at: { type: string, format: date-time }
+
+    KtaVerifyRequest:
+      type: object
+      required: [member_number, token]
+      properties:
+        member_number: { type: string, examples: ["29.01.01.7"] }
+        token: { type: string, description: "Dibaca shell dari fragmen URL (#t=)." }
+
+    KtaVerificationResult:
+      type: string
+      enum: [active, expired, inactive, not_found, invalid_token]
+      description: Aktif, Kedaluwarsa, Tidak aktif, Tidak ditemukan, QR tidak valid atau perlu diperbarui (F-06).
+
+    KtaVerifiedMember:
+      type: object
+      description: Identitas minimum; hanya untuk result active atau expired.
+      properties:
+        full_name: { type: string }
+        cohort_code: { type: string }
+        member_number: { type: string }
+        expires_at: { type: string, format: date-time }
+
+    KtaVerification:
+      type: object
+      required: [result, checked_at]
+      properties:
+        result: { $ref: "#/components/schemas/KtaVerificationResult" }
+        checked_at: { type: string, format: date-time }
+        member:
+          oneOf:
+            - $ref: "#/components/schemas/KtaVerifiedMember"
+            - type: "null"

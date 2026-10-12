@@ -5,3 +5,6 @@ pnpm-lock.yaml
 **/routeTree.gen.ts
 .astro
 packages/design-tokens/css
+# Paket Dart kapdh_api: cache alat dan keluaran generator.
+.dart_tool
+packages/contracts/dart/kapdh_api/lib/src

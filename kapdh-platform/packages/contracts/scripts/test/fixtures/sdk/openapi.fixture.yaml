@@ -1,0 +1,117 @@
+# Fixture generator SDK Dart (BUKAN kontrak produk). Digabung dengan dist/openapi.yaml oleh scripts/check-dart.mjs
+# untuk memastikan konstruksi yang belum dipakai kontrak nyata tetap menghasilkan Dart yang lolos `dart analyze`
+# (strict-inference, tanpa info) dan berperilaku benar: respons 200 | 204, enum inline nullable, list enum nullable,
+# nilai bebas opsional, field tiga keadaan, dan multipart berkas tunggal/daftar/opsional yang dapat dikirim ulang.
+tags:
+  - name: Fixture
+    description: Operasi fixture uji generator SDK Dart (scripts/check-dart.mjs), bukan bagian PRD.
+paths:
+  /fixture/records:
+    get:
+      tags: [Fixture]
+      operationId: listFixtureRecords
+      summary: Daftar record fixture.
+      responses:
+        "200":
+          description: Daftar.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FixtureRecordList" }
+        default: { $ref: "#/components/responses/Error" }
+  /fixture/records/{recordId}:
+    parameters:
+      - { name: recordId, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Fixture]
+      operationId: getFixtureRecordNote
+      summary: Catatan teks record; 204 bila kosong.
+      responses:
+        "200":
+          description: Catatan.
+          content:
+            text/plain:
+              schema: { $ref: "#/components/schemas/FixtureNote" }
+        "204": { description: Tidak ada catatan. }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Fixture]
+      operationId: patchFixtureRecord
+      summary: Ubah record; 204 bila tidak ada perubahan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FixturePatch" }
+      responses:
+        "200":
+          description: Diubah.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FixtureRecord" }
+        "204": { description: Tidak ada perubahan. }
+        default: { $ref: "#/components/responses/Error" }
+  /fixture/uploads:
+    post:
+      tags: [Fixture]
+      operationId: uploadFixtureFiles
+      summary: Unggah berkas fixture.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/FixtureUpload" }
+      responses:
+        "201":
+          description: Diunggah.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FixtureRecord" }
+        default: { $ref: "#/components/responses/Error" }
+components:
+  schemas:
+    FixtureNote:
+      type: string
+      description: Catatan teks bebas.
+    FixtureState:
+      type: string
+      enum: [draft, published]
+    FixtureRecord:
+      type: object
+      required: [id, status, labels]
+      properties:
+        id: { type: string }
+        status: { type: [string, "null"], enum: [open, closed, null] }
+        labels:
+          type: array
+          items: { type: [string, "null"], enum: [red, blue, null] }
+        states:
+          type: array
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/FixtureState"
+              - type: "null"
+        data: {}
+        updated_at: { type: [string, "null"], format: date-time }
+    FixtureRecordList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/FixtureRecord" }
+    FixturePatch:
+      type: object
+      properties:
+        status: { type: [string, "null"], enum: [open, closed, null] }
+        meta: {}
+        note: { type: [string, "null"], maxLength: 200 }
+    FixtureUpload:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: binary }
+        attachments:
+          type: array
+          items: { type: string, format: binary }
+        cover: { type: string, format: binary }
+        caption: { type: string }
