@@ -4,6 +4,36 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 `package.json` dan `dart/kapdh_api/pubspec.yaml` selalu sama; rilis SDK memakai tag git `contracts-vX.Y.Z`
 (`pnpm contracts:release-sdk`, ADR-001). Perubahan yang memutus ditandai **[memutus]**.
 
+## Belum dirilis
+
+### Konten: `content.yaml`, `admin-content.yaml` (penulis kontrak C4; F-08, F-15)
+
+Belum ada klien rilis yang memakai operasi konten 0.2.0 (belum ada controller konten), sehingga perubahan di bawah
+dicatat sebagai garis dasar gerbang N-13.
+
+- **[memutus]** `GET /public/pages/{slug}` (`getPublicPage`) pindah dari `public.yaml` (tag Public) ke
+  `content.yaml` (tag Content), sesuai modul pemiliknya (ARCHITECTURE §4.1). Path, operationId dan keamanan
+  (`security: []`) tetap; di SDK Dart pemanggilan berubah dari `api.public.getPublicPage(slug)` menjadi
+  `api.content.getPublicPage(slug)`. Skema `PublicPage` kini milik `content.yaml` dan menambah field wajib
+  `legal_document` (`PageLegalDocument` | null). Penggabungan mensyaratkan `public.yaml` tidak lagi
+  mendefinisikan path dan skema tersebut (cakupan penulis kontrak C2).
+- **[memutus]** `GET /home` (`getHome`): akses kini hanya anggota aktif (verified/expiring; 403
+  MEMBERSHIP_REQUIRED/ACCOUNT_SUSPENDED dideklarasikan). `Home` menambah `quick_access` (`HomeQuickAccess`) dan
+  `generated_at` (AC F08-4). `upcoming_events` kini `HomeEvent` lokal domain konten (bukan `EventSummary`):
+  `location` menjadi `location_name`, ditambah `ends_at`, `category`, `price`, `is_free`, `seats_total`,
+  `seats_available`, `registration_state`, `registration_opens_at`, `registration_closes_at`. `HomeBanner.title`
+  kini wajib non-null dan `HomeBanner.target` berubah dari string nullable menjadi objek `HomeBannerTarget`
+  `{type, available, route, url, external}` yang diselesaikan server (AC F08-2).
+- **[memutus]** `PostSummary` (feed, detail, beranda): menambah field wajib `id`, `excerpt`, `cover_url`,
+  `category`, `liked_by_me`; `category` berubah dari string nullable menjadi `ContentCategoryRef` | null. `Post`
+  menambah `updated_at`. `PostPage.next_cursor` kini selalu dikirim (nullable).
+- `GET /posts`, `GET /posts/{slug}`, `PUT/DELETE /posts/{slug}/like`: akses anggota aktif; respons 401/403/404
+  dideklarasikan. `PostSlug` tidak berubah.
+- Operasi baru: `GET /categories` (`listCategories`), `GET /public/pages` (`listPublicPages`), serta seluruh
+  operasi `Admin Content` di bawah `/admin/content/**` (berita draft/terjadwal/published/archived, banner, halaman
+  berversi, kategori, unggah gambar konten).
+- Semua operasi konten membawa ekstensi `x-kapdh-access` (audience, member_access, permissions, idempotent).
+
 ## 0.2.0
 
 Pemecahan `openapi/openapi.yaml` menjadi `openapi/root.yaml` + `openapi/domains/<domain>.yaml` (ARCHITECTURE §6),
