@@ -1,7 +1,214 @@
 # Domain admin-masters (C2 Membership): CRUD master profesi dan keahlian (izin master.manage).
-# Modul API: apps/api/src/modules/network. Path ditambahkan oleh penulis kontrak C2.
+# Modul API: apps/api/src/modules/network. Tabel master_professions / master_skills (PRD 6.2).
+#
+# Aturan: label unik tanpa membedakan huruf besar/kecil dan tanpa spasi tepi (master_*_label_key/_chk); master yang
+# dipakai alumni tidak dapat dihapus (FK RESTRICT) dan dinonaktifkan sebagai gantinya agar label historis tetap
+# tampil (AC F10-4). Setiap perubahan tercatat di audit dalam transaksi yang sama (AC F17-1).
 tags:
   - name: Admin Masters
-    description: Pengelolaan master profesi dan keahlian; master terpakai dinonaktifkan, tidak dihapus (F-15, AC F10-4).
+    description: |
+      Pengelolaan master profesi dan keahlian ("Manajemen Skill & Profesi", guideline hal. 16); master terpakai
+      dinonaktifkan, tidak dihapus (F-10, F-15, AC F10-4).
 
-paths: {}
+paths:
+  /admin/masters/{kind}:
+    get:
+      tags: [Admin Masters]
+      operationId: adminListMasters
+      summary: Daftar master (aktif dan nonaktif) dengan jumlah pemakaian, paging dan total (F-15, AC F10-4).
+      description: |
+        Dapat dibaca setiap admin terautentikasi ber-TOTP (dipakai juga untuk filter daftar anggota); perubahan
+        memerlukan master.manage. `usage_count` = jumlah alumni yang memakai master ini; master dengan
+        usage_count > 0 tidak dapat dihapus.
+      x-kapdh-access: { audience: admin, permissions: [] }
+      parameters:
+        - $ref: "#/components/parameters/MasterKindPath"
+        - name: q
+          in: query
+          description: Cari label (tidak peka huruf besar).
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: active
+          in: query
+          description: true hanya aktif, false hanya nonaktif; kosong untuk semua.
+          schema: { type: boolean }
+        - name: sort
+          in: query
+          description: Urutan (bawaan manual = sort_order lalu label).
+          schema: { $ref: "#/components/schemas/AdminMasterSort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman master beserta total sesuai filter.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMasterPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Admin Masters]
+      operationId: adminCreateMaster
+      summary: Tambah master profesi atau keahlian (izin master.manage, F-15).
+      description: |
+        Server memangkas spasi tepi label lalu memeriksa panjang 1-100 karakter. Label yang sudah ada pada
+        jenis yang sama (tanpa membedakan huruf besar/kecil, termasuk master nonaktif) ditolak 409
+        VALIDATION_ERROR dengan field_errors.label; aktifkan kembali master lama sebagai gantinya. Audit
+        `master.created`.
+      x-kapdh-access: { audience: admin, permissions: [master.manage] }
+      parameters:
+        - $ref: "#/components/parameters/MasterKindPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminMasterCreate" }
+      responses:
+        "201":
+          description: Master dibuat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMasterItem" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/masters/{kind}/{masterId}:
+    get:
+      tags: [Admin Masters]
+      operationId: adminGetMaster
+      summary: Detail master untuk formulir ubah, termasuk version dan jumlah pemakaian (F-15).
+      x-kapdh-access: { audience: admin, permissions: [master.manage] }
+      parameters:
+        - $ref: "#/components/parameters/MasterKindPath"
+        - $ref: "#/components/parameters/AdminMasterId"
+      responses:
+        "200":
+          description: Master.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMasterItem" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Admin Masters]
+      operationId: adminUpdateMaster
+      summary: Ubah label, status aktif atau urutan master (izin master.manage, AC F10-4, F15-4).
+      description: |
+        Menonaktifkan master menghentikan pemilihan baru (GET /masters/{kind} hanya aktif) tetapi profil yang
+        sudah memakainya tetap menampilkan label historis (AC F10-4). Mengganti label berlaku untuk semua profil
+        yang memakai master tersebut. Label ganda -> 409 VALIDATION_ERROR (field_errors.label). Versi berbeda
+        dari If-Match -> 409 VERSION_CONFLICT dengan `current` berbentuk AdminMasterItem (AC F15-4). Audit
+        `master.updated` dengan before/after.
+      x-kapdh-access: { audience: admin, permissions: [master.manage] }
+      parameters:
+        - $ref: "#/components/parameters/MasterKindPath"
+        - $ref: "#/components/parameters/AdminMasterId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminMasterUpdate" }
+      responses:
+        "200":
+          description: Master terbaru dengan version baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMasterItem" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Admin Masters]
+      operationId: adminDeleteMaster
+      summary: Hapus master yang belum pernah dipakai; master terpakai ditolak dan disarankan dinonaktifkan (AC F10-4).
+      description: |
+        UI wajib meminta konfirmasi (PRD 4.5). Master yang masih dipakai alumni (FK RESTRICT; kode DB 23503 di
+        PostgreSQL 17 atau 23001 di PostgreSQL 18) ditolak 409 VALIDATION_ERROR dengan pesan untuk
+        menonaktifkan, dan `current` berisi AdminMasterItem terbaru (usage_count). Versi berbeda dari If-Match ->
+        409 VERSION_CONFLICT. Audit `master.deleted`.
+      x-kapdh-access: { audience: admin, permissions: [master.manage] }
+      parameters:
+        - $ref: "#/components/parameters/MasterKindPath"
+        - $ref: "#/components/parameters/AdminMasterId"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204": { description: Master dihapus. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  parameters:
+    AdminMasterId:
+      name: masterId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  schemas:
+    AdminMasterSort:
+      type: string
+      enum: [manual, label_asc, label_desc, usage_desc]
+      description: manual = sort_order lalu label; usage_desc = paling banyak dipakai lebih dulu.
+
+    AdminMasterItem:
+      type: object
+      required: [id, kind, label, active, sort_order, usage_count, version, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/MasterKind" }
+        label: { type: string }
+        active: { type: boolean }
+        sort_order: { type: integer, minimum: -32768, maximum: 32767 }
+        usage_count:
+          type: integer
+          minimum: 0
+          description: Jumlah alumni yang memakai master ini; > 0 berarti tidak dapat dihapus.
+        version: { type: string, description: Versi untuk If-Match (AC F15-4). }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AdminMasterPage:
+      type: object
+      required: [items, next_cursor, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminMasterItem" }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer, minimum: 0 }
+
+    AdminMasterCreate:
+      type: object
+      required: [label]
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Spasi di awal/akhir dipangkas server; unik per jenis tanpa membedakan huruf besar/kecil.
+        active: { type: boolean, default: true }
+        sort_order: { type: integer, minimum: -32768, maximum: 32767, default: 0 }
+
+    AdminMasterUpdate:
+      type: object
+      description: Perubahan sebagian; minimal satu field.
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        label: { type: string, minLength: 1, maxLength: 100 }
+        active: { type: boolean }
+        sort_order: { type: integer, minimum: -32768, maximum: 32767 }
