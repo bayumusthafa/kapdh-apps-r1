@@ -1,66 +1,107 @@
-# Domain public (C2 Membership): endpoint tanpa autentikasi untuk gerbang aplikasi, halaman informasi,
-# verifikasi KTA, dan health check. Modul API: apps/api/src/modules/public (+ membership/content untuk KTA/halaman).
+# Domain public (C2 Membership): endpoint tanpa autentikasi untuk gerbang aplikasi, verifikasi KTA dan health
+# check. Modul API: apps/api/src/modules/public (config, health) dan apps/api/src/modules/membership (KTA verify).
+# Halaman legal publik (/public/pages) dimiliki domain content; penghapusan akun web (/public/deletion) dimiliki
+# domain account.
 tags:
   - name: Public
     description: |
-      Konfigurasi publik (versi minimum, maintenance, tautan toko), halaman informasi, verifikasi KTA dan health
-      check (F-06, F-08, PRD 4.5).
+      Konfigurasi publik (versi minimum, maintenance, tautan toko, kontak bantuan, versi legal), verifikasi KTA dan
+      health check tanpa autentikasi (F-06, PRD 4.5, 5.2, 5.5).
 
 paths:
   /health:
     get:
       tags: [Public]
       operationId: getHealth
-      summary: Health check untuk monitor eksternal dan orkestrator (PRD 5.5, N-05).
+      summary: Liveness untuk monitor eksternal dan orkestrator; tidak memeriksa dependensi (PRD 5.5, N-05).
       security: []
+      x-kapdh-access: { audience: public }
       responses:
         "200":
-          description: API hidup.
+          description: Proses API hidup.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/HealthStatus" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /health/ready:
+    get:
+      tags: [Public]
+      operationId: getHealthReadiness
+      summary: Readiness; memeriksa PostgreSQL, Redis (bila dikonfigurasi) dan storage (PRD 5.5, N-05).
+      description: |
+        Dipakai orkestrator (Coolify/Traefik) dan Uptime Kuma. 200 bila semua dependensi wajib siap, 503 bila
+        ada yang gagal. Hanya nama komponen dan status ok/fail/skipped, ditambah umur event outbox pending tertua
+        sebagai sinyal worker macet (PRD 5.5); tidak memuat pesan galat, host, versi atau data lain (N-14).
+        Tidak dicache.
+      security: []
+      x-kapdh-access: { audience: public }
+      responses:
+        "200":
+          description: Semua dependensi wajib siap.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthReadiness" }
+        "503":
+          description: Ada dependensi wajib yang tidak siap.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthReadiness" }
         default: { $ref: "#/components/responses/Error" }
 
   /public/config:
     get:
       tags: [Public]
       operationId: getPublicConfig
-      summary: Versi aplikasi minimum, status maintenance, tautan toko dan kontak bantuan (PRD 4.5).
+      summary: Versi aplikasi minimum, status maintenance, tautan toko, kontak bantuan dan versi legal (PRD 4.5, 5.2).
+      description: |
+        Dibaca layar splash Flutter sebelum login (gerbang aplikasi, ARCHITECTURE §8.3) dan oleh situs publik.
+        Bila versi aplikasi di bawah `min_app_version` platformnya, klien menampilkan layar wajib update dengan
+        `store_links`; bila `maintenance.active`, klien menampilkan layar maintenance dengan pesan dan perkiraan
+        selesai (PRD 4.5). Sumber: app_settings min_app_version, maintenance, store_links, support dan legal
+        (ARCHITECTURE §5.4). Tetap dilayani selama maintenance. Tidak memuat secret atau data pribadi.
       security: []
+      x-kapdh-access: { audience: public }
       responses:
         "200":
-          description: Konfigurasi.
+          description: Konfigurasi publik.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PublicConfig" }
-        default: { $ref: "#/components/responses/Error" }
-
-  /public/pages/{slug}:
-    get:
-      tags: [Public]
-      operationId: getPublicPage
-      summary: Halaman legal dan informasi (privasi, ketentuan, bantuan, tentang) yang dapat dibaca sebelum aktivasi (F-08).
-      security: []
-      parameters:
-        - name: slug
-          in: path
-          required: true
-          schema: { type: string, maxLength: 120 }
-      responses:
-        "200":
-          description: Halaman.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PublicPage" }
-        "404": { $ref: "#/components/responses/NotFound" }
         default: { $ref: "#/components/responses/Error" }
 
   /public/kta/verify:
     post:
       tags: [Public]
       operationId: verifyKta
-      summary: Verifikasi token QR KTA; status selalu dari server (F-06).
+      summary: Verifikasi token QR KTA terhadap status server terkini; respons hanya identitas minimum (F-06, AC F06-1..F06-4).
+      description: |
+        Shell situs /kta/{nomor} membaca token dari fragmen URL (#t=) lalu mengirimnya ke sini; nomor saja tidak
+        memberi akses profil (F-06). Server memeriksa tanda tangan (kid, rotasi kunci), issuer `kapdh-api`,
+        audience `kapdh-kta`, keterikatan token (sub = id alumni, seq = nomor urut N) dengan nomor terkini, lalu
+        status DB TERKINI (AC F05-4); cache atau kartu offline tidak pernah menjadi sumber hasil.
+
+        Pemetaan hasil:
+        - verified -> `active`; expiring -> `active` dengan `expiring` true dan tanggal habis (AC F06-1);
+        - expired -> `expired` (Kedaluwarsa), termasuk token sah yang kedaluwarsa karena masa keanggotaan habis
+          (AC F06-2);
+        - unverified, suspended, disabled atau deletion_pending -> `inactive` tanpa alasan (AC F06-2, F12-4);
+        - nomor tidak ada atau akun sudah dihapus -> `not_found` (AC F06-2);
+        - tanda tangan/issuer/audience salah, token diubah, token kedaluwarsa (selain karena masa habis), atau
+          token terbit sebelum koreksi nomor -> `invalid_token` ("QR tidak valid atau perlu diperbarui",
+          AC F06-3, F05-6).
+        `member` hanya diisi untuk `active` dan `expired`; foto hanya untuk `active`. Tidak pernah memuat email,
+        telepon, NIK, alamat, bukti bayar atau alasan suspend (F-06, D3). Respons `Cache-Control: no-store`.
+        Kegagalan jaringan/5xx tidak boleh ditampilkan klien sebagai Tidak ditemukan (AC F06-4).
+        Dibatasi per IP dan per nomor (nilai D1) dengan 429 RATE_LIMITED.
+
+        Maintenance (PRD 4.5, ARCHITECTURE §4.3): walaupun memakai metode POST, operasi ini hanya membaca sehingga
+        termasuk pengecualian "/public/** reads" dan dikecualikan EKSPLISIT per path pada hook maintenance
+        (core-api `maintenanceAllowed`: path `/public/kta/verify`), sehingga tidak pernah menghasilkan
+        503 MAINTENANCE dan pemeriksa di lapangan tetap dapat memverifikasi KTA selama maintenance. 5xx lain
+        (mis. proxy saat deploy) jatuh ke respons default dan ditampilkan sebagai "Tidak dapat memverifikasi".
       security: []
+      x-kapdh-access: { audience: public }
       requestBody:
         required: true
         content:
@@ -68,10 +109,11 @@ paths:
             schema: { $ref: "#/components/schemas/KtaVerifyRequest" }
       responses:
         "200":
-          description: Hasil verifikasi.
+          description: Hasil verifikasi (termasuk not_found dan invalid_token).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/KtaVerification" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "429": { $ref: "#/components/responses/RateLimited" }
         default: { $ref: "#/components/responses/Error" }
 
@@ -84,8 +126,40 @@ components:
         status: { type: string, const: ok }
         time: { type: string, format: date-time }
 
+    HealthCheckState:
+      type: string
+      enum: [ok, fail, skipped]
+      description: Status satu dependensi; skipped bila dependensi opsional tidak dikonfigurasi (mis. REDIS_URL kosong).
+
+    HealthReadinessStatus:
+      type: string
+      enum: [ok, unavailable]
+
+    HealthReadinessChecks:
+      type: object
+      required: [database, redis, storage]
+      properties:
+        database: { $ref: "#/components/schemas/HealthCheckState" }
+        redis: { $ref: "#/components/schemas/HealthCheckState" }
+        storage: { $ref: "#/components/schemas/HealthCheckState" }
+        outbox_oldest_pending_seconds:
+          type: [integer, "null"]
+          minimum: 0
+          description: |
+            Umur event outbox pending tertua dalam detik (sinyal worker macet, PRD 5.5); null bila tidak ada atau
+            database tidak dapat dibaca. Tidak memengaruhi status readiness API.
+
+    HealthReadiness:
+      type: object
+      required: [status, time, checks]
+      properties:
+        status: { $ref: "#/components/schemas/HealthReadinessStatus" }
+        time: { type: string, format: date-time }
+        checks: { $ref: "#/components/schemas/HealthReadinessChecks" }
+
     MinAppVersion:
       type: object
+      description: Versi minimum per platform (semver); mutasi dari versi lebih rendah ditolak 426 (PRD 4.5).
       required: [android, ios]
       properties:
         android: { type: string, examples: ["1.0.0"] }
@@ -93,71 +167,101 @@ components:
 
     MaintenanceStatus:
       type: object
-      required: [active]
+      required: [active, message, until]
       properties:
         active: { type: boolean }
-        message: { type: [string, "null"] }
-        until: { type: [string, "null"], format: date-time }
+        message: { type: [string, "null"], description: Penjelasan rentang/dampak untuk pengguna (PRD 4.5). }
+        until: { type: [string, "null"], format: date-time, description: Perkiraan selesai bila diketahui. }
 
     StoreLinks:
       type: object
+      description: Tautan toko aplikasi resmi untuk layar wajib update dan situs publik.
+      required: [android, ios]
       properties:
         android: { type: [string, "null"], format: uri }
         ios: { type: [string, "null"], format: uri }
 
     SupportContact:
       type: object
+      required: [email, whatsapp]
       properties:
         email: { type: string, format: email, examples: [bantuan@kapdh.or.id] }
-        whatsapp: { type: [string, "null"] }
+        whatsapp: { type: [string, "null"], description: Nomor WhatsApp admin dukungan (PRD 8.3). }
+
+    LegalVersions:
+      type: object
+      description: |
+        Versi terbit halaman legal (published_version pages) yang dirujuk persetujuan pengguna (F-01); null bila
+        halaman belum pernah terbit. Konten halaman dibaca dari GET /public/pages/{slug} (domain content).
+      required: [privacy_version, terms_version, community_version]
+      properties:
+        privacy_version: { type: [string, "null"] }
+        terms_version: { type: [string, "null"] }
+        community_version: { type: [string, "null"] }
 
     PublicConfig:
       type: object
-      required: [min_app_version, maintenance]
+      required: [min_app_version, maintenance, store_links, support, legal, server_time]
       properties:
         min_app_version: { $ref: "#/components/schemas/MinAppVersion" }
         maintenance: { $ref: "#/components/schemas/MaintenanceStatus" }
         store_links: { $ref: "#/components/schemas/StoreLinks" }
         support: { $ref: "#/components/schemas/SupportContact" }
-
-    PublicPage:
-      type: object
-      required: [slug, title, body_html, version, published_at]
-      properties:
-        slug: { type: string }
-        title: { type: string }
-        body_html: { type: string, description: HTML tersanitasi server. }
-        version: { type: string }
-        published_at: { type: string, format: date-time }
+        legal: { $ref: "#/components/schemas/LegalVersions" }
+        server_time:
+          type: string
+          format: date-time
+          description: Waktu server (UTC) untuk mendeteksi jam perangkat yang menyimpang.
 
     KtaVerifyRequest:
       type: object
       required: [member_number, token]
+      additionalProperties: false
       properties:
-        member_number: { type: string, examples: ["29.01.01.7"] }
-        token: { type: string, description: "Dibaca shell dari fragmen URL (#t=)." }
+        member_number: { $ref: "#/components/schemas/MemberNumber" }
+        token:
+          type: string
+          minLength: 16
+          maxLength: 2048
+          description: Token QR dibaca shell dari fragmen URL (#t=); tidak pernah dicatat di log.
 
     KtaVerificationResult:
       type: string
       enum: [active, expired, inactive, not_found, invalid_token]
-      description: Aktif, Kedaluwarsa, Tidak aktif, Tidak ditemukan, QR tidak valid atau perlu diperbarui (F-06).
+      description: |
+        Aktif (termasuk expiring), Kedaluwarsa, Tidak aktif, Tidak ditemukan, QR tidak valid atau perlu
+        diperbarui (F-06). "Tidak dapat memverifikasi" adalah keadaan klien saat API tidak terjangkau (AC F06-4).
 
     KtaVerifiedMember:
       type: object
-      description: Identitas minimum; hanya untuk result active atau expired.
+      description: Identitas minimum yang disahkan D3; hanya untuk result active atau expired.
+      required: [full_name, cohort_code, member_number, expires_at, avatar_url]
       properties:
         full_name: { type: string }
-        cohort_code: { type: string }
-        member_number: { type: string }
-        expires_at: { type: string, format: date-time }
+        cohort_code: { type: string, examples: ["KAPDH 29"] }
+        member_number: { $ref: "#/components/schemas/MemberNumber" }
+        expires_at: { type: string, format: date-time, description: Masa berlaku (tanggal habis). }
+        avatar_url:
+          type: [string, "null"]
+          format: uri
+          description: Foto untuk dicocokkan pemeriksa; hanya untuk result active, URL berumur pendek.
 
     KtaVerification:
       type: object
-      required: [result, checked_at]
+      description: |
+        Hasil verifikasi publik. Keempat field selalu dikirim; `member` null bila tidak berlaku dan `expiring` false
+        untuk semua hasil selain active yang sisa masanya <= 30 hari (AC F06-1).
+      required: [result, checked_at, expiring, member]
       properties:
         result: { $ref: "#/components/schemas/KtaVerificationResult" }
-        checked_at: { type: string, format: date-time }
+        checked_at: { type: string, format: date-time, description: Waktu pemeriksaan server (AC F06-1). }
+        expiring:
+          type: boolean
+          description: |
+            True bila result active dan sisa masa <= 30 hari (tetap Aktif dengan tanggal habis, AC F06-1); false
+            untuk hasil lain.
         member:
           oneOf:
             - $ref: "#/components/schemas/KtaVerifiedMember"
             - type: "null"
+          description: Identitas minimum untuk result active/expired; null untuk hasil lain.

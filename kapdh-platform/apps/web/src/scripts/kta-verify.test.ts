@@ -18,7 +18,14 @@ describe("toViewState", () => {
     expect(toViewState(null).kind).toBe("unreachable");
   });
   it("token rusak tidak pernah menampilkan Aktif (AC F06-3)", () => {
-    expect(toViewState({ result: "invalid_token", checked_at: "2026-10-12T00:00:00Z" }).kind).toBe("invalid");
+    expect(
+      toViewState({
+        result: "invalid_token",
+        checked_at: "2026-10-12T00:00:00Z",
+        expiring: false,
+        member: null,
+      }).kind,
+    ).toBe("invalid");
   });
 });
 
