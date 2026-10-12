@@ -41,6 +41,30 @@ const DEFAULT_PROFILE: ProfileState = {
 let profile: ProfileState = { ...DEFAULT_PROFILE };
 /** Meniru cookie HttpOnly kapdh_admin_rt: sesi hidup sampai logout. */
 let sessionActive = false;
+
+/**
+ * dev:mock saja: "cookie" sesi tiruan disimpan di sessionStorage agar muat ulang/HMR tidak memaksa login ulang
+ * (meniru cookie HttpOnly kapdh_admin_rt). Uji (MODE=test) selalu mulai tanpa sesi.
+ */
+const PERSIST_KEY = "kapdh_mock_admin_session";
+const persist = import.meta.env.MODE === "mock";
+function setSessionActive(active: boolean): void {
+  sessionActive = active;
+  if (!persist) return;
+  try {
+    if (active) window.sessionStorage.setItem(PERSIST_KEY, "1");
+    else window.sessionStorage.removeItem(PERSIST_KEY);
+  } catch {
+    // penyimpanan diblokir: sesi tiruan hanya di memori
+  }
+}
+if (persist) {
+  try {
+    sessionActive = window.sessionStorage.getItem(PERSIST_KEY) === "1";
+  } catch {
+    setSessionActive(false);
+  }
+}
 let pendingMfaToken: string | null = null;
 let tokenSeq = 0;
 const validAccess = new Set<string>();
@@ -58,7 +82,7 @@ export const authRequests: RecordedRequest[] = [];
 
 export function reset(): void {
   profile = { ...DEFAULT_PROFILE };
-  sessionActive = false;
+  setSessionActive(false);
   pendingMfaToken = null;
   validAccess.clear();
   reauthTokens.clear();
@@ -128,7 +152,7 @@ export const mockAuth = {
   },
   /** Cabut sesi dari sisi server (mis. idle 30 menit atau logout perangkat lain). */
   revokeSession(): void {
-    sessionActive = false;
+    setSessionActive(false);
     validAccess.clear();
   },
   isSessionActive(): boolean {
@@ -166,7 +190,7 @@ export const routes: MockRoute[] = [
         return error(401, "UNAUTHENTICATED", "Kode autentikator salah atau sesi masuk kedaluwarsa.");
       if (backup) usedBackupCodes.add(backup);
       pendingMfaToken = null;
-      sessionActive = true;
+      setSessionActive(true);
       return json(200, issueAccess());
     },
   },
@@ -187,7 +211,7 @@ export const routes: MockRoute[] = [
       // Server: RequireAuth — logout dengan access token kedaluwarsa ditolak 401 dan sesi TIDAK dicabut.
       const unauth = requireAdmin(req);
       if (unauth) return unauth;
-      sessionActive = false;
+      setSessionActive(false);
       validAccess.clear();
       return noContent();
     },

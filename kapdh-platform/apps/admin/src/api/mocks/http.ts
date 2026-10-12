@@ -119,3 +119,67 @@ export function matchRoute(
   }
   return null;
 }
+
+/** Berkas dari body multipart yang dibaca server tiruan. */
+export interface MockFile {
+  name: string;
+  type: string;
+  size: number;
+  bytes: Uint8Array;
+}
+
+/**
+ * Baca body multipart/form-data. Peramban memakai Request.formData(); di lingkungan uji (jsdom + undici) objek
+ * File berasal dari realm berbeda sehingga formData() gagal, maka body diurai manual. Hanya untuk mock.
+ */
+export async function readMultipart(request: Request): Promise<Record<string, string | MockFile> | null> {
+  try {
+    const fd = await request.clone().formData();
+    const out: Record<string, string | MockFile> = {};
+    for (const [key, value] of fd.entries()) {
+      if (typeof value === "string") out[key] = value;
+      else
+        out[key] = {
+          name: value.name,
+          type: value.type,
+          size: value.size,
+          bytes: new Uint8Array(await value.arrayBuffer()),
+        };
+    }
+    return out;
+  } catch {
+    return parseMultipartManually(request);
+  }
+}
+
+async function parseMultipartManually(request: Request): Promise<Record<string, string | MockFile> | null> {
+  const boundary = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(request.headers.get("content-type") ?? "");
+  const marker = boundary?.[1] ?? boundary?.[2];
+  if (!marker) return null;
+  const raw = new Uint8Array(await request.clone().arrayBuffer());
+  // latin1: satu karakter = satu byte, sehingga posisi teks sama dengan posisi byte.
+  let text = "";
+  for (const b of raw) text += String.fromCharCode(b);
+  const out: Record<string, string | MockFile> = {};
+  for (const part of text.split(`--${marker}`)) {
+    const sep = part.indexOf("\r\n\r\n");
+    if (sep < 0) continue;
+    const head = part.slice(0, sep);
+    const body = part.slice(sep + 4).replace(/\r\n$/, "");
+    const name = /name="([^"]*)"/i.exec(head)?.[1];
+    if (!name) continue;
+    const filename = /filename="([^"]*)"/i.exec(head)?.[1];
+    if (filename === undefined) {
+      out[name] = body;
+      continue;
+    }
+    const bytes = Uint8Array.from(body, (c) => c.charCodeAt(0));
+    out[name] = {
+      name: filename,
+      type: /content-type:\s*([^\r\n]+)/i.exec(head)?.[1]?.trim() ?? "application/octet-stream",
+      size: bytes.length,
+      bytes,
+    };
+  }
+  return out;
+}

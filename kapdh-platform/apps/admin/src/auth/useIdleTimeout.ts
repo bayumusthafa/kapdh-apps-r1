@@ -57,6 +57,8 @@ export function useIdleTimeout({
   lastServerActivity,
 }: IdleTimeoutOptions) {
   const lastActivity = useRef(Date.now());
+  /** Interaksi nyata terakhir (bukan waktu mount) untuk detak aktivitas. */
+  const lastInput = useRef(0);
   const lastShared = useRef(0);
   const lastHeartbeat = useRef(0);
   const fired = useRef(false);
@@ -86,6 +88,7 @@ export function useIdleTimeout({
       // Saat peringatan tampil, hanya tombol "Tetap masuk" yang memperpanjang agar admin sadar.
       if (now - lastActivity.current >= timeoutMs - warnBeforeMs) return;
       lastActivity.current = now;
+      lastInput.current = now;
       if (now - lastShared.current >= SHARE_THROTTLE_MS) {
         lastShared.current = now;
         writeShared(now);
@@ -108,7 +111,7 @@ export function useIdleTimeout({
       }
       const { onHeartbeat: beat, lastServerActivity: lastServer } = callbacks.current;
       if (!beat) return;
-      const recentlyActive = now - lastActivity.current < 60_000;
+      const recentlyActive = now - lastInput.current < 60_000;
       const serverQuiet = now - Math.max(lastServer?.() ?? 0, lastHeartbeat.current) >= heartbeatMs;
       if (recentlyActive && serverQuiet && left > warnBeforeMs) {
         lastHeartbeat.current = now;

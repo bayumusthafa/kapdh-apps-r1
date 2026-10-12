@@ -46,6 +46,8 @@ export function buttonClass({
     VARIANT[variant],
     SIZE[size],
     DISABLED,
+    // Tombol ghost nonaktif cukup berteks redup tanpa latar abu-abu.
+    variant === "ghost" && "disabled:bg-transparent",
     fullWidth && "w-full",
     className,
   );
