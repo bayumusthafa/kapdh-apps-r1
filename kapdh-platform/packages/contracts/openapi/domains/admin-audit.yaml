@@ -5,6 +5,9 @@
 # Audit append-only bagi application role (PRD 3.17): domain ini hanya membaca; tidak ada operasi ubah/hapus entri.
 # before/after sudah disaring saat ditulis (AuditService) dan tidak pernah memuat sandi, OTP, token, secret TOTP,
 # isi chat, bukti bayar, rekening refund atau NIK (ARCHITECTURE §2, AC F17-3).
+#
+# Job ekspor TIDAK memerlukan tabel baru: keadaannya disimpan pada tabel yang sudah ada (audit_logs append-only
+# sebagai catatan kejadian job + files untuk berkas dan kedaluwarsanya). Pemetaan lengkap ada di skema AuditExport.
 tags:
   - name: Admin Audit
     description: Pencarian audit dan ekspor CSV asinkron dengan filter yang sama (F-17, AC F17-2..F17-4).
@@ -79,10 +82,13 @@ paths:
       operationId: adminCreateAuditExport
       summary: Minta ekspor CSV audit dengan filter yang sama seperti pencarian (audit.read + audit.export, AC F17-2..F17-4).
       description: |
-        Membuat job ekspor berstatus `queued`, audit `audit.export.requested` berisi filter, dan outbox
-        `audit.export.requested` dalam SATU transaksi (AC F17-1); worker menghasilkan CSV dan berkas privat purpose
-        `audit_export` (ARCHITECTURE §4.8). Filter memakai arti yang sama persis dengan GET /admin/audit/entries
-        (AC F17-4) dan disimpan apa adanya di `filters`.
+        Membuat job ekspor berstatus `processing` dalam SATU transaksi (AC F17-1): id ekspor (UUID v7) dibuat
+        server, audit `audit.export.requested` (entity_type `audit_export`, entity_id = id ekspor, actor = admin
+        peminta, after = {filters}) dan outbox `audit.export.requested` (dedup_key
+        `audit.export.requested:<id ekspor>`, payload {export_id}). Job `audit.export` di worker membaca filter dari
+        entri audit tersebut, menghasilkan CSV, dan menulis berkas privat purpose `audit_export` (ARCHITECTURE
+        §4.8); pemetaan penyimpanan dan aturan transisi ada di skema AuditExport. Filter memakai arti yang sama
+        persis dengan GET /admin/audit/entries (AC F17-4) dan disimpan apa adanya di `filters`.
 
         Isi CSV (UTF-8, pemisah koma, baris pertama header): created_at (UTC RFC 3339), action, entity_type,
         entity_id, effective_role, actor_admin_id, actor_user_id, actor_name, request_id, reason, before (JSON),
@@ -103,7 +109,7 @@ paths:
             schema: { $ref: "#/components/schemas/AuditFilter" }
       responses:
         "202":
-          description: Job ekspor diterima (status queued).
+          description: Job ekspor diterima (status processing).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AuditExport" }
@@ -118,8 +124,11 @@ paths:
       operationId: adminListAuditExports
       summary: Daftar job ekspor audit dan statusnya (audit.read + audit.export, F-17).
       description: |
-        Admin melihat ekspor yang ia minta sendiri; Super Admin melihat semua ekspor beserta peminta. Urutan
-        requested_at menurun; `total` mengikuti filter. Status `expired` berarti berkas sudah dihapus otomatis.
+        Admin melihat ekspor yang ia minta sendiri; Super Admin melihat semua ekspor beserta peminta. Sumber daftar
+        adalah entri audit `audit.export.requested` (entity_type `audit_export`; milik sendiri = actor_admin_id
+        pemanggil) dengan keyset (created_at, id) menurun, sehingga urutan requested_at menurun; status diturunkan
+        sesuai skema AuditExport dan `total` mengikuti filter. Status `expired` berarti berkas sudah dihapus
+        otomatis.
       x-kapdh-access: { audience: admin, permissions: [audit.read, audit.export] }
       parameters:
         - name: status
@@ -168,7 +177,8 @@ paths:
       description: |
         Izin audit.read dan audit.export serta kepemilikan (peminta atau Super Admin) diperiksa ulang SETIAP
         permintaan; mengetahui id ekspor/berkas atau URL lama tidak memberi akses (AC F17-2). URL dibuat
-        FilesService, terikat berkas dan purpose `audit_export`, berlaku maksimal 10 menit, dan tidak boleh
+        FilesService untuk `file_id` pada entri audit `audit.export.completed` ekspor ini, terikat berkas dan
+        purpose `audit_export`, berlaku maksimal 10 menit, dan tidak boleh
         disimpan cache publik (PRD 5.4). Berkas `audit_export` tidak dilayani lewat jalur berkas lain tanpa
         pemeriksaan yang sama. Status selain `ready` menghasilkan 409 VERSION_CONFLICT dengan `current` =
         AuditExport terbaru; ekspor `expired` atau berkas yang sudah dihapus menghasilkan 404. Setiap akses
@@ -347,27 +357,55 @@ components:
 
     AuditExportStatus:
       type: string
-      enum: [queued, processing, ready, failed, expired]
+      enum: [processing, ready, failed, expired]
       description: |
-        Siklus job ekspor: queued -> processing -> ready | failed; ready -> expired saat berkas dihapus otomatis
-        (AC F17-4). Label UI: Antre, Diproses, Siap, Gagal, Kedaluwarsa.
+        Siklus job ekspor: processing (diterima, menunggu atau sedang dikerjakan worker) -> ready | failed;
+        ready -> expired saat berkas dihapus otomatis (AC F17-4). `failed` dan `expired` final. Label UI: Diproses,
+        Siap, Gagal, Kedaluwarsa. Penurunan status dari tabel yang ada dijelaskan di skema AuditExport.
 
     AuditExportFailureReason:
       type: string
-      enum: [row_limit_exceeded, processing_failed]
+      enum: [row_limit_exceeded, processing_failed, timed_out]
       description: |
         `row_limit_exceeded`: hasil filter melebihi batas baris ekspor, persempit filter. `processing_failed`: galat
-        job/storage; minta ekspor baru (rincian ada di log worker dengan request_id, N-14).
+        job/storage yang tidak pulih setelah retry; minta ekspor baru (rincian ada di log worker dengan request_id,
+        N-14). `timed_out`: job tidak selesai sebelum batas waktu ekspor (konfigurasi server, usulan 1 jam sejak
+        diminta), misalnya antrean hilang; minta ekspor baru.
 
     AuditExport:
       type: object
+      description: |
+        Job ekspor audit (AC F17-4). Disimpan pada tabel yang sudah ada tanpa tabel job baru; id ekspor dipakai
+        sebagai entity_id audit dengan entity_type `audit_export`:
+
+        | Fakta                       | Ditulis oleh, kapan                         | Isi                                            |
+        | --------------------------- | ------------------------------------------- | ---------------------------------------------- |
+        | audit `audit.export.requested` | API, transaksi permintaan (+ outbox)     | actor admin peminta, created_at, after.filters |
+        | audit `audit.export.completed` | worker, SATU transaksi dengan INSERT files | effective_role system, after {file_id, row_count} |
+        | audit `audit.export.failed`    | worker                                    | effective_role system, after {failure_reason}  |
+        | files purpose `audit_export`   | worker, bersama entri completed            | owner_user_id = akun login peminta, private, status ready, attached_at, expires_at, bytes |
+
+        Penurunan field: `requested_by`/`requested_at`/`filters` dari entri requested; `completed_at` = created_at
+        entri completed/failed; `row_count` dari entri completed; `bytes` dan `expires_at` dari baris files;
+        `file_name` = `audit-<YYYYMMDD requested_at UTC>-<8 hex awal id>.csv`. Status (urutan prioritas):
+        1. entri completed ada: `expired` bila berkasnya berstatus deleted, hilang, atau expires_at <= sekarang;
+           selain itu `ready`;
+        2. entri failed ada: `failed` dengan failure_reason dari entri;
+        3. belum ada entri terminal dan sekarang > requested_at + batas waktu ekspor: `failed` (`timed_out`);
+        4. selain itu `processing`.
+
+        Aturan worker agar status monoton dan sekali jadi: job mengambil pg_advisory_xact_lock atas id ekspor,
+        memeriksa ulang bahwa belum ada entri terminal dan batas waktu belum lewat (jam database), lalu menulis
+        tepat satu entri terminal; job yang dimulai atau selesai setelah batas waktu berhenti tanpa menulis berkas.
+        Galat sementara memakai retry outbox/antrean; `processing_failed` ditulis saat retry habis. Pembersihan
+        `maintenance.cleanup` menghapus berkas kedaluwarsa (files.status deleted) sehingga status menjadi
+        `expired`. Integrator boleh memindahkan keadaan ini ke tabel job khusus kelak tanpa mengubah kontrak.
       required:
         - id
         - status
         - filters
         - requested_by
         - requested_at
-        - started_at
         - completed_at
         - expires_at
         - row_count
@@ -375,21 +413,25 @@ components:
         - bytes
         - failure_reason
       properties:
-        id: { type: string, format: uuid }
+        id: { type: string, format: uuid, description: Id ekspor (entity_id entri audit audit_export). }
         status: { $ref: "#/components/schemas/AuditExportStatus" }
         filters: { $ref: "#/components/schemas/AuditFilter" }
-        requested_by: { $ref: "#/components/schemas/AdminActorRef" }
+        requested_by:
+          $ref: "#/components/schemas/AdminActorRef"
+          description: Admin peminta (actor_admin_id entri audit.export.requested).
         requested_at: { type: string, format: date-time }
-        started_at: { type: [string, "null"], format: date-time }
-        completed_at: { type: [string, "null"], format: date-time }
+        completed_at:
+          type: [string, "null"]
+          format: date-time
+          description: Waktu entri terminal (completed atau failed); null selama processing dan untuk timed_out.
         expires_at:
           type: [string, "null"]
           format: date-time
-          description: Berkas privat dihapus otomatis pada waktu ini (AC F17-4); terisi saat ready.
+          description: Berkas privat dihapus otomatis pada waktu ini (AC F17-4); terisi untuk ready dan expired.
         row_count: { type: [integer, "null"], minimum: 0 }
         file_name:
           type: [string, "null"]
-          description: Nama unduhan tanpa data pribadi.
+          description: Nama unduhan tanpa data pribadi; terisi untuk ready dan expired.
           examples: ["audit-20261012-0192f0c2.csv"]
         bytes: { type: [integer, "null"], minimum: 0 }
         failure_reason:

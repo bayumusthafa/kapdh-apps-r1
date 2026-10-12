@@ -19,7 +19,7 @@ paths:
 
         | bagian            | izin                              | isi                                                        |
         | ----------------- | --------------------------------- | ---------------------------------------------------------- |
-        | `payments`        | payments.read                     | antrean bukti, terlambat/eskalasi, total lunas, riwayat    |
+        | `payments`        | payments.read                     | antrean bukti, lewat batas, penyesuaian, lunas, riwayat    |
         | `members`         | members.read                      | pengguna aktif dari total alumni, status, anggota terbaru  |
         | `events`          | events.manage                     | tiket terjual semua event, penjualan tiket per event       |
         | `upcoming_events` | events.manage atau events.checkin | event mendatang 30 hari                                    |
@@ -28,9 +28,21 @@ paths:
 
         Admin tanpa izin apa pun tetap menerima `generated_at` saja. Semua hitungan dihitung server pada
         `generated_at` (UTC); usia antrean dihitung klien sebagai `generated_at` dikurangi waktu tertua agar tidak
-        bergantung pada jam perangkat. Aturan hari kerja sama dengan antrean pembayaran (AdminPaymentItem.overdue).
-        Untuk polling lencana menu gunakan GET /admin/dashboard/badges yang lebih ringan.
+        bergantung pada jam perangkat.
+
+        Hitungan `payments` memakai definisi yang SAMA PERSIS dengan GET /admin/payments/summary
+        (AdminPaymentSummary) dan filter GET /admin/payments (domain admin-payments), sehingga tautan "Lewat batas
+        N" ke `/payments?stage=awaiting_review&overdue=true` menampilkan jumlah yang sama: lewat batas = waktu server
+        melewati `review_due_at` (iuran: bukti dikirim + 1 hari kerja; tiket: yang lebih dahulu antara + 2 hari
+        kerja (D5) dan pembukaan check-in event); hari kerja Senin sampai Jumat waktu Asia/Jakarta. Implementasi
+        memakai satu query ringkasan bersama dengan modul payments, bukan rumus kedua.
+
+        Auto-refresh dasbor oleh web admin mengirim X-Background-Request agar tidak memperpanjang idle timeout
+        (AC F02-5); muat atau muat ulang yang dipicu pengguna tidak mengirimnya. Untuk polling lencana menu gunakan
+        GET /admin/dashboard/badges yang lebih ringan.
       x-kapdh-access: { audience: admin }
+      parameters:
+        - $ref: "#/components/parameters/AdminDashboardBackgroundRequest"
       responses:
         "200":
           description: Dasbor sesuai izin.
@@ -45,12 +57,19 @@ paths:
     get:
       tags: [Admin Dashboard]
       operationId: adminGetDashboardBadges
-      summary: Hitungan ringan untuk lencana menu, misalnya pembayaran menunggu (F-15, prototipe screen_8).
+      summary: Hitungan ringan untuk lencana menu laporan dan job gagal (F-15).
       description: |
-        Dipanggil berkala oleh web admin dengan penanda permintaan latar belakang sehingga tidak memperpanjang idle
+        Dipanggil berkala oleh web admin dengan header X-Background-Request sehingga tidak memperpanjang idle
         timeout sesi (AC F02-5). Field hanya ada bila pemanggil memiliki izinnya, sama dengan aturan bagian dasbor
         (AC F15-1).
+
+        Pill emas menu "Verifikasi Pembayaran" (prototipe screen_8) TIDAK bersumber dari sini: sumber tunggalnya
+        adalah `awaiting_review_count` pada GET /admin/payments/summary (domain admin-payments), yang juga
+        di-polling dengan X-Background-Request oleh admin berizin payments.read. Endpoint ini hanya melayani
+        lencana yang tidak dimiliki domain lain.
       x-kapdh-access: { audience: admin }
+      parameters:
+        - $ref: "#/components/parameters/AdminDashboardBackgroundRequest"
       responses:
         "200":
           description: Lencana menu.
@@ -62,6 +81,18 @@ paths:
         default: { $ref: "#/components/responses/Error" }
 
 components:
+  parameters:
+    AdminDashboardBackgroundRequest:
+      name: X-Background-Request
+      in: header
+      required: false
+      description: |
+        Isi `1` hanya pada request polling/refresh otomatis web admin. Request bertanda ini tidak memperbarui
+        `sessions.last_activity_at`, sehingga idle timeout 30 menit tetap berjalan (AC F02-5, N-08). Request yang
+        dipicu pengguna tidak boleh mengirim header ini. Nama dan bentuk sama dengan parameter
+        AdminBackgroundRequest di domain admin-auth (C1); AuthGuard menghormatinya pada setiap operasi admin.
+      schema: { type: string, pattern: "^1$" }
+
   schemas:
     AdminDashboard:
       type: object
@@ -122,17 +153,23 @@ components:
         - awaiting_review_by_type
         - oldest_submitted_at
         - overdue_count
-        - escalated_ticket_count
-        - awaiting_proof_count
+        - overdue_by_type
+        - awaiting_transfer_count
+        - adjustments_pending_count
+        - adjustments_overdue_count
         - paid_total_amount
         - paid_count
         - recent_transactions
-      description: Bagian izin payments.read (F-04, F-15, guideline hlm. 12).
+      description: |
+        Bagian izin payments.read (F-04, F-15, guideline hlm. 12). Field antrean dan penyesuaian bernilai sama
+        dengan field bernama sama pada AdminPaymentSummary (GET /admin/payments/summary) pada waktu yang sama.
       properties:
         awaiting_review_count:
           type: integer
           minimum: 0
-          description: Payment pending yang buktinya sudah dikirim dan menunggu keputusan (lencana menu).
+          description: |
+            Payment pending yang buktinya sudah dikirim dan siap diputus (= AdminPaymentSummary.awaiting_review_count,
+            total filter stage=awaiting_review).
         awaiting_review_by_type: { $ref: "#/components/schemas/DashboardPaymentTypeCounts" }
         oldest_submitted_at:
           type: [string, "null"]
@@ -141,15 +178,30 @@ components:
         overdue_count:
           type: integer
           minimum: 0
-          description: Iuran (registration/renewal) menunggu lebih dari 1 hari kerja sejak bukti dikirim.
-        escalated_ticket_count:
+          description: |
+            Bagian awaiting_review yang lewat `review_due_at` (= AdminPaymentSummary.overdue_count dan total filter
+            stage=awaiting_review&overdue=true), mencakup iuran dan tiket (aturan di deskripsi operasi).
+        overdue_by_type:
+          $ref: "#/components/schemas/DashboardPaymentTypeCounts"
+          description: |
+            Rincian overdue_count per jenis; jumlahnya sama dengan overdue_count. `ticket` adalah bukti tiket yang
+            dieskalasi, bukan dibatalkan otomatis (D5, PRD 3.9).
+        awaiting_transfer_count:
           type: integer
           minimum: 0
-          description: Bukti tiket menunggu lebih dari 2 hari kerja; dieskalasi, bukan dibatalkan otomatis (D5, PRD 3.9).
-        awaiting_proof_count:
+          description: |
+            Payment pending yang belum memiliki bukti (= AdminPaymentSummary.awaiting_transfer_count; informasi,
+            bukan antrean keputusan).
+        adjustments_pending_count:
           type: integer
           minimum: 0
-          description: Payment pending yang belum memiliki bukti (informasi, bukan antrean admin).
+          description: Penyesuaian refund/koreksi berstatus pending (= AdminPaymentSummary.adjustments_pending_count, D6).
+        adjustments_overdue_count:
+          type: integer
+          minimum: 0
+          description: |
+            Penyesuaian pending yang lewat `due_at` (= AdminPaymentSummary.adjustments_overdue_count, D6); bagian
+            "antrean terlambat" PRD 3.15.
         paid_total_amount:
           $ref: "#/components/schemas/Money"
           description: Kartu "Total Transaksi" - jumlah bruto seluruh payment paid, sebelum penyesuaian/refund.
@@ -330,12 +382,10 @@ components:
 
     AdminNavBadges:
       type: object
-      description: Field hanya ada bila izinnya dimiliki (AC F15-1).
+      description: |
+        Field hanya ada bila izinnya dimiliki (AC F15-1). Lencana pembayaran sengaja tidak ada di sini; sumber
+        tunggalnya GET /admin/payments/summary.
       properties:
-        payments_awaiting_review:
-          type: integer
-          minimum: 0
-          description: payments.read; sama dengan payments.awaiting_review_count.
         reports_open:
           type: integer
           minimum: 0
