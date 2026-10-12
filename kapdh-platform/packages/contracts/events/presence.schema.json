@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kapdh.or.id/contracts/events/presence.schema.json",
   "title": "PresencePayload",
-  "description": "Kehadiran sementara anggota (F-11). entity_id = user_id anggota. Dihitung dari emit klien `presence.ping` dan koneksi socket; dikirim (dibatasi laju) ke anggota room yang sama dengan pengguna itu, tidak antara pasangan yang saling memblokir. online berlaku selama ttl_seconds tanpa ping baru; offline memakai ttl_seconds 0. Presence bukan bukti pesan dibaca (PRD 3.11).",
+  "description": "Kehadiran sementara anggota (F-11). entity_id = user_id anggota. Dihitung dari emit klien `presence.ping` dan koneksi socket; dikirim (dibatasi laju) ke anggota room yang sama dengan pengguna itu, tidak antara pasangan yang saling memblokir. Hanya pengguna berstatus aktif (verified/expiring, tidak suspended) yang disiarkan online; pengguna yang menjadi expired/suspended disiarkan offline (ttl_seconds 0) saat langganan room-nya dicabut. online berlaku selama ttl_seconds tanpa ping baru; offline memakai ttl_seconds 0. Presence bukan bukti pesan dibaca (PRD 3.11).",
   "type": "object",
   "required": ["user_id", "status", "ttl_seconds"],
   "additionalProperties": false,
