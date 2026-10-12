@@ -52,6 +52,25 @@ describe("PRD 5.2: pemetaan galat ke format baku", () => {
     expect(res.json().message).not.toContain("JSON");
   });
 
+  it("header application/json dengan body kosong diperlakukan sebagai tanpa body (bukan galat parser)", async () => {
+    const res = await t.app.inject({
+      method: "POST",
+      url: "/api/v1/__probe/echo",
+      headers: { "content-type": "application/json; charset=utf-8" },
+      payload: "",
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ code: "VALIDATION_ERROR", field_errors: { name: expect.any(Array) } });
+    const poisoned = await t.app.inject({
+      method: "POST",
+      url: "/api/v1/__probe/echo",
+      headers: { "content-type": "application/json" },
+      payload: '{"name":"ab","__proto__":{"admin":true}}',
+    });
+    expect(poisoned.statusCode).toBe(400);
+    expect(poisoned.json().code).toBe("VALIDATION_ERROR");
+  });
+
   it("validasi zod → field_errors berkunci path bertitik", async () => {
     const res = await api.post("/__probe/echo", { name: "a", nested: { n: "x" } });
     expect(res.statusCode).toBe(400);
