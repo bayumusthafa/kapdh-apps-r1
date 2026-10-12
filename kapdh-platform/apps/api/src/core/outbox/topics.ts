@@ -20,7 +20,14 @@ export const OUTBOX_TOPICS = {
   "admin.security_notice": z
     .object({
       admin_id: id,
-      kind: z.enum(["invited", "permissions_changed", "disabled", "role_changed", "mfa_reset", "password_changed"]),
+      kind: z.enum([
+        "invited",
+        "permissions_changed",
+        "disabled",
+        "role_changed",
+        "mfa_reset",
+        "password_changed",
+      ]),
     })
     .strict(),
   /** Super Admin memulai pemulihan sandi alumni → notifikasi keamanan ke kanal terverifikasi (AC F16-4). */

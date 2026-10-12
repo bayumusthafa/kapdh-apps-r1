@@ -81,7 +81,8 @@ export class MemoryRateLimitStore implements RateLimitStore {
     const bucket = this.buckets.get(key) ?? { hits: [], windowMs };
     bucket.windowMs = Math.max(bucket.windowMs, windowMs);
     bucket.hits.push(nowMs);
-    if (bucket.hits.length > 1 && bucket.hits[bucket.hits.length - 2]! > nowMs) bucket.hits.sort((a, b) => a - b);
+    if (bucket.hits.length > 1 && bucket.hits[bucket.hits.length - 2]! > nowMs)
+      bucket.hits.sort((a, b) => a - b);
     if (bucket.hits.length > MAX_HITS_PER_KEY) bucket.hits.splice(0, bucket.hits.length - MAX_HITS_PER_KEY);
     this.buckets.set(key, bucket);
   }

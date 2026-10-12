@@ -25,7 +25,10 @@ const GENERIC: Record<number, { code: ErrorCode; message: string }> = {
   406: { code: "VALIDATION_ERROR", message: "Format respons yang diminta tidak didukung." },
   409: { code: "VERSION_CONFLICT", message: "Data sudah berubah. Muat ulang lalu coba lagi." },
   413: { code: "VALIDATION_ERROR", message: "Isi permintaan terlalu besar." },
-  415: { code: "VALIDATION_ERROR", message: "Tipe konten tidak didukung. Kirim data sebagai application/json." },
+  415: {
+    code: "VALIDATION_ERROR",
+    message: "Tipe konten tidak didukung. Kirim data sebagai application/json.",
+  },
   422: { code: "VALIDATION_ERROR", message: "Permintaan tidak dapat diproses. Periksa kembali isian Anda." },
   426: { code: "UPGRADE_REQUIRED", message: "Versi aplikasi tidak lagi didukung. Perbarui aplikasi." },
   429: { code: "RATE_LIMITED", message: "Terlalu banyak percobaan. Coba lagi nanti." },
@@ -52,7 +55,10 @@ function isMultipart(request: FastifyRequest | undefined): boolean {
 export class ErrorFilter implements ExceptionFilter {
   constructor(@Inject(ROOT_LOGGER) private readonly logger: Logger) {}
 
-  toBody(exception: unknown, request?: FastifyRequest): { status: number; body: Omit<ErrorBody, "request_id"> } {
+  toBody(
+    exception: unknown,
+    request?: FastifyRequest,
+  ): { status: number; body: Omit<ErrorBody, "request_id"> } {
     if (exception instanceof AppException) {
       const { fieldErrors, retryAfterSeconds, current } = exception.extra;
       return {
@@ -85,7 +91,8 @@ export class ErrorFilter implements ExceptionFilter {
     if (type !== "http") {
       // Gateway Socket.IO (ARCHITECTURE §4.9): kirim galat baku ke klien socket, jangan melempar ulang.
       const { status, body } = this.toBody(exception);
-      if (status >= 500) this.logger.error({ error: safeError(exception), ...this.correlation() }, "galat realtime");
+      if (status >= 500)
+        this.logger.error({ error: safeError(exception), ...this.correlation() }, "galat realtime");
       const client = host.switchToWs().getClient<{ emit?: (event: string, data: unknown) => void }>();
       client?.emit?.("exception", { ...body, request_id: tryCtx()?.requestId ?? null });
       return;

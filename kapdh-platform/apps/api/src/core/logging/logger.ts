@@ -2,7 +2,7 @@ import { Inject, Injectable, type LoggerService } from "@nestjs/common";
 import { type DestinationStream, type Logger, pino } from "pino";
 import { tryCtx } from "../context/request-context.js";
 import { ROOT_LOGGER } from "../tokens.js";
-import { safeError } from "./safe-error.js";
+import { safeError, serializeError } from "./safe-error.js";
 
 /**
  * Logger JSON pino (ARCHITECTURE §4.2, N-14): level dari LOG_LEVEL, request_id/job_id terikat, dan redaksi kunci
@@ -32,9 +32,32 @@ export const REDACTED_KEYS = [
   "reauth_token",
   "reset_token",
   "invite_token",
+  "invite_token_hash",
   "token",
   "secret",
+  "secret_encrypted",
+  "backup_code_hashes",
   "private_key",
+  "push_token",
+  "fcm_token",
+  // Varian camelCase untuk objek internal (baris Drizzle, DTO) yang tidak sengaja ikut dicatat.
+  "passwordHash",
+  "newPassword",
+  "currentPassword",
+  "codeHmac",
+  "totpCode",
+  "backupCode",
+  "backupCodeHashes",
+  "secretEncrypted",
+  "mfaToken",
+  "accessToken",
+  "refreshToken",
+  "refreshHash",
+  "reauthToken",
+  "inviteToken",
+  "inviteTokenHash",
+  "pushToken",
+  "privateKey",
 ] as const;
 
 const REDACT_DEPTH = 4;
@@ -90,8 +113,8 @@ export function createRootLogger(options: RootLoggerOptions): Logger {
       serializers: {
         req: requestSerializer,
         res: responseSerializer,
-        err: safeError,
-        error: safeError,
+        err: serializeError,
+        error: serializeError,
       },
     },
     options.destination,
@@ -102,7 +125,9 @@ export function createRootLogger(options: RootLoggerOptions): Logger {
 function contextBindings(): Record<string, string> {
   const context = tryCtx();
   if (!context) return {};
-  return context.jobId ? { request_id: context.requestId, job_id: context.jobId } : { request_id: context.requestId };
+  return context.jobId
+    ? { request_id: context.requestId, job_id: context.jobId }
+    : { request_id: context.requestId };
 }
 
 type Level = "fatal" | "error" | "warn" | "info" | "debug" | "trace";
@@ -170,7 +195,11 @@ export class NestPinoLogger implements LoggerService {
     this.write("info", message, optional);
   }
   error(message: unknown, ...optional: unknown[]) {
-    this.write("error", message, optional.length > 1 ? optional.slice(-1) : optional.filter((o) => !isStack(o)));
+    this.write(
+      "error",
+      message,
+      optional.length > 1 ? optional.slice(-1) : optional.filter((o) => !isStack(o)),
+    );
   }
   warn(message: unknown, ...optional: unknown[]) {
     this.write("warn", message, optional);

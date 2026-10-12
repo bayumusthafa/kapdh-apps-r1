@@ -24,7 +24,11 @@ describe("PRD 4.5: mode maintenance menolak mutasi (503 MAINTENANCE)", () => {
     await setSetting(t, "maintenance", { active: true, message: "Pemeliharaan server malam ini.", until });
     const res = await api.post("/auth/login", { email: "x@contoh.test", password: DEFAULT_PASSWORD });
     expect(res.statusCode).toBe(503);
-    expect(res.json()).toMatchObject({ code: "MAINTENANCE", message: "Pemeliharaan server malam ini.", retry_after_seconds: 1800 });
+    expect(res.json()).toMatchObject({
+      code: "MAINTENANCE",
+      message: "Pemeliharaan server malam ini.",
+      retry_after_seconds: 1800,
+    });
     expect(res.headers["retry-after"]).toBe("1800");
     expect((await api.post("/auth/register", {})).statusCode).toBe(503);
   });
@@ -41,10 +45,19 @@ describe("PRD 4.5: mode maintenance menolak mutasi (503 MAINTENANCE)", () => {
     const member = await createAlumni(t, { status: "verified" });
     const session = await signInAlumni(t, member);
     await setSetting(t, "maintenance", { active: true, message: null, until: null });
-    expect((await api.post("/auth/refresh", { refresh_token: session.refreshToken })).statusCode).toBe(200);
-    expect((await api.post("/admin/auth/login", { email: "admin@contoh.test", password: "Salah#2026" })).statusCode).toBe(401);
+    const refreshed = await api.post("/auth/refresh", { refresh_token: session.refreshToken });
+    expect(refreshed.statusCode).toBe(200);
+    expect(
+      (await api.post("/admin/auth/login", { email: "admin@contoh.test", password: "Salah#2026" }))
+        .statusCode,
+    ).toBe(401);
     expect((await api.post("/public/kta/verify", {})).statusCode).not.toBe(503);
-    expect((await api.post("/auth/logout", {}, { token: session.accessToken })).statusCode).toBe(204);
+    // Refresh merotasi sesi (AC F02-3): logout memakai access token sesi baru.
+    expect((await api.post("/auth/logout", {}, { token: refreshed.json().access_token })).statusCode).toBe(
+      204,
+    );
+    // Mutasi lain tetap ditolak selama maintenance.
+    expect((await api.post("/auth/otp/resend", { challenge_id: session.refreshToken })).statusCode).toBe(503);
   });
 });
 
@@ -56,7 +69,10 @@ describe("PRD 4.5: gerbang versi aplikasi minimum (426 UPGRADE_REQUIRED)", () =>
     t = await createTestApp({ extraModules: [ProbeModule] });
     api = httpClient(t.app);
     await setSetting(t, "min_app_version", { android: "1.2.0", ios: "1.1.0" });
-    await setSetting(t, "store_links", { android: "https://play.google.com/store/apps/details?id=id.or.kapdh", ios: null });
+    await setSetting(t, "store_links", {
+      android: "https://play.google.com/store/apps/details?id=id.or.kapdh",
+      ios: null,
+    });
   });
   afterAll(async () => {
     await t.app.close();
@@ -68,11 +84,19 @@ describe("PRD 4.5: gerbang versi aplikasi minimum (426 UPGRADE_REQUIRED)", () =>
   });
 
   it("mutasi dari versi di bawah minimum ditolak dengan tautan toko", async () => {
-    const res = await api.post("/auth/login", { email: "x@contoh.test", password: DEFAULT_PASSWORD }, { headers: app("android", "1.1.9") });
+    const res = await api.post(
+      "/auth/login",
+      { email: "x@contoh.test", password: DEFAULT_PASSWORD },
+      { headers: app("android", "1.1.9") },
+    );
     expect(res.statusCode).toBe(426);
     expect(res.json()).toMatchObject({
       code: "UPGRADE_REQUIRED",
-      current: { platform: "android", min_version: "1.2.0", store_url: "https://play.google.com/store/apps/details?id=id.or.kapdh" },
+      current: {
+        platform: "android",
+        min_version: "1.2.0",
+        store_url: "https://play.google.com/store/apps/details?id=id.or.kapdh",
+      },
     });
   });
 
@@ -80,7 +104,9 @@ describe("PRD 4.5: gerbang versi aplikasi minimum (426 UPGRADE_REQUIRED)", () =>
     const body = { email: "x@contoh.test", password: "Salah#2026" };
     expect((await api.post("/auth/login", body, { headers: app("android", "1.2.0") })).statusCode).toBe(401);
     expect((await api.post("/auth/login", body, { headers: app("ios", "1.1.0") })).statusCode).toBe(401);
-    expect((await api.post("/auth/login", body, { headers: app("ios", "2.0.0-beta.1") })).statusCode).toBe(401);
+    expect((await api.post("/auth/login", body, { headers: app("ios", "2.0.0-beta.1") })).statusCode).toBe(
+      401,
+    );
     // Web admin/situs publik tidak mengirim X-App-Platform: tidak ada gerbang versi.
     expect((await api.post("/auth/login", body)).statusCode).toBe(401);
   });
@@ -89,14 +115,20 @@ describe("PRD 4.5: gerbang versi aplikasi minimum (426 UPGRADE_REQUIRED)", () =>
     const body = { email: "x@contoh.test", password: "Salah#2026" };
     expect((await api.post("/auth/login", body, { headers: app("android", "abc") })).statusCode).toBe(426);
     expect((await api.post("/auth/login", body, { headers: app("ios") })).statusCode).toBe(426);
-    expect((await api.post("/auth/login", body, { headers: app("android", "1.1.0-rc.9") })).statusCode).toBe(426);
+    expect((await api.post("/auth/login", body, { headers: app("android", "1.1.0-rc.9") })).statusCode).toBe(
+      426,
+    );
   });
 
   it("baca dan logout dari versi lama tetap diproses", async () => {
     expect((await api.get("/public/config", { headers: app("android", "0.9.0") })).statusCode).toBe(200);
     const member = await createAlumni(t, { status: "verified" });
     const session = await signInAlumni(t, member);
-    const logout = await api.post("/auth/logout", {}, { token: session.accessToken, headers: app("android", "0.9.0") });
+    const logout = await api.post(
+      "/auth/logout",
+      {},
+      { token: session.accessToken, headers: app("android", "0.9.0") },
+    );
     expect(logout.statusCode).toBe(204);
   });
 });
@@ -105,7 +137,9 @@ describe("PRD 2.5: TRUST_PROXY_HOPS menentukan req.ip (X-Forwarded-For klien tid
   it("TRUST_PROXY_HOPS=0: X-Forwarded-For diabaikan", async () => {
     const t = await createTestApp({ extraModules: [ProbeModule] });
     try {
-      const res = await httpClient(t.app).get("/__probe/public", { headers: { "x-forwarded-for": "203.0.113.9" } });
+      const res = await httpClient(t.app).get("/__probe/public", {
+        headers: { "x-forwarded-for": "203.0.113.9" },
+      });
       expect(res.json().ip).toBe("127.0.0.1");
     } finally {
       await t.app.close();
@@ -160,7 +194,9 @@ describe("N-14: konteks request", () => {
       expect(body.client_request_id).toBe("klien-abc-123");
       expect(body.app_platform).toBe("android");
       expect(body.app_version).toBe("1.0.3");
-      const weird = await httpClient(t.app).get("/__probe/public", { headers: { "x-request-id": "a b<script>" } });
+      const weird = await httpClient(t.app).get("/__probe/public", {
+        headers: { "x-request-id": "a b<script>" },
+      });
       expect(weird.json().client_request_id).toBeNull();
     } finally {
       await t.app.close();

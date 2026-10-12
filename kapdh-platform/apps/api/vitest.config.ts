@@ -13,6 +13,9 @@ export default defineConfig({
     environment: "node",
     globalSetup: ["test/support/pglite-template.ts"],
     setupFiles: ["test/support/setup.ts"],
+    // PGlite (WASM) + bcrypt di banyak berkas paralel: startup aplikasi uji bisa melewati 10 detik bawaan.
+    hookTimeout: 60_000,
+    testTimeout: 30_000,
   },
   plugins: [swc.vite({ module: { type: "es6" } })],
 });

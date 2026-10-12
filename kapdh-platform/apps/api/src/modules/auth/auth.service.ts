@@ -83,9 +83,14 @@ const otpExpired = (message = "Kode tidak berlaku lagi. Minta kode baru.") =>
   new AppException(410, "OTP_EXPIRED", message);
 
 const emailTaken = () =>
-  new AppException(409, "VALIDATION_ERROR", "Email sudah terdaftar. Silakan masuk atau gunakan lupa password.", {
-    fieldErrors: { email: ["Email sudah terdaftar"] },
-  });
+  new AppException(
+    409,
+    "VALIDATION_ERROR",
+    "Email sudah terdaftar. Silakan masuk atau gunakan lupa password.",
+    {
+      fieldErrors: { email: ["Email sudah terdaftar"] },
+    },
+  );
 
 /** Penanda internal kode MFA salah; diubah menjadi 401 setelah transaksi dibatalkan. */
 class InvalidMfaCode extends Error {}
@@ -128,7 +133,8 @@ export class AuthService {
 
   private toChallenge(row: OtpRow, email: string): OtpChallenge {
     // Tujuan email_change (koreksi email, PRD 2.2) belum memiliki alur dan bentuk kontrak di irisan ini.
-    if (row.purpose === "email_change") throw new AppException(400, "VALIDATION_ERROR", "Tujuan kode belum didukung.");
+    if (row.purpose === "email_change")
+      throw new AppException(400, "VALIDATION_ERROR", "Tujuan kode belum didukung.");
     return {
       challenge_id: row.id,
       purpose: row.purpose,
@@ -240,7 +246,12 @@ export class AuthService {
         if (!current || current.consumedAt || current.supersededAt)
           throw otpExpired("Kode ini sudah diganti kode yang lebih baru.");
       }
-      return this.createChallenge(tx, { id: locked.id, email: locked.email, passwordHash: locked.passwordHash }, purpose, now);
+      return this.createChallenge(
+        tx,
+        { id: locked.id, email: locked.email, passwordHash: locked.passwordHash },
+        purpose,
+        now,
+      );
     });
     await this.mailer.sendOtp(user.email, issued.code, purpose);
     return this.toChallenge(issued.row, user.email);
@@ -293,7 +304,10 @@ export class AuthService {
             : await bcrypt.compare(input.password, locked.passwordHash);
         const active = await this.activeChallenge(tx, locked.id, "signup", now);
         const reusable =
-          same && active && active.binding === sha256(locked.passwordHash) && active.attempts < OTP_MAX_ATTEMPTS;
+          same &&
+          active &&
+          active.binding === sha256(locked.passwordHash) &&
+          active.attempts < OTP_MAX_ATTEMPTS;
         if (!reusable && active && active.resendAvailableAt > now) {
           const wait = Math.ceil((active.resendAvailableAt.getTime() - now.getTime()) / 1000);
           throw new AppException(429, "RATE_LIMITED", `Kirim ulang tersedia dalam ${wait} detik.`, {
@@ -301,7 +315,9 @@ export class AuthService {
           });
         }
         await tx.update(alumni).set(this.alumniProfile(input, now)).where(eq(alumni.userId, locked.id));
-        const passwordHash = same ? locked.passwordHash : (newHash ?? (await bcrypt.hash(input.password, this.env.BCRYPT_COST)));
+        const passwordHash = same
+          ? locked.passwordHash
+          : (newHash ?? (await bcrypt.hash(input.password, this.env.BCRYPT_COST)));
         await tx
           .update(users)
           .set({ ...policy, passwordHash })
@@ -313,7 +329,8 @@ export class AuthService {
       return this.toChallenge(outcome.row, email);
     } catch (e) {
       // Registrasi baru bersamaan: pemenang membuat akun; yang kalah melanjutkan akun itu (AC F01-4).
-      if (!existing && attempt === 0 && isUniqueViolation(e, "users_kind_email_key")) return this.register(input, 1);
+      if (!existing && attempt === 0 && isUniqueViolation(e, "users_kind_email_key"))
+        return this.register(input, 1);
       throw e;
     }
   }
@@ -464,7 +481,8 @@ export class AuthService {
   private async assertLoginAllowed(email: string, ip: string | null) {
     const message = "Terlalu banyak percobaan masuk. Coba lagi nanti atau gunakan lupa password.";
     await this.limits.assertNotLimited(`login:${email}`, LOGIN_FAILS_LIMIT, LOGIN_WINDOW_MS, message);
-    if (ip) await this.limits.assertNotLimited(`login-ip:${ip}`, LOGIN_FAILS_LIMIT * 5, LOGIN_WINDOW_MS, message);
+    if (ip)
+      await this.limits.assertNotLimited(`login-ip:${ip}`, LOGIN_FAILS_LIMIT * 5, LOGIN_WINDOW_MS, message);
   }
 
   private async recordLoginFailure(email: string, ip: string | null) {
@@ -489,7 +507,9 @@ export class AuthService {
       !!user &&
       !tooLong &&
       matches &&
-      (kind === "alumni" ? user.status === "active" || user.status === "pending_otp" : user.status === "active");
+      (kind === "alumni"
+        ? user.status === "active" || user.status === "pending_otp"
+        : user.status === "active");
     if (!user || !allowed) {
       await this.recordLoginFailure(email, ip);
       throw unauthenticated("Email atau password salah.");
@@ -591,7 +611,11 @@ export class AuthService {
       throw unauth;
     }
     const user = await this.db.query.users.findFirst({ where: eq(users.id, current.userId) });
-    if (!user || user.status !== "active" || user.kind !== (expectedAudience === "admin" ? "admin" : "alumni"))
+    if (
+      !user ||
+      user.status !== "active" ||
+      user.kind !== (expectedAudience === "admin" ? "admin" : "alumni")
+    )
       throw unauth;
     if (expectedAudience === "admin") {
       const admin = await this.db.query.admins.findFirst({ where: eq(admins.userId, user.id) });
@@ -698,14 +722,28 @@ export class AuthService {
         const [totpRow] = await tx.select().from(mfaTotp).where(eq(mfaTotp.userId, userId)).for("update");
         const user = await tx.query.users.findFirst({ where: eq(users.id, userId) });
         const admin = await tx.query.admins.findFirst({ where: eq(admins.userId, userId) });
-        if (!totpRow?.verifiedAt || !user || user.status !== "active" || user.kind !== "admin" || admin?.status !== "active")
+        if (
+          !totpRow?.verifiedAt ||
+          !user ||
+          user.status !== "active" ||
+          user.kind !== "admin" ||
+          admin?.status !== "active"
+        )
           throw new InvalidMfaCode();
 
         let method: "totp" | "backup_code";
         if (totpCode) {
-          const step = matchTotpStep(decryptSecret(totpRow.secretEncrypted, this.env.TOTP_ENC_KEY), totpCode, now);
-          if (step === null || (totpRow.lastUsedStep !== null && step <= totpRow.lastUsedStep)) throw new InvalidMfaCode();
-          await tx.update(mfaTotp).set({ lastUsedStep: step, updatedAt: now }).where(eq(mfaTotp.userId, userId));
+          const step = matchTotpStep(
+            decryptSecret(totpRow.secretEncrypted, this.env.TOTP_ENC_KEY),
+            totpCode,
+            now,
+          );
+          if (step === null || (totpRow.lastUsedStep !== null && step <= totpRow.lastUsedStep))
+            throw new InvalidMfaCode();
+          await tx
+            .update(mfaTotp)
+            .set({ lastUsedStep: step, updatedAt: now })
+            .where(eq(mfaTotp.userId, userId));
           method = "totp";
         } else if (backupCode) {
           const hash = backupCodeHash(this.env.OTP_HMAC_SECRET, backupCode);
@@ -713,7 +751,10 @@ export class AuthService {
             .update(mfaTotp)
             .set({ backupCodeHashes: sql`${mfaTotp.backupCodeHashes} - ${hash}::text`, updatedAt: now })
             .where(
-              and(eq(mfaTotp.userId, userId), sql`${mfaTotp.backupCodeHashes} @> ${JSON.stringify([hash])}::jsonb`),
+              and(
+                eq(mfaTotp.userId, userId),
+                sql`${mfaTotp.backupCodeHashes} @> ${JSON.stringify([hash])}::jsonb`,
+              ),
             )
             .returning({ userId: mfaTotp.userId });
           if (consumed.length === 0) throw new InvalidMfaCode();
@@ -742,7 +783,8 @@ export class AuthService {
   /** Profil admin dari AuthContext yang dievaluasi guard pada request ini (izin dari database, AC F16-3). */
   async adminProfile(auth: AuthContext) {
     const admin = await this.db.query.admins.findFirst({ where: eq(admins.id, auth.adminId!) });
-    if (!admin || admin.status !== "active") throw new AppException(403, "FORBIDDEN", "Akun admin tidak aktif.");
+    if (!admin || admin.status !== "active")
+      throw new AppException(403, "FORBIDDEN", "Akun admin tidak aktif.");
     return {
       admin_id: admin.id,
       display_name: admin.displayName,

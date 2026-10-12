@@ -29,7 +29,10 @@ export interface OutboxEventMeta {
   requestId: string | null;
 }
 
-export type TopicHandler<T extends OutboxTopic> = (payload: OutboxPayload<T>, event: OutboxEventMeta) => Promise<void>;
+export type TopicHandler<T extends OutboxTopic> = (
+  payload: OutboxPayload<T>,
+  event: OutboxEventMeta,
+) => Promise<void>;
 
 @Injectable()
 export class JobRegistry {
@@ -37,7 +40,8 @@ export class JobRegistry {
   private readonly handlers = new Map<OutboxTopic, TopicHandler<OutboxTopic>>();
 
   registerScheduled(job: ScheduledJob): void {
-    if (!/^[a-z][a-z0-9_-]*(\.[a-z0-9_-]+)+$/.test(job.name)) throw new Error(`Nama job tidak valid: ${job.name}`);
+    if (!/^[a-z][a-z0-9_-]*(\.[a-z0-9_-]+)+$/.test(job.name))
+      throw new Error(`Nama job tidak valid: ${job.name}`);
     if (job.intervalMs < 1000) throw new Error(`Interval job ${job.name} minimal 1 detik`);
     if (this.scheduled.has(job.name)) throw new Error(`Job ${job.name} sudah terdaftar`);
     this.scheduled.set(job.name, job);

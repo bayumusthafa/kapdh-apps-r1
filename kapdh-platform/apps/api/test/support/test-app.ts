@@ -78,6 +78,8 @@ export interface TestAppOptions {
   /** Menimpa sebagian env uji (mis. TRUST_PROXY_HOPS, HSTS_ENABLED). */
   env?: Partial<ApiEnv>;
   clock?: TestClock;
+  /** Storage pengganti (mis. MemoryStorage yang dibuat gagal untuk menguji readiness). */
+  storage?: MemoryStorage;
   /** Modul tambahan (controller penguji). Rute di luar kontrak hanya untuk aplikasi uji khusus. */
   extraModules?: (Type | DynamicModule)[];
   /** Tujuan log JSON; tanpa nilai log dimatikan. */
@@ -116,7 +118,7 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
   const mailer = new MemoryMailer();
   const clock = options.clock ?? new TestClock();
   const push = new FakePush();
-  const storage = new MemoryStorage();
+  const storage = options.storage ?? new MemoryStorage();
   const rateLimits = new MemoryRateLimitStore();
   const app = await createApp(
     { env, db, mailer, clock, push, storage, redis: null },

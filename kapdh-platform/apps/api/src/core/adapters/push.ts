@@ -93,7 +93,10 @@ export function classifyFcmError(
 const FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
-type FetchLike = (input: string, init: { method: string; headers: Record<string, string>; body: string }) => Promise<{
+type FetchLike = (
+  input: string,
+  init: { method: string; headers: Record<string, string>; body: string },
+) => Promise<{
   status: number;
   headers: { get(name: string): string | null };
   json(): Promise<unknown>;
@@ -171,11 +174,14 @@ export class FcmPushSender implements PushSender {
     };
     try {
       const res = await Promise.race([
-        this.fetchImpl(`https://fcm.googleapis.com/v1/projects/${encodeURIComponent(this.projectId)}/messages:send`, {
-          method: "POST",
-          headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
-          body: JSON.stringify(payload),
-        }),
+        this.fetchImpl(
+          `https://fcm.googleapis.com/v1/projects/${encodeURIComponent(this.projectId)}/messages:send`,
+          {
+            method: "POST",
+            headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        ),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("timeout FCM")), this.timeoutMs).unref(),
         ),
@@ -189,7 +195,9 @@ export class FcmPushSender implements PushSender {
       const errorCode = body.error?.details?.find((d) => d.errorCode)?.errorCode ?? body.error?.status;
       const result = classifyFcmError(res.status, errorCode);
       const retryAfter = Number(res.headers.get("retry-after"));
-      return Number.isFinite(retryAfter) && retryAfter > 0 ? { ...result, retryAfterSeconds: retryAfter } : result;
+      return Number.isFinite(retryAfter) && retryAfter > 0
+        ? { ...result, retryAfterSeconds: retryAfter }
+        : result;
     } catch {
       return { ok: false, errorClass: "network", retryable: true, deactivateToken: false };
     }
@@ -197,7 +205,10 @@ export class FcmPushSender implements PushSender {
 }
 
 /** Memilih pengirim push dari env: FCM bila dikonfigurasi, selain itu nonaktif (config mewajibkan FCM di production). */
-export function createPushSender(env: { FCM_PROJECT_ID?: string; FCM_SERVICE_ACCOUNT_JSON?: string }): PushSender {
+export function createPushSender(env: {
+  FCM_PROJECT_ID?: string;
+  FCM_SERVICE_ACCOUNT_JSON?: string;
+}): PushSender {
   if (env.FCM_PROJECT_ID && env.FCM_SERVICE_ACCOUNT_JSON)
     return new FcmPushSender(env.FCM_PROJECT_ID, env.FCM_SERVICE_ACCOUNT_JSON);
   return new DisabledPush();

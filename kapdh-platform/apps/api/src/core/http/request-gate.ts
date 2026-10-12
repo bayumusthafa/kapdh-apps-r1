@@ -69,7 +69,8 @@ export class RequestGate {
         throw new AppException(
           503,
           "MAINTENANCE",
-          maintenance.message ?? "Layanan sedang dalam pemeliharaan terjadwal. Perubahan data dijeda sementara.",
+          maintenance.message ??
+            "Layanan sedang dalam pemeliharaan terjadwal. Perubahan data dijeda sementara.",
           wait > 0 ? { retryAfterSeconds: wait } : {},
         );
       }
@@ -80,9 +81,18 @@ export class RequestGate {
       const version = request.appVersion ? semver.valid(request.appVersion.trim()) : null;
       if (!version || semver.lt(version, minimum)) {
         const storeLinks = await this.settings.get("store_links");
-        throw new AppException(426, "UPGRADE_REQUIRED", "Versi aplikasi tidak lagi didukung. Perbarui aplikasi untuk melanjutkan.", {
-          current: { platform: request.appPlatform, min_version: minimum, store_url: storeLinks[request.appPlatform] },
-        });
+        throw new AppException(
+          426,
+          "UPGRADE_REQUIRED",
+          "Versi aplikasi tidak lagi didukung. Perbarui aplikasi untuk melanjutkan.",
+          {
+            current: {
+              platform: request.appPlatform,
+              min_version: minimum,
+              store_url: storeLinks[request.appPlatform],
+            },
+          },
+        );
       }
     }
   }
