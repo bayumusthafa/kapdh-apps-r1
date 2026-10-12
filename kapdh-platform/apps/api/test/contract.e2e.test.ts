@@ -138,9 +138,14 @@ describe("kesesuaian kontrak OpenAPI irisan Auth", () => {
       status: "active",
       kind: "admin",
     });
-    await db
-      .insert(admins)
-      .values({ id: uuidv7(), userId, displayName: "Bayu Musthafa", role: "super_admin" });
+    await db.insert(admins).values({
+      id: uuidv7(),
+      userId,
+      displayName: "Bayu Musthafa",
+      role: "super_admin",
+      status: "active",
+      activatedAt: new Date(),
+    });
     await db.insert(mfaTotp).values({
       userId,
       secretEncrypted: encryptSecret(secret, testEnv.TOTP_ENC_KEY),
