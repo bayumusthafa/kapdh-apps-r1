@@ -18,7 +18,8 @@ paths:
         Kegagalan kanal ditampilkan ke pengurus untuk retry yang terkendali (F-13, PRD 4.5). Status `sent` berarti
         diterima provider (misalnya FCM accepted), bukan jaminan dibaca perangkat (F-13). `error_class` memakai
         klasifikasi worker (FCM: UNREGISTERED, INVALID_ARGUMENT, SENDER_ID_MISMATCH, QUOTA_EXCEEDED, UNAVAILABLE,
-        INTERNAL; email: bounce_hard, bounce_soft, rejected, timeout). UNREGISTERED menonaktifkan token, sedangkan
+        INTERNAL; email: bounce_hard, bounce_soft, rejected, timeout; pembatalan sisi server: token_revoked,
+        token_reassigned, preference_disabled). UNREGISTERED menonaktifkan token, sedangkan
         429/5xx memakai retry dengan backoff otomatis (AC F13-4). `from` inklusif dan `to` eksklusif terhadap
         created_at. `total` mengikuti filter. Tanpa notifications.manage ditolak 403 (AC F15-1).
       x-kapdh-access: { audience: admin, permissions: [notifications.manage] }
@@ -83,11 +84,15 @@ paths:
       summary: Jadwalkan ulang pengiriman yang gagal secara terkendali (izin notifications.manage, AC F13-4).
       description: |
         Untuk 1..100 pengiriman sekaligus (satu baris atau setelah gangguan provider). Hanya pengiriman `failed`
-        yang dijadwalkan ulang, dengan UPDATE bersyarat `WHERE status = 'failed'`: status menjadi `pending`,
-        next_retry_at = sekarang, attempt tetap (riwayat percobaan terlihat). Pengiriman dilewati, bukan galat,
-        bila: tidak ditemukan, statusnya bukan failed (sudah dikirim ulang admin lain atau worker), token push
-        sudah dicabut (UNREGISTERED atau logout, AC F13-4/F13-5), penerima sudah dihapus/dinonaktifkan, atau
-        preferensi kategori/kanal kini dimatikan (F-13). Kotak masuk tidak pernah diduplikasi (AC F13-1). Retry
+        yang dijadwalkan ulang, dengan UPDATE bersyarat `WHERE status = 'failed'` yang untuk push juga mensyaratkan
+        token masih milik penerima notifikasi (`device_tokens.revoked_at IS NULL AND device_tokens.user_id =
+        notifications.user_id`, dievaluasi dalam statement yang sama): status menjadi `pending`, next_retry_at =
+        sekarang, attempt tetap (riwayat percobaan terlihat). Pengiriman dilewati, bukan galat, bila: tidak
+        ditemukan, statusnya bukan failed (sudah dikirim ulang admin lain atau worker), token push sudah dicabut
+        (UNREGISTERED atau logout, AC F13-4/F13-5), token sudah berpindah ke akun atau sesi lain sehingga isi
+        notifikasi akun lama tidak boleh dikirim ke perangkat itu (`token_reassigned`, AC F13-5), penerima sudah
+        dihapus/dinonaktifkan, atau preferensi kategori/kanal kini dimatikan (F-13). Worker memeriksa ulang syarat
+        kepemilikan token yang sama saat mengklaim pengiriman. Kotak masuk tidak pernah diduplikasi (AC F13-1). Retry
         diaudit `notification.delivery.retried` dalam transaksi yang sama (AC F17-1) dan dibatasi per admin
         (RATE_LIMITED). Idempotency-Key mencegah penjadwalan ganda saat klik ulang.
       x-kapdh-access: { audience: admin, permissions: [notifications.manage], idempotent: true }
@@ -213,8 +218,8 @@ components:
       description: |
         Status per kanal/perangkat (enum DB delivery_status): `pending` menunggu kirim atau retry terjadwal,
         `sent` diterima provider (bukan bukti dibaca), `failed` gagal permanen atau melewati batas retry,
-        `cancelled` dibatalkan (preferensi dimatikan, token dicabut, akun dihapus). Label UI: Menunggu, Terkirim,
-        Gagal, Dibatalkan.
+        `cancelled` dibatalkan (preferensi dimatikan, token dicabut, token berpindah ke akun/sesi lain, akun
+        dihapus). Label UI: Menunggu, Terkirim, Gagal, Dibatalkan.
 
     AdminDeliverySort:
       type: string
@@ -274,7 +279,9 @@ components:
             - type: "null"
         retryable:
           type: boolean
-          description: True bila status failed dan target masih sah (token aktif, penerima ada, preferensi aktif).
+          description: |
+            True bila status failed dan target masih sah: penerima ada, preferensi aktif, dan untuk push token belum
+            dicabut serta masih milik penerima notifikasi (device_tokens.user_id = notifications.user_id, AC F13-5).
 
     AdminNotificationDeliveryPage:
       type: object
@@ -299,8 +306,11 @@ components:
 
     AdminDeliveryRetrySkipReason:
       type: string
-      enum: [not_found, not_failed, token_revoked, recipient_unavailable, preference_disabled]
-      description: Alasan pengiriman tidak dijadwalkan ulang.
+      enum:
+        [not_found, not_failed, token_revoked, token_reassigned, recipient_unavailable, preference_disabled]
+      description: |
+        Alasan pengiriman tidak dijadwalkan ulang. `token_reassigned`: token perangkat kini terikat ke akun atau
+        sesi lain, sehingga isi notifikasi pemilik lama tidak boleh dikirim ke perangkat itu (AC F13-5).
 
     AdminDeliveryRetrySkip:
       type: object

@@ -174,10 +174,22 @@ paths:
         Upsert berdasarkan token (device_tokens_token_key). Token selalu diikat ke pengguna DAN sesi pemanggil:
         bila token yang sama sebelumnya milik akun atau sesi lain (logout lalu masuk akun lain di perangkat yang
         sama), token dipindahkan ke akun ini sehingga tidak lagi menerima notifikasi akun sebelumnya (AC F13-5).
+
+        Perpindahan pemilik dilakukan dalam SATU transaksi: baris device_tokens dikunci (SELECT ... FOR UPDATE);
+        bila user_id atau session_id berubah, seluruh pengiriman `pending` pada baris token itu dibatalkan
+        (status `cancelled`, error_class `token_reassigned`) SEBELUM token diikat ke pemanggil. Pengiriman
+        `failed` milik pemilik lama tetap sebagai riwayat tetapi tidak pernah dapat dikirim ulang ke perangkat
+        ini (adminRetryNotificationDeliveries melewatinya dengan alasan `token_reassigned`). Sebagai pertahanan
+        berlapis, worker hanya mengirim push bila pada saat klaim pengiriman (statement yang sama)
+        device_tokens.revoked_at IS NULL DAN device_tokens.user_id = notifications.user_id; selain itu pengiriman
+        dibatalkan tanpa dikirim. Judul dan isi notifikasi akun lama tidak pernah sampai ke akun baru (AC F13-5,
+        N-09).
+
         Pendaftaran ulang menghapus revoked_at, failure_class dan failure_count, memperbarui last_seen_at, dan
         mencabut token lain yang masih terikat ke sesi yang sama (token FCM yang diperbarui). Logout, logout-all,
-        pencabutan sesi dan penghapusan akun mencabut token yang terikat ke sesi tersebut di sisi server. Token
-        tidak pernah dicatat di log atau audit (ARCHITECTURE §2) dan tidak pernah dikembalikan API.
+        pencabutan sesi dan penghapusan akun mencabut token yang terikat ke sesi tersebut di sisi server dan
+        membatalkan pengiriman `pending`-nya (error_class `token_revoked`). Token tidak pernah dicatat di log atau
+        audit (ARCHITECTURE §2) dan tidak pernah dikembalikan API.
       x-kapdh-access: { audience: mobile, member_access: any }
       requestBody:
         required: true
@@ -200,9 +212,10 @@ paths:
       summary: Cabut token FCM perangkat ini, misalnya sebelum logout atau saat izin push dicabut (AC F13-5).
       description: |
         Token dikirim di body, bukan di path, agar tidak tercatat di log akses. Hanya token milik pemanggil yang
-        dicabut (revoked_at diisi); token yang tidak dikenal atau milik akun lain diabaikan dengan respons yang
-        sama (N-09). Pemanggilan berulang tetap 204. Logout tetap mencabut token sesi di server walaupun panggilan
-        ini gagal karena jaringan (AC F13-5).
+        dicabut (revoked_at diisi) dan, dalam transaksi yang sama, pengiriman `pending` pada token itu dibatalkan
+        (`cancelled`, error_class `token_revoked`); token yang tidak dikenal atau milik akun lain diabaikan dengan
+        respons yang sama (N-09). Pemanggilan berulang tetap 204. Logout tetap mencabut token sesi di server
+        walaupun panggilan ini gagal karena jaringan (AC F13-5).
       x-kapdh-access: { audience: mobile, member_access: any }
       requestBody:
         required: true
@@ -236,80 +249,40 @@ components:
         membership, event, news, chat; email untuk payment, membership, event; security dan account wajib dan tidak
         dapat dimatikan (F-13).
 
-    NotificationRouteName:
-      type: string
-      enum:
-        - payment
-        - payments
-        - kta
-        - renewal
-        - event
-        - ticket
-        - news
-        - chat_room
-        - chat_invitations
-        - sessions
-        - reports
-        - restricted
-        - deletion_status
-        - inbox
-      description: |
-        Katalog rute deep link per kategori (PRD 3.13, rute aplikasi ARCHITECTURE §8.4). Rute dan parameternya:
-
-        | name               | path                    | params        | kategori lazim         |
-        | ------------------ | ----------------------- | ------------- | ---------------------- |
-        | `payment`          | `/payments/{payment_id}`| payment_id    | payment                |
-        | `payments`         | `/payments`             | -             | payment                |
-        | `kta`              | `/kta`                  | -             | membership             |
-        | `renewal`          | `/renewal`              | -             | membership             |
-        | `event`            | `/events/{event_id}`    | event_id      | event                  |
-        | `ticket`           | `/tickets/{ticket_id}`  | ticket_id     | event                  |
-        | `news`             | `/news/{post_slug}`     | post_slug     | news                   |
-        | `chat_room`        | `/chat/{room_id}`       | room_id       | chat                   |
-        | `chat_invitations` | `/chat/invitations`     | -             | chat                   |
-        | `sessions`         | `/account/sessions`     | -             | security               |
-        | `reports`          | `/account/reports`      | -             | account                |
-        | `restricted`       | `/restricted`           | -             | account                |
-        | `deletion_status`  | `/deletion-status`      | -             | account                |
-        | `inbox`            | `/notifications`        | -             | semua (cadangan)       |
-
-        Klien yang menerima nilai tidak dikenal (enum `unknown` di SDK Dart) membuka kotak masuk.
-
-    NotificationRouteParams:
-      type: object
-      description: |
-        Parameter rute; hanya field yang dibutuhkan `name` yang diisi (lihat NotificationRouteName). Tidak pernah
-        memuat isi chat, data bukti bayar atau kontak (F-13).
-      properties:
-        payment_id: { type: string, format: uuid }
-        event_id: { type: string, format: uuid }
-        ticket_id: { type: string, format: uuid }
-        post_slug: { type: string, maxLength: 160 }
-        room_id: { type: string, format: uuid }
-
-    NotificationRoute:
-      type: object
-      required: [name, path, params]
-      description: |
-        Deep link aman yang tersimpan di notifications.data.route (ARCHITECTURE §4.7). `path` adalah rute aplikasi
-        (go_router) yang sudah terisi parameternya; bentuk eksternalnya `kapdh://app` + path. Payload data FCM
-        memuat `notification_id`, `category` dan `route` (path) yang sama, tanpa isi chat, bukti bayar atau kontak
-        di layar kunci (F-13). Membuka rute tetap memerlukan autentikasi dan otorisasi endpoint tujuan (AC F13-3).
-      properties:
-        name: { $ref: "#/components/schemas/NotificationRouteName" }
-        path:
-          type: string
-          pattern: "^/[A-Za-z0-9/_.-]*$"
-          maxLength: 300
-          examples: ["/payments/0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e5f"]
-        params: { $ref: "#/components/schemas/NotificationRouteParams" }
-
     InboxNotification:
       type: object
-      required: [id, category, title, body, route, read_at, created_at]
+      required: [id, category, title, body, deep_link, read_at, created_at]
       description: |
         Satu entri kotak masuk (F-13). Satu peristiwa menghasilkan tepat satu entri per pengguna karena dedup_key
-        unik; retry pengiriman tidak menduplikasi kotak masuk (AC F13-1, F13-6).
+        unik; retry pengiriman tidak menduplikasi kotak masuk (AC F13-1, F13-6). Bentuk yang sama (tanpa
+        `read_at`, ditambah `unread_count`) dikirim event realtime `notification.created`
+        (events/notification.created.schema.json, ARCHITECTURE §4.9).
+
+        Deep link satu bentuk di semua kanal (PRD 3.13, ARCHITECTURE §4.7): notifications.data.route menyimpan
+        rute aplikasi sebagai STRING path (ARCHITECTURE §8.4, misalnya `/payments/<id>`); `deep_link` di REST,
+        payload realtime dan payload data FCM (bersama `notification_id` dan `category`) adalah bentuk eksternal
+        `kapdh://app` + path tersebut. Klien cukup mengurai satu format. Katalog rute per kategori:
+
+        | rute (path)              | kategori lazim   |
+        | ------------------------ | ---------------- |
+        | `/payments/<payment_id>` | payment          |
+        | `/payments`              | payment          |
+        | `/kta`                   | membership       |
+        | `/renewal`               | membership       |
+        | `/events/<event_id>`     | event            |
+        | `/tickets/<ticket_id>`   | event            |
+        | `/news/<slug>`           | news             |
+        | `/chat/<room_id>`        | chat             |
+        | `/chat/invitations`      | chat             |
+        | `/account/sessions`      | security         |
+        | `/account/reports`       | account          |
+        | `/restricted`            | account          |
+        | `/deletion-status`       | account          |
+        | `/notifications`         | semua (cadangan) |
+
+        Rute yang tidak dikenal klien membuka kotak masuk. Rute bukan izin akses: membuka rute tetap memerlukan
+        autentikasi dan otorisasi endpoint tujuan (AC F13-3, F13-5). Payload push di layar kunci tidak pernah
+        memuat isi chat, bukti bayar atau kontak (F-13).
       properties:
         id: { type: string, format: uuid }
         category: { $ref: "#/components/schemas/NotificationCategory" }
@@ -317,11 +290,14 @@ components:
         body:
           type: [string, "null"]
           description: Teks ringkas tanpa isi chat, bukti bayar atau kontak (F-13).
-        route:
-          description: Tujuan saat diketuk; null bila notifikasi hanya informasi.
-          oneOf:
-            - $ref: "#/components/schemas/NotificationRoute"
-            - type: "null"
+        deep_link:
+          type: [string, "null"]
+          maxLength: 320
+          pattern: "^kapdh://app/[A-Za-z0-9/_.-]*$"
+          description: |
+            Tujuan saat diketuk dalam bentuk eksternal `kapdh://app` + rute (lihat katalog di atas); null bila
+            notifikasi hanya informasi. Klien memeriksa sesi sebelum membuka (AC F13-3).
+          examples: ["kapdh://app/payments/0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e5f"]
         read_at: { type: [string, "null"], format: date-time }
         created_at: { type: string, format: date-time }
 
