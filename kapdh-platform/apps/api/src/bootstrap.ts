@@ -64,7 +64,16 @@ export async function createApp(
     { logger: new NestPinoLogger(logger), bodyParser: false },
   );
   // text/plain dan tipe lain di luar JSON → 415 VALIDATION_ERROR (multipart → 415 FILE_INVALID), bukan body string.
-  adapter.getInstance().removeContentTypeParser("text/plain");
+  const fastify = adapter.getInstance();
+  fastify.removeContentTypeParser(["text/plain", "application/json"]);
+  // JSON: parser bawaan Fastify (bodyLimit, __proto__/constructor ditolak), tetapi body kosong dengan header
+  // application/json (mis. POST /auth/logout dari klien yang selalu mengirim header) diterima sebagai tanpa body.
+  const defaultJson = fastify.getDefaultJsonParser("error", "error");
+  fastify.addContentTypeParser("application/json", { parseAs: "string" }, (request, body, done) => {
+    const text = typeof body === "string" ? body : body.toString("utf8");
+    if (text.trim() === "") return done(null, undefined);
+    defaultJson(request, text, done);
+  });
   app.setGlobalPrefix("api/v1");
   await app.register(helmet, {
     contentSecurityPolicy: false,
