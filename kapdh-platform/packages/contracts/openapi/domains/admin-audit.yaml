@@ -4,7 +4,11 @@
 #
 # Audit append-only bagi application role (PRD 3.17): domain ini hanya membaca; tidak ada operasi ubah/hapus entri.
 # before/after sudah disaring saat ditulis (AuditService) dan tidak pernah memuat sandi, OTP, token, secret TOTP,
-# isi chat, bukti bayar, rekening refund atau NIK (ARCHITECTURE §2, AC F17-3).
+# isi chat, bukti bayar, rekening refund atau NIK (ARCHITECTURE §2, AC F17-3). Penyaringan saat tulis itu hanya
+# menyangkut secret; data kontak dan pribadi (email, telepon, tautan sosial, alamat, foto, dsb.) boleh ada di
+# before/after agar pengurus berizin audit.read dapat menelusuri perubahan di dalam sistem (F-10: akses
+# administratif tercatat). Berkas ekspor CSV yang keluar dari sistem selalu melewati penyamaran kolom privat kedua
+# (daftar kunci di adminCreateAuditExport), sehingga kolom privat dan secret tidak ikut ekspor (AC F17-3).
 #
 # Job ekspor TIDAK memerlukan tabel baru: keadaannya disimpan pada tabel yang sudah ada (audit_logs append-only
 # sebagai catatan kejadian job + files untuk berkas dan kedaluwarsanya). Pemetaan lengkap ada di skema AuditExport.
@@ -62,6 +66,10 @@ paths:
       tags: [Admin Audit]
       operationId: adminGetAuditEntry
       summary: Detail satu entri audit termasuk before/after yang telah disaring (izin audit.read, F-17).
+      description: |
+        before/after ditampilkan sebagaimana disimpan (secret sudah disaring saat tulis); penyamaran kolom privat
+        khusus berkas ekspor (lihat adminCreateAuditExport). `entryId` yang bukan UUID menghasilkan 400
+        VALIDATION_ERROR; entri yang tidak ada 404 NOT_FOUND.
       x-kapdh-access: { audience: admin, permissions: [audit.read] }
       parameters:
         - $ref: "#/components/parameters/AuditEntryId"
@@ -71,6 +79,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AuditEntryDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/AdminAuditForbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -93,9 +102,30 @@ paths:
         Isi CSV (UTF-8, pemisah koma, baris pertama header): created_at (UTC RFC 3339), action, entity_type,
         entity_id, effective_role, actor_admin_id, actor_user_id, actor_name, request_id, reason, before (JSON),
         after (JSON). Setiap sel yang diawali `=`, `+`, `-`, `@`, tab atau carriage return dinetralkan dengan
-        awalan apostrof agar tidak dieksekusi sebagai formula (AC F17-3). Kolom privat dan secret tidak pernah
-        ikut (AC F17-3). Jumlah baris dibatasi konfigurasi server; bila hasil filter melebihi batas, job gagal
-        dengan `failure_reason=row_limit_exceeded` (tidak pernah dipotong diam-diam) dan admin mempersempit filter.
+        awalan apostrof agar tidak dieksekusi sebagai formula (AC F17-3). Jumlah baris dibatasi konfigurasi
+        server; bila hasil filter melebihi batas, job gagal dengan `failure_reason=row_limit_exceeded` (tidak
+        pernah dipotong diam-diam) dan admin mempersempit filter.
+
+        Kolom privat dan secret tidak ikut ekspor (AC F17-3, N-09). Sebelum before/after diserialisasi, worker
+        menjalankan penyamaran wajib (fungsi murni yang diuji unit, berlaku untuk SEMUA tindakan termasuk tindakan
+        baru) yang menelusuri objek dan array pada kedalaman berapa pun dan mencocokkan nama kunci tanpa membedakan
+        huruf besar/kecil:
+
+        | kelompok                  | kunci                                                                        |
+        | ------------------------- | ---------------------------------------------------------------------------- |
+        | kontak                    | `email`, `*_email`, `phone`, `*_phone`, `whatsapp`, `*_whatsapp`, `social_*` |
+        | data pribadi              | `address`, `*_address`, `birth_date`, `birth_place`, `date_of_birth`, `city` |
+        | foto dan berkas pribadi   | `avatar_file_id`, `avatar_url`, `photo_*`, `proof_*`                         |
+        | perangkat dan jaringan    | `ip`, `ip_address`, `user_agent`, `device_name`                              |
+        | secret (pertahanan ganda) | `password*`, `*_hash`, `otp*`, `*token*`, `*secret*`, `backup_code*`, `totp*`, `nik`, `ktp`, `*account_number*` |
+
+        Nilai bukan null pada kunci tersebut diganti string `[disembunyikan]`; nama kunci dan null tetap ada
+        sehingga auditor tetap tahu field apa yang berubah tanpa melihat isinya. Pencocokan berbasis nama kunci
+        sengaja konservatif: kontak organisasi pada pengaturan (misalnya email/WhatsApp bantuan) ikut disamarkan
+        di CSV. Kolom `actor_name` (identitas
+        pelaku wajib PRD 3.17) dan `reason` (teks pengurus) diekspor apa adanya setelah netralisasi formula;
+        formulir alasan di semua domain tidak boleh meminta kontak atau secret. Nilai privat tetap dapat dilihat
+        pengurus berizin audit.read di dalam sistem lewat GET /admin/audit/entries/{entryId}.
 
         Pembuatan ekspor dibatasi per admin (RATE_LIMITED dengan retry_after_seconds). Idempotency-Key mencegah
         job ganda saat klik ulang atau jaringan putus (PRD 4.3).
@@ -155,6 +185,7 @@ paths:
       summary: Status satu job ekspor untuk polling (audit.read + audit.export, AC F17-4).
       description: |
         Hanya peminta atau Super Admin; selain itu 404 NOT_FOUND (tidak membedakan tidak ada atau bukan milik, N-09).
+        `exportId` yang bukan UUID menghasilkan 400 VALIDATION_ERROR.
       x-kapdh-access: { audience: admin, permissions: [audit.read, audit.export] }
       parameters:
         - $ref: "#/components/parameters/AuditExportId"
@@ -164,6 +195,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AuditExport" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/AdminAuditForbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -182,7 +214,8 @@ paths:
         disimpan cache publik (PRD 5.4). Berkas `audit_export` tidak dilayani lewat jalur berkas lain tanpa
         pemeriksaan yang sama. Status selain `ready` menghasilkan 409 VERSION_CONFLICT dengan `current` =
         AuditExport terbaru; ekspor `expired` atau berkas yang sudah dihapus menghasilkan 404. Setiap akses
-        diaudit `audit.export.downloaded` (PRD 3.17).
+        diaudit `audit.export.downloaded` (PRD 3.17). `exportId` yang bukan UUID menghasilkan 400
+        VALIDATION_ERROR.
       x-kapdh-access: { audience: admin, permissions: [audit.read, audit.export] }
       parameters:
         - $ref: "#/components/parameters/AuditExportId"
@@ -192,6 +225,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AuditExportAccess" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/AdminAuditForbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -274,7 +308,8 @@ components:
     AdminAuditForbidden:
       description: |
         FORBIDDEN tanpa izin yang dibutuhkan (audit.read; ekspor juga audit.export) walaupun URL/id diketahui
-        (AC F17-2), atau MFA_REQUIRED bila sesi admin belum menyelesaikan TOTP (AC F02-2).
+        (AC F17-2), bila token bukan audience admin, atau bila identitas admin pemanggil tidak `active`;
+        MFA_REQUIRED bila sesi admin belum menyelesaikan TOTP (AC F02-2).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -400,6 +435,8 @@ components:
         Galat sementara memakai retry outbox/antrean; `processing_failed` ditulis saat retry habis. Pembersihan
         `maintenance.cleanup` menghapus berkas kedaluwarsa (files.status deleted) sehingga status menjadi
         `expired`. Integrator boleh memindahkan keadaan ini ke tabel job khusus kelak tanpa mengubah kontrak.
+        Isi berkas `ready` selalu sudah melewati netralisasi formula dan penyamaran kolom privat/secret yang
+        dijelaskan pada adminCreateAuditExport (AC F17-3).
       required:
         - id
         - status

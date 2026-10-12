@@ -22,6 +22,12 @@ paths:
         token_reassigned, preference_disabled). UNREGISTERED menonaktifkan token, sedangkan
         429/5xx memakai retry dengan backoff otomatis (AC F13-4). `from` inklusif dan `to` eksklusif terhadap
         created_at. `total` mengikuti filter. Tanpa notifications.manage ditolak 403 (AC F15-1).
+
+        `retryable=true` hanya mengembalikan kegagalan yang masih dapat ditindak (definisi
+        AdminNotificationDelivery.retryable); kombinasi `status=failed&retryable=true&from=<failed_delivery_since>`
+        menghasilkan `total` yang sama dengan DashboardJobs.failed_delivery_count pada waktu yang sama. Kegagalan
+        yang tidak dapat dikirim ulang (token dicabut atau UNREGISTERED, token berpindah akun, penerima tidak
+        tersedia, preferensi dimatikan) tetap terlihat sebagai riwayat dengan `retryable=false`.
       x-kapdh-access: { audience: admin, permissions: [notifications.manage] }
       parameters:
         - name: status
@@ -50,6 +56,13 @@ paths:
           in: query
           required: false
           schema: { type: string, format: uuid }
+        - name: retryable
+          in: query
+          required: false
+          description: |
+            true hanya pengiriman yang dapat dijadwalkan ulang saat ini (selalu berstatus failed); false hanya yang
+            tidak dapat. Kosong berarti keduanya.
+          schema: { type: boolean }
         - name: from
           in: query
           required: false
@@ -89,8 +102,9 @@ paths:
         notifications.user_id`, dievaluasi dalam statement yang sama): status menjadi `pending`, next_retry_at =
         sekarang, attempt tetap (riwayat percobaan terlihat). Pengiriman dilewati, bukan galat, bila: tidak
         ditemukan, statusnya bukan failed (sudah dikirim ulang admin lain atau worker), token push sudah dicabut
-        (UNREGISTERED atau logout, AC F13-4/F13-5), token sudah berpindah ke akun atau sesi lain sehingga isi
-        notifikasi akun lama tidak boleh dikirim ke perangkat itu (`token_reassigned`, AC F13-5), penerima sudah
+        (UNREGISTERED atau logout, AC F13-4/F13-5), token sudah berpindah ke AKUN lain sehingga isi notifikasi akun
+        lama tidak boleh dikirim ke perangkat itu (`token_reassigned`, AC F13-5; perpindahan keluarga sesi milik
+        pengguna yang sama tidak menghalangi retry, lihat registerDevice), penerima sudah
         dihapus/dinonaktifkan, atau preferensi kategori/kanal kini dimatikan (F-13). Worker memeriksa ulang syarat
         kepemilikan token yang sama saat mengklaim pengiriman. Kotak masuk tidak pernah diduplikasi (AC F13-1). Retry
         diaudit `notification.delivery.retried` dalam transaksi yang sama (AC F17-1) dan dibatasi per admin
@@ -170,11 +184,16 @@ paths:
       operationId: adminRetryOutboxEvents
       summary: Kembalikan event outbox failed/dead ke antrean (izin notifications.manage, PRD 5.1).
       description: |
-        Untuk 1..100 event. Hanya event `failed` atau `dead` yang dikembalikan ke `pending` dengan UPDATE bersyarat
-        (next_attempt_at = sekarang, locked_until dikosongkan, attempts dan last_error tetap sebagai riwayat).
-        Dispatcher memproses ulang dengan dedup key yang sama dan setiap konsumen idempoten per domain, sehingga
-        retry tidak menggandakan uang, periode, nomor, kursi atau notifikasi (PRD 5.1). Event lain dilewati dengan
-        alasan. Diaudit `outbox.retried` (AC F17-1); dibatasi per admin (RATE_LIMITED).
+        Untuk 1..100 event. Hanya event `failed` atau `dead` yang TIDAK sedang diklaim dispatcher yang
+        dikembalikan ke `pending`, dengan satu UPDATE bersyarat (ARCHITECTURE §2.11):
+        `WHERE id = ANY(...) AND status IN ('failed','dead') AND (locked_until IS NULL OR locked_until <= now())
+        RETURNING ...` yang mengisi next_attempt_at = sekarang dan mengosongkan locked_until; attempts dan
+        last_error tetap sebagai riwayat. Lease dispatcher yang masih berlaku tidak pernah diputus, sehingga dua
+        dispatcher tidak mengklaim event yang sama bersamaan. Dispatcher memproses ulang dengan dedup key yang sama
+        dan setiap konsumen idempoten per domain, sehingga retry tidak menggandakan uang, periode, nomor, kursi
+        atau notifikasi (PRD 5.1). Event yang tidak lolos predikat dilewati dengan alasan: `not_found`,
+        `in_progress` (sedang diklaim dispatcher; coba lagi setelah klaim selesai) atau `not_retryable` (status
+        pending atau dispatched). Diaudit `outbox.retried` (AC F17-1); dibatasi per admin (RATE_LIMITED).
       x-kapdh-access: { audience: admin, permissions: [notifications.manage], idempotent: true }
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -200,7 +219,8 @@ components:
   responses:
     AdminNotificationsForbidden:
       description: |
-        FORBIDDEN tanpa izin notifications.manage (AC F15-1), atau MFA_REQUIRED bila sesi admin belum
+        FORBIDDEN tanpa izin notifications.manage (AC F15-1), bila token bukan audience admin (misalnya token
+        aplikasi alumni), atau bila identitas admin tidak `active`; MFA_REQUIRED bila sesi admin belum
         menyelesaikan TOTP (AC F02-2).
       content:
         application/json:
@@ -218,8 +238,8 @@ components:
       description: |
         Status per kanal/perangkat (enum DB delivery_status): `pending` menunggu kirim atau retry terjadwal,
         `sent` diterima provider (bukan bukti dibaca), `failed` gagal permanen atau melewati batas retry,
-        `cancelled` dibatalkan (preferensi dimatikan, token dicabut, token berpindah ke akun/sesi lain, akun
-        dihapus). Label UI: Menunggu, Terkirim, Gagal, Dibatalkan.
+        `cancelled` dibatalkan (preferensi dimatikan, token dicabut, token berpindah ke akun lain, akun dihapus).
+        Label UI: Menunggu, Terkirim, Gagal, Dibatalkan.
 
     AdminDeliverySort:
       type: string
@@ -280,8 +300,10 @@ components:
         retryable:
           type: boolean
           description: |
-            True bila status failed dan target masih sah: penerima ada, preferensi aktif, dan untuk push token belum
-            dicabut serta masih milik penerima notifikasi (device_tokens.user_id = notifications.user_id, AC F13-5).
+            True bila status failed dan target masih sah: penerima ada dan akunnya aktif, preferensi kategori/kanal
+            aktif, dan untuk push token belum dicabut serta masih milik penerima notifikasi
+            (device_tokens.user_id = notifications.user_id, AC F13-5; keluarga sesi tidak diperiksa). Definisi
+            yang sama dipakai filter `retryable`, predikat retry, dan hitungan dasbor/lencana job gagal.
 
     AdminNotificationDeliveryPage:
       type: object
@@ -309,8 +331,10 @@ components:
       enum:
         [not_found, not_failed, token_revoked, token_reassigned, recipient_unavailable, preference_disabled]
       description: |
-        Alasan pengiriman tidak dijadwalkan ulang. `token_reassigned`: token perangkat kini terikat ke akun atau
-        sesi lain, sehingga isi notifikasi pemilik lama tidak boleh dikirim ke perangkat itu (AC F13-5).
+        Alasan pengiriman tidak dijadwalkan ulang. `token_reassigned`: token perangkat kini milik AKUN lain
+        (device_tokens.user_id berbeda dari penerima), sehingga isi notifikasi pemilik lama tidak boleh dikirim ke
+        perangkat itu (AC F13-5). Perpindahan token antar keluarga sesi milik pengguna yang sama bukan alasan
+        lewati. `token_revoked`: token dicabut (UNREGISTERED, logout, pencabutan sesi, token FCM diganti).
 
     AdminDeliveryRetrySkip:
       type: object
@@ -368,7 +392,11 @@ components:
         request_id: { type: [string, "null"] }
         dispatched_at: { type: [string, "null"], format: date-time }
         created_at: { type: string, format: date-time }
-        retryable: { type: boolean, description: True untuk status failed atau dead. }
+        retryable:
+          type: boolean
+          description: |
+            True bila status failed atau dead DAN tidak in_progress; sama dengan predikat UPDATE bersyarat
+            adminRetryOutboxEvents.
 
     AdminOutboxEventPage:
       type: object
@@ -393,8 +421,10 @@ components:
 
     AdminOutboxRetrySkipReason:
       type: string
-      enum: [not_found, not_retryable]
-      description: "`not_retryable`: status bukan failed/dead (sudah pending, sedang diproses, atau dispatched)."
+      enum: [not_found, in_progress, not_retryable]
+      description: |
+        `in_progress`: event failed/dead sedang diklaim dispatcher (locked_until di masa depan), lease tidak
+        diputus. `not_retryable`: status bukan failed/dead (sudah pending atau dispatched).
 
     AdminOutboxRetrySkip:
       type: object
