@@ -169,7 +169,9 @@ export class AuthGuard implements CanActivate {
       sessionId: auth.sessionId,
     });
 
-    if (meta.memberAccess) await this.checkMemberAccess(auth, meta.memberAccess, now);
+    // effective_status hanya bermakna untuk identitas alumni (sesi mobile, PRD 2.2).
+    if (meta.memberAccess && auth.audience === "mobile")
+      await this.checkMemberAccess(auth, meta.memberAccess, now);
     if (meta.permissions.length > 0) {
       const missing = meta.permissions.filter((permission) => !auth.permissions.has(permission));
       if (missing.length > 0) throw forbidden();

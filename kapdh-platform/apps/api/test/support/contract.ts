@@ -157,3 +157,63 @@ export function routesMissingFromContract(routes: { method: string; url: string 
   }
   return missing;
 }
+
+/** Deklarasi akses operasi kontrak (vendor extension `x-kapdh-access`, mencerminkan dekorator server). */
+export interface ContractAccess {
+  audience: "public" | "mobile" | "admin" | "any";
+  member_access?: "any" | "nonsuspended" | "active";
+  permissions?: string[];
+  reauth?: boolean;
+  idempotent?: boolean;
+}
+
+/** Bentuk minimum rute server yang dibandingkan (lihat test/support/routes.ts). */
+export interface DeclaredRouteAccess {
+  name: string;
+  method: string;
+  path: string;
+  meta: {
+    isPublic: boolean;
+    audience: string | null;
+    memberAccess: string | null;
+    permissions: string[];
+    reauth: boolean;
+  };
+  idempotent: boolean;
+}
+
+/**
+ * Perbedaan antara dekorator akses server dan `x-kapdh-access` operasi kontrak (ARCHITECTURE §4.3, §6). Operasi tanpa
+ * `x-kapdh-access` dilewati; rute tanpa operasi kontrak ditangani routesMissingFromContract.
+ */
+export function accessMismatches(
+  routes: DeclaredRouteAccess[],
+  paths: Record<string, JsonObject> = spec.paths,
+): string[] {
+  const normalize = (p: string) => p.replace(/\{[^}]+\}/g, "{}");
+  const byPath = new Map(Object.entries(paths).map(([p, item]) => [normalize(p), item]));
+  const sorted = (values: readonly string[] | undefined) => [...(values ?? [])].sort().join(",");
+  const problems: string[] = [];
+  for (const route of routes) {
+    const operation = byPath.get(normalize(route.path))?.[route.method] as JsonObject | undefined;
+    const access = operation?.["x-kapdh-access"] as ContractAccess | undefined;
+    if (!access) continue;
+    const where = `${route.method.toUpperCase()} ${route.path} (${route.name})`;
+    const audience = route.meta.isPublic ? "public" : (route.meta.audience ?? "tidak ada");
+    if (audience !== access.audience)
+      problems.push(`${where}: audience kontrak ${access.audience}, server ${audience}`);
+    if ((access.member_access ?? null) !== route.meta.memberAccess)
+      problems.push(
+        `${where}: member_access kontrak ${access.member_access ?? "-"}, server ${route.meta.memberAccess ?? "-"}`,
+      );
+    if (sorted(access.permissions) !== sorted(route.meta.permissions))
+      problems.push(
+        `${where}: permissions kontrak [${sorted(access.permissions)}], server [${sorted(route.meta.permissions)}]`,
+      );
+    if (Boolean(access.reauth) !== route.meta.reauth)
+      problems.push(`${where}: reauth kontrak ${Boolean(access.reauth)}, server ${route.meta.reauth}`);
+    if (Boolean(access.idempotent) !== route.idempotent)
+      problems.push(`${where}: idempotent kontrak ${Boolean(access.idempotent)}, server ${route.idempotent}`);
+  }
+  return problems;
+}

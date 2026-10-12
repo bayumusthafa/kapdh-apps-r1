@@ -1,10 +1,7 @@
 import { adminPermissions, admins, alumni, sessions, users } from "@kapdh/database";
-import { MetadataScanner, ModulesContainer, Reflector } from "@nestjs/core";
-import { PATH_METADATA } from "@nestjs/common/constants.js";
 import { eq } from "drizzle-orm";
 import { decodeJwt } from "jose";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { routeAuthMeta } from "../../src/core/guards/decorators.js";
 import { TokenService } from "../../src/modules/auth/token.service.js";
 import {
   type AlumniFixtureStatus,
@@ -14,6 +11,7 @@ import {
   signInAlumni,
 } from "../support/factories.js";
 import { type HttpClient, httpClient } from "../support/http.js";
+import { routeAccessList } from "../support/routes.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
 import { ProbeModule } from "./probe.js";
 
@@ -38,26 +36,26 @@ describe("ARCHITECTURE §4.3: AuthGuard global menolak secara bawaan", () => {
     // Aplikasi produksi tanpa modul penguji: semua controller modul domain.
     const prod = await createTestApp();
     try {
-      const container = prod.app.get(ModulesContainer);
-      const reflector = prod.app.get(Reflector);
-      const scanner = new MetadataScanner();
-      const checked: string[] = [];
-      for (const module of container.values()) {
-        for (const wrapper of module.controllers.values()) {
-          const prototype = Object.getPrototypeOf(wrapper.instance) as Record<string, unknown>;
-          for (const name of scanner.getAllMethodNames(prototype)) {
-            const handler = prototype[name] as object;
-            if (Reflect.getMetadata(PATH_METADATA, handler) === undefined) continue;
-            const meta = routeAuthMeta(reflector, [handler, wrapper.metatype as object]);
-            expect(meta.problems, `${wrapper.name}.${name}`).toEqual([]);
-            checked.push(`${wrapper.name}.${name}`);
-          }
-        }
-      }
-      // Pengaman pemindai: rute yang pasti ada ikut diperiksa.
-      expect(checked).toEqual(
-        expect.arrayContaining(["AuthController.register", "MeController.me", "HealthController.ready"]),
+      const routes = routeAccessList(prod.app);
+      for (const route of routes) expect(route.meta.problems, route.name).toEqual([]);
+      // Pengaman pemindai: rute yang pasti ada ikut diperiksa, lengkap dengan metode dan path.
+      expect(routes.map((r) => `${r.method.toUpperCase()} ${r.path} ${r.name}`)).toEqual(
+        expect.arrayContaining([
+          "POST /auth/register AuthController.register",
+          "GET /me MeController.me",
+          "GET /health/ready HealthController.ready",
+        ]),
       );
+      // Inventaris yang sama dengan rute Fastify terdaftar (tidak ada handler yang terlewat pemindai).
+      const fastify = prod.app.getHttpAdapter().getInstance();
+      for (const route of routes)
+        expect(
+          fastify.hasRoute({
+            method: route.method.toUpperCase() as "GET",
+            url: `/api/v1${route.path.replace(/{([^}]+)}/g, ":$1")}`,
+          }),
+          route.name,
+        ).toBe(true);
     } finally {
       await prod.app.close();
     }
@@ -76,6 +74,22 @@ describe("ARCHITECTURE §4.3: AuthGuard global menolak secara bawaan", () => {
     const admin = await createAdmin(t, { role: "super_admin" });
     const { accessToken } = await signInAdmin(t, admin);
     expect((await api.get("/__probe/misdeclared", { token: accessToken })).statusCode).toBe(403);
+  });
+
+  it("@Audience('any') + @MemberAccess hanya membatasi sesi mobile; sesi admin lolos", async () => {
+    const suspended = await memberToken("suspended");
+    expect((await api.get("/__probe/any/active", { token: suspended.accessToken })).json().code).toBe(
+      "ACCOUNT_SUSPENDED",
+    );
+    const verified = await memberToken("verified");
+    expect((await api.get("/__probe/any/active", { token: verified.accessToken })).json()).toMatchObject({
+      effective_status: "verified",
+    });
+    const admin = await createAdmin(t, { role: "admin" });
+    const { accessToken } = await signInAdmin(t, admin);
+    const res = await api.get("/__probe/any/active", { token: accessToken });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ audience: "admin", effective_status: null });
   });
 
   it("@Public tidak memerlukan token dan aktor anonim", async () => {
