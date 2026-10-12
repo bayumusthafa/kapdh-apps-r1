@@ -1,0 +1,10 @@
+{
+  "KAPDH_ENV": "staging",
+  "API_BASE_URL": "https://staging-api.kapdh.or.id/api/v1",
+  "PUSH_ENABLED": "false",
+  "FIREBASE_PROJECT_ID": "",
+  "FIREBASE_MESSAGING_SENDER_ID": "",
+  "FIREBASE_API_KEY": "",
+  "FIREBASE_ANDROID_APP_ID": "",
+  "FIREBASE_IOS_APP_ID": ""
+}
