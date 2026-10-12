@@ -1,7 +1,391 @@
-# Domain moderation (C6 Community): blokir dua arah dan laporan milik anggota.
-# Modul API: apps/api/src/modules/moderation. Path ditambahkan oleh penulis kontrak C6.
+# Domain moderation (C6 Community): blokir dua arah, laporan milik anggota dan banding (F-12, PRD 3.12).
+# Modul API: apps/api/src/modules/moderation. Moderasi (keputusan) hanya di web admin (admin-moderation.yaml);
+# aplikasi Flutter tidak memiliki menu atau login pengurus (v3.2).
+#
+# Aturan bersama domain ini (PRD 2.2, 3.12, ARCHITECTURE §3.1, §3.5):
+# - Blokir dan laporan terhadap pihak lain: anggota aktif (member_access: active).
+# - Daftar/detail laporan sendiri dan banding: semua effective_status anggota (member_access: any), termasuk
+#   expired dan suspended, karena merupakan riwayat sendiri dan bagian portal pembatasan (PRD 2.2).
+# - Laporan tidak pernah dibuka kepada pihak terlapor (AC F12-2): tidak ada endpoint yang memberi tahu terlapor
+#   siapa pelapornya atau bahwa ia dilaporkan.
+# - Bukti laporan disimpan diminimalkan saat laporan dibuat (snapshot pesan/profil/room yang relevan) agar konteks
+#   tidak hilang ketika pesan dihapus; bukti hanya dapat dibaca pengurus berizin moderation.read dan setiap akses
+#   diaudit (PRD 3.12, D2). Bukti tidak pernah dikembalikan ke pelapor.
 tags:
   - name: Moderation
-    description: Blokir pengguna dan pelaporan penyalahgunaan oleh anggota (F-12).
+    description: Blokir pengguna, pelaporan penyalahgunaan dan banding oleh anggota (F-12).
 
-paths: {}
+paths:
+  /blocks:
+    get:
+      tags: [Moderation]
+      operationId: listBlocks
+      summary: Daftar anggota yang saya blokir (F-12, layar Akun > Diblokir).
+      description: |
+        Hanya blokir yang dibuat pemanggil (blocker = pemanggil), terbaru dulu. Pemanggil tidak pernah diberi tahu
+        siapa yang memblokir dirinya.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman blokir.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BlockedMemberPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /blocks/{userId}:
+    put:
+      tags: [Moderation]
+      operationId: blockMember
+      summary: Blokir anggota; berlaku dua arah untuk pesan direct dan undangan grup (AC F12-1).
+      description: |
+        Idempoten: blokir yang sudah ada dikembalikan apa adanya. Memblokir diri sendiri -> 400 VALIDATION_ERROR
+        (blocks_self_chk); akun alumni yang tidak ada -> 404. Efek setelah commit:
+        - pengiriman pesan dan reaksi di room direct antara keduanya ditolak dari pihak mana pun (AC F12-1), walaupun
+          room/socket sudah ada; riwayat lama tetap dapat dibaca kedua pemilik room;
+        - undangan grup antara keduanya ditolak, dan undangan tertunda dari salah satu pihak kepada yang lain
+          dibatalkan (event `room.member_changed` change=invitation_cancelled dengan actor_user_id null hanya ke
+          kanal user calon anggota dan admin grup, sehingga pembatalan tidak dapat dibedakan dari tindakan sistem
+          lain);
+        - di grup yang sama, blokir tidak mengubah aturan room atau menghapus pesan orang lain; gunakan mute atau
+          laporan (PRD 3.12);
+        - anggota yang diblokir tidak diberi tahu; perangkat pemanggil menerima `room.updated` untuk room direct
+          (changes berisi send_permission) bila room itu ada.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/BlockedUserId"
+      responses:
+        "200":
+          description: Blokir aktif.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BlockedMember" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Moderation]
+      operationId: unblockMember
+      summary: Buka blokir; idempoten (F-12).
+      description: |
+        Menghapus blokir yang dibuat pemanggil saja; blokir dari pihak lain tetap berlaku sehingga pesan direct
+        tetap ditolak selama blokir pihak lain ada (AC F12-1). Blokir yang tidak ada tetap 204 (idempoten); user_id
+        bukan UUID atau diri sendiri -> 400 VALIDATION_ERROR. Undangan yang sudah dibatalkan tidak dipulihkan.
+        Perangkat pemanggil menerima `room.updated` (changes berisi send_permission) untuk room direct bila ada.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/BlockedUserId"
+      responses:
+        "204": { description: Blokir dibuka. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /reports:
+    get:
+      tags: [Moderation]
+      operationId: listMyReports
+      summary: Laporan dan banding yang saya kirim beserta statusnya (AC F12-2).
+      description: |
+        Hanya laporan dengan reporter = pemanggil, terbaru dulu. Status dan hasil hanya terlihat oleh pelapor
+        (AC F12-2); bukti dan identitas pengurus tidak dikirim. Tersedia untuk semua status anggota (riwayat sendiri).
+      x-kapdh-access: { audience: mobile, member_access: any }
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman laporan milik sendiri.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ModerationReportPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Moderation]
+      operationId: createReport
+      summary: Laporkan pengguna, pesan, atau grup yang dapat diakses pelapor (AC F12-2, PRD 3.12).
+      description: |
+        Hanya anggota aktif. `target_type` menentukan field wajib (field lain tidak boleh diisi, 400):
+        - user: `target_user_id`, anggota lain yang terlihat di direktori bagi pelapor atau pernah berada di room yang
+          sama; selain itu 404. Bukti: snapshot profil publik minimum (nama, bio, avatar).
+        - message: `message_id`, pesan orang lain di room tempat pelapor anggota joined dan terlihat baginya; selain
+          itu 404. `context_message_ids` (maksimal 5, room sama, terlihat bagi pelapor) boleh ditambahkan sebagai
+          konteks. Bukti: snapshot pesan (isi, gambar, pengirim, waktu) sehingga tetap tersedia walaupun pesan
+          kemudian dihapus. Pengirim pesan menjadi pihak terlapor.
+        - room: `room_id`, grup tempat pelapor anggota joined; room direct -> 400 (laporkan pengguna/pesannya).
+          Bukti: nama, avatar dan jumlah anggota grup.
+        Melaporkan diri sendiri -> 400 (gunakan POST /appeals untuk banding).
+
+        Prioritas dan target penanganan dihitung server (v3.2): violence_threat = urgent, due_at 24 jam; kategori lain
+        normal, due_at 2 hari kerja (Senin-Jumat WIB). Bila pelapor masih memiliki laporan aktif (open/in_review)
+        atas target yang sama, laporan itu dikembalikan (200) tanpa membuat laporan baru. Pihak terlapor tidak diberi
+        tahu (AC F12-2). Idempotency-Key mengembalikan hasil pertama saat diulang; laju pelaporan dibatasi (429).
+      x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateModerationReportRequest" }
+      responses:
+        "201":
+          description: Laporan tercatat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ModerationReport" }
+        "200":
+          description: Laporan aktif yang sama dari pelapor ini sudah ada dan dikembalikan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ModerationReport" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /reports/{reportId}:
+    get:
+      tags: [Moderation]
+      operationId: getMyReport
+      summary: Detail status laporan atau banding milik sendiri (AC F12-2).
+      description: |
+        Hanya pelapor; laporan milik orang lain -> 404 tanpa membedakan alasan (N-09). Tanpa bukti dan tanpa
+        identitas pengurus. `decision_message` hanya terisi untuk banding (pesan pengurus kepada pemohon).
+      x-kapdh-access: { audience: mobile, member_access: any }
+      parameters:
+        - $ref: "#/components/parameters/ModerationReportId"
+      responses:
+        "200":
+          description: Laporan milik sendiri.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ModerationReport" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /appeals:
+    post:
+      tags: [Moderation]
+      operationId: createAppeal
+      summary: Ajukan banding atas suspend yang sedang berlaku dari portal pembatasan (PRD 3.12 mekanisme banding).
+      description: |
+        Banding dicatat sebagai laporan berkategori `appeal` dengan target_type user dan target = pemohon sendiri,
+        sehingga masuk antrean moderasi yang sama (prioritas normal, due_at 2 hari kerja). Dipanggil dari portal
+        pembatasan aplikasi (PRD 2.2), sehingga tersedia walaupun pemohon suspended (member_access: any).
+
+        Yang dapat dibanding di R1.0 hanya suspend yang SEDANG berlaku (alumni.suspended_at terisi, dari jalur
+        mana pun: keputusan laporan atau menu anggota admin); selain itu 403 FORBIDDEN. Warn tidak dapat dibanding
+        lewat endpoint ini karena tidak membatasi akses maupun mengubah tanggal keanggotaan (AC F12-3); keberatan
+        atas peringatan disampaikan lewat kontak dukungan. Keputusan yang dibanding tidak dipilih klien: server
+        menyimpan snapshot suspend yang berlaku (membership_events suspend terbaru, suspended_at, suspension_message)
+        di bukti banding sehingga pengurus tahu persis keputusan mana yang dibanding.
+
+        Satu banding aktif per pemohon: bila masih ada banding open/in_review, banding itu dikembalikan (200) tanpa
+        membuat yang baru. Banding hanya dapat diputus dismiss (ditolak, outcome no_action) atau unsuspend
+        (dikabulkan, outcome action_taken). Bila suspend dicabut lewat jalur lain sebelum banding diputus, banding
+        aktif ditutup otomatis sebagai dikabulkan dalam transaksi pencabutan itu. Setelah banding ditolak, banding
+        baru boleh diajukan (dibatasi laju). Hasil dikirim lewat notifikasi kategori account dan tampil di
+        GET /reports/{reportId} (`outcome`, `decision_message`). Idempotency-Key mengembalikan hasil pertama saat
+        diulang; laju dibatasi (429).
+      x-kapdh-access: { audience: mobile, member_access: any, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAppealRequest" }
+      responses:
+        "201":
+          description: Banding tercatat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ModerationReport" }
+        "200":
+          description: Banding aktif sudah ada dan dikembalikan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ModerationReport" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  parameters:
+    BlockedUserId:
+      name: userId
+      in: path
+      required: true
+      description: user_id akun alumni yang diblokir.
+      schema: { type: string, format: uuid }
+    ModerationReportId:
+      name: reportId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  schemas:
+    BlockedMember:
+      type: object
+      required: [user_id, full_name, avatar_url, blocked_at]
+      properties:
+        user_id: { type: string, format: uuid }
+        full_name: { type: string, maxLength: 120 }
+        avatar_url: { type: [string, "null"], format: uri }
+        blocked_at: { type: string, format: date-time }
+
+    BlockedMemberPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/BlockedMember" }
+        next_cursor: { type: [string, "null"] }
+
+    ModerationTargetType:
+      type: string
+      enum: [user, message, room]
+      description: Jenis objek yang dilaporkan (reports.target_type).
+
+    ModerationReportCategory:
+      type: string
+      enum: [spam, harassment, hate, sexual, violence_threat, scam, other, appeal]
+      description: |
+        Kategori laporan (reports.category). violence_threat = risiko ancaman/keselamatan, prioritas urgent dengan
+        target 24 jam; appeal = banding pemohon atas dirinya sendiri (hanya lewat POST /appeals).
+
+    ModerationReportInputCategory:
+      type: string
+      enum: [spam, harassment, hate, sexual, violence_threat, scam, other]
+      description: Kategori yang dapat dipilih pelapor (tanpa appeal).
+
+    ModerationReportStatus:
+      type: string
+      enum: [open, in_review, resolved, dismissed]
+      description: |
+        Siklus laporan: open -> in_review (diklaim pengurus) -> resolved (warn/suspend/unsuspend) | dismissed
+        (dismiss). open juga dapat langsung diputus.
+
+    ModerationReportPriority:
+      type: string
+      enum: [normal, urgent]
+      description: urgent = risiko ancaman/keselamatan, target 24 jam; normal = 2 hari kerja (v3.2).
+
+    ModerationOutcome:
+      type: string
+      enum: [no_action, action_taken]
+      description: |
+        Hasil yang terlihat pelapor tanpa merinci tindakan terhadap pihak lain (AC F12-2): no_action untuk dismiss,
+        action_taken untuk warn/suspend/unsuspend. Untuk banding: action_taken = dikabulkan (suspend dicabut lewat
+        keputusan banding atau ditutup otomatis karena suspend dicabut lewat jalur lain), no_action = ditolak.
+
+    ModerationReport:
+      type: object
+      description: Laporan atau banding dari sudut pandang pelapor; tanpa bukti dan tanpa identitas pengurus.
+      required:
+        [
+          id,
+          category,
+          target_type,
+          target_name,
+          room_name,
+          description,
+          status,
+          priority,
+          outcome,
+          decision_message,
+          created_at,
+          due_at,
+          resolved_at,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        category: { $ref: "#/components/schemas/ModerationReportCategory" }
+        target_type: { $ref: "#/components/schemas/ModerationTargetType" }
+        target_name:
+          type: [string, "null"]
+          description: Nama pengguna terlapor atau pengirim pesan; null untuk laporan grup atau akun yang dihapus.
+        room_name: { type: [string, "null"], description: Nama grup untuk laporan grup atau pesan di grup. }
+        description: { type: [string, "null"], maxLength: 2000, x-sensitive: true }
+        status: { $ref: "#/components/schemas/ModerationReportStatus" }
+        priority: { $ref: "#/components/schemas/ModerationReportPriority" }
+        outcome:
+          oneOf:
+            - $ref: "#/components/schemas/ModerationOutcome"
+            - type: "null"
+          description: Null sampai laporan diputus.
+        decision_message:
+          type: [string, "null"]
+          maxLength: 500
+          description: Pesan pengurus untuk pemohon; hanya terisi pada banding yang sudah diputus.
+        created_at: { type: string, format: date-time }
+        due_at: { type: string, format: date-time, description: Target penanganan (24 jam / 2 hari kerja). }
+        resolved_at: { type: [string, "null"], format: date-time }
+
+    ModerationReportPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ModerationReport" }
+        next_cursor: { type: [string, "null"] }
+
+    CreateModerationReportRequest:
+      type: object
+      required: [target_type, category]
+      properties:
+        target_type: { $ref: "#/components/schemas/ModerationTargetType" }
+        target_user_id: { type: string, format: uuid, description: Wajib untuk target_type user. }
+        message_id: { type: string, format: uuid, description: Wajib untuk target_type message. }
+        room_id: { type: string, format: uuid, description: Wajib untuk target_type room (grup). }
+        context_message_ids:
+          type: array
+          maxItems: 5
+          uniqueItems: true
+          description: Opsional untuk target_type message; pesan konteks di room yang sama yang terlihat bagi pelapor.
+          items: { type: string, format: uuid }
+        category: { $ref: "#/components/schemas/ModerationReportInputCategory" }
+        description:
+          type: string
+          maxLength: 2000
+          description: Penjelasan pelapor; wajib (minimal 10 karakter bukan spasi) untuk kategori other.
+          x-sensitive: true
+
+    CreateAppealRequest:
+      type: object
+      description: |
+        Banding atas suspend yang sedang berlaku. Keputusan yang dibanding ditentukan server (suspend aktif pemohon)
+        dan disimpan sebagai snapshot di bukti banding; klien tidak mengirim rujukan laporan agar keberadaan laporan
+        terhadap pemohon tidak terungkap (AC F12-2).
+      required: [description]
+      properties:
+        description:
+          type: string
+          minLength: 10
+          maxLength: 2000
+          description: Alasan banding (minimal 10 karakter bukan spasi).
+          x-sensitive: true

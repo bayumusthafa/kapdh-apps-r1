@@ -1,8 +1,1176 @@
-# Domain chat (C6 Community): room direct/grup, anggota dan undangan, pesan keyset, read cursor dan reaksi.
-# Pengiriman pesan lewat HTTP (ack setelah commit); penyampaian lewat Socket.IO (events/*.schema.json).
-# Modul API: apps/api/src/modules/chat. Path ditambahkan oleh penulis kontrak C6.
+# Domain chat (C6 Community): room direct/grup, anggota dan undangan, pesan keyset, read cursor dan reaksi (F-11).
+# Pengiriman pesan lewat HTTP (ack setelah commit); penyampaian lewat Socket.IO /realtime
+# (events/*.schema.json: message.created, message.deleted, reaction.updated, read.updated, room.updated,
+# room.member_changed, typing, presence). Typing dan presence hanya lewat socket (klien emit `typing {room_id}` dan
+# `presence.ping`), tidak ada endpoint HTTP-nya.
+# Modul API: apps/api/src/modules/chat.
+#
+# Aturan bersama domain ini (PRD 3.11, 2.2, ARCHITECTURE §3.5):
+# - Semua operasi: sesi mobile dan effective_status verified/expiring yang tidak suspended (member_access: active),
+#   termasuk membaca riwayat. unverified/expired -> 403 MEMBERSHIP_REQUIRED (UI: ajakan perpanjang, PRD 4.5);
+#   suspended -> 403 ACCOUNT_SUSPENDED (AC F11-6).
+# - Server memeriksa keanggotaan room pada SETIAP baca, kirim, unggah dan subscribe. Pengguna yang bukan anggota
+#   joined (termasuk yang sudah keluar/dikeluarkan) mendapat 404 NOT_FOUND; UUID room bukan izin akses (AC F11-4).
+# - Room direct kanonik: direct_key = min(a,b):max(a,b) unik (AC F11-1). Grup maksimal 100 anggota (undangan
+#   tertunda ikut dihitung), anggota masuk lewat undangan yang harus diterima, hanya admin grup yang mengundang, dan
+#   anggota baru hanya melihat pesan sejak bergabung (history_visible_from, default v3.5).
+# - Blokir (F-12) berlaku dua arah untuk pengiriman pesan direct, reaksi di room direct, dan undangan grup antara
+#   pasangan tersebut; riwayat lama tetap dapat dibaca. Di grup, blokir tidak mengubah aturan room.
+#   Blokir hanya diungkap kepada pihak yang memblokir; bagi pihak yang diblokir, lawan bicara tampil sebagai "tidak
+#   tersedia" (peer_unavailable / 404) dengan kode dan pesan galat yang sama seperti akun nonaktif (N-09).
+# - Urutan commit = urutan keyset (AC F11-3): SETIAP insert ke messages (pesan anggota maupun pesan sistem) mengunci
+#   baris room lebih dulu (SELECT ... FOR UPDATE pada rooms, kunci pertama transaksi), lalu mengisi created_at
+#   eksplisit = greatest(clock_timestamp(), rooms.last_message_at + 1 mikrodetik) — bukan now()/default kolom yang
+#   bernilai waktu awal transaksi — dan memperbarui rooms.last_message_at = created_at dalam transaksi yang sama.
+#   Dengan begitu pesan yang commit belakangan selalu berada sesudah semua pesan yang sudah commit di room itu,
+#   sehingga sinkron `after=<jangkar>` tidak pernah melewatkan pesan.
+# - Event undangan (room.member_changed invited/invitation_cancelled/declined) tidak pernah dikirim ke kanal
+#   room:<room_id>; hanya ke kanal user:<id> calon anggota dan admin grup, karena undangan tertunda hanya boleh
+#   dilihat admin grup (lihat events/room.member_changed.schema.json).
+# - Isi pesan tidak pernah dicatat di log atau audit (ARCHITECTURE §2 butir 3); push tidak memuat isi pesan (§4.7).
 tags:
   - name: Chat
     description: Chat langsung dan grup, undangan, pesan keyset, status baca dan reaksi (F-11, PRD 5.2).
 
-paths: {}
+paths:
+  /chat/rooms:
+    get:
+      tags: [Chat]
+      operationId: listChatRooms
+      summary: Daftar room milik sendiri (tab Pesan dan Pesan Grup) dengan unread dan pratinjau terakhir (F-11).
+      description: |
+        Hanya room dengan keanggotaan joined milik pemanggil. Room direct yang belum memiliki pesan tidak
+        ditampilkan. Urutan: aktivitas terakhir (last_message_at, lalu created_at) menurun, keyset stabil.
+        `unread_count` = pesan dari anggota lain sesudah read cursor pemanggil dan sesudah history_visible_from,
+        tanpa pesan yang sudah dihapus (dibatasi 999). Halaman juga membawa jumlah undangan grup tertunda dan jumlah
+        room yang memiliki pesan belum dibaca untuk badge navigasi.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          description: Saring jenis room (direct untuk tab Pesan, group untuk tab Pesan Grup).
+          schema: { $ref: "#/components/schemas/ChatRoomKind" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman room.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatRoomPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Chat]
+      operationId: createChatGroup
+      summary: Buat grup; pembuat menjadi admin dan calon anggota menerima undangan (F-11, PRD 3.11).
+      description: |
+        Pembuat langsung joined dengan peran admin. Setiap `invitee_user_ids` diproses seperti
+        POST /chat/rooms/{roomId}/invitations: calon anggota berstatus invited dan harus menerima sendiri; yang tidak
+        dapat diundang (bukan anggota aktif, blokir dua arah dengan pembuat, kapasitas 100) dilewati dengan alasan di
+        `invitations.skipped`, tanpa membatalkan pembuatan grup. Undangan masuk kotak masuk penerima (kategori chat,
+        deep link `/chat/invitations`) dan event realtime `room.member_changed` (change=invited) hanya ke kanal
+        user:<id> penerima dan admin grup (bukan kanal room).
+        Berkas avatar wajib purpose chat_image milik pemanggil yang sudah diunggah lewat POST /files.
+        Idempotency-Key mengembalikan hasil pertama saat diulang (PRD 4.3); laju pembuatan grup dibatasi (429).
+      x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatGroupCreateRequest" }
+      responses:
+        "201":
+          description: Grup dibuat beserta hasil undangan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatGroupCreated" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/direct:
+    post:
+      tags: [Chat]
+      operationId: openDirectRoom
+      summary: Buka atau buat room direct kanonik dengan anggota lain; idempoten (AC F11-1, F12-1).
+      description: |
+        Mengembalikan room direct yang sudah ada (200) atau membuat room baru (201) dengan direct_key kanonik
+        `min(a,b):max(a,b)`. Pembuatan bersamaan dari dua perangkat/pihak menghasilkan satu room (unique
+        rooms_direct_key_key + ON CONFLICT, AC F11-1); pemanggil yang kalah balapan menerima room yang sama.
+
+        Diri sendiri -> 400 VALIDATION_ERROR. Pemanggil memblokir lawan bicara -> 403 FORBIDDEN tanpa membuat room
+        baru (AC F12-1; pemanggil sudah mengetahui blokirnya sendiri dan UI menawarkan "Buka blokir"); room lama
+        tetap dapat dibuka lewat GET /chat/rooms/{roomId} untuk membaca riwayat.
+
+        Blokir oleh lawan bicara TIDAK diungkap (N-09, AC F12-1): diperlakukan persis seperti lawan bicara yang tidak
+        tersedia. Room direct yang sudah ada selalu dikembalikan (200) bila pemanggil tidak memblokir, walaupun lawan
+        bicara tidak lagi aktif atau memblokir pemanggil (`can_send` false, `send_restriction` peer_unavailable).
+        Room baru hanya dibuat bila lawan bicara akun aktif dengan effective_status verified/expiring yang tidak
+        suspended, tidak memblokir pemanggil, dan terlihat di direktori bagi pemanggil atau pernah menjadi anggota
+        grup yang sama; selain itu 404 NOT_FOUND dengan kode dan pesan yang sama untuk semua alasan (konsisten dengan
+        GET /directory/{userId} yang juga 404 bila lawan bicara memblokir pemanggil).
+      x-kapdh-access: { audience: mobile, member_access: active }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatDirectRoomRequest" }
+      responses:
+        "200":
+          description: Room direct yang sudah ada.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatRoom" }
+        "201":
+          description: Room direct baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatRoom" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/rooms/{roomId}:
+    get:
+      tags: [Chat]
+      operationId: getChatRoom
+      summary: Detail room untuk anggota joined, termasuk izin kirim dan read cursor (F-11, AC F11-4).
+      description: |
+        Hanya anggota joined; selain itu 404 NOT_FOUND (AC F11-4). `can_send` false beserta `send_restriction`
+        bila pengiriman ditolak server: blokir dua arah di room direct (AC F12-1), lawan bicara tidak lagi aktif,
+        atau grup ditutup; blokir oleh lawan bicara dilaporkan sebagai peer_unavailable (lihat ChatSendRestriction).
+        `peer_last_read_message_id` (room direct) dipakai untuk status "terbaca". Riwayat lama tetap dapat dibaca
+        walaupun ada blokir (PRD 3.12).
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+      responses:
+        "200":
+          description: Detail room.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatRoom" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Chat]
+      operationId: updateChatRoom
+      summary: Ubah nama atau avatar grup; hanya admin grup (F-11).
+      description: |
+        Hanya room group dan hanya anggota joined berperan admin (`can_manage` true); anggota biasa atau grup yang
+        sudah ditutup -> 403 FORBIDDEN, room direct -> 400 VALIDATION_ERROR. Versi room wajib dikirim di If-Match;
+        versi berbeda -> 409 VERSION_CONFLICT dengan `current` = ChatRoom terbaru (pola konflik AC F15-4). Nama
+        dipangkas server dan tidak boleh kosong (rooms_name_chk). Avatar memakai berkas purpose chat_image milik
+        pemanggil yang siap (status ready); `avatar_file_id: null` menghapus avatar. Perubahan dikirim ke anggota
+        lewat event `room.updated` (changes group_name/group_avatar) dan pesan sistem.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatRoomUpdate" }
+      responses:
+        "200":
+          description: Room terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatRoom" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/rooms/{roomId}/members:
+    get:
+      tags: [Chat]
+      operationId: listChatRoomMembers
+      summary: Daftar anggota room (info grup); undangan tertunda hanya untuk admin grup (F-11).
+      description: |
+        Hanya anggota joined. Bawaan `status=joined`. `status=invited` (undangan tertunda) hanya untuk admin grup;
+        anggota biasa -> 403 FORBIDDEN. Anggota yang sudah keluar/dikeluarkan/menolak tidak ditampilkan. Urutan:
+        admin dulu, lalu nama. Yang ditampilkan hanya nama dan avatar (tanpa kontak) walaupun anggota menyembunyikan
+        diri dari direktori. `last_read_message_id` per anggota dipakai untuk status "terbaca" di grup.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+        - name: status
+          in: query
+          required: false
+          description: joined (bawaan) atau invited (khusus admin grup).
+          schema: { $ref: "#/components/schemas/ChatMemberListStatus" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman anggota.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatRoomMemberPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/rooms/{roomId}/members/{userId}:
+    patch:
+      tags: [Chat]
+      operationId: updateChatRoomMember
+      summary: Promosikan atau turunkan peran anggota grup; hanya admin grup (F-11, AC F11-5).
+      description: |
+        Hanya admin grup pada room group; target wajib anggota joined (selain itu 404). Menurunkan admin terakhir
+        (termasuk diri sendiri) ditolak 400 VALIDATION_ERROR agar grup selalu memiliki admin (AC F11-5). Perubahan
+        dikirim lewat event `room.member_changed` (change=role_changed) dan pesan sistem.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+        - $ref: "#/components/parameters/ChatMemberUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatMemberUpdate" }
+      responses:
+        "200":
+          description: Keanggotaan terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatRoomMember" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Chat]
+      operationId: removeChatRoomMember
+      summary: Keluarkan anggota atau batalkan undangan tertunda; hanya admin grup (F-11, AC F11-4).
+      description: |
+        Hanya admin grup pada room group. Target joined menjadi removed (history dan subscription socket-nya dicabut
+        seketika, AC F11-4; event `room.member_changed` change=removed ke kanal room dan kanal user target); target
+        invited menjadi removed (undangan dibatalkan; event change=invitation_cancelled hanya ke kanal user calon
+        anggota dan admin grup). Diri sendiri -> 400 VALIDATION_ERROR (pakai POST /chat/rooms/{roomId}/leave).
+        Target yang tidak joined/invited -> 404. Mengulang permintaan dengan Idempotency-Key yang sama mengembalikan
+        hasil pertama.
+      x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+        - $ref: "#/components/parameters/ChatMemberUserId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "204": { description: Anggota dikeluarkan atau undangan dibatalkan. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/rooms/{roomId}/invitations:
+    post:
+      tags: [Chat]
+      operationId: inviteChatMembers
+      summary: Undang anggota ke grup; hanya admin grup, calon anggota wajib menerima (F-11, F-12).
+      description: |
+        Hanya admin grup pada room group yang belum ditutup (anggota biasa -> 403 FORBIDDEN). Per pengguna:
+        - diundang (status invited, invited_by = pemanggil) bila anggota aktif (verified/expiring, tidak suspended)
+          dan tidak ada blokir dua arah antara pemanggil dan calon anggota (F-12);
+        - dilewati dengan alasan: already_member, already_invited, room_full (joined + invited sudah 100), atau
+          not_invitable (bukan anggota aktif, akun tidak ada, diri sendiri, atau blokir; alasan tidak dibedakan).
+        Undangan ulang setelah left/declined/removed diperbolehkan. Kapasitas dihitung di bawah kunci baris room
+        sehingga undangan paralel tidak melampaui 100. Penerima mendapat notifikasi inbox (kategori chat) dan event
+        `room.member_changed` (change=invited) yang hanya dikirim ke kanal user:<id> penerima dan admin grup, tidak
+        ke kanal room, karena undangan tertunda hanya terlihat oleh admin grup. Idempotency-Key mengembalikan hasil
+        pertama saat diulang.
+      x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatInviteRequest" }
+      responses:
+        "200":
+          description: Hasil undangan per pengguna.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatInviteOutcome" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/invitations:
+    get:
+      tags: [Chat]
+      operationId: listChatInvitations
+      summary: Undangan grup tertunda milik sendiri (F-11).
+      description: |
+        Hanya undangan berstatus invited untuk pemanggil pada grup yang belum ditutup, terbaru dulu. Pengguna tidak
+        dipaksa masuk: undangan tetap tertunda sampai diterima, ditolak, atau dibatalkan admin grup.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman undangan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatInvitationPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/invitations/{roomId}/accept:
+    post:
+      tags: [Chat]
+      operationId: acceptChatInvitation
+      summary: Terima undangan grup; riwayat terlihat sejak bergabung (F-11, PRD 3.11).
+      description: |
+        Mengubah keanggotaan invited milik pemanggil menjadi joined (joined_at = history_visible_from = waktu
+        server) di bawah kunci baris room; kapasitas 100 tetap diperiksa. Pesan sistem "bergabung" ditulis (aturan
+        urutan created_at domain ini) dan event `room.member_changed` (change=joined) dikirim ke kanal room dan kanal
+        user pemanggil; socket pemanggil bergabung ke room. Bila sudah joined,
+        room dikembalikan apa adanya (idempoten). Tidak ada undangan tertunda -> 404; grup ditutup -> 404.
+      x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Room yang baru diikuti.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatRoom" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/invitations/{roomId}/decline:
+    post:
+      tags: [Chat]
+      operationId: declineChatInvitation
+      summary: Tolak undangan grup (F-11).
+      description: |
+        Mengubah keanggotaan invited milik pemanggil menjadi declined. Sudah declined -> 204 (idempoten); tidak ada
+        undangan -> 404. Event `room.member_changed` (change=declined) hanya dikirim ke kanal user:<id> admin grup
+        dan perangkat lain pemanggil, tidak ke kanal room; anggota biasa tidak mengetahui siapa yang menolak.
+      x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "204": { description: Undangan ditolak. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/rooms/{roomId}/leave:
+    post:
+      tags: [Chat]
+      operationId: leaveChatRoom
+      summary: Keluar dari grup; admin terakhir wajib menunjuk pengganti (AC F11-5, F11-4).
+      description: |
+        Hanya room group (room direct -> 400 VALIDATION_ERROR; gunakan mute atau blokir). Bila pemanggil admin
+        terakhir dan masih ada anggota joined lain, `successor_user_id` (anggota joined lain) wajib; tanpa itu 400
+        VALIDATION_ERROR pada field successor_user_id (AC F11-5). Pengganti dipromosikan dan pemanggil keluar dalam
+        satu transaksi. Bila pemanggil anggota terakhir, grup ditutup (closed_at) dan undangan tertunda dibatalkan
+        (event change=invitation_cancelled dengan actor_user_id null ke kanal user:<id> setiap calon anggota).
+        Setelah commit keanggotaan menjadi left (event change=left ke kanal room dan kanal user pemanggil),
+        subscription socket room dicabut dan riwayat tidak lagi dapat dibaca (AC F11-4). Penghapusan akun memakai
+        aturan pengalihan sistem, bukan endpoint ini (AC F14-5).
+      x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatLeaveRequest" }
+      responses:
+        "204": { description: Keluar dari grup. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/rooms/{roomId}/mute:
+    put:
+      tags: [Chat]
+      operationId: setChatRoomMute
+      summary: Bisukan atau aktifkan notifikasi push room untuk diri sendiri (F-11, F-12).
+      description: |
+        Hanya anggota joined. Mute hanya menahan push kategori chat dari room ini; pesan, unread dan inbox tetap
+        tersedia. Idempoten. Perangkat lain milik pemanggil menerima `room.updated` (changes berisi muted).
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatMuteRequest" }
+      responses:
+        "204": { description: Preferensi mute tersimpan. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/rooms/{roomId}/messages:
+    get:
+      tags: [Chat]
+      operationId: listChatMessages
+      summary: Riwayat pesan keyset (created_at, id); sinkronisasi setelah reconnect (AC F11-3, F11-4).
+      description: |
+        Hanya anggota joined; hanya pesan dengan created_at >= history_visible_from milik pemanggil (anggota baru
+        melihat pesan sejak bergabung). Item selalu urut naik (created_at, id).
+        - Tanpa `before`/`after`: `limit` pesan terbaru; `next_cursor` = ID pesan tertua halaman ini bila masih ada
+          pesan lebih lama (lanjutkan dengan `before`).
+        - `before=<message_id>`: pesan sebelum jangkar; `next_cursor` = ID pesan tertua bila masih ada yang lebih lama.
+        - `after=<message_id>`: pesan sesudah jangkar untuk sinkron setelah reconnect (AC F11-3); `next_cursor` = ID
+          pesan terbaru halaman bila masih ada yang lebih baru (lanjutkan dengan `after`).
+        `before` dan `after` tidak boleh bersamaan; jangkar wajib pesan di room ini yang terlihat bagi pemanggil
+        (selain itu 400 VALIDATION_ERROR). Pesan terhapus tampil sebagai placeholder (deleted_at terisi, body/gambar
+        null). URL gambar bertanda tangan maksimal 10 menit dan hanya diterbitkan untuk anggota yang berhak (PRD 5.4).
+
+        Sinkron tanpa kehilangan pesan (AC F11-3, N-02):
+        - Server menjamin urutan commit = urutan (created_at, id) per room (kunci baris room saat insert, lihat aturan
+          domain), sehingga pesan yang commit sesudah sebuah respons halaman selalu berada sesudah pesan terbaru
+          halaman itu.
+        - Klien menyimpan "jangkar sinkron" = ID pesan terbaru yang diperoleh dari respons HTTP endpoint ini (halaman
+          HTTP selalu berurutan tanpa celah). Event `message.created` TIDAK memajukan jangkar karena event dari
+          transaksi berbeda dapat tiba tidak berurutan atau hilang saat koneksi putus. Setelah reconnect klien
+          memanggil `after=<jangkar>` sampai next_cursor null, menggabungkan hasil berdasarkan `id`, lalu memajukan
+          jangkar. Klien boleh memajukan jangkar lebih sering dengan sinkron `after` berkala.
+        - Penghapusan dan reaksi pada pesan lama tidak membuat pesan baru, sehingga tidak ikut sinkron `after`.
+          Setelah reconnect, dan setiap kali room dibuka, klien memuat ulang jendela pesan yang ditampilkan (halaman
+          terbaru tanpa cursor; halaman lama lewat `before` saat digulir) dan MENGGANTI salinan lokal (body, image,
+          reactions, deleted_at). Salinan lokal hanya boleh tampil sementara sampai halaman HTTP tiba, sehingga pesan
+          yang dihapus pengirim, moderator, atau karena penghapusan akun (AC F14-3) tidak terus tampil.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+        - name: before
+          in: query
+          required: false
+          description: ID pesan jangkar; ambil pesan yang lebih lama dari jangkar.
+          schema: { type: string, format: uuid }
+        - name: after
+          in: query
+          required: false
+          description: ID pesan jangkar; ambil pesan yang lebih baru dari jangkar (sinkron, AC F11-3).
+          schema: { type: string, format: uuid }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman pesan urut naik.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatMessagePage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Chat]
+      operationId: sendChatMessage
+      summary: Kirim pesan; ack sesudah commit, client_message_id mencegah duplikasi (AC F11-2, F12-1, F11-6).
+      description: |
+        Hanya anggota joined pada room yang belum ditutup; status pengirim diperiksa ulang setiap request sehingga
+        anggota yang menjadi expired/suspended saat tersambung ditolak (AC F11-6).
+        - Teks: `body` 1..4000 karakter dan tidak hanya spasi (D5 v3.2). Gambar: `image_file_id` berkas purpose
+          chat_image milik pengirim yang siap (status ready) dan belum terpakai; `body` opsional sebagai keterangan.
+        - `reply_to_id` wajib pesan di room yang sama dan terlihat bagi pengirim.
+        - Room direct: blokir aktif dari salah satu pihak -> 403 FORBIDDEN walaupun room/socket sudah ada (AC F12-1);
+          lawan bicara tidak lagi aktif -> 403 FORBIDDEN. Blokir oleh lawan bicara dan lawan bicara tidak tersedia
+          memakai pesan galat yang sama sehingga pihak yang diblokir tidak mengetahuinya (N-09). Grup ditutup -> 403
+          FORBIDDEN.
+        - Filter dasar konten berbahaya (PRD 3.12) dapat menolak isi dengan 400 VALIDATION_ERROR pada field body.
+        Urutan: transaksi mengunci baris room lebih dulu (SELECT ... FOR UPDATE), memeriksa ulang keanggotaan, blokir
+        dan status room di bawah kunci itu, mengisi created_at = greatest(clock_timestamp(), last_message_at + 1
+        mikrodetik), menyisipkan pesan, memajukan read cursor pengirim dan memperbarui rooms.last_message_at dalam
+        transaksi yang SAMA, sehingga urutan commit per room sama dengan urutan keyset (AC F11-3).
+        Respons dikirim sesudah commit (201). Mengulang dengan client_message_id yang sama dari pengirim yang sama
+        mengembalikan pesan yang sama (200) tanpa pesan baru (AC F11-2, unique messages_sender_id_client_message_id_key);
+        client_message_id sama dengan room/isi berbeda -> 409 IDEMPOTENCY_CONFLICT. Sesudah commit server mengirim
+        `message.created` ke kanal room dan menjadwalkan push kategori chat (tanpa isi pesan) untuk anggota yang tidak
+        mute sesuai preferensi. Laju pengiriman dibatasi (429).
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatSendMessageRequest" }
+      responses:
+        "201":
+          description: Pesan tersimpan (ack sesudah commit).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatMessage" }
+        "200":
+          description: Pengulangan client_message_id; pesan yang sama dikembalikan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatMessage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/rooms/{roomId}/messages/{messageId}:
+    delete:
+      tags: [Chat]
+      operationId: deleteChatMessage
+      summary: Hapus pesan sendiri menjadi placeholder (F-11, AC F14-3 pola placeholder).
+      description: |
+        Hanya pengirim pesan (pesan orang lain atau pesan sistem -> 403 FORBIDDEN). Isi teks dan gambar dikosongkan,
+        deleted_at diisi; pesan tetap ada sebagai placeholder agar urutan keyset stabil. Bukti laporan yang sudah
+        tercatat tidak ikut terhapus (PRD 3.12). Idempoten: pesan yang sudah dihapus dikembalikan apa adanya.
+        Anggota room menerima `message.deleted`.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+        - $ref: "#/components/parameters/ChatMessageId"
+      responses:
+        "200":
+          description: Placeholder pesan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatMessage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/rooms/{roomId}/messages/{messageId}/reactions/{emoji}:
+    put:
+      tags: [Chat]
+      operationId: addChatReaction
+      summary: Tambah reaksi emoji pada pesan; idempoten (F-11, PRD 6.4).
+      description: |
+        Hanya anggota joined untuk pesan yang terlihat baginya; pesan terhapus atau pesan sistem -> 400
+        VALIDATION_ERROR. Satu baris per (pesan, pengguna, emoji) sehingga pengulangan tidak menambah hitungan.
+        Maksimal 10 emoji berbeda per pengguna per pesan. Di room direct, blokir aktif dari salah satu pihak atau
+        lawan bicara tidak tersedia -> 403 FORBIDDEN dengan pesan galat yang sama (AC F12-1, N-09). Anggota room
+        menerima `reaction.updated`.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+        - $ref: "#/components/parameters/ChatMessageId"
+        - $ref: "#/components/parameters/ChatEmoji"
+      responses:
+        "200":
+          description: Ringkasan reaksi pesan terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatMessageReactions" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Chat]
+      operationId: removeChatReaction
+      summary: Hapus reaksi emoji sendiri; idempoten (F-11).
+      description: |
+        Hanya anggota joined untuk pesan yang terlihat baginya. Reaksi yang tidak ada tetap 200 dengan ringkasan
+        terbaru. Anggota room menerima `reaction.updated` bila ada perubahan.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+        - $ref: "#/components/parameters/ChatMessageId"
+        - $ref: "#/components/parameters/ChatEmoji"
+      responses:
+        "200":
+          description: Ringkasan reaksi pesan terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatMessageReactions" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /chat/rooms/{roomId}/read:
+    put:
+      tags: [Chat]
+      operationId: markChatRoomRead
+      summary: Majukan read cursor secara monoton (F-11, PRD 3.11).
+      description: |
+        Hanya anggota joined; `message_id` wajib pesan di room ini yang terlihat bagi pemanggil (selain itu 400).
+        Pembaruan memakai syarat (created_at, id) jangkar > cursor saat ini sehingga paket terlambat tidak membuat
+        cursor mundur; bila tidak maju, keadaan saat ini dikembalikan tanpa perubahan. Bila maju, anggota room dan
+        perangkat lain pemanggil menerima `read.updated` (status "terbaca"). Presence/typing bukan bukti baca.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/ChatRoomId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatReadRequest" }
+      responses:
+        "200":
+          description: Read cursor terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatReadState" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  parameters:
+    ChatRoomId:
+      name: roomId
+      in: path
+      required: true
+      description: ID room; bukan izin akses, keanggotaan selalu diperiksa (AC F11-4).
+      schema: { type: string, format: uuid }
+    ChatMessageId:
+      name: messageId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ChatMemberUserId:
+      name: userId
+      in: path
+      required: true
+      description: user_id anggota room.
+      schema: { type: string, format: uuid }
+    ChatEmoji:
+      name: emoji
+      in: path
+      required: true
+      description: Satu emoji (grapheme Unicode), dikodekan persen di URL; maksimal 16 karakter.
+      schema: { type: string, minLength: 1, maxLength: 16 }
+
+  schemas:
+    ChatRoomKind:
+      type: string
+      enum: [direct, group]
+      description: Jenis room (rooms.kind).
+
+    ChatMemberRole:
+      type: string
+      enum: [admin, member]
+      description: Peran di grup (room_members.role); room direct selalu member.
+
+    ChatMemberStatus:
+      type: string
+      enum: [invited, joined, left, removed, declined]
+      description: |
+        Siklus keanggotaan (room_members.status): invited -> joined | declined | removed (dibatalkan admin);
+        joined -> left | removed. Undangan ulang mengembalikan ke invited.
+
+    ChatMemberListStatus:
+      type: string
+      enum: [joined, invited]
+      description: Saringan daftar anggota; invited hanya untuk admin grup.
+
+    ChatMessageKind:
+      type: string
+      enum: [text, image, system]
+      description: Jenis pesan (messages.kind); system ditulis server (mis. anggota bergabung/keluar).
+
+    ChatSendKind:
+      type: string
+      enum: [text, image]
+      description: Jenis pesan yang boleh dikirim anggota.
+
+    ChatSendRestriction:
+      type: string
+      enum: [blocked, peer_unavailable, room_closed]
+      description: |
+        Alasan pengiriman ditolak server (room direct kecuali room_closed):
+        - blocked = pemanggil memblokir lawan bicara (AC F12-1); UI menawarkan "Buka blokir".
+        - peer_unavailable = lawan bicara tidak lagi anggota aktif, akunnya dihapus, ATAU lawan bicara memblokir
+          pemanggil. Blokir dari pihak lain sengaja dilaporkan sebagai peer_unavailable agar pihak yang diblokir
+          tidak mengetahuinya (sama dengan can_message di profil, N-09).
+        - room_closed = grup ditutup.
+
+    ChatUserRef:
+      type: object
+      description: Identitas minimum anggota dalam chat (tanpa kontak).
+      required: [user_id, full_name, avatar_url]
+      properties:
+        user_id: { type: string, format: uuid }
+        full_name: { type: string, maxLength: 120 }
+        avatar_url: { type: [string, "null"], format: uri }
+
+    ChatPeer:
+      allOf:
+        - $ref: "#/components/schemas/ChatUserRef"
+        - type: object
+          description: Lawan bicara di room direct.
+          required: [available]
+          properties:
+            available:
+              type: boolean
+              description: |
+                False bila lawan bicara tidak lagi anggota aktif (expired/suspended), akunnya dihapus, atau ia
+                memblokir pemanggil; alasan sengaja tidak dibedakan (N-09, AC F12-1).
+
+    ChatMessagePreview:
+      type: object
+      description: Pratinjau pesan terakhir di daftar room.
+      required: [id, kind, sender_user_id, sender_name, preview, has_image, deleted, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/ChatMessageKind" }
+        sender_user_id: { type: [string, "null"], format: uuid }
+        sender_name: { type: [string, "null"] }
+        preview:
+          type: [string, "null"]
+          maxLength: 120
+          description: Potongan isi teks (maksimal 120 karakter); null bila terhapus atau gambar tanpa keterangan.
+          x-sensitive: true
+        has_image: { type: boolean }
+        deleted: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    ChatRoomSummary:
+      type: object
+      description: Item daftar room (tab Pesan / Pesan Grup).
+      required:
+        [
+          id,
+          kind,
+          title,
+          avatar_url,
+          peer,
+          member_count,
+          my_role,
+          muted,
+          unread_count,
+          last_message,
+          last_message_at,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/ChatRoomKind" }
+        title:
+          type: string
+          description: Nama grup, atau nama lawan bicara untuk room direct ("Akun dihapus" bila akunnya dihapus).
+        avatar_url:
+          type: [string, "null"]
+          format: uri
+          description: Avatar grup atau avatar lawan bicara; URL bertanda tangan maksimal 10 menit bila privat.
+        peer:
+          oneOf:
+            - $ref: "#/components/schemas/ChatPeer"
+            - type: "null"
+          description: |
+            Selalu ada. Objek lawan bicara untuk room direct (dipakai membuka profil, blokir dan lapor dari daftar room
+            dan header room); null untuk grup atau bila akun lawan bicara sudah dihapus.
+        member_count: { type: integer, minimum: 0, maximum: 100, description: Jumlah anggota joined. }
+        my_role: { $ref: "#/components/schemas/ChatMemberRole" }
+        muted: { type: boolean }
+        unread_count: { type: integer, minimum: 0, maximum: 999 }
+        last_message:
+          oneOf:
+            - $ref: "#/components/schemas/ChatMessagePreview"
+            - type: "null"
+        last_message_at: { type: [string, "null"], format: date-time }
+
+    ChatRoom:
+      allOf:
+        - $ref: "#/components/schemas/ChatRoomSummary"
+        - type: object
+          description: Detail room untuk anggota joined.
+          required:
+            [
+              name,
+              avatar_file_id,
+              can_send,
+              send_restriction,
+              can_manage,
+              last_read_message_id,
+              peer_last_read_message_id,
+              history_visible_from,
+              closed_at,
+              created_at,
+              version,
+            ]
+          properties:
+            name: { type: [string, "null"], maxLength: 80, description: Nama grup; null untuk room direct. }
+            avatar_file_id: { type: [string, "null"], format: uuid, description: Berkas avatar grup. }
+            can_send: { type: boolean, description: False bila server akan menolak pengiriman. }
+            send_restriction:
+              oneOf:
+                - $ref: "#/components/schemas/ChatSendRestriction"
+                - type: "null"
+              description: Alasan can_send false; null bila boleh mengirim.
+            can_manage:
+              type: boolean
+              description: True bila pemanggil admin grup yang belum ditutup (ubah info, undang, kelola anggota).
+            last_read_message_id:
+              { type: [string, "null"], format: uuid, description: Read cursor pemanggil. }
+            peer_last_read_message_id:
+              type: [string, "null"]
+              format: uuid
+              description: Read cursor lawan bicara (room direct) untuk status "terbaca"; null untuk grup.
+            history_visible_from:
+              type: [string, "null"]
+              format: date-time
+              description: Batas awal riwayat yang dapat dibaca pemanggil (waktu bergabung); null = sejak awal.
+            closed_at: { type: [string, "null"], format: date-time }
+            created_at: { type: string, format: date-time }
+            version: { type: string, description: Versi room untuk If-Match pada PATCH. }
+
+    ChatRoomPage:
+      type: object
+      required: [items, pending_invitation_count, unread_room_count]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ChatRoomSummary" }
+        next_cursor: { type: [string, "null"] }
+        pending_invitation_count:
+          type: integer
+          minimum: 0
+          description: Jumlah undangan grup tertunda milik pemanggil.
+        unread_room_count:
+          type: integer
+          minimum: 0
+          description: Jumlah room (semua jenis) yang memiliki pesan belum dibaca.
+
+    ChatDirectRoomRequest:
+      type: object
+      required: [user_id]
+      properties:
+        user_id: { type: string, format: uuid, description: Lawan bicara (akun alumni). }
+
+    ChatGroupCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Nama grup; dipangkas server dan tidak boleh kosong (rooms_name_chk).
+        avatar_file_id:
+          { type: [string, "null"], format: uuid, description: Berkas purpose chat_image milik pemanggil. }
+        invitee_user_ids:
+          type: array
+          maxItems: 99
+          uniqueItems: true
+          description: Calon anggota yang diundang (wajib menerima sendiri).
+          items: { type: string, format: uuid }
+
+    ChatInviteRequest:
+      type: object
+      required: [user_ids]
+      properties:
+        user_ids:
+          type: array
+          minItems: 1
+          maxItems: 50
+          uniqueItems: true
+          items: { type: string, format: uuid }
+
+    ChatInviteSkipReason:
+      type: string
+      enum: [already_member, already_invited, room_full, not_invitable]
+      description: |
+        Alasan undangan dilewati. not_invitable sengaja tidak membedakan akun tidak ada, bukan anggota aktif, diri
+        sendiri, atau blokir (F-12, N-09).
+
+    ChatInviteSkip:
+      type: object
+      required: [user_id, reason]
+      properties:
+        user_id: { type: string, format: uuid }
+        reason: { $ref: "#/components/schemas/ChatInviteSkipReason" }
+
+    ChatInviteOutcome:
+      type: object
+      required: [invited_user_ids, skipped]
+      properties:
+        invited_user_ids:
+          type: array
+          items: { type: string, format: uuid }
+        skipped:
+          type: array
+          items: { $ref: "#/components/schemas/ChatInviteSkip" }
+
+    ChatGroupCreated:
+      type: object
+      required: [room, invitations]
+      properties:
+        room: { $ref: "#/components/schemas/ChatRoom" }
+        invitations: { $ref: "#/components/schemas/ChatInviteOutcome" }
+
+    ChatInvitation:
+      type: object
+      description: Undangan grup tertunda untuk pemanggil.
+      required: [room_id, room_name, room_avatar_url, member_count, invited_by, invited_at]
+      properties:
+        room_id: { type: string, format: uuid }
+        room_name: { type: string, maxLength: 80 }
+        room_avatar_url: { type: [string, "null"], format: uri }
+        member_count: { type: integer, minimum: 0, maximum: 100 }
+        invited_by:
+          oneOf:
+            - $ref: "#/components/schemas/ChatUserRef"
+            - type: "null"
+          description: Admin grup yang mengundang; null bila akunnya sudah dihapus.
+        invited_at: { type: string, format: date-time }
+
+    ChatInvitationPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ChatInvitation" }
+        next_cursor: { type: [string, "null"] }
+
+    ChatRoomUpdate:
+      type: object
+      description: Hanya field yang dikirim yang diubah.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        avatar_file_id:
+          type: [string, "null"]
+          format: uuid
+          description: Berkas purpose chat_image milik pemanggil; null menghapus avatar.
+
+    ChatRoomMember:
+      allOf:
+        - $ref: "#/components/schemas/ChatUserRef"
+        - type: object
+          required: [role, status, invited_at, joined_at, last_read_message_id, is_me]
+          properties:
+            role: { $ref: "#/components/schemas/ChatMemberRole" }
+            status: { $ref: "#/components/schemas/ChatMemberStatus" }
+            invited_at: { type: [string, "null"], format: date-time }
+            joined_at: { type: [string, "null"], format: date-time }
+            last_read_message_id:
+              type: [string, "null"]
+              format: uuid
+              description: Read cursor anggota joined (status "terbaca"); null untuk undangan.
+            is_me: { type: boolean }
+
+    ChatRoomMemberPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ChatRoomMember" }
+        next_cursor: { type: [string, "null"] }
+
+    ChatMemberUpdate:
+      type: object
+      required: [role]
+      properties:
+        role: { $ref: "#/components/schemas/ChatMemberRole" }
+
+    ChatLeaveRequest:
+      type: object
+      description: Kirim objek kosong bila bukan admin terakhir.
+      properties:
+        successor_user_id:
+          type: string
+          format: uuid
+          description: Anggota joined yang dipromosikan menjadi admin; wajib bila pemanggil admin terakhir (AC F11-5).
+
+    ChatMuteRequest:
+      type: object
+      required: [muted]
+      properties:
+        muted: { type: boolean }
+
+    ChatImage:
+      type: object
+      description: Gambar pesan; URL bertanda tangan maksimal 10 menit, terikat berkas (PRD 5.4).
+      required: [file_id, url, url_expires_at, mime, width, height]
+      properties:
+        file_id: { type: string, format: uuid }
+        url: { type: string, format: uri, x-sensitive: true }
+        url_expires_at: { type: string, format: date-time }
+        mime: { type: string, examples: ["image/jpeg"] }
+        width: { type: [integer, "null"], minimum: 1 }
+        height: { type: [integer, "null"], minimum: 1 }
+
+    ChatMessageReply:
+      type: object
+      description: |
+        Rujukan pesan yang dibalas. available=false bila pesan itu terhapus atau di luar riwayat yang boleh dibaca
+        pemanggil; pratinjau lalu null. Pada event realtime available selalu false dan pratinjau null karena riwayat
+        yang boleh dibaca berbeda per anggota (klien memakai salinan lokal pesan `id`).
+      required: [id, available, sender_name, preview, has_image]
+      properties:
+        id: { type: string, format: uuid }
+        available: { type: boolean }
+        sender_name: { type: [string, "null"] }
+        preview: { type: [string, "null"], maxLength: 120, x-sensitive: true }
+        has_image: { type: boolean }
+
+    ChatReaction:
+      type: object
+      required: [emoji, count, reacted_by_me]
+      properties:
+        emoji: { type: string, minLength: 1, maxLength: 16 }
+        count: { type: integer, minimum: 1 }
+        reacted_by_me: { type: boolean }
+
+    ChatMessage:
+      type: object
+      description: |
+        Pesan chat. Bentuk JSON sama dengan RealtimeChatMessage pada event message.created. Placeholder pesan
+        terhapus: deleted_at terisi, body/image null, reaksi kosong.
+      required:
+        [
+          id,
+          room_id,
+          client_message_id,
+          kind,
+          sender,
+          body,
+          image,
+          reply_to,
+          reactions,
+          created_at,
+          deleted_at,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        room_id: { type: string, format: uuid }
+        client_message_id:
+          type: [string, "null"]
+          format: uuid
+          description: ID dari klien pengirim untuk deduplikasi retry (AC F11-2); null untuk pesan sistem.
+        kind: { $ref: "#/components/schemas/ChatMessageKind" }
+        sender:
+          oneOf:
+            - $ref: "#/components/schemas/ChatUserRef"
+            - type: "null"
+          description: Null untuk pesan sistem atau pengirim yang akunnya sudah dihapus.
+        body:
+          type: [string, "null"]
+          maxLength: 4000
+          description: Isi teks atau keterangan gambar; pesan sistem berisi teks server. Tidak pernah dilog.
+          x-sensitive: true
+        image:
+          oneOf:
+            - $ref: "#/components/schemas/ChatImage"
+            - type: "null"
+        reply_to:
+          oneOf:
+            - $ref: "#/components/schemas/ChatMessageReply"
+            - type: "null"
+        reactions:
+          type: array
+          items: { $ref: "#/components/schemas/ChatReaction" }
+        created_at:
+          type: string
+          format: date-time
+          description: |
+            Diisi server di bawah kunci baris room dan naik ketat per room, sehingga urutan (created_at, id) sama
+            dengan urutan commit (AC F11-3).
+        deleted_at: { type: [string, "null"], format: date-time }
+
+    ChatMessagePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          description: Urut naik (created_at, id).
+          items: { $ref: "#/components/schemas/ChatMessage" }
+        next_cursor:
+          type: [string, "null"]
+          description: ID pesan untuk request berikutnya ke arah yang sama (`before` atau `after`); null bila habis.
+
+    ChatSendMessageRequest:
+      type: object
+      required: [client_message_id, kind]
+      properties:
+        client_message_id:
+          type: string
+          format: uuid
+          description: UUID dari klien, disimpan lokal sampai ack diterima dan dipakai ulang saat retry (PRD 4.3).
+        kind: { $ref: "#/components/schemas/ChatSendKind" }
+        body:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          description: Wajib untuk text (tidak boleh hanya spasi); opsional untuk image sebagai keterangan.
+          x-sensitive: true
+        image_file_id:
+          { type: string, format: uuid, description: Wajib untuk image; berkas purpose chat_image. }
+        reply_to_id: { type: [string, "null"], format: uuid }
+
+    ChatMessageReactions:
+      type: object
+      required: [message_id, reactions]
+      properties:
+        message_id: { type: string, format: uuid }
+        reactions:
+          type: array
+          items: { $ref: "#/components/schemas/ChatReaction" }
+
+    ChatReadRequest:
+      type: object
+      required: [message_id]
+      properties:
+        message_id: { type: string, format: uuid, description: Pesan terakhir yang sudah ditampilkan klien. }
+
+    ChatReadState:
+      type: object
+      required: [room_id, last_read_message_id, last_read_at, unread_count]
+      properties:
+        room_id: { type: string, format: uuid }
+        last_read_message_id: { type: [string, "null"], format: uuid }
+        last_read_at: { type: [string, "null"], format: date-time }
+        unread_count: { type: integer, minimum: 0, maximum: 999 }

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/contracts/events/message.created.schema.json",
+  "title": "MessageCreatedPayload",
+  "description": "Pesan baru di room (F-11, N-02). entity_id = ID pesan. Dikirim sesudah commit ke kanal room:<room_id> (anggota joined, termasuk perangkat lain pengirim). Klien mendeduplikasi dengan event_id/ID pesan dan mencocokkan pesan optimistis lewat client_message_id. Event dari transaksi berbeda dapat tiba tidak berurutan atau hilang saat koneksi putus, sehingga event ini TIDAK memajukan jangkar sinkron klien: jangkar hanya diambil dari respons HTTP GET /chat/rooms/{roomId}/messages, dan setelah reconnect klien memanggil ?after=<jangkar> sampai next_cursor null (AC F11-3). Server menjamin urutan commit = urutan (created_at, id) per room dengan mengunci baris room saat insert, sehingga sinkron after tidak melewatkan pesan (events/README.md). Push layar kunci tidak memuat isi pesan (§4.7).",
+  "type": "object",
+  "required": ["room_id", "message"],
+  "additionalProperties": false,
+  "properties": {
+    "room_id": { "type": "string", "format": "uuid" },
+    "message": { "$ref": "realtime-chat-message.schema.json" }
+  },
+  "examples": [
+    {
+      "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61",
+      "message": {
+        "id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e60",
+        "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61",
+        "client_message_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e90",
+        "kind": "text",
+        "sender": {
+          "user_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e70",
+          "full_name": "Ahmad Islam",
+          "avatar_url": null
+        },
+        "body": "Assalamu'alaikum, kapan reuni angkatan?",
+        "image": null,
+        "reply_to": null,
+        "reactions": [],
+        "created_at": "2026-10-12T03:15:00.000Z",
+        "deleted_at": null
+      }
+    }
+  ]
+}
