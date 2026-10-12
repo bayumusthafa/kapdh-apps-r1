@@ -96,10 +96,35 @@ export class RealtimeGateway
       socket.disconnect(true);
       return;
     }
-    await socket.join([userChannel(identity.userId), sessionChannel(identity.sessionId)]);
-    await this.syncRooms(socket, identity.effectiveStatus);
-    for (const event of CLIENT_EVENTS)
-      socket.on(event, (data: unknown) => void this.onClientEvent(socket, event, data));
+    try {
+      await socket.join([userChannel(identity.userId), sessionChannel(identity.sessionId)]);
+      // Pencabutan yang terjadi di antara handshake dan join (disconnectUser/disconnectSession belum menjangkau socket
+      // ini) ditutup dengan pemeriksaan ulang sesudah bergabung ke kanal pengguna/sesi.
+      const verdict = await this.verdictFor(identity);
+      if (verdict) {
+        this.revokeSocket(socket, verdict);
+        return;
+      }
+      await this.syncRooms(socket, identity.effectiveStatus);
+      for (const event of CLIENT_EVENTS)
+        socket.on(event, (data: unknown) => void this.onClientEvent(socket, event, data));
+    } catch (error) {
+      this.logger.warn({ error: safeError(error) }, "socket realtime gagal disiapkan; koneksi ditutup");
+      socket.disconnect(true);
+    }
+  }
+
+  /** null bila sesi socket masih sah; selain itu alasan `session.revoked`. */
+  private async verdictFor(identity: SocketIdentity): Promise<SessionRevokedReason | null> {
+    const verdicts = await this.sessions.revalidate([
+      {
+        sessionId: identity.sessionId,
+        userId: identity.userId,
+        sessionVersion: identity.sessionVersion,
+        audience: "mobile",
+      },
+    ]);
+    return verdicts.get(identity.sessionId) ?? null;
   }
 
   /**
@@ -212,18 +237,7 @@ export class RealtimeGateway
     if (++identity.eventCount > CLIENT_EVENT_LIMIT) return;
     try {
       // Sesi diperiksa ulang pada setiap event klien (C6: typing/presence tidak boleh melewati pencabutan).
-      const [verdict] = [
-        ...(
-          await this.sessions.revalidate([
-            {
-              sessionId: identity.sessionId,
-              userId: identity.userId,
-              sessionVersion: identity.sessionVersion,
-              audience: "mobile",
-            },
-          ])
-        ).values(),
-      ];
+      const verdict = await this.verdictFor(identity);
       if (verdict) {
         this.revokeSocket(socket, verdict);
         return;

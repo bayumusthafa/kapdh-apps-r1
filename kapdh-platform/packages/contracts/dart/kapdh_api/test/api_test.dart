@@ -168,6 +168,11 @@ void main() {
               'purpose': 'payment_proof',
               'mime': 'image/png',
               'bytes': 3,
+              'width': 1,
+              'height': 1,
+              'visibility': 'private',
+              'public_url': null,
+              'created_at': '2026-10-13T02:00:00.000Z',
             }, 201),
     );
     final masters = await MeApi(dio).listMasters(MasterKind.professions);
@@ -176,7 +181,7 @@ void main() {
 
     final file = await FilesApi(dio).uploadFile(
       FileUploadRequest(
-        purpose: FilePurpose.paymentProof,
+        purpose: FileUploadPurpose.paymentProof,
         file: MultipartFile.fromBytes(<int>[1, 2, 3], filename: 'bukti.png'),
       ),
     );
@@ -196,12 +201,17 @@ void main() {
           'purpose': 'payment_proof',
           'mime': 'image/png',
           'bytes': 3,
+          'width': 1,
+          'height': 1,
+          'visibility': 'private',
+          'public_url': null,
+          'created_at': '2026-10-13T02:00:00.000Z',
         };
 
     test('objek request yang sama dikirim dua kali ("Coba lagi") tanpa galat finalized', () async {
       final (dio, adapter) = dioWith((_) => jsonBody(fileJson(), 201));
       final request = FileUploadRequest(
-        purpose: FilePurpose.paymentProof,
+        purpose: FileUploadPurpose.paymentProof,
         file: MultipartFile.fromBytes(<int>[0x41, 0x42, 0x43], filename: 'bukti.png'),
       );
       final api = FilesApi(dio);
@@ -236,7 +246,7 @@ void main() {
       ));
       final file = await FilesApi(dio).uploadFile(
         FileUploadRequest(
-          purpose: FilePurpose.paymentProof,
+          purpose: FileUploadPurpose.paymentProof,
           file: MultipartFile.fromBytes(<int>[0x41, 0x42, 0x43], filename: 'bukti.png'),
         ),
       );

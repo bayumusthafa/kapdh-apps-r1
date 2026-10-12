@@ -664,7 +664,11 @@ export class FilesService implements OnModuleInit {
       row.sessionVersion !== claims.sessionVersion
     )
       return null;
-    const base = { userId: claims.userId, sessionId: claims.sessionId, sessionVersion: claims.sessionVersion };
+    const base = {
+      userId: claims.userId,
+      sessionId: claims.sessionId,
+      sessionVersion: claims.sessionVersion,
+    };
     if (row.audience === "admin") {
       if (row.userKind !== "admin" || !row.adminId || row.adminStatus !== "active") return null;
       const permissions: ReadonlySet<Permission> =
