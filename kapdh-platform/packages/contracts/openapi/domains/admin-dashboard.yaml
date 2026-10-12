@@ -24,11 +24,24 @@ paths:
         | `events`          | events.manage                     | tiket terjual semua event, penjualan tiket per event       |
         | `upcoming_events` | events.manage atau events.checkin | event mendatang 30 hari                                    |
         | `moderation`      | moderation.read                   | laporan terbuka, mendesak, lewat target                    |
-        | `jobs`            | notifications.manage              | pengiriman/outbox gagal, umur outbox tertua, deletion gagal |
+        | `jobs`            | notifications.manage              | kegagalan yang dapat ditindak, umur outbox, info deletion  |
 
         Admin tanpa izin apa pun tetap menerima `generated_at` saja. Semua hitungan dihitung server pada
         `generated_at` (UTC); usia antrean dihitung klien sebagai `generated_at` dikurangi waktu tertua agar tidak
         bergantung pada jam perangkat.
+
+        Tabel dasbor hanya cuplikan (maksimal 10 baris); pencarian dan "lihat semua" memakai endpoint daftar
+        domain pemiliknya dengan izin yang sama (PRD 3.15: pencarian/filter/paging server):
+
+        - Riwayat Transaksi dan kotak "Cari nama atau nomor KTA...": GET
+          /admin/payments?status=paid&q=<teks>&sort=decided_at_desc (adminListPayments, payments.read). `q`
+          mencari nama alumni atau awalan nomor anggota, sama dengan placeholder kotak cari; urutan decided_at_desc
+          sama dengan urutan `recent_transactions`, sehingga hasil tanpa `q` diawali baris yang sama dengan cuplikan.
+        - Pengguna: GET /admin/members?sort=registered_desc (adminListMembers, members.read).
+        - Penjualan Tiket: GET /admin/events (adminListEvents, events.manage).
+        - Job gagal: GET /admin/notifications/deliveries?status=failed&retryable=true&from=<jobs.failed_delivery_since>
+          dan GET /admin/notifications/outbox?status=dead (notifications.manage); total keduanya sama dengan
+          `jobs.failed_delivery_count` dan `jobs.dead_outbox_count`.
 
         Hitungan `payments` memakai definisi yang SAMA PERSIS dengan GET /admin/payments/summary
         (AdminPaymentSummary) dan filter GET /admin/payments (domain admin-payments), sehingga tautan "Lewat batas
@@ -50,7 +63,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminDashboard" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/MfaRequired" }
+        "403": { $ref: "#/components/responses/AdminSessionForbidden" }
         default: { $ref: "#/components/responses/Error" }
 
   /admin/dashboard/badges:
@@ -77,10 +90,21 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminNavBadges" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/MfaRequired" }
+        "403": { $ref: "#/components/responses/AdminSessionForbidden" }
         default: { $ref: "#/components/responses/Error" }
 
 components:
+  responses:
+    AdminSessionForbidden:
+      description: |
+        Untuk operasi admin tanpa izin khusus (dasbor, lencana, katalog izin): FORBIDDEN bila token bukan audience
+        admin (misalnya token aplikasi alumni) atau identitas admin tidak `active` (invited/disabled);
+        MFA_REQUIRED bila sesi admin belum menyelesaikan TOTP (AC F02-2). Pada dasbor dan lencana, kekurangan izin
+        per bagian tidak pernah menghasilkan 403; bagiannya dihilangkan (AC F15-1).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
   parameters:
     AdminDashboardBackgroundRequest:
       name: X-Background-Request
@@ -359,18 +383,45 @@ components:
       type: object
       required:
         - failed_delivery_count
+        - failed_delivery_since
         - failed_outbox_count
         - dead_outbox_count
         - oldest_pending_outbox_at
         - failed_account_deletion_count
-      description: Bagian izin notifications.manage; job/kanal gagal (F-15, PRD 4.5, 5.5).
+      description: |
+        Bagian izin notifications.manage; "job gagal" yang perlu tindakan (F-15, PRD 3.15, 4.5, 5.5). Hanya
+        `failed_delivery_count` dan `dead_outbox_count` yang berarti perlu tindakan pengurus dan keduanya turun
+        setelah retry berhasil; field lain informasi pemantauan.
       properties:
         failed_delivery_count:
           type: integer
           minimum: 0
-          description: Pengiriman email/push berstatus failed (lihat GET /admin/notifications/deliveries).
-        failed_outbox_count: { type: integer, minimum: 0 }
-        dead_outbox_count: { type: integer, minimum: 0 }
+          description: |
+            Kegagalan pengiriman yang DAPAT ditindak: status failed, `retryable` true (definisi
+            AdminNotificationDelivery.retryable: penerima aktif, preferensi aktif, token push belum dicabut dan
+            masih milik penerima) dan created_at >= `failed_delivery_since`. Kegagalan yang tidak dapat dikirim ulang
+            (token UNREGISTERED/dicabut, token berpindah akun, penerima tidak tersedia, preferensi dimatikan) tidak
+            dihitung karena tidak ada tindakan yang mungkin; kotak masuk tetap menjadi riwayat resmi (F-13).
+            Sama dengan `total` GET /admin/notifications/deliveries?status=failed&retryable=true&from=<failed_delivery_since>.
+        failed_delivery_since:
+          type: string
+          format: date-time
+          description: |
+            Awal jendela hitungan kegagalan pengiriman = generated_at dikurangi jendela konfigurasi server (usulan
+            7 hari); push yang lebih lama tidak lagi bermanfaat dikirim ulang. Dipakai UI sebagai `from` tautan
+            daftar pengiriman.
+        failed_outbox_count:
+          type: integer
+          minimum: 0
+          description: |
+            Informasi: event outbox `failed` yang masih dicoba ulang otomatis dengan backoff (PRD 5.1); menjadi
+            `dead` bila batas percobaan habis. Tidak dihitung di lencana.
+        dead_outbox_count:
+          type: integer
+          minimum: 0
+          description: |
+            Event outbox `dead` yang perlu tindakan (retry lewat adminRetryOutboxEvents); sama dengan `total` GET
+            /admin/notifications/outbox?status=dead.
         oldest_pending_outbox_at:
           type: [string, "null"]
           format: date-time
@@ -378,7 +429,12 @@ components:
         failed_account_deletion_count:
           type: integer
           minimum: 0
-          description: Job penghapusan akun berstatus failed yang menunggu retry (AC F14-2).
+          description: |
+            Informasi saja: permintaan penghapusan akun berstatus failed. Worker melanjutkannya otomatis dari
+            langkah yang belum selesai (AC F14-2, N-15) tanpa tindakan pengurus di portal, dan portal R1.0 tidak
+            memiliki daftar atau retry penghapusan akun. Tidak dihitung di lencana. Bila angka ini tidak turun,
+            operator menelusuri log worker berdasarkan nomor permintaan dan request_id (N-14) sesuai runbook
+            operasional; batas penyelesaian 7 hari (F-14) tetap berlaku.
 
     AdminNavBadges:
       type: object
@@ -393,4 +449,8 @@ components:
         failed_jobs:
           type: integer
           minimum: 0
-          description: notifications.manage; pengiriman failed + outbox failed/dead.
+          description: |
+            notifications.manage; hanya kegagalan yang dapat ditindak = DashboardJobs.failed_delivery_count +
+            DashboardJobs.dead_outbox_count (definisi dan jendela waktu identik). Outbox `failed` yang masih
+            dicoba ulang otomatis dan penghapusan akun gagal tidak dihitung, sehingga lencana turun ke nol setelah
+            seluruh kegagalan yang dapat ditindak dikirim ulang atau keluar dari jendela.
