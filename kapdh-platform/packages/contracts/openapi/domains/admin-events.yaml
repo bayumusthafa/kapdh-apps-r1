@@ -8,6 +8,11 @@
 # - Pembaruan berversi memakai If-Match; versi berbeda -> 409 VERSION_CONFLICT dengan `current` (AC F15-4).
 #   `version` event naik pada perubahan field yang diedit pengurus dan perubahan status, TIDAK pada perubahan
 #   penghitung kursi oleh reservasi anggota, sehingga formulir admin tidak bentrok dengan arus reservasi.
+# - Setiap transaksi mengikuti URUTAN KUNCI GLOBAL di kepala events.yaml: event -> tiket (urut id) -> payment
+#   (urut id); id dari baris lain dibaca tanpa kunci lalu diperiksa ulang sesudah kunci (PRD 6.4).
+# - Refund adalah keputusan uang: refund otomatis yang diwajibkan D6 (event dibatalkan, pembatalan sendiri
+#   sebelum H-3) dicatat tanpa diskresi; refund diskresioner per kasus (adminCancelTicket `refund=true`) memerlukan
+#   payments.decide dan tunduk pada aturan konflik kepentingan (PRD 2.3, ARCHITECTURE §3.3).
 # - Komponen bersama milik domain events (events.yaml): EventId, TicketId, EventStatus, TicketStatus,
 #   TicketCancelledBy, EventCategoryRef, TicketPaymentStatus, TicketRefundInfo.
 tags:
@@ -130,6 +135,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminEventDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -194,6 +200,7 @@ paths:
       responses:
         "204":
           description: Event dihapus.
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -217,13 +224,20 @@ paths:
         - open -> closed: menutup pemesanan baru lebih awal; reservasi yang sedang ditahan tetap dapat mengirim bukti
           sampai `hold_expires_at`, tiket paid tetap berlaku untuk check-in.
         - closed -> open: hanya bila `now < registration_closes_at` dan `ends_at > now`.
-        Status sama dengan saat ini dikembalikan tanpa perubahan. `done` hanya diset job `events.lifecycle` sesudah
-        acara berakhir (open -> closed otomatis saat `registration_closes_at` lewat); `cancelled` hanya lewat
-        POST .../cancel. Audit `event.status_changed`.
-      x-kapdh-access: { audience: admin, permissions: [events.manage] }
+        `done` hanya diset job `events.lifecycle` sesudah acara berakhir (open -> closed otomatis saat
+        `registration_closes_at` lewat); `cancelled` hanya lewat POST .../cancel. Audit `event.status_changed`.
+        Urutan pemeriksaan dengan baris event terkunci (aman untuk diulang sesudah jaringan putus, PRD 4.3, 4.5):
+        1. Replay dengan Idempotency-Key dan payload sama mengembalikan hasil pertama tanpa pemeriksaan ulang.
+        2. Bila `status` yang diminta SAMA dengan status saat ini, 200 dengan event terkini dikembalikan tanpa
+           perubahan dan tanpa audit, SEBELUM If-Match dibandingkan (permintaan ulang tanpa key yang sama tidak
+           menghasilkan VERSION_CONFLICT palsu).
+        3. If-Match dibandingkan; berbeda -> 409 VERSION_CONFLICT dengan `current` = AdminEventDetail.
+        4. Transisi divalidasi seperti di atas.
+      x-kapdh-access: { audience: admin, permissions: [events.manage], idempotent: true }
       parameters:
         - $ref: "#/components/parameters/EventId"
         - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -231,7 +245,7 @@ paths:
             schema: { $ref: "#/components/schemas/AdminEventStatusRequest" }
       responses:
         "200":
-          description: Event dengan status baru.
+          description: Event dengan status baru (atau status yang sudah sama).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminEventDetail" }
@@ -239,7 +253,11 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
-        "409": { $ref: "#/components/responses/Conflict" }
+        "409":
+          description: VERSION_CONFLICT (`current` = AdminEventDetail) atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         default: { $ref: "#/components/responses/Error" }
 
   /admin/events/{eventId}/cancel:
@@ -249,15 +267,21 @@ paths:
       summary: Batalkan event; seluruh QR tidak berlaku, refund penuh dicatat, peserta diberi notifikasi (AC F09-7, D6).
       description: |
         Hanya event `open` atau `closed` (draft dihapus, bukan dibatalkan; done/cancelled ditolak 400). Alasan wajib
-        dan ditampilkan kepada peserta. UI meminta konfirmasi (PRD 4.5). Dalam SATU transaksi dengan baris event
-        terkunci:
+        dan ditampilkan kepada peserta. UI meminta konfirmasi (PRD 4.5). Dalam SATU transaksi mengikuti urutan kunci
+        global: baris event dikunci lebih dahulu (sesudahnya tidak ada reservasi, keputusan pembayaran tiket atau
+        pembatalan tiket baru yang dapat berjalan di event ini), lalu semua tiket aktif event urut id, lalu payment
+        tiket tersebut urut id:
         - event -> cancelled (`cancelled_at`, `cancel_reason`); pemesanan dan check-in tertutup.
         - tiket awaiting_payment -> cancelled (`cancelled_by=admin`), payment pending tanpa bukti dibatalkan.
         - tiket paid -> cancelled, QR tidak berlaku; payment tetap paid dan untuk total > 0 dibuat
           payment_adjustment refund pending sebesar total dengan tenggat 7 hari kerja (D6). Tiket gratis tanpa refund.
         - tiket awaiting_review -> cancelled; payment-nya tetap pending di antrean verifikasi karena dana mungkin
           sudah ditransfer. Bila pengurus kemudian menyetujui (dana terverifikasi), payment menjadi paid dan refund
-          penuh otomatis dibuat, tiket tetap cancelled; bila ditolak, tidak ada refund.
+          penuh otomatis dibuat, tiket tetap cancelled dan penghitung kursi tidak berubah; bila ditolak, tidak ada
+          refund dan kursi tidak dilepas kedua kalinya (kewajiban API pembayaran C3, lihat kepala events.yaml).
+        - Refund di sini diwajibkan D6 ("refund penuh kepada seluruh peserta berbayar"), bukan keputusan diskresi,
+          sehingga cukup events.manage; transfer dan penyelesaian refund dilakukan bendahara lewat API
+          payment_adjustments dengan aturan konflik kepentingan PRD 2.3.
         - held_quantity dan paid_quantity menjadi 0; event, tiket, payment dan audit historis tidak dihapus.
         - audit `event.cancelled` dan outbox `event.cancelled` (dedup per event). Job `events.cancelled.fanout`
           membuat notifikasi kategori event untuk setiap pemegang tiket terdampak (dedup
@@ -304,6 +328,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminEventStats" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -364,11 +389,21 @@ paths:
         kasus", PRD 2.2) atau permintaan peserta yang diproses pengurus. Hanya tiket `awaiting_payment` atau `paid`
         yang belum check-in pada event yang tidak cancelled; tiket awaiting_review ditolak 409
         PAYMENT_STATE_CONFLICT (putuskan pembayarannya lebih dahulu; penolakan otomatis membatalkan tiket,
-        AC F09-4). Efek dalam satu transaksi: tiket cancelled (`cancelled_by=admin`, alasan wajib), kursi dilepas,
+        AC F09-4). Efek dalam satu transaksi mengikuti urutan kunci global (event -> tiket -> payment; status dan
+        versi diperiksa ulang sesudah kunci): tiket cancelled (`cancelled_by=admin`, alasan wajib), kursi dilepas,
         payment pending dibatalkan; untuk tiket paid dengan total > 0, `refund=true` membuat payment_adjustment
         refund pending sebesar total dengan tenggat 7 hari kerja (D6), `refund=false` mencatat tanpa refund.
-        `refund=true` untuk tiket yang tidak berbayar ditolak 400. Pemegang diberi notifikasi kategori event
-        (deep link `/tickets/<ticketId>`). Audit `ticket.cancelled`.
+        `refund=true` untuk tiket yang tidak berbayar ditolak 400.
+        Refund per kasus adalah keputusan uang (PRD 2.2 "refund diputuskan pengurus per kasus", PRD 2.3), sehingga
+        `refund=true` diperiksa SEBELUM perubahan apa pun:
+        - pemanggil wajib juga memiliki izin `payments.decide` (dievaluasi dari DB setiap request, super_admin
+          memiliki semua izin); tanpa izin itu -> 403 FORBIDDEN;
+        - konflik kepentingan: bila pemegang tiket adalah akun alumni tertaut pemanggil
+          (`admins.linked_alumni_user_id`, relasi identitas saat provisioning, bukan kesamaan user_id) -> 403
+          FORBIDDEN; pengurus lain dengan payments.decide yang memutus refund tersebut (PRD 2.3, ARCHITECTURE §3.3).
+        Pembatalan tanpa refund (`refund=false`) cukup events.manage. `can_refund` pada AdminEventTicket
+        menunjukkan apakah pemanggil saat ini boleh memilih refund. Audit `ticket.cancelled` memuat alasan dan
+        keputusan refund. Pemegang diberi notifikasi kategori event (deep link `/tickets/<ticketId>`).
       x-kapdh-access: { audience: admin, permissions: [events.manage], idempotent: true }
       parameters:
         - $ref: "#/components/parameters/EventId"
@@ -388,7 +423,13 @@ paths:
               schema: { $ref: "#/components/schemas/AdminEventTicket" }
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "403":
+          description: |
+            FORBIDDEN: pemanggil tidak memiliki events.manage; atau `refund=true` tanpa izin payments.decide; atau
+            `refund=true` untuk tiket milik akun alumni tertaut pemanggil (konflik kepentingan, PRD 2.3).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
           description: |
@@ -839,6 +880,7 @@ components:
         - payment
         - refund
         - review_overdue
+        - can_refund
         - created_at
         - version
       properties:
@@ -873,6 +915,12 @@ components:
         review_overdue:
           type: boolean
           description: Bukti menunggu keputusan lebih dari 2 hari kerja; dieskalasi, bukan dibatalkan (D5, PRD 3.9).
+        can_refund:
+          type: boolean
+          description: |
+            True bila PEMANGGIL saat ini boleh membatalkan tiket ini dengan `refund=true`: tiket paid, total > 0,
+            belum check-in, event tidak cancelled, pemanggil memiliki payments.decide, dan pemegang bukan akun alumni
+            tertaut pemanggil (PRD 2.3). UI menyembunyikan pilihan refund bila false.
         created_at: { type: string, format: date-time }
         version: { type: string }
 
@@ -897,7 +945,9 @@ components:
           description: Wajib dan tidak boleh hanya spasi; disimpan di tiket, audit dan notifikasi pemegang.
         refund:
           type: boolean
-          description: Buat refund penuh untuk tiket paid berbayar (D6); harus false untuk tiket lainnya.
+          description: |
+            Buat refund penuh untuk tiket paid berbayar (D6); harus false untuk tiket lainnya. true memerlukan izin
+            payments.decide dan tidak boleh untuk tiket akun alumni tertaut pemanggil (403 FORBIDDEN, PRD 2.3).
 
     AdminCheckinEvent:
       type: object
