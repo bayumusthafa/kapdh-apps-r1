@@ -4,6 +4,27 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 `package.json` dan `dart/kapdh_api/pubspec.yaml` selalu sama; rilis SDK memakai tag git `contracts-vX.Y.Z`
 (`pnpm contracts:release-sdk`, ADR-001). Perubahan yang memutus ditandai **[memutus]**.
 
+## Belum dirilis
+
+### C5 Events (`events.yaml`, `admin-events.yaml`; F-09, F-15, PRD 3.9, 4.4, D5, D6)
+
+- **[memutus]** `EventSummary` (dipakai `Home.upcoming_events` pada `GET /home`) menjadi kartu event lengkap
+  guideline p8: `location` diganti `location_name` (selaras kolom `events.location_name`), dan field wajib baru
+  `category`, `ends_at`, `status`, `registration_state`, `price`, `is_free`, `seats_total`, `seats_available`,
+  `my_ticket_status`; `cover_url` dan `location_name` kini wajib (boleh null). `GET /home` belum diimplementasikan
+  API dan belum dipakai klien rilis, sehingga tidak ada migrasi klien.
+- Operasi baru anggota (tag Events): `listEventCategories`, `listEvents`, `getEvent`, `listEventParticipants`,
+  `createEventReservation`, `listMyTickets`, `getMyTicket`, `cancelMyTicket`.
+- Operasi baru pengurus (tag Admin Events): `adminListEventCategories`, `adminListEvents`, `adminCreateEvent`,
+  `adminGetEvent`, `adminUpdateEvent`, `adminDeleteEvent`, `adminSetEventStatus`, `adminCancelEvent`,
+  `adminGetEventStats`, `adminListEventTickets`, `adminCancelTicket`, `adminListCheckinEvents`,
+  `adminCheckInTicket`.
+- Respons 409 `POST /admin/checkin` memakai skema `AdminCheckinRejection` (Error baku + `rejection_reason`,
+  `current` bertipe `AdminCheckinTicket`, jendela check-in) agar alasan penolakan check-in dapat ditindaklanjuti
+  (AC F09-6).
+- Setiap operasi domain ini membawa `x-kapdh-access` (`audience`, `member_access`, `permissions`, `idempotent`)
+  yang mencerminkan dekorator API (ARCHITECTURE §4.3).
+
 ## 0.2.0
 
 Pemecahan `openapi/openapi.yaml` menjadi `openapi/root.yaml` + `openapi/domains/<domain>.yaml` (ARCHITECTURE §6),
