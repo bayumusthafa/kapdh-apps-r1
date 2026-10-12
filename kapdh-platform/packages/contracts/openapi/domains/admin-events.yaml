@@ -1,7 +1,1185 @@
-# Domain admin-events (C5 Events): CRUD event, kuota, pembatalan dan refund, peserta, serta check-in QR
-# (izin events.manage / events.checkin). Modul API: apps/api/src/modules/events. Path ditambahkan oleh penulis kontrak C5.
+# Domain admin-events (C5 Events): CRUD event, status, kuota, pembatalan dan refund, peserta/tiket, statistik, serta
+# check-in QR oleh pengurus (izin events.manage / events.checkin; F-09, F-15, PRD 4.4, D5, D6, guideline p14).
+# Modul API: apps/api/src/modules/events.
+#
+# Aturan bersama domain ini ditulis di `description` tag Admin Events (ikut bundel), bukan di komentar. Komponen
+# bersama milik domain events (events.yaml): EventId, TicketId, EventStatus, TicketStatus, TicketCancelledBy,
+# EventCategoryRef, TicketPaymentStatus, TicketRefundInfo.
 tags:
   - name: Admin Events
-    description: Pengelolaan event, kuota, pembatalan/refund, peserta dan check-in tiket oleh pengurus (F-09, F-15, AC F15-2).
+    description: |
+      Pengelolaan event, kuota, pembatalan/refund, peserta dan check-in tiket oleh pengurus (F-09, F-15, AC F15-2,
+      PRD 4.4). Aturan bersama:
+      - Izin dievaluasi dari DB setiap request (AC F15-1, F16-3); super_admin memiliki semua izin.
+      - Setiap mutasi menulis audit dalam transaksi yang sama (F-17: "kuota/event/tiket/check-in", AC F17-1).
+      - Pembaruan berversi memakai If-Match; versi berbeda -> 409 VERSION_CONFLICT dengan `current` (AC F15-4).
+        `version` event naik pada perubahan field yang diedit pengurus dan perubahan status, TIDAK pada perubahan
+        penghitung kursi oleh reservasi anggota, sehingga formulir admin tidak bentrok dengan arus reservasi.
+      - Setiap transaksi mengikuti urutan kunci global pada deskripsi tag Events: event, lalu tiket (urut id),
+        lalu payment (urut id); id dari baris lain dibaca tanpa kunci lalu status diperiksa ulang sesudah kunci
+        (PRD 6.4).
+      - Angka kursi pada respons baca memakai proyeksi kursi tag Events: hold kedaluwarsa yang belum dilepas job
+        tidak dihitung dalam `held_quantity`, `seats_available`, `min_seats_total` maupun statistik.
+      - Refund adalah keputusan uang: refund otomatis yang diwajibkan D6 (event dibatalkan, pembatalan sendiri
+        sebelum H-3) dicatat tanpa diskresi; refund diskresioner per kasus (adminCancelTicket `refund=true`)
+        memerlukan payments.decide dan tunduk pada aturan konflik kepentingan (PRD 2.3, ARCHITECTURE §3.3).
 
-paths: {}
+paths:
+  /admin/event-categories:
+    get:
+      tags: [Admin Events]
+      operationId: adminListEventCategories
+      summary: Kategori event (aktif dan nonaktif) untuk formulir dan filter event (izin events.manage, F-15).
+      description: |
+        Baca saja; pembuatan/perubahan kategori event ada di Manajemen Kategori domain konten
+        (/admin/content/event-categories, izin events.manage, guideline p14). Kategori nonaktif ditampilkan agar
+        event lama tetap terbaca, tetapi tidak boleh dipilih untuk event baru/diubah.
+      x-kapdh-access: { audience: admin, permissions: [events.manage] }
+      responses:
+        "200":
+          description: Kategori event.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminEventCategoryList" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/event-covers:
+    post:
+      tags: [Admin Events]
+      operationId: adminUploadEventCover
+      summary: Unggah gambar cover event (kolom "Gambar" guideline p14; izin events.manage, N-10, PRD 2.5).
+      description: |
+        Membuat berkas purpose `event_cover` milik akun login pemanggil (`files.owner_user_id`) untuk dirujuk
+        `cover_file_id` pada adminCreateEvent/adminUpdateEvent. Unggahan berkas umum POST /files tidak menerima
+        purpose ini; cover event selalu lewat operasi ini agar izin events.manage yang diperiksa.
+        - JPG/PNG <= 5 MB; magic bytes diperiksa, dimensi/decompression berlebihan ditolak, EXIF dibuang dan gambar
+          di-encode ulang (N-10). Pelanggaran -> 413/415/422 FILE_INVALID.
+        - Berkas bervisibilitas publik (files_private_purpose_chk mengizinkan event_cover) karena tampil di kartu
+          event aplikasi dan situs; tidak boleh berisi data pribadi.
+        - Status `ready` sesudah diproses. Berkas yang tidak dilampirkan ke event dalam 24 jam (`attached_at` null)
+          dihapus job `files.cleanup-temp` (PRD 2.5).
+        - Batas 10 unggahan berhasil per purpose per akun per 24 jam bergulir (N-10) -> 429 RATE_LIMITED dengan
+          `retry_after_seconds`.
+        Pemasangan cover tercatat pada audit `event.created`/`event.updated` (F-17), bukan saat unggah.
+      x-kapdh-access: { audience: admin, permissions: [events.manage] }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/AdminEventCoverUploadRequest" }
+      responses:
+        "201":
+          description: Gambar diterima dan diproses.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminEventCoverMedia" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "413": { $ref: "#/components/responses/FileInvalid" }
+        "415": { $ref: "#/components/responses/FileInvalid" }
+        "422": { $ref: "#/components/responses/FileInvalid" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/events:
+    get:
+      tags: [Admin Events]
+      operationId: adminListEvents
+      summary: Tabel Event dan Tiket dengan pencarian, filter dan paging server (izin events.manage, guideline p14).
+      description: |
+        Kolom guideline p14: nama event, gambar, kategori, lokasi, buka/tutup daftar, total tiket (`seats_total`),
+        sisa tiket (`seats_available`) dan aksi kelola (`has_tickets` menonaktifkan hapus, AC F15-2). Semua status
+        termasuk draft. Urutan bawaan `starts_at_desc`; setiap urutan diakhiri `id` agar paging stabil.
+      x-kapdh-access: { audience: admin, permissions: [events.manage] }
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Cari judul atau nama lokasi.
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/EventStatus" }
+        - name: category_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: starts_from
+          in: query
+          required: false
+          description: Hanya event dengan starts_at >= nilai ini.
+          schema: { type: string, format: date-time }
+        - name: starts_to
+          in: query
+          required: false
+          description: Hanya event dengan starts_at < nilai ini.
+          schema: { type: string, format: date-time }
+        - name: sort
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/AdminEventSort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman event beserta total sesuai filter.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminEventPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Admin Events]
+      operationId: adminCreateEvent
+      summary: Buat event baru sebagai draft (izin events.manage, F-15, PRD 3.9).
+      description: |
+        Event selalu dibuat `draft` dan baru terlihat anggota setelah diterbitkan (POST .../status `open`).
+        Validasi server: judul 1..200 karakter setelah trim; `ends_at > starts_at`;
+        `registration_opens_at < registration_closes_at <= ends_at`; `checkin_opens_at`/`checkin_closes_at` keduanya
+        kosong (bawaan D5: 2 jam sebelum mulai sampai selesai) atau keduanya terisi dengan closes > opens;
+        `location_url` https; `timezone` IANA valid (bawaan Asia/Jakarta); `category_id` kategori event aktif;
+        `cover_file_id` berkas purpose `event_cover` berstatus ready hasil POST /admin/event-covers yang diunggah
+        pemanggil dan belum dihapus (berkas publik; saat event disimpan `attached_at` diisi agar tidak dibersihkan
+        job unggahan sementara). Pelanggaran: 400 VALIDATION_ERROR dengan `field_errors`. Audit `event.created`.
+      x-kapdh-access: { audience: admin, permissions: [events.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminEventCreateRequest" }
+      responses:
+        "201":
+          description: Event draft.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminEventDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/events/{eventId}:
+    get:
+      tags: [Admin Events]
+      operationId: adminGetEvent
+      summary: Detail event untuk formulir edit, penghitung kursi dan aksi yang diizinkan (izin events.manage).
+      x-kapdh-access: { audience: admin, permissions: [events.manage] }
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: Detail event.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminEventDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Admin Events]
+      operationId: adminUpdateEvent
+      summary: Ubah event draft/open/closed dengan If-Match; kuota tidak boleh di bawah held+paid (AC F15-2, F15-4).
+      description: |
+        Field yang tidak dikirim tidak berubah; field nullable yang dikirim null dikosongkan. Aturan:
+        - Event `done` atau `cancelled` tidak dapat diubah: 400 VALIDATION_ERROR.
+        - `seats_total` tidak boleh di bawah `held_quantity + paid_quantity` saat ini (diperiksa dengan baris event
+          terkunci): 409 VALIDATION_ERROR dengan `field_errors.seats_total` dan `current` = AdminEventDetail
+          (AC F15-2). Bila kuota diturunkan, hold kedaluwarsa event ini lebih dahulu dilepas dalam transaksi yang
+          sama (sama dengan createEventReservation langkah 1; kunci event, tiket, payment), sehingga batas yang
+          diperiksa sama dengan `min_seats_total` yang ditampilkan.
+        - `price` boleh diubah tetapi hanya berlaku untuk reservasi baru; tiket dan payment yang sudah dibuat
+          memakai total snapshot (PRD 4.4, AC F03-5).
+        - Validasi waktu, lokasi, kategori dan cover sama dengan pembuatan. Hold yang sudah berjalan tetap memakai
+          `hold_expires_at` semula.
+        - Perubahan `starts_at`, `ends_at`, `timezone` atau lokasi pada event yang memiliki tiket aktif memberi
+          notifikasi kategori event kepada pemegang tiket (deep link `/tickets/<ticketId>`) dan menjadwalkan ulang
+          pengingat H-3/H-1; jadwal lama dibatalkan (AC F13-6).
+        Audit `event.updated` berisi before/after field yang berubah.
+      x-kapdh-access: { audience: admin, permissions: [events.manage] }
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminEventUpdateRequest" }
+      responses:
+        "200":
+          description: Event terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminEventDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: |
+            VERSION_CONFLICT (If-Match tidak cocok) atau VALIDATION_ERROR untuk kuota di bawah held+paid; `current` =
+            AdminEventDetail terbaru (AC F15-2, F15-4).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Admin Events]
+      operationId: adminDeleteEvent
+      summary: Hapus event yang belum pernah memiliki tiket (AC F15-2, PRD 4.4).
+      description: |
+        Hanya event tanpa tiket sama sekali (status apa pun, termasuk expired/cancelled). Event yang memiliki
+        riwayat tiket ditolak 409 VALIDATION_ERROR dan harus dibatalkan lewat POST .../cancel (AC F15-2). UI meminta
+        konfirmasi (PRD 4.5). Audit `event.deleted` berisi snapshot event.
+      x-kapdh-access: { audience: admin, permissions: [events.manage] }
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204":
+          description: Event dihapus.
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: |
+            VALIDATION_ERROR bila event sudah memiliki tiket (gunakan pembatalan event), atau VERSION_CONFLICT;
+            `current` = AdminEventDetail.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/events/{eventId}/status:
+    post:
+      tags: [Admin Events]
+      operationId: adminSetEventStatus
+      summary: Terbitkan, tutup, atau buka kembali pendaftaran event (izin events.manage, PRD 4.4).
+      description: |
+        Transisi yang diizinkan (selain ini 400 VALIDATION_ERROR `field_errors.status`):
+        - draft -> open (terbitkan): `ends_at > now` dan `registration_closes_at > now`.
+        - open -> closed: menutup pemesanan baru lebih awal; reservasi yang sedang ditahan tetap dapat mengirim bukti
+          sampai `hold_expires_at`, tiket paid tetap berlaku untuk check-in.
+        - closed -> open: hanya bila `now < registration_closes_at` dan `ends_at > now`.
+        `done` hanya diset job `events.lifecycle` sesudah acara berakhir (open -> closed otomatis saat
+        `registration_closes_at` lewat); `cancelled` hanya lewat POST .../cancel. Audit `event.status_changed`.
+        Urutan pemeriksaan dengan baris event terkunci (aman untuk diulang sesudah jaringan putus, PRD 4.3, 4.5):
+        1. Replay dengan Idempotency-Key dan payload sama mengembalikan hasil pertama tanpa pemeriksaan ulang.
+        2. Bila `status` yang diminta SAMA dengan status saat ini, 200 dengan event terkini dikembalikan tanpa
+           perubahan dan tanpa audit, SEBELUM If-Match dibandingkan (permintaan ulang tanpa key yang sama tidak
+           menghasilkan VERSION_CONFLICT palsu).
+        3. If-Match dibandingkan; berbeda -> 409 VERSION_CONFLICT dengan `current` = AdminEventDetail.
+        4. Transisi divalidasi seperti di atas.
+      x-kapdh-access: { audience: admin, permissions: [events.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminEventStatusRequest" }
+      responses:
+        "200":
+          description: Event dengan status baru (atau status yang sudah sama).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminEventDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: VERSION_CONFLICT (`current` = AdminEventDetail) atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/events/{eventId}/cancel:
+    post:
+      tags: [Admin Events]
+      operationId: adminCancelEvent
+      summary: Batalkan event; seluruh QR tidak berlaku, refund penuh dicatat, peserta diberi notifikasi (AC F09-7, D6).
+      description: |
+        Hanya event `open` atau `closed` (draft dihapus, bukan dibatalkan; done/cancelled ditolak 400). Alasan wajib
+        dan ditampilkan kepada peserta. UI meminta konfirmasi (PRD 4.5). Dalam SATU transaksi mengikuti urutan kunci
+        global: baris event dikunci lebih dahulu (sesudahnya tidak ada reservasi, keputusan pembayaran tiket atau
+        pembatalan tiket baru yang dapat berjalan di event ini), lalu semua tiket aktif event urut id, lalu payment
+        tiket tersebut urut id:
+        - event -> cancelled (`cancelled_at`, `cancel_reason`); pemesanan dan check-in tertutup.
+        - hold kedaluwarsa yang belum dilepas menjadi expired lebih dahulu (sama dengan createEventReservation
+          langkah 1), sehingga status yang sudah tampil kepada anggota lewat proyeksi baca tidak berubah.
+        - tiket awaiting_payment lainnya -> cancelled (`cancelled_by=admin`), payment pending tanpa bukti dibatalkan.
+        - tiket paid -> cancelled, QR tidak berlaku; payment tetap paid dan untuk total > 0 dibuat
+          payment_adjustment refund pending sebesar total dengan tenggat 7 hari kerja (D6). Tiket gratis tanpa refund.
+        - tiket awaiting_review -> cancelled; payment-nya tetap pending di antrean verifikasi karena dana mungkin
+          sudah ditransfer. Bila pengurus kemudian menyetujui (dana terverifikasi), payment menjadi paid dan refund
+          penuh otomatis dibuat, tiket tetap cancelled dan penghitung kursi tidak berubah; bila ditolak, tidak ada
+          refund dan kursi tidak dilepas kedua kalinya (aturan payment tiket pada deskripsi tag Events dan
+          adminDecidePayment).
+        - Refund di sini diwajibkan D6 ("refund penuh kepada seluruh peserta berbayar"), bukan keputusan diskresi,
+          sehingga cukup events.manage; transfer dan penyelesaian refund dilakukan bendahara lewat API
+          payment_adjustments dengan aturan konflik kepentingan PRD 2.3.
+        - held_quantity dan paid_quantity menjadi 0; event, tiket, payment dan audit historis tidak dihapus.
+        - audit `event.cancelled` dan outbox `event.cancelled` (dedup per event). Job `events.cancelled.fanout`
+          membuat notifikasi kategori event untuk setiap pemegang tiket terdampak (dedup
+          `event.cancelled:<eventId>:<userId>`, deep link `/tickets/<ticketId>`) dan membatalkan pengingat H-3/H-1.
+        Ulangi dengan Idempotency-Key yang sama untuk hasil yang sama (PRD 4.3).
+      x-kapdh-access: { audience: admin, permissions: [events.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminEventCancelRequest" }
+      responses:
+        "200":
+          description: Event dibatalkan beserta ringkasan dampak.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminEventCancelResult" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/events/{eventId}/stats:
+    get:
+      tags: [Admin Events]
+      operationId: adminGetEventStats
+      summary: Statistik kursi, check-in dan pendapatan event (izin events.manage, PRD 1.6 pemanfaatan event).
+      description: |
+        Dihitung dari tiket, payment tiket dan payment_adjustment refund event ini pada saat request. Pendapatan
+        kotor = jumlah payment tiket berstatus paid (termasuk tiket yang kemudian dibatalkan); pendapatan bersih =
+        kotor dikurangi refund completed. Refund pending ditampilkan terpisah.
+      x-kapdh-access: { audience: admin, permissions: [events.manage] }
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: Statistik event.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminEventStats" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/events/{eventId}/tickets:
+    get:
+      tags: [Admin Events]
+      operationId: adminListEventTickets
+      summary: Peserta/tiket event dengan status, pembayaran dan info check-in (izin events.manage, F-09, F-15).
+      description: |
+        Semua tiket event termasuk expired/cancelled. Filter status, sudah/belum check-in, dan pencarian nama atau
+        nomor anggota. Pemegang yang akunnya sudah dihapus tampil anonim (nama null, F-14 AC F14-4). Data pemegang
+        minimum: nama, nomor anggota, angkatan, avatar dan kelayakan tiket (tanpa kontak). Urutan bawaan
+        `created_at_desc`.
+      x-kapdh-access: { audience: admin, permissions: [events.manage] }
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/TicketStatus" }
+        - name: checked_in
+          in: query
+          required: false
+          description: true = sudah check-in, false = belum.
+          schema: { type: boolean }
+        - name: q
+          in: query
+          required: false
+          description: Nama atau nomor anggota pemegang tiket.
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: sort
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/AdminEventTicketSort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman tiket beserta total sesuai filter.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminEventTicketPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/events/{eventId}/tickets/{ticketId}/cancel:
+    post:
+      tags: [Admin Events]
+      operationId: adminCancelTicket
+      summary: Batalkan satu tiket oleh pengurus, opsional dengan refund penuh (D6, PRD 2.2, PRD 4.4).
+      description: |
+        Untuk kasus per peserta, mis. anggota disuspend ("tiket tidak berlaku; refund diputuskan pengurus per
+        kasus", PRD 2.2) atau permintaan peserta yang diproses pengurus. Hanya tiket `awaiting_payment` atau `paid`
+        yang belum check-in pada event yang tidak cancelled; tiket awaiting_review ditolak 409
+        PAYMENT_STATE_CONFLICT (putuskan pembayarannya lebih dahulu; penolakan otomatis membatalkan tiket,
+        AC F09-4). Efek dalam satu transaksi mengikuti urutan kunci global (event -> tiket -> payment; status dan
+        versi diperiksa ulang sesudah kunci): tiket cancelled (`cancelled_by=admin`, alasan wajib), kursi dilepas,
+        payment pending dibatalkan; untuk tiket paid dengan total > 0, `refund=true` membuat payment_adjustment
+        refund pending sebesar total dengan tenggat 7 hari kerja (D6), `refund=false` mencatat tanpa refund.
+        `refund=true` untuk tiket yang tidak berbayar ditolak 400.
+        Refund per kasus adalah keputusan uang (PRD 2.2 "refund diputuskan pengurus per kasus", PRD 2.3), sehingga
+        `refund=true` diperiksa SEBELUM perubahan apa pun:
+        - pemanggil wajib juga memiliki izin `payments.decide` (dievaluasi dari DB setiap request, super_admin
+          memiliki semua izin); tanpa izin itu -> 403 FORBIDDEN;
+        - konflik kepentingan: bila pemegang tiket adalah akun alumni tertaut pemanggil
+          (`admins.linked_alumni_user_id`, relasi identitas saat provisioning, bukan kesamaan user_id) -> 403
+          FORBIDDEN; pengurus lain dengan payments.decide yang memutus refund tersebut (PRD 2.3, ARCHITECTURE §3.3).
+        Pembatalan tanpa refund (`refund=false`) cukup events.manage. `can_refund` pada AdminEventTicket
+        menunjukkan apakah pemanggil saat ini boleh memilih refund. Audit `ticket.cancelled` memuat alasan dan
+        keputusan refund. Pemegang diberi notifikasi kategori event (deep link `/tickets/<ticketId>`).
+      x-kapdh-access: { audience: admin, permissions: [events.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/TicketId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminTicketCancelRequest" }
+      responses:
+        "200":
+          description: Tiket cancelled beserta refund bila dibuat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminEventTicket" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            FORBIDDEN: pemanggil tidak memiliki events.manage; atau `refund=true` tanpa izin payments.decide; atau
+            `refund=true` untuk tiket milik akun alumni tertaut pemanggil (konflik kepentingan, PRD 2.3).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: |
+            VERSION_CONFLICT (versi tiket berubah atau tiket tidak lagi dapat dibatalkan), PAYMENT_STATE_CONFLICT
+            (bukti sedang ditinjau), atau IDEMPOTENCY_CONFLICT; `current` = AdminEventTicket.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/checkin/events:
+    get:
+      tags: [Admin Events]
+      operationId: adminListCheckinEvents
+      summary: Event yang dapat dipindai petugas check-in hari ini (izin events.checkin, D5).
+      description: |
+        Event `open` atau `closed` yang jendela check-in efektifnya belum berakhir dan dibuka paling lambat 24 jam
+        dari sekarang, urut `checkin_opens_at`. Petugas memilih event sebelum memindai agar QR event lain ditolak
+        (AC F09-6). Maksimal 50 event.
+      x-kapdh-access: { audience: admin, permissions: [events.checkin] }
+      responses:
+        "200":
+          description: Event untuk pemindaian.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCheckinEventList" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/checkin:
+    post:
+      tags: [Admin Events]
+      operationId: adminCheckInTicket
+      summary: Pindai QR tiket untuk event terpilih; check-in tercatat sekali beserta petugas (AC F09-5, F09-6).
+      description: |
+        `qr_code` dicari persis di tickets.qr_code; tidak dikenal -> 404 NOT_FOUND ("QR bukan tiket KAPDH").
+        Tiket dan event dibaca tanpa kunci, lalu pemeriksaan berurutan dijalankan; penolakan pertama yang cocok
+        dikembalikan sebagai 409 dengan body Error baku (ARCHITECTURE §4.4, tanpa field tingkat atas tambahan) yang
+        `current`-nya bertipe AdminCheckinRejectionDetail: `rejection_reason` yang dapat ditindaklanjuti, data tiket
+        (`ticket`) dan jendela check-in efektif. `code` per alasan:
+        1. `other_event`: tiket milik event lain (nama event tiket ditampilkan) — VALIDATION_ERROR.
+        2. `event_cancelled`: event tiket dibatalkan; seluruh QR tidak berlaku (AC F09-7) — VALIDATION_ERROR.
+        3. `ticket_cancelled` — VALIDATION_ERROR; `ticket_expired` (termasuk hold kedaluwarsa menurut proyeksi
+           baca tag Events) — RESERVATION_EXPIRED; `ticket_awaiting_payment` / `ticket_awaiting_review`: pembayaran
+           belum diverifikasi, selesaikan antrean sebelum check-in (PRD 4.4) — PAYMENT_STATE_CONFLICT.
+        4. `already_checked_in`: scan kedua menampilkan waktu dan petugas check-in sebelumnya
+           (`current.ticket.checked_in_at`, `current.ticket.checked_in_by`) tanpa menambah hitungan (AC F09-5,
+           PRD 4.5) — TICKET_ALREADY_CHECKED_IN.
+        5. `holder_ineligible`: akun pemegang suspended, disabled, deletion_pending atau dihapus (PRD 2.2; alasan
+           privat tidak dibuka) — VALIDATION_ERROR. Anggota expired tetap boleh check-in dengan tiket paid.
+        6. `too_early` / `too_late`: di luar jendela check-in efektif (bawaan 2 jam sebelum mulai sampai selesai,
+           D5) atau event sudah done — VALIDATION_ERROR.
+        Sukses: `UPDATE tickets SET checked_in_at, checked_in_by_admin_id WHERE id AND status='paid' AND
+        checked_in_at IS NULL RETURNING` atomik bersama audit `ticket.checked_in` (AC F09-5). Pembatalan event atau
+        tiket selalu mengubah status tiket dengan baris tiket terkunci, sehingga UPDATE ini menunggu kunci tersebut
+        lalu menilai ulang syaratnya. Bila UPDATE mengenai NOL baris (tiket berubah sejak dibaca: scan paralel,
+        pembatalan tiket/event, atau penolakan pembayaran), service membaca ulang tiket dan event lalu
+        menjalankan ulang pemeriksaan 1 sampai 6 terhadap keadaan terbaru, sehingga petugas menerima alasan yang
+        sesuai (`event_cancelled`, `ticket_cancelled`, atau `already_checked_in` beserta waktu dan petugas
+        sebelumnya), bukan "sudah check-in" untuk tiket yang dibatalkan. Idempotency-Key yang sama mengembalikan
+        hasil sukses pertama.
+      x-kapdh-access: { audience: admin, permissions: [events.checkin], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminCheckinRequest" }
+      responses:
+        "200":
+          description: Check-in tercatat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCheckinResult" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: NOT_FOUND; QR tidak dikenal sebagai tiket, atau `event_id` tidak ada.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: |
+            Check-in ditolak dengan alasan yang dapat ditindaklanjuti (AC F09-6): Error baku dengan `current` =
+            AdminCheckinRejectionDetail. IDEMPOTENCY_CONFLICT memakai Error baku tanpa `current`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCheckinRejection" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  schemas:
+    AdminEventSort:
+      type: string
+      enum: [starts_at_desc, starts_at_asc, created_at_desc, title_asc, registration_closes_at_asc]
+      description: Urutan tabel event; bawaan starts_at_desc. Selalu diakhiri id untuk paging stabil.
+
+    AdminEventTicketSort:
+      type: string
+      enum: [created_at_desc, created_at_asc, holder_name_asc, checked_in_at_desc]
+      description: Urutan tabel tiket; bawaan created_at_desc. Selalu diakhiri id untuk paging stabil.
+
+    AdminEventTargetStatus:
+      type: string
+      enum: [open, closed]
+      description: Status yang dapat diset pengurus lewat POST /admin/events/{eventId}/status.
+
+    AdminEventAction:
+      type: string
+      enum: [edit, publish, close, reopen, cancel, delete]
+      description: |
+        Aksi yang saat ini diizinkan server untuk event (UI hanya menampilkan aksi ini): edit (draft/open/closed),
+        publish (draft -> open), close (open -> closed), reopen (closed -> open dalam jendela pendaftaran),
+        cancel (open/closed), delete (belum pernah memiliki tiket).
+
+    AdminCheckinRejectionReason:
+      type: string
+      enum:
+        - other_event
+        - event_cancelled
+        - ticket_cancelled
+        - ticket_expired
+        - ticket_awaiting_payment
+        - ticket_awaiting_review
+        - already_checked_in
+        - holder_ineligible
+        - too_early
+        - too_late
+      description: Alasan penolakan check-in yang dapat ditindaklanjuti petugas (AC F09-6, PRD 4.5).
+
+    AdminEventActor:
+      type: object
+      required: [admin_id, display_name]
+      properties:
+        admin_id: { type: [string, "null"], format: uuid, description: Null bila admin sudah dihapus. }
+        display_name: { type: string }
+
+    AdminEventCategory:
+      type: object
+      required: [id, slug, label, active, sort_order]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        label: { type: string }
+        active: { type: boolean }
+        sort_order: { type: integer }
+
+    AdminEventCategoryList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminEventCategory" }
+
+    AdminEventCoverUploadRequest:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: binary, description: Gambar JPG/PNG maksimal 5 MB (N-10). }
+
+    AdminEventCoverMedia:
+      type: object
+      description: Gambar cover event publik yang sudah diproses server (purpose event_cover, N-10).
+      required: [file_id, url, mime, bytes, width, height]
+      properties:
+        file_id:
+          type: string
+          format: uuid
+          description: Nilai untuk `cover_file_id` pada adminCreateEvent/adminUpdateEvent.
+        url: { type: string, format: uri, description: URL publik gambar hasil proses untuk pratinjau. }
+        mime: { type: string, examples: [image/jpeg] }
+        bytes: { type: integer, minimum: 0 }
+        width: { type: integer, minimum: 1 }
+        height: { type: integer, minimum: 1 }
+
+    AdminEventSummary:
+      type: object
+      description: Baris tabel Event dan Tiket (guideline p14).
+      required:
+        - id
+        - title
+        - cover_url
+        - category
+        - location_name
+        - timezone
+        - starts_at
+        - ends_at
+        - registration_opens_at
+        - registration_closes_at
+        - status
+        - price
+        - seats_total
+        - seats_available
+        - held_quantity
+        - paid_quantity
+        - has_tickets
+        - version
+        - updated_at
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        cover_url: { type: [string, "null"], format: uri }
+        category:
+          oneOf:
+            - $ref: "#/components/schemas/EventCategoryRef"
+            - type: "null"
+        location_name: { type: [string, "null"] }
+        timezone: { type: string, examples: [Asia/Jakarta] }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        registration_opens_at: { type: string, format: date-time, description: Kolom "Buka Daftar". }
+        registration_closes_at: { type: string, format: date-time, description: Kolom "Tutup Daftar". }
+        status: { $ref: "#/components/schemas/EventStatus" }
+        price: { $ref: "#/components/schemas/Money" }
+        seats_total: { type: integer, minimum: 1, description: Kolom "Total Tiket" (kuota). }
+        seats_available:
+          type: integer
+          minimum: 0
+          description: Kolom "Sisa Tiket" = seats_total - held_quantity - paid_quantity (proyeksi kursi tag Events).
+        held_quantity:
+          type: integer
+          minimum: 0
+          description: |
+            Kursi ditahan tiket awaiting_payment yang hold-nya belum lewat dan tiket awaiting_review (proyeksi kursi
+            tag Events; hold kedaluwarsa yang belum dilepas job tidak dihitung).
+        paid_quantity: { type: integer, minimum: 0, description: Kursi dikonsumsi tiket paid. }
+        has_tickets:
+          type: boolean
+          description: True bila event pernah memiliki tiket (status apa pun); hapus dinonaktifkan (AC F15-2).
+        version: { type: string }
+        updated_at: { type: string, format: date-time }
+
+    AdminEventPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminEventSummary" }
+        total: { type: integer, minimum: 0 }
+        next_cursor: { type: [string, "null"] }
+
+    AdminEventDetail:
+      allOf:
+        - $ref: "#/components/schemas/AdminEventSummary"
+        - type: object
+          required:
+            - description
+            - location_address
+            - location_url
+            - cover_file_id
+            - checkin_opens_at
+            - checkin_closes_at
+            - effective_checkin_opens_at
+            - effective_checkin_closes_at
+            - checked_in_count
+            - min_seats_total
+            - cancelled_at
+            - cancel_reason
+            - created_by
+            - created_at
+            - allowed_actions
+          properties:
+            description: { type: [string, "null"] }
+            location_address: { type: [string, "null"] }
+            location_url: { type: [string, "null"], format: uri }
+            cover_file_id: { type: [string, "null"], format: uuid }
+            checkin_opens_at:
+              type: [string, "null"]
+              format: date-time
+              description: Override jendela check-in; null = bawaan D5.
+            checkin_closes_at: { type: [string, "null"], format: date-time }
+            effective_checkin_opens_at:
+              type: string
+              format: date-time
+              description: Override atau starts_at - checkin_before_hours (2 jam, D5).
+            effective_checkin_closes_at:
+              type: string
+              format: date-time
+              description: Override atau ends_at (D5).
+            checked_in_count: { type: integer, minimum: 0 }
+            min_seats_total:
+              type: integer
+              minimum: 1
+              description: |
+                Batas bawah kuota saat dibaca = max(1, held_quantity + paid_quantity) dengan proyeksi kursi tag Events
+                (AC F15-2); adminUpdateEvent melepas hold kedaluwarsa sebelum memeriksa batas yang sama.
+            cancelled_at: { type: [string, "null"], format: date-time }
+            cancel_reason: { type: [string, "null"] }
+            created_by:
+              oneOf:
+                - $ref: "#/components/schemas/AdminEventActor"
+                - type: "null"
+            created_at: { type: string, format: date-time }
+            allowed_actions:
+              type: array
+              items: { $ref: "#/components/schemas/AdminEventAction" }
+
+    AdminEventCreateRequest:
+      type: object
+      required: [title, starts_at, ends_at, registration_opens_at, registration_closes_at, price, seats_total]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: [string, "null"], maxLength: 5000, description: Teks polos. }
+        category_id: { type: [string, "null"], format: uuid, description: Kategori kind event yang aktif. }
+        location_name: { type: [string, "null"], maxLength: 200 }
+        location_address: { type: [string, "null"], maxLength: 500 }
+        location_url:
+          type: [string, "null"]
+          format: uri
+          pattern: "^https://"
+          maxLength: 500
+        cover_file_id:
+          type: [string, "null"]
+          format: uuid
+          description: Berkas purpose event_cover hasil POST /admin/event-covers (adminUploadEventCover), status ready.
+        timezone:
+          type: string
+          maxLength: 64
+          default: Asia/Jakarta
+          description: Zona waktu IANA tampilan event (PRD 2.1).
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        registration_opens_at: { type: string, format: date-time }
+        registration_closes_at: { type: string, format: date-time, description: Wajib <= ends_at. }
+        checkin_opens_at:
+          type: [string, "null"]
+          format: date-time
+          description: Override jendela check-in; isi bersama checkin_closes_at atau kosongkan keduanya (D5).
+        checkin_closes_at: { type: [string, "null"], format: date-time }
+        price: { $ref: "#/components/schemas/Money" }
+        seats_total: { type: integer, minimum: 1, maximum: 100000 }
+
+    AdminEventUpdateRequest:
+      type: object
+      minProperties: 1
+      description: Hanya field yang dikirim yang berubah (PATCH); aturan validasi sama dengan pembuatan.
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: [string, "null"], maxLength: 5000 }
+        category_id: { type: [string, "null"], format: uuid }
+        location_name: { type: [string, "null"], maxLength: 200 }
+        location_address: { type: [string, "null"], maxLength: 500 }
+        location_url:
+          type: [string, "null"]
+          format: uri
+          pattern: "^https://"
+          maxLength: 500
+        cover_file_id:
+          type: [string, "null"]
+          format: uuid
+          description: Berkas purpose event_cover hasil POST /admin/event-covers; null menghapus cover.
+        timezone: { type: string, maxLength: 64 }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        registration_opens_at: { type: string, format: date-time }
+        registration_closes_at: { type: string, format: date-time }
+        checkin_opens_at: { type: [string, "null"], format: date-time }
+        checkin_closes_at: { type: [string, "null"], format: date-time }
+        price:
+          $ref: "#/components/schemas/Money"
+        seats_total:
+          type: integer
+          minimum: 1
+          maximum: 100000
+          description: Tidak boleh di bawah held_quantity + paid_quantity (AC F15-2).
+
+    AdminEventStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/AdminEventTargetStatus" }
+
+    AdminEventCancelRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Wajib dan tidak boleh hanya spasi; ditampilkan kepada peserta (AC F09-7).
+
+    AdminEventCancelResult:
+      type: object
+      required:
+        - event
+        - tickets_cancelled
+        - payments_cancelled
+        - payments_in_review
+        - refunds_created
+        - refund_total
+      properties:
+        event: { $ref: "#/components/schemas/AdminEventDetail" }
+        tickets_cancelled: { type: integer, minimum: 0, description: Tiket aktif yang dibatalkan. }
+        payments_cancelled:
+          type: integer
+          minimum: 0
+          description: Payment pending tanpa bukti yang dibatalkan.
+        payments_in_review:
+          type: integer
+          minimum: 0
+          description: Payment berbukti yang tetap di antrean verifikasi; approve memicu refund otomatis.
+        refunds_created: { type: integer, minimum: 0 }
+        refund_total: { $ref: "#/components/schemas/Money" }
+
+    AdminEventStats:
+      type: object
+      required:
+        - event_id
+        - status
+        - seats_total
+        - seats_available
+        - awaiting_payment_count
+        - awaiting_review_count
+        - paid_count
+        - checked_in_count
+        - expired_count
+        - cancelled_count
+        - gross_revenue
+        - refunds_pending_amount
+        - refunds_completed_amount
+        - net_revenue
+        - generated_at
+      properties:
+        event_id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/EventStatus" }
+        seats_total: { type: integer, minimum: 1 }
+        seats_available: { type: integer, minimum: 0 }
+        awaiting_payment_count:
+          type: integer
+          minimum: 0
+          description: Hold menunggu bukti yang belum lewat; hold kedaluwarsa dihitung di expired_count (proyeksi tag Events).
+        awaiting_review_count: { type: integer, minimum: 0, description: Hold menunggu keputusan pembayaran. }
+        paid_count: { type: integer, minimum: 0, description: Kursi terkonfirmasi. }
+        checked_in_count: { type: integer, minimum: 0 }
+        expired_count: { type: integer, minimum: 0 }
+        cancelled_count: { type: integer, minimum: 0 }
+        gross_revenue:
+          $ref: "#/components/schemas/Money"
+        refunds_pending_amount: { $ref: "#/components/schemas/Money" }
+        refunds_completed_amount: { $ref: "#/components/schemas/Money" }
+        net_revenue:
+          $ref: "#/components/schemas/Money"
+        generated_at: { type: string, format: date-time }
+
+    AdminEventTicketHolder:
+      type: object
+      description: Data pemegang minimum untuk pengurus event; null setelah akun dihapus (AC F14-4).
+      required: [user_id, full_name, member_number, cohort, cohort_code, avatar_url]
+      properties:
+        user_id: { type: [string, "null"], format: uuid }
+        full_name: { type: [string, "null"] }
+        member_number: { type: [string, "null"], examples: ["29.01.01.7"] }
+        cohort: { type: [integer, "null"] }
+        cohort_code: { type: [string, "null"], examples: [KAPDH 29] }
+        avatar_url: { type: [string, "null"], format: uri }
+
+    AdminTicketPayment:
+      type: object
+      description: Ringkasan payment tiket; keputusan dilakukan di antrean pembayaran (payments.decide).
+      required: [id, status, amount, proof_version, submitted_at, decided_at, review_due_at]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/TicketPaymentStatus" }
+        amount: { $ref: "#/components/schemas/Money" }
+        proof_version: { type: integer, minimum: 0 }
+        submitted_at: { type: [string, "null"], format: date-time }
+        decided_at: { type: [string, "null"], format: date-time }
+        review_due_at:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            Batas review payment pending berbukti, nilai yang SAMA dengan `review_due_at` antrean pembayaran
+            (adminListPayments): yang lebih dahulu antara `submitted_at` + `events.review_escalation_business_days`
+            (2 hari kerja Senin-Jumat Asia/Jakarta, D5) dan pembukaan jendela check-in efektif event (PRD 4.4).
+            Null bila payment tidak pending atau belum berbukti.
+
+    AdminEventTicket:
+      type: object
+      required:
+        - id
+        - event_id
+        - status
+        - total
+        - holder
+        - holder_eligible
+        - hold_expires_at
+        - checked_in_at
+        - checked_in_by
+        - cancelled_at
+        - cancelled_by
+        - cancel_reason
+        - payment
+        - refunds
+        - review_overdue
+        - can_refund
+        - created_at
+        - version
+      properties:
+        id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/TicketStatus" }
+        total: { $ref: "#/components/schemas/Money" }
+        holder: { $ref: "#/components/schemas/AdminEventTicketHolder" }
+        holder_eligible:
+          type: boolean
+          description: False bila akun pemegang suspended, disabled, deletion_pending atau dihapus (PRD 2.2).
+        hold_expires_at: { type: [string, "null"], format: date-time }
+        checked_in_at: { type: [string, "null"], format: date-time }
+        checked_in_by:
+          oneOf:
+            - $ref: "#/components/schemas/AdminEventActor"
+            - type: "null"
+        cancelled_at: { type: [string, "null"], format: date-time }
+        cancelled_by:
+          oneOf:
+            - $ref: "#/components/schemas/TicketCancelledBy"
+            - type: "null"
+        cancel_reason: { type: [string, "null"] }
+        payment:
+          oneOf:
+            - $ref: "#/components/schemas/AdminTicketPayment"
+            - type: "null"
+        refunds:
+          type: array
+          description: |
+            Semua refund atas payment tiket ini (D6), urut `created_at` turun lalu id; kosong bila tidak ada.
+            Termasuk refund cancelled sebagai riwayat; total pending + completed tidak melebihi nominal payment.
+          items: { $ref: "#/components/schemas/TicketRefundInfo" }
+        review_overdue:
+          type: boolean
+          description: |
+            True bila payment tiket pending berbukti dan waktu server sudah melewati `payment.review_due_at`; sama
+            dengan `overdue` di antrean pembayaran (adminListPayments). Dieskalasi, tidak dibatalkan otomatis (D5,
+            PRD 3.9).
+        can_refund:
+          type: boolean
+          description: |
+            True bila PEMANGGIL saat ini boleh membatalkan tiket ini dengan `refund=true`: tiket paid, total > 0,
+            belum check-in, event tidak cancelled, pemanggil memiliki payments.decide, dan pemegang bukan akun alumni
+            tertaut pemanggil (PRD 2.3). UI menyembunyikan pilihan refund bila false.
+        created_at: { type: string, format: date-time }
+        version: { type: string }
+
+    AdminEventTicketPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminEventTicket" }
+        total: { type: integer, minimum: 0 }
+        next_cursor: { type: [string, "null"] }
+
+    AdminTicketCancelRequest:
+      type: object
+      required: [reason, refund]
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Wajib dan tidak boleh hanya spasi; disimpan di tiket, audit dan notifikasi pemegang.
+        refund:
+          type: boolean
+          description: |
+            Buat refund penuh untuk tiket paid berbayar (D6); harus false untuk tiket lainnya. true memerlukan izin
+            payments.decide dan tidak boleh untuk tiket akun alumni tertaut pemanggil (403 FORBIDDEN, PRD 2.3).
+
+    AdminCheckinEvent:
+      type: object
+      required:
+        - id
+        - title
+        - starts_at
+        - ends_at
+        - timezone
+        - location_name
+        - status
+        - checkin_opens_at
+        - checkin_closes_at
+        - checkin_open
+        - paid_count
+        - checked_in_count
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        timezone: { type: string }
+        location_name: { type: [string, "null"] }
+        status: { $ref: "#/components/schemas/EventStatus" }
+        checkin_opens_at: { type: string, format: date-time, description: Jendela check-in efektif (D5). }
+        checkin_closes_at: { type: string, format: date-time }
+        checkin_open: { type: boolean, description: True bila now berada dalam jendela check-in. }
+        paid_count: { type: integer, minimum: 0 }
+        checked_in_count: { type: integer, minimum: 0 }
+
+    AdminCheckinEventList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminCheckinEvent" }
+
+    AdminCheckinRequest:
+      type: object
+      required: [event_id, qr_code]
+      properties:
+        event_id: { type: string, format: uuid, description: Event yang sedang dipindai petugas. }
+        qr_code:
+          type: string
+          minLength: 1
+          maxLength: 256
+          x-sensitive: true
+          description: Isi QR tiket apa adanya.
+
+    AdminCheckinTicketEvent:
+      type: object
+      required: [id, title, starts_at, timezone]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        starts_at: { type: string, format: date-time }
+        timezone: { type: string }
+
+    AdminCheckinHolder:
+      type: object
+      description: Identitas visual untuk dicocokkan petugas; tanpa kontak dan tanpa status moderasi.
+      required: [full_name, member_number, cohort_code, avatar_url]
+      properties:
+        full_name: { type: [string, "null"] }
+        member_number: { type: [string, "null"] }
+        cohort_code: { type: [string, "null"] }
+        avatar_url: { type: [string, "null"], format: uri }
+
+    AdminCheckinTicket:
+      type: object
+      required: [ticket_id, status, event, holder, checked_in_at, checked_in_by]
+      properties:
+        ticket_id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/TicketStatus" }
+        event: { $ref: "#/components/schemas/AdminCheckinTicketEvent" }
+        holder: { $ref: "#/components/schemas/AdminCheckinHolder" }
+        checked_in_at:
+          type: [string, "null"]
+          format: date-time
+          description: Waktu check-in (sebelumnya, untuk already_checked_in).
+        checked_in_by:
+          description: Petugas check-in (sebelumnya, untuk already_checked_in).
+          oneOf:
+            - $ref: "#/components/schemas/AdminEventActor"
+            - type: "null"
+
+    AdminCheckinResult:
+      type: object
+      required: [ticket, checked_in_at, checked_in_by, event_checked_in_count, event_paid_count]
+      properties:
+        ticket: { $ref: "#/components/schemas/AdminCheckinTicket" }
+        checked_in_at: { type: string, format: date-time }
+        checked_in_by: { $ref: "#/components/schemas/AdminEventActor" }
+        event_checked_in_count:
+          { type: integer, minimum: 0, description: Jumlah hadir event setelah scan ini. }
+        event_paid_count: { type: integer, minimum: 0 }
+
+    AdminCheckinRejectionDetail:
+      type: object
+      description: |
+        Isi `current` pada penolakan check-in (AC F09-6). Dikirim lewat opsi `current` AppException, sehingga body
+        tetap Error baku ARCHITECTURE §4.4 dan filter galat inti tidak perlu diubah.
+      required: [rejection_reason, ticket, checkin_opens_at, checkin_closes_at]
+      properties:
+        rejection_reason: { $ref: "#/components/schemas/AdminCheckinRejectionReason" }
+        ticket: { $ref: "#/components/schemas/AdminCheckinTicket" }
+        checkin_opens_at:
+          type: string
+          format: date-time
+          description: Awal jendela check-in efektif event tiket (D5); ditampilkan untuk too_early.
+        checkin_closes_at:
+          type: string
+          format: date-time
+          description: Akhir jendela check-in efektif event tiket (D5); ditampilkan untuk too_late.
+
+    AdminCheckinRejection:
+      description: |
+        Body 409 adminCheckInTicket: bentuk Error baku (`code`, `message`, `request_id`, `current`) tanpa field
+        tingkat atas tambahan; hanya `current` yang dipersempit menjadi AdminCheckinRejectionDetail. `code`:
+        TICKET_ALREADY_CHECKED_IN (already_checked_in), RESERVATION_EXPIRED (ticket_expired),
+        PAYMENT_STATE_CONFLICT (ticket_awaiting_payment, ticket_awaiting_review), VALIDATION_ERROR (alasan lain).
+        IDEMPOTENCY_CONFLICT tidak membawa `current`. Klien Dart membaca `ApiException.current` lalu
+        `AdminCheckinRejectionDetail.fromJson`.
+      allOf:
+        - $ref: "#/components/schemas/Error"
+        - type: object
+          properties:
+            current: { $ref: "#/components/schemas/AdminCheckinRejectionDetail" }

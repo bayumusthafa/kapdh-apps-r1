@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/contracts/events/realtime-chat-message.schema.json",
+  "title": "RealtimeChatMessage",
+  "description": "Pesan chat yang baru di-commit (F-11). Bentuk JSON sama dengan ChatMessage pada kontrak HTTP (chat.yaml) sehingga klien dapat menyimpannya dengan model yang sama; `reactions` selalu kosong untuk pesan baru dan `reply_to` tanpa pratinjau (lihat RealtimeChatReply). Isi pesan tidak pernah dicatat di log (ARCHITECTURE §2 butir 3).",
+  "type": "object",
+  "required": [
+    "id",
+    "room_id",
+    "client_message_id",
+    "kind",
+    "sender",
+    "body",
+    "image",
+    "reply_to",
+    "reactions",
+    "created_at",
+    "deleted_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "room_id": { "type": "string", "format": "uuid" },
+    "client_message_id": {
+      "description": "ID dari klien pengirim; perangkat pengirim mencocokkan pesan optimistis (AC F11-2). Null untuk pesan sistem.",
+      "type": ["string", "null"],
+      "format": "uuid"
+    },
+    "kind": { "type": "string", "enum": ["text", "image", "system"] },
+    "sender": {
+      "description": "Null untuk pesan sistem atau pengirim yang akunnya sudah dihapus.",
+      "oneOf": [{ "$ref": "realtime-chat-user.schema.json" }, { "type": "null" }]
+    },
+    "body": {
+      "description": "Isi teks, keterangan gambar, atau teks pesan sistem.",
+      "type": ["string", "null"],
+      "maxLength": 4000,
+      "x-sensitive": true
+    },
+    "image": { "oneOf": [{ "$ref": "realtime-chat-image.schema.json" }, { "type": "null" }] },
+    "reply_to": { "oneOf": [{ "$ref": "realtime-chat-reply.schema.json" }, { "type": "null" }] },
+    "reactions": {
+      "type": "array",
+      "items": { "$ref": "realtime-chat-reaction.schema.json" }
+    },
+    "created_at": {
+      "description": "Diisi server di bawah kunci baris room dan naik ketat per room; urutan (created_at, id) sama dengan urutan commit (AC F11-3).",
+      "type": "string",
+      "format": "date-time"
+    },
+    "deleted_at": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "examples": [
+    {
+      "id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e60",
+      "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61",
+      "client_message_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e90",
+      "kind": "text",
+      "sender": {
+        "user_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e70",
+        "full_name": "Ahmad Islam",
+        "avatar_url": null
+      },
+      "body": "Assalamu'alaikum, kapan reuni angkatan?",
+      "image": null,
+      "reply_to": null,
+      "reactions": [],
+      "created_at": "2026-10-12T03:15:00.000Z",
+      "deleted_at": null
+    }
+  ]
+}

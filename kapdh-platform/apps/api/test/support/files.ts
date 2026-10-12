@@ -1,8 +1,12 @@
+import type { Permission } from "@kapdh/contracts";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { crc32, deflateSync } from "node:zlib";
 import sharp from "sharp";
 import { v7 as uuidv7 } from "uuid";
 import { expect } from "vitest";
+import type { FileRow } from "../../src/core/files/access-policy.js";
+import type { FilePurpose } from "../../src/core/files/purposes.js";
+import { FilesService } from "../../src/core/files/files.service.js";
 
 /**
  * Helper unggahan berkas untuk uji modul (ARCHITECTURE §9.1): body multipart, gambar/PDF sintetis, dan unggah lewat
@@ -184,4 +188,29 @@ export async function uploadTestFile(
   const res = await postFile(t.app, token, purpose, options);
   expect(res.statusCode, `unggah ${purpose}: ${res.body}`).toBe(201);
   return res.json();
+}
+
+/**
+ * Unggahan lewat FilesService untuk purpose yang punya endpoint unggah domain sendiri (post_cover/banner_image lewat
+ * POST /admin/content/media, event_cover lewat POST /admin/event-covers). Pemeriksaan hak, isi dan kuota sama dengan
+ * POST /files; dipakai uji core sampai modul domain menyediakan endpoint-nya.
+ */
+export async function uploadDomainFile(
+  t: { app: NestFastifyApplication },
+  admin: { userId: string; permissions: readonly Permission[] },
+  purpose: FilePurpose,
+  options: UploadOptions = {},
+): Promise<FileRow> {
+  return t.app.get(FilesService).upload({
+    uploader: {
+      userId: admin.userId,
+      audience: "admin",
+      permissions: new Set(admin.permissions),
+      effectiveStatus: null,
+    },
+    purpose,
+    data: options.data ?? (await testJpeg()),
+    filename: options.filename ?? "gambar.jpg",
+    declaredMime: options.contentType ?? "image/jpeg",
+  });
 }

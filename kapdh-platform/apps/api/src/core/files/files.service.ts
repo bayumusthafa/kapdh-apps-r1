@@ -80,6 +80,11 @@ export interface FileUrl {
   expiresAt: Date | null;
 }
 
+/** Hasil GET /files/{fileId}/access: URL + jenis isi agar klien memilih pratinjau (gambar atau PDF). */
+export interface FileAccessGrant extends FileUrl {
+  mime: string;
+}
+
 export interface FileContent {
   file: FileRow;
   body: Readable;
@@ -131,9 +136,14 @@ export class FilesService implements OnModuleInit {
     this.registerAccessPolicy("payment_proof", owner);
     this.registerAccessPolicy("payment_proof", FilePolicies.adminPermission("payments.read"));
     this.registerAccessPolicy("adjustment_evidence", FilePolicies.adminPermission("payments.read"));
+    // Ekspor audit (kontrak C7): audit.read + audit.export DAN pemohon ekspor atau Super Admin; jalur unduh utama
+    // adalah adminGetAuditExportAccess.
     this.registerAccessPolicy(
       "audit_export",
-      FilePolicies.allOf(owner, FilePolicies.adminPermission("audit.export")),
+      FilePolicies.allOf(
+        FilePolicies.adminPermission("audit.read", "audit.export"),
+        FilePolicies.anyOf(owner, FilePolicies.superAdmin()),
+      ),
     );
   }
 
@@ -167,8 +177,16 @@ export class FilesService implements OnModuleInit {
    * FORBIDDEN/MEMBERSHIP_REQUIRED/ACCOUNT_SUSPENDED), batas percobaan per jam dan kuota N-10 (429). Mengembalikan
    * batas byte stream untuk purpose sehingga controller berhenti membaca begitu batas terlampaui (413).
    */
-  async beginUpload(uploader: FileUploader, purpose: unknown): Promise<UploadTicket> {
-    if (!isFilePurpose(purpose) || FILE_PURPOSE_SPECS[purpose].uploader === "system")
+  async beginUpload(
+    uploader: FileUploader,
+    purpose: unknown,
+    options: { allowed?: readonly FilePurpose[] } = {},
+  ): Promise<UploadTicket> {
+    if (
+      !isFilePurpose(purpose) ||
+      FILE_PURPOSE_SPECS[purpose].uploader === "system" ||
+      (options.allowed && !options.allowed.includes(purpose))
+    )
       throw fieldError("purpose", "Purpose berkas tidak valid.");
     const spec = FILE_PURPOSE_SPECS[purpose];
     await this.assertUploader(spec, uploader);
@@ -258,9 +276,17 @@ export class FilesService implements OnModuleInit {
     return this.completeUpload(ticket, input);
   }
 
-  /** Purpose anggota hanya untuk sesi mobile dengan effective_status sesuai; purpose pengurus butuh izin. */
+  /**
+   * Purpose anggota untuk sesi mobile dengan effective_status sesuai (dan sesi admin bila purpose mengizinkan pengurus
+   * berizin tertentu); purpose pengurus butuh izin.
+   */
   private async assertUploader(spec: FilePurposeSpec, uploader: FileUploader): Promise<void> {
     if (spec.uploader === "member") {
+      if (uploader.audience === "admin" && spec.adminPermissions) {
+        if (!spec.adminPermissions.every((permission) => uploader.permissions.has(permission)))
+          throw forbidden("Anda tidak memiliki izin mengunggah berkas jenis ini.");
+        return;
+      }
       if (uploader.audience !== "mobile") throw forbidden("Jenis berkas ini hanya dapat diunggah anggota.");
       const status =
         uploader.effectiveStatus ??
@@ -528,16 +554,18 @@ export class FilesService implements OnModuleInit {
     fileId: string,
     viewer: FileViewer,
     options: { ttlSeconds?: number } = {},
-  ): Promise<FileUrl> {
+  ): Promise<FileAccessGrant> {
     const file = await this.findReady(fileId);
     if (!file) throw notFound("Berkas tidak ditemukan.");
-    if (file.visibility === "public") return { url: this.publicUrl(file.id), expiresAt: null };
+    if (file.visibility === "public")
+      return { url: this.publicUrl(file.id), expiresAt: null, mime: file.mime };
     if (!(await this.canAccess(file, viewer))) throw notFound("Berkas tidak ditemukan.");
-    return this.signedUrl(
+    const signed = await this.signedUrl(
       file,
       { userId: viewer.userId, sessionId: viewer.sessionId, sessionVersion: viewer.sessionVersion },
       options,
     );
+    return { ...signed, mime: file.mime };
   }
 
   /**
@@ -632,17 +660,17 @@ export class FilesService implements OnModuleInit {
   }
 
   /**
-   * Penampil terkini untuk token terikat sesi, dibangun dari database seperti AuthGuard (ARCHITECTURE §4.3): sesi sah
-   * dan session_version sama, akun aktif berjenis sesuai audience, admin aktif + izin dari database (super_admin semua
-   * izin), anggota dengan effective_status nonsuspended (tingkat yang sama dengan GET /files/{id}/access). null bila
-   * salah satu tidak terpenuhi.
+   * Penampil terkini untuk token terikat sesi, dibangun dari database seperti AuthGuard (ARCHITECTURE §4.3): keluarga
+   * sesi masih aktif (rotasi refresh setiap ±15 menit bukan pencabutan, kontrak C1 "Keluarga sesi"; logout/pencabutan
+   * keluarga mematikan URL) dan session_version sama, akun aktif berjenis sesuai audience, admin aktif + izin dari
+   * database (super_admin semua izin), anggota dengan effective_status nonsuspended (tingkat yang sama dengan
+   * GET /files/{id}/access). null bila salah satu tidak terpenuhi.
    */
   private async viewerFor(claims: FileTokenClaims, now: Date): Promise<FileViewer | null> {
     if (!claims.userId || !claims.sessionId || claims.sessionVersion === null) return null;
     const [row] = await this.db
       .select({
-        revokedAt: sessions.revokedAt,
-        expiresAt: sessions.expiresAt,
+        familyId: sessions.familyId,
         audience: sessions.audience,
         userStatus: users.status,
         userKind: users.kind,
@@ -656,14 +684,15 @@ export class FilesService implements OnModuleInit {
       .leftJoin(admins, eq(admins.userId, users.id))
       .where(and(eq(sessions.id, claims.sessionId), eq(sessions.userId, claims.userId)))
       .limit(1);
-    if (
-      !row ||
-      row.revokedAt ||
-      row.expiresAt <= now ||
-      row.userStatus !== "active" ||
-      row.sessionVersion !== claims.sessionVersion
-    )
-      return null;
+    if (!row || row.userStatus !== "active" || row.sessionVersion !== claims.sessionVersion) return null;
+    const [active] = await this.db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(
+        and(eq(sessions.familyId, row.familyId), isNull(sessions.revokedAt), gt(sessions.expiresAt, now)),
+      )
+      .limit(1);
+    if (!active) return null;
     const base = {
       userId: claims.userId,
       sessionId: claims.sessionId,
@@ -682,11 +711,25 @@ export class FilesService implements OnModuleInit {
                   .where(eq(adminPermissions.adminId, row.adminId))
               ).map((p) => p.permission as Permission),
             );
-      return { ...base, audience: "admin", adminId: row.adminId, permissions, effectiveStatus: null };
+      return {
+        ...base,
+        audience: "admin",
+        adminId: row.adminId,
+        adminRole: row.adminRole,
+        permissions,
+        effectiveStatus: null,
+      };
     }
     if (row.audience !== "mobile" || row.userKind !== "alumni") return null;
     const status = (await this.membership.effectiveStatusFor(claims.userId, { now }))?.status ?? "unverified";
     if (!memberAccessAllows("nonsuspended", status)) return null;
-    return { ...base, audience: "mobile", adminId: null, permissions: new Set(), effectiveStatus: status };
+    return {
+      ...base,
+      audience: "mobile",
+      adminId: null,
+      adminRole: null,
+      permissions: new Set(),
+      effectiveStatus: status,
+    };
   }
 }

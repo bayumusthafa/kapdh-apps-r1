@@ -21,9 +21,15 @@ describe("MemoryRateLimitStore sliding window (PRD 2.5, D1)", () => {
     const store = new MemoryRateLimitStore();
     expect(await store.peek("login:x", 1, MINUTE, 0)).toBe(0);
     expect(await store.peek("login:x", 1, MINUTE, 1)).toBe(0);
+    // hit mengembalikan jumlah hit dalam jendela sesudah dicatat (sisa percobaan).
+    expect(await store.hit("login:x", MINUTE, 10)).toBe(1);
+    expect(await store.hit("login:x", MINUTE, 20)).toBe(2);
+    expect(await store.peek("login:x", 2, MINUTE, 30)).toBe(MINUTE - 20);
+    // Hit yang keluar jendela tidak dihitung.
+    expect(await store.hit("login:x", MINUTE, MINUTE + 15)).toBe(2);
+    await store.reset("login:x");
     await store.hit("login:x", MINUTE, 10);
     await store.hit("login:x", MINUTE, 20);
-    expect(await store.peek("login:x", 2, MINUTE, 30)).toBe(MINUTE - 20);
     await store.reset("login:x");
     expect(await store.peek("login:x", 1, MINUTE, 30)).toBe(0);
   });

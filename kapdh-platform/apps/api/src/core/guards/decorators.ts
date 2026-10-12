@@ -14,7 +14,12 @@ export const PUBLIC_KEY = "kapdh:public";
 export const AUDIENCE_KEY = "kapdh:audience";
 export const MEMBER_ACCESS_KEY = "kapdh:member-access";
 export const PERMISSIONS_KEY = "kapdh:permissions";
+export const PERMISSIONS_ANY_KEY = "kapdh:permissions-any";
+export const ROLE_KEY = "kapdh:role";
 export const REAUTH_KEY = "kapdh:reauth";
+
+/** Peran admin yang dapat diwajibkan rute (kontrak `x-kapdh-access.role`): hanya tindakan khusus Super Admin. */
+export type RequiredRole = "super_admin";
 
 export type RequiredAudience = "mobile" | "admin" | "any";
 
@@ -38,6 +43,22 @@ export const RequirePermission = (...permissions: [Permission, ...Permission[]])
   return SetMetadata(PERMISSIONS_KEY, permissions);
 };
 
+/**
+ * Khusus admin: CUKUP SATU izin yang dimiliki (kontrak `x-kapdh-access.permissions_any`), dipakai bila satu data
+ * dibutuhkan dua area pengurus (mis. daftar master untuk members.read atau master.manage). Dievaluasi dari database
+ * setiap request seperti @RequirePermission; super_admin selalu lolos (ARCHITECTURE §4.5).
+ */
+export const RequireAnyPermission = (...permissions: [Permission, ...Permission[]]) => {
+  if (permissions.length === 0) throw new Error("@RequireAnyPermission membutuhkan minimal satu izin");
+  return SetMetadata(PERMISSIONS_ANY_KEY, permissions);
+};
+
+/**
+ * Khusus admin dengan peran tertentu (kontrak `x-kapdh-access.role`): tindakan yang hanya boleh dilakukan Super Admin
+ * (mis. reset sandi anggota, AC F16-4). Peran dibaca dari database setiap request; selain itu 403 FORBIDDEN.
+ */
+export const RequireRole = (role: RequiredRole) => SetMetadata(ROLE_KEY, role);
+
 /** Tindakan sensitif: header X-Reauth-Token (aud kapdh-reauth, terikat sesi, <= 10 menit; AC F15-3, F16-1). */
 export const RequireReauth = () => SetMetadata(REAUTH_KEY, true);
 
@@ -53,12 +74,19 @@ export interface RouteAuthMeta {
   audience: RequiredAudience | null;
   memberAccess: MemberAccessLevel | null;
   permissions: Permission[];
+  /** Cukup salah satu izin (kosong = tidak ada syarat any-of). */
+  permissionsAny: Permission[];
+  role: RequiredRole | null;
   reauth: boolean;
   /** Kesalahan deklarasi; rute dengan masalah selalu ditolak (fail closed) dan diuji per rute. */
   problems: string[];
 }
 
-/** Membaca metadata akses handler + kelas. Handler mengalahkan kelas; izin digabung dari keduanya. */
+/**
+ * Membaca metadata akses handler + kelas. Handler mengalahkan kelas; izin wajib (@RequirePermission) digabung dari
+ * keduanya, sedangkan himpunan any-of dan peran diambil dari tingkat terdekat (menggabungkan any-of akan melonggarkan
+ * syarat).
+ */
 export function routeAuthMeta(
   reflector: Reflector,
   targets: [handler: object, controller: object],
@@ -70,16 +98,25 @@ export function routeAuthMeta(
   const memberAccess =
     reflector.getAllAndOverride<MemberAccessLevel | undefined>(MEMBER_ACCESS_KEY, scopes) ?? null;
   const permissions = [...new Set(reflector.getAllAndMerge<Permission[]>(PERMISSIONS_KEY, scopes) ?? [])];
+  const permissionsAny = [
+    ...new Set(reflector.getAllAndOverride<Permission[] | undefined>(PERMISSIONS_ANY_KEY, scopes) ?? []),
+  ];
+  const role = reflector.getAllAndOverride<RequiredRole | undefined>(ROLE_KEY, scopes) ?? null;
   const reauth = reflector.getAllAndOverride<boolean | undefined>(REAUTH_KEY, scopes) === true;
 
   const problems: string[] = [];
   if (isPublic && audience) problems.push("@Public dan @Audience tidak boleh bersamaan");
   if (!isPublic && !audience) problems.push("rute tanpa @Public atau @Audience");
-  if (isPublic && (memberAccess || permissions.length > 0 || reauth))
-    problems.push("@Public tidak boleh memakai @MemberAccess/@RequirePermission/@RequireReauth");
+  if (isPublic && (memberAccess || permissions.length > 0 || permissionsAny.length > 0 || role || reauth))
+    problems.push(
+      "@Public tidak boleh memakai @MemberAccess/@RequirePermission/@RequireAnyPermission/@RequireRole/@RequireReauth",
+    );
   if (memberAccess && audience !== "mobile" && audience !== "any")
     problems.push("@MemberAccess hanya untuk @Audience('mobile') atau @Audience('any')");
   if (permissions.length > 0 && audience !== "admin")
     problems.push("@RequirePermission hanya untuk @Audience('admin')");
-  return { isPublic, audience, memberAccess, permissions, reauth, problems };
+  if (permissionsAny.length > 0 && audience !== "admin")
+    problems.push("@RequireAnyPermission hanya untuk @Audience('admin')");
+  if (role && audience !== "admin") problems.push("@RequireRole hanya untuk @Audience('admin')");
+  return { isPublic, audience, memberAccess, permissions, permissionsAny, role, reauth, problems };
 }

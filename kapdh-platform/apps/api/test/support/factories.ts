@@ -381,6 +381,25 @@ export async function setSetting<K extends SettingKey>(
   return row!.version;
 }
 
+/** Versi persetujuan registrasi uji (kebijakan privasi dan ketentuan versi 1 terbit; F-01, LegalConsentVersions). */
+export const TEST_CONSENT_VERSION = "privacy:1;terms:1";
+
+/**
+ * Menerbitkan versi halaman legal di app_settings `legal` (cermin pages.published_version) sehingga registrasi
+ * terbuka; mengembalikan `policy_version` yang harus dikirim klien sebagai `accept_policy_version`.
+ */
+export async function publishLegalVersions(
+  t: { db: Db; clock: TestClock; settings: SettingsService },
+  versions: { privacy: number; terms: number; community?: number } = { privacy: 1, terms: 1, community: 1 },
+): Promise<string> {
+  await setSetting(t, "legal", {
+    privacy_version: String(versions.privacy),
+    terms_version: String(versions.terms),
+    community_version: versions.community === undefined ? null : String(versions.community),
+  });
+  return `privacy:${versions.privacy};terms:${versions.terms}`;
+}
+
 /** Membaca versi app_settings saat ini (0 bila belum ada). */
 export async function settingVersion(t: { db: Db }, key: SettingKey): Promise<number> {
   const [row] = await t.db

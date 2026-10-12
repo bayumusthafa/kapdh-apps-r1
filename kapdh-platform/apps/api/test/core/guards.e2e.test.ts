@@ -215,6 +215,65 @@ describe("AC F15-1, F16-3: @RequirePermission dievaluasi dari database setiap re
   });
 });
 
+describe("ARCHITECTURE §4.3: @RequireAnyPermission (permissions_any) dan @RequireRole (role) dari database", () => {
+  it("permissions_any: salah satu izin cukup, tanpa izin itu 403; super_admin selalu lolos", async () => {
+    for (const permission of ["members.read", "master.manage"] as const) {
+      const admin = await createAdmin(t, { permissions: [permission] });
+      const { accessToken } = await signInAdmin(t, admin);
+      expect((await api.get("/__probe/admin/masters", { token: accessToken })).statusCode, permission).toBe(
+        200,
+      );
+    }
+    const other = await createAdmin(t, { permissions: ["payments.read"] });
+    const otherSession = await signInAdmin(t, other);
+    const denied = await api.get("/__probe/admin/masters", { token: otherSession.accessToken });
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json().code).toBe("FORBIDDEN");
+    const superAdmin = await createAdmin(t, { role: "super_admin" });
+    const superSession = await signInAdmin(t, superAdmin);
+    expect((await api.get("/__probe/admin/masters", { token: superSession.accessToken })).statusCode).toBe(
+      200,
+    );
+  });
+
+  it("AC F16-3: izin any-of yang dicabut berlaku pada request berikutnya", async () => {
+    const admin = await createAdmin(t, { permissions: ["members.read"] });
+    const { accessToken } = await signInAdmin(t, admin);
+    expect((await api.get("/__probe/admin/masters", { token: accessToken })).statusCode).toBe(200);
+    await t.db.delete(adminPermissions).where(eq(adminPermissions.adminId, admin.adminId));
+    expect((await api.get("/__probe/admin/masters", { token: accessToken })).statusCode).toBe(403);
+  });
+
+  it("role super_admin: admin biasa dengan semua izin tetap 403; peran diturunkan berlaku seketika", async () => {
+    const admin = await createAdmin(t, {
+      permissions: ["members.read", "members.manage", "admins.manage", "settings.manage"],
+    });
+    const { accessToken } = await signInAdmin(t, admin);
+    const denied = await api.get("/__probe/admin/super", { token: accessToken });
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json().code).toBe("FORBIDDEN");
+
+    // Super Admin kedua agar penurunan peran tidak melanggar penjaga Super Admin terakhir (AC F16-2).
+    await createAdmin(t, { role: "super_admin" });
+    const superAdmin = await createAdmin(t, { role: "super_admin" });
+    const superSession = await signInAdmin(t, superAdmin);
+    const ok = await api.get("/__probe/admin/super", { token: superSession.accessToken });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().admin_role).toBe("super_admin");
+    await t.db.update(admins).set({ role: "admin" }).where(eq(admins.id, superAdmin.adminId));
+    expect((await api.get("/__probe/admin/super", { token: superSession.accessToken })).statusCode).toBe(403);
+  });
+
+  it("sesi mobile ditolak 403; deklarasi any-of pada audience mobile ditolak (fail closed)", async () => {
+    const { accessToken } = await memberToken("verified");
+    expect((await api.get("/__probe/admin/masters", { token: accessToken })).statusCode).toBe(403);
+    expect((await api.get("/__probe/admin/super", { token: accessToken })).statusCode).toBe(403);
+    const misdeclared = await api.get("/__probe/misdeclared/any-permission", { token: accessToken });
+    expect(misdeclared.statusCode).toBe(403);
+    expect(misdeclared.body).not.toContain("leaked");
+  });
+});
+
 describe("ARCHITECTURE §4.3: @RequireReauth (X-Reauth-Token aud kapdh-reauth, terikat sesi, 10 menit)", () => {
   async function reauthToken(accessToken: string, level = 1) {
     const claims = decodeJwt(accessToken);

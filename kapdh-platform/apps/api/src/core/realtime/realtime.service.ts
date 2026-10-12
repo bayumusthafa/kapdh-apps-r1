@@ -151,6 +151,25 @@ export class RealtimeService {
   }
 
   /**
+   * Menyamakan langganan kanal room SEMUA socket pengguna (lintas instance lewat adapter) dengan status efektifnya
+   * (kontrak C6 "Pencabutan langganan room" butir 3 dan 5): status aktif (verified/expiring) → bergabung ke setiap room
+   * joined; selain itu → keluar dari setiap room joined. Dipanggil saat request ditolak MEMBERSHIP_REQUIRED/
+   * ACCOUNT_SUSPENDED (AuthGuard) dan setelah commit yang memulihkan status aktif (persetujuan iuran, unsuspend).
+   * Di dalam withTx dijalankan setelah commit; galat hanya dicatat (penyapuan gateway <= 60 detik tetap menjamin).
+   */
+  syncRoomSubscriptions(userId: string, status: EffectiveStatus | null): void {
+    this.runAsync("syncRoomSubscriptions", async () => {
+      if (this.transport.kind === "none") return;
+      const roomIds = await this.roomResolver(userId);
+      const active = status !== null && CHAT_ACTIVE_STATUSES.has(status);
+      for (const roomId of roomIds) {
+        if (active) this.transport.join(userChannel(userId), roomChannel(roomId));
+        else this.transport.leave(userChannel(userId), roomChannel(roomId));
+      }
+    });
+  }
+
+  /**
    * Mengirim `session.revoked` (all_sessions=true) ke semua socket pengguna lalu memutusnya (logout semua, suspend,
    * nonaktif, penghapusan; AC F02-6, F12-4, F16-3).
    */
@@ -167,17 +186,21 @@ export class RealtimeService {
     });
   }
 
-  /** `session.revoked` (all_sessions=false, entity_id = id sesi) ke socket satu sesi lalu memutusnya (logout). */
-  disconnectSession(sessionId: string, reason: SessionRevokedReason): void {
+  /**
+   * `session.revoked` (all_sessions=false, entity_id = id keluarga sesi = Session.id) ke socket satu keluarga sesi
+   * lalu memutusnya (logout, pencabutan satu perangkat, reuse refresh token). Socket yang dibuka sebelum rotasi refresh
+   * ikut terjangkau karena kanal berbasis keluarga.
+   */
+  disconnectSession(familyId: string, reason: SessionRevokedReason): void {
     this.run("disconnectSession", () => {
       const envelope = buildEnvelope(
         "session.revoked",
-        sessionId,
+        familyId,
         { reason, all_sessions: false } as RealtimePayloads["session.revoked"],
         this.clock.now(),
       );
-      this.transport.emit([sessionChannel(sessionId)], "session.revoked", envelope, []);
-      this.transport.disconnect(sessionChannel(sessionId));
+      this.transport.emit([sessionChannel(familyId)], "session.revoked", envelope, []);
+      this.transport.disconnect(sessionChannel(familyId));
     });
   }
 
@@ -226,6 +249,22 @@ export class RealtimeService {
       const envelope = buildEnvelope(type, entityId, payload, this.clock.now());
       this.transport.emit(channels, type, envelope, except);
     });
+  }
+
+  /** Seperti {@link run} untuk aksi async (mis. membaca room joined sebelum mengirim operasi adapter). */
+  private runAsync(label: string, action: () => Promise<void>): void {
+    const execute = async () => {
+      try {
+        await action();
+      } catch (error) {
+        this.logger.warn(
+          { error: safeError(error), action: label },
+          "pengiriman realtime gagal (data tetap tersimpan)",
+        );
+      }
+    };
+    if (currentTx()) afterCommit(execute);
+    else void execute();
   }
 
   /** Di dalam withTx: tunda sampai commit; di luar: segera. Galat transport tidak menggagalkan pemanggil. */

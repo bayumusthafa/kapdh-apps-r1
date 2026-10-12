@@ -71,8 +71,8 @@ export class RedisRateLimitStore implements RateLimitStore {
     return this.check(key, limit, windowMs, nowMs, false);
   }
 
-  async hit(key: string, windowMs: number, nowMs: number): Promise<void> {
-    await this.redis.eval(
+  async hit(key: string, windowMs: number, nowMs: number): Promise<number> {
+    const count = await this.redis.eval(
       HIT_SCRIPT,
       1,
       storageKey(key),
@@ -81,6 +81,7 @@ export class RedisRateLimitStore implements RateLimitStore {
       member(nowMs),
       String(MAX_HITS_PER_KEY),
     );
+    return Number(count);
   }
 
   async reset(key: string): Promise<void> {

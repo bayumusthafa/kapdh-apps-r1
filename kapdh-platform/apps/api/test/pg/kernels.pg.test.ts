@@ -30,7 +30,7 @@ import {
   connectAs,
   createPgTestDatabase,
   type PgTestDatabase,
-  withLockWaitProbe,
+  withLockWaitGate,
 } from "./support.js";
 
 let tdb: PgTestDatabase;
@@ -79,20 +79,25 @@ describe("MembershipKernel.applyPaidPayment bersamaan (AC F04-5, PRD 9.2 double 
       const member = await createAlumni(owner, { status: "unverified" });
       const payment = await createMembershipPayment(owner, { userId: member.userId, type: "registration" });
       const approvedAt = clock.now();
-      const gate = barrier(8);
-      const { result, maxWaiting } = await withLockWaitProbe(
-        tdb.sql,
-        Promise.all(
-          Array.from({ length: 8 }, async () => {
-            await gate();
-            return approve(payment.id, approvedAt);
-          }),
-        ),
-      );
+      // Penahan memegang kunci baris payment lebih dulu, sehingga 8 transaksi kernel PASTI berebut kunci yang sama;
+      // kunci dilepas begitu penantian mereka teramati (deterministik, tanpa jendela sleep).
+      const { result, lockWaitObserved } = await withLockWaitGate(tdb, async (hold) => {
+        let signalLocked!: () => void;
+        const locked = new Promise<void>((resolve) => (signalLocked = resolve));
+        const blocker = tdb.sql.begin(async (tx) => {
+          await tx`select id from app.payments where id = ${payment.id} for update`;
+          signalLocked();
+          await hold();
+        });
+        await locked;
+        const approvals = Promise.all(Array.from({ length: 8 }, () => approve(payment.id, approvedAt)));
+        await blocker;
+        return approvals;
+      });
       const applied = result.filter((r) => r.applied);
       expect(applied, `putaran ${round}`).toHaveLength(1);
       expect(new Set(result.map((r) => r.eventId)).size).toBe(1);
-      expect(maxWaiting, "transaksi benar-benar saling menunggu kunci baris").toBeGreaterThan(0);
+      expect(lockWaitObserved, "transaksi benar-benar saling menunggu kunci baris").toBe(true);
 
       const events = await tdb.db
         .select()

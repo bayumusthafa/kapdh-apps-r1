@@ -9,8 +9,11 @@ export interface RateLimitStore {
   consume(key: string, limit: number, windowMs: number, nowMs: number): Promise<number>;
   /** Seperti consume tetapi tanpa mencatat hit (mis. memeriksa kuota gagal login sebelum mencoba). */
   peek(key: string, limit: number, windowMs: number, nowMs: number): Promise<number>;
-  /** Mencatat satu hit tanpa syarat (mis. setiap kegagalan login). */
-  hit(key: string, windowMs: number, nowMs: number): Promise<void>;
+  /**
+   * Mencatat satu hit tanpa syarat (mis. setiap kegagalan login) dan mengembalikan jumlah hit dalam jendela sesudah
+   * pencatatan (untuk "sisa percobaan n", kontrak adminVerifyMfa).
+   */
+  hit(key: string, windowMs: number, nowMs: number): Promise<number>;
   /** Menghapus seluruh hit sebuah kunci (mis. login berhasil). */
   reset(key: string): Promise<void>;
 }
@@ -101,11 +104,13 @@ export class MemoryRateLimitStore implements RateLimitStore {
     return this.wait(this.prune(id, nowMs, windowMs), limit, windowMs, nowMs);
   }
 
-  async hit(key: string, windowMs: number, nowMs: number): Promise<void> {
+  async hit(key: string, windowMs: number, nowMs: number): Promise<number> {
     this.maybeSweep(nowMs);
     const id = storageKey(key);
     this.prune(id, nowMs, windowMs);
     this.record(id, windowMs, nowMs);
+    const cutoff = nowMs - windowMs;
+    return this.buckets.get(id)!.hits.filter((at) => at > cutoff).length;
   }
 
   async reset(key: string): Promise<void> {

@@ -35,7 +35,7 @@
       ]
     },
     "entity_id": {
-      "description": "ID entitas utama event (pesan, room, notifikasi, pengguna, atau sesi).",
+      "description": "ID entitas utama event: ID pesan (message.created, message.deleted, reaction.updated), ID room (read.updated, room.updated, room.member_changed, typing), user_id (presence), ID notifikasi (notification.created), atau ID sesi (session.revoked).",
       "type": "string",
       "format": "uuid"
     },
@@ -51,18 +51,7 @@
     }
   },
   "x-kapdh-payload-less": [],
-  "x-kapdh-payload-pending": [
-    "message.created",
-    "message.deleted",
-    "reaction.updated",
-    "read.updated",
-    "room.updated",
-    "room.member_changed",
-    "typing",
-    "presence",
-    "notification.created",
-    "session.revoked"
-  ],
+  "x-kapdh-payload-pending": [],
   "examples": [
     {
       "v": 1,
@@ -71,7 +60,36 @@
       "entity_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e60",
       "ts": "2026-10-12T03:15:00.000Z",
       "payload": {
-        "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61"
+        "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61",
+        "message": {
+          "id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e60",
+          "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61",
+          "client_message_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e90",
+          "kind": "text",
+          "sender": {
+            "user_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e70",
+            "full_name": "Ahmad Islam",
+            "avatar_url": null
+          },
+          "body": "Assalamu'alaikum, kapan reuni angkatan?",
+          "image": null,
+          "reply_to": null,
+          "reactions": [],
+          "created_at": "2026-10-12T03:15:00.000Z",
+          "deleted_at": null
+        }
+      }
+    },
+    {
+      "v": 1,
+      "event_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e64",
+      "type": "typing",
+      "entity_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61",
+      "ts": "2026-10-12T03:15:30.000Z",
+      "payload": {
+        "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61",
+        "user_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e71",
+        "ttl_seconds": 5
       }
     },
     {
@@ -80,7 +98,10 @@
       "type": "session.revoked",
       "entity_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e63",
       "ts": "2026-10-12T03:16:00.000Z",
-      "payload": {}
+      "payload": {
+        "reason": "logout_all",
+        "all_sessions": true
+      }
     }
   ]
 }

@@ -72,6 +72,12 @@ Map<String, Object?> paymentJson() => <String, Object?>{
       'proof_version': 2,
       'created_at': '2026-10-12T03:00:00.000Z',
       'version': '4',
+      'stage': 'awaiting_review',
+      'actions': <String, Object?>{'can_submit_proof': true, 'can_change_method': false, 'can_cancel': false},
+      'events': <Object?>[],
+      'adjustments': <Object?>[],
+      'method_active': true,
+      'instructions_hidden': false,
     };
 
 Map<String, Object?> errorJson(String code, {Object? current, int? retry}) => <String, Object?>{
@@ -83,14 +89,19 @@ Map<String, Object?> errorJson(String code, {Object? current, int? retry}) => <S
     };
 
 void main() {
-  test('submitPaymentProof: PUT path terenkode, Idempotency-Key, body JSON dan respons Payment', () async {
+  test('submitPaymentProof: PUT path terenkode, Idempotency-Key, body JSON dan respons PaymentDetail', () async {
     final (dio, adapter) = dioWith((_) => jsonBody(paymentJson(), 200));
     final payment = await KapdhApi(dio).payments.submitPaymentProof(
           '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e5f',
-          const SubmitPaymentProofRequest(fileId: '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e64', transferNote: 'BSI'),
+          const SubmitPaymentProofRequest(
+            fileId: '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e64',
+            transferNote: 'BSI',
+            expectedProofVersion: 1,
+          ),
           idempotencyKey: '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e65',
         );
     expect(payment.proofVersion, 2);
+    expect(payment.stage, PaymentStage.awaitingReview);
     final request = adapter.requests.single;
     expect(request.method, 'PUT');
     expect(request.uri.toString(),
@@ -99,6 +110,7 @@ void main() {
     expect(request.data, <String, Object?>{
       'file_id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e64',
       'transfer_note': 'BSI',
+      'expected_proof_version': 1,
     });
     expect(request.extra[kapdhOperationIdKey], 'submitPaymentProof');
     expect(request.extra[kapdhAuthRequiredKey], isTrue);
@@ -140,6 +152,7 @@ void main() {
         'registration_fee': '50000.00',
         'card_fee': '10000.00',
         'renewal_fee': '15000.00',
+        'registration_total': '60000.00',
         'version': '2',
         'effective_from': '2026-10-12T03:00:00.000Z',
       }, 200),

@@ -10,7 +10,7 @@ import {
   pgError,
   sleep,
   type Sql,
-  withLockWaitProbe,
+  withLockWaitGate,
 } from "./support.js";
 
 let tdb: PgTestDatabase;
@@ -51,7 +51,11 @@ async function usableSuperAdmins(): Promise<number> {
  * Dua transaksi pada koneksi berbeda menjalankan perubahan bersamaan: keduanya mulai, menunggu satu sama lain di
  * penghalang, menjalankan statement, lalu menahan transaksi terbuka sebentar sebelum commit.
  */
-async function runConcurrently(statements: ((tx: Sql) => Promise<unknown>)[]) {
+/** Transaksi bersamaan; `hold` menahan commit (gerbang lock-wait deterministik, atau jeda tetap). */
+async function runConcurrently(
+  statements: ((tx: Sql) => Promise<unknown>)[],
+  hold: () => Promise<void> = () => sleep(250),
+) {
   const ready = barrier(statements.length);
   return Promise.allSettled(
     statements.map((run) =>
@@ -59,7 +63,7 @@ async function runConcurrently(statements: ((tx: Sql) => Promise<unknown>)[]) {
         await tx`select 1`;
         await ready();
         await run(tx as unknown as Sql);
-        await sleep(250);
+        await hold();
       }),
     ),
   );
@@ -71,15 +75,17 @@ describe("AC F16-2: Super Admin aktif terakhir dijaga transaksi (PostgreSQL 17, 
     const b = await insertAdmin(sql, { role: "super_admin" });
     expect(await activeSuperAdmins()).toBe(2);
 
-    const { result: results, maxWaiting } = await withLockWaitProbe(
-      sql,
-      runConcurrently([
-        (tx) => tx`update app.admins set status = 'disabled', disabled_at = now() where id = ${a}`,
-        (tx) => tx`update app.admins set role = 'admin' where id = ${b}`,
-      ]),
+    const { result: results, lockWaitObserved } = await withLockWaitGate(tdb, (hold) =>
+      runConcurrently(
+        [
+          (tx) => tx`update app.admins set status = 'disabled', disabled_at = now() where id = ${a}`,
+          (tx) => tx`update app.admins set role = 'admin' where id = ${b}`,
+        ],
+        hold,
+      ),
     );
     // Transaksi kedua benar-benar menunggu transaksi pertama (bukan dieksekusi berurutan).
-    expect(maxWaiting).toBeGreaterThanOrEqual(1);
+    expect(lockWaitObserved).toBe(true);
 
     const fulfilled = results.filter((r) => r.status === "fulfilled");
     const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
@@ -95,14 +101,16 @@ describe("AC F16-2: Super Admin aktif terakhir dijaga transaksi (PostgreSQL 17, 
   it("dua penghapusan bersamaan tidak dapat menghapus seluruh Super Admin aktif", async () => {
     const a = await insertAdmin(sql, { role: "super_admin" });
     const b = await insertAdmin(sql, { role: "super_admin" });
-    const { result: results, maxWaiting } = await withLockWaitProbe(
-      sql,
-      runConcurrently([
-        (tx) => tx`delete from app.admins where id = ${a}`,
-        (tx) => tx`delete from app.admins where id = ${b}`,
-      ]),
+    const { result: results, lockWaitObserved } = await withLockWaitGate(tdb, (hold) =>
+      runConcurrently(
+        [
+          (tx) => tx`delete from app.admins where id = ${a}`,
+          (tx) => tx`delete from app.admins where id = ${b}`,
+        ],
+        hold,
+      ),
     );
-    expect(maxWaiting).toBeGreaterThanOrEqual(1);
+    expect(lockWaitObserved).toBe(true);
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     expect(await activeSuperAdmins()).toBe(1);
   });
@@ -204,14 +212,16 @@ describe("AC F16-2: Super Admin aktif terakhir dijaga transaksi (PostgreSQL 17, 
   it("PRD 3.14: menonaktifkan akun login Super Admin bersamaan dengan demosi Super Admin lain: minimal satu tetap dapat login", async () => {
     const a = await insertAdminAccount(sql, { role: "super_admin" });
     const b = await insertAdminAccount(sql, { role: "super_admin" });
-    const { result: results, maxWaiting } = await withLockWaitProbe(
-      sql,
-      runConcurrently([
-        (tx) => tx`update app.users set status = 'disabled' where id = ${a.userId}`,
-        (tx) => tx`update app.admins set role = 'admin' where id = ${b.adminId}`,
-      ]),
+    const { result: results, lockWaitObserved } = await withLockWaitGate(tdb, (hold) =>
+      runConcurrently(
+        [
+          (tx) => tx`update app.users set status = 'disabled' where id = ${a.userId}`,
+          (tx) => tx`update app.admins set role = 'admin' where id = ${b.adminId}`,
+        ],
+        hold,
+      ),
     );
-    expect(maxWaiting).toBeGreaterThanOrEqual(1);
+    expect(lockWaitObserved).toBe(true);
     const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     expect(rejected).toHaveLength(1);

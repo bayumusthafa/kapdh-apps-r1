@@ -8,6 +8,7 @@ import { AppException, fieldError } from "../../core/errors/app-exception.js";
 import type { FileRow } from "../../core/files/access-policy.js";
 import { FilesService, type UploadContent, type UploadTicket } from "../../core/files/files.service.js";
 import { CANONICAL_EXTENSION } from "../../core/files/inspect.js";
+import { GENERAL_UPLOAD_PURPOSES } from "../../core/files/purposes.js";
 import type { MultipartRouteConfig } from "../../core/http/fastify-hooks.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
 import { Audience, CurrentAuth, MemberAccess, Public } from "../../core/guards/decorators.js";
@@ -131,7 +132,8 @@ export class FilesController {
           // Field lain diabaikan (dibatasi limits.fields); purpose hanya sekali.
           if (part.fieldname !== "purpose") continue;
           if (ticket) throw fieldError("purpose", "Purpose hanya boleh dikirim sekali.");
-          ticket = await this.files.beginUpload(auth, part.value);
+          // Hanya purpose unggahan umum (FileUploadPurpose); cover/banner lewat endpoint domainnya (C4, C5).
+          ticket = await this.files.beginUpload(auth, part.value, { allowed: GENERAL_UPLOAD_PURPOSES });
           continue;
         }
         if (part.fieldname !== "file") throw fieldError("file", "Kirim berkas pada field file.");
@@ -161,8 +163,8 @@ export class FilesController {
     @Param("fileId", UuidParam) fileId: string,
     @CurrentAuth() auth: AuthContext,
   ): Promise<FileAccess> {
-    const url = await this.files.accessFor(fileId, auth);
-    return { url: url.url, expires_at: url.expiresAt?.toISOString() ?? null };
+    const grant = await this.files.accessFor(fileId, auth);
+    return { url: grant.url, expires_at: grant.expiresAt?.toISOString() ?? null, mime: grant.mime };
   }
 
   @Get("content/:token")

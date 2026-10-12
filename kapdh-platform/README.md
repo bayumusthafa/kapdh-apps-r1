@@ -3,17 +3,17 @@
 Monorepo KAPDH Apps sesuai PRD v3.5: API, worker, web admin, situs publik, dan paket bersama.
 Aplikasi anggota Flutter ada di repository terpisah (`../kapdh-mobile`).
 
-| Path                     | Isi                                                      | Status Tahap 0                                                                                                                                                |
-| ------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api`               | NestJS 11 + Fastify, `/api/v1`                           | Auth F-01/F-02 tersambung PostgreSQL: registrasi + OTP email, nomor KTA, login, refresh berotasi, logout, admin TOTP + backup code, idle 30 menit, rate limit |
-| `apps/admin`             | React 19, Vite 8, TanStack Router/Query, Tailwind 4      | Login dan TOTP ke API nyata, sesi pulih dari cookie saat reload, menu berbasis izin, idle 30 menit; pembayaran masih mode mock                                |
-| `apps/web`               | Astro static untuk kapdh.or.id                           | Beranda, `/kta/{nomor}` (token dari fragmen `#t=`), `/delete-account`, halaman legal                                                                          |
-| `apps/worker`            | Worker outbox dan job                                    | Kerangka                                                                                                                                                      |
-| `packages/contracts`     | OpenAPI 3.1 dan tipe TS terbangkit                       | Domain P0/P1                                                                                                                                                  |
-| `packages/database`      | Skema Drizzle dan migrasi SQL                            | Identitas, keanggotaan, pembayaran, berkas, audit, outbox, idempotensi                                                                                        |
-| `packages/shared`        | Kode galat ke perilaku UI, rute per status, aturan sandi | Siap                                                                                                                                                          |
-| `packages/config`        | Validasi environment                                     | Siap                                                                                                                                                          |
-| `packages/design-tokens` | Token dari Guidelines KAPDH (CSS dan Dart)               | Siap                                                                                                                                                          |
+| Path                     | Isi                                                      | Status Tahap 0                                                                                                                                                  |
+| ------------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api`               | NestJS 11 + Fastify, `/api/v1`                           | Auth F-01/F-02 tersambung PostgreSQL: registrasi + OTP email, nomor KTA, login, refresh berotasi, logout, admin TOTP + backup code, idle 30 menit, rate limit   |
+| `apps/admin`             | React 19, Vite 8, TanStack Router/Query, Tailwind 4      | Design system (src/components/ui), semua rute ARCHITECTURE §7 berpenjaga izin, login/TOTP ke API nyata, idle 30 menit; area lain dan pembayaran masih mode mock |
+| `apps/web`               | Astro static untuk kapdh.or.id                           | Beranda, `/kta/{nomor}` (token dari fragmen `#t=`), `/delete-account`, halaman legal                                                                            |
+| `apps/worker`            | Worker outbox dan job                                    | Kerangka                                                                                                                                                        |
+| `packages/contracts`     | OpenAPI 3.1 dan tipe TS terbangkit                       | Domain P0/P1                                                                                                                                                    |
+| `packages/database`      | Skema Drizzle dan migrasi SQL                            | Identitas, keanggotaan, pembayaran, berkas, audit, outbox, idempotensi                                                                                          |
+| `packages/shared`        | Kode galat ke perilaku UI, rute per status, aturan sandi | Siap                                                                                                                                                            |
+| `packages/config`        | Validasi environment                                     | Siap                                                                                                                                                            |
+| `packages/design-tokens` | Token dari Guidelines KAPDH (CSS dan Dart)               | Siap                                                                                                                                                            |
 
 ## Menjalankan di lokal
 
@@ -30,7 +30,7 @@ pnpm --filter @kapdh/admin dev:mock               # http://localhost:5173 tanpa 
 pnpm --filter @kapdh/web dev                      # http://localhost:4321
 ```
 
-Akun tiruan web admin (hanya mode mock): `admin@kapdh.test`, sandi `Kapdh#2026`, kode TOTP `123456`, backup code `A1B2C3D4E5`.
+Akun tiruan web admin (hanya mode mock): `admin@kapdh.test`, sandi `Kapdh#2026`, kode TOTP `123456`, backup code `A1B2C3D4E5`. Admin undangan tanpa TOTP: `baru@kapdh.test` (sandi sama, diarahkan ke /login/enroll).
 
 ### Super Admin pertama
 

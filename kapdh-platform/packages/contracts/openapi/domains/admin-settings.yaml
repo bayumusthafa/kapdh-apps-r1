@@ -1,27 +1,77 @@
-# Domain admin-settings (C3 Finance): pengaturan aplikasi terversi (biaya, versi minimum, maintenance, dukungan).
-# Modul API: apps/api/src/modules/admin (settings) dan payments (fees).
+# Domain admin-settings (C3 Finance): pengaturan aplikasi terversi dan teraudit di app_settings (ARCHITECTURE §5.4):
+# biaya iuran (D4), versi aplikasi minimum, maintenance, tautan toko aplikasi, kontak dukungan, platform yang
+# menyembunyikan instruksi iuran (rencana cadangan D13), serta nilai kebijakan keanggotaan/event/chat yang hanya
+# dapat dibaca. Modul API: apps/api/src/modules/admin (settings) dan payments (fees, payment_instructions). Lihat
+# keterangan `x-kapdh-access` di payments.yaml.
+#
+# Setiap kunci memiliki `version` sendiri (app_settings.version). Pembaruan memakai If-Match versi kunci tersebut;
+# versi berbeda menghasilkan 409 VERSION_CONFLICT dengan `current` berisi objek pengaturan terbaru (AC F15-4).
+# Setiap perubahan menaikkan versi dan menulis audit before/after dalam transaksi yang sama (AC F15-3, F17-1).
 tags:
   - name: Admin Settings
-    description: Pengaturan terversi dan teraudit (biaya, versi aplikasi minimum, maintenance) (F-15, AC F15-3).
+    description: |
+      Pengaturan terversi dan teraudit: biaya iuran, versi aplikasi minimum, maintenance, tautan toko, kontak
+      dukungan, instruksi iuran per platform dan nilai kebijakan baca-saja (F-15, AC F15-3, F15-4, D4, D13,
+      PRD 4.5).
 
 paths:
+  /admin/settings:
+    get:
+      tags: [Admin Settings]
+      operationId: adminGetAppSettings
+      summary: Seluruh pengaturan aplikasi beserta versinya (settings.manage, F-15).
+      description: |
+        Halaman Pengaturan web admin. Kunci `membership`, `events` dan `chat` adalah nilai kebijakan yang
+        disahkan PRD (D4, D5, D6, v3.2) dan hanya dapat dibaca; perubahannya melalui change request dan migrasi,
+        bukan endpoint. Kunci `legal` dikelola penerbitan halaman (F-08) dan tidak ditampilkan di sini.
+      x-kapdh-access: { audience: admin, permissions: [settings.manage] }
+      responses:
+        "200":
+          description: Pengaturan saat ini.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAppSettings" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
   /admin/settings/fees:
     get:
       tags: [Admin Settings]
       operationId: adminGetFees
-      summary: Komponen biaya versi aktif (izin settings.manage).
+      summary: Komponen biaya iuran versi aktif (settings.manage, D4).
+      description: |
+        Tab Biaya Pembayaran (guidelines p17). Nilai awal go-live: register alumni baru Rp50.000, pembuatan KTA
+        Rp10.000, perpanjangan Rp10.000 per tahun (D4).
+      x-kapdh-access: { audience: admin, permissions: [settings.manage] }
       responses:
         "200":
           description: Komponen biaya versi aktif.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FeeSettings" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         default: { $ref: "#/components/responses/Error" }
     put:
       tags: [Admin Settings]
       operationId: adminUpdateFees
-      summary: Ubah nominal (settings.manage + reautentikasi). Hanya berlaku untuk payment baru (AC F15-3).
+      summary: Ubah nominal iuran; hanya berlaku untuk payment baru (settings.manage + reautentikasi, AC F15-3).
+      description: |
+        Nominal baru menjadi versi `fees` berikutnya dan hanya dipakai instruksi yang dibuat sesudahnya; payment
+        yang sudah dibuat tetap memakai snapshot baris dan `settings_version` lamanya, termasuk saat diputus
+        (AC F03-5, F15-3). Setiap nominal >= 0 dan <= 999999999999.99 (numeric(14,2)). Wajib X-Reauth-Token dan
+        audit before/after dalam transaksi yang sama. If-Match usang menghasilkan 409 VERSION_CONFLICT dengan
+        `current` FeeSettings (AC F15-4).
+      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
       parameters:
         - $ref: "#/components/parameters/IfMatch"
         - $ref: "#/components/parameters/ReauthToken"
@@ -37,25 +87,282 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FeeSettings" }
         "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: FORBIDDEN tanpa izin settings.manage, atau REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku.
+          description: |
+            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
+            MFA_REQUIRED bila sesi admin belum TOTP.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "409": { $ref: "#/components/responses/Conflict" }
+        "409":
+          description: VERSION_CONFLICT; `current` berisi FeeSettings terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/settings/min-app-version:
+    put:
+      tags: [Admin Settings]
+      operationId: adminUpdateMinAppVersion
+      summary: Ubah versi aplikasi minimum per platform (settings.manage + reautentikasi, AC F15-3, PRD 4.5).
+      description: |
+        Mutasi dari aplikasi di bawah versi ini ditolak 426 UPGRADE_REQUIRED dan klien menampilkan layar wajib
+        update dengan tautan toko (PRD 4.5). Naikkan versi minimum hanya setelah versi baru dapat diunduh
+        (PRD 8.4): server menolak (400 VALIDATION_ERROR) menaikkan versi platform yang tautan tokonya masih kosong.
+        Nilai tampil di GET /public/config. Audit before/after; If-Match usang menghasilkan 409 VERSION_CONFLICT.
+      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/ReauthToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminMinAppVersionInput" }
+      responses:
+        "200":
+          description: Versi minimum baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMinAppVersionSetting" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
+            MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: VERSION_CONFLICT; `current` berisi AdminMinAppVersionSetting terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/settings/maintenance:
+    put:
+      tags: [Admin Settings]
+      operationId: adminUpdateMaintenance
+      summary: Aktifkan atau akhiri mode maintenance (settings.manage + reautentikasi, PRD 4.5, 8.4).
+      description: |
+        Selama `active` true, mutasi anggota ditolak 503 MAINTENANCE kecuali refresh/logout; baca tetap terkendali
+        dan API admin tetap berjalan (ARCHITECTURE §4.3). Saat mengaktifkan, `message` wajib diisi (rentang
+        estimasi dan kanal dukungan, PRD 4.5) dan `until` (perkiraan selesai) bila diisi harus di masa depan.
+        Status tampil di GET /public/config. Audit before/after; If-Match usang menghasilkan 409 VERSION_CONFLICT.
+      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/ReauthToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminMaintenanceInput" }
+      responses:
+        "200":
+          description: Status maintenance baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMaintenanceSetting" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
+            MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: VERSION_CONFLICT; `current` berisi AdminMaintenanceSetting terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/settings/store-links:
+    put:
+      tags: [Admin Settings]
+      operationId: adminUpdateStoreLinks
+      summary: Ubah tautan aplikasi di toko (settings.manage + reautentikasi, PRD 4.5, 5.2).
+      description: |
+        Tautan dipakai layar wajib update dan situs publik (unduh aplikasi). Hanya https ke Google Play
+        (play.google.com) dan App Store (apps.apple.com) agar tautan aman (PRD 5.2); null mengosongkan.
+        Audit before/after; If-Match usang menghasilkan 409 VERSION_CONFLICT.
+      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/ReauthToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminStoreLinksInput" }
+      responses:
+        "200":
+          description: Tautan toko baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminStoreLinksSetting" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
+            MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: VERSION_CONFLICT; `current` berisi AdminStoreLinksSetting terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/settings/payment-instructions:
+    put:
+      tags: [Admin Settings]
+      operationId: adminUpdatePaymentInstructions
+      summary: Sembunyikan atau tampilkan instruksi bayar iuran per platform (settings.manage + reautentikasi, D13).
+      description: |
+        Rencana cadangan D13 (PRD 10.1, 10.2): bila review toko menolak alur iuran (misalnya Apple 3.1.1), platform
+        tersebut dimasukkan ke `dues_hidden_platforms`. Untuk request dengan header `X-App-Platform` platform itu:
+        - GET /me/fees dan detail payment iuran mengembalikan `instructions_hidden` true, sehingga aplikasi tidak
+          menampilkan rekening tujuan, ajakan transfer maupun unggah bukti iuran, dan mengarahkan anggota ke kontak
+          dukungan;
+        - server menolak pembuatan instruksi, ganti metode dan kirim bukti iuran dengan 403 FORBIDDEN;
+        - pengurus mencatat iuran yang dananya diverifikasi di luar aplikasi lewat POST /admin/payments.
+        Pembayaran tiket tidak terpengaruh, karena tiket adalah layanan yang dinikmati di luar aplikasi (D13).
+        Nilai awal go-live: kosong (semua platform menampilkan instruksi).
+
+        Header platform dikirim klien dan bukan batas keamanan. Aplikasi versi lama yang belum mengenal pengaturan
+        ini dipaksa memperbarui lewat versi aplikasi minimum (PUT /admin/settings/min-app-version). Audit
+        before/after dalam transaksi yang sama; If-Match usang menghasilkan 409 VERSION_CONFLICT dengan `current`
+        AdminPaymentInstructionsSetting terbaru (AC F15-4).
+      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/ReauthToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminPaymentInstructionsInput" }
+      responses:
+        "200":
+          description: Pengaturan instruksi iuran baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentInstructionsSetting" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
+            MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: VERSION_CONFLICT; `current` berisi AdminPaymentInstructionsSetting terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/settings/support:
+    put:
+      tags: [Admin Settings]
+      operationId: adminUpdateSupportContact
+      summary: Ubah kontak dukungan anggota (settings.manage + reautentikasi, PRD 8.3).
+      description: |
+        Kontak tampil di aplikasi ("Hubungi pengurus", prototipe screen_5), portal pembatasan dan situs publik.
+        Karena anggota dapat diarahkan ke kontak ini untuk urusan iuran, perubahan wajib reautentikasi. Awal
+        go-live: bantuan@kapdh.or.id dan satu nomor WhatsApp admin (PRD 8.3). Audit before/after; If-Match usang
+        menghasilkan 409 VERSION_CONFLICT.
+      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/ReauthToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminSupportInput" }
+      responses:
+        "200":
+          description: Kontak dukungan baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSupportSetting" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
+            MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: VERSION_CONFLICT; `current` berisi AdminSupportSetting terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         default: { $ref: "#/components/responses/Error" }
 
 components:
   schemas:
+    AdminSettingActorRef:
+      type: object
+      description: Pengurus yang terakhir mengubah pengaturan.
+      required: [admin_id, display_name]
+      properties:
+        admin_id: { type: string, format: uuid }
+        display_name: { type: string }
+
+    AdminSettingMeta:
+      type: object
+      description: Metadata versi satu kunci app_settings.
+      required: [version, updated_at, updated_by]
+      properties:
+        version: { type: string, description: "Versi kunci (If-Match untuk pembaruan, AC F15-4)." }
+        updated_at: { type: string, format: date-time }
+        updated_by:
+          description: Null untuk nilai seed referensi atau bila akun admin sudah tidak ada.
+          oneOf:
+            - $ref: "#/components/schemas/AdminSettingActorRef"
+            - type: "null"
+
     FeeSettings:
       type: object
-      required: [registration_fee, card_fee, renewal_fee, version, effective_from]
+      description: |
+        Komponen biaya iuran versi aktif (app_settings `fees`, D4). registration = registration_fee + card_fee;
+        renewal = renewal_fee per tahun (PRD 3.3).
+      required: [registration_fee, card_fee, renewal_fee, registration_total, version, effective_from]
       properties:
         registration_fee: { $ref: "#/components/schemas/Money" }
         card_fee: { $ref: "#/components/schemas/Money" }
         renewal_fee: { $ref: "#/components/schemas/Money" }
-        version: { type: string }
-        effective_from: { type: string, format: date-time }
+        registration_total:
+          $ref: "#/components/schemas/Money"
+          description: registration_fee + card_fee, dihitung server dengan aritmetika desimal.
+        version:
+          { type: string, description: Versi `fees`; disnapshot sebagai settings_version pada payment. }
+        effective_from:
+          type: string
+          format: date-time
+          description: Waktu versi ini berlaku; payment yang dibuat sejak saat ini memakai nominal ini.
+        updated_by:
+          description: Pengurus yang menetapkan versi ini; null untuk nilai seed referensi.
+          oneOf:
+            - $ref: "#/components/schemas/AdminSettingActorRef"
+            - type: "null"
 
     FeeSettingsInput:
       type: object
@@ -64,3 +371,193 @@ components:
         registration_fee: { $ref: "#/components/schemas/Money" }
         card_fee: { $ref: "#/components/schemas/Money" }
         renewal_fee: { $ref: "#/components/schemas/Money" }
+        reason:
+          type: string
+          maxLength: 500
+          description: Catatan perubahan (misalnya keputusan rapat pengurus) untuk audit.
+
+    AdminMinAppVersionSetting:
+      description: Versi aplikasi minimum per platform (app_settings `min_app_version`).
+      allOf:
+        - $ref: "#/components/schemas/AdminSettingMeta"
+        - type: object
+          required: [android, ios]
+          properties:
+            android: { type: string, examples: ["1.0.0"] }
+            ios: { type: string, examples: ["1.0.0"] }
+
+    AdminMinAppVersionInput:
+      type: object
+      required: [android, ios]
+      properties:
+        android:
+          type: string
+          maxLength: 32
+          pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+          description: Semver MAJOR.MINOR.PATCH.
+        ios:
+          type: string
+          maxLength: 32
+          pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+          description: Semver MAJOR.MINOR.PATCH.
+
+    AdminMaintenanceSetting:
+      description: Status maintenance (app_settings `maintenance`, PRD 4.5).
+      allOf:
+        - $ref: "#/components/schemas/AdminSettingMeta"
+        - type: object
+          required: [active, message, until]
+          properties:
+            active: { type: boolean }
+            message: { type: [string, "null"], description: Pesan untuk pengguna selama maintenance. }
+            until: { type: [string, "null"], format: date-time, description: Perkiraan selesai. }
+
+    AdminMaintenanceInput:
+      type: object
+      description: Penggantian penuh status maintenance.
+      required: [active, message, until]
+      properties:
+        active: { type: boolean }
+        message:
+          type: [string, "null"]
+          maxLength: 500
+          description: Wajib diisi (tidak hanya spasi) bila `active` true.
+        until:
+          type: [string, "null"]
+          format: date-time
+          description: Perkiraan selesai (UTC), harus di masa depan bila diisi.
+
+    AdminStoreLinksSetting:
+      description: Tautan aplikasi di toko (app_settings `store_links`).
+      allOf:
+        - $ref: "#/components/schemas/AdminSettingMeta"
+        - type: object
+          required: [android, ios]
+          properties:
+            android: { type: [string, "null"], format: uri }
+            ios: { type: [string, "null"], format: uri }
+
+    AdminStoreLinksInput:
+      type: object
+      required: [android, ios]
+      properties:
+        android:
+          type: [string, "null"]
+          format: uri
+          maxLength: 500
+          pattern: '^https://play\.google\.com/'
+          description: Tautan Google Play; null mengosongkan.
+        ios:
+          type: [string, "null"]
+          format: uri
+          maxLength: 500
+          pattern: '^https://apps\.apple\.com/'
+          description: Tautan App Store; null mengosongkan.
+
+    AdminSupportSetting:
+      description: Kontak dukungan anggota (app_settings `support`, PRD 8.3).
+      allOf:
+        - $ref: "#/components/schemas/AdminSettingMeta"
+        - type: object
+          required: [email, whatsapp]
+          properties:
+            email: { type: string, format: email }
+            whatsapp: { type: [string, "null"], description: Nomor WhatsApp format E.164. }
+
+    AdminSupportInput:
+      type: object
+      required: [email, whatsapp]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        whatsapp:
+          type: [string, "null"]
+          pattern: '^\+[1-9][0-9]{7,14}$'
+          description: Nomor WhatsApp format E.164, misalnya +6281234567890; null mengosongkan.
+
+    AdminPaymentInstructionsSetting:
+      description: |
+        Platform yang menyembunyikan instruksi bayar iuran (app_settings `payment_instructions`, rencana cadangan
+        D13).
+      allOf:
+        - $ref: "#/components/schemas/AdminSettingMeta"
+        - type: object
+          required: [dues_hidden_platforms]
+          properties:
+            dues_hidden_platforms:
+              type: array
+              description: Platform tanpa instruksi bayar iuran di aplikasi; kosong berarti semua menampilkannya.
+              items: { $ref: "#/components/schemas/DevicePlatform" }
+
+    AdminPaymentInstructionsInput:
+      type: object
+      description: Penggantian penuh daftar platform yang menyembunyikan instruksi bayar iuran.
+      required: [dues_hidden_platforms]
+      properties:
+        dues_hidden_platforms:
+          type: array
+          maxItems: 2
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/DevicePlatform" }
+        reason:
+          type: string
+          maxLength: 500
+          description: Catatan perubahan untuk audit (misalnya hasil review App Store).
+
+    AdminMembershipPolicy:
+      description: Kebijakan periode keanggotaan (app_settings `membership`, D4, v3.2); baca-saja.
+      allOf:
+        - $ref: "#/components/schemas/AdminSettingMeta"
+        - type: object
+          required: [period_months, expiring_days, renewal_window_days]
+          properties:
+            period_months: { type: integer, description: Periode per iuran paid dalam bulan kalender (12). }
+            expiring_days: { type: integer, description: Sisa hari yang membuat status expiring (30). }
+            renewal_window_days: { type: integer, description: Jendela perpanjangan sebelum habis (30). }
+
+    AdminEventsPolicy:
+      description: Kebijakan event dan tiket (app_settings `events`, D5, D6); baca-saja.
+      allOf:
+        - $ref: "#/components/schemas/AdminSettingMeta"
+        - type: object
+          required: [hold_hours, checkin_before_hours, self_cancel_days, review_escalation_business_days]
+          properties:
+            hold_hours: { type: integer, description: Lama hold reservasi tanpa bukti (24 jam). }
+            checkin_before_hours: { type: integer, description: Check-in dibuka sebelum acara (2 jam). }
+            self_cancel_days: { type: integer, description: Batas batal mandiri dengan refund penuh (H-3). }
+            review_escalation_business_days:
+              type: integer
+              description: Eskalasi antrean bukti tiket (2 hari kerja).
+
+    AdminChatPolicy:
+      description: Batas chat (app_settings `chat`, v3.2); baca-saja.
+      allOf:
+        - $ref: "#/components/schemas/AdminSettingMeta"
+        - type: object
+          required: [max_text_chars, max_group_members]
+          properties:
+            max_text_chars: { type: integer, description: Panjang pesan maksimum (4.000 karakter). }
+            max_group_members: { type: integer, description: Anggota grup maksimum (100). }
+
+    AdminAppSettings:
+      type: object
+      description: Seluruh pengaturan aplikasi yang dikelola atau ditampilkan di web admin.
+      required:
+        - fees
+        - min_app_version
+        - maintenance
+        - store_links
+        - support
+        - payment_instructions
+        - membership
+        - events
+        - chat
+      properties:
+        fees: { $ref: "#/components/schemas/FeeSettings" }
+        min_app_version: { $ref: "#/components/schemas/AdminMinAppVersionSetting" }
+        maintenance: { $ref: "#/components/schemas/AdminMaintenanceSetting" }
+        store_links: { $ref: "#/components/schemas/AdminStoreLinksSetting" }
+        support: { $ref: "#/components/schemas/AdminSupportSetting" }
+        payment_instructions: { $ref: "#/components/schemas/AdminPaymentInstructionsSetting" }
+        membership: { $ref: "#/components/schemas/AdminMembershipPolicy" }
+        events: { $ref: "#/components/schemas/AdminEventsPolicy" }
+        chat: { $ref: "#/components/schemas/AdminChatPolicy" }

@@ -17,6 +17,11 @@ import { PACKAGE_ROOT, PATHS } from "../fs.mjs";
 export const FIXTURE_DIR = join(PACKAGE_ROOT, "scripts", "test", "fixtures", "sdk");
 /** Jenis event fixture yang payload-nya selalu {} (menguji x-kapdh-payload-less). */
 const FIXTURE_PAYLOAD_LESS = ["session.revoked"];
+/**
+ * Jenis event fixture yang dipaksa pending (menguji x-kapdh-payload-pending). Kontrak nyata sudah bertipe untuk semua
+ * jenis (C6), jadi skema payload nyata jenis yang dipaksa less/pending dikeluarkan dari katalog fixture.
+ */
+const FIXTURE_PENDING = ["typing"];
 
 /** Menggabungkan fixture OpenAPI ke bundle; gagal bila ada nama ganda. */
 export function mergeFixtureBundle(bundle, fixture) {
@@ -38,23 +43,25 @@ export function mergeFixtureBundle(bundle, fixture) {
 
 /**
  * Katalog event fixture: berkas events nyata + payload fixture; amplop disalin dengan jenis yang punya payload
- * fixture dikeluarkan dari x-kapdh-payload-pending dan `session.revoked` dijadikan tanpa payload.
+ * fixture dikeluarkan dari x-kapdh-payload-pending, `session.revoked` dijadikan tanpa payload dan `typing` dijadikan
+ * pending.
  */
 export function fixtureEvents(eventsDir = PATHS.eventsDir) {
   const real = readEventFiles(eventsDir);
   const extra = readEventFiles(join(FIXTURE_DIR, "events"));
   const errors = [...real.errors, ...extra.errors];
   const extraNames = new Set(extra.files.map((f) => f.file));
+  const forced = new Set([...FIXTURE_PAYLOAD_LESS, ...FIXTURE_PENDING].map((t) => `${t}.schema.json`));
   const files = real.files
-    .filter((f) => !extraNames.has(f.file))
+    .filter((f) => !extraNames.has(f.file) && !forced.has(f.file))
     .map((f) => (f.file === ENVELOPE_FILE ? { ...f, schema: structuredClone(f.schema) } : f));
   files.push(...extra.files);
   const envelope = files.find((f) => f.file === ENVELOPE_FILE)?.schema;
   if (envelope) {
     const withSchema = new Set(extra.files.map((f) => f.file.replace(/\.schema\.json$/, "")));
-    envelope[PAYLOAD_PENDING_KEY] = (envelope[PAYLOAD_PENDING_KEY] ?? []).filter(
-      (t) => !withSchema.has(t) && !FIXTURE_PAYLOAD_LESS.includes(t),
-    );
+    envelope[PAYLOAD_PENDING_KEY] = [
+      ...new Set([...(envelope[PAYLOAD_PENDING_KEY] ?? []), ...FIXTURE_PENDING]),
+    ].filter((t) => !withSchema.has(t) && !FIXTURE_PAYLOAD_LESS.includes(t));
     envelope[PAYLOAD_LESS_KEY] = [
       ...new Set([...(envelope[PAYLOAD_LESS_KEY] ?? []), ...FIXTURE_PAYLOAD_LESS]),
     ].filter((t) => !withSchema.has(t));
