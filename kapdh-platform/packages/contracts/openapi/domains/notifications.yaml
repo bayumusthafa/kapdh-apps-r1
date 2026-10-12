@@ -75,7 +75,8 @@ paths:
         objek tujuan. Sesi yang sudah logout ditolak 401, dan notifikasi milik akun lain (berganti akun) menghasilkan
         404 NOT_FOUND tanpa membedakan tidak ada atau bukan milik (AC F13-3, F13-5, N-09). Rute tujuan tetap
         diperiksa ulang oleh endpoint objeknya (misalnya pembayaran milik sendiri), jadi rute bukan izin akses.
-        Endpoint ini tidak menandai dibaca; panggil POST /notifications/read.
+        Endpoint ini tidak menandai dibaca; panggil POST /notifications/read. `notificationId` yang bukan UUID
+        menghasilkan 400 VALIDATION_ERROR.
       x-kapdh-access: { audience: mobile, member_access: any }
       parameters:
         - $ref: "#/components/parameters/NotificationId"
@@ -85,6 +86,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/InboxNotification" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -169,26 +171,49 @@ paths:
     put:
       tags: [Notifications]
       operationId: registerDevice
-      summary: Daftarkan atau perbarui token FCM perangkat untuk sesi saat ini (AC F13-4, F13-5).
+      summary: Daftarkan atau perbarui token FCM perangkat untuk keluarga sesi saat ini (AC F13-4, F13-5).
       description: |
-        Upsert berdasarkan token (device_tokens_token_key). Token selalu diikat ke pengguna DAN sesi pemanggil:
-        bila token yang sama sebelumnya milik akun atau sesi lain (logout lalu masuk akun lain di perangkat yang
-        sama), token dipindahkan ke akun ini sehingga tidak lagi menerima notifikasi akun sebelumnya (AC F13-5).
+        Upsert berdasarkan token (device_tokens_token_key). Token diikat ke pengguna pemanggil dan ke KELUARGA sesi
+        pemanggil (`sessions.family_id`), bukan ke satu baris sesi: rotasi refresh (AC F02-3) membuat baris
+        sessions baru dalam keluarga yang sama setiap kali access token diperbarui (sekitar 15 menit) dan
+        menandai baris lama `replaced_by`, sedangkan identitas sesi yang stabil adalah keluarganya (Session.id
+        pada domain auth). device_tokens.session_id menunjuk baris keluarga yang terakhir diketahui; setiap
+        pencocokan token dengan sesi selalu melalui `sessions.family_id`.
 
-        Perpindahan pemilik dilakukan dalam SATU transaksi: baris device_tokens dikunci (SELECT ... FOR UPDATE);
-        bila user_id atau session_id berubah, seluruh pengiriman `pending` pada baris token itu dibatalkan
-        (status `cancelled`, error_class `token_reassigned`) SEBELUM token diikat ke pemanggil. Pengiriman
-        `failed` milik pemilik lama tetap sebagai riwayat tetapi tidak pernah dapat dikirim ulang ke perangkat
-        ini (adminRetryNotificationDeliveries melewatinya dengan alasan `token_reassigned`). Sebagai pertahanan
-        berlapis, worker hanya mengirim push bila pada saat klaim pengiriman (statement yang sama)
-        device_tokens.revoked_at IS NULL DAN device_tokens.user_id = notifications.user_id; selain itu pengiriman
-        dibatalkan tanpa dikirim. Judul dan isi notifikasi akun lama tidak pernah sampai ke akun baru (AC F13-5,
-        N-09).
+        Langkah dalam SATU transaksi:
+        1. Baris sesi pemanggil (sid access token) dibaca untuk family_id. Baris device_tokens untuk token ini
+           dikunci (SELECT ... FOR UPDATE; bila belum ada, INSERT ... ON CONFLICT (token) DO NOTHING lalu dikunci).
+        2. Token berpindah AKUN (device_tokens.user_id berbeda dari pemanggil, misalnya logout lalu masuk akun
+           lain di perangkat yang sama): seluruh pengiriman `pending` pada token itu dibatalkan (status
+           `cancelled`, error_class `token_reassigned`) SEBELUM token diikat ke pemanggil, sehingga judul dan isi
+           notifikasi akun lama tidak pernah sampai ke akun baru (AC F13-5, N-09). Pengiriman `failed` akun lama
+           tetap sebagai riwayat dan tidak dapat dikirim ulang ke perangkat ini (adminRetryNotificationDeliveries
+           melewatinya dengan alasan `token_reassigned`).
+        3. Pengguna yang SAMA, baik dalam keluarga sesi yang sama (setelah rotasi refresh atau token FCM
+           diperbarui) maupun keluarga baru (masuk ulang tanpa logout, atau session_id kosong karena baris sesi lama
+           dibersihkan): tidak ada pengiriman yang dibatalkan; pengiriman `pending` tetap dikirim ke perangkat
+           pemiliknya sehingga tidak ada notifikasi yang hilang (AC F13-1).
+        4. Token diikat: user_id = pemanggil, session_id = baris sesi pemanggil saat ini, platform, app_version;
+           revoked_at, failure_class dan failure_count dikosongkan; last_seen_at diperbarui.
+        5. Token lain milik pemanggil yang belum dicabut dan terikat ke baris mana pun dari keluarga sesi yang
+           sama (token FCM lama perangkat ini yang telah diperbarui) dicabut. Pengiriman `pending`-nya dipindahkan
+           ke token baru (UPDATE device_token_id) kecuali sudah ada pengiriman untuk notifikasi yang sama ke token
+           baru (notification_deliveries_target_key); sisanya dibatalkan dengan error_class `token_revoked`. Push
+           yang sudah dijadwalkan tidak hilang dan tidak terkirim ganda (AC F13-1).
 
-        Pendaftaran ulang menghapus revoked_at, failure_class dan failure_count, memperbarui last_seen_at, dan
-        mencabut token lain yang masih terikat ke sesi yang sama (token FCM yang diperbarui). Logout, logout-all,
-        pencabutan sesi dan penghapusan akun mencabut token yang terikat ke sesi tersebut di sisi server dan
-        membatalkan pengiriman `pending`-nya (error_class `token_revoked`). Token tidak pernah dicatat di log atau
+        Sebagai pertahanan berlapis, worker hanya mengirim push bila pada saat klaim pengiriman (statement yang
+        sama) device_tokens.revoked_at IS NULL DAN device_tokens.user_id = notifications.user_id; selain itu
+        pengiriman dibatalkan tanpa dikirim. Predikat yang sama dipakai retry admin, jadi `token_reassigned`
+        selalu berarti token kini milik AKUN lain.
+
+        Pencabutan berbasis keluarga (AC F13-5): logout, logout-all, pencabutan sesi (DELETE
+        /auth/sessions/{sessionId}), reuse refresh token yang mencabut keluarga, dan penghapusan akun mencabut
+        setiap token yang session_id-nya menunjuk baris mana pun dari keluarga yang dicabut
+        (`device_tokens.session_id IN (SELECT id FROM sessions WHERE family_id = ...)`) dalam transaksi
+        pencabutan, dan membatalkan pengiriman `pending`-nya (error_class `token_revoked`). Agar ikatan tidak putus
+        oleh pembersihan baris sesi lama (FK ON DELETE SET NULL), rotasi refresh memindahkan device_tokens.session_id
+        dari baris lama ke baris baru dalam transaksi rotasi yang sama (modul auth), dan job pembersihan sesi
+        mencabut token keluarga yang kedaluwarsa sebelum menghapus barisnya. Token tidak pernah dicatat di log atau
         audit (ARCHITECTURE §2) dan tidak pernah dikembalikan API.
       x-kapdh-access: { audience: mobile, member_access: any }
       requestBody:
@@ -211,8 +236,9 @@ paths:
       operationId: unregisterDevice
       summary: Cabut token FCM perangkat ini, misalnya sebelum logout atau saat izin push dicabut (AC F13-5).
       description: |
-        Token dikirim di body, bukan di path, agar tidak tercatat di log akses. Hanya token milik pemanggil yang
-        dicabut (revoked_at diisi) dan, dalam transaksi yang sama, pengiriman `pending` pada token itu dibatalkan
+        Token dikirim di body, bukan di path, agar tidak tercatat di log akses. Hanya token milik pemanggil
+        (device_tokens.user_id = pemanggil, keluarga sesi mana pun) yang dicabut (revoked_at diisi) dan, dalam
+        transaksi yang sama, pengiriman `pending` pada token itu dibatalkan
         (`cancelled`, error_class `token_revoked`); token yang tidak dikenal atau milik akun lain diabaikan dengan
         respons yang sama (N-09). Pemanggilan berulang tetap 204. Logout tetap mencabut token sesi di server
         walaupun panggilan ini gagal karena jaringan (AC F13-5).
