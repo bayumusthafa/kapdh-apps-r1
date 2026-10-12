@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/contracts/events/session.revoked.schema.json",
+  "title": "SessionRevokedPayload",
+  "description": "Sesi pada koneksi ini dicabut (AC F02-6, F12-4, F14-1, F16-3). entity_id = ID sesi yang dicabut. Dikirim hanya ke socket milik sesi yang dicabut, lalu server memutus socket itu. Klien menghentikan sinkronisasi, tidak mencoba refresh untuk sesi tersebut, menghapus token dan data privat (cache KTA, PRD 5.2), lalu menuju login; `reason` hanya memilih pesan yang ditampilkan. Sesudah login ulang, anggota yang disuspend diarahkan ke portal pembatasan oleh effective_status.",
+  "type": "object",
+  "required": ["reason", "all_sessions"],
+  "additionalProperties": false,
+  "properties": {
+    "reason": {
+      "type": "string",
+      "enum": [
+        "logout",
+        "logout_all",
+        "session_revoked",
+        "password_changed",
+        "password_reset",
+        "refresh_reuse_detected",
+        "account_suspended",
+        "account_disabled",
+        "deletion_requested",
+        "permissions_changed"
+      ]
+    },
+    "all_sessions": {
+      "description": "True bila seluruh sesi pengguna ikut dicabut (mis. logout dari semua perangkat atau suspend).",
+      "type": "boolean"
+    }
+  },
+  "examples": [{ "reason": "account_suspended", "all_sessions": true }]
+}

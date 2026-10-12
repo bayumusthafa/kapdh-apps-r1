@@ -1,21 +1,24 @@
-# Domain public (C2 Membership): endpoint tanpa autentikasi untuk gerbang aplikasi, halaman informasi,
-# verifikasi KTA, dan health check. Modul API: apps/api/src/modules/public (+ membership/content untuk KTA/halaman).
+# Domain public (C2 Membership): endpoint tanpa autentikasi untuk gerbang aplikasi, verifikasi KTA dan health
+# check. Modul API: apps/api/src/modules/public (config, health) dan apps/api/src/modules/membership (KTA verify).
+# Halaman legal publik (/public/pages) dimiliki domain content; penghapusan akun web (/public/deletion) dimiliki
+# domain account.
 tags:
   - name: Public
     description: |
-      Konfigurasi publik (versi minimum, maintenance, tautan toko), halaman informasi, verifikasi KTA dan health
-      check (F-06, F-08, PRD 4.5).
+      Konfigurasi publik (versi minimum, maintenance, tautan toko, kontak bantuan, versi legal), verifikasi KTA dan
+      health check tanpa autentikasi (F-06, PRD 4.5, 5.2, 5.5).
 
 paths:
   /health:
     get:
       tags: [Public]
       operationId: getHealth
-      summary: Health check untuk monitor eksternal dan orkestrator (PRD 5.5, N-05).
+      summary: Liveness untuk monitor eksternal dan orkestrator; tidak memeriksa dependensi (PRD 5.5, N-05).
       security: []
+      x-kapdh-access: { audience: public }
       responses:
         "200":
-          description: API hidup.
+          description: Proses API hidup.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/HealthStatus" }
@@ -32,6 +35,7 @@ paths:
         sebagai sinyal worker macet (PRD 5.5); tidak memuat pesan galat, host, versi atau data lain (N-14).
         Tidak dicache.
       security: []
+      x-kapdh-access: { audience: public }
       responses:
         "200":
           description: Semua dependensi wajib siap.
@@ -52,43 +56,73 @@ paths:
       summary: Versi aplikasi minimum, status maintenance, tautan toko, kontak bantuan dan versi legal (PRD 4.5, 5.2).
       description: |
         Dibaca layar splash Flutter sebelum login (gerbang aplikasi, ARCHITECTURE §8.3) dan oleh situs publik.
-        Sumber: app_settings min_app_version, maintenance, store_links, support dan legal (ARCHITECTURE §5.4).
-        Tetap dilayani selama maintenance. Tidak memuat secret atau data pribadi.
+        Bila versi aplikasi di bawah `min_app_version` platformnya, klien menampilkan layar wajib update dengan
+        `store_links`; bila `maintenance.active`, klien menampilkan layar maintenance dengan pesan dan perkiraan
+        selesai (PRD 4.5). Sumber: app_settings min_app_version, maintenance, store_links, support dan legal
+        (ARCHITECTURE §5.4). Tetap dilayani selama maintenance. Tidak memuat secret atau data pribadi.
       security: []
+      x-kapdh-access: { audience: public }
       responses:
         "200":
-          description: Konfigurasi.
+          description: Konfigurasi publik.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PublicConfig" }
-        default: { $ref: "#/components/responses/Error" }
-
-  /public/pages/{slug}:
-    get:
-      tags: [Public]
-      operationId: getPublicPage
-      summary: Halaman legal dan informasi (privasi, ketentuan, bantuan, tentang) yang dapat dibaca sebelum aktivasi (F-08).
-      security: []
-      parameters:
-        - name: slug
-          in: path
-          required: true
-          schema: { type: string, maxLength: 120 }
-      responses:
-        "200":
-          description: Halaman.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PublicPage" }
-        "404": { $ref: "#/components/responses/NotFound" }
         default: { $ref: "#/components/responses/Error" }
 
   /public/kta/verify:
     post:
       tags: [Public]
       operationId: verifyKta
-      summary: Verifikasi token QR KTA; status selalu dari server (F-06).
+      summary: Verifikasi token QR KTA terhadap status server terkini; respons hanya identitas minimum (F-06, AC F06-1..F06-4).
+      description: |
+        Shell situs /kta/{nomor} membaca token dari fragmen URL (#t=) lalu mengirimnya ke sini; nomor saja tidak
+        memberi akses profil (F-06). Token QR (ARCHITECTURE §3.2): JWT HS256 dengan header `kid` (rotasi kunci),
+        klaim `iss` kapdh-api, `aud` kapdh-kta, `sub` id alumni, `seq` nomor urut N, `iat`, dan
+        `exp` = min(iat + 7 hari, expires_at saat terbit). Status selalu dibaca dari DB TERKINI (AC F05-4); cache
+        atau kartu offline tidak pernah menjadi sumber hasil. Waktu pembanding adalah jam server (`checked_at`).
+
+        Urutan penilaian (langkah pertama yang cocok menentukan hasil; tidak ada jalur lain):
+        1. Token rusak, `kid` tidak dikenal, tanda tangan, issuer atau audience salah -> `invalid_token`, tanpa
+           membaca data anggota sehingga keberadaan nomor tidak dapat ditebak dengan token sembarang (AC F06-3).
+        2. Akun `sub` tidak ada lagi atau sudah dihapus (F-14) -> `not_found` (AC F06-2 "termasuk setelah
+           penghapusan akun"), juga bila `exp` sudah lewat; tanpa identitas.
+        3. Keterikatan gagal: nomor pada request bukan nomor terkini akun `sub`, atau `seq` bukan N akun itu (token
+           terbit sebelum koreksi nomor, atau nomor diubah) -> `invalid_token` ("QR tidak valid atau perlu
+           diperbarui", AC F05-6).
+        4. `exp` sudah lewat: hasil TIDAK PERNAH `active` dan `expiring` selalu false (AC F06-3, F05-5 "token QR
+           lama tunduk expiry"). Hasilnya `expired` (Kedaluwarsa, AC F06-2) hanya bila KEDUA syarat terpenuhi:
+           a) token dipangkas oleh masa keanggotaan, yaitu `exp` < `iat` + 7 hari (exp = expires_at saat terbit);
+           b) effective_status TERKINI akun adalah expired.
+           Semua kasus lain -> `invalid_token`, misalnya token 7 hari biasa yang kedaluwarsa, anggota yang sudah
+           memperpanjang sehingga kini verified/expiring (pemeriksa diminta QR baru), atau anggota yang kini
+           suspended, disabled, deletion_pending atau unverified.
+        5. `exp` belum lewat: verified -> `active`; expiring -> `active` dengan `expiring` true dan tanggal habis
+           (AC F06-1); expired -> `expired`; unverified, suspended, disabled atau deletion_pending -> `inactive`
+           tanpa alasan (AC F06-2, F12-4).
+
+        Identitas minimum (`member`, D3): diisi untuk `active` (dengan foto) dan `expired` (tanpa foto); null untuk
+        hasil lain. Untuk `expired` dari langkah 4, `member` hanya diisi bila `exp` paling lama 30 hari sebelum
+        `checked_at`; token yang lebih tua tetap berhasil `expired` tetapi `member` null, sehingga QR lama yang
+        tersalin tidak membuka nama anggota tanpa batas waktu. Tidak pernah memuat email, telepon, NIK, alamat,
+        bukti bayar atau alasan suspend (F-06, D3). Respons `Cache-Control: no-store`.
+        Kegagalan jaringan/5xx tidak boleh ditampilkan klien sebagai Tidak ditemukan (AC F06-4).
+
+        Pembatasan laju (nilai final D1) -> 429 RATE_LIMITED dengan `retry_after_seconds`:
+        - per IP untuk semua request;
+        - per hash token (SHA-256 dari token; token mentah tidak pernah disimpan atau dicatat) untuk semua request;
+        - per nomor anggota HANYA untuk request yang lolos langkah 1 (tanda tangan, issuer dan audience sah).
+        Token sampah untuk nomor yang ditebak (N berurutan) hanya menghabiskan kuota IP pengirimnya dan tidak
+        pernah kuota nomor tersebut, sehingga pemeriksa sah di lapangan tidak ikut diblokir (F-06, AC F06-4). Klien
+        menampilkan 429 sebagai "Tidak dapat memverifikasi" dengan retry, bukan Tidak ditemukan.
+
+        Maintenance (PRD 4.5, ARCHITECTURE §4.3): walaupun memakai metode POST, operasi ini hanya membaca sehingga
+        termasuk pengecualian "/public/** reads" dan dikecualikan EKSPLISIT per path pada hook maintenance
+        (core-api `maintenanceAllowed`: path `/public/kta/verify`), sehingga tidak pernah menghasilkan
+        503 MAINTENANCE dan pemeriksa di lapangan tetap dapat memverifikasi KTA selama maintenance. 5xx lain
+        (mis. proxy saat deploy) jatuh ke respons default dan ditampilkan sebagai "Tidak dapat memverifikasi".
       security: []
+      x-kapdh-access: { audience: public }
       requestBody:
         required: true
         content:
@@ -96,10 +130,11 @@ paths:
             schema: { $ref: "#/components/schemas/KtaVerifyRequest" }
       responses:
         "200":
-          description: Hasil verifikasi.
+          description: Hasil verifikasi (termasuk not_found dan invalid_token).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/KtaVerification" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "429": { $ref: "#/components/responses/RateLimited" }
         default: { $ref: "#/components/responses/Error" }
 
@@ -178,7 +213,7 @@ components:
       type: object
       description: |
         Versi terbit halaman legal (published_version pages) yang dirujuk persetujuan pengguna (F-01); null bila
-        halaman belum pernah terbit.
+        halaman belum pernah terbit. Konten halaman dibaca dari GET /public/pages/{slug} (domain content).
       required: [privacy_version, terms_version, community_version]
       properties:
         privacy_version: { type: [string, "null"] }
@@ -199,44 +234,61 @@ components:
           format: date-time
           description: Waktu server (UTC) untuk mendeteksi jam perangkat yang menyimpang.
 
-    PublicPage:
-      type: object
-      required: [slug, title, body_html, version, published_at]
-      properties:
-        slug: { type: string }
-        title: { type: string }
-        body_html: { type: string, description: HTML tersanitasi server. }
-        version: { type: string }
-        published_at: { type: string, format: date-time }
-
     KtaVerifyRequest:
       type: object
       required: [member_number, token]
+      additionalProperties: false
       properties:
-        member_number: { type: string, examples: ["29.01.01.7"] }
-        token: { type: string, description: "Dibaca shell dari fragmen URL (#t=)." }
+        member_number: { $ref: "#/components/schemas/MemberNumber" }
+        token:
+          type: string
+          minLength: 16
+          maxLength: 2048
+          description: Token QR dibaca shell dari fragmen URL (#t=); tidak pernah dicatat di log.
 
     KtaVerificationResult:
       type: string
       enum: [active, expired, inactive, not_found, invalid_token]
-      description: Aktif, Kedaluwarsa, Tidak aktif, Tidak ditemukan, QR tidak valid atau perlu diperbarui (F-06).
+      description: |
+        Aktif (termasuk expiring), Kedaluwarsa, Tidak aktif, Tidak ditemukan, QR tidak valid atau perlu
+        diperbarui (F-06). Urutan penilaian ada di deskripsi POST /public/kta/verify; token yang `exp`-nya lewat
+        tidak pernah menghasilkan `active` (AC F06-3). "Tidak dapat memverifikasi" adalah keadaan klien saat API
+        tidak terjangkau atau membalas 429/5xx (AC F06-4).
 
     KtaVerifiedMember:
       type: object
-      description: Identitas minimum; hanya untuk result active atau expired.
+      description: |
+        Identitas minimum yang disahkan D3; hanya untuk result active atau expired. Untuk expired dari token yang
+        `exp`-nya lewat, hanya bila `exp` paling lama 30 hari sebelum checked_at (lihat POST /public/kta/verify).
+      required: [full_name, cohort_code, member_number, expires_at, avatar_url]
       properties:
         full_name: { type: string }
-        cohort_code: { type: string }
-        member_number: { type: string }
-        expires_at: { type: string, format: date-time }
+        cohort_code: { type: string, examples: ["KAPDH 29"] }
+        member_number: { $ref: "#/components/schemas/MemberNumber" }
+        expires_at: { type: string, format: date-time, description: Masa berlaku (tanggal habis). }
+        avatar_url:
+          type: [string, "null"]
+          format: uri
+          description: Foto untuk dicocokkan pemeriksa; hanya untuk result active, URL berumur pendek.
 
     KtaVerification:
       type: object
-      required: [result, checked_at]
+      description: |
+        Hasil verifikasi publik. Keempat field selalu dikirim; `member` null bila tidak berlaku dan `expiring` false
+        untuk semua hasil selain active yang sisa masanya <= 30 hari (AC F06-1).
+      required: [result, checked_at, expiring, member]
       properties:
         result: { $ref: "#/components/schemas/KtaVerificationResult" }
-        checked_at: { type: string, format: date-time }
+        checked_at: { type: string, format: date-time, description: Waktu pemeriksaan server (AC F06-1). }
+        expiring:
+          type: boolean
+          description: |
+            True bila result active dan sisa masa <= 30 hari (tetap Aktif dengan tanggal habis, AC F06-1); false
+            untuk hasil lain.
         member:
           oneOf:
             - $ref: "#/components/schemas/KtaVerifiedMember"
             - type: "null"
+          description: |
+            Identitas minimum untuk result active/expired; null untuk hasil lain dan untuk expired dari token yang
+            `exp`-nya lewat lebih dari 30 hari.

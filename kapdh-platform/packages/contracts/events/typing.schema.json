@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/contracts/events/typing.schema.json",
+  "title": "TypingPayload",
+  "description": "Indikator mengetik sementara (F-11). entity_id = ID room. Server meneruskan emit klien `typing {room_id}` dari anggota joined yang aktif ke anggota room lain (tidak ke pengirim, dan tidak antara pasangan yang saling memblokir di room direct), dibatasi laju. Indikator hilang sendiri setelah ttl_seconds tanpa event baru; bukan bukti pesan dibaca (PRD 3.11).",
+  "type": "object",
+  "required": ["room_id", "user_id", "ttl_seconds"],
+  "additionalProperties": false,
+  "properties": {
+    "room_id": { "type": "string", "format": "uuid" },
+    "user_id": { "type": "string", "format": "uuid" },
+    "ttl_seconds": { "type": "integer", "minimum": 1, "maximum": 30 }
+  },
+  "examples": [
+    {
+      "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61",
+      "user_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e71",
+      "ttl_seconds": 5
+    }
+  ]
+}

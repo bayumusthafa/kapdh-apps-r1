@@ -5,7 +5,7 @@ import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../adapters/clock.js";
 import { AuditService } from "../audit/audit.service.js";
 import { rows } from "../db/rows.js";
-import { assertCommitAware } from "../db/tx.js";
+import { afterCommit, assertCommitAware } from "../db/tx.js";
 import type { Db, DbOrTx, Tx } from "../db/types.js";
 import { AppException, fieldError, notFound, versionConflict } from "../errors/app-exception.js";
 import { NotificationService } from "../notifications-kernel/notification.service.js";
@@ -305,6 +305,7 @@ export class MembershipKernel {
       route: "/kta",
       dedupKey: `membership.period:${current.id}`,
     });
+    this.resyncRoomsAfterCommit(member.userId);
     return {
       applied: true,
       kind,
@@ -456,7 +457,19 @@ export class MembershipKernel {
       route: active ? "/kta" : status === "expired" ? "/renewal" : "/onboarding/fees",
       dedupKey: `membership.unsuspended:${eventId}`,
     });
+    this.resyncRoomsAfterCommit(userId);
     return { effectiveStatus: status, eventId };
+  }
+
+  /**
+   * Setelah commit yang dapat memulihkan status aktif (periode baru, unsuspend), socket pengguna dimasukkan ulang ke
+   * kanal room joined-nya sesuai status efektif TERBARU (kontrak C6 "Pencabutan langganan room" butir 5).
+   */
+  private resyncRoomsAfterCommit(userId: string): void {
+    afterCommit(async () => {
+      const snapshot = await this.effectiveStatusFor(userId);
+      this.realtime.syncRoomSubscriptions(userId, snapshot?.status ?? null);
+    });
   }
 
   // ------------------------------------------------------------------------------------------- koreksi identitas

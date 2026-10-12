@@ -33,9 +33,9 @@ export class RateLimitService {
     return toSeconds(await this.store.peek(key, limit, windowMs, this.now()));
   }
 
-  /** Mencatat satu hit tanpa syarat (mis. kegagalan login). */
-  async hit(key: string, windowMs: number): Promise<void> {
-    await this.store.hit(key, windowMs, this.now());
+  /** Mencatat satu hit tanpa syarat (mis. kegagalan login); mengembalikan jumlah hit dalam jendela sesudahnya. */
+  async hit(key: string, windowMs: number): Promise<number> {
+    return this.store.hit(key, windowMs, this.now());
   }
 
   async reset(key: string): Promise<void> {

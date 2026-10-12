@@ -11,6 +11,7 @@ import type { Db } from "../db/types.js";
 import { AppException, forbidden, unauthenticated } from "../errors/app-exception.js";
 import type { MemberAccessLevel } from "../membership/access.js";
 import { MembershipKernel } from "../membership/membership.kernel.js";
+import { RealtimeService } from "../realtime/realtime.service.js";
 import { CLOCK, DB, ROOT_LOGGER } from "../tokens.js";
 import type { AuthContext, AuthedRequest } from "./auth-context.js";
 import { routeAuthMeta } from "./decorators.js";
@@ -32,7 +33,8 @@ const REAUTH_HEADER = "x-reauth-token";
  *   2. access token (aud, exp) dan token tahap sandi admin → 403 MFA_REQUIRED (AC F02-2),
  *   3. keadaan database terbaru: sesi belum dicabut/kedaluwarsa, session_version, akun `active`, jenis akun,
  *      admin aktif + idle 30 menit (AC F02-5, F02-6), izin admin dari database (AC F15-1, F16-3),
- *   4. @MemberAccess (effective_status, PRD 2.2), @RequirePermission, @RequireReauth.
+ *   4. @MemberAccess (effective_status, PRD 2.2), @RequirePermission (semua), @RequireAnyPermission (salah satu),
+ *      @RequireRole (Super Admin), @RequireReauth.
  * Konteks request (aktor) diisi untuk audit dan log.
  */
 @Injectable()
@@ -42,6 +44,7 @@ export class AuthGuard implements CanActivate {
     private readonly tokens: TokenService,
     private readonly sessions: SessionValidator,
     private readonly membership: MembershipKernel,
+    private readonly realtime: RealtimeService,
     @Inject(DB) private readonly db: Db,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ROOT_LOGGER) private readonly logger: Logger,
@@ -149,6 +152,15 @@ export class AuthGuard implements CanActivate {
       const missing = meta.permissions.filter((permission) => !auth.permissions.has(permission));
       if (missing.length > 0) throw forbidden();
     }
+    // Cukup salah satu izin (x-kapdh-access.permissions_any); super_admin memiliki semua izin (ARCHITECTURE §4.5).
+    if (
+      meta.permissionsAny.length > 0 &&
+      !meta.permissionsAny.some((permission) => auth.permissions.has(permission))
+    )
+      throw forbidden();
+    // Peran dari database pada request ini (x-kapdh-access.role; AC F16-1, F16-4).
+    if (meta.role && auth.adminRole !== meta.role)
+      throw forbidden("Tindakan ini hanya dapat dilakukan Super Admin.");
     if (meta.reauth) await this.checkReauth(request, auth);
     return true;
   }
@@ -170,6 +182,11 @@ export class AuthGuard implements CanActivate {
     // Akun alumni tanpa profil (data rusak) diperlakukan unverified: tidak pernah membuka akses aktif.
     const status = snapshot?.status ?? "unverified";
     auth.effectiveStatus = status;
+    if (!this.membership.allows(level, status)) {
+      // Penolakan berarti status tidak aktif: langganan room socket pengguna dicabut seketika, tidak menunggu
+      // penyapuan berkala (kontrak C6 "Pencabutan langganan room" butir 3; AC F11-6).
+      this.realtime.syncRoomSubscriptions(auth.userId, status);
+    }
     this.membership.assertAccess(level, status);
   }
 

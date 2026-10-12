@@ -48,7 +48,15 @@ export class AuthController {
           cohort: z.number().int().min(1).max(latestCohort, `Angkatan maksimal ${latestCohort}`),
           class_in: z.number().int().min(1).max(6),
           class_out: z.number().int().min(1).max(6),
-          accept_policy_version: z.string().trim().min(1, "Setujui kebijakan privasi dan ketentuan").max(64),
+          // LegalConsentVersions.policy_version dari GET /public/pages (F-01); dibandingkan server dengan
+          // app_settings.legal terkini (409 VERSION_CONFLICT bila usang).
+          accept_policy_version: z
+            .string()
+            .max(64)
+            .regex(
+              /^privacy:[1-9][0-9]*;terms:[1-9][0-9]*$/,
+              "Setujui kebijakan privasi dan ketentuan layanan",
+            ),
         })
         .refine((v) => v.class_out >= v.class_in, {
           message: "Kelas keluar tidak boleh sebelum kelas masuk",
@@ -126,7 +134,7 @@ export class AuthController {
   // Semua status keanggotaan (termasuk suspended) tetap bisa keluar (PRD 2.2).
   @MemberAccess("any")
   async logout(@CurrentAuth() auth: AuthContext, @Res({ passthrough: true }) reply: FastifyReply) {
-    await this.auth.logout(auth.sessionId);
+    await this.auth.logout(auth);
     if (auth.audience === "admin")
       reply.clearCookie(ADMIN_REFRESH_COOKIE, {
         path: ADMIN_REFRESH_COOKIE_PATH,

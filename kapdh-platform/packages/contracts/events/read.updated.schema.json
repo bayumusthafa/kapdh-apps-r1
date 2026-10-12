@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/contracts/events/read.updated.schema.json",
+  "title": "ReadUpdatedPayload",
+  "description": "Read cursor anggota maju (F-11, status terbaca). entity_id = ID room. Dikirim sesudah commit, hanya bila cursor benar-benar maju (monoton, paket terlambat tidak membuat mundur), ke kanal room:<room_id> sehingga juga sampai ke perangkat lain milik anggota itu. Perangkat pembaca menghitung ulang unread dari salinan lokal atau GET /chat/rooms/{roomId}.",
+  "type": "object",
+  "required": ["room_id", "user_id", "last_read_message_id", "last_read_at"],
+  "additionalProperties": false,
+  "properties": {
+    "room_id": { "type": "string", "format": "uuid" },
+    "user_id": { "type": "string", "format": "uuid" },
+    "last_read_message_id": { "type": "string", "format": "uuid" },
+    "last_read_at": { "type": "string", "format": "date-time" }
+  },
+  "examples": [
+    {
+      "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61",
+      "user_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e71",
+      "last_read_message_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e60",
+      "last_read_at": "2026-10-12T03:16:00.000Z"
+    }
+  ]
+}

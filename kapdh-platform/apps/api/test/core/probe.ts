@@ -15,8 +15,10 @@ import {
   CurrentAuth,
   MemberAccess,
   Public,
+  RequireAnyPermission,
   RequirePermission,
   RequireReauth,
+  RequireRole,
 } from "../../src/core/guards/decorators.js";
 import { Idempotent } from "../../src/core/idempotency/idempotent.js";
 import { AppLogger } from "../../src/core/logging/logger.js";
@@ -126,6 +128,30 @@ class ProbeController {
   @RequirePermission("payments.read", "payments.decide")
   adminDecide(@CurrentAuth() auth: AuthContext) {
     return summary(auth);
+  }
+
+  /** Cukup salah satu izin (x-kapdh-access.permissions_any). */
+  @Get("admin/masters")
+  @Audience("admin")
+  @RequireAnyPermission("members.read", "master.manage")
+  adminMasters(@CurrentAuth() auth: AuthContext) {
+    return summary(auth);
+  }
+
+  /** Khusus Super Admin (x-kapdh-access.role). */
+  @Get("admin/super")
+  @Audience("admin")
+  @RequireRole("super_admin")
+  adminSuper(@CurrentAuth() auth: AuthContext) {
+    return summary(auth);
+  }
+
+  /** Deklarasi salah: @RequireAnyPermission pada audience mobile → ditolak. */
+  @Get("misdeclared/any-permission")
+  @Audience("mobile")
+  @RequireAnyPermission("members.read")
+  misdeclaredAnyPermission() {
+    return { leaked: true };
   }
 
   @Post("sensitive")

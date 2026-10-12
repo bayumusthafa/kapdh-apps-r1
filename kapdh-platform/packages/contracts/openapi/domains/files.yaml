@@ -32,9 +32,16 @@ paths:
 
         Hak unggah per purpose:
         - anggota (sesi aplikasi): `avatar` dan `payment_proof` (effective_status selain suspended), `chat_image`
-          (verified/expiring); sesi admin → 403;
-        - pengurus (sesi admin): `post_cover` dan `banner_image` (`content.manage`), `event_cover` (`events.manage`),
-          `adjustment_evidence` (`payments.decide`); sesi anggota → 403.
+          (verified/expiring); sesi admin → 403 kecuali butir berikut;
+        - pengurus (sesi admin): `adjustment_evidence` (`payments.decide`, bukti penyelesaian penyesuaian/refund D6)
+          dan `payment_proof` (`payments.decide`, bukti verifikasi untuk pembayaran yang dicatat pengurus,
+          adminRecordPayment D13; berkas milik akun login admin dan tidak pernah dibuka kepada anggota); sesi
+          anggota → 403 untuk `adjustment_evidence`.
+
+        Gambar publik konten TIDAK diunggah lewat endpoint ini (purpose lain → 400 pada `purpose`): `post_cover` dan
+        `banner_image` lewat POST /admin/content/media (`content.manage`), `event_cover` lewat
+        POST /admin/event-covers (`events.manage`), sehingga izin area itu yang diperiksa; pemeriksaan isi, kuota dan
+        pembersihan berkas sama.
 
         Berkas baru belum terkait objek; endpoint domain melampirkannya lewat `file_id`. Berkas yang tidak dilampirkan
         dalam 24 jam dihapus job `files.cleanup-temp` (PRD 2.5).
@@ -70,10 +77,14 @@ paths:
       summary: URL baca berkas setelah pemeriksaan izin (PRD 5.4).
       description: |
         Berkas privat: kebijakan akses purpose diperiksa lebih dulu (pemilik; pengurus `payments.read` untuk bukti
-        bayar dan bukti penyesuaian; `members.read` untuk avatar; aturan modul seperti anggota room untuk gambar chat),
-        lalu URL bertanda tangan berumur <= 10 menit terikat berkas + purpose + sesi pemanggil. URL berhenti berlaku
-        bila sesi dicabut (logout, logout semua perangkat, suspend). Berkas publik: URL tetap dan `expires_at` null.
-        Berkas yang tidak ada, belum siap, atau tidak boleh dibuka → 404 tanpa membedakan alasannya (N-09).
+        bayar, termasuk versi bukti lama yang dirujuk riwayat pembayaran, dan bukti penyesuaian; `members.read` untuk
+        avatar; ekspor audit hanya untuk `audit.read` + `audit.export` yang juga pemohon ekspor atau Super Admin,
+        dengan jalur unduh utama adminGetAuditExportAccess; aturan modul seperti anggota room untuk gambar chat), lalu
+        URL bertanda tangan berumur <= 10 menit terikat berkas + purpose + keluarga sesi pemanggil (Session.id). URL
+        tetap berlaku melewati rotasi refresh, tetapi berhenti berlaku bila sesi dicabut (logout, logout semua
+        perangkat, suspend). Berkas publik: URL tetap dan `expires_at` null. `mime` memberi tahu klien cara
+        menampilkan isi (gambar atau PDF) tanpa menebak dari URL. Berkas yang tidak ada, belum siap, atau tidak boleh
+        dibuka → 404 tanpa membedakan alasannya (N-09).
       x-kapdh-access: { audience: any, member_access: nonsuspended }
       parameters:
         - $ref: "#/components/parameters/FileId"
@@ -197,8 +208,10 @@ components:
 
     FileUploadPurpose:
       type: string
-      enum: [avatar, chat_image, post_cover, banner_image, event_cover, payment_proof, adjustment_evidence]
-      description: Purpose yang dapat diunggah lewat POST /files; hak unggah per purpose dijelaskan di operasi.
+      enum: [avatar, chat_image, payment_proof, adjustment_evidence]
+      description: |
+        Purpose yang dapat diunggah lewat POST /files; hak unggah per purpose dijelaskan di operasi. Cover berita,
+        banner dan cover event diunggah lewat endpoint domainnya (POST /admin/content/media, POST /admin/event-covers).
 
     FileVisibility:
       type: string
@@ -237,7 +250,7 @@ components:
 
     FileAccess:
       type: object
-      required: [url, expires_at]
+      required: [url, expires_at, mime]
       properties:
         url:
           type: string
@@ -247,6 +260,12 @@ components:
           type: [string, "null"]
           format: date-time
           description: Batas berlaku URL bertanda tangan (<= 10 menit); null untuk berkas publik (URL tetap).
+        mime:
+          type: string
+          examples: [image/jpeg, application/pdf]
+          description: |
+            Jenis isi berkas (image/jpeg, image/png, image/webp, application/pdf, text/csv) untuk memilih pratinjau,
+            misalnya bukti transfer PDF ditampilkan sebagai dokumen di web admin.
 
     FileBinary:
       type: string

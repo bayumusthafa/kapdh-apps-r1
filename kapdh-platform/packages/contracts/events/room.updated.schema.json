@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/contracts/events/room.updated.schema.json",
+  "title": "RoomUpdatedPayload",
+  "description": "Metadata room berubah (F-11, F-12). entity_id = ID room. Perubahan bersama (group_name, group_avatar, closed) dikirim sesudah commit ke kanal room:<room_id>; perubahan milik satu pengguna (muted, send_permission karena blokir) hanya ke kanal user:<user_id> pengguna itu, tanpa memberi tahu pihak yang diblokir. Field per pengguna (muted, can_send) tidak ada di payload: klien memuat ulang GET /chat/rooms/{roomId} bila `changes` memuat muted atau send_permission.",
+  "type": "object",
+  "required": ["room_id", "version", "changes", "name", "avatar_url", "closed_at"],
+  "additionalProperties": false,
+  "properties": {
+    "room_id": { "type": "string", "format": "uuid" },
+    "version": { "description": "Versi room terbaru (If-Match PATCH).", "type": "string" },
+    "changes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["group_name", "group_avatar", "closed", "muted", "send_permission"]
+      }
+    },
+    "name": {
+      "description": "Nama grup terbaru; null untuk room direct.",
+      "type": ["string", "null"],
+      "maxLength": 80
+    },
+    "avatar_url": {
+      "description": "Avatar grup terbaru (URL bertanda tangan maksimal 10 menit); null bila tidak ada atau room direct.",
+      "type": ["string", "null"],
+      "format": "uri"
+    },
+    "closed_at": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "examples": [
+    {
+      "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61",
+      "version": "4",
+      "changes": ["group_name"],
+      "name": "Angkatan 29",
+      "avatar_url": null,
+      "closed_at": null
+    }
+  ]
+}

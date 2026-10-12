@@ -18,7 +18,9 @@ import {
   id,
   insertUser,
   type PgTestDatabase,
+  PG_CONSENT_VERSION,
   pgError,
+  publishLegalVersions,
   sleep,
   type Sql,
 } from "./support.js";
@@ -42,6 +44,7 @@ beforeAll(async () => {
   );
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
+  await publishLegalVersions(tdb.sql);
 });
 afterAll(async () => {
   await app?.close();
@@ -60,7 +63,7 @@ function registerBody(email: string) {
     cohort: 20,
     class_in: 1,
     class_out: 6,
-    accept_policy_version: "1",
+    accept_policy_version: PG_CONSENT_VERSION,
   };
 }
 

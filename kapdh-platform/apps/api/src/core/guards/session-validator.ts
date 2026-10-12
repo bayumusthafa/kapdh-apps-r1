@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { sessions, users } from "@kapdh/database";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import { type AccessClaims, TokenService } from "../../modules/auth/token.service.js";
 import type { Clock } from "../adapters/clock.js";
 import type { Db } from "../db/types.js";
@@ -10,6 +10,8 @@ import { CLOCK, DB } from "../tokens.js";
 /** Baris sesi + akun terbaru yang dibutuhkan pemeriksaan sesi (HTTP dan socket). */
 export interface SessionRow {
   sessionId: string;
+  /** Keluarga sesi (identitas perangkat yang stabil selama rotasi refresh, Session.id kontrak C1). */
+  familyId: string;
   sessionUserId: string;
   sessionAudience: string;
   revokedAt: Date | null;
@@ -63,6 +65,12 @@ export class SessionValidator {
   /**
    * Validasi ulang banyak sesi sekaligus (socket berkala). Hasil per sesi: null bila masih sah, atau alasan
    * `session.revoked` yang dikirim ke klien sebelum diputus.
+   *
+   * Socket dinilai per KELUARGA sesi (kontrak C1 "Keluarga sesi"): rotasi refresh (AC F02-3) menandai baris lama
+   * `replaced_by` dan mencabutnya setiap ±15 menit, sedangkan socket yang dibuka dengan access token baris lama tetap
+   * milik perangkat yang sama. Socket tetap sah selama keluarganya masih memiliki baris aktif (belum dicabut dan belum
+   * kedaluwarsa) dan akun/session_version masih sah; logout, pencabutan sesi, reuse refresh token dan idle admin
+   * mencabut keluarga sehingga socket ikut diputus.
    */
   async revalidate(
     entries: readonly {
@@ -74,6 +82,10 @@ export class SessionValidator {
     now = this.clock.now(),
   ): Promise<Map<string, SessionRevokedReason | null>> {
     const found = await this.rows(entries.map((e) => e.sessionId));
+    const activeFamilies = await this.activeFamilies(
+      [...found.values()].map((row) => row.familyId),
+      now,
+    );
     const result = new Map<string, SessionRevokedReason | null>();
     for (const entry of entries) {
       const row = found.get(entry.sessionId);
@@ -84,7 +96,8 @@ export class SessionValidator {
         audience: entry.audience,
         mfaLevel: 1,
       };
-      if (row && this.isActive(row, claims, now)) result.set(entry.sessionId, null);
+      if (row && activeFamilies.has(row.familyId) && this.isAccountValid(row, claims))
+        result.set(entry.sessionId, null);
       else if (row?.userStatus === "disabled") result.set(entry.sessionId, "account_disabled");
       else if (row?.userStatus === "deletion_pending" || row?.userStatus === "deleted")
         result.set(entry.sessionId, "deletion_requested");
@@ -94,9 +107,12 @@ export class SessionValidator {
   }
 
   private isActive(row: SessionRow, claims: AccessClaims, now: Date): boolean {
+    return !row.revokedAt && row.expiresAt > now && this.isAccountValid(row, claims);
+  }
+
+  /** Pemilik, audience, session_version, status dan jenis akun (tanpa memeriksa baris sesi itu sendiri). */
+  private isAccountValid(row: SessionRow, claims: AccessClaims): boolean {
     return (
-      !row.revokedAt &&
-      row.expiresAt > now &&
       row.sessionUserId === claims.userId &&
       row.sessionAudience === claims.audience &&
       row.sessionVersion === claims.sessionVersion &&
@@ -106,12 +122,24 @@ export class SessionValidator {
     );
   }
 
+  /** Keluarga sesi yang masih memiliki baris belum dicabut dan belum kedaluwarsa. */
+  private async activeFamilies(familyIds: readonly string[], now: Date): Promise<Set<string>> {
+    const ids = [...new Set(familyIds)];
+    if (ids.length === 0) return new Set();
+    const rows = await this.db
+      .selectDistinct({ familyId: sessions.familyId })
+      .from(sessions)
+      .where(and(inArray(sessions.familyId, ids), isNull(sessions.revokedAt), gt(sessions.expiresAt, now)));
+    return new Set(rows.map((row) => row.familyId));
+  }
+
   private async rows(sessionIds: readonly string[]): Promise<Map<string, SessionRow>> {
     const ids = [...new Set(sessionIds)];
     if (ids.length === 0) return new Map();
     const found = await this.db
       .select({
         sessionId: sessions.id,
+        familyId: sessions.familyId,
         sessionUserId: sessions.userId,
         sessionAudience: sessions.audience,
         revokedAt: sessions.revokedAt,

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/contracts/events/realtime-chat-reaction.schema.json",
+  "title": "RealtimeChatReaction",
+  "description": "Ringkasan satu emoji reaksi pada pesan. Bentuk JSON sama dengan ChatReaction pada kontrak HTTP. Pada message.created daftar reaksi selalu kosong.",
+  "type": "object",
+  "required": ["emoji", "count", "reacted_by_me"],
+  "additionalProperties": false,
+  "properties": {
+    "emoji": { "type": "string", "minLength": 1, "maxLength": 16 },
+    "count": { "type": "integer", "minimum": 1 },
+    "reacted_by_me": { "type": "boolean" }
+  },
+  "examples": [{ "emoji": "👍", "count": 3, "reacted_by_me": false }]
+}

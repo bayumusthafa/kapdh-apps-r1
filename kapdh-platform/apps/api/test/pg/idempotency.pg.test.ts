@@ -12,7 +12,14 @@ import { createApp } from "../../src/bootstrap.js";
 import { MemoryMailer } from "../../src/core/adapters/mailer.js";
 import type { Db } from "../../src/core/db/types.js";
 import { FakePush, TestClock, testEnv } from "../support/test-app.js";
-import { connectAs, createPgTestDatabase, type PgTestDatabase, type Sql } from "./support.js";
+import {
+  connectAs,
+  createPgTestDatabase,
+  PG_CONSENT_VERSION,
+  type PgTestDatabase,
+  publishLegalVersions,
+  type Sql,
+} from "./support.js";
 
 let tdb: PgTestDatabase;
 let api: ReturnType<typeof connectAs>;
@@ -38,6 +45,7 @@ beforeAll(async () => {
   );
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
+  await publishLegalVersions(tdb.sql);
 });
 afterAll(async () => {
   await app?.close();
@@ -54,7 +62,7 @@ function registerBody(email: string) {
     cohort: 21,
     class_in: 1,
     class_out: 6,
-    accept_policy_version: "1",
+    accept_policy_version: PG_CONSENT_VERSION,
   };
 }
 

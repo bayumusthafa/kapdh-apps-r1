@@ -1,4 +1,4 @@
-import { roomMembers, rooms, users } from "@kapdh/database";
+import { alumni, roomMembers, rooms, sessions, users } from "@kapdh/database";
 import { eq, sql } from "drizzle-orm";
 import { io, type Socket } from "socket.io-client";
 import { v7 as uuidv7 } from "uuid";
@@ -14,11 +14,14 @@ import {
   type AlumniFixtureStatus,
   createAdmin,
   createAlumni,
+  createMembershipPayment,
   signInAdmin,
   signInAlumni,
 } from "../support/factories.js";
+import { expectRealtimeEnvelope } from "../support/contract.js";
 import { httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
+import { ProbeModule } from "./probe.js";
 
 let t: TestApp;
 let baseUrl: string;
@@ -29,7 +32,8 @@ const sockets: Socket[] = [];
 const typingCalls: { userId: string; status: string; data: unknown }[] = [];
 
 beforeAll(async () => {
-  t = await createTestApp();
+  // ProbeModule menyediakan rute @MemberAccess("active") untuk menguji pencabutan langganan saat request ditolak.
+  t = await createTestApp({ extraModules: [ProbeModule] });
   await t.app.listen(0, "127.0.0.1");
   baseUrl = await t.app.getUrl();
   realtime = t.app.get(RealtimeService);
@@ -78,7 +82,12 @@ function nextEvent(socket: Socket, event: string, timeoutMs = 3000): Promise<Env
     const timer = setTimeout(() => reject(new Error(`event ${event} tidak diterima`)), timeoutMs);
     socket.once(event, (data: Envelope) => {
       clearTimeout(timer);
-      resolve(data);
+      try {
+        // Setiap event yang diterima wajib lolos amplop + skema payload kontrak (events/<type>.schema.json).
+        resolve(expectRealtimeEnvelope(data));
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
     });
   });
 }
@@ -145,14 +154,18 @@ describe("RealtimeService: emit setelah commit (PRD 5.2)", () => {
     const entityId = uuidv7();
     const received = nextEvent(socket, "presence");
     await inTx(async () => {
-      realtime.emitToUser(member.userId, "presence", entityId, { online: true });
+      realtime.emitToUser(member.userId, "presence", entityId, {
+        user_id: member.userId,
+        status: "online",
+        ttl_seconds: 60,
+      });
     });
     const envelope = await received;
     expect(envelope).toMatchObject({
       v: 1,
       type: "presence",
       entity_id: entityId,
-      payload: { online: true },
+      payload: { user_id: member.userId, status: "online", ttl_seconds: 60 },
     });
     expect(envelope.event_id).toMatch(/^[0-9a-f-]{36}$/);
     expect(new Date(envelope.ts).toISOString()).toBe(envelope.ts);
@@ -160,7 +173,11 @@ describe("RealtimeService: emit setelah commit (PRD 5.2)", () => {
     const silent = noEvent(socket, "presence");
     await expect(
       inTx(async () => {
-        realtime.emitToUser(member.userId, "presence", entityId, { online: false });
+        realtime.emitToUser(member.userId, "presence", entityId, {
+          user_id: member.userId,
+          status: "offline",
+          ttl_seconds: 0,
+        });
         throw new Error("batal");
       }),
     ).rejects.toThrow("batal");
@@ -217,7 +234,7 @@ describe("RealtimeService: emit setelah commit (PRD 5.2)", () => {
       roomId,
       "typing",
       roomId,
-      { room_id: roomId, user_id: b.member.userId },
+      { room_id: roomId, user_id: b.member.userId, ttl_seconds: 5 },
       {
         exceptUserId: b.member.userId,
       },
@@ -229,9 +246,125 @@ describe("RealtimeService: emit setelah commit (PRD 5.2)", () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     const notToA = noEvent(a.socket, "typing");
     const toB = nextEvent(b.socket, "typing");
-    realtime.emitToRoom(roomId, "typing", roomId, { room_id: roomId });
+    realtime.emitToRoom(roomId, "typing", roomId, {
+      room_id: roomId,
+      user_id: b.member.userId,
+      ttl_seconds: 5,
+    });
     await toB;
     await notToA;
+  });
+});
+
+/** Room grup sintetis dengan anggota joined (modul chat belum ada; cukup baris rooms + room_members). */
+async function groupWith(...userIds: string[]): Promise<string> {
+  const now = t.clock.now();
+  const roomId = uuidv7();
+  await t.db.insert(rooms).values({
+    id: roomId,
+    kind: "group",
+    name: "Grup Uji Langganan",
+    createdBy: userIds[0]!,
+    createdAt: now,
+    updatedAt: now,
+  });
+  for (const userId of userIds)
+    await t.db.insert(roomMembers).values({
+      roomId,
+      userId,
+      role: "admin",
+      status: "joined",
+      joinedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+  return roomId;
+}
+
+const roomPing = (roomId: string) =>
+  realtime.emitToRoom(roomId, "room.updated", roomId, {
+    room_id: roomId,
+    version: "1",
+    changes: ["group_name"],
+    name: "Grup Uji Langganan",
+    avatar_url: null,
+    closed_at: null,
+  });
+
+describe("Langganan kanal room mengikuti status efektif (kontrak C6 'Pencabutan langganan room')", () => {
+  it("butir 2: socket dikeluarkan dari kanal room tepat saat expires_at tanpa menunggu penyapuan", async () => {
+    const member = await createAlumni(t, { status: "verified" });
+    const expiresAt = new Date(t.clock.now().getTime() + 150);
+    await t.db.update(alumni).set({ expiresAt }).where(eq(alumni.userId, member.userId));
+    const roomId = await groupWith(member.userId);
+    const socket = await connect((await signInAlumni(t, member)).accessToken);
+    const before = nextEvent(socket, "room.updated");
+    roomPing(roomId);
+    await before;
+
+    // Waktu server melewati expires_at; timer gateway (bukan penyapuan 60 detik) melepas langganan room.
+    t.clock.advance(1000);
+    await expect
+      .poll(async () => {
+        const silent = noEvent(socket, "room.updated", 100);
+        roomPing(roomId);
+        return silent.then(
+          () => "lepas",
+          () => "masih",
+        );
+      })
+      .toBe("lepas");
+    expect(socket.connected).toBe(true);
+  });
+
+  it("butir 3: request yang ditolak MEMBERSHIP_REQUIRED langsung mencabut langganan room socket pengguna", async () => {
+    const member = await createAlumni(t, { status: "verified" });
+    const roomId = await groupWith(member.userId);
+    const session = await signInAlumni(t, member);
+    const socket = await connect(session.accessToken);
+    const before = nextEvent(socket, "room.updated");
+    roomPing(roomId);
+    await before;
+
+    // Masa aktif berakhir di database; timer socket masih menunggu expires_at lama.
+    await t.db
+      .update(alumni)
+      .set({ expiresAt: new Date(t.clock.now().getTime() - 1000) })
+      .where(eq(alumni.userId, member.userId));
+    const denied = await httpClient(t.app).get("/__probe/member/active", { token: session.accessToken });
+    expect(denied.json().code).toBe("MEMBERSHIP_REQUIRED");
+    await expect
+      .poll(async () => {
+        const silent = noEvent(socket, "room.updated", 100);
+        roomPing(roomId);
+        return silent.then(
+          () => "lepas",
+          () => "masih",
+        );
+      })
+      .toBe("lepas");
+  });
+
+  it("butir 5: perpanjangan yang disetujui memasukkan ulang socket anggota expired ke kanal room setelah commit", async () => {
+    const member = await createAlumni(t, { status: "expired" });
+    const roomId = await groupWith(member.userId);
+    const socket = await connect((await signInAlumni(t, member)).accessToken);
+    const outside = noEvent(socket, "room.updated");
+    roomPing(roomId);
+    await outside;
+
+    const payment = await createMembershipPayment(t, { userId: member.userId, type: "renewal" });
+    await inTx((tx) => t.app.get(MembershipKernel).applyPaidPayment(tx, payment, t.clock.now()));
+    await expect
+      .poll(async () => {
+        const received = nextEvent(socket, "room.updated", 150);
+        roomPing(roomId);
+        return received.then(
+          () => "masuk",
+          () => "belum",
+        );
+      })
+      .toBe("masuk");
   });
 });
 
@@ -274,6 +407,34 @@ describe("Pencabutan socket (AC F02-6, F11-6, F12-4, F16-3)", () => {
     await closed;
   });
 
+  it("AC F02-3: rotasi refresh tidak memutus socket keluarga sesi; logout dengan token hasil rotasi memutusnya", async () => {
+    const { member, session, socket } = await memberSocket();
+    const api = httpClient(t.app);
+    const rotated = await api.post("/auth/refresh", { refresh_token: session.refreshToken });
+    expect(rotated.statusCode).toBe(200);
+    // Baris sesi lama kini replaced_by + revoked, tetapi keluarganya masih aktif: socket tetap sah.
+    const stillAlive = noEvent(socket, "session.revoked");
+    await gateway.revalidateAll();
+    await stillAlive;
+    expect(socket.connected).toBe(true);
+
+    const [row] = await t.db
+      .select({ familyId: sessions.familyId })
+      .from(sessions)
+      .where(eq(sessions.userId, member.userId))
+      .limit(1);
+    const revoked = nextEvent(socket, "session.revoked");
+    const closed = disconnected(socket);
+    expect((await api.post("/auth/logout", {}, { token: rotated.json().access_token })).statusCode).toBe(204);
+    const envelope = await revoked;
+    // entity_id = Session.id = keluarga sesi (kontrak C1, events/session.revoked.schema.json).
+    expect(envelope).toMatchObject({
+      entity_id: row!.familyId,
+      payload: { reason: "logout", all_sessions: false },
+    });
+    await closed;
+  });
+
   it("validasi ulang berkala: session_version berubah di luar proses ini → session.revoked lalu putus", async () => {
     const { member, socket } = await memberSocket();
     const revoked = nextEvent(socket, "session.revoked");
@@ -312,7 +473,14 @@ describe("Pencabutan socket (AC F02-6, F11-6, F12-4, F16-3)", () => {
     const socket = await connect(session.accessToken);
 
     const inRoom = nextEvent(socket, "room.updated");
-    realtime.emitToRoom(roomId, "room.updated", roomId, { room_id: roomId });
+    realtime.emitToRoom(roomId, "room.updated", roomId, {
+      room_id: roomId,
+      version: "1",
+      changes: ["group_name"],
+      name: "Grup Angkatan Uji",
+      avatar_url: null,
+      closed_at: null,
+    });
     await inRoom;
 
     // Masa aktif habis (tanpa worker): validasi ulang melepas langganan room tetapi socket pengguna tetap hidup.
@@ -320,7 +488,14 @@ describe("Pencabutan socket (AC F02-6, F11-6, F12-4, F16-3)", () => {
     try {
       await gateway.revalidateAll();
       const gone = noEvent(socket, "room.updated");
-      realtime.emitToRoom(roomId, "room.updated", roomId, { room_id: roomId });
+      realtime.emitToRoom(roomId, "room.updated", roomId, {
+        room_id: roomId,
+        version: "1",
+        changes: ["group_name"],
+        name: "Grup Angkatan Uji",
+        avatar_url: null,
+        closed_at: null,
+      });
       await gone;
       expect(socket.connected).toBe(true);
     } finally {

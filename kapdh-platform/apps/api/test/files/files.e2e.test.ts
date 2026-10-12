@@ -7,8 +7,9 @@ import { withTx } from "../../src/core/db/tx.js";
 import { FilePolicies } from "../../src/core/files/access-policy.js";
 import { FILE_URL_MAX_TTL_SECONDS } from "../../src/core/files/file-token.js";
 import { FilesService } from "../../src/core/files/files.service.js";
+import { GENERAL_UPLOAD_PURPOSES } from "../../src/core/files/purposes.js";
 import { etagMatches } from "../../src/modules/files/files.controller.js";
-import { expectOperation } from "../support/contract.js";
+import { ajv, expectOperation } from "../support/contract.js";
 import {
   type AlumniFixtureStatus,
   createAdmin,
@@ -23,6 +24,7 @@ import {
   testPdf,
   testPng,
   testPngBomb,
+  uploadDomainFile,
   uploadTestFile,
 } from "../support/files.js";
 import { httpClient } from "../support/http.js";
@@ -48,7 +50,7 @@ async function member(status: AlumniFixtureStatus = "verified") {
 async function admin(permissions: Permission[]) {
   const fixture = await createAdmin(t, { permissions });
   const session = await signInAdmin(t, fixture);
-  return { ...fixture, token: session.accessToken };
+  return { ...fixture, permissions, token: session.accessToken };
 }
 
 /** Path relatif /api/v1/... dari URL absolut yang dikembalikan API (API_PUBLIC_URL uji = http://api.test). */
@@ -241,13 +243,37 @@ describe("POST /files (PRD 2.5, N-10)", () => {
     const content = await admin(["content.manage"]);
     const finance = await admin(["payments.read"]);
 
-    const memberCover = await postFile(t.app, verified.token, "post_cover");
-    expect(memberCover.statusCode).toBe(403);
-    expect(expectOperation("post", "/files", memberCover)).toMatchObject({ code: "FORBIDDEN" });
+    const treasurer = await admin(["payments.read", "payments.decide"]);
+
+    // Gambar publik konten bukan purpose unggahan umum (kontrak C4/C5: endpoint domain) → 400 untuk siapa pun.
+    for (const [who, purpose] of [
+      [verified, "post_cover"],
+      [content, "post_cover"],
+      [content, "banner_image"],
+      [await admin(["events.manage"]), "event_cover"],
+    ] as const) {
+      const res = await postFile(t.app, who.token, purpose);
+      expect(res.statusCode, purpose).toBe(400);
+      expect(expectOperation("post", "/files", res)).toMatchObject({
+        code: "VALIDATION_ERROR",
+        field_errors: { purpose: expect.any(Array) },
+      });
+    }
     const adminAvatar = await postFile(t.app, content.token, "avatar");
     expect(adminAvatar.statusCode).toBe(403);
-    expect((await postFile(t.app, finance.token, "post_cover")).statusCode).toBe(403);
+    expect(expectOperation("post", "/files", adminAvatar)).toMatchObject({ code: "FORBIDDEN" });
     expect((await postFile(t.app, finance.token, "adjustment_evidence")).statusCode).toBe(403);
+    expect((await postFile(t.app, verified.token, "adjustment_evidence")).statusCode).toBe(403);
+    // D13 (adminRecordPayment): bukti verifikasi diunggah pengurus payments.decide; payments.read saja → 403.
+    expect((await postFile(t.app, finance.token, "payment_proof")).statusCode).toBe(403);
+    const adminProof = await postFile(t.app, treasurer.token, "payment_proof");
+    expect(adminProof.statusCode).toBe(201);
+    expect(expectOperation("post", "/files", adminProof)).toMatchObject({
+      purpose: "payment_proof",
+      visibility: "private",
+    });
+    expect((await fileRow(adminProof.json().id)).ownerUserId).toBe(treasurer.userId);
+    expect((await postFile(t.app, treasurer.token, "adjustment_evidence")).statusCode).toBe(201);
 
     // chat_image hanya verified/expiring (PRD 2.2).
     const chat = await postFile(t.app, unverified.token, "chat_image");
@@ -259,8 +285,15 @@ describe("POST /files (PRD 2.5, N-10)", () => {
     expect(restricted.json().code).toBe("ACCOUNT_SUSPENDED");
 
     expect((await postFile(t.app, null, "avatar")).statusCode).toBe(401);
-    const cover = await postFile(t.app, content.token, "post_cover");
-    expect(expectOperation("post", "/files", cover)).toMatchObject({ visibility: "public" });
+    // Endpoint domain (FilesService) tetap memeriksa izin area: content.manage untuk post_cover.
+    const cover = await uploadDomainFile(t, content, "post_cover");
+    expect(cover.visibility).toBe("public");
+    await expect(uploadDomainFile(t, finance, "post_cover")).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("kontrak FileUploadPurpose = purpose unggahan umum server (GENERAL_UPLOAD_PURPOSES)", () => {
+    const schema = ajv.getSchema("kapdh#/components/schemas/FileUploadPurpose")!.schema as { enum: string[] };
+    expect([...schema.enum].sort()).toEqual([...GENERAL_UPLOAD_PURPOSES].sort());
   });
 
   it("validasi: purpose wajib, sah, bukan buatan sistem, dikirim sebelum berkas; satu berkas; bukan JSON", async () => {
@@ -312,8 +345,10 @@ describe("GET /files/{fileId}/access dan /files/content/{token} (PRD 5.4)", () =
     const access = expectOperation("get", "/files/{fileId}/access", res) as {
       url: string;
       expires_at: string;
+      mime: string;
     };
     expect(res.headers["cache-control"]).toBe("no-store");
+    expect(access.mime).toBe("image/jpeg");
     expect(access.url).toContain("/api/v1/files/content/");
     expect(new Date(access.expires_at).getTime() - t.clock.now().getTime()).toBeLessThanOrEqual(
       FILE_URL_MAX_TTL_SECONDS * 1000,
@@ -374,11 +409,16 @@ describe("GET /files/{fileId}/access dan /files/content/{token} (PRD 5.4)", () =
     t.clock.advance(FILE_URL_MAX_TTL_SECONDS * 1000 + 1000);
     expect((await t.app.inject({ method: "GET", url })).statusCode).toBe(404);
 
-    // Logout sesi penerima mematikan URL yang masih berlaku.
+    // Rotasi refresh (AC F02-3) bukan pencabutan: URL keluarga sesi yang sama tetap berlaku sampai TTL.
     const second = await signInAlumni(t, owner);
     const sessionUrl = await urlFor(second.accessToken);
     expect((await t.app.inject({ method: "GET", url: sessionUrl })).statusCode).toBe(200);
-    expect((await api.post("/auth/logout", {}, { token: second.accessToken })).statusCode).toBe(204);
+    const rotated = await api.post("/auth/refresh", { refresh_token: second.refreshToken });
+    expect(rotated.statusCode).toBe(200);
+    expect((await t.app.inject({ method: "GET", url: sessionUrl })).statusCode).toBe(200);
+    // Logout (dengan token hasil rotasi) mencabut keluarga sesi dan mematikan URL yang masih berlaku.
+    const rotatedToken = (rotated.json() as { access_token: string }).access_token;
+    expect((await api.post("/auth/logout", {}, { token: rotatedToken })).statusCode).toBe(204);
     expect((await t.app.inject({ method: "GET", url: sessionUrl })).statusCode).toBe(404);
 
     // Logout semua perangkat (session_version naik) mematikan URL sesi lain juga.
@@ -437,11 +477,13 @@ describe("GET /files/{fileId}/access dan /files/content/{token} (PRD 5.4)", () =
 describe("GET /files/public/{fileId} (PRD 5.4)", () => {
   it("berkas publik dengan cache publik + ETag/304; berkas privat tidak pernah dilayani di sini", async () => {
     const editor = await admin(["content.manage"]);
-    const cover = await uploadTestFile(t, editor.token, "post_cover", {
-      data: await testPng(),
-      filename: "sampul.png",
-      contentType: "image/png",
-    });
+    const cover = service.toFileRef(
+      await uploadDomainFile(t, editor, "post_cover", {
+        data: await testPng(),
+        filename: "sampul.png",
+        contentType: "image/png",
+      }),
+    );
     expect(cover.public_url).toBe(`${t.env.API_PUBLIC_URL}/api/v1/files/public/${cover.id}`);
     const res = await t.app.inject({ method: "GET", url: pathOf(cover.public_url!) });
     expectOperation("get", "/files/public/{fileId}", res);
@@ -466,6 +508,7 @@ describe("GET /files/public/{fileId} (PRD 5.4)", () => {
     expect(expectOperation("get", "/files/{fileId}/access", access)).toEqual({
       url: cover.public_url,
       expires_at: null,
+      mime: "image/png",
     });
 
     const owner = await member();
@@ -572,6 +615,34 @@ describe("FilesService.attach dan job files.cleanup-temp (PRD 2.5, ARCHITECTURE 
     await withTx(t.db, (tx) => service.discard(tx, ref.id));
     expect((await fileRow(ref.id)).status).toBe("deleted");
     expect(t.storage.contents(key)).toBeUndefined();
+  });
+
+  it("kontrak C7: ekspor audit hanya untuk audit.read + audit.export yang juga pemohon atau Super Admin", async () => {
+    const requester = await admin(["audit.read", "audit.export"]);
+    const exportOnly = await admin(["audit.export"]);
+    const colleague = await admin(["audit.read", "audit.export"]);
+    const superAdmin = await createAdmin(t, { role: "super_admin" });
+    const superToken = (await signInAdmin(t, superAdmin)).accessToken;
+    const row = await service.storeGenerated({
+      ownerUserId: requester.userId,
+      purpose: "audit_export",
+      mime: "text/csv",
+      body: Buffer.from("waktu,aksi\n"),
+      expiresAt: new Date(t.clock.now().getTime() + 3600_000),
+    });
+    const api = httpClient(t.app);
+    const access = await api.get(`/files/${row.id}/access`, { token: requester.token });
+    expect(access.statusCode).toBe(200);
+    expect(expectOperation("get", "/files/{fileId}/access", access)).toMatchObject({ mime: "text/csv" });
+    expect((await api.get(`/files/${row.id}/access`, { token: superToken })).statusCode).toBe(200);
+    for (const other of [exportOnly, colleague])
+      expect((await api.get(`/files/${row.id}/access`, { token: other.token })).statusCode).toBe(404);
+    // Pemohon yang kehilangan audit.read tidak dapat lagi membuka ekspornya.
+    await t.db.delete(adminPermissions).where(eq(adminPermissions.adminId, requester.adminId));
+    await t.db
+      .insert(adminPermissions)
+      .values({ adminId: requester.adminId, permission: "audit.export", createdAt: t.clock.now() });
+    expect((await api.get(`/files/${row.id}/access`, { token: requester.token })).statusCode).toBe(404);
   });
 
   it("storeGenerated: ekspor sistem privat, terlampir, kedaluwarsa dibersihkan job", async () => {

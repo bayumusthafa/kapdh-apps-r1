@@ -16,11 +16,22 @@ import {
   type SessionRevokedReason,
   userChannel,
 } from "./envelope.js";
-import { CLIENT_EVENTS, type ClientEvent, type RealtimeClient, RealtimeService } from "./realtime.service.js";
+import {
+  CHAT_ACTIVE_STATUSES,
+  CLIENT_EVENTS,
+  type ClientEvent,
+  type RealtimeClient,
+  RealtimeService,
+} from "./realtime.service.js";
 import { NamespaceTransport, REALTIME_NAMESPACE } from "./transports.js";
 
 /** Validasi ulang berkala sesi + effective_status socket yang tersambung (ARCHITECTURE §4.9). */
 export const REALTIME_REVALIDATE_MS = 60_000;
+/**
+ * Pengeluaran dari kanal room tepat pada alumni.expires_at dijadwalkan per socket bila jaraknya <= 24 jam; yang lebih
+ * jauh dijadwalkan oleh penyapuan berkala ketika sudah mendekat (batas setTimeout dan jumlah timer tetap kecil).
+ */
+const EXPIRY_TIMER_HORIZON_MS = 24 * 3600_000;
 /** Batas event klien per socket: 20 per 10 detik; kelebihan diabaikan. */
 const CLIENT_EVENT_LIMIT = 20;
 const CLIENT_EVENT_WINDOW_MS = 10_000;
@@ -28,9 +39,14 @@ const CLIENT_EVENT_WINDOW_MS = 10_000;
 /** Identitas yang disimpan di `socket.data` setelah handshake. */
 export interface SocketIdentity {
   userId: string;
+  /** Baris sesi access token saat handshake (dapat dirotasi kemudian). */
   sessionId: string;
+  /** Keluarga sesi (Session.id): kanal pencabutan dan entity_id `session.revoked`. */
+  familyId: string;
   sessionVersion: number;
   effectiveStatus: EffectiveStatus;
+  /** alumni.expires_at (ms epoch) saat terakhir dihitung; null bila belum pernah aktif. */
+  expiresAtMs: number | null;
   eventWindowStart: number;
   eventCount: number;
 }
@@ -59,6 +75,8 @@ export class RealtimeGateway
   private namespace: Namespace | null = null;
   private timer: NodeJS.Timeout | null = null;
   private revalidating: Promise<void> | null = null;
+  /** Timer pengeluaran dari kanal room saat masa keanggotaan habis, per socket lokal. */
+  private readonly expiryTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(
     private readonly realtime: RealtimeService,
@@ -88,6 +106,8 @@ export class RealtimeGateway
   onModuleDestroy(): void {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    for (const timer of this.expiryTimers.values()) clearTimeout(timer);
+    this.expiryTimers.clear();
   }
 
   async handleConnection(socket: Socket): Promise<void> {
@@ -96,8 +116,9 @@ export class RealtimeGateway
       socket.disconnect(true);
       return;
     }
+    socket.on("disconnect", () => this.clearExpiry(socket.id));
     try {
-      await socket.join([userChannel(identity.userId), sessionChannel(identity.sessionId)]);
+      await socket.join([userChannel(identity.userId), sessionChannel(identity.familyId)]);
       // Pencabutan yang terjadi di antara handshake dan join (disconnectUser/disconnectSession belum menjangkau socket
       // ini) ditutup dengan pemeriksaan ulang sesudah bergabung ke kanal pengguna/sesi.
       const verdict = await this.verdictFor(identity);
@@ -153,8 +174,10 @@ export class RealtimeGateway
     const identity: SocketIdentity = {
       userId: validated.claims.userId,
       sessionId: validated.claims.sessionId,
+      familyId: validated.row.familyId,
       sessionVersion: validated.claims.sessionVersion,
       effectiveStatus: snapshot?.status ?? "unverified",
+      expiresAtMs: snapshot?.expiresAt?.getTime() ?? null,
       eventWindowStart: 0,
       eventCount: 0,
     };
@@ -189,7 +212,9 @@ export class RealtimeGateway
     const roomsCache = new Map<string, Promise<string[]>>();
     for (const socket of alive) {
       const identity = socket.data as SocketIdentity;
-      identity.effectiveStatus = statuses.get(identity.userId)?.status ?? "unverified";
+      const snapshot = statuses.get(identity.userId);
+      identity.effectiveStatus = snapshot?.status ?? "unverified";
+      identity.expiresAtMs = snapshot?.expiresAt?.getTime() ?? null;
       await this.syncRooms(socket, identity.effectiveStatus, roomsCache);
     }
   }
@@ -211,13 +236,54 @@ export class RealtimeGateway
       if (channel.startsWith("room:") && !desired.has(channel)) socket.leave(channel);
     const missing = [...desired].filter((channel) => !socket.rooms.has(channel));
     if (missing.length > 0) await socket.join(missing);
+    this.scheduleExpiry(socket);
+  }
+
+  /**
+   * Kontrak C6 "Pencabutan langganan room" butir 2: expired murni berbasis waktu (tanpa event DB), sehingga socket
+   * aktif dikeluarkan dari SEMUA kanal room tepat pada alumni.expires_at. Saat timer berbunyi status dihitung ulang dari
+   * database (perpanjangan yang sudah disetujui membuatnya tetap aktif dan menjadwalkan ulang).
+   */
+  private scheduleExpiry(socket: Socket): void {
+    this.clearExpiry(socket.id);
+    const identity = socket.data as SocketIdentity;
+    if (!CHAT_ACTIVE_STATUSES.has(identity.effectiveStatus) || identity.expiresAtMs === null) return;
+    const delay = identity.expiresAtMs - this.clock.now().getTime();
+    if (delay > EXPIRY_TIMER_HORIZON_MS) return;
+    const timer = setTimeout(() => void this.refreshSocket(socket), Math.max(0, delay));
+    timer.unref();
+    this.expiryTimers.set(socket.id, timer);
+  }
+
+  private clearExpiry(socketId: string): void {
+    const timer = this.expiryTimers.get(socketId);
+    if (timer) clearTimeout(timer);
+    this.expiryTimers.delete(socketId);
+  }
+
+  /** Menghitung ulang status satu socket dari database lalu menyamakan langganan room-nya. */
+  private async refreshSocket(socket: Socket): Promise<void> {
+    this.expiryTimers.delete(socket.id);
+    if (!socket.connected) return;
+    try {
+      const identity = socket.data as SocketIdentity;
+      const snapshot = await this.membership.effectiveStatusFor(identity.userId);
+      identity.effectiveStatus = snapshot?.status ?? "unverified";
+      identity.expiresAtMs = snapshot?.expiresAt?.getTime() ?? null;
+      await this.syncRooms(socket, identity.effectiveStatus);
+    } catch (error) {
+      this.logger.warn(
+        { error: safeError(error) },
+        "pembaruan langganan room socket gagal; dicoba saat penyapuan",
+      );
+    }
   }
 
   private revokeSocket(socket: Socket, reason: SessionRevokedReason): void {
     const identity = socket.data as SocketIdentity;
     const envelope = buildEnvelope(
       "session.revoked",
-      identity.sessionId,
+      identity.familyId,
       { reason, all_sessions: reason !== "session_revoked" } as RealtimePayloads["session.revoked"],
       this.clock.now(),
     );
@@ -244,6 +310,7 @@ export class RealtimeGateway
       }
       const snapshot = await this.membership.effectiveStatusFor(identity.userId);
       identity.effectiveStatus = snapshot?.status ?? "unverified";
+      identity.expiresAtMs = snapshot?.expiresAt?.getTime() ?? null;
       const client: RealtimeClient = {
         socketId: socket.id,
         userId: identity.userId,

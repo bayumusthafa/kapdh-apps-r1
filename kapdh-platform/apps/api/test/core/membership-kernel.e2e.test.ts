@@ -271,6 +271,29 @@ describe("PaymentHandlerRegistry (ARCHITECTURE §4.6)", () => {
 
     if (!registry.has("ticket")) expect(() => registry.handlerFor("ticket")).toThrow(/belum terdaftar/);
   });
+
+  it("kontrak C5: lockRelated mengunci induk sebelum payment (iuran tanpa hook = no-op); onApproved dapat melaporkan refund D6", async () => {
+    const registry = new PaymentHandlerRegistry();
+    const calls: string[] = [];
+    registry.register({ type: "registration", onApproved: async () => {} });
+    registry.register({
+      type: "ticket",
+      lockRelated: async (_tx, payment) => {
+        calls.push(`lock:${payment.ticketId}`);
+      },
+      onApproved: async () => ({
+        refund: { amount: "75000.00", dueAt: new Date("2026-10-23T00:00:00Z"), reason: "Event dibatalkan" },
+      }),
+    });
+    const ticketId = uuidv7();
+    await inTx((tx) => registry.lockRelated(tx, { id: uuidv7(), type: "ticket", ticketId }));
+    await inTx((tx) => registry.lockRelated(tx, { id: uuidv7(), type: "registration", ticketId: null }));
+    expect(calls).toEqual([`lock:${ticketId}`]);
+    const outcome = await registry
+      .handlerFor("ticket")
+      .onApproved(undefined as never, {} as never, new Date());
+    expect(outcome).toMatchObject({ refund: { amount: "75000.00", reason: "Event dibatalkan" } });
+  });
 });
 
 describe("MembershipKernel.suspend / unsuspend (AC F12-3, F12-4, F12-5)", () => {

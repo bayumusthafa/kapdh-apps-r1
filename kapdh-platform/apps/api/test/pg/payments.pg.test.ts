@@ -7,9 +7,8 @@ import {
   insertUser,
   type PgTestDatabase,
   pgError,
-  sleep,
   type Sql,
-  withLockWaitProbe,
+  withLockWaitGate,
 } from "./support.js";
 
 let tdb: PgTestDatabase;
@@ -48,24 +47,26 @@ async function insertTicket(eventId: string, userId: string): Promise<string> {
   return ticketId;
 }
 
-/** Menjalankan n transaksi bersamaan dan memastikan minimal satu benar-benar menunggu lock transaksi lain. */
+/**
+ * Menjalankan n transaksi bersamaan dan memastikan minimal satu benar-benar menunggu lock transaksi lain: transaksi
+ * yang selesai lebih dulu menahan commit sampai penantian itu teramati (withLockWaitGate, deterministik).
+ */
 async function concurrently<T>(n: number, run: (tx: Sql, i: number) => Promise<T>) {
   const ready = barrier(n);
-  const { result, maxWaiting } = await withLockWaitProbe(
-    sql,
+  const { result, lockWaitObserved } = await withLockWaitGate(tdb, (hold) =>
     Promise.allSettled(
       Array.from({ length: n }, (_, i) =>
         sql.begin(async (tx) => {
           await tx`select 1`;
           await ready();
           const value = await run(tx as unknown as Sql, i);
-          await sleep(150);
+          await hold();
           return value;
         }),
       ),
     ),
   );
-  expect(maxWaiting).toBeGreaterThanOrEqual(1);
+  expect(lockWaitObserved, "transaksi benar-benar saling menunggu kunci").toBe(true);
   return result;
 }
 

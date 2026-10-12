@@ -228,12 +228,15 @@ Additional decorators (evaluated after authentication, server-side, every reques
 - `@MemberAccess("any" | "nonsuspended" | "active")` — mobile only; computes effective status (§3.1).
 - `@RequirePermission(...perms)` — admin only; all listed permissions required; evaluated from DB each request
   (AC F15-1, F16-3). `super_admin` has all permissions.
+- `@RequireAnyPermission(...perms)` — admin only; at least ONE listed permission (contract `x-kapdh-access.permissions_any`),
+  evaluated from DB each request; `super_admin` always passes.
+- `@RequireRole("super_admin")` — admin only; Super Admin role from DB each request (contract `x-kapdh-access.role`).
 - `@RequireReauth()` — needs header `X-Reauth-Token` (JWT aud `kapdh-reauth`, bound to session, ≤10 min).
 - `@Idempotent()` — honours `Idempotency-Key`.
 - `@CurrentAuth()` param decorator → `AuthContext`.
 
 Global request hooks (before guards): maintenance mode rejects mutating methods with `503 MAINTENANCE` except
-`/auth/refresh`, `/auth/logout*`, `/admin/**`, `/public/**` reads; app-version gate rejects mutations from
+`/auth/refresh`, `/auth/logout*`, `/admin/**`, `/public/**` reads (GET, plus `POST /public/kta/verify`); app-version gate rejects mutations from
 `X-App-Platform: android|ios` with `X-App-Version` below `min_app_version` → `426 UPGRADE_REQUIRED`.
 
 Fastify `trustProxy` comes from env `TRUST_PROXY_HOPS` (default 1 in prod, 0 in dev/test).
@@ -259,10 +262,13 @@ notifications.manage`. Roles: `super_admin` (all, plus admin management, MFA+rea
 ```ts
 interface PaymentTypeHandler {
   type: "registration" | "renewal" | "ticket";
+  /** Called by payments BEFORE locking the payment row (global lock order events → tickets → payments, C5). */
+  lockRelated?(tx: Tx, payment: { id: string; ticketId: string | null }): Promise<void>;
   /** Inside the proof-submission tx; may throw (e.g. RESERVATION_EXPIRED). */
   onProofSubmitted?(tx: Tx, payment: PaymentRow): Promise<void>;
-  /** Inside the approval tx. Must be idempotent per payment. */
-  onApproved(tx: Tx, payment: PaymentRow, approvedAt: Date): Promise<void>;
+  /** Inside the approval tx. Must be idempotent per payment. May report a D6 refund obligation
+   *  ({refund: {amount, dueAt, reason}}) that payments records in the same tx. */
+  onApproved(tx: Tx, payment: PaymentRow, approvedAt: Date): Promise<void | PaymentApprovalOutcome>;
   onRejected?(tx: Tx, payment: PaymentRow): Promise<void>;
   onCancelled?(tx: Tx, payment: PaymentRow): Promise<void>;
 }
@@ -307,7 +313,9 @@ Job processors live in their module (testable with PGlite) and register with `Jo
 ### 4.9 Realtime (Socket.IO)
 
 Namespace `/realtime`, transport websocket, auth `{token: <access JWT>}` in handshake; the gateway re-validates the
-session like the HTTP guard and joins `user:<id>` and `room:<id>` for joined rooms. Server events use the envelope
+session like the HTTP guard (re-validation is per session FAMILY, so refresh rotation never drops a socket) and
+joins `user:<id>`, `session:<familyId>` and `room:<id>` for joined rooms (active members only; removal at
+`expires_at`, on any MEMBERSHIP_REQUIRED/ACCOUNT_SUSPENDED rejection, and re-join after renewal/unsuspend). Server events use the envelope
 `{v: 1, event_id, type, entity_id, ts, payload}`; types: `message.created, message.deleted, reaction.updated,
 read.updated, room.updated, room.member_changed, typing, presence, notification.created, session.revoked`.
 Client emits only `typing {room_id}` and `presence.ping`. Revocation (logout-all, suspend, expiry, leave, permission
@@ -367,6 +375,7 @@ Platform: `files`, `audit_logs` (append-only), `outbox_events`, `idempotency_key
 | `store_links`     | `{android: url|null, ios: url|null}`                                                        |                           |
 | `support`         | `{email: "bantuan@kapdh.or.id", whatsapp: null}`                                            | 8.3                       |
 | `legal`           | `{privacy_version, terms_version, community_version}` (mirrors published `pages`)           |                           |
+| `payment_instructions` | `{dues_hidden_platforms: Array<"android" or "ios">}` (D13 iOS fallback; tickets never hidden) | `[]` |
 
 Production seed (`packages/database/seeds/reference.ts`) inserts masters, settings and legal page shells and refuses
 to run fixture data; dev seed (`seeds/dev.ts`) adds clearly marked synthetic fixtures and refuses NODE_ENV=production.
