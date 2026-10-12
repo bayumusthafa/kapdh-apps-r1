@@ -1,7 +1,1477 @@
-# Domain admin-content (C4 Content): CRUD berita (draft/published/archived, terjadwal), banner, halaman dan
-# kategori (izin content.manage). Modul API: apps/api/src/modules/content. Path ditambahkan oleh penulis kontrak C4.
+# Domain admin-content (C4 Content): CRUD berita (draft/terjadwal/published/archived), banner, halaman informasi/legal
+# berversi, kategori, dan unggah gambar konten oleh pengurus. Modul API: apps/api/src/modules/content.
+#
+# Aturan bersama semua operasi di berkas ini (PRD 2.3, AC F15-1, F15-4, ARCHITECTURE §4.3/§4.5):
+# - Hanya sesi admin (setelah TOTP) dengan izin yang dideklarasikan, dievaluasi dari DB setiap request; tanpa izin
+#   -> 403 FORBIDDEN walaupun menu disembunyikan (AC F15-1). Super Admin memiliki semua izin. Berita, banner,
+#   halaman, kategori berita dan gambar konten memerlukan `content.manage`; kategori event memerlukan
+#   `events.manage` (tombol "Manajemen Kategori" di halaman Event dan Tiket, guideline p14) sehingga pengurus
+#   event tidak membutuhkan izin konten dan sebaliknya.
+# - Parameter path uuid yang tidak valid atau header If-Match yang tidak ada/kosong -> 400 VALIDATION_ERROR.
+# - Pembaruan, transisi status dan penghapusan wajib `If-Match: <version>`; versi lama -> 409 VERSION_CONFLICT
+#   dengan `current` berisi objek terbaru dan UI menawarkan muat ulang, bukan menimpa diam-diam (AC F15-4).
+#   Transisi yang tidak sah dari keadaan terkini (mis. jadwal sudah lewat sehingga berita sudah tampil) juga
+#   409 VERSION_CONFLICT dengan `current`.
+# - Konflik yang tidak selesai dengan muat ulang (slug sudah dipakai, kategori masih dipakai, halaman baku tidak
+#   boleh dihapus, tidak ada perubahan untuk diterbitkan, berita yang pernah tampil dijadwalkan ke masa depan)
+#   -> 409 VALIDATION_ERROR dengan `field_errors`.
+# - Penghapusan memerlukan dialog konfirmasi di web admin (PRD 4.5) dan If-Match agar yang dihapus adalah versi
+#   yang dikonfirmasi pengurus.
 tags:
   - name: Admin Content
-    description: Pengelolaan berita terjadwal, banner, halaman informasi dan kategori oleh pengurus (F-08, F-15, AC F15-5).
+    description: |
+      Pengelolaan berita terjadwal, banner, halaman informasi/legal berversi, kategori berita dan gambar konten
+      oleh pengurus berizin content.manage, serta kategori event oleh pengurus berizin events.manage (F-08, F-15,
+      AC F08-1, F08-2, F15-1, F15-4, F15-5; guideline p13, p14).
 
-paths: {}
+paths:
+  /admin/content/posts:
+    get:
+      tags: [Admin Content]
+      operationId: adminListPosts
+      summary: Tabel berita (Feed Informasi) dengan pencarian, filter, urutan dan paging server (F-15, guideline p13).
+      description: |
+        Kolom guideline p13: judul konten, gambar, kategori, tanggal publikasi, aksi kelola. `total` = jumlah item
+        yang cocok dengan filter. `state` turunan server: `scheduled` = published dengan `published_at > now`.
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Cari judul atau slug (tidak peka huruf besar/kecil).
+          schema: { type: string, maxLength: 100 }
+        - name: state
+          in: query
+          required: false
+          description: Filter keadaan berita; kosong = semua.
+          schema: { $ref: "#/components/schemas/AdminPostState" }
+        - name: category_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: sort
+          in: query
+          required: false
+          description: Urutan; bawaan `updated_at_desc`. Selalu ditambah `id` sebagai pemutus seri (keyset).
+          schema: { $ref: "#/components/schemas/AdminPostSort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman berita.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPostPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Admin Content]
+      operationId: adminCreatePost
+      summary: Buat berita baru sebagai draft (guideline p13 "Tambah Konten Baru", F-08).
+      description: |
+        Berita selalu dibuat `draft`; penerbitan (sekarang atau terjadwal) memakai POST .../publish. `body_html`
+        disanitasi server sebelum disimpan (PRD 3.8). `slug` kosong dibangkitkan dari judul dan dibuat unik.
+
+        Validasi: `category_id` harus kategori `post` yang aktif; `cover_file_id` harus berkas purpose `post_cover`
+        dari POST /admin/content/media yang belum dihapus. Slug sudah dipakai -> 409 VALIDATION_ERROR
+        (`field_errors.slug`). Idempotency-Key mencegah draf ganda saat tombol simpan terkirim dua kali.
+      x-kapdh-access: { audience: admin, permissions: [content.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminPostCreateRequest" }
+      responses:
+        "201":
+          description: Draft dibuat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPost" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: VALIDATION_ERROR (slug sudah dipakai) atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/posts/{postId}:
+    get:
+      tags: [Admin Content]
+      operationId: adminGetPost
+      summary: Detail berita untuk formulir edit, termasuk draf body dan versi (F-15).
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentPostId"
+      responses:
+        "200":
+          description: Detail berita.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPost" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Admin Content]
+      operationId: adminUpdatePost
+      summary: Ubah isi berita pada keadaan apa pun (guideline p13 "Edit Konten", AC F15-4).
+      description: |
+        Hanya field yang dikirim yang berubah; `version` naik. Perubahan pada berita yang sedang tampil langsung
+        terlihat anggota. `slug` hanya dapat diubah selama `slug_locked = false` (berita belum pernah tampil ke
+        anggota, lihat `AdminPost.slug_locked`) agar tautan dan notifikasi lama tidak rusak; selain itu 400
+        VALIDATION_ERROR (`field_errors.slug`). Status dan `published_at` tidak diubah di sini (pakai
+        publish/unschedule/archive/restore).
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentPostId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminPostUpdateRequest" }
+      responses:
+        "200":
+          description: Berita diperbarui.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPost" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: VERSION_CONFLICT (`current` = AdminPost terbaru) atau VALIDATION_ERROR (slug sudah dipakai).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Admin Content]
+      operationId: adminDeletePost
+      summary: Hapus berita draft atau archived setelah konfirmasi (guideline p13 "Hapus Konten", PRD 4.5).
+      description: |
+        Hanya `draft` atau `archived`; berita yang tampil atau terjadwal diarsipkan dahulu (409 VERSION_CONFLICT
+        dengan `current`). Like ikut terhapus; banner yang menunjuk berita ini menjadi `available = false` (AC F08-2).
+        Cover yang tidak lagi dipakai dibersihkan job berkas. Tercatat di audit.
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentPostId"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204": { description: Berita dihapus. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/posts/{postId}/publish:
+    post:
+      tags: [Admin Content]
+      operationId: adminPublishPost
+      summary: Terbitkan sekarang atau jadwalkan dengan published_at (AC F08-1, F15-5).
+      description: |
+        Invarian waktu terbit (berlaku untuk semua transisi berita, sesuai CHECK `posts_published_chk` dan
+        `posts_announced_chk`): sekali berita pernah tampil ke anggota (status published dengan
+        `published_at <= now`), `published_at` menyimpan waktu tayang pertama dan tidak pernah dikosongkan atau
+        dipindah ke masa depan lagi. Karena itu berita terjadwal selalu belum pernah tampil dan `announced_at`-nya
+        null, dan `slug_locked` dapat diturunkan dari `published_at` saja.
+
+        Aturan per keadaan:
+        - `draft` yang belum pernah tampil (`published_at` null): `published_at` kosong/null = terbit sekarang
+          (waktu server); masa depan = terjadwal (`state = scheduled`, tidak tampil di feed sampai waktunya,
+          AC F08-1).
+        - `draft` hasil restore yang pernah tampil (`published_at` terisi): hanya terbit sekarang; berita kembali
+          tampil dengan `published_at` (Tgl Publikasi) aslinya. `published_at` masa depan -> 409 VALIDATION_ERROR
+          (`field_errors.published_at`), karena berita yang pernah tampil tidak dapat dijadwalkan ulang.
+        - `scheduled`: menjadwalkan ulang (masa depan) atau terbit sekarang (null).
+        - `published` yang sudah tampil atau `archived` -> 409 VERSION_CONFLICT dengan `current` (archived
+          dipulihkan dahulu lewat restore).
+        Waktu lampau selalu ditolak 400 VALIDATION_ERROR; klien mengirim null untuk "terbit sekarang".
+
+        Pengumuman (AC F15-5): job `content.announce` (setiap menit) mengklaim berita dengan
+        `UPDATE posts SET announced_at = now WHERE status = 'published' AND published_at <= now AND announced_at
+        IS NULL ... RETURNING` lalu, dalam transaksi yang sama, membuat notifikasi inbox kategori `news` (rute
+        `/news/{slug}`) dengan `dedup_key = news:<post_id>:<user_id>` (ON CONFLICT DO NOTHING) sehingga setiap
+        berita diumumkan tepat sekali. Penerima: pengguna alumni berstatus akun `active` yang effective_status-nya
+        verified atau expiring pada saat pengumuman (anggota yang dapat membuka berita, PRD 2.2); unverified,
+        expired, suspended, pending_otp, disabled dan deletion_pending tidak menerima. Push dikirim hanya bila
+        preferensi push `news` aktif (baris notification_preferences yang tidak ada = aktif); berita tidak
+        memiliki kanal email (ARCHITECTURE §4.7). Berita yang sudah diumumkan tidak diumumkan lagi walaupun
+        diterbitkan ulang; berita yang diarsipkan atau dibatalkan jadwalnya sebelum waktunya tidak pernah
+        diumumkan atau dihidupkan kembali oleh job lama. Tercatat di audit.
+      x-kapdh-access: { audience: admin, permissions: [content.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ContentPostId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminPostPublishRequest" }
+      responses:
+        "200":
+          description: Berita terbit atau terjadwal.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPost" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: |
+            VERSION_CONFLICT (`current`; versi lama atau keadaan tidak dapat diterbitkan), VALIDATION_ERROR
+            (berita yang pernah tampil dijadwalkan ke masa depan), atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/posts/{postId}/unschedule:
+    post:
+      tags: [Admin Content]
+      operationId: adminUnschedulePost
+      summary: Batalkan jadwal terbit; berita terjadwal kembali menjadi draft (AC F15-5).
+      description: |
+        Hanya untuk `state = scheduled` (published dengan `published_at > now`). Berita terjadwal belum pernah
+        tampil dan `announced_at`-nya selalu null (invarian pada publish), sehingga `published_at` dikosongkan
+        tanpa melanggar `posts_announced_chk` dan job pengumuman tidak pernah menerbitkannya. Pembaruan bersyarat
+        `WHERE version = :v AND status = 'published' AND published_at > now AND announced_at IS NULL`; bila
+        waktunya sudah lewat (berita sudah tampil) atau keadaan lain -> 409 VERSION_CONFLICT dengan `current`;
+        gunakan archive untuk menurunkan berita yang tampil.
+      x-kapdh-access: { audience: admin, permissions: [content.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ContentPostId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Berita kembali menjadi draft.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPost" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/posts/{postId}/archive:
+    post:
+      tags: [Admin Content]
+      operationId: adminArchivePost
+      summary: Arsipkan berita; hilang dari feed dan tidak pernah dihidupkan kembali oleh job (AC F08-1, F15-5).
+      description: |
+        Dari `draft`, `scheduled`, atau `published` -> `archived`. Berita archived tidak tampil di feed/detail
+        anggota (404) dan job terjadwal lama tidak dapat menerbitkan atau mengumumkannya karena job hanya
+        memproses `status = 'published'` (AC F15-5). Banner yang menunjuknya menjadi `available = false`.
+
+        Waktu terbit mengikuti invarian pada publish: berita `scheduled` (belum pernah tampil) diarsipkan dengan
+        `published_at` dikosongkan, sehingga jadwal yang lewat kemudian tidak pernah terbaca sebagai "pernah
+        tampil"; berita yang pernah tampil menyimpan `published_at` dan `announced_at`. Satu pernyataan bersyarat:
+        `SET status = 'archived', published_at = CASE WHEN published_at > now THEN NULL ELSE published_at END`.
+        Sudah archived -> 409 VERSION_CONFLICT. Tercatat di audit.
+      x-kapdh-access: { audience: admin, permissions: [content.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ContentPostId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Berita diarsipkan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPost" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/posts/{postId}/restore:
+    post:
+      tags: [Admin Content]
+      operationId: adminRestorePost
+      summary: Pulihkan berita archived menjadi draft; terbit lagi hanya lewat publish eksplisit (AC F15-5).
+      description: |
+        Hanya dari `archived` -> `draft`; tidak pernah langsung tampil. `published_at` dan `announced_at` tidak
+        berubah: berita yang pernah tampil tetap `slug_locked` dan hanya dapat diterbitkan ulang sekarang dengan
+        Tgl Publikasi aslinya; berita yang pernah diumumkan tidak diumumkan lagi. Penerbitan ulang memerlukan
+        POST .../publish oleh pengurus. Keadaan lain -> 409 VERSION_CONFLICT dengan `current`.
+      x-kapdh-access: { audience: admin, permissions: [content.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ContentPostId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Berita kembali menjadi draft.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPost" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/banners:
+    get:
+      tags: [Admin Content]
+      operationId: adminListBanners
+      summary: Tabel banner beranda dengan status jendela tayang (guideline p13 tab Banner, F-08).
+      description: |
+        Kolom guideline p13 tab Banner: judul, gambar, kategori, tanggal publikasi (`starts_at`), aksi kelola.
+        `state` turunan server dari `active` dan jendela tanggal; target diselesaikan agar pengurus melihat banner
+        yang tujuannya sudah tidak tersedia (AC F08-2).
+
+        Kolom "Kategori": tabel banners R1.0 tidak memiliki kategori sendiri (PRD 6.2: media, target, urutan,
+        mulai/selesai). Kolom diisi `target.category`, yaitu kategori berita/event tujuan banner; null (ditampilkan
+        "-") untuk target `none`, `page`, `url`, atau tujuan tanpa kategori. Kategori milik banner sendiri
+        memerlukan kolom DB baru dan keputusan produk.
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Cari judul banner.
+          schema: { type: string, maxLength: 100 }
+        - name: state
+          in: query
+          required: false
+          description: Filter keadaan tayang; kosong = semua.
+          schema: { $ref: "#/components/schemas/AdminBannerState" }
+        - name: sort
+          in: query
+          required: false
+          description: Urutan; bawaan `sort_order_asc`. Selalu ditambah `id` sebagai pemutus seri (keyset).
+          schema: { $ref: "#/components/schemas/AdminBannerSort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman banner.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBannerPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Admin Content]
+      operationId: adminCreateBanner
+      summary: Buat banner dengan gambar, target tervalidasi, jendela tayang dan urutan (F-08, AC F08-2).
+      description: |
+        Validasi target (tabel banners): `none` tanpa nilai; `post` = id berita; `event` = id event; `page` = slug
+        halaman; `url` = tautan https (http/javascript: ditolak). Tujuan internal harus ada saat disimpan; bila
+        kemudian tidak tersedia, Beranda menandainya `available = false`. `image_file_id` harus berkas purpose
+        `banner_image` dari POST /admin/content/media. `ends_at` harus setelah `starts_at`. Pelanggaran -> 400
+        VALIDATION_ERROR dengan `field_errors` (mis. `target_value`).
+      x-kapdh-access: { audience: admin, permissions: [content.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminBannerCreateRequest" }
+      responses:
+        "201":
+          description: Banner dibuat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBanner" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/banners/{bannerId}:
+    get:
+      tags: [Admin Content]
+      operationId: adminGetBanner
+      summary: Detail banner untuk formulir edit (F-08).
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentBannerId"
+      responses:
+        "200":
+          description: Detail banner.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBanner" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Admin Content]
+      operationId: adminUpdateBanner
+      summary: Ubah banner, termasuk urutan, jendela, aktif dan target (AC F08-2, F15-4).
+      description: |
+        Hanya field yang dikirim yang berubah; `version` naik. `target_type` dan `target_value` wajib dikirim
+        bersama dan divalidasi seperti saat membuat. Mengganti gambar melepas gambar lama untuk dibersihkan job
+        berkas.
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentBannerId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminBannerUpdateRequest" }
+      responses:
+        "200":
+          description: Banner diperbarui.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBanner" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Admin Content]
+      operationId: adminDeleteBanner
+      summary: Hapus banner setelah konfirmasi (guideline p13 "Hapus Konten", PRD 4.5).
+      description: |
+        Banner dapat dihapus pada keadaan apa pun; untuk menyembunyikan sementara gunakan `active = false`.
+        Gambar yang tidak lagi dipakai dibersihkan job berkas.
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentBannerId"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204": { description: Banner dihapus. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/pages:
+    get:
+      tags: [Admin Content]
+      operationId: adminListPages
+      summary: Daftar halaman informasi dan legal beserta versi tayang dan draf (F-08, PRD 6.2).
+      description: |
+        Urutan bawaan `system_first`: halaman baku lebih dahulu (kebijakan-privasi, ketentuan, ketentuan-komunitas,
+        bantuan, tentang), lalu halaman lain menurut judul. `has_unpublished_changes` menandai draf yang berbeda
+        dari salinan tayang.
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Cari judul atau slug.
+          schema: { type: string, maxLength: 100 }
+        - name: sort
+          in: query
+          required: false
+          description: Urutan; bawaan `system_first`. Selalu ditambah `id` sebagai pemutus seri (keyset).
+          schema: { $ref: "#/components/schemas/AdminInfoPageSort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman informasi.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminInfoPageList" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Admin Content]
+      operationId: adminCreatePage
+      summary: Buat halaman informasi baru sebagai draf; belum terlihat publik sampai diterbitkan (F-08).
+      description: |
+        Halaman baru selalu draf (belum ada salinan tayang). `body_html` disanitasi server. Slug sudah dipakai ->
+        409 VALIDATION_ERROR (`field_errors.slug`). Halaman legal baku dibuat oleh seed referensi (PRD 8.2 langkah
+        4), bukan lewat endpoint ini.
+      x-kapdh-access: { audience: admin, permissions: [content.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminInfoPageCreateRequest" }
+      responses:
+        "201":
+          description: Halaman dibuat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminInfoPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: VALIDATION_ERROR (slug sudah dipakai) atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/pages/{pageId}:
+    get:
+      tags: [Admin Content]
+      operationId: adminGetPage
+      summary: Detail halaman; draf kerja dan salinan tayang terpisah (F-08, PRD 6.2).
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentPageId"
+      responses:
+        "200":
+          description: Detail halaman.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminInfoPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Admin Content]
+      operationId: adminUpdatePage
+      summary: Simpan draf halaman; teks yang tayang dan versi legal tidak berubah (AC F15-4, PRD 6.2).
+      description: |
+        Mengubah draf (`title`, `body_html`) dan menaikkan `version`; salinan tayang dan `published.version` tetap
+        sampai POST .../publish. `slug` hanya dapat diubah untuk halaman non-baku yang belum pernah terbit
+        (`slug_locked = false`); selain itu 400 VALIDATION_ERROR.
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentPageId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminInfoPageUpdateRequest" }
+      responses:
+        "200":
+          description: Draf disimpan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminInfoPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: VERSION_CONFLICT (`current` = AdminInfoPage terbaru) atau VALIDATION_ERROR (slug sudah dipakai).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Admin Content]
+      operationId: adminDeletePage
+      summary: Hapus halaman informasi non-baku setelah konfirmasi (PRD 4.5).
+      description: |
+        Halaman baku (`system = true`: kebijakan-privasi, ketentuan, ketentuan-komunitas, bantuan, tentang) tidak
+        dapat dihapus karena wajib tersedia (PRD 8.2) dan versinya menjadi acuan persetujuan (F-01) -> 409
+        VALIDATION_ERROR. Banner yang menunjuk halaman ini menjadi `available = false` (AC F08-2). Versi tayang
+        yang pernah terbit tetap tercatat di audit. Tercatat di audit.
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentPageId"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204": { description: Halaman dihapus. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: VERSION_CONFLICT (`current`) atau VALIDATION_ERROR (halaman baku tidak dapat dihapus).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/pages/{pageId}/publish:
+    post:
+      tags: [Admin Content]
+      operationId: adminPublishPage
+      summary: Terbitkan draf sebagai versi tayang baru; versi legal naik satu (F-01, F-08, PRD 6.2).
+      description: |
+        Dalam satu transaksi: draf disalin ke salinan tayang, `published.version` naik satu (mulai 1),
+        `published.published_at` = waktu server, `version` naik, dan untuk dokumen legal (`legal_document`)
+        `app_settings.legal.<privacy|terms|community>_version` diperbarui ke versi baru. Audit `page.published`
+        menyimpan versi beserta teks yang diterbitkan sehingga versi yang pernah disetujui pengguna dapat
+        direproduksi (F-01, F-17). Menerbitkan `privacy` atau `terms` mengubah `LegalConsentVersions.policy_version`
+        gabungan (`privacy:<v>;terms:<v>`, GET /public/pages) sehingga registrasi berikutnya menyetujui pasangan
+        versi yang baru; persetujuan lama di `users.policy_version` tidak diubah.
+
+        Draf identik dengan salinan tayang -> 409 VALIDATION_ERROR (tidak ada perubahan; versi legal tidak dinaikkan
+        tanpa perubahan). Versi lama -> 409 VERSION_CONFLICT dengan `current`.
+      x-kapdh-access: { audience: admin, permissions: [content.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ContentPageId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminInfoPagePublishRequest" }
+      responses:
+        "200":
+          description: Versi baru tayang.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminInfoPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: VERSION_CONFLICT (`current`), VALIDATION_ERROR (tidak ada perubahan), atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/post-categories:
+    get:
+      tags: [Admin Content]
+      operationId: adminListPostCategories
+      summary: Tabel kategori berita beserta jumlah pemakaian (guideline p13 "Manajemen Kategori", F-15).
+      description: |
+        Hanya kategori `kind = post`, termasuk yang nonaktif. `usage_count` = jumlah berita (semua keadaan) yang
+        memakai kategori; kategori yang dipakai tidak dapat dihapus (nonaktifkan saja). Kategori event dikelola
+        lewat /admin/content/event-categories dengan izin events.manage.
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - name: active
+          in: query
+          required: false
+          description: Filter aktif/nonaktif; kosong = semua.
+          schema: { type: boolean }
+        - name: q
+          in: query
+          required: false
+          description: Cari label atau slug.
+          schema: { type: string, maxLength: 80 }
+        - name: sort
+          in: query
+          required: false
+          description: Urutan; bawaan `sort_order_asc`. Selalu ditambah `id` sebagai pemutus seri (keyset).
+          schema: { $ref: "#/components/schemas/AdminContentCategorySort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman kategori berita.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminContentCategoryPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Admin Content]
+      operationId: adminCreatePostCategory
+      summary: Buat kategori berita (guideline p13 "Manajemen Kategori").
+      description: |
+        Kategori dibuat dengan `kind = post`. `slug` kosong dibangkitkan dari label. Slug unik per jenis
+        (`categories_kind_slug_key`); sudah dipakai -> 409 VALIDATION_ERROR (`field_errors.slug`). Tercatat di
+        audit.
+      x-kapdh-access: { audience: admin, permissions: [content.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminContentCategoryCreateRequest" }
+      responses:
+        "201":
+          description: Kategori berita dibuat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminContentCategory" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: VALIDATION_ERROR (slug sudah dipakai) atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/post-categories/{categoryId}:
+    get:
+      tags: [Admin Content]
+      operationId: adminGetPostCategory
+      summary: Detail kategori berita beserta jumlah pemakaian.
+      description: Id kategori berjenis event pada path ini -> 404 NOT_FOUND.
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentCategoryId"
+      responses:
+        "200":
+          description: Detail kategori berita.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminContentCategory" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Admin Content]
+      operationId: adminUpdatePostCategory
+      summary: Ubah label, slug, urutan atau status aktif kategori berita (AC F15-4).
+      description: |
+        Jenis tidak dapat diubah. `active = false` menyembunyikan kategori dari pilihan baru dan tab anggota, tetapi
+        label historis tetap tampil pada berita yang memakainya. Slug sudah dipakai -> 409 VALIDATION_ERROR. Id
+        kategori event -> 404 NOT_FOUND. Tercatat di audit.
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentCategoryId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminContentCategoryUpdateRequest" }
+      responses:
+        "200":
+          description: Kategori berita diperbarui.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminContentCategory" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: VERSION_CONFLICT (`current`) atau VALIDATION_ERROR (slug sudah dipakai).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Admin Content]
+      operationId: adminDeletePostCategory
+      summary: Hapus kategori berita yang belum dipakai setelah konfirmasi (PRD 4.5).
+      description: |
+        Kategori yang dipakai berita (FK RESTRICT `posts.category_id`) -> 409 VALIDATION_ERROR dengan saran
+        menonaktifkan; pemeriksaan ditegakkan constraint database (SQLSTATE 23503/23001), bukan hitungan
+        baca-lalu-hapus. Id kategori event -> 404 NOT_FOUND. Tercatat di audit.
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentCategoryId"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204": { description: Kategori berita dihapus. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: VERSION_CONFLICT (`current`) atau VALIDATION_ERROR (kategori masih dipakai).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/event-categories:
+    get:
+      tags: [Admin Content]
+      operationId: adminListManagedEventCategories
+      summary: Tabel pengelolaan kategori event beserta jumlah pemakaian (guideline p14 "Manajemen Kategori").
+      description: |
+        Hanya kategori `kind = event`, termasuk yang nonaktif, dengan paging, urutan dan `usage_count` (jumlah
+        event semua status yang memakai kategori). Izin events.manage, sehingga pengurus event mengelola
+        kategorinya sendiri tanpa izin konten (PRD 2.3, AC F15-1). Daftar ringkas untuk pilihan formulir event
+        disediakan domain events (GET /admin/event-categories).
+      x-kapdh-access: { audience: admin, permissions: [events.manage] }
+      parameters:
+        - name: active
+          in: query
+          required: false
+          description: Filter aktif/nonaktif; kosong = semua.
+          schema: { type: boolean }
+        - name: q
+          in: query
+          required: false
+          description: Cari label atau slug.
+          schema: { type: string, maxLength: 80 }
+        - name: sort
+          in: query
+          required: false
+          description: Urutan; bawaan `sort_order_asc`. Selalu ditambah `id` sebagai pemutus seri (keyset).
+          schema: { $ref: "#/components/schemas/AdminContentCategorySort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman kategori event.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminContentCategoryPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Admin Content]
+      operationId: adminCreateEventCategory
+      summary: Buat kategori event (guideline p14 "Manajemen Kategori", izin events.manage).
+      description: |
+        Kategori dibuat dengan `kind = event`. `slug` kosong dibangkitkan dari label. Slug unik per jenis; sudah
+        dipakai -> 409 VALIDATION_ERROR (`field_errors.slug`). Tercatat di audit.
+      x-kapdh-access: { audience: admin, permissions: [events.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminContentCategoryCreateRequest" }
+      responses:
+        "201":
+          description: Kategori event dibuat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminContentCategory" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: VALIDATION_ERROR (slug sudah dipakai) atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/event-categories/{categoryId}:
+    get:
+      tags: [Admin Content]
+      operationId: adminGetEventCategory
+      summary: Detail kategori event beserta jumlah pemakaian (izin events.manage).
+      description: Id kategori berjenis post pada path ini -> 404 NOT_FOUND.
+      x-kapdh-access: { audience: admin, permissions: [events.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentCategoryId"
+      responses:
+        "200":
+          description: Detail kategori event.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminContentCategory" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Admin Content]
+      operationId: adminUpdateEventCategory
+      summary: Ubah label, slug, urutan atau status aktif kategori event (AC F15-4, izin events.manage).
+      description: |
+        Jenis tidak dapat diubah. `active = false` menyembunyikan kategori dari pilihan event baru dan tab anggota,
+        tetapi label historis tetap tampil pada event yang memakainya. Slug sudah dipakai -> 409 VALIDATION_ERROR.
+        Id kategori berita -> 404 NOT_FOUND. Tercatat di audit.
+      x-kapdh-access: { audience: admin, permissions: [events.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentCategoryId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminContentCategoryUpdateRequest" }
+      responses:
+        "200":
+          description: Kategori event diperbarui.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminContentCategory" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: VERSION_CONFLICT (`current`) atau VALIDATION_ERROR (slug sudah dipakai).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Admin Content]
+      operationId: adminDeleteEventCategory
+      summary: Hapus kategori event yang belum dipakai setelah konfirmasi (PRD 4.5, izin events.manage).
+      description: |
+        Kategori yang dipakai event (FK RESTRICT `events.category_id`) -> 409 VALIDATION_ERROR dengan saran
+        menonaktifkan; pemeriksaan ditegakkan constraint database (SQLSTATE 23503/23001). Id kategori berita ->
+        404 NOT_FOUND. Tercatat di audit.
+      x-kapdh-access: { audience: admin, permissions: [events.manage] }
+      parameters:
+        - $ref: "#/components/parameters/ContentCategoryId"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204": { description: Kategori event dihapus. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: VERSION_CONFLICT (`current`) atau VALIDATION_ERROR (kategori masih dipakai).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/content/media:
+    post:
+      tags: [Admin Content]
+      operationId: adminUploadContentMedia
+      summary: Unggah gambar cover berita atau banner (N-10, PRD 2.5).
+      description: |
+        JPG/PNG <= 5 MB; magic bytes diperiksa, dimensi/decompression berlebihan ditolak, EXIF dibuang dan gambar
+        di-encode ulang (N-10). Berkas berpurpose `post_cover`/`banner_image` bervisibilitas publik karena tampil di
+        aplikasi; tidak boleh berisi data pribadi. Berkas yang tidak dilampirkan ke berita/banner dalam 24 jam
+        dihapus job `files.cleanup-temp` (PRD 2.5). Batas 10 unggahan berhasil per purpose per admin per 24 jam
+        bergulir (N-10) -> 429 RATE_LIMITED.
+      x-kapdh-access: { audience: admin, permissions: [content.manage] }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/AdminContentMediaUploadRequest" }
+      responses:
+        "201":
+          description: Gambar diterima dan diproses.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContentMedia" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "413": { $ref: "#/components/responses/FileInvalid" }
+        "415": { $ref: "#/components/responses/FileInvalid" }
+        "422": { $ref: "#/components/responses/FileInvalid" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  parameters:
+    ContentPostId:
+      name: postId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ContentBannerId:
+      name: bannerId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ContentPageId:
+      name: pageId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ContentCategoryId:
+      name: categoryId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  schemas:
+    AdminContentActor:
+      type: object
+      description: Pengurus pelaku (nama tampilan saja; tanpa email/kontak).
+      required: [admin_id, display_name]
+      properties:
+        admin_id: { type: string, format: uuid }
+        display_name: { type: string }
+
+    ContentImage:
+      type: object
+      description: Gambar konten publik yang sudah diproses server (N-10).
+      required: [file_id, url]
+      properties:
+        file_id: { type: string, format: uuid }
+        url: { type: string, format: uri }
+
+    AdminPostState:
+      type: string
+      enum: [draft, scheduled, published, archived]
+      description: |
+        Keadaan berita untuk pengurus (F-08), diturunkan server dari kolom status dan published_at (tidak
+        disimpan): `draft` = status draft; `scheduled` = status published dengan `published_at > now` (belum
+        tampil, AC F08-1); `published` = status published dengan `published_at <= now` (tampil di feed);
+        `archived` = status archived, tidak tampil dan tidak pernah dihidupkan kembali oleh job (AC F15-5).
+        Transisi: draft -> scheduled|published (publish; draft yang pernah tampil hanya -> published),
+        scheduled -> scheduled|published (publish ulang), scheduled -> draft (unschedule, published_at
+        dikosongkan), scheduled -> published (waktu tiba), draft|scheduled|published -> archived (archive;
+        published_at berita terjadwal dikosongkan), archived -> draft (restore). Hapus hanya draft atau archived.
+
+    AdminPostSort:
+      type: string
+      enum: [updated_at_desc, published_at_desc, created_at_desc, title_asc]
+      description: Urutan tabel berita; bawaan `updated_at_desc`.
+
+    AdminPostSummary:
+      type: object
+      required:
+        [id, slug, title, state, category, cover, published_at, like_count, version, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        title: { type: string }
+        state: { $ref: "#/components/schemas/AdminPostState" }
+        category:
+          oneOf:
+            - $ref: "#/components/schemas/ContentCategoryRef"
+            - type: "null"
+        cover:
+          oneOf:
+            - $ref: "#/components/schemas/ContentImage"
+            - type: "null"
+        published_at:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            Waktu terbit (kolom "Tgl Publikasi"). `scheduled`: waktu terjadwal di masa depan. `published`: waktu
+            tayang pertama. `draft`/`archived`: waktu tayang pertama bila berita pernah tampil (selalu <= now),
+            null bila belum pernah tampil; jadwal yang dibatalkan atau diarsipkan sebelum tiba tidak disimpan.
+        like_count: { type: integer, minimum: 0 }
+        version: { type: string, description: Versi untuk If-Match (AC F15-4). }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AdminPost:
+      allOf:
+        - $ref: "#/components/schemas/AdminPostSummary"
+        - type: object
+          required: [excerpt, body_html, announced_at, slug_locked, author]
+          properties:
+            excerpt: { type: [string, "null"] }
+            body_html: { type: string, description: HTML yang sudah disanitasi server (PRD 3.8). }
+            announced_at:
+              type: [string, "null"]
+              format: date-time
+              description: Waktu notifikasi berita dibuat job content.announce; terisi sekali (AC F15-5).
+            slug_locked:
+              type: boolean
+              description: |
+                True bila berita pernah tampil ke anggota, diturunkan sebagai `published_at IS NOT NULL AND
+                published_at <= now` (invarian waktu terbit pada publish/unschedule/archive); slug tidak dapat
+                diubah lagi agar tautan `/news/{slug}` di notifikasi dan banner tetap berlaku.
+            author:
+              oneOf:
+                - $ref: "#/components/schemas/AdminContentActor"
+                - type: "null"
+
+    AdminPostPage:
+      type: object
+      required: [items, next_cursor, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminPostSummary" }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer, minimum: 0 }
+
+    AdminPostCreateRequest:
+      type: object
+      required: [title, body_html]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200, description: Judul; spasi di tepi dipangkas. }
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 160
+          pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+          description: Opsional; kosong = dibangkitkan dari judul dan dibuat unik.
+        excerpt: { type: [string, "null"], maxLength: 300 }
+        body_html:
+          type: string
+          minLength: 1
+          maxLength: 200000
+          description: HTML dari editor; disanitasi server sebelum disimpan (PRD 3.8). Kosong setelah sanitasi ditolak.
+        cover_file_id:
+          type: [string, "null"]
+          format: uuid
+          description: Berkas purpose `post_cover` dari POST /admin/content/media.
+        category_id:
+          type: [string, "null"]
+          format: uuid
+          description: Kategori `post` yang aktif.
+
+    AdminPostUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 160
+          pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+          description: Hanya bila `slug_locked = false`.
+        excerpt: { type: [string, "null"], maxLength: 300 }
+        body_html: { type: string, minLength: 1, maxLength: 200000 }
+        cover_file_id: { type: [string, "null"], format: uuid }
+        category_id:
+          type: [string, "null"]
+          format: uuid
+          description: Kategori `post`; kategori nonaktif hanya boleh dipertahankan, tidak dipilih baru.
+
+    AdminPostPublishRequest:
+      type: object
+      properties:
+        published_at:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            Kosong/null = terbit sekarang (waktu server); masa depan = terjadwal; lampau ditolak (400). Berita yang
+            pernah tampil (draft hasil restore dengan `slug_locked = true`) hanya menerima null dan kembali tampil
+            dengan Tgl Publikasi aslinya; masa depan -> 409 VALIDATION_ERROR.
+
+    AdminBannerState:
+      type: string
+      enum: [inactive, scheduled, live, ended]
+      description: |
+        Keadaan tayang turunan server: `inactive` (`active = false`), `scheduled` (`starts_at > now`), `live` (di
+        dalam jendela dan aktif; tampil di Beranda), `ended` (`ends_at <= now`, tidak tampil, AC F08-2).
+
+    AdminBannerSort:
+      type: string
+      enum: [sort_order_asc, starts_at_desc, updated_at_desc, title_asc]
+      description: |
+        Urutan tabel banner; bawaan `sort_order_asc` (urutan tampil Beranda: `sort_order` naik lalu `starts_at`
+        turun). `starts_at_desc` mengikuti kolom "Tgl Publikasi".
+
+    AdminBannerTarget:
+      type: object
+      required: [type, value, available, label, route, category]
+      properties:
+        type: { $ref: "#/components/schemas/BannerTargetType" }
+        value:
+          type: [string, "null"]
+          description: id berita/event, slug halaman, atau URL https; null untuk `none`.
+        available:
+          type: boolean
+          description: Tujuan dapat dibuka anggota saat ini (AC F08-2); selalu true untuk `none` dan `url`.
+        label:
+          type: [string, "null"]
+          description: Judul berita/event/halaman tujuan untuk tabel pengurus; null bila tidak ada atau `none`/`url`.
+        route:
+          type: [string, "null"]
+          description: Rute aplikasi yang akan dibuka anggota (`/news/{slug}`, `/events/{id}`, `/legal/{slug}`).
+        category:
+          description: |
+            Kategori berita/event tujuan, untuk kolom "Kategori" tabel banner (guideline p13); banner tidak memiliki
+            kategori sendiri di R1.0. Null untuk `none`, `page`, `url`, tujuan yang sudah dihapus, atau tujuan tanpa
+            kategori. Label historis tetap dikirim walau kategori nonaktif.
+          oneOf:
+            - $ref: "#/components/schemas/ContentCategoryRef"
+            - type: "null"
+
+    AdminBanner:
+      type: object
+      required:
+        - id
+        - title
+        - image
+        - target
+        - sort_order
+        - starts_at
+        - ends_at
+        - active
+        - state
+        - version
+        - created_at
+        - updated_at
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        image: { $ref: "#/components/schemas/ContentImage" }
+        target: { $ref: "#/components/schemas/AdminBannerTarget" }
+        sort_order: { type: integer, description: Urutan tampil naik. }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: [string, "null"], format: date-time, description: Null = tanpa batas akhir. }
+        active: { type: boolean }
+        state: { $ref: "#/components/schemas/AdminBannerState" }
+        version: { type: string, description: Versi untuk If-Match (AC F15-4). }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AdminBannerPage:
+      type: object
+      required: [items, next_cursor, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminBanner" }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer, minimum: 0 }
+
+    AdminBannerCreateRequest:
+      type: object
+      required: [title, image_file_id, target_type, target_value, starts_at]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        image_file_id:
+          type: string
+          format: uuid
+          description: Berkas purpose `banner_image` dari POST /admin/content/media.
+        target_type: { $ref: "#/components/schemas/BannerTargetType" }
+        target_value:
+          type: [string, "null"]
+          maxLength: 2048
+          description: Null untuk `none`; id berita/event (uuid); slug halaman; URL https untuk `url`.
+        sort_order: { type: integer, minimum: 0, maximum: 32767, default: 0 }
+        starts_at: { type: string, format: date-time }
+        ends_at:
+          type: [string, "null"]
+          format: date-time
+          description: Harus setelah starts_at; null = tanpa batas.
+        active: { type: boolean, default: true }
+
+    AdminBannerUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        image_file_id: { type: string, format: uuid }
+        target_type: { $ref: "#/components/schemas/BannerTargetType" }
+        target_value:
+          { type: [string, "null"], maxLength: 2048, description: Wajib dikirim bersama target_type. }
+        sort_order: { type: integer, minimum: 0, maximum: 32767 }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: [string, "null"], format: date-time }
+        active: { type: boolean }
+
+    AdminInfoPageSort:
+      type: string
+      enum: [system_first, title_asc, updated_at_desc, published_at_desc]
+      description: |
+        Urutan tabel halaman; bawaan `system_first` (halaman baku menurut urutan seed, lalu judul).
+        `published_at_desc` menempatkan halaman yang belum pernah terbit di akhir.
+
+    AdminInfoPagePublished:
+      type: object
+      description: Salinan TAYANG halaman (yang dibaca publik dan disetujui pengguna, PRD 6.2).
+      required: [title, body_html, version, published_at]
+      properties:
+        title: { type: string }
+        body_html: { type: string }
+        version: { type: string, description: "Versi legal tayang (published_version), mulai 1." }
+        published_at: { type: string, format: date-time }
+
+    AdminInfoPageSummary:
+      type: object
+      required:
+        - id
+        - slug
+        - title
+        - legal_document
+        - system
+        - published_version
+        - published_at
+        - has_unpublished_changes
+        - version
+        - updated_at
+        - updated_by
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        title: { type: string, description: Judul draf kerja. }
+        legal_document:
+          oneOf:
+            - $ref: "#/components/schemas/PageLegalDocument"
+            - type: "null"
+        system:
+          type: boolean
+          description: Halaman baku dari seed referensi (PRD 8.2); tidak dapat dihapus dan slug terkunci.
+        published_version:
+          { type: [string, "null"], description: Versi tayang; null bila belum pernah terbit. }
+        published_at: { type: [string, "null"], format: date-time }
+        has_unpublished_changes:
+          type: boolean
+          description: Draf berbeda dari salinan tayang (atau belum pernah terbit).
+        version:
+          { type: string, description: Versi draf untuk If-Match (AC F15-4); berbeda dari versi legal. }
+        updated_at: { type: string, format: date-time }
+        updated_by:
+          oneOf:
+            - $ref: "#/components/schemas/AdminContentActor"
+            - type: "null"
+
+    AdminInfoPage:
+      allOf:
+        - $ref: "#/components/schemas/AdminInfoPageSummary"
+        - type: object
+          required: [body_html, published, slug_locked, created_at]
+          properties:
+            body_html: { type: string, description: Draf kerja yang sudah disanitasi server. }
+            published:
+              oneOf:
+                - $ref: "#/components/schemas/AdminInfoPagePublished"
+                - type: "null"
+            slug_locked:
+              type: boolean
+              description: True untuk halaman baku atau halaman yang pernah terbit.
+            created_at: { type: string, format: date-time }
+
+    AdminInfoPageList:
+      type: object
+      description: Daftar halaman admin ({items, next_cursor, total}); nama tidak memakai akhiran Page agar tidak rancu.
+      required: [items, next_cursor, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminInfoPageSummary" }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer, minimum: 0 }
+
+    AdminInfoPageCreateRequest:
+      type: object
+      required: [slug, title, body_html]
+      properties:
+        slug: { type: string, minLength: 1, maxLength: 120, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        body_html:
+          { type: string, minLength: 1, maxLength: 200000, description: Disanitasi server (PRD 3.8). }
+
+    AdminInfoPageUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 120
+          pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+          description: Hanya bila `slug_locked = false`.
+        title: { type: string, minLength: 1, maxLength: 200 }
+        body_html: { type: string, minLength: 1, maxLength: 200000 }
+
+    AdminInfoPagePublishRequest:
+      type: object
+      properties:
+        change_note:
+          type: [string, "null"]
+          maxLength: 500
+          description: Ringkasan perubahan untuk audit `page.published` (F-17); tidak ditampilkan publik.
+
+    AdminContentCategorySort:
+      type: string
+      enum: [sort_order_asc, label_asc, usage_desc, updated_at_desc]
+      description: Urutan tabel kategori; bawaan `sort_order_asc` (lalu `label`), sama dengan urutan tab anggota.
+
+    AdminContentCategory:
+      type: object
+      description: |
+        Kategori untuk tabel "Manajemen Kategori" (berita: guideline p13, izin content.manage; event: guideline
+        p14, izin events.manage).
+      required: [id, kind, slug, label, sort_order, active, usage_count, version, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/ContentCategoryKind" }
+        slug: { type: string }
+        label: { type: string }
+        sort_order: { type: integer }
+        active: { type: boolean }
+        usage_count:
+          type: integer
+          minimum: 0
+          description: |
+            Jumlah berita (semua keadaan, untuk `post`) atau event (semua status, untuk `event`) yang memakai
+            kategori; lebih dari 0 berarti kategori tidak dapat dihapus, hanya dinonaktifkan.
+        version: { type: string, description: Versi untuk If-Match (AC F15-4). }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AdminContentCategoryPage:
+      type: object
+      required: [items, next_cursor, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminContentCategory" }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer, minimum: 0 }
+
+    AdminContentCategoryCreateRequest:
+      type: object
+      description: Jenis kategori ditentukan path (post-categories atau event-categories), bukan body.
+      required: [label]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 80 }
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+          description: Opsional; kosong = dibangkitkan dari label. Unik per jenis.
+        sort_order: { type: integer, minimum: 0, maximum: 32767, default: 0 }
+        active: { type: boolean, default: true }
+
+    AdminContentCategoryUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        label: { type: string, minLength: 1, maxLength: 80 }
+        slug: { type: string, minLength: 1, maxLength: 80, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" }
+        sort_order: { type: integer, minimum: 0, maximum: 32767 }
+        active: { type: boolean }
+
+    ContentMediaPurpose:
+      type: string
+      enum: [post_cover, banner_image]
+      description: Purpose berkas gambar konten (files.purpose); menentukan tempat berkas boleh dilampirkan.
+
+    AdminContentMediaUploadRequest:
+      type: object
+      required: [purpose, file]
+      properties:
+        purpose: { $ref: "#/components/schemas/ContentMediaPurpose" }
+        file: { type: string, format: binary, description: Gambar JPG/PNG maksimal 5 MB (N-10). }
+
+    ContentMedia:
+      type: object
+      required: [file_id, purpose, url, mime, bytes, width, height]
+      properties:
+        file_id: { type: string, format: uuid }
+        purpose: { $ref: "#/components/schemas/ContentMediaPurpose" }
+        url: { type: string, format: uri, description: URL publik gambar hasil proses untuk pratinjau. }
+        mime: { type: string, examples: [image/jpeg] }
+        bytes: { type: integer, minimum: 0 }
+        width: { type: integer, minimum: 1 }
+        height: { type: integer, minimum: 1 }
