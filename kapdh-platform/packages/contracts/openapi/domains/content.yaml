@@ -1,56 +1,122 @@
-# Domain content (C4 Content): beranda, berita, like dan banner untuk anggota.
-# Modul API: apps/api/src/modules/content.
+# Domain content (C4 Content): beranda, berita, like, kategori, dan halaman informasi/legal publik (F-08).
+# Modul API: apps/api/src/modules/content. Pengelolaan oleh pengurus ada di admin-content.yaml.
+#
+# Akses anggota (PRD 1.4, 2.2, ARCHITECTURE §3.1): beranda, berita dan like termasuk "informasi" milik anggota aktif
+# (effective_status verified/expiring). unverified diarahkan ke iuran, expired ke perpanjangan, suspended ke portal
+# pembatasan; ketiganya ditolak 403 MEMBERSHIP_REQUIRED atau ACCOUNT_SUSPENDED. Halaman legal/informasi bersifat
+# publik (dapat dibaca sebelum aktivasi dan tanpa login, PRD 3.8).
 tags:
   - name: Content
-    description: Beranda, berita, banner dan like (F-08).
+    description: |
+      Beranda, berita (feed dan detail), like, kategori, serta halaman informasi dan legal yang dapat dibaca sebelum
+      aktivasi (F-08, PRD 3.8, AC F08-1..F08-4).
 
 paths:
   /home:
     get:
       tags: [Content]
       operationId: getHome
-      summary: Beranda; banner aktif, event mendatang, dan berita terbaru (F-08, AC F08-2).
+      summary: Beranda anggota aktif; banner aktif, event mendatang, berita terbaru dan akses cepat (F-08, AC F08-2).
+      description: |
+        Satu panggilan untuk layar Beranda (PRD 3.8: banner aktif, kegiatan mendatang, feed berita published, dan
+        akses cepat KTA/notifikasi).
+
+        - `banners`: hanya `active = true` dan di dalam jendela tanggal (`starts_at <= now < ends_at`, `ends_at`
+          null = tanpa batas akhir); banner di luar jendela tidak dikirim (AC F08-2). Urutan `sort_order` naik lalu
+          `starts_at` turun; maksimal 10. Target diselesaikan server saat dibaca: `target.available = false` bila
+          berita/event/halaman tujuan sudah tidak tersedia, dan klien menampilkan pesan yang jelas alih-alih
+          membuka layar kosong (AC F08-2).
+        - `upcoming_events`: event berstatus `open` atau `closed` yang belum berakhir (`ends_at > now`), tanpa draft,
+          done atau cancelled; urut `starts_at` naik; maksimal 5.
+        - `posts`: berita `published` dengan `published_at <= now` (draft, terjadwal masa depan, dan archived tidak
+          pernah tampil, AC F08-1); urut `published_at` turun; maksimal 5. Feed lengkap memakai GET /posts.
+        - `quick_access`: jumlah notifikasi belum dibaca dan ringkasan KTA untuk pintasan.
+        - `generated_at`: waktu server saat respons dibuat; klien menyimpannya bersama cache Beranda dan
+          menampilkan "Diperbarui ..." ketika menampilkan cache lama saat offline (AC F08-4).
+
+        Akses: anggota aktif (verified/expiring). unverified/expired mendapat 403 MEMBERSHIP_REQUIRED (klien memuat
+        ulang /me dan mengarahkan sesuai status), suspended 403 ACCOUNT_SUSPENDED.
+      x-kapdh-access: { audience: mobile, member_access: active }
       responses:
         "200":
           description: Beranda.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Home" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: MEMBERSHIP_REQUIRED (unverified/expired) atau ACCOUNT_SUSPENDED (PRD 2.2).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         default: { $ref: "#/components/responses/Error" }
 
   /posts:
     get:
       tags: [Content]
       operationId: listPosts
-      summary: Daftar berita yang sudah terbit dan sudah waktunya tampil (AC F08-1).
+      summary: Feed berita yang sudah terbit dan sudah waktunya tampil (AC F08-1).
+      description: |
+        Hanya berita `published` dengan `published_at <= now` (waktu server); draft, terjadwal masa depan, dan
+        archived tidak pernah dikirim (AC F08-1). Urutan tetap `published_at` turun lalu `id` turun (keyset), sehingga
+        paging tidak menduplikasi item. Filter `category` memakai slug kategori berjenis `post`; slug yang tidak
+        dikenal menghasilkan daftar kosong, bukan 404. Daftar kosong ditampilkan klien sebagai keadaan kosong yang
+        membantu (AC F08-4).
+
+        Akses: anggota aktif (verified/expiring); lainnya 403 MEMBERSHIP_REQUIRED / ACCOUNT_SUSPENDED.
+      x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/Cursor"
         - $ref: "#/components/parameters/Limit"
         - name: category
           in: query
-          description: Slug kategori berita.
+          required: false
+          description: Slug kategori berita (kind `post`), misalnya `pengumuman`.
           schema: { type: string, maxLength: 80 }
       responses:
         "200":
-          description: Berita published.
+          description: Halaman berita published.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PostPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: MEMBERSHIP_REQUIRED (unverified/expired) atau ACCOUNT_SUSPENDED (PRD 2.2).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         default: { $ref: "#/components/responses/Error" }
 
   /posts/{slug}:
     get:
       tags: [Content]
       operationId: getPost
-      summary: Detail berita (F-08).
+      summary: Detail berita dengan body HTML tersanitasi server (F-08, AC F08-1).
+      description: |
+        Berita yang belum terbit, terjadwal masa depan, atau sudah diarsipkan menghasilkan 404 NOT_FOUND (tidak
+        dibedakan dari slug yang tidak ada, N-09); klien menampilkan pesan "Berita tidak lagi tersedia", termasuk saat
+        dibuka dari banner atau notifikasi lama (AC F08-2, AC F13-3).
+
+        `body_html` sudah disanitasi server saat disimpan (PRD 3.8); tautan luar diberi penanda agar klien
+        menampilkan indikasi yang jelas.
+
+        Akses: anggota aktif (verified/expiring); lainnya 403 MEMBERSHIP_REQUIRED / ACCOUNT_SUSPENDED.
+      x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/PostSlug"
       responses:
         "200":
-          description: Berita.
+          description: Detail berita.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Post" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: MEMBERSHIP_REQUIRED (unverified/expired) atau ACCOUNT_SUSPENDED (PRD 2.2).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
         default: { $ref: "#/components/responses/Error" }
 
@@ -58,28 +124,140 @@ paths:
     put:
       tags: [Content]
       operationId: likePost
-      summary: Idempoten; maksimal satu like per pengguna (AC F08-3).
+      summary: Sukai berita; idempoten, maksimal satu like per pengguna per berita (AC F08-3).
+      description: |
+        Idempoten secara alami (PUT): menekan berulang atau mengulang request tidak menambah like kedua karena key
+        `post_likes(post_id, user_id)`; `like_count` dipelihara trigger database sehingga selalu sama dengan jumlah
+        like (AC F08-3). Tidak memerlukan Idempotency-Key. Respons selalu berisi keadaan akhir.
+
+        Hanya berita yang tampil di feed (published dan sudah waktunya); lainnya 404 NOT_FOUND. Akses: anggota aktif
+        (verified/expiring); lainnya 403 MEMBERSHIP_REQUIRED / ACCOUNT_SUSPENDED.
+      x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/PostSlug"
       responses:
         "200":
-          description: Status like.
+          description: Keadaan like terbaru.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LikeState" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: MEMBERSHIP_REQUIRED (unverified/expired) atau ACCOUNT_SUSPENDED (PRD 2.2).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
         default: { $ref: "#/components/responses/Error" }
     delete:
       tags: [Content]
       operationId: unlikePost
       summary: Batalkan like; idempoten (AC F08-3).
+      description: |
+        Idempoten secara alami (DELETE): membatalkan like yang tidak ada tetap 200 dengan `liked = false`.
+        `like_count` dipelihara trigger database (AC F08-3).
+
+        Hanya berita yang tampil di feed; lainnya 404 NOT_FOUND. Akses: anggota aktif (verified/expiring); lainnya
+        403 MEMBERSHIP_REQUIRED / ACCOUNT_SUSPENDED.
+      x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/PostSlug"
       responses:
         "200":
-          description: Status like.
+          description: Keadaan like terbaru.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LikeState" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: MEMBERSHIP_REQUIRED (unverified/expired) atau ACCOUNT_SUSPENDED (PRD 2.2).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /categories:
+    get:
+      tags: [Content]
+      operationId: listCategories
+      summary: Kategori aktif berita atau event untuk tab/filter (guideline "Manajemen Kategori", F-08, F-09).
+      description: |
+        Hanya kategori `active = true`, urut `sort_order` lalu `label`. Tanpa paging karena jumlahnya kecil.
+        Dipakai tab berita/event di aplikasi dan pilihan kategori formulir event di web admin. Kategori nonaktif
+        tidak tersedia untuk pilihan baru, tetapi label historis tetap tampil pada konten yang sudah memakainya.
+
+        Akses: sesi terautentikasi apa pun (anggota atau pengurus); tidak ada data privat.
+      x-kapdh-access: { audience: any }
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          description: Jenis kategori; kosong = semua jenis.
+          schema: { $ref: "#/components/schemas/ContentCategoryKind" }
+      responses:
+        "200":
+          description: Kategori aktif.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContentCategoryList" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /public/pages:
+    get:
+      tags: [Content]
+      operationId: listPublicPages
+      summary: Daftar halaman informasi dan legal yang sudah terbit; publik tanpa login (F-08, PRD 3.8).
+      description: |
+        Halaman yang pernah diterbitkan (memiliki salinan tayang): kebijakan privasi, ketentuan layanan, ketentuan
+        komunitas, bantuan, tentang, serta halaman informasi lain dari pengurus. Draf tidak pernah dikirim. Urutan:
+        dokumen legal (privacy, terms, community) lebih dahulu, lalu halaman lain menurut judul.
+
+        Dipakai situs publik, layar legal aplikasi, dan layar registrasi sebelum aktivasi (PRD 2.2: pending_otp dan
+        unverified tetap dapat membaca legal). Tanpa autentikasi; dibatasi rate limit per IP.
+      security: []
+      x-kapdh-access: { audience: public }
+      responses:
+        "200":
+          description: Halaman yang sudah terbit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicPageList" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /public/pages/{slug}:
+    get:
+      tags: [Content]
+      operationId: getPublicPage
+      summary: Halaman legal atau informasi versi tayang terbaru; publik tanpa login (F-08, PRD 3.8).
+      description: |
+        Mengembalikan salinan TAYANG (published_title/published_body_html) beserta `version` legal yang sedang berlaku
+        dan `published_at`; perubahan draf pengurus yang belum diterbitkan tidak pernah terlihat. `version` adalah
+        nilai yang dikirim klien sebagai `accept_policy_version` saat registrasi (F-01) dan sama dengan
+        `app_settings.legal` untuk dokumen legal.
+
+        Slug baku: `kebijakan-privasi`, `ketentuan`, `ketentuan-komunitas`, `bantuan`, `tentang`. Halaman yang
+        belum pernah terbit atau slug yang tidak ada menghasilkan 404 NOT_FOUND. Tanpa autentikasi; dibatasi rate
+        limit per IP.
+      security: []
+      x-kapdh-access: { audience: public }
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          description: Slug halaman, misalnya `kebijakan-privasi`.
+          schema: { type: string, maxLength: 120 }
+      responses:
+        "200":
+          description: Halaman versi tayang.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicPage" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         default: { $ref: "#/components/responses/Error" }
 
 components:
@@ -88,43 +266,205 @@ components:
       name: slug
       in: path
       required: true
+      description: Slug berita (huruf kecil, angka, tanda hubung).
       schema: { type: string, maxLength: 160 }
 
   schemas:
-    HomeBanner:
+    ContentCategoryKind:
+      type: string
+      enum: [post, event]
+      description: Jenis kategori; `post` untuk berita, `event` untuk event (tabel categories, guideline p13/p14).
+
+    ContentCategoryRef:
       type: object
-      required: [id, image_url]
+      description: Rujukan kategori pada berita/event; label historis tetap dikirim walau kategori sudah nonaktif.
+      required: [id, slug, label]
       properties:
         id: { type: string, format: uuid }
-        image_url: { type: string, format: uri }
-        title: { type: [string, "null"] }
-        target: { type: [string, "null"], description: Deep link aman atau URL luar bertanda (AC F08-2). }
+        slug: { type: string, examples: [pengumuman] }
+        label: { type: string, examples: [Pengumuman] }
+
+    ContentCategory:
+      type: object
+      required: [id, kind, slug, label, sort_order]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/ContentCategoryKind" }
+        slug: { type: string, examples: [reuni] }
+        label: { type: string, examples: [Reuni] }
+        sort_order: { type: integer }
+
+    ContentCategoryList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ContentCategory" }
+
+    BannerTargetType:
+      type: string
+      enum: [none, post, event, page, url]
+      description: |
+        Jenis target banner (tabel banners): `none` tidak dapat diketuk; `post` membuka detail berita; `event`
+        membuka detail event; `page` membuka halaman informasi/legal; `url` membuka tautan luar https dengan indikasi
+        tautan luar yang jelas (PRD 3.8).
+
+    HomeBannerTarget:
+      type: object
+      description: |
+        Target yang sudah diselesaikan server saat Beranda dibaca (AC F08-2). Bila `available = false` (berita
+        diarsipkan/belum terbit, event draft/dibatalkan/selesai, halaman belum terbit atau dihapus), klien tetap
+        menampilkan banner tetapi saat diketuk menampilkan pesan "Konten tujuan sudah tidak tersedia".
+      required: [type, available, route, url, external]
+      properties:
+        type: { $ref: "#/components/schemas/BannerTargetType" }
+        available:
+          type: boolean
+          description: Target dapat dibuka saat ini; selalu true untuk `none` dan `url`.
+        route:
+          type: [string, "null"]
+          description: |
+            Rute aplikasi (ARCHITECTURE §8.4) untuk target internal yang tersedia: `/news/{slug}`, `/events/{id}`,
+            atau `/legal/{slug}`; null untuk `none`, `url`, atau target yang tidak tersedia.
+          examples: [/news/contoh-selamat-datang]
+        url:
+          type: [string, "null"]
+          format: uri
+          description: Tautan luar https, hanya untuk `type = url`; klien menandainya sebagai tautan luar (PRD 3.8).
+        external:
+          type: boolean
+          description: True bila target membuka tautan di luar aplikasi (`type = url`).
+
+    HomeBanner:
+      type: object
+      required: [id, title, image_url, target]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, description: "Judul banner (juga label aksesibilitas gambar, N-11)." }
+        image_url:
+          type: string
+          format: uri
+          description: URL publik gambar banner yang sudah diproses server (N-10).
+        target: { $ref: "#/components/schemas/HomeBannerTarget" }
+
+    HomeEventRegistrationState:
+      type: string
+      enum: [not_open_yet, open, sold_out, closed]
+      description: |
+        Keadaan pendaftaran untuk label kartu event (guideline p8 "Pendaftaran di Buka/Tutup"):
+        `not_open_yet` sebelum `registration_opens_at`; `open` event open, di dalam jendela pendaftaran dan kursi
+        tersedia; `sold_out` jendela terbuka tetapi `seats_available = 0`; `closed` setelah
+        `registration_closes_at` atau event berstatus closed.
+
+    HomeEvent:
+      type: object
+      description: |
+        Ringkasan event untuk kartu Beranda (guideline p8: cover, kategori, judul, tanggal, label pendaftaran).
+        Skema lokal domain konten; detail dan reservasi memakai API Events (F-09).
+      required:
+        - id
+        - title
+        - cover_url
+        - category
+        - starts_at
+        - ends_at
+        - timezone
+        - location_name
+        - price
+        - is_free
+        - seats_total
+        - seats_available
+        - registration_state
+        - registration_opens_at
+        - registration_closes_at
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        cover_url: { type: [string, "null"], format: uri }
+        category:
+          oneOf:
+            - $ref: "#/components/schemas/ContentCategoryRef"
+            - type: "null"
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        timezone:
+          type: string
+          description: Zona waktu tampilan event (IANA); klien menampilkan waktu di zona ini (PRD 2.1).
+          examples: [Asia/Jakarta]
+        location_name: { type: [string, "null"] }
+        price: { $ref: "#/components/schemas/Money" }
+        is_free: { type: boolean, description: True bila harga 0 (AC F09-3). }
+        seats_total: { type: integer, minimum: 1 }
+        seats_available:
+          type: integer
+          minimum: 0
+          description: seats_total - held_quantity - paid_quantity (PRD 4.4).
+        registration_state: { $ref: "#/components/schemas/HomeEventRegistrationState" }
+        registration_opens_at: { type: string, format: date-time }
+        registration_closes_at: { type: string, format: date-time }
+
+    HomeQuickAccess:
+      type: object
+      description: Akses cepat KTA dan notifikasi di Beranda (PRD 3.8).
+      required: [unread_notification_count, effective_status, member_number, expires_at]
+      properties:
+        unread_notification_count:
+          type: integer
+          minimum: 0
+          description: Notifikasi inbox dengan read_at null.
+        effective_status: { $ref: "#/components/schemas/EffectiveStatus" }
+        member_number:
+          type: [string, "null"]
+          description: Nomor anggota AA.SS.JK.N untuk pintasan KTA.
+          examples: ["29.01.01.7"]
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+          description: Akhir masa aktif; `expiring` menampilkan ajakan perpanjang (F-07).
 
     PostSummary:
       type: object
-      required: [slug, title, published_at, like_count]
+      required: [id, slug, title, excerpt, cover_url, category, published_at, like_count, liked_by_me]
       properties:
-        slug: { type: string }
+        id: { type: string, format: uuid }
+        slug: { type: string, examples: [contoh-selamat-datang] }
         title: { type: string }
-        excerpt: { type: [string, "null"] }
-        cover_url: { type: [string, "null"], format: uri }
-        category: { type: [string, "null"] }
+        excerpt: { type: [string, "null"], description: Ringkasan dari pengurus; null bila tidak diisi. }
+        cover_url:
+          type: [string, "null"]
+          format: uri
+          description: URL publik cover yang sudah diproses server (EXIF dibuang, N-10); null bila tanpa cover.
+        category:
+          oneOf:
+            - $ref: "#/components/schemas/ContentCategoryRef"
+            - type: "null"
         published_at: { type: string, format: date-time }
-        like_count: { type: integer }
+        like_count:
+          type: integer
+          minimum: 0
+          description: Jumlah like; dipelihara trigger database sehingga konsisten (AC F08-3).
         liked_by_me: { type: boolean }
 
     Post:
       allOf:
         - $ref: "#/components/schemas/PostSummary"
         - type: object
-          required: [body_html]
+          required: [body_html, updated_at]
           properties:
             body_html:
-              { type: string, description: HTML tersanitasi server; tautan luar diberi indikasi (F-08). }
+              type: string
+              description: |
+                HTML yang sudah disanitasi server saat disimpan (PRD 3.8): hanya tag teks dasar (p, br, h2-h4,
+                strong, em, u, s, blockquote, ul, ol, li, a, img, hr); tanpa script, style, iframe, atribut on*,
+                atau URL javascript:. `img` hanya dari host berkas KAPDH. Tautan luar memakai
+                `target="_blank" rel="noopener noreferrer nofollow"` dan `data-external="true"` sehingga klien
+                menampilkan indikasi tautan luar yang jelas.
+            updated_at: { type: string, format: date-time, description: Terakhir diperbarui pengurus. }
 
     PostPage:
       type: object
-      required: [items]
+      required: [items, next_cursor]
       properties:
         items:
           type: array
@@ -136,18 +476,75 @@ components:
       required: [liked, like_count]
       properties:
         liked: { type: boolean }
-        like_count: { type: integer }
+        like_count: { type: integer, minimum: 0 }
 
     Home:
       type: object
-      required: [banners, upcoming_events, posts]
+      required: [banners, upcoming_events, posts, quick_access, generated_at]
       properties:
         banners:
           type: array
+          maxItems: 10
           items: { $ref: "#/components/schemas/HomeBanner" }
         upcoming_events:
           type: array
-          items: { $ref: "#/components/schemas/EventSummary" }
+          maxItems: 5
+          items: { $ref: "#/components/schemas/HomeEvent" }
         posts:
           type: array
+          maxItems: 5
           items: { $ref: "#/components/schemas/PostSummary" }
+        quick_access: { $ref: "#/components/schemas/HomeQuickAccess" }
+        generated_at:
+          type: string
+          format: date-time
+          description: Waktu server saat Beranda disusun; ditampilkan sebagai waktu pembaruan cache (AC F08-4).
+
+    PageLegalDocument:
+      type: string
+      enum: [privacy, terms, community]
+      description: |
+        Dokumen legal yang versinya dicatat sebagai persetujuan (F-01) dan dicerminkan di `app_settings.legal`
+        (`privacy_version`, `terms_version`, `community_version`): `privacy` = kebijakan-privasi, `terms` =
+        ketentuan, `community` = ketentuan-komunitas.
+
+    PublicPageSummary:
+      type: object
+      required: [slug, title, version, published_at, legal_document]
+      properties:
+        slug: { type: string, examples: [kebijakan-privasi] }
+        title: { type: string, examples: [Kebijakan Privasi] }
+        version: { type: string, description: Versi tayang (published_version)., examples: ["1"] }
+        published_at: { type: string, format: date-time }
+        legal_document:
+          oneOf:
+            - $ref: "#/components/schemas/PageLegalDocument"
+            - type: "null"
+
+    PublicPageList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PublicPageSummary" }
+
+    PublicPage:
+      type: object
+      description: Salinan tayang halaman informasi/legal; draf pengurus tidak pernah dikirim.
+      required: [slug, title, body_html, version, published_at, legal_document]
+      properties:
+        slug: { type: string, examples: [kebijakan-privasi] }
+        title: { type: string, examples: [Kebijakan Privasi] }
+        body_html:
+          type: string
+          description: HTML tersanitasi server; tautan luar bertanda `data-external="true"` (PRD 3.8).
+        version:
+          type: string
+          description: Versi legal tayang (published_version), dikirim sebagai accept_policy_version (F-01).
+          examples: ["1"]
+        published_at: { type: string, format: date-time }
+        legal_document:
+          oneOf:
+            - $ref: "#/components/schemas/PageLegalDocument"
+            - type: "null"
