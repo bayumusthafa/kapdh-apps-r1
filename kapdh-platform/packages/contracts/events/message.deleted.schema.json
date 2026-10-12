@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kapdh.or.id/contracts/events/message.deleted.schema.json",
   "title": "MessageDeletedPayload",
-  "description": "Pesan menjadi placeholder (dihapus pengirim, dihapus pengurus lewat keputusan moderasi, atau penghapusan akun; F-11, F-12, AC F14-3). entity_id = ID pesan. Dikirim sesudah commit ke kanal room:<room_id>. Klien mengosongkan isi/gambar salinan lokal dan menampilkan placeholder.",
+  "description": "Pesan menjadi placeholder (dihapus pengirim, dihapus pengurus lewat keputusan moderasi, atau penghapusan akun; F-11, F-12, AC F14-3). entity_id = ID pesan. Dikirim sesudah commit ke kanal room:<room_id>. Klien mengosongkan isi/gambar salinan lokal dan menampilkan placeholder. Event ini hanya sampai ke socket yang tersambung; karena itu setelah reconnect dan setiap kali room dibuka klien memuat ulang jendela pesan yang ditampilkan lewat HTTP dan mengganti salinan lokal (listChatMessages, events/README.md), sehingga penghapusan yang terjadi saat offline tetap diterapkan.",
   "type": "object",
   "required": ["room_id", "message_id", "deleted_at"],
   "additionalProperties": false,

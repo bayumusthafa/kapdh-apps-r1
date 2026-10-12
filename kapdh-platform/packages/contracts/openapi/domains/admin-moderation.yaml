@@ -5,10 +5,17 @@
 # - Sesi admin (audience admin, MFA selesai). Izin dievaluasi dari DB setiap request (AC F15-1, F16-3); super_admin
 #   memiliki semua izin. Moderasi hanya lewat web admin (v3.2).
 # - Target penanganan (v3.2, D8): urgent (violence_threat) 24 jam; lainnya 2 hari kerja (Senin-Jumat WIB) sejak
-#   laporan dibuat; `overdue` = status open/in_review dan waktu server >= due_at.
-# - Konflik kepentingan: bila akun alumni yang tertaut ke admin (admins.linked_alumni_user_id) adalah pihak terlapor
-#   atau pemohon banding, detail ditolak 403 FORBIDDEN agar identitas pelapor tidak terbuka kepada terlapor
-#   (AC F12-2); bila akun itu pelapor, detail boleh dibaca tetapi klaim/keputusan ditolak 403 FORBIDDEN.
+#   laporan dibuat; `overdue` = status open/in_review dan waktu server >= due_at. due_at selalu dihitung dan diisi
+#   server saat laporan/banding dibuat (kolom reports.due_at NOT NULL, lihat CHANGELOG), sehingga tidak pernah null.
+# - Konflik kepentingan (AC F12-2, PRD 2.3), dievaluasi per request dari admins.linked_alumni_user_id pemanggil:
+#   a) Pihak terlapor: akun tertaut adalah reports.target_user_id (pihak terlapor, pengirim pesan terlapor, subjek
+#      yang ditetapkan lewat subject_user_id, atau pemohon banding), atau untuk laporan grup tanpa subjek, anggota
+#      joined grup yang dilaporkan. Laporan seperti ini TIDAK PERNAH terlihat oleh pemanggil: dikecualikan dari item,
+#      `total`, `counts` dan pencarian `q` antrean, dan detail/klaim/keputusan menjawab 404 NOT_FOUND yang sama
+#      dengan laporan yang tidak ada, sehingga keberadaan laporan, kategorinya dan identitas pelapor tidak terbuka
+#      kepada terlapor. super_admin tidak dikecualikan; laporan itu ditangani pengurus lain yang berizin.
+#   b) Pelapor: akun tertaut adalah reports.reporter_id. Laporan tetap tampil dan detail boleh dibaca
+#      (`conflict_of_interest` true), tetapi klaim/keputusan ditolak 403 FORBIDDEN.
 # - Setiap pembacaan bukti, klaim dan keputusan dicatat di audit dalam transaksi yang sama (AC F12-3, F17-1); isi
 #   bukti tidak disalin ke audit (ARCHITECTURE §2 butir 3).
 tags:
@@ -27,6 +34,11 @@ paths:
         mencari nama atau nomor anggota pihak terlapor/pemohon. Paging keyset dengan `total` sesuai filter dan
         `counts` ringkas untuk badge menu (tidak terpengaruh filter). Item antrean tidak memuat bukti, deskripsi
         pelapor maupun identitas pelapor (minimisasi, PRD 3.12); buka detail untuk menilai.
+
+        Konflik kepentingan (aturan domain butir a): laporan yang pihak terlapornya adalah akun alumni tertaut
+        pemanggil dikecualikan dari `items`, `total`, `counts` dan hasil `q`, termasuk laporan grup yang pemanggilnya
+        anggota joined grup itu dan laporan yang subjeknya kemudian ditetapkan lewat subject_user_id. Pemanggil tidak
+        melihat baris, kategori, maupun jumlahnya.
       x-kapdh-access: { audience: admin, permissions: [moderation.read] }
       parameters:
         - name: status
@@ -85,7 +97,9 @@ paths:
         ada. Pengurus tidak dapat menjelajah chat lain di luar bukti (PRD 3.12). Setiap pembacaan menulis audit
         `moderation.report_viewed` (aktor, laporan, request_id) sebelum respons dikirim; kegagalan audit membatalkan
         respons (AC F17-1). URL gambar bukti bertanda tangan maksimal 10 menit. Data pihak yang akunnya sudah dihapus
-        tampil anonim (null) sesuai D2. Konflik kepentingan: lihat aturan domain (403 FORBIDDEN).
+        tampil anonim (null) sesuai D2. Konflik kepentingan: pemanggil yang tertaut ke pihak terlapor mendapat 404
+        NOT_FOUND (sama dengan laporan yang tidak ada, tanpa audit pembacaan bukti); pemanggil yang tertaut ke pelapor
+        boleh membaca dengan `conflict_of_interest` true.
       x-kapdh-access: { audience: admin, permissions: [moderation.read] }
       parameters:
         - $ref: "#/components/parameters/ModerationReportId"
@@ -111,7 +125,8 @@ paths:
         versi. Laporan in_review milik pengurus lain dapat diambil alih bila If-Match sama dengan versi yang dibaca
         (pengurus sudah melihat klaim sebelumnya); klaim ulang oleh pengurus yang sama idempoten. Versi berbeda atau
         laporan sudah diputus -> 409 VERSION_CONFLICT dengan `current` = AdminModerationReportDetail terbaru.
-        Konflik kepentingan -> 403 FORBIDDEN. Audit `moderation.report_claimed` dalam transaksi yang sama.
+        Konflik kepentingan: tertaut ke pihak terlapor -> 404 NOT_FOUND; tertaut ke pelapor -> 403 FORBIDDEN.
+        Audit `moderation.report_claimed` dalam transaksi yang sama.
       x-kapdh-access:
         { audience: admin, permissions: [moderation.read, moderation.resolve], idempotent: true }
       parameters:
@@ -139,12 +154,14 @@ paths:
       description: |
         Satu keputusan per laporan: laporan wajib open/in_review dan versinya sama dengan If-Match; selain itu 409
         VERSION_CONFLICT dengan `current` = AdminModerationReportDetail terbaru (keputusan pengurus lain menang).
-        Klaim lebih dulu tidak wajib. Konflik kepentingan -> 403 FORBIDDEN. Semuanya atomik dalam satu transaksi:
-        status laporan, efek keanggotaan, membership_events, audit (alasan, aktor, waktu, rujukan bukti; AC F12-3,
-        F17-1) dan outbox notifikasi.
+        Klaim lebih dulu tidak wajib. Konflik kepentingan: tertaut ke pihak terlapor -> 404 NOT_FOUND; tertaut ke
+        pelapor -> 403 FORBIDDEN; `subject_user_id` = akun tertaut pemanggil -> 403 FORBIDDEN (pengurus tidak
+        memutus perkara dirinya sendiri). Semuanya atomik dalam satu transaksi: status laporan, efek keanggotaan,
+        membership_events, audit (alasan, aktor, waktu, rujukan bukti; AC F12-3, F17-1) dan outbox notifikasi.
 
         Pihak yang dikenai tindakan (subjek) = target_user_id laporan; untuk laporan grup subjek wajib dipilih lewat
-        `subject_user_id` (anggota atau mantan anggota grup itu) dan disimpan sebagai pihak terlapor laporan.
+        `subject_user_id` (anggota atau mantan anggota grup itu) dan disimpan sebagai pihak terlapor laporan
+        (sejak itu laporan tunduk pada aturan konflik butir a untuk akun subjek tersebut).
         - dismiss: tidak ada perubahan pada anggota; status dismissed. Untuk banding berarti banding ditolak.
         - warn: membership_events kind warn tanpa mengubah starts_at/expires_at (AC F12-3); subjek menerima
           notifikasi kategori account berisi `member_message`; status resolved.
@@ -155,8 +172,14 @@ paths:
           hilang dari direktori, verifikasi KTA menjadi Tidak aktif, dan tiket tidak berlaku (AC F12-4, PRD 2.2).
         - unsuspend (wajib `confirm: true`): subjek sedang suspended (selain itu 400). Menghapus suspend dan
           membership_events unsuspend; effective_status dihitung ulang dari expires_at sehingga anggota yang masa
-          aktifnya habis menjadi expired, bukan otomatis verified (AC F12-5).
-        Banding (kategori appeal) hanya boleh dismiss atau unsuspend. `remove_message=true` (hanya laporan pesan)
+          aktifnya habis menjadi expired, bukan otomatis verified (AC F12-5). Dalam transaksi yang sama, banding
+          aktif lain milik subjek ditutup sebagai dikabulkan (status resolved, action unsuspend, catatan merujuk
+          laporan ini) dan pemohonnya menerima hasilnya; jalur unsuspend lain (menu anggota admin) wajib melakukan
+          hal yang sama.
+        Banding (kategori appeal) hanya boleh dismiss (banding ditolak; suspend tetap berlaku) atau unsuspend
+        (banding dikabulkan); tindakan lain -> 400 VALIDATION_ERROR. Banding selalu menyangkut suspend yang sedang
+        berlaku (snapshot `evidence.contested_suspension`) karena banding aktif ditutup otomatis saat suspend
+        dicabut. `remove_message=true` (hanya laporan pesan)
         menjadikan pesan terlapor placeholder dan mengirim `message.deleted`; snapshot bukti tetap tersimpan.
         Pelapor menerima notifikasi kategori account bahwa laporannya selesai ditinjau (tanpa rincian tindakan,
         AC F12-2); pemohon banding menerima `member_message`.
@@ -366,8 +389,9 @@ components:
       type: object
       description: |
         Bukti terminimalkan yang dicatat saat laporan dibuat (PRD 3.12, D2): hanya pesan yang dilaporkan dan konteks
-        pilihan pelapor, snapshot profil, atau metadata grup. Tidak ada akses ke riwayat chat lainnya.
-      required: [captured_at, messages, room, profile]
+        pilihan pelapor, snapshot profil, metadata grup, atau (banding) snapshot suspend yang dibanding. Tidak ada
+        akses ke riwayat chat lainnya.
+      required: [captured_at, messages, room, profile, contested_suspension]
       properties:
         captured_at: { type: string, format: date-time }
         messages:
@@ -382,6 +406,37 @@ components:
           oneOf:
             - $ref: "#/components/schemas/AdminModerationEvidenceProfile"
             - type: "null"
+        contested_suspension:
+          oneOf:
+            - $ref: "#/components/schemas/AdminModerationContestedSuspension"
+            - type: "null"
+          description: Hanya banding; suspend yang dibanding. Null untuk laporan biasa.
+
+    AdminModerationContestedSuspension:
+      type: object
+      description: |
+        Snapshot suspend yang sedang berlaku saat banding diajukan (PRD 3.12). Bandingkan `suspended_at` dengan
+        target_member.suspended_at untuk memastikan suspend yang sama masih berlaku.
+      required: [membership_event_id, suspended_at, suspension_reason, suspension_message, suspended_by]
+      properties:
+        membership_event_id:
+          type: [string, "null"]
+          format: uuid
+          description: membership_events kind suspend terbaru milik pemohon; null bila tidak ditemukan (data lama).
+        suspended_at: { type: string, format: date-time }
+        suspension_reason:
+          type: [string, "null"]
+          maxLength: 1000
+          description: Alasan internal suspend; hanya untuk pengurus.
+        suspension_message:
+          type: [string, "null"]
+          maxLength: 500
+          description: Pesan yang ditampilkan kepada anggota saat disuspend.
+        suspended_by:
+          oneOf:
+            - $ref: "#/components/schemas/ModerationAdminRef"
+            - type: "null"
+          description: Pengurus yang men-suspend; null bila akunnya sudah dihapus.
 
     ModerationHistoryKind:
       type: string
@@ -462,7 +517,9 @@ components:
                 - type: "null"
             conflict_of_interest:
               type: boolean
-              description: True bila pemanggil tertaut ke pelapor; klaim/keputusan ditolak 403.
+              description: |
+                True bila akun alumni tertaut pemanggil adalah pelapor; klaim/keputusan ditolak 403. (Pemanggil yang
+                tertaut ke pihak terlapor tidak pernah menerima laporan ini sama sekali, aturan domain butir a.)
             version: { type: string, description: Versi laporan untuk If-Match klaim/keputusan. }
 
     AdminModerationResolveRequest:

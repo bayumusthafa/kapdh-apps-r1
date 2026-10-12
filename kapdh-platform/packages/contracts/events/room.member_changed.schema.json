@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kapdh.or.id/contracts/events/room.member_changed.schema.json",
   "title": "RoomMemberChangedPayload",
-  "description": "Keanggotaan room berubah (F-11, AC F11-4, F11-5). entity_id = ID room. Dikirim sesudah commit ke kanal room:<room_id> dan ke kanal user:<user_id> pengguna yang terdampak (calon anggota yang diundang, anggota yang dikeluarkan). Untuk left/removed, server mencabut subscription socket pengguna itu dari room segera sesudah event (AC F11-4); klien menghapus room dari daftar. Untuk invited, klien penerima menambah undangan tertunda (GET /chat/invitations).",
+  "description": "Keanggotaan room berubah (F-11, AC F11-4, F11-5). entity_id = ID room. Dikirim sesudah commit; kanal bergantung pada change karena undangan tertunda hanya boleh dilihat admin grup (PRD 3.11, N-09): (1) joined, left, removed, role_changed -> kanal room:<room_id> (anggota joined) dan kanal user:<user_id> pengguna yang terdampak; (2) invited, invitation_cancelled, declined -> HANYA kanal user:<user_id> calon anggota (semua perangkatnya) dan kanal user:<id> setiap admin grup yang joined, TIDAK PERNAH kanal room:<room_id>, sehingga anggota biasa tidak mengetahui siapa yang diundang, dibatalkan undangannya, atau menolak. Untuk left/removed, server mencabut subscription socket pengguna itu dari room segera sesudah event (AC F11-4); klien menghapus room dari daftar. Untuk invited, klien penerima menambah undangan tertunda (GET /chat/invitations); untuk invitation_cancelled klien menghapusnya.",
   "type": "object",
   "required": ["room_id", "user_id", "change", "role", "member_count", "actor_user_id"],
   "additionalProperties": false,
@@ -25,7 +25,7 @@
       "maximum": 100
     },
     "actor_user_id": {
-      "description": "Anggota yang melakukan perubahan (admin grup atau pengguna itu sendiri); null untuk tindakan sistem (penghapusan akun, AC F14-5).",
+      "description": "Anggota yang melakukan perubahan (admin grup atau pengguna itu sendiri). Null untuk tindakan sistem: grup ditutup, penghapusan akun (AC F14-5), atau undangan yang dibatalkan karena blokir; pembatalan karena blokir sengaja tidak menyebut pelakunya agar blokir tidak terungkap (N-09).",
       "type": ["string", "null"],
       "format": "uuid"
     }
@@ -38,6 +38,14 @@
       "role": "member",
       "member_count": 12,
       "actor_user_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e71"
+    },
+    {
+      "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61",
+      "user_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e72",
+      "change": "invited",
+      "role": null,
+      "member_count": 12,
+      "actor_user_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e70"
     }
   ]
 }

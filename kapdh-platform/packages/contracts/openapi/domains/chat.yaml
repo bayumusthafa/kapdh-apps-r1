@@ -16,6 +16,17 @@
 #   anggota baru hanya melihat pesan sejak bergabung (history_visible_from, default v3.5).
 # - Blokir (F-12) berlaku dua arah untuk pengiriman pesan direct, reaksi di room direct, dan undangan grup antara
 #   pasangan tersebut; riwayat lama tetap dapat dibaca. Di grup, blokir tidak mengubah aturan room.
+#   Blokir hanya diungkap kepada pihak yang memblokir; bagi pihak yang diblokir, lawan bicara tampil sebagai "tidak
+#   tersedia" (peer_unavailable / 404) dengan kode dan pesan galat yang sama seperti akun nonaktif (N-09).
+# - Urutan commit = urutan keyset (AC F11-3): SETIAP insert ke messages (pesan anggota maupun pesan sistem) mengunci
+#   baris room lebih dulu (SELECT ... FOR UPDATE pada rooms, kunci pertama transaksi), lalu mengisi created_at
+#   eksplisit = greatest(clock_timestamp(), rooms.last_message_at + 1 mikrodetik) — bukan now()/default kolom yang
+#   bernilai waktu awal transaksi — dan memperbarui rooms.last_message_at = created_at dalam transaksi yang sama.
+#   Dengan begitu pesan yang commit belakangan selalu berada sesudah semua pesan yang sudah commit di room itu,
+#   sehingga sinkron `after=<jangkar>` tidak pernah melewatkan pesan.
+# - Event undangan (room.member_changed invited/invitation_cancelled/declined) tidak pernah dikirim ke kanal
+#   room:<room_id>; hanya ke kanal user:<id> calon anggota dan admin grup, karena undangan tertunda hanya boleh
+#   dilihat admin grup (lihat events/room.member_changed.schema.json).
 # - Isi pesan tidak pernah dicatat di log atau audit (ARCHITECTURE §2 butir 3); push tidak memuat isi pesan (§4.7).
 tags:
   - name: Chat
@@ -61,7 +72,8 @@ paths:
         POST /chat/rooms/{roomId}/invitations: calon anggota berstatus invited dan harus menerima sendiri; yang tidak
         dapat diundang (bukan anggota aktif, blokir dua arah dengan pembuat, kapasitas 100) dilewati dengan alasan di
         `invitations.skipped`, tanpa membatalkan pembuatan grup. Undangan masuk kotak masuk penerima (kategori chat,
-        deep link `/chat/invitations`) dan event realtime `room.member_changed` (change=invited) ke kanal penerima.
+        deep link `/chat/invitations`) dan event realtime `room.member_changed` (change=invited) hanya ke kanal
+        user:<id> penerima dan admin grup (bukan kanal room).
         Berkas avatar wajib purpose chat_image milik pemanggil yang sudah diunggah lewat POST /files.
         Idempotency-Key mengembalikan hasil pertama saat diulang (PRD 4.3); laju pembuatan grup dibatasi (429).
       x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
@@ -95,12 +107,17 @@ paths:
         `min(a,b):max(a,b)`. Pembuatan bersamaan dari dua perangkat/pihak menghasilkan satu room (unique
         rooms_direct_key_key + ON CONFLICT, AC F11-1); pemanggil yang kalah balapan menerima room yang sama.
 
-        Diri sendiri -> 400 VALIDATION_ERROR. Blokir aktif dari salah satu pihak -> 403 FORBIDDEN tanpa membuat room
-        baru (AC F12-1); room lama tetap dapat dibuka lewat GET /chat/rooms/{roomId} untuk membaca riwayat.
-        Tanpa blokir, room direct yang sudah ada selalu dikembalikan (200) walaupun lawan bicara tidak lagi aktif
-        (`can_send` false, `send_restriction` peer_unavailable). Room baru hanya dibuat bila lawan bicara akun aktif
-        dengan effective_status verified/expiring yang tidak suspended, dan terlihat di direktori bagi pemanggil
-        atau pernah menjadi anggota grup yang sama; selain itu 404 NOT_FOUND tanpa membedakan alasan (N-09).
+        Diri sendiri -> 400 VALIDATION_ERROR. Pemanggil memblokir lawan bicara -> 403 FORBIDDEN tanpa membuat room
+        baru (AC F12-1; pemanggil sudah mengetahui blokirnya sendiri dan UI menawarkan "Buka blokir"); room lama
+        tetap dapat dibuka lewat GET /chat/rooms/{roomId} untuk membaca riwayat.
+
+        Blokir oleh lawan bicara TIDAK diungkap (N-09, AC F12-1): diperlakukan persis seperti lawan bicara yang tidak
+        tersedia. Room direct yang sudah ada selalu dikembalikan (200) bila pemanggil tidak memblokir, walaupun lawan
+        bicara tidak lagi aktif atau memblokir pemanggil (`can_send` false, `send_restriction` peer_unavailable).
+        Room baru hanya dibuat bila lawan bicara akun aktif dengan effective_status verified/expiring yang tidak
+        suspended, tidak memblokir pemanggil, dan terlihat di direktori bagi pemanggil atau pernah menjadi anggota
+        grup yang sama; selain itu 404 NOT_FOUND dengan kode dan pesan yang sama untuk semua alasan (konsisten dengan
+        GET /directory/{userId} yang juga 404 bila lawan bicara memblokir pemanggil).
       x-kapdh-access: { audience: mobile, member_access: active }
       requestBody:
         required: true
@@ -249,9 +266,11 @@ paths:
       summary: Keluarkan anggota atau batalkan undangan tertunda; hanya admin grup (F-11, AC F11-4).
       description: |
         Hanya admin grup pada room group. Target joined menjadi removed (history dan subscription socket-nya dicabut
-        seketika, AC F11-4); target invited menjadi removed (undangan dibatalkan). Diri sendiri -> 400
-        VALIDATION_ERROR (pakai POST /chat/rooms/{roomId}/leave). Target yang tidak joined/invited -> 404.
-        Mengulang permintaan dengan Idempotency-Key yang sama mengembalikan hasil pertama.
+        seketika, AC F11-4; event `room.member_changed` change=removed ke kanal room dan kanal user target); target
+        invited menjadi removed (undangan dibatalkan; event change=invitation_cancelled hanya ke kanal user calon
+        anggota dan admin grup). Diri sendiri -> 400 VALIDATION_ERROR (pakai POST /chat/rooms/{roomId}/leave).
+        Target yang tidak joined/invited -> 404. Mengulang permintaan dengan Idempotency-Key yang sama mengembalikan
+        hasil pertama.
       x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
       parameters:
         - $ref: "#/components/parameters/ChatRoomId"
@@ -279,7 +298,9 @@ paths:
           not_invitable (bukan anggota aktif, akun tidak ada, diri sendiri, atau blokir; alasan tidak dibedakan).
         Undangan ulang setelah left/declined/removed diperbolehkan. Kapasitas dihitung di bawah kunci baris room
         sehingga undangan paralel tidak melampaui 100. Penerima mendapat notifikasi inbox (kategori chat) dan event
-        `room.member_changed` (change=invited). Idempotency-Key mengembalikan hasil pertama saat diulang.
+        `room.member_changed` (change=invited) yang hanya dikirim ke kanal user:<id> penerima dan admin grup, tidak
+        ke kanal room, karena undangan tertunda hanya terlihat oleh admin grup. Idempotency-Key mengembalikan hasil
+        pertama saat diulang.
       x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
       parameters:
         - $ref: "#/components/parameters/ChatRoomId"
@@ -333,8 +354,9 @@ paths:
       summary: Terima undangan grup; riwayat terlihat sejak bergabung (F-11, PRD 3.11).
       description: |
         Mengubah keanggotaan invited milik pemanggil menjadi joined (joined_at = history_visible_from = waktu
-        server) di bawah kunci baris room; kapasitas 100 tetap diperiksa. Pesan sistem "bergabung" ditulis dan
-        event `room.member_changed` (change=joined) dikirim; socket pemanggil bergabung ke room. Bila sudah joined,
+        server) di bawah kunci baris room; kapasitas 100 tetap diperiksa. Pesan sistem "bergabung" ditulis (aturan
+        urutan created_at domain ini) dan event `room.member_changed` (change=joined) dikirim ke kanal room dan kanal
+        user pemanggil; socket pemanggil bergabung ke room. Bila sudah joined,
         room dikembalikan apa adanya (idempoten). Tidak ada undangan tertunda -> 404; grup ditutup -> 404.
       x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
       parameters:
@@ -360,7 +382,8 @@ paths:
       summary: Tolak undangan grup (F-11).
       description: |
         Mengubah keanggotaan invited milik pemanggil menjadi declined. Sudah declined -> 204 (idempoten); tidak ada
-        undangan -> 404. Admin grup menerima event `room.member_changed` (change=declined).
+        undangan -> 404. Event `room.member_changed` (change=declined) hanya dikirim ke kanal user:<id> admin grup
+        dan perangkat lain pemanggil, tidak ke kanal room; anggota biasa tidak mengetahui siapa yang menolak.
       x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
       parameters:
         - $ref: "#/components/parameters/ChatRoomId"
@@ -382,9 +405,11 @@ paths:
         Hanya room group (room direct -> 400 VALIDATION_ERROR; gunakan mute atau blokir). Bila pemanggil admin
         terakhir dan masih ada anggota joined lain, `successor_user_id` (anggota joined lain) wajib; tanpa itu 400
         VALIDATION_ERROR pada field successor_user_id (AC F11-5). Pengganti dipromosikan dan pemanggil keluar dalam
-        satu transaksi. Bila pemanggil anggota terakhir, grup ditutup (closed_at) dan undangan tertunda dibatalkan.
-        Setelah commit keanggotaan menjadi left, subscription socket room dicabut dan riwayat tidak lagi dapat
-        dibaca (AC F11-4). Penghapusan akun memakai aturan pengalihan sistem, bukan endpoint ini (AC F14-5).
+        satu transaksi. Bila pemanggil anggota terakhir, grup ditutup (closed_at) dan undangan tertunda dibatalkan
+        (event change=invitation_cancelled dengan actor_user_id null ke kanal user:<id> setiap calon anggota).
+        Setelah commit keanggotaan menjadi left (event change=left ke kanal room dan kanal user pemanggil),
+        subscription socket room dicabut dan riwayat tidak lagi dapat dibaca (AC F11-4). Penghapusan akun memakai
+        aturan pengalihan sistem, bukan endpoint ini (AC F14-5).
       x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
       parameters:
         - $ref: "#/components/parameters/ChatRoomId"
@@ -443,6 +468,21 @@ paths:
         `before` dan `after` tidak boleh bersamaan; jangkar wajib pesan di room ini yang terlihat bagi pemanggil
         (selain itu 400 VALIDATION_ERROR). Pesan terhapus tampil sebagai placeholder (deleted_at terisi, body/gambar
         null). URL gambar bertanda tangan maksimal 10 menit dan hanya diterbitkan untuk anggota yang berhak (PRD 5.4).
+
+        Sinkron tanpa kehilangan pesan (AC F11-3, N-02):
+        - Server menjamin urutan commit = urutan (created_at, id) per room (kunci baris room saat insert, lihat aturan
+          domain), sehingga pesan yang commit sesudah sebuah respons halaman selalu berada sesudah pesan terbaru
+          halaman itu.
+        - Klien menyimpan "jangkar sinkron" = ID pesan terbaru yang diperoleh dari respons HTTP endpoint ini (halaman
+          HTTP selalu berurutan tanpa celah). Event `message.created` TIDAK memajukan jangkar karena event dari
+          transaksi berbeda dapat tiba tidak berurutan atau hilang saat koneksi putus. Setelah reconnect klien
+          memanggil `after=<jangkar>` sampai next_cursor null, menggabungkan hasil berdasarkan `id`, lalu memajukan
+          jangkar. Klien boleh memajukan jangkar lebih sering dengan sinkron `after` berkala.
+        - Penghapusan dan reaksi pada pesan lama tidak membuat pesan baru, sehingga tidak ikut sinkron `after`.
+          Setelah reconnect, dan setiap kali room dibuka, klien memuat ulang jendela pesan yang ditampilkan (halaman
+          terbaru tanpa cursor; halaman lama lewat `before` saat digulir) dan MENGGANTI salinan lokal (body, image,
+          reactions, deleted_at). Salinan lokal hanya boleh tampil sementara sampai halaman HTTP tiba, sehingga pesan
+          yang dihapus pengirim, moderator, atau karena penghapusan akun (AC F14-3) tidak terus tampil.
       x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/ChatRoomId"
@@ -479,14 +519,19 @@ paths:
           chat_image milik pengirim yang siap (status ready) dan belum terpakai; `body` opsional sebagai keterangan.
         - `reply_to_id` wajib pesan di room yang sama dan terlihat bagi pengirim.
         - Room direct: blokir aktif dari salah satu pihak -> 403 FORBIDDEN walaupun room/socket sudah ada (AC F12-1);
-          lawan bicara tidak lagi aktif -> 403 FORBIDDEN. Grup ditutup -> 403 FORBIDDEN.
+          lawan bicara tidak lagi aktif -> 403 FORBIDDEN. Blokir oleh lawan bicara dan lawan bicara tidak tersedia
+          memakai pesan galat yang sama sehingga pihak yang diblokir tidak mengetahuinya (N-09). Grup ditutup -> 403
+          FORBIDDEN.
         - Filter dasar konten berbahaya (PRD 3.12) dapat menolak isi dengan 400 VALIDATION_ERROR pada field body.
+        Urutan: transaksi mengunci baris room lebih dulu (SELECT ... FOR UPDATE), memeriksa ulang keanggotaan, blokir
+        dan status room di bawah kunci itu, mengisi created_at = greatest(clock_timestamp(), last_message_at + 1
+        mikrodetik), menyisipkan pesan, memajukan read cursor pengirim dan memperbarui rooms.last_message_at dalam
+        transaksi yang SAMA, sehingga urutan commit per room sama dengan urutan keyset (AC F11-3).
         Respons dikirim sesudah commit (201). Mengulang dengan client_message_id yang sama dari pengirim yang sama
         mengembalikan pesan yang sama (200) tanpa pesan baru (AC F11-2, unique messages_sender_id_client_message_id_key);
-        client_message_id sama dengan room/isi berbeda -> 409 IDEMPOTENCY_CONFLICT. Setelah commit server
-        memajukan read cursor pengirim, memperbarui last_message_at, mengirim `message.created` ke room, dan
-        menjadwalkan push kategori chat (tanpa isi pesan) untuk anggota yang tidak mute sesuai preferensi.
-        Laju pengiriman dibatasi (429).
+        client_message_id sama dengan room/isi berbeda -> 409 IDEMPOTENCY_CONFLICT. Sesudah commit server mengirim
+        `message.created` ke kanal room dan menjadwalkan push kategori chat (tanpa isi pesan) untuk anggota yang tidak
+        mute sesuai preferensi. Laju pengiriman dibatasi (429).
       x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/ChatRoomId"
@@ -548,8 +593,9 @@ paths:
       description: |
         Hanya anggota joined untuk pesan yang terlihat baginya; pesan terhapus atau pesan sistem -> 400
         VALIDATION_ERROR. Satu baris per (pesan, pengguna, emoji) sehingga pengulangan tidak menambah hitungan.
-        Maksimal 10 emoji berbeda per pengguna per pesan. Di room direct, blokir aktif -> 403 FORBIDDEN (AC F12-1).
-        Anggota room menerima `reaction.updated`.
+        Maksimal 10 emoji berbeda per pengguna per pesan. Di room direct, blokir aktif dari salah satu pihak atau
+        lawan bicara tidak tersedia -> 403 FORBIDDEN dengan pesan galat yang sama (AC F12-1, N-09). Anggota room
+        menerima `reaction.updated`.
       x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/ChatRoomId"
@@ -739,6 +785,7 @@ components:
           kind,
           title,
           avatar_url,
+          peer,
           member_count,
           my_role,
           muted,
@@ -760,7 +807,9 @@ components:
           oneOf:
             - $ref: "#/components/schemas/ChatPeer"
             - type: "null"
-          description: Lawan bicara (room direct); null untuk grup atau akun yang sudah dihapus.
+          description: |
+            Selalu ada. Objek lawan bicara untuk room direct (dipakai membuka profil, blokir dan lapor dari daftar room
+            dan header room); null untuk grup atau bila akun lawan bicara sudah dihapus.
         member_count: { type: integer, minimum: 0, maximum: 100, description: Jumlah anggota joined. }
         my_role: { $ref: "#/components/schemas/ChatMemberRole" }
         muted: { type: boolean }
@@ -1063,7 +1112,12 @@ components:
         reactions:
           type: array
           items: { $ref: "#/components/schemas/ChatReaction" }
-        created_at: { type: string, format: date-time }
+        created_at:
+          type: string
+          format: date-time
+          description: |
+            Diisi server di bawah kunci baris room dan naik ketat per room, sehingga urutan (created_at, id) sama
+            dengan urutan commit (AC F11-3).
         deleted_at: { type: [string, "null"], format: date-time }
 
     ChatMessagePage:
