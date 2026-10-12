@@ -5,14 +5,16 @@ import type { EffectiveStatus } from "@kapdh/contracts";
 
 /**
  * Label status yang selalu ditampilkan bersama warna/ikon (PRD 4.5: status tidak dibedakan dengan warna saja).
- * Selaras dengan label token desain (packages/design-tokens tokens.json membership-status).
+ * PRD 2.2 membedakan kartu unverified ("KTA berlabel Tidak Aktif") dari expired ("kartu dengan label
+ * kedaluwarsa"); AC F06-2 menampilkan "Kedaluwarsa" untuk anggota expired. Selaras dengan label token desain
+ * (packages/design-tokens tokens.json membership).
  */
 export const MEMBERSHIP_LABEL: Record<EffectiveStatus, string> = {
   pending_otp: "Menunggu Verifikasi Email",
   unverified: "KTA Tidak Aktif",
   verified: "KTA Aktif",
   expiring: "Segera Berakhir",
-  expired: "KTA Tidak Aktif",
+  expired: "KTA Kedaluwarsa",
   suspended: "Dibatasi",
   disabled: "Nonaktif",
   deletion_pending: "Penghapusan Diproses",

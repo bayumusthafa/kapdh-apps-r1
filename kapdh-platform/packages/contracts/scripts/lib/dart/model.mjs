@@ -6,9 +6,13 @@
 // - integer -> int, number -> double, boolean -> bool, array -> List<T>, additionalProperties -> Map<String, T>,
 //   objek tanpa properti -> Map<String, Object?>, skema tanpa tipe -> Object?;
 // - `type: [X, "null"]` dan `oneOf/anyOf: [{$ref}, {type: "null"}]` -> nullable;
-// - enum string -> enum Dart dengan nilai cadangan `unknown` (kompatibilitas maju);
+// - enum string -> enum Dart dengan nilai cadangan `unknown` (kompatibilitas maju); enum inline nullable ditulis
+//   `type: [string, "null"]` DENGAN `null` di daftar `enum` (JSON Schema 2020-12 menolak null yang tidak ada di enum);
 // - allOf -> kelas dengan field gabungan yang `implements` kelas induk ($ref);
-// - field opsional sekaligus nullable pada skema body request -> Optional<T?> (tiga keadaan, untuk PATCH).
+// - field opsional sekaligus nullable (atau bertipe bebas `{}`) pada skema body request -> Optional<T?> (tiga
+//   keadaan, untuk PATCH);
+// - field biner multipart -> MultipartFile yang DIKLON setiap kali body dibentuk (stream berkas hanya dapat dibaca
+//   sekali; request yang sama dapat dikirim ulang, PRD 4.3).
 // Konstruksi lain (oneOf/anyOf polimorfik, discriminator, enum non-string) ditolak dengan pesan jelas.
 import { isDeepStrictEqual } from "node:util";
 import {
@@ -43,19 +47,24 @@ export function doc(text, indent = "") {
   return docComment(sanitizeDoc(text), indent);
 }
 
-/** Bagian non-null dari skema nullable (`type: [X, "null"]` atau oneOf/anyOf dengan `{type: "null"}`). */
+/**
+ * Bagian non-null dari skema nullable (`type: [X, "null"]` atau oneOf/anyOf dengan `{type: "null"}`).
+ * `via` mencatat bentuk nullable-nya: "type" (`type: [X, "null"]`), "union" (oneOf/anyOf), atau "keyword"
+ * (`nullable: true` gaya OAS 3.0).
+ */
 export function splitNullable(schema) {
   if (!isObject(schema)) return { schema, nullable: false };
   if (Array.isArray(schema.type) && schema.type.includes("null")) {
     const rest = schema.type.filter((t) => t !== "null");
-    return { schema: { ...schema, type: rest.length === 1 ? rest[0] : rest }, nullable: true };
+    return { schema: { ...schema, type: rest.length === 1 ? rest[0] : rest }, nullable: true, via: "type" };
   }
-  if (schema.nullable === true) return { schema: omit(schema, ["nullable"]), nullable: true };
+  if (schema.nullable === true) return { schema: omit(schema, ["nullable"]), nullable: true, via: "keyword" };
   for (const key of ["oneOf", "anyOf"]) {
     const list = schema[key];
     if (Array.isArray(list) && list.length === 2) {
       const nullIdx = list.findIndex((s) => isObject(s) && s.type === "null");
-      if (nullIdx >= 0) return { schema: { ...omit(schema, [key]), ...list[1 - nullIdx] }, nullable: true };
+      if (nullIdx >= 0)
+        return { schema: { ...omit(schema, [key]), ...list[1 - nullIdx] }, nullable: true, via: "union" };
     }
   }
   return { schema, nullable: false };
@@ -74,8 +83,15 @@ export class ModelRegistry {
    */
   constructor(bundle, { extraSchemas = {} } = {}) {
     this.bundle = bundle;
-    this.schemas = { ...(bundle.components?.schemas ?? {}), ...extraSchemas };
     this.errors = [];
+    // Skema tambahan berbagi models.dart dengan components.schemas: nama ganda akan saling menimpa.
+    for (const name of Object.keys(extraSchemas)) {
+      if (Object.hasOwn(bundle.components?.schemas ?? {}, name))
+        this.errors.push(
+          `skema event ${name}: nama (title) bentrok dengan components.schemas kontrak HTTP; beri nama lain`,
+        );
+    }
+    this.schemas = { ...(bundle.components?.schemas ?? {}), ...extraSchemas };
     /** @type {Map<string, object>} dartName -> TypeDef */
     this.types = new Map();
     /** @type {Map<string, string>} nama skema -> nama Dart */
@@ -245,6 +261,13 @@ export class ModelRegistry {
     const members = [];
     const seen = new Set();
     for (const value of schema.enum) {
+      if (value === null) {
+        this.error(
+          `${ctx.source}: null di enum hanya boleh pada enum inline nullable \`type: [string, "null"]\`; ` +
+            'skema komponen tidak boleh nullable (pakai `oneOf: [{ $ref }, { type: "null" }]` di titik pemakaian)',
+        );
+        continue;
+      }
       if (typeof value !== "string") {
         this.error(`${ctx.source}: nilai enum wajib string (ditemukan ${JSON.stringify(value)})`);
         continue;
@@ -323,7 +346,11 @@ export class ModelRegistry {
 
     const dartFieldNames = new Set();
     for (const { jsonName, rawSchema, inherited } of fields.values()) {
-      const { schema: propSchema, nullable } = inherited
+      const {
+        schema: propSchema,
+        nullable,
+        via,
+      } = inherited
         ? { schema: splitNullable(rawSchema).schema, nullable: inherited.nullable }
         : splitNullable(rawSchema);
       const fieldName = safeMemberName(jsonName);
@@ -332,10 +359,13 @@ export class ModelRegistry {
       dartFieldNames.add(fieldName);
       const type =
         inherited?.type ??
-        this.typeRef(propSchema, `${dartName}${pascalCase(jsonName)}`, {
-          ...ctx,
-          source: `${ctx.source}.${jsonName}`,
-        });
+        this.typeRef(
+          propSchema,
+          `${dartName}${pascalCase(jsonName)}`,
+          { ...ctx, source: `${ctx.source}.${jsonName}` },
+          // Nullability field dicatat di tingkat field; bentuknya diteruskan untuk pemeriksaan enum nullable.
+          { nullableVia: via },
+        );
       const isRequired = required.has(jsonName);
       const field = {
         jsonName,
@@ -343,8 +373,9 @@ export class ModelRegistry {
         type,
         nullable,
         required: isRequired,
-        // Opsional + nullable pada body request: tiga keadaan agar null (kosongkan) dapat dibedakan dari tidak dikirim.
-        triState: !isRequired && nullable && ctx.request && !ctx.multipart,
+        // Opsional + nullable pada body request: tiga keadaan agar null (kosongkan) dapat dibedakan dari tidak
+        // dikirim. Skema bebas `{}` juga menerima null, sehingga diperlakukan sama.
+        triState: !isRequired && (nullable || type.t === "any") && ctx.request && !ctx.multipart,
         sensitive:
           SENSITIVE_NAME.test(jsonName) ||
           rawSchema?.["x-sensitive"] === true ||
@@ -387,8 +418,10 @@ export class ModelRegistry {
    * Referensi tipe untuk skema inline/ref. `contextName` dipakai untuk menamai enum/objek inline
    * (bisa ditimpa `title` pada skema).
    */
-  typeRef(rawSchema, contextName, ctx, { allowInlineClass = true } = {}) {
-    const { schema, nullable } = splitNullable(rawSchema);
+  typeRef(rawSchema, contextName, ctx, { allowInlineClass = true, nullableVia } = {}) {
+    const { schema, nullable, via: ownVia } = splitNullable(rawSchema);
+    // Bentuk nullable skema asli: milik skema ini, atau dari field pemanggil yang sudah memisahkan nullable.
+    const via = ownVia ?? nullableVia;
     const wrap = (ref) => (nullable ? { ...ref, nullable: true } : ref);
     if (!isObject(schema) || Object.keys(schema).length === 0) return wrap({ t: "any" });
     if (typeof schema.$ref === "string") {
@@ -409,11 +442,21 @@ export class ModelRegistry {
         ? schema.title
         : contextName;
     if (Array.isArray(schema.enum)) {
-      const def = this.#defineEnum(name, schema, {
-        ...ctx,
-        inline: true,
-        source: `${ctx.source} (enum inline ${name})`,
-      });
+      const source = `${ctx.source} (enum inline ${name})`;
+      const hasNull = schema.enum.includes(null);
+      // JSON Schema 2020-12 (dipakai Ajv di expectOperation): `type: [string, "null"]` + `enum` tanpa null tetap
+      // menolak null, sehingga nilai null dari API gagal uji kontrak. Bentuk yang benar memuat null di enum.
+      if (via === "type" && !hasNull) {
+        this.error(
+          `${source}: enum nullable \`type: [string, "null"]\` wajib memuat null di daftar enum ` +
+            "(mis. `enum: [open, closed, null]`); tanpa itu nilai null ditolak validator JSON Schema",
+        );
+      }
+      if (hasNull && !via) {
+        this.error(`${source}: null di enum wajib disertai \`type: [string, "null"]\``);
+      }
+      const members = hasNull ? { ...schema, enum: schema.enum.filter((v) => v !== null) } : schema;
+      const def = this.#defineEnum(name, members, { ...ctx, inline: true, source });
       return wrap({ t: "enum", name: def.name });
     }
     if (schema.oneOf || schema.anyOf || schema.discriminator) {
@@ -501,12 +544,8 @@ export class ModelRegistry {
     return type.nullable && !base.endsWith("?") ? `${base}?` : base;
   }
 
-  /** Ekspresi fungsi `T Function(Object?)` yang mendekode nilai JSON (null ditolak kecuali tipe nullable). */
-  decodeFn(type, depth = 0) {
-    if (type.nullable) {
-      const inner = { ...type, nullable: false };
-      return `(v${depth}) => decodeNullable(v${depth}, ${this.decodeFn(inner, depth + 1)})`;
-    }
+  /** Nama fungsi dekode untuk tipe primitif, atau null bila tipe butuh ekspresi. */
+  #primitiveDecoder(type) {
     switch (type.t) {
       case "string":
         return "decodeString";
@@ -522,18 +561,46 @@ export class ModelRegistry {
         return "decodeAny";
       case "binary":
         return "decodeBytes";
-      case "enum":
-        return `(v${depth}) => ${type.name}.fromJson(decodeString(v${depth}))`;
-      case "class":
-        return `(v${depth}) => ${type.name}.fromJson(decodeObject(v${depth}))`;
-      case "alias":
-        return this.decodeFn(this.types.get(type.name)?.target ?? { t: "any" }, depth);
-      case "list":
-        return `(v${depth}) => decodeList(v${depth}, ${this.decodeFn(type.of, depth + 1)})`;
-      case "map":
-        return `(v${depth}) => decodeMap(v${depth}, ${this.decodeFn(type.of, depth + 1)})`;
       default:
-        return "decodeAny";
+        return null;
+    }
+  }
+
+  /**
+   * Ekspresi fungsi `T Function(Object?)` yang mendekode nilai JSON (null ditolak kecuali tipe nullable).
+   * Parameter closure selalu bertipe eksplisit `Object?` agar tetap lolos `strict-inference` di posisi mana pun
+   * (termasuk closure yang langsung dipanggil tanpa tipe konteks).
+   */
+  decodeFn(type, depth = 0) {
+    if (!type.nullable) {
+      if (type.t === "alias") return this.decodeFn(this.types.get(type.name)?.target ?? { t: "any" }, depth);
+      const primitive = this.#primitiveDecoder(type);
+      if (primitive) return primitive;
+    }
+    return `(Object? v${depth}) => ${this.decodeExpr(type, `v${depth}`, depth)}`;
+  }
+
+  /** Ekspresi Dart yang mendekode nilai JSON `expr` (bertipe Object?) menjadi `type`. */
+  decodeExpr(type, expr, depth = 0) {
+    if (type.nullable) {
+      const inner = { ...type, nullable: false };
+      return `decodeNullable(${expr}, ${this.decodeFn(inner, depth + 1)})`;
+    }
+    const primitive = this.#primitiveDecoder(type);
+    if (primitive) return `${primitive}(${expr})`;
+    switch (type.t) {
+      case "enum":
+        return `${type.name}.fromJson(decodeString(${expr}))`;
+      case "class":
+        return `${type.name}.fromJson(decodeObject(${expr}))`;
+      case "alias":
+        return this.decodeExpr(this.types.get(type.name)?.target ?? { t: "any" }, expr, depth);
+      case "list":
+        return `decodeList(${expr}, ${this.decodeFn(type.of, depth + 1)})`;
+      case "map":
+        return `decodeMap(${expr}, ${this.decodeFn(type.of, depth + 1)})`;
+      default:
+        return `decodeAny(${expr})`;
     }
   }
 
@@ -563,7 +630,10 @@ export class ModelRegistry {
       if (this.isIdentityEncode(inner)) return e;
       const { nullable, ...nonNull } = inner;
       const enc = this.encodeExpr(nonNull, e, depth + 1);
-      return nullable ? `${e} == null ? null : ${enc}` : enc;
+      if (!nullable) return enc;
+      // Pemanggilan method pada elemen nullable memakai `?.` (lint prefer_null_aware_operators).
+      if (enc === `${e}.toJson()`) return `${e}?.toJson()`;
+      return `${e} == null ? null : ${enc}`;
     };
     switch (type.t) {
       case "datetime":
@@ -611,7 +681,7 @@ export class ModelRegistry {
 
   fieldDartType(f) {
     const base = this.dartType({ ...f.type, nullable: false });
-    if (f.triState) return `Optional<${base}?>`;
+    if (f.triState) return `Optional<${base.endsWith("?") ? base : `${base}?`}>`;
     if (f.type.t === "any") return "Object?";
     return this.#fieldNullable(f) ? `${base}?` : base;
   }
@@ -681,7 +751,9 @@ export class ModelRegistry {
           const dec = this.decodeFn({ ...f.type, nullable: false });
           const key = dartString(f.jsonName);
           let expr;
-          if (f.triState) expr = `readPresentField(json, ${key}, ${dec})`;
+          // Nilai bebas: argumen tipe eksplisit agar T tidak disimpulkan non-null dari konteks Optional<Object?>.
+          if (f.triState)
+            expr = `readPresentField${f.type.t === "any" ? "<Object?>" : ""}(json, ${key}, ${dec})`;
           else if (f.type.t === "any") expr = `json[${key}]`;
           else if (this.#fieldNullable(f)) expr = `readOptionalField(json, ${key}, ${dec})`;
           else expr = `readField(json, ${key}, ${dec})`;
@@ -748,7 +820,8 @@ export class ModelRegistry {
     out.push("  @override");
     const parts = def.fields.map((f) => {
       if (f.sensitive) return `${f.name}: ***`;
-      if (f.type.t === "binary") return `${f.name}: \${${f.name}.filename}`;
+      if (f.type.t === "binary")
+        return `${f.name}: \${${f.name}${this.#fieldNullable(f) ? "?" : ""}.filename}`;
       return `${f.name}: $${f.name}`;
     });
     out.push(`  String toString() => ${dartString(`${def.name}(`).slice(0, -1)}${parts.join(", ")})';`);
@@ -756,18 +829,31 @@ export class ModelRegistry {
     return out.join("\n");
   }
 
+  /**
+   * Ekspresi nilai multipart: berkas diklon setiap kali FormData dibentuk karena dio memfinalisasi
+   * MultipartFile setelah terkirim; tanpa klon, mengirim ulang body yang sama ("Coba lagi" setelah jaringan
+   * putus, PRD 4.3) gagal dengan "MultipartFile has already been finalized".
+   */
+  #multipartExpr(type, expr) {
+    const t = this.#unalias(type);
+    if (t.t === "binary") return `${expr}.clone()`;
+    if (t.t === "list" && this.#unalias(t.of).t === "binary") return `[for (final e0 in ${expr}) e0.clone()]`;
+    return this.encodeExpr(type, expr);
+  }
+
   #jsonEntry(f, multipart) {
     const key = dartString(f.jsonName);
     const nonNull = { ...f.type, nullable: false };
-    const enc = (e) => this.encodeExpr(nonNull, e);
-    const identity = this.isIdentityEncode(nonNull);
+    const enc = (e) => (multipart ? this.#multipartExpr(nonNull, e) : this.encodeExpr(nonNull, e));
+    const identity = enc("x") === "x";
     if (f.triState) {
       const value = identity
         ? `${f.name}.valueOrNull`
         : `encodeNullable(${f.name}.valueOrNull, (v) => ${enc("v")})`;
       return `if (${f.name}.isPresent) ${key}: ${value}`;
     }
-    if (f.type.t === "any") return `${key}: ${f.name}`;
+    // Nilai bebas: field wajib selalu dikirim (boleh null); field opsional yang null tidak dikirim.
+    if (f.type.t === "any") return f.required ? `${key}: ${f.name}` : `${key}: ?${f.name}`;
     if (f.required && !f.nullable) return `${key}: ${enc(f.name)}`;
     if (f.required && f.nullable && !multipart) {
       return identity ? `${key}: ${f.name}` : `${key}: encodeNullable(${f.name}, (v) => ${enc("v")})`;

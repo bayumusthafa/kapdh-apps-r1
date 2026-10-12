@@ -11,6 +11,16 @@
 /// } on ApiException catch (e) {
 ///   switch (e.ui.action) { /* perilaku UI seragam dari katalog galat */ }
 /// }
+///
+/// // Interceptor refresh 401: kirim ulang dengan body multipart yang diklon.
+/// // handler.resolve(await dio.fetch<Object?>(retryableRequest(error.requestOptions)));
+///
+/// // Event Socket.IO /realtime: payload bertipe per jenis; jenis baru diabaikan.
+/// switch (RealtimeEvent.fromJson(data)) {
+///   case SessionRevokedEvent(): /* keluar */
+///   case UnknownRealtimeEvent(): break;
+///   case final other: /* tangani jenis lain */
+/// }
 /// ```
 library;
 

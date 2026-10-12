@@ -38,6 +38,11 @@ describe("MEMBERSHIP_LABEL (PRD 4.5: status tidak dengan warna saja)", () => {
     expect(Object.keys(MEMBERSHIP_LABEL).sort()).toEqual([...EFFECTIVE_STATUS_VALUES].sort());
   });
 
+  it("unverified dan expired berlabel berbeda (PRD 2.2, AC F06-2)", () => {
+    expect(MEMBERSHIP_LABEL.unverified).toBe("KTA Tidak Aktif");
+    expect(MEMBERSHIP_LABEL.expired).toBe("KTA Kedaluwarsa");
+  });
+
   it("status yang belum dikenal tetap berlabel", () => {
     expect(membershipLabelFor("verified")).toBe("KTA Aktif");
     expect(membershipLabelFor("status_baru")).toBe(MEMBERSHIP_LABEL_UNKNOWN);

@@ -1,128 +1,25 @@
-import { existsSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { admins, mfaTotp, users } from "@kapdh/database";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
-import { Ajv2020 } from "ajv/dist/2020.js";
-import addFormatsModule from "ajv-formats";
 import bcrypt from "bcryptjs";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { parse } from "yaml";
 import { encryptSecret, newTotpSecret, totp } from "../src/auth/crypto.js";
 import type { Db } from "../src/infra/db.js";
 import type { MemoryMailer } from "../src/infra/mailer.js";
+import {
+  ajv,
+  expectOperation,
+  expectSchema,
+  type InjectResponse,
+  registeredRoutes,
+  routesMissingFromContract,
+} from "./support/contract.js";
 import { createTestApp, type TestClock, testEnv } from "./support/test-app.js";
 
 /**
- * Respons nyata API harus cocok dengan kontrak packages/contracts (PRD 7.2: kontrak lebih dulu; N-13).
- * Kontrak dibaca dari bundle dist/openapi.yaml (root.yaml + domains/*.yaml, ARCHITECTURE §6) yang dibangun
- * `pnpm --filter @kapdh/contracts bundle` (turbo menjalankan build dependensi sebelum test).
+ * Respons nyata API harus cocok dengan kontrak packages/contracts (PRD 7.2: kontrak lebih dulu; N-13). Validasi
+ * memakai test/support/contract.ts (expectOperation) yang juga dipakai tes setiap modul (ARCHITECTURE §9.1).
  */
-type HttpMethod = "get" | "put" | "post" | "delete" | "patch";
-type JsonObject = Record<string, unknown>;
-interface InjectResponse {
-  statusCode: number;
-  headers: Record<string, unknown>;
-  body: string;
-  json(): unknown;
-}
-
-const require = createRequire(import.meta.url);
-const specPath = require.resolve("@kapdh/contracts/openapi.yaml");
-if (!existsSync(specPath)) {
-  throw new Error(
-    `${specPath} belum ada; jalankan \`pnpm --filter @kapdh/contracts bundle\` atau \`pnpm build\`.`,
-  );
-}
-const spec = parse(readFileSync(specPath, "utf8")) as JsonObject & { paths: Record<string, JsonObject> };
-const ajv = new Ajv2020({ strict: false, allErrors: true });
-// ajv-formats CJS: di ESM fungsi bisa berada di `default` atau langsung sebagai modul.
-type AddFormats = (a: Ajv2020) => void;
-const addFormats = ((addFormatsModule as unknown as { default?: AddFormats }).default ??
-  addFormatsModule) as unknown as AddFormats;
-addFormats(ajv);
-ajv.addSchema({ ...spec, $id: "kapdh" });
-
-/** Segmen JSON pointer dalam fragmen URI (RFC 6901 §6). */
-const pointerSegment = (s: string) => encodeURIComponent(s.replaceAll("~", "~0").replaceAll("/", "~1"));
-
-function resolvePointer(pointer: string): JsonObject {
-  return pointer
-    .replace(/^#\//, "")
-    .split("/")
-    .map((s) => decodeURIComponent(s).replaceAll("~1", "/").replaceAll("~0", "~"))
-    .reduce<unknown>((node, key) => (node as JsonObject)[key], spec) as JsonObject;
-}
-
-function expectSchema(name: string, body: unknown) {
-  const validate = ajv.getSchema(`kapdh#/components/schemas/${name}`)!;
-  const ok = validate(body);
-  expect(ok, `${name}: ${ajv.errorsText(validate.errors)}`).toBe(true);
-}
-
-/**
- * Memvalidasi respons terhadap operasi kontrak (ARCHITECTURE §6): status harus dideklarasikan (status 2xx yang tidak
- * dideklarasikan selalu gagal; status lain jatuh ke `default`), lalu body divalidasi terhadap skema status itu.
- * Mengembalikan body JSON (atau undefined untuk respons tanpa body, mis. 204).
- */
-function expectOperation(method: HttpMethod, path: string, res: InjectResponse): unknown {
-  const where = `${method.toUpperCase()} ${path} -> ${res.statusCode}`;
-  const item = spec.paths[path];
-  expect(item, `path ${path} tidak ada di kontrak`).toBeDefined();
-  const operation = item![method] as { responses: Record<string, JsonObject> } | undefined;
-  expect(operation, `${method.toUpperCase()} ${path} tidak ada di kontrak`).toBeDefined();
-
-  const status = String(res.statusCode);
-  const range = `${status[0]}XX`;
-  let key: string;
-  if (status in operation!.responses) key = status;
-  else if (range in operation!.responses) key = range;
-  else {
-    expect(
-      res.statusCode >= 200 && res.statusCode < 300,
-      `${where}: status 2xx tidak dideklarasikan di kontrak`,
-    ).toBe(false);
-    expect(
-      operation!.responses.default,
-      `${where}: status tidak dideklarasikan dan tidak ada default`,
-    ).toBeDefined();
-    key = "default";
-  }
-
-  let pointer = `#/paths/${pointerSegment(path)}/${method}/responses/${pointerSegment(key)}`;
-  let response = operation!.responses[key]!;
-  while (typeof response.$ref === "string") {
-    pointer = response.$ref;
-    response = resolvePointer(pointer);
-  }
-  const content = response.content as Record<string, unknown> | undefined;
-  if (!content?.["application/json"]) {
-    expect(res.body, `${where}: kontrak tidak mendeklarasikan body`).toBe("");
-    return undefined;
-  }
-  expect(String(res.headers["content-type"] ?? ""), `${where}: content-type`).toMatch(/^application\/json/);
-  const body = res.json();
-  const validate = ajv.getSchema(`kapdh${pointer}/content/application~1json/schema`);
-  expect(validate, `${where}: skema respons tidak dapat dikompilasi`).toBeDefined();
-  expect(validate!(body), `${where}: ${ajv.errorsText(validate!.errors)}`).toBe(true);
-  return body;
-}
-
-/** Daftar rute Fastify dari pohon printRoutes({ commonPrefix: false }) (setiap tingkat diindentasi 4 karakter). */
-function registeredRoutes(tree: string): { method: string; url: string }[] {
-  const routes: { method: string; url: string }[] = [];
-  const stack: string[] = [];
-  for (const line of tree.split("\n")) {
-    const node = /^(.*?)(?:├── |└── )(.*)$/.exec(line);
-    if (!node) continue;
-    const depth = node[1]!.length / 4;
-    const parts = /^(.*?)(?: \(([A-Z, ]+)\))?(?: \{.*\})?$/.exec(node[2]!)!;
-    stack.length = depth;
-    stack.push(parts[1]!);
-    for (const method of parts[2]?.split(", ") ?? []) routes.push({ method, url: stack.join("") });
-  }
-  return routes;
-}
 
 let app: NestFastifyApplication;
 let db: Db;
@@ -158,20 +55,22 @@ describe("kontrak dan rute terdaftar (ARCHITECTURE §6)", () => {
         expect(fastify.hasRoute({ method: r.method as "GET", url: r.url }), r.url).toBe(true);
     }
 
-    const normalize = (p: string) => p.replace(/\{[^}]+\}/g, "{}");
-    const contract = new Map(Object.entries(spec.paths).map(([p, item]) => [normalize(p), item]));
-    const missing: string[] = [];
-    for (const { method, url } of routes) {
-      // HEAD otomatis untuk setiap GET dan OPTIONS * untuk preflight CORS bukan operasi API.
-      if (method === "HEAD" || (method === "OPTIONS" && url === "*")) continue;
-      if (!url.startsWith("/api/v1/")) {
-        missing.push(`${method} ${url} (di luar /api/v1)`);
-        continue;
-      }
-      const path = normalize(url.slice("/api/v1".length).replace(/:([A-Za-z0-9_]+)/g, "{$1}"));
-      if (!contract.get(path)?.[method.toLowerCase()]) missing.push(`${method} ${url}`);
-    }
-    expect(missing, "rute tanpa operasi kontrak; tambahkan ke openapi/domains/<domain>.yaml").toEqual([]);
+    // HEAD otomatis untuk setiap GET dan OPTIONS * untuk preflight CORS bukan operasi API.
+    expect(
+      routesMissingFromContract(routes),
+      "rute tanpa operasi kontrak; tambahkan ke openapi/domains/<domain>.yaml",
+    ).toEqual([]);
+  });
+
+  it("rute yang belum ada di kontrak terdeteksi", () => {
+    expect(
+      routesMissingFromContract([
+        { method: "GET", url: "/api/v1/me" },
+        { method: "POST", url: "/api/v1/belum-ada/:id" },
+        { method: "GET", url: "/di-luar" },
+        { method: "HEAD", url: "/api/v1/me" },
+      ]),
+    ).toEqual(["POST /api/v1/belum-ada/:id", "GET /di-luar (di luar /api/v1)"]);
   });
 
   it("expectOperation menolak status 2xx yang tidak dideklarasikan", () => {
