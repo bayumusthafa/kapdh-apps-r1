@@ -7,13 +7,13 @@ import 'interceptors.dart';
 import 'refresh_coordinator.dart';
 
 BaseOptions _baseOptions(ApiConfig config) => BaseOptions(
-      baseUrl: config.baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      sendTimeout: const Duration(seconds: 60),
-      receiveTimeout: const Duration(seconds: 20),
-      contentType: Headers.jsonContentType,
-      responseType: ResponseType.json,
-    );
+  baseUrl: config.baseUrl,
+  connectTimeout: const Duration(seconds: 10),
+  sendTimeout: const Duration(seconds: 60),
+  receiveTimeout: const Duration(seconds: 20),
+  contentType: Headers.jsonContentType,
+  responseType: ResponseType.json,
+);
 
 /// Dio tanpa auth untuk POST /auth/refresh: hanya header aplikasi. Terpisah dari Dio utama agar refresh tidak
 /// melewati interceptor auth (tidak ada rekursi atau antrean saling menunggu).

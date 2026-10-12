@@ -20,7 +20,8 @@ abstract interface class SecureStore {
 /// - iOS: Keychain `first_unlock_this_device`: dapat dibaca setelah buka kunci pertama (proses latar push) dan
 ///   tidak ikut cadangan/iCloud Keychain ke perangkat lain.
 class FlutterSecureStore implements SecureStore {
-  FlutterSecureStore([FlutterSecureStorage? storage]) : _storage = storage ?? const FlutterSecureStorage(aOptions: android, iOptions: ios);
+  FlutterSecureStore([FlutterSecureStorage? storage])
+    : _storage = storage ?? const FlutterSecureStorage(aOptions: android, iOptions: ios);
 
   static const AndroidOptions android = AndroidOptions(encryptedSharedPreferences: true);
   static const IOSOptions ios = IOSOptions(

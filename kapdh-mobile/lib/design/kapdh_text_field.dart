@@ -1,0 +1,213 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../app/theme/kapdh_tokens.dart';
+
+/// Label di atas field (guideline hal. 5: "Email", "Password", "Jenis Kelamin"). Teks label visual dikecualikan dari
+/// semantics dan dipasang sebagai label field, sehingga pembaca layar membacakan "Email, kolom teks" satu kali
+/// sementara tombol di dalam field (tampilkan sandi) tetap dapat dioperasikan terpisah (N-11).
+class _LabelAbove extends StatelessWidget {
+  const _LabelAbove({required this.label, required this.child, this.requiredMark = false});
+
+  final String label;
+  final Widget child;
+  final bool requiredMark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ExcludeSemantics(
+          child: Text.rich(
+            TextSpan(
+              text: label,
+              children: [
+                if (requiredMark)
+                  const TextSpan(
+                    text: ' *',
+                    style: TextStyle(color: KapdhColors.danger),
+                  ),
+              ],
+            ),
+            style: const TextStyle(fontSize: KapdhFontSize.label, fontWeight: FontWeight.w500, color: KapdhColors.text),
+          ),
+        ),
+        const SizedBox(height: KapdhSpace.s2),
+        Semantics(label: requiredMark ? '$label, wajib' : label, child: child),
+      ],
+    );
+  }
+}
+
+/// Field teks KAPDH dengan label di atas, ikon awalan, petunjuk, galat server per field dan teks penghitung di kanan
+/// (guideline hal. 5 "0/8"). [obscurable] menambahkan tombol tampil/sembunyikan untuk sandi.
+class KapdhTextField extends StatefulWidget {
+  const KapdhTextField({
+    super.key,
+    required this.label,
+    this.controller,
+    this.hint,
+    this.prefixIcon,
+    this.errorText,
+    this.helperText,
+    this.trailingText,
+    this.trailingTextColor,
+    this.obscurable = false,
+    this.keyboardType,
+    this.textInputAction,
+    this.autofillHints,
+    this.inputFormatters,
+    this.textCapitalization = TextCapitalization.none,
+    this.onChanged,
+    this.onSubmitted,
+    this.validator,
+    this.enabled = true,
+    this.autofocus = false,
+    this.maxLines = 1,
+    this.requiredMark = false,
+    this.focusNode,
+  });
+
+  final String label;
+  final TextEditingController? controller;
+  final String? hint;
+  final IconData? prefixIcon;
+
+  /// Galat dari server (field_errors) atau validasi lokal; ditampilkan di bawah field dengan warna bahaya.
+  final String? errorText;
+  final String? helperText;
+
+  /// Teks kecil di sisi kanan field, mis. penghitung byte sandi.
+  final String? trailingText;
+  final Color? trailingTextColor;
+  final bool obscurable;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final Iterable<String>? autofillHints;
+  final List<TextInputFormatter>? inputFormatters;
+  final TextCapitalization textCapitalization;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final FormFieldValidator<String>? validator;
+  final bool enabled;
+  final bool autofocus;
+  final int maxLines;
+  final bool requiredMark;
+  final FocusNode? focusNode;
+
+  @override
+  State<KapdhTextField> createState() => _KapdhTextFieldState();
+}
+
+class _KapdhTextFieldState extends State<KapdhTextField> {
+  bool _obscured = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final trailing = widget.trailingText;
+    final suffix = <Widget>[
+      if (trailing != null)
+        Padding(
+          padding: const EdgeInsets.only(right: KapdhSpace.s1),
+          child: ExcludeSemantics(
+            child: Text(
+              trailing,
+              style: TextStyle(
+                fontSize: KapdhFontSize.caption,
+                color: widget.trailingTextColor ?? KapdhColors.textMuted,
+              ),
+            ),
+          ),
+        ),
+      if (widget.obscurable)
+        IconButton(
+          tooltip: _obscured ? 'Tampilkan password' : 'Sembunyikan password',
+          icon: Icon(_obscured ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+          onPressed: () => setState(() => _obscured = !_obscured),
+        ),
+    ];
+
+    return _LabelAbove(
+      label: widget.label,
+      requiredMark: widget.requiredMark,
+      child: TextFormField(
+        controller: widget.controller,
+        focusNode: widget.focusNode,
+        enabled: widget.enabled,
+        autofocus: widget.autofocus,
+        obscureText: widget.obscurable && _obscured,
+        enableSuggestions: !widget.obscurable,
+        autocorrect: !widget.obscurable,
+        keyboardType: widget.keyboardType,
+        textInputAction: widget.textInputAction,
+        autofillHints: widget.autofillHints,
+        inputFormatters: widget.inputFormatters,
+        textCapitalization: widget.textCapitalization,
+        maxLines: widget.obscurable ? 1 : widget.maxLines,
+        onChanged: widget.onChanged,
+        onFieldSubmitted: widget.onSubmitted,
+        validator: widget.validator,
+        style: const TextStyle(fontSize: KapdhFontSize.body, color: KapdhColors.text),
+        decoration: InputDecoration(
+          hintText: widget.hint,
+          errorText: widget.errorText,
+          helperText: widget.helperText,
+          prefixIcon: widget.prefixIcon == null ? null : Icon(widget.prefixIcon, size: 20),
+          suffixIcon: suffix.isEmpty
+              ? null
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ...suffix,
+                    const SizedBox(width: KapdhSpace.s1),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dropdown KAPDH dengan label di atas (guideline hal. 5: "Jenis Kelamin", "Angkatan", "Kelas Masuk").
+class KapdhDropdownField<T> extends StatelessWidget {
+  const KapdhDropdownField({
+    super.key,
+    required this.label,
+    required this.items,
+    required this.value,
+    required this.onChanged,
+    this.hint,
+    this.errorText,
+    this.validator,
+    this.requiredMark = false,
+  });
+
+  final String label;
+  final List<DropdownMenuItem<T>> items;
+  final T? value;
+  final ValueChanged<T?>? onChanged;
+  final String? hint;
+  final String? errorText;
+  final FormFieldValidator<T>? validator;
+  final bool requiredMark;
+
+  @override
+  Widget build(BuildContext context) {
+    return _LabelAbove(
+      label: label,
+      requiredMark: requiredMark,
+      child: DropdownButtonFormField<T>(
+        initialValue: value,
+        items: items,
+        onChanged: onChanged,
+        validator: validator,
+        isExpanded: true,
+        icon: const Icon(Icons.keyboard_arrow_down),
+        style: const TextStyle(fontSize: KapdhFontSize.body, color: KapdhColors.text),
+        decoration: InputDecoration(hintText: hint, errorText: errorText),
+      ),
+    );
+  }
+}

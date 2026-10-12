@@ -16,10 +16,10 @@ class AppInfo {
 
   /// Nama perangkat ringkas untuk daftar sesi (F-02); tidak memuat data pribadi.
   String get deviceName => switch (platform) {
-        DevicePlatform.android => 'Aplikasi KAPDH Android',
-        DevicePlatform.ios => 'Aplikasi KAPDH iOS',
-        DevicePlatform.unknown => 'Aplikasi KAPDH',
-      };
+    DevicePlatform.android => 'Aplikasi KAPDH Android',
+    DevicePlatform.ios => 'Aplikasi KAPDH iOS',
+    DevicePlatform.unknown => 'Aplikasi KAPDH',
+  };
 
   static DevicePlatform currentPlatform() {
     if (kIsWeb) return DevicePlatform.unknown;

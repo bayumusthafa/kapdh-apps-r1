@@ -20,9 +20,9 @@ typedef SessionRefresher = Future<TokenPair> Function(String refreshToken);
 ///   atau respons tak sesuai tidak pernah membuat pengguna keluar; galatnya diteruskan ke pemanggil.
 class RefreshCoordinator {
   RefreshCoordinator({required TokenStore store, required SessionRefresher refresher, Clock clock = systemClock})
-      : _store = store,
-        _refresher = refresher,
-        _clock = clock;
+    : _store = store,
+      _refresher = refresher,
+      _clock = clock;
 
   final TokenStore _store;
   final SessionRefresher _refresher;
@@ -91,8 +91,10 @@ class RefreshCoordinator {
     } on ApiException catch (error) {
       if (error.kind == ApiFailureKind.api && error.code == ErrorCode.unauthenticated) {
         // Satu-satunya kondisi token dihapus (ARCHITECTURE §8.3). Bila pengguna sudah login ulang selama refresh
-        // berjalan, token baru tidak ikut dihapus.
-        if (_store.cached?.refreshToken == refreshToken) await _invalidate();
+        // berjalan, sesi baru tidak ikut dihapus dan dipakai untuk mengulang request.
+        final latest = _store.cached;
+        if (latest != null && latest.refreshToken != refreshToken) return latest.accessToken;
+        await _invalidate();
         return null;
       }
       rethrow;

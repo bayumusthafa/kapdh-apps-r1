@@ -33,18 +33,19 @@ class SessionState {
     this.issue = SessionIssue.none,
   });
 
-  const SessionState.unknown({SessionIssue issue = SessionIssue.none}) : this._(phase: SessionPhase.unknown, issue: issue);
+  const SessionState.unknown({SessionIssue issue = SessionIssue.none})
+    : this._(phase: SessionPhase.unknown, issue: issue);
 
   /// [challenge]: challenge OTP yang sedang berjalan (signup atau password_reset). [resetToken]: token reset sandi
   /// sekali pakai dari OTP pemulihan; hanya di memori, tidak pernah disimpan.
   const SessionState.anonymous({OtpChallenge? challenge, String? resetToken})
-      : this._(phase: SessionPhase.anonymous, challenge: challenge, resetToken: resetToken);
+    : this._(phase: SessionPhase.anonymous, challenge: challenge, resetToken: resetToken);
 
   const SessionState.authenticated(Me me, {required DateTime syncedAt})
-      : this._(phase: SessionPhase.authenticated, me: me, syncedAt: syncedAt);
+    : this._(phase: SessionPhase.authenticated, me: me, syncedAt: syncedAt);
 
   const SessionState.offlineLastKnown(Me me, {required DateTime syncedAt, SessionIssue issue = SessionIssue.offline})
-      : this._(phase: SessionPhase.offlineLastKnown, me: me, syncedAt: syncedAt, issue: issue);
+    : this._(phase: SessionPhase.offlineLastKnown, me: me, syncedAt: syncedAt, issue: issue);
 
   final SessionPhase phase;
 
@@ -81,6 +82,7 @@ class SessionState {
   int get hashCode => Object.hash(phase, me, syncedAt, challenge, resetToken, issue);
 
   @override
-  String toString() => 'SessionState(${phase.name}, status: ${effectiveStatus?.value}, issue: ${issue.name}, '
+  String toString() =>
+      'SessionState(${phase.name}, status: ${effectiveStatus?.value}, issue: ${issue.name}, '
       'challenge: ${challenge?.purpose.value}, reset: ${resetToken == null ? 'tidak' : 'ada'})';
 }

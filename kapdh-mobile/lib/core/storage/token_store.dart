@@ -16,21 +16,21 @@ class StoredTokens {
   });
 
   factory StoredTokens.fromPair(TokenPair pair) => StoredTokens(
-        accessToken: pair.accessToken,
-        accessExpiresAt: pair.accessExpiresAt.toUtc(),
-        refreshToken: pair.refreshToken,
-        refreshExpiresAt: pair.refreshExpiresAt?.toUtc(),
-      );
+    accessToken: pair.accessToken,
+    accessExpiresAt: pair.accessExpiresAt.toUtc(),
+    refreshToken: pair.refreshToken,
+    refreshExpiresAt: pair.refreshExpiresAt?.toUtc(),
+  );
 
   factory StoredTokens.fromJson(Map<String, Object?> json) => StoredTokens(
-        accessToken: json['access_token']! as String,
-        accessExpiresAt: DateTime.parse(json['access_expires_at']! as String).toUtc(),
-        refreshToken: json['refresh_token'] as String?,
-        refreshExpiresAt: switch (json['refresh_expires_at']) {
-          final String v => DateTime.parse(v).toUtc(),
-          _ => null,
-        },
-      );
+    accessToken: json['access_token']! as String,
+    accessExpiresAt: DateTime.parse(json['access_expires_at']! as String).toUtc(),
+    refreshToken: json['refresh_token'] as String?,
+    refreshExpiresAt: switch (json['refresh_expires_at']) {
+      final String v => DateTime.parse(v).toUtc(),
+      _ => null,
+    },
+  );
 
   final String accessToken;
   final DateTime accessExpiresAt;
@@ -40,11 +40,11 @@ class StoredTokens {
   final DateTime? refreshExpiresAt;
 
   Map<String, Object?> toJson() => <String, Object?>{
-        'access_token': accessToken,
-        'access_expires_at': accessExpiresAt.toUtc().toIso8601String(),
-        'refresh_token': refreshToken,
-        'refresh_expires_at': refreshExpiresAt?.toUtc().toIso8601String(),
-      };
+    'access_token': accessToken,
+    'access_expires_at': accessExpiresAt.toUtc().toIso8601String(),
+    'refresh_token': refreshToken,
+    'refresh_expires_at': refreshExpiresAt?.toUtc().toIso8601String(),
+  };
 
   @override
   String toString() => 'StoredTokens(***)';

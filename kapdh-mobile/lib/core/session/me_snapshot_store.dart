@@ -24,9 +24,9 @@ class MeSnapshotStore {
   final SecureStore _store;
 
   Future<void> save(Me me, DateTime fetchedAt) => _store.write(
-        storageKey,
-        jsonEncode(<String, Object?>{'me': me.toJson(), 'fetched_at': fetchedAt.toUtc().toIso8601String()}),
-      );
+    storageKey,
+    jsonEncode(<String, Object?>{'me': me.toJson(), 'fetched_at': fetchedAt.toUtc().toIso8601String()}),
+  );
 
   Future<MeSnapshot?> read() async {
     final raw = await _store.read(storageKey);

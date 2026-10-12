@@ -7,17 +7,14 @@ environment:
   sdk: ">=3.9.0 <4.0.0"
   flutter: ">=3.35.0"
 
+# Versi dikunci di pubspec.lock untuk Flutter 3.47.2 / Dart 3.13.2 (ARCHITECTURE §1, §8.1). Batas bawah caret mengikuti
+# versi yang diuji; kenaikan mayor (mis. go_router 17, flutter_secure_storage 10) memerlukan ADR (PRD 7.1).
 dependencies:
   flutter:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  flutter_riverpod: ^3.0.0
-  go_router: ^16.0.0
-  dio: ^5.8.0
-  flutter_secure_storage: ^9.2.4
-  google_fonts: ^6.2.1
-  intl: ^0.20.2
+
   # SDK terbangkit dari kontrak OpenAPI (PRD 5.2, N-13; ADR-001). lib/src paket ini dibangkitkan oleh
   # `pnpm contracts:gen` di kapdh-platform dan tidak di-commit; jalankan setelah pull. Saat rilis, tag
   # `contracts-vX.Y.Z` dibuat `pnpm contracts:release-sdk` (commit rilis berisi lib/src terbangkit) dan repo
@@ -25,22 +22,43 @@ dependencies:
   # ref: contracts-vX.Y.Z}.
   kapdh_api:
     path: ../kapdh-platform/packages/contracts/dart/kapdh_api
-  qr_flutter: ^4.1.0
-  socket_io_client: ^3.1.6
+
+  # Cangkang aplikasi: state, routing, HTTP.
+  flutter_riverpod: ^3.4.3
+  go_router: ^16.3.0
+  dio: ^5.11.1
+
+  # Penyimpanan: rahasia di Keychain/Keystore, preferensi non-rahasia di shared_preferences.
+  flutter_secure_storage: ^9.2.4
+  shared_preferences: ^2.5.6
+
+  # Push hanya FCM/APNs (ARCHITECTURE §2 butir 4); opsional saat runtime (PUSH_ENABLED).
   firebase_core: ^4.15.0
   firebase_messaging: ^16.7.0
   flutter_local_notifications: ^22.3.2
-  image_picker: ^1.2.4
-  file_picker: ^10.2.4
-  cached_network_image: ^4.0.4
+
+  # Realtime /realtime (ARCHITECTURE §4.9).
+  socket_io_client: ^3.1.6
+
+  # Sistem dan platform.
   connectivity_plus: ^7.3.2
   package_info_plus: ^9.0.1
   url_launcher: ^6.3.3
-  shared_preferences: ^2.5.6
-  timezone: ^0.11.1
+  image_picker: ^1.2.4
+  file_picker: ^10.2.4
+
+  # Tampilan.
+  google_fonts: ^6.3.3
+  qr_flutter: ^4.1.0
+  cached_network_image: ^4.0.4
   flutter_widget_from_html_core: ^0.17.4
+
+  # Format, waktu dan utilitas.
+  intl: ^0.20.2
+  timezone: ^0.11.1
   uuid: ^4.6.0
   pub_semver: ^2.2.1
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:
@@ -48,6 +66,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   mocktail: ^1.0.5
   http_mock_adapter: ^0.6.1
+  fake_async: ^1.3.3
 
 flutter:
   uses-material-design: true
