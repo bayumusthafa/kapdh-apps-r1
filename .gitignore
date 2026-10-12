@@ -17,3 +17,6 @@ build/
 # local data
 /kapdh-platform/data/
 .astro/
+
+# agent worktrees
+.claude/worktrees/
