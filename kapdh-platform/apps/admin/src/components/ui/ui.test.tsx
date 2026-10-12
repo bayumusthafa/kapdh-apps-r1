@@ -4,7 +4,7 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api/errors";
 import { mockAuth } from "../../api/mocks";
-import { renderWithProviders, signInViaApi } from "../../test/utils";
+import { renderWithProviders, signInViaApi, toasts } from "../../test/utils";
 import {
   Badge,
   Button,
@@ -172,6 +172,45 @@ describe("Dialog dan ConfirmDialog", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(trigger).toHaveFocus();
+  });
+
+  it("jebakan fokus memakai perhentian Tab saja: Tabs roving di akhir dialog tidak membuat fokus lolos", async () => {
+    const user = userEvent.setup();
+    function RovingHarness() {
+      const [open, setOpen] = useState(false);
+      const [tab, setTab] = useState<"a" | "b" | "c">("a");
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Buka
+          </button>
+          <Dialog open={open} onClose={() => setOpen(false)} title="Detail">
+            <Tabs<"a" | "b" | "c">
+              label="Bagian detail"
+              value={tab}
+              onValueChange={setTab}
+              items={[
+                { value: "a", label: "Ringkas" },
+                { value: "b", label: "Riwayat" },
+                { value: "c", label: "Berkas" },
+              ]}
+            />
+          </Dialog>
+        </>
+      );
+    }
+    render(<RovingHarness />);
+    await user.click(screen.getByRole("button", { name: "Buka" }));
+    const dialog = screen.getByRole("dialog", { name: "Detail" });
+    const close = within(dialog).getByRole("button", { name: "Tutup" });
+    expect(close).toHaveFocus();
+    await user.tab();
+    // Tab terpilih ("Ringkas") adalah perhentian Tab terakhir walau bukan elemen terakhir di DOM.
+    expect(within(dialog).getByRole("tab", { name: "Ringkas" })).toHaveFocus();
+    await user.tab();
+    expect(close).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(within(dialog).getByRole("tab", { name: "Ringkas" })).toHaveFocus();
   });
 
   function ConfirmHarness({ onConfirm, confirmText }: { onConfirm: () => void; confirmText?: string }) {
@@ -426,7 +465,7 @@ describe("ErrorState memetakan katalog ERROR_UI", () => {
 });
 
 describe("Toast", () => {
-  it("galat memakai role alert, sukses role status, dapat ditutup; pesan kembar tidak ditumpuk", async () => {
+  it("wadah live selalu ada: galat ke aria-live assertive, sukses ke polite; dapat ditutup; pesan kembar tidak ditumpuk", async () => {
     const user = userEvent.setup();
     function Harness() {
       const toast = useToast();
@@ -446,15 +485,24 @@ describe("Toast", () => {
         <Harness />
       </ToastProvider>,
     );
+    // Wadah live sudah terpasang (kosong) SEBELUM toast pertama agar penambahan isi pasti diumumkan.
+    const region = screen.getByRole("region", { name: "Notifikasi" });
+    const assertive = region.querySelector('[aria-live="assertive"]')!;
+    const polite = region.querySelector('[aria-live="polite"]')!;
+    expect(assertive).toBeEmptyDOMElement();
+    expect(polite).toBeEmptyDOMElement();
+
     await user.click(screen.getByRole("button", { name: "Galat" }));
     await user.click(screen.getByRole("button", { name: "Galat" }));
     await user.click(screen.getByRole("button", { name: "Sukses" }));
-    const region = screen.getByRole("region", { name: "Notifikasi" });
-    expect(within(region).getAllByRole("alert")).toHaveLength(1);
-    expect(within(region).getByRole("alert")).toHaveTextContent("Gagal: Gagal menyimpan.");
-    expect(within(region).getByRole("status")).toHaveTextContent("Berhasil: Tersimpan.");
-    await user.click(within(region).getAllByRole("button", { name: "Tutup notifikasi" })[0]!);
-    expect(within(region).queryByRole("alert")).toBeNull();
+    expect(toasts("error")).toHaveLength(1);
+    expect(assertive).toContainElement(toasts("error")[0]!);
+    expect(toasts("error")[0]).toHaveTextContent("Gagal: Gagal menyimpan.");
+    expect(polite).toContainElement(toasts("success")[0]!);
+    expect(toasts("success")[0]).toHaveTextContent("Berhasil: Tersimpan.");
+    await user.click(within(toasts("error")[0]!).getByRole("button", { name: "Tutup notifikasi" }));
+    expect(toasts("error")).toHaveLength(0);
+    expect(toasts("success")).toHaveLength(1);
   });
 
   it("toast hilang otomatis setelah durasinya", async () => {

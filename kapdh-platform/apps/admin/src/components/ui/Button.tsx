@@ -32,7 +32,9 @@ const SIZE: Record<ButtonSize, string> = {
 };
 
 const DISABLED =
-  "disabled:cursor-not-allowed disabled:border-transparent disabled:bg-disabled-bg disabled:bg-none disabled:text-disabled-text disabled:shadow-none aria-disabled:cursor-not-allowed";
+  "disabled:cursor-not-allowed disabled:border-transparent disabled:bg-disabled-bg disabled:bg-none disabled:text-disabled-text disabled:shadow-none aria-disabled:cursor-not-allowed " +
+  // Nonaktif yang tetap dapat difokus (`focusableWhenDisabled`): tampilan sama dengan disabled native.
+  "data-soft-disabled:border-transparent data-soft-disabled:bg-disabled-bg data-soft-disabled:bg-none data-soft-disabled:text-disabled-text data-soft-disabled:shadow-none";
 
 /** Kelas tombol untuk elemen lain (mis. <Link> yang tampil sebagai tombol, tanpa menyarangkan <button>). */
 export function buttonClass({
@@ -47,7 +49,7 @@ export function buttonClass({
     SIZE[size],
     DISABLED,
     // Tombol ghost nonaktif cukup berteks redup tanpa latar abu-abu.
-    variant === "ghost" && "disabled:bg-transparent",
+    variant === "ghost" && "disabled:bg-transparent data-soft-disabled:bg-transparent",
     fullWidth && "w-full",
     className,
   );
@@ -61,6 +63,12 @@ export interface ButtonProps extends ComponentProps<"button"> {
   loadingText?: string;
   leftIcon?: ReactNode;
   fullWidth?: boolean;
+  /**
+   * Saat `disabled`, tombol tetap dapat difokus (aria-disabled, klik diabaikan) alih-alih atribut disabled native.
+   * Pakai untuk tombol yang bisa menjadi nonaktif tepat setelah ditekan (paging, hitung mundur coba lagi) agar
+   * fokus keyboard tidak jatuh ke <body> (N-11).
+   */
+  focusableWhenDisabled?: boolean;
 }
 
 export function Button({
@@ -70,6 +78,7 @@ export function Button({
   loadingText,
   leftIcon,
   fullWidth,
+  focusableWhenDisabled = false,
   className,
   children,
   type = "button",
@@ -77,8 +86,9 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
+  const softDisabled = Boolean(disabled) && focusableWhenDisabled;
   function handleClick(e: MouseEvent<HTMLButtonElement>) {
-    if (loading) {
+    if (loading || softDisabled) {
       e.preventDefault();
       return;
     }
@@ -87,9 +97,10 @@ export function Button({
   return (
     <button
       type={type}
-      disabled={disabled}
+      disabled={softDisabled ? undefined : disabled}
       aria-busy={loading || undefined}
-      aria-disabled={loading || undefined}
+      aria-disabled={loading || softDisabled || undefined}
+      data-soft-disabled={softDisabled || undefined}
       onClick={handleClick}
       className={buttonClass({ variant, size, fullWidth, className })}
       {...props}
@@ -103,9 +114,11 @@ export function Button({
 export type IconButtonTone = "primary" | "danger" | "neutral" | "on-dark";
 
 const TONE: Record<IconButtonTone, string> = {
-  // Ikon ubah hijau dan hapus merah sesuai tabel guidelines (hlm. 13-17).
+  // Ikon ubah hijau dan hapus merah sesuai tabel guidelines (hlm. 13-17): ubah berlatar terang bergaris hijau,
+  // hapus berupa kotak merah PEKAT dengan ikon putih (#FFF di atas #B3261E ~6,5:1) agar tindakan destruktif
+  // jelas berbeda dari tindakan biasa.
   primary: "border border-green-100 bg-green-50 text-primary hover:bg-green-100",
-  danger: "border border-danger-bg bg-danger-bg text-danger hover:border-danger",
+  danger: "border border-danger bg-danger text-on-primary hover:brightness-110",
   neutral: "border border-divider bg-surface text-text hover:bg-neutral-100",
   "on-dark": "text-text-on-dark hover:bg-green-800",
 };

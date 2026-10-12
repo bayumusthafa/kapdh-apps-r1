@@ -113,11 +113,17 @@ export function Sheet({
   side = "right",
   dismissable = true,
   tone = "light",
+  ariaLabel,
   className,
 }: Omit<DialogProps, "role" | "size" | "initialFocusRef" | "hideCloseButton"> & {
   side?: "left" | "right";
   /** "dark" untuk menu navigasi bergaya sidebar hijau tua. */
   tone?: "light" | "dark";
+  /**
+   * Nama aksesibel teks bila `title` bukan teks biasa (mis. logo + nama aplikasi), agar dialog tidak dibacakan
+   * sebagai "Logo KAPDH ...". Bila diisi, menggantikan aria-labelledby ke judul.
+   */
+  ariaLabel?: string;
 }) {
   const id = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -137,7 +143,8 @@ export function Sheet({
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabel ? undefined : titleId}
         aria-describedby={descId}
         tabIndex={-1}
         data-surface={dark ? "dark" : undefined}

@@ -1,11 +1,11 @@
 import type { components } from "@kapdh/contracts";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { api } from "../../api/client";
 import { useApiMutation, useApiQuery } from "../../api/query";
 import { useAuth } from "../../auth/session";
-import { PaymentStatusBadge } from "../../components/ui/Badge";
+import { PAYMENT_STATUS, PaymentStatusBadge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Checkbox } from "../../components/ui/Choice";
@@ -15,11 +15,19 @@ import { FilePreview } from "../../components/ui/Files";
 import { Field, FormError } from "../../components/ui/FormField";
 import { Textarea } from "../../components/ui/Input";
 import { ErrorState, Loading } from "../../components/ui/States";
+import { cn } from "../../lib/cn";
 import { formatDateTime, formatRupiah } from "../../lib/format";
 import { PAYMENT_TYPE_LABEL } from "../../lib/labels";
 
 type Detail = components["schemas"]["AdminPaymentDetail"];
 type PaymentEvent = components["schemas"]["PaymentEvent"];
+
+/** Pesan di region live panel: hasil keputusan sendiri (success) atau perubahan oleh pihak lain (warning). */
+interface Notice {
+  tone: "success" | "warning";
+  message: string;
+  seq: number;
+}
 
 const EVENT_LABEL: Record<PaymentEvent["kind"], string> = {
   created: "Tagihan dibuat",
@@ -54,14 +62,27 @@ export function paymentDetailKey(paymentId: string) {
  * - Formulir keputusan diberi key `id:proof_version` sehingga centang "dana sudah masuk" dan alasan SELALU
  *   direset saat bukti diganti; admin wajib memeriksa ulang bukti baru (perbaikan audit, AC F04-4).
  * - Konflik (bukti diganti/admin lain lebih dulu) → data terbaru dimuat ulang, tidak menimpa diam-diam.
+ * - Fokus dan pengumuman (N-11, PRD 4.5): setelah admin memilih baris, fokus pindah ke judul detail begitu detail
+ *   termuat. Setelah keputusan berhasil, atau setelah data terbaru dimuat ulang karena konflik/bukti diganti
+ *   (formulir dipasang ulang sehingga tombol yang difokus hilang), fokus dipindah ke judul dan alasannya
+ *   diumumkan lewat region live yang selalu ada, termasuk bahwa centang dana dan alasan sudah dikosongkan.
  */
 export function PaymentDecisionPanel({
   paymentId,
   listProofVersion,
+  focusRequest = 0,
 }: {
   paymentId: string;
   listProofVersion?: number;
+  /** Naik setiap admin memilih baris; > 0 berarti fokus dipindah ke judul detail setelah detail termuat. */
+  focusRequest?: number;
 }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  /** Versi hasil keputusan admin ini sendiri; perubahan data ke versi itu bukan "diubah pihak lain". */
+  const ownDecisionVersion = useRef<string | null>(null);
+  /** Versi terakhir yang ditampilkan, untuk mendeteksi data yang berubah setelah dimuat ulang. */
+  const shown = useRef<{ version: string; proof: number; status: Detail["status"] } | null>(null);
   const detail = useApiQuery({
     queryKey: paymentDetailKey(paymentId),
     request: ({ signal, headers }) =>
@@ -77,6 +98,48 @@ export function PaymentDecisionPanel({
   useEffect(() => {
     if (staleProof) void refetchDetail();
   }, [staleProof, refetchDetail]);
+
+  // Judul baru ada setelah detail termuat; fokus dipindah saat itu (bukan saat klik, ketika panel masih memuat).
+  const loaded = detail.data !== undefined;
+  useEffect(() => {
+    if (focusRequest === 0 || !loaded) return;
+    const heading = headingRef.current;
+    heading?.focus();
+    if (typeof heading?.scrollIntoView === "function") heading.scrollIntoView({ block: "nearest" });
+  }, [focusRequest, loaded]);
+
+  // Data berubah setelah dimuat ulang (konflik keputusan, atau antrean melihat bukti baru): umumkan alasannya.
+  // Formulir keputusan memakai key id:proof_version sehingga dipasang ulang; bila fokus ikut hilang (jatuh ke
+  // <body>), kembalikan ke judul panel agar pengguna keyboard tidak tersesat.
+  const data = detail.data;
+  useEffect(() => {
+    if (!data) return;
+    const prev = shown.current;
+    shown.current = { version: data.version, proof: data.proof_version, status: data.status };
+    if (!prev || (prev.version === data.version && prev.proof === data.proof_version)) return;
+    if (ownDecisionVersion.current === data.version) return;
+    if (data.proof_version !== prev.proof)
+      setNotice((n) => ({
+        tone: "warning",
+        message: `Bukti transfer diganti alumni (versi ${data.proof_version}). Centang dana dan alasan dikosongkan; periksa ulang bukti sebelum memutus.`,
+        seq: (n?.seq ?? 0) + 1,
+      }));
+    else if (data.status !== prev.status)
+      setNotice((n) => ({
+        tone: "warning",
+        message: `Pembayaran ini sudah diputus admin lain: ${PAYMENT_STATUS[data.status].label}.`,
+        seq: (n?.seq ?? 0) + 1,
+      }));
+    const active = document.activeElement;
+    if (!active || active === document.body) headingRef.current?.focus();
+  }, [data]);
+
+  // Keputusan berhasil: tombol yang difokus ikut hilang bersama formulir, jadi fokus dipindah ke judul panel.
+  // Efek pasif berjalan setelah dialog konfirmasi selesai ditutup (pemulihan fokusnya gagal karena pemicu hilang).
+  const decidedSeq = notice?.tone === "success" ? notice.seq : 0;
+  useEffect(() => {
+    if (decidedSeq > 0) headingRef.current?.focus();
+  }, [decidedSeq]);
 
   if (detail.isPending)
     return (
@@ -111,6 +174,7 @@ export function PaymentDecisionPanel({
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2
+            ref={headingRef}
             id="detail-pembayaran"
             tabIndex={-1}
             className="font-heading text-h3 font-semibold outline-none"
@@ -191,7 +255,27 @@ export function PaymentDecisionPanel({
         key={`${p.id}:${p.proof_version}`}
         payment={p}
         onReload={() => void detail.refetch()}
+        onDecided={(message, version) => {
+          ownDecisionVersion.current = version;
+          setNotice((n) => ({ tone: "success", message, seq: (n?.seq ?? 0) + 1 }));
+        }}
       />
+
+      {/* Region live selalu ada (awalnya kosong) agar hasil keputusan dan muat ulang pasti diumumkan. */}
+      <p
+        role="status"
+        aria-live="polite"
+        className={
+          notice
+            ? cn(
+                "rounded-md p-3 text-sm font-medium",
+                notice.tone === "success" ? "bg-success-bg text-success" : "bg-warning-bg text-warning",
+              )
+            : undefined
+        }
+      >
+        {notice?.message ?? ""}
+      </p>
 
       <p className="text-xs leading-relaxed text-text-muted">
         Jika alumni mengganti bukti atau admin lain memutus lebih dulu, keputusan ini ditolak dan data terbaru
@@ -214,14 +298,31 @@ interface DecisionVars {
   reason?: string;
 }
 
-function DecisionSection({ payment: p, onReload }: { payment: Detail; onReload: () => void }) {
+function DecisionSection({
+  payment: p,
+  onReload,
+  onDecided,
+}: {
+  payment: Detail;
+  onReload: () => void;
+  /** Keputusan admin ini berhasil; `version` = versi pembayaran setelah keputusan. */
+  onDecided: (message: string, version: string) => void;
+}) {
   const auth = useAuth();
   const queryClient = useQueryClient();
   const [confirmReject, setConfirmReject] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  /** Naik saat server menolak alasan (VALIDATION_ERROR); fokus ke isian alasan setelah dialog tertutup. */
+  const [reasonErrorSeq, setReasonErrorSeq] = useState(0);
   const form = useForm<DecisionValues>({ defaultValues: { funds_verified: false, reason: "" } });
   const fundsVerified = form.watch("funds_verified");
   const reason = form.watch("reason");
+
+  // Dialog konfirmasi mengembalikan fokus ke tombol Tolak saat ditutup; galat alasan dari server baru dapat
+  // difokus setelahnya (latar dialog inert), agar pembaca layar langsung membacakan galatnya (N-11).
+  const { setFocus } = form;
+  useEffect(() => {
+    if (reasonErrorSeq > 0 && !confirmReject) setFocus("reason");
+  }, [reasonErrorSeq, confirmReject, setFocus]);
 
   const decide = useApiMutation<Detail, DecisionVars, DecisionValues>({
     // Satu Idempotency-Key per niat: keputusan + versi yang dilihat + alasan. Muat ulang (versi baru) = niat baru.
@@ -246,20 +347,20 @@ function DecisionSection({ payment: p, onReload }: { payment: Detail; onReload: 
       setConfirmReject(false);
       queryClient.setQueryData(paymentDetailKey(data.id), data);
       void queryClient.invalidateQueries({ queryKey: ["admin-payments"] });
-      setMessage(
+      onDecided(
         data.status === "paid" ? "Pembayaran disetujui." : "Pembayaran ditolak dan alasan dikirim ke alumni.",
+        data.version,
       );
     },
-    onError: () => setConfirmReject(false),
+    onError: (error) => {
+      setConfirmReject(false);
+      if (error.fieldErrors.reason) setReasonErrorSeq((n) => n + 1);
+    },
   });
 
   const canDecide = auth.can("payments.decide") && p.status === "pending" && !p.conflict_of_interest;
   if (!canDecide)
-    return message ? (
-      <p role="status" className="rounded-md bg-success-bg p-3 text-sm font-medium text-success">
-        {message}
-      </p>
-    ) : !auth.can("payments.decide") && p.status === "pending" ? (
+    return !auth.can("payments.decide") && p.status === "pending" ? (
       <p role="note" className="text-sm text-text-muted">
         Akun Anda hanya dapat melihat antrean. Keputusan memerlukan izin memutus pembayaran.
       </p>
@@ -322,11 +423,6 @@ function DecisionSection({ payment: p, onReload }: { payment: Detail; onReload: 
           Setujui
         </Button>
       </div>
-      {message ? (
-        <p role="status" className="text-sm font-medium">
-          {message}
-        </p>
-      ) : null}
       <ConfirmDialog
         open={confirmReject}
         onCancel={() => setConfirmReject(false)}

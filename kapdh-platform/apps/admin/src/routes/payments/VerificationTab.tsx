@@ -1,7 +1,7 @@
 import type { components } from "@kapdh/contracts";
 import { keepPreviousData } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { api } from "../../api/client";
 import { useApiQuery } from "../../api/query";
 import { Badge, PaymentStatusBadge } from "../../components/ui/Badge";
@@ -55,7 +55,8 @@ export function VerificationTab() {
   const [type, setType] = useState<PaymentType | "all">("all");
   const [status, setStatus] = useState<PaymentStatus | "all">("pending");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
+  /** Naik setiap admin memilih baris; panel memindah fokus ke judul detail setelah detail termuat. */
+  const [focusRequest, setFocusRequest] = useState(0);
   const now = useNow();
   const filters = { q, type, status };
   const paging = useCursorPaging(filters, PAYMENT_PAGE_SIZE);
@@ -82,12 +83,9 @@ export function VerificationTab() {
 
   function select(id: string) {
     setSelectedId(id);
-    // Pindahkan fokus ke judul detail agar pengguna keyboard/pembaca layar langsung berada di panel keputusan.
-    window.requestAnimationFrame(() => {
-      const heading = panelRef.current?.querySelector<HTMLElement>("h2");
-      heading?.focus();
-      if (typeof heading?.scrollIntoView === "function") heading.scrollIntoView({ block: "nearest" });
-    });
+    // Fokus dipindah ke judul detail oleh panel SETELAH detail termuat (judul belum ada selama memuat), agar
+    // pengguna keyboard/pembaca layar langsung berada di panel keputusan (N-11).
+    setFocusRequest((n) => n + 1);
   }
 
   const showAge = status === "pending";
@@ -144,10 +142,19 @@ export function VerificationTab() {
         : {
             id: "status",
             header: "Status",
-            cell: ({ row }) => <PaymentStatusBadge status={row.original.status} />,
+            cell: ({ row }) => (
+              <span className="flex flex-wrap items-center gap-1.5">
+                <PaymentStatusBadge status={row.original.status} />
+                {/* Penanda lewat SLA juga berupa teks, tidak hanya warna latar baris (PRD 4.5). */}
+                {row.original.overdue && row.original.status === "pending" ? (
+                  <Badge tone="warning">Lewat 1 hari kerja</Badge>
+                ) : null}
+              </span>
+            ),
           },
     ],
-    // `select` hanya memakai setState dan ref sehingga aman tidak dijadikan dependensi.
+    // `select` hanya memakai setState sehingga aman tidak dijadikan dependensi. Definisi kolom yang dibuat ulang
+    // (baris aktif, jam) tidak memasang ulang sel karena DataTable merender templat lewat komponen stabil.
     [selectedId, showAge, now],
   );
 
@@ -208,12 +215,13 @@ export function VerificationTab() {
             }
           />
         </section>
-        <div ref={panelRef} className="min-w-0 flex-[2_1_340px]">
+        <div className="min-w-0 flex-[2_1_340px]">
           {selectedId ? (
             <PaymentDecisionPanel
               key={selectedId}
               paymentId={selectedId}
               listProofVersion={selectedItem?.proof_version}
+              focusRequest={focusRequest}
             />
           ) : (
             <div className="rounded-lg border border-dashed border-border bg-surface">

@@ -3,7 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
-import { api, ensureFreshAccessToken } from "../../api/client";
+import { api, hasFreshAccessToken, probeSession } from "../../api/client";
 import { ApiError, toApiError } from "../../api/errors";
 import { Button } from "./Button";
 import { Dialog } from "./Dialog";
@@ -15,12 +15,16 @@ import { PasswordInput } from "./PasswordInput";
  * Reautentikasi untuk tindakan sensitif (AC F15-3, F16-1; ARCHITECTURE §4.3): admin memasukkan sandi dan kode
  * TOTP, POST /auth/reauth menerbitkan X-Reauth-Token (<= 10 menit, terikat sesi) yang dipakai untuk mengulang
  * permintaan yang tertunda. Sandi dan kode tidak disimpan; formulir dikosongkan setiap kali dialog ditutup.
+ * 401 dari /auth/reauth hanya dilaporkan sebagai "sandi/kode salah" setelah sesi dipastikan masih berlaku; bila
+ * sesi sudah berakhir dialog ditutup dan admin dibawa ke halaman masuk (bukan terjebak di pesan yang keliru).
  */
 const schema = z.object({
   password: z.string().min(1, "Sandi wajib diisi.").max(128, "Sandi terlalu panjang."),
   totp_code: z.string().regex(/^\d{6}$/, "Masukkan 6 digit kode dari aplikasi autentikator."),
 });
 type Values = z.infer<typeof schema>;
+
+const SESSION_UNREACHABLE = "Server tidak dapat dihubungi. Periksa koneksi lalu coba lagi.";
 
 export function ReauthDialog({
   open,
@@ -45,15 +49,32 @@ export function ReauthDialog({
   const onSubmit = form.handleSubmit(async (values) => {
     setSubmitting(true);
     try {
-      // /auth/reauth tidak di-refresh otomatis: 401 di sini berarti sandi/kode salah, jadi pastikan token segar.
-      if (!(await ensureFreshAccessToken())) {
-        form.setError("root.server", {
-          type: "server",
-          message: "Sesi tidak dapat diperbarui. Periksa koneksi lalu coba lagi.",
-        });
-        return;
+      /**
+       * Status sesi di luar kredensial: `ended` = sesi berakhir (onSessionExpired sudah membawa admin ke halaman
+       * masuk; dialog ditutup tanpa token), `unavailable` = server tidak terjangkau.
+       */
+      const sessionProblem = (state: Awaited<ReturnType<typeof probeSession>>): boolean => {
+        if (state === "ended") {
+          onResult(null);
+          return true;
+        }
+        if (state === "unavailable") {
+          form.setError("root.server", { type: "server", message: SESSION_UNREACHABLE });
+          return true;
+        }
+        return false;
+      };
+      // /auth/reauth tidak di-refresh otomatis (401 bisa berarti sandi/kode salah): pastikan token segar dulu.
+      if (!hasFreshAccessToken() && sessionProblem(await probeSession())) return;
+      const send = () => api.POST("/auth/reauth", { body: values });
+      let res = await send();
+      if (res.response.status === 401) {
+        // 401 juga terjadi bila access token sudah tidak berlaku walau belum habis waktunya (diputar tab lain,
+        // sesi dicabut). Periksa sesi; bila token baru saja diganti, kirim ulang sekali dengan token baru.
+        const state = await probeSession();
+        if (sessionProblem(state)) return;
+        if (state === "renewed") res = await send();
       }
-      const res = await api.POST("/auth/reauth", { body: values });
       if (res.data) {
         onResult(res.data.reauth_token);
         return;

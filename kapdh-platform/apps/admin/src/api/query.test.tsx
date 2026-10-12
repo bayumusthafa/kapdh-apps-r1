@@ -4,13 +4,14 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useAuth } from "../auth/session";
 import { Button } from "../components/ui/Button";
 import { FormField } from "../components/ui/FormField";
 import { Input } from "../components/ui/Input";
-import { renderWithProviders, signInViaApi } from "../test/utils";
+import { findToast, renderWithProviders, signInViaApi, toasts } from "../test/utils";
 import { api } from "./client";
 import type { ApiError } from "./errors";
-import { authRequests, MOCK_CREDENTIALS, mockPayments, paymentRequests } from "./mocks";
+import { authRequests, MOCK_CREDENTIALS, mockAuth, mockPayments, paymentRequests } from "./mocks";
 import { useApiMutation, useApiQuery } from "./query";
 
 type Fees = components["schemas"]["FeeSettings"];
@@ -44,6 +45,44 @@ describe("useApiQuery", () => {
     });
     await waitFor(() => expect(list()).toHaveLength(2));
     expect(list()[1]!.background).toBe(true);
+  });
+
+  it("AC F02-5: percobaan ulang refetch polling dan refetch saat kembali online tetap berlabel latar", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await signInViaApi();
+    const sent: Record<string, string>[] = [];
+    function FlakyPolling() {
+      const q = useApiQuery({
+        queryKey: ["admin-payments", "flaky"],
+        pollMs: 30_000,
+        retry: 1,
+        retryDelay: 10,
+        request: ({ signal, headers }) => {
+          sent.push(headers);
+          // Panggilan kedua (refetch polling pertama) gagal 503 dari proxy, lalu diulang otomatis.
+          if (sent.length === 2)
+            return Promise.resolve({ error: undefined, response: new Response(null, { status: 503 }) });
+          return api.GET("/admin/payments", { params: { query: { limit: 5 } }, signal, headers });
+        },
+      });
+      return <p>{q.data ? `total ${q.data.total}` : "memuat"}</p>;
+    }
+    renderWithProviders(<FlakyPolling />);
+    expect(await screen.findByText("total 26")).toBeInTheDocument();
+    expect(sent[0]).toEqual({});
+    await act(async () => {
+      vi.advanceTimersByTime(30_500);
+    });
+    await waitFor(() => expect(sent).toHaveLength(3));
+    // Polling yang gagal dan percobaan ulangnya sama-sama permintaan latar.
+    expect(sent[1]).toEqual({ "X-Background-Request": "1" });
+    expect(sent[2]).toEqual({ "X-Background-Request": "1" });
+
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+    });
+    await waitFor(() => expect(sent).toHaveLength(4));
+    expect(sent[3]).toEqual({ "X-Background-Request": "1" });
   });
 
   it("galat API dilempar sebagai ApiError bertipe dengan aksi katalog ERROR_UI", async () => {
@@ -115,8 +154,8 @@ describe("useApiMutation", () => {
     await user.click(screen.getByRole("button", { name: "Putus jaringan" }));
     await user.click(screen.getByRole("button", { name: "Tolak v9" }));
     expect(await screen.findByText("error")).toBeInTheDocument();
-    // Jaringan putus: pesan offline, bukan logout.
-    expect(await screen.findByRole("alert")).toHaveTextContent("Tidak dapat terhubung");
+    // Jaringan putus: pesan offline (toast galat di wadah aria-live assertive), bukan logout.
+    expect(await findToast("error", "Tidak dapat terhubung")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Tolak v9" }));
     // Konflik versi (409) = hasil pasti; data terbaru dimuat ulang (AC F15-4).
@@ -172,7 +211,32 @@ describe("useApiMutation", () => {
     const input = await screen.findByRole("textbox", { name: "Alasan" });
     await waitFor(() => expect(input).toHaveAttribute("aria-invalid", "true"));
     expect(input).toHaveAccessibleDescription("Alasan minimal 3 karakter dan tidak boleh hanya spasi.");
-    expect(screen.queryByRole("alert")).toBeNull();
+    // Fokus pindah ke isian bergalat sehingga pembaca layar membacakan galatnya; tidak perlu toast (N-11).
+    expect(input).toHaveFocus();
+    expect(toasts("error")).toHaveLength(0);
+  });
+
+  it("show_field_errors: isian bergalat yang tidak dapat difokus diumumkan lewat toast ringkasan", async () => {
+    await signInViaApi();
+    const user = userEvent.setup();
+    function HiddenFieldForm() {
+      // Isian "reason" tidak dirender (mis. berada di dialog yang sudah ditutup): fokus tidak dapat dipindah.
+      const form = useForm<{ reason: string }>({ defaultValues: { reason: "  " } });
+      const decide = useApiMutation<unknown, { reason: string }, { reason: string }>({
+        setError: form.setError,
+        request: (v, ctx) =>
+          api.POST("/admin/payments/{paymentId}/decision", {
+            params: { path: { paymentId: AHMAD }, header: { "Idempotency-Key": ctx.idempotencyKey } },
+            body: { decision: "reject", expected_proof_version: 1, expected_version: "1", reason: v.reason },
+          }),
+      });
+      return <Button onClick={() => decide.mutate({ reason: "  " })}>Kirim tanpa isian</Button>;
+    }
+    renderWithProviders(<HiddenFieldForm />);
+    await user.click(screen.getByRole("button", { name: "Kirim tanpa isian" }));
+    expect(
+      await findToast("error", "Periksa isian yang ditandai. Alasan minimal 3 karakter"),
+    ).toBeInTheDocument();
   });
 });
 
@@ -233,6 +297,62 @@ describe("ReauthDialog + useApiMutation (AC F15-3, ARCHITECTURE §4.3)", () => {
     expect(authRequests.filter((r) => r.path === "/auth/reauth")).toHaveLength(2);
   });
 
+  it("401 dari /auth/reauth karena token sudah diganti (bukan sandi salah): sesi diperiksa lalu dikirim ulang", async () => {
+    await signInViaApi();
+    const user = userEvent.setup();
+    renderWithProviders(<FeesHarness preAuth />);
+    await user.click(await screen.findByRole("button", { name: "Simpan biaya" }));
+    const dialog = await screen.findByRole("dialog", { name: "Konfirmasi identitas" });
+    // Access token ditolak server (mis. sesi diputar tab lain) padahal cookie refresh masih berlaku.
+    mockAuth.expireAccessTokens();
+    await user.type(within(dialog).getByLabelText(/^Sandi/), MOCK_CREDENTIALS.password);
+    await user.type(within(dialog).getByLabelText(/^Kode autentikator/), MOCK_CREDENTIALS.totp);
+    await user.click(within(dialog).getByRole("button", { name: "Konfirmasi" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await screen.findByText("status success")).toBeInTheDocument();
+    expect(authRequests.filter((r) => r.path === "/auth/reauth")).toHaveLength(2);
+    expect(screen.queryByText("Sandi atau kode autentikator salah.")).toBeNull();
+  });
+
+  it("sesi berakhir saat dialog reautentikasi terbuka: dialog ditutup, tindakan batal tanpa toast galat", async () => {
+    await signInViaApi();
+    const user = userEvent.setup();
+    function SaveOnly() {
+      // Tidak bergantung pada data query: cache dibersihkan saat sesi berakhir.
+      const save = useApiMutation<Fees, void>({
+        requiresReauth: true,
+        reauthReason: "Mengubah biaya iuran",
+        request: (_v, ctx) =>
+          api.PUT("/admin/settings/fees", {
+            params: { header: { "If-Match": "1", "X-Reauth-Token": ctx.reauthToken ?? "" } },
+            body: { registration_fee: "50000.00", card_fee: "10000.00", renewal_fee: "15000.00" },
+          }),
+      });
+      const auth = useAuth();
+      return (
+        <div>
+          <p>sesi {auth.state.status}</p>
+          <p>status {save.status}</p>
+          <Button onClick={() => save.mutate()}>Simpan biaya</Button>
+        </div>
+      );
+    }
+    renderWithProviders(<SaveOnly />);
+    await screen.findByText("sesi authenticated");
+    await user.click(screen.getByRole("button", { name: "Simpan biaya" }));
+    const dialog = await screen.findByRole("dialog", { name: "Konfirmasi identitas" });
+    mockAuth.revokeSession();
+    await user.type(within(dialog).getByLabelText(/^Sandi/), MOCK_CREDENTIALS.password);
+    await user.type(within(dialog).getByLabelText(/^Kode autentikator/), MOCK_CREDENTIALS.totp);
+    await user.click(within(dialog).getByRole("button", { name: "Konfirmasi" }));
+    // Bukan pesan "sandi salah" yang menjebak: dialog ditutup dan mutasi selesai sebagai dibatalkan.
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await screen.findByText("status error")).toBeInTheDocument();
+    expect(screen.getByText("sesi anonymous")).toBeInTheDocument();
+    expect(screen.queryByText("Sandi atau kode autentikator salah.")).toBeNull();
+    expect(toasts("error")).toHaveLength(0);
+  });
+
   it("requiresReauth: dialog muncul sebelum percobaan pertama; batal = tidak ada permintaan dan tanpa toast galat", async () => {
     await signInViaApi();
     const user = userEvent.setup();
@@ -242,7 +362,7 @@ describe("ReauthDialog + useApiMutation (AC F15-3, ARCHITECTURE §4.3)", () => {
     await user.click(within(dialog).getByRole("button", { name: "Batal" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(await screen.findByText("status error")).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(toasts("error")).toHaveLength(0);
     expect(screen.getByRole("button", { name: "Simpan biaya" })).toHaveFocus();
   });
 });

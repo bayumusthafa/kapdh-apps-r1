@@ -1,10 +1,11 @@
 import type { components } from "@kapdh/contracts";
 import { ExternalLink, FileText, ImageOff, Upload } from "lucide-react";
-import { type DragEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type DragEvent, type MouseEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { toApiError } from "../../api/errors";
 import {
   acceptedTypes,
   fileRulesText,
+  isAccessExpired,
   uploadFile,
   useFileAccess,
   validateFileForPurpose,
@@ -22,9 +23,35 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
 }
 
+type PreviewKind = "image" | "pdf" | "unknown";
+
+/**
+ * Jenis berkas untuk pratinjau. `mime` dari FileRef diutamakan; bila tidak ada (mis. detail pembayaran admin hanya
+ * membawa `proof_file_id`), ditebak dari URL: data URL membawa tipe, URL bertanda tangan biasanya berakhiran
+ * ekstensi objek. Tebakan hanya memilih tampilan; berkas tetap dibuka lewat URL yang sama.
+ */
+export function previewKind(mime: string | null | undefined, url: string): PreviewKind {
+  if (mime) return mime === "application/pdf" ? "pdf" : mime.startsWith("image/") ? "image" : "unknown";
+  const data = /^data:([^;,]+)/i.exec(url);
+  if (data) return previewKind(data[1]!.toLowerCase(), "");
+  try {
+    const path = new URL(url, window.location.origin).pathname.toLowerCase();
+    if (path.endsWith(".pdf")) return "pdf";
+    if (/\.(jpe?g|png)$/.test(path)) return "image";
+  } catch {
+    // URL tidak valid: tampilkan sebagai berkas tak dikenal.
+  }
+  return "unknown";
+}
+
 /**
  * Pratinjau berkas privat lewat URL bertanda tangan GET /files/{id}/access (berlaku <= 10 menit, PRD 5.4).
- * Gambar ditampilkan langsung; PDF dibuka di tab baru. URL diminta ulang bila kedaluwarsa (gambar gagal dimuat).
+ * - Gambar ditampilkan langsung; PDF (bukti bayar boleh PDF, N-10) ditampilkan sebagai bingkai "Dokumen PDF" dengan
+ *   tautan buka di tab baru.
+ * - Jenis tak dikenal dicoba sebagai gambar; bila gagal dimuat padahal URL belum kedaluwarsa, berkas mungkin bukan
+ *   gambar (mis. PDF) sehingga ditampilkan bingkai netral "Buka berkas", bukan kesan bukti rusak.
+ * - URL diminta ulang hanya bila memang kedaluwarsa; tautan yang diklik setelah kedaluwarsa (mis. laptop tidur)
+ *   meminta URL baru lebih dulu.
  */
 export function FilePreview({
   fileId,
@@ -43,11 +70,12 @@ export function FilePreview({
 }) {
   const access = useFileAccess(fileId);
   const [broken, setBroken] = useState(false);
+  const [opening, setOpening] = useState(false);
   const retried = useRef(false);
   useEffect(() => {
     setBroken(false);
     retried.current = false;
-  }, [fileId, access.data?.url]);
+  }, [fileId]);
 
   const frame = cn(
     "flex flex-col items-center justify-center gap-2 overflow-hidden rounded-md border border-divider bg-neutral-100 text-sm text-text-muted",
@@ -81,15 +109,22 @@ export function FilePreview({
     );
 
   const url = access.data.url;
-  const isPdf = mime === "application/pdf";
+  const kind = previewKind(mime, url);
+  const showImage = kind !== "pdf" && !broken;
+
+  async function openFresh(e: MouseEvent<HTMLAnchorElement>) {
+    if (!isAccessExpired(access.data)) return;
+    // URL sudah kedaluwarsa (mis. laptop tertidur): minta yang baru dulu, lalu buka.
+    e.preventDefault();
+    setOpening(true);
+    const fresh = await access.refetch();
+    setOpening(false);
+    if (fresh.data) window.open(fresh.data.url, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <figure className="flex flex-col gap-1.5">
-      {isPdf || broken ? (
-        <div className={frame}>
-          <FileText aria-hidden="true" className="size-8" />
-          <span>{isPdf ? "Dokumen PDF" : "Pratinjau tidak tersedia"}</span>
-        </div>
-      ) : (
+      {showImage ? (
         <div className={cn(frame, "bg-neutral-50")}>
           <img
             src={url}
@@ -97,13 +132,25 @@ export function FilePreview({
             referrerPolicy="no-referrer"
             className="h-full w-full object-contain"
             onError={() => {
-              // URL bertanda tangan mungkin sudah kedaluwarsa: minta sekali lagi sebelum menyerah.
-              if (!retried.current) {
+              // URL kedaluwarsa: minta sekali lagi. Bila belum kedaluwarsa, berkas memang tidak dapat ditampilkan
+              // sebagai gambar (mis. PDF tanpa info tipe): tampilkan bingkai netral tanpa permintaan ulang.
+              if (!retried.current && isAccessExpired(access.data)) {
                 retried.current = true;
                 void access.refetch();
               } else setBroken(true);
             }}
           />
+        </div>
+      ) : (
+        <div className={frame}>
+          <FileText aria-hidden="true" className="size-8" />
+          <span>
+            {kind === "pdf"
+              ? "Dokumen PDF"
+              : kind === "unknown"
+                ? "Pratinjau tidak dapat ditampilkan di sini. Buka berkas untuk memeriksanya."
+                : "Gambar tidak dapat dimuat. Buka berkas untuk memeriksanya."}
+          </span>
         </div>
       )}
       <figcaption className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted">
@@ -113,9 +160,11 @@ export function FilePreview({
           target="_blank"
           rel="noopener noreferrer"
           referrerPolicy="no-referrer"
+          aria-busy={opening || undefined}
+          onClick={(e) => void openFresh(e)}
           className="inline-flex min-h-11 items-center gap-1 font-semibold text-primary hover:underline"
         >
-          {isPdf ? "Buka PDF" : "Buka ukuran penuh"}
+          {kind === "pdf" ? "Buka PDF" : showImage ? "Buka ukuran penuh" : "Buka berkas"}
           <ExternalLink aria-hidden="true" className="size-3.5" />
           <span className="sr-only">(tab baru)</span>
         </a>

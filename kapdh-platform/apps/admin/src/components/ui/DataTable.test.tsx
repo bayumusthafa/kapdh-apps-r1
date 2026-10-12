@@ -95,13 +95,24 @@ describe("DataTable (F-15: paging/sort server, N-11)", () => {
     const table = screen.getByRole("table", { name: "Daftar alumni" });
     expect(within(table).getByRole("rowheader", { name: "Alumni 1" })).toBeInTheDocument();
     expect(screen.getByText("Menampilkan 3 dari 7")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Halaman sebelumnya" })).toBeDisabled();
+    // Tombol paging nonaktif tetap dapat difokus (aria-disabled) agar fokus tidak jatuh ke <body> tepat setelah
+    // halaman terakhir/pertama tercapai (N-11); klik diabaikan.
+    const prev = screen.getByRole("button", { name: "Halaman sebelumnya" });
+    expect(prev).toHaveAttribute("aria-disabled", "true");
+    expect(prev).not.toHaveAttribute("disabled");
+    await user.click(prev);
+    expect(screen.getByText("Menampilkan 3 dari 7")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Halaman berikutnya" }));
     expect(screen.getByText("Menampilkan 4–6 dari 7")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Halaman berikutnya" }));
     expect(screen.getByText("Menampilkan 7–7 dari 7")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Halaman berikutnya" })).toBeDisabled();
+    const next = screen.getByRole("button", { name: "Halaman berikutnya" });
+    expect(next).toHaveAttribute("aria-disabled", "true");
+    // Tombol yang baru ditekan tetap memegang fokus walau kini nonaktif.
+    expect(next).toHaveFocus();
+    await user.click(next);
+    expect(screen.getByText("Menampilkan 7–7 dari 7")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Halaman sebelumnya" }));
     expect(screen.getByText("Menampilkan 4–6 dari 7")).toBeInTheDocument();
   });
@@ -142,6 +153,44 @@ describe("DataTable (F-15: paging/sort server, N-11)", () => {
     // Pindah halaman mengosongkan pilihan (aksi massal hanya pada baris yang terlihat).
     await user.click(screen.getByRole("button", { name: "Halaman berikutnya" }));
     expect(screen.queryByText(/baris dipilih/)).toBeNull();
+  });
+
+  it("halaman lanjutan yang menjadi kosong menawarkan kembali ke halaman sebelumnya, bukan 'data kosong'", async () => {
+    const user = userEvent.setup();
+    function EmptyLaterPage() {
+      const paging = useCursorPaging("tetap", PAGE);
+      // Server tiruan: halaman 2 kosong (baris terakhirnya baru diproses), total masih 3.
+      const page = paging.cursor
+        ? { items: [], next_cursor: null }
+        : { items: ALL.slice(0, 3), next_cursor: "3" };
+      return (
+        <DataTable<Row>
+          caption="Daftar alumni"
+          columns={columns}
+          data={page.items}
+          getRowId={(r) => r.id}
+          status="success"
+          total={3}
+          emptyState={<p>Antrean kosong</p>}
+          pagination={{
+            pageIndex: paging.pageIndex,
+            pageSize: PAGE,
+            nextCursor: page.next_cursor,
+            onNext: paging.next,
+            onPrev: paging.prev,
+          }}
+        />
+      );
+    }
+    render(<EmptyLaterPage />);
+    await user.click(screen.getByRole("button", { name: "Halaman berikutnya" }));
+    expect(screen.getByText("Halaman ini sudah kosong")).toBeInTheDocument();
+    expect(screen.queryByText("Antrean kosong")).toBeNull();
+    expect(screen.getByText("Halaman 2 kosong; total 3 data")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Kembali ke halaman sebelumnya" }));
+    expect(screen.getByText("Menampilkan 3 dari 3")).toBeInTheDocument();
+    // Tombol aksi hilang; fokus berada di tombol paging yang tetap ada.
+    expect(screen.getByRole("button", { name: "Halaman sebelumnya" })).toHaveFocus();
   });
 
   it("keadaan memuat, kosong dan galat memiliki pesan serta tindakan", async () => {

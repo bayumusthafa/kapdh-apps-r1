@@ -20,9 +20,24 @@ const FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(",");
 
+/** Elemen yang dapat difokus (termasuk tabindex="-1" yang hanya terjangkau lewat panah/skrip). */
 export function getFocusable(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-    (el) => el.getAttribute("aria-hidden") !== "true" && !el.closest("[inert]"),
+    (el) => el.getAttribute("aria-hidden") !== "true" && !el.closest("[inert], [hidden]"),
+  );
+}
+
+/**
+ * Elemen yang menjadi perhentian Tab. Widget roving tabindex (Tabs, bilah alat editor) hanya punya satu
+ * perhentian (tabIndex 0); anggota lain bertabindex -1 dan BUKAN batas jebakan fokus, karena Tab tidak pernah
+ * berhenti di sana sehingga pemeriksaan "elemen terakhir" tidak akan pernah terpenuhi.
+ */
+export function getTabbable(container: HTMLElement): HTMLElement[] {
+  return getFocusable(container).filter(
+    (el) =>
+      el.tabIndex >= 0 ||
+      // Sebagian peramban melaporkan tabIndex -1 untuk contenteditable tanpa atribut tabindex padahal Tab berhenti.
+      (el.getAttribute("contenteditable") === "true" && !el.hasAttribute("tabindex")),
   );
 }
 
@@ -72,21 +87,28 @@ export function useModalLayer({
     lockBackground();
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const container = containerRef.current;
-    const target = initialFocusRef?.current ?? (container ? getFocusable(container)[0] : null) ?? container;
+    const target =
+      initialFocusRef?.current ??
+      (container ? (getTabbable(container)[0] ?? getFocusable(container)[0]) : null) ??
+      container;
     target?.focus();
 
+    // Escape ditangani pada fase BUBBLE di document: widget di dalam dialog (Combobox menutup daftar, SearchInput
+    // mengosongkan isian, Tooltip) mendapat Escape lebih dulu dan menandainya dengan preventDefault/stopPropagation,
+    // sehingga dialog tidak ikut tertutup dan isian formulir tidak hilang (pola WAI-ARIA APG).
+    const onEscapeKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (layers[layers.length - 1] !== layer) return;
+      if (onEscapeRef.current) {
+        e.preventDefault();
+        onEscapeRef.current();
+      }
+    };
+    // Tab tetap ditangani pada fase capture agar fokus selalu berputar di dalam dialog teratas.
     const onKeyDown = (e: KeyboardEvent) => {
       if (layers[layers.length - 1] !== layer) return;
-      if (e.key === "Escape") {
-        if (onEscapeRef.current) {
-          e.preventDefault();
-          e.stopPropagation();
-          onEscapeRef.current();
-        }
-        return;
-      }
       if (e.key !== "Tab" || !container) return;
-      const items = getFocusable(container);
+      const items = getTabbable(container);
       if (items.length === 0) {
         e.preventDefault();
         container.focus();
@@ -104,8 +126,10 @@ export function useModalLayer({
       }
     };
     document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("keydown", onEscapeKey);
     return () => {
       document.removeEventListener("keydown", onKeyDown, true);
+      document.removeEventListener("keydown", onEscapeKey);
       const idx = layers.indexOf(layer);
       if (idx >= 0) layers.splice(idx, 1);
       unlockBackground();

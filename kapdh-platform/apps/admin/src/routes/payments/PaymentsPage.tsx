@@ -17,6 +17,24 @@ const TABS: { value: PaymentTab; label: string; anyOf: Permission[] }[] = [
   { value: "adjustments", label: "Penyesuaian", anyOf: ["payments.read"] },
 ];
 
+const HEADER = {
+  verify: {
+    title: "Verifikasi Pembayaran",
+    description: "Setujui hanya bila dana sudah terlihat di rekening tujuan.",
+  },
+  settings: {
+    title: "Metode & Biaya Pembayaran",
+    description: "Atur rekening tujuan transfer dan biaya iuran. Perubahan meminta konfirmasi identitas.",
+  },
+} as const;
+
+/** Deskripsi khusus per tab; tab verifikasi memakai deskripsi judul halaman. */
+const TAB_DESCRIPTION: Partial<Record<PaymentTab, string>> = {
+  methods: "Rekening bank dan e-wallet tujuan transfer yang ditampilkan ke alumni.",
+  fees: "Biaya pendaftaran, kartu dan perpanjangan. Versi baru hanya berlaku untuk tagihan baru.",
+  adjustments: "Refund dan koreksi pembayaran tanpa mengubah status lunas.",
+};
+
 /**
  * Halaman pembayaran (prototipe screen_8, guidelines hlm. 17). Tab hanya muncul sesuai izin; tab aktif disimpan
  * di URL (?tab=). Verifikasi adalah layar rujukan pola halaman admin (daftar-detail, paging kursor, keputusan
@@ -29,12 +47,14 @@ export function PaymentsPage() {
   const tabs = TABS.filter((t) => auth.canAny(t.anyOf));
   const requested = tabs.find((t) => t.value === search.tab);
   const tab = (requested ?? tabs[0])?.value ?? "verify";
+  // Judul mengikuti cakupan izin: admin pengaturan tanpa payments.read tidak memverifikasi apa pun (AC F15-1).
+  const header = auth.can("payments.read") ? HEADER.verify : HEADER.settings;
 
   return (
     <>
       <PageHeader
-        title="Verifikasi Pembayaran"
-        description="Setujui hanya bila dana sudah terlihat di rekening tujuan."
+        title={header.title}
+        description={TAB_DESCRIPTION[tab] ?? header.description}
         actions={
           tabs.length > 1 ? (
             <Tabs<PaymentTab>

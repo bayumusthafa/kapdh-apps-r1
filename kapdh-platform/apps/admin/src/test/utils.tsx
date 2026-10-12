@@ -1,10 +1,11 @@
 import { QueryClient } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { App, AppProviders } from "../App";
 import { api, setAccessToken } from "../api/client";
 import { MOCK_CREDENTIALS } from "../api/mocks";
+import type { ToastTone } from "../components/ui/Toast";
 import { createAppRouter } from "../router";
 
 /** Utilitas uji web admin (mode mock). Bukti mock bukan bukti AC (PRD 7.3). */
@@ -44,6 +45,26 @@ export async function signIn(
   }
   await user.click(screen.getByRole("button", { name: "Verifikasi" }));
   return screen.findByRole("navigation", { name: "Menu admin" });
+}
+
+/**
+ * Toast yang sedang tampil (opsional per nada). Toast tidak memakai role per item: galat masuk wadah
+ * aria-live="assertive", selain itu wadah aria-live="polite" yang selalu terpasang (lihat Toast.tsx).
+ */
+export function toasts(tone?: ToastTone): HTMLElement[] {
+  const selector = tone ? `[data-toast="${tone}"]` : "[data-toast]";
+  return Array.from(document.querySelectorAll<HTMLElement>(selector));
+}
+
+/** Tunggu toast bernada `tone` yang memuat `text`. */
+export function findToast(tone: ToastTone, text: string | RegExp): Promise<HTMLElement> {
+  return waitFor(() => {
+    const match = toasts(tone).find((el) =>
+      typeof text === "string" ? el.textContent?.includes(text) : text.test(el.textContent ?? ""),
+    );
+    if (!match) throw new Error(`Toast ${tone} "${String(text)}" tidak ditemukan`);
+    return match;
+  });
 }
 
 /** Masuk lewat API (tanpa UI) sehingga AuthProvider memulihkan sesi dari "cookie" refresh tiruan saat dirender. */
