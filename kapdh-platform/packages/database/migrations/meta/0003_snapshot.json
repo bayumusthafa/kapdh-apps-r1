@@ -1,6 +1,6 @@
 {
-  "id": "f87c5c44-80de-4e43-90e9-c9673157bf6a",
-  "prevId": "eda8918a-ece7-4ee4-bda1-376adb3700fc",
+  "id": "9c6f1294-8373-411f-86d5-bf2ded6f95a5",
+  "prevId": "f4a667dc-62c2-42e7-90ed-7e0354f7603a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -606,6 +606,22 @@
           "method": "btree",
           "where": "\"app\".\"reports\".\"room_id\" is not null",
           "concurrently": false
+        },
+        "reports_resolved_by_admin_id_idx": {
+          "name": "reports_resolved_by_admin_id_idx",
+          "columns": [
+            {
+              "expression": "resolved_by_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"reports\".\"resolved_by_admin_id\" is not null",
+          "concurrently": false
         }
       },
       "foreignKeys": {
@@ -671,6 +687,10 @@
         "reports_resolved_chk": {
           "name": "reports_resolved_chk",
           "value": "\"app\".\"reports\".\"status\" not in ('resolved','dismissed') or (\"app\".\"reports\".\"resolved_at\" is not null and \"app\".\"reports\".\"action\" is not null)"
+        },
+        "reports_resolution_note_chk": {
+          "name": "reports_resolution_note_chk",
+          "value": "\"app\".\"reports\".\"status\" not in ('resolved','dismissed') or (\"app\".\"reports\".\"resolution_note\" is not null and btrim(\"app\".\"reports\".\"resolution_note\") <> '')"
         },
         "reports_dismissed_chk": {
           "name": "reports_dismissed_chk",
@@ -1018,6 +1038,22 @@
           "method": "btree",
           "where": "\"app\".\"rooms\".\"created_by\" is not null",
           "concurrently": false
+        },
+        "rooms_avatar_file_id_idx": {
+          "name": "rooms_avatar_file_id_idx",
+          "columns": [
+            {
+              "expression": "avatar_file_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"rooms\".\"avatar_file_id\" is not null",
+          "concurrently": false
         }
       },
       "foreignKeys": {
@@ -1145,7 +1181,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "banners_image_file_id_idx": {
+          "name": "banners_image_file_id_idx",
+          "columns": [
+            {
+              "expression": "image_file_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
       "foreignKeys": {
         "banners_image_file_id_files_id_fk": {
           "name": "banners_image_file_id_files_id_fk",
@@ -1320,6 +1372,24 @@
           "notNull": true,
           "default": 1
         },
+        "published_title": {
+          "name": "published_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_body_html": {
+          "name": "published_body_html",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_version": {
+          "name": "published_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "published_at": {
           "name": "published_at",
           "type": "timestamp with time zone",
@@ -1362,6 +1432,22 @@
           "with": {},
           "method": "btree",
           "concurrently": false
+        },
+        "pages_updated_by_admin_id_idx": {
+          "name": "pages_updated_by_admin_id_idx",
+          "columns": [
+            {
+              "expression": "updated_by_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"pages\".\"updated_by_admin_id\" is not null",
+          "concurrently": false
         }
       },
       "foreignKeys": {
@@ -1387,6 +1473,10 @@
         "pages_title_chk": {
           "name": "pages_title_chk",
           "value": "char_length(btrim(\"app\".\"pages\".\"title\")) between 1 and 200"
+        },
+        "pages_published_chk": {
+          "name": "pages_published_chk",
+          "value": "(\"app\".\"pages\".\"published_version\" is null and \"app\".\"pages\".\"published_at\" is null and \"app\".\"pages\".\"published_title\" is null and \"app\".\"pages\".\"published_body_html\" is null) or (\"app\".\"pages\".\"published_version\" >= 1 and \"app\".\"pages\".\"published_at\" is not null and \"app\".\"pages\".\"published_title\" is not null and char_length(btrim(\"app\".\"pages\".\"published_title\")) between 1 and 200 and \"app\".\"pages\".\"published_body_html\" is not null)"
         }
       },
       "isRLSEnabled": false
@@ -1616,6 +1706,38 @@
           "isUnique": false,
           "with": {},
           "method": "btree",
+          "concurrently": false
+        },
+        "posts_cover_file_id_idx": {
+          "name": "posts_cover_file_id_idx",
+          "columns": [
+            {
+              "expression": "cover_file_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"posts\".\"cover_file_id\" is not null",
+          "concurrently": false
+        },
+        "posts_author_admin_id_idx": {
+          "name": "posts_author_admin_id_idx",
+          "columns": [
+            {
+              "expression": "author_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"posts\".\"author_admin_id\" is not null",
           "concurrently": false
         }
       },
@@ -1883,6 +2005,38 @@
           "isUnique": false,
           "with": {},
           "method": "btree",
+          "concurrently": false
+        },
+        "events_cover_file_id_idx": {
+          "name": "events_cover_file_id_idx",
+          "columns": [
+            {
+              "expression": "cover_file_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"events\".\"cover_file_id\" is not null",
+          "concurrently": false
+        },
+        "events_created_by_admin_id_idx": {
+          "name": "events_created_by_admin_id_idx",
+          "columns": [
+            {
+              "expression": "created_by_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"events\".\"created_by_admin_id\" is not null",
           "concurrently": false
         }
       },
@@ -2169,6 +2323,22 @@
           "with": {},
           "method": "btree",
           "concurrently": false
+        },
+        "tickets_checked_in_by_admin_id_idx": {
+          "name": "tickets_checked_in_by_admin_id_idx",
+          "columns": [
+            {
+              "expression": "checked_in_by_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"tickets\".\"checked_in_by_admin_id\" is not null",
+          "concurrently": false
         }
       },
       "foreignKeys": {
@@ -2260,7 +2430,24 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "admin_permissions_granted_by_admin_id_idx": {
+          "name": "admin_permissions_granted_by_admin_id_idx",
+          "columns": [
+            {
+              "expression": "granted_by_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"admin_permissions\".\"granted_by_admin_id\" is not null",
+          "concurrently": false
+        }
+      },
       "foreignKeys": {
         "admin_permissions_admin_id_admins_id_fk": {
           "name": "admin_permissions_admin_id_admins_id_fk",
@@ -3438,6 +3625,22 @@
           "method": "btree",
           "where": "\"app\".\"alumni\".\"avatar_file_id\" is not null",
           "concurrently": false
+        },
+        "alumni_suspended_by_admin_id_idx": {
+          "name": "alumni_suspended_by_admin_id_idx",
+          "columns": [
+            {
+              "expression": "suspended_by_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"alumni\".\"suspended_by_admin_id\" is not null",
+          "concurrently": false
         }
       },
       "foreignKeys": {
@@ -3949,6 +4152,22 @@
           "with": {},
           "method": "btree",
           "concurrently": false
+        },
+        "membership_events_actor_admin_id_idx": {
+          "name": "membership_events_actor_admin_id_idx",
+          "columns": [
+            {
+              "expression": "actor_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"membership_events\".\"actor_admin_id\" is not null",
+          "concurrently": false
         }
       },
       "foreignKeys": {
@@ -4104,8 +4323,8 @@
           "method": "btree",
           "concurrently": false
         },
-        "device_tokens_user_id_active_idx": {
-          "name": "device_tokens_user_id_active_idx",
+        "device_tokens_user_id_idx": {
+          "name": "device_tokens_user_id_idx",
           "columns": [
             {
               "expression": "user_id",
@@ -4117,7 +4336,6 @@
           "isUnique": false,
           "with": {},
           "method": "btree",
-          "where": "\"app\".\"device_tokens\".\"revoked_at\" is null",
           "concurrently": false
         },
         "device_tokens_session_id_idx": {
@@ -4704,6 +4922,54 @@
           "with": {},
           "method": "btree",
           "concurrently": false
+        },
+        "payment_adjustments_evidence_file_id_idx": {
+          "name": "payment_adjustments_evidence_file_id_idx",
+          "columns": [
+            {
+              "expression": "evidence_file_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"payment_adjustments\".\"evidence_file_id\" is not null",
+          "concurrently": false
+        },
+        "payment_adjustments_created_by_admin_id_idx": {
+          "name": "payment_adjustments_created_by_admin_id_idx",
+          "columns": [
+            {
+              "expression": "created_by_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"payment_adjustments\".\"created_by_admin_id\" is not null",
+          "concurrently": false
+        },
+        "payment_adjustments_completed_by_admin_id_idx": {
+          "name": "payment_adjustments_completed_by_admin_id_idx",
+          "columns": [
+            {
+              "expression": "completed_by_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"payment_adjustments\".\"completed_by_admin_id\" is not null",
+          "concurrently": false
         }
       },
       "foreignKeys": {
@@ -5164,7 +5430,6 @@
           "isUnique": true,
           "with": {},
           "method": "btree",
-          "where": "\"app\".\"payments\".\"type\" = 'ticket'",
           "concurrently": false
         },
         "payments_status_submitted_at_idx": {
@@ -5223,6 +5488,38 @@
           "with": {},
           "method": "btree",
           "where": "\"app\".\"payments\".\"proof_file_id\" is not null",
+          "concurrently": false
+        },
+        "payments_payment_method_id_idx": {
+          "name": "payments_payment_method_id_idx",
+          "columns": [
+            {
+              "expression": "payment_method_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"payments\".\"payment_method_id\" is not null",
+          "concurrently": false
+        },
+        "payments_decided_by_admin_id_idx": {
+          "name": "payments_decided_by_admin_id_idx",
+          "columns": [
+            {
+              "expression": "decided_by_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"payments\".\"decided_by_admin_id\" is not null",
           "concurrently": false
         }
       },
@@ -6230,7 +6527,24 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "app_settings_updated_by_admin_id_idx": {
+          "name": "app_settings_updated_by_admin_id_idx",
+          "columns": [
+            {
+              "expression": "updated_by_admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"app\".\"app_settings\".\"updated_by_admin_id\" is not null",
+          "concurrently": false
+        }
+      },
       "foreignKeys": {
         "app_settings_updated_by_admin_id_admins_id_fk": {
           "name": "app_settings_updated_by_admin_id_admins_id_fk",

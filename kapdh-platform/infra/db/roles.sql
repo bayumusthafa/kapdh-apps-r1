@@ -13,9 +13,12 @@
 --   kapdh_migrator    pemilik objek skema; dipakai hanya oleh job migrasi deployment tunggal (PRD 5.5).
 --   kapdh_app         API. DML pada tabel app, tanpa UPDATE/DELETE/TRUNCATE pada audit_logs dan payment_events.
 --   kapdh_worker      worker. Seperti kapdh_app, tanpa akses mfa_totp (secret TOTP) dan tanpa sequence nomor anggota.
---   kapdh_audit_purge NOLOGIN. Pembersihan/anonimisasi resmi audit (D2, F-17). Login role khusus diberi keanggotaan
---                     dan WAJIB `SET ROLE kapdh_audit_purge` secara eksplisit; trigger app.forbid_mutation() hanya
---                     mengizinkan UPDATE/DELETE bila current_user = kapdh_audit_purge.
+--   kapdh_audit_purge NOLOGIN. Pembersihan/anonimisasi resmi audit dan histori payment (D2, F-17, AC F14-4).
+--                     kapdh_worker (job account.deletion dan retensi, ARCHITECTURE §4.8) adalah anggota dengan
+--                     INHERIT FALSE, SET TRUE: worker TIDAK mewarisi hak ini secara implisit dan wajib menjalankan
+--                     `SET LOCAL ROLE kapdh_audit_purge` hanya untuk langkah anonimisasi, lalu kembali ke role worker.
+--                     Trigger app.forbid_mutation() hanya mengizinkan UPDATE/DELETE bila current_user =
+--                     kapdh_audit_purge. kapdh_app (API) tidak pernah menjadi anggota.
 
 -- ------------------------------------------------------------------ Bagian 1: role (tingkat cluster)
 DO $$
@@ -31,6 +34,16 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kapdh_audit_purge') THEN
     CREATE ROLE kapdh_audit_purge NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+  END IF;
+
+  -- Jalur purge/anonimisasi resmi (F-17 "identitas aktor pada audit dianonimkan sesuai D2", AC F14-4): worker boleh
+  -- SET ROLE eksplisit tetapi tidak mewarisi hak (sintaks PostgreSQL 16+; production PostgreSQL 17).
+  GRANT kapdh_audit_purge TO kapdh_worker WITH INHERIT FALSE, SET TRUE;
+  IF EXISTS (
+    SELECT 1 FROM pg_auth_members m
+    WHERE m.roleid = 'kapdh_audit_purge'::regrole AND m.member = 'kapdh_app'::regrole
+  ) THEN
+    REVOKE kapdh_audit_purge FROM kapdh_app;
   END IF;
 END
 $$;

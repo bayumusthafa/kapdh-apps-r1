@@ -26,13 +26,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.test.json",
-    "lint": "eslint src seeds test",
+    "lint": "eslint src seeds bin test",
     "db:generate": "drizzle-kit generate",
     "db:generate:custom": "drizzle-kit generate --custom",
     "db:check": "drizzle-kit check",
-    "migrate": "node dist/src/migrate.js",
-    "seed:reference": "node dist/seeds/reference.js",
-    "seed:dev": "node dist/seeds/dev.js",
+    "migrate": "node dist/bin/migrate.js",
+    "seed:reference": "node dist/bin/seed-reference.js",
+    "seed:dev": "node dist/bin/seed-dev.js",
     "test": "vitest run"
   },
   "dependencies": {

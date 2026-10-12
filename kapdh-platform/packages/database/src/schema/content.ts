@@ -59,7 +59,11 @@ export const posts = app.table(
     status: postStatus("status").notNull().default("draft"),
     publishedAt: tstz("published_at"),
     announcedAt: tstz("announced_at"),
-    /** Penghitung like dijaga dalam transaksi yang sama dengan post_likes (AC F08-3). */
+    /**
+     * Penghitung like dipelihara HANYA oleh trigger `app.post_likes_count` (migrasi 0005) pada INSERT/DELETE
+     * post_likes, termasuk penghapusan kaskade saat akun dihapus (F-14), sehingga selalu sama dengan jumlah baris
+     * post_likes (AC F08-3, PRD 6.2). Layanan tidak boleh mengubah kolom ini sendiri.
+     */
     likeCount: integer("like_count").notNull().default(0),
     authorAdminId: uuid("author_admin_id").references(() => admins.id, { onDelete: "set null" }),
     version: version(),
@@ -70,6 +74,12 @@ export const posts = app.table(
     uniqueIndex("posts_slug_key").on(t.slug),
     index("posts_status_published_at_idx").on(t.status, t.publishedAt),
     index("posts_category_id_idx").on(t.categoryId),
+    index("posts_cover_file_id_idx")
+      .on(t.coverFileId)
+      .where(sql`${t.coverFileId} is not null`),
+    index("posts_author_admin_id_idx")
+      .on(t.authorAdminId)
+      .where(sql`${t.authorAdminId} is not null`),
     check("posts_slug_chk", sql`${t.slug} ~ ${sql.raw(`'${SLUG_PATTERN}'`)}`),
     check("posts_title_chk", sql`char_length(btrim(${t.title})) between 1 and 200`),
     check("posts_like_count_chk", sql`${t.likeCount} >= 0`),
@@ -78,7 +88,7 @@ export const posts = app.table(
   ],
 );
 
-/** Satu like per pengguna per berita (AC F08-3). */
+/** Satu like per pengguna per berita (AC F08-3); posts.like_count mengikuti tabel ini lewat trigger (migrasi 0005). */
 export const postLikes = app.table(
   "post_likes",
   {
@@ -116,6 +126,7 @@ export const banners = app.table(
     updatedAt: updatedAt(),
   },
   (t) => [
+    index("banners_image_file_id_idx").on(t.imageFileId),
     check("banners_window_chk", sql`${t.endsAt} is null or ${t.endsAt} > ${t.startsAt}`),
     check("banners_target_chk", sql`(${t.targetType} = 'none') = (${t.targetValue} is null)`),
     check("banners_url_chk", sql`${t.targetType} <> 'url' or ${t.targetValue} ~ '^https://'`),
@@ -124,8 +135,14 @@ export const banners = app.table(
 );
 
 /**
- * Halaman informasi dan legal (privasi, ketentuan, ketentuan komunitas, bantuan, tentang). published_at null =
- * draf; version adalah versi legal yang dirujuk persetujuan pengguna (users.policy_version) dan optimistic lock.
+ * Halaman informasi dan legal (privasi, ketentuan, ketentuan komunitas, bantuan, tentang; F-08, PRD 6.2). Dua salinan
+ * dipisahkan agar teks yang disetujui pengguna dapat direproduksi (F-01 "persetujuan dicatat beserta versi"):
+ * - title/body_html = DRAF kerja pengurus; setiap simpan menaikkan `version` (optimistic lock If-Match, AC F15-4) dan
+ *   tidak mengubah teks yang tayang.
+ * - published_title/published_body_html = teks yang TAYANG; hanya berubah saat terbit, dan setiap terbit menaikkan
+ *   `published_version`, yaitu versi legal yang dirujuk users.policy_version dan app_settings `legal`.
+ * published_* null = belum pernah terbit. Entri audit `page.published` (append-only, F-17) menyimpan
+ * published_version beserta teks yang diterbitkan sehingga versi lama yang pernah disetujui tetap dapat ditampilkan.
  */
 export const pages = app.table(
   "pages",
@@ -135,6 +152,9 @@ export const pages = app.table(
     title: text("title").notNull(),
     bodyHtml: text("body_html").notNull(),
     version: version(),
+    publishedTitle: text("published_title"),
+    publishedBodyHtml: text("published_body_html"),
+    publishedVersion: integer("published_version"),
     publishedAt: tstz("published_at"),
     updatedByAdminId: uuid("updated_by_admin_id").references(() => admins.id, { onDelete: "set null" }),
     createdAt: createdAt(),
@@ -142,7 +162,15 @@ export const pages = app.table(
   },
   (t) => [
     uniqueIndex("pages_slug_key").on(t.slug),
+    index("pages_updated_by_admin_id_idx")
+      .on(t.updatedByAdminId)
+      .where(sql`${t.updatedByAdminId} is not null`),
     check("pages_slug_chk", sql`${t.slug} ~ ${sql.raw(`'${SLUG_PATTERN}'`)}`),
     check("pages_title_chk", sql`char_length(btrim(${t.title})) between 1 and 200`),
+    // Salinan tayang lengkap atau tidak ada sama sekali; versi legal mulai 1 (F-01, PRD 6.2).
+    check(
+      "pages_published_chk",
+      sql`(${t.publishedVersion} is null and ${t.publishedAt} is null and ${t.publishedTitle} is null and ${t.publishedBodyHtml} is null) or (${t.publishedVersion} >= 1 and ${t.publishedAt} is not null and ${t.publishedTitle} is not null and char_length(btrim(${t.publishedTitle})) between 1 and 200 and ${t.publishedBodyHtml} is not null)`,
+    ),
   ],
 );

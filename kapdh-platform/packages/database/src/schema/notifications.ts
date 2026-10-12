@@ -106,9 +106,9 @@ export const deviceTokens = app.table(
   },
   (t) => [
     uniqueIndex("device_tokens_token_key").on(t.token),
-    index("device_tokens_user_id_active_idx")
-      .on(t.userId)
-      .where(sql`${t.revokedAt} is null`),
+    // Indeks penuh: dipakai kaskade ON DELETE dari users (F-14) dan juga pencarian token aktif per pengguna
+    // (predikat revoked_at IS NULL dievaluasi sebagai filter; PRD 6.5).
+    index("device_tokens_user_id_idx").on(t.userId),
     index("device_tokens_session_id_idx")
       .on(t.sessionId)
       .where(sql`${t.sessionId} is not null`),

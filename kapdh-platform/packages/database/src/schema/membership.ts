@@ -78,6 +78,7 @@ export const masterSkills = app.table(
  * Profil alumni (PRD 6.2). Tanpa NIK/Nomor KTP (N-09, v3.3). Kontak dan tautan sosial default tersembunyi (F-10,
  * N-15). Kolom keanggotaan (nomor, periode, suspend) hanya diubah layanan keanggotaan/admin, tidak lewat endpoint
  * profil umum (PRD 6.4). suspension_reason hanya untuk pengurus; suspension_message ditampilkan ke anggota.
+ * user_id wajib akun berjenis `alumni` (`alumni_user_kind_chk`, migrasi 0004).
  */
 export const alumni = app.table(
   "alumni",
@@ -104,7 +105,11 @@ export const alumni = app.table(
     showSocial: boolean("show_social").notNull().default(false),
     showInDirectory: boolean("show_in_directory").notNull().default(true),
     avatarFileId: uuid("avatar_file_id").references(() => files.id, { onDelete: "set null" }),
-    /** N dari app.membership_no_seq; tidak berubah saat renewal maupun koreksi (PRD 3.5). */
+    /**
+     * N dari app.membership_no_seq (nextval, tidak pernah nilai ketikan); tidak berubah saat renewal maupun koreksi
+     * (PRD 3.5, AC F05-6). Sekali terisi, trigger migrasi 0004 menolak perubahan apa pun (`alumni_member_seq_immutable_chk`)
+     * sehingga N anggota yang dihapus tidak dapat dipasang ke anggota lain.
+     */
     memberSeq: bigint("member_seq", { mode: "number" }),
     memberNumber: text("member_number"),
     startsAt: tstz("starts_at"),
@@ -131,6 +136,9 @@ export const alumni = app.table(
     index("alumni_avatar_file_id_idx")
       .on(t.avatarFileId)
       .where(sql`${t.avatarFileId} is not null`),
+    index("alumni_suspended_by_admin_id_idx")
+      .on(t.suspendedByAdminId)
+      .where(sql`${t.suspendedByAdminId} is not null`),
     check(
       "alumni_class_chk",
       sql`${t.classIn} between 1 and 6 and ${t.classOut} between 1 and 6 and ${t.classOut} >= ${t.classIn}`,
@@ -213,6 +221,9 @@ export const membershipEvents = app.table(
   (t) => [
     uniqueIndex("membership_events_payment_id_key").on(t.paymentId),
     index("membership_events_user_id_created_at_idx").on(t.userId, t.createdAt),
+    index("membership_events_actor_admin_id_idx")
+      .on(t.actorAdminId)
+      .where(sql`${t.actorAdminId} is not null`),
     check(
       "membership_events_payment_chk",
       sql`${t.paymentId} is null or ${t.kind} in ('activation','renewal')`,

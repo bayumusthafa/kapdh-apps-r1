@@ -167,8 +167,13 @@ export const idempotencyKeys = app.table(
 );
 
 /**
- * Permintaan penghapusan akun (F-14). user_id sengaja tanpa FK agar catatan bertahan setelah purge akun; ledger hanya
- * berisi id dan object key (tanpa data pribadi) untuk diterapkan ulang setelah restore backup (AC F14-6).
+ * Permintaan penghapusan akun (F-14). user_id sengaja tanpa FK agar catatan bertahan setelah purge akun.
+ *
+ * `ledger` hanya SALINAN KERJA job penghapusan (id dan object key, tanpa data pribadi) untuk melanjutkan langkah yang
+ * tertunda; ini BUKAN sumber pemulihan AC F14-6. Backup yang dibuat sebelum permintaan penghapusan tidak memuat baris
+ * ini, jadi setiap entri yang selesai juga wajib ditambahkan job ke deletion ledger append-only DI LUAR database yang
+ * disimpan bersama manifest backup (PRD 5.5). Runbook restore membaca ledger eksternal tersebut dan menerapkannya
+ * ulang sebelum layanan dibuka (AC F14-6).
  */
 export const accountDeletions = app.table(
   "account_deletions",

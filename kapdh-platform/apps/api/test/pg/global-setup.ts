@@ -3,7 +3,9 @@
  *   1. initdb ke direktori sementara unik di os.tmpdir() (persistent: true agar embedded-postgres tidak menghapusnya
  *      sendiri; pembersihan dilakukan di teardown dengan toleransi EBUSY/EPERM Windows),
  *   2. database template `kapdh_template` dimigrasi dengan job migrasi production (`runMigrations`, advisory lock),
- *   3. infra/db/roles.sql diterapkan (role + grant), sehingga uji dapat memakai SET ROLE kapdh_app/kapdh_worker,
+ *   3. infra/db/roles.sql diterapkan DUA KALI (role + grant, sekaligus bukti idempoten), lalu role LOGIN kapdh_app dan
+ *      kapdh_worker diberi sandi acak sehingga uji dapat tersambung sebagai role aplikasi yang sebenarnya (bukan
+ *      superuser) maupun memakai SET ROLE,
  *   4. setiap berkas uji membuat database sendiri dari template (test/pg/support.ts).
  */
 import EmbeddedPostgres from "embedded-postgres";
@@ -22,6 +24,8 @@ export interface PgLaneConfig {
   user: string;
   password: string;
   template: string;
+  /** Sandi LOGIN role aplikasi kapdh_app/kapdh_worker pada cluster uji (bukan superuser), untuk koneksi nyata. */
+  rolePassword: string;
 }
 
 declare module "vitest" {
@@ -84,6 +88,7 @@ export default async function setup(project: TestProject) {
   const port = await freePort();
   const user = "postgres";
   const password = randomBytes(12).toString("hex");
+  const rolePassword = randomBytes(12).toString("hex");
   const logs: string[] = [];
   const pg = new EmbeddedPostgres({
     databaseDir,
@@ -120,6 +125,11 @@ export default async function setup(project: TestProject) {
     const template = createDb(`${base}/${TEMPLATE_DB}`, { max: 1 }).sql;
     try {
       await template.file(ROLES_SQL);
+      await template.file(ROLES_SQL);
+      // Sandi hex acak (tanpa kutip) untuk role LOGIN uji; cluster sekali pakai, tidak pernah dicetak.
+      for (const role of ["kapdh_app", "kapdh_worker"]) {
+        await template.unsafe(`alter role ${role} password '${rolePassword}'`);
+      }
     } finally {
       await template.end({ timeout: 5 });
     }
@@ -129,7 +139,14 @@ export default async function setup(project: TestProject) {
   }
   await admin.end({ timeout: 5 });
 
-  project.provide("kapdhPg", { host: "127.0.0.1", port, user, password, template: TEMPLATE_DB });
+  project.provide("kapdhPg", {
+    host: "127.0.0.1",
+    port,
+    user,
+    password,
+    template: TEMPLATE_DB,
+    rolePassword,
+  });
 
   return async () => {
     await pg.stop();
