@@ -202,12 +202,17 @@ void main() {
       });
       final session = Session(
         id: '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e63',
+        audience: SessionAudience.mobile,
         deviceName: 'Pixel',
+        platform: SessionPlatform.android,
+        appVersion: '1.0.0',
         createdAt: DateTime.parse('2026-10-12T10:00:00+07:00'),
         lastSeenAt: DateTime.utc(2026, 10, 12, 3),
+        expiresAt: DateTime.utc(2026, 12, 11, 3),
         current: true,
       );
       expect(session.toJson()['created_at'], '2026-10-12T03:00:00.000Z');
+      expect(session.toJson()['platform'], 'android');
     });
   });
 
