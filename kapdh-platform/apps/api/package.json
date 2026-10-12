@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src test",
     "test": "vitest run",
+    "test:pg": "vitest run --config vitest.pg.config.ts",
     "admin:bootstrap": "node dist/cli/bootstrap-admin.js"
   },
   "dependencies": {
@@ -41,6 +42,7 @@
     "@types/nodemailer": "8.0.2",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
+    "embedded-postgres": "17.6.0-beta.15",
     "typescript": "5.9.3",
     "unplugin-swc": "2.0.0",
     "vitest": "5.0.3",
