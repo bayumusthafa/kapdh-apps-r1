@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, integer, jsonb, text, uuid } from "drizzle-orm/pg-core";
+import { check, index, integer, jsonb, text, uuid } from "drizzle-orm/pg-core";
 import { app, tstz } from "./_common.js";
 import { admins } from "./identity.js";
 
@@ -32,6 +32,9 @@ export const appSettings = app.table(
     updatedAt: tstz("updated_at").notNull().defaultNow(),
   },
   (t) => [
+    index("app_settings_updated_by_admin_id_idx")
+      .on(t.updatedByAdminId)
+      .where(sql`${t.updatedByAdminId} is not null`),
     check("app_settings_key_chk", sql`${t.key} ~ '^[a-z][a-z0-9_]{0,62}$'`),
     check("app_settings_value_chk", sql`jsonb_typeof(${t.value}) = 'object'`),
     check("app_settings_version_chk", sql`${t.version} >= 1`),

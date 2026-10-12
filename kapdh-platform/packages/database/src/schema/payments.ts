@@ -117,14 +117,20 @@ export const payments = app.table(
       .on(t.userId, t.type)
       .where(sql`${t.status} in ('pending','rejected') and ${t.type} in ('registration','renewal')`),
     // Payment tiket unik per tiket, bukan per user/type, agar anggota dapat memesan event berbeda (PRD 6.4).
-    uniqueIndex("payments_ticket_id_key")
-      .on(t.ticketId)
-      .where(sql`${t.type} = 'ticket'`),
+    // Indeks penuh (bukan parsial): payments_ticket_chk sudah menjamin ticket_id hanya terisi untuk type='ticket',
+    // dan indeks penuh dapat dipakai join tickets->payments serta pemeriksaan FK RESTRICT (PRD 6.5).
+    uniqueIndex("payments_ticket_id_key").on(t.ticketId),
     index("payments_status_submitted_at_idx").on(t.status, t.submittedAt),
     index("payments_user_id_created_at_idx").on(t.userId, t.createdAt),
     index("payments_proof_file_id_idx")
       .on(t.proofFileId)
       .where(sql`${t.proofFileId} is not null`),
+    index("payments_payment_method_id_idx")
+      .on(t.paymentMethodId)
+      .where(sql`${t.paymentMethodId} is not null`),
+    index("payments_decided_by_admin_id_idx")
+      .on(t.decidedByAdminId)
+      .where(sql`${t.decidedByAdminId} is not null`),
   ],
 );
 
@@ -191,6 +197,15 @@ export const paymentAdjustments = app.table(
   (t) => [
     index("payment_adjustments_payment_id_idx").on(t.paymentId),
     index("payment_adjustments_status_due_at_idx").on(t.status, t.dueAt),
+    index("payment_adjustments_evidence_file_id_idx")
+      .on(t.evidenceFileId)
+      .where(sql`${t.evidenceFileId} is not null`),
+    index("payment_adjustments_created_by_admin_id_idx")
+      .on(t.createdByAdminId)
+      .where(sql`${t.createdByAdminId} is not null`),
+    index("payment_adjustments_completed_by_admin_id_idx")
+      .on(t.completedByAdminId)
+      .where(sql`${t.completedByAdminId} is not null`),
     check("payment_adjustments_amount_chk", sql`${t.amount} >= 0`),
     check("payment_adjustments_reason_chk", sql`btrim(${t.reason}) <> ''`),
     check(

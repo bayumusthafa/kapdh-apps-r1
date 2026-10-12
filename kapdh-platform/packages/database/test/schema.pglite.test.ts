@@ -47,24 +47,71 @@ async function errorOf(
   throw new Error(`Statement seharusnya gagal: ${statement}`);
 }
 
-async function insertUser(kind: "alumni" | "admin" = "alumni", email?: string): Promise<string> {
+async function count(statement: string, params: unknown[] = []): Promise<number> {
+  const result = await pg.query<{ n: number }>(statement, params);
+  return result.rows[0]!.n;
+}
+
+async function insertUser(
+  kind: "alumni" | "admin" = "alumni",
+  email?: string,
+  status = "active",
+): Promise<string> {
   const id = uuidv7();
   await pg.query(
-    "insert into app.users (id, email, password_hash, status, kind) values ($1, $2, 'hash', 'active', $3)",
-    [id, email ?? `u-${id}@contoh.test`, kind],
+    "insert into app.users (id, email, password_hash, status, kind) values ($1, $2, 'hash', $3, $4)",
+    [id, email ?? `u-${id}@contoh.test`, status, kind],
   );
   return id;
 }
 
-async function insertSuperAdmin(): Promise<string> {
+async function insertAdmin(
+  role: "super_admin" | "admin" = "super_admin",
+): Promise<{ id: string; userId: string }> {
   const userId = await insertUser("admin");
   const id = uuidv7();
   await pg.query(
     `insert into app.admins (id, user_id, display_name, role, status, activated_at)
-     values ($1, $2, 'Super Admin Uji', 'super_admin', 'active', now())`,
-    [id, userId],
+     values ($1, $2, 'Admin Uji', $3, 'active', now())`,
+    [id, userId, role],
   );
-  return id;
+  return { id, userId };
+}
+
+async function insertSuperAdmin(): Promise<string> {
+  return (await insertAdmin("super_admin")).id;
+}
+
+/** Kosongkan admins tanpa melewati penjaga lewat jalur aplikasi (hanya pemilik tabel di uji). */
+async function resetAdmins(): Promise<void> {
+  await pg.exec(`
+    alter table app.admins disable trigger admins_guard_last_super_admin;
+    delete from app.admins;
+    alter table app.admins enable trigger admins_guard_last_super_admin;`);
+}
+
+/** Super Admin yang dapat login: admin super_admin aktif dengan akun users aktif (AC F16-2). */
+function usableSuperAdmins(): Promise<number> {
+  return count(`
+    select count(*)::int as n from app.admins a join app.users u on u.id = a.user_id
+    where a.role = 'super_admin' and a.status = 'active' and u.status = 'active'`);
+}
+
+/** Mengambil N dari sequence pada sesi ini (alokasi resmi PRD 3.5). */
+async function nextMemberSeq(): Promise<number> {
+  const result = await pg.query<{ n: string }>("select nextval('app.membership_no_seq')::text as n");
+  return Number(result.rows[0]!.n);
+}
+
+/** Nomor AA.SS.JK.N untuk angkatan 12, kelas 1-3 (SS 02), laki-laki. */
+const number12 = (seq: number, ss = "02") => `12.${ss}.01.${seq}`;
+
+async function insertAlumni(userId: string, seq: number | null): Promise<void> {
+  await pg.query(
+    `insert into app.alumni (user_id, full_name, gender, cohort, class_in, class_out, member_seq, member_number)
+     values ($1, 'Alumni Uji', 'male', 12, 1, 3, $2, $3)`,
+    [userId, seq, seq === null ? null : number12(seq)],
+  );
 }
 
 describe("migrasi journal pada PGlite", () => {
@@ -73,10 +120,7 @@ describe("migrasi journal pada PGlite", () => {
       "select created_at from drizzle.__drizzle_migrations order by id",
     );
     expect(recorded.rows.map((r) => Number(r.created_at))).toEqual(journal.entries.map((e) => e.when));
-    const tables = await pg.query<{ n: number }>(
-      "select count(*)::int as n from pg_tables where schemaname = 'app'",
-    );
-    expect(tables.rows[0]!.n).toBe(39);
+    expect(await count("select count(*)::int as n from pg_tables where schemaname = 'app'")).toBe(39);
   });
 
   it("journal berurutan naik dan setiap migrasi memisahkan satu statement per breakpoint", () => {
@@ -92,19 +136,74 @@ describe("migrasi journal pada PGlite", () => {
   });
 });
 
-describe("trigger skema pada PGlite", () => {
-  it("AC F16-2: Super Admin aktif terakhir tidak dapat dinonaktifkan atau dihapus", async () => {
+describe("AC F16-2: penjaga Super Admin terakhir yang dapat login (PGlite)", () => {
+  it("Super Admin aktif terakhir tidak dapat dinonaktifkan, diturunkan, atau dihapus", async () => {
+    await resetAdmins();
     const only = await insertSuperAdmin();
+    const last = { code: "23514", constraint: "admins_last_super_admin_chk" };
     expect(
       await errorOf("update app.admins set status = 'disabled', disabled_at = now() where id = $1", [only]),
-    ).toMatchObject({ code: "23514", constraint: "admins_last_super_admin_chk" });
-    expect(await errorOf("delete from app.admins where id = $1", [only])).toMatchObject({
-      constraint: "admins_last_super_admin_chk",
-    });
+    ).toMatchObject(last);
+    expect(await errorOf("update app.admins set role = 'admin' where id = $1", [only])).toMatchObject(last);
+    expect(await errorOf("delete from app.admins where id = $1", [only])).toMatchObject(last);
+    expect(await errorOf("truncate app.admins cascade")).toMatchObject(last);
     const second = await insertSuperAdmin();
     await pg.query("update app.admins set role = 'admin' where id = $1", [second]);
+    expect(await usableSuperAdmins()).toBe(1);
   });
 
+  it("PRD 3.14: akun login Super Admin terakhir tidak dapat dinonaktifkan, ditandai hapus, atau dihapus", async () => {
+    await resetAdmins();
+    const a = await insertAdmin();
+    const last = { code: "23514", constraint: "admins_last_super_admin_chk" };
+    for (const status of ["disabled", "deletion_pending", "deleted", "pending_otp"]) {
+      expect(
+        await errorOf("update app.users set status = $2 where id = $1", [a.userId, status]),
+      ).toMatchObject(last);
+    }
+    expect(await errorOf("delete from app.users where id = $1", [a.userId])).toMatchObject(last);
+    expect(await usableSuperAdmins()).toBe(1);
+
+    // Serah kewenangan: Super Admin kedua aktif, lalu akun pertama boleh ditandai hapus (F-14).
+    const b = await insertAdmin();
+    await pg.query("update app.users set status = 'deletion_pending' where id = $1", [a.userId]);
+    expect(await usableSuperAdmins()).toBe(1);
+    // Super Admin yang akunnya tidak aktif tidak dihitung: b kini satu-satunya yang dapat login.
+    expect(await errorOf("update app.admins set role = 'admin' where id = $1", [b.id])).toMatchObject(last);
+    expect(await errorOf("update app.users set status = 'disabled' where id = $1", [b.userId])).toMatchObject(
+      last,
+    );
+    // Job penghapusan akun a tidak lagi terhalang: baris admin a memang tidak dapat dipakai.
+    await pg.query("delete from app.users where id = $1", [a.userId]);
+    expect(await count("select count(*)::int as n from app.admins where id = $1", [a.id])).toBe(0);
+    expect(await usableSuperAdmins()).toBe(1);
+  });
+
+  it("memindahkan Super Admin ke akun admin aktif lain tetap diizinkan; ke akun nonaktif ditolak", async () => {
+    await resetAdmins();
+    const a = await insertAdmin();
+    const activeUser = await insertUser("admin");
+    const disabledUser = await insertUser("admin", undefined, "disabled");
+    expect(
+      await errorOf("update app.admins set user_id = $2 where id = $1", [a.id, disabledUser]),
+    ).toMatchObject({ constraint: "admins_last_super_admin_chk" });
+    await pg.query("update app.admins set user_id = $2 where id = $1", [a.id, activeUser]);
+    expect(await usableSuperAdmins()).toBe(1);
+  });
+
+  it("perubahan akun alumni dan admin biasa tidak dipengaruhi penjaga", async () => {
+    const alumniUser = await insertUser("alumni");
+    await pg.query("update app.users set status = 'deletion_pending' where id = $1", [alumniUser]);
+    await pg.query("delete from app.users where id = $1", [alumniUser]);
+    const plain = await insertAdmin("admin");
+    await pg.query("update app.users set status = 'disabled' where id = $1", [plain.userId]);
+    await pg.query("update app.admins set status = 'disabled', disabled_at = now() where id = $1", [
+      plain.id,
+    ]);
+  });
+});
+
+describe("trigger skema pada PGlite", () => {
   it("F-17: audit_logs dan payment_events append-only", async () => {
     const id = uuidv7();
     await pg.query(
@@ -120,11 +219,7 @@ describe("trigger skema pada PGlite", () => {
 
   it("maksimal 10 keahlian per alumni", async () => {
     const userId = await insertUser();
-    await pg.query(
-      `insert into app.alumni (user_id, full_name, gender, cohort, class_in, class_out)
-       values ($1, 'Alumni Uji', 'male', 20, 1, 6)`,
-      [userId],
-    );
+    await insertAlumni(userId, null);
     const skillIds: string[] = [];
     for (let i = 0; i < 11; i++) {
       const id = uuidv7();
@@ -149,28 +244,170 @@ describe("trigger skema pada PGlite", () => {
     expect(["23503", "23001"]).toContain(restricted.code);
     expect(restricted.constraint).toBe("alumni_skills_skill_id_master_skills_id_fk");
   });
+
+  it("PRD 2.3 / F-16: jenis akun tidak dapat diubah dan rujukan alumni/admin wajib berjenis sesuai", async () => {
+    const alumniUser = await insertUser("alumni");
+    const adminUser = await insertUser("admin");
+    expect(await errorOf("update app.users set kind = 'admin' where id = $1", [alumniUser])).toMatchObject({
+      code: "23514",
+      constraint: "users_kind_immutable_chk",
+    });
+    // Profil alumni di atas akun admin ditolak.
+    expect(
+      await errorOf(
+        `insert into app.alumni (user_id, full_name, gender, cohort, class_in, class_out)
+         values ($1, 'Alumni Uji', 'male', 12, 1, 3)`,
+        [adminUser],
+      ),
+    ).toMatchObject({ code: "23514", constraint: "alumni_user_kind_chk" });
+    // Baris admin di atas akun alumni ditolak.
+    expect(
+      await errorOf(
+        `insert into app.admins (id, user_id, display_name, role, status, activated_at)
+         values ($1, $2, 'Admin Uji', 'admin', 'active', now())`,
+        [uuidv7(), alumniUser],
+      ),
+    ).toMatchObject({ code: "23514", constraint: "admins_user_kind_chk" });
+    // Tautan alumni (cek konflik kepentingan) wajib akun alumni.
+    const admin = await insertAdmin("admin");
+    const otherAdminUser = await insertUser("admin");
+    expect(
+      await errorOf("update app.admins set linked_alumni_user_id = $2 where id = $1", [
+        admin.id,
+        otherAdminUser,
+      ]),
+    ).toMatchObject({ code: "23514", constraint: "admins_linked_alumni_kind_chk" });
+    await pg.query("update app.admins set linked_alumni_user_id = $2 where id = $1", [admin.id, alumniUser]);
+    // Akun alumni tertaut dihapus (F-14): tautan dikosongkan (SET NULL) tanpa ditolak trigger.
+    await pg.query("delete from app.users where id = $1", [alumniUser]);
+    expect(
+      await count(
+        "select count(*)::int as n from app.admins where id = $1 and linked_alumni_user_id is null",
+        [admin.id],
+      ),
+    ).toBe(1);
+  });
+
+  it("PRD 3.5 / AC F05-6: N hanya dari nextval, tidak dapat diubah, dan N anggota terhapus tidak didaur ulang", async () => {
+    // Nilai ketikan (tanpa nextval pada sesi ini / bukan nilai terakhir) ditolak.
+    const typed = await insertUser();
+    const lastDrawn = await nextMemberSeq();
+    expect(
+      await errorOf(
+        `insert into app.alumni (user_id, full_name, gender, cohort, class_in, class_out, member_seq, member_number)
+         values ($1, 'Alumni Uji', 'male', 12, 1, 3, $2, $3)`,
+        [typed, lastDrawn + 1000, number12(lastDrawn + 1000)],
+      ),
+    ).toMatchObject({ code: "23514", constraint: "alumni_member_seq_source_chk" });
+
+    const userA = await insertUser();
+    const seqA = await nextMemberSeq();
+    await insertAlumni(userA, seqA);
+    const userB = await insertUser();
+    await insertAlumni(userB, null);
+    const seqB = await nextMemberSeq();
+    await pg.query("update app.alumni set member_seq = $2, member_number = $3 where user_id = $1", [
+      userB,
+      seqB,
+      number12(seqB),
+    ]);
+
+    // N yang sudah dialokasikan tidak dapat diubah atau dikosongkan.
+    const immutable = { code: "23514", constraint: "alumni_member_seq_immutable_chk" };
+    expect(
+      await errorOf("update app.alumni set member_seq = null, member_number = null where user_id = $1", [
+        userB,
+      ]),
+    ).toMatchObject(immutable);
+
+    // Akun A dihapus (F-14): N milik A tidak dapat dipasang ke B lewat UPDATE maupun ke anggota baru lewat INSERT.
+    await pg.query("delete from app.users where id = $1", [userA]);
+    expect(
+      await errorOf("update app.alumni set member_seq = $2, member_number = $3 where user_id = $1", [
+        userB,
+        seqA,
+        number12(seqA),
+      ]),
+    ).toMatchObject(immutable);
+    const userC = await insertUser();
+    expect(
+      await errorOf(
+        `insert into app.alumni (user_id, full_name, gender, cohort, class_in, class_out, member_seq, member_number)
+         values ($1, 'Alumni Uji', 'male', 12, 1, 3, $2, $3)`,
+        [userC, seqA, number12(seqA)],
+      ),
+    ).toMatchObject({ code: "23514", constraint: "alumni_member_seq_source_chk" });
+
+    // Koreksi admin (AC F05-6): prefix dihitung ulang dalam satu UPDATE, N tetap.
+    await pg.query("update app.alumni set class_out = 6, member_number = $2 where user_id = $1", [
+      userB,
+      number12(seqB, "01"),
+    ]);
+  });
+
+  it("AC F08-3: like_count selalu sama dengan jumlah post_likes, termasuk saat akun dihapus", async () => {
+    const posts = [uuidv7(), uuidv7()];
+    for (const [i, id] of posts.entries()) {
+      await pg.query(
+        "insert into app.posts (id, slug, title, body_html) values ($1, $2, 'Berita Uji', '<p>x</p>')",
+        [id, `berita-uji-like-${i}-${id.slice(-6)}`],
+      );
+    }
+    const [u1, u2] = [await insertUser(), await insertUser()];
+    await pg.query(
+      `insert into app.post_likes (post_id, user_id) values ($1, $3), ($2, $3), ($1, $4)
+       on conflict do nothing`,
+      [posts[0], posts[1], u1, u2],
+    );
+    // Like ulang (request diulang) idempoten: penghitung tidak bertambah.
+    await pg.query("insert into app.post_likes (post_id, user_id) values ($1, $2) on conflict do nothing", [
+      posts[0],
+      u1,
+    ]);
+    const counts = async () =>
+      (
+        await pg.query<{ id: string; like_count: number; actual: number }>(
+          `select p.id, p.like_count, (select count(*)::int from app.post_likes l where l.post_id = p.id) as actual
+           from app.posts p where p.id = any($1::uuid[]) order by p.id`,
+          [posts],
+        )
+      ).rows;
+    expect((await counts()).map((r) => r.like_count)).toEqual([2, 1]);
+
+    await pg.query("delete from app.post_likes where post_id = $1 and user_id = $2", [posts[0], u2]);
+    // Penghapusan akun (F-14): like ikut terhapus kaskade dan penghitung tetap konsisten.
+    await pg.query("delete from app.users where id = $1", [u1]);
+    for (const row of await counts()) expect(row.like_count).toBe(row.actual);
+    expect((await counts()).map((r) => r.like_count)).toEqual([0, 0]);
+
+    // Like baru setelahnya tetap dihitung.
+    await pg.query("insert into app.post_likes (post_id, user_id) values ($1, $2)", [posts[0], u2]);
+    expect((await counts()).map((r) => r.like_count)).toEqual([1, 0]);
+    // Baris like hanya ditambah/dihapus, tidak pernah diubah.
+    expect(
+      await errorOf("update app.post_likes set user_id = user_id where post_id = $1", [posts[0]]),
+    ).toMatchObject({ code: "23514", constraint: "post_likes_immutable_chk" });
+    // Berita dihapus: kaskade post_likes tidak gagal walaupun baris posts sudah hilang.
+    await pg.query("delete from app.posts where id = $1", [posts[0]]);
+    expect(await count("select count(*)::int as n from app.post_likes where post_id = $1", [posts[0]])).toBe(
+      0,
+    );
+  });
 });
 
 describe("constraint data pada PGlite", () => {
   it("nomor anggota harus sama dengan segmen AA.SS.JK.N yang tersimpan (PRD 3.5)", async () => {
     const userId = await insertUser();
-    const insert = (seq: number, number: string) =>
+    const seq = await nextMemberSeq();
+    const insert = (number: string) =>
       errorOf(
         `insert into app.alumni (user_id, full_name, gender, cohort, class_in, class_out, member_seq, member_number)
          values ($1, 'Alumni Uji', 'male', 12, 1, 3, $2, $3)`,
         [userId, seq, number],
       );
-    expect((await insert(7, "12.01.01.7")).constraint).toBe("alumni_member_number_chk");
-    expect((await insert(7, "12.02.01.8")).constraint).toBe("alumni_member_number_chk");
-    await pg.query(
-      `insert into app.alumni (user_id, full_name, gender, cohort, class_in, class_out, member_seq, member_number)
-       values ($1, 'Alumni Uji', 'male', 12, 1, 3, 7, '12.02.01.7')`,
-      [userId],
-    );
-    // Koreksi admin (AC F05-6): kelas keluar menjadi 6, prefix dihitung ulang, N tetap.
-    await pg.query("update app.alumni set class_out = 6, member_number = '12.01.01.7' where user_id = $1", [
-      userId,
-    ]);
+    expect((await insert(number12(seq, "01"))).constraint).toBe("alumni_member_number_chk");
+    expect((await insert(number12(seq + 1))).constraint).toBe("alumni_member_number_chk");
+    await insertAlumni(userId, seq);
   });
 
   it("email tersimpan ternormalisasi dan unik per jenis identitas selama belum terhapus", async () => {
@@ -219,15 +456,103 @@ describe("constraint data pada PGlite", () => {
       `${a}:${b}`,
     ]);
   });
+
+  it("AC F12-3: laporan yang diselesaikan atau ditolak wajib memiliki alasan", async () => {
+    const insert = (status: string, action: string, note: string | null) =>
+      pg.query(
+        `insert into app.reports (id, target_type, category, status, action, resolution_note, resolved_at)
+         values ($1, 'user', 'harassment', $2, $3, $4, now())`,
+        [uuidv7(), status, action, note],
+      );
+    for (const note of [null, "   "]) {
+      await expect(insert("resolved", "suspend", note)).rejects.toMatchObject({
+        code: "23514",
+        constraint: "reports_resolution_note_chk",
+      });
+      await expect(insert("dismissed", "dismiss", note)).rejects.toMatchObject({
+        constraint: "reports_resolution_note_chk",
+      });
+    }
+    await insert("resolved", "warn", "Pesan melanggar pedoman komunitas; peringatan pertama.");
+  });
+
+  it("F-01 / PRD 6.2: salinan tayang halaman legal lengkap dan versi legal terpisah dari version draf", async () => {
+    const id = uuidv7();
+    await pg.query(
+      "insert into app.pages (id, slug, title, body_html) values ($1, 'kebijakan-uji', 'Kebijakan Uji', '<p>draf</p>')",
+      [id],
+    );
+    await expect(
+      pg.query("update app.pages set published_version = 1, published_at = now() where id = $1", [id]),
+    ).rejects.toMatchObject({ code: "23514", constraint: "pages_published_chk" });
+    // Terbit: draf disalin ke salinan tayang, versi legal 1.
+    await pg.query(
+      `update app.pages set published_title = title, published_body_html = body_html, published_version = 1,
+              published_at = now() where id = $1`,
+      [id],
+    );
+    // Simpan draf berikutnya menaikkan version (If-Match) tanpa mengubah teks tayang atau versi legal.
+    await pg.query(
+      "update app.pages set body_html = '<p>draf baru</p>', version = version + 1 where id = $1",
+      [id],
+    );
+    const row = (
+      await pg.query<{ version: number; published_version: number; published_body_html: string }>(
+        "select version, published_version, published_body_html from app.pages where id = $1",
+        [id],
+      )
+    ).rows[0]!;
+    expect(row).toEqual({ version: 2, published_version: 1, published_body_html: "<p>draf</p>" });
+  });
+
+  it("PRD 6.5: setiap FK memiliki indeks yang dapat dipakai pemeriksaan dan kaskade referensial", async () => {
+    const fks = await pg.query<{ conname: string; tbl: string; cols: string }>(`
+      select c.conname, c.conrelid::regclass::text as tbl,
+             (select string_agg(quote_ident(a.attname), ',' order by k.ord)
+              from unnest(c.conkey) with ordinality as k(attnum, ord)
+              join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.attnum) as cols
+      from pg_constraint c join pg_namespace n on n.oid = c.connamespace
+      where c.contype = 'f' and n.nspname = 'app'
+      order by 1`);
+    expect(fks.rows.length).toBeGreaterThan(50);
+    const withoutIndex: string[] = [];
+    await pg.exec("set enable_seqscan = off");
+    try {
+      for (const fk of fks.rows) {
+        const where = fk.cols
+          .split(",")
+          .map((col, i) => `${col} = $${i + 1}`)
+          .join(" and ");
+        // Rencana generik = rencana yang dipakai pemicu FK (RI) dengan parameter, tanpa nilai konkret. Protokol
+        // query sederhana (exec) agar $n tidak dianggap parameter bind.
+        const [plan] = await pg.exec(
+          `explain (generic_plan, format json) select 1 from only ${fk.tbl} x where ${where}`,
+        );
+        if (JSON.stringify(plan?.rows).includes('"Seq Scan"')) withoutIndex.push(fk.conname);
+      }
+    } finally {
+      await pg.exec("reset enable_seqscan");
+    }
+    expect(withoutIndex).toEqual([]);
+  });
 });
 
 describe("seed pada PGlite", () => {
-  it("seed referensi dan dev idempoten", async () => {
+  it("seed referensi dan dev idempoten; halaman dev terbit dengan versi legal yang dicerminkan app_settings", async () => {
     const first = await seedReference(db);
     expect(first.settings_inserted).toBe(APP_SETTING_KEYS.length);
     expect((await seedReference(db)).settings_inserted).toBe(0);
     const dev = await seedDev(db);
     expect(dev.alumni_inserted).toBe(3);
     expect((await seedDev(db)).alumni_inserted).toBe(0);
+    const published = await pg.query<{ slug: string; published_version: number; same: boolean }>(
+      `select slug, published_version, published_body_html = body_html as same from app.pages
+       where slug in ('kebijakan-privasi', 'ketentuan', 'ketentuan-komunitas') order by slug`,
+    );
+    expect(published.rows).toEqual([
+      { slug: "kebijakan-privasi", published_version: 1, same: true },
+      { slug: "ketentuan", published_version: 1, same: true },
+      { slug: "ketentuan-komunitas", published_version: 1, same: true },
+    ]);
   });
 });

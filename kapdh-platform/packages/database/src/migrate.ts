@@ -5,14 +5,16 @@
  * replica API/worker.
  *
  *   DATABASE_URL=postgres://kapdh_migrator:...@db:5432/kapdh pnpm --filter @kapdh/database migrate
+ *   DATABASE_URL=... node node_modules/@kapdh/database/dist/bin/migrate.js   # image production (pnpm deploy)
  *
+ * CLI ada di bin/migrate.ts (selalu dijalankan, tanpa deteksi "dipanggil langsung" yang gagal lewat symlink).
  * Keluar dengan kode bukan nol bila gagal. URL koneksi (berisi sandi) tidak pernah dicetak.
  */
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 
 /** Folder migrasi SQL terversi; berlaku dari sumber (src/) maupun hasil build (dist/src/). */
@@ -91,21 +93,21 @@ function safeError(e: unknown): string {
   return [inner?.code, inner?.message?.split("\n")[0]].filter(Boolean).join(" ");
 }
 
-async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url || !/^postgres(ql)?:\/\//.test(url)) {
-    throw new Error("DATABASE_URL wajib diisi dengan URL postgres:// milik role kapdh_migrator.");
+/**
+ * Titik masuk CLI job migrasi (dipanggil bin/migrate.ts). Mengembalikan kode keluar: 0 sukses, 1 gagal. Galat dicetak
+ * tanpa parameter query maupun URL koneksi (N-14). Modul ini sendiri tidak pernah berjalan otomatis saat diimpor, jadi
+ * tidak bergantung pada cara Node memanggilnya (symlink pnpm di image production, PRD 5.5).
+ */
+export async function runMigrateCli(env: NodeJS.ProcessEnv = process.env): Promise<number> {
+  try {
+    const url = env.DATABASE_URL;
+    if (!url || !/^postgres(ql)?:\/\//.test(url)) {
+      throw new Error("DATABASE_URL wajib diisi dengan URL postgres:// milik role kapdh_migrator.");
+    }
+    await runMigrations({ url, log: (m) => process.stdout.write(`[migrate] ${m}\n`) });
+    return 0;
+  } catch (e) {
+    process.stderr.write(`[migrate] Gagal: ${safeError(e)}\n`);
+    return 1;
   }
-  await runMigrations({ url, log: (m) => process.stdout.write(`[migrate] ${m}\n`) });
-}
-
-const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
-if (invokedDirectly) {
-  main().then(
-    () => process.exit(0),
-    (e) => {
-      process.stderr.write(`[migrate] Gagal: ${safeError(e)}\n`);
-      process.exit(1);
-    },
-  );
 }

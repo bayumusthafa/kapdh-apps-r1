@@ -1,8 +1,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   barrier,
+  connectAs,
   createPgTestDatabase,
   insertAdmin,
+  insertAdminAccount,
+  insertUser,
   type PgTestDatabase,
   pgError,
   sleep,
@@ -33,6 +36,14 @@ beforeEach(async () => {
 async function activeSuperAdmins(): Promise<number> {
   const [row] = await sql<{ n: number }[]>`
     select count(*)::int as n from app.admins where role = 'super_admin' and status = 'active'`;
+  return row!.n;
+}
+
+/** Super Admin yang dapat login: admin super_admin aktif DAN akun users aktif (AC F16-2, PRD 3.14). */
+async function usableSuperAdmins(): Promise<number> {
+  const [row] = await sql<{ n: number }[]>`
+    select count(*)::int as n from app.admins a join app.users u on u.id = a.user_id
+    where a.role = 'super_admin' and a.status = 'active' and u.status = 'active'`;
   return row!.n;
 }
 
@@ -119,7 +130,7 @@ describe("AC F16-2: Super Admin aktif terakhir dijaga transaksi (PostgreSQL 17, 
     expect(await activeSuperAdmins()).toBe(2);
   });
 
-  it("menghapus akun users milik Super Admin terakhir ikut ditolak (kaskade FK memicu penjaga)", async () => {
+  it("menghapus akun users milik Super Admin terakhir ditolak (penjaga akun users, PRD 3.14)", async () => {
     const a = await insertAdmin(sql, { role: "super_admin" });
     const err =
       await sql`delete from app.users where id = (select user_id from app.admins where id = ${a})`.catch(
@@ -154,5 +165,131 @@ describe("AC F16-2: Super Admin aktif terakhir dijaga transaksi (PostgreSQL 17, 
       })
       .catch((e: unknown) => e);
     expect(pgError(err).constraint).toBe("admins_last_super_admin_chk");
+  });
+
+  it("pola layanan 'SELECT ... FOR UPDATE baris sendiri lalu UPDATE' (ARCHITECTURE §2.11): pihak kalah 23514, tidak pernah deadlock 40P01", async () => {
+    for (let round = 0; round < 5; round++) {
+      await sql.begin(async (tx) => {
+        await tx`alter table app.admins disable trigger admins_guard_last_super_admin`;
+        await tx`delete from app.admins`;
+        await tx`alter table app.admins enable trigger admins_guard_last_super_admin`;
+      });
+      const a = await insertAdmin(sql, { role: "super_admin" });
+      const b = await insertAdmin(sql, { role: "super_admin" });
+      const locked = barrier(2);
+      const results = await Promise.allSettled(
+        [a, b].map((target, i) =>
+          sql.begin(async (tx) => {
+            // Kunci baris target dahulu (assertVersion / If-Match), tunggu lawan juga memegang kuncinya, lalu demosi.
+            await tx`select id, version from app.admins where id = ${target} for update`;
+            await locked();
+            if (i === 0)
+              await tx`update app.admins set status = 'disabled', disabled_at = now() where id = ${target}`;
+            else await tx`update app.admins set role = 'admin' where id = ${target}`;
+            await sleep(100);
+          }),
+        ),
+      );
+      const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+      expect(pgError(rejected[0]!.reason)).toMatchObject({
+        code: "23514",
+        constraint: "admins_last_super_admin_chk",
+      });
+      expect(await activeSuperAdmins()).toBe(1);
+    }
+  });
+
+  it("PRD 3.14: menonaktifkan akun login Super Admin bersamaan dengan demosi Super Admin lain: minimal satu tetap dapat login", async () => {
+    const a = await insertAdminAccount(sql, { role: "super_admin" });
+    const b = await insertAdminAccount(sql, { role: "super_admin" });
+    const { result: results, maxWaiting } = await withLockWaitProbe(
+      sql,
+      runConcurrently([
+        (tx) => tx`update app.users set status = 'disabled' where id = ${a.userId}`,
+        (tx) => tx`update app.admins set role = 'admin' where id = ${b.adminId}`,
+      ]),
+    );
+    expect(maxWaiting).toBeGreaterThanOrEqual(1);
+    const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect(pgError(rejected[0]!.reason)).toMatchObject({
+      code: "23514",
+      constraint: "admins_last_super_admin_chk",
+    });
+    expect(await usableSuperAdmins()).toBe(1);
+  });
+
+  it("F-14: dua akun Super Admin ditandai deletion_pending bersamaan: tepat satu ditolak", async () => {
+    const a = await insertAdminAccount(sql, { role: "super_admin" });
+    const b = await insertAdminAccount(sql, { role: "super_admin" });
+    const results = await runConcurrently([
+      (tx) => tx`update app.users set status = 'deletion_pending' where id = ${a.userId}`,
+      (tx) => tx`update app.users set status = 'deletion_pending' where id = ${b.userId}`,
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(await usableSuperAdmins()).toBe(1);
+    // Akun yang sudah deletion_pending bukan Super Admin yang dapat login: job penghapusan dapat menghapusnya.
+    const pending = (
+      await sql<{ id: string }[]>`
+      select id from app.users where id in (${a.userId}, ${b.userId}) and status = 'deletion_pending'`
+    )[0]!.id;
+    await sql`delete from app.users where id = ${pending}`;
+    expect(await usableSuperAdmins()).toBe(1);
+  });
+
+  it("REPEATABLE READ/SERIALIZABLE: pengurangan Super Admin ditolak eksplisit (0A000) agar snapshot basi tidak meloloskan dua demosi", async () => {
+    const a = await insertAdminAccount(sql, { role: "super_admin" });
+    const b = await insertAdminAccount(sql, { role: "super_admin" });
+    const ready = barrier(2);
+    const results = await Promise.allSettled(
+      [a.adminId, b.adminId].map((target) =>
+        sql.begin("isolation level repeatable read", async (tx) => {
+          // Snapshot transaksi diambil sebelum lawan commit.
+          await tx`select count(*) from app.admins`;
+          await ready();
+          await tx`update app.admins set status = 'disabled', disabled_at = now() where id = ${target}`;
+          await sleep(150);
+        }),
+      ),
+    );
+    for (const r of results) {
+      expect(r.status).toBe("rejected");
+      expect(pgError((r as PromiseRejectedResult).reason).code).toBe("0A000");
+    }
+    const serializable = await sql
+      .begin(
+        "isolation level serializable",
+        (tx) => tx`update app.users set status = 'disabled' where id = ${a.userId}`,
+      )
+      .catch((e: unknown) => e);
+    expect(pgError(serializable).code).toBe("0A000");
+    expect(await usableSuperAdmins()).toBe(2);
+    // Perubahan yang tidak mengurangi (akun alumni, admin nonaktif) tetap boleh pada isolasi apa pun.
+    const alumniUser = await insertUser(sql);
+    await sql.begin(
+      "isolation level repeatable read",
+      (tx) => tx`update app.users set status = 'disabled' where id = ${alumniUser}`,
+    );
+  });
+
+  it("login role kapdh_app nyata (bukan superuser): penjaga, advisory lock, dan pembacaan users berjalan dengan grant aplikasi", async () => {
+    const a = await insertAdminAccount(sql, { role: "super_admin" });
+    const api = connectAs(tdb, "kapdh_app");
+    try {
+      const [who] = await api.sql<{ s: string }[]>`select session_user as s`;
+      expect(who!.s).toBe("kapdh_app");
+      const err = await api.sql`update app.users set status = 'disabled' where id = ${a.userId}`.catch(
+        (e: unknown) => e,
+      );
+      expect(pgError(err)).toMatchObject({ code: "23514", constraint: "admins_last_super_admin_chk" });
+      const b = await insertAdminAccount(sql, { role: "super_admin" });
+      await api.sql`update app.admins set role = 'admin' where id = ${b.adminId}`;
+    } finally {
+      await api.sql.end({ timeout: 5 });
+    }
+    expect(await usableSuperAdmins()).toBe(1);
   });
 });

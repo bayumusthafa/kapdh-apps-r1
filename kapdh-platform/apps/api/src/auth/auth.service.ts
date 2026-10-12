@@ -95,10 +95,17 @@ export class AuthService {
     };
   }
 
-  /** Membuat challenge baru dan membatalkan challenge lain untuk tujuan yang sama (PRD 2.5). */
+  /**
+   * Membuat challenge baru dan membatalkan challenge lain untuk tujuan yang sama (PRD 2.5). Baris users dikunci lebih
+   * dahulu sehingga penerbit bersamaan untuk akun yang sama (registrasi ganda AC F01-4, resend ganda, login pending)
+   * berjalan berurutan: yang kedua melihat challenge yang pertama dan menggantikannya, bukan bentrok pada
+   * otp_codes_active_key (satu challenge aktif per akun/tujuan). `replacing` = challenge yang diminta dikirim ulang;
+   * bila sudah diganti/dipakai oleh permintaan bersamaan, ditolak seperti permintaan berurutan (410).
+   */
   private async issueOtp(
     user: { id: string; email: string; passwordHash: string },
     purpose: OtpPurpose,
+    replacing?: string,
   ): Promise<OtpChallenge> {
     const now = this.now();
     const wait = this.limiter.check(`otp:${user.email}`, OTP_SENDS_PER_HOUR, 3600_000, now.getTime());
@@ -110,6 +117,15 @@ export class AuthService {
     const code = generateOtp();
     const id = uuidv7();
     const row = await this.db.transaction(async (tx) => {
+      await tx.execute(sql`select 1 from ${users} where ${users.id} = ${user.id} for no key update`);
+      if (replacing) {
+        const [current] = await tx
+          .select({ consumedAt: otpCodes.consumedAt, supersededAt: otpCodes.supersededAt })
+          .from(otpCodes)
+          .where(eq(otpCodes.id, replacing));
+        if (!current || current.consumedAt || current.supersededAt)
+          throw new AppException(410, "OTP_EXPIRED", "Kode ini sudah diganti kode yang lebih baru.");
+      }
       await tx
         .update(otpCodes)
         .set({ supersededAt: now })
@@ -333,7 +349,7 @@ export class AuthService {
     }
     if (challenge.purpose === "email_change")
       throw new AppException(400, "VALIDATION_ERROR", "Tujuan kode belum didukung.");
-    return this.issueOtp(user, challenge.purpose);
+    return this.issueOtp(user, challenge.purpose, challenge.id);
   }
 
   // ------------------------------------------------------------------ F-02 Login dan sesi

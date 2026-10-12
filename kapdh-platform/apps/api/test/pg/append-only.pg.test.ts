@@ -1,5 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createPgTestDatabase, id, insertUser, type PgTestDatabase, pgError, type Sql } from "./support.js";
+import {
+  connectAs,
+  createPgTestDatabase,
+  id,
+  insertUser,
+  type PgTestDatabase,
+  pgError,
+  type Sql,
+} from "./support.js";
 
 let tdb: PgTestDatabase;
 let sql: Sql;
@@ -98,6 +106,71 @@ describe("F-17 / PRD 6.2: audit_logs dan payment_events append-only (PostgreSQL 
       expect(row!.n).toBe(0);
     });
   }
+
+  it("F-17 / D2 / AC F14-4: login kapdh_worker nyata menganonimkan aktor audit hanya lewat SET LOCAL ROLE kapdh_audit_purge", async () => {
+    const actorId = await insertUser(sql);
+    const auditId = id();
+    await sql`
+      insert into app.audit_logs (id, actor_user_id, effective_role, action, entity_type, entity_id, request_id, after)
+      values (${auditId}, ${actorId}, 'alumni', 'profile.updated', 'user', ${actorId}, 'req-uji-0003',
+              ${JSON.stringify({ full_name: "Nama Uji" })}::jsonb)`;
+    const eventId = id();
+    await sql`
+      insert into app.payment_events (id, payment_id, kind, actor_user_id)
+      values (${eventId}, ${paymentId}, 'created', ${actorId})`;
+
+    const worker = connectAs(tdb, "kapdh_worker");
+    try {
+      const [who] = await worker.sql<{ s: string; c: string }[]>`select session_user as s, current_user as c`;
+      expect(who).toEqual({ s: "kapdh_worker", c: "kapdh_worker" });
+      // Tanpa SET ROLE: worker tidak mewarisi hak purge (INHERIT FALSE) sehingga grant menolak.
+      const direct =
+        await worker.sql`update app.audit_logs set actor_user_id = null where id = ${auditId}`.catch(
+          (e: unknown) => e,
+        );
+      expect(pgError(direct)).toMatchObject({
+        code: "42501",
+        message: expect.stringContaining("permission denied"),
+      });
+
+      // Langkah anonimisasi job account.deletion (ARCHITECTURE §4.8).
+      await worker.sql.begin(async (tx) => {
+        await tx`set local role kapdh_audit_purge`;
+        await tx`update app.audit_logs set actor_user_id = null, after = null where actor_user_id = ${actorId}`;
+        await tx`update app.payment_events set actor_user_id = null where actor_user_id = ${actorId}`;
+      });
+      // SET LOCAL berakhir bersama transaksi: koneksi kembali sebagai worker biasa.
+      const [after] = await worker.sql<{ c: string }[]>`select current_user as c`;
+      expect(after!.c).toBe("kapdh_worker");
+    } finally {
+      await worker.sql.end({ timeout: 5 });
+    }
+    const [audit] = await sql<{ actor_user_id: string | null; after: unknown }[]>`
+      select actor_user_id, after from app.audit_logs where id = ${auditId}`;
+    expect(audit).toEqual({ actor_user_id: null, after: null });
+    const [event] = await sql<{ actor_user_id: string | null }[]>`
+      select actor_user_id from app.payment_events where id = ${eventId}`;
+    expect(event!.actor_user_id).toBeNull();
+
+    // API (kapdh_app) bukan anggota kapdh_audit_purge.
+    const api = connectAs(tdb, "kapdh_app");
+    try {
+      const denied = await api.sql
+        .begin((tx) => tx`set local role kapdh_audit_purge`)
+        .catch((e: unknown) => e);
+      expect(pgError(denied).code).toBe("42501");
+    } finally {
+      await api.sql.end({ timeout: 5 });
+    }
+  });
+
+  it("roles.sql: keanggotaan purge worker INHERIT FALSE, SET TRUE; app bukan anggota (diterapkan dua kali, idempoten)", async () => {
+    const members = await sql<{ member: string; inherit_option: boolean; set_option: boolean }[]>`
+      select u.rolname as member, m.inherit_option, m.set_option
+      from pg_auth_members m join pg_roles r on r.oid = m.roleid join pg_roles u on u.oid = m.member
+      where r.rolname = 'kapdh_audit_purge' and u.rolname in ('kapdh_app', 'kapdh_worker')`;
+    expect(members).toEqual([{ member: "kapdh_worker", inherit_option: false, set_option: true }]);
+  });
 
   it("worker tidak memiliki akses ke secret TOTP (least privilege)", async () => {
     const err = await asRole(

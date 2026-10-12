@@ -29,11 +29,38 @@ Modul skema baru wajib didaftarkan di `src/client.ts` (objek `schema`) dan `src/
 - Status memakai `app.enum` atau CHECK. Nama: indeks `<tabel>_<kolom>_idx`, unik `<tabel>_<kolom>_key`, CHECK
   `<tabel>_<hal>_chk`. FK ke users dari keuangan/audit `SET NULL`, anak identitas `CASCADE`, master/event `RESTRICT`.
 - Optimistic concurrency memakai kolom `version` (If-Match / expected_version).
+- Setiap FK memiliki indeks yang dapat dipakai pemeriksaan/kaskade referensial (PRD 6.5): indeks penuh, atau parsial
+  `WHERE <kolom> IS NOT NULL` untuk kolom nullable. Diuji dengan rencana generik di `test/schema.pglite.test.ts`.
 - Invarian utama di database: email ternormalisasi dan unik per jenis identitas (`users_kind_email_key`), satu challenge
   OTP aktif per tujuan, nomor anggota sama dengan segmen AA.SS.JK.N tersimpan (`alumni_member_number_chk`), satu
   payment iuran terbuka per pengguna/jenis, payment tiket unik per tiket, satu membership_event per payment, satu
   tiket aktif per anggota/event, `0 <= held + paid <= seats_total`, direct_key kanonik, client_message_id unik per
-  pengirim, dedup notifikasi, satu permintaan penghapusan terbuka per akun.
+  pengirim, dedup notifikasi, satu permintaan penghapusan terbuka per akun, alasan wajib untuk keputusan moderasi
+  (`reports_resolution_note_chk`, AC F12-3), salinan tayang halaman legal lengkap (`pages_published_chk`).
+
+## Aturan untuk layanan
+
+- Penerbit challenge OTP mengunci baris `users` (`FOR NO KEY UPDATE`) sebelum supersede + insert agar penerbit
+  bersamaan berurutan pada `otp_codes_active_key` (AuthService.issueOtp sudah melakukannya).
+- `posts.like_count` hanya dipelihara trigger (migrasi 0005), termasuk saat akun dihapus. Layanan cukup
+  `INSERT ... ON CONFLICT DO NOTHING` / `DELETE` pada `post_likes` dan tidak mengubah `like_count`.
+- N anggota: `nextval('app.membership_no_seq')` lalu INSERT/UPDATE baris alumni pada sesi/transaksi yang sama tanpa
+  `nextval` lain di antaranya (`alumni_member_seq_source_chk`). Setelah terisi N tidak dapat diubah
+  (`alumni_member_seq_immutable_chk`); koreksi admin hanya mengubah prefix AA.SS.JK dalam satu UPDATE.
+- `users.kind` tidak dapat diubah; `alumni.user_id` dan `admins.linked_alumni_user_id` wajib akun `alumni`,
+  `admins.user_id` wajib akun `admin` (migrasi 0004).
+- `pages`: `title`/`body_html` adalah draf (setiap simpan menaikkan `version` untuk If-Match). Terbit menyalin draf ke
+  `published_title`/`published_body_html` dan menaikkan `published_version`, yaitu versi legal yang dirujuk
+  `users.policy_version` dan app_settings `legal`. Entri audit `page.published` menyimpan teks yang diterbitkan agar
+  versi yang pernah disetujui dapat ditampilkan kembali (F-01).
+- Penjaga Super Admin hanya berlaku pada READ COMMITTED (isolasi aplikasi); pengurangan Super Admin pada isolasi lebih
+  tinggi ditolak `0A000`. Bila satu transaksi mengubah `admins` dan `users` milik admin yang sama, ubah `admins` dahulu.
+  Super Admin yang akun `users`-nya tidak `active` tidak dihitung sebagai Super Admin yang dapat login.
+- `account_deletions.ledger` hanya salinan kerja job penghapusan. Backup yang dibuat sebelum permintaan tidak memuat
+  baris tersebut, jadi job wajib juga menambahkan setiap entri selesai ke deletion ledger append-only di luar database
+  yang disimpan bersama manifest backup (PRD 5.5); runbook restore membaca ledger eksternal itu (AC F14-6).
+- Anonimisasi aktor audit dan histori payment saat akun dihapus (F-17, D2, AC F14-4) dijalankan job worker:
+  `SET LOCAL ROLE kapdh_audit_purge` hanya untuk langkah itu (lihat Role dan grant).
 
 ## Migrasi
 
@@ -55,26 +82,34 @@ pnpm --filter @kapdh/database db:check
 
 Migrasi kustom yang ada:
 
-| Migrasi                    | Isi                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `0001_append_only`         | `app.forbid_mutation()` + trigger BEFORE UPDATE/DELETE (baris) dan TRUNCATE (statement) pada `audit_logs` dan `payment_events` (F-17, PRD 6.2). Hanya `current_user = kapdh_audit_purge` boleh UPDATE/DELETE. SQLSTATE 42501.                                                                                                                                                                                           |
-| `0002_last_super_admin`    | Penjaga Super Admin aktif terakhir (AC F16-2): trigger statement mengambil `pg_advisory_xact_lock` sebelum baris dikunci, trigger baris mengunci Super Admin aktif lain `FOR NO KEY UPDATE` lalu menghitung dengan snapshot baru. Melempar `23514` constraint `admins_last_super_admin_chk`. Layanan sebaiknya memakai `UPDATE ... WHERE ... RETURNING` tanpa `SELECT ... FOR UPDATE` terlebih dahulu pada baris admin. |
-| `0003_alumni_skills_limit` | Maksimal 10 keahlian per alumni (`alumni_skills_limit_chk`), mengunci baris alumni.                                                                                                                                                                                                                                                                                                                                     |
+| Migrasi                    | Isi                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0001_append_only`         | `app.forbid_mutation()` + trigger BEFORE UPDATE/DELETE (baris) dan TRUNCATE (statement) pada `audit_logs` dan `payment_events` (F-17, PRD 6.2). Hanya `current_user = kapdh_audit_purge` boleh UPDATE/DELETE. SQLSTATE 42501.                                                                                                                                                                                                                                                   |
+| `0002_last_super_admin`    | Penjaga Super Admin terakhir yang dapat login (AC F16-2, PRD 3.14): admins (role/status/user_id, DELETE, TRUNCATE) dan users (status dari `active`, DELETE akun admin). Trigger baris mengambil `pg_advisory_xact_lock` bila baris lama mungkin mengurangi himpunan, lalu menghitung dengan snapshot statement baru tanpa row lock tambahan (pola SELECT FOR UPDATE + UPDATE aman dari deadlock). `23514` `admins_last_super_admin_chk`; isolasi selain READ COMMITTED `0A000`. |
+| `0003_alumni_skills_limit` | Maksimal 10 keahlian per alumni (`alumni_skills_limit_chk`), mengunci baris alumni.                                                                                                                                                                                                                                                                                                                                                                                             |
+| `0004_identity_guards`     | `users.kind` tidak dapat diubah (`users_kind_immutable_chk`); jenis akun rujukan alumni/admins (`alumni_user_kind_chk`, `admins_user_kind_chk`, `admins_linked_alumni_kind_chk`); N anggota hanya dari `nextval` sesi ini dan tidak dapat diubah (`alumni_member_seq_source_chk`, `alumni_member_seq_immutable_chk`, PRD 3.5).                                                                                                                                                  |
+| `0005_post_like_count`     | `posts.like_count` = jumlah `post_likes` lewat trigger statement dengan transition table (kunci posts berurutan id, aman untuk penghapusan massal), UPDATE `post_likes` ditolak (`post_likes_immutable_chk`), TRUNCATE menolkan penghitung (AC F08-3).                                                                                                                                                                                                                          |
 
 ### Job migrasi deployment (PRD 5.5)
 
 ```bash
 DATABASE_URL=postgres://kapdh_migrator:...@db:5432/kapdh pnpm --filter @kapdh/database migrate
+# image production (`pnpm deploy`, paket di node_modules adalah symlink):
+DATABASE_URL=postgres://kapdh_migrator:...@db:5432/kapdh node node_modules/@kapdh/database/dist/bin/migrate.js
 ```
 
 `src/migrate.ts` menjalankan migrator Drizzle (journal `migrations/meta/_journal.json`, seluruh migrasi tertunda dalam
 satu transaksi) di dalam `pg_advisory_lock`. Dua job bersamaan aman: yang kedua menunggu lalu tidak menerapkan apa pun.
-Keluar dengan kode bukan nol bila gagal; URL koneksi tidak pernah dicetak. Jangan menjalankan migrasi saat startup
-replica API/worker. API juga tersedia sebagai `runMigrations({ url })`.
+Titik masuk CLI ada di `bin/` (`dist/bin/migrate.js`, `dist/bin/seed-reference.js`, `dist/bin/seed-dev.js`) dan selalu
+berjalan saat dieksekusi, termasuk lewat symlink pnpm; modul `src/` dan `seeds/` tidak pernah berjalan sendiri saat
+diimpor. Keluar dengan kode bukan nol bila gagal (termasuk DATABASE_URL kosong/tak terjangkau); URL koneksi tidak pernah
+dicetak. Jangan menjalankan migrasi saat startup replica API/worker. API juga tersedia sebagai `runMigrations({ url })`
+dan `runMigrateCli()`.
 
 ## Role dan grant (`infra/db/roles.sql`)
 
-Diterapkan pengelola infra, bukan oleh migrasi, dengan superuser/pemilik database:
+Diterapkan pengelola infra, bukan oleh migrasi, dengan superuser/pemilik database (PostgreSQL 16+ untuk
+`GRANT ... WITH INHERIT FALSE, SET TRUE`; production PostgreSQL 17):
 
 ```bash
 psql "$ADMIN_DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/db/roles.sql   # sebelum migrasi pertama
@@ -82,16 +117,27 @@ pnpm --filter @kapdh/database migrate                                 # sebagai 
 psql "$ADMIN_DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/db/roles.sql   # setelah SETIAP migrasi
 ```
 
-| Role                | Login | Hak                                                                                                    |
-| ------------------- | ----- | ------------------------------------------------------------------------------------------------------ |
-| `kapdh_migrator`    | ya    | Pemilik objek skema; hanya job migrasi.                                                                |
-| `kapdh_app`         | ya    | DML pada tabel `app`; `audit_logs`/`payment_events` hanya SELECT/INSERT; USAGE sequence nomor anggota. |
-| `kapdh_worker`      | ya    | Seperti `kapdh_app`, tanpa akses `mfa_totp` dan tanpa sequence.                                        |
-| `kapdh_audit_purge` | tidak | SELECT/UPDATE/DELETE `audit_logs`, `payment_events` untuk pembersihan/anonimisasi resmi (D2).          |
+| Role                | Login | Hak                                                                                                        |
+| ------------------- | ----- | ---------------------------------------------------------------------------------------------------------- |
+| `kapdh_migrator`    | ya    | Pemilik objek skema; hanya job migrasi.                                                                    |
+| `kapdh_app`         | ya    | DML pada tabel `app`; `audit_logs`/`payment_events` hanya SELECT/INSERT; USAGE sequence nomor anggota.     |
+| `kapdh_worker`      | ya    | Seperti `kapdh_app`, tanpa akses `mfa_totp` dan tanpa sequence; anggota `kapdh_audit_purge` (lihat bawah). |
+| `kapdh_audit_purge` | tidak | SELECT/UPDATE/DELETE `audit_logs`, `payment_events` untuk pembersihan/anonimisasi resmi (D2).              |
 
-Pembersihan audit dilakukan oleh login role khusus yang menjadi anggota `kapdh_audit_purge` dan menjalankan
-`SET ROLE kapdh_audit_purge` secara eksplisit dalam transaksinya; tanpa itu trigger tetap menolak. Sandi role LOGIN
-diatur dari secrets manager (`ALTER ROLE ... PASSWORD`) dan tidak pernah di-commit.
+`kapdh_worker` adalah anggota `kapdh_audit_purge` dengan `INHERIT FALSE, SET TRUE`: worker tidak mewarisi hak purge
+secara implisit, dan job `account.deletion`/retensi (ARCHITECTURE §4.8) menganonimkan aktor audit dan histori payment
+(F-17, AC F14-4) hanya di dalam transaksinya sendiri:
+
+```sql
+BEGIN;
+SET LOCAL ROLE kapdh_audit_purge;
+UPDATE app.audit_logs SET actor_user_id = NULL, before = ..., after = ... WHERE actor_user_id = $1;
+UPDATE app.payment_events SET actor_user_id = NULL WHERE actor_user_id = $1;
+COMMIT;  -- SET LOCAL berakhir di sini; langkah lain dijalankan di transaksi worker biasa
+```
+
+Tanpa `SET ROLE` grant dan trigger tetap menolak. `kapdh_app` tidak pernah menjadi anggota. Sandi role LOGIN diatur dari
+secrets manager (`ALTER ROLE ... PASSWORD`) dan tidak pernah di-commit.
 
 ## Seed
 
@@ -103,13 +149,14 @@ NODE_ENV=development DATABASE_URL=... pnpm --filter @kapdh/database seed:dev    
 - `seeds/reference.ts` (PRD 8.2 langkah 4): seluruh kunci `app_settings` §5.4 (D4: Rp50.000 + Rp10.000, perpanjangan
   Rp10.000), daftar awal master profesi dan keahlian berstatus **USULAN dan NONAKTIF** yang wajib ditinjau serta
   diaktifkan pengurus (`master.manage`) sebelum go-live, dan kerangka halaman `kebijakan-privasi`, `ketentuan`,
-  `ketentuan-komunitas`, `bantuan`, `tentang` berstatus **DRAF** (`published_at` null). Tidak menyisipkan akun, fixture,
-  atau metode bayar (metode bayar diisi bendahara lewat web admin). Idempoten (`ON CONFLICT DO NOTHING`, nilai yang
-  sudah diubah pengurus tidak ditimpa) dan setiap eksekusi dicatat di `audit_logs` (`seed.reference`).
+  `ketentuan-komunitas`, `bantuan`, `tentang` berstatus **DRAF** (kolom `published_*` null). Tidak menyisipkan akun,
+  fixture, atau metode bayar (metode bayar diisi bendahara lewat web admin). Idempoten (`ON CONFLICT DO NOTHING`, nilai
+  yang sudah diubah pengurus tidak ditimpa) dan setiap eksekusi dicatat di `audit_logs` (`seed.reference`).
 - `seeds/dev.ts`: menolak `NODE_ENV=production`. Menjalankan seed referensi, mengaktifkan master, menerbitkan halaman
-  draf sebagai contoh, lalu menambah fixture sintetis bertanda `[Contoh]`/`.test`: metode bayar `[Bank Contoh]`,
-  kategori, satu berita, satu event terbuka, tiga alumni (belum bayar, aktif, menunggu verifikasi). Sandi akun
-  contoh: `Kapdh#Dev2026`. Super Admin dibuat dengan `pnpm --filter @kapdh/api admin:bootstrap`.
+  draf sebagai contoh (`published_version` 1, dicerminkan app_settings `legal`), lalu menambah fixture sintetis bertanda
+  `[Contoh]`/`.test`: metode bayar `[Bank Contoh]`, kategori, satu berita, satu event terbuka, tiga alumni (belum bayar,
+  aktif, menunggu verifikasi). Sandi akun contoh: `Kapdh#Dev2026`. Super Admin dibuat dengan
+  `pnpm --filter @kapdh/api admin:bootstrap`.
 
 ## Pengujian
 
@@ -119,4 +166,6 @@ NODE_ENV=development DATABASE_URL=... pnpm --filter @kapdh/database seed:dev    
 - `pnpm test:pg` (root) atau `pnpm --filter @kapdh/api test:pg`: PostgreSQL 17.6 nyata lewat `embedded-postgres`,
   satu cluster per run, template dimigrasi dengan job migrasi + `roles.sql`, satu database klon per berkas uji,
   transaksi bersamaan pada koneksi berbeda (penjaga Super Admin terakhir, tiket unik, payment terbuka unik,
-  membership_event unik per payment, append-only dan grant, CHECK kursi, advisory lock migrasi, seed).
+  membership_event unik per payment, append-only dan grant, purge lewat login kapdh_worker nyata, CHECK kursi,
+  like_count, nomor anggota, jenis akun, challenge OTP bersamaan lewat API sebagai kapdh_app, advisory lock migrasi,
+  CLI lewat symlink pnpm, seed).
