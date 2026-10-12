@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { ReauthProvider } from "./api/reauth";
 import { AuthProvider, useAuth } from "./auth/session";
 import { RestoringScreen } from "./components/layout/AuthLayout";
@@ -46,17 +46,20 @@ export function AppRouterView({ router }: { router: AppRouter }) {
   const auth = useAuth();
   const status = auth.state.status;
   const permissionsKey = auth.profile ? `${auth.profile.role}:${auth.profile.permissions.join(",")}` : "";
-  const [ready, setReady] = useState(false);
+  // Kunci sesi yang sudah dievaluasi router; null = router belum dipasang (muat pertama dijalankan RouterProvider).
+  const evaluated = useRef<string | null>(null);
+  const sessionKey = `${status}|${permissionsKey}`;
 
   useEffect(() => {
     if (status === "restoring") return;
-    if (!ready) {
-      setReady(true);
+    if (evaluated.current === null) {
+      evaluated.current = sessionKey;
       return;
     }
+    if (evaluated.current === sessionKey) return;
+    evaluated.current = sessionKey;
     void router.invalidate();
-    // permissionsKey: izin berubah → evaluasi ulang penjaga rute.
-  }, [status, permissionsKey, router, ready]);
+  }, [status, sessionKey, router]);
 
   if (status === "restoring") return <RestoringScreen />;
   return <RouterProvider router={router} context={{ auth }} />;

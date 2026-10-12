@@ -11,7 +11,6 @@ import {
 } from "../../api/files";
 import { cn } from "../../lib/cn";
 import { Button } from "./Button";
-import { Label } from "./FormField";
 import { Skeleton } from "./States";
 
 type FilePurpose = components["schemas"]["FilePurpose"];
@@ -220,10 +219,18 @@ export function FileUpload({
   const statusId = `${id}-status`;
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={`${id}-button`} required={required}>
+    <div role="group" aria-labelledby={`${id}-label`} className="flex flex-col gap-1.5">
+      <span id={`${id}-label`} className="text-sm font-medium text-text">
         {label}
-      </Label>
+        {required ? (
+          <>
+            <span aria-hidden="true" className="ml-0.5 text-danger">
+              *
+            </span>
+            <span className="sr-only"> (wajib)</span>
+          </>
+        ) : null}
+      </span>
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -266,8 +273,8 @@ export function FileUpload({
         ) : null}
         <div className="flex flex-wrap items-center gap-3">
           <Button
-            id={`${id}-button`}
             variant="outline"
+            aria-label={`${state.kind === "uploading" ? "Mengunggah" : value ? "Ganti berkas" : "Pilih berkas"}: ${label}`}
             size="sm"
             disabled={disabled}
             loading={state.kind === "uploading"}
