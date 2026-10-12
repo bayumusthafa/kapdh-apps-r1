@@ -1,0 +1,74 @@
+---
+import Base from "../layouts/Base.astro";
+const apiBase = import.meta.env.PUBLIC_API_URL ?? "https://api.kapdh.or.id/api/v1";
+---
+<Base title="Hapus akun" description="Minta penghapusan akun KAPDH tanpa memasang aplikasi.">
+  <section class="mx-auto flex max-w-lg flex-col gap-5">
+    <h1 class="font-heading text-h1 font-semibold">Hapus akun KAPDH</h1>
+    <p class="text-sm">Anda dapat meminta penghapusan akun tanpa memasang aplikasi. Kami mengirim kode verifikasi ke email akun Anda.</p>
+    <div class="rounded-lg border border-divider bg-surface p-5 text-sm">
+      <h2 class="mb-2 font-semibold">Yang terjadi saat akun dihapus</h2>
+      <ul class="list-disc space-y-1 pl-5">
+        <li>Profil, kontak, foto, unggahan, dan isi chat Anda dihapus.</li>
+        <li>Catatan pembayaran dan tiket tetap ada tanpa nama, email, atau foto, untuk pembukuan organisasi.</li>
+        <li>Tiket event aktif hangus. Ajukan refund lebih dahulu bila perlu.</li>
+        <li>Proses selesai paling lama 7 hari. Nomor permintaan ditampilkan setelah konfirmasi.</li>
+      </ul>
+    </div>
+    <form id="del-start" class="flex flex-col gap-3" data-api={apiBase}>
+      <label class="flex flex-col gap-1.5 text-sm font-medium">Email akun
+        <input name="email" type="email" required autocomplete="email" class="h-12 rounded-md border border-border bg-surface px-3" />
+      </label>
+      <button type="submit" class="h-12 rounded-md bg-primary text-sm font-semibold text-on-primary">Kirim kode verifikasi</button>
+    </form>
+    <form id="del-confirm" hidden class="flex flex-col gap-3">
+      <label class="flex flex-col gap-1.5 text-sm font-medium">Kode 6 digit dari email
+        <input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required class="h-12 rounded-md border border-border bg-surface px-3" />
+      </label>
+      <label class="flex items-start gap-3 text-sm"><input name="confirm" type="checkbox" required class="mt-0.5 size-5" /> Saya mengerti akun dan data di atas akan dihapus permanen.</label>
+      <button type="submit" class="h-12 rounded-md border border-danger bg-surface text-sm font-semibold text-danger">Hapus akun saya</button>
+    </form>
+    <p id="del-msg" role="status" aria-live="polite" class="text-sm"></p>
+  </section>
+  <script>
+    const start = document.getElementById("del-start") as HTMLFormElement;
+    const confirmForm = document.getElementById("del-confirm") as HTMLFormElement;
+    const msg = document.getElementById("del-msg")!;
+    const api = start.dataset.api!;
+    let challengeId = "";
+
+    start.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = String(new FormData(start).get("email") ?? "");
+      try {
+        const res = await fetch(`${api}/public/deletion/challenge`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }) });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.message);
+        challengeId = body.challenge_id;
+        msg.textContent = "Bila email terdaftar, kode verifikasi sudah dikirim. Kode berlaku 10 menit.";
+        confirmForm.hidden = false;
+      } catch (err) {
+        msg.textContent = err instanceof Error && err.message ? err.message : "Tidak dapat menghubungi server. Coba lagi.";
+      }
+    });
+
+    confirmForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = new FormData(confirmForm);
+      try {
+        const res = await fetch(`${api}/public/deletion/confirm`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ challenge_id: challengeId, code: String(data.get("code") ?? ""), confirm: data.get("confirm") === "on" }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.message);
+        msg.textContent = `Permintaan diterima. Nomor permintaan: ${body.request_number}.`;
+        confirmForm.hidden = true;
+        start.hidden = true;
+      } catch (err) {
+        msg.textContent = err instanceof Error && err.message ? err.message : "Tidak dapat menghubungi server. Coba lagi.";
+      }
+    });
+  </script>
+</Base>

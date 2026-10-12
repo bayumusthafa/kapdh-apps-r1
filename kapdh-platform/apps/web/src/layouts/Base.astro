@@ -1,0 +1,41 @@
+---
+import "../styles/global.css";
+interface Props { title: string; description?: string; noindex?: boolean }
+const { title, description = "Keluarga Alumni Pesantren Darel Hikmah", noindex = false } = Astro.props;
+---
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="referrer" content="no-referrer" />
+    <title>{title} | KAPDH</title>
+    <link rel="icon" href="/logo-kapdh.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body class="min-h-screen">
+    <header class="bg-surface-dark text-text-on-dark">
+      <div class="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
+        <img src="/logo-kapdh.png" alt="Logo KAPDH" width="40" height="40" />
+        <a href="/" class="font-heading text-lg font-bold text-accent no-underline">KAPDH</a>
+        <nav aria-label="Navigasi utama" class="ml-auto flex flex-wrap gap-4 text-sm">
+          <a href="/#unduh" class="text-green-100">Unduh aplikasi</a>
+          <a href="/kebijakan-privasi" class="text-green-100">Privasi</a>
+          <a href="/delete-account" class="text-green-100">Hapus akun</a>
+        </nav>
+      </div>
+    </header>
+    <main class="mx-auto max-w-5xl px-4 py-8"><slot /></main>
+    <footer class="border-t border-divider">
+      <div class="mx-auto flex max-w-5xl flex-wrap gap-4 px-4 py-6 text-sm text-text-muted">
+        <span>Keluarga Alumni Pondok Pesantren Darel Hikmah</span>
+        <a href="/ketentuan">Ketentuan</a>
+        <a href="/kebijakan-privasi">Kebijakan privasi</a>
+        <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a>
+      </div>
+    </footer>
+  </body>
+</html>

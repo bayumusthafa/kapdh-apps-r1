@@ -1,0 +1,274 @@
+PAGES: 18
+
+===== PAGE 1 =====
+Version 1.0Brand Guidline
+Guidelines
+KAPDHKAPDHKAPDH
+PlatformPlatformPlatform
+
+===== PAGE 2 =====
+KAPDH
+Platform
+KAPDH Apps merupakan aplikasi alumni sebagai media komunikasi dan informasi untuk menghubungkan
+alumni di seluruh Indonesia. Aplikasi ini menyediakan fitur pendataan alumni, forum komunikasi, serta
+informasi kegiatan alumni dan pondok pesantren.
+
+===== PAGE 3 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+Platform Alumni KAPDH untuk Menghubungkan Alumni
+di Seluruh Indonesia
+Mobile App
+Web Manejemen Data Alumni
+KAPDH
+Platform
+
+===== PAGE 4 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+Mobile App
+Fitur Utama
+Pendataan dan pengelolaan
+informasi alumni.
+KTA Alumni
+Fitur untuk membangun dan
+memperluas jaringan serta
+hubungan antar pengguna.
+Menyediakan akses tiket dan
+informasi tiket untuk berbagai
+kegiatan KAPDH dan Ponpes
+Jejaring
+Tiket
+Menampilkan informasi dan
+kegiatan atau acara yang dapat
+diikuti pengguna.
+Tiket
+Event
+
+===== PAGE 5 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+Login dan
+Register Alumni
+Pendaftaran Alumni
+Pengisian Data Diri
+Verifikasi OTP
+Pembayaran Biaya KTA
+Input Nomor KTP
+Pemilihan Jenis Kelamin
+Input Email dan Password
+Pemilihan Angkatan
+Pemilihan Kelas Masuk dan Kelas Keluar
+Perhitungan Tahun Akademik (Tahun Masuk, Tahun
+Keluar, dan Tahun Lulus)
+Input Email dan Password
+Login
+Register
+
+===== PAGE 6 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+KTA
+(Kartu Tanda Anggota)
+Menampilkan kartu tanda anggota digital
+yang berisi identitas, kode angkatan,
+alamat, QR Code, masa berlaku, serta status
+keaktifan anggota.
+Note : KTA Otomatis dibuat pada saat register
+
+===== PAGE 7 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+Jejaring Alumni
+Memudahkan anggota untuk menemukan,
+terhubung, dan berkomunikasi dengan
+sesama anggota melalui informasi profil
+dan jaringan alumni.
+
+===== PAGE 8 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+Event dan Tiket
+Menampilkan berbagai informasi kegiatan
+dan acara yang dapat diikuti oleh anggota,
+lengkap dengan detail tempat, dan
+kegiatan.Lalu Menyediakan tiket digital
+untuk memudahkan anggota mengakses
+dan mengikuti berbagai kegiatan atau
+acara yang diselenggarakan.
+
+===== PAGE 9 =====
+KAPDH
+Platform
+Keluarga Alumni
+Ponpes Darel Hikmah
+
+===== PAGE 10 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+mengelola data alumni secara terpusat. Website ini
+menyediakan pengelolaan informasi profil alumni, jaringan
+anggota, serta pengelolaan pembayaran dan transaksi
+sehingga proses administrasi alumni dapat dilakukan
+dengan lebih mudah, terorganisir, dan efisien
+Web Manejemen Data Alumni
+KAPDH
+Web Manejemen Data Alumni
+
+===== PAGE 11 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+Fitur Utama
+Menampilkan ringkasan
+data pengguna, total
+transaksi, penjualan
+tiket, dan riwayat
+transaksi.
+Dashboard
+Mengelola konten dan
+informasi yang
+ditampilkan pada KAPDH
+apps.
+Menyediakan akses tiket
+dan informasi tiket untuk
+berbagai kegiatan KAPDH
+dan Ponpes
+Memeriksa dan
+memverifikasi pembayaran
+yang dilakukan oleh
+pengguna
+Manajemen Konten
+Manajemen Admin & User
+Mengelola data event
+serta tiket yang tersedia
+dan terjual.
+Manajemen Event &Tiket
+Verifikasi Pembayaran
+Web Manejemen Data Alumni
+
+===== PAGE 12 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+KAPDH (Web Manajemen Data Alumni) merupakan website
+khusus admin yang digunakan untuk mengelola data alumni
+secara terpusat. Website ini memudahkan admin dalam
+mengelola informasi profil alumni, memperbarui data, serta
+memantau dan mengatur jaringan alumni agar tetap
+terorganisir.
+Web Manejemen Data Alumni
+Dashboard
+Web Manejemen Data Alumni
+
+===== PAGE 13 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+Banner
+Feed Informasi
+Manajemen Kategori
+Tambah Konten Baru
+Edit Konten
+Hapus Konten
+Menu yang tersedia:
+Halaman Manajemen Konten digunakan admin untuk mengelola
+berbagai informasi yang ditampilkan pada website KAPDH. Admin
+dapat menambah, mengatur, memperbarui, dan menghapus
+konten sesuai kebutuhan.
+Web Manejemen Data Alumni
+Manajemen
+Konten
+
+===== PAGE 14 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+Pencarian Event
+Manajemen Kategori
+Buat Event Baru
+Informasi Event
+Kategori Event
+Lokasi Event
+Periode Pendaftaran
+Total Tiket
+Sisa Tiket
+Edit Event
+Hapus Event
+Menu yang tersedia:
+Halaman Manajemen Event dan Tiket digunakan admin untuk mengelola
+berbagai kegiatan alumni beserta tiket yang tersedia. Admin dapat
+memantau informasi event, periode pendaftaran, jumlah tiket, serta
+melakukan pengelolaan data event.
+Web Manejemen Data Alumni
+Manajemen
+Event dan Tiket
+
+===== PAGE 15 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+Halaman Manajemen Admin digunakan untuk
+mengelola akun administrator yang memiliki akses
+ke sistem KAPDH. Admin dapat melihat daftar
+administrator, mengatur peran dan hak akses,
+serta mendelegasikan pengguna menjadi admin.
+Manajemen
+Admin
+Menu yang tersedia:
+Daftar Admin
+Pencarian Admin
+Delegasi User Jadi
+Admin
+Nama Admin
+Email
+
+===== PAGE 16 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+Halaman Manajemen Users digunakan admin
+untuk mengelola dan memantau data alumni yang
+telah terdaftar dalam sistem KAPDH. Admin dapat
+melihat informasi pengguna, mengubah data,
+mengelola status pengguna, serta melihat
+informasi pengguna secara lebih lengkap.
+Manajemen
+User
+Menu yang tersedia:
+Total Alumni Terdaftar
+Pencarian Users
+Filter Users
+Manajemen Skill & Profesi
+Informasi Profil Alumni
+Angkatan
+Alamat
+Status Pengguna
+Edit Data Pengguna
+Hapus Data Pengguna
+Informasi Pengguna
+
+===== PAGE 17 =====
+Keluarga Alumni
+Ponpes Darel Hikmah
+Halaman Verifikasi Pembayaran digunakan admin untuk
+memeriksa dan mengelola transaksi pembayaran yang
+dilakukan oleh alumni. Admin dapat melihat detail
+pembayaran, bukti transaksi, status pembayaran, serta
+mengatur metode dan biaya pembayaran.
+Menu yang tersedia:
+Verifikasi
+Pembayaran
+Menu yang tersedia:
+Verifikasi Pembayaran
+Kelola Metode
+Biaya Pembayaran
+Pencarian Pembayaran
+Filter Pembayaran
+Data No. KTA
+Data Nama Alumni
+Kategori Pembayaran
+Tanggal Pembayaran
+Total Pembayaran
+Bukti Pembayaran
+Status Pembayaran
+Kelola Transaksi
+
+===== PAGE 18 =====
+Terimakasih
+Keluarga Alumni
+Ponpes Darel Hikmah

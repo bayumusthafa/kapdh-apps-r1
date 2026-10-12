@@ -1,0 +1,28 @@
+{
+  "name": "@kapdh/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kontrak OpenAPI 3.1 KAPDH Apps dan tipe TypeScript terbangkit (PRD 5.2, N-13).",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./openapi.yaml": "./openapi/openapi.yaml"
+  },
+  "scripts": {
+    "lint": "redocly lint openapi/openapi.yaml",
+    "generate": "openapi-typescript openapi/openapi.yaml -o src/generated/api.ts",
+    "generate:dart": "openapi-generator-cli generate -i openapi/openapi.yaml -g dart-dio -o generated/dart --additional-properties=pubName=kapdh_api,pubVersion=0.1.0,nullableFields=true",
+    "build": "pnpm generate && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo \"no tests\""
+  },
+  "devDependencies": {
+    "@openapitools/openapi-generator-cli": "2.41.0",
+    "@redocly/cli": "2.62.1",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
+  }
+}

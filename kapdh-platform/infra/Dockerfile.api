@@ -1,0 +1,14 @@
+# Image API dibangun di CI, bukan di VPS production (PRD 5.3).
+FROM node:24-alpine AS build
+WORKDIR /repo
+RUN corepack enable
+COPY . .
+RUN pnpm install --frozen-lockfile && pnpm --filter @kapdh/api... build && pnpm deploy --filter @kapdh/api --prod /out
+
+FROM node:24-alpine
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build /out .
+USER node
+EXPOSE 3000
+CMD ["node", "dist/main.js"]

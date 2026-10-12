@@ -1,0 +1,31 @@
+{
+  "name": "@kapdh/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Skema Drizzle PostgreSQL 17 dan migrasi SQL terversi (PRD bagian 6).",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "test": "echo \"uji integrasi dijalankan dari apps/api\""
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.4",
+    "postgres": "3.4.9"
+  },
+  "devDependencies": {
+    "drizzle-kit": "0.31.11",
+    "typescript": "5.9.3",
+    "@types/node": "24.19.2",
+    "@electric-sql/pglite": "0.5.8"
+  }
+}

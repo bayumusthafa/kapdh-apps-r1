@@ -1,0 +1,1852 @@
+openapi: 3.1.0
+info:
+  title: KAPDH Apps API
+  version: 0.1.0
+  summary: Kontrak API KAPDH Apps untuk domain P0 dan P1 (PRD v3.5).
+  description: |
+    Satu-satunya pintu akses untuk aplikasi Flutter, web admin, dan situs publik.
+    Server selalu memeriksa identitas, izin, status keanggotaan, dan kepemilikan objek.
+    Semua waktu dikirim dalam UTC (RFC 3339); klien menampilkan Asia/Jakarta.
+    Nominal uang dikirim sebagai string desimal IDR, misalnya "60000.00".
+  contact:
+    name: Pemilik produk KAPDH Apps
+servers:
+  - url: https://api.kapdh.or.id/api/v1
+    description: Production
+  - url: https://staging-api.kapdh.or.id/api/v1
+    description: Staging
+  - url: http://localhost:3000/api/v1
+    description: Lokal
+tags:
+  - name: Auth
+    description: Pendaftaran, OTP, login, sesi dan pemulihan (F-01, F-02).
+  - name: Me
+    description: Profil, status keanggotaan dan KTA milik sendiri (F-05, F-07).
+  - name: Payments
+    description: Iuran pendaftaran dan perpanjangan (F-03).
+  - name: Files
+    description: Unggah dan akses berkas privat (N-10).
+  - name: Content
+    description: Beranda, berita dan like (F-08).
+  - name: Notifications
+    description: Kotak masuk, preferensi dan token perangkat (F-13).
+  - name: Account
+    description: Penghapusan akun dari aplikasi dan web (F-14).
+  - name: Public
+    description: Konfigurasi publik, halaman legal dan verifikasi KTA (F-06).
+  - name: Admin Auth
+    description: Login admin, TOTP dan izin efektif (F-02, F-16).
+  - name: Admin Payments
+    description: Antrean dan keputusan pembayaran (F-04).
+  - name: Admin Settings
+    description: Pengaturan biaya terversi (F-15).
+security:
+  - bearerAuth: []
+
+paths:
+  # ---------------------------------------------------------------- Auth (F-01, F-02)
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Daftar akun alumni dan kirim OTP email (F-01).
+      description: |
+        Membuat akun pending_otp beserta data diri. Request ulang dengan email yang sama dan
+        akun masih pending_otp mengembalikan challenge yang sama atau baru (AC F01-4); tidak
+        membuat akun ganda. Nomor anggota belum dialokasikan sampai OTP terverifikasi.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "201":
+          description: Akun dibuat atau dilanjutkan; challenge OTP dikirim.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OtpChallenge" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "409":
+          description: |
+            Email sudah terdaftar dan aktif. Kode VALIDATION_ERROR dengan field_errors.email agar
+            klien menampilkannya di field email beserta tautan masuk atau lupa password.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/otp/verify:
+    post:
+      tags: [Auth]
+      operationId: verifyOtp
+      summary: Verifikasi OTP pendaftaran atau pemulihan (F-01, F-02).
+      description: |
+        Untuk purpose signup: akun menjadi active, nomor anggota AA.SS.JK.N dialokasikan
+        dan KTA berstatus Tidak Aktif, lalu token sesi diterbitkan.
+        Untuk purpose password_reset: mengembalikan reset_token sekali pakai.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OtpVerifyRequest" }
+      responses:
+        "200":
+          description: OTP benar.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OtpVerifyResponse" }
+        "400":
+          description: |
+            Kode salah (VALIDATION_ERROR). Pesan dan field_errors.code memuat sisa percobaan,
+            misalnya "Kode salah. Sisa percobaan 3.".
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "410":
+          description: |
+            OTP kedaluwarsa, sudah dipakai, diganti kode baru, percobaan habis, atau sandi akun
+            berubah setelah kode dikirim (OTP_EXPIRED).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/otp/resend:
+    post:
+      tags: [Auth]
+      operationId: resendOtp
+      summary: Kirim ulang OTP; kode lama dibatalkan. Cooldown 60 detik.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id]
+              properties:
+                challenge_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Challenge baru dibuat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OtpChallenge" }
+        "410":
+          description: Challenge sudah dipakai atau diganti (OTP_EXPIRED).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Login alumni dengan email dan sandi.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: |
+            Login berhasil. Jika akun masih pending_otp, respons berisi `next: verify_otp`
+            beserta challenge baru, tanpa token sesi.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginResponse" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshSession
+      summary: Rotasi refresh token. Reuse token lama mencabut seluruh keluarga sesi (AC F02-3).
+      description: |
+        Flutter mengirim refresh_token di body. Web admin mengirim cookie HttpOnly
+        `kapdh_admin_rt` dan header Origin yang sama dengan ADMIN_ORIGIN; body boleh kosong.
+        Untuk admin, respons hanya berisi access token; refresh token baru dikirim lewat cookie.
+        Sesi admin yang menganggur lebih dari 30 menit ditolak 401.
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token: { type: string }
+      responses:
+        "200":
+          description: Token baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenPair" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Cabut sesi saat ini dan nonaktifkan token push perangkat ini.
+      responses:
+        "204": { description: Keluar. }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/logout-all:
+    post:
+      tags: [Auth]
+      operationId: logoutAll
+      summary: Cabut semua sesi dan socket pengguna (AC F02-6).
+      responses:
+        "204": { description: Semua sesi dicabut. }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/sessions:
+    get:
+      tags: [Auth]
+      operationId: listSessions
+      summary: Daftar sesi aktif pengguna.
+      responses:
+        "200":
+          description: Sesi.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Session" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/sessions/{sessionId}:
+    delete:
+      tags: [Auth]
+      operationId: revokeSession
+      summary: Cabut satu sesi milik sendiri.
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Dicabut. }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/password/forgot:
+    post:
+      tags: [Auth]
+      operationId: forgotPassword
+      summary: Minta OTP pemulihan. Respons selalu sama, tidak mengungkap apakah email terdaftar.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+      responses:
+        "202":
+          description: Bila email terdaftar, OTP dikirim.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OtpChallenge" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/password/reset:
+    post:
+      tags: [Auth]
+      operationId: resetPassword
+      summary: Simpan sandi baru dengan reset_token; seluruh sesi dicabut (AC F02-4).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reset_token, new_password]
+              properties:
+                reset_token: { type: string }
+                new_password: { $ref: "#/components/schemas/Password" }
+      responses:
+        "204": { description: Sandi diganti. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "410":
+          description: reset_token kedaluwarsa atau sudah dipakai.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/password/change:
+    post:
+      tags: [Auth]
+      operationId: changePassword
+      summary: Ganti sandi dengan sandi lama.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: { type: string }
+                new_password: { $ref: "#/components/schemas/Password" }
+      responses:
+        "204": { description: Sandi diganti; sesi lain dicabut. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /auth/reauth:
+    post:
+      tags: [Auth]
+      operationId: reauthenticate
+      summary: Reautentikasi untuk tindakan sensitif (hapus akun, ubah biaya). Berlaku 10 menit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string }
+                totp_code: { type: string, pattern: "^[0-9]{6}$", description: Wajib untuk sesi admin. }
+      responses:
+        "200":
+          description: Token reautentikasi.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reauth_token, expires_at]
+                properties:
+                  reauth_token: { type: string }
+                  expires_at: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ---------------------------------------------------------------- Me / Membership (F-05, F-07)
+  /me:
+    get:
+      tags: [Me]
+      operationId: getMe
+      summary: Profil sendiri dan effective_status yang menentukan rute klien.
+      responses:
+        "200":
+          description: Profil.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/profile:
+    patch:
+      tags: [Me]
+      operationId: updateMyProfile
+      summary: Ubah profil umum sendiri.
+      description: |
+        Angkatan, kelas masuk/keluar dan jenis kelamin hanya bisa diubah sendiri selama
+        effective_status unverified; setelah itu hanya admin (members.manage). Prefix nomor
+        dihitung ulang oleh server; nomor urut tetap.
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProfileUpdate" }
+      responses:
+        "200":
+          description: Profil terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/card:
+    get:
+      tags: [Me]
+      operationId: getMyCard
+      summary: Data KTA dan token QR bertanda tangan server (F-05).
+      description: Token QR hanya ada bila KTA aktif (verified atau expiring). Klien menyimpan respons ini sebagai cache offline maksimal 7 hari.
+      responses:
+        "200":
+          description: KTA.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberCard" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/membership:
+    get:
+      tags: [Me]
+      operationId: getMyMembership
+      summary: Periode keanggotaan, kelayakan perpanjangan, dan histori.
+      responses:
+        "200":
+          description: Keanggotaan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Membership" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /masters/{kind}:
+    get:
+      tags: [Me]
+      operationId: listMasters
+      summary: Master data terkontrol (profesi, keahlian, kelas).
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema: { type: string, enum: [professions, skills, classes] }
+      responses:
+        "200":
+          description: Daftar master aktif.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/MasterItem" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ---------------------------------------------------------------- Payments (F-03)
+  /payment-methods:
+    get:
+      tags: [Payments]
+      operationId: listPaymentMethods
+      summary: Rekening tujuan aktif, diatur pengurus.
+      responses:
+        "200":
+          description: Metode bayar.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/PaymentMethod" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/payments:
+    get:
+      tags: [Payments]
+      operationId: listMyPayments
+      summary: Riwayat pembayaran sendiri.
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Pembayaran.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentPage" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Payments]
+      operationId: createPaymentInstruction
+      summary: Buat instruksi iuran registration atau renewal; nominal dihitung server (AC F03-1).
+      description: Bila payment nonterminal jenis yang sama sudah ada, payment itu dikembalikan (bukan payment baru).
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, payment_method_id]
+              properties:
+                type: { type: string, enum: [registration, renewal] }
+                payment_method_id: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Instruksi pembayaran.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+        "200":
+          description: Payment nonterminal yang sudah ada dikembalikan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/payments/{paymentId}:
+    get:
+      tags: [Payments]
+      operationId: getMyPayment
+      summary: Detail pembayaran sendiri beserta histori status.
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+      responses:
+        "200":
+          description: Detail dan histori status.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentDetail" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/payments/{paymentId}/proof:
+    put:
+      tags: [Payments]
+      operationId: submitPaymentProof
+      summary: Kirim atau ganti bukti; proof_version bertambah (AC F03-2, F03-3).
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [file_id]
+              properties:
+                file_id: { type: string, format: uuid, description: Hasil unggah purpose payment_proof. }
+                transfer_note: { type: string, maxLength: 200 }
+      responses:
+        "200":
+          description: Payment pending dengan bukti versi baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+        "409":
+          description: PAYMENT_STATE_CONFLICT bila payment sudah paid atau cancelled.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/FileInvalid" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ---------------------------------------------------------------- Files
+  /files:
+    post:
+      tags: [Files]
+      operationId: uploadFile
+      summary: Unggah berkas dengan purpose tertentu (N-10).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [purpose, file]
+              properties:
+                purpose: { $ref: "#/components/schemas/FilePurpose" }
+                file: { type: string, format: binary }
+      responses:
+        "201":
+          description: Berkas diterima.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FileRef" }
+        "413": { $ref: "#/components/responses/FileInvalid" }
+        "422": { $ref: "#/components/responses/FileInvalid" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /files/{fileId}/access:
+    get:
+      tags: [Files]
+      operationId: getFileAccess
+      summary: URL bertanda tangan maksimal 10 menit setelah pemeriksaan izin.
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Akses sementara.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, expires_at]
+                properties:
+                  url: { type: string, format: uri }
+                  expires_at: { type: string, format: date-time }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ---------------------------------------------------------------- Content (F-08)
+  /home:
+    get:
+      tags: [Content]
+      operationId: getHome
+      summary: Beranda; banner aktif, event mendatang, dan berita terbaru.
+      responses:
+        "200":
+          description: Beranda.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Home" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /posts:
+    get:
+      tags: [Content]
+      operationId: listPosts
+      summary: Daftar berita yang sudah terbit.
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: category
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berita published.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/PostSummary" }
+                  next_cursor: { type: [string, "null"] }
+        default: { $ref: "#/components/responses/Error" }
+
+  /posts/{slug}:
+    get:
+      tags: [Content]
+      operationId: getPost
+      summary: Detail berita.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berita.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Post" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /posts/{slug}/like:
+    put:
+      tags: [Content]
+      operationId: likePost
+      summary: Idempoten; maksimal satu like per pengguna (AC F08-3).
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Status like.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LikeState" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Content]
+      operationId: unlikePost
+      summary: Batalkan like; idempoten.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Status like.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LikeState" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ---------------------------------------------------------------- Notifications (F-13)
+  /notifications:
+    get:
+      tags: [Notifications]
+      operationId: listNotifications
+      summary: Kotak masuk notifikasi.
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Kotak masuk resmi.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, unread_count]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Notification" }
+                  unread_count: { type: integer, minimum: 0 }
+                  next_cursor: { type: [string, "null"] }
+        default: { $ref: "#/components/responses/Error" }
+
+  /notifications/read:
+    post:
+      tags: [Notifications]
+      operationId: markNotificationsRead
+      summary: Tandai notifikasi dibaca.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items: { type: string, format: uuid }
+                all: { type: boolean }
+      responses:
+        "204": { description: Ditandai dibaca. }
+        default: { $ref: "#/components/responses/Error" }
+
+  /notifications/preferences:
+    get:
+      tags: [Notifications]
+      operationId: getNotificationPreferences
+      summary: Preferensi kategori push dan email.
+      responses:
+        "200":
+          description: Preferensi.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPreferences" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Notifications]
+      operationId: updateNotificationPreferences
+      summary: Simpan preferensi notifikasi.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotificationPreferences" }
+      responses:
+        "200":
+          description: Preferensi tersimpan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPreferences" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /devices:
+    put:
+      tags: [Notifications]
+      operationId: registerDevice
+      summary: Daftarkan token FCM perangkat untuk sesi ini.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [platform, token]
+              properties:
+                platform: { type: string, enum: [android, ios] }
+                token: { type: string, maxLength: 4096 }
+                app_version: { type: string }
+      responses:
+        "204": { description: Terdaftar. }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ---------------------------------------------------------------- Account deletion (F-14)
+  /me/deletion:
+    post:
+      tags: [Account]
+      operationId: requestAccountDeletion
+      summary: Minta penghapusan akun; perlu reauth_token berumur maksimal 10 menit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reauth_token, confirm]
+              properties:
+                reauth_token: { type: string }
+                confirm: { type: boolean, const: true }
+      responses:
+        "202":
+          description: Permintaan dibuat; sesi dicabut.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeletionRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /public/deletion/challenge:
+    post:
+      tags: [Account]
+      operationId: startWebDeletion
+      summary: Mulai penghapusan dari situs /delete-account tanpa aplikasi; OTP dikirim ke email.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "202":
+          description: Respons sama apa pun keadaan email.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OtpChallenge" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /public/deletion/confirm:
+    post:
+      tags: [Account]
+      operationId: confirmWebDeletion
+      summary: Konfirmasi penghapusan dari web dengan OTP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id, code, confirm]
+              properties:
+                challenge_id: { type: string, format: uuid }
+                code: { type: string, pattern: "^[0-9]{6}$" }
+                confirm: { type: boolean, const: true }
+      responses:
+        "202":
+          description: Permintaan dibuat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeletionRequest" }
+        "410":
+          description: OTP tidak berlaku.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ---------------------------------------------------------------- Public (F-06)
+  /public/config:
+    get:
+      tags: [Public]
+      operationId: getPublicConfig
+      summary: Versi aplikasi minimum, status maintenance, dan tautan toko.
+      security: []
+      responses:
+        "200":
+          description: Konfigurasi.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicConfig" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /public/pages/{slug}:
+    get:
+      tags: [Public]
+      operationId: getPublicPage
+      summary: Halaman legal dan informasi (privasi, ketentuan, bantuan, tentang).
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Halaman.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Page" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /public/kta/verify:
+    post:
+      tags: [Public]
+      operationId: verifyKta
+      summary: Verifikasi token QR KTA; status selalu dari server (F-06).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [member_number, token]
+              properties:
+                member_number: { type: string, examples: ["29.01.01.7"] }
+                token: { type: string, description: "Dibaca shell dari fragmen URL (#t=)." }
+      responses:
+        "200":
+          description: Hasil verifikasi.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KtaVerification" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ---------------------------------------------------------------- Admin auth (F-02, F-16)
+  /admin/auth/login:
+    post:
+      tags: [Admin Auth]
+      operationId: adminLogin
+      summary: Tahap sandi admin; hasilnya hanya mfa_token, belum bisa memanggil API admin.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Lanjut ke TOTP.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [mfa_token, mfa_expires_at]
+                properties:
+                  mfa_token: { type: string }
+                  mfa_expires_at: { type: string, format: date-time }
+                  totp_enrollment_required: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/auth/mfa:
+    post:
+      tags: [Admin Auth]
+      operationId: adminVerifyMfa
+      summary: Verifikasi TOTP atau backup code; menerbitkan access token di body dan refresh cookie HttpOnly.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mfa_token]
+              properties:
+                mfa_token: { type: string }
+                totp_code: { type: string, pattern: "^[0-9]{6}$" }
+                backup_code: { type: string }
+      responses:
+        "200":
+          description: Sesi admin aktif.
+          headers:
+            Set-Cookie:
+              description: kapdh_admin_rt; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSession" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/me:
+    get:
+      tags: [Admin Auth]
+      operationId: getAdminMe
+      summary: Identitas admin, izin efektif, dan versi izin untuk menyusun menu.
+      responses:
+        "200":
+          description: Admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminProfile" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/MfaRequired" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ---------------------------------------------------------------- Admin payments (F-04)
+  /admin/payments:
+    get:
+      tags: [Admin Payments]
+      operationId: adminListPayments
+      summary: Antrean pembayaran (izin payments.read).
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/PaymentStatus" }
+        - name: type
+          in: query
+          schema: { $ref: "#/components/schemas/PaymentType" }
+        - name: q
+          in: query
+          description: Nama atau nomor anggota.
+          schema: { type: string, maxLength: 100 }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Antrean.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentPage" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/payments/{paymentId}:
+    get:
+      tags: [Admin Payments]
+      operationId: adminGetPayment
+      summary: Detail pembayaran untuk keputusan admin.
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+      responses:
+        "200":
+          description: Detail untuk keputusan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentDetail" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/payments/{paymentId}/decision:
+    post:
+      tags: [Admin Payments]
+      operationId: adminDecidePayment
+      summary: Setujui atau tolak (izin payments.decide). Satu keputusan berlaku (AC F04-3, F04-4).
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PaymentDecision" }
+      responses:
+        "200":
+          description: Keputusan tersimpan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: PAYMENT_STATE_CONFLICT atau PROOF_VERSION_CONFLICT; body berisi status terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ---------------------------------------------------------------- Admin settings (F-15)
+  /admin/settings/fees:
+    get:
+      tags: [Admin Settings]
+      operationId: adminGetFees
+      summary: Komponen biaya versi aktif.
+      responses:
+        "200":
+          description: Komponen biaya versi aktif.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeSettings" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Admin Settings]
+      operationId: adminUpdateFees
+      summary: Ubah nominal (settings.manage + reautentikasi). Hanya berlaku untuk payment baru.
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+        - name: X-Reauth-Token
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FeeSettingsInput" }
+      responses:
+        "200":
+          description: Versi baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeSettings" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token 15 menit. Sesi admin hanya valid setelah TOTP.
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: UUID dari klien; disimpan lokal sampai hasil diketahui. Payload berbeda dengan key sama menghasilkan IDEMPOTENCY_CONFLICT.
+      schema: { type: string, format: uuid }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Versi objek yang dibaca klien; versi berbeda menghasilkan 409.
+      schema: { type: string }
+    PaymentId:
+      name: paymentId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 30 }
+
+  responses:
+    Error:
+      description: Galat baku.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ValidationError:
+      description: VALIDATION_ERROR dengan field_errors.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthenticated:
+      description: UNAUTHENTICATED.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    MfaRequired:
+      description: MFA_REQUIRED.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: FORBIDDEN, MEMBERSHIP_REQUIRED, atau ACCOUNT_SUSPENDED.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Tidak ditemukan atau tidak berhak melihat.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: Konflik versi atau keadaan; muat ulang data terbaru.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: RATE_LIMITED; lihat retry_after_seconds.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    FileInvalid:
+      description: FILE_INVALID.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    ErrorCode:
+      type: string
+      enum:
+        - VALIDATION_ERROR
+        - UNAUTHENTICATED
+        - MFA_REQUIRED
+        - FORBIDDEN
+        - MEMBERSHIP_REQUIRED
+        - ACCOUNT_SUSPENDED
+        - OTP_EXPIRED
+        - RATE_LIMITED
+        - FILE_INVALID
+        - PAYMENT_STATE_CONFLICT
+        - PROOF_VERSION_CONFLICT
+        - EVENT_SOLD_OUT
+        - RESERVATION_EXPIRED
+        - TICKET_ALREADY_CHECKED_IN
+        - IDEMPOTENCY_CONFLICT
+        - MAINTENANCE
+        - INTERNAL_ERROR
+        - NOT_FOUND
+        - VERSION_CONFLICT
+    Error:
+      type: object
+      required: [code, message, request_id]
+      properties:
+        code: { $ref: "#/components/schemas/ErrorCode" }
+        message: { type: string, description: Pesan aman untuk ditampilkan dalam Bahasa Indonesia. }
+        request_id: { type: string }
+        field_errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+        retry_after_seconds: { type: integer, minimum: 0 }
+        current: { description: Keadaan terbaru objek untuk galat konflik. }
+
+    Password:
+      type: string
+      minLength: 8
+      maxLength: 72
+      description: 8 sampai 72 byte UTF-8 (bukan karakter) dengan huruf besar, kecil, angka, dan simbol. Server menolak, tidak memotong.
+
+    Gender:
+      type: string
+      enum: [male, female]
+      description: JK 01 = male, 02 = female.
+
+    ClassLevel:
+      type: integer
+      minimum: 1
+      maximum: 6
+      description: 1-3 = 1-3 MTs, 4-6 = 1-3 Aliyah.
+
+    RegisterRequest:
+      type: object
+      required: [full_name, gender, email, password, cohort, class_in, class_out, accept_policy_version]
+      properties:
+        full_name: { type: string, minLength: 2, maxLength: 120 }
+        gender: { $ref: "#/components/schemas/Gender" }
+        email: { type: string, format: email, maxLength: 254 }
+        password: { $ref: "#/components/schemas/Password" }
+        cohort:
+          { type: integer, minimum: 1, maximum: 99, description: "Angkatan; tahun lulus = 1996 + angkatan." }
+        class_in: { $ref: "#/components/schemas/ClassLevel" }
+        class_out: { $ref: "#/components/schemas/ClassLevel" }
+        accept_policy_version:
+          { type: string, description: Versi kebijakan privasi dan ketentuan yang disetujui. }
+
+    OtpChallenge:
+      type: object
+      required: [challenge_id, purpose, expires_at, resend_available_at, attempts_left]
+      properties:
+        challenge_id: { type: string, format: uuid }
+        purpose: { type: string, enum: [signup, password_reset, deletion] }
+        email_masked: { type: string, examples: ["ah***@email.com"] }
+        expires_at: { type: string, format: date-time }
+        resend_available_at: { type: string, format: date-time }
+        attempts_left: { type: integer, minimum: 0, maximum: 5 }
+
+    OtpVerifyRequest:
+      type: object
+      required: [challenge_id, code]
+      properties:
+        challenge_id: { type: string, format: uuid }
+        code: { type: string, pattern: "^[0-9]{6}$" }
+        device_name: { type: string, maxLength: 80 }
+
+    OtpVerifyResponse:
+      type: object
+      properties:
+        session: { $ref: "#/components/schemas/TokenPair" }
+        reset_token: { type: string, description: Hanya untuk purpose password_reset. }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, maxLength: 128 }
+        device_name: { type: string, maxLength: 80 }
+
+    LoginResponse:
+      type: object
+      required: [next]
+      properties:
+        next: { type: string, enum: [home, verify_otp] }
+        session: { $ref: "#/components/schemas/TokenPair" }
+        challenge: { $ref: "#/components/schemas/OtpChallenge" }
+
+    TokenPair:
+      type: object
+      required: [access_token, access_expires_at]
+      properties:
+        access_token: { type: string }
+        access_expires_at: { type: string, format: date-time }
+        refresh_token: { type: string, description: Hanya untuk klien mobile; admin memakai cookie. }
+        refresh_expires_at: { type: string, format: date-time }
+
+    Session:
+      type: object
+      required: [id, device_name, created_at, last_seen_at, current]
+      properties:
+        id: { type: string, format: uuid }
+        device_name: { type: string }
+        platform: { type: string }
+        created_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+        current: { type: boolean }
+
+    EffectiveStatus:
+      type: string
+      enum: [pending_otp, unverified, verified, expiring, expired, suspended, disabled, deletion_pending]
+      description: Menentukan rute klien (PRD 2.2). Klien tidak menghitung sendiri.
+
+    Me:
+      type: object
+      required: [user_id, email, effective_status, profile, version]
+      properties:
+        user_id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        effective_status: { $ref: "#/components/schemas/EffectiveStatus" }
+        pending_payment_id: { type: [string, "null"], format: uuid }
+        profile: { $ref: "#/components/schemas/Profile" }
+        member_number: { type: [string, "null"], examples: ["29.01.01.7"] }
+        expires_at: { type: [string, "null"], format: date-time }
+        suspension_message: { type: [string, "null"], description: Alasan aman untuk ditampilkan. }
+        version: { type: string }
+
+    Profile:
+      type: object
+      required:
+        [
+          full_name,
+          gender,
+          cohort,
+          class_in,
+          class_out,
+          graduation_year,
+          entry_year,
+          exit_year,
+          education_status,
+        ]
+      properties:
+        full_name: { type: string }
+        gender: { $ref: "#/components/schemas/Gender" }
+        cohort: { type: integer }
+        class_in: { $ref: "#/components/schemas/ClassLevel" }
+        class_out: { $ref: "#/components/schemas/ClassLevel" }
+        graduation_year: { type: integer, description: 1996 + cohort. }
+        entry_year: { type: integer }
+        exit_year: { type: integer }
+        education_status:
+          type: string
+          enum: ["01", "02", "03"]
+          description: 01 tamat MTs dan Aliyah, 02 tamat salah satu, 03 tidak tamat.
+        city: { type: [string, "null"] }
+        profession: { $ref: "#/components/schemas/MasterItem" }
+        skills:
+          type: array
+          items: { $ref: "#/components/schemas/MasterItem" }
+        avatar_file_id: { type: [string, "null"], format: uuid }
+        privacy:
+          type: object
+          properties:
+            show_in_directory: { type: boolean }
+            show_phone: { type: boolean }
+            show_social: { type: boolean }
+
+    ProfileUpdate:
+      type: object
+      properties:
+        full_name: { type: string, minLength: 2, maxLength: 120 }
+        city: { type: string, maxLength: 80 }
+        phone: { type: string, maxLength: 20 }
+        profession_id: { type: [string, "null"], format: uuid }
+        skill_ids:
+          type: array
+          maxItems: 10
+          items: { type: string, format: uuid }
+        avatar_file_id: { type: [string, "null"], format: uuid }
+        gender: { $ref: "#/components/schemas/Gender" }
+        cohort: { type: integer, minimum: 1, maximum: 99 }
+        class_in: { $ref: "#/components/schemas/ClassLevel" }
+        class_out: { $ref: "#/components/schemas/ClassLevel" }
+        privacy:
+          type: object
+          properties:
+            show_in_directory: { type: boolean }
+            show_phone: { type: boolean }
+            show_social: { type: boolean }
+
+    MasterItem:
+      type: object
+      required: [id, label]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        active: { type: boolean }
+
+    MemberCard:
+      type: object
+      required: [status_label, member_number, full_name, cohort_code, synced_at]
+      properties:
+        status_label: { type: string, enum: [active, expiring, inactive, suspended] }
+        member_number: { type: string, examples: ["29.01.01.7"] }
+        full_name: { type: string }
+        cohort: { type: integer }
+        cohort_code: { type: string, examples: ["KAPDH 29"] }
+        graduation_year: { type: integer }
+        profession_label: { type: [string, "null"] }
+        city: { type: [string, "null"] }
+        avatar_url: { type: [string, "null"], format: uri }
+        expires_at: { type: [string, "null"], format: date-time }
+        qr:
+          type: [object, "null"]
+          description: Ada hanya bila KTA aktif.
+          required: [url, token_expires_at]
+          properties:
+            url: { type: string, format: uri, examples: ["https://kapdh.or.id/kta/29.01.01.7#t=eyJ..."] }
+            token_expires_at: { type: string, format: date-time }
+        synced_at:
+          {
+            type: string,
+            format: date-time,
+            description: Waktu server; klien menyimpan untuk aturan offline 7 hari.,
+          }
+
+    Membership:
+      type: object
+      required: [effective_status, renewal_eligible, periods]
+      properties:
+        effective_status: { $ref: "#/components/schemas/EffectiveStatus" }
+        starts_at: { type: [string, "null"], format: date-time }
+        expires_at: { type: [string, "null"], format: date-time }
+        renewal_eligible: { type: boolean }
+        renewal_opens_at: { type: [string, "null"], format: date-time }
+        periods:
+          type: array
+          items:
+            type: object
+            required: [starts_at, expires_at, kind]
+            properties:
+              kind: { type: string, enum: [registration, renewal] }
+              starts_at: { type: string, format: date-time }
+              expires_at: { type: string, format: date-time }
+              payment_id: { type: string, format: uuid }
+
+    Money:
+      type: string
+      pattern: '^[0-9]+\.[0-9]{2}$'
+      description: Nominal IDR sebagai string desimal.
+
+    PaymentType:
+      type: string
+      enum: [registration, renewal, ticket]
+
+    PaymentStatus:
+      type: string
+      enum: [pending, paid, rejected, cancelled]
+
+    PaymentMethod:
+      type: object
+      required: [id, kind, provider, account_number, account_holder]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [bank, ewallet] }
+        provider: { type: string }
+        account_number: { type: string }
+        account_holder: { type: string }
+        instructions: { type: [string, "null"] }
+
+    PaymentLine:
+      type: object
+      required: [code, label, amount]
+      properties:
+        code: { type: string, enum: [registration_fee, card_fee, renewal_fee, ticket] }
+        label: { type: string }
+        amount: { $ref: "#/components/schemas/Money" }
+
+    Payment:
+      type: object
+      required: [id, type, status, amount, lines, method, proof_version, created_at, version]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/PaymentType" }
+        status: { $ref: "#/components/schemas/PaymentStatus" }
+        amount: { $ref: "#/components/schemas/Money" }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/PaymentLine" }
+        method: { $ref: "#/components/schemas/PaymentMethod" }
+        proof_version: { type: integer, minimum: 0 }
+        submitted_at: { type: [string, "null"], format: date-time }
+        decided_at: { type: [string, "null"], format: date-time }
+        rejection_reason: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+        version: { type: string }
+
+    PaymentEvent:
+      type: object
+      required: [at, kind]
+      properties:
+        at: { type: string, format: date-time }
+        kind:
+          {
+            type: string,
+            enum: [created, proof_submitted, proof_replaced, approved, rejected, cancelled, adjusted],
+          }
+        proof_version: { type: integer }
+        reason: { type: [string, "null"] }
+
+    PaymentDetail:
+      allOf:
+        - $ref: "#/components/schemas/Payment"
+        - type: object
+          required: [events]
+          properties:
+            events:
+              type: array
+              items: { $ref: "#/components/schemas/PaymentEvent" }
+
+    PaymentPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Payment" }
+        next_cursor: { type: [string, "null"] }
+
+    FilePurpose:
+      type: string
+      enum: [avatar, payment_proof, chat_image, cover]
+      description: PDF hanya untuk payment_proof; gambar <= 5 MB, PDF <= 10 MB.
+
+    FileRef:
+      type: object
+      required: [id, purpose, mime, bytes]
+      properties:
+        id: { type: string, format: uuid }
+        purpose: { $ref: "#/components/schemas/FilePurpose" }
+        mime: { type: string }
+        bytes: { type: integer }
+
+    Banner:
+      type: object
+      required: [id, image_url]
+      properties:
+        id: { type: string, format: uuid }
+        image_url: { type: string, format: uri }
+        title: { type: [string, "null"] }
+        target: { type: [string, "null"], description: Deep link aman atau URL luar bertanda. }
+
+    PostSummary:
+      type: object
+      required: [slug, title, published_at, like_count]
+      properties:
+        slug: { type: string }
+        title: { type: string }
+        excerpt: { type: [string, "null"] }
+        cover_url: { type: [string, "null"], format: uri }
+        category: { type: [string, "null"] }
+        published_at: { type: string, format: date-time }
+        like_count: { type: integer }
+        liked_by_me: { type: boolean }
+
+    Post:
+      allOf:
+        - $ref: "#/components/schemas/PostSummary"
+        - type: object
+          required: [body_html]
+          properties:
+            body_html: { type: string, description: HTML tersanitasi server. }
+
+    LikeState:
+      type: object
+      required: [liked, like_count]
+      properties:
+        liked: { type: boolean }
+        like_count: { type: integer }
+
+    EventSummary:
+      type: object
+      required: [id, title, starts_at, timezone]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        starts_at: { type: string, format: date-time }
+        timezone: { type: string, examples: [Asia/Jakarta] }
+        location: { type: [string, "null"] }
+        cover_url: { type: [string, "null"], format: uri }
+
+    Home:
+      type: object
+      required: [banners, upcoming_events, posts]
+      properties:
+        banners:
+          type: array
+          items: { $ref: "#/components/schemas/Banner" }
+        upcoming_events:
+          type: array
+          items: { $ref: "#/components/schemas/EventSummary" }
+        posts:
+          type: array
+          items: { $ref: "#/components/schemas/PostSummary" }
+
+    NotificationCategory:
+      type: string
+      enum: [payment, membership, event, news, chat, security]
+
+    Notification:
+      type: object
+      required: [id, category, title, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        category: { $ref: "#/components/schemas/NotificationCategory" }
+        title: { type: string }
+        body: { type: [string, "null"] }
+        deep_link: { type: [string, "null"], examples: ["kapdh://payments/2b1c..."] }
+        read_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+
+    NotificationPreferences:
+      type: object
+      required: [push]
+      properties:
+        push:
+          type: object
+          description: security tidak dapat dimatikan.
+          properties:
+            payment: { type: boolean }
+            membership: { type: boolean }
+            event: { type: boolean }
+            news: { type: boolean }
+            chat: { type: boolean }
+        email:
+          type: object
+          properties:
+            payment: { type: boolean }
+            membership: { type: boolean }
+            event: { type: boolean }
+
+    DeletionRequest:
+      type: object
+      required: [request_number, status, requested_at]
+      properties:
+        request_number: { type: string, examples: ["DEL-2026-000123"] }
+        status: { type: string, enum: [pending, processing, completed] }
+        requested_at: { type: string, format: date-time }
+        estimated_completion_at: { type: string, format: date-time }
+
+    PublicConfig:
+      type: object
+      required: [min_app_version, maintenance]
+      properties:
+        min_app_version:
+          type: object
+          required: [android, ios]
+          properties:
+            android: { type: string, examples: ["1.0.0"] }
+            ios: { type: string, examples: ["1.0.0"] }
+        maintenance:
+          type: object
+          required: [active]
+          properties:
+            active: { type: boolean }
+            message: { type: [string, "null"] }
+            until: { type: [string, "null"], format: date-time }
+        store_links:
+          type: object
+          properties:
+            android: { type: string, format: uri }
+            ios: { type: string, format: uri }
+        support:
+          type: object
+          properties:
+            email: { type: string, format: email, examples: [bantuan@kapdh.or.id] }
+            whatsapp: { type: [string, "null"] }
+
+    Page:
+      type: object
+      required: [slug, title, body_html, version, published_at]
+      properties:
+        slug: { type: string }
+        title: { type: string }
+        body_html: { type: string }
+        version: { type: string }
+        published_at: { type: string, format: date-time }
+
+    KtaVerification:
+      type: object
+      required: [result, checked_at]
+      properties:
+        result:
+          type: string
+          enum: [active, expired, inactive, not_found, invalid_token]
+          description: Aktif, Kedaluwarsa, Tidak aktif, Tidak ditemukan, QR tidak valid atau perlu diperbarui.
+        checked_at: { type: string, format: date-time }
+        member:
+          type: [object, "null"]
+          description: Identitas minimum; hanya untuk result active atau expired.
+          properties:
+            full_name: { type: string }
+            cohort_code: { type: string }
+            member_number: { type: string }
+            expires_at: { type: string, format: date-time }
+
+    Permission:
+      type: string
+      enum:
+        - payments.read
+        - payments.decide
+        - members.read
+        - members.manage
+        - content.manage
+        - master.manage
+        - events.manage
+        - events.checkin
+        - moderation.read
+        - moderation.resolve
+        - audit.read
+        - audit.export
+        - settings.manage
+        - admins.manage
+
+    AdminSession:
+      type: object
+      required: [access_token, access_expires_at, idle_timeout_seconds]
+      properties:
+        access_token: { type: string }
+        access_expires_at: { type: string, format: date-time }
+        idle_timeout_seconds: { type: integer, examples: [1800] }
+
+    AdminProfile:
+      type: object
+      required: [admin_id, display_name, role, permissions, permissions_version]
+      properties:
+        admin_id: { type: string, format: uuid }
+        display_name: { type: string }
+        role: { type: string, enum: [super_admin, admin] }
+        permissions:
+          type: array
+          items: { $ref: "#/components/schemas/Permission" }
+        permissions_version: { type: integer }
+
+    AdminPaymentItem:
+      type: object
+      required: [id, type, status, amount, member, submitted_at, proof_version, overdue]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/PaymentType" }
+        status: { $ref: "#/components/schemas/PaymentStatus" }
+        amount: { $ref: "#/components/schemas/Money" }
+        member:
+          type: object
+          required: [full_name]
+          properties:
+            full_name: { type: string }
+            member_number: { type: [string, "null"] }
+            cohort: { type: [integer, "null"] }
+        event_title: { type: [string, "null"] }
+        submitted_at: { type: [string, "null"], format: date-time }
+        proof_version: { type: integer }
+        overdue: { type: boolean, description: Lewat 1 hari kerja sejak bukti dikirim. }
+
+    AdminPaymentPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminPaymentItem" }
+        total: { type: integer }
+        next_cursor: { type: [string, "null"] }
+
+    AdminPaymentDetail:
+      allOf:
+        - $ref: "#/components/schemas/AdminPaymentItem"
+        - type: object
+          required: [lines, method, events, proof_file_id, version, conflict_of_interest]
+          properties:
+            lines:
+              type: array
+              items: { $ref: "#/components/schemas/PaymentLine" }
+            method: { $ref: "#/components/schemas/PaymentMethod" }
+            proof_file_id: { type: [string, "null"], format: uuid }
+            transfer_note: { type: [string, "null"] }
+            events:
+              type: array
+              items: { $ref: "#/components/schemas/PaymentEvent" }
+            conflict_of_interest:
+              { type: boolean, description: True bila payment milik alumni yang tertaut ke admin ini. }
+            version: { type: string }
+
+    PaymentDecision:
+      type: object
+      required: [decision, expected_proof_version, expected_version]
+      properties:
+        decision: { type: string, enum: [approve, reject] }
+        expected_proof_version: { type: integer }
+        expected_version: { type: string }
+        funds_verified: { type: boolean, description: Wajib true untuk approve. }
+        reason:
+          {
+            type: string,
+            minLength: 3,
+            maxLength: 500,
+            description: Wajib dan tidak boleh hanya spasi untuk reject.,
+          }
+
+    FeeSettings:
+      type: object
+      required: [registration_fee, card_fee, renewal_fee, version, effective_from]
+      properties:
+        registration_fee: { $ref: "#/components/schemas/Money" }
+        card_fee: { $ref: "#/components/schemas/Money" }
+        renewal_fee: { $ref: "#/components/schemas/Money" }
+        version: { type: string }
+        effective_from: { type: string, format: date-time }
+
+    FeeSettingsInput:
+      type: object
+      required: [registration_fee, card_fee, renewal_fee]
+      properties:
+        registration_fee: { $ref: "#/components/schemas/Money" }
+        card_fee: { $ref: "#/components/schemas/Money" }
+        renewal_fee: { $ref: "#/components/schemas/Money" }

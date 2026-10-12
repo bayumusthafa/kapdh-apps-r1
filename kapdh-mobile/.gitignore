@@ -1,0 +1,11 @@
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+.idea/
+*.iml
+.packages
+pubspec.lock.bak
+android/key.properties
+android/app/*.jks
+ios/Pods/
