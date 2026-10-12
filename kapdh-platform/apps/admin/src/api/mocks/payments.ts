@@ -1,5 +1,5 @@
 import { requirePermission, requireReauth } from "./auth";
-import { error, json, type MockRoute, paginate, type S } from "./http";
+import { error, json, type MockRequest, type MockRoute, paginate, type S } from "./http";
 
 /**
  * Tiruan antrean dan keputusan pembayaran (F-04) serta biaya (F-03, AC F15-3). Data contoh mengikuti prototipe
@@ -134,7 +134,31 @@ function fixtures(): Detail[] {
 let payments = new Map<string, Detail>();
 let fees: S["FeeSettings"];
 
+export interface PaymentRequestLog {
+  method: string;
+  path: string;
+  query: Record<string, string>;
+  background: boolean;
+  idempotencyKey: string | null;
+  body: Record<string, unknown> | null;
+}
+
+/** Log permintaan ke endpoint pembayaran tiruan, untuk uji (debounce, header latar, Idempotency-Key). */
+export const paymentRequests: PaymentRequestLog[] = [];
+
+function log(req: MockRequest): void {
+  paymentRequests.push({
+    method: req.method,
+    path: req.path,
+    query: Object.fromEntries(req.url.searchParams.entries()),
+    background: req.headers.get("X-Background-Request") === "1",
+    idempotencyKey: req.headers.get("Idempotency-Key"),
+    body: req.body,
+  });
+}
+
 export function reset(): void {
+  paymentRequests.length = 0;
   payments = new Map(fixtures().map((p) => [p.id, p]));
   fees = {
     registration_fee: "50000.00",
@@ -186,6 +210,7 @@ export const routes: MockRoute[] = [
     method: "GET",
     path: "/admin/payments",
     handler: (req) => {
+      log(req);
       const denied = requirePermission(req, "payments.read");
       if (denied) return denied;
       const status = req.url.searchParams.get("status");
@@ -208,6 +233,7 @@ export const routes: MockRoute[] = [
     method: "GET",
     path: "/admin/payments/{paymentId}",
     handler: (req) => {
+      log(req);
       const denied = requirePermission(req, "payments.read");
       if (denied) return denied;
       const p = payments.get(req.params.paymentId ?? "");
@@ -218,6 +244,7 @@ export const routes: MockRoute[] = [
     method: "POST",
     path: "/admin/payments/{paymentId}/decision",
     handler: (req) => {
+      log(req);
       const denied = requirePermission(req, "payments.decide");
       if (denied) return denied;
       const body = req.body ?? {};

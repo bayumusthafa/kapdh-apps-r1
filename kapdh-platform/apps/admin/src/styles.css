@@ -20,7 +20,11 @@ body {
 [data-surface="dark"] :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline-color: var(--color-accent);
 }
-/* Editor teks kaya memakai cincin pada bingkainya (focus-within), bukan pada area contenteditable. */
+/*
+ * Target fokus terprogram yang bukan kontrol (konten utama setelah pindah halaman, judul panel detail, wadah
+ * dialog) tidak diberi cincin; editor teks kaya memakai cincin pada bingkainya (focus-within).
+ */
+[tabindex="-1"]:focus-visible,
 .prose-kapdh:focus-visible {
   outline: none;
 }

@@ -79,6 +79,10 @@ export interface DataTableSelection<T> {
 export interface DataTableProps<T> {
   /** Judul tabel untuk pembaca layar (<caption class="sr-only">). */
   caption: string;
+  /**
+   * Definisi kolom TanStack. Kolom yang boleh diurutkan server wajib punya `accessorKey`/`accessorFn`; kolom tanpa
+   * accessor (hanya `id` + `cell`) tidak dapat diurutkan. `id`/`accessorKey` dipakai sebagai nama kolom urutan.
+   */
   // ColumnDef<T, any> adalah bentuk baku TanStack Table untuk kolom bernilai campuran.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   columns: ColumnDef<T, any>[];
@@ -184,6 +188,8 @@ export function DataTable<T>({
     enableRowSelection: Boolean(selection),
     enableSorting: Boolean(onSortingChange),
     enableSortingRemoval: true,
+    // Klik pertama selalu naik (A-Z, lama-baru) agar dapat diprediksi; server tetap yang mengurutkan.
+    sortDescFirst: false,
     state: {
       sorting: sorting ?? [],
       rowSelection: selection?.selected ?? {},

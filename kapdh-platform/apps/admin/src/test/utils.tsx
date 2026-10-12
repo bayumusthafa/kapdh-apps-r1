@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { App, AppProviders } from "../App";
+import { api, setAccessToken } from "../api/client";
 import { MOCK_CREDENTIALS } from "../api/mocks";
 import { createAppRouter } from "../router";
 
@@ -43,4 +44,15 @@ export async function signIn(
   }
   await user.click(screen.getByRole("button", { name: "Verifikasi" }));
   return screen.findByRole("navigation", { name: "Menu admin" });
+}
+
+/** Masuk lewat API (tanpa UI) sehingga AuthProvider memulihkan sesi dari "cookie" refresh tiruan saat dirender. */
+export async function signInViaApi(): Promise<void> {
+  const login = await api.POST("/admin/auth/login", {
+    body: { email: MOCK_CREDENTIALS.email, password: MOCK_CREDENTIALS.password },
+  });
+  const mfa = await api.POST("/admin/auth/mfa", {
+    body: { mfa_token: login.data!.mfa_token, totp_code: MOCK_CREDENTIALS.totp },
+  });
+  setAccessToken(mfa.data!.access_token, mfa.data!.access_expires_at);
 }

@@ -51,4 +51,4 @@ export async function mockFetch(request: Request): Promise<Response> {
 }
 
 export { authRequests, MOCK_CREDENTIALS, mockAuth } from "./auth";
-export { mockPayments } from "./payments";
+export { mockPayments, paymentRequests } from "./payments";

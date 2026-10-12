@@ -3,6 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useAuth } from "../../auth/session";
 import { Card } from "../../components/ui/Card";
+import { PermissionGate } from "../../components/ui/PermissionGate";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { UnderConstruction } from "../../components/ui/States";
 import { TabPanel, Tabs } from "../../components/ui/Tabs";
@@ -48,7 +49,10 @@ export function PaymentsPage() {
       />
       <TabFrame tabbed={tabs.length > 1} tab={tab}>
         {tab === "verify" ? (
-          <VerificationTab />
+          // Penjaga di dalam halaman: izin dapat berubah saat halaman terbuka (AC F16-3).
+          <PermissionGate anyOf={["payments.read"]}>
+            <VerificationTab />
+          </PermissionGate>
         ) : (
           <Card>
             <UnderConstruction

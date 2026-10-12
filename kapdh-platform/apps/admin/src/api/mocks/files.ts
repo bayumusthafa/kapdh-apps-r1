@@ -1,5 +1,5 @@
 import { requireAdmin } from "./auth";
-import { error, json, type MockRoute, type S } from "./http";
+import { error, json, type MockFile, type MockRoute, readMultipart, type S } from "./http";
 import { MOCK_PROOF_FILE_ID, MOCK_PROOF_FILE_ID_V2 } from "./payments";
 
 /**
@@ -37,13 +37,10 @@ export function reset(): void {
 }
 reset();
 
-function readAsDataUrl(file: Blob): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => resolve(placeholderSvg("Pratinjau tidak tersedia"));
-    reader.readAsDataURL(file);
-  });
+function toDataUrl(file: MockFile): string {
+  let binary = "";
+  for (const b of file.bytes) binary += String.fromCharCode(b);
+  return `data:${file.type};base64,${btoa(binary)}`;
 }
 
 export const routes: MockRoute[] = [
@@ -53,14 +50,14 @@ export const routes: MockRoute[] = [
     handler: async (req) => {
       const unauth = requireAdmin(req);
       if (unauth) return unauth;
-      const form = await req.raw.formData().catch(() => null);
-      const purpose = form?.get("purpose");
-      const file = form?.get("file");
+      const form = await readMultipart(req.raw);
+      const purpose = form?.purpose;
+      const file = form?.file;
       if (typeof purpose !== "string" || !PURPOSES.includes(purpose as S["FilePurpose"]))
         return error(400, "VALIDATION_ERROR", "Purpose berkas tidak dikenal.", {
           field_errors: { purpose: ["Purpose tidak dikenal."] },
         });
-      if (!(file instanceof Blob))
+      if (!file || typeof file === "string")
         return error(400, "VALIDATION_ERROR", "Berkas wajib dipilih.", {
           field_errors: { file: ["Wajib."] },
         });
@@ -78,7 +75,7 @@ export const routes: MockRoute[] = [
         mime: file.type,
         bytes: file.size,
       };
-      files.set(id, { ref, dataUrl: isImage ? await readAsDataUrl(file) : placeholderSvg("Dokumen PDF") });
+      files.set(id, { ref, dataUrl: isImage ? toDataUrl(file) : placeholderSvg("Dokumen PDF") });
       return json(201, ref);
     },
   },

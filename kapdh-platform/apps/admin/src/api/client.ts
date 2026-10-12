@@ -1,5 +1,5 @@
 import createClient, { type Middleware } from "openapi-fetch";
-import type { ApiError as ApiErrorBody, components, paths } from "@kapdh/contracts";
+import type { components, paths } from "@kapdh/contracts";
 
 /**
  * Klien API bertipe dari kontrak OpenAPI (PRD 5.2).
@@ -170,9 +170,4 @@ export async function revokeCurrentSession(): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-/** Body galat kontrak dari openapi-fetch (untuk kode lama); kode baru memakai ApiError dari ./errors. */
-export function isApiError(value: unknown): value is ApiErrorBody {
-  return typeof value === "object" && value !== null && "code" in value && "request_id" in value;
 }
