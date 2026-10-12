@@ -73,6 +73,56 @@ Operasi baru: `correctPendingEmail` (POST /auth/email-correction), `verifyPasswo
 | `POST /public/deletion/confirm`                     | **[memutus]** Body kini `{deletion_token, confirm, acknowledged_disclosure_version}`; OTP diverifikasi lebih dulu di `POST /public/deletion/verify` yang juga menampilkan status dan pengungkapan. `apps/web/src/pages/delete-account.astro` masih mengirim bentuk lama dan wajib diperbarui oleh agen public-web. Idempotency-Key, 409 dan 410 dideklarasikan.                       |
 | `AccountDeletion`                                   | **[memutus]** `status` menambah `failed` (selaras DB); field wajib baru `source` (app/web), `estimated_completion_at` (kini wajib) dan `completed_at` (nullable); `request_number` berpola `DEL-YYYY-XXXX`.                                                                                                                                                                           |
 
+### C3 Finance: payments, admin-payments, admin-settings (F-03, F-04, F-07, F-15, D4, D6, D13)
+
+Kontrak keuangan dilengkapi sesuai PRD 3.3, 3.4, 3.9, 4.3 dan ARCHITECTURE §3.3. Belum ada controller API untuk
+operasi ini, sehingga perubahan yang memutus hanya berdampak pada SDK/tipe terbangkit, fixture uji Dart dan mock web
+admin (sudah disesuaikan). Setiap operasi domain ini membawa vendor extension `x-kapdh-access`
+(`audience`, `member_access`, `permissions`, `reauth`, `idempotent`) sesuai ARCHITECTURE §3.1, §4.3, §4.5.
+
+Perubahan pada operasi yang sudah ada:
+
+| Operasi                                     | Perubahan                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PUT /me/payments/{paymentId}/proof`        | **[memutus]** body `SubmitPaymentProofRequest` mewajibkan `expected_proof_version` (409 PROOF_VERSION_CONFLICT bila usang). Respons kini `PaymentDetail` (superset `Payment`). Respons 400/401/403/404/410 RESERVATION_EXPIRED/426/503 dideklarasikan; urutan galat ditetapkan (410 RESERVATION_EXPIRED didahulukan atas 409 PAYMENT_STATE_CONFLICT untuk tiket yang hold-nya habis); 403 FORBIDDEN untuk iuran dari platform yang instruksi iurannya disembunyikan (D13). |
+| `POST /me/payments`                         | Respons 201/200 kini `PaymentDetail` (superset `Payment`). Galat 400/403 MEMBERSHIP_REQUIRED/409 dirinci; 403 FORBIDDEN bila instruksi iuran disembunyikan untuk platform pemanggil (D13).                                                                                                                                                                                                                                                                                 |
+| `GET /me/payments`                          | Filter opsional `type` dan `status` ditambahkan.                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `Payment` (semua respons payment anggota)   | **[memutus]** field wajib baru `stage` (`PaymentStage`) dan `actions` (`PaymentActions`); field opsional baru `proof_file_id`, `transfer_note`, `cancelled_at`, `cancel_reason`, `ticket` (`PaymentTicketRef`), `period` (`PaymentMembershipPeriod`).                                                                                                                                                                                                                      |
+| `PaymentDetail`                             | **[memutus]** field wajib baru `adjustments` (`PaymentAdjustmentSummary[]`), `method_active` dan `instructions_hidden` (rencana cadangan D13).                                                                                                                                                                                                                                                                                                                             |
+| `PaymentEvent`                              | **[memutus]** field wajib baru `actor` (`PaymentEventActor`); `proof_version` kini nullable. `PaymentEventKind` menambah `method_changed`.                                                                                                                                                                                                                                                                                                                                 |
+| `GET /admin/payments`                       | Tanpa `status` berarti semua status ("Semua"). Filter baru `stage`, `overdue`, `event_id`, `user_id`, `submitted_from`, `submitted_to`, `sort` (`AdminPaymentSort`); `q` minLength 1. `AdminPaymentPage.next_cursor` kini wajib (nullable).                                                                                                                                                                                                                                |
+| `AdminPaymentItem`                          | **[memutus]** `member` kini nullable (`oneOf` dengan null; akun terhapus, AC F14-4); `AdminPaymentMember` mewajibkan `user_id`, `member_number` (nullable), `cohort` (kini integer non-null) dan `effective_status`. Field wajib baru `stage`, `decided_at`, `review_due_at`, `created_at`, `version`, `event_starts_at` (nullable); `event_title` kini wajib (nullable). `review_due_at` tiket kini paling lambat pembukaan jendela check-in event (PRD 4.4).             |
+| `AdminPaymentDetail`                        | **[memutus]** `proof_file_id` diganti objek `proof` (`AdminPaymentProof`: file_id, version, mime, bytes, submitted_at). `events` kini `AdminPaymentEvent[]` (tambah `proof_file_id` versi bukti dan `actor_admin`). Field wajib baru `method_id`, `method_active`, `rejection_reason`, `rejection_count`, `decided_by`, `cancelled_at`, `cancel_reason`, `ticket`, `period`, `settings_version`, `adjustments`, `actions`; `transfer_note` kini wajib (nullable).          |
+| `POST /admin/payments/{paymentId}/decision` | **[memutus]** `expected_proof_version` minimum 1, `expected_version` maxLength 64, `reason` wajib memuat karakter bukan spasi (`pattern: '\S'`, AC F04-2). 403 konflik kepentingan dan 409 VERSION_CONFLICT dirinci.                                                                                                                                                                                                                                                       |
+| `GET/PUT /admin/settings/fees`              | **[memutus]** `FeeSettings` mewajibkan `registration_total` (registration_fee + card_fee, dihitung server); `updated_by` opsional. `FeeSettingsInput` menambah `reason` opsional untuk audit.                                                                                                                                                                                                                                                                              |
+
+Operasi baru:
+
+- Anggota: `GET /me/fees` (`getMyFees`, kutipan dan kelayakan), `PUT /me/payments/{paymentId}/method`
+  (`changeMyPaymentMethod`), `POST /me/payments/{paymentId}/cancel` (`cancelMyPayment`).
+- Admin pembayaran: `POST /admin/payments` (`adminRecordPayment`, pencatatan iuran yang diverifikasi di luar
+  aplikasi, rencana cadangan D13), `GET /admin/payments/summary`, `POST /admin/payments/{paymentId}/cancel`
+  (hanya pending tanpa bukti, PRD 4.3), `POST /admin/payments/{paymentId}/adjustments`,
+  `GET /admin/payment-adjustments`, `GET|PATCH /admin/payment-adjustments/{adjustmentId}`,
+  `POST /admin/payment-adjustments/{adjustmentId}/complete`, `POST /admin/payment-adjustments/{adjustmentId}/cancel`
+  (`AdminPaymentAdjustment` memuat `cancel_reason` dan `cancelled_by`), `GET|POST /admin/payment-methods`
+  (daftar berhalaman `AdminPaymentMethodPage` dengan `total`), `GET|PUT|DELETE /admin/payment-methods/{methodId}`
+  (identitas rekening metode yang sudah dipakai tidak dapat diubah; hapus metode terpakai ditolak 400
+  VALIDATION_ERROR).
+- Pengaturan: `GET /admin/settings` (termasuk kunci `payment_instructions`), `PUT /admin/settings/min-app-version`,
+  `PUT /admin/settings/maintenance`, `PUT /admin/settings/store-links`, `PUT /admin/settings/payment-instructions`
+  (`adminUpdatePaymentInstructions`, platform yang menyembunyikan instruksi iuran, D13),
+  `PUT /admin/settings/support`.
+
+Keputusan perilaku yang perlu diikuti modul payments dan events:
+
+- `adminDecidePayment` tetap dapat memutus payment tiket berbukti yang tiketnya sudah cancelled (event dibatalkan
+  atau batal mandiri). approve berarti dana diterima: payment paid tanpa menghidupkan tiket, dan refund sistem
+  dibuat dalam transaksi yang sama bila D6 mewajibkan refund penuh (PRD 3.9, 4.4). Handler tiket tidak menolak
+  keputusan ini.
+- `GET /me/fees` (`MyFeeQuotes`) mewajibkan `instructions_hidden`; nilainya dihitung server dari header
+  `X-App-Platform` dan pengaturan `payment_instructions`.
+
 ## 0.2.0
 
 Pemecahan `openapi/openapi.yaml` menjadi `openapi/root.yaml` + `openapi/domains/<domain>.yaml` (ARCHITECTURE §6),
