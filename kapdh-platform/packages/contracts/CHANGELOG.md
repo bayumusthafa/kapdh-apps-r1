@@ -186,6 +186,67 @@ dicatat sebagai garis dasar gerbang N-13.
 - Urutan kunci global event -> tiket -> payment (PRD 6.4) didokumentasikan di kepala `events.yaml` dan mengikat
   modul pembayaran untuk payment `type=ticket`.
 
+### Komunitas (C6: F-10, F-11, F-12)
+
+Operasi baru (tidak memutus klien lama; tidak ada operasi lama yang diubah). Setiap operasi membawa ekstensi
+`x-kapdh-access` (audience, member_access, permissions, idempotent) sesuai ARCHITECTURE §3.1/§4.3/§4.5.
+
+- `network.yaml` (tag Network): `GET /directory` (`searchDirectory`, total + keyset, privasi AC F10-2),
+  `GET /directory/{userId}` (`getMemberProfile`, field kontak tidak dikirim bila flag mati).
+- `chat.yaml` (tag Chat): room (`listChatRooms`, `createChatGroup`, `openDirectRoom`, `getChatRoom`,
+  `updateChatRoom`), anggota dan undangan (`listChatRoomMembers`, `updateChatRoomMember`, `removeChatRoomMember`,
+  `inviteChatMembers`, `listChatInvitations`, `acceptChatInvitation`, `declineChatInvitation`, `leaveChatRoom`,
+  `setChatRoomMute`), pesan (`listChatMessages` keyset before/after, `sendChatMessage` dengan `client_message_id`,
+  `deleteChatMessage`), reaksi (`addChatReaction`, `removeChatReaction`) dan read cursor (`markChatRoomRead`).
+- `moderation.yaml` (tag Moderation): blokir (`listBlocks`, `blockMember`, `unblockMember`), laporan
+  (`createReport`, `listMyReports`, `getMyReport`) dan banding (`createAppeal`, kategori laporan `appeal`).
+- `admin-moderation.yaml` (tag Admin Moderation): `adminListReports` (SLA/overdue, total, counts),
+  `adminGetReport` (bukti, akses diaudit), `adminClaimReport`, `adminResolveReport` (dismiss/warn/suspend/unsuspend).
+
+Aturan perilaku yang mengikat implementasi (dicatat di sini karena tidak terlihat dari bentuk skema):
+
+- Chat: setiap insert pesan mengunci baris room dan mengisi `created_at` naik ketat per room di bawah kunci itu, agar
+  urutan commit = urutan keyset; jangkar sinkron klien hanya dari respons HTTP, dan jendela pesan yang tampil dimuat
+  ulang setelah reconnect agar penghapusan/reaksi saat offline diterapkan (AC F11-3, F14-3; `events/README.md`).
+- Chat: event `room.member_changed` invited/invitation_cancelled/declined hanya ke kanal `user:<id>` calon anggota dan
+  admin grup, tidak pernah ke `room:<id>`. `POST /chat/direct` menjawab 403 hanya bila pemanggil yang memblokir;
+  blokir oleh lawan bicara diperlakukan seperti lawan bicara tidak tersedia (404 / peer_unavailable).
+  `ChatRoomSummary.peer` kini wajib ada (null untuk grup).
+- Banding (`POST /appeals`) hanya untuk suspend yang sedang berlaku (warn tidak dapat dibanding di R1.0); snapshot
+  suspend disimpan di `AdminModerationEvidence.contested_suspension`. Setiap unsuspend (keputusan laporan atau menu
+  anggota admin) menutup banding aktif pemohon sebagai dikabulkan dalam transaksi yang sama.
+- Moderasi admin: laporan yang pihak terlapornya akun alumni tertaut pengurus pemanggil dikecualikan dari antrean
+  (item, total, counts, q) dan detail/klaim/keputusan menjawab 404; tertaut ke pelapor tetap 403 untuk klaim/keputusan.
+
+### Event realtime
+
+- **[memutus]** Kesepuluh jenis event kini memiliki payload bertipe (`events/<type>.schema.json`) dan
+  `x-kapdh-payload-pending` kosong. TS `RealtimePayloads[...]` berubah dari `Record<string, unknown>` menjadi tipe
+  `<Type>Payload`; Dart `<Type>Event.payload` berubah dari `Map` mentah menjadi model bertipe yang `fromJson`-nya
+  melempar `FormatException` bila field wajib hilang. Belum ada klien rilis yang memakai payload mentah.
+- Skema bersama baru: `RealtimeChatMessage`, `RealtimeChatUser`, `RealtimeChatImage`, `RealtimeChatReply`,
+  `RealtimeChatReaction` (bentuk JSON sama dengan `ChatMessage`, `ChatUserRef`, `ChatImage`, `ChatMessageReply`,
+  `ChatReaction` HTTP) dan `RealtimeReactionCount`.
+- Contoh amplop diperbarui agar lolos skema payload; `entity_id` per jenis didokumentasikan di amplop dan
+  `events/README.md`.
+- `notification.created` memakai nama field `InboxNotification` (`id`, `category`, `title`, `body`, `deep_link`,
+  `created_at`) ditambah `unread_count`, sehingga klien dapat memakai model kotak masuk yang sama.
+
+### Ketergantungan skema database (belum dibuat; pemilik skema/integrator)
+
+Kontrak moderasi membutuhkan perubahan pada `packages/database` sebelum modul moderasi diimplementasikan:
+
+- nilai enum `app.report_category` `appeal` (banding, PRD 3.12);
+- kolom `reports.claimed_by_admin_id` (FK admins, ON DELETE SET NULL, indeks parsial) dan `reports.claimed_at` untuk
+  klaim (opsional CHECK `status <> 'in_review' or claimed_at is not null`);
+- kolom `reports.member_message` (pesan aman untuk anggota pada warn/suspend/banding, maksimal 500);
+- kolom `reports.message_removed_at` untuk `remove_message`;
+- `reports.due_at` menjadi NOT NULL (kontrak `ModerationReport.due_at` dan `AdminModerationReportItem.due_at` wajib
+  non-null; server selalu menghitungnya saat insert: urgent 24 jam, lainnya 2 hari kerja). Belum ada baris produksi,
+  sehingga cukup `ALTER COLUMN due_at SET NOT NULL` pada migrasi aditif.
+
+Snapshot suspend yang dibanding disimpan di `reports.evidence` (jsonb) yang sudah ada; tidak perlu kolom baru.
+
 ## 0.2.0
 
 Pemecahan `openapi/openapi.yaml` menjadi `openapi/root.yaml` + `openapi/domains/<domain>.yaml` (ARCHITECTURE §6),

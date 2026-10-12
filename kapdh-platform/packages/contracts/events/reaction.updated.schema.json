@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/contracts/events/reaction.updated.schema.json",
+  "title": "ReactionUpdatedPayload",
+  "description": "Reaksi pesan bertambah atau berkurang (F-11). entity_id = ID pesan. Dikirim sesudah commit ke kanal room:<room_id>, hanya bila ada perubahan. `counts` adalah ringkasan terbaru semua emoji pada pesan; klien menghitung reacted_by_me sendiri dari `user_id` dan `action`.",
+  "type": "object",
+  "required": ["room_id", "message_id", "user_id", "emoji", "action", "counts"],
+  "additionalProperties": false,
+  "properties": {
+    "room_id": { "type": "string", "format": "uuid" },
+    "message_id": { "type": "string", "format": "uuid" },
+    "user_id": {
+      "description": "Anggota yang menambah/menghapus reaksi.",
+      "type": "string",
+      "format": "uuid"
+    },
+    "emoji": { "type": "string", "minLength": 1, "maxLength": 16 },
+    "action": { "type": "string", "enum": ["added", "removed"] },
+    "counts": {
+      "type": "array",
+      "items": { "$ref": "realtime-reaction-count.schema.json" }
+    }
+  },
+  "examples": [
+    {
+      "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61",
+      "message_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e60",
+      "user_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e71",
+      "emoji": "👍",
+      "action": "added",
+      "counts": [{ "emoji": "👍", "count": 3 }]
+    }
+  ]
+}
