@@ -1,4 +1,4 @@
-/* DIBANGKITKAN dari tokens.json oleh build.py. Jangan edit manual. */
+/* DIBANGKITKAN dari tokens.json oleh build.mjs. Jangan edit manual. */
 /* Pakai di apps/admin: @import "tailwindcss"; @import "@kapdh/design-tokens/css/kapdh-theme.css"; */
 @theme {
   --color-green-950: #0E280C;

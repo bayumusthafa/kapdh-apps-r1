@@ -13,6 +13,6 @@
     "./css/kapdh-theme.css": "./css/kapdh-theme.css"
   },
   "scripts": {
-    "build": "python3 build.py"
+    "build": "node build.mjs"
   }
 }

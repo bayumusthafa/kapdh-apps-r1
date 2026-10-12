@@ -1,4 +1,4 @@
-// DIBANGKITKAN dari tokens.json oleh build.py. Jangan edit manual.
+// DIBANGKITKAN dari tokens.json oleh build.mjs. Jangan edit manual.
 // ignore_for_file: constant_identifier_names
 import 'package:flutter/painting.dart';
 
