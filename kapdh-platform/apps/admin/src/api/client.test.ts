@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, onSessionExpired, refreshAccessToken, setAccessToken } from "./client";
-import { MOCK_CREDENTIALS, resetMockSession } from "./mock";
+import { MOCK_CREDENTIALS } from "./mocks";
 
 async function signInViaApi() {
   const login = await api.POST("/admin/auth/login", {
@@ -13,8 +13,6 @@ async function signInViaApi() {
 }
 
 beforeEach(() => {
-  resetMockSession();
-  setAccessToken(null);
   onSessionExpired(null);
 });
 
