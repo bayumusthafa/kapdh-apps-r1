@@ -41,12 +41,23 @@ function item(
     id,
     type,
     status: "pending",
+    stage: "awaiting_review",
     amount,
-    member: { full_name: name, member_number: number, cohort },
+    member: {
+      user_id: id.replace(/a(\d)$/, "b$1"),
+      full_name: name,
+      member_number: number,
+      cohort,
+      effective_status: type === "registration" ? "unverified" : "expiring",
+    },
     event_title: null,
+    event_starts_at: null,
     submitted_at: submitted,
+    decided_at: null,
+    review_due_at: null,
     proof_version: 1,
     overdue,
+    created_at: submitted,
     lines:
       type === "registration"
         ? [
@@ -55,10 +66,38 @@ function item(
           ]
         : [{ code: "renewal_fee", label: "Perpanjangan KTA", amount: "10000.00" }],
     method,
-    proof_file_id: "0199e000-0000-7000-8000-0000000000f1",
+    method_id: method.id,
+    method_active: true,
+    proof: {
+      file_id: "0199e000-0000-7000-8000-0000000000f1",
+      version: 1,
+      mime: "image/jpeg",
+      bytes: 1_200_000,
+      submitted_at: submitted,
+    },
     transfer_note: null,
-    events: [{ at: submitted, kind: "proof_submitted", proof_version: 1, reason: null }],
+    rejection_reason: null,
+    rejection_count: 0,
+    decided_by: null,
+    cancelled_at: null,
+    cancel_reason: null,
+    ticket: null,
+    period: null,
+    settings_version: type === "ticket" ? null : "1",
+    events: [
+      {
+        at: submitted,
+        kind: "proof_submitted",
+        actor: "member",
+        proof_version: 1,
+        reason: null,
+        proof_file_id: "0199e000-0000-7000-8000-0000000000f1",
+        actor_admin: null,
+      },
+    ],
+    adjustments: [],
     conflict_of_interest: false,
+    actions: { can_decide: true, can_cancel: false, can_adjust: false },
     version: "1",
   };
 }
@@ -179,13 +218,16 @@ export async function mockFetch(request: Request): Promise<Response> {
     });
   }
   if (request.method === "GET" && path === "/admin/payments") {
-    const status = url.searchParams.get("status") ?? "pending";
+    // Tanpa `status` berarti semua status ("Semua", kontrak adminListPayments).
+    const status = url.searchParams.get("status");
     const q = (url.searchParams.get("q") ?? "").toLowerCase();
     const items = [...payments.values()]
-      .filter((p) => p.status === status)
+      .filter((p) => !status || p.status === status)
       .filter(
         (p) =>
-          !q || p.member.full_name.toLowerCase().includes(q) || (p.member.member_number ?? "").includes(q),
+          !q ||
+          (p.member?.full_name.toLowerCase().includes(q) ?? false) ||
+          (p.member?.member_number ?? "").includes(q),
       );
     return json(200, { items, total: items.length, next_cursor: null });
   }
@@ -210,16 +252,31 @@ export async function mockFetch(request: Request): Promise<Response> {
       return error(400, "VALIDATION_ERROR", "Alasan penolakan wajib diisi.", {
         field_errors: { reason: ["Wajib diisi"] },
       });
+    const approved = body.decision === "approve";
+    const decidedAt = new Date().toISOString();
+    const decidedBy = { admin_id: "0199e000-0000-7000-8000-0000000000ad", display_name: "Bayu Musthafa" };
     const updated: S["AdminPaymentDetail"] = {
       ...p,
-      status: body.decision === "approve" ? "paid" : "rejected",
+      status: approved ? "paid" : "rejected",
+      stage: approved ? "paid" : p.type === "ticket" ? "rejected_final" : "needs_fix",
+      decided_at: decidedAt,
+      decided_by: decidedBy,
+      rejection_reason: approved ? null : (body.reason ?? null),
+      rejection_count: approved ? p.rejection_count : p.rejection_count + 1,
+      review_due_at: null,
+      overdue: false,
+      actions: { can_decide: false, can_cancel: !approved && p.type !== "ticket", can_adjust: approved },
       version: String(Number(p.version) + 1),
       events: [
         ...p.events,
         {
-          at: new Date().toISOString(),
-          kind: body.decision === "approve" ? "approved" : "rejected",
-          reason: body.reason ?? null,
+          at: decidedAt,
+          kind: approved ? "approved" : "rejected",
+          actor: "admin",
+          proof_version: p.proof_version,
+          reason: approved ? null : (body.reason ?? null),
+          proof_file_id: null,
+          actor_admin: decidedBy,
         },
       ],
     };

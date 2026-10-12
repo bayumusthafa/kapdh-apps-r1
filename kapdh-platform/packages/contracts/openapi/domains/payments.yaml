@@ -1,43 +1,143 @@
-# Domain payments (C3 Finance): metode bayar, instruksi iuran, bukti dan histori milik anggota.
-# Modul API: apps/api/src/modules/payments.
+# Domain payments (C3 Finance): metode bayar aktif, kutipan iuran, instruksi iuran, bukti, pembatalan dan histori
+# pembayaran milik anggota (F-03, F-07, D4, D13). Modul API: apps/api/src/modules/payments.
+#
+# Positioning (D13, PRD 10.1): iuran adalah IURAN KEANGGOTAAN ORGANISASI dan tiket adalah layanan yang dinikmati di
+# luar aplikasi; keduanya dibayar lewat transfer manual ke rekening pengurus. Teks kontrak, label baris dan pesan
+# server tidak memakai istilah "upgrade", "premium", "unlock" atau "buka fitur". Rencana cadangan D13: instruksi
+# iuran dapat disembunyikan per platform (`instructions_hidden`, pengaturan `payment_instructions`) dan pengurus
+# mencatat iuran yang diverifikasi di luar aplikasi (POST /admin/payments).
+#
+# Vendor extension `x-kapdh-access` di setiap operasi (ARCHITECTURE §3.1, §4.3, §4.5):
+#   audience       public | mobile | admin | any (decorator @Public/@Audience)
+#   member_access  any | nonsuspended | active (decorator @MemberAccess, hanya mobile)
+#   permissions    izin admin yang SEMUANYA wajib dimiliki (@RequirePermission)
+#   reauth         wajib header X-Reauth-Token (@RequireReauth)
+#   idempotent     menghormati header Idempotency-Key (@Idempotent)
 tags:
   - name: Payments
-    description: Iuran pendaftaran dan perpanjangan, metode bayar, bukti dan histori milik sendiri (F-03, F-07).
+    description: |
+      Iuran keanggotaan organisasi (pendaftaran dan perpanjangan), metode bayar transfer manual, bukti transfer,
+      pembatalan dan histori pembayaran milik sendiri, termasuk pembayaran tiket (F-03, F-07, F-09, D4, D13).
 
 paths:
   /payment-methods:
     get:
       tags: [Payments]
       operationId: listPaymentMethods
-      summary: Rekening tujuan aktif, diatur pengurus (F-03).
+      summary: Daftar rekening tujuan aktif untuk transfer manual (F-03, D13).
+      description: |
+        Hanya metode `active` yang dikembalikan, urut `sort_order` lalu nama penyedia. Metode dikelola pengurus
+        berizin settings.manage (F-15). Nomor rekening adalah rekening organisasi, bukan data pribadi anggota.
+        Daftar ini dipakai layar instruksi bayar (prototipe screen_3) dan pilihan metode tiket (guidelines p8).
+      x-kapdh-access: { audience: mobile, member_access: nonsuspended }
       responses:
         "200":
-          description: Metode bayar.
+          description: Metode bayar aktif.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PaymentMethodList" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AccountSuspended" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/fees:
+    get:
+      tags: [Payments]
+      operationId: getMyFees
+      summary: Kutipan iuran keanggotaan dari server beserta kelayakan (F-03, F-07, AC F03-1, D4).
+      description: |
+        Server menghitung baris iuran dari pengaturan terversi `fees` (ARCHITECTURE §5.4) dan kelayakan dari status
+        efektif saat ini; klien tidak menghitung nominal sendiri (PRD 3.3). Dipakai layar Biaya KTA (prototipe
+        screen_2) dan layar perpanjangan.
+
+        - registration = register alumni baru + pembuatan KTA (nilai awal Rp50.000 + Rp10.000, D4).
+        - renewal = perpanjangan KTA per tahun (nilai awal Rp10.000, D4).
+
+        Kelayakan (PRD 2.2, AC F07-5):
+        - registration layak hanya bila iuran pendaftaran belum pernah paid (effective_status unverified);
+          selain itu `already_registered`.
+        - renewal layak bila status expiring atau expired (jendela dibuka 30 hari sebelum habis dan tetap terbuka
+          setelah expired); verified dengan sisa masa aktif lebih dari 30 hari mendapat `renewal_window_not_open`
+          beserta `renewal_opens_at`; unverified mendapat `registration_required`.
+
+        Bila sudah ada pembayaran nonterminal (pending atau rejected) untuk jenis itu, `open_payment_id` terisi dan
+        klien membuka pembayaran tersebut (nilai snapshot-nya yang berlaku, bukan kutipan ini; AC F03-5).
+        Kutipan bukan janji harga: nominal final disnapshot saat POST /me/payments.
+
+        Rencana cadangan D13 (PRD 10.1): `instructions_hidden` true bila platform pemanggil (header
+        `X-App-Platform`) termasuk pengaturan `payment_instructions.dues_hidden_platforms`. Klien lalu tidak
+        menampilkan alur bayar iuran (rekening tujuan, tombol bayar, unggah bukti) dan hanya menampilkan status
+        keanggotaan serta kontak dukungan; pengurus mencatat iuran yang diverifikasi di luar aplikasi
+        (POST /admin/payments).
+      x-kapdh-access: { audience: mobile, member_access: nonsuspended }
+      responses:
+        "200":
+          description: Kutipan registration dan renewal.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyFeeQuotes" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AccountSuspended" }
         default: { $ref: "#/components/responses/Error" }
 
   /me/payments:
     get:
       tags: [Payments]
       operationId: listMyPayments
-      summary: Riwayat pembayaran sendiri (F-03).
+      summary: Riwayat pembayaran sendiri, termasuk tiket (F-03, F-07, PRD 2.2).
+      description: |
+        Urut `created_at` terbaru lebih dahulu (keyset created_at, id). Hanya pembayaran milik pemanggil; status
+        efektif apa pun (termasuk expired dan suspended) tetap dapat membaca riwayat sendiri (ARCHITECTURE §3.1).
+      x-kapdh-access: { audience: mobile, member_access: any }
       parameters:
+        - name: type
+          in: query
+          required: false
+          description: Saring jenis pembayaran.
+          schema: { $ref: "#/components/schemas/PaymentType" }
+        - name: status
+          in: query
+          required: false
+          description: Saring status pembayaran; kosong berarti semua status.
+          schema: { $ref: "#/components/schemas/PaymentStatus" }
         - $ref: "#/components/parameters/Cursor"
         - $ref: "#/components/parameters/Limit"
       responses:
         "200":
-          description: Pembayaran.
+          description: Halaman pembayaran.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PaymentPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         default: { $ref: "#/components/responses/Error" }
     post:
       tags: [Payments]
       operationId: createPaymentInstruction
-      summary: Buat instruksi iuran registration atau renewal; nominal dihitung server (AC F03-1).
-      description: Bila payment nonterminal jenis yang sama sudah ada, payment itu dikembalikan (bukan payment baru).
+      summary: Buat instruksi iuran pendaftaran atau perpanjangan; nominal dihitung server (AC F03-1, F03-5).
+      description: |
+        Server menghitung baris dan total dari pengaturan `fees` versi aktif, lalu menyimpan snapshot baris,
+        metode (rekening tujuan) dan `settings_version` (PRD 3.3, ARCHITECTURE §3.3). Nilai dari klien tidak
+        dipercaya; body tidak memuat nominal. Payment baru berstatus pending dengan `stage` awaiting_transfer dan
+        `payment_id` yang tetap (AC F03-1).
+
+        Satu payment nonterminal per pengguna per jenis (PRD 3.3, indeks `payments_user_id_type_open_key`): bila
+        sudah ada payment pending atau rejected untuk jenis itu, payment tersebut dikembalikan apa adanya dengan
+        200 (metode tidak diubah; pakai PUT /me/payments/{paymentId}/method). Permintaan bersamaan menghasilkan
+        satu payment.
+
+        Galat:
+        - 403 MEMBERSHIP_REQUIRED: renewal oleh akun yang iuran pendaftarannya belum paid (klien memuat ulang /me
+          lalu mengarahkan ke onboarding).
+        - 403 ACCOUNT_SUSPENDED: anggota dibatasi (PRD 2.2).
+        - 403 FORBIDDEN: instruksi iuran disembunyikan untuk platform pemanggil (`X-App-Platform`, rencana
+          cadangan D13); klien versi lama yang belum mengenal `instructions_hidden` menampilkan pesan server.
+        - 400 VALIDATION_ERROR: `payment_method_id` tidak ada atau tidak aktif (field_errors.payment_method_id);
+          renewal sebelum jendela perpanjangan dibuka (field_errors.type).
+        - 409 PAYMENT_STATE_CONFLICT: registration padahal iuran pendaftaran sudah paid.
+        - 409 IDEMPOTENCY_CONFLICT: Idempotency-Key sama dengan payload berbeda.
+      x-kapdh-access: { audience: mobile, member_access: nonsuspended, idempotent: true }
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
@@ -47,40 +147,157 @@ paths:
             schema: { $ref: "#/components/schemas/CreatePaymentRequest" }
       responses:
         "201":
-          description: Instruksi pembayaran.
+          description: Instruksi pembayaran baru.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Payment" }
+              schema: { $ref: "#/components/schemas/PaymentDetail" }
         "200":
-          description: Payment nonterminal yang sudah ada dikembalikan.
+          description: Payment nonterminal yang sudah ada untuk jenis yang sama dikembalikan (bukan payment baru).
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Payment" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "409": { $ref: "#/components/responses/Conflict" }
+              schema: { $ref: "#/components/schemas/PaymentDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            ACCOUNT_SUSPENDED, MEMBERSHIP_REQUIRED (renewal sebelum iuran pendaftaran paid) atau FORBIDDEN
+            (instruksi iuran disembunyikan untuk platform pemanggil, D13).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: PAYMENT_STATE_CONFLICT (iuran pendaftaran sudah paid) atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "426": { $ref: "#/components/responses/UpgradeRequired" }
+        "503": { $ref: "#/components/responses/Maintenance" }
         default: { $ref: "#/components/responses/Error" }
 
   /me/payments/{paymentId}:
     get:
       tags: [Payments]
       operationId: getMyPayment
-      summary: Detail pembayaran sendiri beserta histori status (F-03).
+      summary: Detail pembayaran sendiri beserta histori status dan bukti (F-03, AC F03-3, F04-2).
+      description: |
+        Memuat snapshot baris dan rekening tujuan, versi bukti, histori (termasuk alasan penolakan lama, AC F03-3),
+        alasan penolakan terakhir (AC F04-2), waktu keputusan, penyesuaian/refund (D6) dan tindakan yang boleh
+        dilakukan (`actions`). Dipakai layar instruksi bayar, menunggu verifikasi dan ditolak (prototipe screen_3,
+        screen_4, screen_5) serta deep link notifikasi `/payments/{paymentId}` (ARCHITECTURE §4.7).
+        Payment milik pengguna lain menghasilkan 404 (N-09).
+
+        Bila tiket dibatalkan (misalnya event dibatalkan pengurus) saat bukti masih menunggu verifikasi, payment
+        tetap pending dan pengurus tetap memverifikasi dana. Bila dana diterima, payment menjadi paid tanpa tiket
+        aktif dan refund penuh tercatat di `adjustments` sesuai D6 (PRD 3.9, 4.4).
+
+        `instructions_hidden` true untuk payment iuran bila platform pemanggil menyembunyikan instruksi iuran
+        (rencana cadangan D13); klien hanya menampilkan status dan kontak dukungan, tanpa rekening tujuan dan unggah
+        bukti.
+      x-kapdh-access: { audience: mobile, member_access: any }
       parameters:
         - $ref: "#/components/parameters/PaymentId"
       responses:
         "200":
-          description: Detail dan histori status.
+          description: Detail dan histori.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PaymentDetail" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/payments/{paymentId}/method:
+    put:
+      tags: [Payments]
+      operationId: changeMyPaymentMethod
+      summary: Ganti rekening tujuan sebelum bukti pertama dikirim (F-03, PRD 4.3).
+      description: |
+        Hanya untuk payment pending dengan `proof_version` 0 (belum ada bukti) dan metode tujuan yang aktif.
+        Snapshot metode diganti, nominal tidak berubah, `version` naik dan histori `method_changed` dicatat
+        (prototipe screen_3, pilihan rekening). Berlaku untuk iuran maupun tiket.
+
+        Galat:
+        - 400 VALIDATION_ERROR: metode tidak ada atau tidak aktif (field_errors.payment_method_id).
+        - 403 ACCOUNT_SUSPENDED: anggota dibatasi; 403 FORBIDDEN: payment iuran dari platform yang instruksi
+          iurannya disembunyikan (rencana cadangan D13).
+        - 409 PAYMENT_STATE_CONFLICT: payment bukan pending atau bukti sudah pernah dikirim; `current` berisi
+          PaymentDetail terbaru.
+        - 409 VERSION_CONFLICT: If-Match berbeda dari `version` terbaru; `current` berisi PaymentDetail.
+      x-kapdh-access: { audience: mobile, member_access: nonsuspended }
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChangePaymentMethodRequest" }
+      responses:
+        "200":
+          description: Payment dengan rekening tujuan baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            ACCOUNT_SUSPENDED, atau FORBIDDEN untuk payment iuran dari platform yang instruksi iurannya
+            disembunyikan (D13).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: PAYMENT_STATE_CONFLICT atau VERSION_CONFLICT; `current` berisi PaymentDetail terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "426": { $ref: "#/components/responses/UpgradeRequired" }
+        "503": { $ref: "#/components/responses/Maintenance" }
         default: { $ref: "#/components/responses/Error" }
 
   /me/payments/{paymentId}/proof:
     put:
       tags: [Payments]
       operationId: submitPaymentProof
-      summary: Kirim atau ganti bukti; proof_version bertambah (AC F03-2, F03-3).
+      summary: Kirim atau ganti bukti transfer; proof_version bertambah (AC F03-2, F03-3, F03-4, F09-2).
+      description: |
+        `file_id` adalah hasil POST /files purpose `payment_proof` milik pemanggil yang belum terpakai objek lain
+        (JPG/PNG <= 5 MB atau PDF <= 10 MB, N-10). Dalam satu transaksi dengan row lock payment: bukti aktif
+        diganti, `proof_version` naik satu, `submitted_at` diisi waktu server, histori `proof_submitted` (bukti
+        pertama) atau `proof_replaced` dicatat dengan berkas versi lama tetap tersimpan untuk pengurus
+        (U-02); tidak ada payment tambahan (AC F03-2). `transfer_note` menggantikan catatan sebelumnya (kosong
+        berarti dihapus). Tanggal transfer yang dilaporkan bukan sumber aktivasi (PRD 3.7).
+
+        Transisi:
+        - pending -> pending (bukti pertama atau pengganti sebelum keputusan).
+        - rejected -> pending hanya untuk registration/renewal; payment yang sama kembali pending dengan versi
+          baru dan alasan lama tetap di histori (AC F03-3).
+        - Tiket: bukti sebelum `hold_expires_at` memindahkan tiket ke awaiting_review dan kursi tetap ditahan
+          (PRD 4.4); setelah batas ditolak RESERVATION_EXPIRED (AC F09-2). Tiket rejected bersifat final (AC F09-4).
+          Hold yang lewat tanpa bukti membuat tiket expired dan payment-nya cancelled oleh sistem (histori
+          cancelled beraktor system, alasan batas reservasi habis), tepat sekali oleh job expiry atau oleh request
+          berikutnya, termasuk request ini (AC F09-2).
+
+        Pengulangan dengan Idempotency-Key dan payload sama mengembalikan hasil pertama tanpa menaikkan versi lagi
+        (AC F03-4). Setelah pemeriksaan global (401, 403 ACCOUNT_SUSPENDED, 426 UPGRADE_REQUIRED, 503
+        MAINTENANCE), galat diperiksa berurutan berikut dan yang pertama cocok dikembalikan:
+        1. 404 NOT_FOUND: payment tidak ada atau milik pengguna lain (N-09).
+        2. 409 IDEMPOTENCY_CONFLICT: Idempotency-Key sama dengan payload berbeda.
+        3. 403 FORBIDDEN: payment iuran dari platform yang instruksi iurannya disembunyikan (rencana cadangan D13).
+        4. 410 RESERVATION_EXPIRED: payment tiket yang tiketnya expired atau hold-nya sudah lewat, termasuk bila
+           payment sudah cancelled oleh sistem karena hold habis. Kode ini didahulukan atas
+           PAYMENT_STATE_CONFLICT agar klien selalu menampilkan layar reservasi habis (AC F09-2).
+        5. 409 PAYMENT_STATE_CONFLICT: payment paid; cancelled oleh pemilik, pengurus atau pembatalan event;
+           tiket rejected (AC F09-4); atau tiket sudah cancelled (bukti yang ada tetap diputus pengurus, lihat
+           getMyPayment). `current` berisi PaymentDetail terbaru (AC F03-4).
+        6. 409 PROOF_VERSION_CONFLICT: `expected_proof_version` berbeda dari versi saat ini (bukti sudah diganti
+           dari perangkat lain); `current` berisi PaymentDetail.
+        7. 422 FILE_INVALID: berkas tidak ada, bukan milik pemanggil, bukan purpose payment_proof, belum siap,
+           atau sudah terpakai.
+      x-kapdh-access: { audience: mobile, member_access: nonsuspended, idempotent: true }
       parameters:
         - $ref: "#/components/parameters/PaymentId"
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -91,16 +308,81 @@ paths:
             schema: { $ref: "#/components/schemas/SubmitPaymentProofRequest" }
       responses:
         "200":
-          description: Payment pending dengan bukti versi baru.
+          description: Payment pending dengan bukti versi baru (stage awaiting_review).
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Payment" }
+              schema: { $ref: "#/components/schemas/PaymentDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            ACCOUNT_SUSPENDED, atau FORBIDDEN untuk payment iuran dari platform yang instruksi iurannya
+            disembunyikan (D13).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          description: PAYMENT_STATE_CONFLICT bila payment sudah paid atau cancelled.
+          description: |
+            PAYMENT_STATE_CONFLICT (paid, cancelled bukan karena hold habis, tiket rejected, atau tiket cancelled),
+            PROOF_VERSION_CONFLICT atau IDEMPOTENCY_CONFLICT; `current` berisi PaymentDetail terbaru untuk konflik
+            keadaan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "410":
+          description: |
+            RESERVATION_EXPIRED; tiket expired atau hold sudah lewat (termasuk payment yang sudah dibatalkan sistem
+            karena hold habis), sehingga bukti tidak diterima (AC F09-2).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "422": { $ref: "#/components/responses/FileInvalid" }
+        "426": { $ref: "#/components/responses/UpgradeRequired" }
+        "503": { $ref: "#/components/responses/Maintenance" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/payments/{paymentId}/cancel:
+    post:
+      tags: [Payments]
+      operationId: cancelMyPayment
+      summary: Batalkan instruksi iuran sebelum bukti dikirim (PRD 4.3).
+      description: |
+        Hanya pemilik, hanya payment registration/renewal berstatus pending dengan `proof_version` 0
+        (`actions.can_cancel`). Status menjadi cancelled, `cancelled_at`, alasan dan aktor tersimpan di histori;
+        tidak membuka akses apa pun. Pembayaran tiket dibatalkan lewat pembatalan tiket di domain Events (F-09)
+        agar kursi dilepas, sehingga ditolak di sini dengan PAYMENT_STATE_CONFLICT. Setelah dibatalkan anggota
+        dapat membuat instruksi baru (nilai sesuai pengaturan terbaru).
+
+        Galat: 409 PAYMENT_STATE_CONFLICT (bukan pending, bukti sudah ada, atau tiket) dan 409 VERSION_CONFLICT
+        (If-Match usang), keduanya dengan `current` PaymentDetail; 409 IDEMPOTENCY_CONFLICT.
+      x-kapdh-access: { audience: mobile, member_access: nonsuspended, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CancelPaymentRequest" }
+      responses:
+        "200":
+          description: Payment dibatalkan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AccountSuspended" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: PAYMENT_STATE_CONFLICT, VERSION_CONFLICT atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "426": { $ref: "#/components/responses/UpgradeRequired" }
+        "503": { $ref: "#/components/responses/Maintenance" }
         default: { $ref: "#/components/responses/Error" }
 
 components:
@@ -109,36 +391,64 @@ components:
       name: paymentId
       in: path
       required: true
+      description: ID payment (UUID v7).
       schema: { type: string, format: uuid }
 
   schemas:
     PaymentType:
       type: string
       enum: [registration, renewal, ticket]
+      description: |
+        Jenis pembayaran (PRD 3.3, 3.9): registration = iuran pendaftaran (register alumni baru + pembuatan KTA),
+        renewal = iuran perpanjangan KTA, ticket = pembayaran tiket event (dibuat lewat reservasi F-09).
 
     MembershipPaymentType:
       type: string
       enum: [registration, renewal]
-      description: Jenis iuran yang dapat dibuat anggota sendiri; tiket dibuat lewat reservasi event (F-09).
+      description: Jenis iuran keanggotaan yang dapat dibuat anggota sendiri; tiket dibuat lewat reservasi event (F-09).
 
     PaymentStatus:
       type: string
       enum: [pending, paid, rejected, cancelled]
+      description: |
+        Status payment (PRD 4.3, ARCHITECTURE §3.3). pending -> paid | rejected | cancelled; rejected -> pending
+        hanya untuk registration/renewal (payment sama, bukti versi baru). Tiket rejected bersifat final. paid
+        tidak pernah diubah; koreksi atau refund dicatat sebagai penyesuaian (payment_adjustments). pending ->
+        cancelled hanya sebelum bukti: oleh pemilik, kebijakan pengurus, atau sistem saat hold tiket habis.
+
+    PaymentStage:
+      type: string
+      enum: [awaiting_transfer, awaiting_review, needs_fix, rejected_final, paid, cancelled]
+      description: |
+        Tahap tampilan yang dihitung server dari status, jenis dan versi bukti, agar klien tidak menurunkan aturan
+        sendiri (ARCHITECTURE §2 butir 1):
+        - awaiting_transfer: pending tanpa bukti (proof_version 0), tampil instruksi bayar (screen_3).
+        - awaiting_review: pending dengan bukti, menunggu verifikasi pengurus (screen_4).
+        - needs_fix: iuran rejected yang dapat diperbaiki dengan bukti baru (screen_5, "Perlu Perbaikan").
+        - rejected_final: tiket rejected; tidak dapat dikirim ulang (AC F09-4).
+        - paid: dana terverifikasi pengurus.
+        - cancelled: dibatalkan pemilik, pengurus atau sistem.
 
     PaymentMethodKind:
       type: string
       enum: [bank, ewallet]
+      description: Jenis rekening tujuan transfer manual (D13).
 
     PaymentMethod:
       type: object
+      description: |
+        Rekening tujuan transfer manual milik organisasi (D13). Pada payment, objek ini adalah SNAPSHOT saat
+        instruksi dibuat atau metode diganti; perubahan metode oleh pengurus tidak mengubah payment lama (AC F15-3).
       required: [id, kind, provider, account_number, account_holder]
       properties:
-        id: { type: string, format: uuid }
+        id: { type: string, format: uuid, description: ID metode asal snapshot. }
         kind: { $ref: "#/components/schemas/PaymentMethodKind" }
-        provider: { type: string }
-        account_number: { type: string }
-        account_holder: { type: string }
-        instructions: { type: [string, "null"] }
+        provider: { type: string, description: "Nama bank atau e-wallet, misalnya BSI." }
+        account_number: { type: string, description: Nomor rekening atau akun tujuan organisasi. }
+        account_holder: { type: string, description: Nama pemilik rekening tujuan. }
+        instructions:
+          type: [string, "null"]
+          description: Petunjuk tambahan dari pengurus (misalnya kode bank), teks polos.
 
     PaymentMethodList:
       type: object
@@ -151,56 +461,219 @@ components:
     PaymentLineCode:
       type: string
       enum: [registration_fee, card_fee, renewal_fee, ticket]
+      description: |
+        Kode baris iuran (D4, PRD 3.3): registration_fee = register alumni baru, card_fee = pembuatan KTA,
+        renewal_fee = perpanjangan KTA per tahun, ticket = harga tiket event (snapshot reservasi).
 
     PaymentLine:
       type: object
+      description: Satu baris rincian nominal yang dihitung server dan disnapshot pada payment (AC F03-5).
       required: [code, label, amount]
       properties:
         code: { $ref: "#/components/schemas/PaymentLineCode" }
-        label: { type: string }
+        label:
+          type: string
+          description: Label tampilan berbahasa Indonesia, misalnya "Register alumni baru" atau "Pembuatan KTA".
         amount: { $ref: "#/components/schemas/Money" }
+
+    PaymentTicketStatus:
+      type: string
+      enum: [awaiting_payment, awaiting_review, paid, expired, cancelled]
+      description: Status tiket yang ditautkan payment tiket (PRD 4.4); salinan baca dari domain Events.
+
+    PaymentTicketRef:
+      type: object
+      description: |
+        Ringkasan tiket untuk payment jenis ticket (F-09), didefinisikan lokal agar domain payments tidak bergantung
+        pada skema Events. Satu tiket = satu kursi untuk pemiliknya sendiri.
+      required: [ticket_id, event_id, event_title, event_starts_at, event_timezone, ticket_status]
+      properties:
+        ticket_id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid }
+        event_title: { type: string }
+        event_starts_at: { type: string, format: date-time }
+        event_timezone: { type: string, description: "Zona tampilan event (IANA), misalnya Asia/Jakarta." }
+        ticket_status: { $ref: "#/components/schemas/PaymentTicketStatus" }
+        hold_expires_at:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            Batas kirim bukti selama awaiting_payment (24 jam atau registration_closes_at, mana yang lebih dahulu,
+            D5); null setelah bukti diterima atau tiket selesai.
+
+    PaymentMembershipPeriod:
+      type: object
+      description: Periode keanggotaan yang dihasilkan payment iuran paid (F-07, membership_events).
+      required: [starts_at, expires_at]
+      properties:
+        starts_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+
+    PaymentActions:
+      type: object
+      description: |
+        Tindakan pemilik yang diizinkan server saat respons dibuat (status, jenis, versi bukti, hold tiket dan
+        status efektif). Klien menampilkan tombol sesuai field ini; server tetap memeriksa ulang setiap request.
+      required: [can_submit_proof, can_change_method, can_cancel]
+      properties:
+        can_submit_proof:
+          type: boolean
+          description: |
+            Kirim/ganti bukti: iuran pending atau rejected; tiket pending dengan tiket awaiting_payment sebelum
+            `hold_expires_at` atau awaiting_review. False untuk iuran bila instruksi iuran disembunyikan untuk
+            platform pemanggil (D13).
+        can_change_method:
+          type: boolean
+          description: |
+            Ganti rekening tujuan (pending tanpa bukti). False untuk iuran bila instruksi iuran disembunyikan untuk
+            platform pemanggil (D13).
+        can_cancel:
+          type: boolean
+          description: Batalkan instruksi iuran (registration/renewal pending tanpa bukti).
 
     Payment:
       type: object
-      required: [id, type, status, amount, lines, method, proof_version, created_at, version]
+      description: |
+        Pembayaran milik anggota (F-03). Nilai `amount` dan `lines` adalah snapshot server saat instruksi dibuat;
+        perubahan pengaturan biaya tidak mengubahnya (AC F03-5). Field nullable tidak dikirim bila kosong.
+      required: [id, type, status, stage, amount, lines, method, proof_version, created_at, version, actions]
       properties:
         id: { type: string, format: uuid }
         type: { $ref: "#/components/schemas/PaymentType" }
         status: { $ref: "#/components/schemas/PaymentStatus" }
+        stage: { $ref: "#/components/schemas/PaymentStage" }
         amount: { $ref: "#/components/schemas/Money" }
         lines:
           type: array
           items: { $ref: "#/components/schemas/PaymentLine" }
         method: { $ref: "#/components/schemas/PaymentMethod" }
-        proof_version: { type: integer, minimum: 0 }
-        submitted_at: { type: [string, "null"], format: date-time }
-        decided_at: { type: [string, "null"], format: date-time }
-        rejection_reason: { type: [string, "null"] }
+        proof_version:
+          type: integer
+          minimum: 0
+          description: Versi bukti aktif; 0 berarti belum ada bukti (PRD 4.3).
+        proof_file_id:
+          type: [string, "null"]
+          format: uuid
+          description: Bukti aktif milik pemanggil; dibuka lewat GET /files/{fileId}/access (URL <= 10 menit).
+        transfer_note:
+          type: [string, "null"]
+          description: Catatan transfer dari pemilik untuk bukti aktif.
+        submitted_at:
+          type: [string, "null"]
+          format: date-time
+          description: Waktu server saat bukti aktif dikirim.
+        decided_at:
+          { type: [string, "null"], format: date-time, description: Waktu keputusan terakhir pengurus. }
+        rejection_reason:
+          type: [string, "null"]
+          description: Alasan penolakan terakhir, terlihat oleh pemilik (AC F04-2); alasan lama ada di histori.
+        cancelled_at: { type: [string, "null"], format: date-time }
+        cancel_reason: { type: [string, "null"], description: Alasan pembatalan yang aman ditampilkan. }
+        ticket:
+          description: Tiket terkait, hanya untuk type ticket.
+          oneOf:
+            - $ref: "#/components/schemas/PaymentTicketRef"
+            - type: "null"
+        period:
+          description: Periode keanggotaan hasil payment iuran paid; null selain itu (F-07).
+          oneOf:
+            - $ref: "#/components/schemas/PaymentMembershipPeriod"
+            - type: "null"
         created_at: { type: string, format: date-time }
-        version: { type: string }
+        version: { type: string, description: Versi optimistic concurrency (If-Match). }
+        actions: { $ref: "#/components/schemas/PaymentActions" }
 
     PaymentEventKind:
       type: string
-      enum: [created, proof_submitted, proof_replaced, approved, rejected, cancelled, adjusted]
+      enum:
+        [created, method_changed, proof_submitted, proof_replaced, approved, rejected, cancelled, adjusted]
+      description: |
+        Jenis entri histori payment (payment_events, append-only): created, method_changed (rekening tujuan
+        diganti), proof_submitted (bukti pertama), proof_replaced (bukti pengganti, termasuk kirim ulang setelah
+        ditolak), approved, rejected, cancelled, adjusted (penyesuaian/refund selesai).
+
+    PaymentEventActor:
+      type: string
+      enum: [member, admin, system]
+      description: |
+        Pelaku entri histori. Identitas pengurus tidak ditampilkan kepada anggota; `system` untuk job (misalnya
+        hold tiket kedaluwarsa) atau alur otomatis.
 
     PaymentEvent:
       type: object
-      required: [at, kind]
+      description: Entri histori status dan bukti untuk timeline (prototipe screen_4 "Riwayat").
+      required: [at, kind, actor]
       properties:
         at: { type: string, format: date-time }
         kind: { $ref: "#/components/schemas/PaymentEventKind" }
-        proof_version: { type: integer }
-        reason: { type: [string, "null"] }
+        actor: { $ref: "#/components/schemas/PaymentEventActor" }
+        proof_version:
+          type: [integer, "null"]
+          description: Versi bukti terkait untuk proof_submitted/proof_replaced/approved/rejected.
+        reason:
+          type: [string, "null"]
+          description: |
+            Alasan untuk rejected (AC F03-3, F04-2) dan cancelled; kosong untuk jenis lain. Pada histori pengurus,
+            entri created dari payment yang dicatat pengurus (D13) memuat catatan verifikasi; catatan ini tidak
+            dikirim kepada anggota.
+
+    PaymentAdjustmentKind:
+      type: string
+      enum: [refund, correction]
+      description: |
+        refund = pengembalian dana manual oleh bendahara (D6, PRD 3.9); correction = koreksi keuangan administratif
+        atas payment paid tanpa mengubah payment asal (PRD 3.4, 4.3).
+
+    PaymentAdjustmentStatus:
+      type: string
+      enum: [pending, completed, cancelled]
+      description: pending -> completed | cancelled. Rekening tujuan refund dihapus saat completed/cancelled (D2).
+
+    PaymentAdjustmentSummary:
+      type: object
+      description: |
+        Ringkasan penyesuaian untuk pemilik payment (D6). Alasan internal pengurus dan rekening tujuan refund tidak
+        ditampilkan di sini.
+      required: [id, kind, amount, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/PaymentAdjustmentKind" }
+        amount: { $ref: "#/components/schemas/Money" }
+        status: { $ref: "#/components/schemas/PaymentAdjustmentStatus" }
+        due_at:
+          type: [string, "null"]
+          format: date-time
+          description: Tenggat bendahara untuk refund (paling lambat 7 hari kerja sejak pembatalan, D6).
+        completed_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
 
     PaymentDetail:
+      description: Detail pembayaran milik sendiri beserta histori dan penyesuaian (F-03, AC F03-3).
       allOf:
         - $ref: "#/components/schemas/Payment"
         - type: object
-          required: [events]
+          required: [events, adjustments, method_active, instructions_hidden]
           properties:
             events:
               type: array
+              description: Histori urut waktu naik (terlama dahulu).
               items: { $ref: "#/components/schemas/PaymentEvent" }
+            adjustments:
+              type: array
+              description: Penyesuaian/refund atas payment ini (kosong bila tidak ada).
+              items: { $ref: "#/components/schemas/PaymentAdjustmentSummary" }
+            method_active:
+              type: boolean
+              description: |
+                False bila metode snapshot sudah dinonaktifkan pengurus; selama belum ada bukti klien menyarankan
+                ganti rekening tujuan sebelum transfer.
+            instructions_hidden:
+              type: boolean
+              description: |
+                True hanya untuk payment iuran (registration/renewal) bila platform pemanggil (`X-App-Platform`)
+                menyembunyikan instruksi iuran (pengaturan `payment_instructions`, rencana cadangan D13). Klien
+                tidak menampilkan rekening tujuan, ajakan transfer maupun unggah bukti; hanya status, histori dan
+                kontak dukungan. Selalu false untuk tiket.
 
     PaymentPage:
       type: object
@@ -213,14 +686,94 @@ components:
 
     CreatePaymentRequest:
       type: object
+      description: Instruksi iuran; nominal tidak dikirim klien (PRD 3.3).
       required: [type, payment_method_id]
       properties:
         type: { $ref: "#/components/schemas/MembershipPaymentType" }
-        payment_method_id: { type: string, format: uuid }
+        payment_method_id:
+          { type: string, format: uuid, description: Metode aktif dari GET /payment-methods. }
+
+    ChangePaymentMethodRequest:
+      type: object
+      required: [payment_method_id]
+      properties:
+        payment_method_id:
+          { type: string, format: uuid, description: Metode aktif dari GET /payment-methods. }
 
     SubmitPaymentProofRequest:
       type: object
-      required: [file_id]
+      required: [file_id, expected_proof_version]
       properties:
-        file_id: { type: string, format: uuid, description: Hasil unggah purpose payment_proof. }
-        transfer_note: { type: string, maxLength: 200 }
+        file_id: { type: string, format: uuid, description: Hasil unggah POST /files purpose payment_proof. }
+        transfer_note:
+          type: string
+          maxLength: 200
+          description: Catatan opsional (misalnya bank pengirim); menggantikan catatan bukti sebelumnya.
+        expected_proof_version:
+          type: integer
+          minimum: 0
+          description: |
+            `proof_version` yang dilihat klien sebelum mengunggah (0 untuk bukti pertama). Berbeda dari versi
+            server menghasilkan 409 PROOF_VERSION_CONFLICT.
+
+    CancelPaymentRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 200
+          description: Alasan opsional dari pemilik; tersimpan di histori.
+
+    FeeQuoteIneligibleReason:
+      type: string
+      enum: [already_registered, registration_required, renewal_window_not_open]
+      description: |
+        Alasan kutipan tidak dapat dibayar (PRD 2.2, AC F07-5): already_registered = iuran pendaftaran sudah paid;
+        registration_required = perpanjangan sebelum iuran pendaftaran paid; renewal_window_not_open = sisa masa
+        aktif lebih dari jendela perpanjangan (30 hari).
+
+    FeeQuote:
+      type: object
+      description: Kutipan satu jenis iuran dari pengaturan `fees` versi aktif (D4).
+      required: [type, lines, total, eligible]
+      properties:
+        type: { $ref: "#/components/schemas/MembershipPaymentType" }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/PaymentLine" }
+        total: { $ref: "#/components/schemas/Money" }
+        eligible: { type: boolean, description: Pemanggil boleh membuat instruksi jenis ini sekarang. }
+        ineligible_reason:
+          description: Diisi bila `eligible` false.
+          oneOf:
+            - $ref: "#/components/schemas/FeeQuoteIneligibleReason"
+            - type: "null"
+        open_payment_id:
+          type: [string, "null"]
+          format: uuid
+          description: Payment nonterminal (pending/rejected) jenis ini yang sudah ada; buka payment ini.
+        renewal_opens_at:
+          type: [string, "null"]
+          format: date-time
+          description: Untuk renewal saat jendela belum dibuka; waktu jendela perpanjangan dibuka (AC F07-5).
+
+    MyFeeQuotes:
+      type: object
+      description: Kutipan iuran pendaftaran dan perpanjangan untuk pemanggil (prototipe screen_2).
+      required: [registration, renewal, period_months, settings_version, instructions_hidden]
+      properties:
+        registration: { $ref: "#/components/schemas/FeeQuote" }
+        renewal: { $ref: "#/components/schemas/FeeQuote" }
+        instructions_hidden:
+          type: boolean
+          description: |
+            True bila platform pemanggil (`X-App-Platform`) menyembunyikan instruksi iuran (pengaturan
+            `payment_instructions`, rencana cadangan D13). Klien tidak menampilkan alur bayar iuran dan mengarahkan
+            anggota ke kontak dukungan; POST /me/payments dari platform ini ditolak 403 FORBIDDEN.
+        period_months:
+          type: integer
+          minimum: 1
+          description: Lama periode per iuran paid (12 bulan kalender sejak disetujui, PRD 2.1, D4).
+        settings_version:
+          type: string
+          description: Versi pengaturan `fees` yang dipakai kutipan ini.
