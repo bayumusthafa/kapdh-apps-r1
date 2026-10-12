@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { components } from "@kapdh/contracts";
+import { type components, PERMISSION_VALUES } from "@kapdh/contracts";
 import type { ServerEnv } from "@kapdh/config";
 import { adminPermissions, admins, alumni, mfaTotp, otpCodes, sessions, users } from "@kapdh/database";
 import bcrypt from "bcryptjs";
@@ -623,19 +623,5 @@ export class AuthService {
   }
 }
 
-export const ALL_PERMISSIONS: components["schemas"]["Permission"][] = [
-  "payments.read",
-  "payments.decide",
-  "members.read",
-  "members.manage",
-  "content.manage",
-  "master.manage",
-  "events.manage",
-  "events.checkin",
-  "moderation.read",
-  "moderation.resolve",
-  "audit.read",
-  "audit.export",
-  "settings.manage",
-  "admins.manage",
-];
+/** Semua izin kontrak (ARCHITECTURE §4.5, 15 izin) yang dimiliki super_admin; sumbernya enum Permission kontrak. */
+export const ALL_PERMISSIONS: components["schemas"]["Permission"][] = [...PERMISSION_VALUES];

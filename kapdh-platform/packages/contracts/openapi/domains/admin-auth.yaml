@@ -1,0 +1,115 @@
+# Domain admin-auth (C1 Identity): login admin dua tahap (sandi lalu TOTP), izin efektif, undangan admin,
+# pendaftaran TOTP dan backup code. Modul API: apps/api/src/modules/admin-auth.
+tags:
+  - name: Admin Auth
+    description: Login admin, TOTP, backup code, undangan dan izin efektif (F-02, F-16).
+
+paths:
+  /admin/auth/login:
+    post:
+      tags: [Admin Auth]
+      operationId: adminLogin
+      summary: Tahap sandi admin; hasilnya hanya mfa_token, belum bisa memanggil API admin (AC F02-2).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminLoginRequest" }
+      responses:
+        "200":
+          description: Lanjut ke TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminLoginResponse" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/auth/mfa:
+    post:
+      tags: [Admin Auth]
+      operationId: adminVerifyMfa
+      summary: Verifikasi TOTP atau backup code; menerbitkan access token di body dan refresh cookie HttpOnly.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminMfaRequest" }
+      responses:
+        "200":
+          description: Sesi admin aktif.
+          headers:
+            Set-Cookie:
+              description: kapdh_admin_rt; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSession" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/me:
+    get:
+      tags: [Admin Auth]
+      operationId: getAdminMe
+      summary: Identitas admin, izin efektif, dan versi izin untuk menyusun menu (AC F15-1, F16-3).
+      responses:
+        "200":
+          description: Admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminProfile" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/MfaRequired" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  schemas:
+    AdminLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, maxLength: 128 }
+
+    AdminLoginResponse:
+      type: object
+      required: [mfa_token, mfa_expires_at]
+      properties:
+        mfa_token:
+          { type: string, description: Hanya untuk POST /admin/auth/mfa; tidak berlaku untuk API admin. }
+        mfa_expires_at: { type: string, format: date-time }
+        totp_enrollment_required:
+          { type: boolean, description: True bila admin belum mendaftarkan TOTP (F-16). }
+
+    AdminMfaRequest:
+      type: object
+      required: [mfa_token]
+      description: Salah satu dari totp_code atau backup_code wajib diisi.
+      properties:
+        mfa_token: { type: string }
+        totp_code: { type: string, pattern: "^[0-9]{6}$", x-sensitive: true }
+        backup_code: { type: string, maxLength: 32 }
+
+    AdminSession:
+      type: object
+      required: [access_token, access_expires_at, idle_timeout_seconds]
+      properties:
+        access_token: { type: string }
+        access_expires_at: { type: string, format: date-time }
+        idle_timeout_seconds:
+          { type: integer, examples: [1800], description: Idle timeout server 30 menit (N-08). }
+
+    AdminProfile:
+      type: object
+      required: [admin_id, display_name, role, permissions, permissions_version]
+      properties:
+        admin_id: { type: string, format: uuid }
+        display_name: { type: string }
+        role: { $ref: "#/components/schemas/AdminRole" }
+        permissions:
+          type: array
+          items: { $ref: "#/components/schemas/Permission" }
+        permissions_version: { type: integer }

@@ -1,28 +1,32 @@
 {
   "name": "@kapdh/contracts",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Kontrak OpenAPI 3.1 KAPDH Apps dan tipe TypeScript terbangkit (PRD 5.2, N-13).",
+  "description": "Kontrak OpenAPI 3.1 KAPDH Apps, skema event realtime, tipe TypeScript dan SDK Dart terbangkit (PRD 5.2, N-13).",
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./openapi.yaml": "./openapi/openapi.yaml"
+    "./openapi.yaml": "./dist/openapi.yaml",
+    "./events/*": "./events/*"
   },
   "scripts": {
-    "lint": "redocly lint openapi/openapi.yaml",
-    "generate": "openapi-typescript openapi/openapi.yaml -o src/generated/api.ts",
-    "generate:dart": "openapi-generator-cli generate -i openapi/openapi.yaml -g dart-dio -o generated/dart --additional-properties=pubName=kapdh_api,pubVersion=0.1.0,nullableFields=true",
-    "build": "pnpm generate && tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo \"no tests\""
+    "bundle": "node scripts/assemble.mjs",
+    "lint": "node scripts/assemble.mjs && redocly lint dist/openapi.yaml && node scripts/validate-events.mjs && eslint scripts",
+    "generate": "node scripts/assemble.mjs && node scripts/gen-ts.mjs && node scripts/gen-dart.mjs",
+    "generate:dart": "node scripts/assemble.mjs && node scripts/gen-dart.mjs",
+    "typecheck": "pnpm run generate && tsc -p tsconfig.json --noEmit",
+    "build": "pnpm run generate && tsc -p tsconfig.json",
+    "test": "node --test scripts/test/*.test.mjs"
   },
   "devDependencies": {
-    "@openapitools/openapi-generator-cli": "2.41.0",
     "@redocly/cli": "2.62.1",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
     "openapi-typescript": "7.13.0",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "yaml": "2.9.1"
   }
 }

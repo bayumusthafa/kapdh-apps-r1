@@ -1,0 +1,7 @@
+# Domain admin-notifications (C7 Admin & notifications): status pengiriman email/push dan retry terkendali
+# (izin notifications.manage). Modul API: apps/api/src/modules/notifications. Path ditambahkan oleh penulis kontrak C7.
+tags:
+  - name: Admin Notifications
+    description: Status pengiriman notifikasi per kanal dan retry terkendali oleh pengurus (F-13, AC F13-4).
+
+paths: {}

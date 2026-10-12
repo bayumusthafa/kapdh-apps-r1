@@ -8,4 +8,9 @@ coverage/
 .env.*
 !.env.example
 .DS_Store
-packages/contracts/generated/dart/
+# Keluaran generator kontrak (ARCHITECTURE §6): dibangkitkan `pnpm contracts:gen` / build, tidak di-commit.
+packages/contracts/src/generated/
+packages/contracts/dart/kapdh_api/lib/src/
+# Paket Dart: cache alat dan lockfile pustaka (lockfile hanya di-commit oleh aplikasi).
+.dart_tool/
+packages/contracts/dart/kapdh_api/pubspec.lock
