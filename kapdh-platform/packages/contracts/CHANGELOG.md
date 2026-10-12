@@ -260,7 +260,7 @@ Perubahan pada operasi yang sudah ada (F-13):
 | `GET /notifications`             | Tidak memutus. `InboxNotification.deep_link` tetap string nullable bentuk eksternal `kapdh://app` + rute (pola `^kapdh://app/[A-Za-z0-9/_.-]*$`, maxLength 320) dan kini satu-satunya bentuk deep link di REST, payload realtime `notification.created` dan payload data FCM; notifications.data.route menyimpan path string (ARCHITECTURE §4.7). Katalog rute per kategori didokumentasikan di `InboxNotification`. `body`, `deep_link`, `read_at` dan `NotificationPage.next_cursor` kini wajib ada (boleh null). Parameter baru `unread_only` dan `category`; respons 400/401/403 dideklarasikan. |
 | `POST /notifications/read`       | **[memutus]** respons 204 menjadi 200 `MarkNotificationsReadResult {updated_count, unread_count}`. `ids` minItems 1 dan uniqueItems; field baru `up_to` untuk `all`; tepat salah satu dari `ids` atau `all: true`. Respons 401/403/426/503 dideklarasikan.                                                                                                                                                                                                                                                                                                                                           |
 | `PUT /notifications/preferences` | **[memutus]** body kini `NotificationPreferencesUpdate {push, email}` dengan seluruh saklar wajib (penggantian penuh). `PushPreferences`/`EmailPreferences` semua field wajib. Respons `NotificationPreferences` menambah `mandatory_categories` dan `updated_at`; `email` wajib.                                                                                                                                                                                                                                                                                                                    |
-| `PUT /devices`                   | **[memutus]** `app_version` wajib semver (pola sama dengan header `X-App-Version`); `token` minLength 1. Token diikat ke sesi pemanggil; perpindahan token ke akun/sesi lain membatalkan pengiriman pending pemilik lama dalam transaksi yang sama (AC F13-5). Respons 401/403/426/503 dideklarasikan.                                                                                                                                                                                                                                                                                               |
+| `PUT /devices`                   | **[memutus]** `app_version` wajib semver (pola sama dengan header `X-App-Version`); `token` minLength 1. Token diikat ke pengguna dan KELUARGA sesi pemanggil (`sessions.family_id`, stabil selama rotasi refresh); hanya perpindahan ke AKUN lain yang membatalkan pengiriman pending pemilik lama (`token_reassigned`) dalam transaksi yang sama (AC F13-5), sedangkan pendaftaran ulang oleh pengguna yang sama tidak membatalkan apa pun (AC F13-1). Logout dan pencabutan sesi mencocokkan token lewat family_id. Respons 401/403/426/503 dideklarasikan.                                       |
 
 Operasi baru:
 
@@ -280,6 +280,25 @@ Operasi baru:
 - Admin Audit: `adminSearchAudit`, `adminGetAuditEntry`, `adminCreateAuditExport`, `adminListAuditExports`,
   `adminGetAuditExport`, `adminGetAuditExportAccess` (F-17; filter pencarian dan ekspor identik, AC F17-4; keadaan
   job ekspor diturunkan dari audit_logs dan files tanpa tabel baru).
+
+Perbaikan tinjauan kedua C7 (belum ada klien atau controller, dicatat untuk penulis implementasi):
+
+- `adminDeleteAdmin` (`DELETE /admin/admins/{adminId}`, baru): menghapus identitas admin yang belum pernah aktif
+  sehingga email login dan tautan alumni bebas dipakai lagi (F-16). `AdminUpdateRequest.email` (koreksi email login
+  admin `invited` atau `disabled` yang belum pernah aktif, token undangan diterbitkan ulang) dan
+  `AdminRecoveryRequest.email` (alamat baru
+  saat pemulihan, pemberitahuan keamanan juga ke alamat lama) ditambahkan. Alumni yang sudah tertaut pada undangan
+  kini selalu 409 VALIDATION_ERROR; 400 hanya untuk alumni yang tidak memenuhi syarat.
+- `adminListNotificationDeliveries`: parameter baru `retryable`. `DashboardJobs` menambah `failed_delivery_since`
+  (wajib); `failed_delivery_count` dan `AdminNavBadges.failed_jobs` kini hanya menghitung kegagalan yang dapat
+  ditindak (retryable dalam jendela waktu, ditambah outbox `dead` untuk lencana); `failed_account_deletion_count`
+  informasi saja.
+- `AdminOutboxRetrySkipReason` menambah `in_progress`: retry outbox tidak memutus lease dispatcher yang masih berlaku;
+  `AdminOutboxEvent.retryable` false selama `in_progress`.
+- Ekspor CSV audit menyamarkan kunci privat dan secret pada before/after (`[disembunyikan]`, AC F17-3).
+- Respons galat: `AdminSessionForbidden` (403 FORBIDDEN untuk audience salah atau admin tidak aktif, atau
+  MFA_REQUIRED) untuk `adminGetDashboard`, `adminGetDashboardBadges`, `adminListPermissions`; 400 ValidationError
+  untuk `getNotification`, `adminGetAdmin`, `adminGetAuditEntry`, `adminGetAuditExport`, `adminGetAuditExportAccess`.
 
 ## 0.2.0
 
