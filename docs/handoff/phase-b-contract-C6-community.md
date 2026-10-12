@@ -18,6 +18,17 @@ What was fixed:
 
 No operation was added or removed; there are still 83. The only shape changes are one new schema, one new required field (`contested_suspension`) and `peer` becoming required.
 
+## second fix round (7 findings, all fixed)
+1. **Room subscriptions end at expiry.** chat.yaml domain rules and events/README.md ("Pencabutan langganan room") now bind the gateway: only active joined members are put in room:<id>; the gateway schedules removal from every room channel at alumni.expires_at; it also revokes immediately when a chat HTTP call returns MEMBERSHIP_REQUIRED/ACCOUNT_SUSPENDED or a typing/presence.ping emit is refused; a sweep runs at least every 60 s; sockets are re-joined after renewal/unsuspend. The client learns of expiry from the 403 and from /me expires_at.
+2. **Read limits match write limits.** NetworkMemberProfile.phone maxLength 24 (was 20); NetworkSocialLinks instagram/x/facebook maxLength 200 (was 120).
+3. **Group avatar in evidence.** AdminModerationEvidenceRoom.avatar (AdminModerationEvidenceImage | null) is new and required; files referenced by evidence are kept until D2 retention removes them.
+4. **Conflict-of-interest counts.** admin-moderation.yaml rule c) says every report count shown to admins (DashboardModeration.*, AdminNavBadges.reports_open, AdminMemberDetail.moderation for the caller's own linked account) must use the same visibility rule as adminListReports. The other domains still need the change (blocking, below).
+5. **Appeals without the admin-members fix.** The admin-members unsuspend dependency is now stated as a blocking cross-domain dependency, not an assumption. Safety net inside C6: new AdminModerationContestedSuspension.in_force; a stale appeal (in_force false) can only be closed with unsuspend, which grants it without changing membership, and dismiss returns 400; createAppeal closes a stale active appeal as granted and creates a new one for the current suspension, under the alumni row lock.
+6. **Chat push only for active members.** sendChatMessage schedules chat push only for joined members other than the sender who are verified/expiring and not suspended, have not muted the room, and have chat push enabled.
+7. **Strict member-facing schemas.** Every response schema in chat.yaml and moderation.yaml has additionalProperties: false. ChatPeer, ChatRoomMember and ChatRoom no longer use allOf (parent fields repeated), so Dart drops `implements ChatUserRef/ChatRoomSummary`; JSON names are unchanged.
+
+Blocking cross-domain changes (not made, other owners): admin-dashboard.yaml counts (C7), admin-members.yaml adminUnsuspendMember closing appeals via a shared MembershipKernel.unsuspend and AdminMemberDetail.moderation exclusion (C2), core/files retention of evidence files. Details are in packages/contracts/CHANGELOG.md, section "Ketergantungan lintas domain C6".
+
 ## contract/shared changes
 - DB (packages/database, not made): add the value 'appeal' to the enum app.report_category. An appeal is a report with category appeal, target_type user and target_user_id = reporter_id (PRD 3.12).
 - DB (not made): add these columns to app.reports: claimed_by_admin_id uuid (references admins.id ON DELETE SET NULL, partial index), claimed_at timestamptz, member_message text (at most 500), message_removed_at timestamptz. Optional CHECK: status <> 'in_review' or claimed_at is not null.

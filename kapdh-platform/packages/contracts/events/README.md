@@ -30,7 +30,8 @@ dikompilasi Ajv mode strict; setiap contoh wajib lolos skemanya.
   dicetak `toString()` SDK (`x-sensitive`).
 
 Klien hanya mengirim `typing {room_id}` dan `presence.ping`. Autentikasi handshake `{token: <access JWT>}`;
-pencabutan sesi/izin memutus atau melepas langganan (AC F02-6, F11-6, F16-3).
+pencabutan sesi/izin memutus atau melepas langganan (AC F02-6, F11-6, F16-3), lihat bagian "Pencabutan langganan
+room" di bawah.
 
 Emit klien (tidak memakai amplop; tidak ada endpoint HTTP untuk typing/presence, PRD 3.11):
 
@@ -38,9 +39,35 @@ Emit klien (tidak memakai amplop; tidak ada endpoint HTTP untuk typing/presence,
   (verified/expiring, tidak suspended) dan keanggotaan joined pada setiap emit; bila tidak lagi berizin emit
   diabaikan dan subscription room dicabut (AC F11-4, F11-6). Diteruskan sebagai event `typing` (dibatasi laju).
 - `presence.ping` tanpa data, dikirim berkala selama aplikasi aktif dan lebih sering daripada `ttl_seconds` event
-  `presence` yang diterima. Presence dan typing hanya sementara (TTL), bukan bukti pesan dibaca.
+  `presence` yang diterima. Ping dari pengguna yang tidak lagi aktif diabaikan (tidak disiarkan) dan langganan room
+  socket itu dicabut. Presence dan typing hanya sementara (TTL), bukan bukti pesan dibaca.
 - Pesan TIDAK dikirim lewat socket: klien memakai `POST /chat/rooms/{roomId}/messages` (ack sesudah commit,
   AC F11-2), lalu menerima `message.created`.
+
+## Pencabutan langganan room (AC F11-4, F11-6, PRD 4.5)
+
+Kanal `room:<id>` membawa isi pesan dan URL gambar, sehingga hanya boleh diikuti socket anggota joined yang status
+efektifnya aktif (verified/expiring, tidak suspended), sama dengan izin baca riwayat HTTP (ARCHITECTURE §3.1). Aturan
+gateway (mengikat, juga tercantum di kepala `openapi/domains/chat.yaml`):
+
+1. Saat handshake dan setiap join room, gateway memeriksa sesi, status efektif dan keanggotaan joined. Socket yang
+   tidak aktif hanya bergabung ke `user:<id>` (kotak masuk dan `session.revoked` tetap sampai untuk semua status).
+2. Expired murni berbasis waktu (`now >= expires_at`, tanpa event DB). Gateway menyimpan `alumni.expires_at` per
+   socket dan menjadwalkan pengeluaran socket dari SEMUA kanal `room:<id>` tepat pada `expires_at`.
+3. Pencabutan seketika juga terjadi bila request HTTP chat/jejaring pengguna itu ditolak 403
+   `MEMBERSHIP_REQUIRED`/`ACCOUNT_SUSPENDED`, emit `typing`/`presence.ping` ditolak, keanggotaan room menjadi
+   left/removed, atau sesi dicabut (`session.revoked`, termasuk suspend, lalu socket diputus). Pencabutan dan
+   pemasukan ulang memakai operasi adapter pada `user:<id>` (`socketsLeave`/`socketsJoin`) agar berlaku lintas
+   instance.
+4. Penyapuan berkala paling lama setiap 60 detik memeriksa ulang sesi dan status efektif setiap socket (jaring
+   pengaman bila jadwal butir 2 hilang, mis. instance dimulai ulang).
+5. Setelah commit yang membuat status efektif kembali aktif (persetujuan perpanjangan/registrasi, unsuspend) atau
+   mengubah `expires_at`, server memasukkan ulang socket pengguna ke kanal room joined-nya dan menjadwalkan ulang
+   butir 2. Klien lalu menyinkron dengan `?after=<jangkar>` (bagian berikut).
+6. Klien mengetahui berakhirnya keanggotaan dari 403 `MEMBERSHIP_REQUIRED` pada panggilan HTTP chat berikutnya dan
+   dari `expires_at` di `GET /me`: tampilkan ajakan perpanjang dan tahan pengiriman (pesan tertunda tetap di antrean
+   lokal dengan `client_message_id` yang sama). Push chat juga hanya dijadwalkan untuk anggota aktif
+   (`sendChatMessage`).
 
 ## Sinkron setelah reconnect (AC F11-3, N-02)
 

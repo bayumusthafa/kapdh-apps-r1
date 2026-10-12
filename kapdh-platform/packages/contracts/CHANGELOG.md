@@ -269,9 +269,50 @@ Aturan perilaku yang mengikat implementasi (dicatat di sini karena tidak terliha
   `ChatRoomSummary.peer` kini wajib ada (null untuk grup).
 - Banding (`POST /appeals`) hanya untuk suspend yang sedang berlaku (warn tidak dapat dibanding di R1.0); snapshot
   suspend disimpan di `AdminModerationEvidence.contested_suspension`. Setiap unsuspend (keputusan laporan atau menu
-  anggota admin) menutup banding aktif pemohon sebagai dikabulkan dalam transaksi yang sama.
+  anggota admin) menutup banding aktif pemohon sebagai dikabulkan dalam transaksi yang sama; untuk menu anggota admin
+  ini masih ketergantungan lintas domain yang belum diterapkan (lihat bagian di bawah).
 - Moderasi admin: laporan yang pihak terlapornya akun alumni tertaut pengurus pemanggil dikecualikan dari antrean
   (item, total, counts, q) dan detail/klaim/keputusan menjawab 404; tertaut ke pelapor tetap 403 untuk klaim/keputusan.
+- Realtime chat: gateway hanya memasukkan socket anggota aktif ke `room:<id>`, menjadwalkan pengeluaran dari semua
+  kanal room tepat pada `alumni.expires_at` (expired berbasis waktu tanpa event DB), mencabut seketika saat request
+  chat ditolak MEMBERSHIP_REQUIRED/ACCOUNT_SUSPENDED, menyapu ulang paling lama setiap 60 detik, dan memasukkan ulang
+  setelah perpanjangan/unsuspend (AC F11-6, PRD 4.5; kepala `chat.yaml`, `events/README.md`).
+- Chat: push kategori chat dari `sendChatMessage` hanya untuk anggota joined berstatus aktif (bukan expired/suspended).
+- Banding usang (suspend yang dibanding sudah dicabut tanpa menutup bandingnya): `POST /appeals` menutupnya sebagai
+  dikabulkan lalu membuat banding baru; `adminResolveReport` hanya menerima `unsuspend` (menutup sebagai dikabulkan
+  tanpa mengubah keanggotaan) dan menolak `dismiss` 400. Field baru wajib
+  `AdminModerationContestedSuspension.in_force`.
+- Bukti laporan grup kini memuat avatar grup saat laporan dibuat: field wajib baru `AdminModerationEvidenceRoom.avatar`
+  (`AdminModerationEvidenceImage` | null). Berkas yang dirujuk bukti ditahan selama laporan disimpan (retensi D2).
+
+Perubahan bentuk (belum ada controller maupun klien rilis untuk operasi komunitas):
+
+- Semua skema respons anggota di `chat.yaml` dan `moderation.yaml` kini `additionalProperties: false` (sama dengan
+  `network.yaml` dan skema event realtime) sehingga uji kontrak menolak kebocoran field. Karena itu `ChatPeer`,
+  `ChatRoom` dan `ChatRoomMember` tidak lagi memakai `allOf`; field induk (`ChatUserRef`, `ChatRoomSummary`) diulang.
+  Dart: `ChatPeer`, `ChatRoomMember` tidak lagi `implements ChatUserRef` dan `ChatRoom` tidak lagi
+  `implements ChatRoomSummary`; nama dan field JSON tidak berubah.
+- `NetworkMemberProfile.phone` maxLength 20 -> 24 dan `NetworkSocialLinks.instagram/x/facebook` maxLength 120 -> 200,
+  disamakan dengan aturan tulis `ProfileUpdate.phone` / `SocialHandle` (pelonggaran, tidak memutus).
+
+### Ketergantungan lintas domain C6 (belum dibuat; pemilik domain lain/integrator)
+
+Penulis C6 hanya memiliki `network.yaml`, `chat.yaml`, `moderation.yaml`, `admin-moderation.yaml` dan `events/`,
+sehingga aturan berikut dicatat di sini untuk diterapkan pemilik domainnya sebelum modul moderasi dirilis:
+
+- `admin-dashboard.yaml` (C7): `DashboardModeration.open_count`, `urgent_count`, `overdue_count`,
+  `oldest_open_created_at` dan `AdminNavBadges.reports_open` wajib memakai aturan visibilitas konflik kepentingan yang
+  sama dengan `adminListReports` (laporan yang pihak terlapornya akun alumni tertaut pemanggil dikecualikan) sehingga
+  selalu sama dengan `AdminModerationQueueCounts` pemanggil yang sama; selisihnya akan membocorkan adanya laporan
+  tersembunyi terhadap pemanggil (PRD 2.3, AC F12-2; `admin-moderation.yaml` aturan domain butir c).
+- `admin-members.yaml` (C2): `adminUnsuspendMember` (dan setiap jalur unsuspend lain) wajib memakai fungsi kernel
+  keanggotaan yang sama dengan `adminResolveReport` (mis. `MembershipKernel.unsuspend`) yang dalam transaksi yang sama
+  menutup banding aktif anggota (kategori `appeal`, status open/in_review, `target_user_id` = anggota) sebagai
+  resolved, action `unsuspend`, `resolution_note` merujuk pencabutan itu, dan menjadwalkan notifikasi kategori account
+  (outcome action_taken) ke pemohon. `AdminMemberDetail.moderation` (`open_report_count`, `total_report_count`) wajib
+  null atau memakai aturan visibilitas yang sama saat pemanggil membuka akun alumni tertautnya sendiri.
+- Inti berkas (`core/files`): berkas yang dirujuk `reports.evidence` (gambar pesan, avatar profil, avatar grup) tidak
+  dihapus saat pesan dihapus atau avatar diganti; hanya dihapus sesuai retensi D2.
 
 ### Event realtime
 
