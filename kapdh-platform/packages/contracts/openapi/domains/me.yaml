@@ -1,18 +1,40 @@
 # Domain me (C2 Membership): profil sendiri, effective_status, KTA, periode keanggotaan dan master baca.
 # Modul API: apps/api/src/modules/membership.
+#
+# Vendor extension `x-kapdh-access` pada setiap operasi mencerminkan dekorator server (ARCHITECTURE §4.3):
+# audience (public|mobile|admin|any), member_access (any|nonsuspended|active, ARCHITECTURE §3.1), permissions
+# (semua wajib dimiliki, §4.5), permissions_any (cukup salah satu izin dimiliki; dipakai bila satu data dibutuhkan
+# dua area pengurus), role (super_admin bila tindakan khusus Super Admin), reauth (X-Reauth-Token), idempotent
+# (Idempotency-Key dihormati). super_admin selalu memenuhi permissions dan permissions_any.
 tags:
   - name: Me
-    description: Profil, status keanggotaan, KTA dan periode milik sendiri serta master terkontrol (F-05, F-07, PRD 2.2).
+    description: |
+      Profil, status keanggotaan, KTA dan periode milik sendiri serta master terkontrol (F-05, F-07, F-10,
+      PRD 2.2, 3.5). Semua nilai status dihitung server dari data canonical; klien hanya merender dan merutekan.
 
 paths:
   /me:
     get:
       tags: [Me]
       operationId: getMe
-      summary: Profil sendiri dan effective_status yang menentukan rute klien (PRD 2.2).
+      summary: Profil sendiri, status akun, effective_status dan penunjuk iuran terbuka untuk perutean klien (PRD 2.2, AC F02-1).
+      description: |
+        Dipanggil setelah login, saat aplikasi kembali aktif, dan setelah galat MEMBERSHIP_REQUIRED atau
+        ACCOUNT_SUSPENDED untuk menentukan rute (routeForStatus, PRD 2.2). Dapat dipanggil semua effective_status
+        yang memiliki sesi (unverified, verified, expiring, expired, suspended). Akun pending_otp tidak memperoleh
+        sesi (login mengarah ke OTP); akun disabled/deletion_pending sesinya dicabut sehingga mendapat 401.
+
+        Perutean onboarding (prototipe layar 2, 3, 4, 5) memakai `registration_payment`:
+        - effective_status unverified dan `registration_payment` null: layar Biaya KTA (/onboarding/fees);
+        - stage `awaiting_proof`: layar pembayaran/unggah bukti (/payments/{id});
+        - stage `awaiting_review`: layar Menunggu Verifikasi;
+        - stage `rejected`: layar Ditolak dengan `rejection_reason` (AC F03-3, F04-2).
+        Perpanjangan memakai `renewal_eligible`, `renewal_opens_at` dan `renewal_payment` dengan aturan yang sama
+        (AC F07-5). Nilai `version` dipakai sebagai If-Match pada PATCH /me/profile.
+      x-kapdh-access: { audience: mobile, member_access: any }
       responses:
         "200":
-          description: Profil.
+          description: Profil dan status terkini.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Me" }
@@ -23,11 +45,32 @@ paths:
     patch:
       tags: [Me]
       operationId: updateMyProfile
-      summary: Ubah profil umum sendiri (F-10, PRD 4.6 profil minimum).
+      summary: Ubah profil umum, profesi/keahlian, avatar dan privasi sendiri (F-10, PRD 4.6, AC F10-2, F10-4).
       description: |
-        Angkatan, kelas masuk/keluar dan jenis kelamin hanya bisa diubah sendiri selama
-        effective_status unverified; setelah itu hanya admin (members.manage). Prefix nomor
-        dihitung ulang oleh server; nomor urut tetap (AC F05-6).
+        Hanya field yang dikirim yang diubah (PATCH); null pada field nullable berarti mengosongkan. Hanya untuk
+        effective_status nonsuspended (unverified, verified, expiring, expired); suspended mendapat 403
+        ACCOUNT_SUSPENDED.
+
+        Field identitas keanggotaan TIDAK dapat diubah lewat endpoint ini (PRD 3.5, 6.4, AC F05-6): nama lengkap,
+        jenis kelamin, angkatan, kelas masuk/keluar, email dan nomor anggota. Nomor dialokasikan saat OTP
+        terverifikasi sehingga setelah itu koreksi hanya oleh pengurus berizin members.manage
+        (PATCH /admin/members/{userId}); email lewat alur koreksi email terverifikasi (F-01). Body yang memuat
+        field di luar skema (mis. member_number, cohort) ditolak 400 VALIDATION_ERROR dan tidak ada field yang
+        berubah.
+
+        Aturan server:
+        - profession_id dan skill_ids hanya boleh menunjuk master aktif, kecuali master nonaktif yang SUDAH
+          terpasang pada profil ini (label historis tetap, AC F10-4); selain itu 400 VALIDATION_ERROR pada field
+          tersebut. skill_ids menggantikan seluruh himpunan keahlian (maksimal 10, tanpa duplikat).
+        - avatar_file_id wajib berkas milik pemanggil dengan purpose `avatar` dan status ready; selain itu 422
+          FILE_INVALID (tanpa membedakan berkas milik orang lain dari berkas yang tidak ada, N-09).
+        - Privasi: kontak dan tautan sosial bawaan tersembunyi (show_phone/show_email/show_social false, N-15);
+          field tersembunyi tidak ikut payload direktori/profil anggota lain (AC F10-2).
+        - Keempat tautan sosial memakai aturan SocialHandle yang sama: nama pengguna atau URL https; skema lain
+          (javascript:, data:, http:, dll.) ditolak 400 VALIDATION_ERROR pada field tersebut (N-09, N-14).
+        - Perubahan avatar/kota/profesi tercermin pada GET /me/card berikutnya.
+        Versi berbeda dari If-Match menghasilkan 409 VERSION_CONFLICT dengan `current` berbentuk Me (AC F15-4).
+      x-kapdh-access: { audience: mobile, member_access: nonsuspended }
       parameters:
         - $ref: "#/components/parameters/IfMatch"
       requestBody:
@@ -37,93 +80,252 @@ paths:
             schema: { $ref: "#/components/schemas/ProfileUpdate" }
       responses:
         "200":
-          description: Profil terbaru.
+          description: Profil terbaru dengan version baru.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Me" }
         "400": { $ref: "#/components/responses/ValidationError" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AccountSuspended" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/FileInvalid" }
+        "426": { $ref: "#/components/responses/UpgradeRequired" }
+        "503": { $ref: "#/components/responses/Maintenance" }
         default: { $ref: "#/components/responses/Error" }
 
   /me/card:
     get:
       tags: [Me]
       operationId: getMyCard
-      summary: Data KTA dan token QR bertanda tangan server (F-05).
+      summary: Data KTA digital, status kartu, ajakan bayar/perpanjang dan token QR bertanda tangan (F-05, AC F05-1..F05-5).
       description: |
-        Token QR hanya ada bila KTA aktif (verified atau expiring). Klien menyimpan respons ini sebagai cache
-        offline maksimal 7 hari dan tidak melewati expires_at (AC F05-2..F05-4).
+        Kartu dibuat saat OTP pendaftaran terverifikasi dengan status Tidak Aktif dan menjadi Aktif setelah
+        registration paid (AC F05-1). Isi mengikuti guideline hal. 6 dan prototipe layar 6/7: foto, nama,
+        angkatan + profesi, kode angkatan "KAPDH n", tahun lulus, kota saja (bukan alamat lengkap), nomor anggota,
+        QR, masa berlaku, label status dengan tombol Bayar/Perpanjang, dan waktu sinkronisasi.
+
+        Token QR hanya diterbitkan bila status kartu `active` atau `expiring` (verified/expiring, tidak suspended);
+        token JWT bertanda tangan server berumur maksimal 7 hari dan tidak melewati expires_at (PRD 3.5,
+        ARCHITECTURE §3.2). Setiap pemanggilan menerbitkan token baru; token lama tetap tunduk expiry dan status
+        server terbaru (AC F05-5). Koreksi nomor oleh admin membuat QR lama "perlu diperbarui" (AC F05-6).
+
+        Cache offline (AC F05-2..F05-4): klien menyimpan respons ini bersama id pengguna dan menampilkannya
+        berlabel Offline hanya sampai `offline_valid_until`; null berarti kartu tidak boleh tampil aktif secara
+        offline. Cache dihapus saat logout/ganti akun. Anggota suspended mendapat label `suspended` tanpa QR
+        sehingga cache aktif langsung diganti saat kembali online (AC F05-4).
+      x-kapdh-access: { audience: mobile, member_access: any }
       responses:
         "200":
-          description: KTA.
+          description: KTA terkini.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/MemberCard" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
         default: { $ref: "#/components/responses/Error" }
 
   /me/membership:
     get:
       tags: [Me]
       operationId: getMyMembership
-      summary: Periode keanggotaan, kelayakan perpanjangan, dan histori (F-07).
+      summary: Periode keanggotaan, jendela dan kelayakan perpanjangan, serta histori periode sendiri (F-07, AC F07-1..F07-5).
+      description: |
+        Status dihitung dari timestamp saat request, bukan dari jadwal worker (AC F07-3). Jendela renewal dibuka
+        30 hari sebelum expires_at dan tetap terbuka setelah expired, tanpa masa tenggang (AC F07-5, D4). Renewal
+        menambah 12 bulan kalender Asia/Jakarta dari max(expires_at lama, approved_at) (AC F07-1, F07-2). Suspend
+        tidak membuang tanggal periode (PRD 4.2) tetapi menutup kelayakan pembayaran baru (PRD 2.2). Dapat dibaca
+        semua effective_status yang memiliki sesi, termasuk expired dan suspended (riwayat sendiri).
+      x-kapdh-access: { audience: mobile, member_access: any }
       responses:
         "200":
-          description: Keanggotaan.
+          description: Keanggotaan dan histori periode (terbaru lebih dulu).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Membership" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
         default: { $ref: "#/components/responses/Error" }
 
   /masters/{kind}:
     get:
       tags: [Me]
       operationId: listMasters
-      summary: Master data terkontrol aktif (profesi, keahlian) untuk profil dan filter direktori (F-10).
+      summary: Master profesi atau keahlian yang AKTIF untuk pemilihan profil dan filter direktori (F-10, AC F10-4).
+      description: |
+        Hanya master aktif, urut sort_order lalu label. Master nonaktif tidak dapat dipilih baru, tetapi tetap
+        tampil sebagai label historis pada profil yang sudah memakainya (AC F10-4). Daftar kecil sehingga tidak
+        dipaging. Pengelolaan oleh pengurus ada di /admin/masters/{kind} (master.manage).
+      x-kapdh-access: { audience: mobile, member_access: nonsuspended }
       parameters:
-        - name: kind
-          in: path
-          required: true
-          schema: { $ref: "#/components/schemas/MasterKind" }
+        - $ref: "#/components/parameters/MasterKindPath"
       responses:
         "200":
           description: Daftar master aktif.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/MasterItemList" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AccountSuspended" }
         default: { $ref: "#/components/responses/Error" }
 
 components:
+  parameters:
+    MasterKindPath:
+      name: kind
+      in: path
+      required: true
+      description: Jenis master terkontrol (professions atau skills).
+      schema: { $ref: "#/components/schemas/MasterKind" }
+
   schemas:
+    MemberNumber:
+      type: string
+      pattern: '^[0-9]{2}\.0[1-3]\.0[12]\.[1-9][0-9]*$'
+      description: |
+        Nomor anggota AA.SS.JK.N (PRD 3.5): AA angkatan 2 digit, SS status pendidikan, JK 01 laki-laki/02
+        perempuan, N nomor urut global dari sequence server tanpa nol di depan. Tidak pernah dikirim/ditentukan
+        klien (AC F05-6).
+      examples: ["29.01.01.7"]
+
+    SocialHandle:
+      type: string
+      minLength: 1
+      maxLength: 200
+      pattern: '^(?:@?[A-Za-z0-9._-]{1,100}|https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:[/?#][^\s<>"''`]*)?)$'
+      description: |
+        Aturan tunggal untuk tautan sosial (Instagram, X, Facebook, LinkedIn) pada profil sendiri dan koreksi
+        pengurus (F-10, N-09, N-14): nama pengguna (huruf, angka, titik, garis bawah, tanda hubung; @ di depan
+        opsional dan dibuang server) atau URL `https://` dengan nama host. Skema lain (javascript:, data:, http:,
+        mailto:, dll.), spasi dan karakter <>"'` ditolak 400 VALIDATION_ERROR. Server memeriksa ulang pola yang sama
+        (tidak bergantung pada klien) dan menyimpan nilai yang sudah dinormalkan; klien merender nama pengguna
+        sebagai tautan ke domain platform dan URL hanya sebagai tautan https.
+      examples: ["ahmad.islam", "https://www.linkedin.com/in/ahmad-islam"]
+
     Me:
       type: object
-      required: [user_id, email, effective_status, profile, version]
+      description: |
+        Profil sendiri dan status untuk perutean klien (PRD 2.2). Tidak memuat sandi, token, NIK atau alasan
+        suspend internal (hanya `suspension_message` yang aman ditampilkan).
+      required:
+        [
+          user_id,
+          email,
+          account_status,
+          effective_status,
+          member_number,
+          cohort_code,
+          starts_at,
+          expires_at,
+          renewal_eligible,
+          renewal_opens_at,
+          registration_payment,
+          renewal_payment,
+          suspension_message,
+          profile,
+          version,
+        ]
       properties:
         user_id: { type: string, format: uuid }
         email: { type: string, format: email }
+        account_status: { $ref: "#/components/schemas/AccountStatus" }
         effective_status: { $ref: "#/components/schemas/EffectiveStatus" }
-        pending_payment_id: { type: [string, "null"], format: uuid }
+        member_number:
+          oneOf:
+            - $ref: "#/components/schemas/MemberNumber"
+            - type: "null"
+          description: Dialokasikan sekali saat OTP pendaftaran terverifikasi (AC F01-2, F05-1).
+        cohort_code: { type: string, examples: ["KAPDH 29"], description: '"KAPDH" + angkatan (PRD 3.5).' }
+        starts_at:
+          type: [string, "null"]
+          format: date-time
+          description: Mulai periode berjalan; null bila iuran pendaftaran belum paid.
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+          description: Akhir periode; keanggotaan berakhir saat now >= expires_at (PRD 2.1).
+        renewal_eligible:
+          type: boolean
+          description: |
+            True bila anggota boleh memulai atau melanjutkan iuran renewal: jendela renewal terbuka
+            (now >= renewal_opens_at, juga setelah expired) dan effective_status tidak suspended (AC F07-5, PRD 2.2).
+        renewal_opens_at:
+          type: [string, "null"]
+          format: date-time
+          description: expires_at dikurangi 30 hari; null bila belum pernah aktif.
+        registration_payment:
+          oneOf:
+            - $ref: "#/components/schemas/MeMembershipPayment"
+            - type: "null"
+          description: Payment registration nonterminal (pending/rejected) milik sendiri; null bila tidak ada.
+        renewal_payment:
+          oneOf:
+            - $ref: "#/components/schemas/MeMembershipPayment"
+            - type: "null"
+          description: Payment renewal nonterminal (pending/rejected) milik sendiri; null bila tidak ada.
+        suspension_message:
+          type: [string, "null"]
+          description: Pesan aman untuk portal pembatasan; null bila tidak suspended. Alasan internal tidak dikirim.
         profile: { $ref: "#/components/schemas/Profile" }
-        member_number: { type: [string, "null"], examples: ["29.01.01.7"] }
-        expires_at: { type: [string, "null"], format: date-time }
-        suspension_message: { type: [string, "null"], description: Alasan aman untuk ditampilkan. }
-        version: { type: string }
+        version: { type: string, description: Versi profil alumni untuk If-Match (AC F15-4). }
+
+    MeMembershipPaymentStage:
+      type: string
+      enum: [awaiting_proof, awaiting_review, rejected]
+      description: |
+        Tahap iuran terbuka untuk perutean layar (PRD 4.3): awaiting_proof = pending tanpa bukti (proof_version 0),
+        awaiting_review = pending dengan bukti menunggu keputusan pengurus, rejected = ditolak dan dapat diperbaiki
+        dengan payment yang sama (AC F03-3).
+
+    MeMembershipPayment:
+      type: object
+      description: Penunjuk ringkas iuran keanggotaan nonterminal; detail lengkap dari GET /me/payments/{paymentId}.
+      required: [id, stage, amount, proof_version, created_at, submitted_at, decided_at, rejection_reason]
+      properties:
+        id: { type: string, format: uuid }
+        stage: { $ref: "#/components/schemas/MeMembershipPaymentStage" }
+        amount: { $ref: "#/components/schemas/Money" }
+        proof_version: { type: integer, minimum: 0 }
+        created_at: { type: string, format: date-time }
+        submitted_at:
+          { type: [string, "null"], format: date-time, description: Waktu bukti terakhir dikirim. }
+        decided_at: { type: [string, "null"], format: date-time }
+        rejection_reason:
+          type: [string, "null"]
+          description: Alasan penolakan untuk pemilik pembayaran (AC F04-2); null kecuali stage rejected.
 
     EducationStatus:
       type: string
       enum: ["01", "02", "03"]
-      description: 01 tamat MTs dan Aliyah, 02 tamat salah satu, 03 tidak tamat (PRD 3.5).
+      description: 01 tamat MTs dan Aliyah, 02 tamat salah satu, 03 tidak tamat (PRD 3.5); dihitung dari kelas.
 
     ProfilePrivacy:
       type: object
-      description: Flag privasi direktori; bawaan tersembunyi (N-15, AC F10-2).
+      description: |
+        Flag privasi profil sendiri (N-15, AC F10-2). Bawaan: tampil di direktori true, sedangkan telepon, email dan
+        tautan sosial false (tersembunyi). Field tersembunyi tidak ikut payload direktori/profil anggota lain;
+        pengurus berizin tetap dapat membaca untuk tujuan administratif yang tercatat (F-10).
+      required: [show_in_directory, show_phone, show_email, show_social]
       properties:
         show_in_directory: { type: boolean }
         show_phone: { type: boolean }
+        show_email: { type: boolean }
+        show_social: { type: boolean }
+
+    ProfilePrivacyUpdate:
+      type: object
+      description: Perubahan sebagian flag privasi; flag yang tidak dikirim tidak berubah.
+      additionalProperties: false
+      properties:
+        show_in_directory: { type: boolean }
+        show_phone: { type: boolean }
+        show_email: { type: boolean }
         show_social: { type: boolean }
 
     Profile:
       type: object
+      description: |
+        Profil lengkap milik sendiri (guideline hal. 7). Angkatan, kelas, jenis kelamin dan tahun akademik hanya
+        dapat dikoreksi pengurus (PRD 3.5). Tahun dihitung server: lulus = 1996 + angkatan, keluar = lulus -
+        (6 - kelas keluar), masuk = lulus - (6 - kelas masuk) - 1.
       required:
         [
           full_name,
@@ -135,43 +337,115 @@ components:
           entry_year,
           exit_year,
           education_status,
+          city,
+          phone,
+          bio,
+          last_education_institution,
+          last_education_city,
+          social_instagram,
+          social_x,
+          social_facebook,
+          social_linkedin,
+          profession,
+          skills,
+          avatar_file_id,
+          avatar_url,
+          privacy,
         ]
       properties:
         full_name: { type: string }
         gender: { $ref: "#/components/schemas/Gender" }
-        cohort: { type: integer }
+        cohort: { type: integer, minimum: 1, maximum: 99 }
         class_in: { $ref: "#/components/schemas/ClassLevel" }
         class_out: { $ref: "#/components/schemas/ClassLevel" }
-        graduation_year: { type: integer, description: 1996 + cohort. }
+        graduation_year: { type: integer, description: 1996 + angkatan. }
         entry_year: { type: integer }
         exit_year: { type: integer }
         education_status: { $ref: "#/components/schemas/EducationStatus" }
-        city: { type: [string, "null"] }
-        profession: { $ref: "#/components/schemas/MasterItem" }
+        city: { type: [string, "null"], description: "Kota domisili (bukan alamat lengkap, PRD 3.5)." }
+        phone: { type: [string, "null"] }
+        bio: { type: [string, "null"], maxLength: 500, description: Tentang saya. }
+        last_education_institution: { type: [string, "null"], description: Lulusan terakhir (institusi). }
+        last_education_city: { type: [string, "null"] }
+        social_instagram:
+          type: [string, "null"]
+          description: Nilai tersimpan yang sudah lolos aturan SocialHandle (nama pengguna atau URL https).
+        social_x: { type: [string, "null"], description: Sama dengan social_instagram (SocialHandle). }
+        social_facebook: { type: [string, "null"], description: Sama dengan social_instagram (SocialHandle). }
+        social_linkedin: { type: [string, "null"], description: Sama dengan social_instagram (SocialHandle). }
+        profession:
+          oneOf:
+            - $ref: "#/components/schemas/MasterItem"
+            - type: "null"
+          description: Satu profesi; master nonaktif tetap tampil sebagai label historis (AC F10-4).
         skills:
           type: array
+          maxItems: 10
           items: { $ref: "#/components/schemas/MasterItem" }
         avatar_file_id: { type: [string, "null"], format: uuid }
+        avatar_url:
+          type: [string, "null"]
+          format: uri
+          description: URL foto (publik atau bertanda tangan maksimal 10 menit, PRD 5.4).
         privacy: { $ref: "#/components/schemas/ProfilePrivacy" }
 
     ProfileUpdate:
       type: object
-      description: Hanya field yang dikirim yang diubah; null pada field nullable berarti mengosongkan.
+      description: |
+        Perubahan sebagian profil sendiri. Field yang tidak dikirim tidak berubah; null pada field nullable
+        mengosongkan nilai. Field identitas (nama, jenis kelamin, angkatan, kelas, email, nomor anggota) tidak
+        diterima (AC F05-6); field lain di luar skema ditolak 400. Minimal satu field.
+      additionalProperties: false
+      minProperties: 1
       properties:
-        full_name: { type: string, minLength: 2, maxLength: 120 }
-        city: { type: string, maxLength: 80 }
-        phone: { type: string, maxLength: 20 }
-        profession_id: { type: [string, "null"], format: uuid }
+        city:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Kota domisili yang tampil di KTA; dapat diganti tetapi tidak dikosongkan.
+        phone:
+          type: [string, "null"]
+          maxLength: 24
+          pattern: '^\+?[0-9][0-9 -]{5,22}$'
+          description: Nomor telepon; tampil ke anggota lain hanya bila show_phone true (AC F10-2).
+        bio: { type: [string, "null"], maxLength: 500 }
+        last_education_institution: { type: [string, "null"], minLength: 1, maxLength: 120 }
+        last_education_city: { type: [string, "null"], minLength: 1, maxLength: 80 }
+        social_instagram:
+          oneOf:
+            - $ref: "#/components/schemas/SocialHandle"
+            - type: "null"
+          description: Instagram (aturan SocialHandle); null mengosongkan.
+        social_x:
+          oneOf:
+            - $ref: "#/components/schemas/SocialHandle"
+            - type: "null"
+          description: X (aturan SocialHandle); null mengosongkan.
+        social_facebook:
+          oneOf:
+            - $ref: "#/components/schemas/SocialHandle"
+            - type: "null"
+          description: Facebook (aturan SocialHandle); null mengosongkan.
+        social_linkedin:
+          oneOf:
+            - $ref: "#/components/schemas/SocialHandle"
+            - type: "null"
+          description: LinkedIn (aturan SocialHandle); null mengosongkan.
+        profession_id:
+          type: [string, "null"]
+          format: uuid
+          description: Satu profesi dari master aktif; null menghapus profesi.
         skill_ids:
           type: array
           maxItems: 10
+          uniqueItems: true
+          description: Himpunan keahlian pengganti (maksimal 10) dari master aktif; [] menghapus semua.
           items: { type: string, format: uuid }
-        avatar_file_id: { type: [string, "null"], format: uuid }
-        gender: { $ref: "#/components/schemas/Gender" }
-        cohort: { type: integer, minimum: 1, maximum: 99 }
-        class_in: { $ref: "#/components/schemas/ClassLevel" }
-        class_out: { $ref: "#/components/schemas/ClassLevel" }
-        privacy: { $ref: "#/components/schemas/ProfilePrivacy" }
+        avatar_file_id:
+          type: [string, "null"]
+          format: uuid
+          description: Berkas milik sendiri dengan purpose avatar (POST /files); null menghapus foto.
+        privacy: { $ref: "#/components/schemas/ProfilePrivacyUpdate" }
 
     MasterKind:
       type: string
@@ -185,7 +459,10 @@ components:
         id: { type: string, format: uuid }
         label: { type: string }
         active:
-          { type: boolean, description: Master nonaktif tetap tampil sebagai label historis (AC F10-4). }
+          type: boolean
+          description: |
+            Dikirim pada profil; false berarti master sudah dinonaktifkan dan hanya tampil sebagai label historis
+            (AC F10-4). Daftar GET /masters/{kind} hanya berisi master aktif.
 
     MasterItemList:
       type: object
@@ -200,70 +477,165 @@ components:
       enum: [active, expiring, inactive, expired, suspended]
       description: >-
         Label status kartu, selalu ditampilkan dengan teks, bukan warna saja (PRD 4.5). active = KTA Aktif
-        (verified); expiring = tetap aktif dengan tanggal habis; inactive = KTA Tidak Aktif (unverified, iuran
-        pendaftaran belum dibayar, F-05); expired = kartu berlabel kedaluwarsa dengan ajakan perpanjang (PRD 2.2);
-        suspended = dibatasi.
+        (verified); expiring = tetap aktif dengan tanggal habis (sisa <= 30 hari); inactive = KTA Tidak Aktif
+        (unverified, iuran pendaftaran belum paid, F-05; tidak dapat dipakai sebagai bukti keanggotaan);
+        expired = KTA Kedaluwarsa dengan ajakan perpanjang (PRD 2.2); suspended = dibatasi pengurus, tanpa QR.
+
+    MemberCardAction:
+      type: string
+      enum: [pay_registration, continue_payment, renew]
+      description: |
+        Ajakan utama pada kartu (tombol Bayar/Perpanjang, guideline hal. 6): pay_registration = unverified tanpa
+        iuran pendaftaran terbuka (/onboarding/fees); continue_payment = ada iuran registration/renewal terbuka
+        (`open_payment_id`, /payments/{id}); renew = jendela renewal terbuka tanpa iuran renewal terbuka
+        (/renewal).
 
     MemberCardQr:
       type: object
-      description: Ada hanya bila KTA aktif (F-05).
+      description: Ada hanya bila status kartu active atau expiring (F-05).
       required: [url, token_expires_at]
       properties:
         url:
           type: string
           format: uri
-          description: URL verifikasi berisi token QR bertanda tangan di fragmen; jangan dicatat di log.
+          description: |
+            Isi QR: `${PUBLIC_WEB_URL}/kta/{member_number}#t={token}`; token di fragmen agar tidak terkirim ke
+            server web (F-06). Jangan dicatat di log.
           examples: ["https://kapdh.or.id/kta/29.01.01.7#t=eyJ..."]
           x-sensitive: true
-        token_expires_at: { type: string, format: date-time }
+        token_expires_at:
+          type: string
+          format: date-time
+          description: min(diterbitkan + 7 hari, expires_at) (PRD 3.5).
 
     MemberCard:
       type: object
-      required: [status_label, member_number, full_name, cohort_code, synced_at]
+      description: |
+        KTA digital (PRD 3.5, guideline hal. 6, prototipe layar 6/7). Tidak memuat kontak, alamat lengkap, email
+        atau secret. Field nullable selalu dikirim (null bila tidak berlaku).
+      required:
+        [
+          status_label,
+          member_number,
+          full_name,
+          cohort,
+          cohort_code,
+          graduation_year,
+          qr,
+          expires_at,
+          profession_label,
+          city,
+          avatar_url,
+          action,
+          open_payment_id,
+          renewal_opens_at,
+          offline_valid_until,
+          synced_at,
+        ]
       properties:
         status_label: { $ref: "#/components/schemas/MemberCardStatus" }
-        member_number: { type: string, examples: ["29.01.01.7"] }
+        member_number: { $ref: "#/components/schemas/MemberNumber" }
         full_name: { type: string }
-        cohort: { type: integer }
+        cohort:
+          type: integer
+          minimum: 1
+          maximum: 99
+          description: Angkatan untuk baris "Angkatan n | Profesi" (PRD 3.5).
         cohort_code: { type: string, examples: ["KAPDH 29"] }
-        graduation_year: { type: integer }
-        profession_label: { type: [string, "null"] }
-        city: { type: [string, "null"] }
-        avatar_url: { type: [string, "null"], format: uri }
-        expires_at: { type: [string, "null"], format: date-time }
+        graduation_year:
+          type: integer
+          description: Tahun lulus (1996 + angkatan) yang ditampilkan terpisah di kartu (PRD 3.5).
+        profession_label:
+          type: [string, "null"]
+          description: Profesi untuk baris "Angkatan n | Profesi"; label historis tetap tampil (AC F10-4).
+        city: { type: [string, "null"], description: Kota domisili saja (disahkan v3.3). }
+        avatar_url:
+          type: [string, "null"]
+          format: uri
+          description: Foto (publik atau bertanda tangan maksimal 10 menit); klien menyimpan salinan gambar untuk offline.
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+          description: Berlaku sampai; null untuk kartu Tidak Aktif (belum pernah paid).
         qr:
           oneOf:
             - $ref: "#/components/schemas/MemberCardQr"
             - type: "null"
+          description: Null bila status inactive, expired atau suspended.
+        action:
+          oneOf:
+            - $ref: "#/components/schemas/MemberCardAction"
+            - type: "null"
+          description: |
+            Null bila tidak ada tindakan, mis. verified sebelum jendela renewal (tampilkan Perpanjang nonaktif
+            dengan renewal_opens_at) atau suspended.
+        open_payment_id:
+          type: [string, "null"]
+          format: uuid
+          description: Iuran registration/renewal nonterminal yang dirujuk action continue_payment.
+        renewal_opens_at: { type: [string, "null"], format: date-time }
+        offline_valid_until:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            Batas tampilan offline berlabel Offline = min(synced_at + 7 hari, expires_at, qr.token_expires_at);
+            null bila kartu tidak boleh tampil aktif secara offline (AC F05-2, F05-3).
         synced_at:
-          {
-            type: string,
-            format: date-time,
-            description: Waktu server; klien menyimpan untuk aturan offline 7 hari.,
-          }
+          type: string
+          format: date-time
+          description: Waktu server saat kartu dibuat; ditampilkan sebagai waktu sinkronisasi terakhir.
 
     MembershipPeriodKind:
       type: string
       enum: [registration, renewal]
+      description: registration = aktivasi dari iuran pendaftaran; renewal = perpanjangan (PRD 6.3).
 
     MembershipPeriod:
       type: object
-      required: [starts_at, expires_at, kind]
+      description: Satu periode hasil satu payment paid (UNIQUE payment_id, PRD 6.4).
+      required: [kind, starts_at, expires_at, approved_at, payment_id]
       properties:
         kind: { $ref: "#/components/schemas/MembershipPeriodKind" }
         starts_at: { type: string, format: date-time }
         expires_at: { type: string, format: date-time }
-        payment_id: { type: string, format: uuid }
+        approved_at: { type: string, format: date-time, description: Waktu payment disetujui pengurus. }
+        payment_id: { type: [string, "null"], format: uuid }
 
     Membership:
       type: object
-      required: [effective_status, renewal_eligible, periods]
+      required:
+        [
+          effective_status,
+          member_number,
+          card_issued_at,
+          starts_at,
+          expires_at,
+          renewal_eligible,
+          renewal_opens_at,
+          renewal_payment,
+          periods,
+        ]
       properties:
         effective_status: { $ref: "#/components/schemas/EffectiveStatus" }
+        member_number:
+          oneOf:
+            - $ref: "#/components/schemas/MemberNumber"
+            - type: "null"
+        card_issued_at:
+          type: [string, "null"]
+          format: date-time
+          description: Waktu nomor anggota dialokasikan dan KTA Tidak Aktif dibuat (OTP pendaftaran, AC F05-1).
         starts_at: { type: [string, "null"], format: date-time }
         expires_at: { type: [string, "null"], format: date-time }
-        renewal_eligible: { type: boolean }
+        renewal_eligible:
+          type: boolean
+          description: Sama dengan Me.renewal_eligible (jendela terbuka dan tidak suspended, AC F07-5).
         renewal_opens_at: { type: [string, "null"], format: date-time }
+        renewal_payment:
+          oneOf:
+            - $ref: "#/components/schemas/MeMembershipPayment"
+            - type: "null"
         periods:
           type: array
+          description: Histori periode registration/renewal, terbaru lebih dulu.
           items: { $ref: "#/components/schemas/MembershipPeriod" }

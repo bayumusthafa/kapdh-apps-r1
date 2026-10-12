@@ -95,12 +95,15 @@ void main() {
         'status_label': 'inactive',
         'member_number': '29.01.01.7',
         'full_name': 'Ahmad Islam',
+        'cohort': 29,
         'cohort_code': 'KAPDH 29',
+        'graduation_year': 2025,
         'qr': null,
         'synced_at': '2026-10-12T03:00:00.000Z',
       });
       expect(card.qr, isNull);
       expect(card.statusLabel, MemberCardStatus.inactive);
+      expect(card.graduationYear, 2025);
 
       final error = ApiError.fromJson(<String, Object?>{
         'code': 'VERSION_CONFLICT',

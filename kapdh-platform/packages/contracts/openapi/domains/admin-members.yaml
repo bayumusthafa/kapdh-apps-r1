@@ -1,9 +1,780 @@
 # Domain admin-members (C2 Membership): daftar/detail anggota, koreksi identitas dan nomor, suspend/unsuspend,
-# inisiasi pemulihan sandi alumni. Modul API: apps/api/src/modules/admin. Path ditambahkan oleh penulis kontrak C2.
+# histori keanggotaan, dan inisiasi pemulihan sandi alumni. Modul API: apps/api/src/modules/admin (memakai
+# MembershipKernel untuk koreksi nomor, suspend/unsuspend; ARCHITECTURE §4.2).
+#
+# Semua operasi: audience admin dengan sesi ber-TOTP (AC F02-2; sesi tahap sandi -> 403 MFA_REQUIRED), izin
+# dievaluasi dari DB setiap request (AC F15-1, F16-3). Lihat `x-kapdh-access` per operasi.
 tags:
   - name: Admin Members
     description: |
-      Pengelolaan anggota oleh pengurus: daftar, detail, koreksi identitas dan nomor (AC F05-6), suspend/unsuspend
-      (PRD 4.2) dan inisiasi pemulihan sandi alumni (AC F16-4) (F-15, F-16).
+      Pengelolaan anggota oleh pengurus: daftar dengan pencarian/filter/urutan/paging server, detail
+      administratif, koreksi identitas dan nomor (AC F05-6), suspend/unsuspend (PRD 4.2, AC F12-4, F12-5),
+      histori keanggotaan, dan inisiasi pemulihan sandi alumni oleh Super Admin (AC F16-4) (F-15, F-16).
 
-paths: {}
+paths:
+  /admin/members:
+    get:
+      tags: [Admin Members]
+      operationId: adminListMembers
+      summary: Daftar anggota dengan pencarian, filter, urutan, paging dan total dari server (F-15, guideline hal. 16).
+      description: |
+        Tabel "Manajemen Users": total alumni terdaftar (`total` sesuai filter), pencarian `q` (nama, email, nomor
+        anggota atau kota; tidak peka huruf besar), filter angkatan, effective_status (dihitung dari timestamp
+        saat request, AC F07-3), kota, jenis kelamin, profesi, keahlian dan keterkaitan dengan akun admin.
+        Mencakup akun alumni pending_otp sampai deletion_pending; akun yang sudah terhapus tidak tampil.
+
+        Paging keyset sesuai `sort` tanpa duplikasi/terlewat antar halaman (AC F10-1); cursor terikat pada
+        filter dan sort yang sama, cursor dari kombinasi lain ditolak 400 VALIDATION_ERROR. Daftar memuat email
+        dan kota untuk tujuan administratif; kontak lain hanya di detail.
+      x-kapdh-access: { audience: admin, permissions: [members.read] }
+      parameters:
+        - name: q
+          in: query
+          description: Cari nama, email, nomor anggota (awalan) atau kota.
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: cohort
+          in: query
+          description: Angkatan.
+          schema: { type: integer, minimum: 1, maximum: 99 }
+        - name: effective_status
+          in: query
+          description: Status efektif terkini (PRD 2.2).
+          schema: { $ref: "#/components/schemas/EffectiveStatus" }
+        - name: city
+          in: query
+          description: Kota domisili (sama persis, tidak peka huruf besar).
+          schema: { type: string, minLength: 1, maxLength: 80 }
+        - name: gender
+          in: query
+          schema: { $ref: "#/components/schemas/Gender" }
+        - name: profession_id
+          in: query
+          description: Profesi (master, termasuk yang nonaktif).
+          schema: { type: string, format: uuid }
+        - name: skill_id
+          in: query
+          description: Keahlian (master, termasuk yang nonaktif).
+          schema: { type: string, format: uuid }
+        - name: has_linked_admin
+          in: query
+          description: true = hanya alumni yang tertaut ke akun admin; false = hanya yang belum (dialog delegasi admin, F-16).
+          schema: { type: boolean }
+        - name: sort
+          in: query
+          description: Urutan (bawaan registered_desc).
+          schema: { $ref: "#/components/schemas/AdminMemberSort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman anggota beserta total sesuai filter.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMemberPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/members/{userId}:
+    get:
+      tags: [Admin Members]
+      operationId: adminGetMember
+      summary: Detail administratif anggota, termasuk kontak terlepas dari flag privasi (F-10, F-15).
+      description: |
+        Memuat identitas, kontak dan tautan sosial terlepas dari flag privasi (pengurus berizin tetap dapat
+        mengakses data untuk tujuan administratif yang tercatat, F-10); setiap pembukaan detail dicatat di audit
+        (`member.viewed`, tanpa salinan data). Juga memuat periode keanggotaan, status suspend, keterkaitan
+        dengan akun admin, ringkasan tiket, serta ringkasan pembayaran dan moderasi. Histori lengkap ada di
+        GET /admin/members/{userId}/membership-events. `version` dipakai sebagai If-Match untuk perubahan.
+        Akun bukan alumni atau sudah terhapus -> 404.
+
+        Penyaringan per izin (PRD 2.3, AC F15-1: admin hanya melihat data area izinnya), dievaluasi dari DB setiap
+        request dan berlaku sama untuk respons 200 operasi lain yang mengembalikan AdminMemberDetail maupun
+        `current` pada 409 VERSION_CONFLICT:
+        - tanpa payments.read: `recent_payments` null;
+        - tanpa moderation.read: `moderation` null dan `suspension.reason` (alasan internal moderasi) null dengan
+          `suspension.reason_redacted` true. `suspended_at`, `suspended_by` dan `member_message` (pesan yang
+          memang ditampilkan ke anggota) tetap dikirim karena status suspend menentukan status keanggotaan.
+      x-kapdh-access: { audience: admin, permissions: [members.read] }
+      parameters:
+        - $ref: "#/components/parameters/AdminMemberUserId"
+      responses:
+        "200":
+          description: Detail anggota.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMemberDetail" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Admin Members]
+      operationId: adminUpdateMember
+      summary: Ubah data administratif dan koreksi identitas anggota; nomor dihitung ulang dengan N tetap (AC F05-6).
+      description: |
+        Izin members.manage (PRD 2.3). Alasan wajib dan tercatat di audit bersama before/after tersaring
+        (AC F17-1). Field yang tidak dikirim tidak berubah. `member_number` dan field lain di luar skema DITOLAK
+        400 VALIDATION_ERROR (AC F05-6: nomor tidak pernah dari klien). Email tidak dapat diubah di sini (alur
+        koreksi email terverifikasi, F-01); privasi tetap pilihan anggota.
+
+        Koreksi identitas (full_name, gender, cohort, class_in, class_out): bila prefix AA.SS.JK berubah, server
+        menghitung ulang nomor dari data tersimpan dan mempertahankan N dalam SATU UPDATE bersama segmen
+        pembentuknya (constraint alumni_member_number_chk), mencatat membership_event `number_correction`
+        dengan nomor lama dan baru, audit `member.number_corrected`, menerbitkan ulang QR (QR lama menjadi
+        "perlu diperbarui"), dan memberi notifikasi kategori membership ke anggota (rute /kta), semuanya dalam
+        satu transaksi (AC F05-6, F17-1). Contoh: 12.02.01.7 dengan kelas keluar dikoreksi menjadi 6 menjadi
+        12.01.01.7. Kelas keluar tidak boleh lebih rendah dari kelas masuk (400).
+
+        profession_id/skill_ids mengikuti aturan master aktif yang sama dengan PATCH /me/profile (AC F10-4);
+        keempat tautan sosial memakai aturan SocialHandle yang sama dengan profil sendiri (nama pengguna atau URL
+        https; skema lain 400). `remove_avatar` menghapus foto yang tidak pantas (berkas dilepas dan dibersihkan
+        job). Akun deletion_pending tidak dapat diubah (400). Admin tidak dapat mengubah akun alumni yang tertaut
+        ke identitas adminnya sendiri (admins.linked_alumni_user_id; konflik kepentingan, PRD 2.3) -> 403
+        FORBIDDEN. Versi berbeda dari If-Match -> 409 VERSION_CONFLICT dengan `current` berbentuk
+        AdminMemberDetail yang disaring per izin seperti GET detail (AC F15-4, F15-1).
+      x-kapdh-access: { audience: admin, permissions: [members.read, members.manage] }
+      parameters:
+        - $ref: "#/components/parameters/AdminMemberUserId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminMemberUpdate" }
+      responses:
+        "200":
+          description: Detail anggota terbaru (nomor baru bila prefix berubah) dengan version baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMemberDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/members/{userId}/suspend:
+    post:
+      tags: [Admin Members]
+      operationId: adminSuspendMember
+      summary: Batasi (suspend) anggota dari halaman anggota dengan alasan dan pesan untuk anggota (PRD 4.2, AC F12-3, F12-4).
+      description: |
+        Tindakan moderasi setara keputusan laporan (izin moderation.resolve, moderasi hanya di web admin,
+        F-12). UI wajib meminta konfirmasi (PRD 4.5); body `confirm` harus true. Prasyarat: anggota tidak sedang
+        suspended dan akun tidak deletion_pending (400 bila dilanggar dengan versi terkini). Tindakan atas akun
+        alumni yang tertaut ke admin pelaku ditolak 403 FORBIDDEN (konflik kepentingan, PRD 2.3).
+
+        Dalam SATU transaksi (AC F12-3, F17-1, F04-1): alumni.suspended_at/suspension_reason/suspension_message/
+        suspended_by_admin_id diisi; tanggal periode TIDAK diubah (PRD 4.2); membership_event `suspend` dengan
+        aktor dan alasan; audit `member.suspended`; seluruh sesi mobile anggota dicabut dan socket diputus
+        setelah commit (AC F12-4, F02-6); notifikasi kategori account (wajib) ke anggota dengan rute
+        /restricted. Akibat: effective_status suspended mengalahkan masa aktif, direktori menyembunyikan profil,
+        verifikasi KTA menjadi Tidak aktif (AC F12-4), tiket anggota tidak berlaku untuk check-in dan refund
+        diputuskan per kasus (PRD 2.2). Persetujuan pembayaran berikutnya tidak menghapus suspend (AC F07-4).
+        Pengulangan dengan Idempotency-Key sama mengembalikan hasil pertama. Respons dan `current` pada 409
+        disaring per izin seperti GET detail (alasan internal hanya untuk pemegang moderation.read).
+      x-kapdh-access: { audience: admin, permissions: [members.read, moderation.resolve], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/AdminMemberUserId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminMemberSuspendRequest" }
+      responses:
+        "200":
+          description: Anggota dibatasi; detail terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMemberDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/members/{userId}/unsuspend:
+    post:
+      tags: [Admin Members]
+      operationId: adminUnsuspendMember
+      summary: Cabut pembatasan anggota; status dihitung ulang dari expires_at (PRD 4.2, AC F12-3, F12-5).
+      description: |
+        Izin moderation.resolve; UI wajib meminta konfirmasi (PRD 4.5), body `confirm` harus true. Prasyarat:
+        anggota sedang suspended (400 bila tidak, dengan versi terkini). Admin tidak dapat mencabut pembatasan
+        akun alumni yang tertaut ke dirinya sendiri (403 FORBIDDEN, konflik kepentingan PRD 2.3).
+
+        Dalam SATU transaksi: kolom suspend dikosongkan, membership_event `unsuspend` dengan aktor dan alasan,
+        audit `member.unsuspended`, notifikasi kategori account ke anggota. effective_status dihitung ulang dari
+        verifikasi dan expires_at, bukan otomatis verified: anggota yang masa aktifnya habis menjadi expired dan
+        yang belum pernah paid menjadi unverified (AC F12-5). Idempotency-Key dihormati. Respons dan `current`
+        pada 409 disaring per izin seperti GET detail.
+      x-kapdh-access: { audience: admin, permissions: [members.read, moderation.resolve], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/AdminMemberUserId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminMemberUnsuspendRequest" }
+      responses:
+        "200":
+          description: Pembatasan dicabut; detail terbaru dengan effective_status hasil hitung ulang.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMemberDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/members/{userId}/password-reset:
+    post:
+      tags: [Admin Members]
+      operationId: adminInitiateMemberPasswordReset
+      summary: Super Admin menginisiasi pemulihan sandi alumni tanpa melihat atau menentukan sandi (F-16, AC F16-4).
+      description: |
+        Hanya Super Admin (PRD 2.3; admin dengan izin apa pun -> 403 FORBIDDEN), dengan sesi ber-TOTP dan
+        reautentikasi (X-Reauth-Token <= 10 menit, ARCHITECTURE §4.3; tanpa token -> 403 REAUTH_REQUIRED).
+        Body `confirm` harus true dan `reason` wajib.
+
+        Dalam SATU transaksi (AC F16-4, F17-1): baris users dikunci; challenge OTP purpose password_reset
+        diterbitkan (challenge aktif sebelumnya untuk tujuan yang sama disupersede, otp_codes_active_key,
+        PRD 2.5); seluruh sesi akun target dicabut dan socket diputus setelah commit; notifikasi keamanan
+        (kategori security, wajib) ke target; audit `member.password_reset_initiated` tanpa kode/token; outbox
+        `member.password_reset_initiated`. Kode tidak pernah ada di respons, log, audit atau URL (ARCHITECTURE §2).
+
+        Penyerahan dan penukaran challenge (AC F16-4 "hanya melalui kanal terverifikasi", AC F02-4):
+        1. Email OTP dikirim ke email terverifikasi target (sinkron, ADR-004) dan memuat kode OTP serta tautan
+           aplikasi `${PUBLIC_WEB_URL}/app/forgot/otp?challenge=<challenge_id>` (App Links/Universal Links;
+           bentuk skema `kapdh://app/forgot/otp?challenge=<challenge_id>` setara, ARCHITECTURE §4.7). challenge_id
+           bukan rahasia tanpa kode (kode terikat challenge, 5 percobaan, 10 menit); kode hanya ada di badan email.
+        2. Tautan membuka layar /forgot/otp yang terikat challenge tersebut (tanpa memanggil POST
+           /auth/password/forgot, sehingga challenge pengurus TIDAK disupersede). Anggota memasukkan kode dan
+           menukarnya dengan reset_token lewat verifikasi OTP pemulihan domain auth (challenge_id + code), lalu
+           menyimpan sandi baru dengan POST /auth/password/reset (AC F02-4).
+        3. Kode kedaluwarsa atau tidak diterima: anggota meminta kirim ulang untuk challenge yang sama
+           (POST /auth/otp/resend) atau memulai "Lupa sandi" mandiri. Challenge baru mana pun menggantikan
+           challenge pengurus dan tetap hanya dikirim ke email terverifikasi, sehingga pemulihan tetap dapat
+           diselesaikan.
+        Notifikasi keamanan (inbox/push/email pemberitahuan) hanya memberi tahu bahwa pemulihan dimulai pengurus
+        dan meminta anggota membuka email; tidak memuat challenge_id maupun kode.
+
+        Prasyarat: akun alumni berstatus active (termasuk suspended; pemulihan akun diizinkan, PRD 2.2); akun
+        pending_otp, disabled atau deletion_pending -> 400. Akun alumni yang tertaut ke Super Admin pelaku
+        memakai alur lupa sandi mandiri (403 FORBIDDEN). Batas pengiriman OTP per email berlaku (429, PRD 2.5).
+        Idempotency-Key dihormati sehingga klik ganda tidak mengirim dua challenge.
+      x-kapdh-access: { audience: admin, role: super_admin, reauth: true, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/AdminMemberUserId"
+        - $ref: "#/components/parameters/ReauthToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminMemberPasswordResetRequest" }
+      responses:
+        "202":
+          description: Pemulihan diinisiasi; challenge dikirim ke email terverifikasi anggota.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMemberPasswordResetResult" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/ReauthRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/members/{userId}/membership-events:
+    get:
+      tags: [Admin Members]
+      operationId: adminListMemberMembershipEvents
+      summary: Histori keanggotaan dan moderasi anggota (aktivasi, renewal, suspend, unsuspend, koreksi nomor, peringatan) (PRD 4.2, 6.3).
+      description: |
+        Riwayat periode dan moderasi dipisahkan dari kolom periode sehingga tanggal habis tidak hilang saat
+        suspend (PRD 4.2). Setiap entri memuat aktor (null untuk sistem), alasan, payment sumber
+        (activation/renewal) dan nilai sebelum/sesudah. Peringatan (warn) tidak mengubah tanggal (AC F12-3).
+        Urut terbaru lebih dulu, keyset (created_at, id), dengan total.
+
+        Penyaringan per izin (PRD 2.3, AC F15-1), konsisten dengan GET detail:
+        - tanpa moderation.read: entri `warn` (murni moderasi) tidak dikembalikan dan tidak dihitung di `total`;
+          filter `kind=warn` ditolak 403 FORBIDDEN. Entri `suspend`/`unsuspend` tetap tampil (memengaruhi status
+          keanggotaan) tetapi `reason` null dengan `reason_redacted` true;
+        - alasan `number_correction` (koreksi administratif, members.manage) tampil untuk members.read.
+      x-kapdh-access: { audience: admin, permissions: [members.read] }
+      parameters:
+        - $ref: "#/components/parameters/AdminMemberUserId"
+        - name: kind
+          in: query
+          description: Filter jenis peristiwa.
+          schema: { $ref: "#/components/schemas/AdminMembershipEventKind" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman histori keanggotaan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMembershipEventPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  parameters:
+    AdminMemberUserId:
+      name: userId
+      in: path
+      required: true
+      description: users.id akun alumni.
+      schema: { type: string, format: uuid }
+
+  schemas:
+    AdminMemberSort:
+      type: string
+      enum:
+        [
+          registered_desc,
+          registered_asc,
+          name_asc,
+          name_desc,
+          cohort_asc,
+          cohort_desc,
+          member_number_asc,
+          expires_at_asc,
+          expires_at_desc,
+        ]
+      description: |
+        Urutan daftar anggota; setiap urutan diakhiri user_id agar keyset stabil. expires_at null (belum paid)
+        diletakkan di akhir.
+
+    AdminMemberActor:
+      type: object
+      description: Admin pelaku tindakan; null pada pemakaian berarti sistem atau admin yang sudah dihapus.
+      required: [admin_id, display_name]
+      properties:
+        admin_id: { type: string, format: uuid }
+        display_name: { type: string }
+
+    AdminMemberSummary:
+      type: object
+      description: Baris daftar/kartu anggota (guideline hal. 12, 15, 16).
+      required:
+        [
+          user_id,
+          full_name,
+          email,
+          gender,
+          cohort,
+          cohort_code,
+          member_number,
+          city,
+          avatar_url,
+          profession_label,
+          account_status,
+          effective_status,
+          expires_at,
+          has_linked_admin,
+          registered_at,
+        ]
+      properties:
+        user_id: { type: string, format: uuid }
+        full_name: { type: string }
+        email: { type: string, format: email }
+        gender: { $ref: "#/components/schemas/Gender" }
+        cohort: { type: integer, minimum: 1, maximum: 99 }
+        cohort_code: { type: string, examples: ["KAPDH 29"] }
+        member_number:
+          oneOf:
+            - $ref: "#/components/schemas/MemberNumber"
+            - type: "null"
+          description: Null hanya untuk akun pending_otp (nomor dialokasikan saat OTP).
+        city: { type: [string, "null"] }
+        avatar_url: { type: [string, "null"], format: uri }
+        profession_label: { type: [string, "null"] }
+        account_status: { $ref: "#/components/schemas/AccountStatus" }
+        effective_status: { $ref: "#/components/schemas/EffectiveStatus" }
+        expires_at: { type: [string, "null"], format: date-time }
+        has_linked_admin:
+          type: boolean
+          description: True bila alumni tertaut ke identitas admin (label "Admin" di dasbor, F-16).
+        registered_at: { type: string, format: date-time }
+
+    AdminMemberPage:
+      type: object
+      required: [items, next_cursor, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminMemberSummary" }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer, minimum: 0, description: Jumlah anggota yang cocok dengan filter. }
+
+    AdminMemberSuspension:
+      type: object
+      required: [suspended_at, reason, reason_redacted, member_message, suspended_by]
+      properties:
+        suspended_at: { type: string, format: date-time }
+        reason:
+          type: [string, "null"]
+          description: |
+            Alasan internal moderasi; tidak pernah dikirim ke anggota atau publik. Null bila pemanggil tidak memiliki
+            izin moderation.read (lihat reason_redacted) atau bila memang tidak tercatat (PRD 2.3, AC F15-1).
+        reason_redacted:
+          type: boolean
+          description: |
+            True bila alasan disembunyikan karena pemanggil tidak memiliki izin moderation.read; UI menampilkan
+            "Alasan hanya untuk pemegang izin moderasi", bukan "tanpa alasan".
+        member_message:
+          type: [string, "null"]
+          description: Pesan aman yang ditampilkan di portal pembatasan anggota (PRD 2.2).
+        suspended_by:
+          oneOf:
+            - $ref: "#/components/schemas/AdminMemberActor"
+            - type: "null"
+
+    AdminMemberLinkedAdmin:
+      type: object
+      description: Identitas admin terpisah yang tertaut ke akun alumni ini untuk cek konflik kepentingan (PRD 2.3, F-16).
+      required: [admin_id, display_name, role, status]
+      properties:
+        admin_id: { type: string, format: uuid }
+        display_name: { type: string }
+        role: { $ref: "#/components/schemas/AdminRole" }
+        status: { type: string, enum: [invited, active, disabled] }
+
+    AdminMemberPaymentSummary:
+      type: object
+      description: Ringkasan pembayaran anggota tanpa bukti (bukti hanya di /admin/payments/{paymentId}).
+      required: [id, type, status, amount, proof_version, created_at, submitted_at, decided_at]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/PaymentType" }
+        status: { $ref: "#/components/schemas/PaymentStatus" }
+        amount: { $ref: "#/components/schemas/Money" }
+        proof_version: { type: integer, minimum: 0 }
+        created_at: { type: string, format: date-time }
+        submitted_at: { type: [string, "null"], format: date-time }
+        decided_at: { type: [string, "null"], format: date-time }
+
+    AdminMemberTicketStatus:
+      type: string
+      enum: [awaiting_payment, awaiting_review, paid, expired, cancelled]
+      description: Status tiket (PRD 4.4); checked-in adalah atribut tiket paid, bukan status.
+
+    AdminMemberTicketSummary:
+      type: object
+      required: [id, event_id, event_title, event_starts_at, status, total, checked_in_at, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid }
+        event_title: { type: string }
+        event_starts_at: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/AdminMemberTicketStatus" }
+        total: { $ref: "#/components/schemas/Money" }
+        checked_in_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+
+    AdminMemberModerationSummary:
+      type: object
+      description: Ringkasan moderasi tanpa bukti; detail laporan di menu moderasi (F-12).
+      required: [open_report_count, total_report_count, warning_count, last_action_at]
+      properties:
+        open_report_count:
+          { type: integer, minimum: 0, description: Laporan open/in_review terhadap anggota ini. }
+        total_report_count: { type: integer, minimum: 0 }
+        warning_count: { type: integer, minimum: 0, description: Jumlah peringatan (membership_event warn). }
+        last_action_at:
+          type: [string, "null"]
+          format: date-time
+          description: Waktu tindakan moderasi terakhir (warn/suspend/unsuspend).
+
+    AdminMemberDetail:
+      description: |
+        Tampilan administratif lengkap (F-15). Kontak dan sosial ditampilkan terlepas dari flag privasi; flag
+        tetap ditampilkan agar pengurus tahu preferensi anggota (F-10). Disaring per izin pemanggil, juga pada
+        `current` 409: recent_payments (payments.read), moderation dan suspension.reason (moderation.read).
+      allOf:
+        - $ref: "#/components/schemas/AdminMemberSummary"
+        - type: object
+          required:
+            [
+              class_in,
+              class_out,
+              education_status,
+              entry_year,
+              exit_year,
+              graduation_year,
+              phone,
+              bio,
+              last_education_institution,
+              last_education_city,
+              social_instagram,
+              social_x,
+              social_facebook,
+              social_linkedin,
+              privacy,
+              profession,
+              skills,
+              avatar_file_id,
+              email_verified_at,
+              last_login_at,
+              starts_at,
+              renewal_opens_at,
+              suspension,
+              linked_admin,
+              periods,
+              recent_payments,
+              recent_tickets,
+              moderation,
+              version,
+            ]
+          properties:
+            class_in: { $ref: "#/components/schemas/ClassLevel" }
+            class_out: { $ref: "#/components/schemas/ClassLevel" }
+            education_status: { $ref: "#/components/schemas/EducationStatus" }
+            entry_year: { type: integer }
+            exit_year: { type: integer }
+            graduation_year: { type: integer }
+            phone: { type: [string, "null"] }
+            bio: { type: [string, "null"] }
+            last_education_institution: { type: [string, "null"] }
+            last_education_city: { type: [string, "null"] }
+            social_instagram: { type: [string, "null"] }
+            social_x: { type: [string, "null"] }
+            social_facebook: { type: [string, "null"] }
+            social_linkedin: { type: [string, "null"] }
+            privacy: { $ref: "#/components/schemas/ProfilePrivacy" }
+            profession:
+              oneOf:
+                - $ref: "#/components/schemas/MasterItem"
+                - type: "null"
+            skills:
+              type: array
+              items: { $ref: "#/components/schemas/MasterItem" }
+            avatar_file_id: { type: [string, "null"], format: uuid }
+            email_verified_at:
+              type: [string, "null"]
+              format: date-time
+              description: Waktu OTP pendaftaran terverifikasi, juga waktu KTA dibuat (AC F01-2).
+            last_login_at: { type: [string, "null"], format: date-time }
+            starts_at: { type: [string, "null"], format: date-time }
+            renewal_opens_at: { type: [string, "null"], format: date-time }
+            suspension:
+              oneOf:
+                - $ref: "#/components/schemas/AdminMemberSuspension"
+                - type: "null"
+            linked_admin:
+              oneOf:
+                - $ref: "#/components/schemas/AdminMemberLinkedAdmin"
+                - type: "null"
+            periods:
+              type: array
+              description: Periode registration/renewal, terbaru lebih dulu.
+              items: { $ref: "#/components/schemas/MembershipPeriod" }
+            recent_payments:
+              type: [array, "null"]
+              description: Maksimal 10 pembayaran terbaru; null bila admin tidak memiliki izin payments.read (PRD 2.3).
+              items: { $ref: "#/components/schemas/AdminMemberPaymentSummary" }
+            recent_tickets:
+              type: array
+              description: Maksimal 10 tiket terbaru.
+              items: { $ref: "#/components/schemas/AdminMemberTicketSummary" }
+            moderation:
+              oneOf:
+                - $ref: "#/components/schemas/AdminMemberModerationSummary"
+                - type: "null"
+              description: Null bila admin tidak memiliki izin moderation.read.
+            version: { type: string, description: Versi alumni untuk If-Match (AC F15-4). }
+
+    AdminMemberUpdate:
+      type: object
+      description: |
+        Perubahan sebagian oleh pengurus (members.manage). `reason` wajib. Tidak menerima member_number, email,
+        flag privasi atau field lain di luar skema (400, AC F05-6). Minimal satu field selain reason.
+      additionalProperties: false
+      required: [reason]
+      minProperties: 2
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Alasan perubahan untuk audit; tidak boleh hanya spasi.
+        full_name: { type: string, minLength: 2, maxLength: 120 }
+        gender: { $ref: "#/components/schemas/Gender" }
+        cohort: { type: integer, minimum: 1, maximum: 99 }
+        class_in: { $ref: "#/components/schemas/ClassLevel" }
+        class_out: { $ref: "#/components/schemas/ClassLevel" }
+        city: { type: [string, "null"], minLength: 1, maxLength: 80 }
+        phone:
+          type: [string, "null"]
+          maxLength: 24
+          pattern: '^\+?[0-9][0-9 -]{5,22}$'
+        bio: { type: [string, "null"], maxLength: 500 }
+        last_education_institution: { type: [string, "null"], minLength: 1, maxLength: 120 }
+        last_education_city: { type: [string, "null"], minLength: 1, maxLength: 80 }
+        social_instagram:
+          oneOf:
+            - $ref: "#/components/schemas/SocialHandle"
+            - type: "null"
+          description: Instagram (aturan SocialHandle); null mengosongkan.
+        social_x:
+          oneOf:
+            - $ref: "#/components/schemas/SocialHandle"
+            - type: "null"
+          description: X (aturan SocialHandle); null mengosongkan.
+        social_facebook:
+          oneOf:
+            - $ref: "#/components/schemas/SocialHandle"
+            - type: "null"
+          description: Facebook (aturan SocialHandle); null mengosongkan.
+        social_linkedin:
+          oneOf:
+            - $ref: "#/components/schemas/SocialHandle"
+            - type: "null"
+          description: LinkedIn (aturan SocialHandle); null mengosongkan.
+        profession_id: { type: [string, "null"], format: uuid }
+        skill_ids:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          items: { type: string, format: uuid }
+        remove_avatar:
+          type: boolean
+          description: true menghapus foto anggota (mis. foto tidak pantas); false diabaikan.
+
+    AdminMemberSuspendRequest:
+      type: object
+      required: [reason, member_message, confirm]
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 1000
+          description: Alasan internal untuk audit dan histori; tidak pernah dikirim ke anggota atau publik (F-06).
+        member_message:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Pesan aman yang ditampilkan di portal pembatasan anggota (PRD 2.2).
+        confirm:
+          type: boolean
+          const: true
+          description: Konfirmasi eksplisit dari dialog (PRD 4.5).
+
+    AdminMemberUnsuspendRequest:
+      type: object
+      required: [reason, confirm]
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 1000
+          description: Alasan pencabutan pembatasan untuk audit dan histori.
+        confirm:
+          type: boolean
+          const: true
+          description: Konfirmasi eksplisit dari dialog (PRD 4.5).
+
+    AdminMemberPasswordResetRequest:
+      type: object
+      required: [reason, confirm]
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Alasan/permintaan anggota yang menjadi dasar pemulihan, untuk audit.
+        confirm:
+          type: boolean
+          const: true
+          description: Konfirmasi eksplisit bahwa seluruh sesi anggota akan dicabut (PRD 4.5).
+
+    AdminMemberPasswordResetResult:
+      type: object
+      description: Hasil inisiasi; tidak memuat kode, token atau sandi (AC F16-4).
+      required: [initiated_at, sessions_revoked, challenge_expires_at]
+      properties:
+        initiated_at: { type: string, format: date-time }
+        sessions_revoked: { type: integer, minimum: 0, description: Jumlah sesi anggota yang dicabut. }
+        challenge_expires_at:
+          type: string
+          format: date-time
+          description: Batas berlaku challenge pemulihan (OTP 10 menit, PRD 2.5).
+
+    AdminMembershipEventKind:
+      type: string
+      enum: [activation, renewal, suspend, unsuspend, number_correction, warn]
+      description: Jenis histori keanggotaan/moderasi (membership_events.kind, PRD 6.3).
+
+    AdminMembershipEvent:
+      type: object
+      required:
+        [
+          id,
+          kind,
+          created_at,
+          actor,
+          payment_id,
+          reason,
+          reason_redacted,
+          before_starts_at,
+          after_starts_at,
+          before_expires_at,
+          after_expires_at,
+          before_member_number,
+          after_member_number,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/AdminMembershipEventKind" }
+        created_at: { type: string, format: date-time }
+        actor:
+          oneOf:
+            - $ref: "#/components/schemas/AdminMemberActor"
+            - type: "null"
+          description: Null untuk tindakan sistem atau admin yang sudah dihapus.
+        payment_id: { type: [string, "null"], format: uuid, description: Payment sumber activation/renewal. }
+        reason:
+          type: [string, "null"]
+          description: |
+            Alasan internal (suspend, unsuspend, koreksi nomor, peringatan). Untuk suspend/unsuspend null bila
+            pemanggil tidak memiliki izin moderation.read (reason_redacted true); entri warn tidak dikembalikan
+            kepada pemanggil tersebut (PRD 2.3, AC F15-1).
+        reason_redacted:
+          type: boolean
+          description: True bila alasan disembunyikan karena izin moderation.read tidak dimiliki pemanggil.
+        before_starts_at: { type: [string, "null"], format: date-time }
+        after_starts_at: { type: [string, "null"], format: date-time }
+        before_expires_at: { type: [string, "null"], format: date-time }
+        after_expires_at: { type: [string, "null"], format: date-time }
+        before_member_number: { type: [string, "null"] }
+        after_member_number: { type: [string, "null"] }
+
+    AdminMembershipEventPage:
+      type: object
+      required: [items, next_cursor, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminMembershipEvent" }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer, minimum: 0 }
