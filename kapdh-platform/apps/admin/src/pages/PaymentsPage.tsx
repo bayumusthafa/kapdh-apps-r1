@@ -10,6 +10,9 @@ import { formatJakarta, formatRupiah, PAYMENT_TYPE_LABEL } from "../format";
 type PaymentStatus = components["schemas"]["PaymentStatus"];
 type Detail = components["schemas"]["AdminPaymentDetail"];
 
+/** `member` null berarti akun pemilik sudah dihapus dan payment dianonimkan (D2, AC F14-4). */
+const DELETED_MEMBER_LABEL = "Akun dihapus";
+
 export function PaymentsPage() {
   const [status, setStatus] = useState<PaymentStatus>("pending");
   const [q, setQ] = useState("");
@@ -112,10 +115,10 @@ export function PaymentsPage() {
                           className="min-h-11 text-left"
                         >
                           <span className="block font-semibold text-primary underline-offset-2 hover:underline">
-                            {p.member.full_name}
+                            {p.member?.full_name ?? DELETED_MEMBER_LABEL}
                           </span>
                           <span className="block text-xs text-text-muted">
-                            {p.member.member_number ?? "-"}
+                            {p.member?.member_number ?? "-"}
                           </span>
                         </button>
                       </td>
@@ -216,10 +219,10 @@ function PaymentDecisionPanel({ paymentId }: { paymentId: string }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="detail-title" className="font-heading text-h3 font-semibold">
-            {p.member.full_name}
+            {p.member?.full_name ?? DELETED_MEMBER_LABEL}
           </h2>
           <p className="text-xs text-text-muted">
-            {p.member.member_number ?? "-"} | {PAYMENT_TYPE_LABEL[p.type]} | bukti versi {p.proof_version}
+            {p.member?.member_number ?? "-"} | {PAYMENT_TYPE_LABEL[p.type]} | bukti versi {p.proof_version}
           </p>
         </div>
         <PaymentStatusBadge status={p.status} />
