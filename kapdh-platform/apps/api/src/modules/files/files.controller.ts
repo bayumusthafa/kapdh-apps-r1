@@ -1,0 +1,207 @@
+import type { Multipart } from "@fastify/multipart";
+import { Controller, Get, Header, HttpCode, Param, Post, Req, Res, StreamableFile } from "@nestjs/common";
+import { RouteConfig } from "@nestjs/platform-fastify";
+import type { components } from "@kapdh/contracts";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import type { Readable } from "node:stream";
+import { AppException, fieldError } from "../../core/errors/app-exception.js";
+import type { FileRow } from "../../core/files/access-policy.js";
+import { FilesService, type UploadContent, type UploadTicket } from "../../core/files/files.service.js";
+import { CANONICAL_EXTENSION } from "../../core/files/inspect.js";
+import type { MultipartRouteConfig } from "../../core/http/fastify-hooks.js";
+import type { AuthContext } from "../../core/guards/auth-context.js";
+import { Audience, CurrentAuth, MemberAccess, Public } from "../../core/guards/decorators.js";
+import { UuidParam } from "../../core/validation/uuid-param.pipe.js";
+
+type FileRef = components["schemas"]["FileRef"];
+type FileAccess = components["schemas"]["FileAccess"];
+
+/** Cache gambar publik: isi tidak pernah berubah untuk id yang sama (berkas baru = id baru). */
+const PUBLIC_MAX_AGE_SECONDS = 86_400;
+
+/** Galat dari parser multipart/busboy → galat baku (PRD 5.2); AppException diteruskan apa adanya. */
+function multipartError(error: unknown): AppException {
+  if (error instanceof AppException) return error;
+  const code = (error as { code?: unknown } | null)?.code;
+  switch (code) {
+    case "FST_REQ_FILE_TOO_LARGE":
+      return new AppException(
+        413,
+        "FILE_INVALID",
+        "Berkas terlalu besar. Gambar maksimal 5 MB, PDF maksimal 10 MB.",
+      );
+    case "FST_FILES_LIMIT":
+      return new AppException(413, "FILE_INVALID", "Kirim satu berkas per unggahan.");
+    case "FST_PARTS_LIMIT":
+    case "FST_FIELDS_LIMIT":
+      return new AppException(
+        413,
+        "FILE_INVALID",
+        "Isian unggahan terlalu banyak. Kirim purpose dan satu berkas.",
+      );
+    case "FST_INVALID_MULTIPART_CONTENT_TYPE":
+      return new AppException(415, "FILE_INVALID", "Kirim berkas sebagai multipart/form-data.");
+    default:
+      // Bentuk multipart rusak, unggahan terputus, atau nama field terlarang.
+      return new AppException(
+        400,
+        "VALIDATION_ERROR",
+        "Format unggahan tidak valid. Pilih berkas lalu coba lagi.",
+      );
+  }
+}
+
+function tooLarge(): AppException {
+  return new AppException(
+    413,
+    "FILE_INVALID",
+    "Berkas terlalu besar untuk keperluan ini. Gambar maksimal 5 MB, PDF maksimal 10 MB.",
+  );
+}
+
+/** Membaca stream berkas sampai batas byte purpose; berhenti (dan menolak) begitu batas terlampaui (N-10). */
+async function readLimited(stream: Readable & { truncated?: boolean }, maxBytes: number): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  try {
+    for await (const chunk of stream) {
+      const buffer = chunk as Buffer;
+      total += buffer.byteLength;
+      if (total > maxBytes) throw tooLarge();
+      chunks.push(buffer);
+    }
+  } catch (error) {
+    throw multipartError(error);
+  }
+  // Batas busboy global (10 MB) memotong stream tanpa galat pada iterasi; dianggap terlalu besar.
+  if (stream.truncated) throw tooLarge();
+  return Buffer.concat(chunks, total);
+}
+
+/** If-None-Match (daftar, `*`, atau ETag lemah `W/"..."`) cocok dengan ETag kuat berkas. */
+export function etagMatches(header: string | string[] | undefined, etag: string): boolean {
+  if (!header) return false;
+  const values = (Array.isArray(header) ? header.join(",") : header).split(",").map((v) => v.trim());
+  return values.some((value) => value === "*" || value.replace(/^W\//, "") === etag);
+}
+
+function dispositionFor(file: FileRow): string {
+  if (file.mime.startsWith("image/")) return "inline";
+  // Nama unduhan aman tanpa PII: purpose + id + ekstensi kanonik.
+  const extension = CANONICAL_EXTENSION[file.mime] ?? "bin";
+  return `attachment; filename="${file.purpose}-${file.id}.${extension}"`;
+}
+
+/**
+ * Berkas (PRD 2.5, 5.4, N-10): controller tipis di atas FilesService core (ARCHITECTURE §4.1, §4.2).
+ * - POST /files: multipart `purpose` lalu `file`; hak unggah dan kuota diperiksa sebelum isi dibaca.
+ * - GET /files/{fileId}/access: URL baca setelah kebijakan akses purpose.
+ * - GET /files/content/{token}: isi berkas privat dengan token URL <= 10 menit; tidak pernah dicache publik.
+ * - GET /files/public/{fileId}: berkas publik dengan cache publik + ETag.
+ */
+@Controller("files")
+export class FilesController {
+  constructor(private readonly files: FilesService) {}
+
+  @Post()
+  @HttpCode(201)
+  @Audience("any")
+  @MemberAccess("nonsuspended")
+  @RouteConfig({ multipart: true } satisfies MultipartRouteConfig)
+  async upload(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+    @CurrentAuth() auth: AuthContext,
+  ): Promise<FileRef> {
+    let ticket: UploadTicket | null = null;
+    let content: UploadContent | null = null;
+    try {
+      if (!request.isMultipart()) throw multipartError({ code: "FST_INVALID_MULTIPART_CONTENT_TYPE" });
+      const parts = request.parts()[Symbol.asyncIterator]();
+      for (;;) {
+        let step: IteratorResult<Multipart>;
+        try {
+          step = await parts.next();
+        } catch (error) {
+          throw multipartError(error);
+        }
+        if (step.done) break;
+        const part = step.value;
+        if (part.type === "field") {
+          // Field lain diabaikan (dibatasi limits.fields); purpose hanya sekali.
+          if (part.fieldname !== "purpose") continue;
+          if (ticket) throw fieldError("purpose", "Purpose hanya boleh dikirim sekali.");
+          ticket = await this.files.beginUpload(auth, part.value);
+          continue;
+        }
+        if (part.fieldname !== "file") throw fieldError("file", "Kirim berkas pada field file.");
+        if (!ticket) throw fieldError("purpose", "Kirim field purpose sebelum berkas.");
+        content = {
+          data: await readLimited(part.file, ticket.maxBytes),
+          filename: part.filename,
+          declaredMime: part.mimetype,
+        };
+      }
+    } catch (error) {
+      // Sisa body tidak dibaca lagi: koneksi ditutup setelah respons galat agar unggahan besar tidak terus mengalir.
+      void reply.header("connection", "close");
+      throw error;
+    }
+    if (!ticket) throw fieldError("purpose", "Purpose berkas wajib diisi.");
+    if (!content) throw fieldError("file", "Berkas wajib dikirim.");
+    const file = await this.files.completeUpload(ticket, content);
+    return this.files.toFileRef(file);
+  }
+
+  @Get(":fileId/access")
+  @Audience("any")
+  @MemberAccess("nonsuspended")
+  @Header("cache-control", "no-store")
+  async access(
+    @Param("fileId", UuidParam) fileId: string,
+    @CurrentAuth() auth: AuthContext,
+  ): Promise<FileAccess> {
+    const url = await this.files.accessFor(fileId, auth);
+    return { url: url.url, expires_at: url.expiresAt?.toISOString() ?? null };
+  }
+
+  @Get("content/:token")
+  @Public()
+  async content(
+    @Param("token") token: string,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<StreamableFile> {
+    const { file, body } = await this.files.openContent(token);
+    // PRD 5.4: cache publik/proxy tidak boleh menyimpan bukti, chat, atau ekspor.
+    void reply.header("cache-control", "private, no-store");
+    // Web admin di site yang sama (D12) boleh menampilkan gambar; isi tidak pernah dieksekusi sebagai dokumen.
+    void reply.header("cross-origin-resource-policy", "same-site");
+    void reply.header("content-security-policy", "default-src 'none'; sandbox");
+    return new StreamableFile(body, {
+      type: file.mime,
+      length: file.bytes,
+      disposition: dispositionFor(file),
+    });
+  }
+
+  @Get("public/:fileId")
+  @Public()
+  async publicFile(
+    @Param("fileId", UuidParam) fileId: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<StreamableFile | undefined> {
+    const etag = `"${(await this.files.publicMeta(fileId)).sha256}"`;
+    void reply.header("etag", etag);
+    void reply.header("cache-control", `public, max-age=${PUBLIC_MAX_AGE_SECONDS}`);
+    // Situs publik dan aplikasi lain boleh menyematkan gambar publik.
+    void reply.header("cross-origin-resource-policy", "cross-origin");
+    void reply.header("content-security-policy", "default-src 'none'; sandbox");
+    if (etagMatches(request.headers["if-none-match"], etag)) {
+      void reply.status(304);
+      return undefined;
+    }
+    const { file, body } = await this.files.openPublic(fileId);
+    return new StreamableFile(body, { type: file.mime, length: file.bytes, disposition: "inline" });
+  }
+}

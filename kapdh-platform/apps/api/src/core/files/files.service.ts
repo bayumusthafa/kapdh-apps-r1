@@ -1,6 +1,7 @@
 import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
 import type { BaseEnv } from "@kapdh/config";
-import { files, sessions, users } from "@kapdh/database";
+import { type components, PERMISSION_VALUES, type Permission } from "@kapdh/contracts";
+import { adminPermissions, admins, files, sessions, users } from "@kapdh/database";
 import { type ObjectBody, sha256Hex, type StorageDriver, StorageObjectNotFoundError } from "@kapdh/storage";
 import { and, asc, count, eq, gt, isNotNull, isNull, lt, lte, min, ne } from "drizzle-orm";
 import type { Readable } from "node:stream";
@@ -14,7 +15,8 @@ import { AppException, fieldError, forbidden, notFound, rateLimited } from "../e
 import type { AuthContext } from "../guards/auth-context.js";
 import { JobRegistry } from "../jobs/job-registry.js";
 import { safeError } from "../logging/safe-error.js";
-import { assertMemberAccess } from "../membership/access.js";
+import { assertMemberAccess, memberAccessAllows } from "../membership/access.js";
+import { MembershipKernel } from "../membership/membership.kernel.js";
 import { RateLimitService } from "../rate-limit/rate-limit.service.js";
 import { CLOCK, DB, ENV, ROOT_LOGGER, STORAGE } from "../tokens.js";
 import { type FileAccessPolicy, FilePolicies, type FileRow, type FileViewer } from "./access-policy.js";
@@ -31,14 +33,17 @@ import {
   FILE_PURPOSE_SPECS,
   FILE_PURPOSES,
   type FilePurpose,
+  type FilePurposeSpec,
+  type FileVisibility,
   isFilePurpose,
+  maxStreamBytesFor,
   TEMP_FILE_MAX_AGE_MS,
   UPLOAD_QUOTA,
   UPLOAD_QUOTA_WINDOW_MS,
 } from "./purposes.js";
 
 /** Batas percobaan unggah (termasuk yang gagal validasi) per pengguna per jam, melindungi CPU dekode gambar. */
-const UPLOAD_ATTEMPTS_PER_HOUR = 30;
+export const UPLOAD_ATTEMPTS_PER_HOUR = 30;
 /** Jumlah berkas maksimum per eksekusi job pembersihan. */
 const CLEANUP_BATCH = 200;
 /** Interval job files.cleanup-temp (ARCHITECTURE §4.8: per jam). */
@@ -47,13 +52,26 @@ export const FILES_CLEANUP_EVERY_MS = 3600_000;
 /** Pengunggah = AuthContext request (sesi mobile anggota atau sesi admin). */
 export type FileUploader = Pick<AuthContext, "userId" | "audience" | "permissions" | "effectiveStatus">;
 
-export interface UploadInput {
+/** Hasil tahap pertama unggahan: purpose sah, pengunggah berhak, kuota belum habis, batas byte stream. */
+export interface UploadTicket {
+  readonly spec: FilePurposeSpec;
+  readonly uploaderUserId: string;
+  /** Batas byte yang boleh dibaca dari stream untuk purpose ini (N-10). */
+  readonly maxBytes: number;
+}
+
+export interface UploadContent {
+  data: Buffer;
+  /** Nama berkas dari klien (hanya untuk cek ekstensi; tidak pernah disimpan). */
+  filename?: string | null;
+  /** Content-Type bagian multipart dari klien (hanya untuk cek penyamaran). */
+  declaredMime?: string | null;
+}
+
+export interface UploadInput extends UploadContent {
   uploader: FileUploader;
   /** Nilai field `purpose` mentah dari klien; divalidasi di sini. */
   purpose: unknown;
-  data: Buffer;
-  filename?: string | null;
-  declaredMime?: string | null;
 }
 
 export interface FileUrl {
@@ -67,19 +85,23 @@ export interface FileContent {
   body: Readable;
 }
 
+export type FileRefDto = components["schemas"]["FileRef"];
+
 /** Object key tanpa PII (PRD 5.4): `<purpose>/<yyyy>/<mm>/<uuidv7>` (tahun/bulan UTC). */
 export function objectKeyFor(purpose: FilePurpose, at: Date, id: string): string {
   const month = String(at.getUTCMonth() + 1).padStart(2, "0");
   return `${purpose}/${at.getUTCFullYear()}/${month}/${id}`;
 }
 
+const LINK_EXPIRED = "Tautan berkas tidak berlaku. Buka ulang dari aplikasi.";
+
 /**
  * Layanan berkas core (ARCHITECTURE §4.2; PRD 2.5, 5.4; N-10). Modul domain memakai:
- * - `upload` (POST /files dan unggahan modul seperti media konten),
+ * - `beginUpload` + `completeUpload` (POST /files: purpose diperiksa sebelum isi dibaca) atau `upload` sekaligus,
  * - `attach(tx, fileId, ownerUserId, purpose)` saat berkas dipakai objek (bukti bayar, avatar, cover),
- * - `discard(tx, fileId)` saat berkas diganti/dihapus,
+ * - `discard(tx, fileId)` saat berkas diganti/dihapus; `setVisibility` untuk avatar publik,
  * - `registerAccessPolicy(purpose, policy)` di onModuleInit untuk aturan baca berkas privat,
- * - `signedUrl(file, viewer)` / `publicUrl(fileId)` untuk menyematkan URL di payload,
+ * - `signedUrl(file, viewer)` / `publicUrl(fileId)` / `toFileRef(file)` untuk payload,
  * - `storeGenerated` untuk berkas buatan sistem (ekspor audit).
  * Berkas baru berstatus `pending` sampai objek tersimpan, lalu `ready`; yang tidak terlampir > 24 jam dihapus job
  * `files.cleanup-temp`.
@@ -97,6 +119,7 @@ export class FilesService implements OnModuleInit {
     @Inject(ROOT_LOGGER) private readonly logger: Logger,
     private readonly rateLimits: RateLimitService,
     private readonly jobs: JobRegistry,
+    private readonly membership: MembershipKernel,
   ) {
     this.urlKey = deriveFileUrlKey(env.FILE_URL_SECRET);
     // Kebijakan bawaan core (PRD 2.3): pemilik, ditambah izin pengurus yang relevan. Modul menambah aturan lain
@@ -108,7 +131,10 @@ export class FilesService implements OnModuleInit {
     this.registerAccessPolicy("payment_proof", owner);
     this.registerAccessPolicy("payment_proof", FilePolicies.adminPermission("payments.read"));
     this.registerAccessPolicy("adjustment_evidence", FilePolicies.adminPermission("payments.read"));
-    this.registerAccessPolicy("audit_export", FilePolicies.allOf(owner, FilePolicies.adminPermission("audit.export")));
+    this.registerAccessPolicy(
+      "audit_export",
+      FilePolicies.allOf(owner, FilePolicies.adminPermission("audit.export")),
+    );
   }
 
   onModuleInit(): void {
@@ -118,7 +144,8 @@ export class FilesService implements OnModuleInit {
       run: async (now, job) => {
         const result = await this.cleanup(now);
         if (result.deleted > 0 || result.failed > 0) job.logger.info(result, "pembersihan berkas selesai");
-        if (result.failed > 0) throw new Error(`${result.failed} berkas gagal dibersihkan; diulang pada jadwal berikut`);
+        if (result.failed > 0)
+          throw new Error(`${result.failed} berkas gagal dibersihkan; diulang pada jadwal berikut`);
       },
     });
   }
@@ -136,33 +163,45 @@ export class FilesService implements OnModuleInit {
   // ---------------------------------------------------------------------------------------------------- unggah
 
   /**
-   * Validasi purpose dan hak pengunggah, batas percobaan, kuota N-10 (dikunci per pengguna+purpose sehingga unggahan
-   * bersamaan tidak melewati 10), pemeriksaan isi (magic bytes, ukuran, dekode aman, EXIF dibuang), lalu simpan.
-   * Galat: 400 VALIDATION_ERROR (purpose), 403, 413/415/422 FILE_INVALID, 429 RATE_LIMITED.
+   * Tahap 1 unggahan, SEBELUM isi berkas dibaca: purpose sah (400), hak pengunggah per purpose (403
+   * FORBIDDEN/MEMBERSHIP_REQUIRED/ACCOUNT_SUSPENDED), batas percobaan per jam dan kuota N-10 (429). Mengembalikan
+   * batas byte stream untuk purpose sehingga controller berhenti membaca begitu batas terlampaui (413).
    */
-  async upload(input: UploadInput): Promise<FileRow> {
-    const spec = this.uploadSpec(input.purpose);
-    this.assertUploader(spec.purpose, input.uploader);
-    const userId = input.uploader.userId;
+  async beginUpload(uploader: FileUploader, purpose: unknown): Promise<UploadTicket> {
+    if (!isFilePurpose(purpose) || FILE_PURPOSE_SPECS[purpose].uploader === "system")
+      throw fieldError("purpose", "Purpose berkas tidak valid.");
+    const spec = FILE_PURPOSE_SPECS[purpose];
+    await this.assertUploader(spec, uploader);
     await this.rateLimits.consumeOrThrow(
-      `files-upload:${userId}`,
+      `files-upload:${uploader.userId}`,
       UPLOAD_ATTEMPTS_PER_HOUR,
       3600_000,
       "Terlalu banyak percobaan unggah. Coba lagi nanti.",
     );
-    // Cek awal tanpa kunci agar pengguna yang sudah mencapai kuota tidak memakai CPU dekode gambar.
-    await this.assertQuota(this.db, userId, spec.purpose, this.clock.now());
+    // Cek awal tanpa kunci agar pengguna yang sudah mencapai kuota tidak memakai bandwidth/CPU dekode gambar.
+    await this.assertQuota(this.db, uploader.userId, spec.purpose, this.clock.now());
+    return { spec, uploaderUserId: uploader.userId, maxBytes: maxStreamBytesFor(spec) };
+  }
 
+  /**
+   * Tahap 2: pemeriksaan isi (magic bytes, ekstensi/Content-Type penyamar, ukuran per jenis, dekode aman dengan batas
+   * piksel, EXIF dibuang lewat re-encode, PDF berkonten aktif ditolak), kuota diperiksa ulang di bawah kunci advisory
+   * per (pengguna, purpose) sehingga unggahan bersamaan tidak melewati 10, baris `pending` dicatat, objek disimpan,
+   * lalu `ready`. Galat: 413/415/422 FILE_INVALID, 429 RATE_LIMITED, 500 bila storage gagal (baris `failed`).
+   */
+  async completeUpload(ticket: UploadTicket, content: UploadContent): Promise<FileRow> {
+    const { spec, uploaderUserId: userId } = ticket;
     let processed;
     try {
       processed = await inspectUpload({
-        data: input.data,
+        data: content.data,
         spec,
-        filename: input.filename,
-        declaredMime: input.declaredMime,
+        filename: content.filename,
+        declaredMime: content.declaredMime,
       });
     } catch (error) {
-      if (error instanceof FileRejectedError) throw new AppException(error.status, "FILE_INVALID", error.message);
+      if (error instanceof FileRejectedError)
+        throw new AppException(error.status, "FILE_INVALID", error.message);
       throw error;
     }
 
@@ -194,6 +233,7 @@ export class FilesService implements OnModuleInit {
       await this.storage.put(objectKey, processed.data, { contentType: processed.mime });
     } catch (error) {
       this.logger.error({ error: safeError(error), file_id: id }, "penyimpanan berkas gagal");
+      // Baris `failed` tidak dihitung kuota; objek setengah jadi (bila ada) dibuang.
       await this.db
         .update(files)
         .set({ status: "failed", updatedAt: this.clock.now() })
@@ -210,18 +250,23 @@ export class FilesService implements OnModuleInit {
     return ready;
   }
 
-  private uploadSpec(purpose: unknown) {
-    if (!isFilePurpose(purpose) || FILE_PURPOSE_SPECS[purpose].uploader === "system")
-      throw fieldError("purpose", "Purpose berkas tidak valid.");
-    return FILE_PURPOSE_SPECS[purpose];
+  /** Unggahan sekaligus (modul yang sudah memegang isi berkas, mis. uji atau impor). */
+  async upload(input: UploadInput): Promise<FileRow> {
+    const ticket = await this.beginUpload(input.uploader, input.purpose);
+    if (input.data.byteLength > ticket.maxBytes)
+      throw new AppException(413, "FILE_INVALID", "Berkas terlalu besar untuk keperluan ini.");
+    return this.completeUpload(ticket, input);
   }
 
   /** Purpose anggota hanya untuk sesi mobile dengan effective_status sesuai; purpose pengurus butuh izin. */
-  private assertUploader(purpose: FilePurpose, uploader: FileUploader): void {
-    const spec = FILE_PURPOSE_SPECS[purpose];
+  private async assertUploader(spec: FilePurposeSpec, uploader: FileUploader): Promise<void> {
     if (spec.uploader === "member") {
       if (uploader.audience !== "mobile") throw forbidden("Jenis berkas ini hanya dapat diunggah anggota.");
-      assertMemberAccess(spec.memberAccess ?? "nonsuspended", uploader.effectiveStatus ?? "unverified");
+      const status =
+        uploader.effectiveStatus ??
+        (await this.membership.effectiveStatusFor(uploader.userId))?.status ??
+        "unverified";
+      assertMemberAccess(spec.memberAccess ?? "nonsuspended", status);
       return;
     }
     if (
@@ -259,7 +304,13 @@ export class FilesService implements OnModuleInit {
   /**
    * Menandai berkas dipakai objek domain (bukti bayar, avatar, cover, ...) di dalam transaksi pemanggil. Berkas wajib
    * milik `ownerUserId`, ber-purpose sama, `ready`, dan belum pernah dilampirkan (satu berkas = satu objek). Galat
-   * 400 VALIDATION_ERROR pada field `field` (bawaan `file_id`).
+   * 400 VALIDATION_ERROR pada field `field` (bawaan `file_id`). Baris dikunci UPDATE bersyarat, sehingga job cleanup
+   * (yang mengunci baris yang sama) tidak dapat menghapus berkas yang sedang dilampirkan.
+   *
+   *   await withTx(db, async (tx) => {
+   *     const proof = await files.attach(tx, body.file_id, auth.userId, "payment_proof", { field: "file_id" });
+   *     await tx.update(payments).set({ proofFileId: proof.id, ... })...
+   *   });
    */
   async attach(
     tx: DbOrTx,
@@ -291,6 +342,25 @@ export class FilesService implements OnModuleInit {
   }
 
   /**
+   * Mengubah visibilitas berkas (PRD 5.4: avatar publik hanya sesuai kebijakan visibilitas). Hanya purpose yang
+   * `publicAllowed` dapat dijadikan publik; berkas wajib `ready`. Mengembalikan baris terbaru.
+   */
+  async setVisibility(tx: DbOrTx, fileId: string, visibility: FileVisibility): Promise<FileRow> {
+    const [file] = await tx.select().from(files).where(eq(files.id, fileId)).limit(1);
+    if (!file || file.status !== "ready") throw notFound("Berkas tidak ditemukan.");
+    if (visibility === "public" && !FILE_PURPOSE_SPECS[file.purpose as FilePurpose].publicAllowed)
+      throw new Error(`Berkas ${file.purpose} tidak boleh publik (PRD 5.4)`);
+    if (file.visibility === visibility) return file;
+    const [updated] = await tx
+      .update(files)
+      .set({ visibility, updatedAt: this.clock.now() })
+      .where(and(eq(files.id, fileId), eq(files.status, "ready")))
+      .returning();
+    if (!updated) throw notFound("Berkas tidak ditemukan.");
+    return updated;
+  }
+
+  /**
    * Menghapus berkas yang diganti/tidak dipakai lagi: baris langsung `deleted` (tidak lagi dilayani) dan objek dihapus
    * setelah commit. Kegagalan hapus objek dicatat; pembersihan yang wajib terjamin (penghapusan akun) memakai
    * {@link deleteNow}. Wajib tx dari withTx.
@@ -306,7 +376,10 @@ export class FilesService implements OnModuleInit {
     if (!row) return false;
     afterCommit(() =>
       this.storage.delete(row.objectKey).catch((error: unknown) => {
-        this.logger.warn({ error: safeError(error), file_id: fileId }, "objek berkas gagal dihapus setelah discard");
+        this.logger.warn(
+          { error: safeError(error), file_id: fileId },
+          "objek berkas gagal dihapus setelah discard",
+        );
       }),
     );
     return true;
@@ -314,14 +387,18 @@ export class FilesService implements OnModuleInit {
 
   /**
    * Menghapus objek lalu menandai baris `deleted` dalam satu transaksi dengan baris terkunci; galat storage
-   * dilempar (baris tetap, pemanggil/job mengulang). `onlyIf` membatasi ke berkas sementara kedaluwarsa (job cleanup).
+   * dilempar (baris tetap, pemanggil/job mengulang). `onlyIf` membatasi ke berkas sementara kedaluwarsa (job cleanup)
+   * atau berkas ber-expires_at yang sudah lewat.
    */
   async deleteNow(fileId: string, onlyIf?: "unattached-expired" | "expired"): Promise<boolean> {
     return withTx(this.db, async (tx) => {
       const [row] = await tx.select().from(files).where(eq(files.id, fileId)).for("update");
       if (!row || row.status === "deleted") return false;
       const now = this.clock.now();
-      if (onlyIf === "unattached-expired" && (row.attachedAt || row.createdAt.getTime() > now.getTime() - TEMP_FILE_MAX_AGE_MS))
+      if (
+        onlyIf === "unattached-expired" &&
+        (row.attachedAt || row.createdAt.getTime() > now.getTime() - TEMP_FILE_MAX_AGE_MS)
+      )
         return false;
       if (onlyIf === "expired" && !(row.expiresAt && row.expiresAt <= now)) return false;
       await this.storage.delete(row.objectKey);
@@ -371,7 +448,8 @@ export class FilesService implements OnModuleInit {
 
   /**
    * Berkas buatan sistem (purpose `uploader: system`, mis. ekspor audit CSV): langsung `ready` + terlampir, dengan
-   * kedaluwarsa opsional. Dipanggil job worker; objek ditulis lebih dulu lalu baris dicatat.
+   * kedaluwarsa opsional. Dipanggil job worker; objek ditulis lebih dulu lalu baris dicatat (objek dibuang bila
+   * pencatatan gagal).
    */
   async storeGenerated(input: {
     ownerUserId: string | null;
@@ -420,7 +498,8 @@ export class FilesService implements OnModuleInit {
    * Dipanggil modul di onModuleInit, mis. chat: anggota room boleh membuka chat_image di room itu.
    */
   registerAccessPolicy(purpose: FilePurpose, policy: FileAccessPolicy): void {
-    if (!(FILE_PURPOSES as readonly string[]).includes(purpose)) throw new Error(`Purpose tidak dikenal: ${purpose}`);
+    if (!(FILE_PURPOSES as readonly string[]).includes(purpose))
+      throw new Error(`Purpose tidak dikenal: ${purpose}`);
     const list = this.policies.get(purpose) ?? [];
     list.push(policy);
     this.policies.set(purpose, list);
@@ -434,17 +513,31 @@ export class FilesService implements OnModuleInit {
     return false;
   }
 
+  /** Baris berkas `ready`, atau null (dipakai modul yang memvalidasi file_id sebelum melampirkan). */
+  async findReady(fileId: string, db: DbOrTx = this.db): Promise<FileRow | null> {
+    const [file] = await db.select().from(files).where(eq(files.id, fileId)).limit(1);
+    return file && file.status === "ready" ? file : null;
+  }
+
   /**
    * GET /files/{fileId}/access: kebijakan diperiksa lebih dulu (TTL tidak menggantikan otorisasi, PRD 5.4), lalu URL
-   * bertanda tangan <= 10 menit terikat berkas + purpose + penampil. Berkas yang tidak ada, belum siap, atau tidak
-   * boleh dibuka → 404 (N-09). Berkas publik → URL publik tetap.
+   * bertanda tangan <= 10 menit terikat berkas + purpose + penampil (user, sesi, session_version). Berkas yang tidak
+   * ada, belum siap, atau tidak boleh dibuka → 404 (N-09). Berkas publik → URL publik tetap.
    */
-  async accessFor(fileId: string, viewer: FileViewer, options: { ttlSeconds?: number } = {}): Promise<FileUrl> {
-    const [file] = await this.db.select().from(files).where(eq(files.id, fileId)).limit(1);
-    if (!file || file.status !== "ready") throw notFound("Berkas tidak ditemukan.");
+  async accessFor(
+    fileId: string,
+    viewer: FileViewer,
+    options: { ttlSeconds?: number } = {},
+  ): Promise<FileUrl> {
+    const file = await this.findReady(fileId);
+    if (!file) throw notFound("Berkas tidak ditemukan.");
     if (file.visibility === "public") return { url: this.publicUrl(file.id), expiresAt: null };
     if (!(await this.canAccess(file, viewer))) throw notFound("Berkas tidak ditemukan.");
-    return this.signedUrl(file, { userId: viewer.userId, sessionId: viewer.sessionId }, options);
+    return this.signedUrl(
+      file,
+      { userId: viewer.userId, sessionId: viewer.sessionId, sessionVersion: viewer.sessionVersion },
+      options,
+    );
   }
 
   /**
@@ -464,6 +557,7 @@ export class FilesService implements OnModuleInit {
         purpose: file.purpose as FilePurpose,
         userId: viewer?.userId ?? null,
         sessionId: viewer?.sessionId ?? null,
+        sessionVersion: viewer?.sessionVersion ?? null,
       },
       this.clock.now(),
       options.ttlSeconds ?? FILE_URL_DEFAULT_TTL_SECONDS,
@@ -471,33 +565,58 @@ export class FilesService implements OnModuleInit {
     return { url: `${this.env.API_PUBLIC_URL}/api/v1/files/content/${token}`, expiresAt };
   }
 
-  /** URL tetap berkas publik (cover berita/event, banner). */
+  /** URL tetap berkas publik (cover berita/event, banner, avatar publik). */
   publicUrl(fileId: string): string {
     return `${this.env.API_PUBLIC_URL}/api/v1/files/public/${fileId}`;
   }
 
+  /** Bentuk kontrak `FileRef` (tanpa object key maupun nama berkas asli). */
+  toFileRef(file: FileRow): FileRefDto {
+    return {
+      id: file.id,
+      purpose: file.purpose as FilePurpose,
+      mime: file.mime,
+      bytes: file.bytes,
+      width: file.width,
+      height: file.height,
+      visibility: file.visibility as FileVisibility,
+      public_url: file.visibility === "public" ? this.publicUrl(file.id) : null,
+      created_at: file.createdAt.toISOString(),
+    };
+  }
+
   /**
-   * GET /files/content/{token}: token sah dan belum kedaluwarsa, berkas `ready` dengan purpose yang sama, dan bila
-   * terikat sesi: sesi belum dicabut/kedaluwarsa dan akun masih aktif (logout/suspend memutus URL yang beredar).
-   * Selain itu 404.
+   * GET /files/content/{token}: token sah dan belum kedaluwarsa, berkas `ready` dengan purpose yang sama. Bila URL
+   * terikat sesi, otorisasi DIULANG saat dibuka (PRD 5.4: TTL tidak menggantikan otorisasi): sesi belum dicabut/
+   * kedaluwarsa, session_version sama, akun aktif (admin: status admin aktif), lalu kebijakan akses purpose dievaluasi
+   * dengan izin/effective_status terbaru. Logout, suspend, pencabutan izin, atau keluar room langsung mematikan URL
+   * yang beredar. Selain itu 404.
    */
   async openContent(token: string): Promise<FileContent> {
     const now = this.clock.now();
     const claims = await verifyFileToken(this.urlKey, token, now);
-    if (!claims) throw notFound("Tautan berkas tidak berlaku. Buka ulang dari aplikasi.");
-    const [file] = await this.db.select().from(files).where(eq(files.id, claims.fileId)).limit(1);
-    if (!file || file.status !== "ready" || file.purpose !== claims.purpose)
-      throw notFound("Tautan berkas tidak berlaku. Buka ulang dari aplikasi.");
-    if (claims.sessionId && !(await this.sessionStillValid(claims, now)))
-      throw notFound("Tautan berkas tidak berlaku. Buka ulang dari aplikasi.");
+    if (!claims) throw notFound(LINK_EXPIRED);
+    const file = await this.findReady(claims.fileId);
+    if (!file || file.purpose !== claims.purpose) throw notFound(LINK_EXPIRED);
+    if (file.visibility === "private" && claims.sessionId) {
+      const viewer = await this.viewerFor(claims, now);
+      if (!viewer || !(await this.canAccess(file, viewer))) throw notFound(LINK_EXPIRED);
+    }
     return { file, body: await this.readObject(file) };
   }
 
   /** GET /files/public/{fileId}: hanya berkas `ready` bervisibilitas publik. */
   async openPublic(fileId: string): Promise<FileContent> {
-    const [file] = await this.db.select().from(files).where(eq(files.id, fileId)).limit(1);
-    if (!file || file.status !== "ready" || file.visibility !== "public") throw notFound("Berkas tidak ditemukan.");
+    const file = await this.findReady(fileId);
+    if (!file || file.visibility !== "public") throw notFound("Berkas tidak ditemukan.");
     return { file, body: await this.readObject(file) };
+  }
+
+  /** Metadata berkas publik tanpa membuka objek (ETag/304). */
+  async publicMeta(fileId: string): Promise<FileRow> {
+    const file = await this.findReady(fileId);
+    if (!file || file.visibility !== "public") throw notFound("Berkas tidak ditemukan.");
+    return file;
   }
 
   private async readObject(file: FileRow): Promise<Readable> {
@@ -512,14 +631,58 @@ export class FilesService implements OnModuleInit {
     }
   }
 
-  private async sessionStillValid(claims: FileTokenClaims, now: Date): Promise<boolean> {
-    if (!claims.userId || !claims.sessionId) return false;
+  /**
+   * Penampil terkini untuk token terikat sesi, dibangun dari database seperti AuthGuard (ARCHITECTURE §4.3): sesi sah
+   * dan session_version sama, akun aktif berjenis sesuai audience, admin aktif + izin dari database (super_admin semua
+   * izin), anggota dengan effective_status nonsuspended (tingkat yang sama dengan GET /files/{id}/access). null bila
+   * salah satu tidak terpenuhi.
+   */
+  private async viewerFor(claims: FileTokenClaims, now: Date): Promise<FileViewer | null> {
+    if (!claims.userId || !claims.sessionId || claims.sessionVersion === null) return null;
     const [row] = await this.db
-      .select({ revokedAt: sessions.revokedAt, expiresAt: sessions.expiresAt, userStatus: users.status })
+      .select({
+        revokedAt: sessions.revokedAt,
+        expiresAt: sessions.expiresAt,
+        audience: sessions.audience,
+        userStatus: users.status,
+        userKind: users.kind,
+        sessionVersion: users.sessionVersion,
+        adminId: admins.id,
+        adminRole: admins.role,
+        adminStatus: admins.status,
+      })
       .from(sessions)
       .innerJoin(users, eq(users.id, sessions.userId))
+      .leftJoin(admins, eq(admins.userId, users.id))
       .where(and(eq(sessions.id, claims.sessionId), eq(sessions.userId, claims.userId)))
       .limit(1);
-    return !!row && !row.revokedAt && row.expiresAt > now && row.userStatus === "active";
+    if (
+      !row ||
+      row.revokedAt ||
+      row.expiresAt <= now ||
+      row.userStatus !== "active" ||
+      row.sessionVersion !== claims.sessionVersion
+    )
+      return null;
+    const base = { userId: claims.userId, sessionId: claims.sessionId, sessionVersion: claims.sessionVersion };
+    if (row.audience === "admin") {
+      if (row.userKind !== "admin" || !row.adminId || row.adminStatus !== "active") return null;
+      const permissions: ReadonlySet<Permission> =
+        row.adminRole === "super_admin"
+          ? new Set(PERMISSION_VALUES)
+          : new Set(
+              (
+                await this.db
+                  .select({ permission: adminPermissions.permission })
+                  .from(adminPermissions)
+                  .where(eq(adminPermissions.adminId, row.adminId))
+              ).map((p) => p.permission as Permission),
+            );
+      return { ...base, audience: "admin", adminId: row.adminId, permissions, effectiveStatus: null };
+    }
+    if (row.audience !== "mobile" || row.userKind !== "alumni") return null;
+    const status = (await this.membership.effectiveStatusFor(claims.userId, { now }))?.status ?? "unverified";
+    if (!memberAccessAllows("nonsuspended", status)) return null;
+    return { ...base, audience: "mobile", adminId: null, permissions: new Set(), effectiveStatus: status };
   }
 }

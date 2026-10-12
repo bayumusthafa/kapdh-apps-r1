@@ -1,4 +1,5 @@
 import { fileTypeFromBuffer } from "file-type";
+import { inflateSync } from "node:zlib";
 import sharp from "sharp";
 import { type FileKind, type FilePurposeSpec, maxBytesFor } from "./purposes.js";
 
@@ -117,18 +118,62 @@ async function processImage(data: Buffer, mime: ImageMime): Promise<ProcessedFil
 }
 
 /** Nama PDF yang menandai konten aktif/tersemat (setelah escape `#xx` pada nama dinormalkan). */
-const ACTIVE_PDF_NAMES = /\/(JavaScript|JS|Launch|EmbeddedFile|EmbeddedFiles|RichMedia|XFA|GoToE|SubmitForm|ImportData)(?=[\s/<>[\]()%{}]|$)/;
+const ACTIVE_PDF_NAMES =
+  /\/(JavaScript|JS|Launch|EmbeddedFile|EmbeddedFiles|RichMedia|XFA|GoToE|SubmitForm|ImportData)(?=[\s/<>[\]()%{}]|$)/;
+
+/** Batas total isi stream PDF yang didekompresi saat pemeriksaan (melawan "zip bomb" di dalam PDF). */
+export const MAX_PDF_INFLATED_BYTES = 32 * 1024 * 1024;
+
+function hasActiveNames(latin1: string): boolean {
+  return ACTIVE_PDF_NAMES.test(
+    latin1.replace(/#([0-9A-Fa-f]{2})/g, (_m, hex: string) => String.fromCharCode(parseInt(hex, 16))),
+  );
+}
+
+/**
+ * Isi stream terkompresi Flate (termasuk object stream PDF 1.5+ yang dapat menyembunyikan kamus /JavaScript) dibuka
+ * dengan batas total {@link MAX_PDF_INFLATED_BYTES}; melebihi batas → ditolak. Stream yang bukan Flate atau rusak
+ * dilewati (tidak dapat memuat kamus aktif yang dibaca penampil PDF).
+ */
+function inflatedStreams(data: Buffer): string[] {
+  const text = data.toString("latin1");
+  const result: string[] = [];
+  let budget = MAX_PDF_INFLATED_BYTES;
+  const marker = /stream\r?\n/g;
+  let match: RegExpExecArray | null;
+  while ((match = marker.exec(text)) !== null) {
+    if (text.slice(Math.max(0, match.index - 3), match.index) === "end") continue;
+    const start = match.index + match[0].length;
+    const end = text.indexOf("endstream", start);
+    if (end < 0) break;
+    marker.lastIndex = end + "endstream".length;
+    let inflated: Buffer;
+    try {
+      inflated = inflateSync(data.subarray(start, end), { maxOutputLength: Math.max(1, budget) });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ERR_BUFFER_TOO_LARGE")
+        throw new FileRejectedError(
+          422,
+          "PDF terlalu kompleks untuk diperiksa. Kirim PDF lain atau foto bukti.",
+        );
+      continue;
+    }
+    budget -= inflated.byteLength;
+    result.push(inflated.toString("latin1"));
+  }
+  return result;
+}
 
 function inspectPdf(data: Buffer): ProcessedFile {
   const head = data.subarray(0, 16).toString("latin1");
   if (!/^%PDF-(1\.[0-7]|2\.0)/.test(head)) throw new FileRejectedError(422, "PDF rusak atau tidak valid.");
   const tail = data.subarray(Math.max(0, data.length - 2048)).toString("latin1");
   if (!tail.includes("%%EOF")) throw new FileRejectedError(422, "PDF rusak atau tidak lengkap.");
-  const text = data
-    .toString("latin1")
-    .replace(/#([0-9A-Fa-f]{2})/g, (_m, hex: string) => String.fromCharCode(parseInt(hex, 16)));
-  if (ACTIVE_PDF_NAMES.test(text))
-    throw new FileRejectedError(422, "PDF berisi skrip atau lampiran yang tidak diizinkan. Kirim PDF biasa atau foto.");
+  if (hasActiveNames(data.toString("latin1")) || inflatedStreams(data).some(hasActiveNames))
+    throw new FileRejectedError(
+      422,
+      "PDF berisi skrip atau lampiran yang tidak diizinkan. Kirim PDF biasa atau foto.",
+    );
   return { data, mime: "application/pdf", kind: "pdf", width: null, height: null };
 }
 
@@ -138,7 +183,8 @@ export async function inspectUpload(input: InspectInput): Promise<ProcessedFile>
   if (data.length === 0) throw new FileRejectedError(422, "Berkas kosong.");
   const detected = await fileTypeFromBuffer(data);
   const kind = detected ? kindOf(detected.mime) : null;
-  if (!detected || !kind) throw new FileRejectedError(415, "Tipe berkas tidak didukung. Gunakan JPG, PNG, atau WebP.");
+  if (!detected || !kind)
+    throw new FileRejectedError(415, "Tipe berkas tidak didukung. Gunakan JPG, PNG, atau WebP.");
   if (!spec.kinds.includes(kind))
     throw new FileRejectedError(
       415,
@@ -147,10 +193,7 @@ export async function inspectUpload(input: InspectInput): Promise<ProcessedFile>
         : "Tipe berkas tidak didukung untuk keperluan ini.",
     );
   if (data.length > maxBytesFor(kind))
-    throw new FileRejectedError(
-      413,
-      kind === "pdf" ? "PDF maksimal 10 MB." : "Gambar maksimal 5 MB.",
-    );
+    throw new FileRejectedError(413, kind === "pdf" ? "PDF maksimal 10 MB." : "Gambar maksimal 5 MB.");
   assertNotDisguised(detected.mime, input.filename, input.declaredMime);
   return kind === "image" ? processImage(data, detected.mime as ImageMime) : inspectPdf(data);
 }

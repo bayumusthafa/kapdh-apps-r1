@@ -126,12 +126,16 @@ export function toReadable(body: ObjectBody): Readable {
 /** Membaca stream sampai habis (uji dan berkas kecil). */
 export async function readAll(stream: NodeJS.ReadableStream): Promise<Buffer> {
   const chunks: Buffer[] = [];
-  for await (const chunk of stream) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
+  for await (const chunk of stream)
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
   return Buffer.concat(chunks);
 }
 
 /** SHA-256 isi objek yang tersimpan (verifikasi checksum migrasi storage, PRD 5.4). */
-export async function hashObject(driver: StorageDriver, key: string): Promise<{ sha256: string; bytes: number }> {
+export async function hashObject(
+  driver: StorageDriver,
+  key: string,
+): Promise<{ sha256: string; bytes: number }> {
   const hasher = createHash("sha256");
   let bytes = 0;
   for await (const chunk of await driver.get(key)) {

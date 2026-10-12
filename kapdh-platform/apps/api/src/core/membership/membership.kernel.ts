@@ -216,7 +216,10 @@ export class MembershipKernel {
     if (current.type !== "registration" && current.type !== "renewal")
       throw new Error(`applyPaidPayment hanya untuk iuran registration/renewal, bukan ${current.type}`);
     if (current.status !== "paid")
-      throw conflict("Pembayaran belum berstatus paid.", { status: current.status, version: String(current.version) });
+      throw conflict("Pembayaran belum berstatus paid.", {
+        status: current.status,
+        version: String(current.version),
+      });
     const kind = current.type === "registration" ? "activation" : "renewal";
 
     const [existing] = await tx
@@ -302,7 +305,13 @@ export class MembershipKernel {
       route: "/kta",
       dedupKey: `membership.period:${current.id}`,
     });
-    return { applied: true, kind, eventId, periodStartsAt: period.startsAt, periodExpiresAt: period.expiresAt };
+    return {
+      applied: true,
+      kind,
+      eventId,
+      periodStartsAt: period.startsAt,
+      periodExpiresAt: period.expiresAt,
+    };
   }
 
   // --------------------------------------------------------------------------------------------------- moderasi

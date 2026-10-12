@@ -8,6 +8,7 @@ import { LogController } from "fastify";
 import type { DestinationStream } from "pino";
 import { v7 as uuidv7 } from "uuid";
 import { type AppDeps, AppModule } from "./app.module.js";
+import { FILE_TOKEN_MAX_LENGTH } from "./core/files/file-token.js";
 import { MAX_UPLOAD_BYTES } from "./core/files/purposes.js";
 import { installHttpHooks, installMultipartGate } from "./core/http/fastify-hooks.js";
 import { RequestGate } from "./core/http/request-gate.js";
@@ -54,6 +55,9 @@ export async function createApp(
     // Hanya hop proxy tepercaya (Traefik); X-Forwarded-For dari klien tidak dapat memalsukan req.ip (PRD 2.5).
     trustProxy: deps.env.TRUST_PROXY_HOPS > 0 ? deps.env.TRUST_PROXY_HOPS : false,
     bodyLimit: JSON_BODY_LIMIT,
+    // Token URL berkas privat ada di path `/files/content/{token}` (PRD 5.4); bawaan Fastify 100 karakter terlalu
+    // pendek untuk JWT kompak. Parameter lain tetap divalidasi (UUID pipe, zod).
+    routerOptions: { maxParamLength: FILE_TOKEN_MAX_LENGTH },
   });
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule.forRoot(deps, {

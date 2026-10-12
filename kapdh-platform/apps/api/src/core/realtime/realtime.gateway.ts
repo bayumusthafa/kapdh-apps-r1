@@ -9,7 +9,13 @@ import { safeError } from "../logging/safe-error.js";
 import type { EffectiveStatus } from "../membership/effective-status.js";
 import { MembershipKernel } from "../membership/membership.kernel.js";
 import { CLOCK, ROOT_LOGGER } from "../tokens.js";
-import { buildEnvelope, roomChannel, sessionChannel, type SessionRevokedReason, userChannel } from "./envelope.js";
+import {
+  buildEnvelope,
+  roomChannel,
+  sessionChannel,
+  type SessionRevokedReason,
+  userChannel,
+} from "./envelope.js";
 import { CLIENT_EVENTS, type ClientEvent, type RealtimeClient, RealtimeService } from "./realtime.service.js";
 import { NamespaceTransport, REALTIME_NAMESPACE } from "./transports.js";
 
@@ -47,7 +53,9 @@ class HandshakeError extends Error {
  * modul chat setelah sesi diperiksa ulang.
  */
 @WebSocketGateway({ namespace: REALTIME_NAMESPACE })
-export class RealtimeGateway implements OnGatewayInit<Namespace>, OnGatewayConnection<Socket>, OnModuleDestroy {
+export class RealtimeGateway
+  implements OnGatewayInit<Namespace>, OnGatewayConnection<Socket>, OnModuleDestroy
+{
   private namespace: Namespace | null = null;
   private timer: NodeJS.Timeout | null = null;
   private revalidating: Promise<void> | null = null;
@@ -90,7 +98,8 @@ export class RealtimeGateway implements OnGatewayInit<Namespace>, OnGatewayConne
     }
     await socket.join([userChannel(identity.userId), sessionChannel(identity.sessionId)]);
     await this.syncRooms(socket, identity.effectiveStatus);
-    for (const event of CLIENT_EVENTS) socket.on(event, (data: unknown) => void this.onClientEvent(socket, event, data));
+    for (const event of CLIENT_EVENTS)
+      socket.on(event, (data: unknown) => void this.onClientEvent(socket, event, data));
   }
 
   /**
@@ -130,7 +139,9 @@ export class RealtimeGateway implements OnGatewayInit<Namespace>, OnGatewayConne
   private async doRevalidate(): Promise<void> {
     const namespace = this.namespace;
     if (!namespace) return;
-    const sockets = [...namespace.sockets.values()].filter((s) => (s.data as SocketIdentity | undefined)?.userId);
+    const sockets = [...namespace.sockets.values()].filter(
+      (s) => (s.data as SocketIdentity | undefined)?.userId,
+    );
     if (sockets.length === 0) return;
     const identities = sockets.map((s) => s.data as SocketIdentity);
     const verdicts = await this.sessions.revalidate(
@@ -147,7 +158,9 @@ export class RealtimeGateway implements OnGatewayInit<Namespace>, OnGatewayConne
       if (reason) this.revokeSocket(socket, reason);
       return !reason;
     });
-    const statuses = await this.membership.effectiveStatusesFor(alive.map((s) => (s.data as SocketIdentity).userId));
+    const statuses = await this.membership.effectiveStatusesFor(
+      alive.map((s) => (s.data as SocketIdentity).userId),
+    );
     const roomsCache = new Map<string, Promise<string[]>>();
     for (const socket of alive) {
       const identity = socket.data as SocketIdentity;
@@ -169,7 +182,8 @@ export class RealtimeGateway implements OnGatewayInit<Namespace>, OnGatewayConne
       cache?.set(identity.userId, pending);
     }
     const desired = new Set((await pending).map(roomChannel));
-    for (const channel of socket.rooms) if (channel.startsWith("room:") && !desired.has(channel)) socket.leave(channel);
+    for (const channel of socket.rooms)
+      if (channel.startsWith("room:") && !desired.has(channel)) socket.leave(channel);
     const missing = [...desired].filter((channel) => !socket.rooms.has(channel));
     if (missing.length > 0) await socket.join(missing);
   }

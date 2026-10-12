@@ -234,7 +234,10 @@ export class RealtimeService {
       try {
         action();
       } catch (error) {
-        this.logger.warn({ error: safeError(error), action: label }, "pengiriman realtime gagal (data tetap tersimpan)");
+        this.logger.warn(
+          { error: safeError(error), action: label },
+          "pengiriman realtime gagal (data tetap tersimpan)",
+        );
       }
     };
     if (currentTx()) afterCommit(execute);

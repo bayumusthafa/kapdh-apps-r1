@@ -12,7 +12,10 @@ import { withTx } from "../../src/core/db/tx.js";
 import type { Db } from "../../src/core/db/types.js";
 import { JobRegistry, type OutboxEvent } from "../../src/core/jobs/job-registry.js";
 import { OUTBOX_MAX_ATTEMPTS, outboxBackoffMs } from "../../src/core/jobs/job-runner.js";
+import { MembershipKernel } from "../../src/core/membership/membership.kernel.js";
 import { OutboxService } from "../../src/core/outbox/outbox.service.js";
+import { PaymentHandlerRegistry } from "../../src/core/payments-kernel/payment-handler.registry.js";
+import { QrTokenService } from "../../src/core/qr/qr-token.service.js";
 import { DB } from "../../src/core/tokens.js";
 import { createWorkerContext } from "../../src/worker.js";
 import {
@@ -65,7 +68,11 @@ class JobsProbe implements OnModuleInit {
         }
         // Efek handler beraudit: aktor system, request_id = request asal event (korelasi N-14).
         await withTx(this.db, (tx) =>
-          this.audit.write(tx, { action: "uji.event_fanout", entityType: "event", entityId: payload.event_id }),
+          this.audit.write(tx, {
+            action: "uji.event_fanout",
+            entityType: "event",
+            entityId: payload.event_id,
+          }),
         );
       },
     });
@@ -303,7 +310,9 @@ describe("JobRunner.runScheduled", () => {
     registry.registerScheduled({ name: "a.b", everyMs: 1_000, run });
     expect(() => registry.registerScheduled({ name: "a.b", everyMs: 1_000, run })).toThrow();
     registry.registerTopicHandler({ topic: "event.cancelled", handle: async () => {} });
-    expect(() => registry.registerTopicHandler({ topic: "event.cancelled", handle: async () => {} })).toThrow();
+    expect(() =>
+      registry.registerTopicHandler({ topic: "event.cancelled", handle: async () => {} }),
+    ).toThrow();
   });
 });
 
@@ -366,6 +375,15 @@ describe("createWorkerContext (ARCHITECTURE §1, §4.8)", () => {
     );
     try {
       expect(worker.registry.topics()).toContain("event.cancelled");
+      // Job core yang didaftarkan layanan inti ikut tersedia di worker (ARCHITECTURE §4.8).
+      expect(worker.registry.scheduledJobs().map((job) => job.name)).toContain("files.cleanup-temp");
+      await worker.jobs.runScheduled("files.cleanup-temp");
+      // Kernel domain tersedia tanpa secret API (QR hanya runtime API).
+      expect(worker.app.get(MembershipKernel)).toBeInstanceOf(MembershipKernel);
+      expect(worker.app.get(PaymentHandlerRegistry).types()).toEqual(
+        expect.arrayContaining(["registration", "renewal"]),
+      );
+      expect(() => worker.app.get(QrTokenService)).toThrow();
       const eventId = uuidv7();
       await worker.app.get(OutboxService).publish(db, {
         topic: "event.cancelled",

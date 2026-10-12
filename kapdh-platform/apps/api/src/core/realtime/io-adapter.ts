@@ -42,7 +42,10 @@ export class KapdhIoAdapter extends IoAdapter {
       connectTimeout: 10_000,
       pingInterval: 25_000,
       pingTimeout: 20_000,
-      allowRequest: (request: IncomingMessage, callback: (error: string | null | undefined, ok: boolean) => void) => {
+      allowRequest: (
+        request: IncomingMessage,
+        callback: (error: string | null | undefined, ok: boolean) => void,
+      ) => {
         const origin = request.headers.origin;
         callback(null, origin === undefined || allowed.has(origin));
       },
@@ -58,7 +61,11 @@ export class KapdhIoAdapter extends IoAdapter {
 
   /** Menutup socket semua namespace dan engine; server HTTP ditutup Fastify sesudahnya. */
   override async close(server: Server): Promise<void> {
-    const namespaces = (server as unknown as { _nsps?: Map<string, { disconnectSockets(close: boolean): void; adapter: { close?(): unknown } }> })._nsps;
+    const namespaces = (
+      server as unknown as {
+        _nsps?: Map<string, { disconnectSockets(close: boolean): void; adapter: { close?(): unknown } }>;
+      }
+    )._nsps;
     if (!namespaces) return;
     for (const namespace of namespaces.values()) {
       namespace.disconnectSockets(true);

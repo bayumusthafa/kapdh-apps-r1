@@ -61,7 +61,8 @@ function validate(input: NotifyInput): void {
   if (!(NOTIFICATION_CATEGORIES as readonly string[]).includes(input.category))
     throw new NotificationInputError(`Kategori notifikasi tidak dikenal: ${input.category}`);
   const title = input.title.trim();
-  if (title.length === 0 || title.length > 120) throw new NotificationInputError("Judul notifikasi wajib 1..120 karakter");
+  if (title.length === 0 || title.length > 120)
+    throw new NotificationInputError("Judul notifikasi wajib 1..120 karakter");
   if (input.body != null && input.body.length > 500)
     throw new NotificationInputError("Isi notifikasi maksimal 500 karakter");
   if (input.route != null && !isNotificationRoute(input.route))
