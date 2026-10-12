@@ -6,6 +6,14 @@
 # dari database setiap request (AC F15-1, F16-3). Lihat keterangan `x-kapdh-access` di payments.yaml.
 # Konflik kepentingan (PRD 2.3): pengurus tidak dapat memutus atau menyesuaikan payment milik akun alumni yang
 # tertaut ke identitas adminnya (admins.linked_alumni_user_id).
+#
+# Kunci baris mengikuti URUTAN KUNCI di kepala payments.yaml (perluasan urutan global events.yaml, PRD 6.4):
+# users -> alumni (jalur iuran) -> events -> tickets -> payments -> payment_adjustments. Payment tiket tidak pernah
+# dikunci sebelum event dan tiketnya; handler tiket mengunci keduanya lewat hook pra-kunci `lockRelated`.
+#
+# Akun pemilik dihapus (F-14, PRD 4.4, D2, AC F14-4): job penghapusan hanya membatalkan payment pending TANPA bukti
+# (proof_version 0, aktor system). Payment pending berbukti tetap di antrean dalam bentuk anonim (`member` null,
+# berkas bukti dan `transfer_note` dihapus) dan wajib diputus; lihat adminDecidePayment.
 tags:
   - name: Admin Payments
     description: |
@@ -20,9 +28,10 @@ paths:
       summary: Antrean dan daftar pembayaran (payments.read, F-04).
       description: |
         Tabel server-side (F-15) untuk tab Verifikasi Pembayaran (prototipe screen_8, guidelines p17). Kolom:
-        dikirim (`submitted_at`), alumni (nama, nomor anggota, angkatan), jenis (tiket menampilkan `event_title`
-        dan `event_starts_at`), nominal, usia antrean (dihitung klien dari `submitted_at`; `overdue` dari server)
-        dan status.
+        dikirim (`submitted_at`), alumni (nama, nomor anggota, angkatan; "Akun dihapus" bila `member` null), jenis
+        (tiket menampilkan `event_title` dan `event_starts_at`, serta penanda `ticket_status` dan `event_cancelled`
+        agar pemutus tahu tiket/event sudah dibatalkan sebelum membuka detail, PRD 4.4), nominal, usia antrean
+        (dihitung klien dari `submitted_at`; `overdue` dari server) dan status.
 
         Pilihan Status di UI (prototipe screen_8) dipetakan ke filter berikut:
         - "Menunggu" (tampilan bawaan) = `stage=awaiting_review`: pending yang sudah berbukti dan siap diputus.
@@ -133,31 +142,45 @@ paths:
         - `payment_method_id` adalah rekening organisasi tempat dana diterima (aktif atau nonaktif); disnapshot.
         - `proof_file_id` adalah berkas purpose payment_proof yang diunggah pengurus pemanggil sebagai bukti
           verifikasi (tangkapan mutasi atau bukti transfer yang dikirim anggota lewat kanal dukungan). Berkas
-          privat dan dibuka lewat GET /files/{fileId}/access.
+          privat dan dibuka lewat GET /files/{fileId}/access oleh pengurus berizin payments.read; TIDAK pernah
+          dibuka kepada anggota (`proof_file_id` dan `transfer_note` tidak dikirim pada respons anggota, N-09).
+          Unggah potongan yang hanya memuat transaksi anggota ini; transaksi pihak lain pada mutasi ditutup.
         - Pemanggil tidak berkonflik kepentingan (PRD 2.3).
 
-        Semua langkah berikut terjadi dalam SATU transaksi dengan lock baris akun pemilik:
-        - payment baru dihitung dari pengaturan `fees` versi aktif (snapshot baris, metode dan `settings_version`,
-          AC F03-5); nominal tidak pernah dikirim klien;
-        - bukti versi 1, lalu payment langsung paid dengan histori created, proof_submitted dan approved
-          beraktor admin;
-        - handler keanggotaan menghitung periode seperti keputusan biasa (registration dari approved_at, renewal
-          dari max(expires_at lama, approved_at)); lock akun mencegah suspend bersamaan di tengah proses;
-        - audit, notifikasi in-app kategori payment dengan deep link `/payments/{paymentId}`, dan outbox
-          (AC F04-1, F13-1).
-        Kegagalan email/push tidak membatalkan pencatatan (AC F04-5).
+        Semua langkah berikut terjadi dalam SATU transaksi. Urutan kunci (payments.yaml): baris users lalu alumni
+        pemilik, kemudian payment terbuka jenis yang sama (FOR UPDATE) bila ada; lock akun mencegah suspend atau
+        penghapusan akun bersamaan di tengah proses. Hasilnya bergantung pada payment terbuka jenis yang sama
+        (indeks `payments_user_id_type_open_key`):
+        - Tidak ada: payment baru dihitung dari pengaturan `fees` versi aktif (snapshot baris, metode dan
+          `settings_version`, AC F03-5; nominal tidak pernah dikirim klien), bukti versi 1, lalu langsung paid
+          dengan histori created, proof_submitted dan approved beraktor admin. Respons 201.
+        - Ada dengan stage awaiting_transfer (pending tanpa bukti) atau needs_fix (iuran rejected): payment itu
+          DISELESAIKAN DI TEMPAT agar anggota yang tidak dapat memakai alur aplikasi (misalnya instruksi iuran
+          disembunyikan di iOS) tidak terkunci oleh payment lamanya. Snapshot baris dan nominal tetap (AC F03-5);
+          snapshot metode diganti ke `payment_method_id` bila berbeda (histori method_changed beraktor admin);
+          bukti pengurus menjadi versi berikutnya (proof_submitted, atau proof_replaced dengan alasan penolakan
+          lama tetap di histori, AC F03-3); lalu paid dengan histori approved beraktor admin. Untuk iuran rejected
+          ini adalah transisi rejected -> pending -> paid oleh pengurus dalam satu transaksi, perluasan PRD 4.3
+          yang hanya tersedia lewat operasi ini (rencana cadangan D13; diajukan sebagai change request PRD 4.3
+          kepada pemilik produk) dan diaudit. Respons 200.
+        - Ada dengan stage awaiting_review (pending berbukti dari anggota): 409 PAYMENT_STATE_CONFLICT dengan
+          `current`; pengurus memutus bukti anggota itu lewat adminDecidePayment.
+        Setelah paid: handler keanggotaan menghitung periode seperti keputusan biasa (registration dari
+        approved_at, renewal dari max(expires_at lama, approved_at)); audit, notifikasi in-app kategori payment
+        dengan deep link `/payments/{paymentId}`, dan outbox (AC F04-1, F13-1). Kegagalan email/push tidak
+        membatalkan pencatatan (AC F04-5).
 
         Galat:
         - 400 VALIDATION_ERROR: `funds_verified` bukan true; metode tidak ada (field_errors.payment_method_id);
-          akun tidak ada, bukan alumni, sudah dihapus, atau disuspend (field_errors.user_id); renewal di luar
-          jendela perpanjangan atau sebelum iuran pendaftaran paid (field_errors.type).
+          akun tidak ada, bukan alumni, sudah dihapus atau deletion_pending, atau disuspend
+          (field_errors.user_id); renewal di luar jendela perpanjangan atau sebelum iuran pendaftaran paid
+          (field_errors.type).
         - 403 FORBIDDEN: tanpa izin payments.decide atau berkonflik kepentingan.
-        - 409 PAYMENT_STATE_CONFLICT: registration padahal iuran pendaftaran sudah paid, atau masih ada payment
-          nonterminal (pending/rejected) jenis yang sama. Dalam kasus kedua `current` berisi AdminPaymentDetail
-          payment tersebut, dan pengurus memutus atau membatalkannya lebih dahulu (indeks
-          `payments_user_id_type_open_key`).
+        - 409 PAYMENT_STATE_CONFLICT: registration padahal iuran pendaftaran sudah paid; atau payment terbuka jenis
+          yang sama sudah berbukti dari anggota (awaiting_review), dengan `current` berisi AdminPaymentDetail
+          payment itu untuk diputus lewat adminDecidePayment.
         - 409 IDEMPOTENCY_CONFLICT: Idempotency-Key sama dengan payload berbeda. Pengulangan dengan key dan payload
-          sama mengembalikan hasil pertama tanpa membuat payment kedua.
+          sama mengembalikan hasil pertama tanpa membuat atau menyelesaikan payment kedua kali.
         - 422 FILE_INVALID: berkas tidak ada, bukan purpose payment_proof, bukan unggahan pemanggil, belum siap,
           atau sudah terpakai.
       x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide], idempotent: true }
@@ -170,7 +193,14 @@ paths:
             schema: { $ref: "#/components/schemas/AdminRecordPaymentRequest" }
       responses:
         "201":
-          description: Payment iuran tercatat paid; detail lengkap.
+          description: Payment iuran baru tercatat paid; detail lengkap.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentDetail" }
+        "200":
+          description: |
+            Payment terbuka jenis yang sama (awaiting_transfer atau needs_fix) diselesaikan di tempat menjadi paid;
+            detail lengkap.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminPaymentDetail" }
@@ -185,8 +215,8 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "409":
           description: |
-            PAYMENT_STATE_CONFLICT (iuran pendaftaran sudah paid, atau payment nonterminal jenis sama masih ada;
-            `current` berisi AdminPaymentDetail payment itu) atau IDEMPOTENCY_CONFLICT.
+            PAYMENT_STATE_CONFLICT (iuran pendaftaran sudah paid, atau payment terbuka jenis sama sudah berbukti dari
+            anggota; `current` berisi AdminPaymentDetail payment itu) atau IDEMPOTENCY_CONFLICT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -252,7 +282,14 @@ paths:
       description: |
         Prasyarat: payment pending dengan bukti (proof_version >= 1), `expected_proof_version` dan
         `expected_version` sama dengan nilai terbaru, dan pemanggil tidak berkonflik kepentingan (PRD 2.3).
-        Keputusan mengunci baris payment; dari dua keputusan bersamaan hanya satu berlaku (AC F04-3).
+        Dari dua keputusan bersamaan hanya satu berlaku (AC F04-3).
+
+        Kunci (URUTAN KUNCI di kepala payments.yaml, PRD 6.4): `type`, `user_id` dan `ticket_id` dibaca tanpa
+        kunci; hook pra-kunci handler jenis mengunci baris terkait LEBIH DAHULU (tiket: event lalu tiket;
+        iuran: users lalu alumni pemilik bila masih ada); baru kemudian `SELECT payments … FOR UPDATE`, lalu status,
+        versi, `ticket_id` dan `user_id` diperiksa ulang. onApproved/onRejected tidak mengunci event, tiket, users
+        atau alumni setelah payment terkunci, sehingga keputusan tidak deadlock dengan adminCancelEvent,
+        cancelMyTicket, job expiry, suspend maupun penghapusan akun.
 
         - approve: wajib `funds_verified` true, artinya dana sudah dicocokkan dengan mutasi rekening tujuan, bukan
           sekadar bukti terlihat meyakinkan (PRD 3.4). Dalam SATU transaksi: payment paid, payment_event approved,
@@ -269,11 +306,28 @@ paths:
         diputus, karena dana mungkin sudah ditransfer dan pembatalan tidak berarti dana sudah dikembalikan.
         - approve berarti dana diterima. Payment menjadi paid, tetapi tiket tidak dihidupkan kembali dan QR tidak
           diterbitkan; handler tiket tidak menolak keputusan ini. Bila tabel D6 mewajibkan refund penuh (event
-          dibatalkan, atau pembatalan mandiri sampai H-3), penyesuaian refund sistem dibuat dalam transaksi yang
-          sama: `created_by` null, nominal penuh, `due_at` 7 hari kerja sejak pembatalan tiket. Penyesuaian ini
-          tampil di `adjustments` respons. Kasus lain (misalnya pemegang tiket disuspend) diputuskan pengurus per
+          dibatalkan, atau pembatalan mandiri sampai H-3; ditampilkan lebih dahulu sebagai `refund_on_approve`),
+          penyesuaian refund sistem dibuat dalam transaksi yang sama: `created_by` null, nominal penuh, `due_at`
+          7 hari kerja sejak pembatalan tiket, dan pemilik diberi notifikasi permintaan rekening tujuan (lihat
+          adminCreatePaymentAdjustment). Penyesuaian ini tampil di `adjustments` respons. Kasus lain (pemegang
+          tiket disuspend, tiket dibatalkan pengurus, tiket hangus karena akun dihapus) diputuskan pengurus per
           kasus lewat POST /admin/payments/{paymentId}/adjustments.
-        - reject berarti dana tidak ditemukan di rekening tujuan; tiket tetap cancelled dan tidak ada refund.
+        - reject berarti dana tidak ditemukan di rekening tujuan; tiket tetap cancelled, kursi tidak dilepas kedua
+          kalinya, dan tidak ada refund.
+
+        Akun pemilik sudah dihapus (`member` null; F-14, PRD 4.4, D2): payment pending berbukti tidak dibatalkan
+        job penghapusan dan tetap wajib diputus. Berkas bukti dan `transfer_note` sudah dihapus (AC F14-4), sehingga
+        `proof` null walaupun proof_version >= 1; pengurus mencocokkan nominal, tanggal dan referensi payment dengan
+        mutasi rekening tujuan (`funds_verified`).
+        - approve: payment paid tanpa efek keanggotaan (tidak ada membership_event; akun tidak dapat diaktifkan)
+          dan tanpa efek tiket (tiket sudah hangus, D6 "Akun dihapus"). Penghapusan akun tidak berarti dana sudah
+          dikembalikan, dan tidak ada refund otomatis: bendahara mencatat penyelesaian keuangan tersendiri
+          (PRD 4.4) lewat POST /admin/payments/{paymentId}/adjustments, yaitu refund ke rekening pengirim yang
+          terlihat di mutasi atau koreksi yang mencatat dana tidak dikembalikan beserta alasannya
+          (`actions.can_adjust` true).
+        - reject: payment rejected; iuran rejected tanpa pemilik tidak dapat dikirim ulang dan tidak menghalangi
+          apa pun.
+        Tidak ada notifikasi karena pemilik sudah tidak ada.
 
         Notifikasi kategori payment ke pemilik dengan deep link `/payments/{paymentId}` (ARCHITECTURE §4.7).
         Galat 409 membawa `current` berisi AdminPaymentDetail terbaru dan diperiksa berurutan:
@@ -331,6 +385,10 @@ paths:
         dengan aktor admin, handler jenis (tiket: tiket dibatalkan dan hold dilepas), audit, notifikasi kategori
         payment ke pemilik dengan deep link `/payments/{paymentId}`. Tidak membuka akses apa pun.
 
+        Kunci (URUTAN KUNCI di kepala payments.yaml, PRD 6.4): untuk tiket, hook pra-kunci handler tiket mengunci
+        event lalu tiket SEBELUM `SELECT payments … FOR UPDATE`, karena pelepasan hold mengubah held_quantity;
+        onCancelled tidak mengunci event/tiket lagi. Untuk iuran hanya baris payment yang dikunci.
+
         Galat 409 (dengan `current` AdminPaymentDetail): PAYMENT_STATE_CONFLICT bila payment bukan pending atau
         sudah berbukti, VERSION_CONFLICT bila If-Match usang, IDEMPOTENCY_CONFLICT. 403 FORBIDDEN bila tanpa izin
         atau berkonflik kepentingan.
@@ -376,15 +434,27 @@ paths:
         berkonflik kepentingan. Termasuk payment tiket yang disetujui setelah tiketnya dibatalkan (dana diterima,
         lihat adminDecidePayment) bila refund tidak dibuat otomatis oleh sistem.
 
-        - refund: `amount` > 0 dan total refund pending + completed tidak melebihi nominal payment. Rekening tujuan
-          refund (`refund_destination`) boleh diisi sekarang atau kemudian lewat PATCH, hanya disimpan selama
-          proses dan dihapus saat selesai atau dibatalkan (D2, D6). `due_at` = 7 hari kerja sejak pembatalan
-          tiket/event terkait, atau sejak dicatat bila tidak ada pembatalan (PRD 3.9).
+        - refund: `amount` > 0 dan total refund pending + completed tidak melebihi nominal payment. `due_at` = 7
+          hari kerja sejak pembatalan tiket/event terkait, atau sejak dicatat bila tidak ada pembatalan (PRD 3.9).
         - correction: `amount` >= 0 dengan alasan; tanpa rekening tujuan dan tanpa tenggat.
+
+        Rekening tujuan refund diminta saat proses refund saja (D6) dan hanya disimpan selama proses, lalu dihapus
+        saat selesai atau dibatalkan (D2). Kanal pengumpulannya:
+        - Utama, di aplikasi: dalam transaksi yang sama pemilik menerima notifikasi kategori payment dengan deep
+          link `/payments/{paymentId}` ("Refund sedang diproses bendahara; kirim rekening tujuan"), lalu mengisi
+          rekening lewat PUT /me/payments/{paymentId}/adjustments/{adjustmentId}/refund-destination. Ringkasan
+          penyesuaian anggota menampilkan `destination_required` dan `has_refund_destination`.
+        - Cadangan: rekening yang diterima bendahara lewat kontak dukungan resmi (pengaturan `support`) dicatat
+          lewat `refund_destination` di sini atau lewat PATCH. AdminPaymentMember sengaja tanpa kontak (N-09).
+        - Akun pemilik sudah dihapus: tidak ada notifikasi; bendahara memakai rekening pengirim pada mutasi dan
+          mencatatnya lewat PATCH.
+        Pembuatan koreksi tidak mengirim notifikasi.
 
         Refund otomatis juga dibuat sistem (created_by null) saat event dibatalkan atau peserta membatalkan sampai
         H-3 atas tiket paid, dan saat payment tiket yang tiketnya sudah dibatalkan dengan alasan yang sama disetujui
-        (F-09, D6). Audit dicatat dalam transaksi yang sama tanpa rekening tujuan (ARCHITECTURE §2 butir 3).
+        (F-09, D6); notifikasi permintaan rekening yang sama dikirim. Audit dicatat dalam transaksi yang sama tanpa
+        rekening tujuan (ARCHITECTURE §2 butir 3). Kunci: baris payment (FOR UPDATE) lebih dahulu agar pemeriksaan
+        total refund berurutan dengan PATCH nominal dan penyesuaian lain atas payment yang sama.
       x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide], idempotent: true }
       parameters:
         - $ref: "#/components/parameters/PaymentId"
@@ -423,7 +493,8 @@ paths:
       description: |
         Tab Penyesuaian. Urutan bawaan `due_at_asc` (tenggat terdekat dahulu, tanpa tenggat di akhir). `overdue`
         true bila pending dan sudah melewati `due_at` (7 hari kerja, D6). Rekening tujuan refund tidak pernah
-        dikirim di daftar.
+        dikirim di daftar; `has_refund_destination` menandai refund yang siap ditransfer, dan filter
+        `has_refund_destination=false` menampilkan refund yang masih menunggu rekening dari pemilik.
       x-kapdh-access: { audience: admin, permissions: [payments.read] }
       parameters:
         - name: status
@@ -438,6 +509,11 @@ paths:
         - name: overdue
           in: query
           required: false
+          schema: { type: boolean }
+        - name: has_refund_destination
+          in: query
+          required: false
+          description: true hanya penyesuaian yang rekening tujuannya sudah ada; false hanya yang belum ada.
           schema: { type: boolean }
         - name: payment_id
           in: query
@@ -501,8 +577,10 @@ paths:
       description: |
         Hanya untuk status pending. Field yang tidak dikirim tidak berubah; `refund_destination` null menghapus
         rekening tujuan, dan hanya boleh untuk kind refund. Aturan nominal sama dengan pembuatan. Audit mencatat
-        perubahan tanpa isi rekening tujuan. Galat 409 PAYMENT_STATE_CONFLICT bila bukan pending dan
-        VERSION_CONFLICT bila If-Match usang, dengan `current` AdminPaymentAdjustment.
+        perubahan tanpa isi rekening tujuan. Kunci: baris payment asal (FOR UPDATE) lalu baris penyesuaian, agar
+        pemeriksaan total refund berurutan dengan pembuatan penyesuaian lain. Galat 409 PAYMENT_STATE_CONFLICT bila
+        bukan pending dan VERSION_CONFLICT bila If-Match usang (termasuk bila pemilik baru saja mengirim rekening
+        tujuan), dengan `current` AdminPaymentAdjustment.
       x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide] }
       parameters:
         - $ref: "#/components/parameters/AdjustmentId"
@@ -544,7 +622,9 @@ paths:
         completed, `completed_at`/`completed_by` diisi dan `refund_destination` dikosongkan (D2); payment_event
         `adjusted` dicatat pada payment asal, audit tanpa rekening tujuan, dan notifikasi kategori payment ke
         pemilik dengan deep link `/payments/{paymentId}` (PRD 10.2: adjustment, notifikasi dan bukti
-        penyelesaian). Galat 409 PAYMENT_STATE_CONFLICT/VERSION_CONFLICT dengan `current`.
+        penyelesaian; tanpa notifikasi bila akun pemilik sudah dihapus). Kunci: baris payment asal lalu baris
+        penyesuaian (URUTAN KUNCI payments.yaml). Galat 409 PAYMENT_STATE_CONFLICT/VERSION_CONFLICT dengan
+        `current`.
       x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide], idempotent: true }
       parameters:
         - $ref: "#/components/parameters/AdjustmentId"
@@ -586,7 +666,10 @@ paths:
         Hanya untuk status pending. Dalam satu conditional UPDATE status menjadi cancelled; `cancel_reason`,
         `cancelled_by` dan `cancelled_at` disimpan di kolom penyesuaian (PRD 6.3: alasan dan aktor), dan
         `refund_destination` dikosongkan (D2). Nilai ini tidak pernah dibaca kembali dari audit_logs; audit hanya
-        jejak akuntabilitas (F-17) dan dicatat dalam transaksi yang sama. Galat 409
+        jejak akuntabilitas (F-17) dan dicatat dalam transaksi yang sama. Untuk refund, pemilik menerima notifikasi
+        kategori payment dengan deep link `/payments/{paymentId}` berisi teks baku bahwa refund dibatalkan dan
+        arahan ke kontak dukungan; `cancel_reason` internal tidak dikirim kepada anggota (tanpa notifikasi bila
+        akun pemilik sudah dihapus). Kunci: baris payment asal lalu baris penyesuaian. Galat 409
         PAYMENT_STATE_CONFLICT/VERSION_CONFLICT dengan `current`.
       x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide], idempotent: true }
       parameters:
@@ -856,6 +939,8 @@ components:
         - member
         - event_title
         - event_starts_at
+        - ticket_status
+        - event_cancelled
         - submitted_at
         - decided_at
         - review_due_at
@@ -882,6 +967,18 @@ components:
           format: date-time
           description: |
             Waktu mulai event untuk payment tiket, agar antrean menampilkan urgensi sebelum hari H (PRD 4.4); null
+            untuk iuran.
+        ticket_status:
+          description: |
+            Status tiket terkait untuk payment tiket; null untuk iuran. `cancelled` atau `expired` pada payment
+            pending berbukti berarti keputusan tidak menghidupkan tiket (lihat adminDecidePayment).
+          oneOf:
+            - $ref: "#/components/schemas/PaymentTicketStatus"
+            - type: "null"
+        event_cancelled:
+          type: [boolean, "null"]
+          description: |
+            True bila event payment tiket dibatalkan pengurus (seluruh QR tidak berlaku, refund penuh D6); null
             untuk iuran.
         submitted_at:
           type: [string, "null"]
@@ -963,7 +1060,10 @@ components:
             proof_file_id:
               type: [string, "null"]
               format: uuid
-              description: Berkas bukti untuk proof_submitted/proof_replaced (versi lama tetap dapat dibuka).
+              description: |
+                Berkas bukti untuk proof_submitted/proof_replaced (versi lama tetap dapat dibuka). Null bila berkas
+                sudah dihapus bersama akun pemilik (D2, AC F14-4); kolom histori append-only tidak diubah, API
+                mengembalikan null untuk berkas berstatus deleted.
             actor_admin:
               description: Pengurus pelaku untuk entri oleh admin; null untuk anggota atau sistem.
               oneOf:
@@ -1010,6 +1110,7 @@ components:
             - events
             - adjustments
             - conflict_of_interest
+            - refund_on_approve
             - actions
           properties:
             lines:
@@ -1022,11 +1123,18 @@ components:
               description: Metode asal yang masih tertaut (snapshot tetap di `method`).
             method_active: { type: boolean, description: Metode asal masih aktif. }
             proof:
-              description: Bukti aktif; null bila belum ada bukti.
+              description: |
+                Bukti aktif; null bila belum ada bukti, atau bila berkas bukti sudah dihapus bersama akun pemilik
+                (D2, AC F14-4; `proof_version` tetap >= 1 dan `member` null). Untuk payment seperti itu pengurus
+                memutus berdasarkan pencocokan mutasi (`funds_verified`), lihat adminDecidePayment.
               oneOf:
                 - $ref: "#/components/schemas/AdminPaymentProof"
                 - type: "null"
-            transfer_note: { type: [string, "null"] }
+            transfer_note:
+              type: [string, "null"]
+              description: |
+                Catatan transfer bukti aktif (dari anggota, atau dari pengurus untuk iuran yang dicatat lewat
+                POST /admin/payments); null setelah akun pemilik dihapus (D2).
             rejection_reason: { type: [string, "null"], description: Alasan penolakan terakhir. }
             rejection_count:
               type: integer
@@ -1060,6 +1168,15 @@ components:
             conflict_of_interest:
               type: boolean
               description: True bila payment milik alumni yang tertaut ke admin pemanggil (PRD 2.3).
+            refund_on_approve:
+              type: boolean
+              description: |
+                True bila menyetujui payment ini akan membuat refund sistem penuh dalam transaksi yang sama: payment
+                tiket pending berbukti yang tiketnya sudah cancelled karena event dibatalkan pengurus atau peserta
+                membatalkan sendiri sampai H-3 (D6). Dihitung server dengan aturan yang sama dengan handler tiket
+                saat approve, agar layar keputusan menampilkan akibatnya sebelum pengurus menyetujui. False untuk
+                iuran dan untuk tiket yang dibatalkan dengan sebab lain (pengurus, suspend, akun dihapus; refund
+                diputuskan per kasus). `ticket.event_status` dan `ticket.ticket_cancelled_by` menjelaskan sebabnya.
             actions: { $ref: "#/components/schemas/AdminPaymentActions" }
 
     PaymentDecisionKind:
@@ -1117,7 +1234,9 @@ components:
           format: uuid
           description: |
             Berkas purpose payment_proof yang diunggah pengurus pemanggil sebagai bukti verifikasi (misalnya
-            tangkapan mutasi); menjadi bukti versi 1.
+            tangkapan mutasi); menjadi bukti versi berikutnya (versi 1 untuk payment baru). Hanya memuat transaksi
+            anggota ini (transaksi pihak lain ditutup/dipotong, N-09). Tidak pernah dibuka kepada anggota dan ikut
+            dihapus saat akun pemilik dihapus (D2).
         transfer_note:
           type: string
           maxLength: 200
@@ -1138,7 +1257,9 @@ components:
       type: object
       description: |
         Rekening tujuan refund yang diminta saat proses refund saja (PRD 3.9) dan dihapus saat penyesuaian selesai
-        atau dibatalkan (D2). Tidak pernah dicatat di log, audit maupun ekspor (ARCHITECTURE §2 butir 3).
+        atau dibatalkan (D2). Biasanya dikirim pemilik lewat aplikasi (setMyRefundDestination, bentuk sama dengan
+        RefundDestinationInput); pengurus mengisinya hanya bila diterima lewat kanal dukungan resmi. Tidak pernah
+        dicatat di log, audit maupun ekspor (ARCHITECTURE §2 butir 3).
       required: [provider, account_number, account_holder]
       properties:
         provider: { type: string, minLength: 1, maxLength: 80, description: Nama bank atau e-wallet tujuan. }
@@ -1206,7 +1327,9 @@ components:
         status: { $ref: "#/components/schemas/PaymentAdjustmentStatus" }
         has_refund_destination:
           type: boolean
-          description: Rekening tujuan refund sudah dicatat (selalu false setelah completed/cancelled).
+          description: |
+            Rekening tujuan refund sudah dicatat, oleh pemilik lewat aplikasi (setMyRefundDestination) atau oleh
+            pengurus (selalu false setelah completed/cancelled).
         refund_destination:
           description: |
             Hanya untuk pemegang payments.decide yang tidak berkonflik kepentingan, kind refund, status pending;
