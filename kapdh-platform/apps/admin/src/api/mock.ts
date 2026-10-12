@@ -52,6 +52,8 @@ function item(
     },
     event_title: null,
     event_starts_at: null,
+    ticket_status: null,
+    event_cancelled: null,
     submitted_at: submitted,
     decided_at: null,
     review_due_at: null,
@@ -97,6 +99,7 @@ function item(
     ],
     adjustments: [],
     conflict_of_interest: false,
+    refund_on_approve: false,
     actions: { can_decide: true, can_cancel: false, can_adjust: false },
     version: "1",
   };
