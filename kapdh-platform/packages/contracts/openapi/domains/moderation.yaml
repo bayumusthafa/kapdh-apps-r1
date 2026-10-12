@@ -1,0 +1,7 @@
+# Domain moderation (C6 Community): blokir dua arah dan laporan milik anggota.
+# Modul API: apps/api/src/modules/moderation. Path ditambahkan oleh penulis kontrak C6.
+tags:
+  - name: Moderation
+    description: Blokir pengguna dan pelaporan penyalahgunaan oleh anggota (F-12).
+
+paths: {}

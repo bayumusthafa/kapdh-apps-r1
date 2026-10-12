@@ -1,0 +1,318 @@
+# Akar kontrak API KAPDH Apps (OpenAPI 3.1, PRD 5.2, N-13).
+#
+# Berkas ini hanya memuat info, server, keamanan global dan komponen BERSAMA. Path, tag dan komponen milik
+# domain berada di openapi/domains/<domain>.yaml (ARCHITECTURE §6). `pnpm --filter @kapdh/contracts bundle`
+# menggabungkan semuanya menjadi dist/openapi.yaml; jangan menyunting hasil gabungan.
+#
+# Pemilik berkas ini: contracts-infra lalu integrator. Domain hanya MERUJUK komponen di sini
+# (`#/components/...`) dan tidak boleh mendefinisikan ulang nama yang sama (assemble gagal bila duplikat).
+openapi: 3.1.0
+info:
+  title: KAPDH Apps API
+  version: 0.2.0
+  summary: Kontrak API KAPDH Apps (PRD v3.5).
+  description: |
+    Satu-satunya pintu akses untuk aplikasi Flutter, web admin, dan situs publik.
+    Server selalu memeriksa identitas, izin, status keanggotaan, dan kepemilikan objek.
+
+    Konvensi (ARCHITECTURE §6, PRD 5.2):
+    - Semua JSON snake_case; nilai enum string lower_snake (kecuali ErrorCode UPPER_SNAKE dan Permission
+      `domain.action`).
+    - Semua waktu dikirim dalam UTC (RFC 3339); klien menampilkan Asia/Jakarta kecuali event menetapkan zona sendiri.
+    - Nominal uang dikirim sebagai `Money`, string desimal IDR, misalnya "60000.00"; tidak pernah float.
+    - Nullable memakai bentuk OAS 3.1 `type: [X, "null"]`.
+    - Daftar memakai `cursor` + `limit` (bawaan 30, maks 100) dan respons `<Thing>Page` = {items, next_cursor};
+      tabel admin menambah `total`.
+    - Pembaruan berversi memakai header `If-Match: <version>`; respons membawa `version` (string).
+    - Galat selalu berbentuk `Error` dengan `code` dari `ErrorCode` dan `request_id`.
+    - Klien mobile mengirim `X-App-Version` dan `X-App-Platform` di setiap request (gerbang versi minimum).
+  contact:
+    name: Pemilik produk KAPDH Apps
+servers:
+  - url: https://api.kapdh.or.id/api/v1
+    description: Production
+  - url: https://staging-api.kapdh.or.id/api/v1
+    description: Staging
+  - url: http://localhost:3000/api/v1
+    description: Lokal
+security:
+  - bearerAuth: []
+paths: {}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Access token 15 menit (N-08). Sesi admin hanya valid setelah TOTP; token tahap sandi (mfa_token)
+        tidak dapat memanggil API admin (AC F02-2).
+    adminRefreshCookie:
+      type: apiKey
+      in: cookie
+      name: kapdh_admin_rt
+      description: |
+        Refresh token web admin dalam cookie HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth (PRD 5.2).
+        Hanya dipakai POST /auth/refresh dengan header Origin sama dengan ADMIN_ORIGIN. Token tidak pernah
+        disimpan di localStorage.
+
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Cursor opaque dari `next_cursor` halaman sebelumnya. Kosongkan untuk halaman pertama.
+      schema: { type: string, maxLength: 512 }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Jumlah item per halaman (bawaan 30, maksimum 100).
+      schema: { type: integer, minimum: 1, maximum: 100, default: 30 }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: |
+        Versi objek yang dibaca klien (`version`). Versi berbeda menghasilkan 409 VERSION_CONFLICT dengan
+        `current` berisi keadaan terbaru (AC F15-4).
+      schema: { type: string, maxLength: 64 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        UUID dari klien; disimpan lokal sampai hasil diketahui (PRD 4.3). Permintaan ulang dengan key dan payload
+        sama mengembalikan hasil pertama; payload berbeda dengan key sama menghasilkan 409 IDEMPOTENCY_CONFLICT.
+        Retensi 24 jam.
+      schema: { type: string, format: uuid }
+    ReauthToken:
+      name: X-Reauth-Token
+      in: header
+      required: true
+      description: |
+        Token dari POST /auth/reauth (audience kapdh-reauth, terikat sesi, berlaku maksimal 10 menit) untuk tindakan
+        sensitif (ARCHITECTURE §4.3). Tidak ada atau kedaluwarsa menghasilkan 403 REAUTH_REQUIRED.
+      schema: { type: string, maxLength: 2048 }
+    AppVersion:
+      name: X-App-Version
+      in: header
+      required: false
+      description: |
+        Versi aplikasi Flutter (semver), dikirim di setiap request oleh klien mobile. Mutasi dari versi di bawah
+        `min_app_version` platform tersebut ditolak 426 UPGRADE_REQUIRED (PRD 4.5).
+      schema: { type: string, pattern: '^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$', examples: ["1.0.0"] }
+    AppPlatform:
+      name: X-App-Platform
+      in: header
+      required: false
+      description: Platform klien mobile; menentukan versi minimum yang diperiksa (PRD 4.5).
+      schema: { $ref: "#/components/schemas/DevicePlatform" }
+
+  responses:
+    Error:
+      description: Galat baku (PRD 5.2). Lihat `code` untuk perilaku UI.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ValidationError:
+      description: VALIDATION_ERROR dengan `field_errors` per field (kunci bertitik, `_` untuk akar).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthenticated:
+      description: UNAUTHENTICATED; token tidak ada, kedaluwarsa atau sesi dicabut. Klien mobile mencoba refresh sekali.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    MfaRequired:
+      description: MFA_REQUIRED; sesi admin belum menyelesaikan TOTP (AC F02-2).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ReauthRequired:
+      description: REAUTH_REQUIRED; header X-Reauth-Token tidak ada, tidak valid atau lebih dari 10 menit (AC F15-3, F16-1).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: FORBIDDEN, MEMBERSHIP_REQUIRED, atau ACCOUNT_SUSPENDED (izin atau status keanggotaan, PRD 2.2/2.3).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    MembershipRequired:
+      description: |
+        MEMBERSHIP_REQUIRED; fitur hanya untuk effective_status tertentu (PRD 2.2). Klien memuat ulang /me lalu
+        mengarahkan sesuai status (onboarding untuk unverified, perpanjangan untuk expired).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    AccountSuspended:
+      description: ACCOUNT_SUSPENDED; anggota dibatasi pengurus dan hanya dapat membuka portal pembatasan (PRD 2.2, 4.2).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: NOT_FOUND; objek tidak ada atau tidak berhak dilihat (tidak membedakan keduanya, N-09).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: |
+        Konflik versi atau keadaan (VERSION_CONFLICT, PAYMENT_STATE_CONFLICT, PROOF_VERSION_CONFLICT,
+        IDEMPOTENCY_CONFLICT); `current` berisi keadaan terbaru, UI menawarkan muat ulang (PRD 4.5).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: RATE_LIMITED; lihat `retry_after_seconds` dan header Retry-After.
+      headers:
+        Retry-After:
+          description: Detik sampai permintaan boleh diulang.
+          schema: { type: integer, minimum: 0 }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    FileInvalid:
+      description: FILE_INVALID; tipe, ukuran atau isi berkas ditolak (N-10).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Maintenance:
+      description: |
+        MAINTENANCE; mutasi ditolak selama pemeliharaan terjadwal, baca tetap terkendali (PRD 4.5). Pesan dan
+        perkiraan selesai tersedia di GET /public/config.
+      headers:
+        Retry-After:
+          description: Perkiraan detik sampai layanan kembali, bila diketahui.
+          schema: { type: integer, minimum: 0 }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UpgradeRequired:
+      description: UPGRADE_REQUIRED; versi aplikasi di bawah minimum, klien menampilkan layar wajib update (PRD 4.5).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    ErrorCode:
+      type: string
+      description: |
+        Kode galat final (PRD 5.2 + ARCHITECTURE §4.4). Setiap kode memiliki perilaku UI di katalog
+        @kapdh/shared ERROR_UI dan katalog Dart yang dibangkitkan. Status HTTP lazim:
+        VALIDATION_ERROR 400 (409 untuk email terdaftar), UNAUTHENTICATED 401, MFA_REQUIRED 403,
+        REAUTH_REQUIRED 403, FORBIDDEN 403, MEMBERSHIP_REQUIRED 403, ACCOUNT_SUSPENDED 403, OTP_EXPIRED 410,
+        RATE_LIMITED 429, FILE_INVALID 413/415/422, PAYMENT_STATE_CONFLICT 409, PROOF_VERSION_CONFLICT 409,
+        VERSION_CONFLICT 409, EVENT_SOLD_OUT 409, RESERVATION_EXPIRED 409/410, TICKET_ALREADY_CHECKED_IN 409,
+        IDEMPOTENCY_CONFLICT 409, NOT_FOUND 404, UPGRADE_REQUIRED 426, MAINTENANCE 503, INTERNAL_ERROR 500.
+      enum:
+        - VALIDATION_ERROR
+        - UNAUTHENTICATED
+        - MFA_REQUIRED
+        - REAUTH_REQUIRED
+        - FORBIDDEN
+        - MEMBERSHIP_REQUIRED
+        - ACCOUNT_SUSPENDED
+        - OTP_EXPIRED
+        - RATE_LIMITED
+        - FILE_INVALID
+        - PAYMENT_STATE_CONFLICT
+        - PROOF_VERSION_CONFLICT
+        - VERSION_CONFLICT
+        - EVENT_SOLD_OUT
+        - RESERVATION_EXPIRED
+        - TICKET_ALREADY_CHECKED_IN
+        - IDEMPOTENCY_CONFLICT
+        - NOT_FOUND
+        - UPGRADE_REQUIRED
+        - MAINTENANCE
+        - INTERNAL_ERROR
+
+    Error:
+      type: object
+      description: Bentuk galat baku (PRD 5.2). Tidak pernah memuat token, secret atau stack trace.
+      required: [code, message, request_id]
+      properties:
+        code: { $ref: "#/components/schemas/ErrorCode" }
+        message: { type: string, description: Pesan aman untuk ditampilkan dalam Bahasa Indonesia. }
+        request_id: { type: string, description: "Penghubung log API, worker dan audit (N-14)." }
+        field_errors:
+          type: object
+          description: Pesan per field; kunci bertitik untuk field bersarang dan `_` untuk akar.
+          additionalProperties:
+            type: array
+            items: { type: string }
+        retry_after_seconds: { type: integer, minimum: 0 }
+        current: { description: Keadaan terbaru objek untuk galat konflik (bentuk mengikuti operasi). }
+
+    Money:
+      type: string
+      pattern: '^[0-9]+\.[0-9]{2}$'
+      description: Nominal IDR sebagai string desimal dua angka di belakang titik, misalnya "60000.00" (PRD 6.1).
+      examples: ["60000.00"]
+
+    Password:
+      type: string
+      minLength: 2
+      maxLength: 72
+      description: |
+        Sandi 8 sampai 72 BYTE UTF-8 (bukan karakter) dengan huruf besar, huruf kecil, angka, dan simbol
+        (PRD 2.5, batas input bcrypt). minLength/maxLength JSON Schema menghitung code point, sehingga di sini
+        hanya batas longgar (2..72 code point) yang tidak pernah menolak sandi valid; aturan byte ditegakkan
+        server dan klien memakai checkPassword (@kapdh/shared) atau padanannya. Server menolak, tidak memotong.
+      x-kapdh-utf8-bytes: { min: 8, max: 72 }
+
+    Gender:
+      type: string
+      enum: [male, female]
+      description: Jenis kelamin; JK 01 = male, 02 = female pada nomor anggota (PRD 3.5).
+
+    ClassLevel:
+      type: integer
+      minimum: 1
+      maximum: 6
+      description: Kelas 1-3 = 1-3 MTs, 4-6 = 1-3 Aliyah (PRD 3.5).
+
+    EffectiveStatus:
+      type: string
+      enum: [pending_otp, unverified, verified, expiring, expired, suspended, disabled, deletion_pending]
+      description: |
+        Status efektif yang dihitung server per request dan menentukan rute klien (PRD 2.2, ARCHITECTURE §3.1).
+        Klien tidak menghitung sendiri.
+
+    AccountStatus:
+      type: string
+      enum: [pending_otp, active, disabled, deletion_pending, deleted]
+      description: Status lapisan autentikasi `users.status` (PRD 4.2); berbeda dari EffectiveStatus.
+
+    Permission:
+      type: string
+      description: Izin admin bernamespace tindakan (PRD 2.3, ARCHITECTURE §4.5). super_admin memiliki semuanya.
+      enum:
+        - payments.read
+        - payments.decide
+        - members.read
+        - members.manage
+        - content.manage
+        - master.manage
+        - events.manage
+        - events.checkin
+        - moderation.read
+        - moderation.resolve
+        - audit.read
+        - audit.export
+        - settings.manage
+        - admins.manage
+        - notifications.manage
+
+    AdminRole:
+      type: string
+      enum: [super_admin, admin]
+      description: super_admin memiliki semua izin plus manajemen admin; admin hanya izin yang ditugaskan (F-16).
+
+    DevicePlatform:
+      type: string
+      enum: [android, ios]
+      description: Platform aplikasi anggota (N-12).

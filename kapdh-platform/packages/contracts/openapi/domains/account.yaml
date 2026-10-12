@@ -1,0 +1,111 @@
+# Domain account (C1 Identity): penghapusan akun dari aplikasi dan dari situs /delete-account.
+# Modul API: apps/api/src/modules/account.
+tags:
+  - name: Account
+    description: Penghapusan akun dari aplikasi dan web beserta statusnya (F-14).
+
+paths:
+  /me/deletion:
+    post:
+      tags: [Account]
+      operationId: requestAccountDeletion
+      summary: Minta penghapusan akun; perlu reautentikasi maksimal 10 menit (F-14).
+      description: |
+        Token reautentikasi dikirim lewat header X-Reauth-Token (ARCHITECTURE §4.3). Semua sesi dicabut
+        setelah permintaan dibuat; proses lanjutan dijalankan worker dan dapat dilanjutkan setelah gagal (N-15).
+      parameters:
+        - $ref: "#/components/parameters/ReauthToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccountDeletionRequest" }
+      responses:
+        "202":
+          description: Permintaan dibuat; sesi dicabut.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountDeletion" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/ReauthRequired" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /public/deletion/challenge:
+    post:
+      tags: [Account]
+      operationId: startWebDeletion
+      summary: Mulai penghapusan dari situs /delete-account tanpa aplikasi; OTP dikirim ke email (F-14).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WebDeletionStartRequest" }
+      responses:
+        "202":
+          description: Respons sama apa pun keadaan email.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OtpChallenge" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /public/deletion/confirm:
+    post:
+      tags: [Account]
+      operationId: confirmWebDeletion
+      summary: Konfirmasi penghapusan dari web dengan OTP (F-14).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WebDeletionConfirmRequest" }
+      responses:
+        "202":
+          description: Permintaan dibuat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountDeletion" }
+        "410":
+          description: OTP tidak berlaku (OTP_EXPIRED).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  schemas:
+    AccountDeletionRequest:
+      type: object
+      required: [confirm]
+      properties:
+        confirm: { type: boolean, const: true, description: Konfirmasi eksplisit pengguna. }
+
+    AccountDeletionStatus:
+      type: string
+      enum: [pending, processing, completed]
+      description: Tahap penghapusan akun yang dijalankan worker (F-14).
+
+    AccountDeletion:
+      type: object
+      required: [request_number, status, requested_at]
+      properties:
+        request_number: { type: string, examples: ["DEL-2026-000123"] }
+        status: { $ref: "#/components/schemas/AccountDeletionStatus" }
+        requested_at: { type: string, format: date-time }
+        estimated_completion_at: { type: string, format: date-time }
+
+    WebDeletionStartRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+
+    WebDeletionConfirmRequest:
+      type: object
+      required: [challenge_id, code, confirm]
+      properties:
+        challenge_id: { type: string, format: uuid }
+        code: { type: string, pattern: "^[0-9]{6}$", x-sensitive: true }
+        confirm: { type: boolean, const: true }

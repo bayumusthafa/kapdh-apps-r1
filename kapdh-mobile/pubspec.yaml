@@ -18,9 +18,11 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   google_fonts: ^6.2.1
   intl: ^0.20.2
-  # Klien terbangkit dari packages/contracts (dart-dio). Aktifkan setelah paket kapdh_api dipublikasikan bertag:
-  # kapdh_api:
-  #   git: { url: <repo kapdh-platform>, path: packages/contracts/generated/dart, ref: contracts-v0.1.0 }
+  # SDK terbangkit dari kontrak OpenAPI (PRD 5.2, N-13; ADR-001). lib/src paket ini dibangkitkan oleh
+  # `pnpm contracts:gen` di kapdh-platform dan tidak di-commit; jalankan setelah pull. Saat rilis diganti
+  # dependensi git bertag `contracts-vX.Y.Z`.
+  kapdh_api:
+    path: ../kapdh-platform/packages/contracts/dart/kapdh_api
 
 dev_dependencies:
   flutter_test:

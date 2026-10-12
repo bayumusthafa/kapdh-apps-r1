@@ -1,0 +1,8 @@
+# Domain admin-moderation (C6 Community): antrean laporan, bukti terminimalkan dan penyelesaian
+# (izin moderation.read / moderation.resolve). Modul API: apps/api/src/modules/moderation.
+# Path ditambahkan oleh penulis kontrak C6.
+tags:
+  - name: Admin Moderation
+    description: Antrean laporan, bukti terminimalkan dan penyelesaian moderasi oleh pengurus (F-12, F-15).
+
+paths: {}

@@ -1,0 +1,226 @@
+# Domain payments (C3 Finance): metode bayar, instruksi iuran, bukti dan histori milik anggota.
+# Modul API: apps/api/src/modules/payments.
+tags:
+  - name: Payments
+    description: Iuran pendaftaran dan perpanjangan, metode bayar, bukti dan histori milik sendiri (F-03, F-07).
+
+paths:
+  /payment-methods:
+    get:
+      tags: [Payments]
+      operationId: listPaymentMethods
+      summary: Rekening tujuan aktif, diatur pengurus (F-03).
+      responses:
+        "200":
+          description: Metode bayar.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentMethodList" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/payments:
+    get:
+      tags: [Payments]
+      operationId: listMyPayments
+      summary: Riwayat pembayaran sendiri (F-03).
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Pembayaran.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentPage" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Payments]
+      operationId: createPaymentInstruction
+      summary: Buat instruksi iuran registration atau renewal; nominal dihitung server (AC F03-1).
+      description: Bila payment nonterminal jenis yang sama sudah ada, payment itu dikembalikan (bukan payment baru).
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePaymentRequest" }
+      responses:
+        "201":
+          description: Instruksi pembayaran.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+        "200":
+          description: Payment nonterminal yang sudah ada dikembalikan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/payments/{paymentId}:
+    get:
+      tags: [Payments]
+      operationId: getMyPayment
+      summary: Detail pembayaran sendiri beserta histori status (F-03).
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+      responses:
+        "200":
+          description: Detail dan histori status.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentDetail" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/payments/{paymentId}/proof:
+    put:
+      tags: [Payments]
+      operationId: submitPaymentProof
+      summary: Kirim atau ganti bukti; proof_version bertambah (AC F03-2, F03-3).
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubmitPaymentProofRequest" }
+      responses:
+        "200":
+          description: Payment pending dengan bukti versi baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+        "409":
+          description: PAYMENT_STATE_CONFLICT bila payment sudah paid atau cancelled.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/FileInvalid" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  parameters:
+    PaymentId:
+      name: paymentId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  schemas:
+    PaymentType:
+      type: string
+      enum: [registration, renewal, ticket]
+
+    MembershipPaymentType:
+      type: string
+      enum: [registration, renewal]
+      description: Jenis iuran yang dapat dibuat anggota sendiri; tiket dibuat lewat reservasi event (F-09).
+
+    PaymentStatus:
+      type: string
+      enum: [pending, paid, rejected, cancelled]
+
+    PaymentMethodKind:
+      type: string
+      enum: [bank, ewallet]
+
+    PaymentMethod:
+      type: object
+      required: [id, kind, provider, account_number, account_holder]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/PaymentMethodKind" }
+        provider: { type: string }
+        account_number: { type: string }
+        account_holder: { type: string }
+        instructions: { type: [string, "null"] }
+
+    PaymentMethodList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PaymentMethod" }
+
+    PaymentLineCode:
+      type: string
+      enum: [registration_fee, card_fee, renewal_fee, ticket]
+
+    PaymentLine:
+      type: object
+      required: [code, label, amount]
+      properties:
+        code: { $ref: "#/components/schemas/PaymentLineCode" }
+        label: { type: string }
+        amount: { $ref: "#/components/schemas/Money" }
+
+    Payment:
+      type: object
+      required: [id, type, status, amount, lines, method, proof_version, created_at, version]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/PaymentType" }
+        status: { $ref: "#/components/schemas/PaymentStatus" }
+        amount: { $ref: "#/components/schemas/Money" }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/PaymentLine" }
+        method: { $ref: "#/components/schemas/PaymentMethod" }
+        proof_version: { type: integer, minimum: 0 }
+        submitted_at: { type: [string, "null"], format: date-time }
+        decided_at: { type: [string, "null"], format: date-time }
+        rejection_reason: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+        version: { type: string }
+
+    PaymentEventKind:
+      type: string
+      enum: [created, proof_submitted, proof_replaced, approved, rejected, cancelled, adjusted]
+
+    PaymentEvent:
+      type: object
+      required: [at, kind]
+      properties:
+        at: { type: string, format: date-time }
+        kind: { $ref: "#/components/schemas/PaymentEventKind" }
+        proof_version: { type: integer }
+        reason: { type: [string, "null"] }
+
+    PaymentDetail:
+      allOf:
+        - $ref: "#/components/schemas/Payment"
+        - type: object
+          required: [events]
+          properties:
+            events:
+              type: array
+              items: { $ref: "#/components/schemas/PaymentEvent" }
+
+    PaymentPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Payment" }
+        next_cursor: { type: [string, "null"] }
+
+    CreatePaymentRequest:
+      type: object
+      required: [type, payment_method_id]
+      properties:
+        type: { $ref: "#/components/schemas/MembershipPaymentType" }
+        payment_method_id: { type: string, format: uuid }
+
+    SubmitPaymentProofRequest:
+      type: object
+      required: [file_id]
+      properties:
+        file_id: { type: string, format: uuid, description: Hasil unggah purpose payment_proof. }
+        transfer_note: { type: string, maxLength: 200 }
