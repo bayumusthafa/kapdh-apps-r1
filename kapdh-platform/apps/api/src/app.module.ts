@@ -15,7 +15,7 @@ import { RateLimiter } from "./infra/rate-limiter.js";
 import { DB, ENV, MAILER } from "./infra/tokens.js";
 import { MeController } from "./me/me.controller.js";
 import { PublicController } from "./public/public.controller.js";
-import { PUBLIC_CONFIG } from "./public/public.tokens.js";
+import { PUBLIC_CONFIG, type StaticPublicConfig } from "./public/public.tokens.js";
 
 export interface AppDeps {
   env: ServerEnv;
@@ -43,13 +43,16 @@ export class AppModule {
         {
           // Sumber sementara dari environment; dipindah ke app_settings terversi pada irisan Admin Settings.
           provide: PUBLIC_CONFIG,
-          useFactory: () => ({
+          useFactory: (): StaticPublicConfig => ({
             min_app_version: {
               android: process.env.MIN_APP_VERSION_ANDROID ?? "1.0.0",
               ios: process.env.MIN_APP_VERSION_IOS ?? "1.0.0",
             },
             maintenance: { active: process.env.MAINTENANCE === "true", message: null, until: null },
+            store_links: { android: null, ios: null },
             support: { email: "bantuan@kapdh.or.id", whatsapp: null },
+            // Versi legal terbit dibaca dari pages saat konfigurasi pindah ke app_settings (ARCHITECTURE §5.4).
+            legal: { privacy_version: null, terms_version: null, community_version: null },
           }),
         },
       ],

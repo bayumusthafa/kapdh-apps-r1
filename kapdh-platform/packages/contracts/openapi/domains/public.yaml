@@ -31,8 +31,9 @@ paths:
       summary: Readiness; memeriksa PostgreSQL, Redis (bila dikonfigurasi) dan storage (PRD 5.5, N-05).
       description: |
         Dipakai orkestrator (Coolify/Traefik) dan Uptime Kuma. 200 bila semua dependensi wajib siap, 503 bila
-        ada yang gagal. Hanya nama komponen dan status ok/fail/skipped; tidak memuat pesan galat, host, versi
-        atau data lain (N-14). Tidak dicache.
+        ada yang gagal. Hanya nama komponen dan status ok/fail/skipped, ditambah umur event outbox pending tertua
+        sebagai sinyal worker macet (PRD 5.5); tidak memuat pesan galat, host, versi atau data lain (N-14).
+        Tidak dicache.
       security: []
       x-kapdh-access: { audience: public }
       responses:
@@ -92,8 +93,13 @@ paths:
         `member` hanya diisi untuk `active` dan `expired`; foto hanya untuk `active`. Tidak pernah memuat email,
         telepon, NIK, alamat, bukti bayar atau alasan suspend (F-06, D3). Respons `Cache-Control: no-store`.
         Kegagalan jaringan/5xx tidak boleh ditampilkan klien sebagai Tidak ditemukan (AC F06-4).
-        Dibatasi per IP dan per nomor (nilai D1) dengan 429 RATE_LIMITED. Endpoint ini bersifat baca dan tetap
-        dilayani selama maintenance.
+        Dibatasi per IP dan per nomor (nilai D1) dengan 429 RATE_LIMITED.
+
+        Maintenance (PRD 4.5, ARCHITECTURE §4.3): walaupun memakai metode POST, operasi ini hanya membaca sehingga
+        termasuk pengecualian "/public/** reads" dan dikecualikan EKSPLISIT per path pada hook maintenance
+        (core-api `maintenanceAllowed`: path `/public/kta/verify`), sehingga tidak pernah menghasilkan
+        503 MAINTENANCE dan pemeriksa di lapangan tetap dapat memverifikasi KTA selama maintenance. 5xx lain
+        (mis. proxy saat deploy) jatuh ke respons default dan ditampilkan sebagai "Tidak dapat memverifikasi".
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -136,6 +142,12 @@ components:
         database: { $ref: "#/components/schemas/HealthCheckState" }
         redis: { $ref: "#/components/schemas/HealthCheckState" }
         storage: { $ref: "#/components/schemas/HealthCheckState" }
+        outbox_oldest_pending_seconds:
+          type: [integer, "null"]
+          minimum: 0
+          description: |
+            Umur event outbox pending tertua dalam detik (sinyal worker macet, PRD 5.5); null bila tidak ada atau
+            database tidak dapat dibaca. Tidak memengaruhi status readiness API.
 
     HealthReadiness:
       type: object
@@ -237,15 +249,17 @@ components:
     KtaVerification:
       type: object
       description: |
-        Hasil verifikasi publik. Server selalu mengirim `expiring` dan `member` (null bila tidak berlaku); keduanya
-        tidak diwajibkan skema agar klien versi 0.2.0 (situs publik) tetap kompatibel (N-13).
-      required: [result, checked_at]
+        Hasil verifikasi publik. Keempat field selalu dikirim; `member` null bila tidak berlaku dan `expiring` false
+        untuk semua hasil selain active yang sisa masanya <= 30 hari (AC F06-1).
+      required: [result, checked_at, expiring, member]
       properties:
         result: { $ref: "#/components/schemas/KtaVerificationResult" }
         checked_at: { type: string, format: date-time, description: Waktu pemeriksaan server (AC F06-1). }
         expiring:
           type: boolean
-          description: True bila result active dan sisa masa <= 30 hari (tetap Aktif dengan tanggal habis, AC F06-1).
+          description: |
+            True bila result active dan sisa masa <= 30 hari (tetap Aktif dengan tanggal habis, AC F06-1); false
+            untuk hasil lain.
         member:
           oneOf:
             - $ref: "#/components/schemas/KtaVerifiedMember"
