@@ -1,0 +1,8 @@
+# Domain admin-dashboard (C7 Admin & notifications): ringkasan pekerjaan sesuai izin (pembayaran menunggu,
+# antrean terlambat, laporan terbuka, event mendatang, job gagal). Modul API: apps/api/src/modules/admin.
+# Path ditambahkan oleh penulis kontrak C7.
+tags:
+  - name: Admin Dashboard
+    description: Dasbor pengurus yang hanya memuat data sesuai izin (F-15, AC F15-1).
+
+paths: {}

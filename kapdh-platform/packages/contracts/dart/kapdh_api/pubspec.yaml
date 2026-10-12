@@ -1,0 +1,18 @@
+# SDK Dart terbangkit dari kontrak OpenAPI KAPDH (PRD 5.2, N-13). Kode di lib/src/** dibangkitkan oleh
+# packages/contracts/scripts/gen-dart.mjs (`pnpm contracts:gen` di kapdh-platform) dan tidak di-commit.
+# Saat rilis dipublikasikan sebagai dependensi git bertag `contracts-vX.Y.Z` (ADR-001).
+name: kapdh_api
+description: Klien API KAPDH Apps (model, enum, kelas API Dio, katalog galat) yang dibangkitkan dari kontrak OpenAPI.
+version: 0.2.0
+publish_to: none
+
+environment:
+  sdk: ">=3.9.0 <4.0.0"
+
+dependencies:
+  dio: ^5.8.0
+  meta: ^1.15.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

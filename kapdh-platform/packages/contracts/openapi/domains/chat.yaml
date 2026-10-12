@@ -1,0 +1,8 @@
+# Domain chat (C6 Community): room direct/grup, anggota dan undangan, pesan keyset, read cursor dan reaksi.
+# Pengiriman pesan lewat HTTP (ack setelah commit); penyampaian lewat Socket.IO (events/*.schema.json).
+# Modul API: apps/api/src/modules/chat. Path ditambahkan oleh penulis kontrak C6.
+tags:
+  - name: Chat
+    description: Chat langsung dan grup, undangan, pesan keyset, status baca dan reaksi (F-11, PRD 5.2).
+
+paths: {}

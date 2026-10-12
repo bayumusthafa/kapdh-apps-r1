@@ -1,0 +1,79 @@
+# Domain files (C3 Finance): unggah berkas bertujuan (purpose) dan akses privat bertanda tangan.
+# Modul API: apps/api/src/modules/files (controller tipis di atas core/files).
+tags:
+  - name: Files
+    description: Unggah dan akses berkas privat dengan purpose dan izin berbeda (N-10, PRD 2.5, 5.4).
+
+paths:
+  /files:
+    post:
+      tags: [Files]
+      operationId: uploadFile
+      summary: Unggah berkas dengan purpose tertentu; gambar <= 5 MB, PDF <= 10 MB (N-10).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/FileUploadRequest" }
+      responses:
+        "201":
+          description: Berkas diterima.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FileRef" }
+        "413": { $ref: "#/components/responses/FileInvalid" }
+        "415": { $ref: "#/components/responses/FileInvalid" }
+        "422": { $ref: "#/components/responses/FileInvalid" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /files/{fileId}/access:
+    get:
+      tags: [Files]
+      operationId: getFileAccess
+      summary: URL bertanda tangan maksimal 10 menit setelah pemeriksaan izin (PRD 5.4).
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Akses sementara.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FileAccess" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  schemas:
+    FilePurpose:
+      type: string
+      enum: [avatar, payment_proof, chat_image, cover]
+      description: PDF hanya untuk payment_proof; gambar <= 5 MB, PDF <= 10 MB (N-10).
+
+    FileUploadRequest:
+      type: object
+      required: [purpose, file]
+      properties:
+        purpose: { $ref: "#/components/schemas/FilePurpose" }
+        file:
+          { type: string, format: binary, description: "Isi berkas (JPG/PNG, atau PDF untuk bukti bayar)." }
+
+    FileRef:
+      type: object
+      required: [id, purpose, mime, bytes]
+      properties:
+        id: { type: string, format: uuid }
+        purpose: { $ref: "#/components/schemas/FilePurpose" }
+        mime: { type: string }
+        bytes: { type: integer }
+
+    FileAccess:
+      type: object
+      required: [url, expires_at]
+      properties:
+        url: { type: string, format: uri }
+        expires_at: { type: string, format: date-time }

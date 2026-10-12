@@ -1,0 +1,16 @@
+# Analisis ketat untuk SDK terbangkit: `dart analyze` wajib tanpa galat/peringatan (ARCHITECTURE §6).
+include: package:lints/recommended.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+
+linter:
+  rules:
+    - always_declare_return_types
+    - annotate_overrides
+    - avoid_print
+    - prefer_final_locals
+    - unawaited_futures

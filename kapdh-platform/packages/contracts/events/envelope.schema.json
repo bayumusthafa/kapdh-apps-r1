@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/contracts/events/envelope.schema.json",
+  "title": "RealtimeEnvelope",
+  "description": "Amplop setiap event server ke klien di namespace Socket.IO /realtime (PRD 5.2, ARCHITECTURE §4.9). Event dikirim sesudah commit dan bukan sumber kebenaran tunggal; klien memuat ulang lewat HTTP bila ragu. Payload minimum, tanpa isi chat pada notifikasi layar kunci.",
+  "type": "object",
+  "required": ["v", "event_id", "type", "entity_id", "ts", "payload"],
+  "additionalProperties": false,
+  "properties": {
+    "v": {
+      "description": "Versi amplop. Perubahan yang memutus klien lama menaikkan versi (N-13).",
+      "type": "integer",
+      "const": 1
+    },
+    "event_id": {
+      "description": "UUID v7 unik per event; klien memakai untuk deduplikasi setelah reconnect (N-02).",
+      "type": "string",
+      "format": "uuid"
+    },
+    "type": {
+      "title": "RealtimeEventType",
+      "description": "Jenis event. Klien mengabaikan jenis yang belum dikenal (kompatibilitas maju).",
+      "type": "string",
+      "enum": [
+        "message.created",
+        "message.deleted",
+        "reaction.updated",
+        "read.updated",
+        "room.updated",
+        "room.member_changed",
+        "typing",
+        "presence",
+        "notification.created",
+        "session.revoked"
+      ]
+    },
+    "entity_id": {
+      "description": "ID entitas utama event (pesan, room, notifikasi, pengguna, atau sesi).",
+      "type": "string",
+      "format": "uuid"
+    },
+    "ts": {
+      "description": "Waktu server UTC (RFC 3339) saat event dibuat setelah commit.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "payload": {
+      "description": "Payload minimum per jenis event (skema per jenis di events/<type>.schema.json).",
+      "type": "object"
+    }
+  },
+  "examples": [
+    {
+      "v": 1,
+      "event_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e5f",
+      "type": "message.created",
+      "entity_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e60",
+      "ts": "2026-10-12T03:15:00.000Z",
+      "payload": { "room_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61" }
+    },
+    {
+      "v": 1,
+      "event_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e62",
+      "type": "session.revoked",
+      "entity_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e63",
+      "ts": "2026-10-12T03:16:00.000Z",
+      "payload": {}
+    }
+  ]
+}

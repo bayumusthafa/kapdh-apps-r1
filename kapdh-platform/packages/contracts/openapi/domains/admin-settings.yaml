@@ -1,0 +1,66 @@
+# Domain admin-settings (C3 Finance): pengaturan aplikasi terversi (biaya, versi minimum, maintenance, dukungan).
+# Modul API: apps/api/src/modules/admin (settings) dan payments (fees).
+tags:
+  - name: Admin Settings
+    description: Pengaturan terversi dan teraudit (biaya, versi aplikasi minimum, maintenance) (F-15, AC F15-3).
+
+paths:
+  /admin/settings/fees:
+    get:
+      tags: [Admin Settings]
+      operationId: adminGetFees
+      summary: Komponen biaya versi aktif (izin settings.manage).
+      responses:
+        "200":
+          description: Komponen biaya versi aktif.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeSettings" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Admin Settings]
+      operationId: adminUpdateFees
+      summary: Ubah nominal (settings.manage + reautentikasi). Hanya berlaku untuk payment baru (AC F15-3).
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/ReauthToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FeeSettingsInput" }
+      responses:
+        "200":
+          description: Versi baru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeSettings" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403":
+          description: FORBIDDEN tanpa izin settings.manage, atau REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  schemas:
+    FeeSettings:
+      type: object
+      required: [registration_fee, card_fee, renewal_fee, version, effective_from]
+      properties:
+        registration_fee: { $ref: "#/components/schemas/Money" }
+        card_fee: { $ref: "#/components/schemas/Money" }
+        renewal_fee: { $ref: "#/components/schemas/Money" }
+        version: { type: string }
+        effective_from: { type: string, format: date-time }
+
+    FeeSettingsInput:
+      type: object
+      required: [registration_fee, card_fee, renewal_fee]
+      properties:
+        registration_fee: { $ref: "#/components/schemas/Money" }
+        card_fee: { $ref: "#/components/schemas/Money" }
+        renewal_fee: { $ref: "#/components/schemas/Money" }

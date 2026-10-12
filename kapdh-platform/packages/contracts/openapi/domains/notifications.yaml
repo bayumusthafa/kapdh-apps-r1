@@ -1,0 +1,162 @@
+# Domain notifications (C7 Admin & notifications): kotak masuk, preferensi kanal dan token perangkat FCM.
+# Modul API: apps/api/src/modules/notifications.
+tags:
+  - name: Notifications
+    description: Kotak masuk, preferensi push/email dan token perangkat (F-13).
+
+paths:
+  /notifications:
+    get:
+      tags: [Notifications]
+      operationId: listNotifications
+      summary: Kotak masuk notifikasi, riwayat resmi (F-13, AC F13-2).
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Kotak masuk resmi.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPage" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /notifications/read:
+    post:
+      tags: [Notifications]
+      operationId: markNotificationsRead
+      summary: Tandai notifikasi dibaca (F-13).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MarkNotificationsReadRequest" }
+      responses:
+        "204": { description: Ditandai dibaca. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /notifications/preferences:
+    get:
+      tags: [Notifications]
+      operationId: getNotificationPreferences
+      summary: Preferensi kategori push dan email (F-13).
+      responses:
+        "200":
+          description: Preferensi.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPreferences" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Notifications]
+      operationId: updateNotificationPreferences
+      summary: Simpan preferensi notifikasi; kategori security dan account tidak dapat dimatikan (ARCHITECTURE §4.7).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotificationPreferences" }
+      responses:
+        "200":
+          description: Preferensi tersimpan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPreferences" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /devices:
+    put:
+      tags: [Notifications]
+      operationId: registerDevice
+      summary: Daftarkan token FCM perangkat untuk sesi ini (AC F13-5).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterDeviceRequest" }
+      responses:
+        "204": { description: Terdaftar. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  schemas:
+    NotificationCategory:
+      type: string
+      enum: [payment, membership, event, news, chat, security, account]
+      description: Kategori notifikasi; security dan account wajib dan tidak dapat dimatikan (ARCHITECTURE §4.7).
+
+    InboxNotification:
+      type: object
+      required: [id, category, title, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        category: { $ref: "#/components/schemas/NotificationCategory" }
+        title: { type: string }
+        body: { type: [string, "null"] }
+        deep_link:
+          type: [string, "null"]
+          description: Rute aplikasi bentuk eksternal `kapdh://app/<rute>`; klien memeriksa izin sebelum membuka (AC F13-3).
+          examples: ["kapdh://app/payments/0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e5f"]
+        read_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+
+    NotificationPage:
+      type: object
+      required: [items, unread_count]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/InboxNotification" }
+        unread_count: { type: integer, minimum: 0 }
+        next_cursor: { type: [string, "null"] }
+
+    MarkNotificationsReadRequest:
+      type: object
+      description: "Isi `ids` atau `all: true`."
+      properties:
+        ids:
+          type: array
+          maxItems: 100
+          items: { type: string, format: uuid }
+        all: { type: boolean }
+
+    PushPreferences:
+      type: object
+      description: Preferensi push per kategori; security dan account tidak dapat dimatikan.
+      properties:
+        payment: { type: boolean }
+        membership: { type: boolean }
+        event: { type: boolean }
+        news: { type: boolean }
+        chat: { type: boolean }
+
+    EmailPreferences:
+      type: object
+      description: Preferensi email transaksional per kategori.
+      properties:
+        payment: { type: boolean }
+        membership: { type: boolean }
+        event: { type: boolean }
+
+    NotificationPreferences:
+      type: object
+      required: [push]
+      properties:
+        push: { $ref: "#/components/schemas/PushPreferences" }
+        email: { $ref: "#/components/schemas/EmailPreferences" }
+
+    RegisterDeviceRequest:
+      type: object
+      required: [platform, token]
+      properties:
+        platform: { $ref: "#/components/schemas/DevicePlatform" }
+        token:
+          {
+            type: string,
+            maxLength: 4096,
+            description: Token FCM; tidak pernah dicatat di log (ARCHITECTURE §2).,
+          }
+        app_version: { type: string, maxLength: 32 }

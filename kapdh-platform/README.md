@@ -58,7 +58,8 @@ Workflow GitHub Actions ada di `infra/ci/github-actions-ci.yml`. Saat repository
 
 ## Aturan kerja (PRD 7.2 dan 7.3)
 
-- Ubah kontrak di `packages/contracts/openapi/openapi.yaml` lebih dulu, lalu `pnpm contracts:gen`.
+- Ubah kontrak di `packages/contracts/openapi/domains/<domain>.yaml` (komponen bersama di `root.yaml`) lebih dulu,
+  lalu `pnpm contracts:lint` dan `pnpm contracts:gen` (lihat `packages/contracts/README.md`).
 - Satu tugas = satu irisan vertikal (endpoint, aturan domain, migrasi, UI, error state, uji) dengan ID F/N/AC.
 - Frontend tidak mengimpor `@kapdh/database`, kode worker, atau secrets (dijaga ESLint).
 - Mode mock hanya untuk mengembangkan UI; tidak dihitung sebagai bukti lulus acceptance criteria.
@@ -70,4 +71,5 @@ Workflow GitHub Actions ada di `infra/ci/github-actions-ci.yml`. Saat repository
 Uji integrasi API berjalan pada PGlite (PostgreSQL WASM) dengan semua migrasi, dan `test/contract.e2e.test.ts`
 memvalidasi respons nyata terhadap skema OpenAPI. Uji asap tambahan: migrasi di PostgreSQL 16 asli, bootstrap admin,
 lalu web admin di Chromium (login, TOTP, reload memulihkan sesi, keluar mencabut sesi) dan registrasi alumni lewat API.
-Klien Dart (`pnpm --filter @kapdh/contracts generate:dart`) butuh Java dan akses Maven Central; jalankan di komputer pengembang atau CI.
+SDK Dart `kapdh_api` dibangkitkan tanpa Java oleh `pnpm contracts:gen` (generator Node) ke
+`packages/contracts/dart/kapdh_api/lib/src` dan dipakai kapdh-mobile lewat dependensi path.
