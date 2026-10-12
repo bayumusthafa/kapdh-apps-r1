@@ -15,23 +15,34 @@ dicatat sebagai garis dasar gerbang N-13.
   `content.yaml` (tag Content), sesuai modul pemiliknya (ARCHITECTURE §4.1). Path, operationId dan keamanan
   (`security: []`) tetap; di SDK Dart pemanggilan berubah dari `api.public.getPublicPage(slug)` menjadi
   `api.content.getPublicPage(slug)`. Skema `PublicPage` kini milik `content.yaml` dan menambah field wajib
-  `legal_document` (`PageLegalDocument` | null). Penggabungan mensyaratkan `public.yaml` tidak lagi
-  mendefinisikan path dan skema tersebut (cakupan penulis kontrak C2).
+  `legal_document` (`PageLegalDocument` | null); `version` kini didokumentasikan sebagai versi tayang dokumen itu
+  saja, bukan nilai persetujuan registrasi. Respons 400 dideklarasikan. **Urutan penggabungan:** cabang C4 hanya
+  dapat dibundel setelah perubahan `public.yaml` milik C2 (menghapus path dan skema tersebut) masuk; gabungkan C2
+  lebih dahulu atau bersamaan, jangan C4 sendiri ke main.
+- Persetujuan legal (F-01): `GET /public/pages` mengirim `consent` (`LegalConsentVersions`
+  `{policy_version, privacy_version, terms_version}`). `policy_version` gabungan kanonis `privacy:<v>;terms:<v>`
+  adalah nilai yang dikirim klien sebagai `accept_policy_version` pada registrasi dan disimpan di
+  `users.policy_version`, karena privasi dan ketentuan memiliki penghitung versi masing-masing.
 - **[memutus]** `GET /home` (`getHome`): akses kini hanya anggota aktif (verified/expiring; 403
   MEMBERSHIP_REQUIRED/ACCOUNT_SUSPENDED dideklarasikan). `Home` menambah `quick_access` (`HomeQuickAccess`) dan
   `generated_at` (AC F08-4). `upcoming_events` kini `HomeEvent` lokal domain konten (bukan `EventSummary`):
   `location` menjadi `location_name`, ditambah `ends_at`, `category`, `price`, `is_free`, `seats_total`,
-  `seats_available`, `registration_state`, `registration_opens_at`, `registration_closes_at`. `HomeBanner.title`
-  kini wajib non-null dan `HomeBanner.target` berubah dari string nullable menjadi objek `HomeBannerTarget`
+  `seats_available`, `registration_state` (`HomeEventRegistrationState`: `not_yet_open`, `open`, `sold_out`,
+  `closed`, nilai yang sama dengan `EventRegistrationState` domain events tanpa `cancelled`),
+  `registration_opens_at`, `registration_closes_at`. `HomeBanner.title` kini wajib non-null dan
+  `HomeBanner.target` berubah dari string nullable menjadi objek `HomeBannerTarget`
   `{type, available, route, url, external}` yang diselesaikan server (AC F08-2).
 - **[memutus]** `PostSummary` (feed, detail, beranda): menambah field wajib `id`, `excerpt`, `cover_url`,
   `category`, `liked_by_me`; `category` berubah dari string nullable menjadi `ContentCategoryRef` | null. `Post`
   menambah `updated_at`. `PostPage.next_cursor` kini selalu dikirim (nullable).
-- `GET /posts`, `GET /posts/{slug}`, `PUT/DELETE /posts/{slug}/like`: akses anggota aktif; respons 401/403/404
+- `GET /posts`, `GET /posts/{slug}`, `PUT/DELETE /posts/{slug}/like`: akses anggota aktif; respons 400/401/403/404
   dideklarasikan. `PostSlug` tidak berubah.
 - Operasi baru: `GET /categories` (`listCategories`), `GET /public/pages` (`listPublicPages`), serta seluruh
-  operasi `Admin Content` di bawah `/admin/content/**` (berita draft/terjadwal/published/archived, banner, halaman
-  berversi, kategori, unggah gambar konten).
+  operasi `Admin Content` di bawah `/admin/content/**`: berita draft/terjadwal/published/archived (invarian waktu
+  terbit: berita yang pernah tampil tidak dapat dijadwalkan ulang), banner (`target.category` untuk kolom
+  Kategori guideline p13), halaman berversi, kategori berita `/admin/content/post-categories` (izin
+  content.manage), kategori event `/admin/content/event-categories` (izin events.manage, guideline p14), dan
+  unggah gambar konten. Tabel admin banner, halaman dan kategori menerima `sort`.
 - Semua operasi konten membawa ekstensi `x-kapdh-access` (audience, member_access, permissions, idempotent).
 
 ## 0.2.0

@@ -101,7 +101,8 @@ paths:
         `body_html` sudah disanitasi server saat disimpan (PRD 3.8); tautan luar diberi penanda agar klien
         menampilkan indikasi yang jelas.
 
-        Akses: anggota aktif (verified/expiring); lainnya 403 MEMBERSHIP_REQUIRED / ACCOUNT_SUSPENDED.
+        Slug yang melebihi panjang maksimum ditolak 400 VALIDATION_ERROR. Akses: anggota aktif (verified/expiring);
+        lainnya 403 MEMBERSHIP_REQUIRED / ACCOUNT_SUSPENDED.
       x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/PostSlug"
@@ -111,6 +112,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Post" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
           description: MEMBERSHIP_REQUIRED (unverified/expired) atau ACCOUNT_SUSPENDED (PRD 2.2).
@@ -130,8 +132,9 @@ paths:
         `post_likes(post_id, user_id)`; `like_count` dipelihara trigger database sehingga selalu sama dengan jumlah
         like (AC F08-3). Tidak memerlukan Idempotency-Key. Respons selalu berisi keadaan akhir.
 
-        Hanya berita yang tampil di feed (published dan sudah waktunya); lainnya 404 NOT_FOUND. Akses: anggota aktif
-        (verified/expiring); lainnya 403 MEMBERSHIP_REQUIRED / ACCOUNT_SUSPENDED.
+        Hanya berita yang tampil di feed (published dan sudah waktunya); lainnya 404 NOT_FOUND. Slug tidak valid
+        -> 400 VALIDATION_ERROR. Akses: anggota aktif (verified/expiring); lainnya 403 MEMBERSHIP_REQUIRED /
+        ACCOUNT_SUSPENDED.
       x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/PostSlug"
@@ -141,6 +144,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LikeState" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
           description: MEMBERSHIP_REQUIRED (unverified/expired) atau ACCOUNT_SUSPENDED (PRD 2.2).
@@ -157,8 +161,8 @@ paths:
         Idempoten secara alami (DELETE): membatalkan like yang tidak ada tetap 200 dengan `liked = false`.
         `like_count` dipelihara trigger database (AC F08-3).
 
-        Hanya berita yang tampil di feed; lainnya 404 NOT_FOUND. Akses: anggota aktif (verified/expiring); lainnya
-        403 MEMBERSHIP_REQUIRED / ACCOUNT_SUSPENDED.
+        Hanya berita yang tampil di feed; lainnya 404 NOT_FOUND. Slug tidak valid -> 400 VALIDATION_ERROR. Akses:
+        anggota aktif (verified/expiring); lainnya 403 MEMBERSHIP_REQUIRED / ACCOUNT_SUSPENDED.
       x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/PostSlug"
@@ -168,6 +172,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LikeState" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
           description: MEMBERSHIP_REQUIRED (unverified/expired) atau ACCOUNT_SUSPENDED (PRD 2.2).
@@ -217,6 +222,12 @@ paths:
 
         Dipakai situs publik, layar legal aplikasi, dan layar registrasi sebelum aktivasi (PRD 2.2: pending_otp dan
         unverified tetap dapat membaca legal). Tanpa autentikasi; dibatasi rate limit per IP.
+
+        `consent` memuat versi persetujuan registrasi (F-01): `policy_version` adalah string gabungan kanonis
+        versi tayang kebijakan privasi DAN ketentuan layanan (`privacy:<v>;terms:<v>`) yang dikirim klien apa
+        adanya sebagai `accept_policy_version` pada registrasi, lalu disimpan di `users.policy_version`. Satu
+        nilai itu menunjuk tepat dua teks yang disetujui, dan keduanya dapat direproduksi dari audit
+        `page.published` (F-01, F-17). Lihat skema `LegalConsentVersions`.
       security: []
       x-kapdh-access: { audience: public }
       responses:
@@ -234,14 +245,17 @@ paths:
       operationId: getPublicPage
       summary: Halaman legal atau informasi versi tayang terbaru; publik tanpa login (F-08, PRD 3.8).
       description: |
-        Mengembalikan salinan TAYANG (published_title/published_body_html) beserta `version` legal yang sedang berlaku
-        dan `published_at`; perubahan draf pengurus yang belum diterbitkan tidak pernah terlihat. `version` adalah
-        nilai yang dikirim klien sebagai `accept_policy_version` saat registrasi (F-01) dan sama dengan
-        `app_settings.legal` untuk dokumen legal.
+        Mengembalikan salinan TAYANG (published_title/published_body_html) beserta `version` tayang dokumen INI
+        dan `published_at`; perubahan draf pengurus yang belum diterbitkan tidak pernah terlihat. Untuk dokumen
+        legal, `version` sama dengan `app_settings.legal.<privacy|terms|community>_version`.
+
+        `version` per dokumen BUKAN nilai persetujuan registrasi: kebijakan privasi dan ketentuan memiliki
+        penghitung versi masing-masing, sehingga klien mengirim `consent.policy_version` gabungan dari
+        GET /public/pages sebagai `accept_policy_version` (F-01, skema `LegalConsentVersions`).
 
         Slug baku: `kebijakan-privasi`, `ketentuan`, `ketentuan-komunitas`, `bantuan`, `tentang`. Halaman yang
-        belum pernah terbit atau slug yang tidak ada menghasilkan 404 NOT_FOUND. Tanpa autentikasi; dibatasi rate
-        limit per IP.
+        belum pernah terbit atau slug yang tidak ada menghasilkan 404 NOT_FOUND; slug melebihi panjang maksimum
+        -> 400 VALIDATION_ERROR. Tanpa autentikasi; dibatasi rate limit per IP.
       security: []
       x-kapdh-access: { audience: public }
       parameters:
@@ -256,6 +270,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PublicPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
         default: { $ref: "#/components/responses/Error" }
@@ -350,12 +365,14 @@ components:
 
     HomeEventRegistrationState:
       type: string
-      enum: [not_open_yet, open, sold_out, closed]
+      enum: [not_yet_open, open, sold_out, closed]
       description: |
-        Keadaan pendaftaran untuk label kartu event (guideline p8 "Pendaftaran di Buka/Tutup"):
-        `not_open_yet` sebelum `registration_opens_at`; `open` event open, di dalam jendela pendaftaran dan kursi
-        tersedia; `sold_out` jendela terbuka tetapi `seats_available = 0`; `closed` setelah
-        `registration_closes_at` atau event berstatus closed.
+        Keadaan pendaftaran untuk label kartu event (guideline p8 "Pendaftaran di Buka/Tutup"). Nilainya sama
+        dengan `EventRegistrationState` domain events (F-09) tanpa `cancelled`, karena event batal tidak pernah
+        tampil di Beranda; widget kartu event klien memakai satu pemetaan label untuk keduanya.
+        `not_yet_open` event open tetapi `now < registration_opens_at`; `open` di dalam jendela pendaftaran dan
+        kursi tersedia; `sold_out` jendela terbuka tetapi `seats_available = 0` (dapat kembali `open` bila hold
+        kedaluwarsa); `closed` event berstatus closed atau `now >= registration_closes_at`.
 
     HomeEvent:
       type: object
@@ -504,9 +521,38 @@ components:
       type: string
       enum: [privacy, terms, community]
       description: |
-        Dokumen legal yang versinya dicatat sebagai persetujuan (F-01) dan dicerminkan di `app_settings.legal`
-        (`privacy_version`, `terms_version`, `community_version`): `privacy` = kebijakan-privasi, `terms` =
-        ketentuan, `community` = ketentuan-komunitas.
+        Dokumen legal berversi yang versi tayangnya dicerminkan di `app_settings.legal` (`privacy_version`,
+        `terms_version`, `community_version`; ARCHITECTURE §5.4): `privacy` = kebijakan-privasi, `terms` =
+        ketentuan, `community` = ketentuan-komunitas. Setiap dokumen memiliki penghitung versi sendiri.
+        Persetujuan registrasi (F-01) mencakup `privacy` dan `terms` melalui `LegalConsentVersions.policy_version`;
+        `community` dibaca sebelum fitur komunitas dibuka (PRD 3.12) dan tidak termasuk string persetujuan R1.0.
+
+    LegalConsentVersions:
+      type: object
+      description: |
+        Versi persetujuan registrasi (F-01: "Persetujuan privasi dan ketentuan dicatat beserta versi serta
+        waktunya"). Server menyusunnya dari `app_settings.legal` saat dibaca, tidak pernah dari klien:
+        `policy_version = "privacy:" + privacy_version + ";terms:" + terms_version` (urutan tetap, tanpa spasi),
+        misalnya `privacy:3;terms:1`. Klien menampilkan kedua dokumen lalu mengirim `policy_version` apa adanya
+        sebagai `accept_policy_version` (POST /auth/register); server membandingkannya dengan nilai terkini
+        `app_settings.legal` dan menyimpannya di `users.policy_version`, sehingga dua teks yang disetujui dapat
+        direproduksi dari audit `page.published`. Bila salah satu dokumen belum pernah terbit, `policy_version`
+        null dan registrasi belum dapat dibuka (PRD 8.2 langkah 4 memblokir go-live).
+      required: [policy_version, privacy_version, terms_version]
+      properties:
+        policy_version:
+          type: [string, "null"]
+          pattern: "^privacy:[1-9][0-9]*;terms:[1-9][0-9]*$"
+          maxLength: 64
+          examples: ["privacy:3;terms:1"]
+        privacy_version:
+          type: [string, "null"]
+          description: Versi tayang kebijakan-privasi; null bila belum pernah terbit.
+          examples: ["3"]
+        terms_version:
+          type: [string, "null"]
+          description: Versi tayang ketentuan; null bila belum pernah terbit.
+          examples: ["1"]
 
     PublicPageSummary:
       type: object
@@ -514,7 +560,10 @@ components:
       properties:
         slug: { type: string, examples: [kebijakan-privasi] }
         title: { type: string, examples: [Kebijakan Privasi] }
-        version: { type: string, description: Versi tayang (published_version)., examples: ["1"] }
+        version:
+          type: string
+          description: Versi tayang dokumen ini (published_version); bukan nilai persetujuan registrasi.
+          examples: ["1"]
         published_at: { type: string, format: date-time }
         legal_document:
           oneOf:
@@ -523,11 +572,12 @@ components:
 
     PublicPageList:
       type: object
-      required: [items]
+      required: [items, consent]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/PublicPageSummary" }
+        consent: { $ref: "#/components/schemas/LegalConsentVersions" }
 
     PublicPage:
       type: object
@@ -541,7 +591,9 @@ components:
           description: HTML tersanitasi server; tautan luar bertanda `data-external="true"` (PRD 3.8).
         version:
           type: string
-          description: Versi legal tayang (published_version), dikirim sebagai accept_policy_version (F-01).
+          description: |
+            Versi tayang dokumen ini (published_version). Untuk persetujuan registrasi klien mengirim
+            `LegalConsentVersions.policy_version` gabungan, bukan nilai ini (F-01).
           examples: ["1"]
         published_at: { type: string, format: date-time }
         legal_document:
