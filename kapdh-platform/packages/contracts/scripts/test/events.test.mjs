@@ -14,6 +14,7 @@ import {
 } from "../lib/events.mjs";
 import { fixtureEvents } from "../lib/dart/fixture.mjs";
 import { PATHS } from "../lib/fs.mjs";
+import { renderRealtimeTs } from "../lib/ts-realtime.mjs";
 
 const envelope = JSON.parse(readFileSync(join(PATHS.eventsDir, "envelope.schema.json"), "utf8"));
 const ajv = createEventsAjv();
@@ -186,5 +187,23 @@ describe("katalog payload event (analyzeEvents)", () => {
     for (const example of payload.schema.examples)
       assert.equal(check(example), true, fixtureAjv.errorsText(check.errors));
     assert.equal(check({ room_id: "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61" }), false);
+  });
+});
+
+describe("tipe TypeScript event realtime (renderRealtimeTs)", () => {
+  it("payload bertipe, tanpa payload dan pending dipetakan ke RealtimePayloads", async () => {
+    const { schemasTs, realtimeTs } = await renderRealtimeTs(fixtureEvents());
+    for (const line of [
+      '"message.created": RealtimeSchemas["MessageCreatedPayload"];',
+      '"session.revoked": Record<string, never>;',
+      '"typing": Record<string, unknown>;',
+      'export type FixtureChatMessage = RealtimeSchemas["FixtureChatMessage"];',
+      'export const REALTIME_PAYLOAD_LESS_TYPES = ["session.revoked"] as const',
+      "export type RealtimeEvent = { [K in RealtimeEventType]: RealtimeEnvelope<K> }[RealtimeEventType];",
+    ])
+      assert.ok(realtimeTs.includes(line), line);
+    // $ref antarberkas dan rujukan diri menjadi rujukan komponen di skema terbangkit.
+    assert.ok(schemasTs.includes('message: components["schemas"]["FixtureChatMessage"];'));
+    assert.ok(schemasTs.includes('reply_to?: components["schemas"]["FixtureChatMessage"] | null;'));
   });
 });
