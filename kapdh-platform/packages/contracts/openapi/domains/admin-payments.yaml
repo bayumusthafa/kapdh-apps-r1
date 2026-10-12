@@ -1,42 +1,232 @@
-# Domain admin-payments (C3 Finance): antrean, detail dan keputusan pembayaran oleh pengurus, metode bayar
-# dan penyesuaian. Modul API: apps/api/src/modules/payments.
+# Domain admin-payments (C3 Finance): antrean, detail dan keputusan pembayaran oleh pengurus, pencatatan iuran yang
+# diverifikasi di luar aplikasi (rencana cadangan D13), penyesuaian (refund dan koreksi) serta pengelolaan metode
+# bayar (F-04, F-15, D6, D13). Modul API: apps/api/src/modules/payments.
+#
+# Semua operasi audience admin: sesi admin wajib sudah TOTP (MFA_REQUIRED bila belum, AC F02-2) dan izin dievaluasi
+# dari database setiap request (AC F15-1, F16-3). Lihat keterangan `x-kapdh-access` di payments.yaml.
+# Konflik kepentingan (PRD 2.3): pengurus tidak dapat memutus atau menyesuaikan payment milik akun alumni yang
+# tertaut ke identitas adminnya (admins.linked_alumni_user_id).
 tags:
   - name: Admin Payments
-    description: Antrean, keputusan, metode bayar dan penyesuaian pembayaran oleh pengurus (F-04, F-15).
+    description: |
+      Antrean verifikasi, keputusan pembayaran, pencatatan iuran yang diverifikasi di luar aplikasi, penyesuaian
+      refund/koreksi dan metode bayar oleh pengurus (F-04, F-15, D6, D13).
 
 paths:
   /admin/payments:
     get:
       tags: [Admin Payments]
       operationId: adminListPayments
-      summary: Antrean pembayaran (izin payments.read, F-04).
+      summary: Antrean dan daftar pembayaran (payments.read, F-04).
+      description: |
+        Tabel server-side (F-15) untuk tab Verifikasi Pembayaran (prototipe screen_8, guidelines p17). Kolom:
+        dikirim (`submitted_at`), alumni (nama, nomor anggota, angkatan), jenis (tiket menampilkan `event_title`
+        dan `event_starts_at`), nominal, usia antrean (dihitung klien dari `submitted_at`; `overdue` dari server)
+        dan status.
+
+        Pilihan Status di UI (prototipe screen_8) dipetakan ke filter berikut:
+        - "Menunggu" (tampilan bawaan) = `stage=awaiting_review`: pending yang sudah berbukti dan siap diputus.
+          `total`-nya sama dengan `awaiting_review_count` pada GET /admin/payments/summary (pill emas menu). Jangan
+          memakai `status=pending`, karena filter itu ikut memuat instruksi tanpa bukti (awaiting_transfer) yang
+          belum dapat diputus.
+        - "Disetujui" = `status=paid`; "Ditolak" = `status=rejected`; "Semua" = tanpa `status` dan tanpa `stage`.
+
+        Filter lain: `type`, `q` (nama atau nomor anggota), `overdue`, `event_id`, `user_id`, rentang
+        `submitted_from`/`submitted_to`. Urutan bawaan `submitted_at_asc` (paling lama menunggu di atas); payment
+        tanpa bukti diletakkan di akhir. `total` menghitung seluruh hasil filter.
+
+        Batas review (`review_due_at`) berlaku untuk payment pending berbukti; hari kerja dihitung Senin sampai
+        Jumat waktu Asia/Jakarta:
+        - iuran: `submitted_at` + 1 hari kerja (prototipe screen_8 "Lewat 1 hari kerja", usulan PRD 1.6);
+        - tiket: yang lebih dahulu antara `submitted_at` + `events.review_escalation_business_days` (2 hari kerja,
+          D5) dan pembukaan jendela check-in event (`checkin_opens_at` event, atau `starts_at` dikurangi
+          `events.checkin_before_hours`), karena pembayaran tiket wajib diputus sebelum check-in (PRD 4.4).
+        `overdue` true bila waktu server sudah melewati `review_due_at`. Antrean tiket yang lewat batas dieskalasi,
+        tidak dibatalkan otomatis (PRD 3.9). Urutan `review_due_at_asc` menaikkan tiket event yang mendekati hari H
+        ke atas antrean.
+      x-kapdh-access: { audience: admin, permissions: [payments.read] }
       parameters:
         - name: status
           in: query
+          required: false
+          description: Status payment; kosong berarti semua status ("Semua").
           schema: { $ref: "#/components/schemas/PaymentStatus" }
+        - name: stage
+          in: query
+          required: false
+          description: Tahap payment; awaiting_review = antrean siap diputus (pilihan "Menunggu", bawaan UI).
+          schema: { $ref: "#/components/schemas/PaymentStage" }
         - name: type
           in: query
+          required: false
+          description: Jenis pembayaran; kosong berarti semua jenis.
           schema: { $ref: "#/components/schemas/PaymentType" }
         - name: q
           in: query
-          description: Nama atau nomor anggota.
-          schema: { type: string, maxLength: 100 }
+          required: false
+          description: Cari nama alumni (sebagian, tanpa beda huruf besar) atau nomor anggota (awalan).
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: overdue
+          in: query
+          required: false
+          description: true hanya yang lewat batas review; false hanya yang belum.
+          schema: { type: boolean }
+        - name: event_id
+          in: query
+          required: false
+          description: Hanya payment tiket untuk event ini.
+          schema: { type: string, format: uuid }
+        - name: user_id
+          in: query
+          required: false
+          description: Hanya payment milik anggota ini (riwayat pada detail anggota).
+          schema: { type: string, format: uuid }
+        - name: submitted_from
+          in: query
+          required: false
+          description: Batas bawah inklusif `submitted_at` (UTC).
+          schema: { type: string, format: date-time }
+        - name: submitted_to
+          in: query
+          required: false
+          description: Batas atas eksklusif `submitted_at` (UTC).
+          schema: { type: string, format: date-time }
+        - name: sort
+          in: query
+          required: false
+          description: Urutan hasil (bawaan submitted_at_asc).
+          schema: { $ref: "#/components/schemas/AdminPaymentSort" }
         - $ref: "#/components/parameters/Cursor"
         - $ref: "#/components/parameters/Limit"
       responses:
         "200":
-          description: Antrean.
+          description: Halaman antrean beserta total.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminPaymentPage" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin payments.read; MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Admin Payments]
+      operationId: adminRecordPayment
+      summary: Catat iuran yang dananya diverifikasi di luar aplikasi dan aktifkan keanggotaan (payments.decide, D13).
+      description: |
+        Rencana cadangan D13 (PRD 10.1, 10.2): bila instruksi bayar iuran disembunyikan di suatu platform
+        (pengaturan `payment_instructions`, PUT /admin/settings/payment-instructions; misalnya iOS bila review
+        Apple menolak), anggota membayar iuran keanggotaan organisasi langsung kepada pengurus, lalu pengurus
+        mencatatnya di sini setelah dana dicocokkan dengan mutasi rekening tujuan. Operasi yang sama dipakai bila
+        anggota tidak dapat memakai alur aplikasi. Hanya untuk iuran (registration/renewal); tiket tetap melalui
+        reservasi event (F-09).
+
+        Prasyarat:
+        - `funds_verified` true (PRD 3.4) dan `reason` berisi catatan verifikasi (misalnya tanggal dan rekening
+          mutasi).
+        - `user_id` adalah akun alumni yang tidak dihapus dan tidak disuspend. Kelayakannya sama dengan instruksi
+          anggota (GET /me/fees): registration hanya bila iuran pendaftaran belum pernah paid; renewal hanya bila
+          status efektif expiring atau expired (AC F07-5).
+        - `payment_method_id` adalah rekening organisasi tempat dana diterima (aktif atau nonaktif); disnapshot.
+        - `proof_file_id` adalah berkas purpose payment_proof yang diunggah pengurus pemanggil sebagai bukti
+          verifikasi (tangkapan mutasi atau bukti transfer yang dikirim anggota lewat kanal dukungan). Berkas
+          privat dan dibuka lewat GET /files/{fileId}/access.
+        - Pemanggil tidak berkonflik kepentingan (PRD 2.3).
+
+        Semua langkah berikut terjadi dalam SATU transaksi dengan lock baris akun pemilik:
+        - payment baru dihitung dari pengaturan `fees` versi aktif (snapshot baris, metode dan `settings_version`,
+          AC F03-5); nominal tidak pernah dikirim klien;
+        - bukti versi 1, lalu payment langsung paid dengan histori created, proof_submitted dan approved
+          beraktor admin;
+        - handler keanggotaan menghitung periode seperti keputusan biasa (registration dari approved_at, renewal
+          dari max(expires_at lama, approved_at)); lock akun mencegah suspend bersamaan di tengah proses;
+        - audit, notifikasi in-app kategori payment dengan deep link `/payments/{paymentId}`, dan outbox
+          (AC F04-1, F13-1).
+        Kegagalan email/push tidak membatalkan pencatatan (AC F04-5).
+
+        Galat:
+        - 400 VALIDATION_ERROR: `funds_verified` bukan true; metode tidak ada (field_errors.payment_method_id);
+          akun tidak ada, bukan alumni, sudah dihapus, atau disuspend (field_errors.user_id); renewal di luar
+          jendela perpanjangan atau sebelum iuran pendaftaran paid (field_errors.type).
+        - 403 FORBIDDEN: tanpa izin payments.decide atau berkonflik kepentingan.
+        - 409 PAYMENT_STATE_CONFLICT: registration padahal iuran pendaftaran sudah paid, atau masih ada payment
+          nonterminal (pending/rejected) jenis yang sama. Dalam kasus kedua `current` berisi AdminPaymentDetail
+          payment tersebut, dan pengurus memutus atau membatalkannya lebih dahulu (indeks
+          `payments_user_id_type_open_key`).
+        - 409 IDEMPOTENCY_CONFLICT: Idempotency-Key sama dengan payload berbeda. Pengulangan dengan key dan payload
+          sama mengembalikan hasil pertama tanpa membuat payment kedua.
+        - 422 FILE_INVALID: berkas tidak ada, bukan purpose payment_proof, bukan unggahan pemanggil, belum siap,
+          atau sudah terpakai.
+      x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminRecordPaymentRequest" }
+      responses:
+        "201":
+          description: Payment iuran tercatat paid; detail lengkap.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            FORBIDDEN tanpa izin payments.decide atau karena konflik kepentingan; MFA_REQUIRED bila sesi admin belum
+            TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: |
+            PAYMENT_STATE_CONFLICT (iuran pendaftaran sudah paid, atau payment nonterminal jenis sama masih ada;
+            `current` berisi AdminPaymentDetail payment itu) atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/FileInvalid" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/payments/summary:
+    get:
+      tags: [Admin Payments]
+      operationId: adminGetPaymentSummary
+      summary: Ringkasan antrean untuk badge menu dan dasbor (payments.read, F-04, F-15).
+      description: |
+        Hitungan saat ini: antrean siap diputus (pill emas menu "Verifikasi Pembayaran", prototipe screen_8),
+        yang lewat batas review, menunggu transfer, per jenis, serta penyesuaian pending dan lewat tenggat (D6).
+      x-kapdh-access: { audience: admin, permissions: [payments.read] }
+      responses:
+        "200":
+          description: Ringkasan antrean.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentSummary" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin payments.read; MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         default: { $ref: "#/components/responses/Error" }
 
   /admin/payments/{paymentId}:
     get:
       tags: [Admin Payments]
       operationId: adminGetPayment
-      summary: Detail pembayaran untuk keputusan admin (F-04).
+      summary: Detail pembayaran untuk keputusan pengurus (payments.read, F-04, AC F04-4).
+      description: |
+        Memuat bukti versi aktif (berkas privat dibuka lewat GET /files/{fileId}/access, URL <= 10 menit),
+        versi bukti dan `version` untuk keputusan, snapshot baris dan rekening tujuan, catatan transfer, histori
+        lengkap termasuk alasan penolakan sebelumnya dan berkas bukti versi lama (U-02), penyesuaian, serta flag
+        `conflict_of_interest`. Isi bukti tidak pernah dicatat di log atau audit (ARCHITECTURE §2 butir 3).
+      x-kapdh-access: { audience: admin, permissions: [payments.read] }
       parameters:
         - $ref: "#/components/parameters/PaymentId"
       responses:
@@ -45,7 +235,12 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminPaymentDetail" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin payments.read; MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
         default: { $ref: "#/components/responses/Error" }
 
@@ -53,7 +248,39 @@ paths:
     post:
       tags: [Admin Payments]
       operationId: adminDecidePayment
-      summary: Setujui atau tolak (izin payments.decide). Satu keputusan berlaku (AC F04-3, F04-4).
+      summary: Setujui atau tolak payment; satu keputusan berlaku (payments.decide, AC F04-1 sampai F04-5).
+      description: |
+        Prasyarat: payment pending dengan bukti (proof_version >= 1), `expected_proof_version` dan
+        `expected_version` sama dengan nilai terbaru, dan pemanggil tidak berkonflik kepentingan (PRD 2.3).
+        Keputusan mengunci baris payment; dari dua keputusan bersamaan hanya satu berlaku (AC F04-3).
+
+        - approve: wajib `funds_verified` true, artinya dana sudah dicocokkan dengan mutasi rekening tujuan, bukan
+          sekadar bukti terlihat meyakinkan (PRD 3.4). Dalam SATU transaksi: payment paid, payment_event approved,
+          handler jenis (periode keanggotaan registration/renewal dari approved_at atau max(expires_at lama,
+          approved_at), atau tiket paid + QR), audit, notifikasi in-app dan outbox (AC F04-1, F13-1). Persetujuan
+          untuk anggota suspended memperbarui periode tetapi status efektif tetap suspended (AC F07-4). Kegagalan
+          email/push tidak membatalkan keputusan; worker mengulang tanpa memperpanjang dua kali (AC F04-5).
+        - reject: wajib `reason` tidak kosong dan tidak hanya spasi (AC F04-2); alasan terlihat oleh pemilik dan
+          pengurus berizin. Iuran dapat diperbaiki pemilik pada payment yang sama (AC F03-3); tiket menjadi
+          cancelled dan hold dilepas (AC F09-4).
+
+        Tiket yang sudah cancelled sebelum keputusan (misalnya event dibatalkan pengurus atau peserta membatalkan
+        sendiri, PRD 3.9 dan 4.4; terlihat dari `ticket.ticket_status`): payment pending berbukti tetap wajib
+        diputus, karena dana mungkin sudah ditransfer dan pembatalan tidak berarti dana sudah dikembalikan.
+        - approve berarti dana diterima. Payment menjadi paid, tetapi tiket tidak dihidupkan kembali dan QR tidak
+          diterbitkan; handler tiket tidak menolak keputusan ini. Bila tabel D6 mewajibkan refund penuh (event
+          dibatalkan, atau pembatalan mandiri sampai H-3), penyesuaian refund sistem dibuat dalam transaksi yang
+          sama: `created_by` null, nominal penuh, `due_at` 7 hari kerja sejak pembatalan tiket. Penyesuaian ini
+          tampil di `adjustments` respons. Kasus lain (misalnya pemegang tiket disuspend) diputuskan pengurus per
+          kasus lewat POST /admin/payments/{paymentId}/adjustments.
+        - reject berarti dana tidak ditemukan di rekening tujuan; tiket tetap cancelled dan tidak ada refund.
+
+        Notifikasi kategori payment ke pemilik dengan deep link `/payments/{paymentId}` (ARCHITECTURE §4.7).
+        Galat 409 membawa `current` berisi AdminPaymentDetail terbaru dan diperiksa berurutan:
+        PAYMENT_STATE_CONFLICT (bukan pending atau belum ada bukti), PROOF_VERSION_CONFLICT (bukti diganti
+        setelah layar dibuka, AC F04-4), VERSION_CONFLICT. 403 FORBIDDEN bila tanpa izin atau berkonflik
+        kepentingan. Pengulangan dengan Idempotency-Key dan payload sama mengembalikan hasil pertama.
+      x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide], idempotent: true }
       parameters:
         - $ref: "#/components/parameters/PaymentId"
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -64,71 +291,776 @@ paths:
             schema: { $ref: "#/components/schemas/PaymentDecision" }
       responses:
         "200":
-          description: Keputusan tersimpan.
+          description: Keputusan tersimpan; detail terbaru.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminPaymentDetail" }
         "400": { $ref: "#/components/responses/ValidationError" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            FORBIDDEN tanpa izin payments.decide atau karena konflik kepentingan (payment milik alumni yang
+            tertaut ke admin ini); MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          description: PAYMENT_STATE_CONFLICT atau PROOF_VERSION_CONFLICT; body berisi status terbaru.
+          description: |
+            PAYMENT_STATE_CONFLICT, PROOF_VERSION_CONFLICT, VERSION_CONFLICT atau IDEMPOTENCY_CONFLICT; `current`
+            berisi AdminPaymentDetail terbaru dan UI memuat ulang (PRD 4.5).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/payments/{paymentId}/cancel:
+    post:
+      tags: [Admin Payments]
+      operationId: adminCancelPayment
+      summary: Batalkan payment pending yang belum berbukti atas kebijakan pengurus (payments.decide, PRD 4.3).
+      description: |
+        Hanya untuk payment pending dengan proof_version 0, sesuai transisi PRD 4.3 "pending ke cancelled:
+        pemilik membatalkan sebelum bukti atau kebijakan admin" (ARCHITECTURE §3.3). Contohnya instruksi yang
+        ditinggalkan anggota, sehingga anggota dapat membuat instruksi baru. Batasannya:
+        - Payment pending yang sudah berbukti wajib diputus (setujui/tolak), bukan dibatalkan, karena dana mungkin
+          sudah ditransfer (PRD 3.4, 3.9, 4.4).
+        - Payment rejected tidak dapat dibatalkan. Iuran rejected hanya kembali pending bila pemiliknya mengirim
+          ulang bukti (AC F03-3), dan tiket rejected sudah final (AC F09-4).
+        Dalam satu transaksi: status cancelled, `cancelled_at` dan `cancel_reason` tersimpan, histori cancelled
+        dengan aktor admin, handler jenis (tiket: tiket dibatalkan dan hold dilepas), audit, notifikasi kategori
+        payment ke pemilik dengan deep link `/payments/{paymentId}`. Tidak membuka akses apa pun.
+
+        Galat 409 (dengan `current` AdminPaymentDetail): PAYMENT_STATE_CONFLICT bila payment bukan pending atau
+        sudah berbukti, VERSION_CONFLICT bila If-Match usang, IDEMPOTENCY_CONFLICT. 403 FORBIDDEN bila tanpa izin
+        atau berkonflik kepentingan.
+      x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminCancelPaymentRequest" }
+      responses:
+        "200":
+          description: Payment dibatalkan; detail terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin atau karena konflik kepentingan; MFA_REQUIRED bila sesi belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: PAYMENT_STATE_CONFLICT, VERSION_CONFLICT atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/payments/{paymentId}/adjustments:
+    post:
+      tags: [Admin Payments]
+      operationId: adminCreatePaymentAdjustment
+      summary: Catat refund atau koreksi atas payment paid tanpa mengubah payment asal (payments.decide, D6).
+      description: |
+        Payment paid tidak pernah diubah menjadi status lain; koreksi keuangan dan refund dicatat sebagai
+        penyesuaian terpisah (PRD 3.4, 4.3, ARCHITECTURE §2 butir 13). Prasyarat: payment paid dan pemanggil tidak
+        berkonflik kepentingan. Termasuk payment tiket yang disetujui setelah tiketnya dibatalkan (dana diterima,
+        lihat adminDecidePayment) bila refund tidak dibuat otomatis oleh sistem.
+
+        - refund: `amount` > 0 dan total refund pending + completed tidak melebihi nominal payment. Rekening tujuan
+          refund (`refund_destination`) boleh diisi sekarang atau kemudian lewat PATCH, hanya disimpan selama
+          proses dan dihapus saat selesai atau dibatalkan (D2, D6). `due_at` = 7 hari kerja sejak pembatalan
+          tiket/event terkait, atau sejak dicatat bila tidak ada pembatalan (PRD 3.9).
+        - correction: `amount` >= 0 dengan alasan; tanpa rekening tujuan dan tanpa tenggat.
+
+        Refund otomatis juga dibuat sistem (created_by null) saat event dibatalkan atau peserta membatalkan sampai
+        H-3 atas tiket paid, dan saat payment tiket yang tiketnya sudah dibatalkan dengan alasan yang sama disetujui
+        (F-09, D6). Audit dicatat dalam transaksi yang sama tanpa rekening tujuan (ARCHITECTURE §2 butir 3).
+      x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePaymentAdjustmentRequest" }
+      responses:
+        "201":
+          description: Penyesuaian pending tercatat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentAdjustment" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin atau karena konflik kepentingan; MFA_REQUIRED bila sesi belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: PAYMENT_STATE_CONFLICT (payment bukan paid) atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/payment-adjustments:
+    get:
+      tags: [Admin Payments]
+      operationId: adminListPaymentAdjustments
+      summary: Daftar penyesuaian refund dan koreksi (payments.read, D6).
+      description: |
+        Tab Penyesuaian. Urutan bawaan `due_at_asc` (tenggat terdekat dahulu, tanpa tenggat di akhir). `overdue`
+        true bila pending dan sudah melewati `due_at` (7 hari kerja, D6). Rekening tujuan refund tidak pernah
+        dikirim di daftar.
+      x-kapdh-access: { audience: admin, permissions: [payments.read] }
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Status penyesuaian; kosong berarti semua.
+          schema: { $ref: "#/components/schemas/PaymentAdjustmentStatus" }
+        - name: kind
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/PaymentAdjustmentKind" }
+        - name: overdue
+          in: query
+          required: false
+          schema: { type: boolean }
+        - name: payment_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: q
+          in: query
+          required: false
+          description: Cari nama alumni atau nomor anggota pemilik payment.
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: sort
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/AdminPaymentAdjustmentSort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman penyesuaian beserta total.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentAdjustmentPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin payments.read; MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/payment-adjustments/{adjustmentId}:
+    get:
+      tags: [Admin Payments]
+      operationId: adminGetPaymentAdjustment
+      summary: Detail penyesuaian (payments.read, D6).
+      description: |
+        `refund_destination` hanya dikirim kepada pemegang payments.decide selama status pending dan tidak
+        berkonflik kepentingan; selain itu null dengan `has_refund_destination` sebagai penanda (D2).
+      x-kapdh-access: { audience: admin, permissions: [payments.read] }
+      parameters:
+        - $ref: "#/components/parameters/AdjustmentId"
+      responses:
+        "200":
+          description: Detail penyesuaian.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentAdjustment" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin payments.read; MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Admin Payments]
+      operationId: adminUpdatePaymentAdjustment
+      summary: Ubah nominal, alasan, rekening tujuan atau bukti penyesuaian pending (payments.decide, D6).
+      description: |
+        Hanya untuk status pending. Field yang tidak dikirim tidak berubah; `refund_destination` null menghapus
+        rekening tujuan, dan hanya boleh untuk kind refund. Aturan nominal sama dengan pembuatan. Audit mencatat
+        perubahan tanpa isi rekening tujuan. Galat 409 PAYMENT_STATE_CONFLICT bila bukan pending dan
+        VERSION_CONFLICT bila If-Match usang, dengan `current` AdminPaymentAdjustment.
+      x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide] }
+      parameters:
+        - $ref: "#/components/parameters/AdjustmentId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdatePaymentAdjustmentRequest" }
+      responses:
+        "200":
+          description: Penyesuaian diperbarui.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentAdjustment" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin atau karena konflik kepentingan; MFA_REQUIRED bila sesi belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: PAYMENT_STATE_CONFLICT atau VERSION_CONFLICT; `current` berisi AdminPaymentAdjustment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/payment-adjustments/{adjustmentId}/complete:
+    post:
+      tags: [Admin Payments]
+      operationId: adminCompletePaymentAdjustment
+      summary: Tandai penyesuaian selesai; rekening tujuan refund dihapus (payments.decide, D2, D6).
+      description: |
+        Hanya untuk status pending. Refund wajib melampirkan bukti penyelesaian `evidence_file_id` (berkas purpose
+        adjustment_evidence; boleh sudah tersimpan lewat PATCH). Dalam satu conditional UPDATE status menjadi
+        completed, `completed_at`/`completed_by` diisi dan `refund_destination` dikosongkan (D2); payment_event
+        `adjusted` dicatat pada payment asal, audit tanpa rekening tujuan, dan notifikasi kategori payment ke
+        pemilik dengan deep link `/payments/{paymentId}` (PRD 10.2: adjustment, notifikasi dan bukti
+        penyelesaian). Galat 409 PAYMENT_STATE_CONFLICT/VERSION_CONFLICT dengan `current`.
+      x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/AdjustmentId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompletePaymentAdjustmentRequest" }
+      responses:
+        "200":
+          description: Penyesuaian selesai.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentAdjustment" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin atau karena konflik kepentingan; MFA_REQUIRED bila sesi belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: PAYMENT_STATE_CONFLICT, VERSION_CONFLICT atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/FileInvalid" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/payment-adjustments/{adjustmentId}/cancel:
+    post:
+      tags: [Admin Payments]
+      operationId: adminCancelPaymentAdjustment
+      summary: Batalkan penyesuaian pending dengan alasan; rekening tujuan dihapus (payments.decide, D2).
+      description: |
+        Hanya untuk status pending. Dalam satu conditional UPDATE status menjadi cancelled; `cancel_reason`,
+        `cancelled_by` dan `cancelled_at` disimpan di kolom penyesuaian (PRD 6.3: alasan dan aktor), dan
+        `refund_destination` dikosongkan (D2). Nilai ini tidak pernah dibaca kembali dari audit_logs; audit hanya
+        jejak akuntabilitas (F-17) dan dicatat dalam transaksi yang sama. Galat 409
+        PAYMENT_STATE_CONFLICT/VERSION_CONFLICT dengan `current`.
+      x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/AdjustmentId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CancelPaymentAdjustmentRequest" }
+      responses:
+        "200":
+          description: Penyesuaian dibatalkan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentAdjustment" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin atau karena konflik kepentingan; MFA_REQUIRED bila sesi belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: PAYMENT_STATE_CONFLICT, VERSION_CONFLICT atau IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/payment-methods:
+    get:
+      tags: [Admin Payments]
+      operationId: adminListPaymentMethods
+      summary: Semua metode bayar, aktif maupun nonaktif (settings.manage, F-15).
+      description: |
+        Tab Kelola Metode (guidelines p17). Tabel server-side seperti tabel admin lain (ARCHITECTURE §4.10):
+        `cursor` + `limit` dan `total`. Urutan tetap mengikuti urutan tampil yang diatur pengurus: `sort_order`,
+        lalu nama penyedia, lalu id (keyset).
+      x-kapdh-access: { audience: admin, permissions: [settings.manage] }
+      parameters:
+        - name: active
+          in: query
+          required: false
+          description: Saring status aktif; kosong berarti semua.
+          schema: { type: boolean }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman metode beserta total.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentMethodPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Admin Payments]
+      operationId: adminCreatePaymentMethod
+      summary: Tambah rekening tujuan (settings.manage + reautentikasi, AC F15-3).
+      description: |
+        Rekening tujuan menentukan ke mana anggota mentransfer dana, sehingga perubahan wajib reautentikasi
+        (X-Reauth-Token <= 10 menit, AC F15-3) dan diaudit dalam transaksi yang sama (AC F17-1).
+      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ReauthToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PaymentMethodInput" }
+      responses:
+        "201":
+          description: Metode dibuat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentMethod" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
+            MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/payment-methods/{methodId}:
+    get:
+      tags: [Admin Payments]
+      operationId: adminGetPaymentMethod
+      summary: Detail metode bayar untuk formulir ubah (settings.manage).
+      x-kapdh-access: { audience: admin, permissions: [settings.manage] }
+      parameters:
+        - $ref: "#/components/parameters/PaymentMethodId"
+      responses:
+        "200":
+          description: Detail metode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentMethod" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Admin Payments]
+      operationId: adminUpdatePaymentMethod
+      summary: Ubah atau nonaktifkan metode bayar (settings.manage + reautentikasi, AC F15-3, F15-4).
+      description: |
+        Penggantian penuh. Payment yang sudah dibuat tetap memakai snapshot lamanya (AC F15-3); metode nonaktif
+        tidak muncul di GET /payment-methods dan tidak dapat dipilih untuk payment baru atau ganti metode.
+
+        Identitas rekening metode yang sudah dipakai payment (`in_use` true) tidak dapat diubah. Untuk metode
+        seperti ini hanya `instructions`, `active` dan `sort_order` yang boleh berubah. Perubahan `kind`,
+        `provider`, `account_number` atau `account_holder` ditolak 400 VALIDATION_ERROR (field_errors per field);
+        pengurus menonaktifkan metode lama lalu membuat metode baru. Dengan aturan ini, snapshot pada instruksi
+        yang belum dibayar tidak pernah diam-diam berbeda dari rekening yang berlaku. Anggota yang instruksinya
+        belum berbukti melihat `method_active` false dan diarahkan mengganti rekening tujuan sebelum transfer.
+
+        Pemeriksaan `in_use` dan pembaruan berjalan dalam satu transaksi dengan lock baris metode (FOR UPDATE).
+        Pembuatan payment dan ganti metode mengunci baris metode yang sama (FOR SHARE), sehingga tidak ada payment
+        baru yang menyalin isi lama setelah perubahan tersimpan. Audit before/after dalam transaksi yang sama.
+        If-Match usang menghasilkan 409 VERSION_CONFLICT dengan `current` AdminPaymentMethod (AC F15-4).
+      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+      parameters:
+        - $ref: "#/components/parameters/PaymentMethodId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/ReauthToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PaymentMethodInput" }
+      responses:
+        "200":
+          description: Metode diperbarui.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentMethod" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
+            MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: VERSION_CONFLICT; `current` berisi AdminPaymentMethod terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Admin Payments]
+      operationId: adminDeletePaymentMethod
+      summary: Hapus metode yang belum pernah dipakai (settings.manage + reautentikasi, F-15).
+      description: |
+        Hanya metode dengan `in_use` false (tidak pernah dirujuk payment mana pun) yang dapat dihapus. Metode yang
+        sudah dipakai ditolak 400 VALIDATION_ERROR (field_errors._ "metode sudah dipakai, nonaktifkan saja") dan
+        harus dinonaktifkan lewat PUT (`active` false) agar histori dan snapshot tetap utuh. Pemeriksaan dan
+        penghapusan berjalan dalam satu transaksi dengan lock baris metode. If-Match usang menghasilkan 409
+        VERSION_CONFLICT. Audit dicatat dalam transaksi yang sama.
+      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+      parameters:
+        - $ref: "#/components/parameters/PaymentMethodId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/ReauthToken"
+      responses:
+        "204":
+          description: Metode dihapus.
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
+            MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: VERSION_CONFLICT dengan `current` AdminPaymentMethod terbaru.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         default: { $ref: "#/components/responses/Error" }
 
 components:
+  parameters:
+    AdjustmentId:
+      name: adjustmentId
+      in: path
+      required: true
+      description: ID penyesuaian (UUID v7).
+      schema: { type: string, format: uuid }
+    PaymentMethodId:
+      name: methodId
+      in: path
+      required: true
+      description: ID metode bayar (UUID v7).
+      schema: { type: string, format: uuid }
+
   schemas:
+    AdminPaymentSort:
+      type: string
+      enum: [submitted_at_asc, submitted_at_desc, review_due_at_asc, decided_at_desc, created_at_desc]
+      description: |
+        submitted_at_asc = paling lama menunggu dahulu (bawaan antrean, usia antrean terbesar di atas);
+        submitted_at_desc = bukti terbaru dahulu; review_due_at_asc = batas review terdekat dahulu (tiket event yang
+        mendekati hari H naik ke atas, PRD 4.4); decided_at_desc = keputusan terbaru dahulu (tab Disetujui/Ditolak);
+        created_at_desc = instruksi terbaru dahulu. Nilai kosong pada kolom urut diletakkan di akhir.
+
     AdminPaymentMember:
       type: object
-      required: [full_name]
+      description: |
+        Identitas minimum pemilik payment untuk pengurus berizin. Tanpa email, telepon atau alamat (N-09).
+      required: [user_id, full_name, member_number, cohort, effective_status]
       properties:
+        user_id: { type: string, format: uuid }
         full_name: { type: string }
-        member_number: { type: [string, "null"] }
-        cohort: { type: [integer, "null"] }
+        member_number:
+          type: [string, "null"]
+          description: Nomor anggota AA.SS.JK.N (PRD 3.5); null hanya bila belum dialokasikan.
+        cohort: { type: integer, minimum: 1, description: "Angkatan (AA), misalnya 29." }
+        effective_status: { $ref: "#/components/schemas/EffectiveStatus" }
+
+    AdminPaymentActorRef:
+      type: object
+      description: Pengurus pelaku tindakan (untuk akuntabilitas internal, F-17).
+      required: [admin_id, display_name]
+      properties:
+        admin_id: { type: string, format: uuid }
+        display_name: { type: string }
 
     AdminPaymentItem:
       type: object
-      required: [id, type, status, amount, member, submitted_at, proof_version, overdue]
+      description: Baris antrean pembayaran (prototipe screen_8, guidelines p17).
+      required:
+        - id
+        - type
+        - status
+        - stage
+        - amount
+        - member
+        - event_title
+        - event_starts_at
+        - submitted_at
+        - decided_at
+        - review_due_at
+        - proof_version
+        - overdue
+        - created_at
+        - version
       properties:
         id: { type: string, format: uuid }
         type: { $ref: "#/components/schemas/PaymentType" }
         status: { $ref: "#/components/schemas/PaymentStatus" }
+        stage: { $ref: "#/components/schemas/PaymentStage" }
         amount: { $ref: "#/components/schemas/Money" }
-        member: { $ref: "#/components/schemas/AdminPaymentMember" }
-        event_title: { type: [string, "null"] }
-        submitted_at: { type: [string, "null"], format: date-time }
-        proof_version: { type: integer }
-        overdue: { type: boolean, description: Lewat 1 hari kerja sejak bukti dikirim. }
+        member:
+          description: Null bila akun pemilik sudah dihapus dan payment dianonimkan (D2, AC F14-4).
+          oneOf:
+            - $ref: "#/components/schemas/AdminPaymentMember"
+            - type: "null"
+        event_title:
+          type: [string, "null"]
+          description: Judul event untuk payment tiket ("Tiket - judul"); null untuk iuran.
+        event_starts_at:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            Waktu mulai event untuk payment tiket, agar antrean menampilkan urgensi sebelum hari H (PRD 4.4); null
+            untuk iuran.
+        submitted_at:
+          type: [string, "null"]
+          format: date-time
+          description: Waktu bukti aktif dikirim; dasar urutan dan usia antrean (PRD 3.4).
+        decided_at: { type: [string, "null"], format: date-time }
+        review_due_at:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            Batas review untuk payment pending berbukti; null selain itu. Iuran: `submitted_at` + 1 hari kerja.
+            Tiket: yang lebih dahulu antara `submitted_at` + 2 hari kerja (D5) dan pembukaan jendela check-in
+            event (PRD 4.4). Rumus lengkap di adminListPayments.
+        proof_version: { type: integer, minimum: 0 }
+        overdue: { type: boolean, description: Pending berbukti yang sudah melewati `review_due_at`. }
+        created_at: { type: string, format: date-time }
+        version: { type: string }
 
     AdminPaymentPage:
       type: object
-      required: [items, total]
+      required: [items, total, next_cursor]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/AdminPaymentItem" }
-        total: { type: integer }
+        total: { type: integer, minimum: 0, description: Jumlah seluruh hasil filter. }
         next_cursor: { type: [string, "null"] }
 
+    AdminPaymentTypeCounts:
+      type: object
+      required: [registration, renewal, ticket]
+      properties:
+        registration: { type: integer, minimum: 0 }
+        renewal: { type: integer, minimum: 0 }
+        ticket: { type: integer, minimum: 0 }
+
+    AdminPaymentSummary:
+      type: object
+      description: Hitungan antrean saat `generated_at` (badge menu dan dasbor F-15).
+      required:
+        - awaiting_review_count
+        - overdue_count
+        - awaiting_transfer_count
+        - awaiting_review_by_type
+        - adjustments_pending_count
+        - adjustments_overdue_count
+        - generated_at
+      properties:
+        awaiting_review_count: { type: integer, minimum: 0, description: Pending berbukti (siap diputus). }
+        overdue_count:
+          { type: integer, minimum: 0, description: Bagian awaiting_review yang lewat batas review. }
+        awaiting_transfer_count: { type: integer, minimum: 0, description: Pending tanpa bukti. }
+        awaiting_review_by_type: { $ref: "#/components/schemas/AdminPaymentTypeCounts" }
+        adjustments_pending_count: { type: integer, minimum: 0 }
+        adjustments_overdue_count:
+          { type: integer, minimum: 0, description: Penyesuaian pending lewat `due_at`. }
+        generated_at: { type: string, format: date-time }
+
+    AdminPaymentProof:
+      type: object
+      description: |
+        Metadata bukti aktif. Isi berkas hanya dibuka lewat GET /files/{fileId}/access setelah pemeriksaan izin
+        (PRD 5.4); nama berkas asli tidak disimpan (object_key tanpa data pribadi).
+      required: [file_id, version, mime, bytes, submitted_at]
+      properties:
+        file_id: { type: string, format: uuid }
+        version: { type: integer, minimum: 1, description: Sama dengan `proof_version` payment. }
+        mime: { type: string, examples: [image/jpeg, application/pdf] }
+        bytes: { type: integer, minimum: 0 }
+        submitted_at: { type: string, format: date-time }
+
+    AdminPaymentEvent:
+      description: Entri histori untuk pengurus, termasuk berkas bukti versi lama dan admin pelaku (U-02, F-17).
+      allOf:
+        - $ref: "#/components/schemas/PaymentEvent"
+        - type: object
+          required: [proof_file_id, actor_admin]
+          properties:
+            proof_file_id:
+              type: [string, "null"]
+              format: uuid
+              description: Berkas bukti untuk proof_submitted/proof_replaced (versi lama tetap dapat dibuka).
+            actor_admin:
+              description: Pengurus pelaku untuk entri oleh admin; null untuk anggota atau sistem.
+              oneOf:
+                - $ref: "#/components/schemas/AdminPaymentActorRef"
+                - type: "null"
+
+    AdminPaymentActions:
+      type: object
+      description: Tindakan yang diizinkan server untuk pemanggil pada payment ini (izin, status, konflik kepentingan).
+      required: [can_decide, can_cancel, can_adjust]
+      properties:
+        can_decide:
+          type: boolean
+          description: Pending berbukti, memiliki payments.decide, dan tidak berkonflik kepentingan.
+        can_cancel:
+          type: boolean
+          description: |
+            Pending tanpa bukti (proof_version 0), memiliki payments.decide, dan tidak berkonflik kepentingan
+            (PRD 4.3). Payment rejected tidak pernah dapat dibatalkan pengurus.
+        can_adjust:
+          type: boolean
+          description: Paid, memiliki payments.decide, dan tidak berkonflik kepentingan.
+
     AdminPaymentDetail:
+      description: Detail payment untuk keputusan pengurus (F-04).
       allOf:
         - $ref: "#/components/schemas/AdminPaymentItem"
         - type: object
-          required: [lines, method, events, proof_file_id, version, conflict_of_interest]
+          required:
+            - lines
+            - method
+            - method_id
+            - method_active
+            - proof
+            - transfer_note
+            - rejection_reason
+            - rejection_count
+            - decided_by
+            - cancelled_at
+            - cancel_reason
+            - ticket
+            - period
+            - settings_version
+            - events
+            - adjustments
+            - conflict_of_interest
+            - actions
           properties:
             lines:
               type: array
               items: { $ref: "#/components/schemas/PaymentLine" }
             method: { $ref: "#/components/schemas/PaymentMethod" }
-            proof_file_id: { type: [string, "null"], format: uuid }
+            method_id:
+              type: [string, "null"]
+              format: uuid
+              description: Metode asal yang masih tertaut (snapshot tetap di `method`).
+            method_active: { type: boolean, description: Metode asal masih aktif. }
+            proof:
+              description: Bukti aktif; null bila belum ada bukti.
+              oneOf:
+                - $ref: "#/components/schemas/AdminPaymentProof"
+                - type: "null"
             transfer_note: { type: [string, "null"] }
+            rejection_reason: { type: [string, "null"], description: Alasan penolakan terakhir. }
+            rejection_count:
+              type: integer
+              minimum: 0
+              description: Jumlah penolakan sebelumnya (prototipe screen_8 "Riwayat - Belum pernah ditolak").
+            decided_by:
+              description: Pengurus yang memutus terakhir.
+              oneOf:
+                - $ref: "#/components/schemas/AdminPaymentActorRef"
+                - type: "null"
+            cancelled_at: { type: [string, "null"], format: date-time }
+            cancel_reason: { type: [string, "null"] }
+            ticket:
+              oneOf:
+                - $ref: "#/components/schemas/PaymentTicketRef"
+                - type: "null"
+            period:
+              oneOf:
+                - $ref: "#/components/schemas/PaymentMembershipPeriod"
+                - type: "null"
+            settings_version:
+              type: [string, "null"]
+              description: Versi pengaturan `fees` yang disnapshot (null untuk tiket, AC F03-5).
             events:
               type: array
-              items: { $ref: "#/components/schemas/PaymentEvent" }
+              description: Histori lengkap urut waktu naik.
+              items: { $ref: "#/components/schemas/AdminPaymentEvent" }
+            adjustments:
+              type: array
+              items: { $ref: "#/components/schemas/AdminPaymentAdjustment" }
             conflict_of_interest:
-              { type: boolean, description: True bila payment milik alumni yang tertaut ke admin ini. }
-            version: { type: string }
+              type: boolean
+              description: True bila payment milik alumni yang tertaut ke admin pemanggil (PRD 2.3).
+            actions: { $ref: "#/components/schemas/AdminPaymentActions" }
 
     PaymentDecisionKind:
       type: string
@@ -136,16 +1068,288 @@ components:
 
     PaymentDecision:
       type: object
+      description: Keputusan atas versi bukti yang dibaca pengurus (AC F04-3, F04-4).
       required: [decision, expected_proof_version, expected_version]
       properties:
         decision: { $ref: "#/components/schemas/PaymentDecisionKind" }
-        expected_proof_version: { type: integer }
-        expected_version: { type: string }
-        funds_verified: { type: boolean, description: Wajib true untuk approve. }
+        expected_proof_version:
+          type: integer
+          minimum: 1
+          description: proof_version yang dilihat pengurus di layar detail.
+        expected_version:
+          { type: string, maxLength: 64, description: "`version` payment yang dilihat pengurus." }
+        funds_verified:
+          type: boolean
+          description: Wajib true untuk approve; menyatakan dana sudah terlihat di rekening tujuan (PRD 3.4).
         reason:
-          {
-            type: string,
-            minLength: 3,
-            maxLength: 500,
-            description: Wajib dan tidak boleh hanya spasi untuk reject.,
-          }
+          type: string
+          minLength: 3
+          maxLength: 500
+          pattern: '\S'
+          description: Wajib untuk reject, tidak boleh kosong atau hanya spasi (AC F04-2); diabaikan untuk approve.
+
+    AdminCancelPaymentRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          pattern: '\S'
+          description: Alasan pembatalan; terlihat oleh pemilik payment dan tercatat di histori serta audit.
+
+    AdminRecordPaymentRequest:
+      type: object
+      description: |
+        Pencatatan iuran yang dananya sudah diverifikasi pengurus di luar aplikasi (rencana cadangan D13). Nominal
+        tidak dikirim; server menghitungnya dari pengaturan `fees` versi aktif (PRD 3.3).
+      required: [user_id, type, payment_method_id, proof_file_id, funds_verified, reason]
+      properties:
+        user_id: { type: string, format: uuid, description: Akun alumni pemilik iuran. }
+        type: { $ref: "#/components/schemas/MembershipPaymentType" }
+        payment_method_id:
+          type: string
+          format: uuid
+          description: Rekening organisasi tempat dana diterima (aktif atau nonaktif); disnapshot pada payment.
+        proof_file_id:
+          type: string
+          format: uuid
+          description: |
+            Berkas purpose payment_proof yang diunggah pengurus pemanggil sebagai bukti verifikasi (misalnya
+            tangkapan mutasi); menjadi bukti versi 1.
+        transfer_note:
+          type: string
+          maxLength: 200
+          description: Catatan transfer opsional (misalnya bank pengirim dan tanggal mutasi).
+        funds_verified:
+          type: boolean
+          description: Wajib true; dana sudah dicocokkan dengan mutasi rekening tujuan (PRD 3.4).
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          pattern: '\S'
+          description: |
+            Catatan verifikasi dan alasan pencatatan oleh pengurus. Disimpan pada entri histori created (hanya
+            terlihat oleh pengurus) dan di audit; tidak dikirim kepada anggota.
+
+    AdminRefundDestination:
+      type: object
+      description: |
+        Rekening tujuan refund yang diminta saat proses refund saja (PRD 3.9) dan dihapus saat penyesuaian selesai
+        atau dibatalkan (D2). Tidak pernah dicatat di log, audit maupun ekspor (ARCHITECTURE §2 butir 3).
+      required: [provider, account_number, account_holder]
+      properties:
+        provider: { type: string, minLength: 1, maxLength: 80, description: Nama bank atau e-wallet tujuan. }
+        account_number:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Nomor rekening tujuan refund.
+          x-sensitive: true
+        account_holder:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Nama pemilik rekening tujuan refund.
+          x-sensitive: true
+
+    AdminAdjustmentPaymentRef:
+      type: object
+      description: Ringkasan payment asal penyesuaian untuk tabel penyesuaian.
+      required: [id, type, status, amount, member, event_title, decided_at]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/PaymentType" }
+        status: { $ref: "#/components/schemas/PaymentStatus" }
+        amount: { $ref: "#/components/schemas/Money" }
+        member:
+          oneOf:
+            - $ref: "#/components/schemas/AdminPaymentMember"
+            - type: "null"
+        event_title: { type: [string, "null"] }
+        decided_at: { type: [string, "null"], format: date-time }
+
+    AdminPaymentAdjustment:
+      type: object
+      description: Penyesuaian refund atau koreksi atas payment paid (PRD 6.3, D6).
+      required:
+        - id
+        - payment_id
+        - payment
+        - kind
+        - amount
+        - reason
+        - status
+        - has_refund_destination
+        - refund_destination
+        - evidence_file_id
+        - due_at
+        - overdue
+        - created_by
+        - completed_by
+        - completed_at
+        - cancelled_by
+        - cancelled_at
+        - cancel_reason
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id: { type: string, format: uuid }
+        payment_id: { type: string, format: uuid }
+        payment: { $ref: "#/components/schemas/AdminAdjustmentPaymentRef" }
+        kind: { $ref: "#/components/schemas/PaymentAdjustmentKind" }
+        amount: { $ref: "#/components/schemas/Money" }
+        reason: { type: string, description: Alasan internal pengurus. }
+        status: { $ref: "#/components/schemas/PaymentAdjustmentStatus" }
+        has_refund_destination:
+          type: boolean
+          description: Rekening tujuan refund sudah dicatat (selalu false setelah completed/cancelled).
+        refund_destination:
+          description: |
+            Hanya untuk pemegang payments.decide yang tidak berkonflik kepentingan, kind refund, status pending;
+            selain itu null (D2).
+          oneOf:
+            - $ref: "#/components/schemas/AdminRefundDestination"
+            - type: "null"
+        evidence_file_id:
+          type: [string, "null"]
+          format: uuid
+          description: Bukti penyelesaian (purpose adjustment_evidence), dibuka lewat GET /files/{fileId}/access.
+        due_at:
+          type: [string, "null"]
+          format: date-time
+          description: Tenggat refund 7 hari kerja (D6); null untuk koreksi.
+        overdue: { type: boolean, description: Pending dan sudah melewati `due_at`. }
+        created_by:
+          description: Pengurus pencatat; null bila dibuat sistem (pembatalan event atau tiket, D6).
+          oneOf:
+            - $ref: "#/components/schemas/AdminPaymentActorRef"
+            - type: "null"
+        completed_by:
+          oneOf:
+            - $ref: "#/components/schemas/AdminPaymentActorRef"
+            - type: "null"
+        completed_at: { type: [string, "null"], format: date-time }
+        cancelled_by:
+          description: |
+            Pengurus yang membatalkan penyesuaian (kolom payment_adjustments.cancelled_by_admin_id); null bila
+            belum dibatalkan atau akun admin sudah tidak ada.
+          oneOf:
+            - $ref: "#/components/schemas/AdminPaymentActorRef"
+            - type: "null"
+        cancelled_at: { type: [string, "null"], format: date-time }
+        cancel_reason:
+          type: [string, "null"]
+          description: |
+            Alasan pembatalan (kolom payment_adjustments.cancel_reason, wajib tidak kosong saat cancelled); null
+            selain itu.
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        version: { type: string }
+
+    AdminPaymentAdjustmentPage:
+      type: object
+      required: [items, total, next_cursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminPaymentAdjustment" }
+        total: { type: integer, minimum: 0 }
+        next_cursor: { type: [string, "null"] }
+
+    AdminPaymentAdjustmentSort:
+      type: string
+      enum: [due_at_asc, created_at_desc]
+      description: due_at_asc = tenggat terdekat dahulu (bawaan); created_at_desc = terbaru dahulu.
+
+    CreatePaymentAdjustmentRequest:
+      type: object
+      required: [kind, amount, reason]
+      properties:
+        kind: { $ref: "#/components/schemas/PaymentAdjustmentKind" }
+        amount:
+          $ref: "#/components/schemas/Money"
+          description: Refund > 0 dan total refund tidak melebihi nominal payment; koreksi >= 0.
+        reason: { type: string, minLength: 3, maxLength: 500, pattern: '\S' }
+        refund_destination: { $ref: "#/components/schemas/AdminRefundDestination" }
+        evidence_file_id:
+          type: string
+          format: uuid
+          description: Berkas purpose adjustment_evidence milik admin pemanggil.
+
+    UpdatePaymentAdjustmentRequest:
+      type: object
+      description: PATCH; field yang tidak dikirim tidak berubah.
+      properties:
+        amount: { $ref: "#/components/schemas/Money" }
+        reason: { type: string, minLength: 3, maxLength: 500, pattern: '\S' }
+        refund_destination:
+          description: Isi atau ganti rekening tujuan refund; null menghapusnya.
+          oneOf:
+            - $ref: "#/components/schemas/AdminRefundDestination"
+            - type: "null"
+        evidence_file_id:
+          type: [string, "null"]
+          format: uuid
+          description: Lampirkan bukti penyelesaian; null melepasnya.
+
+    CompletePaymentAdjustmentRequest:
+      type: object
+      properties:
+        evidence_file_id:
+          type: string
+          format: uuid
+          description: Bukti penyelesaian; wajib untuk refund bila belum dilampirkan lewat PATCH.
+
+    CancelPaymentAdjustmentRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 3, maxLength: 500, pattern: '\S' }
+
+    AdminPaymentMethod:
+      description: Metode bayar dengan atribut pengelolaan (F-15).
+      allOf:
+        - $ref: "#/components/schemas/PaymentMethod"
+        - type: object
+          required: [active, sort_order, in_use, version, created_at, updated_at]
+          properties:
+            active:
+              { type: boolean, description: Ditampilkan ke anggota dan dapat dipilih untuk payment baru. }
+            sort_order: { type: integer, minimum: 0, maximum: 32767 }
+            in_use:
+              type: boolean
+              description: |
+                Pernah dirujuk payment. Metode seperti ini hanya dapat dinonaktifkan (tidak dihapus), dan identitas
+                rekeningnya (kind, provider, account_number, account_holder) tidak dapat diubah.
+            version: { type: string }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+
+    AdminPaymentMethodPage:
+      type: object
+      required: [items, total, next_cursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminPaymentMethod" }
+        total: { type: integer, minimum: 0, description: Jumlah seluruh metode sesuai filter. }
+        next_cursor: { type: [string, "null"] }
+
+    PaymentMethodInput:
+      type: object
+      description: |
+        Isi lengkap metode bayar (POST dan PUT penggantian penuh). Spasi di awal/akhir dipangkas server. Pada
+        metode `in_use`, `kind`, `provider`, `account_number` dan `account_holder` wajib sama dengan nilai saat ini.
+      required: [kind, provider, account_number, account_holder, instructions, active, sort_order]
+      properties:
+        kind: { $ref: "#/components/schemas/PaymentMethodKind" }
+        provider: { type: string, minLength: 1, maxLength: 80, pattern: '\S' }
+        account_number: { type: string, minLength: 1, maxLength: 64, pattern: '\S' }
+        account_holder: { type: string, minLength: 1, maxLength: 120, pattern: '\S' }
+        instructions: { type: [string, "null"], maxLength: 1000, description: Teks polos tanpa HTML. }
+        active: { type: boolean }
+        sort_order: { type: integer, minimum: 0, maximum: 32767 }
