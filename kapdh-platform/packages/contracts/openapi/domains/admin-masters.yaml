@@ -17,10 +17,12 @@ paths:
       operationId: adminListMasters
       summary: Daftar master (aktif dan nonaktif) dengan jumlah pemakaian, paging dan total (F-15, AC F10-4).
       description: |
-        Dapat dibaca setiap admin terautentikasi ber-TOTP (dipakai juga untuk filter daftar anggota); perubahan
-        memerlukan master.manage. `usage_count` = jumlah alumni yang memakai master ini; master dengan
-        usage_count > 0 tidak dapat dihapus.
-      x-kapdh-access: { audience: admin, permissions: [] }
+        Dibutuhkan dua area pengurus: halaman "Manajemen Skill & Profesi" (master.manage) dan filter profesi/
+        keahlian pada daftar anggota (members.read). Karena itu cukup SALAH SATU izin tersebut
+        (`permissions_any`); admin tanpa keduanya (mis. hanya payments.* atau events.*) ditolak 403 FORBIDDEN
+        (AC F15-1, PRD 2.3). Perubahan tetap memerlukan master.manage. `usage_count` = jumlah alumni yang memakai
+        master ini; master dengan usage_count > 0 tidak dapat dihapus.
+      x-kapdh-access: { audience: admin, permissions_any: [members.read, master.manage] }
       parameters:
         - $ref: "#/components/parameters/MasterKindPath"
         - name: q
