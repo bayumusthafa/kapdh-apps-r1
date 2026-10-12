@@ -31,7 +31,7 @@ async function main() {
     const existing = await db
       .select()
       .from(admins)
-      .where(and(eq(admins.role, "super_admin"), eq(admins.active, true)))
+      .where(and(eq(admins.role, "super_admin"), eq(admins.status, "active")))
       .limit(1);
     if (existing.length > 0)
       throw new Error("Super Admin aktif sudah ada. Tambahkan admin lain dari web admin.");
@@ -50,7 +50,14 @@ async function main() {
         kind: "admin",
         emailVerifiedAt: new Date(),
       });
-      await tx.insert(admins).values({ id: adminId, userId, displayName: name, role: "super_admin" });
+      await tx.insert(admins).values({
+        id: adminId,
+        userId,
+        displayName: name,
+        role: "super_admin",
+        status: "active",
+        activatedAt: new Date(),
+      });
       await tx.insert(mfaTotp).values({
         userId,
         secretEncrypted: encryptSecret(secret, env.TOTP_ENC_KEY),
