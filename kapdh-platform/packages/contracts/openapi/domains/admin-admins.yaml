@@ -11,6 +11,14 @@
 # backup code, kredensial diduga bocor) dipulihkan Super Admin lain lewat POST /admin/admins/{adminId}/recovery, yaitu
 # "reset MFA/undangan ulang oleh Super Admin" yang dirujuk admin-auth (C1). PRD 8.2 mewajibkan minimal dua Super Admin
 # aktif sehingga Super Admin yang terkunci selalu dapat dipulihkan Super Admin lain.
+#
+# Email login dan tautan alumni (tidak ada jalan buntu, F-16): email login dapat dikoreksi selama tidak ada kredensial
+# yang dapat dipakai (PATCH `email` pada status invited, termasuk yang sedang dipulihkan, atau disabled yang belum pernah
+# aktif; token undangan diterbitkan ulang ke alamat baru) atau saat pemulihan (POST .../recovery `email`) bila admin
+# aktif kehilangan kotak suratnya. Identitas yang belum pernah aktif dapat dihapus (DELETE /admin/admins/{adminId})
+# sehingga email login dan tautan alumninya bebas dipakai undangan baru. Tautan alumni identitas yang PERNAH aktif
+# permanen sebagai jejak konflik kepentingan (PRD 2.3); alumni itu kembali menjadi admin dengan mengaktifkan kembali atau
+# memulihkan identitas yang sama, bukan undangan baru.
 tags:
   - name: Admin Admins
     description: |
@@ -74,9 +82,12 @@ paths:
 
         - `alumni_user_id`: admin ditautkan ke akun alumni tersebut (admins.linked_alumni_user_id) untuk pemeriksaan
           konflik kepentingan pembayaran (PRD 2.3). `email` bawaan = email akun alumni dan `display_name` bawaan =
-          nama lengkap alumni bila tidak diisi. Alumni wajib berstatus akun active, tidak suspended, dan belum
-          tertaut ke admin mana pun (lihat GET /admin/admins/candidates); selain itu 400 VALIDATION_ERROR pada
-          `alumni_user_id`.
+          nama lengkap alumni bila tidak diisi. Alumni yang tidak ditemukan, akunnya tidak active (termasuk
+          deletion_pending), atau sedang suspended menghasilkan 400 VALIDATION_ERROR pada `alumni_user_id`. Alumni
+          yang sudah tertaut ke identitas admin yang masih ada (status apa pun; unique admins_linked_alumni_user_id_key)
+          menghasilkan 409 VALIDATION_ERROR pada `alumni_user_id`, termasuk saat dua undangan bersamaan berebut
+          alumni yang sama (pelanggaran unique dipetakan, bukan pemeriksaan tanpa kunci). Lihat GET
+          /admin/admins/candidates untuk status kelayakan sebelum memilih.
         - tanpa `alumni_user_id`: `email` dan `display_name` wajib; admin tanpa tautan alumni.
 
         `role=admin` menerima `permissions` (izin yang assignable, beserta syarat `requires` di katalog GET
@@ -86,9 +97,10 @@ paths:
         Admin dibuat berstatus `invited` dengan sandi awal acak dan token undangan sekali pakai (hanya hash yang
         disimpan). Tautan undangan dikirim lewat email ke alamat login admin melalui outbox, tidak pernah ada di
         respons. Admin wajib mengganti sandi awal melalui token dan mendaftarkan TOTP sebelum menjadi `active`
-        (PRD 3.16, 8.2). Email login yang sudah dipakai identitas admin lain yang belum dihapus, atau alumni yang
-        sudah tertaut, menghasilkan 409 VALIDATION_ERROR dengan field_errors. Audit `admin.invited` dan
-        perubahan izin tercatat dalam transaksi yang sama (AC F16-1, F17-1).
+        (PRD 3.16, 8.2). Email login yang sudah dipakai identitas admin lain yang belum dihapus (unique
+        users_kind_email_key) menghasilkan 409 VALIDATION_ERROR pada `email`. Ringkasnya: 400 untuk input atau
+        keadaan alumni yang tidak memenuhi syarat, 409 untuk bentrok unique (email login, tautan alumni). Audit
+        `admin.invited` dan perubahan izin tercatat dalam transaksi yang sama (AC F16-1, F17-1).
       x-kapdh-access: { audience: admin, permissions: [admins.manage], reauth: true, idempotent: true }
       parameters:
         - $ref: "#/components/parameters/ReauthToken"
@@ -120,7 +132,10 @@ paths:
         Modal "Delegasi User jadi Admin": mencari alumni berdasarkan nama, nomor anggota (No. KTA) atau email.
         Setiap item menyatakan `eligible` dan alasan bila tidak dapat dipilih (sudah tertaut ke admin, akun tidak
         aktif, atau suspended), sehingga UI menonaktifkan tombol "Jadikan Admin". Tanpa `q`, urutan alumni terbaru.
-        Akun alumni yang dihapus atau deletion_pending tidak pernah muncul.
+        Akun alumni yang dihapus atau deletion_pending tidak pernah muncul. Alumni `already_admin` yang tertaut ke
+        identitas yang belum pernah aktif kembali eligible setelah identitas itu dihapus (DELETE
+        /admin/admins/{adminId}); yang tertaut ke identitas yang pernah aktif tetap `already_admin` dan diaktifkan
+        kembali lewat identitas yang sama.
       x-kapdh-access: { audience: admin, permissions: [admins.manage] }
       parameters:
         - name: q
@@ -146,6 +161,9 @@ paths:
       tags: [Admin Admins]
       operationId: adminGetAdmin
       summary: Detail admin, izin efektif dan versi (Super Admin, F-16).
+      description: |
+        `adminId` yang bukan UUID menghasilkan 400 VALIDATION_ERROR; identitas yang tidak ada (termasuk yang sudah
+        dihapus) 404 NOT_FOUND.
       x-kapdh-access: { audience: admin, permissions: [admins.manage] }
       parameters:
         - $ref: "#/components/parameters/AdminId"
@@ -155,6 +173,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminAccountDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/AdminAdminsForbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -162,7 +181,7 @@ paths:
     patch:
       tags: [Admin Admins]
       operationId: adminUpdateAdmin
-      summary: Ubah nama, peran, izin atau status admin (Super Admin + reautentikasi, AC F16-1..F16-3).
+      summary: Ubah nama, peran, izin, status, atau email login admin yang belum pernah aktif (Super Admin + reautentikasi, AC F16-1..F16-3).
       description: |
         Hanya field yang dikirim yang berubah; minimal satu field. Wajib `If-Match` = `version` terakhir; versi
         berbeda menghasilkan 409 VERSION_CONFLICT dengan `current` = AdminAccountDetail terbaru (AC F15-4).
@@ -182,9 +201,24 @@ paths:
           dan saat dua request bersamaan: penjaga transaksi database (admins_last_super_admin_chk) menolak dan API
           mengembalikan 409 VALIDATION_ERROR dengan field_errors pada `role`/`status` serta `current` (AC F16-2).
           Penurunan memakai UPDATE bersyarat ... RETURNING, bukan hitungan tanpa kunci.
-        - Email login dan tautan alumni tidak dapat diubah (ditetapkan saat provisioning, PRD 3.16).
+        - `email` (koreksi email login, misalnya salah ketik saat undangan atau pemulihan): hanya selama tidak ada
+          kredensial yang dapat dipakai, yaitu status `invited` (undangan pertama, atau pemulihan yang sandi dan
+          MFA-nya sudah direset) atau `disabled` yang belum pernah aktif; tidak boleh digabung dengan `status` (400
+          VALIDATION_ERROR). Admin `active`, atau `disabled` yang pernah aktif, ditolak 409 VALIDATION_ERROR pada
+          `email`; alamat barunya ditetapkan lewat POST /admin/admins/{adminId}/recovery (`email`) karena alamat
+          baru harus disertai reset sandi dan MFA. Bila identitas pernah aktif (sedang dipulihkan), pemberitahuan
+          keamanan `admin.security_notice` juga dikirim ke alamat lama. Server menormalisasi (lower, trim) dan mengubah users.email akun login admin dalam
+          transaksi yang sama (baris admins lebih dahulu, lalu users); bentrok users_kind_email_key menghasilkan
+          409 VALIDATION_ERROR pada `email`. Untuk status `invited`, token undangan lama langsung tidak berlaku,
+          pendaftaran TOTP yang sedang berjalan dibatalkan (baris mfa_totp yang belum terverifikasi dihapus,
+          users.session_version naik, sesi dicabut), dan token baru (invite_expires_at baru) dikirim lewat outbox ke
+          alamat BARU; untuk `disabled` yang belum pernah aktif, alamat baru dipakai saat kirim ulang undangan.
+          Email yang sama dengan alamat sekarang tidak mengubah apa pun.
+        - Tautan alumni tidak dapat diubah lewat PATCH. Identitas yang belum pernah aktif yang tertaut ke alumni
+          yang salah dihapus (DELETE /admin/admins/{adminId}) lalu alumni yang benar diundang.
 
-        Audit `admin.updated` berisi sebelum/sesudah peran, izin dan status beserta alasan (AC F16-1, F17-1).
+        Audit `admin.updated` berisi sebelum/sesudah peran, izin, status dan email login beserta alasan (AC F16-1,
+        F17-1); email adalah kolom privat yang dimasking pada ekspor CSV audit (AC F17-3).
       x-kapdh-access: { audience: admin, permissions: [admins.manage], reauth: true }
       parameters:
         - $ref: "#/components/parameters/AdminId"
@@ -206,6 +240,43 @@ paths:
         "403": { $ref: "#/components/responses/AdminAdminsSensitiveForbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/AdminAdminsConflict" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Admin Admins]
+      operationId: adminDeleteAdmin
+      summary: Hapus identitas admin yang belum pernah aktif dan batalkan undangannya (Super Admin + reautentikasi, F-16).
+      description: |
+        Membatalkan undangan secara permanen dan membebaskan email login serta tautan alumninya, misalnya undangan
+        ke alamat yang salah atau alumni yang keliru dipilih (F-16, PRD 3.16). Hanya untuk identitas yang belum
+        pernah aktif (activated_at kosong; status `invited` atau `disabled`); identitas yang pernah aktif tidak
+        dapat dihapus karena menjadi jejak keputusan dan konflik kepentingan (PRD 2.3, 3.17), sehingga ditolak 409
+        VALIDATION_ERROR (field_errors `_`); nonaktifkan dengan PATCH status=disabled. Pemanggil sendiri selalu
+        identitas aktif sehingga tidak pernah dapat menghapus dirinya.
+
+        Satu transaksi READ COMMITTED: DELETE bersyarat pada baris admins (`WHERE id = ... AND version = If-Match
+        AND activated_at IS NULL RETURNING user_id`), lalu DELETE baris users akun login admin itu (kind admin;
+        sesi, OTP dan pendaftaran TOTP yang belum selesai ikut terhapus lewat kaskade). Penjaga
+        admins_last_super_admin_chk tidak terpengaruh karena identitas yang belum pernah aktif tidak dapat login.
+        Token undangan langsung tidak berlaku (pratinjau dan penerimaan undangan menghasilkan 410 OTP_EXPIRED di
+        admin-auth). Email login dan alumni tertaut segera dapat dipakai undangan baru (unique users_kind_email_key
+        dan admins_linked_alumni_user_id_key tidak lagi bentrok). Audit `admin.deleted` (entity_type admin,
+        entity_id = id admin) ditulis dalam transaksi yang sama dengan `before` berisi display_name, email login,
+        peran, izin, status dan linked_alumni_user_id; riwayat `admin.invited` tetap ada karena audit append-only
+        (AC F16-1, F17-1). If-Match tidak ada atau tidak sah: 400 VALIDATION_ERROR; usang: 409 VERSION_CONFLICT
+        dengan `current`; identitas yang tidak ada atau sudah dihapus: 404 NOT_FOUND.
+      x-kapdh-access: { audience: admin, permissions: [admins.manage], reauth: true }
+      parameters:
+        - $ref: "#/components/parameters/AdminId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/ReauthToken"
+      responses:
+        "204": { description: Identitas admin yang belum pernah aktif dihapus dan undangannya dibatalkan. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminAdminsSensitiveForbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/AdminAdminsConflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
         default: { $ref: "#/components/responses/Error" }
 
   /admin/admins/{adminId}/invitation:
@@ -265,9 +336,16 @@ paths:
            langsung tidak berlaku.
         4. Seluruh sesi admin target dicabut, users.session_version naik, dan socket diputus, sehingga token yang
            belum expired pun tidak berlaku lagi (AC F16-3).
-        5. Audit `admin.recovery_initiated` berisi alasan serta status sebelum/sesudah, tanpa token, hash atau
-           secret (AC F16-1, F17-1); outbox: email undangan pemulihan ke email login admin dan pemberitahuan
-           keamanan `admin.security_notice` (pola AC F16-4). Token undangan tidak pernah ada di respons atau log.
+        5. Bila `email` diisi dan berbeda (admin kehilangan akses ke kotak surat lamanya), users.email akun login
+           admin diganti alamat baru yang dinormalisasi; bentrok users_kind_email_key menghasilkan 409
+           VALIDATION_ERROR pada `email`. Tanpa `email`, alamat lama dipakai.
+        6. Audit `admin.recovery_initiated` berisi alasan serta status (dan email login bila berubah)
+           sebelum/sesudah, tanpa token, hash atau secret (AC F16-1, F17-1); outbox: email undangan pemulihan ke
+           email login admin yang BERLAKU (alamat baru bila diganti) dan pemberitahuan keamanan
+           `admin.security_notice` (pola AC F16-4) ke alamat yang berlaku serta, bila email diganti, juga ke alamat
+           lama, sehingga pemilik sah mengetahui pengalihan. Token undangan tidak pernah ada di respons atau log.
+           Super Admin wajib memverifikasi identitas admin di luar sistem sebelum mengganti alamat dan
+           mencatatnya di `reason`.
 
         Admin lalu mengulang penerimaan undangan di admin-auth: sandi baru melalui token sekali pakai, lalu
         pendaftaran TOTP, sebelum `active` kembali (PRD 3.16). Login sandi-saja ditolak selama `invited` (AC F02-2).
@@ -342,7 +420,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminPermissionCatalog" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/MfaRequired" }
+        "403": { $ref: "#/components/responses/AdminSessionForbidden" }
         default: { $ref: "#/components/responses/Error" }
 
 components:
@@ -357,25 +435,28 @@ components:
   responses:
     AdminAdminsForbidden:
       description: |
-        FORBIDDEN tanpa izin admins.manage (hanya Super Admin, PRD 2.3), atau MFA_REQUIRED bila sesi admin belum
-        menyelesaikan TOTP (AC F02-2).
+        FORBIDDEN tanpa izin admins.manage (hanya Super Admin, PRD 2.3), bila token bukan audience admin, atau bila
+        identitas admin pemanggil tidak `active`; MFA_REQUIRED bila sesi admin belum menyelesaikan TOTP (AC F02-2).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     AdminAdminsSensitiveForbidden:
       description: |
-        FORBIDDEN tanpa izin admins.manage (hanya Super Admin), MFA_REQUIRED bila sesi belum TOTP, atau
-        REAUTH_REQUIRED bila X-Reauth-Token tidak ada/kedaluwarsa (lebih dari 10 menit) (PRD 2.3, AC F16-1).
+        FORBIDDEN tanpa izin admins.manage (hanya Super Admin), bila token bukan audience admin, atau bila
+        identitas admin pemanggil tidak `active`; MFA_REQUIRED bila sesi belum TOTP; REAUTH_REQUIRED bila
+        X-Reauth-Token tidak ada/kedaluwarsa (lebih dari 10 menit) (PRD 2.3, AC F16-1).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     AdminAdminsConflict:
       description: |
         VERSION_CONFLICT bila If-Match usang (`current` = AdminAccountDetail terbaru, AC F15-4);
-        VALIDATION_ERROR (409) dengan field_errors bila email login sudah dipakai, alumni sudah tertaut ke admin,
-        Super Admin aktif terakhir akan diturunkan/dinonaktifkan/dipulihkan (AC F16-2), transisi
-        status/undangan/pemulihan tidak diizinkan, atau Super Admin memulihkan dirinya sendiri;
-        IDEMPOTENCY_CONFLICT bila Idempotency-Key dipakai dengan payload berbeda.
+        VALIDATION_ERROR (409) dengan field_errors bila email login sudah dipakai identitas admin lain
+        (users_kind_email_key) pada undangan, koreksi email atau pemulihan; alumni sudah tertaut ke identitas
+        admin (admins_linked_alumni_user_id_key); Super Admin aktif terakhir akan diturunkan/dinonaktifkan/
+        dipulihkan (AC F16-2); transisi status/undangan/pemulihan tidak diizinkan; email diubah lewat PATCH pada
+        admin `active` atau `disabled` yang pernah aktif; penghapusan identitas yang pernah aktif; atau Super Admin
+        memulihkan dirinya sendiri. IDEMPOTENCY_CONFLICT bila Idempotency-Key dipakai dengan payload berbeda.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -389,7 +470,9 @@ components:
         dan TOTP) -> `active` (setelah penerimaan undangan, domain admin-auth) -> `disabled` (dinonaktifkan Super
         Admin; sesi dicabut). `disabled` -> `active` hanya bila pernah aktif dan TOTP masih terverifikasi;
         `disabled` yang belum pernah aktif -> `invited` lewat kirim ulang undangan; `active` atau `disabled` yang
-        pernah aktif -> `invited` lewat pemulihan (sandi dan MFA direset). Label UI: Diundang, Aktif, Nonaktif.
+        pernah aktif -> `invited` lewat pemulihan (sandi dan MFA direset). Identitas yang belum pernah aktif
+        (`invited` atau `disabled`) dapat dihapus permanen lewat DELETE /admin/admins/{adminId}. Label UI:
+        Diundang, Aktif, Nonaktif.
 
     AdminAccountStatusChange:
       type: string
@@ -568,6 +651,13 @@ components:
       description: Hanya field yang dikirim yang diubah; aturan lengkap di operasi adminUpdateAdmin.
       properties:
         display_name: { type: string, minLength: 1, maxLength: 120 }
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          description: |
+            Koreksi email login; hanya untuk status invited atau disabled yang belum pernah aktif, dan tidak bersama
+            `status`. Dinormalisasi server; untuk status invited token undangan diterbitkan ulang ke alamat ini.
         role: { $ref: "#/components/schemas/AdminRole" }
         permissions:
           type: array
@@ -593,6 +683,13 @@ components:
           description: |
             Alasan pemulihan untuk audit (misalnya "perangkat TOTP hilang, diverifikasi lewat telepon"); tidak
             boleh hanya spasi dan tidak boleh memuat sandi atau kode.
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          description: |
+            Opsional: email login baru bila admin kehilangan akses ke alamat lama. Dinormalisasi server; undangan
+            pemulihan dikirim ke alamat ini dan pemberitahuan keamanan juga ke alamat lama (F-16, PRD 10).
 
     AdminRecoveryResult:
       type: object
@@ -618,8 +715,10 @@ components:
       type: string
       enum: [already_admin, account_inactive, suspended]
       description: |
-        Alasan alumni tidak dapat didelegasikan: `already_admin` sudah tertaut ke identitas admin (status apa pun),
-        `account_inactive` akun belum terverifikasi atau dinonaktifkan, `suspended` sedang dibatasi pengurus.
+        Alasan alumni tidak dapat didelegasikan: `already_admin` sudah tertaut ke identitas admin yang masih ada
+        (status apa pun; bebas kembali setelah identitas yang belum pernah aktif dihapus lewat DELETE
+        /admin/admins/{adminId}), `account_inactive` akun belum terverifikasi atau dinonaktifkan, `suspended`
+        sedang dibatasi pengurus.
 
     AdminCandidate:
       type: object
