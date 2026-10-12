@@ -18,7 +18,18 @@ enum SessionPhase {
 }
 
 /// Masalah saat memuat sesi; ditampilkan splash sebagai "Tanpa koneksi" atau "Coba lagi" (PRD 4.6 Flutter sistem).
-enum SessionIssue { none, offline, serverError }
+enum SessionIssue {
+  none,
+
+  /// Jaringan tidak tersedia.
+  offline,
+
+  /// Server menjawab galat atau respons tak sesuai.
+  serverError,
+
+  /// Secure storage perangkat (Keystore/Keychain) gagal dibaca; token tidak dihapus dan pembacaan dapat diulang.
+  storage,
+}
 
 /// Keadaan sesi yang dibaca router (PRD 2.2). Kelas ini murni (tanpa Flutter widget) agar matriks redirect diuji
 /// sebagai fungsi murni.

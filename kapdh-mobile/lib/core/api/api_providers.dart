@@ -5,6 +5,7 @@ import 'package:kapdh_api/kapdh_api.dart';
 import '../config/api_config.dart';
 import '../config/app_info.dart';
 import '../config/clock.dart';
+import '../config/server_clock.dart';
 import '../storage/secure_store.dart';
 import '../storage/token_store.dart';
 import 'api_signals.dart';
@@ -21,6 +22,10 @@ final appInfoProvider = Provider<AppInfo>(
 );
 
 final clockProvider = Provider<Clock>((ref) => systemClock);
+
+/// Perkiraan jam server dari header `Date` respons API (PRD 2.1). Dipakai untuk menilai stempel absolut server
+/// (kedaluwarsa OTP, masa berlaku token) tanpa bergantung pada jam perangkat yang bisa melenceng.
+final serverClockProvider = Provider<ServerClock>((ref) => ServerClock(clock: ref.watch(clockProvider)));
 
 /// Adapter HTTP pengganti untuk uji (null = adapter bawaan dio).
 final httpClientAdapterProvider = Provider<HttpClientAdapter?>((ref) => null);
@@ -44,6 +49,7 @@ final bareDioProvider = Provider<Dio>((ref) {
   final dio = createBareDio(
     ref.watch(apiConfigProvider),
     ref.watch(appInfoProvider),
+    serverClock: ref.watch(serverClockProvider),
     adapter: ref.watch(httpClientAdapterProvider),
   );
   ref.onDispose(dio.close);
@@ -56,7 +62,7 @@ final refreshCoordinatorProvider = Provider<RefreshCoordinator>((ref) {
   final coordinator = RefreshCoordinator(
     store: ref.watch(tokenStoreProvider),
     refresher: (refreshToken) => bare.refreshSession(body: RefreshRequest(refreshToken: refreshToken)),
-    clock: ref.watch(clockProvider),
+    serverClock: ref.watch(serverClockProvider),
   );
   ref.onDispose(coordinator.dispose);
   return coordinator;
@@ -69,6 +75,7 @@ final dioProvider = Provider<Dio>((ref) {
     ref.watch(appInfoProvider),
     coordinator: ref.watch(refreshCoordinatorProvider),
     signals: ref.watch(apiSignalsProvider),
+    serverClock: ref.watch(serverClockProvider),
     adapter: ref.watch(httpClientAdapterProvider),
   );
   ref.onDispose(dio.close);

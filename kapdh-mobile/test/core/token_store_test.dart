@@ -2,12 +2,37 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_api/kapdh_api.dart';
+import 'package:kapdh_mobile/core/config/server_clock.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/core/storage/token_store.dart';
 
 import '../support/fakes.dart';
 
 void main() {
+  test('gagal baca secure storage tidak disimpan: pemanggilan berikutnya membaca ulang, token tidak dihapus', () async {
+    final inner = MemorySecureStore();
+    await TokenStore(inner).save(StoredTokens.fromPair(TokenPair.fromJson(tokenPairJson())));
+    final flaky = FlakySecureStore(inner);
+    final store = TokenStore(flaky);
+
+    await expectLater(store.read(), throwsException);
+    expect(store.isLoaded, isFalse);
+    expect((await store.read())?.accessToken, 'access-1');
+    expect(flaky.reads, 2);
+    expect(inner.values.containsKey(TokenStore.storageKey), isTrue);
+  });
+
+  test('batas berlaku menurut jam perangkat ikut tersimpan dan dibaca ulang', () async {
+    final storage = MemorySecureStore();
+    final clock = ServerClock(clock: () => testNow.add(const Duration(hours: 7)))..observe(testNow);
+    await TokenStore(storage).save(StoredTokens.received(TokenPair.fromJson(tokenPairJson()), clock));
+    final reloaded = await TokenStore(storage).read();
+    // Token berlaku 15 menit menurut server = 15 menit dari jam perangkat yang maju 7 jam.
+    final expected = testNow.add(const Duration(hours: 7, minutes: 15));
+    expect(reloaded?.deviceExpiresAt?.difference(expected).inSeconds.abs(), lessThanOrEqualTo(1));
+    expect(reloaded?.clockSkewSuspected, isFalse);
+  });
+
   test('access dan refresh token disimpan sebagai SATU nilai JSON (penulisan atomik, PRD 5.2)', () async {
     final storage = MemorySecureStore();
     await TokenStore(storage).save(StoredTokens.fromPair(TokenPair.fromJson(tokenPairJson())));

@@ -5,6 +5,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 import 'package:kapdh_mobile/core/api/refresh_coordinator.dart';
+import 'package:kapdh_mobile/core/config/server_clock.dart';
 import 'package:kapdh_mobile/core/realtime/realtime_client.dart';
 import 'package:kapdh_mobile/core/realtime/realtime_socket.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
@@ -52,16 +53,18 @@ void main() {
   late int refreshes;
   late TokenPair? Function() nextPair;
 
-  RealtimeClient build({math.Random? random}) {
+  RealtimeClient build({math.Random? random, SessionRefresher? refresher}) {
     final coordinator = RefreshCoordinator(
       store: tokens,
-      clock: () => testNow,
-      refresher: (refreshToken) async {
-        refreshes++;
-        final pair = nextPair();
-        if (pair == null) throw apiError(401, 'UNAUTHENTICATED', 'Sesi berakhir.');
-        return pair;
-      },
+      serverClock: ServerClock(clock: () => testNow),
+      refresher:
+          refresher ??
+          (refreshToken) async {
+            refreshes++;
+            final pair = nextPair();
+            if (pair == null) throw apiError(401, 'UNAUTHENTICATED', 'Sesi berakhir.');
+            return pair;
+          },
     );
     return RealtimeClient(
       config: testApiConfig,
@@ -215,6 +218,94 @@ void main() {
     expect(sockets, hasLength(1));
     expect(await tokens.read(), isNull);
     await client.dispose();
+  });
+
+  group('satu soket per klien (PRD 5.2, AC F02-6)', () {
+    test('start() berulang selama token handshake di-refresh tidak membuat soket kedua', () async {
+      // Token tinggal 20 detik: handshake (leeway 30 detik) me-refresh lebih dulu.
+      await tokens.save(
+        StoredTokens(
+          accessToken: 'access-1',
+          accessExpiresAt: testNow.add(const Duration(seconds: 20)),
+          refreshToken: 'refresh-1',
+        ),
+      );
+      final gate = Completer<TokenPair>();
+      final client = build(refresher: (_) => gate.future);
+      client.start();
+      await pumpEventQueue();
+      // Perubahan sesi lain (mis. /me dimuat ulang) memanggil start() lagi selama refresh berjalan.
+      client
+        ..start()
+        ..start();
+      await pumpEventQueue();
+      gate.complete(TokenPair.fromJson(tokenPairJson(access: 'access-2', refresh: 'refresh-2')));
+      await pumpEventQueue();
+
+      expect(sockets, hasLength(1));
+      expect(sockets.single.handshake, {'token': 'access-2'});
+      client.stop();
+      expect(sockets.single.disposed, isTrue);
+      await client.dispose();
+    });
+
+    test('logout (stop) selama token handshake ditunggu: tidak ada soket untuk sesi yang berakhir', () async {
+      await tokens.save(
+        StoredTokens(
+          accessToken: 'access-1',
+          accessExpiresAt: testNow.add(const Duration(seconds: 20)),
+          refreshToken: 'refresh-1',
+        ),
+      );
+      final gate = Completer<TokenPair>();
+      final client = build(refresher: (_) => gate.future);
+      final received = <RealtimeEvent>[];
+      final sub = client.events.listen(received.add);
+      client.start();
+      await pumpEventQueue();
+      client.stop();
+      gate.complete(TokenPair.fromJson(tokenPairJson(access: 'access-2', refresh: 'refresh-2')));
+      await pumpEventQueue();
+
+      expect(sockets, isEmpty);
+      expect(client.connectionState.value, RealtimeConnectionState.disconnected);
+
+      // Sesi berikutnya tersambung normal dengan satu soket.
+      client.start();
+      await pumpEventQueue();
+      expect(sockets, hasLength(1));
+      await sub.cancel();
+      await client.dispose();
+    });
+
+    test('start() selama refresh setelah handshake ditolak tidak membuat soket ganda', () async {
+      final gate = Completer<TokenPair>();
+      var calls = 0;
+      final client = build(
+        refresher: (_) {
+          calls++;
+          return gate.future;
+        },
+      );
+      client.start();
+      await pumpEventQueue();
+      sockets.single.listener.onConnectError({'message': 'UNAUTHENTICATED'});
+      await pumpEventQueue();
+      client.start();
+      await pumpEventQueue();
+      expect(sockets, hasLength(1), reason: 'start() tidak menyambung selama refresh berjalan');
+
+      gate.complete(TokenPair.fromJson(tokenPairJson(access: 'access-2', refresh: 'refresh-2')));
+      await pumpEventQueue();
+      await Future<void>.delayed(Duration.zero);
+      await pumpEventQueue();
+
+      expect(calls, 1);
+      expect(sockets, hasLength(2));
+      expect(sockets.where((s) => !s.disposed), hasLength(1));
+      expect(sockets.last.handshake, {'token': 'access-2'});
+      await client.dispose();
+    });
   });
 
   test('tanpa sesi: tidak menyambung', () async {

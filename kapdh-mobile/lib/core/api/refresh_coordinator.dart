@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:kapdh_api/kapdh_api.dart';
 
-import '../config/clock.dart';
+import '../config/server_clock.dart';
 import '../storage/token_store.dart';
 
 /// Pemanggil POST /auth/refresh tanpa interceptor auth (menghindari rekursi).
@@ -18,15 +18,19 @@ typedef SessionRefresher = Future<TokenPair> Function(String refreshToken);
 ///   langsung pakai token terbaru tanpa refresh lagi.
 /// - Token hanya dihapus bila /auth/refresh menjawab UNAUTHENTICATED. Jaringan putus, timeout, 5xx, MAINTENANCE
 ///   atau respons tak sesuai tidak pernah membuat pengguna keluar; galatnya diteruskan ke pemanggil.
+///
+/// Refresh proaktif membandingkan batas berlaku token MENURUT JAM PERANGKAT ([StoredTokens.deviceExpiresAt], dihitung
+/// dari jam server saat token diterima) dengan jam perangkat, bukan stempel absolut server dengan jam perangkat:
+/// perangkat yang jamnya melenceng tidak me-refresh pada setiap request.
 class RefreshCoordinator {
-  RefreshCoordinator({required TokenStore store, required SessionRefresher refresher, Clock clock = systemClock})
+  RefreshCoordinator({required TokenStore store, required SessionRefresher refresher, ServerClock? serverClock})
     : _store = store,
       _refresher = refresher,
-      _clock = clock;
+      _serverClock = serverClock ?? ServerClock();
 
   final TokenStore _store;
   final SessionRefresher _refresher;
-  final Clock _clock;
+  final ServerClock _serverClock;
   final StreamController<void> _invalidated = StreamController<void>.broadcast(sync: true);
   Future<String?>? _inFlight;
   int _refreshCount = 0;
@@ -50,7 +54,11 @@ class RefreshCoordinator {
     if (inFlight != null) return inFlight;
     final current = _store.cached;
     if (current == null) return null;
-    if (current.accessExpiresAt.isAfter(_clock().toUtc().add(leeway))) return current.accessToken;
+    final deviceExpiry = current.deviceExpiresAt;
+    // Tanpa perkiraan yang dapat dipercaya, token dipakai apa adanya; server menilai dan 401 memicu refresh.
+    if (deviceExpiry == null || deviceExpiry.isAfter(_serverClock.deviceNow().add(leeway))) {
+      return current.accessToken;
+    }
     return _startRefresh(current);
   }
 
@@ -99,7 +107,8 @@ class RefreshCoordinator {
       }
       rethrow;
     }
-    final next = StoredTokens.fromPair(pair);
+    // Header `Date` respons refresh sudah dicatat ServerTimeInterceptor sebelum future ini selesai.
+    final next = StoredTokens.received(pair, _serverClock);
     await _store.save(next);
     return next.accessToken;
   }

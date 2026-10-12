@@ -61,6 +61,22 @@ void main() {
       expect(find.text('Kode salah. Sisa percobaan 3.'), findsOneWidget);
     });
 
+    testWidgets('galat melekat pada field dan diumumkan sebagai live region (N-11)', (tester) async {
+      final handle = tester.ensureSemantics();
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      await pumpDesign(tester, OtpBoxes(controller: controller));
+      expect(find.bySemanticsLabel(RegExp('Kode OTP 6 digit')), findsOneWidget);
+
+      await pumpDesign(tester, OtpBoxes(controller: controller, errorText: 'Kode salah. Sisa percobaan 3.'));
+      await tester.pump();
+      final field = tester.getSemantics(find.bySemanticsLabel(RegExp('Kode OTP 6 digit')));
+      expect(field.hint, 'Kode salah. Sisa percobaan 3.');
+      final error = tester.getSemantics(find.text('Kode salah. Sisa percobaan 3.'));
+      expect(error.flagsCollection.isLiveRegion, isTrue);
+      handle.dispose();
+    });
+
     testWidgets('kotak aktif berwarna emas saat fokus', (tester) async {
       final controller = TextEditingController(text: '48');
       addTearDown(controller.dispose);

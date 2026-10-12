@@ -140,6 +140,19 @@ const Map<EffectiveStatus, Set<RouteGroup>> _allowed = {
   EffectiveStatus.deletionPending: {RouteGroup.deletionStatus},
 };
 
+/// Rute yang tujuannya HANYA mutasi, sehingga tidak berguna selama maintenance (server menolak mutasi dengan 503
+/// MAINTENANCE, PRD 4.5): seluruh alur auth (login, daftar, OTP, pemulihan sandi), pembayaran baru, perpanjangan,
+/// ganti sandi, membuat grup chat dan hapus akun. Rute lain tetap dapat dibaca dalam mode baca terkendali; simpan
+/// yang ditolak ditampilkan ErrorPresenter.
+bool isMutationOnlyRoute(String path) {
+  final group = routeGroupOf(path);
+  if (_authGroups.contains(group)) return true;
+  if (group == RouteGroup.renewal || group == RouteGroup.accountDelete) return true;
+  return path == AppRoutes.accountPassword ||
+      path == AppRoutes.chatNewGroup ||
+      path.startsWith('${AppRoutes.payments}/new/');
+}
+
 /// Apakah [status] boleh membuka kelompok rute [group] (PRD 2.2). Legal selalu boleh.
 bool isRouteAllowed(EffectiveStatus status, RouteGroup group) =>
     group == RouteGroup.legal || (_allowed[status]?.contains(group) ?? false);
@@ -182,9 +195,13 @@ String? resolveRedirect(RedirectState state, Uri location) {
       return group == RouteGroup.updateRequired ? null : _withFrom(AppRoutes.updateRequired, _pending(location, group));
     case GateStatus.maintenance:
       if (group == RouteGroup.maintenance) return null;
-      // Mode baca terkendali: KTA tetap dapat ditunjukkan (GET /me/card atau cache offline).
-      final status = session.effectiveStatus;
-      if (group == RouteGroup.kta && status != null && isRouteAllowed(status, RouteGroup.kta)) return null;
+      // Mode baca terkendali (PRD 4.5): server hanya menolak mutasi, jadi anggota tetap dapat membuka rute baca yang
+      // diizinkan statusnya (KTA, tiket, riwayat pembayaran, berita, kotak masuk, akun) dengan pita pemeliharaan.
+      if (_readableDuringMaintenance(session, group, path)) break;
+      // Memulihkan sesi memakai GET /me (baca), tetap di splash sampai statusnya diketahui.
+      if (group == RouteGroup.splash && session.phase == SessionPhase.unknown) return null;
+      // Anonim (login ditolak), alur mutasi, splash setelah sesi siap: layar maintenance yang menjelaskan estimasi,
+      // coba lagi dan (bila ada sesi) tombol lanjut dalam mode baca.
       return _withFrom(AppRoutes.maintenance, _pending(location, group));
     case GateStatus.ok:
     case GateStatus.unavailable:
@@ -212,6 +229,23 @@ String? resolveRedirect(RedirectState state, Uri location) {
       if (group == RouteGroup.splash || _authGroups.contains(group)) return _landing(state, _fromParam(location));
       return homeFor(current);
   }
+}
+
+bool _readableDuringMaintenance(SessionState session, RouteGroup group, String path) {
+  final status = session.effectiveStatus;
+  if (!session.hasSession || status == null || routeForStatus(status) == null) return false;
+  return isRouteAllowed(status, group) && !isMutationOnlyRoute(path);
+}
+
+/// Tujuan tombol "Lanjut dalam mode baca" di layar maintenance: tujuan tertunda `?from=` bila dapat dibaca, atau
+/// rute awal status. Null bila tidak ada mode baca (anonim, pending_otp, status belum dikenal).
+String? readOnlyLanding(RedirectState state, Uri location) {
+  final status = state.session.effectiveStatus;
+  if (!state.session.hasSession || status == null) return null;
+  final from = _fromParam(location);
+  if (from != null && resolveRedirect(state, from) == null) return _locationString(from);
+  final home = homeFor(status);
+  return resolveRedirect(state, Uri.parse(home)) == null ? home : null;
 }
 
 /// Apakah [location] boleh dibuka sekarang tanpa dialihkan (mis. untuk mengunci tab shell).

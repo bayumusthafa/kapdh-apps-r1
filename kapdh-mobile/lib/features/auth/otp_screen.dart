@@ -9,6 +9,7 @@ import 'package:kapdh_api/kapdh_api.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
+import '../../core/config/server_clock.dart';
 import '../../core/format/formatters.dart';
 import '../../core/session/repositories.dart';
 import '../../core/session/session_controller.dart';
@@ -17,6 +18,12 @@ import 'registration_draft.dart';
 
 /// Batas percobaan OTP (PRD 2.5).
 const int otpMaxAttempts = 5;
+
+/// Masa berlaku kode OTP (PRD 2.5: berlaku 10 menit).
+const Duration otpValidity = Duration(minutes: 10);
+
+/// Jeda minimum kirim ulang (PRD 2.5: kirim ulang paling cepat 60 detik).
+const Duration otpResendCooldown = Duration(seconds: 60);
 
 /// Sisa percobaan dari pesan galat server, mis. field_errors.code "Kode salah. Sisa percobaan 3." (AC F01-3).
 int? attemptsLeftFrom(ApiException error) {
@@ -49,7 +56,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   bool _verifying = false;
   bool _resending = false;
   String? _error;
+
+  /// Batas RATE_LIMITED menurut jam perangkat (dari retry_after_seconds yang relatif).
   DateTime? _rateLimitedUntil;
+
+  /// Saat challenge ini pertama terlihat menurut jam perangkat. Challenge diterbitkan paling lambat saat itu, sehingga
+  /// kirim ulang pasti tersedia setelah [otpResendCooldown] dan kode pasti kedaluwarsa setelah [otpValidity] sejak
+  /// titik ini, berapa pun selisih jam perangkat terhadap server.
+  DateTime? _challengeSeenAt;
 
   /// Challenge tidak dapat diperbarui lagi (resend menjawab OTP_EXPIRED): mulai ulang daftar atau masuk kembali.
   bool _challengeDead = false;
@@ -70,11 +84,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     super.dispose();
   }
 
-  DateTime _now() => ref.read(clockProvider)();
+  /// Waktu dinilai dengan jam server (header `Date`), bukan jam perangkat: perangkat yang jamnya maju (mis. zona waktu
+  /// disetel UTC) tidak boleh menganggap setiap challenge baru sudah kedaluwarsa (PRD 2.1, AC F01-2).
+  ServerClock get _clock => ref.read(serverClockProvider);
 
   void _syncChallenge(OtpChallenge? challenge) {
     if (challenge == null || challenge.challengeId == _challengeId) return;
     _challengeId = challenge.challengeId;
+    _challengeSeenAt = _clock.deviceNow();
     _attemptsLeft = challenge.attemptsLeft;
     _expired = challenge.attemptsLeft <= 0;
     _challengeDead = false;
@@ -82,16 +99,34 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     _code.clear();
   }
 
-  Duration _resendWait(OtpChallenge challenge) {
-    final now = _now();
-    var until = challenge.resendAvailableAt;
-    final limited = _rateLimitedUntil;
-    if (limited != null && limited.isAfter(until)) until = limited;
-    final left = until.difference(now);
-    return left.isNegative ? Duration.zero : left;
+  Duration _sinceSeen() {
+    final seen = _challengeSeenAt;
+    return seen == null ? Duration.zero : _clock.deviceNow().difference(seen);
   }
 
-  bool _codeExpired(OtpChallenge challenge) => _expired || !_now().isBefore(challenge.expiresAt);
+  /// Sisa cooldown kirim ulang: `resend_available_at` menurut jam server, dibatasi cooldown PRD sejak challenge
+  /// terlihat (jam perangkat yang tertinggal tidak mengunci tombol lebih lama), ditambah RATE_LIMITED terakhir.
+  Duration _resendWait(OtpChallenge challenge) {
+    var wait = challenge.resendAvailableAt.difference(_clock.now());
+    final bound = otpResendCooldown - _sinceSeen();
+    if (wait > bound) wait = bound;
+    final limited = _rateLimitedUntil;
+    if (limited != null) {
+      final limitedLeft = limited.difference(_clock.deviceNow());
+      if (limitedLeft > wait) wait = limitedLeft;
+    }
+    return wait.isNegative ? Duration.zero : wait;
+  }
+
+  /// Kode dianggap kedaluwarsa bila server sudah menyatakannya (OTP_EXPIRED, percobaan habis), bila jam server
+  /// diketahui dan `expires_at` terlewati, atau bila [otpValidity] sudah lewat sejak challenge terlihat. Selama jam
+  /// server belum diketahui, keputusan lain diserahkan ke server (kotak dan tombol tetap aktif).
+  bool _codeExpired(OtpChallenge challenge) {
+    if (_expired) return true;
+    if (_sinceSeen() >= otpValidity) return true;
+    final clock = _clock;
+    return clock.isSynced && !clock.now().isBefore(challenge.expiresAt);
+  }
 
   Future<void> _verify() async {
     final challenge = ref.read(sessionProvider).challenge;
@@ -127,7 +162,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       if (!verifying) _challengeDead = true;
     } else if (code == ErrorCode.rateLimited) {
       final wait = error.retryAfter;
-      if (wait != null) _rateLimitedUntil = _now().add(wait);
+      if (wait != null) _rateLimitedUntil = _clock.deviceNow().add(wait);
     } else if (verifying && code == ErrorCode.validationError) {
       final left = attemptsLeftFrom(error) ?? math.max(0, _attemptsLeft - 1);
       _attemptsLeft = left;
@@ -274,13 +309,18 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               onCompleted: (_) => _verify(),
             ),
             const SizedBox(height: 10),
-            Text(
-              expired
-                  ? 'Kode tidak berlaku lagi. Minta kode baru.'
-                  : 'Sisa percobaan: $_attemptsLeft dari $otpMaxAttempts',
-              style: TextStyle(
-                fontSize: KapdhFontSize.caption,
-                color: expired ? KapdhColors.danger : KapdhColors.textMuted,
+            // Diumumkan pembaca layar saat berubah (sisa percobaan setelah kode salah, kode kedaluwarsa; N-11).
+            Semantics(
+              liveRegion: true,
+              container: true,
+              child: Text(
+                expired
+                    ? 'Kode tidak berlaku lagi. Minta kode baru.'
+                    : 'Sisa percobaan: $_attemptsLeft dari $otpMaxAttempts',
+                style: TextStyle(
+                  fontSize: KapdhFontSize.caption,
+                  color: expired ? KapdhColors.danger : KapdhColors.textMuted,
+                ),
               ),
             ),
             const SizedBox(height: KapdhSpace.s5),

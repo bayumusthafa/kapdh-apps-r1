@@ -25,6 +25,7 @@ final pushServiceProvider = Provider<PushService>((ref) {
     registerDevice: (request) => ref.read(kapdhApiProvider).notifications.registerDevice(request),
     info: ref.watch(appInfoProvider),
     openLocation: (location) => ref.read(routerProvider).go(location.toString()),
+    store: ref.watch(secureStoreProvider),
   );
   ref.onDispose(() => unawaited(service.dispose()));
   return service;
@@ -63,25 +64,29 @@ bool shouldRegisterPush(SessionState session) =>
       _ => false,
     };
 
-/// Mengikat push dan realtime ke sesi: daftar saat masuk, hapus token saat keluar/berganti akun (AC F13-5), sambung
-/// realtime hanya untuk sesi aktif, dan muat ulang /me saat server mengirim `session.revoked` (AC F02-6).
+/// Mengikat push dan realtime ke sesi: daftar saat masuk, hapus token setiap kali sesi berakhir atau berganti akun
+/// (AC F13-5), sambung realtime hanya untuk sesi aktif, dan muat ulang /me saat server mengirim `session.revoked`
+/// (AC F02-6).
 final sessionServicesProvider = Provider<void>((ref) {
   final push = ref.watch(pushServiceProvider);
   final realtime = ref.watch(realtimeClientProvider);
-  var pushChain = Future<void>.value();
   String? pushUser;
 
-  void apply(SessionState next) {
-    // Push: berurutan agar hapus token akun lama selesai sebelum token akun baru didaftarkan.
+  void apply(SessionState? previous, SessionState next) {
+    // Push (PushService menjalankan operasinya berurutan): hapus token akun lama sebelum token akun baru didaftarkan.
     final wantPush = shouldRegisterPush(next) ? next.userId : null;
     final keepCurrent = wantPush == null && next.isOffline && next.userId == pushUser;
+    // Masuk ke anonim dari keadaan lain mana pun (logout, termasuk dari offlineLastKnown; sesi dicabut; sesi gagal
+    // dipulihkan saat dibuka): token yang mungkin terdaftar di peluncuran sebelumnya ikut dihapus. PushService
+    // memeriksa catatan pendaftaran tersimpan, sehingga tanpa pendaftaran panggilan ini no-op.
+    final sessionEnded = next.phase == SessionPhase.anonymous && previous?.phase != SessionPhase.anonymous;
     if (wantPush != pushUser && !keepCurrent) {
-      final previous = pushUser;
+      final before = pushUser;
       pushUser = wantPush;
-      pushChain = pushChain.then((_) async {
-        if (previous != null) await push.onSignedOut();
-        if (wantPush != null) await push.onSignedIn();
-      });
+      if (before != null || sessionEnded) unawaited(push.onSignedOut());
+      if (wantPush != null) unawaited(push.onSignedIn(wantPush));
+    } else if (sessionEnded) {
+      unawaited(push.onSignedOut());
     }
     // Realtime.
     if (shouldConnectRealtime(next)) {
@@ -91,7 +96,7 @@ final sessionServicesProvider = Provider<void>((ref) {
     }
   }
 
-  ref.listen<SessionState>(sessionProvider, (_, next) => apply(next), fireImmediately: true);
+  ref.listen<SessionState>(sessionProvider, apply, fireImmediately: true);
   final revoked = realtime.on<SessionRevokedEvent>().listen(
     (_) => unawaited(ref.read(sessionProvider.notifier).refreshQuietly()),
   );
@@ -101,6 +106,8 @@ final sessionServicesProvider = Provider<void>((ref) {
   // gagal karena offline. Koneksi hanya petunjuk; request yang gagal tetap sumber kebenaran.
   ref.listen<AsyncValue<bool>>(connectivityOnlineProvider, (previous, next) {
     if (next.value != true || previous?.value == true) return;
+    // Penghapusan token push yang tertunda karena logout saat offline (AC F13-5).
+    unawaited(push.retryPendingUnregister());
     final session = ref.read(sessionProvider);
     final controller = ref.read(sessionProvider.notifier);
     if (session.isOffline) {

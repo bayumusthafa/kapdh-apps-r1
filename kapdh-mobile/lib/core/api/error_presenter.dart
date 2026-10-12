@@ -50,7 +50,7 @@ final class DialogPresentation extends ErrorPresentation {
   final String title;
 }
 
-/// Ditangani global oleh gerbang aplikasi/router (MAINTENANCE, UPGRADE_REQUIRED, sesi berakhir): tidak ada UI lokal.
+/// Ditangani global oleh gerbang aplikasi/router (UPGRADE_REQUIRED, sesi berakhir): tidak ada UI lokal.
 final class SilentPresentation extends ErrorPresentation {
   const SilentPresentation({required super.message, super.followUp});
 }
@@ -72,9 +72,12 @@ ErrorPresentation presentationFor(
   final message = error.message;
   switch (error.ui.action) {
     case ErrorUiAction.showMaintenance:
+      // Mode baca terkendali (PRD 4.5): layar baca tetap terbuka dengan pita pemeliharaan, jadi mutasi yang
+      // ditolak dijelaskan di tempat; alur khusus mutasi dialihkan router ke layar maintenance.
+      return SnackbarPresentation(message: message);
     case ErrorUiAction.forceUpdate:
     case ErrorUiAction.goToLogin:
-      // Gerbang aplikasi (sinyal 503/426) dan koordinator refresh (UNAUTHENTICATED) sudah mengarahkan router.
+      // Gerbang aplikasi (sinyal 426) dan koordinator refresh (UNAUTHENTICATED) sudah mengarahkan router.
       return SilentPresentation(message: message);
     case ErrorUiAction.refreshStatus:
     case ErrorUiAction.goToRestricted:

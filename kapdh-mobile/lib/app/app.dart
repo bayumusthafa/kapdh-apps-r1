@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_gate/app_gate.dart';
 import '../core/session/session_controller.dart';
 import '../core/ui/app_keys.dart';
+import 'app_banners.dart';
 import 'app_services.dart';
 import 'router.dart';
 import 'theme/kapdh_theme.dart';
@@ -54,6 +55,8 @@ class _KapdhAppState extends ConsumerState<KapdhApp> {
       debugShowCheckedModeBanner: false,
       theme: _theme,
       routerConfig: ref.watch(routerProvider),
+      // Pita Offline/Pemeliharaan untuk semua layar AppScaffold, tepat di bawah app bar.
+      builder: (context, child) => AppStatusBanners(child: child ?? const SizedBox.shrink()),
       scaffoldMessengerKey: ref.watch(scaffoldMessengerKeyProvider),
       locale: const Locale('id'),
       supportedLocales: const [Locale('id')],

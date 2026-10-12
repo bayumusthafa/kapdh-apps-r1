@@ -250,7 +250,8 @@ class _QrBox extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.qr_code_2, size: 32, color: KapdhExtraColors.mutedOnDark),
+          // Gembok emas 34 px (prototipe layar 6): QR terkunci sampai KTA aktif atau tersinkron.
+          const ExcludeSemantics(child: Icon(Icons.lock_outline, size: 34, color: KapdhColors.accent)),
           const SizedBox(height: KapdhSpace.s2),
           Text(
             placeholder,
