@@ -7,3 +7,79 @@ body {
   color: var(--color-text);
   font-family: var(--font-sans);
 }
+
+/*
+ * Cincin fokus (N-11, WCAG 1.4.11 kontras non-teks >= 3:1). Emas token (#E6D312) hanya ~1,5:1 di atas putih,
+ * sehingga di permukaan terang dipakai hijau primer (#1A4B17, ~10:1) dan emas hanya di permukaan gelap
+ * (sidebar, panel login, ~11:1 terhadap #0E280C). Aturan tanpa layer ini sengaja menimpa aturan global token.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex], [contenteditable="true"]):focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+[data-surface="dark"] :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline-color: var(--color-accent);
+}
+/*
+ * Target fokus terprogram yang bukan kontrol (konten utama setelah pindah halaman, judul panel detail, wadah
+ * dialog) tidak diberi cincin; editor teks kaya memakai cincin pada bingkainya (focus-within).
+ */
+[tabindex="-1"]:focus-visible,
+.prose-kapdh:focus-visible {
+  outline: none;
+}
+
+/* Gradasi tombol utama sebagai utilitas Tailwind agar varian disabled: dapat menimpanya. */
+@utility bg-gradient-primary {
+  background-image: var(--gradient-button-primary);
+}
+
+/* Tipografi isi editor TipTap (berita/halaman). Preflight Tailwind mereset daftar dan judul. */
+.prose-kapdh {
+  line-height: 1.6;
+}
+.prose-kapdh > * + * {
+  margin-top: 0.6em;
+}
+.prose-kapdh h2 {
+  font-family: var(--font-heading);
+  font-size: var(--text-h2);
+  font-weight: 600;
+}
+.prose-kapdh h3 {
+  font-family: var(--font-heading);
+  font-size: var(--text-h3);
+  font-weight: 600;
+}
+.prose-kapdh ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+.prose-kapdh ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+}
+.prose-kapdh blockquote {
+  border-left: 4px solid var(--color-green-100);
+  padding-left: 0.75rem;
+  color: var(--color-text-muted);
+}
+.prose-kapdh a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+.prose-kapdh img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

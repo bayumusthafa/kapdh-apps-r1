@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- INTERNET untuk hot reload/debugger Flutter tool. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Build debug saja: izinkan HTTP ke API lokal (10.0.2.2/localhost); rilis wajib HTTPS (N-07). -->
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>

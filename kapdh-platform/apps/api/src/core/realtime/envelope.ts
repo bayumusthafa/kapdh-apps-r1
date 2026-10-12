@@ -31,8 +31,11 @@ export function buildEnvelope<T extends RealtimeEventType>(
 export const userChannel = (userId: string) => `user:${userId}`;
 /** Kanal per room chat: socket anggota joined yang effective_status-nya aktif. */
 export const roomChannel = (roomId: string) => `room:${roomId}`;
-/** Kanal per sesi: socket yang dibuka dengan access token sesi itu (pencabutan satu sesi). */
-export const sessionChannel = (sessionId: string) => `session:${sessionId}`;
+/**
+ * Kanal per KELUARGA sesi (Session.id kontrak C1, stabil selama rotasi refresh): semua socket perangkat itu, termasuk
+ * yang dibuka dengan access token baris sesi sebelum rotasi (pencabutan satu sesi/logout).
+ */
+export const sessionChannel = (familyId: string) => `session:${familyId}`;
 
 /** Alasan `session.revoked` (events/session.revoked.schema.json). */
 export type SessionRevokedReason =

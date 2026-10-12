@@ -36,6 +36,11 @@ export interface FilePurposeSpec {
   memberAccess?: MemberAccessLevel;
   /** Pengurus: SEMUA izin ini wajib (ARCHITECTURE §4.5). */
   permissions?: readonly Permission[];
+  /**
+   * Purpose anggota yang JUGA boleh diunggah sesi admin dengan SEMUA izin ini (mis. bukti verifikasi pembayaran yang
+   * dicatat pengurus, D13 rencana cadangan iOS / adminRecordPayment). Berkas menjadi milik akun login admin.
+   */
+  adminPermissions?: readonly Permission[];
 }
 
 export const FILE_PURPOSE_SPECS: Readonly<Record<FilePurpose, FilePurposeSpec>> = {
@@ -58,7 +63,8 @@ export const FILE_PURPOSE_SPECS: Readonly<Record<FilePurpose, FilePurposeSpec>> 
     uploader: "member",
     memberAccess: "active",
   },
-  // Satu-satunya purpose yang menerima PDF (PRD 2.5); tidak pernah publik (PRD 5.4).
+  // Satu-satunya purpose yang menerima PDF (PRD 2.5); tidak pernah publik (PRD 5.4). Pengurus payments.decide juga
+  // dapat mengunggah bukti verifikasi untuk pembayaran yang dicatat pengurus (adminRecordPayment, D13).
   payment_proof: {
     purpose: "payment_proof",
     kinds: ["image", "pdf"],
@@ -66,6 +72,7 @@ export const FILE_PURPOSE_SPECS: Readonly<Record<FilePurpose, FilePurposeSpec>> 
     publicAllowed: false,
     uploader: "member",
     memberAccess: "nonsuspended",
+    adminPermissions: ["payments.decide"],
   },
   post_cover: {
     purpose: "post_cover",
@@ -110,8 +117,21 @@ export const FILE_PURPOSE_SPECS: Readonly<Record<FilePurpose, FilePurposeSpec>> 
   },
 };
 
-/** Purpose yang dapat diunggah lewat POST /files. */
+/** Purpose yang dapat diunggah pengguna (bukan buatan sistem), lewat POST /files atau endpoint unggah domain. */
 export const UPLOADABLE_PURPOSES = FILE_PURPOSES.filter((p) => FILE_PURPOSE_SPECS[p].uploader !== "system");
+
+/**
+ * Purpose yang diterima unggahan umum POST /files (kontrak files.yaml `FileUploadPurpose`). Gambar publik konten
+ * diunggah lewat endpoint domainnya sendiri sehingga izin area itu yang diperiksa: `post_cover`/`banner_image` lewat
+ * POST /admin/content/media (content.manage, kontrak C4) dan `event_cover` lewat POST /admin/event-covers
+ * (events.manage, kontrak C5); keduanya memakai FilesService.beginUpload/completeUpload yang sama.
+ */
+export const GENERAL_UPLOAD_PURPOSES = [
+  "avatar",
+  "chat_image",
+  "payment_proof",
+  "adjustment_evidence",
+] as const satisfies readonly FilePurpose[];
 
 export function isFilePurpose(value: unknown): value is FilePurpose {
   return typeof value === "string" && (FILE_PURPOSES as readonly string[]).includes(value);

@@ -8,9 +8,8 @@ import {
   insertUser,
   type PgTestDatabase,
   pgError,
-  sleep,
   type Sql,
-  withLockWaitProbe,
+  withLockWaitGate,
 } from "./support.js";
 
 let tdb: PgTestDatabase;
@@ -46,21 +45,20 @@ describe("PRD 6.4: satu tiket aktif per anggota per event (partial unique, Postg
     const eventId = await insertEvent(sql);
     const userId = await insertUser(sql);
     const ready = barrier(2);
-    const { result: results, maxWaiting } = await withLockWaitProbe(
-      sql,
+    const { result: results, lockWaitObserved } = await withLockWaitGate(tdb, (hold) =>
       Promise.allSettled(
         [0, 1].map(() =>
           sql.begin(async (tx) => {
             await tx`select 1`;
             await ready();
             await insertTicket(tx as unknown as Sql, eventId, userId);
-            await sleep(200);
+            await hold();
           }),
         ),
       ),
     );
     // Insert kedua menunggu keputusan transaksi pertama pada indeks unik parsial.
-    expect(maxWaiting).toBeGreaterThanOrEqual(1);
+    expect(lockWaitObserved).toBe(true);
     const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
     expect(rejected).toHaveLength(1);
     expect(pgError(rejected[0]!.reason)).toMatchObject({
@@ -103,20 +101,19 @@ describe("AC F09-1: CHECK 0 <= held + paid <= seats_total di bawah pembaruan cou
     const eventId = await insertEvent(sql, { seatsTotal: 5 });
     const contenders = 12;
     const ready = barrier(contenders);
-    const { result: results, maxWaiting } = await withLockWaitProbe(
-      sql,
+    const { result: results, lockWaitObserved } = await withLockWaitGate(tdb, (hold) =>
       Promise.allSettled(
         Array.from({ length: contenders }, () =>
           sql.begin(async (tx) => {
             await tx`select 1`;
             await ready();
             await tx`update app.events set held_quantity = held_quantity + 1 where id = ${eventId}`;
-            await sleep(50);
+            await hold();
           }),
         ),
       ),
     );
-    expect(maxWaiting).toBeGreaterThanOrEqual(1);
+    expect(lockWaitObserved).toBe(true);
     const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
     expect(results.length - rejected.length).toBe(5);
     for (const r of rejected) {

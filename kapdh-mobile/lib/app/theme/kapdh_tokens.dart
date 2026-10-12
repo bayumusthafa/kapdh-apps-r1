@@ -1,4 +1,4 @@
-// DIBANGKITKAN dari tokens.json oleh build.py. Jangan edit manual.
+// DIBANGKITKAN dari tokens.json oleh build.mjs. Jangan edit manual.
 // ignore_for_file: constant_identifier_names
 import 'package:flutter/painting.dart';
 
@@ -69,7 +69,7 @@ class KapdhStatusStyle {
 abstract final class KapdhMembershipStatus {
   static const verified = KapdhStatusStyle(Color(0xFF1E7A46), Color(0xFFE8F7F0), 'KTA Aktif', 'check_circle');
   static const expiring = KapdhStatusStyle(Color(0xFF8A5A00), Color(0xFFFFF4D6), 'Segera Berakhir', 'schedule');
-  static const expired = KapdhStatusStyle(Color(0xFFB3261E), Color(0xFFFDECEA), 'KTA Tidak Aktif', 'cancel');
+  static const expired = KapdhStatusStyle(Color(0xFFB3261E), Color(0xFFFDECEA), 'KTA Kedaluwarsa', 'cancel');
   static const unverified = KapdhStatusStyle(Color(0xFFB3261E), Color(0xFFFDECEA), 'KTA Tidak Aktif', 'cancel');
   static const pendingReview = KapdhStatusStyle(Color(0xFF1F5FA8), Color(0xFFE7F0FB), 'Menunggu Verifikasi', 'hourglass_top');
   static const suspended = KapdhStatusStyle(Color(0xFF3F4A3E), Color(0xFFEEEFEE), 'Dibatasi', 'block');

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/contracts/events/realtime-chat-image.schema.json",
+  "title": "RealtimeChatImage",
+  "description": "Gambar pesan chat. URL bertanda tangan maksimal 10 menit dan terikat berkas (PRD 5.4); hanya dikirim ke anggota room yang berhak (AC F11-4). Bentuk JSON sama dengan ChatImage pada kontrak HTTP.",
+  "type": "object",
+  "required": ["file_id", "url", "url_expires_at", "mime", "width", "height"],
+  "additionalProperties": false,
+  "properties": {
+    "file_id": { "type": "string", "format": "uuid" },
+    "url": { "type": "string", "format": "uri", "x-sensitive": true },
+    "url_expires_at": { "type": "string", "format": "date-time" },
+    "mime": { "type": "string" },
+    "width": { "type": ["integer", "null"], "minimum": 1 },
+    "height": { "type": ["integer", "null"], "minimum": 1 }
+  },
+  "examples": [
+    {
+      "file_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e80",
+      "url": "https://api.kapdh.or.id/api/v1/files/0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e80/content?sig=abc",
+      "url_expires_at": "2026-10-12T03:25:00.000Z",
+      "mime": "image/jpeg",
+      "width": 1280,
+      "height": 960
+    }
+  ]
+}

@@ -10,7 +10,14 @@ export type FileRow = typeof files.$inferSelect;
  */
 export type FileViewer = Pick<
   AuthContext,
-  "userId" | "sessionId" | "sessionVersion" | "audience" | "adminId" | "permissions" | "effectiveStatus"
+  | "userId"
+  | "sessionId"
+  | "sessionVersion"
+  | "audience"
+  | "adminId"
+  | "adminRole"
+  | "permissions"
+  | "effectiveStatus"
 >;
 
 export interface FileAccessRequest {
@@ -40,6 +47,12 @@ export const FilePolicies = {
     (...permissions: [Permission, ...Permission[]]): FileAccessPolicy =>
     ({ viewer }) =>
       viewer.audience === "admin" && permissions.every((permission) => viewer.permissions.has(permission)),
+
+  /** Sesi admin berperan Super Admin (dibaca dari database per request oleh AuthGuard). */
+  superAdmin:
+    (): FileAccessPolicy =>
+    ({ viewer }) =>
+      viewer.audience === "admin" && viewer.adminRole === "super_admin",
 
   /** Semua kebijakan harus mengizinkan. */
   allOf:

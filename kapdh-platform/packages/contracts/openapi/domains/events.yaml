@@ -1,20 +1,870 @@
-# Domain events (C5 Events): daftar/detail event, reservasi kursi, bukti bayar tiket, tiket QR dan pembatalan
-# oleh anggota. Modul API: apps/api/src/modules/events. Path ditambahkan oleh penulis kontrak C5.
+# Domain events (C5 Events): daftar/detail event, peserta, reservasi satu kursi, tiket QR dan pembatalan oleh
+# anggota (F-09, PRD 3.9, 4.4, D5, D6). Modul API: apps/api/src/modules/events.
+#
+# Aturan yang mengikat lintas modul (proyeksi kursi, urutan kunci global, kewajiban modul pembayaran untuk payment
+# `type=ticket`) ditulis di `description` tag Events di bawah, BUKAN di komentar, karena komentar YAML dibuang saat
+# bundling sedangkan deskripsi tag ikut ke dist/openapi.yaml, tipe TS dan dokumentasi SDK Dart.
 tags:
   - name: Events
-    description: Event, reservasi satu kursi, tiket QR dan pembatalan oleh anggota (F-09, PRD 4.4).
+    description: |
+      Event, peserta, reservasi satu kursi, tiket QR dan pembatalan oleh anggota (F-09, PRD 3.9, PRD 4.4, D5, D6).
+      Aturan di bawah mengikat modul events, payments, account dan job; operasi merujuknya sebagai "aturan tag
+      Events".
 
-paths: {}
+      Model (ARCHITECTURE §3.4):
+      - Status event draft, open, closed, done, cancelled; status tiket awaiting_payment, awaiting_review, paid,
+        expired, cancelled. Satu tiket aktif (awaiting_payment, awaiting_review, paid) per anggota per event, satu
+        kursi, hanya untuk dirinya sendiri; tidak ada jumlah tiket, tipe tiket, rombongan atau tamu (disahkan v3.2).
+      - Penghitung tersimpan `events.held_quantity` dan `events.paid_quantity` hanya diubah dalam transaksi yang
+        mengunci baris event; CHECK menjamin held + paid <= seats_total (AC F09-1).
+      - Draft tidak pernah terlihat oleh anggota (404 NOT_FOUND).
+
+      Proyeksi baca kursi dan hold (AC F09-1, F09-2):
+      - Hold kedaluwarsa adalah tiket `awaiting_payment` dengan `hold_expires_at <= now` yang belum dilepas secara
+        fisik oleh job expiry (tiap menit) atau oleh transaksi tulis berikutnya pada event itu.
+      - Semua respons BACA (anggota dan pengurus) memperlakukan hold kedaluwarsa sebagai sudah lepas: tiketnya
+        tampil `expired`, dan `seats_available = seats_total - paid_quantity - held_aktif`, dengan
+        `held_aktif = held_quantity - jumlah hold kedaluwarsa event itu`. `registration_state`, `can_reserve`,
+        `reservation_blocked_reason`, `held_quantity` dan `min_seats_total` pada respons pengurus memakai nilai yang
+        sama. Akibatnya tombol daftar tidak pernah tersembunyi oleh hold yang sudah habis, dan reservasi
+        berikutnya melepas hold tersebut secara fisik sebelum memeriksa kuota (createEventReservation langkah 1).
+      - Operasi baca tidak pernah menulis; pelepasan fisik selalu dalam transaksi tulis yang mengunci event.
+
+      Urutan kunci global (PRD 6.4 "mengunci tiket/event dalam urutan konsisten"), berlaku bagi setiap transaksi
+      yang menyentuh event, tiket atau payment tiket:
+      - Urutan: (1) baris events, (2) baris tickets urut id naik, (3) baris payments urut id naik;
+        payment_adjustments hanya disisipkan sesudahnya.
+      - Transaksi boleh melewati tingkat yang tidak dibutuhkan, tetapi tidak pernah mengunci tingkat yang lebih awal
+        sesudah memegang kunci tingkat yang lebih akhir.
+      - Id yang diperoleh dari baris lain (`tickets.event_id`, `payments.ticket_id`; keduanya tidak pernah berubah)
+        dibaca TANPA kunci lebih dahulu, lalu baris dikunci menurut urutan ini dan statusnya diperiksa ulang
+        sesudah kunci didapat.
+      - Penerapan: createEventReservation dan job expiry hold mengunci event, tiket hold kedaluwarsa (urut id), lalu
+        payment-nya. cancelMyTicket dan adminCancelTicket mengunci event, tiket, lalu payment tiket.
+        adminCancelEvent mengunci event, semua tiket aktif event (urut id), lalu payment tiket tersebut (urut id).
+        adminUpdateEvent dan adminSetEventStatus mengunci event (adminUpdateEvent yang menurunkan kuota juga
+        melepas hold kedaluwarsa: event, tiket, payment). adminCheckInTicket hanya memakai UPDATE bersyarat pada
+        satu tiket. Penghapusan akun (F-14, "tiket hangus") mengunci per event: event, tiket, payment.
+      - Modul pembayaran untuk payment `type=ticket` (kirim bukti, approve, reject, batal): handler tiket mengunci
+        event lalu tiket SEBELUM modul pembayaran menjalankan `SELECT payments ... FOR UPDATE` (kirim bukti cukup
+        mengunci tiket karena penghitung kursi tidak berubah). Ini memerlukan hook PaymentTypeHandler yang dipanggil
+        sebelum kunci payment (ARCHITECTURE §4.6, perubahan bersama C5); onApproved dan onRejected tidak boleh
+        mengunci event atau tiket sesudah payment terkunci.
+
+      Payment tiket di modul pembayaran (pemilik C3; aturan galat persis mengikuti submitPaymentProof dan
+      adminDecidePayment, ringkasannya di sini):
+      - Bukti dikirim lewat PUT /me/payments/{paymentId}/proof memakai `payment.id` dari tiket. Bukti sebelum
+        `hold_expires_at` memindahkan tiket ke awaiting_review dan kursi tetap ditahan sampai keputusan.
+      - Tiket expired atau hold sudah lewat (termasuk payment yang sudah dibatalkan sistem karena hold habis):
+        410 RESERVATION_EXPIRED. Tiket cancelled atau payment tiket rejected: 409 PAYMENT_STATE_CONFLICT dengan
+        `current` = PaymentDetail (AC F09-2, F09-4).
+      - Keputusan pengurus: approve membuat tiket paid, held menjadi paid dan QR diterbitkan (AC F04-1); reject
+        bersifat final, tiket cancelled dan hold dilepas (AC F09-4).
+      - Payment berbukti yang tiketnya sudah dibatalkan (event dibatalkan): approve membuat payment paid dan refund
+        penuh otomatis (payment_adjustment pending, tenggat 7 hari kerja, D6), tiket tetap cancelled dan penghitung
+        kursi tidak berubah; reject tidak membuat refund dan tidak melepas kursi kedua kalinya.
+
+      Akses dan tautan:
+      - Akses anggota (PRD 2.2, ARCHITECTURE §3.1): daftar event dan kategori hanya untuk anggota aktif
+        (verified/expiring); anggota expired tetap membuka tiketnya (/me/tickets) dan detail event yang pernah ia
+        pesan.
+      - Deep link notifikasi kategori `event` (ARCHITECTURE §4.7): `/events/<eventId>` dan `/tickets/<ticketId>`.
+
+paths:
+  /event-categories:
+    get:
+      tags: [Events]
+      operationId: listEventCategories
+      summary: Kategori event aktif untuk tab daftar event (F-09, guideline p8).
+      description: |
+        Kategori `kind=event` yang aktif, urut `sort_order` lalu label. Tab "Semua" dibuat klien (tanpa filter).
+        Pengelolaan kategori ada di web admin (Manajemen Kategori). Hanya anggota aktif, sama dengan daftar event
+        (PRD 2.2).
+      x-kapdh-access: { audience: mobile, member_access: active }
+      responses:
+        "200":
+          description: Kategori event aktif.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventCategoryList" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: MEMBERSHIP_REQUIRED bila effective_status bukan verified/expiring; ACCOUNT_SUSPENDED bila suspended (PRD 2.2).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /events:
+    get:
+      tags: [Events]
+      operationId: listEvents
+      summary: Daftar event untuk anggota, per kategori, mendatang/lampau dan pencarian (F-09, guideline p8).
+      description: |
+        Hanya event berstatus open, closed, done atau cancelled (draft tidak pernah tampil).
+        - `period=upcoming` (bawaan): `ends_at > now` dan status bukan done; urut `starts_at` naik lalu `id`.
+          Event yang dibatalkan tetap tampil dengan `registration_state=cancelled` agar peserta mengetahuinya.
+        - `period=past`: `ends_at <= now` atau status done; urut `starts_at` turun lalu `id`.
+        - `q` mencari judul atau nama lokasi (tanpa membedakan huruf besar/kecil).
+        Kartu memuat cover, kategori, judul, tanggal dan label pendaftaran (`registration_state`) yang dihitung
+        server (PRD 2.1: tampilkan dalam `timezone` event). Hanya anggota aktif (verified/expiring): daftar akses
+        unverified dan expired pada PRD 2.2 tidak memuat informasi event, dan klien mengarahkan keduanya ke
+        onboarding/perpanjangan (routeForStatus). Anggota expired tetap melihat tiketnya lewat GET /me/tickets dan
+        detail event yang pernah ia pesan lewat GET /events/{eventId}.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - name: category_id
+          in: query
+          required: false
+          description: Filter kategori (id dari GET /event-categories). Kosong = semua kategori.
+          schema: { type: string, format: uuid }
+        - name: period
+          in: query
+          required: false
+          description: Mendatang (bawaan) atau lampau.
+          schema: { $ref: "#/components/schemas/EventListPeriod" }
+        - name: q
+          in: query
+          required: false
+          description: Kata kunci judul atau nama lokasi.
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman event.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: MEMBERSHIP_REQUIRED bila effective_status bukan verified/expiring; ACCOUNT_SUSPENDED bila suspended (PRD 2.2).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /events/{eventId}:
+    get:
+      tags: [Events]
+      operationId: getEvent
+      summary: Detail event, kuota, jendela pendaftaran/check-in, aturan pembatalan dan tiket saya (F-09, PRD 3.9).
+      description: |
+        Memuat deskripsi, lokasi, zona waktu, jadwal, harga, kuota (`seats_available`/`seats_total`, mis.
+        "20/36 Kuota Peserta"), jendela pendaftaran, jendela check-in efektif (D5: 2 jam sebelum mulai sampai
+        selesai kecuali event menetapkan jendela lain), aturan pembatalan dan refund (D6), serta ringkasan tiket
+        terbaru milik pemanggil (`my_ticket`). `can_reserve` dan `reservation_blocked_reason` dihitung server untuk
+        pemanggil; klien tidak menghitung sendiri. Event cancelled tetap dapat dibuka (deep link notifikasi,
+        AC F09-7) beserta alasan pembatalan. Draft atau id tidak dikenal menghasilkan 404.
+        Akses: anggota aktif (verified/expiring) membuka event apa pun yang terbit. Anggota nonaktif yang tidak
+        suspended (unverified/expired) hanya membuka event yang ia punya tiketnya (status apa pun), karena tiket
+        paid tetap berlaku untuk check-in dan riwayat sendiri tetap boleh dilihat (PRD 2.2); untuk event lain
+        server menjawab 403 MEMBERSHIP_REQUIRED tanpa membedakan event ada atau tidak (N-09). Pada respons untuk
+        anggota nonaktif, `can_reserve=false` dan `reservation_blocked_reason=membership_required`. Pemeriksaan ini
+        dilakukan di service; dekorator memakai `nonsuspended` agar pengecualian tersebut dapat dijalankan.
+      x-kapdh-access: { audience: mobile, member_access: nonsuspended }
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: Detail event.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: |
+            MEMBERSHIP_REQUIRED bila pemanggil unverified/expired dan tidak punya tiket di event ini; ACCOUNT_SUSPENDED
+            bila suspended (PRD 2.2).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /events/{eventId}/participants:
+    get:
+      tags: [Events]
+      operationId: listEventParticipants
+      summary: Peserta terkonfirmasi yang terlihat di direktori (F-09, F-10 privasi, guideline p8).
+      description: |
+        Hanya pemegang tiket `paid` yang juga tampil di direktori: effective_status verified/expiring, tidak
+        suspended, `show_in_directory=true`, dan tidak saling memblokir dengan pemanggil (PRD 3.10, AC F10-2).
+        Peserta lain dihilangkan dari payload (bukan disamarkan). Hanya nama, angkatan dan avatar; email, telepon dan
+        tautan sosial tidak pernah dikirim. Urut nama lalu `user_id`. Akses sama dengan direktori: hanya anggota
+        aktif (AC F10-3).
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman peserta.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventParticipantPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: MEMBERSHIP_REQUIRED bila effective_status bukan verified/expiring; ACCOUNT_SUSPENDED bila suspended (PRD 2.2).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /events/{eventId}/reservations:
+    post:
+      tags: [Events]
+      operationId: createEventReservation
+      summary: Daftar event, satu kursi untuk diri sendiri; event gratis langsung paid (AC F09-1, F09-3, D5).
+      description: |
+        Hanya anggota aktif (verified/expiring). Dijalankan dalam SATU transaksi yang lebih dahulu mengunci baris
+        event (`SELECT ... FOR UPDATE`), mengikuti urutan kunci global event -> tiket -> payment (aturan tag Events):
+        1. Hold yang sudah lewat `hold_expires_at` pada event ini dilepas lebih dahulu (AC F09-2, "request
+           berikutnya"): tiket tersebut dikunci urut id lalu payment pending-nya; tiket -> expired, payment ->
+           cancelled, held_quantity dikurangi tepat sekali (UPDATE bersyarat `status='awaiting_payment'`). Sesudah
+           langkah ini penghitung tersimpan sama dengan proyeksi baca (aturan tag Events), sehingga kuota yang
+           ditampilkan GET /events/{eventId} juga yang dipakai langkah 4.
+        2. Event wajib `open` dan `registration_opens_at <= now < registration_closes_at`; selain itu
+           409 RESERVATION_EXPIRED (`registration_state` pada `current` menjelaskan sebabnya).
+        3. Pemanggil sudah punya tiket aktif (awaiting_payment, awaiting_review, paid) di event ini, misalnya
+           ketukan ganda dengan Idempotency-Key berbeda (PRD 9.2): 409 VERSION_CONFLICT. `current.my_ticket` menunjuk
+           tiket aktif itu dan `current.reservation_blocked_reason = has_active_ticket`, sehingga klien yang memuat
+           ulang detail event langsung menampilkan tombol buka tiket. Indeks unik parsial
+           tickets_user_id_event_id_active_key menjadi penjaga terakhir untuk request paralel.
+        4. `seats_available = 0`: 409 EVENT_SOLD_OUT. Request paralel tidak pernah membuat held + paid melebihi
+           seats_total; transaksi gagal tidak meninggalkan hold (AC F09-1).
+        5. `expected_price` wajib sama dengan `price` event saat ini (harga yang dikonfirmasi anggota pada layar
+           Detail Tiket, guideline p8). Bila pengurus mengubah harga di antara tampilan dan kirim: 409
+           VERSION_CONFLICT dan tidak ada hold yang dibuat; klien menampilkan harga baru dari `current` dan meminta
+           konfirmasi ulang (PRD 4.4, PRD 4.5).
+        6. Event berbayar (`price > 0`): `payment_method_id` wajib dan harus metode aktif; event gratis: field ini
+           wajib kosong. Pelanggaran: 400 VALIDATION_ERROR (`field_errors.payment_method_id`).
+        Setiap 409 bisnis operasi ini (langkah 2 sampai 5) membawa `current` dengan SATU bentuk: EventDetail
+        terbaru untuk pemanggil, dihitung sesudah langkah 1 (PRD 4.5 "muat ulang data terbaru").
+        Hasil event berbayar: tiket `awaiting_payment`, `total = price` saat ini (snapshot; perubahan harga tidak
+        mengubah tiket ini, PRD 4.4), `hold_expires_at = min(now + hold_hours, registration_closes_at)` (D5),
+        held_quantity +1, dan payment `type=ticket` pending (nominal dan metode disnapshot) yang dirujuk
+        `payment.id`. Klien lalu mengunggah bukti (POST /files purpose payment_proof, kemudian
+        PUT /me/payments/{paymentId}/proof) sebelum `hold_expires_at`; bukti tepat waktu memindahkan tiket ke
+        awaiting_review dan kursi tetap ditahan sampai keputusan. Bukti sesudah hold lewat ditolak submitPaymentProof
+        dengan 410 RESERVATION_EXPIRED (AC F09-2; aturan lengkap payment tiket di tag Events). Keputusan pengurus di
+        antrean pembayaran: approve -> tiket paid, held menjadi paid, QR diterbitkan (AC F04-1); reject -> payment
+        rejected final, tiket cancelled dan hold dilepas (AC F09-4).
+        Hasil event gratis: tiket langsung `paid` dengan total 0.00, QR diterbitkan, paid_quantity +1, tanpa
+        payment (AC F09-3).
+        Tiket expired/cancelled sebelumnya tidak menghalangi: pendaftaran ulang selalu membuat tiket dan payment
+        baru; bukti tidak menghidupkan tiket lama (AC F09-4, PRD 6.4).
+        Audit `ticket.reserved` ditulis dalam transaksi yang sama (F-17). Ulangi dengan Idempotency-Key yang sama
+        setelah jaringan putus; hasil pertama dikembalikan (PRD 4.3).
+      x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EventReservationRequest" }
+      responses:
+        "201":
+          description: Tiket dibuat (awaiting_payment untuk event berbayar, paid untuk event gratis).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TicketDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: MEMBERSHIP_REQUIRED bila effective_status bukan verified/expiring (unverified, expired); ACCOUNT_SUSPENDED bila suspended (PRD 2.2).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: |
+            EVENT_SOLD_OUT (kuota habis), RESERVATION_EXPIRED (pendaftaran belum dibuka, sudah ditutup, atau event
+            tidak open), VERSION_CONFLICT (sudah punya tiket aktif, lihat `current.my_ticket`; atau `expected_price`
+            berbeda dari harga saat ini); ketiganya dengan `current` = EventDetail terbaru untuk pemanggil. Atau
+            IDEMPOTENCY_CONFLICT (key sama dengan payload berbeda) tanpa `current`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/tickets:
+    get:
+      tags: [Events]
+      operationId: listMyTickets
+      summary: Tiket milik sendiri, aktif atau riwayat (F-09, PRD 2.2, PRD 4.4).
+      description: |
+        - `view=active` (bawaan): tiket awaiting_payment, awaiting_review atau paid untuk event yang belum berakhir
+          dan tidak dibatalkan; urut `starts_at` event naik lalu id tiket.
+        - `view=history`: tiket lainnya (expired, cancelled, event selesai/dibatalkan); urut `created_at` turun.
+        Anggota expired tetap melihat dan memakai tiket paid (PRD 2.2). Tiket awaiting_payment yang hold-nya sudah
+        lewat dikembalikan sebagai expired (masuk `view=history`) walaupun job expiry belum berjalan; ini proyeksi
+        baca tanpa penulisan, pelepasan fisik tetap tepat sekali oleh job atau transaksi tulis berikutnya (aturan tag
+        Events, AC F09-2).
+      x-kapdh-access: { audience: mobile, member_access: nonsuspended }
+      parameters:
+        - name: view
+          in: query
+          required: false
+          description: Tiket aktif (bawaan) atau riwayat.
+          schema: { $ref: "#/components/schemas/TicketListView" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman tiket.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TicketPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AccountSuspended" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/tickets/{ticketId}:
+    get:
+      tags: [Events]
+      operationId: getMyTicket
+      summary: Detail tiket sendiri, hitung mundur hold, pembayaran, QR dan kelayakan pembatalan (F-09, PRD 4.4).
+      description: |
+        `qr_code` hanya terisi bila tiket `paid` dan event tidak cancelled (AC F09-7); selain itu null. Anggota
+        expired tetap memperoleh QR tiket paid (PRD 2.2); anggota suspended tidak dapat membuka endpoint ini dan
+        tiketnya ditolak saat check-in. `hold_expires_at` dipakai untuk hitung mundur awaiting_payment; hold yang
+        sudah lewat tampil expired (proyeksi baca, aturan tag Events). `payment` menunjuk payment tiket untuk unggah
+        bukti lewat API pembayaran. `refunds` memuat refund yang tercatat atas payment tiket (D6). Tiket milik
+        pengguna lain menghasilkan 404 (N-09).
+      x-kapdh-access: { audience: mobile, member_access: nonsuspended }
+      parameters:
+        - $ref: "#/components/parameters/TicketId"
+      responses:
+        "200":
+          description: Detail tiket.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TicketDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AccountSuspended" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /me/tickets/{ticketId}/cancel:
+    post:
+      tags: [Events]
+      operationId: cancelMyTicket
+      summary: Batalkan tiket sendiri; refund penuh bila tiket berbayar dibatalkan sampai H-3 (D6, PRD 3.9).
+      description: |
+        Boleh untuk tiket `awaiting_payment` atau `paid` yang belum check-in, selama event belum dimulai
+        (`now < starts_at`) dan tidak cancelled. Dalam satu transaksi mengikuti urutan kunci global: `event_id` tiket
+        dibaca tanpa kunci, lalu baris event dikunci, kemudian tiket dan payment-nya; kepemilikan, status, versi dan
+        kelayakan refund diperiksa ulang sesudah kunci didapat:
+        - awaiting_payment: tiket cancelled (`cancelled_by=self`), hold dilepas, payment pending dibatalkan.
+        - paid: tiket cancelled, QR tidak berlaku, paid_quantity -1. Payment tetap `paid` (tidak pernah diubah).
+          Bila `total > 0` dan `now < full_refund_until` (starts_at dikurangi `self_cancel_days` = 3 hari kalender
+          dalam zona waktu event, "H-3"), dibuat payment_adjustment refund pending sebesar total dengan tenggat
+          7 hari kerja (D6); sesudah batas itu pembatalan tetap boleh tetapi tanpa refund. Event gratis tidak
+          memiliki refund; pembatalan melepas kursi.
+        - awaiting_review: ditolak 409 PAYMENT_STATE_CONFLICT karena bukti sedang ditinjau dan dana mungkin sudah
+          ditransfer (PRD 4.3: pemilik hanya membatalkan sebelum bukti); tunggu keputusan atau hubungi pengurus.
+        `expected_refund_eligible` wajib sama dengan `refund_eligible` yang ditampilkan; bila batas H-3 terlewati
+        di antara tampilan dan kirim, server menolak 409 VERSION_CONFLICT dengan `current` = TicketDetail terbaru
+        sehingga anggota tidak kehilangan refund tanpa sadar. Versi tiket (If-Match) yang berubah atau tiket yang
+        tidak lagi dapat dibatalkan juga menghasilkan 409 VERSION_CONFLICT dengan `current`. Audit
+        `ticket.cancelled` ditulis dalam transaksi yang sama (F-17). Rekening tujuan refund diminta saat proses
+        refund oleh bendahara, bukan di sini (D6, D2).
+      x-kapdh-access: { audience: mobile, member_access: nonsuspended, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/TicketId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TicketCancelRequest" }
+      responses:
+        "200":
+          description: Tiket cancelled beserta refund bila ada.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TicketDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AccountSuspended" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: |
+            VERSION_CONFLICT (versi tiket berubah, tiket tidak dapat dibatalkan lagi, atau kelayakan refund berubah;
+            `current` = TicketDetail), PAYMENT_STATE_CONFLICT (bukti sedang ditinjau; `current` = TicketDetail), atau
+            IDEMPOTENCY_CONFLICT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        default: { $ref: "#/components/responses/Error" }
 
 components:
+  parameters:
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    TicketId:
+      name: ticketId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
   schemas:
+    EventStatus:
+      type: string
+      enum: [draft, open, closed, done, cancelled]
+      description: |
+        Siklus event (PRD 4.4): draft (belum terbit, hanya admin) -> open (menerima reservasi dalam jendela
+        pendaftaran) -> closed (pemesanan baru ditutup; tiket paid tetap berlaku untuk check-in) -> done (diset job
+        sesudah acara berakhir). cancelled menutup pemesanan dan check-in; data historis tidak dihapus.
+
+    TicketStatus:
+      type: string
+      enum: [awaiting_payment, awaiting_review, paid, expired, cancelled]
+      description: |
+        Status tiket (PRD 4.4): awaiting_payment dan awaiting_review menahan kursi; paid mengonsumsi kursi;
+        expired dan cancelled tidak mengonsumsi kursi. Check-in adalah atribut tiket (`checked_in_at`), bukan status.
+
+    TicketCancelledBy:
+      type: string
+      enum: [self, admin, system]
+      description: Pihak yang membatalkan tiket; system untuk penolakan otomatis/penghapusan akun.
+
+    EventRegistrationState:
+      type: string
+      enum: [not_yet_open, open, sold_out, closed, cancelled]
+      description: |
+        Label pendaftaran kartu event (guideline p8) dihitung server: cancelled (event dibatalkan); closed (status
+        closed/done atau `now >= registration_closes_at`, "Pendaftaran Ditutup"); not_yet_open (open tetapi
+        `now < registration_opens_at`); sold_out (jendela terbuka tetapi `seats_available = 0` menurut proyeksi
+        kursi pada aturan tag Events, yang sudah mengabaikan hold kedaluwarsa; kembali open bila hold aktif
+        kedaluwarsa atau tiket dibatalkan); open ("Pendaftaran Dibuka").
+
+    EventReservationBlockReason:
+      type: string
+      enum: [membership_required, not_yet_open, closed, sold_out, cancelled, has_active_ticket]
+      description: |
+        Alasan pemanggil belum dapat mendaftar: membership_required (bukan verified/expiring; arahkan sesuai
+        effective_status), not_yet_open, closed, sold_out, cancelled, atau has_active_ticket (buka `my_ticket`).
+        Bila beberapa alasan berlaku, server mengirim yang pertama menurut urutan: membership_required,
+        has_active_ticket, cancelled, closed, not_yet_open, sold_out. sold_out memakai proyeksi kursi (aturan tag
+        Events), sehingga hold kedaluwarsa tidak membuat event tampak penuh.
+
+    EventListPeriod:
+      type: string
+      enum: [upcoming, past]
+
+    TicketListView:
+      type: string
+      enum: [active, history]
+
+    TicketPaymentStatus:
+      type: string
+      enum: [pending, paid, rejected, cancelled]
+      description: Status payment tiket (PRD 4.3). Penolakan payment tiket bersifat final dan membatalkan tiket (AC F09-4).
+
+    TicketPaymentMethodKind:
+      type: string
+      enum: [bank, ewallet]
+
+    TicketRefundStatus:
+      type: string
+      enum: [pending, completed, cancelled]
+      description: Status penyelesaian refund manual oleh bendahara (payment_adjustment kind refund, D6).
+
+    EventCategoryRef:
+      type: object
+      required: [id, slug, label]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string, examples: [reuni] }
+        label: { type: string, examples: [Reuni] }
+
+    EventCategoryList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/EventCategoryRef" }
+
     EventSummary:
       type: object
-      required: [id, title, starts_at, timezone]
+      description: |
+        Kartu event untuk daftar event dan beranda (guideline p8): cover, kategori, judul, tanggal dan label
+        pendaftaran. Waktu dalam UTC; tampilkan dalam `timezone` event (PRD 2.1). `my_ticket_status` adalah status
+        tiket terbaru milik pemanggil di event ini (null bila belum pernah memesan).
+      required:
+        - id
+        - title
+        - category
+        - cover_url
+        - starts_at
+        - ends_at
+        - timezone
+        - location_name
+        - status
+        - registration_state
+        - price
+        - is_free
+        - seats_total
+        - seats_available
+        - my_ticket_status
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, examples: [Camping Alumni KAPDH] }
+        category:
+          oneOf:
+            - $ref: "#/components/schemas/EventCategoryRef"
+            - type: "null"
+        cover_url: { type: [string, "null"], format: uri }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        timezone: { type: string, description: Zona waktu IANA tampilan event., examples: [Asia/Jakarta] }
+        location_name: { type: [string, "null"], examples: [Bumi Perkemahan Cibubur] }
+        status:
+          $ref: "#/components/schemas/EventStatus"
+        registration_state:
+          $ref: "#/components/schemas/EventRegistrationState"
+        price: { $ref: "#/components/schemas/Money" }
+        is_free: { type: boolean, description: "True bila price = 0.00 (AC F09-3)." }
+        seats_total: { type: integer, minimum: 1 }
+        seats_available:
+          type: integer
+          minimum: 0
+          description: |
+            Proyeksi kursi (PRD 4.4, aturan tag Events): seats_total - paid_quantity - held_aktif; hold awaiting_payment
+            yang sudah lewat `hold_expires_at` tidak dihitung walaupun belum dilepas job.
+        my_ticket_status:
+          oneOf:
+            - $ref: "#/components/schemas/TicketStatus"
+            - type: "null"
+
+    EventPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/EventSummary" }
+        next_cursor: { type: [string, "null"] }
+
+    EventCancellationPolicy:
+      type: object
+      description: |
+        Aturan pembatalan dan refund D6 (PRD 3.9) yang berlaku untuk event ini, dihitung server dari pengaturan
+        `events.self_cancel_days`. `summary` adalah teks siap tampil berbahasa Indonesia.
+      required: [self_cancel_until, full_refund_until, refund_processing_business_days, summary]
+      properties:
+        self_cancel_until:
+          type: string
+          format: date-time
+          description: Batas peserta membatalkan sendiri (= starts_at).
+        full_refund_until:
+          type: [string, "null"]
+          format: date-time
+          description: Pembatalan sendiri sebelum waktu ini mendapat refund penuh (H-3); null untuk event gratis.
+        refund_processing_business_days:
+          type: integer
+          minimum: 1
+          description: Tenggat bendahara memproses refund sejak pembatalan, dalam hari kerja (D6, 7).
+        summary:
+          type: string
+          examples:
+            - "Batalkan sampai 12 Okt 2026 09.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja."
+
+    EventDetail:
+      allOf:
+        - $ref: "#/components/schemas/EventSummary"
+        - type: object
+          required:
+            - description
+            - location_address
+            - location_url
+            - registration_opens_at
+            - registration_closes_at
+            - checkin_opens_at
+            - checkin_closes_at
+            - hold_hours
+            - participant_count
+            - cancellation_policy
+            - cancelled_at
+            - cancel_reason
+            - can_reserve
+            - reservation_blocked_reason
+            - my_ticket
+            - updated_at
+          properties:
+            description: { type: [string, "null"], description: Teks polos; baris baru dipertahankan. }
+            location_address: { type: [string, "null"] }
+            location_url:
+              type: [string, "null"]
+              format: uri
+              description: Tautan peta https; klien menandai sebagai tautan luar (F-08).
+            registration_opens_at: { type: string, format: date-time }
+            registration_closes_at: { type: string, format: date-time }
+            checkin_opens_at:
+              type: string
+              format: date-time
+              description: Jendela check-in efektif; bawaan 2 jam sebelum starts_at (D5) kecuali event menetapkan lain.
+            checkin_closes_at:
+              type: string
+              format: date-time
+              description: Akhir jendela check-in efektif; bawaan ends_at (D5).
+            hold_hours:
+              type: integer
+              minimum: 1
+              description: Lama hold reservasi berbayar tanpa bukti (D5, 24); dibatasi registration_closes_at.
+            participant_count:
+              type: integer
+              minimum: 0
+              description: Jumlah tiket paid (kursi terkonfirmasi), termasuk peserta yang tidak tampil di direktori.
+            cancellation_policy: { $ref: "#/components/schemas/EventCancellationPolicy" }
+            cancelled_at: { type: [string, "null"], format: date-time }
+            cancel_reason:
+              { type: [string, "null"], description: Alasan pembatalan dari pengurus (AC F09-7). }
+            can_reserve: { type: boolean, description: True bila pemanggil saat ini dapat POST reservasi. }
+            reservation_blocked_reason:
+              oneOf:
+                - $ref: "#/components/schemas/EventReservationBlockReason"
+                - type: "null"
+            my_ticket:
+              description: Tiket terbaru pemanggil di event ini (status apa pun); null bila belum pernah memesan.
+              oneOf:
+                - $ref: "#/components/schemas/TicketSummary"
+                - type: "null"
+            updated_at: { type: string, format: date-time }
+
+    EventParticipant:
+      type: object
+      description: Data peserta minimum yang boleh dilihat anggota aktif (PRD 3.10); kontak tidak pernah dikirim.
+      required: [user_id, full_name, cohort, cohort_code, avatar_url]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: Untuk membuka profil jejaring /network/members/<userId>.
+        full_name: { type: string, examples: [Ahmad Yusiana] }
+        cohort: { type: integer, minimum: 1, maximum: 99 }
+        cohort_code: { type: string, examples: [KAPDH 01] }
+        avatar_url: { type: [string, "null"], format: uri }
+
+    EventParticipantPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/EventParticipant" }
+        next_cursor: { type: [string, "null"] }
+
+    EventReservationRequest:
+      type: object
+      description: |
+        Satu kursi untuk pemanggil sendiri; tidak ada jumlah atau tipe tiket (PRD 3.9, disahkan v3.2). Total tiket
+        dihitung server dari harga event saat ini; `expected_price` hanya pengaman agar anggota tidak ditagih harga
+        yang belum ia lihat.
+      required: [expected_price]
+      properties:
+        expected_price:
+          $ref: "#/components/schemas/Money"
+          description: |
+            Harga event yang ditampilkan dan dikonfirmasi anggota (`price` dari GET /events/{eventId}; "0.00" untuk
+            event gratis). Berbeda dari harga saat ini -> 409 VERSION_CONFLICT dengan `current` = EventDetail.
+        payment_method_id:
+          type: [string, "null"]
+          format: uuid
+          description: Wajib untuk event berbayar (dari GET /payment-methods); wajib kosong untuk event gratis.
+
+    TicketEventInfo:
+      type: object
+      required: [id, title, cover_url, starts_at, ends_at, timezone, location_name, status]
       properties:
         id: { type: string, format: uuid }
         title: { type: string }
-        starts_at: { type: string, format: date-time }
-        timezone: { type: string, examples: [Asia/Jakarta] }
-        location: { type: [string, "null"] }
         cover_url: { type: [string, "null"], format: uri }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        timezone: { type: string, examples: [Asia/Jakarta] }
+        location_name: { type: [string, "null"] }
+        status: { $ref: "#/components/schemas/EventStatus" }
+
+    TicketPaymentMethod:
+      type: object
+      description: Snapshot tujuan transfer saat payment dibuat (D13); tidak berubah walaupun metode diubah pengurus.
+      required: [kind, provider, account_number, account_holder, instructions]
+      properties:
+        kind: { $ref: "#/components/schemas/TicketPaymentMethodKind" }
+        provider: { type: string, examples: [Bank Syariah Indonesia] }
+        account_number: { type: string }
+        account_holder: { type: string }
+        instructions: { type: [string, "null"] }
+
+    TicketPaymentInfo:
+      type: object
+      description: |
+        Penunjuk payment tiket (`type=ticket`). Unggah/ganti bukti lewat PUT /me/payments/{id}/proof
+        (submitPaymentProof) sebelum `hold_expires_at`. Penolakan mengikuti submitPaymentProof: hold sudah lewat
+        atau tiket expired -> 410 RESERVATION_EXPIRED (AC F09-2); tiket cancelled atau payment rejected -> 409
+        PAYMENT_STATE_CONFLICT (AC F09-4). Detail dan histori lewat GET /me/payments/{id}.
+      required:
+        - id
+        - status
+        - amount
+        - method
+        - proof_version
+        - submitted_at
+        - decided_at
+        - rejection_reason
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/TicketPaymentStatus" }
+        amount: { $ref: "#/components/schemas/Money" }
+        method: { $ref: "#/components/schemas/TicketPaymentMethod" }
+        proof_version: { type: integer, minimum: 0 }
+        submitted_at: { type: [string, "null"], format: date-time }
+        decided_at: { type: [string, "null"], format: date-time }
+        rejection_reason: { type: [string, "null"] }
+
+    TicketRefundInfo:
+      type: object
+      description: |
+        Satu refund manual oleh bendahara (satu baris payment_adjustments kind refund atas payment tiket, D6).
+        Satu payment dapat memiliki beberapa refund (refund dibatalkan lalu dicatat ulang, atau refund sebagian);
+        total refund pending + completed tidak pernah melebihi nominal payment (aturan adminCreatePaymentAdjustment).
+        Rekening tujuan tidak pernah dikirim di sini (ARCHITECTURE §2.3, D2).
+      required: [id, status, amount, due_at, completed_at, cancelled_at, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/TicketRefundStatus" }
+        amount: { $ref: "#/components/schemas/Money" }
+        due_at:
+          type: [string, "null"]
+          format: date-time
+          description: Tenggat paling lambat 7 hari kerja sejak pembatalan (D6).
+        completed_at: { type: [string, "null"], format: date-time }
+        cancelled_at:
+          type: [string, "null"]
+          format: date-time
+          description: Terisi bila refund ini dibatalkan bendahara (mis. dicatat ulang dengan nominal lain).
+        created_at: { type: string, format: date-time }
+
+    TicketSummary:
+      type: object
+      required:
+        - id
+        - status
+        - event
+        - total
+        - hold_expires_at
+        - checked_in_at
+        - cancelled_at
+        - cancelled_by
+        - payment_status
+        - created_at
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/TicketStatus" }
+        event: { $ref: "#/components/schemas/TicketEventInfo" }
+        total:
+          $ref: "#/components/schemas/Money"
+        hold_expires_at:
+          type: [string, "null"]
+          format: date-time
+          description: Batas kirim bukti untuk awaiting_payment (min 24 jam, registration_closes_at; D5).
+        checked_in_at: { type: [string, "null"], format: date-time }
+        cancelled_at: { type: [string, "null"], format: date-time }
+        cancelled_by:
+          oneOf:
+            - $ref: "#/components/schemas/TicketCancelledBy"
+            - type: "null"
+        payment_status:
+          description: Status payment tiket; null untuk event gratis (tanpa payment, AC F09-3).
+          oneOf:
+            - $ref: "#/components/schemas/TicketPaymentStatus"
+            - type: "null"
+        created_at: { type: string, format: date-time }
+
+    TicketDetail:
+      allOf:
+        - $ref: "#/components/schemas/TicketSummary"
+        - type: object
+          required:
+            - qr_code
+            - checkin_opens_at
+            - checkin_closes_at
+            - cancel_reason
+            - payment
+            - refunds
+            - can_cancel
+            - refund_eligible
+            - full_refund_until
+            - version
+          properties:
+            qr_code:
+              type: [string, "null"]
+              x-sensitive: true
+              description: |
+                Kode QR acak 128-bit unik (isi gambar QR apa adanya). Hanya terisi bila tiket paid dan event tidak
+                cancelled (AC F09-3, F09-7); null selain itu.
+            checkin_opens_at: { type: string, format: date-time, description: Jendela check-in efektif (D5). }
+            checkin_closes_at: { type: string, format: date-time }
+            cancel_reason: { type: [string, "null"] }
+            payment:
+              description: Payment tiket; null untuk event gratis.
+              oneOf:
+                - $ref: "#/components/schemas/TicketPaymentInfo"
+                - type: "null"
+            refunds:
+              type: array
+              description: |
+                Semua refund atas payment tiket ini (D6), urut `created_at` turun lalu id; kosong bila tidak ada
+                (termasuk event gratis). Refund berstatus cancelled tetap dikirim sebagai riwayat; klien menonjolkan
+                refund pending/completed dan menampilkan yang cancelled sebagai riwayat.
+              items: { $ref: "#/components/schemas/TicketRefundInfo" }
+            can_cancel:
+              type: boolean
+              description: True bila POST /me/tickets/{ticketId}/cancel saat ini diizinkan.
+            refund_eligible:
+              type: boolean
+              description: True bila pembatalan sekarang menghasilkan refund penuh (paid, total > 0, sebelum H-3).
+            full_refund_until:
+              type: [string, "null"]
+              format: date-time
+              description: Batas refund penuh pembatalan sendiri (H-3); null bila tidak berlaku (gratis).
+            version: { type: string }
+
+    TicketPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/TicketSummary" }
+        next_cursor: { type: [string, "null"] }
+
+    TicketCancelRequest:
+      type: object
+      required: [expected_refund_eligible]
+      properties:
+        expected_refund_eligible:
+          type: boolean
+          description: Nilai `refund_eligible` yang ditampilkan kepada anggota saat konfirmasi.
+        reason:
+          type: [string, "null"]
+          maxLength: 500
+          description: Alasan opsional dari peserta.

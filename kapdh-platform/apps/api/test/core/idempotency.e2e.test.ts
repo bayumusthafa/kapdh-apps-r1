@@ -10,7 +10,12 @@ import {
   IdempotencyService,
   keyedPayloadHash,
 } from "../../src/core/idempotency/idempotency.service.js";
-import { createAlumni, signInAlumni } from "../support/factories.js";
+import {
+  createAlumni,
+  publishLegalVersions,
+  signInAlumni,
+  TEST_CONSENT_VERSION,
+} from "../support/factories.js";
 import { type HttpClient, httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
 import { ProbeModule, probeState, SECRET_MARKER } from "./probe.js";
@@ -25,6 +30,7 @@ beforeAll(async () => {
   api = httpClient(t.app);
   member = await createAlumni(t, { status: "verified" });
   token = (await signInAlumni(t, member)).accessToken;
+  await publishLegalVersions(t);
 });
 beforeEach(() => {
   probeState.idempotentCalls = 0;
@@ -147,7 +153,7 @@ describe("PRD 4.3: Idempotency-Key", () => {
       cohort: 25,
       class_in: 1,
       class_out: 6,
-      accept_policy_version: "1",
+      accept_policy_version: TEST_CONSENT_VERSION,
     };
     const res = await api.post("/auth/register", body, { headers: { "idempotency-key": key } });
     expect(res.statusCode).toBe(201);

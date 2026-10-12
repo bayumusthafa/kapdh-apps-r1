@@ -1,4 +1,7 @@
+import { accountDeletions, users } from "@kapdh/database";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
+import { eq } from "drizzle-orm";
+import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { MemoryMailer } from "../../src/core/adapters/mailer.js";
 import type { Db } from "../../src/core/db/types.js";
@@ -12,7 +15,12 @@ import {
   registeredRoutes,
   routesMissingFromContract,
 } from "../support/contract.js";
-import { createAdmin } from "../support/factories.js";
+import {
+  createAdmin,
+  createAlumni,
+  publishLegalVersions,
+  TEST_CONSENT_VERSION,
+} from "../support/factories.js";
 import { routeAccessList } from "../support/routes.js";
 import { createTestApp, type TestClock } from "../support/test-app.js";
 
@@ -27,7 +35,9 @@ let mailer: MemoryMailer;
 let clock: TestClock;
 
 beforeAll(async () => {
-  ({ app, db, mailer, clock } = await createTestApp());
+  const t = await createTestApp();
+  ({ app, db, mailer, clock } = t);
+  await publishLegalVersions(t);
 });
 afterAll(async () => {
   await app.close();
@@ -72,6 +82,8 @@ describe("kontrak dan rute terdaftar (ARCHITECTURE §6)", () => {
       audience: "mobile",
       memberAccess: "active",
       permissions: [],
+      permissionsAny: [],
+      role: null,
       reauth: false,
     };
     const route = { name: "Uji.handler", method: "post", path: "/uji/{id}", meta, idempotent: false };
@@ -81,6 +93,8 @@ describe("kontrak dan rute terdaftar (ARCHITECTURE §6)", () => {
           "x-kapdh-access": {
             audience: "admin",
             permissions: ["payments.read"],
+            permissions_any: ["members.read", "master.manage"],
+            role: "super_admin",
             reauth: true,
             idempotent: true,
           },
@@ -88,7 +102,26 @@ describe("kontrak dan rute terdaftar (ARCHITECTURE §6)", () => {
       },
       "/tanpa-anotasi": { post: {} },
     };
-    expect(accessMismatches([route], paths)).toHaveLength(5);
+    // audience, member_access, permissions, permissions_any, role, reauth, idempotent.
+    expect(accessMismatches([route], paths)).toHaveLength(7);
+    const adminRoute = {
+      ...route,
+      meta: {
+        ...meta,
+        audience: "admin",
+        memberAccess: null,
+        permissionsAny: ["master.manage", "members.read"],
+      },
+    };
+    expect(
+      accessMismatches([adminRoute], {
+        "/uji/{x}": {
+          post: {
+            "x-kapdh-access": { audience: "admin", permissions_any: ["members.read", "master.manage"] },
+          },
+        },
+      }),
+    ).toEqual([]);
     const same = { audience: "mobile", member_access: "active" };
     expect(accessMismatches([route], { "/uji/{x}": { post: { "x-kapdh-access": same } } })).toEqual([]);
     expect(accessMismatches([{ ...route, path: "/tanpa-anotasi" }], paths)).toEqual([]);
@@ -144,7 +177,7 @@ describe("kesesuaian kontrak OpenAPI irisan Auth", () => {
       cohort: 29,
       class_in: 1,
       class_out: 6,
-      accept_policy_version: "2026-10",
+      accept_policy_version: TEST_CONSENT_VERSION,
     };
     const reg = await post("/auth/register", body);
     expect(reg.statusCode).toBe(201);
@@ -197,6 +230,20 @@ describe("kesesuaian kontrak OpenAPI irisan Auth", () => {
     expect(invalid.statusCode).toBe(400);
     expectOperation("post", "/auth/register", invalid);
 
+    // F-01: versi persetujuan usang → 409 VERSION_CONFLICT dengan LegalConsentVersions terkini.
+    const stale = await post("/auth/register", {
+      ...body,
+      email: "kontrak-usang@contoh.id",
+      accept_policy_version: "privacy:1;terms:9",
+    });
+    expect(stale.statusCode).toBe(409);
+    expectOperation("post", "/auth/register", stale);
+    expect(stale.json()).toMatchObject({
+      code: "VERSION_CONFLICT",
+      current: { policy_version: TEST_CONSENT_VERSION },
+    });
+    expectSchema("LegalConsentVersions", stale.json().current);
+
     const logout = await post("/auth/logout", {}, { authorization: `Bearer ${ref.json().access_token}` });
     expect(logout.statusCode).toBe(204);
     expectOperation("post", "/auth/logout", logout);
@@ -212,7 +259,7 @@ describe("kesesuaian kontrak OpenAPI irisan Auth", () => {
       cohort: 20,
       class_in: 1,
       class_out: 3,
-      accept_policy_version: "2026-10",
+      accept_policy_version: TEST_CONSENT_VERSION,
     });
     clock.advance(61_000);
     const login = await post("/auth/login", { email, password: PASSWORD });
@@ -221,12 +268,55 @@ describe("kesesuaian kontrak OpenAPI irisan Auth", () => {
     expectSchema("LoginResponse", login.json());
   });
 
+  it("login akun deletion_pending dan disabled: next tanpa sesi sesuai kontrak (PRD 2.2, F-14)", async () => {
+    const pending = await createAlumni({ db, clock }, { status: "verified", password: PASSWORD });
+    const now = clock.now();
+    await db.update(users).set({ status: "deletion_pending" }).where(eq(users.id, pending.userId));
+    await db.insert(accountDeletions).values({
+      id: uuidv7(),
+      requestNumber: "DEL-2026-UJI1",
+      userId: pending.userId,
+      source: "app",
+      requestedAt: now,
+      deadlineAt: new Date(now.getTime() + 7 * 24 * 3600_000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const deletion = await post("/auth/login", { email: pending.email, password: PASSWORD });
+    expect(deletion.statusCode).toBe(200);
+    expectOperation("post", "/auth/login", deletion);
+    expect(deletion.json()).toMatchObject({
+      next: "deletion_pending",
+      deletion: { request_number: "DEL-2026-UJI1", status: "pending", source: "app", completed_at: null },
+    });
+    expect(deletion.json().session).toBeUndefined();
+
+    const disabled = await createAlumni({ db, clock }, { status: "verified", password: PASSWORD });
+    await db.update(users).set({ status: "disabled" }).where(eq(users.id, disabled.userId));
+    const off = await post("/auth/login", { email: disabled.email, password: PASSWORD });
+    expect(off.statusCode).toBe(200);
+    expectOperation("post", "/auth/login", off);
+    expect(off.json()).toEqual({ next: "account_disabled" });
+  });
+
   it("alur admin: login, mfa, me", async () => {
     const admin = await createAdmin({ db, clock }, { role: "super_admin", password: PASSWORD });
 
     const login = await post("/admin/auth/login", { email: admin.email, password: PASSWORD });
     expect(login.statusCode).toBe(200);
     expectOperation("post", "/admin/auth/login", login);
+    expect(login.json().totp_enrollment_required).toBe(false);
+    // Kode salah = galat formulir 400 dengan field_errors dan sisa percobaan (kontrak adminVerifyMfa).
+    const wrongCode = await post("/admin/auth/mfa", {
+      mfa_token: login.json().mfa_token,
+      totp_code: totp(admin.totpSecret, new Date(clock.now().getTime() + 10 * 60_000)),
+    });
+    expect(wrongCode.statusCode).toBe(400);
+    expectOperation("post", "/admin/auth/mfa", wrongCode);
+    expect(wrongCode.json().field_errors.totp_code[0]).toContain("Sisa percobaan 4");
+    const badToken = await post("/admin/auth/mfa", { mfa_token: "bukan.token.mfa", totp_code: "123456" });
+    expect(badToken.statusCode).toBe(401);
+    expectOperation("post", "/admin/auth/mfa", badToken);
     const mfa = await post("/admin/auth/mfa", {
       mfa_token: login.json().mfa_token,
       totp_code: totp(admin.totpSecret, clock.now()),
@@ -240,6 +330,13 @@ describe("kesesuaian kontrak OpenAPI irisan Auth", () => {
     expect(me.statusCode).toBe(200);
     expectOperation("get", "/admin/me", me);
     expectSchema("AdminProfile", me.json());
+    // Field yang wajib dikirim server walau skema masih opsional (deskripsi AdminProfile).
+    expect(me.json()).toMatchObject({
+      email: admin.email,
+      has_linked_alumni: false,
+      backup_codes_remaining: expect.any(Number),
+      previous_login_at: null,
+    });
 
     const forbidden = await get("/admin/me", login.json().mfa_token);
     expect(forbidden.statusCode).toBe(403);

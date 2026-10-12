@@ -43,8 +43,9 @@ export class AdminAuthController {
             .optional(),
           backup_code: z.string().min(6).max(32).optional(),
         })
-        .refine((v) => v.totp_code || v.backup_code, {
-          message: "Masukkan kode autentikator atau backup code",
+        // Tepat satu dari totp_code atau backup_code (kontrak AdminMfaRequest).
+        .refine((v) => Boolean(v.totp_code) !== Boolean(v.backup_code), {
+          message: "Masukkan kode autentikator atau backup code (salah satu).",
           path: ["totp_code"],
         }),
       body,

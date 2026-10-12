@@ -13,7 +13,11 @@ const appVersion = z
   .max(32)
   .refine((v) => semver.valid(v) !== null, "Versi harus semver, contoh 1.2.0");
 const storeUrl = z.union([z.url({ protocol: /^https$/, message: "Tautan toko wajib https" }), z.null()]);
-const legalVersion = z.union([z.string().min(1).max(64), z.null()]);
+/** Versi tayang halaman legal = pages.published_version (bilangan bulat >= 1) sebagai string; null = belum terbit. */
+const legalVersion = z.union([
+  z.string().regex(/^[1-9][0-9]{0,8}$/, "Versi legal berupa bilangan bulat >= 1"),
+  z.null(),
+]);
 
 export const SETTING_SCHEMAS = {
   // D4: biaya pendaftaran + pembuatan KTA, perpanjangan per tahun.
@@ -63,6 +67,16 @@ export const SETTING_SCHEMAS = {
   // Mencerminkan pages.published_version halaman legal (F-01, F-08); null selama belum diterbitkan.
   legal: z
     .object({ privacy_version: legalVersion, terms_version: legalVersion, community_version: legalVersion })
+    .strict(),
+  // D13 (PRD 10.2 rencana cadangan iOS): platform aplikasi yang tidak menampilkan instruksi bayar iuran
+  // (registration/renewal); tiket tidak terpengaruh. Dibaca per request dari header X-App-Platform (kontrak C3).
+  payment_instructions: z
+    .object({
+      dues_hidden_platforms: z
+        .array(z.enum(["android", "ios"]))
+        .max(2)
+        .refine((platforms) => new Set(platforms).size === platforms.length, "Platform tidak boleh ganda"),
+    })
     .strict(),
 } as const satisfies Record<AppSettingKey, z.ZodType>;
 
