@@ -2,7 +2,7 @@ import "reflect-metadata";
 import type { PGlite } from "@electric-sql/pglite";
 import type { ApiEnv } from "@kapdh/config";
 import { schema } from "@kapdh/database";
-import { MemoryStorage } from "@kapdh/storage";
+import { MemoryDriver } from "@kapdh/storage";
 import type { DynamicModule, Type } from "@nestjs/common";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { drizzle } from "drizzle-orm/pglite";
@@ -78,8 +78,8 @@ export interface TestAppOptions {
   /** Menimpa sebagian env uji (mis. TRUST_PROXY_HOPS, HSTS_ENABLED). */
   env?: Partial<ApiEnv>;
   clock?: TestClock;
-  /** Storage pengganti (mis. MemoryStorage yang dibuat gagal untuk menguji readiness). */
-  storage?: MemoryStorage;
+  /** Storage pengganti (mis. MemoryDriver yang dibuat gagal untuk menguji readiness). */
+  storage?: MemoryDriver;
   /** Modul tambahan (controller penguji). Rute di luar kontrak hanya untuk aplikasi uji khusus. */
   extraModules?: (Type | DynamicModule)[];
   /** Tujuan log JSON; tanpa nilai log dimatikan. */
@@ -92,7 +92,7 @@ export interface TestApp {
   mailer: MemoryMailer;
   clock: TestClock;
   push: FakePush;
-  storage: MemoryStorage;
+  storage: MemoryDriver;
   /** Eksekutor job dan dispatcher outbox (ARCHITECTURE §4.8): `await jobs.dispatchOutbox()`. */
   jobs: JobRunner;
   settings: SettingsService;
@@ -109,7 +109,7 @@ export function resetRateLimits(): void {
 }
 
 /**
- * Aplikasi API lengkap di atas PGlite (ARCHITECTURE §9.1): TestClock, MemoryMailer, FakePush, MemoryStorage, rate limit
+ * Aplikasi API lengkap di atas PGlite (ARCHITECTURE §9.1): TestClock, MemoryMailer, FakePush, MemoryDriver, rate limit
  * memori yang direset per tes. `app.close()` juga menutup PGlite.
  */
 export async function createTestApp(options: TestAppOptions = {}): Promise<TestApp> {
@@ -118,7 +118,7 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
   const mailer = new MemoryMailer();
   const clock = options.clock ?? new TestClock();
   const push = new FakePush();
-  const storage = options.storage ?? new MemoryStorage();
+  const storage = options.storage ?? new MemoryDriver();
   const rateLimits = new MemoryRateLimitStore();
   const app = await createApp(
     { env, db, mailer, clock, push, storage, redis: null },

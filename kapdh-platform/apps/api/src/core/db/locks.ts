@@ -24,3 +24,23 @@ export const ADVISORY_LOCK_KEYS = {
 export async function advisoryXactLock(tx: DbOrTx, key: number | bigint): Promise<void> {
   await tx.execute(sql`select pg_advisory_xact_lock(${BigInt(key).toString()}::bigint)`);
 }
+
+/**
+ * Ruang nama kunci advisory dua-int4 (`pg_advisory_xact_lock(int4, int4)`), terpisah dari ruang kunci bigint tunggal
+ * di atas. Dipakai untuk mengunci identitas logis yang tidak memiliki baris untuk dikunci, misalnya kuota unggahan per
+ * (pengguna, purpose) atau pasangan blokir. Nilai baru ditambahkan di sini agar tidak bertabrakan.
+ */
+export const ADVISORY_LOCK_NAMESPACES = {
+  /** Kuota unggahan N-10 per (owner_user_id, purpose). */
+  fileQuota: 47_110_001,
+  /** Pasangan pengguna untuk blokir vs kirim direct/undangan (AC F12-1). */
+  blockPair: 47_110_002,
+} as const;
+
+/**
+ * Kunci advisory transaksi pada `(namespace, hashtext(key))`. Tabrakan hash hanya menambah serialisasi, tidak pernah
+ * melemahkan invarian. Wajib dipanggil di dalam transaksi.
+ */
+export async function advisoryXactLockFor(tx: DbOrTx, namespace: number, key: string): Promise<void> {
+  await tx.execute(sql`select pg_advisory_xact_lock(${namespace}::int4, hashtext(${key}))`);
+}

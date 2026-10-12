@@ -1,7 +1,7 @@
 import { type CanActivate, type ExecutionContext, Inject, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { PERMISSION_VALUES, type AdminRole, type Permission } from "@kapdh/contracts";
-import { adminPermissions, admins, alumni, sessions, users } from "@kapdh/database";
+import { adminPermissions, admins, sessions } from "@kapdh/database";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Logger } from "pino";
 import { TokenService } from "../../modules/auth/token.service.js";
@@ -9,10 +9,12 @@ import type { Clock } from "../adapters/clock.js";
 import { setActor } from "../context/request-context.js";
 import type { Db } from "../db/types.js";
 import { AppException, forbidden, unauthenticated } from "../errors/app-exception.js";
-import { effectiveStatus, type EffectiveStatus } from "../membership/effective-status.js";
+import type { MemberAccessLevel } from "../membership/access.js";
+import { MembershipKernel } from "../membership/membership.kernel.js";
 import { CLOCK, DB, ROOT_LOGGER } from "../tokens.js";
 import type { AuthContext, AuthedRequest } from "./auth-context.js";
-import { type MemberAccessLevel, routeAuthMeta } from "./decorators.js";
+import { routeAuthMeta } from "./decorators.js";
+import { SessionValidator } from "./session-validator.js";
 
 /** Idle timeout admin di server (N-08, AC F02-5). */
 export const ADMIN_IDLE_MS = 30 * 60_000;
@@ -21,13 +23,6 @@ const MOBILE_LAST_SEEN_THROTTLE_MS = 60_000;
 
 const ALL_PERMISSIONS: ReadonlySet<Permission> = new Set(PERMISSION_VALUES);
 const NO_PERMISSIONS: ReadonlySet<Permission> = new Set();
-
-/** Matriks akses PRD 2.2 per tingkat @MemberAccess (ARCHITECTURE §3.1). */
-const MEMBER_ACCESS: Record<MemberAccessLevel, ReadonlySet<EffectiveStatus>> = {
-  any: new Set(["unverified", "verified", "expiring", "expired", "suspended"]),
-  nonsuspended: new Set(["unverified", "verified", "expiring", "expired"]),
-  active: new Set(["verified", "expiring"]),
-};
 
 const REAUTH_HEADER = "x-reauth-token";
 
@@ -45,6 +40,8 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly tokens: TokenService,
+    private readonly sessions: SessionValidator,
+    private readonly membership: MembershipKernel,
     @Inject(DB) private readonly db: Db,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ROOT_LOGGER) private readonly logger: Logger,
@@ -69,7 +66,8 @@ export class AuthGuard implements CanActivate {
     const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
     if (!token) throw unauthenticated();
 
-    const claims = await this.tokens.verifyAccess(token);
+    if (token.length > 4096) throw unauthenticated();
+    const claims = await this.sessions.verifyToken(token);
     if (!claims) {
       // Token tahap sandi admin dipakai di endpoint admin: wajib TOTP (AC F02-2).
       if (required === "admin" && (await this.tokens.verifyMfa(token)))
@@ -82,34 +80,9 @@ export class AuthGuard implements CanActivate {
       throw new AppException(403, "MFA_REQUIRED", "Masukkan kode autentikator untuk melanjutkan.");
 
     const now = this.clock.now();
-    const [row] = await this.db
-      .select({
-        sessionUserId: sessions.userId,
-        sessionAudience: sessions.audience,
-        revokedAt: sessions.revokedAt,
-        expiresAt: sessions.expiresAt,
-        lastSeenAt: sessions.lastSeenAt,
-        lastActivityAt: sessions.lastActivityAt,
-        userStatus: users.status,
-        userKind: users.kind,
-        sessionVersion: users.sessionVersion,
-      })
-      .from(sessions)
-      .innerJoin(users, eq(users.id, sessions.userId))
-      .where(eq(sessions.id, claims.sessionId))
-      .limit(1);
-    if (
-      !row ||
-      row.revokedAt ||
-      row.expiresAt <= now ||
-      row.sessionUserId !== claims.userId ||
-      row.sessionAudience !== claims.audience ||
-      row.sessionVersion !== claims.sessionVersion ||
-      // Hanya akun aktif: pending_otp, disabled, deletion_pending, dan deleted tidak memakai API biasa (PRD 2.2).
-      row.userStatus !== "active" ||
-      row.userKind !== (claims.audience === "admin" ? "admin" : "alumni")
-    )
-      throw unauthenticated();
+    // Sesi belum dicabut/kedaluwarsa, session_version, akun aktif dan jenisnya (sama dengan gateway realtime).
+    const row = await this.sessions.loadActiveSession(claims, now);
+    if (!row) throw unauthenticated();
 
     const auth: AuthContext = {
       userId: claims.userId,
@@ -188,32 +161,16 @@ export class AuthGuard implements CanActivate {
     return new Set(rows.map((r) => r.permission as Permission));
   }
 
-  /** PRD 2.2: suspended → 403 ACCOUNT_SUSPENDED; status lain di luar tingkat → 403 MEMBERSHIP_REQUIRED. */
+  /**
+   * PRD 2.2 lewat MembershipKernel (data canonical saat request; AC F07-3): suspended → 403 ACCOUNT_SUSPENDED; status
+   * lain di luar tingkat → 403 MEMBERSHIP_REQUIRED.
+   */
   private async checkMemberAccess(auth: AuthContext, level: MemberAccessLevel, now: Date) {
-    const [member] = await this.db
-      .select({ expiresAt: alumni.expiresAt, suspendedAt: alumni.suspendedAt })
-      .from(alumni)
-      .where(eq(alumni.userId, auth.userId))
-      .limit(1);
-    const status = effectiveStatus(
-      {
-        accountStatus: "active",
-        expiresAt: member?.expiresAt ?? null,
-        suspendedAt: member?.suspendedAt ?? null,
-      },
-      now,
-    );
+    const snapshot = await this.membership.effectiveStatusFor(auth.userId, { now });
+    // Akun alumni tanpa profil (data rusak) diperlakukan unverified: tidak pernah membuka akses aktif.
+    const status = snapshot?.status ?? "unverified";
     auth.effectiveStatus = status;
-    if (MEMBER_ACCESS[level].has(status)) return;
-    if (status === "suspended")
-      throw new AppException(403, "ACCOUNT_SUSPENDED", "Akun Anda sedang dibatasi. Buka portal pembatasan.");
-    throw new AppException(
-      403,
-      "MEMBERSHIP_REQUIRED",
-      status === "unverified"
-        ? "Fitur ini tersedia setelah iuran pendaftaran diverifikasi."
-        : "Fitur ini memerlukan KTA aktif. Perpanjang keanggotaan untuk melanjutkan.",
-    );
+    this.membership.assertAccess(level, status);
   }
 
   /** X-Reauth-Token terikat user + sesi, <= 10 menit; sesi admin wajib reautentikasi dengan TOTP (F-16). */

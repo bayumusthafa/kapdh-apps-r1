@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { AsyncResource } from "node:async_hooks";
 import { ANONYMOUS_ACTOR, type RequestContext, runInContext } from "../context/request-context.js";
+import { AppException } from "../errors/app-exception.js";
 import type { RequestGate } from "./request-gate.js";
 
 const CONTEXT_RESOURCE = Symbol("kapdh.requestContextResource");
@@ -93,5 +94,26 @@ export function installHttpHooks(fastify: FastifyInstance, gate: () => RequestGa
       "request selesai",
     );
     done();
+  });
+}
+
+/** Konfigurasi rute Fastify (`@RouteConfig({ multipart: true })` dari @nestjs/platform-fastify) yang menerima unggahan. */
+export interface MultipartRouteConfig {
+  multipart?: boolean;
+}
+
+/**
+ * Plugin @fastify/multipart menerima multipart di semua rute (parser hanya menandai request). Gerbang ini menolak
+ * multipart pada rute yang tidak menyatakan `@RouteConfig({ multipart: true })` dengan 415 FILE_INVALID sebelum body
+ * dibaca, sehingga endpoint JSON tidak pernah menerima form dan unggahan hanya masuk lewat POST /files (N-10).
+ */
+export function installMultipartGate(fastify: FastifyInstance): void {
+  fastify.addHook("onRequest", async (request: FastifyRequest) => {
+    const type = header(request, "content-type")?.toLowerCase() ?? "";
+    if (!type.startsWith("multipart/")) return;
+    // Rute tidak dikenal dibiarkan ke 404.
+    if (!request.routeOptions?.url) return;
+    if ((request.routeOptions.config as MultipartRouteConfig | undefined)?.multipart === true) return;
+    throw new AppException(415, "FILE_INVALID", "Unggahan berkas hanya diterima melalui endpoint unggah.");
   });
 }

@@ -1,5 +1,6 @@
 import cookie from "@fastify/cookie";
 import helmet from "@fastify/helmet";
+import multipart from "@fastify/multipart";
 import type { DynamicModule, Type } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
@@ -7,10 +8,12 @@ import { LogController } from "fastify";
 import type { DestinationStream } from "pino";
 import { v7 as uuidv7 } from "uuid";
 import { type AppDeps, AppModule } from "./app.module.js";
-import { installHttpHooks } from "./core/http/fastify-hooks.js";
+import { MAX_UPLOAD_BYTES } from "./core/files/purposes.js";
+import { installHttpHooks, installMultipartGate } from "./core/http/fastify-hooks.js";
 import { RequestGate } from "./core/http/request-gate.js";
 import { createRootLogger, NestPinoLogger } from "./core/logging/logger.js";
 import type { RateLimitStore } from "./core/rate-limit/store.js";
+import { KapdhIoAdapter } from "./core/realtime/io-adapter.js";
 
 export interface CreateAppOptions {
   /** false = log senyap (uji). Bawaan mengikuti LOG_LEVEL. */
@@ -75,6 +78,21 @@ export async function createApp(
     defaultJson(request, text, done);
   });
   app.setGlobalPrefix("api/v1");
+  // Multipart hanya untuk rute ber-@RouteConfig({ multipart: true }) (POST /files); rute lain tetap 415 FILE_INVALID.
+  // Batas busboy: satu berkas <= 10 MB (batas per purpose/tipe diperiksa FilesService, N-10), field kecil.
+  await app.register(multipart, {
+    throwFileSizeLimit: true,
+    limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 4, parts: 6, fieldSize: 256, headerPairs: 50 },
+  });
+  installMultipartGate(fastify);
+  // Socket.IO /realtime di server HTTP yang sama (ARCHITECTURE §4.9): websocket saja, Origin browser dibatasi,
+  // adapter Redis bila REDIS_URL diisi.
+  app.useWebSocketAdapter(
+    new KapdhIoAdapter(app, {
+      allowedOrigins: [deps.env.ADMIN_ORIGIN, new URL(deps.env.PUBLIC_WEB_URL).origin],
+      redis: deps.redis ?? null,
+    }),
+  );
   await app.register(helmet, {
     contentSecurityPolicy: false,
     hsts: deps.env.HSTS_ENABLED ? { maxAge: HSTS_MAX_AGE_SECONDS, includeSubDomains: true } : false,

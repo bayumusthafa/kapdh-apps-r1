@@ -1,7 +1,7 @@
 import { Inject, Injectable, Module, type OnModuleInit } from "@nestjs/common";
 import type { WorkerEnv } from "@kapdh/config";
 import { auditLogs, outboxEvents } from "@kapdh/database";
-import { MemoryStorage } from "@kapdh/storage";
+import { MemoryDriver } from "@kapdh/storage";
 import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -10,7 +10,7 @@ import { AuditService } from "../../src/core/audit/audit.service.js";
 import { ctx, runAsSystem, tryCtx } from "../../src/core/context/request-context.js";
 import { withTx } from "../../src/core/db/tx.js";
 import type { Db } from "../../src/core/db/types.js";
-import { JobRegistry, type OutboxEventMeta } from "../../src/core/jobs/job-registry.js";
+import { JobRegistry, type OutboxEvent } from "../../src/core/jobs/job-registry.js";
 import { OUTBOX_MAX_ATTEMPTS, outboxBackoffMs } from "../../src/core/jobs/job-runner.js";
 import { OutboxService } from "../../src/core/outbox/outbox.service.js";
 import { DB } from "../../src/core/tokens.js";
@@ -29,12 +29,12 @@ const probe = {
   failures: 0,
   calls: [] as {
     payload: unknown;
-    meta: OutboxEventMeta;
+    meta: Omit<OutboxEvent, "payload">;
     requestId: string;
     jobId: string | null;
     actor: string;
   }[],
-  ticks: [] as { jobId: string | null; actor: string }[],
+  ticks: [] as { jobId: string | null; actor: string; now: Date; contextJobId: string }[],
 };
 
 @Injectable()
@@ -46,29 +46,39 @@ class JobsProbe implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    this.jobs.registerTopicHandler("event.cancelled", async (payload, meta) => {
-      const context = ctx();
-      probe.calls.push({
-        payload,
-        meta,
-        requestId: context.requestId,
-        jobId: context.jobId,
-        actor: context.actor.kind,
-      });
-      if (probe.failures > 0) {
-        probe.failures--;
-        throw Object.assign(new Error(`gagal kirim ke rahasia@contoh.test`), { code: "ECONNRESET" });
-      }
-      // Efek handler beraudit: aktor system, request_id = request asal event (korelasi N-14).
-      await withTx(this.db, (tx) =>
-        this.audit.write(tx, { action: "uji.event_fanout", entityType: "event", entityId: payload.event_id }),
-      );
+    this.jobs.registerTopicHandler({
+      topic: "event.cancelled",
+      handle: async (event, job) => {
+        const context = ctx();
+        const { payload, ...meta } = event;
+        probe.calls.push({
+          payload,
+          meta,
+          requestId: context.requestId,
+          jobId: context.jobId,
+          actor: context.actor.kind,
+        });
+        expect(job.jobId).toBe(context.jobId);
+        if (probe.failures > 0) {
+          probe.failures--;
+          throw Object.assign(new Error(`gagal kirim ke rahasia@contoh.test`), { code: "ECONNRESET" });
+        }
+        // Efek handler beraudit: aktor system, request_id = request asal event (korelasi N-14).
+        await withTx(this.db, (tx) =>
+          this.audit.write(tx, { action: "uji.event_fanout", entityType: "event", entityId: payload.event_id }),
+        );
+      },
     });
     this.jobs.registerScheduled({
       name: "uji.tick",
-      intervalMs: 60_000,
-      run: async () => {
-        probe.ticks.push({ jobId: tryCtx()?.jobId ?? null, actor: tryCtx()?.actor.kind ?? "tidak ada" });
+      everyMs: 60_000,
+      run: async (now, job) => {
+        probe.ticks.push({
+          jobId: tryCtx()?.jobId ?? null,
+          actor: tryCtx()?.actor.kind ?? "tidak ada",
+          now,
+          contextJobId: job.jobId,
+        });
       },
     });
   }
@@ -274,27 +284,44 @@ describe("JobRunner.dispatchOutbox (ARCHITECTURE §4.8, PRD 5.1)", () => {
 });
 
 describe("JobRunner.runScheduled", () => {
-  it("menjalankan job terdaftar dalam konteks system dengan job_id; job tak terdaftar ditolak", async () => {
+  it("menjalankan job terdaftar dalam konteks system dengan job_id dan waktu Clock; job tak terdaftar ditolak", async () => {
     await t.jobs.runScheduled("uji.tick");
     expect(probe.ticks).toHaveLength(1);
     expect(probe.ticks[0]!.actor).toBe("system");
     expect(probe.ticks[0]!.jobId).toMatch(/^uji\.tick:/);
+    expect(probe.ticks[0]!.contextJobId).toBe(probe.ticks[0]!.jobId);
+    expect(probe.ticks[0]!.now).toEqual(t.clock.now());
     await expect(t.jobs.runScheduled("tidak.ada")).rejects.toThrow();
     expect(t.jobs.registry.scheduledJobs().map((j) => j.name)).toContain("uji.tick");
   });
 
   it("registri menolak nama job tidak valid, interval terlalu kecil, dan pendaftaran ganda", () => {
     const registry = new JobRegistry();
-    expect(() =>
-      registry.registerScheduled({ name: "Tanpa Titik", intervalMs: 60_000, run: async () => {} }),
-    ).toThrow();
-    expect(() => registry.registerScheduled({ name: "a.b", intervalMs: 10, run: async () => {} })).toThrow();
-    registry.registerScheduled({ name: "a.b", intervalMs: 1_000, run: async () => {} });
-    expect(() =>
-      registry.registerScheduled({ name: "a.b", intervalMs: 1_000, run: async () => {} }),
-    ).toThrow();
-    registry.registerTopicHandler("event.cancelled", async () => {});
-    expect(() => registry.registerTopicHandler("event.cancelled", async () => {})).toThrow();
+    const run = async () => {};
+    expect(() => registry.registerScheduled({ name: "Tanpa Titik", everyMs: 60_000, run })).toThrow();
+    expect(() => registry.registerScheduled({ name: "a.b", everyMs: 10, run })).toThrow();
+    registry.registerScheduled({ name: "a.b", everyMs: 1_000, run });
+    expect(() => registry.registerScheduled({ name: "a.b", everyMs: 1_000, run })).toThrow();
+    registry.registerTopicHandler({ topic: "event.cancelled", handle: async () => {} });
+    expect(() => registry.registerTopicHandler({ topic: "event.cancelled", handle: async () => {} })).toThrow();
+  });
+});
+
+describe("JobRunner.drainOutbox (helper uji)", () => {
+  it("memproses semua event jatuh tempo dalam beberapa putaran lalu berhenti", async () => {
+    for (let i = 0; i < 3; i++) {
+      const eventId = uuidv7();
+      await outbox.publish(t.db, {
+        topic: "event.cancelled",
+        dedupKey: `drain:${eventId}`,
+        payload: { event_id: eventId },
+      });
+    }
+    probe.failures = 1;
+    // Satu gagal (backoff ke masa depan), dua terkirim; loop berhenti walau ada event failed.
+    expect(await t.jobs.drainOutbox()).toEqual({ claimed: 3, dispatched: 2, failed: 1, dead: 0 });
+    t.clock.advance(outboxBackoffMs(1));
+    expect(await t.jobs.drainOutbox()).toEqual({ claimed: 1, dispatched: 1, failed: 0, dead: 0 });
   });
 });
 
@@ -307,6 +334,7 @@ describe("createWorkerContext (ARCHITECTURE §1, §4.8)", () => {
       REDIS_URL: undefined,
       LOG_LEVEL: "silent",
       PUBLIC_WEB_URL: testEnv.PUBLIC_WEB_URL,
+      API_PUBLIC_URL: testEnv.API_PUBLIC_URL,
       ADMIN_ORIGIN: testEnv.ADMIN_ORIGIN,
       SMTP_URL: undefined,
       MAIL_FROM: testEnv.MAIL_FROM,
@@ -331,7 +359,7 @@ describe("createWorkerContext (ARCHITECTURE §1, §4.8)", () => {
         mailer: new MemoryMailer(),
         clock,
         push: new FakePush(),
-        storage: new MemoryStorage(),
+        storage: new MemoryDriver(),
         redis: null,
       },
       { extraModules: [JobsProbeModule] },

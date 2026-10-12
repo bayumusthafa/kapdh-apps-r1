@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { Db, Tx } from "./types.js";
+import type { Db, DbOrTx, Tx } from "./types.js";
 
 /**
  * Transaksi dengan antrean efek samping setelah commit (ARCHITECTURE §4.2): emit socket, invalidasi cache, dan efek
@@ -64,4 +64,19 @@ export function afterCommit(callback: () => unknown): void {
 /** Transaksi withTx yang sedang aktif pada alur async ini, atau undefined. */
 export function currentTx(): Tx | undefined {
   return txStorage.getStore()?.tx;
+}
+
+/**
+ * Gagal cepat bila `tx` adalah transaksi mentah (`db.transaction(...)` tanpa withTx/TxRunner) atau savepoint: di sana
+ * afterCommit tidak dapat menunggu commit sehingga efek samping (emit socket, putus sesi) bisa terjadi untuk data yang
+ * akhirnya batal. `db` tanpa transaksi diizinkan (setiap pernyataan langsung commit). Dipanggil layanan core yang
+ * menjadwalkan afterCommit (NotificationService, MembershipKernel, FilesService.discard).
+ */
+export function assertCommitAware(tx: DbOrTx, caller: string): void {
+  const isTransaction = typeof (tx as { rollback?: unknown }).rollback === "function";
+  if (isTransaction && txStorage.getStore()?.tx !== tx)
+    throw new Error(
+      `${caller} wajib dipanggil dengan tx dari withTx/TxRunner (bukan db.transaction mentah atau savepoint) ` +
+        "agar efek setelah commit menunggu commit",
+    );
 }

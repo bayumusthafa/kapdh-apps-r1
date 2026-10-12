@@ -96,6 +96,11 @@ const baseShape = {
   REDIS_URL: z.string().url().optional(),
   LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),
   PUBLIC_WEB_URL: baseUrl.default("https://kapdh.or.id"),
+  /**
+   * URL publik API tanpa garis miring penutup (mis. https://api.kapdh.or.id). Dipakai menyusun URL absolut berkas:
+   * gambar publik `/api/v1/files/public/<id>` dan URL bertanda tangan `/api/v1/files/content/<token>` (PRD 5.4).
+   */
+  API_PUBLIC_URL: baseUrl.default("https://api.kapdh.or.id"),
   ADMIN_ORIGIN: origin.default("https://admin.kapdh.or.id"),
   SMTP_URL: z
     .string()
@@ -153,6 +158,8 @@ function baseRules(env: z.infer<z.ZodObject<typeof baseShape>>): Issue[] {
       issues.push({ path: "FCM_SERVICE_ACCOUNT_JSON", message: (e as Error).message });
     }
   }
+  if (deployed && !env.API_PUBLIC_URL.startsWith("https://"))
+    issues.push({ path: "API_PUBLIC_URL", message: "wajib https di staging dan production (N-07)" });
   if (deployed && env.FILE_URL_SECRET.includes(PLACEHOLDER))
     issues.push({ path: "FILE_URL_SECRET", message: "masih placeholder .env.example" });
   return issues;
