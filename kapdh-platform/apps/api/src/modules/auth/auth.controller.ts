@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { Clock } from "../../core/adapters/clock.js";
 import { unauthenticated } from "../../core/errors/app-exception.js";
 import type { AuthContext, AuthedRequest } from "../../core/guards/auth-context.js";
-import { Audience, CurrentAuth, Public } from "../../core/guards/decorators.js";
+import { Audience, CurrentAuth, MemberAccess, Public } from "../../core/guards/decorators.js";
 import { assertTrustedOrigin } from "../../core/http/origin.js";
 import { Idempotent } from "../../core/idempotency/idempotent.js";
 import { COHORT_BASE_YEAR } from "../../core/membership/member-number.js";
@@ -123,6 +123,8 @@ export class AuthController {
   @Post("logout")
   @HttpCode(204)
   @Audience("any")
+  // Semua status keanggotaan (termasuk suspended) tetap bisa keluar (PRD 2.2).
+  @MemberAccess("any")
   async logout(@CurrentAuth() auth: AuthContext, @Res({ passthrough: true }) reply: FastifyReply) {
     await this.auth.logout(auth.sessionId);
     if (auth.audience === "admin")
@@ -137,6 +139,7 @@ export class AuthController {
   @Post("logout-all")
   @HttpCode(204)
   @Audience("any")
+  @MemberAccess("any")
   async logoutAll(@CurrentAuth() auth: AuthContext) {
     await this.auth.logoutAll(auth.userId);
   }

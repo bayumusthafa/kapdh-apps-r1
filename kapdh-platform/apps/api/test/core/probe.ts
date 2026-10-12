@@ -86,6 +86,13 @@ class ProbeController {
     return { ...summary(auth), actor: ctx().actor.kind };
   }
 
+  @Get("any/active")
+  @Audience("any")
+  @MemberAccess("active")
+  anyActive(@CurrentAuth() auth: AuthContext) {
+    return summary(auth);
+  }
+
   @Get("member/any")
   @Audience("mobile")
   @MemberAccess("any")
