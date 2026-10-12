@@ -15,6 +15,18 @@
 # - Maksimal 5 pengiriman OTP per jam per email ditambah pembatasan per IP.
 # - 10 kegagalan login dalam 15 menit -> cooldown 15 menit (per email dan per IP); jalur pemulihan tetap tersedia.
 # - Respons lupa sandi dan hapus akun web tidak mengungkap apakah email terdaftar.
+#
+# Challenge aktivasi (PRD 2.2, AC F01-3): `signup` dan `email_change` diperlakukan sebagai SATU slot aktivasi.
+# Penerbitan salah satunya (register ulang, koreksi email, login akun pending_otp, resend) membatalkan challenge aktif
+# kedua tujuan itu dalam transaksi yang sama dengan baris users terkunci (FOR NO KEY UPDATE), sehingga paling banyak
+# satu challenge aktivasi aktif per akun walaupun otp_codes_active_key berlaku per (user_id, purpose).
+#
+# Token sekali pakai turunan OTP (`reset_token` lupa sandi, `deletion_token` hapus akun web; ARCHITECTURE §2 butir 11):
+# JWT HS256 berumur maksimal 10 menit dengan audience khusus (`kapdh-password-reset`, `kapdh-web-deletion`), subject
+# akun, klaim `cid` (challenge OTP yang sudah dikonsumsi) dan pengikat keadaan akun. Tidak ada tabel penyimpanan token:
+# sifat sekali pakai dijamin transisi keadaan atomik yang membatalkan pengikatnya (reset mengganti password_hash yang
+# diikat token; konfirmasi hapus mengubah akun menjadi deletion_pending), di dalam transaksi dengan baris users
+# terkunci. Token tidak pernah dicatat di log atau audit (ARCHITECTURE §2 butir 3).
 tags:
   - name: Auth
     description: |
@@ -89,6 +101,15 @@ paths:
         sudah diganti (resend, pendaftaran ulang, koreksi email), percobaan habis, atau sandi akun berubah setelah
         kode dikirim, semuanya ditolak 410 OTP_EXPIRED tanpa membedakan penyebab; UI menawarkan challenge baru
         sesuai cooldown (AC F01-3).
+
+        Hasil tidak diketahui (respons hilang, timeout, ketuk ganda; AC F01-4, PRD 4.5): verifikasi tidak dapat
+        diulang karena kode sudah dikonsumsi, dan token sesi tidak pernah disimpan di penyimpanan idempotensi. Bila
+        pengulangan menghasilkan 410 setelah percobaan sebelumnya berakhir tanpa respons, klien TIDAK langsung
+        meminta challenge baru (resend akan ikut 410 karena akun mungkin sudah aktif), melainkan memanggil
+        POST /auth/login dengan email dan sandi yang masih ada di memori dari langkah Data Diri, atau meminta
+        pengguna masuk bila aplikasi sempat ditutup. `next: home` berarti aktivasi sudah berhasil dan sesi baru
+        diterbitkan; `next: verify_otp` berarti akun belum aktif dan `challenge` yang dikembalikan dipakai untuk
+        melanjutkan.
       security: []
       x-kapdh-access: { audience: public }
       parameters:
@@ -128,10 +149,12 @@ paths:
       operationId: resendOtp
       summary: Kirim ulang OTP untuk challenge yang sama tujuannya; kode lama dibatalkan (PRD 2.5, AC F01-3).
       description: |
-        Berlaku untuk semua tujuan (`signup`, `email_change`, `password_reset`, `deletion`). Challenge baru
-        (challenge_id baru, 5 percobaan, berlaku 10 menit) menggantikan yang lama secara atomik; kode lama tidak dapat
-        dipakai lagi. Ditolak 429 RATE_LIMITED sebelum `resend_available_at` (cooldown 60 detik) atau bila batas
-        5 pengiriman per jam per email/IP terlampaui; `retry_after_seconds` berisi sisa waktu tunggu.
+        Berlaku untuk semua tujuan (`signup`, `email_change`, `password_reset`, `deletion`). Challenge baru bertujuan
+        sama (challenge_id baru, 5 percobaan, berlaku 10 menit) menggantikan yang lama secara atomik dengan baris
+        users terkunci; kode lama tidak dapat dipakai lagi. Untuk challenge aktivasi, slot signup/email_change
+        dibatalkan bersama (lihat kepala berkas). Ditolak 429 RATE_LIMITED sebelum `resend_available_at` (cooldown
+        60 detik) atau bila batas 5 pengiriman per jam per email/IP terlampaui; `retry_after_seconds` berisi sisa
+        waktu tunggu.
 
         Challenge pengganti yang diberikan alur non-enumerasi (lupa sandi, hapus akun web) untuk email yang tidak
         terdaftar atau tidak memenuhi syarat diperlakukan persis seperti challenge nyata: resend menghasilkan
@@ -218,8 +241,14 @@ paths:
         serupa untuk email tidak terdaftar. Hasil menurut `users.status` (PRD 2.2, 4.2):
         - `active` -> `next: home` dan `session` (access token 15 menit, refresh token berotasi; AC F02-1).
           effective_status di GET /me menentukan rute (termasuk anggota suspended ke portal pembatasan).
-        - `pending_otp` -> `next: verify_otp` dan `challenge` signup (challenge aktif yang masih berlaku dipakai
-          ulang agar tidak memakan batas kirim), tanpa token sesi.
+        - `pending_otp` -> `next: verify_otp` dan `challenge` aktivasi, tanpa token sesi. Challenge aktivasi yang
+          sedang aktif (`signup` atau `email_change`, mana pun yang ada) dikembalikan apa adanya bila belum
+          kedaluwarsa dan masih memiliki sisa percobaan, agar tidak memakan batas kirim. Bila tidak ada, dengan
+          baris users terkunci seluruh challenge signup dan email_change yang masih aktif dibatalkan lalu satu
+          challenge baru dikirim ke email akun saat ini, bertujuan sama dengan challenge aktivasi terakhir akun
+          (`email_change` bila email pernah dikoreksi, selain itu `signup`). Paling banyak satu challenge aktivasi
+          aktif per akun (kepala berkas). Klien memakai `challenge.purpose` dari respons ini, bukan nilai yang
+          diingat dari layar OTP sebelumnya.
         - `deletion_pending` -> `next: deletion_pending` dan `deletion` (status permintaan penghapusan), tanpa
           sesi; sandi yang benar adalah challenge terbatas untuk pemeriksaan status (PRD 2.2, F-14).
         - `disabled` -> `next: account_disabled` tanpa sesi; klien menampilkan kontak bantuan (pemulihan hanya
@@ -338,8 +367,11 @@ paths:
       description: |
         Satu item per keluarga sesi yang belum dicabut dan belum kedaluwarsa milik pemanggil (alumni melihat sesi
         mobile, admin melihat sesi web admin). `id` adalah identitas keluarga sesi yang stabil selama rotasi refresh
-        token. Urutan `last_seen_at` terbaru lebih dahulu, lalu `id`; sesi pemanggil ditandai `current`. Tidak
-        memuat token, hash, maupun IP.
+        token. Urutan stabil `created_at` (awal keluarga sesi, tidak pernah berubah) terbaru lebih dahulu, lalu `id`
+        menurun; cursor keyset memakai pasangan itu sehingga aktivitas perangkat selama paging (termasuk request
+        daftar ini yang memperbarui `last_seen_at`) tidak membuat item terulang atau terlewat. Klien menampilkan
+        sesi `current` di atas dan boleh mengurutkan tampilan menurut `last_seen_at`. Tidak memuat token, hash,
+        maupun IP.
       x-kapdh-access: { audience: any, member_access: any }
       parameters:
         - $ref: "#/components/parameters/Cursor"
@@ -384,8 +416,17 @@ paths:
         (tidak terdaftar, `pending_otp`, `disabled`, `deletion_pending`) server mengembalikan challenge pengganti
         berbentuk sama tanpa mengirim email; batas pengiriman per email/IP diterapkan identik pada keduanya
         sehingga respons, waktu dan 429 tidak membedakan keadaan akun. Cooldown kegagalan login tidak menutup alur
-        ini (PRD 2.5). Reset yang diinisiasi pengurus (AC F16-4) juga dilanjutkan anggota lewat alur ini.
-        Akun admin memulihkan sandi melalui undangan ulang Super Admin (F-16), bukan endpoint ini.
+        ini (PRD 2.5). Akun admin memulihkan sandi melalui undangan ulang Super Admin (F-16), bukan endpoint ini.
+
+        Reset yang diinisiasi pengurus (AC F16-4, F-16; operasi milik domain admin-members, topik outbox
+        `member.password_reset_initiated`) mencabut seluruh sesi anggota, mengirim notifikasi keamanan, dan
+        menerbitkan challenge `password_reset` yang sama bentuknya HANYA ke email terverifikasi anggota. Email itu
+        memuat kode dan tautan `kapdh://app/forgot/otp?challenge_id=<uuid>` (rute /forgot/otp, ARCHITECTURE §8.4).
+        Tautan hanya membawa challenge_id, bukan kode, sehingga kode dari email tetap wajib dimasukkan di
+        POST /auth/password/forgot/verify. Layar yang dibuka dari tautan belum mengetahui sisa percobaan dan cooldown
+        sampai respons pertama (kode salah memuat sisa percobaan; POST /auth/otp/resend dengan challenge_id itu
+        mengembalikan OtpChallenge lengkap). Bila anggota justru memulai endpoint ini, challenge dari pengurus
+        dibatalkan dan diganti challenge baru ke email yang sama, yaitu kanal terverifikasi yang sama.
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -409,10 +450,15 @@ paths:
       operationId: verifyPasswordResetOtp
       summary: Tukar OTP pemulihan dengan reset_token sekali pakai (F-02, AC F02-4).
       description: |
-        Kode `password_reset` yang benar dikonsumsi sekali secara atomik dan ditukar dengan `reset_token`
-        (acak, disimpan hanya sebagai hash, berlaku 10 menit, sekali pakai, terikat akun dan sandi saat ini sehingga
-        batal bila sandi berubah lebih dahulu). Challenge pengganti dari alur non-enumerasi selalu diperlakukan
-        sebagai kode salah sampai percobaan habis (410), sama seperti challenge nyata.
+        Kode `password_reset` yang benar dikonsumsi sekali secara atomik (UPDATE bersyarat `consumed_at`) dan ditukar
+        dengan `reset_token`: JWT audience `kapdh-password-reset` berumur 10 menit, subject akun, klaim `cid`
+        challenge yang dikonsumsi dan pengikat HMAC dari password_hash saat ini (pola `otp_codes.binding`). Token
+        tidak disimpan di server; sifat sekali pakainya dijamin POST /auth/password/reset yang mengganti password_hash
+        sehingga pengikat tidak lagi cocok (kepala berkas). Token batal pula bila sandi berubah lewat jalur lain lebih
+        dahulu. Challenge pengganti dari alur non-enumerasi selalu diperlakukan sebagai kode salah sampai percobaan
+        habis (410), sama seperti challenge nyata.
+        Bila respons hilang, kode sudah dikonsumsi: pengguna memulai ulang lupa sandi (challenge baru, batas kirim
+        tetap berlaku); reset_token yang tidak pernah diterima kedaluwarsa sendiri.
         Galat: 400 VALIDATION_ERROR kode salah dengan sisa percobaan di `field_errors.code`; 410 OTP_EXPIRED
         (kedaluwarsa, dipakai, diganti, percobaan habis, tujuan lain); 429 RATE_LIMITED.
       security: []
@@ -447,13 +493,20 @@ paths:
       operationId: resetPassword
       summary: Simpan sandi baru dengan reset_token; seluruh sesi dicabut (AC F02-4, F16-4).
       description: |
-        Dalam satu transaksi: reset_token dikonsumsi (UPDATE bersyarat, sekali pakai), sandi baru di-hash bcrypt,
-        semua sesi dicabut dan `session_version` naik; setelah commit socket diputus (`session.revoked`). Notifikasi
+        Dalam satu transaksi dengan baris users terkunci (FOR UPDATE): reset_token diverifikasi (tanda tangan,
+        audience, kedaluwarsa, challenge `cid` milik akun yang sama bertujuan `password_reset` dan sudah dikonsumsi,
+        akun masih `active`, pengikat sama dengan password_hash saat ini), lalu sandi baru di-hash bcrypt dan
+        disimpan dengan UPDATE bersyarat `WHERE id = <akun> AND password_hash = <hash terikat> RETURNING`. Nol baris
+        berarti token sudah dipakai (atau sandi berubah lebih dahulu) -> 410; karena hash berganti, token yang sama
+        tidak pernah berhasil dua kali, termasuk dua request bersamaan. Dalam transaksi yang sama semua sesi
+        dicabut dan `session_version` naik; setelah commit socket diputus (`session.revoked`). Notifikasi
         kategori `security` (wajib, tidak dapat dimatikan) dan email pemberitahuan dikirim lewat outbox dengan deep
         link `/account/sessions`; isi pemberitahuan tidak memuat sandi atau token. Pengguna lalu masuk ulang.
         Sandi 8..72 byte UTF-8 dengan huruf besar, kecil, angka dan simbol; ditolak, bukan dipotong (PRD 2.5).
+        Bila respons hilang dan pengulangan menghasilkan 410, sandi baru mungkin sudah tersimpan: klien
+        mengarahkan ke login dengan sandi baru sebelum menyarankan lupa sandi ulang (PRD 4.5).
         Galat: 400 VALIDATION_ERROR `field_errors.new_password`; 410 OTP_EXPIRED bila reset_token kedaluwarsa,
-        sudah dipakai, atau sandi sudah berubah.
+        sudah dipakai, tidak sah, akun tidak lagi aktif, atau sandi sudah berubah (tidak dibedakan).
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -482,7 +535,8 @@ paths:
         `security` dan email pemberitahuan dikirim lewat outbox. Admin memakai POST /admin/auth/password/change.
         Sandi lama yang salah adalah galat formulir 400 VALIDATION_ERROR `field_errors.current_password` (bukan
         401, agar klien tidak memicu refresh/logout) dan dihitung ke batas kegagalan login (429 setelah ambang).
-        Sandi baru mengikuti aturan PRD 2.5 (`field_errors.new_password`).
+        Sandi baru mengikuti aturan PRD 2.5 (`field_errors.new_password`). Token sesi admin ditolak 403 FORBIDDEN
+        (operasi khusus audience mobile, ARCHITECTURE §4.3).
       x-kapdh-access: { audience: mobile, member_access: any }
       requestBody:
         required: true
@@ -493,6 +547,11 @@ paths:
         "204": { description: Sandi diganti; sesi lain dicabut. }
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN; dipanggil dengan token sesi admin (audience salah).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/RateLimited" }
         default: { $ref: "#/components/responses/Error" }
 
@@ -573,7 +632,8 @@ components:
       description: |
         Tujuan challenge OTP; kode terikat akun, tujuan dan challenge_id (PRD 2.5). `signup` pendaftaran,
         `email_change` koreksi email akun pending_otp (PRD 2.2), `password_reset` lupa sandi (F-02), `deletion`
-        penghapusan/pemeriksaan status dari web (F-14).
+        penghapusan/pemeriksaan status dari web (F-14). `signup` dan `email_change` berbagi satu slot aktivasi:
+        paling banyak satu dari keduanya aktif per akun.
 
     OtpChallenge:
       type: object
@@ -714,7 +774,9 @@ components:
         app_version:
           { type: [string, "null"], maxLength: 32, description: Dari header X-App-Version (mobile). }
         created_at:
-          { type: string, format: date-time, description: Waktu login perangkat (awal keluarga sesi). }
+          type: string
+          format: date-time
+          description: Waktu login perangkat (awal keluarga sesi); tidak berubah, kunci urutan daftar sesi.
         last_seen_at: { type: string, format: date-time, description: Aktivitas terakhir perangkat. }
         expires_at:
           { type: string, format: date-time, description: Batas refresh token terakhir keluarga sesi. }
@@ -744,17 +806,25 @@ components:
 
     PasswordResetGrant:
       type: object
-      description: Izin sekali pakai untuk menyimpan sandi baru (AC F02-4).
+      description: |
+        Izin sekali pakai untuk menyimpan sandi baru (AC F02-4). Simpan hanya di memori layar /forgot/reset; jangan
+        dipersistenkan atau dicatat.
       required: [reset_token, expires_at]
       properties:
-        reset_token: { type: string, maxLength: 512 }
+        reset_token:
+          type: string
+          maxLength: 512
+          x-sensitive: true
+          description: |
+            JWT audience kapdh-password-reset yang terikat akun, challenge yang dikonsumsi dan password_hash saat ini;
+            tidak berlaku lagi setelah sandi berganti (sekali pakai tanpa penyimpanan token).
         expires_at: { type: string, format: date-time, description: Berlaku 10 menit sejak OTP diverifikasi. }
 
     ResetPasswordRequest:
       type: object
       required: [reset_token, new_password]
       properties:
-        reset_token: { type: string, minLength: 10, maxLength: 512 }
+        reset_token: { type: string, minLength: 10, maxLength: 512, x-sensitive: true }
         new_password: { $ref: "#/components/schemas/Password" }
 
     ChangePasswordRequest:

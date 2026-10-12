@@ -3,15 +3,28 @@
 # Modul API: apps/api/src/modules/admin-auth. `x-kapdh-access` dijelaskan di kepala auth.yaml.
 #
 # Siklus identitas admin (F-16, PRD 8.2, admins.status invited|active|disabled):
-#   1. Super Admin mengundang (domain admin-admins, C7) atau bootstrap CLI membuat Super Admin pertama; keduanya
-#      menghasilkan tautan undangan sekali pakai `/invite/<token>` yang dikirim ke email admin (status invited, sandi
-#      awal acak yang tidak diketahui siapa pun).
+#   1. Super Admin mengundang (domain admin-admins, C7), bootstrap CLI membuat Super Admin pertama, atau Super Admin
+#      mereset MFA (lihat bawah); semuanya menghasilkan tautan undangan sekali pakai `/invite/<token>` berbatas
+#      waktu (`invite_expires_at`) yang dikirim ke email admin (status invited, sandi awal acak yang tidak diketahui
+#      siapa pun).
 #   2. POST /admin/auth/invitations/preview  -> tampilkan siapa/peran/izin undangan.
-#   3. POST /admin/auth/invitations/accept   -> sandi awal diganti; token undangan dikonsumsi; mfa_token enrolmen.
+#   3. POST /admin/auth/invitations/accept   -> sandi awal diganti; token undangan dikonsumsi; mfa_token PENDAFTARAN.
 #   4. POST /admin/auth/totp/enroll          -> secret + otpauth URI (QR).
 #   5. POST /admin/auth/totp/confirm         -> kode benar: TOTP terverifikasi, admin `active`, backup code, sesi.
-#   Admin yang meninggalkan langkah 4-5 dapat login ulang: POST /admin/auth/login memberi totp_enrollment_required.
-#   Tidak ada akses API admin sebelum TOTP terbukti (AC F02-2; tanpa aal1 di production).
+#
+# Jendela pendaftaran dibatasi waktu (AC F02-2, N-08): mfa_token pendaftaran dari langkah 3 (audience
+# `kapdh-admin-enroll`, berlaku 30 menit sejak penerimaan, tidak diperpanjang dan tidak dapat diterbitkan ulang) adalah
+# SATU-SATUNYA kredensial untuk langkah 4-5. Tidak ada jalur sandi-saja menuju pendaftaran TOTP: POST /admin/auth/login
+# hanya melayani admin `active` dengan TOTP terverifikasi dan menolak 401 admin `invited` (sudah atau belum menerima
+# undangan) maupun admin tanpa TOTP terverifikasi. Admin yang tidak menyelesaikan langkah 5 dalam 30 menit tetap
+# `invited` tanpa token undangan dan tidak dapat masuk; Super Admin menerbitkan undangan ulang (token baru berbatas
+# waktu, kembali ke langkah 2).
+#
+# Reset MFA oleh Super Admin (C7, AC F16-1, MFA + reautentikasi) = undangan ulang: dalam satu transaksi baris mfa_totp
+# (secret dan backup code) dihapus, semua sesi admin dicabut dan session_version naik, status kembali `invited` dengan
+# token undangan baru; admin mengulang langkah 2-5 termasuk sandi baru. Trigger admins_guard_last_super_admin tetap
+# menjaga Super Admin aktif terakhir (AC F16-2). Tidak ada akses API admin sebelum TOTP terbukti (AC F02-2; tanpa aal1
+# di production).
 tags:
   - name: Admin Auth
     description: |
@@ -27,16 +40,21 @@ paths:
       operationId: adminLogin
       summary: Tahap sandi admin; hasilnya hanya mfa_token, belum bisa memanggil API admin (AC F02-2).
       description: |
-        Admin masuk dengan email (guidelines "Email atau Username": identitas admin R1.0 hanya email). Sandi benar
-        untuk akun admin yang dapat login (admin `active`, atau `invited` yang sudah menerima undangan dan belum
-        menyelesaikan TOTP) menghasilkan `mfa_token` berumur pendek. `mfa_token` hanya berlaku untuk
-        POST /admin/auth/mfa, atau untuk POST /admin/auth/totp/enroll dan /confirm bila
-        `totp_enrollment_required` (belum ada TOTP terverifikasi, termasuk setelah Super Admin mereset MFA);
-        token ini ditolak 403 MFA_REQUIRED di seluruh API admin (AC F02-2).
+        Admin masuk dengan email (guidelines "Email atau Username": identitas admin R1.0 hanya email). Hanya admin
+        `active` (akun users `active`) dengan TOTP terverifikasi yang dapat login: sandi benar menghasilkan
+        `mfa_token` audience `kapdh-admin-mfa` berumur 5 menit dengan `totp_enrollment_required: false`.
+        `mfa_token` ini hanya berlaku untuk POST /admin/auth/mfa; ditolak 401 di /admin/auth/totp/* dan 403
+        MFA_REQUIRED di seluruh API admin (AC F02-2).
+
+        Pendaftaran TOTP TIDAK pernah dibuka dari login (lihat kepala berkas): admin `invited` (sudah atau belum
+        menerima undangan, termasuk setelah reset MFA) dan admin tanpa TOTP terverifikasi ditolak 401 yang sama
+        dengan sandi salah, sehingga sandi yang bocor tidak cukup untuk mendaftarkan autentikator penyerang.
+        Halaman login menampilkan petunjuk umum "Belum menyelesaikan aktivasi? Minta undangan ulang ke Super Admin."
+
         Galat: 401 UNAUTHENTICATED "Email atau sandi salah" untuk kredensial salah, akun tidak dikenal, admin
-        `disabled`, atau undangan yang belum diterima (tidak dibedakan); 429 RATE_LIMITED setelah 10 kegagalan
-        dalam 15 menit per email atau ambang per IP (PRD 2.5). Admin yang lupa sandi meminta undangan ulang ke
-        Super Admin (F-16).
+        `disabled`, admin `invited`, atau admin tanpa TOTP terverifikasi (tidak dibedakan); 429 RATE_LIMITED
+        setelah 10 kegagalan dalam 15 menit per email atau ambang per IP (PRD 2.5). Admin yang lupa sandi meminta
+        undangan ulang ke Super Admin (F-16).
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -61,14 +79,20 @@ paths:
       operationId: adminVerifyMfa
       summary: Verifikasi TOTP atau backup code; menerbitkan access token di body dan refresh cookie HttpOnly (F-02).
       description: |
-        Tepat satu dari `totp_code` atau `backup_code`. TOTP diterima dalam jendela langkah yang sempit dan setiap
-        langkah hanya sekali (`mfa_totp.last_used_step`, anti-replay). Backup code sekali pakai dikonsumsi secara
-        atomik (UPDATE bersyarat), sisanya terlihat di GET /admin/me `backup_codes_remaining`. Berhasil: sesi admin
-        `mfa_level` 2 dibuat, `users.last_login_at` diperbarui, audit `admin.login` ditulis, access token di body
-        dan refresh token di cookie `kapdh_admin_rt` (tidak pernah di localStorage, PRD 5.2).
-        Galat: 400 VALIDATION_ERROR bila tidak ada kode; 401 UNAUTHENTICATED untuk kode salah, mfa_token
-        kedaluwarsa, admin tidak aktif, atau TOTP belum terdaftar (gunakan alur pendaftaran TOTP); 429
-        RATE_LIMITED setelah 5 kegagalan dalam 15 menit per admin.
+        Tepat satu dari `totp_code` atau `backup_code`, dengan `mfa_token` dari POST /admin/auth/login. TOTP
+        diterima dalam jendela langkah yang sempit dan setiap langkah hanya sekali (`mfa_totp.last_used_step`,
+        anti-replay, UPDATE bersyarat). Backup code sekali pakai dikonsumsi secara atomik (UPDATE bersyarat), sisanya
+        terlihat di GET /admin/me `backup_codes_remaining`. Berhasil: sesi admin `mfa_level` 2 dibuat,
+        `users.last_login_at` diperbarui, audit `admin.login` ditulis, access token di body dan refresh token di
+        cookie `kapdh_admin_rt` (tidak pernah di localStorage, PRD 5.2).
+
+        Kode salah adalah galat formulir, sama dengan /totp/confirm dan POST /auth/reauth: 400 VALIDATION_ERROR
+        dengan `field_errors.totp_code` atau `field_errors.backup_code` berisi sisa percobaan (mis. "Kode salah.
+        Sisa percobaan 3."); mfa_token tetap berlaku sampai kedaluwarsa sehingga UI tetap di layar /login/mfa.
+        401 UNAUTHENTICATED hanya untuk mfa_token yang tidak sah atau kedaluwarsa (termasuk mfa_token pendaftaran),
+        admin tidak lagi `active`, atau TOTP tidak terverifikasi; UI kembali ke /login.
+        Galat lain: 400 VALIDATION_ERROR bila tidak ada kode atau keduanya dikirim; 429 RATE_LIMITED setelah 5
+        kegagalan dalam 15 menit per admin (juga dihitung ke ambang per IP).
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -86,8 +110,20 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminSession" }
-        "400": { $ref: "#/components/responses/ValidationError" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "400":
+          description: |
+            VALIDATION_ERROR: kode TOTP/backup salah (`field_errors.totp_code` atau `field_errors.backup_code`
+            dengan sisa percobaan), atau kode tidak dikirim/dikirim keduanya. Tetap di layar MFA.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: |
+            UNAUTHENTICATED: mfa_token tidak sah atau kedaluwarsa, admin tidak aktif, atau TOTP tidak terverifikasi;
+            kembali ke halaman login.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/RateLimited" }
         default: { $ref: "#/components/responses/Error" }
 
@@ -133,7 +169,11 @@ paths:
         status `invited`) lalu dikonsumsi (`invite_token_hash` dan `invite_expires_at` dikosongkan), sandi awal
         acak diganti sandi pilihan admin (aturan PRD 2.5), email akun admin dianggap terverifikasi, dan audit
         `admin.invitation_accepted` ditulis. Admin TETAP `invited` sampai TOTP dikonfirmasi; respons memberi
-        `mfa_token` dengan `totp_enrollment_required: true` untuk langkah pendaftaran TOTP.
+        `mfa_token` PENDAFTARAN dengan `totp_enrollment_required: true`: audience `kapdh-admin-enroll`, berlaku
+        30 menit sejak penerimaan (`mfa_expires_at`), terikat admin dan HMAC password_hash yang baru disimpan. Token
+        ini satu-satunya kredensial pendaftaran TOTP, tidak diperpanjang oleh /totp/enroll, dan tidak dapat
+        diperoleh lagi lewat login (kepala berkas); simpan hanya di memori halaman. Bila kedaluwarsa sebelum
+        /totp/confirm berhasil, admin meminta undangan ulang ke Super Admin.
         Galat: 400 VALIDATION_ERROR `field_errors.password`; 410 OTP_EXPIRED bila token tidak berlaku (termasuk
         penerimaan kedua yang kalah balapan); 429 RATE_LIMITED per IP.
       security: []
@@ -164,11 +204,15 @@ paths:
       operationId: adminStartTotpEnrollment
       summary: Mulai pendaftaran TOTP; menghasilkan secret dan otpauth URI untuk QR (F-02, F-16).
       description: |
-        Hanya dengan `mfa_token` dari login/penerimaan undangan yang `totp_enrollment_required`. Membuat secret
-        TOTP baru (disimpan terenkripsi AES-GCM di `mfa_totp`, `verified_at` kosong) dan menggantikan secret yang
-        belum terverifikasi sebelumnya. Secret hanya ditampilkan di respons ini dan tidak pernah dicatat di log atau
-        audit (ARCHITECTURE §2 butir 3). Galat: 401 UNAUTHENTICATED mfa_token tidak berlaku; 403 FORBIDDEN bila
-        TOTP sudah terverifikasi (pendaftaran ulang hanya setelah Super Admin mereset MFA); 429 RATE_LIMITED.
+        Hanya dengan mfa_token pendaftaran dari POST /admin/auth/invitations/accept (audience `kapdh-admin-enroll`,
+        30 menit); mfa_token login ditolak 401. Token dianggap tidak berlaku bila admin tidak lagi `invited`, undangan
+        ulang telah diterbitkan (`invite_token_hash` terisi lagi), akun users tidak `active`, atau password_hash tidak
+        lagi sama dengan pengikat token. Membuat secret TOTP baru (disimpan terenkripsi AES-GCM di `mfa_totp`,
+        `verified_at` kosong) dan menggantikan secret yang belum terverifikasi sebelumnya; boleh diulang selama token
+        berlaku (mis. QR gagal dipindai) tanpa memperpanjang masa berlakunya. Secret hanya ditampilkan di respons ini
+        dan tidak pernah dicatat di log atau audit (ARCHITECTURE §2 butir 3). Galat: 401 UNAUTHENTICATED mfa_token
+        tidak berlaku atau kedaluwarsa (minta undangan ulang); 403 FORBIDDEN bila TOTP sudah terverifikasi
+        (pendaftaran ulang hanya melalui reset MFA oleh Super Admin, yaitu undangan ulang); 429 RATE_LIMITED.
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -194,7 +238,9 @@ paths:
       operationId: adminConfirmTotpEnrollment
       summary: Konfirmasi kode TOTP pertama; admin aktif, backup code diterbitkan, sesi admin dibuat (F-16, PRD 8.2).
       description: |
-        Dalam satu transaksi: kode diverifikasi terhadap secret yang belum terverifikasi (anti-replay langkah), TOTP
+        Memakai mfa_token pendaftaran yang sama dengan /totp/enroll (syarat berlakunya sama; mfa_token login ditolak
+        401). Dalam satu transaksi dengan baris admin terkunci dan status masih `invited` tanpa undangan ulang
+        (UPDATE bersyarat): kode diverifikasi terhadap secret yang belum terverifikasi (anti-replay langkah), TOTP
         ditandai `verified_at` dengan UPDATE bersyarat (hanya satu konfirmasi menang), 10 backup code baru dibuat
         (hanya hash yang disimpan), admin `invited` menjadi `active` dengan `activated_at`, audit
         `admin.activated`/`admin.mfa_enrolled` ditulis, email pemberitahuan keamanan dijadwalkan lewat outbox
@@ -238,7 +284,7 @@ paths:
         tidak menggantikan pemeriksaan izin API (PRD 2.3). Dipanggil tanpa X-Background-Request untuk tombol
         "Tetap masuk" pada peringatan idle (AC F02-5); polling berkala wajib mengirim X-Background-Request.
         Galat: 401 UNAUTHENTICATED (sesi dicabut atau idle 30 menit); 403 MFA_REQUIRED bila memakai mfa_token;
-        403 FORBIDDEN bila admin tidak lagi aktif.
+        403 FORBIDDEN bila admin tidak lagi aktif atau dipanggil dengan token sesi mobile.
       x-kapdh-access: { audience: admin }
       parameters:
         - $ref: "#/components/parameters/AdminBackgroundRequest"
@@ -249,7 +295,13 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminProfile" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/MfaRequired" }
+        "403":
+          description: |
+            MFA_REQUIRED (token tahap sandi, AC F02-2) atau FORBIDDEN (admin tidak lagi aktif, atau token sesi
+            mobile).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         default: { $ref: "#/components/responses/Error" }
 
   /admin/auth/backup-codes:
@@ -261,7 +313,8 @@ paths:
         Wajib header X-Reauth-Token dari POST /auth/reauth (sandi + TOTP, maksimal 10 menit). Dalam satu
         transaksi seluruh hash backup code lama diganti 10 hash baru, audit `admin.backup_codes_regenerated` (tanpa
         kode) ditulis, dan email pemberitahuan keamanan dijadwalkan lewat outbox. Kode hanya ditampilkan sekali.
-        Galat: 401 UNAUTHENTICATED; 403 REAUTH_REQUIRED atau MFA_REQUIRED.
+        Galat: 401 UNAUTHENTICATED; 403 REAUTH_REQUIRED, MFA_REQUIRED, atau FORBIDDEN (admin tidak aktif, token
+        sesi mobile).
       x-kapdh-access: { audience: admin, reauth: true }
       parameters:
         - $ref: "#/components/parameters/ReauthToken"
@@ -272,7 +325,13 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminBackupCodes" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/ReauthRequired" }
+        "403":
+          description: |
+            REAUTH_REQUIRED (X-Reauth-Token tidak ada, tidak sah atau lebih dari 10 menit), MFA_REQUIRED, atau
+            FORBIDDEN (admin tidak aktif, token sesi mobile).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         default: { $ref: "#/components/responses/Error" }
 
   /admin/auth/password/change:
@@ -296,7 +355,11 @@ paths:
         "204": { description: Sandi admin diganti; sesi lain dicabut. }
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/MfaRequired" }
+        "403":
+          description: MFA_REQUIRED atau FORBIDDEN (admin tidak aktif, token sesi mobile).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/RateLimited" }
         default: { $ref: "#/components/responses/Error" }
 
@@ -309,7 +372,12 @@ components:
       description: |
         Isi `1` hanya pada request polling/refetch otomatis web admin. Request bertanda ini tidak memperbarui
         `sessions.last_activity_at`, sehingga idle timeout 30 menit tetap berjalan (AC F02-5, N-08). Request yang
-        dipicu pengguna tidak boleh mengirim header ini. Berlaku untuk semua operasi admin.
+        dipicu pengguna tidak boleh mengirim header ini. Server (AuthGuard) menghormatinya pada SETIAP operasi
+        berautentikasi admin, terlepas dari deklarasi kontrak; deklarasi di sini hanya untuk GET /admin/me. Usulan
+        perubahan bersama (belum dibuat): pindahkan parameter ini ke root.yaml sebagai
+        `components.parameters.BackgroundRequest` agar operasi GET admin yang di-polling di domain lain (hitungan
+        dashboard, antrean pembayaran, notifikasi admin) mendeklarasikannya; klien web admin mengirimnya lewat
+        interceptor untuk semua refetch otomatis.
       schema: { type: string, pattern: "^1$" }
 
   schemas:
@@ -322,18 +390,24 @@ components:
 
     AdminLoginResponse:
       type: object
-      description: Tantangan MFA admin setelah tahap sandi atau penerimaan undangan (AC F02-2).
+      description: |
+        Tantangan MFA admin setelah tahap sandi (POST /admin/auth/login) atau penerimaan undangan
+        (POST /admin/auth/invitations/accept), AC F02-2. Dua jenis token tidak dapat dipertukarkan.
       required: [mfa_token, mfa_expires_at, totp_enrollment_required]
       properties:
         mfa_token:
           type: string
+          x-sensitive: true
           description: |
-            Hanya untuk POST /admin/auth/mfa, atau /admin/auth/totp/enroll dan /confirm bila
-            totp_enrollment_required; tidak berlaku untuk API admin (403 MFA_REQUIRED).
+            Bila totp_enrollment_required=false (login): token audience kapdh-admin-mfa 5 menit, hanya untuk
+            POST /admin/auth/mfa. Bila true (penerimaan undangan): token pendaftaran audience kapdh-admin-enroll
+            30 menit, hanya untuk /admin/auth/totp/enroll dan /confirm. Keduanya ditolak 403 MFA_REQUIRED di API admin.
         mfa_expires_at: { type: string, format: date-time }
         totp_enrollment_required:
           type: boolean
-          description: True bila admin belum memiliki TOTP terverifikasi; wajib mendaftar sebelum aktif (F-16).
+          description: |
+            Selalu false dari login (login hanya untuk admin dengan TOTP terverifikasi) dan selalu true dari
+            penerimaan undangan: lanjut ke /login/enroll dan selesaikan sebelum `mfa_expires_at` (F-16, PRD 8.2).
 
     AdminMfaRequest:
       type: object
