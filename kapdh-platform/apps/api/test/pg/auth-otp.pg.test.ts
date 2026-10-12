@@ -8,9 +8,9 @@ import "reflect-metadata";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../src/bootstrap.js";
-import type { Db } from "../../src/infra/db.js";
-import { MemoryMailer } from "../../src/infra/mailer.js";
-import { TestClock, testEnv } from "../support/test-app.js";
+import { MemoryMailer } from "../../src/core/adapters/mailer.js";
+import type { Db } from "../../src/core/db/types.js";
+import { FakePush, TestClock, testEnv } from "../support/test-app.js";
 import {
   barrier,
   connectAs,
@@ -36,7 +36,10 @@ beforeAll(async () => {
   api = connectAs(tdb, "kapdh_app", 10);
   clock = new TestClock();
   mailer = new MemoryMailer();
-  app = await createApp({ env: testEnv, db: api.db as unknown as Db, mailer, clock }, { logger: false });
+  app = await createApp(
+    { env: testEnv, db: api.db as unknown as Db, mailer, clock, push: new FakePush(), redis: null },
+    { logger: false },
+  );
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
 });

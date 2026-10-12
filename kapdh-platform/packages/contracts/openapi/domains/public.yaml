@@ -21,6 +21,28 @@ paths:
               schema: { $ref: "#/components/schemas/HealthStatus" }
         default: { $ref: "#/components/responses/Error" }
 
+  /health/ready:
+    get:
+      tags: [Public]
+      operationId: getHealthReady
+      summary: Kesiapan melayani (ping PostgreSQL, Redis bila dipakai, umur outbox tertua; PRD 5.5).
+      description: |
+        Dipakai monitor (Uptime Kuma) dan orkestrator untuk readiness. 503 bila database atau Redis yang
+        dikonfigurasi tidak tersedia. Umur outbox tertua yang belum terkirim menandai worker macet (PRD 5.5).
+      security: []
+      responses:
+        "200":
+          description: Siap melayani.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthReadiness" }
+        "503":
+          description: Dependensi wajib tidak tersedia.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthReadiness" }
+        default: { $ref: "#/components/responses/Error" }
+
   /public/config:
     get:
       tags: [Public]
@@ -84,6 +106,23 @@ components:
         status: { type: string, const: ok }
         time: { type: string, format: date-time }
 
+    HealthReadiness:
+      type: object
+      required: [status, time, checks]
+      properties:
+        status: { type: string, enum: [ok, unavailable] }
+        time: { type: string, format: date-time }
+        checks:
+          type: object
+          required: [database, redis, outbox_oldest_pending_seconds]
+          properties:
+            database: { type: string, enum: [ok, unavailable] }
+            redis: { type: string, enum: [ok, unavailable, not_configured] }
+            outbox_oldest_pending_seconds:
+              type: [integer, "null"]
+              minimum: 0
+              description: Umur event outbox pending tertua dalam detik; null bila tidak ada.
+
     MinAppVersion:
       type: object
       required: [android, ios]
@@ -111,6 +150,16 @@ components:
         email: { type: string, format: email, examples: [bantuan@kapdh.or.id] }
         whatsapp: { type: [string, "null"] }
 
+    LegalVersions:
+      type: object
+      description: |
+        Versi terbit dokumen legal yang berlaku (pages.published_version); null selama belum diterbitkan.
+        Klien membandingkan dengan versi yang disetujui pengguna (F-01, F-08).
+      properties:
+        privacy_version: { type: [string, "null"] }
+        terms_version: { type: [string, "null"] }
+        community_version: { type: [string, "null"] }
+
     PublicConfig:
       type: object
       required: [min_app_version, maintenance]
@@ -119,6 +168,7 @@ components:
         maintenance: { $ref: "#/components/schemas/MaintenanceStatus" }
         store_links: { $ref: "#/components/schemas/StoreLinks" }
         support: { $ref: "#/components/schemas/SupportContact" }
+        legal: { $ref: "#/components/schemas/LegalVersions" }
 
     PublicPage:
       type: object

@@ -1,51 +1,62 @@
 import "reflect-metadata";
 import type { PGlite } from "@electric-sql/pglite";
-import type { ServerEnv } from "@kapdh/config";
+import type { ApiEnv } from "@kapdh/config";
 import { schema } from "@kapdh/database";
+import { MemoryStorage } from "@kapdh/storage";
+import type { DynamicModule, Type } from "@nestjs/common";
+import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { drizzle } from "drizzle-orm/pglite";
+import type { DestinationStream } from "pino";
 import { inject } from "vitest";
 import { createApp } from "../../src/bootstrap.js";
-import type { Clock } from "../../src/infra/clock.js";
-import type { Db } from "../../src/infra/db.js";
-import { MemoryMailer } from "../../src/infra/mailer.js";
+import { MemoryMailer } from "../../src/core/adapters/mailer.js";
+import type { Db } from "../../src/core/db/types.js";
+import { JobRunner } from "../../src/core/jobs/job-runner.js";
+import { MemoryRateLimitStore } from "../../src/core/rate-limit/store.js";
+import { SettingsService } from "../../src/core/settings/settings.service.js";
+import { FakePush, TestClock } from "./fakes.js";
 import { dumpMigratedTemplate, pgliteFromTemplate, readTemplateFile } from "./pglite-template.js";
 
-export const testEnv: ServerEnv = {
+export { FakePush, TestClock } from "./fakes.js";
+
+/** Env uji lengkap (ApiEnv). Variabel baru di packages/config wajib ditambahkan di sini dan di .env.example. */
+export const testEnv: ApiEnv = {
   NODE_ENV: "test",
   PORT: 0,
   DATABASE_URL: "postgres://unused",
-  REDIS_URL: "redis://unused",
+  REDIS_URL: undefined,
+  LOG_LEVEL: "error",
+  PUBLIC_WEB_URL: "http://web.test",
+  ADMIN_ORIGIN: "http://admin.test",
+  SMTP_URL: undefined,
+  MAIL_FROM: "test@kapdh.test",
+  STORAGE_DRIVER: "local",
+  STORAGE_LOCAL_ROOT: "/tmp",
+  S3_ENDPOINT: undefined,
+  S3_REGION: undefined,
+  S3_BUCKET: undefined,
+  S3_ACCESS_KEY_ID: undefined,
+  S3_SECRET_ACCESS_KEY: undefined,
+  S3_FORCE_PATH_STYLE: false,
+  FILE_URL_SECRET: "f".repeat(40),
+  FCM_PROJECT_ID: undefined,
+  FCM_SERVICE_ACCOUNT_JSON: undefined,
+  TRUST_PROXY_HOPS: 0,
+  HSTS_ENABLED: false,
   JWT_ACCESS_SECRET: "t".repeat(40),
   JWT_ISSUER: "http://test",
   QR_SIGNING_KEYS: "k1:" + "q".repeat(32),
   OTP_HMAC_SECRET: "h".repeat(40),
   TOTP_ENC_KEY: "ab".repeat(32),
   BCRYPT_COST: 4,
-  PUBLIC_WEB_URL: "http://web.test",
-  ADMIN_ORIGIN: "http://admin.test",
-  STORAGE_DRIVER: "local",
-  STORAGE_LOCAL_ROOT: "/tmp",
-  MAIL_FROM: "test@kapdh.test",
-  LOG_LEVEL: "error",
 };
-
-/** Jam yang bisa dimajukan untuk menguji kedaluwarsa dan idle timeout. */
-export class TestClock implements Clock {
-  constructor(private current = new Date("2026-10-13T02:00:00Z")) {}
-  now() {
-    return new Date(this.current);
-  }
-  advance(ms: number) {
-    this.current = new Date(this.current.getTime() + ms);
-  }
-}
 
 let cachedTemplate: Promise<Blob> | undefined;
 
 /**
- * Template database yang sudah dimigrasi: dari globalSetup (sekali per run) bila tersedia, selain itu dimigrasi
- * sekali per berkas uji lalu di-dump. Migrasi selalu memakai migrator Drizzle dan urutan `_journal.json`, persis
- * seperti job migrasi production (ARCHITECTURE §5.2).
+ * Template database yang sudah dimigrasi + seed referensi: dari globalSetup (sekali per run) bila tersedia, selain
+ * itu dibuat sekali per berkas uji. Migrasi selalu memakai migrator Drizzle dan urutan `_journal.json`, persis seperti
+ * job migrasi production (ARCHITECTURE §5.2).
  */
 function migratedTemplate(): Promise<Blob> {
   if (!cachedTemplate) {
@@ -63,18 +74,80 @@ export async function createTestDatabase(): Promise<{ pg: PGlite; db: Db }> {
   return { pg, db };
 }
 
-export async function createTestApp() {
+export interface TestAppOptions {
+  /** Menimpa sebagian env uji (mis. TRUST_PROXY_HOPS, HSTS_ENABLED). */
+  env?: Partial<ApiEnv>;
+  clock?: TestClock;
+  /** Modul tambahan (controller penguji). Rute di luar kontrak hanya untuk aplikasi uji khusus. */
+  extraModules?: (Type | DynamicModule)[];
+  /** Tujuan log JSON; tanpa nilai log dimatikan. */
+  logDestination?: DestinationStream;
+}
+
+export interface TestApp {
+  app: NestFastifyApplication;
+  db: Db;
+  mailer: MemoryMailer;
+  clock: TestClock;
+  push: FakePush;
+  storage: MemoryStorage;
+  /** Eksekutor job dan dispatcher outbox (ARCHITECTURE §4.8): `await jobs.dispatchOutbox()`. */
+  jobs: JobRunner;
+  settings: SettingsService;
+  rateLimits: MemoryRateLimitStore;
+  pg: PGlite;
+  env: ApiEnv;
+}
+
+/** Store rate limit aplikasi uji yang masih hidup; dikosongkan sebelum setiap tes (test/support/setup.ts). */
+const liveRateLimitStores = new Set<MemoryRateLimitStore>();
+
+export function resetRateLimits(): void {
+  for (const store of liveRateLimitStores) store.clear();
+}
+
+/**
+ * Aplikasi API lengkap di atas PGlite (ARCHITECTURE §9.1): TestClock, MemoryMailer, FakePush, MemoryStorage, rate limit
+ * memori yang direset per tes. `app.close()` juga menutup PGlite.
+ */
+export async function createTestApp(options: TestAppOptions = {}): Promise<TestApp> {
   const { pg, db } = await createTestDatabase();
+  const env: ApiEnv = { ...testEnv, ...options.env };
   const mailer = new MemoryMailer();
-  const clock = new TestClock();
-  const app = await createApp({ env: testEnv, db, mailer, clock }, { logger: false });
+  const clock = options.clock ?? new TestClock();
+  const push = new FakePush();
+  const storage = new MemoryStorage();
+  const rateLimits = new MemoryRateLimitStore();
+  const app = await createApp(
+    { env, db, mailer, clock, push, storage, redis: null },
+    {
+      logger: options.logDestination !== undefined,
+      logDestination: options.logDestination,
+      rateLimitStore: rateLimits,
+      extraModules: options.extraModules,
+    },
+  );
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
+  liveRateLimitStores.add(rateLimits);
   // Tutup PGlite bersama aplikasi agar tidak ada instance WASM yang tertinggal per berkas uji.
   const closeApp = app.close.bind(app);
   app.close = async () => {
+    liveRateLimitStores.delete(rateLimits);
     await closeApp();
     if (!pg.closed) await pg.close();
   };
-  return { app, db, mailer, clock, pg };
+  return {
+    app,
+    db,
+    mailer,
+    clock,
+    push,
+    storage,
+    jobs: app.get(JobRunner),
+    settings: app.get(SettingsService),
+    rateLimits,
+    pg,
+    env,
+  };
 }
