@@ -1,6 +1,8 @@
 import type { components } from "@kapdh/contracts";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { api } from "./client";
-import { unwrap, useApiQuery } from "./query";
+import { refetchInBackground, unwrap, useApiQuery } from "./query";
 
 type FilePurpose = components["schemas"]["FilePurpose"];
 type FileRef = components["schemas"]["FileRef"];
@@ -50,18 +52,54 @@ export function uploadFile(purpose: FilePurpose, file: File, signal?: AbortSigna
   );
 }
 
-/** Sisa umur URL bertanda tangan yang masih aman dipakai sebelum diminta ulang (server: <= 10 menit, PRD 5.4). */
-const ACCESS_STALE_MS = 8 * 60_000;
+/** URL bertanda tangan diminta ulang sekian ms sebelum `expires_at` (server: berlaku <= 10 menit, PRD 5.4). */
+export const ACCESS_RENEW_MARGIN_MS = 30_000;
+/** URL yang tersisa kurang dari ini dianggap sudah kedaluwarsa (tidak layak dibuka). */
+const ACCESS_EXPIRED_MARGIN_MS = 5_000;
 
-/** GET /files/{id}/access: URL bertanda tangan untuk pratinjau berkas privat (bukti bayar, sampul). */
+type FileAccess = components["schemas"]["FileAccess"];
+
+function expiresAtMs(access: FileAccess | undefined): number {
+  const ms = access ? Date.parse(access.expires_at) : Number.NaN;
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+/** URL akses sudah (hampir) kedaluwarsa sehingga harus diminta ulang sebelum dipakai. */
+export function isAccessExpired(access: FileAccess | undefined, now = Date.now()): boolean {
+  const exp = expiresAtMs(access);
+  return exp === 0 || exp - now <= ACCESS_EXPIRED_MARGIN_MS;
+}
+
+/**
+ * GET /files/{id}/access: URL bertanda tangan untuk pratinjau berkas privat (bukti bayar, sampul).
+ * Umur cache mengikuti `expires_at` dari server, dan selama komponen terpasang URL diperbarui otomatis sebelum
+ * kedaluwarsa (permintaan latar, bukan aktivitas admin; AC F02-5) sehingga tautan "Buka" tidak pernah basi walau
+ * panel terbuka lebih lama dari umur URL.
+ */
 export function useFileAccess(fileId: string | null | undefined) {
-  return useApiQuery({
+  const queryClient = useQueryClient();
+  const access = useApiQuery<FileAccess>({
     queryKey: ["file-access", fileId],
     enabled: Boolean(fileId),
-    staleTime: ACCESS_STALE_MS,
-    gcTime: ACCESS_STALE_MS,
+    staleTime: (query) => Math.max(0, expiresAtMs(query.state.data) - Date.now() - ACCESS_RENEW_MARGIN_MS),
+    gcTime: 10 * 60_000,
     retry: false,
     request: ({ signal, headers }) =>
       api.GET("/files/{fileId}/access", { params: { path: { fileId: fileId ?? "" } }, signal, headers }),
   });
+
+  const expiresAt = access.data?.expires_at;
+  useEffect(() => {
+    if (!fileId || !expiresAt) return;
+    const exp = Date.parse(expiresAt);
+    if (!Number.isFinite(exp)) return;
+    const delay = Math.max(1_000, exp - Date.now() - ACCESS_RENEW_MARGIN_MS);
+    const timer = window.setTimeout(
+      () => void refetchInBackground(queryClient, ["file-access", fileId]),
+      delay,
+    );
+    return () => window.clearTimeout(timer);
+  }, [fileId, expiresAt, queryClient]);
+
+  return access;
 }

@@ -1,6 +1,5 @@
 import {
   type ColumnDef,
-  flexRender,
   getCoreRowModel,
   type OnChangeFn,
   type RowData,
@@ -9,7 +8,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown, Pencil, Trash } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "../../lib/cn";
 import { Button, IconButton } from "./Button";
 import { EmptyState, ErrorState, Loading } from "./States";
@@ -58,6 +57,18 @@ export function useCursorPaging(resetKey: unknown, pageSize = 30) {
   };
 }
 
+/**
+ * Render templat sel/judul TanStack lewat SATU tipe komponen yang stabil. `flexRender` bawaan memakai fungsi `cell`
+ * sebagai tipe komponen React, sehingga setiap kali definisi kolom dibuat ulang (mis. useMemo bergantung pada baris
+ * aktif atau jam) React melepas lalu memasang ulang seluruh sel dan fokus keyboard di dalam sel jatuh ke <body>
+ * (N-11). Dengan pembungkus ini React hanya merender ulang isi sel. Hook di dalam fungsi sel tetap sah karena fungsi
+ * itu dipanggil di dalam komponen ini dan setiap sel diberi key per kolom.
+ */
+function CellTemplate<P>({ template, props }: { template: unknown; props: P }): ReactNode {
+  if (typeof template === "function") return (template as (p: P) => ReactNode)(props);
+  return (template as ReactNode) ?? null;
+}
+
 export interface DataTablePagination {
   pageIndex: number;
   pageSize: number;
@@ -74,6 +85,11 @@ export interface DataTableSelection<T> {
   rowLabel: (row: T) => string;
   /** Aksi massal yang AMAN dan dapat diaudit saja (F-15). */
   actions: (rows: T[], clear: () => void) => ReactNode;
+  /**
+   * Pilihan dikosongkan saat halaman berubah dan saat nilai ini berubah (mis. objek filter/pencarian), agar aksi
+   * massal tidak mengenai baris yang tidak lagi terlihat.
+   */
+  resetKey?: unknown;
 }
 
 export interface DataTableProps<T> {
@@ -82,6 +98,8 @@ export interface DataTableProps<T> {
   /**
    * Definisi kolom TanStack. Kolom yang boleh diurutkan server wajib punya `accessorKey`/`accessorFn`; kolom tanpa
    * accessor (hanya `id` + `cell`) tidak dapat diurutkan. `id`/`accessorKey` dipakai sebagai nama kolom urutan.
+   * `cell`/`header` berupa teks atau fungsi render; definisi boleh dibuat ulang (mis. useMemo yang bergantung pada
+   * baris aktif) tanpa membuat sel dipasang ulang, karena DataTable merendernya lewat komponen yang stabil.
    */
   // ColumnDef<T, any> adalah bentuk baku TanStack Table untuk kolom bernilai campuran.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -92,7 +110,10 @@ export interface DataTableProps<T> {
   status: "pending" | "error" | "success";
   error?: unknown;
   onRetry?: () => void;
-  /** Sedang memuat ulang/berpindah halaman dengan data lama masih tampil. */
+  /**
+   * Sedang berpindah halaman/filter dengan data lama masih tampil (placeholder). Ringkasan menampilkan "Memuat..."
+   * alih-alih rentang yang belum sesuai, dan tombol paging tetap dapat difokus tetapi klik diabaikan.
+   */
   isFetching?: boolean;
   total?: number;
   pagination?: DataTablePagination;
@@ -198,30 +219,71 @@ export function DataTable<T>({
     onRowSelectionChange: selection?.onChange,
   });
 
-  // Pilihan tidak dibawa ke halaman lain (aksi massal hanya pada baris yang terlihat).
+  // Pilihan tidak dibawa ke halaman/filter lain (aksi massal hanya pada baris yang terlihat). Handler disimpan di
+  // ref sehingga pemanggil boleh memberi fungsi inline tanpa memicu efek (dan render) berulang tanpa akhir.
   const pageIndex = pagination?.pageIndex ?? 0;
-  const onSelectionChange = selection?.onChange;
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
+  const selectionResetKey = JSON.stringify(selection?.resetKey ?? null);
+  const selectionScope = useRef({ pageIndex, selectionResetKey });
   useEffect(() => {
-    onSelectionChange?.({});
-  }, [pageIndex, onSelectionChange]);
+    const prev = selectionScope.current;
+    if (prev.pageIndex === pageIndex && prev.selectionResetKey === selectionResetKey) return;
+    selectionScope.current = { pageIndex, selectionResetKey };
+    const current = selectionRef.current;
+    if (current && Object.keys(current.selected).length > 0) current.onChange({});
+  }, [pageIndex, selectionResetKey]);
 
   const rows = table.getRowModel().rows;
   const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
   const shown = rows.length;
   const from = pageIndex * (pagination?.pageSize ?? 0) + 1;
   const to = pageIndex * (pagination?.pageSize ?? 0) + shown;
-  const summary =
-    total === undefined
+  // Saat berpindah halaman/filter, baris yang tampil masih milik halaman lama: jangan tampilkan (dan umumkan)
+  // rentang yang mustahil seperti "21–40 dari 26".
+  const loadingPage = isFetching && status === "success";
+  // Halaman lanjutan menjadi kosong (mis. baris terakhirnya baru diputus lalu daftar dimuat ulang) padahal data
+  // masih ada di halaman sebelumnya: bukan "data kosong", tawarkan kembali ke halaman sebelumnya.
+  const emptyLaterPage = status === "success" && shown === 0 && pageIndex > 0 && Boolean(pagination);
+  const prevButtonRef = useRef<HTMLButtonElement>(null);
+  const summary = loadingPage
+    ? pageIndex > 0
+      ? `Memuat halaman ${pageIndex + 1}...`
+      : "Memuat data..."
+    : total === undefined
       ? null
-      : shown === 0
-        ? `Menampilkan 0 dari ${total}`
-        : pageIndex === 0
-          ? `Menampilkan ${shown} dari ${total}`
-          : `Menampilkan ${from}–${to} dari ${total}`;
+      : emptyLaterPage
+        ? `Halaman ${pageIndex + 1} kosong; total ${total} data`
+        : shown === 0
+          ? `Menampilkan 0 dari ${total}`
+          : pageIndex === 0
+            ? `Menampilkan ${shown} dari ${total}`
+            : `Menampilkan ${from}–${to} dari ${total}`;
 
   let body: ReactNode;
   if (status === "pending") body = <Loading label={`Memuat ${caption.toLowerCase()}...`} />;
   else if (status === "error") body = <ErrorState error={error} onRetry={onRetry} compact />;
+  else if (emptyLaterPage)
+    body = (
+      <EmptyState
+        compact
+        title="Halaman ini sudah kosong"
+        description="Data di halaman ini sudah berpindah, misalnya baru saja diproses. Data lain masih ada di halaman sebelumnya."
+        action={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              pagination?.onPrev();
+              // Tombol ini hilang setelah berpindah halaman: fokus dipindah ke tombol paging yang tetap ada.
+              prevButtonRef.current?.focus();
+            }}
+          >
+            Kembali ke halaman sebelumnya
+          </Button>
+        }
+      />
+    );
   else if (shown === 0) body = emptyState ?? <EmptyState title="Belum ada data" compact />;
   else
     body = (
@@ -239,9 +301,9 @@ export function DataTable<T>({
                   const meta = header.column.columnDef.meta;
                   const sortable = header.column.getCanSort();
                   const sorted = header.column.getIsSorted();
-                  const content = header.isPlaceholder
-                    ? null
-                    : flexRender(header.column.columnDef.header, header.getContext());
+                  const content = header.isPlaceholder ? null : (
+                    <CellTemplate template={header.column.columnDef.header} props={header.getContext()} />
+                  );
                   return (
                     <th
                       key={header.id}
@@ -321,7 +383,7 @@ export function DataTable<T>({
                           meta?.cellClassName,
                         )}
                       >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        <CellTemplate template={cell.column.columnDef.cell} props={cell.getContext()} />
                       </Tag>
                     );
                   })}
@@ -354,15 +416,15 @@ export function DataTable<T>({
       {body}
       {pagination || summary ? (
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-divider px-3.5 py-1.5 text-xs text-text-muted">
-          <span aria-live="polite">
-            {summary}
-            {isFetching && status === "success" ? " (memuat...)" : null}
-          </span>
+          <span aria-live="polite">{summary}</span>
           {pagination ? (
             <div className="flex items-center gap-1">
+              {/* Tetap dapat difokus saat nonaktif: tombol yang baru ditekan tidak boleh membuang fokus (N-11). */}
               <Button
+                ref={prevButtonRef}
                 variant="ghost"
                 size="sm"
+                focusableWhenDisabled
                 disabled={pagination.pageIndex === 0 || isFetching}
                 onClick={pagination.onPrev}
                 leftIcon={<ChevronLeft aria-hidden="true" className="size-4" />}
@@ -372,6 +434,7 @@ export function DataTable<T>({
               <Button
                 variant="ghost"
                 size="sm"
+                focusableWhenDisabled
                 disabled={!pagination.nextCursor || isFetching}
                 onClick={() => pagination.nextCursor && pagination.onNext(pagination.nextCursor)}
                 className="flex-row-reverse"

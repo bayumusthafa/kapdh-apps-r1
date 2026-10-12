@@ -33,6 +33,10 @@ export interface ComboboxProps {
   className?: string;
 }
 
+function sameOption(a: ComboboxOption | null, b: ComboboxOption | null): boolean {
+  return a?.value === b?.value && a?.label === b?.label;
+}
+
 type LoadState =
   | { kind: "idle" }
   | { kind: "loading" }
@@ -62,12 +66,24 @@ export function Combobox({
   const [state, setState] = useState<LoadState>({ kind: "idle" });
   const loadRef = useRef(loadOptions);
   loadRef.current = loadOptions;
+  /** Nilai terakhir yang dikirim komponen ini; perubahan `value` yang sama dengannya berasal dari ketikan sendiri. */
+  const emitted = useRef<ComboboxOption | null>(value);
 
+  function emit(option: ComboboxOption | null) {
+    emitted.current = option;
+    onValueChange(option);
+  }
+
+  // Sinkronkan teks HANYA bila nilai diubah dari luar (reset formulir, data dimuat). Mengedit teks pilihan
+  // mengirim null; tanpa pemeriksaan ini efek akan menghapus teks yang baru diketik admin.
   useEffect(() => {
+    if (sameOption(value, emitted.current)) return;
+    emitted.current = value;
     setText(value?.label ?? "");
   }, [value]);
 
   const query = text.trim();
+  const showList = open && query.length >= minQueryLength;
   const shouldSearch = open && query.length >= minQueryLength && query !== value?.label;
   useEffect(() => {
     if (!shouldSearch) return;
@@ -102,7 +118,7 @@ export function Combobox({
   const options = state.kind === "done" ? state.options : [];
 
   function select(option: ComboboxOption) {
-    onValueChange(option);
+    emit(option);
     setText(option.label);
     close(false);
   }
@@ -121,7 +137,8 @@ export function Combobox({
         select(options[active]);
       }
     } else if (e.key === "Escape") {
-      if (open) {
+      // Daftar terbuka: Escape hanya menutup daftar (dialog induk tidak ikut tertutup, pola WAI-ARIA APG).
+      if (showList) {
         e.preventDefault();
         e.stopPropagation();
         close();
@@ -145,7 +162,6 @@ export function Combobox({
             : "";
 
   const activeId = open && active >= 0 && options[active] ? `${listId}-opt-${active}` : undefined;
-  const showList = open && query.length >= minQueryLength;
 
   return (
     <Field label={label} hint={hint} error={error} required={required} className={className}>
@@ -172,7 +188,7 @@ export function Combobox({
             onChange={(e) => {
               setText(e.target.value);
               setOpen(true);
-              if (value && e.target.value !== value.label) onValueChange(null);
+              if (value && e.target.value !== value.label) emit(null);
             }}
             onFocus={() => setOpen(true)}
             onKeyDown={onKeyDown}
@@ -183,7 +199,7 @@ export function Combobox({
               type="button"
               aria-label={`Hapus pilihan ${value.label}`}
               onClick={() => {
-                onValueChange(null);
+                emit(null);
                 setText("");
               }}
               className="absolute right-0.5 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-md text-text-muted hover:bg-neutral-100"

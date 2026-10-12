@@ -13,9 +13,11 @@ import { createPortal } from "react-dom";
 import { cn } from "../../lib/cn";
 
 /**
- * Notifikasi singkat (toast). Region live dirender di luar #root agar tetap terbaca saat dialog modal membuat
- * latar inert. Galat memakai role="alert" (assertive), selain itu role="status" (polite). Toast berhenti
- * menghitung mundur saat disorot/fokus dan selalu dapat ditutup dengan tombol (N-11, WCAG 2.2.1).
+ * Notifikasi singkat (toast). Dua wadah live SELALU terpasang sejak awal (kosong) di luar #root agar tetap terbaca
+ * saat dialog modal membuat latar inert: galat masuk ke wadah aria-live="assertive", selain itu ke wadah
+ * aria-live="polite". Toast baru adalah tambahan isi wadah yang sudah ada sehingga pasti diumumkan pembaca layar
+ * (elemen live yang baru dipasang bersama isinya sering diabaikan). Toast berhenti menghitung mundur saat
+ * disorot/fokus dan selalu dapat ditutup dengan tombol (N-11, WCAG 2.2.1).
  */
 export type ToastTone = "success" | "error" | "info" | "warning";
 
@@ -85,9 +87,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           aria-label="Notifikasi"
           className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2"
         >
-          {items.map((t) => (
-            <ToastView key={t.id} item={t} onDismiss={() => dismiss(t.id)} />
-          ))}
+          <div aria-live="assertive" aria-relevant="additions text" className="flex flex-col gap-2">
+            {items
+              .filter((t) => t.tone === "error")
+              .map((t) => (
+                <ToastView key={t.id} item={t} onDismiss={() => dismiss(t.id)} />
+              ))}
+          </div>
+          <div aria-live="polite" aria-relevant="additions text" className="flex flex-col gap-2">
+            {items
+              .filter((t) => t.tone !== "error")
+              .map((t) => (
+                <ToastView key={t.id} item={t} onDismiss={() => dismiss(t.id)} />
+              ))}
+          </div>
         </section>,
         document.body,
       )}
@@ -114,7 +127,7 @@ function ToastView({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
   const s = STYLE[item.tone];
   return (
     <div
-      role={item.tone === "error" ? "alert" : "status"}
+      data-toast={item.tone}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}

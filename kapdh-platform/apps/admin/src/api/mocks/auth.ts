@@ -67,6 +67,10 @@ if (persist) {
 }
 let pendingMfaToken: string | null = null;
 let tokenSeq = 0;
+/** Kegagalan buatan POST /auth/refresh (uji): jaringan putus atau status HTTP tertentu, `remaining` kali. */
+let refreshFailure: { mode: "network" | number; remaining: number } | null = null;
+/** POST /auth/logout ditahan sampai dilepas (uji jaringan menggantung). */
+let logoutHold: Promise<void> | null = null;
 const validAccess = new Set<string>();
 const reauthTokens = new Map<string, number>();
 const usedBackupCodes = new Set<string>();
@@ -84,6 +88,8 @@ export function reset(): void {
   profile = { ...DEFAULT_PROFILE };
   setSessionActive(false);
   pendingMfaToken = null;
+  refreshFailure = null;
+  logoutHold = null;
   validAccess.clear();
   reauthTokens.clear();
   usedBackupCodes.clear();
@@ -158,6 +164,24 @@ export const mockAuth = {
   isSessionActive(): boolean {
     return sessionActive;
   },
+  /**
+   * POST /auth/refresh gagal `times` kali berikutnya tanpa menyentuh sesi: "network" meniru koneksi putus
+   * (fetch ditolak), angka meniru status HTTP (mis. 502/503 dari proxy saat deploy, 429). null = normal lagi.
+   */
+  failRefresh(mode: "network" | number | null, times = Number.POSITIVE_INFINITY): void {
+    refreshFailure = mode === null ? null : { mode, remaining: times };
+  },
+  /** Tahan POST /auth/logout (koneksi menggantung); fungsi yang dikembalikan melepasnya. */
+  holdLogout(): () => void {
+    let release: () => void = () => undefined;
+    logoutHold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return () => {
+      logoutHold = null;
+      release();
+    };
+  },
 };
 
 export const routes: MockRoute[] = [
@@ -197,7 +221,17 @@ export const routes: MockRoute[] = [
   {
     method: "POST",
     path: "/auth/refresh",
-    handler: () => {
+    handler: (req) => {
+      record(req);
+      if (refreshFailure && refreshFailure.remaining > 0) {
+        refreshFailure.remaining -= 1;
+        if (refreshFailure.mode === "network") throw new TypeError("Failed to fetch");
+        // Proxy/gateway membalas halaman HTML, bukan body kontrak `Error`.
+        return new Response("<html><body>Bad Gateway</body></html>", {
+          status: refreshFailure.mode,
+          headers: { "content-type": "text/html" },
+        });
+      }
       if (!sessionActive) return error(401, "UNAUTHENTICATED", "Sesi berakhir. Silakan masuk kembali.");
       const { access_token, access_expires_at } = issueAccess();
       return json(200, { access_token, access_expires_at } satisfies S["TokenPair"]);
@@ -206,8 +240,9 @@ export const routes: MockRoute[] = [
   {
     method: "POST",
     path: "/auth/logout",
-    handler: (req) => {
+    handler: async (req) => {
       record(req);
+      if (logoutHold) await logoutHold;
       // Server: RequireAuth — logout dengan access token kedaluwarsa ditolak 401 dan sesi TIDAK dicabut.
       const unauth = requireAdmin(req);
       if (unauth) return unauth;

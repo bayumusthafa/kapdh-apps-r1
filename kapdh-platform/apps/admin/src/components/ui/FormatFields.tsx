@@ -1,4 +1,4 @@
-import { type ComponentProps, useEffect, useState } from "react";
+import { type ComponentProps, useEffect, useId, useState } from "react";
 import {
   DEFAULT_TIME_ZONE,
   formatRupiahInput,
@@ -11,7 +11,8 @@ import { Input } from "./Input";
 
 /**
  * Isian tanggal-waktu. Admin mengetik jam dinding zona event (bawaan WIB, Asia/Jakarta); nilai yang disimpan dan
- * dikirim ke API selalu ISO 8601 UTC (ARCHITECTURE §2.6). Zona ditampilkan di dalam kotak agar tidak ambigu.
+ * dikirim ke API selalu ISO 8601 UTC (ARCHITECTURE §2.6). Zona ditampilkan di dalam kotak agar tidak ambigu dan
+ * juga dibacakan pembaca layar lewat aria-describedby (digabung dengan petunjuk/galat dari Field, N-11).
  */
 export interface DateTimeFieldProps extends Omit<
   ComponentProps<"input">,
@@ -31,8 +32,10 @@ export function DateTimeField({
   timeZone = DEFAULT_TIME_ZONE,
   min,
   max,
+  "aria-describedby": describedBy,
   ...props
 }: DateTimeFieldProps) {
+  const zoneId = `${useId()}-zona`;
   const [text, setText] = useState(() => toZonedInputValue(value, timeZone));
   useEffect(() => {
     // Sinkronkan bila nilai berubah dari luar (reset formulir, muat ulang versi terbaru).
@@ -46,15 +49,21 @@ export function DateTimeField({
       min={min ? toZonedInputValue(min, timeZone) : undefined}
       max={max ? toZonedInputValue(max, timeZone) : undefined}
       trailing={
-        <span aria-hidden="true" className="pr-3 text-xs font-semibold text-text-muted">
-          {zoneLabel(timeZone)}
-        </span>
+        <>
+          <span aria-hidden="true" className="pr-3 text-xs font-semibold text-text-muted">
+            {zoneLabel(timeZone)}
+          </span>
+          <span id={zoneId} className="sr-only">
+            Jam dalam zona {zoneLabel(timeZone)}
+          </span>
+        </>
       }
       onChange={(e) => {
         setText(e.target.value);
         onValueChange(fromZonedInputValue(e.target.value, timeZone));
       }}
       {...props}
+      aria-describedby={[describedBy, zoneId].filter(Boolean).join(" ")}
     />
   );
 }

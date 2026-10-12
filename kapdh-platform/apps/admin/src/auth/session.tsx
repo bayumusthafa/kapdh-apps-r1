@@ -13,10 +13,13 @@ import {
 import {
   api,
   BACKGROUND_HEADERS,
+  beginLogout,
+  onLoggedOutElsewhere,
   onSessionExpired,
   refreshAccessToken,
-  revokeCurrentSession,
+  revokeSession,
   setAccessToken,
+  setSessionOwner,
 } from "../api/client";
 import { ApiError, toApiError } from "../api/errors";
 import { useToast } from "../components/ui/Toast";
@@ -28,6 +31,15 @@ export const DEFAULT_IDLE_TIMEOUT_SECONDS = 1800;
 
 /** Profil dan izin dimuat ulang berkala agar perubahan izin oleh Super Admin terlihat di UI (AC F16-3). */
 export const PROFILE_REFRESH_MS = 60_000;
+
+/**
+ * Batas tunggu konfirmasi pencabutan sesi server setelah logout. UI sudah keluar lebih dulu; bila server belum
+ * mengonfirmasi dalam batas ini, admin diberi peringatan (komputer bersama) sementara pencabutan tetap berjalan.
+ */
+export const LOGOUT_CONFIRM_TIMEOUT_MS = 8_000;
+
+export const LOGOUT_UNCONFIRMED_MESSAGE =
+  "Anda sudah keluar di perangkat ini, tetapi server belum mengonfirmasi. Tutup peramban bila memakai komputer bersama.";
 
 export type AuthState =
   | { status: "restoring" }
@@ -68,6 +80,23 @@ export interface AuthApi {
 }
 
 const AuthContext = createContext<AuthApi | null>(null);
+
+/** Hasil `promise`, atau `fallback` bila belum selesai dalam `ms` (promise tetap berjalan di latar). */
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    const timer = window.setTimeout(() => resolve(fallback), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        window.clearTimeout(timer);
+        resolve(fallback);
+      },
+    );
+  });
+}
 
 function samePermissions(a: AdminProfile, b: AdminProfile): boolean {
   return (
@@ -122,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = pair ? await api.GET("/admin/me").catch(() => null) : null;
       if (cancelled) return;
       if (me?.data) {
+        setSessionOwner(me.data.admin_id);
         commit({
           status: "authenticated",
           profile: me.data,
@@ -142,24 +172,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (stateRef.current.status !== "authenticated") return;
       endLocalSession("expired");
     });
-    return () => onSessionExpired(null);
+    // Tab lain mengakhiri sesi yang sama (keluar atau idle): tab ini ikut keluar tanpa menunggu 401.
+    onLoggedOutElsewhere((reason) => {
+      if (stateRef.current.status !== "authenticated") return;
+      endLocalSession(reason === "idle" ? "idle" : "expired");
+    });
+    return () => {
+      onSessionExpired(null);
+      onLoggedOutElsewhere(null);
+    };
   }, [endLocalSession]);
 
   const logout = useCallback(
     (reason: LogoutReason = "manual") => {
-      logoutInflight.current ??= (async () => {
-        // Cabut sesi di server lebih dulu (refresh dulu bila access token sudah habis) agar cookie
-        // kapdh_admin_rt tidak memulihkan sesi saat halaman dimuat ulang.
-        const revoked = await revokeCurrentSession();
-        endLocalSession(reason);
-        if (!revoked)
-          toast.warning(
-            "Anda sudah keluar di perangkat ini, tetapi server belum mengonfirmasi. Tutup peramban bila memakai komputer bersama.",
-          );
+      if (logoutInflight.current) return logoutInflight.current;
+      if (stateRef.current.status !== "authenticated") return Promise.resolve();
+      // Sesi lokal diakhiri SEKARANG (token dan cache dibuang, UI ke halaman masuk) agar data admin tidak tetap
+      // tampil saat jaringan menggantung (AC F02-5). Sesi server dicabut di latar memakai token yang ditangkap,
+      // sehingga cookie kapdh_admin_rt tidak memulihkan sesi saat halaman dimuat ulang.
+      const handoff = beginLogout(reason);
+      endLocalSession(reason);
+      const inflight = (async () => {
+        const confirmed = await withTimeout(revokeSession(handoff), LOGOUT_CONFIRM_TIMEOUT_MS, false);
+        if (!confirmed) toast.warning(LOGOUT_UNCONFIRMED_MESSAGE);
       })().finally(() => {
         logoutInflight.current = null;
       });
-      return logoutInflight.current;
+      logoutInflight.current = inflight;
+      return inflight;
     },
     [endLocalSession, toast],
   );
@@ -257,6 +297,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return ApiError.fromResponse(me.error, me.response.status);
         }
         queryClient.clear();
+        setSessionOwner(me.data.admin_id);
         commit({
           status: "authenticated",
           profile: me.data,
