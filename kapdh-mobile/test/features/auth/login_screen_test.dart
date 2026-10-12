@@ -141,6 +141,47 @@ void main() {
     expect(find.text('Masukkan kode verifikasi'), findsOneWidget);
   });
 
+  testWidgets('akun deletion_pending: status penghapusan tampil di login, tanpa sesi (F-14, PRD 2.2)', (tester) async {
+    final app = await pumpApp(
+      tester,
+      handler: apiRoutes({
+        '/auth/login': (_) => FakeResponse.json(200, {
+          'next': 'deletion_pending',
+          'deletion': {
+            'request_number': 'DEL-2026-7K3Q9X',
+            'status': 'pending',
+            'source': 'app',
+            'requested_at': testNow.toIso8601String(),
+            'estimated_completion_at': DateTime.utc(2026, 10, 19, 3).toIso8601String(),
+            'completed_at': null,
+          },
+        }),
+      }),
+    );
+    await fillAndSubmit(tester);
+    expect(app.location, '/login');
+    expect(find.text('Penghapusan akun sedang diproses'), findsOneWidget);
+    expect(find.textContaining('DEL-2026-7K3Q9X (Permintaan Diterima)'), findsOneWidget);
+    expect(find.textContaining('19 Okt 2026, 10.00 WIB'), findsOneWidget);
+    expect(find.text('Hubungi pengurus'), findsOneWidget);
+    expect(app.container.read(sessionProvider).hasSession, isFalse);
+    expect(app.adapter.requestsTo('/me'), isEmpty);
+  });
+
+  testWidgets('akun disabled: pesan akun tidak aktif dan kontak pengurus, tanpa sesi (PRD 2.2)', (tester) async {
+    final app = await pumpApp(
+      tester,
+      handler: apiRoutes({
+        '/auth/login': (_) => FakeResponse.json(200, {'next': 'account_disabled'}),
+      }),
+    );
+    await fillAndSubmit(tester);
+    expect(app.location, '/login');
+    expect(find.text('Akun tidak aktif'), findsOneWidget);
+    expect(find.text('Hubungi pengurus'), findsOneWidget);
+    expect(app.container.read(sessionProvider).hasSession, isFalse);
+  });
+
   testWidgets('teks 200 %: tidak meluap dan tombol tetap dapat dijangkau (N-11)', (tester) async {
     await pumpApp(tester, handler: apiRoutes({}), textScale: 2);
     expect(tester.takeException(), isNull);

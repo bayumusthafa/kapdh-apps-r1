@@ -58,17 +58,40 @@ describe("alur masuk dan sesi admin (server tiruan)", () => {
     expect(toggle).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("F-16: admin undangan tanpa TOTP diarahkan ke /login/enroll, bukan layar TOTP", async () => {
+  it("F-16: admin undangan yang belum aktif ditolak seperti sandi salah; login tidak membuka pendaftaran TOTP", async () => {
     const user = userEvent.setup();
     const { router } = renderApp("/login");
     await user.type(await screen.findByLabelText(/^Email/), MOCK_CREDENTIALS.invitedEmail);
     await user.type(screen.getByLabelText(/^Kata sandi/), MOCK_CREDENTIALS.password);
     await user.click(screen.getByRole("button", { name: "Masuk" }));
-    expect(await screen.findByRole("heading", { name: "Daftarkan autentikator" })).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe("/login/enroll");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Email atau kata sandi salah.");
+    expect(router.state.location.pathname).toBe("/login");
     expect(screen.queryByLabelText(/^Kode autentikator/)).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Kembali ke halaman masuk" }));
-    expect(await screen.findByRole("heading", { name: "Selamat Datang Kembali!" })).toBeInTheDocument();
+    expect(screen.getByText(/Minta undangan ulang ke Super Admin/)).toBeInTheDocument();
+  });
+
+  it("AC F02-2: kode TOTP salah tampil di isian kode beserta sisa percobaan; kode benar tetap diterima", async () => {
+    const user = userEvent.setup();
+    const { router } = renderApp("/login");
+    await user.type(await screen.findByLabelText(/^Email/), MOCK_CREDENTIALS.email);
+    await user.type(screen.getByLabelText(/^Kata sandi/), MOCK_CREDENTIALS.password);
+    await user.click(screen.getByRole("button", { name: "Masuk" }));
+    const code = await screen.findByLabelText(/^Kode autentikator/);
+    await user.type(code, "000000");
+    await user.click(screen.getByRole("button", { name: "Verifikasi" }));
+    await waitFor(() => expect(code).toHaveAccessibleDescription(/salah\. Sisa percobaan 4\./));
+    expect(code).toHaveAttribute("aria-invalid", "true");
+    expect(code).toHaveValue("");
+    expect(router.state.location.pathname).toBe("/login/mfa");
+    await user.type(code, MOCK_CREDENTIALS.totp);
+    await user.click(screen.getByRole("button", { name: "Verifikasi" }));
+    expect(await screen.findByRole("navigation", { name: "Menu admin" })).toBeInTheDocument();
+  });
+
+  it("undangan admin memakai /invite#t=<token>: token di fragmen, bukan di path (kontrak admin-auth)", async () => {
+    const { router } = renderApp("/invite#t=token-undangan-contoh-1234");
+    expect(await screen.findByRole("heading", { name: "Undangan admin" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/invite");
   });
 
   it("penjaga rute: belum masuk ke /payments diarahkan ke /login dengan path kembali, lalu kembali setelah masuk", async () => {

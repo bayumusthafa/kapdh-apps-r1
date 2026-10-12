@@ -20,13 +20,30 @@ final ktaCacheStoreProvider = Provider<KtaCacheStore>(
 
 final sessionProvider = NotifierProvider<SessionController, SessionState>(SessionController.new);
 
-/// Hasil login (AC F02-1).
+/// Hasil login (AC F02-1, PRD 2.2).
 enum LoginOutcome {
   /// Token diterbitkan; router mengarahkan sesuai effective_status.
   signedIn,
 
   /// Akun masih pending_otp; challenge OTP baru tersedia di state.
   verifyOtp,
+
+  /// Akun deletion_pending: tanpa sesi; sandi benar hanya membuka status permintaan penghapusan (F-14).
+  deletionPending,
+
+  /// Akun disabled: tanpa sesi; pemulihan hanya melalui pengurus (PRD 2.2).
+  accountDisabled,
+}
+
+/// Hasil login beserta status permintaan penghapusan untuk [LoginOutcome.deletionPending] (kontrak C1).
+@immutable
+class LoginResult {
+  const LoginResult(this.outcome, {this.deletion});
+
+  final LoginOutcome outcome;
+
+  /// Status permintaan penghapusan tanpa data pribadi (AC F14-1); hanya untuk [LoginOutcome.deletionPending].
+  final AccountDeletion? deletion;
 }
 
 /// Pengendali sesi (ARCHITECTURE §8.3, PRD 2.2, 5.2).
@@ -171,20 +188,25 @@ class SessionController extends Notifier<SessionState> {
     }
   }
 
-  /// Login alumni (F-02, AC F02-1). Akun pending_otp mendapat challenge OTP baru.
-  Future<LoginOutcome> login({required String email, required String password}) async {
+  /// Login alumni (F-02, AC F02-1). Akun pending_otp mendapat challenge OTP baru. Akun deletion_pending dan
+  /// disabled tidak mendapat sesi (kontrak C1, PRD 2.2): state tetap anonim dan layar login menampilkan statusnya.
+  Future<LoginResult> login({required String email, required String password}) async {
     final response = await _auth.login(email: email, password: password);
     switch (response.next) {
       case LoginNext.verifyOtp:
         final challenge = response.challenge;
         if (challenge == null) throw _invalidResponse('login');
         state = SessionState.anonymous(challenge: challenge);
-        return LoginOutcome.verifyOtp;
+        return const LoginResult(LoginOutcome.verifyOtp);
       case LoginNext.home:
         final session = response.session;
         if (session == null) throw _invalidResponse('login');
         await _establish(session);
-        return LoginOutcome.signedIn;
+        return const LoginResult(LoginOutcome.signedIn);
+      case LoginNext.deletionPending:
+        return LoginResult(LoginOutcome.deletionPending, deletion: response.deletion);
+      case LoginNext.accountDisabled:
+        return const LoginResult(LoginOutcome.accountDisabled);
       case LoginNext.unknown:
         throw _invalidResponse('login');
     }

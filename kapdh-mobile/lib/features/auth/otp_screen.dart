@@ -140,12 +140,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       final response = await ref
           .read(authRepositoryProvider)
           .verifyOtp(challengeId: challenge.challengeId, code: _code.text);
-      final session = response.session;
-      if (session == null) {
-        throw const ApiException(kind: ApiFailureKind.invalidResponse, operationId: 'verifyOtp');
-      }
+      // Kontrak C1: `session` wajib pada respons verifikasi aktivasi.
       ref.read(registrationDraftProvider.notifier).clear();
-      await ref.read(sessionProvider.notifier).establishSession(session);
+      await ref.read(sessionProvider.notifier).establishSession(response.session);
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() => _applyError(error, verifying: true));
@@ -189,7 +186,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       });
       ScaffoldMessenger.maybeOf(
         context,
-      )?.showSnackBar(SnackBar(content: Text('Kode baru dikirim ke ${next.emailMasked ?? 'email Anda'}.')));
+      )?.showSnackBar(SnackBar(content: Text('Kode baru dikirim ke ${next.emailMasked}.')));
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() => _applyError(error, verifying: false));
@@ -236,7 +233,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final wait = _resendWait(challenge);
     final expired = _codeExpired(challenge);
     final canVerify = !expired && !_verifying && _code.text.length == 6;
-    final email = challenge.emailMasked ?? 'email Anda';
+    final email = challenge.emailMasked;
 
     return BrandSheetScaffold(
       bottomBar: KapdhButton(

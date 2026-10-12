@@ -154,6 +154,8 @@ abstract final class StatusStyles {
   static StatusBadgeStyle deletion(AccountDeletionStatus status) => switch (status) {
     AccountDeletionStatus.pending => _make('Permintaan Diterima', Icons.inbox_outlined, _info),
     AccountDeletionStatus.processing => _make('Sedang Diproses', Icons.hourglass_top, _warning),
+    // Langkah terakhir gagal dan dicoba ulang otomatis tanpa mengulang langkah selesai (AC F14-2, kontrak account).
+    AccountDeletionStatus.failed => _make('Sedang Diproses Ulang', Icons.autorenew, _warning),
     AccountDeletionStatus.completed => _make('Selesai', Icons.check_circle, _neutral),
     AccountDeletionStatus.unknown => _make('Status Tidak Dikenal', Icons.help_outline, _neutral),
   };
