@@ -1,7 +1,415 @@
-# Domain admin-notifications (C7 Admin & notifications): status pengiriman email/push dan retry terkendali
-# (izin notifications.manage). Modul API: apps/api/src/modules/notifications. Path ditambahkan oleh penulis kontrak C7.
+# Domain admin-notifications (C7 Admin & notifications): status pengiriman email/push per kanal dan perangkat,
+# retry terkendali, serta event outbox yang gagal (izin notifications.manage). Modul API:
+# apps/api/src/modules/notifications (deliveries) dan core/outbox (event outbox).
+#
+# Privasi (ARCHITECTURE §2, F-13): respons tidak pernah memuat token perangkat, judul/isi notifikasi, alamat email,
+# payload outbox maupun dedup key. Penerima ditampilkan minimal (nama dan nomor anggota) untuk dukungan pengurus.
 tags:
   - name: Admin Notifications
-    description: Status pengiriman notifikasi per kanal dan retry terkendali oleh pengurus (F-13, AC F13-4).
+    description: Status pengiriman notifikasi per kanal dan retry terkendali oleh pengurus (F-13, AC F13-4, PRD 4.5).
 
-paths: {}
+paths:
+  /admin/notifications/deliveries:
+    get:
+      tags: [Admin Notifications]
+      operationId: adminListNotificationDeliveries
+      summary: Daftar hasil pengiriman email/push per kanal dan perangkat (izin notifications.manage, F-13).
+      description: |
+        Kegagalan kanal ditampilkan ke pengurus untuk retry yang terkendali (F-13, PRD 4.5). Status `sent` berarti
+        diterima provider (misalnya FCM accepted), bukan jaminan dibaca perangkat (F-13). `error_class` memakai
+        klasifikasi worker (FCM: UNREGISTERED, INVALID_ARGUMENT, SENDER_ID_MISMATCH, QUOTA_EXCEEDED, UNAVAILABLE,
+        INTERNAL; email: bounce_hard, bounce_soft, rejected, timeout; pembatalan sisi server: token_revoked,
+        token_reassigned, preference_disabled). UNREGISTERED menonaktifkan token, sedangkan
+        429/5xx memakai retry dengan backoff otomatis (AC F13-4). `from` inklusif dan `to` eksklusif terhadap
+        created_at. `total` mengikuti filter. Tanpa notifications.manage ditolak 403 (AC F15-1).
+      x-kapdh-access: { audience: admin, permissions: [notifications.manage] }
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/NotificationDeliveryStatus" }
+        - name: channel
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/NotificationChannel" }
+        - name: category
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/NotificationCategory" }
+        - name: error_class
+          in: query
+          required: false
+          description: Kelas galat persis, misalnya UNREGISTERED.
+          schema: { type: string, minLength: 1, maxLength: 64 }
+        - name: user_id
+          in: query
+          required: false
+          description: Penerima (users.id), untuk menelusuri keluhan "tidak menerima notifikasi".
+          schema: { type: string, format: uuid }
+        - name: notification_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: from
+          in: query
+          required: false
+          description: Batas bawah created_at (inklusif, UTC).
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          required: false
+          description: Batas atas created_at (eksklusif, UTC).
+          schema: { type: string, format: date-time }
+        - name: sort
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/AdminDeliverySort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman pengiriman.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminNotificationDeliveryPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminNotificationsForbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/notifications/deliveries/retry:
+    post:
+      tags: [Admin Notifications]
+      operationId: adminRetryNotificationDeliveries
+      summary: Jadwalkan ulang pengiriman yang gagal secara terkendali (izin notifications.manage, AC F13-4).
+      description: |
+        Untuk 1..100 pengiriman sekaligus (satu baris atau setelah gangguan provider). Hanya pengiriman `failed`
+        yang dijadwalkan ulang, dengan UPDATE bersyarat `WHERE status = 'failed'` yang untuk push juga mensyaratkan
+        token masih milik penerima notifikasi (`device_tokens.revoked_at IS NULL AND device_tokens.user_id =
+        notifications.user_id`, dievaluasi dalam statement yang sama): status menjadi `pending`, next_retry_at =
+        sekarang, attempt tetap (riwayat percobaan terlihat). Pengiriman dilewati, bukan galat, bila: tidak
+        ditemukan, statusnya bukan failed (sudah dikirim ulang admin lain atau worker), token push sudah dicabut
+        (UNREGISTERED atau logout, AC F13-4/F13-5), token sudah berpindah ke akun atau sesi lain sehingga isi
+        notifikasi akun lama tidak boleh dikirim ke perangkat itu (`token_reassigned`, AC F13-5), penerima sudah
+        dihapus/dinonaktifkan, atau preferensi kategori/kanal kini dimatikan (F-13). Worker memeriksa ulang syarat
+        kepemilikan token yang sama saat mengklaim pengiriman. Kotak masuk tidak pernah diduplikasi (AC F13-1). Retry
+        diaudit `notification.delivery.retried` dalam transaksi yang sama (AC F17-1) dan dibatasi per admin
+        (RATE_LIMITED). Idempotency-Key mencegah penjadwalan ganda saat klik ulang.
+      x-kapdh-access: { audience: admin, permissions: [notifications.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminDeliveryRetryRequest" }
+      responses:
+        "200":
+          description: Hasil per pengiriman (dijadwalkan ulang atau dilewati beserta alasan).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminDeliveryRetryResult" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminNotificationsForbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/notifications/outbox:
+    get:
+      tags: [Admin Notifications]
+      operationId: adminListOutboxEvents
+      summary: Event outbox yang perlu tindakan atau sedang menunggu (izin notifications.manage, PRD 5.1, 5.5).
+      description: |
+        Memantau dispatcher outbox (PRD 5.1): tanpa `status`, hanya event `failed` dan `dead` (perlu tindakan)
+        yang dikembalikan. `last_error` adalah pesan aman tanpa PII, token atau isi payload (N-14); payload dan
+        dedup key tidak pernah diekspos. `request_id` menghubungkan ke log API/worker (N-14). `topic` dicocokkan
+        persis; topik yang dikenal: notification.created, account.deletion.requested, audit.export.requested,
+        event.cancelled, admin.security_notice, member.password_reset_initiated (ARCHITECTURE §4.7).
+      x-kapdh-access: { audience: admin, permissions: [notifications.manage] }
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/AdminOutboxStatus" }
+        - name: topic
+          in: query
+          required: false
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: from
+          in: query
+          required: false
+          description: Batas bawah created_at (inklusif, UTC).
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          required: false
+          description: Batas atas created_at (eksklusif, UTC).
+          schema: { type: string, format: date-time }
+        - name: sort
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/AdminOutboxSort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman event outbox.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminOutboxEventPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminNotificationsForbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/notifications/outbox/retry:
+    post:
+      tags: [Admin Notifications]
+      operationId: adminRetryOutboxEvents
+      summary: Kembalikan event outbox failed/dead ke antrean (izin notifications.manage, PRD 5.1).
+      description: |
+        Untuk 1..100 event. Hanya event `failed` atau `dead` yang dikembalikan ke `pending` dengan UPDATE bersyarat
+        (next_attempt_at = sekarang, locked_until dikosongkan, attempts dan last_error tetap sebagai riwayat).
+        Dispatcher memproses ulang dengan dedup key yang sama dan setiap konsumen idempoten per domain, sehingga
+        retry tidak menggandakan uang, periode, nomor, kursi atau notifikasi (PRD 5.1). Event lain dilewati dengan
+        alasan. Diaudit `outbox.retried` (AC F17-1); dibatasi per admin (RATE_LIMITED).
+      x-kapdh-access: { audience: admin, permissions: [notifications.manage], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminOutboxRetryRequest" }
+      responses:
+        "200":
+          description: Hasil per event.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminOutboxRetryResult" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminNotificationsForbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  responses:
+    AdminNotificationsForbidden:
+      description: |
+        FORBIDDEN tanpa izin notifications.manage (AC F15-1), atau MFA_REQUIRED bila sesi admin belum
+        menyelesaikan TOTP (AC F02-2).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    NotificationChannel:
+      type: string
+      enum: [push, email]
+      description: Kanal pengiriman (enum DB notification_channel). In-app selalu ditulis dan tidak memiliki baris pengiriman.
+
+    NotificationDeliveryStatus:
+      type: string
+      enum: [pending, sent, failed, cancelled]
+      description: |
+        Status per kanal/perangkat (enum DB delivery_status): `pending` menunggu kirim atau retry terjadwal,
+        `sent` diterima provider (bukan bukti dibaca), `failed` gagal permanen atau melewati batas retry,
+        `cancelled` dibatalkan (preferensi dimatikan, token dicabut, token berpindah ke akun/sesi lain, akun
+        dihapus). Label UI: Menunggu, Terkirim, Gagal, Dibatalkan.
+
+    AdminDeliverySort:
+      type: string
+      enum: [created_at_desc, created_at_asc, updated_at_desc]
+      default: created_at_desc
+
+    AdminDeliveryRecipient:
+      type: object
+      required: [user_id, full_name, member_number]
+      description: Penerima minimal; tanpa email, telepon atau token (N-09).
+      properties:
+        user_id: { type: string, format: uuid }
+        full_name:
+          { type: [string, "null"], description: Null bila akun bukan alumni atau sudah dianonimkan. }
+        member_number: { type: [string, "null"] }
+
+    AdminNotificationDelivery:
+      type: object
+      required:
+        - id
+        - notification_id
+        - category
+        - channel
+        - status
+        - platform
+        - attempt
+        - next_retry_at
+        - provider_status
+        - error_class
+        - sent_at
+        - created_at
+        - updated_at
+        - recipient
+        - retryable
+      properties:
+        id: { type: string, format: uuid }
+        notification_id: { type: string, format: uuid }
+        category: { $ref: "#/components/schemas/NotificationCategory" }
+        channel: { $ref: "#/components/schemas/NotificationChannel" }
+        status: { $ref: "#/components/schemas/NotificationDeliveryStatus" }
+        platform:
+          description: Platform perangkat untuk push (tanpa token); null untuk email.
+          oneOf:
+            - $ref: "#/components/schemas/DevicePlatform"
+            - type: "null"
+        attempt: { type: integer, minimum: 0 }
+        next_retry_at: { type: [string, "null"], format: date-time }
+        provider_status: { type: [string, "null"], examples: ["accepted"] }
+        error_class: { type: [string, "null"], examples: ["UNREGISTERED"] }
+        sent_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        recipient:
+          description: Null bila akun penerima sudah dihapus.
+          oneOf:
+            - $ref: "#/components/schemas/AdminDeliveryRecipient"
+            - type: "null"
+        retryable:
+          type: boolean
+          description: |
+            True bila status failed dan target masih sah: penerima ada, preferensi aktif, dan untuk push token belum
+            dicabut serta masih milik penerima notifikasi (device_tokens.user_id = notifications.user_id, AC F13-5).
+
+    AdminNotificationDeliveryPage:
+      type: object
+      required: [items, next_cursor, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminNotificationDelivery" }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer, minimum: 0 }
+
+    AdminDeliveryRetryRequest:
+      type: object
+      required: [delivery_ids]
+      properties:
+        delivery_ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items: { type: string, format: uuid }
+
+    AdminDeliveryRetrySkipReason:
+      type: string
+      enum:
+        [not_found, not_failed, token_revoked, token_reassigned, recipient_unavailable, preference_disabled]
+      description: |
+        Alasan pengiriman tidak dijadwalkan ulang. `token_reassigned`: token perangkat kini terikat ke akun atau
+        sesi lain, sehingga isi notifikasi pemilik lama tidak boleh dikirim ke perangkat itu (AC F13-5).
+
+    AdminDeliveryRetrySkip:
+      type: object
+      required: [delivery_id, reason]
+      properties:
+        delivery_id: { type: string, format: uuid }
+        reason: { $ref: "#/components/schemas/AdminDeliveryRetrySkipReason" }
+
+    AdminDeliveryRetryResult:
+      type: object
+      required: [requeued, skipped]
+      properties:
+        requeued:
+          type: array
+          description: Pengiriman yang kini pending dan dijadwalkan segera.
+          items: { $ref: "#/components/schemas/AdminNotificationDelivery" }
+        skipped:
+          type: array
+          items: { $ref: "#/components/schemas/AdminDeliveryRetrySkip" }
+
+    AdminOutboxStatus:
+      type: string
+      enum: [pending, dispatched, failed, dead]
+      description: |
+        Status outbox (outbox_events_status_chk): `pending` menunggu dispatch, `dispatched` diteruskan ke antrean,
+        `failed` gagal dan akan dicoba ulang dengan backoff, `dead` melewati batas percobaan dan butuh tindakan.
+
+    AdminOutboxSort:
+      type: string
+      enum: [created_at_desc, created_at_asc, next_attempt_at_asc]
+      default: created_at_desc
+
+    AdminOutboxEvent:
+      type: object
+      required:
+        - id
+        - topic
+        - status
+        - attempts
+        - next_attempt_at
+        - in_progress
+        - last_error
+        - request_id
+        - dispatched_at
+        - created_at
+        - retryable
+      properties:
+        id: { type: string, format: uuid }
+        topic: { type: string, examples: ["notification.created"] }
+        status: { $ref: "#/components/schemas/AdminOutboxStatus" }
+        attempts: { type: integer, minimum: 0 }
+        next_attempt_at: { type: string, format: date-time }
+        in_progress: { type: boolean, description: Sedang diklaim dispatcher (locked_until di masa depan). }
+        last_error: { type: [string, "null"], description: Pesan galat aman tanpa PII (N-14). }
+        request_id: { type: [string, "null"] }
+        dispatched_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+        retryable: { type: boolean, description: True untuk status failed atau dead. }
+
+    AdminOutboxEventPage:
+      type: object
+      required: [items, next_cursor, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminOutboxEvent" }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer, minimum: 0 }
+
+    AdminOutboxRetryRequest:
+      type: object
+      required: [event_ids]
+      properties:
+        event_ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items: { type: string, format: uuid }
+
+    AdminOutboxRetrySkipReason:
+      type: string
+      enum: [not_found, not_retryable]
+      description: "`not_retryable`: status bukan failed/dead (sudah pending, sedang diproses, atau dispatched)."
+
+    AdminOutboxRetrySkip:
+      type: object
+      required: [event_id, reason]
+      properties:
+        event_id: { type: string, format: uuid }
+        reason: { $ref: "#/components/schemas/AdminOutboxRetrySkipReason" }
+
+    AdminOutboxRetryResult:
+      type: object
+      required: [requeued, skipped]
+      properties:
+        requeued:
+          type: array
+          items: { $ref: "#/components/schemas/AdminOutboxEvent" }
+        skipped:
+          type: array
+          items: { $ref: "#/components/schemas/AdminOutboxRetrySkip" }

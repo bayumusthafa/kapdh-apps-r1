@@ -1,62 +1,157 @@
-# Domain notifications (C7 Admin & notifications): kotak masuk, preferensi kanal dan token perangkat FCM.
-# Modul API: apps/api/src/modules/notifications.
+# Domain notifications (C7 Admin & notifications): kotak masuk in-app, rute deep link per kategori, preferensi kanal
+# dan token perangkat FCM (F-13). Modul API: apps/api/src/modules/notifications.
+#
+# Akses (ARCHITECTURE §3.1, §4.3): seluruh operasi memakai audience mobile dengan member_access `any`, sehingga anggota
+# unverified, expired dan suspended tetap dapat membuka kotak masuk (AC F13-2, PRD 2.2). Admin tidak memiliki kotak
+# masuk; status pengiriman untuk pengurus ada di domain admin-notifications.
 tags:
   - name: Notifications
-    description: Kotak masuk, preferensi push/email dan token perangkat (F-13).
+    description: Kotak masuk resmi, deep link, preferensi push/email dan token perangkat (F-13, AC F13-1..F13-5).
 
 paths:
   /notifications:
     get:
       tags: [Notifications]
       operationId: listNotifications
-      summary: Kotak masuk notifikasi, riwayat resmi (F-13, AC F13-2).
+      summary: Kotak masuk notifikasi sendiri, riwayat resmi (F-13, AC F13-2).
+      description: |
+        Kotak masuk in-app adalah riwayat resmi dan selalu ditulis, apa pun preferensi push/email atau izin push OS
+        (F-13, AC F13-2). Urutan terbaru dahulu dengan keyset (created_at, id) menurun (indeks
+        notifications_user_id_created_at_id_idx, PRD 6.5). Hanya notifikasi milik pemanggil yang dikembalikan.
+        `unread_count` dihitung atas seluruh kotak masuk (tidak dipengaruhi filter) untuk lencana lonceng.
+        Cursor terikat pada filter; cursor tidak valid atau dari filter lain menghasilkan 400 VALIDATION_ERROR.
+      x-kapdh-access: { audience: mobile, member_access: any }
       parameters:
+        - name: unread_only
+          in: query
+          required: false
+          description: True untuk hanya menampilkan notifikasi yang belum dibaca.
+          schema: { type: boolean, default: false }
+        - name: category
+          in: query
+          required: false
+          description: Saring per kategori.
+          schema: { $ref: "#/components/schemas/NotificationCategory" }
         - $ref: "#/components/parameters/Cursor"
         - $ref: "#/components/parameters/Limit"
       responses:
         "200":
-          description: Kotak masuk resmi.
+          description: Halaman kotak masuk.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/NotificationPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /notifications/unread-count:
+    get:
+      tags: [Notifications]
+      operationId: getNotificationUnreadCount
+      summary: Jumlah notifikasi belum dibaca untuk lencana lonceng (F-13).
+      description: |
+        Bacaan ringan untuk lencana di Beranda tanpa memuat halaman kotak masuk. Event realtime
+        `notification.created` membawa jumlah terbaru; endpoint ini dipakai saat aplikasi kembali ke foreground atau
+        setelah reconnect (ARCHITECTURE §4.9).
+      x-kapdh-access: { audience: mobile, member_access: any }
+      responses:
+        "200":
+          description: Jumlah belum dibaca.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationUnreadCount" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /notifications/{notificationId}:
+    get:
+      tags: [Notifications]
+      operationId: getNotification
+      summary: Satu notifikasi milik sendiri, dipakai sebelum membuka deep link dari push (AC F13-3, F13-5).
+      description: |
+        Saat push diketuk, aplikasi memanggil endpoint ini dengan `notification_id` dari payload push sebelum membuka
+        objek tujuan. Sesi yang sudah logout ditolak 401, dan notifikasi milik akun lain (berganti akun) menghasilkan
+        404 NOT_FOUND tanpa membedakan tidak ada atau bukan milik (AC F13-3, F13-5, N-09). Rute tujuan tetap
+        diperiksa ulang oleh endpoint objeknya (misalnya pembayaran milik sendiri), jadi rute bukan izin akses.
+        Endpoint ini tidak menandai dibaca; panggil POST /notifications/read.
+      x-kapdh-access: { audience: mobile, member_access: any }
+      parameters:
+        - $ref: "#/components/parameters/NotificationId"
+      responses:
+        "200":
+          description: Notifikasi.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InboxNotification" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
         default: { $ref: "#/components/responses/Error" }
 
   /notifications/read:
     post:
       tags: [Notifications]
       operationId: markNotificationsRead
-      summary: Tandai notifikasi dibaca (F-13).
+      summary: Tandai notifikasi tertentu atau semua sebagai dibaca (F-13).
+      description: |
+        Isi tepat salah satu: `ids` (1..100 id) atau `all: true`. Dengan `all`, `up_to` opsional membatasi pada
+        notifikasi dengan created_at <= up_to, sehingga notifikasi yang datang setelah layar dimuat tidak ikut
+        ditandai. Id yang tidak ada atau milik akun lain diabaikan tanpa galat (N-09). Operasi idempoten secara
+        alami: read_at yang sudah terisi tidak diubah. Kombinasi tidak valid menghasilkan 400 VALIDATION_ERROR.
+      x-kapdh-access: { audience: mobile, member_access: any }
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/MarkNotificationsReadRequest" }
       responses:
-        "204": { description: Ditandai dibaca. }
+        "200":
+          description: Jumlah yang baru ditandai dan sisa belum dibaca.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MarkNotificationsReadResult" }
         "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "426": { $ref: "#/components/responses/UpgradeRequired" }
+        "503": { $ref: "#/components/responses/Maintenance" }
         default: { $ref: "#/components/responses/Error" }
 
   /notifications/preferences:
     get:
       tags: [Notifications]
       operationId: getNotificationPreferences
-      summary: Preferensi kategori push dan email (F-13).
+      summary: Preferensi kategori push dan email (F-13, AC F13-2).
+      description: |
+        Baris preferensi yang tidak ada berarti aktif (default). Kategori security dan account wajib dan selalu
+        dikirim; keduanya dilaporkan di `mandatory_categories` dan tidak memiliki saklar (ARCHITECTURE §4.7).
+      x-kapdh-access: { audience: mobile, member_access: any }
       responses:
         "200":
-          description: Preferensi.
+          description: Preferensi efektif.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/NotificationPreferences" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         default: { $ref: "#/components/responses/Error" }
     put:
       tags: [Notifications]
       operationId: updateNotificationPreferences
-      summary: Simpan preferensi notifikasi; kategori security dan account tidak dapat dimatikan (ARCHITECTURE §4.7).
+      summary: Simpan seluruh preferensi push dan email; security dan account tidak dapat dimatikan (F-13).
+      description: |
+        Mengganti seluruh preferensi (semua saklar wajib dikirim). Mematikan kategori hanya menghentikan push/email
+        berikutnya; kotak masuk in-app tetap ditulis dan riwayat keputusan tetap terlihat (F-13, AC F13-2).
+        Pengiriman yang sudah dijadwalkan untuk kategori yang dimatikan dibatalkan worker sebelum dikirim
+        (status cancelled). Push untuk security/account dan email OTP tidak dipengaruhi preferensi.
+      x-kapdh-access: { audience: mobile, member_access: any }
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/NotificationPreferences" }
+            schema: { $ref: "#/components/schemas/NotificationPreferencesUpdate" }
       responses:
         "200":
           description: Preferensi tersimpan.
@@ -64,68 +159,200 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/NotificationPreferences" }
         "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "426": { $ref: "#/components/responses/UpgradeRequired" }
+        "503": { $ref: "#/components/responses/Maintenance" }
         default: { $ref: "#/components/responses/Error" }
 
   /devices:
     put:
       tags: [Notifications]
       operationId: registerDevice
-      summary: Daftarkan token FCM perangkat untuk sesi ini (AC F13-5).
+      summary: Daftarkan atau perbarui token FCM perangkat untuk sesi saat ini (AC F13-4, F13-5).
+      description: |
+        Upsert berdasarkan token (device_tokens_token_key). Token selalu diikat ke pengguna DAN sesi pemanggil:
+        bila token yang sama sebelumnya milik akun atau sesi lain (logout lalu masuk akun lain di perangkat yang
+        sama), token dipindahkan ke akun ini sehingga tidak lagi menerima notifikasi akun sebelumnya (AC F13-5).
+
+        Perpindahan pemilik dilakukan dalam SATU transaksi: baris device_tokens dikunci (SELECT ... FOR UPDATE);
+        bila user_id atau session_id berubah, seluruh pengiriman `pending` pada baris token itu dibatalkan
+        (status `cancelled`, error_class `token_reassigned`) SEBELUM token diikat ke pemanggil. Pengiriman
+        `failed` milik pemilik lama tetap sebagai riwayat tetapi tidak pernah dapat dikirim ulang ke perangkat
+        ini (adminRetryNotificationDeliveries melewatinya dengan alasan `token_reassigned`). Sebagai pertahanan
+        berlapis, worker hanya mengirim push bila pada saat klaim pengiriman (statement yang sama)
+        device_tokens.revoked_at IS NULL DAN device_tokens.user_id = notifications.user_id; selain itu pengiriman
+        dibatalkan tanpa dikirim. Judul dan isi notifikasi akun lama tidak pernah sampai ke akun baru (AC F13-5,
+        N-09).
+
+        Pendaftaran ulang menghapus revoked_at, failure_class dan failure_count, memperbarui last_seen_at, dan
+        mencabut token lain yang masih terikat ke sesi yang sama (token FCM yang diperbarui). Logout, logout-all,
+        pencabutan sesi dan penghapusan akun mencabut token yang terikat ke sesi tersebut di sisi server dan
+        membatalkan pengiriman `pending`-nya (error_class `token_revoked`). Token tidak pernah dicatat di log atau
+        audit (ARCHITECTURE §2) dan tidak pernah dikembalikan API.
+      x-kapdh-access: { audience: mobile, member_access: any }
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/RegisterDeviceRequest" }
       responses:
-        "204": { description: Terdaftar. }
+        "204": { description: Token terdaftar untuk sesi ini. }
         "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "426": { $ref: "#/components/responses/UpgradeRequired" }
+        "503": { $ref: "#/components/responses/Maintenance" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /devices/unregister:
+    post:
+      tags: [Notifications]
+      operationId: unregisterDevice
+      summary: Cabut token FCM perangkat ini, misalnya sebelum logout atau saat izin push dicabut (AC F13-5).
+      description: |
+        Token dikirim di body, bukan di path, agar tidak tercatat di log akses. Hanya token milik pemanggil yang
+        dicabut (revoked_at diisi) dan, dalam transaksi yang sama, pengiriman `pending` pada token itu dibatalkan
+        (`cancelled`, error_class `token_revoked`); token yang tidak dikenal atau milik akun lain diabaikan dengan
+        respons yang sama (N-09). Pemanggilan berulang tetap 204. Logout tetap mencabut token sesi di server
+        walaupun panggilan ini gagal karena jaringan (AC F13-5).
+      x-kapdh-access: { audience: mobile, member_access: any }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UnregisterDeviceRequest" }
+      responses:
+        "204": { description: Token tidak lagi menerima notifikasi. }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "426": { $ref: "#/components/responses/UpgradeRequired" }
+        "503": { $ref: "#/components/responses/Maintenance" }
         default: { $ref: "#/components/responses/Error" }
 
 components:
+  parameters:
+    NotificationId:
+      name: notificationId
+      in: path
+      required: true
+      description: Id notifikasi (UUID v7), misalnya dari payload data push.
+      schema: { type: string, format: uuid }
+
   schemas:
     NotificationCategory:
       type: string
       enum: [payment, membership, event, news, chat, security, account]
-      description: Kategori notifikasi; security dan account wajib dan tidak dapat dimatikan (ARCHITECTURE §4.7).
+      description: |
+        Kategori notifikasi (ARCHITECTURE §4.7, enum DB notification_category). Push dapat diatur untuk payment,
+        membership, event, news, chat; email untuk payment, membership, event; security dan account wajib dan tidak
+        dapat dimatikan (F-13).
 
     InboxNotification:
       type: object
-      required: [id, category, title, created_at]
+      required: [id, category, title, body, deep_link, read_at, created_at]
+      description: |
+        Satu entri kotak masuk (F-13). Satu peristiwa menghasilkan tepat satu entri per pengguna karena dedup_key
+        unik; retry pengiriman tidak menduplikasi kotak masuk (AC F13-1, F13-6). Bentuk yang sama (tanpa
+        `read_at`, ditambah `unread_count`) dikirim event realtime `notification.created`
+        (events/notification.created.schema.json, ARCHITECTURE §4.9).
+
+        Deep link satu bentuk di semua kanal (PRD 3.13, ARCHITECTURE §4.7): notifications.data.route menyimpan
+        rute aplikasi sebagai STRING path (ARCHITECTURE §8.4, misalnya `/payments/<id>`); `deep_link` di REST,
+        payload realtime dan payload data FCM (bersama `notification_id` dan `category`) adalah bentuk eksternal
+        `kapdh://app` + path tersebut. Klien cukup mengurai satu format. Katalog rute per kategori:
+
+        | rute (path)              | kategori lazim   |
+        | ------------------------ | ---------------- |
+        | `/payments/<payment_id>` | payment          |
+        | `/payments`              | payment          |
+        | `/kta`                   | membership       |
+        | `/renewal`               | membership       |
+        | `/events/<event_id>`     | event            |
+        | `/tickets/<ticket_id>`   | event            |
+        | `/news/<slug>`           | news             |
+        | `/chat/<room_id>`        | chat             |
+        | `/chat/invitations`      | chat             |
+        | `/account/sessions`      | security         |
+        | `/account/reports`       | account          |
+        | `/restricted`            | account          |
+        | `/deletion-status`       | account          |
+        | `/notifications`         | semua (cadangan) |
+
+        Rute yang tidak dikenal klien membuka kotak masuk. Rute bukan izin akses: membuka rute tetap memerlukan
+        autentikasi dan otorisasi endpoint tujuan (AC F13-3, F13-5). Payload push di layar kunci tidak pernah
+        memuat isi chat, bukti bayar atau kontak (F-13).
       properties:
         id: { type: string, format: uuid }
         category: { $ref: "#/components/schemas/NotificationCategory" }
         title: { type: string }
-        body: { type: [string, "null"] }
+        body:
+          type: [string, "null"]
+          description: Teks ringkas tanpa isi chat, bukti bayar atau kontak (F-13).
         deep_link:
           type: [string, "null"]
-          description: Rute aplikasi bentuk eksternal `kapdh://app/<rute>`; klien memeriksa izin sebelum membuka (AC F13-3).
+          maxLength: 320
+          pattern: "^kapdh://app/[A-Za-z0-9/_.-]*$"
+          description: |
+            Tujuan saat diketuk dalam bentuk eksternal `kapdh://app` + rute (lihat katalog di atas); null bila
+            notifikasi hanya informasi. Klien memeriksa sesi sebelum membuka (AC F13-3).
           examples: ["kapdh://app/payments/0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e5f"]
         read_at: { type: [string, "null"], format: date-time }
         created_at: { type: string, format: date-time }
 
     NotificationPage:
       type: object
-      required: [items, unread_count]
+      required: [items, next_cursor, unread_count]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/InboxNotification" }
-        unread_count: { type: integer, minimum: 0 }
         next_cursor: { type: [string, "null"] }
+        unread_count:
+          type: integer
+          minimum: 0
+          description: Jumlah belum dibaca di seluruh kotak masuk pemanggil (tidak dipengaruhi filter).
+
+    NotificationUnreadCount:
+      type: object
+      required: [unread_count]
+      properties:
+        unread_count: { type: integer, minimum: 0 }
 
     MarkNotificationsReadRequest:
       type: object
-      description: "Isi `ids` atau `all: true`."
+      description: |
+        Isi tepat salah satu: `ids`, atau `all: true` (opsional dengan `up_to`). Selain itu 400 VALIDATION_ERROR.
       properties:
         ids:
           type: array
+          minItems: 1
           maxItems: 100
+          uniqueItems: true
           items: { type: string, format: uuid }
-        all: { type: boolean }
+        all:
+          type: boolean
+          description: True untuk menandai seluruh kotak masuk.
+        up_to:
+          type: string
+          format: date-time
+          description: Hanya bersama `all`; batas created_at (inklusif) yang ditandai.
+
+    MarkNotificationsReadResult:
+      type: object
+      required: [updated_count, unread_count]
+      properties:
+        updated_count:
+          type: integer
+          minimum: 0
+          description: Jumlah notifikasi yang baru ditandai pada permintaan ini.
+        unread_count: { type: integer, minimum: 0 }
 
     PushPreferences:
       type: object
-      description: Preferensi push per kategori; security dan account tidak dapat dimatikan.
+      required: [payment, membership, event, news, chat]
+      description: Saklar push per kategori yang dapat diatur; security dan account selalu dikirim (ARCHITECTURE §4.7).
       properties:
         payment: { type: boolean }
         membership: { type: boolean }
@@ -135,7 +362,8 @@ components:
 
     EmailPreferences:
       type: object
-      description: Preferensi email transaksional per kategori.
+      required: [payment, membership, event]
+      description: Saklar email transaksional per kategori; email OTP, keamanan dan akun selalu dikirim (F-13).
       properties:
         payment: { type: boolean }
         membership: { type: boolean }
@@ -143,7 +371,23 @@ components:
 
     NotificationPreferences:
       type: object
-      required: [push]
+      required: [push, email, mandatory_categories, updated_at]
+      properties:
+        push: { $ref: "#/components/schemas/PushPreferences" }
+        email: { $ref: "#/components/schemas/EmailPreferences" }
+        mandatory_categories:
+          type: array
+          description: Kategori wajib tanpa saklar, selalu [security, account] (ARCHITECTURE §4.7).
+          items: { $ref: "#/components/schemas/NotificationCategory" }
+        updated_at:
+          type: [string, "null"]
+          format: date-time
+          description: Waktu perubahan terakhir; null bila pengguna belum pernah mengubah default.
+
+    NotificationPreferencesUpdate:
+      type: object
+      required: [push, email]
+      description: Penggantian penuh preferensi; semua saklar wajib dikirim.
       properties:
         push: { $ref: "#/components/schemas/PushPreferences" }
         email: { $ref: "#/components/schemas/EmailPreferences" }
@@ -154,9 +398,23 @@ components:
       properties:
         platform: { $ref: "#/components/schemas/DevicePlatform" }
         token:
-          {
-            type: string,
-            maxLength: 4096,
-            description: Token FCM; tidak pernah dicatat di log (ARCHITECTURE §2).,
-          }
-        app_version: { type: string, maxLength: 32 }
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: Token registrasi FCM; tidak pernah dicatat di log (ARCHITECTURE §2).
+        app_version:
+          type: string
+          maxLength: 32
+          pattern: '^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$'
+          description: Versi aplikasi (semver), sama dengan header X-App-Version.
+          examples: ["1.0.0"]
+
+    UnregisterDeviceRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: Token FCM yang dicabut; tidak pernah dicatat di log (ARCHITECTURE §2).

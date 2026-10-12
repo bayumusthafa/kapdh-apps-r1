@@ -1,7 +1,463 @@
-# Domain admin-audit (C7 Admin & notifications): pencarian audit dan ekspor CSV asinkron
-# (izin audit.read / audit.export). Modul API: apps/api/src/modules/admin. Path ditambahkan oleh penulis kontrak C7.
+# Domain admin-audit (C7 Admin & notifications): pencarian audit dan ekspor CSV asinkron dengan filter yang sama
+# (F-17). Modul API: apps/api/src/modules/admin; job `audit.export` (topik outbox audit.export.requested, ARCHITECTURE
+# §4.8) menulis berkas privat purpose `audit_export` yang kedaluwarsa otomatis (AC F17-4).
+#
+# Audit append-only bagi application role (PRD 3.17): domain ini hanya membaca; tidak ada operasi ubah/hapus entri.
+# before/after sudah disaring saat ditulis (AuditService) dan tidak pernah memuat sandi, OTP, token, secret TOTP,
+# isi chat, bukti bayar, rekening refund atau NIK (ARCHITECTURE §2, AC F17-3).
+#
+# Job ekspor TIDAK memerlukan tabel baru: keadaannya disimpan pada tabel yang sudah ada (audit_logs append-only
+# sebagai catatan kejadian job + files untuk berkas dan kedaluwarsanya). Pemetaan lengkap ada di skema AuditExport.
 tags:
   - name: Admin Audit
     description: Pencarian audit dan ekspor CSV asinkron dengan filter yang sama (F-17, AC F17-2..F17-4).
 
-paths: {}
+paths:
+  /admin/audit/entries:
+    get:
+      tags: [Admin Audit]
+      operationId: adminSearchAudit
+      summary: Telusuri audit berdasarkan aktor, peran, tindakan, entitas dan waktu (izin audit.read, AC F17-4).
+      description: |
+        Semua filter digabung dengan AND dan memakai nama serta arti yang sama dengan body AuditFilter pada POST
+        /admin/audit/exports, sehingga hasil pencarian dan ekspor identik (AC F17-4). `from` inklusif dan `to`
+        eksklusif terhadap created_at (UTC); `to` harus setelah `from`. `action`, `entity_type`, `entity_id`
+        dan `request_id` dicocokkan persis. `actor_q` mencari aktor berdasarkan nama tampilan admin atau nama
+        lengkap alumni pelaku (mengandung, tanpa membedakan huruf besar/kecil), sehingga pengaudit tanpa izin
+        admins.manage tetap dapat memfilter aktor; aktor yang sudah dianonimkan (D2) tidak cocok dengan nama.
+        Urutan bawaan created_at menurun dengan keyset (created_at, id); `total` mengikuti filter. Item daftar
+        tidak memuat before/after; buka detail untuk melihatnya. Tanpa audit.read ditolak 403 walaupun menu
+        tersembunyi (AC F17-2).
+      x-kapdh-access: { audience: admin, permissions: [audit.read] }
+      parameters:
+        - $ref: "#/components/parameters/AuditActorQuery"
+        - $ref: "#/components/parameters/AuditActorAdminId"
+        - $ref: "#/components/parameters/AuditActorUserId"
+        - $ref: "#/components/parameters/AuditEffectiveRoleFilter"
+        - $ref: "#/components/parameters/AuditAction"
+        - $ref: "#/components/parameters/AuditEntityType"
+        - $ref: "#/components/parameters/AuditEntityId"
+        - $ref: "#/components/parameters/AuditRequestId"
+        - $ref: "#/components/parameters/AuditFrom"
+        - $ref: "#/components/parameters/AuditTo"
+        - name: sort
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/AuditEntrySort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman audit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditEntryPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminAuditForbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/audit/entries/{entryId}:
+    get:
+      tags: [Admin Audit]
+      operationId: adminGetAuditEntry
+      summary: Detail satu entri audit termasuk before/after yang telah disaring (izin audit.read, F-17).
+      x-kapdh-access: { audience: admin, permissions: [audit.read] }
+      parameters:
+        - $ref: "#/components/parameters/AuditEntryId"
+      responses:
+        "200":
+          description: Entri audit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditEntryDetail" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminAuditForbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/audit/exports:
+    post:
+      tags: [Admin Audit]
+      operationId: adminCreateAuditExport
+      summary: Minta ekspor CSV audit dengan filter yang sama seperti pencarian (audit.read + audit.export, AC F17-2..F17-4).
+      description: |
+        Membuat job ekspor berstatus `processing` dalam SATU transaksi (AC F17-1): id ekspor (UUID v7) dibuat
+        server, audit `audit.export.requested` (entity_type `audit_export`, entity_id = id ekspor, actor = admin
+        peminta, after = {filters}) dan outbox `audit.export.requested` (dedup_key
+        `audit.export.requested:<id ekspor>`, payload {export_id}). Job `audit.export` di worker membaca filter dari
+        entri audit tersebut, menghasilkan CSV, dan menulis berkas privat purpose `audit_export` (ARCHITECTURE
+        §4.8); pemetaan penyimpanan dan aturan transisi ada di skema AuditExport. Filter memakai arti yang sama
+        persis dengan GET /admin/audit/entries (AC F17-4) dan disimpan apa adanya di `filters`.
+
+        Isi CSV (UTF-8, pemisah koma, baris pertama header): created_at (UTC RFC 3339), action, entity_type,
+        entity_id, effective_role, actor_admin_id, actor_user_id, actor_name, request_id, reason, before (JSON),
+        after (JSON). Setiap sel yang diawali `=`, `+`, `-`, `@`, tab atau carriage return dinetralkan dengan
+        awalan apostrof agar tidak dieksekusi sebagai formula (AC F17-3). Kolom privat dan secret tidak pernah
+        ikut (AC F17-3). Jumlah baris dibatasi konfigurasi server; bila hasil filter melebihi batas, job gagal
+        dengan `failure_reason=row_limit_exceeded` (tidak pernah dipotong diam-diam) dan admin mempersempit filter.
+
+        Pembuatan ekspor dibatasi per admin (RATE_LIMITED dengan retry_after_seconds). Idempotency-Key mencegah
+        job ganda saat klik ulang atau jaringan putus (PRD 4.3).
+      x-kapdh-access: { audience: admin, permissions: [audit.read, audit.export], idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuditFilter" }
+      responses:
+        "202":
+          description: Job ekspor diterima (status processing).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditExport" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminAuditForbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+    get:
+      tags: [Admin Audit]
+      operationId: adminListAuditExports
+      summary: Daftar job ekspor audit dan statusnya (audit.read + audit.export, F-17).
+      description: |
+        Admin melihat ekspor yang ia minta sendiri; Super Admin melihat semua ekspor beserta peminta. Sumber daftar
+        adalah entri audit `audit.export.requested` (entity_type `audit_export`; milik sendiri = actor_admin_id
+        pemanggil) dengan keyset (created_at, id) menurun, sehingga urutan requested_at menurun; status diturunkan
+        sesuai skema AuditExport dan `total` mengikuti filter. Status `expired` berarti berkas sudah dihapus
+        otomatis.
+      x-kapdh-access: { audience: admin, permissions: [audit.read, audit.export] }
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/AuditExportStatus" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman ekspor.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditExportPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminAuditForbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/audit/exports/{exportId}:
+    get:
+      tags: [Admin Audit]
+      operationId: adminGetAuditExport
+      summary: Status satu job ekspor untuk polling (audit.read + audit.export, AC F17-4).
+      description: |
+        Hanya peminta atau Super Admin; selain itu 404 NOT_FOUND (tidak membedakan tidak ada atau bukan milik, N-09).
+      x-kapdh-access: { audience: admin, permissions: [audit.read, audit.export] }
+      parameters:
+        - $ref: "#/components/parameters/AuditExportId"
+      responses:
+        "200":
+          description: Status ekspor.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditExport" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminAuditForbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/audit/exports/{exportId}/access:
+    get:
+      tags: [Admin Audit]
+      operationId: adminGetAuditExportAccess
+      summary: URL unduh bertanda tangan untuk berkas ekspor siap (audit.read + audit.export, AC F17-2).
+      description: |
+        Izin audit.read dan audit.export serta kepemilikan (peminta atau Super Admin) diperiksa ulang SETIAP
+        permintaan; mengetahui id ekspor/berkas atau URL lama tidak memberi akses (AC F17-2). URL dibuat
+        FilesService untuk `file_id` pada entri audit `audit.export.completed` ekspor ini, terikat berkas dan
+        purpose `audit_export`, berlaku maksimal 10 menit, dan tidak boleh
+        disimpan cache publik (PRD 5.4). Berkas `audit_export` tidak dilayani lewat jalur berkas lain tanpa
+        pemeriksaan yang sama. Status selain `ready` menghasilkan 409 VERSION_CONFLICT dengan `current` =
+        AuditExport terbaru; ekspor `expired` atau berkas yang sudah dihapus menghasilkan 404. Setiap akses
+        diaudit `audit.export.downloaded` (PRD 3.17).
+      x-kapdh-access: { audience: admin, permissions: [audit.read, audit.export] }
+      parameters:
+        - $ref: "#/components/parameters/AuditExportId"
+      responses:
+        "200":
+          description: Akses sementara.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditExportAccess" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminAuditForbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  parameters:
+    AuditEntryId:
+      name: entryId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AuditExportId:
+      name: exportId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AuditActorQuery:
+      name: actor_q
+      in: query
+      required: false
+      description: Bagian nama tampilan admin atau nama lengkap alumni pelaku.
+      schema: { type: string, minLength: 2, maxLength: 100 }
+    AuditActorAdminId:
+      name: actor_admin_id
+      in: query
+      required: false
+      description: Identitas admin pelaku (admins.id).
+      schema: { type: string, format: uuid }
+    AuditActorUserId:
+      name: actor_user_id
+      in: query
+      required: false
+      description: Akun pelaku (users.id), alumni maupun akun login admin.
+      schema: { type: string, format: uuid }
+    AuditEffectiveRoleFilter:
+      name: effective_role
+      in: query
+      required: false
+      schema: { $ref: "#/components/schemas/AuditEffectiveRole" }
+    AuditAction:
+      name: action
+      in: query
+      required: false
+      description: Nama tindakan persis, misalnya payment.approved.
+      schema: { type: string, minLength: 1, maxLength: 100 }
+    AuditEntityType:
+      name: entity_type
+      in: query
+      required: false
+      description: Jenis entitas persis, misalnya payment, alumni, admin, event.
+      schema: { type: string, minLength: 1, maxLength: 64 }
+    AuditEntityId:
+      name: entity_id
+      in: query
+      required: false
+      description: Id entitas persis (biasanya UUID).
+      schema: { type: string, minLength: 1, maxLength: 100 }
+    AuditRequestId:
+      name: request_id
+      in: query
+      required: false
+      description: Penghubung log API/worker (N-14).
+      schema: { type: string, minLength: 1, maxLength: 100 }
+    AuditFrom:
+      name: from
+      in: query
+      required: false
+      description: Batas bawah created_at (inklusif, UTC).
+      schema: { type: string, format: date-time }
+    AuditTo:
+      name: to
+      in: query
+      required: false
+      description: Batas atas created_at (eksklusif, UTC).
+      schema: { type: string, format: date-time }
+
+  responses:
+    AdminAuditForbidden:
+      description: |
+        FORBIDDEN tanpa izin yang dibutuhkan (audit.read; ekspor juga audit.export) walaupun URL/id diketahui
+        (AC F17-2), atau MFA_REQUIRED bila sesi admin belum menyelesaikan TOTP (AC F02-2).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    AuditEffectiveRole:
+      type: string
+      enum: [alumni, admin, super_admin, system, anonymous]
+      description: Peran efektif pelaku saat tindakan (audit_logs_effective_role_chk, PRD 3.17).
+
+    AuditEntrySort:
+      type: string
+      enum: [created_at_desc, created_at_asc]
+      default: created_at_desc
+
+    AuditActor:
+      type: object
+      required: [admin_id, user_id, display_name]
+      description: |
+        Pelaku dari identitas server, bukan input pengguna (PRD 6.4). display_name diambil saat dibaca (nama admin
+        atau nama alumni) dan null untuk system/anonymous atau identitas yang sudah dianonimkan (D2, PRD 3.17).
+      properties:
+        admin_id: { type: [string, "null"], format: uuid }
+        user_id: { type: [string, "null"], format: uuid }
+        display_name: { type: [string, "null"] }
+
+    AuditEntry:
+      type: object
+      required: [id, created_at, action, entity_type, entity_id, effective_role, actor, request_id, reason]
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        action: { type: string, examples: ["payment.approved"] }
+        entity_type: { type: string, examples: ["payment"] }
+        entity_id: { type: [string, "null"] }
+        effective_role: { $ref: "#/components/schemas/AuditEffectiveRole" }
+        actor: { $ref: "#/components/schemas/AuditActor" }
+        request_id: { type: string, description: "Penghubung log API, worker dan audit (N-14)." }
+        reason: { type: [string, "null"] }
+
+    AuditEntryDetail:
+      allOf:
+        - $ref: "#/components/schemas/AuditEntry"
+        - type: object
+          required: [before, after]
+          properties:
+            before:
+              type: [object, "null"]
+              description: Keadaan sebelum yang sudah disaring (bentuk mengikuti tindakan).
+            after:
+              type: [object, "null"]
+              description: Keadaan sesudah yang sudah disaring (bentuk mengikuti tindakan).
+
+    AuditEntryPage:
+      type: object
+      required: [items, next_cursor, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AuditEntry" }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer, minimum: 0 }
+
+    AuditFilter:
+      type: object
+      description: |
+        Filter audit yang sama dengan parameter GET /admin/audit/entries (AC F17-4). Semua opsional; `to` harus
+        setelah `from`.
+      properties:
+        actor_q: { type: string, minLength: 2, maxLength: 100 }
+        actor_admin_id: { type: string, format: uuid }
+        actor_user_id: { type: string, format: uuid }
+        effective_role: { $ref: "#/components/schemas/AuditEffectiveRole" }
+        action: { type: string, minLength: 1, maxLength: 100 }
+        entity_type: { type: string, minLength: 1, maxLength: 64 }
+        entity_id: { type: string, minLength: 1, maxLength: 100 }
+        request_id: { type: string, minLength: 1, maxLength: 100 }
+        from: { type: string, format: date-time, description: Inklusif (UTC). }
+        to: { type: string, format: date-time, description: Eksklusif (UTC). }
+
+    AuditExportStatus:
+      type: string
+      enum: [processing, ready, failed, expired]
+      description: |
+        Siklus job ekspor: processing (diterima, menunggu atau sedang dikerjakan worker) -> ready | failed;
+        ready -> expired saat berkas dihapus otomatis (AC F17-4). `failed` dan `expired` final. Label UI: Diproses,
+        Siap, Gagal, Kedaluwarsa. Penurunan status dari tabel yang ada dijelaskan di skema AuditExport.
+
+    AuditExportFailureReason:
+      type: string
+      enum: [row_limit_exceeded, processing_failed, timed_out]
+      description: |
+        `row_limit_exceeded`: hasil filter melebihi batas baris ekspor, persempit filter. `processing_failed`: galat
+        job/storage yang tidak pulih setelah retry; minta ekspor baru (rincian ada di log worker dengan request_id,
+        N-14). `timed_out`: job tidak selesai sebelum batas waktu ekspor (konfigurasi server, usulan 1 jam sejak
+        diminta), misalnya antrean hilang; minta ekspor baru.
+
+    AuditExport:
+      type: object
+      description: |
+        Job ekspor audit (AC F17-4). Disimpan pada tabel yang sudah ada tanpa tabel job baru; id ekspor dipakai
+        sebagai entity_id audit dengan entity_type `audit_export`:
+
+        | Fakta                       | Ditulis oleh, kapan                         | Isi                                            |
+        | --------------------------- | ------------------------------------------- | ---------------------------------------------- |
+        | audit `audit.export.requested` | API, transaksi permintaan (+ outbox)     | actor admin peminta, created_at, after.filters |
+        | audit `audit.export.completed` | worker, SATU transaksi dengan INSERT files | effective_role system, after {file_id, row_count} |
+        | audit `audit.export.failed`    | worker                                    | effective_role system, after {failure_reason}  |
+        | files purpose `audit_export`   | worker, bersama entri completed            | owner_user_id = akun login peminta, private, status ready, attached_at, expires_at, bytes |
+
+        Penurunan field: `requested_by`/`requested_at`/`filters` dari entri requested; `completed_at` = created_at
+        entri completed/failed; `row_count` dari entri completed; `bytes` dan `expires_at` dari baris files;
+        `file_name` = `audit-<YYYYMMDD requested_at UTC>-<8 hex awal id>.csv`. Status (urutan prioritas):
+        1. entri completed ada: `expired` bila berkasnya berstatus deleted, hilang, atau expires_at <= sekarang;
+           selain itu `ready`;
+        2. entri failed ada: `failed` dengan failure_reason dari entri;
+        3. belum ada entri terminal dan sekarang > requested_at + batas waktu ekspor: `failed` (`timed_out`);
+        4. selain itu `processing`.
+
+        Aturan worker agar status monoton dan sekali jadi: job mengambil pg_advisory_xact_lock atas id ekspor,
+        memeriksa ulang bahwa belum ada entri terminal dan batas waktu belum lewat (jam database), lalu menulis
+        tepat satu entri terminal; job yang dimulai atau selesai setelah batas waktu berhenti tanpa menulis berkas.
+        Galat sementara memakai retry outbox/antrean; `processing_failed` ditulis saat retry habis. Pembersihan
+        `maintenance.cleanup` menghapus berkas kedaluwarsa (files.status deleted) sehingga status menjadi
+        `expired`. Integrator boleh memindahkan keadaan ini ke tabel job khusus kelak tanpa mengubah kontrak.
+      required:
+        - id
+        - status
+        - filters
+        - requested_by
+        - requested_at
+        - completed_at
+        - expires_at
+        - row_count
+        - file_name
+        - bytes
+        - failure_reason
+      properties:
+        id: { type: string, format: uuid, description: Id ekspor (entity_id entri audit audit_export). }
+        status: { $ref: "#/components/schemas/AuditExportStatus" }
+        filters: { $ref: "#/components/schemas/AuditFilter" }
+        requested_by:
+          $ref: "#/components/schemas/AdminActorRef"
+          description: Admin peminta (actor_admin_id entri audit.export.requested).
+        requested_at: { type: string, format: date-time }
+        completed_at:
+          type: [string, "null"]
+          format: date-time
+          description: Waktu entri terminal (completed atau failed); null selama processing dan untuk timed_out.
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+          description: Berkas privat dihapus otomatis pada waktu ini (AC F17-4); terisi untuk ready dan expired.
+        row_count: { type: [integer, "null"], minimum: 0 }
+        file_name:
+          type: [string, "null"]
+          description: Nama unduhan tanpa data pribadi; terisi untuk ready dan expired.
+          examples: ["audit-20261012-0192f0c2.csv"]
+        bytes: { type: [integer, "null"], minimum: 0 }
+        failure_reason:
+          oneOf:
+            - $ref: "#/components/schemas/AuditExportFailureReason"
+            - type: "null"
+
+    AuditExportPage:
+      type: object
+      required: [items, next_cursor, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AuditExport" }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer, minimum: 0 }
+
+    AuditExportAccess:
+      type: object
+      required: [url, expires_at, file_name]
+      properties:
+        url:
+          {
+            type: string,
+            format: uri,
+            description: URL bertanda tangan jangka pendek yang terikat berkas dan purpose.,
+          }
+        expires_at: { type: string, format: date-time, description: Maksimal 10 menit (PRD 5.4). }
+        file_name: { type: string }
