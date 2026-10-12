@@ -1,48 +1,61 @@
-import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router";
-import { AppLayout, RequirePermission } from "./pages/AppLayout";
-import { DashboardPage, NotBuiltPage } from "./pages/DashboardPage";
-import { LoginPage } from "./pages/LoginPage";
-import { MfaPage } from "./pages/MfaPage";
-import { PaymentsPage } from "./pages/PaymentsPage";
+import { createMemoryHistory, createRouter, type RouterHistory } from "@tanstack/react-router";
+import type { RouterContext } from "./auth/guards";
+import { PageSkeleton } from "./components/ui/States";
+import { accountRoutes } from "./routes/account/routes";
+import { adminsRoutes } from "./routes/admins/routes";
+import { auditRoutes } from "./routes/audit/routes";
+import { authRoutes } from "./routes/auth/routes";
+import { contentRoutes } from "./routes/content/routes";
+import { dashboardRoutes } from "./routes/dashboard/routes";
+import { eventsRoutes } from "./routes/events/routes";
+import { membersRoutes } from "./routes/members/routes";
+import { moderationRoutes } from "./routes/moderation/routes";
+import { notificationsRoutes } from "./routes/notifications/routes";
+import { paymentsRoutes } from "./routes/payments/routes";
+import { settingsRoutes } from "./routes/settings/routes";
+import { appRoute, RouteErrorPage, rootRoute } from "./routes/__root";
 
-const rootRoute = createRootRoute({ component: Outlet });
-const loginRoute = createRoute({ getParentRoute: () => rootRoute, path: "/login", component: LoginPage });
-const mfaRoute = createRoute({ getParentRoute: () => rootRoute, path: "/login/mfa", component: MfaPage });
-const appRoute = createRoute({ getParentRoute: () => rootRoute, id: "app", component: AppLayout });
-const dashboardRoute = createRoute({ getParentRoute: () => appRoute, path: "/", component: DashboardPage });
-const paymentsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/payments",
-  component: () => (
-    <RequirePermission permission="payments.read">
-      <PaymentsPage />
-    </RequirePermission>
-  ),
-});
-const later = (path: string, title: string) =>
-  createRoute({ getParentRoute: () => appRoute, path, component: () => <NotBuiltPage title={title} /> });
-
-const routeTree = rootRoute.addChildren([
-  loginRoute,
-  mfaRoute,
+/**
+ * Pohon rute web admin (ARCHITECTURE §7). Semua rute sudah terdaftar sejak fondasi; setiap area mengekspor
+ * daftarnya dari src/routes/<area>/routes.tsx dan memuat halamannya secara lazy (code splitting per area).
+ */
+export const routeTree = rootRoute.addChildren([
+  ...authRoutes,
   appRoute.addChildren([
-    dashboardRoute,
-    paymentsRoute,
-    later("/members", "Manajemen User"),
-    later("/content", "Manajemen Konten"),
-    later("/events", "Event dan Tiket"),
-    later("/settings", "Metode dan Biaya"),
-    later("/admins", "Manajemen Admin"),
-    later("/audit", "Audit"),
+    ...dashboardRoutes,
+    ...paymentsRoutes,
+    ...membersRoutes,
+    ...contentRoutes,
+    ...eventsRoutes,
+    ...moderationRoutes,
+    ...adminsRoutes,
+    ...auditRoutes,
+    ...notificationsRoutes,
+    ...settingsRoutes,
+    ...accountRoutes,
   ]),
 ]);
 
-export function createAppRouter() {
-  return createRouter({ routeTree });
+export function createAppRouter(opts: { history?: RouterHistory; initialPath?: string } = {}) {
+  return createRouter({
+    routeTree,
+    history:
+      opts.history ??
+      (opts.initialPath ? createMemoryHistory({ initialEntries: [opts.initialPath] }) : undefined),
+    // Konteks diisi oleh <RouterProvider context={{ auth }}> di App.
+    context: { auth: undefined! } as RouterContext,
+    defaultPreload: "intent",
+    defaultPendingComponent: PageSkeleton,
+    defaultPendingMs: 150,
+    defaultErrorComponent: RouteErrorPage,
+    scrollRestoration: true,
+  });
 }
+
+export type AppRouter = ReturnType<typeof createAppRouter>;
 
 declare module "@tanstack/react-router" {
   interface Register {
-    router: ReturnType<typeof createAppRouter>;
+    router: AppRouter;
   }
 }
