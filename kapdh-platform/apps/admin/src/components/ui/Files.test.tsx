@@ -1,11 +1,12 @@
 import type { components } from "@kapdh/contracts";
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { isAccessExpired } from "../../api/files";
 import { MOCK_PROOF_FILE_ID } from "../../api/mocks/payments";
 import { renderWithProviders, signInViaApi } from "../../test/utils";
-import { FilePreview, FileUpload } from "./Files";
+import { FilePreview, FileUpload, previewKind } from "./Files";
 
 type FileRef = components["schemas"]["FileRef"];
 
@@ -82,7 +83,25 @@ describe("FileUpload (N-10)", () => {
   });
 });
 
+describe("previewKind (bukti bayar boleh PDF, N-10)", () => {
+  it("memakai mime bila ada, lalu tipe data URL, lalu ekstensi URL bertanda tangan", () => {
+    expect(previewKind("application/pdf", "https://x.test/a")).toBe("pdf");
+    expect(previewKind("image/png", "https://x.test/a.pdf")).toBe("image");
+    expect(previewKind(null, "data:application/pdf;base64,AAAA")).toBe("pdf");
+    expect(previewKind(undefined, "https://cdn.test/bukti/abc.PDF?X-Amz-Expires=600")).toBe("pdf");
+    expect(previewKind(undefined, "https://cdn.test/bukti/abc.jpeg?sig=1")).toBe("image");
+    expect(previewKind(undefined, "https://cdn.test/objek/abc?sig=1")).toBe("unknown");
+  });
+});
+
 describe("FilePreview (PRD 5.4)", () => {
+  it("URL akses kedaluwarsa dianggap tidak layak dibuka; masih lama = layak", () => {
+    const now = Date.parse("2026-10-13T08:00:00Z");
+    expect(isAccessExpired({ url: "u", expires_at: "2026-10-13T08:00:03Z" }, now)).toBe(true);
+    expect(isAccessExpired({ url: "u", expires_at: "2026-10-13T08:09:00Z" }, now)).toBe(false);
+    expect(isAccessExpired(undefined, now)).toBe(true);
+  });
+
   it("memuat URL bertanda tangan GET /files/{id}/access dan menyediakan tautan buka", async () => {
     await signInViaApi();
     renderWithProviders(
@@ -94,6 +113,21 @@ describe("FilePreview (PRD 5.4)", () => {
       "rel",
       "noopener noreferrer",
     );
+  });
+
+  it("pratinjau gagal dimuat padahal URL masih berlaku: bingkai netral 'Buka berkas' tanpa meminta URL ulang", async () => {
+    await signInViaApi();
+    const { queryClient } = renderWithProviders(
+      <FilePreview fileId={MOCK_PROOF_FILE_ID} alt="Bukti transfer Siti" caption="versi 1" />,
+    );
+    const img = await screen.findByRole("img", { name: "Bukti transfer Siti" });
+    // Mis. bukti PDF tanpa info tipe dimuat sebagai <img>.
+    fireEvent.error(img);
+    expect(await screen.findByText(/Buka berkas untuk memeriksanya/)).toBeInTheDocument();
+    expect(screen.queryByText("Pratinjau tidak tersedia")).toBeNull();
+    expect(screen.getByRole("link", { name: /Buka berkas/ })).toHaveAttribute("target", "_blank");
+    // URL belum kedaluwarsa: tidak ada permintaan URL ulang yang sia-sia.
+    expect(queryClient.getQueryState(["file-access", MOCK_PROOF_FILE_ID])?.dataUpdateCount).toBe(1);
   });
 
   it("berkas tidak ditemukan menampilkan pesan dan tombol coba lagi", async () => {

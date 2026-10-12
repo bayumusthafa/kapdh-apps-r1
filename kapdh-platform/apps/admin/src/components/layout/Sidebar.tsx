@@ -8,10 +8,17 @@ import { Avatar } from "../ui/DataDisplay";
 import { usePendingPaymentsCount } from "./usePendingPayments";
 
 /** Logo dan nama aplikasi di atas menu (prototipe screen_8). */
-export function Brand({ compact }: { compact?: boolean }) {
+export function Brand({ compact, decorativeLogo }: { compact?: boolean; decorativeLogo?: boolean }) {
   return (
     <div className="flex items-center gap-2.5 px-1.5">
-      <img src="/logo.png" alt="Logo KAPDH" width={40} height={40} className="size-10 object-contain" />
+      <img
+        src="/logo.png"
+        // Logo dekoratif bila nama aplikasi sudah tertulis di sebelahnya dalam konteks yang sama (laci menu).
+        alt={decorativeLogo ? "" : "Logo KAPDH"}
+        width={40}
+        height={40}
+        className="size-10 object-contain"
+      />
       {compact ? null : (
         <div className="flex flex-col leading-tight">
           <span className="font-heading text-base font-bold text-accent">KAPDH</span>

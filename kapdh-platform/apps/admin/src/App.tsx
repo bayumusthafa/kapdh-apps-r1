@@ -7,7 +7,7 @@ import { RestoringScreen } from "./components/layout/AuthLayout";
 import { ToastProvider } from "./components/ui/Toast";
 import type { AppRouter } from "./router";
 
-/** QueryClient web admin: tidak refetch saat fokus jendela (hanya polling eksplisit, AC F02-5). */
+/** QueryClient web admin: tidak refetch otomatis saat fokus/online (hanya refetch latar eksplisit, AC F02-5). */
 export function createAppQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
@@ -18,6 +18,8 @@ export function createAppQueryClient(): QueryClient {
           return failureCount < 1 && (status === 0 || status >= 500);
         },
         refetchOnWindowFocus: false,
+        // Refetch saat kembali online dilakukan useApiQuery sebagai permintaan latar (bukan aktivitas admin).
+        refetchOnReconnect: false,
       },
       mutations: { retry: false },
     },

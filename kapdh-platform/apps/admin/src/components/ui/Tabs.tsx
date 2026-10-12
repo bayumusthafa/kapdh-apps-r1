@@ -20,7 +20,10 @@ export interface TabsProps<V extends string = string> {
   value: V;
   onValueChange: (value: V) => void;
   className?: string;
-  /** Awalan id agar panel dapat ditautkan (`${idPrefix}-panel-${value}`). */
+  /**
+   * Awalan id agar panel dapat ditautkan (`${idPrefix}-panel-${value}`). Hanya tab terpilih yang memberi
+   * aria-controls, karena halaman hanya merender <TabPanel> tab aktif (referensi ke id yang tidak ada dilarang).
+   */
   idPrefix?: string;
 }
 
@@ -78,7 +81,7 @@ export function Tabs<V extends string = string>({
             type="button"
             role="tab"
             aria-selected={selected}
-            aria-controls={ids.panel}
+            aria-controls={selected && idPrefix ? ids.panel : undefined}
             tabIndex={selected ? 0 : -1}
             disabled={item.disabled}
             onClick={() => onValueChange(item.value)}

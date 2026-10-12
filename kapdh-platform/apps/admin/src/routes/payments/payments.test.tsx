@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mockAuth, mockPayments, paymentRequests } from "../../api/mocks";
-import { renderApp, signIn, type User } from "../../test/utils";
+import { findToast, renderApp, signIn, type User } from "../../test/utils";
 import { PAYMENT_POLL_MS } from "./VerificationTab";
 
 /** Data contoh prototipe screen_8 di server tiruan (src/api/mocks/payments.ts). */
@@ -12,10 +12,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-async function openPayments(user: User) {
+async function openPayments(user: User, title = "Verifikasi Pembayaran") {
   renderApp("/payments");
   await signIn(user);
-  await screen.findByRole("heading", { level: 1, name: "Verifikasi Pembayaran" });
+  await screen.findByRole("heading", { level: 1, name: title });
 }
 
 async function selectAhmad(user: User) {
@@ -48,7 +48,10 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
     await screen.findByText("Menampilkan 20 dari 26");
     await user.click(screen.getByRole("button", { name: "Halaman berikutnya" }));
     expect(await screen.findByText("Menampilkan 21–26 dari 26")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Halaman berikutnya" })).toBeDisabled();
+    // Halaman terakhir: tombol nonaktif tetapi tetap memegang fokus (aria-disabled, N-11).
+    const next = screen.getByRole("button", { name: "Halaman berikutnya" });
+    expect(next).toHaveAttribute("aria-disabled", "true");
+    expect(next).toHaveFocus();
     expect(listRequests().at(-1)?.query.cursor).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Halaman sebelumnya" }));
     expect(await screen.findByText("Menampilkan 20 dari 26")).toBeInTheDocument();
@@ -137,13 +140,41 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
     mockPayments.replaceProof(AHMAD);
     await user.click(within(panel).getByRole("button", { name: "Setujui" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Bukti sudah diganti");
+    expect(await findToast("error", "Bukti sudah diganti")).toBeInTheDocument();
     const refreshed = await screen.findByRole("article", { name: "Ahmad Islam" });
     expect(await within(refreshed).findByText(/versi bukti 2/)).toBeInTheDocument();
     const checkbox = within(refreshed).getByRole("checkbox", { name: /dana Rp60\.000 sudah masuk/ });
     expect(checkbox).not.toBeChecked();
     expect(within(refreshed).getByRole("button", { name: "Setujui" })).toBeDisabled();
     expect(mockPayments.get(AHMAD)?.status).toBe("pending");
+    // Formulir dipasang ulang (tombol Setujui yang difokus hilang): fokus ke judul panel dan alasan diumumkan.
+    expect(within(refreshed).getByRole("status")).toHaveTextContent(
+      "Bukti transfer diganti alumni (versi 2). Centang dana dan alasan dikosongkan",
+    );
+    expect(within(refreshed).getByRole("heading", { name: "Ahmad Islam" })).toHaveFocus();
+  });
+
+  it("AC F04-4: polling melihat bukti baru saat admin mengetik alasan → formulir direset, diumumkan, fokus ke judul", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    await openPayments(user);
+    const panel = await selectAhmad(user);
+    const reason = within(panel).getByRole("textbox", { name: /Alasan penolakan/ });
+    await user.type(reason, "Nominal kurang");
+    expect(reason).toHaveFocus();
+    mockPayments.replaceProof(AHMAD);
+    await act(async () => {
+      vi.advanceTimersByTime(PAYMENT_POLL_MS + 1_000);
+    });
+    const refreshed = await screen.findByRole("article", { name: "Ahmad Islam" });
+    expect(await within(refreshed).findByText(/versi bukti 2/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(refreshed).getByRole("status")).toHaveTextContent(
+        "Bukti transfer diganti alumni (versi 2)",
+      ),
+    );
+    expect(within(refreshed).getByRole("textbox", { name: /Alasan penolakan/ })).toHaveValue("");
+    expect(within(refreshed).getByRole("heading", { name: "Ahmad Islam" })).toHaveFocus();
   });
 
   it("PRD 4.5: Tolak wajib alasan dan konfirmasi dua langkah sebelum dikirim", async () => {
@@ -196,7 +227,9 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
   it("admin pengaturan tanpa payments.read hanya melihat tab metode dan biaya", async () => {
     mockAuth.setAdmin({ role: "admin", permissions: ["settings.manage"] });
     const user = userEvent.setup();
-    await openPayments(user);
+    // Judul mengikuti cakupan izin: admin ini tidak memverifikasi pembayaran.
+    await openPayments(user, "Metode & Biaya Pembayaran");
+    expect(screen.queryByRole("heading", { level: 1, name: "Verifikasi Pembayaran" })).toBeNull();
     const tabs = screen.getByRole("tablist", { name: "Menu pembayaran" });
     expect(
       within(tabs)

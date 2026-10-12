@@ -3,8 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setAccessToken } from "./api/client";
 import { authRequests, MOCK_CREDENTIALS, mockAuth } from "./api/mocks";
+import { LOGOUT_CONFIRM_TIMEOUT_MS } from "./auth/session";
 import { IDLE_WARNING_MS } from "./components/layout/AppShell";
-import { renderApp, signIn } from "./test/utils";
+import { findToast, renderApp, signIn } from "./test/utils";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -110,7 +111,8 @@ describe("alur masuk dan sesi admin (server tiruan)", () => {
     await signIn(user);
     await user.click(screen.getByRole("button", { name: "Keluar" }));
     expect(await screen.findByLabelText(/^Kata sandi/)).toBeInTheDocument();
-    expect(mockAuth.isSessionActive()).toBe(false);
+    // Pencabutan server berjalan di latar setelah UI keluar.
+    await waitFor(() => expect(mockAuth.isSessionActive()).toBe(false));
     first.unmount();
 
     renderApp("/payments");
@@ -124,7 +126,7 @@ describe("alur masuk dan sesi admin (server tiruan)", () => {
     mockAuth.expireAccessTokens(); // mis. laptop tertidur: token di memori sudah ditolak server
     await user.click(screen.getByRole("button", { name: "Keluar" }));
     expect(await screen.findByLabelText(/^Kata sandi/)).toBeInTheDocument();
-    expect(mockAuth.isSessionActive()).toBe(false);
+    await waitFor(() => expect(mockAuth.isSessionActive()).toBe(false));
     const logouts = authRequests.filter((r) => r.path === "/auth/logout");
     expect(logouts.length).toBeGreaterThanOrEqual(1);
   });
@@ -192,6 +194,59 @@ describe("alur masuk dan sesi admin (server tiruan)", () => {
     expect(await screen.findByText(/tidak ada aktivitas selama 30 menit/)).toBeInTheDocument();
     expect(mockAuth.isSessionActive()).toBe(false);
     expect(authRequests.filter((r) => r.path === "/auth/logout")).toHaveLength(1);
+  });
+
+  it("menu seluler: aria-controls hanya saat laci terbuka, laci bernama teks, cincin fokus permukaan terang", async () => {
+    const user = userEvent.setup();
+    renderApp("/login");
+    await signIn(user);
+    const toggle = screen.getByRole("button", { name: "Menu" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).not.toHaveAttribute("aria-controls");
+    // Tombol berada di header putih: tidak di dalam permukaan gelap (cincin emas ~1,5:1 di atas putih).
+    expect(toggle.closest('[data-surface="dark"]')).toBeNull();
+    await user.click(toggle);
+    const drawer = await screen.findByRole("dialog", { name: "Menu navigasi" });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(toggle).toHaveAttribute("aria-controls", "menu-seluler");
+    expect(document.getElementById("menu-seluler")).not.toBeNull();
+    // Logo di laci dekoratif (nama aplikasi tertulis di sebelahnya), tidak ikut dibacakan.
+    expect(drawer.querySelector("img")).toHaveAttribute("alt", "");
+    expect(within(drawer).queryByRole("img", { name: "Logo KAPDH" })).toBeNull();
+  });
+
+  it("keluar saat jaringan menggantung: data admin langsung disembunyikan, peringatan setelah batas tunggu", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { queryClient } = renderApp("/payments");
+    await signIn(user);
+    expect(await screen.findByRole("button", { name: /Ahmad Islam/ })).toBeInTheDocument();
+    const release = mockAuth.holdLogout();
+    await user.click(screen.getByRole("button", { name: "Keluar" }));
+    // UI keluar tanpa menunggu server: halaman masuk tampil, cache data admin sudah kosong.
+    expect(await screen.findByLabelText(/^Kata sandi/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Ahmad Islam/ })).toBeNull();
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+    await act(async () => {
+      vi.advanceTimersByTime(LOGOUT_CONFIRM_TIMEOUT_MS + 500);
+    });
+    expect(await findToast("warning", "server belum mengonfirmasi")).toBeInTheDocument();
+    // Koneksi pulih: pencabutan yang tertunda tetap diselesaikan.
+    release();
+    await waitFor(() => expect(mockAuth.isSessionActive()).toBe(false));
+  });
+
+  it("keluar: UI langsung keluar; bila server belum mengonfirmasi pencabutan, admin diperingatkan", async () => {
+    const user = userEvent.setup();
+    renderApp("/login");
+    await signIn(user);
+    // Access token ditolak dan penukaran cookie gagal 503 (deploy): pencabutan tidak dapat dipastikan.
+    mockAuth.expireAccessTokens();
+    mockAuth.failRefresh(503);
+    await user.click(screen.getByRole("button", { name: "Keluar" }));
+    expect(await screen.findByLabelText(/^Kata sandi/)).toBeInTheDocument();
+    expect(await findToast("warning", "server belum mengonfirmasi")).toBeInTheDocument();
+    expect(mockAuth.isSessionActive()).toBe(true);
   });
 
   it("URL tidak dikenal menampilkan halaman tidak ditemukan", async () => {

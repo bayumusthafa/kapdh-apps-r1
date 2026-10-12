@@ -1,5 +1,6 @@
 import {
   hashKey,
+  type QueryClient,
   type QueryKey,
   useMutation,
   type UseMutationResult,
@@ -40,8 +41,28 @@ export async function unwrap<T>(promise: Promise<FetchResult<T>>): Promise<T> {
   return res.data as T;
 }
 
-/** Hash queryKey yang refetch berikutnya berasal dari polling (bukan tindakan admin). */
-const backgroundFetches = new Set<string>();
+/**
+ * Jumlah refetch latar (polling, kembali online, pembaruan URL berkas) yang sedang berjalan per hash queryKey.
+ * Penanda bertahan selama SELURUH siklus fetch, termasuk percobaan ulang otomatis React Query setelah galat
+ * jaringan/5xx, sehingga percobaan ulang itu tetap membawa X-Background-Request (AC F02-5).
+ */
+const backgroundFetches = new Map<string, number>();
+
+/**
+ * Refetch query aktif `queryKey` sebagai permintaan latar: server tidak menghitungnya sebagai aktivitas admin
+ * (AC F02-5). Fetch yang sedang berjalan tidak dibatalkan (cancelRefetch: false).
+ */
+export function refetchInBackground(queryClient: QueryClient, queryKey: QueryKey): Promise<void> {
+  const hash = hashKey(queryKey);
+  backgroundFetches.set(hash, (backgroundFetches.get(hash) ?? 0) + 1);
+  return queryClient
+    .refetchQueries({ queryKey, exact: true, type: "active" }, { cancelRefetch: false })
+    .finally(() => {
+      const left = (backgroundFetches.get(hash) ?? 1) - 1;
+      if (left > 0) backgroundFetches.set(hash, left);
+      else backgroundFetches.delete(hash);
+    });
+}
 
 export interface ApiQueryContext {
   signal: AbortSignal;
@@ -57,8 +78,9 @@ export interface UseApiQueryOptions<T, TData = T> extends Omit<
   request: (ctx: ApiQueryContext) => Promise<FetchResult<T>>;
   enabled?: boolean;
   /**
-   * Polling: refetch tiap `pollMs` selama tab terlihat. HANYA refetch polling yang membawa X-Background-Request;
-   * pemuatan pertama dan perubahan filter oleh admin dihitung sebagai aktivitas (AC F02-5).
+   * Polling: refetch tiap `pollMs` selama tab terlihat. HANYA refetch otomatis (polling, termasuk percobaan
+   * ulangnya, dan refetch saat kembali online) yang membawa X-Background-Request; pemuatan pertama dan perubahan
+   * filter oleh admin dihitung sebagai aktivitas (AC F02-5).
    */
   pollMs?: number | false;
 }
@@ -78,9 +100,11 @@ export function useApiQuery<T, TData = T>({
   requestRef.current = request;
 
   const query = useQuery<T, ApiError, TData>({
+    // Refetch otomatis saat kembali online ditangani di bawah sebagai permintaan latar (bukan aktivitas admin).
+    refetchOnReconnect: false,
     ...options,
     queryFn: ({ signal, queryKey }) => {
-      const background = backgroundFetches.delete(hashKey(queryKey));
+      const background = backgroundFetches.has(hashKey(queryKey));
       return unwrap(requestRef.current({ signal, headers: background ? { ...BACKGROUND_HEADERS } : {} }));
     },
   });
@@ -91,18 +115,24 @@ export function useApiQuery<T, TData = T>({
   const enabled = options.enabled !== false;
 
   useEffect(() => {
-    if (!pollMs || !enabled) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "hidden") return;
+    if (!enabled) return;
+    const refetchIfIdle = () => {
       const key = queryKeyRef.current;
       const state = queryClient.getQueryState(key);
       if (!state || state.fetchStatus !== "idle") return;
-      backgroundFetches.add(keyHash);
-      void queryClient
-        .refetchQueries({ queryKey: key, exact: true, type: "active" })
-        .finally(() => backgroundFetches.delete(keyHash));
-    }, pollMs);
-    return () => window.clearInterval(timer);
+      void refetchInBackground(queryClient, key);
+    };
+    const onOnline = () => refetchIfIdle();
+    window.addEventListener("online", onOnline);
+    const timer = pollMs
+      ? window.setInterval(() => {
+          if (document.visibilityState !== "hidden") refetchIfIdle();
+        }, pollMs)
+      : null;
+    return () => {
+      window.removeEventListener("online", onOnline);
+      if (timer !== null) window.clearInterval(timer);
+    };
   }, [pollMs, enabled, keyHash, queryClient]);
 
   const forbidden = query.error?.code === "FORBIDDEN";
@@ -133,18 +163,50 @@ function outcomeKnown(error: ApiError): boolean {
   return error.status >= 400 && error.status < 500 && error.status !== 408 && error.status !== 429;
 }
 
-/** Pasang field_errors VALIDATION_ERROR ke react-hook-form; kunci `_` menjadi galat akar (root.server). */
+export interface AppliedFieldErrors {
+  /** Ada galat yang dipasang ke formulir. */
+  applied: boolean;
+  /** Galat `_` dipasang sebagai root.server (tampil lewat <FormError role="alert">). */
+  root: boolean;
+  /** Fokus berpindah ke isian bergalat pertama (galatnya dibacakan lewat aria-describedby). */
+  focused: boolean;
+  /** Pesan galat pertama, untuk ringkasan bila isian tidak dapat difokus. */
+  firstMessage: string | null;
+}
+
+/**
+ * Pasang field_errors VALIDATION_ERROR ke react-hook-form; kunci `_` menjadi galat akar (root.server). Isian
+ * bergalat pertama difokus agar pengguna keyboard/pembaca layar langsung mendengar galatnya (N-11).
+ */
 export function applyFieldErrors<TFieldValues extends FieldValues>(
   setError: UseFormSetError<TFieldValues>,
   error: ApiError,
-): boolean {
+): AppliedFieldErrors {
   const entries = Object.entries(error.fieldErrors);
+  const before = typeof document !== "undefined" ? document.activeElement : null;
+  let root = false;
+  let focusRequested = false;
   for (const [field, messages] of entries) {
     const message = messages.join(" ");
-    if (field === "_") setError("root.server", { type: "server", message });
-    else setError(field as Parameters<UseFormSetError<TFieldValues>>[0], { type: "server", message });
+    if (field === "_") {
+      root = true;
+      setError("root.server", { type: "server", message });
+    } else {
+      setError(
+        field as Parameters<UseFormSetError<TFieldValues>>[0],
+        { type: "server", message },
+        { shouldFocus: !focusRequested },
+      );
+      focusRequested = true;
+    }
   }
-  return entries.length > 0;
+  const after = typeof document !== "undefined" ? document.activeElement : null;
+  return {
+    applied: entries.length > 0,
+    root,
+    focused: focusRequested && after !== null && after !== before && after !== document.body,
+    firstMessage: entries[0]?.[1].join(" ") ?? null,
+  };
 }
 
 export interface MutationRequestContext {
@@ -248,10 +310,19 @@ export function useApiMutation<T, V = void, TFieldValues extends FieldValues = F
       const opts = optsRef.current;
       if (outcomeKnown(error) || error.reauthCancelled) intentRef.current = null;
       let handledInline = false;
+      let message = error.message;
       switch (error.ui.action) {
-        case "show_field_errors":
-          handledInline = opts.setError ? applyFieldErrors(opts.setError, error) : false;
+        case "show_field_errors": {
+          if (!opts.setError) break;
+          const result = applyFieldErrors(opts.setError, error);
+          // Galat sudah tersampaikan bila fokus pindah ke isian bergalat atau galat akar tampil sebagai alert.
+          // Bila tidak (isian berada di balik dialog yang sedang tertutup, fokus tetap di tempat), umumkan
+          // ringkasan lewat toast agar pembaca layar tetap mendapat umpan balik (N-11, PRD 4.5).
+          handledInline = result.applied && (result.focused || result.root);
+          if (result.applied && !handledInline)
+            message = `Periksa isian yang ditandai. ${result.firstMessage ?? ""}`.trim();
           break;
+        }
         case "reload_latest":
           opts.onReloadLatest?.(error, vars);
           break;
@@ -261,7 +332,7 @@ export function useApiMutation<T, V = void, TFieldValues extends FieldValues = F
         default:
           break;
       }
-      if (opts.toastErrors !== false && !handledInline && !error.reauthCancelled) toast.error(error.message);
+      if (opts.toastErrors !== false && !handledInline && !error.reauthCancelled) toast.error(message);
       opts.onError?.(error, vars);
     },
   });

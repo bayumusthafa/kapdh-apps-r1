@@ -26,11 +26,42 @@ import type { RichTextEditorProps } from "./RichTextEditor";
 
 /**
  * Implementasi editor teks kaya (TipTap) untuk berita dan halaman (F-08). HTML keluaran BUKAN tepercaya:
- * server menyanitasi sebelum menyimpan/menerbitkan (PRD 3.8). Editor hanya mengizinkan tautan https/mailto dan
- * gambar https dengan teks alternatif wajib (N-11). Dimuat terpisah (lazy) agar bundel utama tetap kecil.
+ * server tetap menyanitasi sebelum menyimpan/menerbitkan (PRD 3.8); aturan di sini membuat isi editor sejak awal
+ * sesuai kebijakan yang sama (N-11):
+ * - tautan hanya https:// atau mailto:, baik dari dialog, ketikan otomatis, tempel, maupun HTML yang dimuat
+ *   (`isAllowedUri`); tautan lain kehilangan tautannya tetapi teksnya tetap;
+ * - gambar hanya https:// (tempel/muat); gambar yang ditempel tanpa teks alternatif dibuang, dan dialog
+ *   "Sisipkan gambar" mewajibkan teks alternatif.
+ * Dimuat terpisah (lazy) agar bundel utama tetap kecil.
  */
 const SAFE_LINK = /^(https:\/\/|mailto:)/i;
 const SAFE_IMAGE = /^https:\/\//i;
+
+/** Gambar yang hanya menerima sumber https (HTML dimuat maupun ditempel). */
+const SafeImage = Image.extend({
+  parseHTML() {
+    return [
+      {
+        tag: "img[src]",
+        getAttrs: (element) => (SAFE_IMAGE.test(element.getAttribute("src") ?? "") ? null : false),
+      },
+    ];
+  },
+});
+
+/**
+ * Bersihkan HTML yang ditempel/diseret ke editor sebelum di-parse: gambar non-https atau tanpa teks alternatif
+ * dibuang (teks alternatif wajib, N-11). Tautan disaring oleh `isAllowedUri` ekstensi Link.
+ */
+export function sanitizePastedHtml(html: string): string {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  doc.querySelectorAll("img").forEach((img) => {
+    const src = img.getAttribute("src") ?? "";
+    const alt = img.getAttribute("alt")?.trim() ?? "";
+    if (!SAFE_IMAGE.test(src) || !alt) img.remove();
+  });
+  return doc.body.innerHTML;
+}
 
 export default function RichTextEditorImpl({
   value,
@@ -60,13 +91,16 @@ export default function RichTextEditorImpl({
         autolink: true,
         protocols: ["https", "mailto"],
         defaultProtocol: "https",
-        validate: (url) => SAFE_LINK.test(url),
+        // Berlaku untuk HTML dimuat/ditempel, perintah setLink dan tautan otomatis (bukan hanya autolink).
+        isAllowedUri: (url) => SAFE_LINK.test(url),
+        shouldAutoLink: (url) => SAFE_LINK.test(url),
         HTMLAttributes: { rel: "noopener noreferrer nofollow", target: "_blank" },
       }),
-      Image.configure({ inline: false, allowBase64: false }),
+      SafeImage.configure({ inline: false, allowBase64: false }),
     ],
     content: value,
     editorProps: {
+      transformPastedHTML: sanitizePastedHtml,
       attributes: {
         role: "textbox",
         "aria-multiline": "true",
@@ -245,32 +279,45 @@ function Toolbar({ editor, label, disabled }: { editor: Editor; label: string; d
       <div
         role="toolbar"
         aria-label={label}
+        aria-disabled={disabled || undefined}
         onKeyDown={onKeyDown}
         className="flex flex-wrap gap-0.5 border-b border-divider bg-neutral-50 p-1"
       >
-        {buttons.map((b, i) => (
-          <button
-            key={b.key}
-            ref={(el) => {
-              refs.current[i] = el;
-            }}
-            type="button"
-            aria-label={b.label}
-            title={b.label}
-            aria-pressed={b.active === undefined ? undefined : b.active}
-            tabIndex={i === focusIndex ? 0 : -1}
-            disabled={disabled || b.disabled}
-            onFocus={() => setFocusIndex(i)}
-            onClick={b.run}
-            className={cn(
-              "inline-flex size-11 items-center justify-center rounded-sm text-text [&_svg]:size-4",
-              b.active ? "bg-green-100 text-primary" : "hover:bg-neutral-100",
-              "disabled:cursor-not-allowed disabled:opacity-40",
-            )}
-          >
-            {b.icon}
-          </button>
-        ))}
+        {buttons.map((b, i) => {
+          // Tombol yang sementara tidak berlaku (Urungkan tanpa riwayat, Hapus tautan tanpa tautan) tetap dapat
+          // difokus dengan aria-disabled (pola bilah alat WAI-ARIA APG): perhentian Tab roving tidak pernah jatuh
+          // ke tombol mati sehingga bilah alat tidak hilang dari urutan Tab, dan fokus tidak terlempar ke <body>
+          // saat tombol yang sedang difokus menjadi tidak berlaku. Editor yang dinonaktifkan seluruhnya memakai
+          // disabled native (tanpa perhentian Tab sama sekali).
+          const unavailable = Boolean(b.disabled);
+          return (
+            <button
+              key={b.key}
+              ref={(el) => {
+                refs.current[i] = el;
+              }}
+              type="button"
+              aria-label={b.label}
+              title={b.label}
+              aria-pressed={b.active === undefined ? undefined : b.active}
+              aria-disabled={!disabled && unavailable ? true : undefined}
+              tabIndex={i === focusIndex ? 0 : -1}
+              disabled={disabled}
+              onFocus={() => setFocusIndex(i)}
+              onClick={() => {
+                if (!unavailable) b.run();
+              }}
+              className={cn(
+                "inline-flex size-11 items-center justify-center rounded-sm text-text [&_svg]:size-4",
+                b.active ? "bg-green-100 text-primary" : "hover:bg-neutral-100",
+                "disabled:cursor-not-allowed disabled:opacity-40",
+                "aria-disabled:cursor-not-allowed aria-disabled:opacity-40 aria-disabled:hover:bg-transparent",
+              )}
+            >
+              {b.icon}
+            </button>
+          );
+        })}
       </div>
       <LinkDialog
         open={dialog === "link"}

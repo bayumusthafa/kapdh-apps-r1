@@ -82,21 +82,21 @@ export function AppShell() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-divider bg-surface px-4 md:border-none md:bg-transparent md:px-7 md:pt-4">
-          <div
-            data-surface="dark"
-            className="-ml-1 flex items-center gap-2 rounded-md bg-surface-dark md:hidden"
+          {/*
+            Tombol hijau tua di atas header PUTIH: cincin fokus (di luar tombol) jatuh di permukaan terang, jadi
+            memakai cincin hijau primer, bukan emas permukaan gelap (~1,5:1 di atas putih; WCAG 1.4.11, N-11).
+            aria-controls hanya saat laci terbuka karena laci tidak dirender saat tertutup.
+          */}
+          <button
+            type="button"
+            aria-expanded={menuOpen}
+            aria-controls={menuOpen ? "menu-seluler" : undefined}
+            onClick={() => setMenuOpen(true)}
+            className="-ml-1 inline-flex min-h-11 items-center gap-2 rounded-md bg-surface-dark px-3 text-sm font-semibold text-text-on-dark md:hidden"
           >
-            <button
-              type="button"
-              aria-expanded={menuOpen}
-              aria-controls="menu-seluler"
-              onClick={() => setMenuOpen(true)}
-              className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-semibold text-text-on-dark"
-            >
-              <Menu aria-hidden="true" className="size-5" />
-              Menu
-            </button>
-          </div>
+            <Menu aria-hidden="true" className="size-5" />
+            Menu
+          </button>
           <p className="ml-auto text-xs text-text-muted">
             Masuk sebagai <span className="font-semibold text-text">{profile.display_name}</span> (
             {ADMIN_ROLE_LABEL[profile.role]})
@@ -113,7 +113,14 @@ export function AppShell() {
         </main>
       </div>
 
-      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} side="left" tone="dark" title={<Brand />}>
+      <Sheet
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        side="left"
+        tone="dark"
+        ariaLabel="Menu navigasi"
+        title={<Brand decorativeLogo />}
+      >
         <div id="menu-seluler" className="flex h-full flex-col">
           <SidebarNav onNavigate={() => setMenuOpen(false)} />
         </div>
