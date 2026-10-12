@@ -8,6 +8,8 @@ import 'package:kapdh_mobile/core/session/session_controller.dart';
 import 'package:kapdh_mobile/core/session/session_state.dart';
 import 'package:kapdh_mobile/core/session/me_snapshot_store.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
+import 'package:kapdh_mobile/core/storage/token_store.dart';
+import 'package:kapdh_mobile/design/design.dart';
 import 'package:kapdh_mobile/features/system/maintenance_screen.dart';
 import 'package:kapdh_mobile/features/system/splash_screen.dart';
 import 'package:kapdh_mobile/features/system/update_required_screen.dart';
@@ -45,13 +47,40 @@ void main() {
       expect(app.location, '/home');
     });
 
-    testWidgets('offline dengan snapshot: masuk dengan status terakhir dan pita offline di shell', (tester) async {
+    testWidgets('offline dengan snapshot: status terakhir, pita Offline tepat di bawah app bar (prototipe 7)', (
+      tester,
+    ) async {
       final store = MemorySecureStore();
       await MeSnapshotStore(store).save(meOf(), testNow.subtract(const Duration(hours: 5)));
       final app = await pumpApp(tester, store: store, tokens: savedTokens(), handler: (_) => FakeResponse.network());
       expect(app.location, '/home');
       expect(app.container.read(sessionProvider).isOffline, isTrue);
       expect(find.textContaining('Tersinkron 12 Okt 2026, 09.00 WIB'), findsOneWidget);
+      expect(find.byType(OfflineBanner), findsOneWidget);
+      final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+      expect(tester.getTopLeft(find.byType(OfflineBanner)).dy, closeTo(appBarBottom, 1));
+      expect(
+        tester.getBottomLeft(find.byType(OfflineBanner)).dy,
+        lessThan(tester.getTopLeft(find.byType(NavigationBar)).dy - 100),
+        reason: 'bukan di atas navigasi bawah',
+      );
+    });
+
+    testWidgets('secure storage gagal dibaca: pesan dan coba lagi, bukan berputar tanpa akhir', (tester) async {
+      final inner = MemorySecureStore();
+      await TokenStore(inner).save(savedTokens());
+      final app = await pumpApp(
+        tester,
+        store: FlakySecureStore(inner),
+        handler: apiRoutes({'/me': (_) => FakeResponse.json(200, meJson())}),
+      );
+      expect(app.location, '/splash');
+      expect(find.text('Data sesi belum dapat dibaca'), findsOneWidget);
+      expect(app.container.read(sessionProvider).issue, SessionIssue.storage);
+
+      await tester.tap(find.text('Coba lagi'));
+      await settle(tester);
+      expect(app.location, '/home');
     });
 
     testWidgets('server bermasalah: pesan server, bukan offline', (tester) async {
@@ -126,6 +155,7 @@ void main() {
       expect(find.text('Peningkatan server malam ini.'), findsOneWidget);
       expect(find.textContaining('Perkiraan selesai: 12 Okt 2026, 16.00 WIB'), findsOneWidget);
       expect(find.text('Tampilkan KTA'), findsNothing, reason: 'anonim tidak punya KTA');
+      expect(find.text('Lanjut dalam mode baca'), findsNothing, reason: 'anonim tidak dapat login selama maintenance');
 
       await scrollAndTap(tester, find.text('0812-3456-7890'));
       await settle(tester);
@@ -151,7 +181,30 @@ void main() {
       expect(app.location, '/kta');
     });
 
-    testWidgets('503 MAINTENANCE dari request mana pun membuka layar maintenance', (tester) async {
+    testWidgets('lanjut dalam mode baca: rute baca terbuka dengan pita Pemeliharaan di bawah app bar', (tester) async {
+      final app = await pumpApp(
+        tester,
+        tokens: savedTokens(),
+        handler: apiRoutes({
+          '/me': (_) => FakeResponse.json(200, meJson()),
+        }, config: publicConfigJson(maintenance: true, maintenanceUntil: DateTime.utc(2026, 10, 12, 9))),
+      );
+      expect(app.location, '/maintenance');
+      await scrollAndTap(tester, find.text('Lanjut dalam mode baca'));
+      await settle(tester);
+      expect(app.location, '/home');
+      expect(find.byType(MaintenanceBanner), findsOneWidget);
+      expect(find.textContaining('Perubahan data ditunda sampai sekitar 12 Okt 2026, 16.00 WIB'), findsOneWidget);
+      final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+      expect(tester.getTopLeft(find.byType(MaintenanceBanner)).dy, closeTo(appBarBottom, 1));
+
+      // Alur khusus mutasi tetap ke layar maintenance.
+      app.router.go('/renewal');
+      await settle(tester);
+      expect(app.location, '/maintenance?from=%2Frenewal');
+    });
+
+    testWidgets('503 MAINTENANCE dari request mana pun memasang mode baca terkendali', (tester) async {
       final app = await pumpApp(
         tester,
         tokens: savedTokens(),
@@ -162,10 +215,20 @@ void main() {
         }),
       );
       expect(app.location, '/home');
+      expect(find.byType(MaintenanceBanner), findsNothing);
       unawaited(app.container.read(kapdhApiProvider).content.getHome().then<void>((_) {}, onError: (Object _) {}));
+      await settle(tester);
+      // Layar baca tetap terbuka (PRD 4.5 read-only terkontrol) dengan pita Pemeliharaan.
+      expect(app.location, '/home');
+      expect(find.byType(MaintenanceBanner), findsOneWidget);
+
+      await tester.tap(find.text('Detail'));
       await settle(tester);
       expect(app.location, '/maintenance?from=%2Fhome');
       expect(find.text('Pemeliharaan mendadak.'), findsOneWidget);
+      await scrollAndTap(tester, find.text('Lanjut dalam mode baca'));
+      await settle(tester);
+      expect(app.location, '/home');
     });
   });
 

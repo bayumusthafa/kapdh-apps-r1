@@ -218,13 +218,84 @@ void main() {
       expect(go(authed('verified'), '/update-required', gate: GateStatus.updateRequired), isNull);
     });
 
-    test('maintenance: hanya layar maintenance, legal dan KTA untuk status yang berhak', () {
-      expect(go(authed('verified'), '/home', gate: GateStatus.maintenance), '/maintenance?from=%2Fhome');
-      expect(go(authed('verified'), '/kta', gate: GateStatus.maintenance), isNull);
-      expect(go(authed('unverified'), '/kta', gate: GateStatus.maintenance), isNull);
-      expect(go(authed('suspended'), '/kta', gate: GateStatus.maintenance), '/maintenance?from=%2Fkta');
-      expect(go(const SessionState.anonymous(), '/kta', gate: GateStatus.maintenance), '/maintenance?from=%2Fkta');
-      expect(go(authed('verified'), '/maintenance', gate: GateStatus.maintenance), isNull);
+    group('maintenance: mode baca terkendali (PRD 4.5 "menolak mutasi, read-only terkontrol")', () {
+      const m = GateStatus.maintenance;
+
+      test('rute baca yang diizinkan status tetap terbuka', () {
+        for (final path in [
+          '/home',
+          '/news/silaturahmi-akbar',
+          '/kta',
+          '/tickets/tk-1',
+          '/payments',
+          '/payments/pay-1',
+          '/notifications',
+          '/account',
+          '/account/profile',
+          '/events/ev-1',
+          '/network',
+          '/chat/room-1',
+        ]) {
+          expect(go(authed('verified'), path, gate: m), isNull, reason: path);
+        }
+        expect(go(authed('expired'), '/tickets/tk-1', gate: m), isNull);
+        expect(go(authed('unverified'), '/kta', gate: m), isNull);
+        expect(go(authed('unverified'), '/onboarding/fees', gate: m), isNull);
+        expect(go(authed('suspended'), '/restricted', gate: m), isNull);
+        expect(go(authed('disabled'), '/deletion-status', gate: m), isNull);
+        final offline = SessionState.offlineLastKnown(meOf(status: 'verified'), syncedAt: testNow);
+        expect(go(offline, '/kta', gate: m), isNull);
+      });
+
+      test('alur khusus mutasi diarahkan ke layar maintenance dengan tujuan tertunda', () {
+        for (final path in [
+          '/payments/new/registration',
+          '/renewal',
+          '/account/delete',
+          '/account/password',
+          '/chat/new-group',
+        ]) {
+          expect(
+            go(authed('verified'), path, gate: m),
+            Uri(path: '/maintenance', queryParameters: {'from': path}).toString(),
+            reason: path,
+          );
+        }
+        expect(isMutationOnlyRoute('/payments/pay-1'), isFalse);
+        expect(isMutationOnlyRoute('/login'), isTrue);
+      });
+
+      test('matriks status tetap berlaku: rute yang ditolak status tidak dibuka', () {
+        expect(go(authed('suspended'), '/kta', gate: m), '/maintenance?from=%2Fkta');
+        expect(go(authed('unverified'), '/network', gate: m), '/maintenance?from=%2Fnetwork');
+        expect(go(authed('pending_otp'), '/register/otp', gate: m), '/maintenance');
+      });
+
+      test('anonim dan layar auth: login ditolak server, jadi layar maintenance', () {
+        expect(go(const SessionState.anonymous(), '/kta', gate: m), '/maintenance?from=%2Fkta');
+        expect(go(const SessionState.anonymous(), '/login', gate: m), '/maintenance');
+        expect(go(const SessionState.anonymous(), '/splash', gate: m), '/maintenance');
+      });
+
+      test('sesi dipulihkan di splash (GET /me), lalu layar maintenance menjelaskan sebelum mode baca', () {
+        expect(go(const SessionState.unknown(), '/splash?from=%2Fkta', gate: m), isNull);
+        expect(go(authed('verified'), '/splash?from=%2Fkta', gate: m), '/maintenance?from=%2Fkta');
+        expect(go(authed('verified'), '/maintenance', gate: m), isNull);
+      });
+
+      test('tujuan tombol "Lanjut dalam mode baca"', () {
+        RedirectState state(SessionState session) => RedirectState(gate: m, session: session);
+        expect(
+          readOnlyLanding(state(authed('verified')), Uri.parse('/maintenance?from=%2Ftickets%2Ftk-1')),
+          '/tickets/tk-1',
+        );
+        expect(readOnlyLanding(state(authed('verified')), Uri.parse('/maintenance?from=%2Frenewal')), '/home');
+        expect(readOnlyLanding(state(authed('verified')), Uri.parse('/maintenance')), '/home');
+        expect(readOnlyLanding(state(authed('unverified')), Uri.parse('/maintenance')), '/onboarding/fees');
+        expect(readOnlyLanding(state(authed('suspended')), Uri.parse('/maintenance')), '/restricted');
+        expect(readOnlyLanding(state(authed('pending_otp')), Uri.parse('/maintenance')), isNull);
+        expect(readOnlyLanding(state(const SessionState.anonymous()), Uri.parse('/maintenance')), isNull);
+      });
     });
 
     test('gerbang pulih: keluar dari layar sistem ke tujuan tertunda bila diizinkan', () {

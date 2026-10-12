@@ -177,6 +177,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final check = checkPassword(_password.text);
+    final counter = passwordCounter(check);
     final policy = ref.watch(policyVersionProvider);
     final maxCohort = latestCohort(_now().toUtc());
     final years = (_cohort != null && _classIn != null && _classOut != null && classesValid(_classIn!, _classOut!))
@@ -246,10 +247,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 hint: 'Masukkan password',
                 obscurable: true,
                 autofillHints: const [AutofillHints.newPassword],
-                trailingText: '${check.bytes}/$passwordMaxBytes',
-                trailingTextColor: _password.text.isEmpty || check.lengthOk
-                    ? KapdhColors.textMuted
-                    : KapdhColors.danger,
+                // Kemajuan menuju minimum 8 byte, merah selama belum terpenuhi (guideline hal. 5 "0/8").
+                trailingText: counter.text,
+                trailingTextColor: counter.problem ? KapdhColors.danger : KapdhColors.textMuted,
                 errorText: _fieldError('password'),
                 onChanged: (_) => setState(() {}),
                 validator: (v) => checkPassword(v ?? '').valid ? null : 'Belum memenuhi aturan password',

@@ -59,6 +59,14 @@ class RealtimeClient {
   String? _refreshedHandshakeToken;
   bool _disposed = false;
 
+  /// Langkah koneksi asinkron (mengambil token handshake atau me-refresh setelah handshake ditolak) sedang berjalan.
+  /// Selama itu [start] tidak memulai koneksi kedua: dua `_connect` yang bersamaan akan meninggalkan soket yatim yang
+  /// tetap tersambung dan meneruskan event akun lama setelah logout.
+  bool _pending = false;
+
+  /// Naik setiap [stop]/[dispose]; langkah asinkron yang dimulai sebelum itu dibatalkan setelah await-nya selesai.
+  int _generation = 0;
+
   /// Semua event bertipe dari server.
   Stream<RealtimeEvent> get events => _events.stream;
 
@@ -74,12 +82,14 @@ class RealtimeClient {
   void start() {
     if (_disposed) return;
     _desired = true;
-    if (_socket == null && _retryTimer == null) unawaited(_connect());
+    if (_socket == null && _retryTimer == null && !_pending) unawaited(_connect());
   }
 
   /// Putuskan dan berhenti menyambung ulang; dipanggil saat logout atau status dibatasi.
   void stop() {
     _desired = false;
+    _generation++;
+    _pending = false;
     _retryTimer?.cancel();
     _retryTimer = null;
     _attempt = 0;
@@ -102,17 +112,24 @@ class RealtimeClient {
   }
 
   Future<void> _connect() async {
-    if (!_desired || _disposed) return;
+    if (!_desired || _disposed || _pending) return;
     _closeSocket();
     _state.value = RealtimeConnectionState.connecting;
+    final generation = _generation;
+    _pending = true;
     String? token;
     try {
       token = await _coordinator.validAccessToken();
     } on ApiException {
+      if (generation != _generation) return;
+      _pending = false;
       // Jaringan/server bermasalah saat refresh: coba lagi nanti; token tetap tersimpan.
       _scheduleRetry();
       return;
     }
+    // stop() (logout) selama menunggu token: jangan membuat soket untuk sesi yang sudah berakhir.
+    if (generation != _generation) return;
+    _pending = false;
     if (!_desired || _disposed) return;
     if (token == null) {
       // Tidak ada sesi: berhenti tanpa mencoba lagi.
@@ -120,6 +137,8 @@ class RealtimeClient {
       return;
     }
     _handshakeToken = token;
+    // Pertahanan berlapis: tidak pernah ada dua soket hidup bersamaan.
+    _closeSocket();
     final listener = _Listener(this);
     _listener = listener;
     final socket = _socketFactory(
@@ -183,13 +202,20 @@ class RealtimeClient {
       return;
     }
     _closeSocket();
+    final generation = _generation;
+    _pending = true;
     final String? fresh;
     try {
       fresh = await _coordinator.refreshAfterRejection(_handshakeToken);
     } on ApiException {
+      if (generation != _generation) return;
+      _pending = false;
       _scheduleRetry();
       return;
     }
+    if (generation != _generation) return;
+    _pending = false;
+    if (!_desired || _disposed) return;
     if (fresh == null) {
       // Sesi tidak berlaku lagi; koordinator sudah menghapus token dan sesi aplikasi keluar.
       stop();

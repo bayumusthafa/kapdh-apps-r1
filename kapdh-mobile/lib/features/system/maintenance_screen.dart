@@ -11,8 +11,9 @@ import '../../core/session/session_controller.dart';
 import '../../core/ui/support_section.dart';
 import '../../design/design.dart';
 
-/// Maintenance terjadwal (PRD 4.5): rentang estimasi, coba lagi dan kanal dukungan. Server menolak mutasi dengan
-/// 503 MAINTENANCE; KTA tetap dapat ditunjukkan (baca terkendali).
+/// Maintenance terjadwal (PRD 4.5): rentang estimasi, coba lagi dan kanal dukungan. Server hanya menolak mutasi
+/// dengan 503 MAINTENANCE; anggota dengan sesi dapat lanjut dalam mode baca (KTA, tiket, riwayat, berita, kotak
+/// masuk) dengan pita pemeliharaan di bawah app bar, sedangkan alur mutasi kembali ke layar ini.
 class MaintenanceScreen extends ConsumerStatefulWidget {
   const MaintenanceScreen({super.key});
 
@@ -37,8 +38,9 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
     final gate = ref.watch(appGateProvider);
     final session = ref.watch(sessionProvider);
     final until = gate.maintenanceUntil;
-    final status = session.effectiveStatus;
-    final canShowKta = status != null && isRouteAllowed(status, RouteGroup.kta);
+    final redirectState = RedirectState(gate: gate.status, session: session);
+    final readOnlyTarget = readOnlyLanding(redirectState, GoRouterState.of(context).uri);
+    final canShowKta = readOnlyTarget != AppRoutes.kta && isLocationAllowed(redirectState, AppRoutes.kta);
 
     return Scaffold(
       backgroundColor: KapdhColors.background,
@@ -70,6 +72,14 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
               ),
               const SizedBox(height: KapdhSpace.s6),
               KapdhButton(label: 'Coba lagi', busyLabel: 'Memeriksa...', busy: _checking, onPressed: _retry),
+              if (readOnlyTarget != null) ...[
+                const SizedBox(height: KapdhSpace.s3),
+                KapdhButton.outlined(
+                  label: 'Lanjut dalam mode baca',
+                  icon: Icons.chrome_reader_mode_outlined,
+                  onPressed: () => context.go(readOnlyTarget),
+                ),
+              ],
               if (canShowKta) ...[
                 const SizedBox(height: KapdhSpace.s3),
                 KapdhButton.outlined(

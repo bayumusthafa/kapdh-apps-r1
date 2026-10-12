@@ -31,7 +31,8 @@ enum AppEnvironment {
 /// ```
 ///
 /// Kunci yang dibaca di sini:
-/// - `KAPDH_ENV`: development | staging | production (bawaan development).
+/// - `KAPDH_ENV`: development | staging | production. Build debug/profile tanpa kunci ini memakai development; build
+///   RILIS wajib mengisinya dengan staging atau production (lihat [ApiConfig.resolve]).
 /// - `API_BASE_URL`: URL API lengkap berakhiran `/api/v1`. Bila kosong dipakai bawaan per lingkungan.
 ///
 /// Push dikonfigurasi terpisah oleh `PushConfig` (`PUSH_ENABLED`, `FIREBASE_*`).
@@ -47,12 +48,48 @@ class ApiConfig {
     }
   }
 
-  factory ApiConfig.fromEnvironment() {
-    const rawEnv = String.fromEnvironment('KAPDH_ENV', defaultValue: 'development');
+  /// Konfigurasi dari `--dart-define`. Melempar [ApiConfigException] bila konfigurasi build tidak sah.
+  factory ApiConfig.fromEnvironment({bool releaseMode = kReleaseMode}) {
+    const hasEnv = bool.hasEnvironment('KAPDH_ENV');
+    const rawEnv = String.fromEnvironment('KAPDH_ENV');
     const rawBase = String.fromEnvironment('API_BASE_URL');
-    final environment = AppEnvironment.parse(rawEnv);
-    final base = rawBase.isNotEmpty ? rawBase : defaultBaseUrl(environment);
-    return ApiConfig(environment: environment, baseUri: Uri.parse(base));
+    return ApiConfig.resolve(rawEnv: hasEnv ? rawEnv : null, rawBase: rawBase, releaseMode: releaseMode);
+  }
+
+  /// Keputusan murni dari nilai `--dart-define` (PRD 5.3, N-07).
+  ///
+  /// Build rilis yang lupa `--dart-define-from-file` tidak boleh diam-diam mengarah ke API pengembangan cleartext
+  /// (lalu tampak "offline" selamanya karena cleartext diblokir di rilis): rilis wajib menyebut `KAPDH_ENV` staging
+  /// atau production dan URL https. Pelanggaran menghentikan aplikasi di layar galat konfigurasi.
+  factory ApiConfig.resolve({required String? rawEnv, String rawBase = '', required bool releaseMode}) {
+    final envText = rawEnv?.trim() ?? '';
+    if (releaseMode && envText.isEmpty) {
+      throw const ApiConfigException(
+        'KAPDH_ENV tidak diisi. Build rilis wajib memakai --dart-define-from-file=config/<staging|production>.json.',
+      );
+    }
+    final AppEnvironment environment;
+    try {
+      environment = envText.isEmpty ? AppEnvironment.development : AppEnvironment.parse(envText);
+    } on ArgumentError {
+      throw ApiConfigException('KAPDH_ENV "$envText" tidak dikenal; gunakan development, staging atau production.');
+    }
+    if (releaseMode && environment == AppEnvironment.development) {
+      throw const ApiConfigException('Build rilis tidak boleh memakai KAPDH_ENV=development.');
+    }
+    final base = rawBase.trim().isNotEmpty ? rawBase.trim() : defaultBaseUrl(environment);
+    final uri = Uri.tryParse(base);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      throw ApiConfigException('API_BASE_URL "$base" bukan URL yang sah.');
+    }
+    if (releaseMode && uri.scheme != 'https') {
+      throw ApiConfigException('Build rilis wajib memakai API_BASE_URL https (N-07), bukan "$base".');
+    }
+    try {
+      return ApiConfig(environment: environment, baseUri: uri);
+    } on ArgumentError catch (error) {
+      throw ApiConfigException('API_BASE_URL tidak sah: ${error.message}');
+    }
   }
 
   /// URL bawaan per lingkungan (kontrak OpenAPI `servers`). `10.0.2.2` adalah alamat komputer dari emulator
@@ -74,4 +111,14 @@ class ApiConfig {
 
   /// Path engine Socket.IO di server (bawaan Socket.IO).
   String get realtimePath => '/socket.io';
+}
+
+/// Konfigurasi build tidak sah; aplikasi menampilkan layar galat konfigurasi alih-alih berjalan ke API yang salah.
+class ApiConfigException implements Exception {
+  const ApiConfigException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'ApiConfigException: $message';
 }

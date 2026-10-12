@@ -3,6 +3,7 @@ import 'package:kapdh_api/kapdh_api.dart';
 import 'package:uuid/uuid.dart';
 
 import '../config/app_info.dart';
+import '../config/server_clock.dart';
 import 'api_signals.dart';
 import 'refresh_coordinator.dart';
 
@@ -26,6 +27,36 @@ class AppHeadersInterceptor extends Interceptor {
     }
     options.headers.putIfAbsent('X-Request-Id', _uuid.v7);
     handler.next(options);
+  }
+}
+
+/// Mencatat jam server dari header `Date` setiap respons, termasuk respons galat (PRD 2.1: server sumber waktu).
+/// Dipasang pada Dio utama dan Dio refresh agar token dan challenge OTP baru selalu dinilai dengan jam server yang
+/// baru diamati (lihat [ServerClock]).
+class ServerTimeInterceptor extends Interceptor {
+  ServerTimeInterceptor(this._clock);
+
+  final ServerClock _clock;
+
+  @override
+  void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {
+    _observe(response.headers);
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    final headers = err.response?.headers;
+    if (headers != null) _observe(headers);
+    handler.next(err);
+  }
+
+  void _observe(Headers headers) => _clock.observeDateHeader(_last(headers, 'date'), age: _last(headers, 'age'));
+
+  /// Nilai header terakhir (proksi dapat menambah nilai kedua; `Headers.value` melempar pada nilai ganda).
+  static String? _last(Headers headers, String name) {
+    final values = headers[name];
+    return values == null || values.isEmpty ? null : values.last;
   }
 }
 

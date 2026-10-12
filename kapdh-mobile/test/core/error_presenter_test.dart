@@ -13,10 +13,15 @@ ApiException err(String code, {int status = 400, int? retryAfter}) =>
 
 void main() {
   group('presentationFor: katalog galat terbangkit → UI seragam (PRD 5.2)', () {
-    test('maintenance, wajib update dan sesi berakhir ditangani global (tanpa UI lokal)', () {
-      expect(presentationFor(err('MAINTENANCE', status: 503)), isA<SilentPresentation>());
+    test('wajib update dan sesi berakhir ditangani global (tanpa UI lokal)', () {
       expect(presentationFor(err('UPGRADE_REQUIRED', status: 426)), isA<SilentPresentation>());
       expect(presentationFor(err('UNAUTHENTICATED', status: 401)), isA<SilentPresentation>());
+    });
+
+    test('MAINTENANCE: mutasi yang ditolak dijelaskan di layar baca yang tetap terbuka (PRD 4.5)', () {
+      final p = presentationFor(err('MAINTENANCE', status: 503));
+      expect(p, isA<SnackbarPresentation>());
+      expect(p.message, 'Pesan MAINTENANCE');
     });
 
     test('MEMBERSHIP_REQUIRED dan ACCOUNT_SUSPENDED memuat ulang status lalu router mengarahkan ulang', () {

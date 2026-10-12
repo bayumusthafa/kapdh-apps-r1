@@ -96,16 +96,33 @@ class _ConnectionProblem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final offline = issue == SessionIssue.offline;
+    final (IconData icon, String title, String message) = switch (issue) {
+      SessionIssue.offline => (
+        Icons.cloud_off,
+        'Tanpa koneksi',
+        'Periksa koneksi internet Anda lalu coba lagi. Sesi Anda tetap tersimpan di perangkat ini.',
+      ),
+      SessionIssue.storage => (
+        Icons.phonelink_lock,
+        'Data sesi belum dapat dibaca',
+        'Penyimpanan aman perangkat sedang tidak dapat dibuka. Coba lagi; bila terus berulang, tutup lalu buka '
+            'kembali aplikasi. Sesi Anda tidak dihapus.',
+      ),
+      _ => (
+        Icons.dns_outlined,
+        'Server belum dapat dihubungi',
+        'Layanan sedang sibuk atau bermasalah. Coba lagi beberapa saat lagi; sesi Anda tetap tersimpan.',
+      ),
+    };
     return Semantics(
       liveRegion: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(offline ? Icons.cloud_off : Icons.dns_outlined, size: 40, color: KapdhColors.accent),
+          Icon(icon, size: 40, color: KapdhColors.accent),
           const SizedBox(height: KapdhSpace.s3),
           Text(
-            offline ? 'Tanpa koneksi' : 'Server belum dapat dihubungi',
+            title,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: KapdhFontSize.h3,
@@ -115,9 +132,7 @@ class _ConnectionProblem extends StatelessWidget {
           ),
           const SizedBox(height: KapdhSpace.s2),
           Text(
-            offline
-                ? 'Periksa koneksi internet Anda lalu coba lagi. Sesi Anda tetap tersimpan di perangkat ini.'
-                : 'Layanan sedang sibuk atau bermasalah. Coba lagi beberapa saat lagi; sesi Anda tetap tersimpan.',
+            message,
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhExtraColors.mutedOnDark),
           ),

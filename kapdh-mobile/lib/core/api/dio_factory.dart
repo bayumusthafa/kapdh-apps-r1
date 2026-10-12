@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../config/api_config.dart';
 import '../config/app_info.dart';
+import '../config/server_clock.dart';
 import 'api_signals.dart';
 import 'interceptors.dart';
 import 'refresh_coordinator.dart';
@@ -15,27 +16,29 @@ BaseOptions _baseOptions(ApiConfig config) => BaseOptions(
   responseType: ResponseType.json,
 );
 
-/// Dio tanpa auth untuk POST /auth/refresh: hanya header aplikasi. Terpisah dari Dio utama agar refresh tidak
-/// melewati interceptor auth (tidak ada rekursi atau antrean saling menunggu).
-Dio createBareDio(ApiConfig config, AppInfo info, {HttpClientAdapter? adapter}) {
+/// Dio tanpa auth untuk POST /auth/refresh: hanya header aplikasi dan pencatat jam server. Terpisah dari Dio utama
+/// agar refresh tidak melewati interceptor auth (tidak ada rekursi atau antrean saling menunggu).
+Dio createBareDio(ApiConfig config, AppInfo info, {required ServerClock serverClock, HttpClientAdapter? adapter}) {
   final dio = Dio(_baseOptions(config));
   if (adapter != null) dio.httpClientAdapter = adapter;
-  dio.interceptors.add(AppHeadersInterceptor(info));
+  dio.interceptors.addAll([ServerTimeInterceptor(serverClock), AppHeadersInterceptor(info)]);
   return dio;
 }
 
-/// Dio utama aplikasi untuk `KapdhApi(dio)` (ARCHITECTURE §8.3). Urutan interceptor: header aplikasi, auth +
-/// refresh terkoordinasi, lalu sinyal galat global.
+/// Dio utama aplikasi untuk `KapdhApi(dio)` (ARCHITECTURE §8.3). Urutan interceptor: jam server, header aplikasi,
+/// auth + refresh terkoordinasi, lalu sinyal galat global.
 Dio createAppDio(
   ApiConfig config,
   AppInfo info, {
   required RefreshCoordinator coordinator,
   required ApiSignals signals,
+  required ServerClock serverClock,
   HttpClientAdapter? adapter,
 }) {
   final dio = Dio(_baseOptions(config));
   if (adapter != null) dio.httpClientAdapter = adapter;
   dio.interceptors.addAll([
+    ServerTimeInterceptor(serverClock),
     AppHeadersInterceptor(info),
     AuthInterceptor(dio: dio, coordinator: coordinator),
     ErrorSignalsInterceptor(signals),

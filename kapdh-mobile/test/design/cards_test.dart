@@ -1,7 +1,11 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_api/kapdh_api.dart';
+import 'package:kapdh_mobile/app/theme/kapdh_tokens.dart';
 import 'package:kapdh_mobile/design/design.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -34,6 +38,13 @@ void main() {
       expect(find.byType(QrImageView), findsNothing);
       expect(find.text('QR muncul setelah KTA aktif'), findsOneWidget);
       expect(find.text('Berlaku sampai: belum aktif'), findsOneWidget);
+      // Gembok emas 34 px (prototipe layar 6), bukan ikon QR.
+      final lock = tester.widget<Icon>(
+        find.descendant(of: find.byKey(const ValueKey('kta-qr-placeholder')), matching: find.byType(Icon)),
+      );
+      expect(lock.icon, Icons.lock_outline);
+      expect(lock.size, 34);
+      expect(lock.color, KapdhColors.accent);
     });
 
     testWidgets('offline dengan token QR kedaluwarsa: QR tidak ditampilkan', (tester) async {
@@ -104,6 +115,49 @@ void main() {
       expect(find.text('1,2 MB'), findsOneWidget);
       expect(find.text('Ganti'), findsOneWidget);
       expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+    });
+
+    testWidgets('garis putus-putus hijau terlihat di atas isian tile (prototipe layar 3)', (tester) async {
+      final key = GlobalKey();
+      await pumpDesign(
+        tester,
+        RepaintBoundary(
+          key: key,
+          child: SizedBox(width: 300, child: UploadTile(onPick: () {})),
+        ),
+      );
+      final paint = tester.widget<CustomPaint>(
+        find.descendant(of: find.byType(UploadTile), matching: find.byType(CustomPaint)).first,
+      );
+      expect(paint.foregroundPainter, isA<DashedBorderPainter>());
+      expect(paint.painter, isNull);
+
+      final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+      final image = (await tester.runAsync(() => boundary.toImage()))!;
+      final bytes = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+      bool isBorder(int x, int y) {
+        final i = (y * image.width + x) * 4;
+        // Garis primer #1A4B17 (gelap); isian green50 #F1F8F0 (terang).
+        return bytes.getUint8(i) < 160 && bytes.getUint8(i + 1) < 200 && bytes.getUint8(i + 2) < 160;
+      }
+
+      var top = 0;
+      var gaps = 0;
+      for (var x = 20; x < image.width - 20; x++) {
+        if (isBorder(x, 0)) {
+          top++;
+        } else {
+          gaps++;
+        }
+      }
+      expect(top, greaterThan(50), reason: 'garis tepi atas terlihat');
+      expect(gaps, greaterThan(20), reason: 'garis putus-putus, bukan garis penuh');
+      var left = 0;
+      for (var y = 20; y < image.height - 20; y++) {
+        if (isBorder(0, y)) left++;
+      }
+      expect(left, greaterThan(10), reason: 'garis tepi kiri terlihat');
+      image.dispose();
     });
 
     testWidgets('mengunggah dan galat FILE_INVALID', (tester) async {

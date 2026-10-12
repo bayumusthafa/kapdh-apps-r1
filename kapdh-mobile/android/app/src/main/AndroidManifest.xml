@@ -45,8 +45,10 @@
                 <data android:scheme="kapdh" android:host="app" />
             </intent-filter>
             <!--
-              App Links: https://kapdh.or.id/app/<rute>. Verifikasi membutuhkan
+              App Links: https://kapdh.or.id/app dan https://kapdh.or.id/app/<rute>. Verifikasi membutuhkan
               https://kapdh.or.id/.well-known/assetlinks.json berisi sidik sertifikat rilis (runbook rilis).
+              pathPrefix dicocokkan sebagai awalan string, sehingga "/app" saja juga merebut /apply, /apps dan
+              sebagainya; karena itu dipakai path persis "/app" ditambah awalan "/app/" (sama dengan DeepLinks).
             -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
@@ -54,7 +56,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
                 <data android:host="kapdh.or.id" />
-                <data android:pathPrefix="/app" />
+                <data android:path="/app" />
+                <data android:pathPrefix="/app/" />
             </intent-filter>
         </activity>
 

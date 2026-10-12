@@ -40,3 +40,16 @@ PasswordCheck checkPassword(String value) {
     hasSymbol: _symbol.hasMatch(value),
   );
 }
+
+/// Penghitung di field sandi (guideline hal. 5: "0/8" merah).
+///
+/// Menunjukkan kemajuan menuju syarat minimum yang masih harus dipenuhi, bukan batas panjang: di bawah minimum
+/// "n/8" (tanda masalah); setelah minimum terpenuhi "8/8"; batas 72 byte baru ditampilkan saat mendekati atau
+/// melewatinya ("70/72", bermasalah bila lebih dari 72).
+({String text, bool problem}) passwordCounter(PasswordCheck check) {
+  if (check.bytes < passwordMinBytes) return (text: '${check.bytes}/$passwordMinBytes', problem: true);
+  if (check.bytes > passwordMaxBytes - passwordMinBytes) {
+    return (text: '${check.bytes}/$passwordMaxBytes', problem: check.bytes > passwordMaxBytes);
+  }
+  return (text: '$passwordMinBytes/$passwordMinBytes', problem: false);
+}

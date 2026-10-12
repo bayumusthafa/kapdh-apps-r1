@@ -91,6 +91,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final blocked = _blockedFor;
     return BrandSheetScaffold(
       overlap: KapdhSpace.s4,
+      // Logo dan sapaan ikut bergulir: dengan keyboard terbuka pada teks 200 % kepala saja sudah melebihi ruang
+      // yang tersisa (N-11).
+      scrollable: true,
       header: BrandHeader(
         padding: const EdgeInsets.fromLTRB(KapdhSpace.s6, KapdhSpace.s4, KapdhSpace.s4, KapdhSpace.s8 + KapdhSpace.s4),
         child: Column(
@@ -128,7 +131,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       ),
       body: AutofillGroup(
-        child: SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s8, KapdhSpace.s5, KapdhSpace.s6),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

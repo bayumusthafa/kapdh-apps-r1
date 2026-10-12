@@ -148,4 +148,31 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(tester.getSize(submit).height, greaterThanOrEqualTo(52));
   });
+
+  for (final (size, keyboard) in [(const Size(390, 844), 336.0), (const Size(360, 640), 280.0)]) {
+    testWidgets(
+      'teks 200 % dengan keyboard terbuka di ${size.width.toInt()}x${size.height.toInt()}: tidak meluap, kepala '
+      'ikut bergulir (N-11)',
+      (tester) async {
+        await pumpApp(tester, handler: apiRoutes({}), textScale: 2);
+        tester.view.physicalSize = size;
+        tester.view.viewInsets = FakeViewPadding(bottom: keyboard);
+        addTearDown(tester.view.resetViewInsets);
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+
+        await tester.tap(emailField);
+        await tester.pump();
+        await tester.enterText(emailField, 'ahmad@email.com');
+        await tester.enterText(passwordField, 'Rahasia#123');
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        await scrollTo(tester, submit);
+        expect(tester.takeException(), isNull);
+        expect(submitEnabled(tester), isTrue);
+        // Tombol masuk dapat dijangkau di atas keyboard.
+        expect(tester.getBottomLeft(submit).dy, lessThanOrEqualTo(size.height - keyboard));
+      },
+    );
+  }
 }

@@ -81,6 +81,21 @@ void main() {
       expect(await container.read(tokenStoreProvider).read(), isNotNull);
     });
 
+    test('secure storage gagal dibaca: splash mendapat masalah storage, coba lagi berhasil, token tetap', () async {
+      final inner = MemorySecureStore();
+      await TokenStore(inner).save(storedTokens());
+      final flaky = FlakySecureStore(inner);
+      final container = makeContainer(store: flaky, adapter: FakeHttpAdapter((_) => FakeResponse.json(200, meJson())));
+      final controller = container.read(sessionProvider.notifier);
+
+      await controller.bootstrap();
+      expect(container.read(sessionProvider), const SessionState.unknown(issue: SessionIssue.storage));
+      expect(inner.values.containsKey(TokenStore.storageKey), isTrue);
+
+      await controller.bootstrap();
+      expect(container.read(sessionProvider).phase, SessionPhase.authenticated);
+    });
+
     test('sesi dicabut (refresh UNAUTHENTICATED): anonim dan data privat dihapus', () async {
       final store = MemorySecureStore();
       final container = makeContainer(
