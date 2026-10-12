@@ -602,7 +602,7 @@ export class AuthService {
     const current = await this.db.query.sessions.findFirst({ where: eq(sessions.refreshHash, hash) });
     if (!current || current.audience !== expectedAudience) throw unauth;
     if (current.revokedAt || current.replacedBy) {
-      await this.revokeFamily(current.familyId);
+      await this.revokeFamilyOnReuse(current);
       throw unauth;
     }
     if (current.expiresAt <= now) throw unauth;
@@ -648,11 +648,26 @@ export class AuthService {
     });
   }
 
-  private async revokeFamily(familyId: string) {
-    await this.db
-      .update(sessions)
-      .set({ revokedAt: this.now() })
-      .where(and(eq(sessions.familyId, familyId), isNull(sessions.revokedAt)));
+  /**
+   * Refresh token yang sudah dirotasi/dicabut dipakai lagi: indikasi token dicuri (AC F02-3). Seluruh keluarga sesi
+   * dicabut dan kejadian keamanan diaudit dalam transaksi yang sama (F-17). Aktor = pemanggil anonim (pemegang token
+   * tidak terautentikasi); entitas = pemilik akun.
+   */
+  private async revokeFamilyOnReuse(session: { userId: string; familyId: string; audience: string }) {
+    const now = this.now();
+    await this.db.transaction(async (tx) => {
+      const revoked = await tx
+        .update(sessions)
+        .set({ revokedAt: now })
+        .where(and(eq(sessions.familyId, session.familyId), isNull(sessions.revokedAt)))
+        .returning({ id: sessions.id });
+      await this.audit.write(tx, {
+        action: "session.refresh_reuse_detected",
+        entityType: "user",
+        entityId: session.userId,
+        after: { audience: session.audience, sessions_revoked: revoked.length },
+      });
+    });
   }
 
   async logout(sessionId: string) {

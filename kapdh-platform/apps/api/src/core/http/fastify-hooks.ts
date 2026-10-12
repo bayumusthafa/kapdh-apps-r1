@@ -60,7 +60,9 @@ export function installHttpHooks(fastify: FastifyInstance, gate: () => RequestGa
   fastify.addHook("onRequest", async (request: FastifyRequest) => {
     await gate().check({
       method: request.method,
-      url: request.url,
+      // Pola rute yang cocok (bukan URL mentah) agar pengecualian maintenance tidak bisa dipancing dengan
+      // encoding/segmen aneh; tanpa rute (404) dipakai URL mentah dan diperlakukan bukan pengecualian.
+      url: request.routeOptions?.url ?? request.url,
       appPlatform: appPlatform(request),
       appVersion: header(request, "x-app-version"),
     });
