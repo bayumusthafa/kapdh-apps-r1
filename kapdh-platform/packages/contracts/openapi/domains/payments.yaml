@@ -3,7 +3,9 @@
 #
 # Positioning (D13, PRD 10.1): iuran adalah IURAN KEANGGOTAAN ORGANISASI dan tiket adalah layanan yang dinikmati di
 # luar aplikasi; keduanya dibayar lewat transfer manual ke rekening pengurus. Teks kontrak, label baris dan pesan
-# server tidak memakai istilah "upgrade", "premium", "unlock" atau "buka fitur".
+# server tidak memakai istilah "upgrade", "premium", "unlock" atau "buka fitur". Rencana cadangan D13: instruksi
+# iuran dapat disembunyikan per platform (`instructions_hidden`, pengaturan `payment_instructions`) dan pengurus
+# mencatat iuran yang diverifikasi di luar aplikasi (POST /admin/payments).
 #
 # Vendor extension `x-kapdh-access` di setiap operasi (ARCHITECTURE §3.1, §4.3, §4.5):
 #   audience       public | mobile | admin | any (decorator @Public/@Audience)
@@ -61,6 +63,12 @@ paths:
         Bila sudah ada pembayaran nonterminal (pending atau rejected) untuk jenis itu, `open_payment_id` terisi dan
         klien membuka pembayaran tersebut (nilai snapshot-nya yang berlaku, bukan kutipan ini; AC F03-5).
         Kutipan bukan janji harga: nominal final disnapshot saat POST /me/payments.
+
+        Rencana cadangan D13 (PRD 10.1): `instructions_hidden` true bila platform pemanggil (header
+        `X-App-Platform`) termasuk pengaturan `payment_instructions.dues_hidden_platforms`. Klien lalu tidak
+        menampilkan alur bayar iuran (rekening tujuan, tombol bayar, unggah bukti) dan hanya menampilkan status
+        keanggotaan serta kontak dukungan; pengurus mencatat iuran yang diverifikasi di luar aplikasi
+        (POST /admin/payments).
       x-kapdh-access: { audience: mobile, member_access: nonsuspended }
       responses:
         "200":
@@ -123,6 +131,8 @@ paths:
         - 403 MEMBERSHIP_REQUIRED: renewal oleh akun yang iuran pendaftarannya belum paid (klien memuat ulang /me
           lalu mengarahkan ke onboarding).
         - 403 ACCOUNT_SUSPENDED: anggota dibatasi (PRD 2.2).
+        - 403 FORBIDDEN: instruksi iuran disembunyikan untuk platform pemanggil (`X-App-Platform`, rencana
+          cadangan D13); klien versi lama yang belum mengenal `instructions_hidden` menampilkan pesan server.
         - 400 VALIDATION_ERROR: `payment_method_id` tidak ada atau tidak aktif (field_errors.payment_method_id);
           renewal sebelum jendela perpanjangan dibuka (field_errors.type).
         - 409 PAYMENT_STATE_CONFLICT: registration padahal iuran pendaftaran sudah paid.
@@ -149,7 +159,9 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: ACCOUNT_SUSPENDED atau MEMBERSHIP_REQUIRED (renewal sebelum iuran pendaftaran paid).
+          description: |
+            ACCOUNT_SUSPENDED, MEMBERSHIP_REQUIRED (renewal sebelum iuran pendaftaran paid) atau FORBIDDEN
+            (instruksi iuran disembunyikan untuk platform pemanggil, D13).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -173,6 +185,14 @@ paths:
         dilakukan (`actions`). Dipakai layar instruksi bayar, menunggu verifikasi dan ditolak (prototipe screen_3,
         screen_4, screen_5) serta deep link notifikasi `/payments/{paymentId}` (ARCHITECTURE §4.7).
         Payment milik pengguna lain menghasilkan 404 (N-09).
+
+        Bila tiket dibatalkan (misalnya event dibatalkan pengurus) saat bukti masih menunggu verifikasi, payment
+        tetap pending dan pengurus tetap memverifikasi dana. Bila dana diterima, payment menjadi paid tanpa tiket
+        aktif dan refund penuh tercatat di `adjustments` sesuai D6 (PRD 3.9, 4.4).
+
+        `instructions_hidden` true untuk payment iuran bila platform pemanggil menyembunyikan instruksi iuran
+        (rencana cadangan D13); klien hanya menampilkan status dan kontak dukungan, tanpa rekening tujuan dan unggah
+        bukti.
       x-kapdh-access: { audience: mobile, member_access: any }
       parameters:
         - $ref: "#/components/parameters/PaymentId"
@@ -199,6 +219,8 @@ paths:
 
         Galat:
         - 400 VALIDATION_ERROR: metode tidak ada atau tidak aktif (field_errors.payment_method_id).
+        - 403 ACCOUNT_SUSPENDED: anggota dibatasi; 403 FORBIDDEN: payment iuran dari platform yang instruksi
+          iurannya disembunyikan (rencana cadangan D13).
         - 409 PAYMENT_STATE_CONFLICT: payment bukan pending atau bukti sudah pernah dikirim; `current` berisi
           PaymentDetail terbaru.
         - 409 VERSION_CONFLICT: If-Match berbeda dari `version` terbaru; `current` berisi PaymentDetail.
@@ -219,7 +241,13 @@ paths:
               schema: { $ref: "#/components/schemas/PaymentDetail" }
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/AccountSuspended" }
+        "403":
+          description: |
+            ACCOUNT_SUSPENDED, atau FORBIDDEN untuk payment iuran dari platform yang instruksi iurannya
+            disembunyikan (D13).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
           description: PAYMENT_STATE_CONFLICT atau VERSION_CONFLICT; `current` berisi PaymentDetail terbaru.
@@ -249,16 +277,26 @@ paths:
           baru dan alasan lama tetap di histori (AC F03-3).
         - Tiket: bukti sebelum `hold_expires_at` memindahkan tiket ke awaiting_review dan kursi tetap ditahan
           (PRD 4.4); setelah batas ditolak RESERVATION_EXPIRED (AC F09-2). Tiket rejected bersifat final (AC F09-4).
+          Hold yang lewat tanpa bukti membuat tiket expired dan payment-nya cancelled oleh sistem (histori
+          cancelled beraktor system, alasan batas reservasi habis), tepat sekali oleh job expiry atau oleh request
+          berikutnya, termasuk request ini (AC F09-2).
 
-        Galat:
-        - 409 PROOF_VERSION_CONFLICT: `expected_proof_version` berbeda dari versi saat ini (bukti sudah diganti
-          dari perangkat lain); `current` berisi PaymentDetail.
-        - 409 PAYMENT_STATE_CONFLICT: payment paid atau cancelled, atau tiket rejected (AC F03-4).
-        - 410 RESERVATION_EXPIRED: hold tiket sudah lewat atau tiket expired/cancelled.
-        - 422 FILE_INVALID: berkas tidak ada, bukan milik pemanggil, bukan purpose payment_proof, belum siap,
-          atau sudah terpakai.
-        - 409 IDEMPOTENCY_CONFLICT: Idempotency-Key sama dengan payload berbeda. Pengulangan dengan key dan payload
-          sama mengembalikan hasil pertama tanpa menaikkan versi lagi (AC F03-4).
+        Pengulangan dengan Idempotency-Key dan payload sama mengembalikan hasil pertama tanpa menaikkan versi lagi
+        (AC F03-4). Setelah pemeriksaan global (401, 403 ACCOUNT_SUSPENDED, 426 UPGRADE_REQUIRED, 503
+        MAINTENANCE), galat diperiksa berurutan berikut dan yang pertama cocok dikembalikan:
+        1. 404 NOT_FOUND: payment tidak ada atau milik pengguna lain (N-09).
+        2. 409 IDEMPOTENCY_CONFLICT: Idempotency-Key sama dengan payload berbeda.
+        3. 403 FORBIDDEN: payment iuran dari platform yang instruksi iurannya disembunyikan (rencana cadangan D13).
+        4. 410 RESERVATION_EXPIRED: payment tiket yang tiketnya expired atau hold-nya sudah lewat, termasuk bila
+           payment sudah cancelled oleh sistem karena hold habis. Kode ini didahulukan atas
+           PAYMENT_STATE_CONFLICT agar klien selalu menampilkan layar reservasi habis (AC F09-2).
+        5. 409 PAYMENT_STATE_CONFLICT: payment paid; cancelled oleh pemilik, pengurus atau pembatalan event;
+           tiket rejected (AC F09-4); atau tiket sudah cancelled (bukti yang ada tetap diputus pengurus, lihat
+           getMyPayment). `current` berisi PaymentDetail terbaru (AC F03-4).
+        6. 409 PROOF_VERSION_CONFLICT: `expected_proof_version` berbeda dari versi saat ini (bukti sudah diganti
+           dari perangkat lain); `current` berisi PaymentDetail.
+        7. 422 FILE_INVALID: berkas tidak ada, bukan milik pemanggil, bukan purpose payment_proof, belum siap,
+           atau sudah terpakai.
       x-kapdh-access: { audience: mobile, member_access: nonsuspended, idempotent: true }
       parameters:
         - $ref: "#/components/parameters/PaymentId"
@@ -276,17 +314,26 @@ paths:
               schema: { $ref: "#/components/schemas/PaymentDetail" }
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/AccountSuspended" }
+        "403":
+          description: |
+            ACCOUNT_SUSPENDED, atau FORBIDDEN untuk payment iuran dari platform yang instruksi iurannya
+            disembunyikan (D13).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
           description: |
-            PROOF_VERSION_CONFLICT, PAYMENT_STATE_CONFLICT (paid, cancelled, atau tiket rejected) atau
-            IDEMPOTENCY_CONFLICT; `current` berisi PaymentDetail terbaru untuk konflik keadaan.
+            PAYMENT_STATE_CONFLICT (paid, cancelled bukan karena hold habis, tiket rejected, atau tiket cancelled),
+            PROOF_VERSION_CONFLICT atau IDEMPOTENCY_CONFLICT; `current` berisi PaymentDetail terbaru untuk konflik
+            keadaan.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "410":
-          description: RESERVATION_EXPIRED; hold tiket sudah lewat sehingga bukti tidak diterima (AC F09-2).
+          description: |
+            RESERVATION_EXPIRED; tiket expired atau hold sudah lewat (termasuk payment yang sudah dibatalkan sistem
+            karena hold habis), sehingga bukti tidak diterima (AC F09-2).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -366,7 +413,8 @@ components:
       description: |
         Status payment (PRD 4.3, ARCHITECTURE §3.3). pending -> paid | rejected | cancelled; rejected -> pending
         hanya untuk registration/renewal (payment sama, bukti versi baru). Tiket rejected bersifat final. paid
-        tidak pernah diubah; koreksi atau refund dicatat sebagai penyesuaian (payment_adjustments).
+        tidak pernah diubah; koreksi atau refund dicatat sebagai penyesuaian (payment_adjustments). pending ->
+        cancelled hanya sebelum bukti: oleh pemilik, kebijakan pengurus, atau sistem saat hold tiket habis.
 
     PaymentStage:
       type: string
@@ -470,10 +518,15 @@ components:
       properties:
         can_submit_proof:
           type: boolean
-          description: Kirim/ganti bukti (pending; iuran rejected; tiket dengan hold masih berlaku).
+          description: |
+            Kirim/ganti bukti: iuran pending atau rejected; tiket pending dengan tiket awaiting_payment sebelum
+            `hold_expires_at` atau awaiting_review. False untuk iuran bila instruksi iuran disembunyikan untuk
+            platform pemanggil (D13).
         can_change_method:
           type: boolean
-          description: Ganti rekening tujuan (pending tanpa bukti).
+          description: |
+            Ganti rekening tujuan (pending tanpa bukti). False untuk iuran bila instruksi iuran disembunyikan untuk
+            platform pemanggil (D13).
         can_cancel:
           type: boolean
           description: Batalkan instruksi iuran (registration/renewal pending tanpa bukti).
@@ -559,7 +612,10 @@ components:
           description: Versi bukti terkait untuk proof_submitted/proof_replaced/approved/rejected.
         reason:
           type: [string, "null"]
-          description: Alasan untuk rejected (AC F03-3, F04-2) dan cancelled; kosong untuk jenis lain.
+          description: |
+            Alasan untuk rejected (AC F03-3, F04-2) dan cancelled; kosong untuk jenis lain. Pada histori pengurus,
+            entri created dari payment yang dicatat pengurus (D13) memuat catatan verifikasi; catatan ini tidak
+            dikirim kepada anggota.
 
     PaymentAdjustmentKind:
       type: string
@@ -596,7 +652,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/Payment"
         - type: object
-          required: [events, adjustments, method_active]
+          required: [events, adjustments, method_active, instructions_hidden]
           properties:
             events:
               type: array
@@ -611,6 +667,13 @@ components:
               description: |
                 False bila metode snapshot sudah dinonaktifkan pengurus; selama belum ada bukti klien menyarankan
                 ganti rekening tujuan sebelum transfer.
+            instructions_hidden:
+              type: boolean
+              description: |
+                True hanya untuk payment iuran (registration/renewal) bila platform pemanggil (`X-App-Platform`)
+                menyembunyikan instruksi iuran (pengaturan `payment_instructions`, rencana cadangan D13). Klien
+                tidak menampilkan rekening tujuan, ajakan transfer maupun unggah bukti; hanya status, histori dan
+                kontak dukungan. Selalu false untuk tiket.
 
     PaymentPage:
       type: object
@@ -697,10 +760,16 @@ components:
     MyFeeQuotes:
       type: object
       description: Kutipan iuran pendaftaran dan perpanjangan untuk pemanggil (prototipe screen_2).
-      required: [registration, renewal, period_months, settings_version]
+      required: [registration, renewal, period_months, settings_version, instructions_hidden]
       properties:
         registration: { $ref: "#/components/schemas/FeeQuote" }
         renewal: { $ref: "#/components/schemas/FeeQuote" }
+        instructions_hidden:
+          type: boolean
+          description: |
+            True bila platform pemanggil (`X-App-Platform`) menyembunyikan instruksi iuran (pengaturan
+            `payment_instructions`, rencana cadangan D13). Klien tidak menampilkan alur bayar iuran dan mengarahkan
+            anggota ke kontak dukungan; POST /me/payments dari platform ini ditolak 403 FORBIDDEN.
         period_months:
           type: integer
           minimum: 1
