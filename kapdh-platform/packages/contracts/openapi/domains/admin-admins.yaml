@@ -1,7 +1,582 @@
-# Domain admin-admins (C7 Admin & notifications): undangan admin, peran dan izin (izin admins.manage,
-# MFA + reautentikasi). Modul API: apps/api/src/modules/admin. Path ditambahkan oleh penulis kontrak C7.
+# Domain admin-admins (C7 Admin & notifications): daftar admin, undangan ("Delegasi User jadi Admin"), peran, izin
+# dan status admin (F-16, guideline hlm. 15). Modul API: apps/api/src/modules/admin.
+#
+# Akses (PRD 2.3, ARCHITECTURE §4.5): mengelola admin dan izin hanya untuk Super Admin dengan MFA dan reautentikasi.
+# Izin `admins.manage` tidak dapat ditugaskan ke peran `admin` (katalog: assignable=false) sehingga dalam praktik
+# hanya melekat pada `super_admin`, yang memiliki semua izin. Setiap perubahan ditulis ke audit dalam transaksi yang
+# sama (AC F16-1, F17-1). Penerimaan undangan, ganti sandi awal dan pendaftaran TOTP ada di domain admin-auth (C1).
 tags:
   - name: Admin Admins
     description: Undangan admin, penugasan peran dan izin oleh Super Admin dengan MFA dan reautentikasi (F-16, AC F16-1..F16-3).
 
-paths: {}
+paths:
+  /admin/admins:
+    get:
+      tags: [Admin Admins]
+      operationId: adminListAdmins
+      summary: Daftar dan pencarian admin (Super Admin, F-16, guideline hlm. 15).
+      description: |
+        Tabel "Daftar Admin": nama, email login admin, peran dan akses, status. `q` mencari nama tampilan atau email
+        (tanpa membedakan huruf besar/kecil). `total` mengikuti filter; `counts` adalah ringkasan seluruh admin
+        untuk kartu "N Admin, M aktif". Sesi admin wajib sudah TOTP (403 MFA_REQUIRED, AC F02-2); tanpa izin
+        admins.manage ditolak 403 FORBIDDEN walaupun menu disembunyikan (PRD 2.3).
+      x-kapdh-access: { audience: admin, permissions: [admins.manage] }
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Nama tampilan atau email admin.
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: role
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/AdminRole" }
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/AdminAccountStatus" }
+        - name: permission
+          in: query
+          required: false
+          description: Hanya admin yang memiliki izin efektif ini (super_admin selalu cocok).
+          schema: { $ref: "#/components/schemas/Permission" }
+        - name: sort
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/AdminAccountSort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAccountPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminAdminsForbidden" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Admin Admins]
+      operationId: adminInviteAdmin
+      summary: Undang admin baru dari alumni terpilih atau email (Super Admin + reautentikasi, F-16, AC F16-1).
+      description: |
+        "Delegasi User jadi Admin" (PRD 3.16): sistem membuat identitas login admin BARU (users.kind=admin) yang
+        terpisah dari akun alumni dan tidak memberi hak admin pada sesi aplikasi alumni. Dua bentuk:
+
+        - `alumni_user_id`: admin ditautkan ke akun alumni tersebut (admins.linked_alumni_user_id) untuk pemeriksaan
+          konflik kepentingan pembayaran (PRD 2.3). `email` bawaan = email akun alumni dan `display_name` bawaan =
+          nama lengkap alumni bila tidak diisi. Alumni wajib berstatus akun active, tidak suspended, dan belum
+          tertaut ke admin mana pun (lihat GET /admin/admins/candidates); selain itu 400 VALIDATION_ERROR pada
+          `alumni_user_id`.
+        - tanpa `alumni_user_id`: `email` dan `display_name` wajib; admin tanpa tautan alumni.
+
+        `role=admin` menerima `permissions` (izin yang assignable, beserta syarat `requires` di katalog GET
+        /admin/permissions); `admins.manage`, izin ganda, atau izin tanpa prasyaratnya ditolak 400.
+        `role=super_admin` wajib `permissions` kosong (Super Admin memiliki semua izin).
+
+        Admin dibuat berstatus `invited` dengan sandi awal acak dan token undangan sekali pakai (hanya hash yang
+        disimpan). Tautan undangan dikirim lewat email ke alamat login admin melalui outbox, tidak pernah ada di
+        respons. Admin wajib mengganti sandi awal melalui token dan mendaftarkan TOTP sebelum menjadi `active`
+        (PRD 3.16, 8.2). Email login yang sudah dipakai identitas admin lain yang belum dihapus, atau alumni yang
+        sudah tertaut, menghasilkan 409 VALIDATION_ERROR dengan field_errors. Audit `admin.invited` dan
+        perubahan izin tercatat dalam transaksi yang sama (AC F16-1, F17-1).
+      x-kapdh-access: { audience: admin, permissions: [admins.manage], reauth: true, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/ReauthToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminInviteRequest" }
+      responses:
+        "201":
+          description: Admin undangan dibuat dan email undangan dijadwalkan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminInvitationResult" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminAdminsSensitiveForbidden" }
+        "409": { $ref: "#/components/responses/AdminAdminsConflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/admins/candidates:
+    get:
+      tags: [Admin Admins]
+      operationId: adminListAdminCandidates
+      summary: Cari alumni untuk didelegasikan menjadi admin (Super Admin, F-16, guideline hlm. 15).
+      description: |
+        Modal "Delegasi User jadi Admin": mencari alumni berdasarkan nama, nomor anggota (No. KTA) atau email.
+        Setiap item menyatakan `eligible` dan alasan bila tidak dapat dipilih (sudah tertaut ke admin, akun tidak
+        aktif, atau suspended), sehingga UI menonaktifkan tombol "Jadikan Admin". Tanpa `q`, urutan alumni terbaru.
+        Akun alumni yang dihapus atau deletion_pending tidak pernah muncul.
+      x-kapdh-access: { audience: admin, permissions: [admins.manage] }
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Nama, nomor anggota, atau email alumni.
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Kandidat.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCandidatePage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminAdminsForbidden" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/admins/{adminId}:
+    get:
+      tags: [Admin Admins]
+      operationId: adminGetAdmin
+      summary: Detail admin, izin efektif dan versi (Super Admin, F-16).
+      x-kapdh-access: { audience: admin, permissions: [admins.manage] }
+      parameters:
+        - $ref: "#/components/parameters/AdminId"
+      responses:
+        "200":
+          description: Detail admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAccountDetail" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminAdminsForbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Admin Admins]
+      operationId: adminUpdateAdmin
+      summary: Ubah nama, peran, izin atau status admin (Super Admin + reautentikasi, AC F16-1..F16-3).
+      description: |
+        Hanya field yang dikirim yang berubah; minimal satu field. Wajib `If-Match` = `version` terakhir; versi
+        berbeda menghasilkan 409 VERSION_CONFLICT dengan `current` = AdminAccountDetail terbaru (AC F15-4).
+
+        - `permissions` mengganti seluruh himpunan izin (hanya untuk peran `admin`, aturan sama dengan undangan).
+          Mengubah peran ke `super_admin` mengosongkan izin tersimpan; mengubah ke `admin` wajib menyertakan
+          `permissions` (boleh kosong).
+        - `status`: `disabled` dari invited/active (undangan dibatalkan, seluruh sesi admin dicabut dan socket
+          diputus); `active` hanya dari disabled untuk admin yang pernah aktif (activated_at terisi). Admin yang
+          belum pernah aktif dipulihkan lewat POST /admin/admins/{adminId}/invitation. `reason` wajib untuk
+          `disabled`.
+        - Setiap perubahan peran/izin/status menaikkan permissions_version sehingga izin yang dicabut tidak berlaku
+          pada request API atau socket berikutnya walaupun token belum expired (AC F16-3).
+        - Super Admin terakhir yang aktif tidak dapat diturunkan atau dinonaktifkan, termasuk oleh dirinya sendiri
+          dan saat dua request bersamaan: penjaga transaksi database (admins_last_super_admin_chk) menolak dan API
+          mengembalikan 409 VALIDATION_ERROR dengan field_errors pada `role`/`status` serta `current` (AC F16-2).
+          Penurunan memakai UPDATE bersyarat ... RETURNING, bukan hitungan tanpa kunci.
+        - Email login dan tautan alumni tidak dapat diubah (ditetapkan saat provisioning, PRD 3.16).
+
+        Audit `admin.updated` berisi sebelum/sesudah peran, izin dan status beserta alasan (AC F16-1, F17-1).
+      x-kapdh-access: { audience: admin, permissions: [admins.manage], reauth: true }
+      parameters:
+        - $ref: "#/components/parameters/AdminId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/ReauthToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminUpdateRequest" }
+      responses:
+        "200":
+          description: Admin terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAccountDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminAdminsSensitiveForbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/AdminAdminsConflict" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/admins/{adminId}/invitation:
+    post:
+      tags: [Admin Admins]
+      operationId: adminResendAdminInvitation
+      summary: Kirim ulang undangan dengan token baru (Super Admin + reautentikasi, F-16).
+      description: |
+        Untuk admin `invited` (token lama, kedaluwarsa atau belum, langsung tidak berlaku) atau admin `disabled`
+        yang belum pernah aktif (kembali menjadi `invited`). Admin yang pernah aktif ditolak 409
+        VALIDATION_ERROR; pulihkan dengan PATCH status=active. Wajib `If-Match`; menaikkan version. Email
+        undangan dikirim lewat outbox ke email login admin; token tidak ada di respons. Diaudit
+        `admin.invitation_resent` (AC F17-1).
+      x-kapdh-access: { audience: admin, permissions: [admins.manage], reauth: true, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/AdminId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/ReauthToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Undangan baru dijadwalkan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminInvitationResult" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/AdminAdminsSensitiveForbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/AdminAdminsConflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/permissions:
+    get:
+      tags: [Admin Admins]
+      operationId: adminListPermissions
+      summary: Katalog izin dan peran berlabel Bahasa Indonesia (F-16, ARCHITECTURE §4.5).
+      description: |
+        Dipakai formulir undangan/ubah admin dan tampilan izin sendiri; tersedia untuk semua admin ber-MFA. Urutan
+        dan label tetap (label bawaan, `requires` = izin prasyarat yang wajib ikut ditugaskan):
+
+        | permission             | label                              | group         | requires        | assignable |
+        | ---------------------- | ---------------------------------- | ------------- | --------------- | ---------- |
+        | payments.read          | Lihat pembayaran                   | payments      | -               | ya         |
+        | payments.decide        | Putuskan pembayaran                | payments      | payments.read   | ya         |
+        | members.read           | Lihat anggota                      | members       | -               | ya         |
+        | members.manage         | Kelola anggota                     | members       | members.read    | ya         |
+        | content.manage         | Kelola konten                      | content       | -               | ya         |
+        | master.manage          | Kelola master profesi dan keahlian | members       | -               | ya         |
+        | events.manage          | Kelola event dan tiket             | events        | -               | ya         |
+        | events.checkin         | Check-in tiket                     | events        | -               | ya         |
+        | moderation.read        | Lihat laporan                      | moderation    | -               | ya         |
+        | moderation.resolve     | Putuskan laporan                   | moderation    | moderation.read | ya         |
+        | audit.read             | Lihat audit                        | audit         | -               | ya         |
+        | audit.export           | Ekspor audit                       | audit         | audit.read      | ya         |
+        | settings.manage        | Kelola metode bayar dan pengaturan | settings      | -               | ya         |
+        | admins.manage          | Kelola admin dan izin              | admins        | -               | tidak      |
+        | notifications.manage   | Kelola pengiriman notifikasi       | notifications | -               | ya         |
+
+        Peran: `super_admin` "Super Admin" (semua izin, mengelola admin, MFA dan reautentikasi untuk perubahan
+        sensitif); `admin` "Admin" (hanya izin yang ditugaskan) (PRD 2.3).
+      x-kapdh-access: { audience: admin }
+      responses:
+        "200":
+          description: Katalog izin dan peran.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPermissionCatalog" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/MfaRequired" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  parameters:
+    AdminId:
+      name: adminId
+      in: path
+      required: true
+      description: Id identitas admin (admins.id), bukan id akun login.
+      schema: { type: string, format: uuid }
+
+  responses:
+    AdminAdminsForbidden:
+      description: |
+        FORBIDDEN tanpa izin admins.manage (hanya Super Admin, PRD 2.3), atau MFA_REQUIRED bila sesi admin belum
+        menyelesaikan TOTP (AC F02-2).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    AdminAdminsSensitiveForbidden:
+      description: |
+        FORBIDDEN tanpa izin admins.manage (hanya Super Admin), MFA_REQUIRED bila sesi belum TOTP, atau
+        REAUTH_REQUIRED bila X-Reauth-Token tidak ada/kedaluwarsa (lebih dari 10 menit) (PRD 2.3, AC F16-1).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    AdminAdminsConflict:
+      description: |
+        VERSION_CONFLICT bila If-Match usang (`current` = AdminAccountDetail terbaru, AC F15-4);
+        VALIDATION_ERROR (409) dengan field_errors bila email login sudah dipakai, alumni sudah tertaut ke admin,
+        Super Admin aktif terakhir akan diturunkan/dinonaktifkan (AC F16-2), atau transisi status/undangan tidak
+        diizinkan; IDEMPOTENCY_CONFLICT bila Idempotency-Key dipakai dengan payload berbeda.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    AdminAccountStatus:
+      type: string
+      enum: [invited, active, disabled]
+      description: |
+        Siklus identitas admin (enum DB admin_status, F-16): `invited` (undangan terkirim, belum ganti sandi awal
+        dan TOTP) -> `active` (setelah penerimaan undangan, domain admin-auth) -> `disabled` (dinonaktifkan Super
+        Admin; sesi dicabut). `disabled` -> `active` hanya bila pernah aktif; `disabled` yang belum pernah aktif ->
+        `invited` lewat kirim ulang undangan. Label UI: Diundang, Aktif, Nonaktif.
+
+    AdminAccountStatusChange:
+      type: string
+      enum: [active, disabled]
+      description: Status tujuan yang dapat diminta lewat PATCH; `invited` hanya lewat undangan/kirim ulang.
+
+    AdminAccountSort:
+      type: string
+      enum: [display_name_asc, created_at_desc, last_login_at_desc]
+      default: display_name_asc
+      description: Urutan daftar admin; bawaan display_name_asc.
+
+    AdminActorRef:
+      type: object
+      required: [admin_id, display_name]
+      description: Rujukan admin pelaku; display_name null bila identitas sudah dianonimkan (D2).
+      properties:
+        admin_id: { type: string, format: uuid }
+        display_name: { type: [string, "null"] }
+
+    AdminLinkedAlumni:
+      type: object
+      required: [user_id, full_name, member_number]
+      description: Akun alumni yang tertaut untuk pemeriksaan konflik kepentingan (PRD 2.3); chip "USER" di UI.
+      properties:
+        user_id: { type: string, format: uuid }
+        full_name: { type: string }
+        member_number:
+          type: [string, "null"]
+          description: Nomor anggota AA.SS.JK.N; null bila belum teraktivasi.
+          examples: ["09.02.01.5"]
+
+    AdminAccount:
+      type: object
+      required:
+        - id
+        - display_name
+        - email
+        - role
+        - status
+        - permissions
+        - linked_alumni
+        - mfa_enrolled
+        - last_login_at
+        - created_at
+        - invite_expires_at
+        - activated_at
+        - disabled_at
+        - version
+      properties:
+        id: { type: string, format: uuid, description: admins.id }
+        display_name: { type: string, maxLength: 120 }
+        email:
+          type: string
+          format: email
+          description: Email login identitas admin; boleh sama dengan email akun alumni tertaut karena identitasnya terpisah.
+        role: { $ref: "#/components/schemas/AdminRole" }
+        status: { $ref: "#/components/schemas/AdminAccountStatus" }
+        permissions:
+          type: array
+          description: Izin efektif (super_admin = seluruh 15 izin; admin = izin yang ditugaskan), urutan katalog.
+          items: { $ref: "#/components/schemas/Permission" }
+        linked_alumni:
+          oneOf:
+            - $ref: "#/components/schemas/AdminLinkedAlumni"
+            - type: "null"
+        mfa_enrolled:
+          type: boolean
+          description: TOTP sudah diverifikasi (syarat aktivasi, PRD 3.16).
+        last_login_at: { type: [string, "null"], format: date-time }
+        created_at:
+          type: string
+          format: date-time
+          description: Waktu identitas admin dibuat (undangan atau bootstrap Super Admin pertama, PRD 8.2).
+        invite_expires_at:
+          type: [string, "null"]
+          format: date-time
+          description: Batas token undangan aktif; null bila tidak ada undangan berjalan.
+        activated_at: { type: [string, "null"], format: date-time }
+        disabled_at: { type: [string, "null"], format: date-time }
+        version: { type: string, description: Nilai untuk header If-Match. }
+
+    AdminAccountDetail:
+      allOf:
+        - $ref: "#/components/schemas/AdminAccount"
+        - type: object
+          required: [invited_by, permissions_version, active_session_count, updated_at]
+          properties:
+            invited_by:
+              oneOf:
+                - $ref: "#/components/schemas/AdminActorRef"
+                - type: "null"
+            permissions_version:
+              type: integer
+              minimum: 1
+              description: Naik setiap perubahan peran/izin/status (AC F16-3).
+            active_session_count:
+              type: integer
+              minimum: 0
+              description: Sesi admin yang belum dicabut/kedaluwarsa; dicabut semua saat dinonaktifkan.
+            updated_at: { type: string, format: date-time }
+
+    AdminAccountCounts:
+      type: object
+      required: [total, active, invited, disabled]
+      description: Ringkasan seluruh admin (tidak dipengaruhi filter).
+      properties:
+        total: { type: integer, minimum: 0 }
+        active: { type: integer, minimum: 0 }
+        invited: { type: integer, minimum: 0 }
+        disabled: { type: integer, minimum: 0 }
+
+    AdminAccountPage:
+      type: object
+      required: [items, next_cursor, total, counts]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminAccount" }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer, minimum: 0, description: Jumlah admin yang cocok dengan filter. }
+        counts: { $ref: "#/components/schemas/AdminAccountCounts" }
+
+    AdminInviteRequest:
+      type: object
+      required: [role, permissions]
+      description: |
+        Isi `alumni_user_id` (delegasi alumni), atau `email` + `display_name` (admin tanpa tautan alumni).
+      properties:
+        alumni_user_id:
+          type: string
+          format: uuid
+          description: Akun alumni yang ditautkan (dari GET /admin/admins/candidates).
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          description: Email login admin; bawaan email akun alumni bila alumni_user_id diisi. Dinormalisasi server.
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Nama tampilan; bawaan nama lengkap alumni bila alumni_user_id diisi.
+        role: { $ref: "#/components/schemas/AdminRole" }
+        permissions:
+          type: array
+          maxItems: 15
+          uniqueItems: true
+          description: Izin untuk peran admin; wajib kosong untuk super_admin.
+          items: { $ref: "#/components/schemas/Permission" }
+
+    AdminInvitationResult:
+      type: object
+      required: [admin, invitation_expires_at, invitation_sent_at]
+      properties:
+        admin: { $ref: "#/components/schemas/AdminAccountDetail" }
+        invitation_expires_at:
+          type: string
+          format: date-time
+          description: Batas token undangan (masa berlaku dari konfigurasi server, usulan 72 jam).
+        invitation_sent_at:
+          type: string
+          format: date-time
+          description: Waktu email undangan dijadwalkan di outbox (bukan bukti terkirim).
+
+    AdminUpdateRequest:
+      type: object
+      minProperties: 1
+      description: Hanya field yang dikirim yang diubah; aturan lengkap di operasi adminUpdateAdmin.
+      properties:
+        display_name: { type: string, minLength: 1, maxLength: 120 }
+        role: { $ref: "#/components/schemas/AdminRole" }
+        permissions:
+          type: array
+          maxItems: 15
+          uniqueItems: true
+          description: Himpunan izin pengganti untuk peran admin.
+          items: { $ref: "#/components/schemas/Permission" }
+        status: { $ref: "#/components/schemas/AdminAccountStatusChange" }
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Alasan untuk audit; wajib (tidak hanya spasi) bila status=disabled.
+
+    AdminCandidateIneligibleReason:
+      type: string
+      enum: [already_admin, account_inactive, suspended]
+      description: |
+        Alasan alumni tidak dapat didelegasikan: `already_admin` sudah tertaut ke identitas admin (status apa pun),
+        `account_inactive` akun belum terverifikasi atau dinonaktifkan, `suspended` sedang dibatasi pengurus.
+
+    AdminCandidate:
+      type: object
+      required:
+        - user_id
+        - full_name
+        - member_number
+        - email
+        - profession
+        - avatar_url
+        - effective_status
+        - eligible
+        - ineligible_reason
+      properties:
+        user_id: { type: string, format: uuid }
+        full_name: { type: string }
+        member_number: { type: [string, "null"], examples: ["06.02.01.4"] }
+        email: { type: string, format: email, description: Email akun alumni (untuk Super Admin saja). }
+        profession:
+          type: [string, "null"]
+          description: Label profesi, misalnya Wiraswasta.
+        avatar_url: { type: [string, "null"], format: uri }
+        effective_status: { $ref: "#/components/schemas/EffectiveStatus" }
+        eligible: { type: boolean }
+        ineligible_reason:
+          oneOf:
+            - $ref: "#/components/schemas/AdminCandidateIneligibleReason"
+            - type: "null"
+
+    AdminCandidatePage:
+      type: object
+      required: [items, next_cursor, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminCandidate" }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer, minimum: 0 }
+
+    AdminPermissionGroup:
+      type: string
+      enum: [payments, members, content, events, moderation, audit, settings, admins, notifications]
+      description: Kelompok tampilan izin di formulir admin.
+
+    AdminPermissionInfo:
+      type: object
+      required: [permission, label, description, group, requires, assignable]
+      properties:
+        permission: { $ref: "#/components/schemas/Permission" }
+        label: { type: string, examples: ["Putuskan pembayaran"] }
+        description: { type: string }
+        group: { $ref: "#/components/schemas/AdminPermissionGroup" }
+        requires:
+          type: array
+          description: Izin prasyarat yang wajib ikut ditugaskan.
+          items: { $ref: "#/components/schemas/Permission" }
+        assignable:
+          type: boolean
+          description: False untuk admins.manage (hanya melekat pada Super Admin, PRD 2.3).
+
+    AdminRoleInfo:
+      type: object
+      required: [role, label, description]
+      properties:
+        role: { $ref: "#/components/schemas/AdminRole" }
+        label: { type: string, examples: ["Super Admin"] }
+        description: { type: string }
+
+    AdminPermissionCatalog:
+      type: object
+      required: [permissions, roles]
+      properties:
+        permissions:
+          type: array
+          items: { $ref: "#/components/schemas/AdminPermissionInfo" }
+        roles:
+          type: array
+          items: { $ref: "#/components/schemas/AdminRoleInfo" }

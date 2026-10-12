@@ -4,6 +4,37 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 `package.json` dan `dart/kapdh_api/pubspec.yaml` selalu sama; rilis SDK memakai tag git `contracts-vX.Y.Z`
 (`pnpm contracts:release-sdk`, ADR-001). Perubahan yang memutus ditandai **[memutus]**.
 
+## Belum dirilis
+
+### C7 Admin & notifikasi (notifications, admin-notifications, admin-dashboard, admin-admins, admin-audit)
+
+Setiap operasi domain ini kini mendeklarasikan `x-kapdh-access` (audience, member_access, permissions, reauth,
+idempotent) sesuai ARCHITECTURE §3.1, §4.3 dan §4.5. Belum ada klien rilis maupun controller API untuk operasi
+notifikasi 0.2.0, sehingga perubahan yang memutus di bawah dicatat sebagai garis dasar gerbang N-13.
+
+Perubahan pada operasi yang sudah ada (F-13):
+
+| Operasi                          | Perubahan                                                                                                                                                                                                                                                                                                                                                                                                  |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /notifications`             | **[memutus]** `InboxNotification.deep_link` (string) diganti `route` (`NotificationRoute` nullable: `name`, `path`, `params`) sesuai katalog deep link per kategori (PRD 3.13); bentuk eksternal tetap `kapdh://app` + `path`. `body`, `route`, `read_at` dan `NotificationPage.next_cursor` kini wajib ada (boleh null). Parameter baru `unread_only` dan `category`; respons 400/401/403 dideklarasikan. |
+| `POST /notifications/read`       | **[memutus]** respons 204 menjadi 200 `MarkNotificationsReadResult {updated_count, unread_count}`. `ids` minItems 1 dan uniqueItems; field baru `up_to` untuk `all`; tepat salah satu dari `ids` atau `all: true`. Respons 401/403/426/503 dideklarasikan.                                                                                                                                                 |
+| `PUT /notifications/preferences` | **[memutus]** body kini `NotificationPreferencesUpdate {push, email}` dengan seluruh saklar wajib (penggantian penuh). `PushPreferences`/`EmailPreferences` semua field wajib. Respons `NotificationPreferences` menambah `mandatory_categories` dan `updated_at`; `email` wajib.                                                                                                                          |
+| `PUT /devices`                   | **[memutus]** `app_version` wajib semver (pola sama dengan header `X-App-Version`); `token` minLength 1. Token diikat ke sesi pemanggil (AC F13-5). Respons 401/403/426/503 dideklarasikan.                                                                                                                                                                                                                |
+
+Operasi baru:
+
+- Notifications: `getNotificationUnreadCount` (`GET /notifications/unread-count`), `getNotification`
+  (`GET /notifications/{notificationId}`, pemeriksaan sebelum membuka deep link push, AC F13-3), `unregisterDevice`
+  (`POST /devices/unregister`, token di body agar tidak tercatat di log akses, AC F13-5).
+- Admin Notifications: `adminListNotificationDeliveries`, `adminRetryNotificationDeliveries`, `adminListOutboxEvents`,
+  `adminRetryOutboxEvents` (izin notifications.manage; tanpa token, isi notifikasi, payload maupun dedup key).
+- Admin Dashboard: `adminGetDashboard` (bagian sesuai izin dihilangkan bila tidak berhak, AC F15-1),
+  `adminGetDashboardBadges` (lencana menu).
+- Admin Admins: `adminListAdmins`, `adminInviteAdmin`, `adminListAdminCandidates`, `adminGetAdmin`, `adminUpdateAdmin`,
+  `adminResendAdminInvitation`, `adminListPermissions` (F-16; `admins.manage` tidak dapat ditugaskan ke peran admin).
+- Admin Audit: `adminSearchAudit`, `adminGetAuditEntry`, `adminCreateAuditExport`, `adminListAuditExports`,
+  `adminGetAuditExport`, `adminGetAuditExportAccess` (F-17; filter pencarian dan ekspor identik, AC F17-4).
+
 ## 0.2.0
 
 Pemecahan `openapi/openapi.yaml` menjadi `openapi/root.yaml` + `openapi/domains/<domain>.yaml` (ARCHITECTURE §6),
