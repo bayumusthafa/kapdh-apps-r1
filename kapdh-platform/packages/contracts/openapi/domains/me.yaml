@@ -587,8 +587,10 @@ components:
 
     MembershipPeriodKind:
       type: string
-      enum: [registration, renewal]
-      description: registration = aktivasi dari iuran pendaftaran; renewal = perpanjangan (PRD 6.3).
+      enum: [activation, renewal]
+      description: |
+        Kosakata sama dengan membership_events.kind (PRD 6.3) dan AdminMembershipEventKind: activation = periode
+        pertama dari iuran pendaftaran (payment type registration) yang disetujui; renewal = perpanjangan.
 
     MembershipPeriod:
       type: object
@@ -637,5 +639,5 @@ components:
             - type: "null"
         periods:
           type: array
-          description: Histori periode registration/renewal, terbaru lebih dulu.
+          description: Histori periode activation/renewal, terbaru lebih dulu.
           items: { $ref: "#/components/schemas/MembershipPeriod" }

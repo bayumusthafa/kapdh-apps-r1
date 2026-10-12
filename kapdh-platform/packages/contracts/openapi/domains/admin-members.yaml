@@ -93,9 +93,14 @@ paths:
         request dan berlaku sama untuk respons 200 operasi lain yang mengembalikan AdminMemberDetail maupun
         `current` pada 409 VERSION_CONFLICT:
         - tanpa payments.read: `recent_payments` null;
+        - tanpa events.manage DAN tanpa payments.read: `recent_tickets` null. Tiket memuat partisipasi event dan
+          informasi pembayaran tiket (`total`, status awaiting_payment/awaiting_review/paid) yang hanya dibuka
+          kepada pengelola event (daftar peserta, adminListEventTickets) atau pembaca pembayaran (antrean
+          pembayaran tiket); events.checkin saja tidak cukup;
         - tanpa moderation.read: `moderation` null dan `suspension.reason` (alasan internal moderasi) null dengan
           `suspension.reason_redacted` true. `suspended_at`, `suspended_by` dan `member_message` (pesan yang
           memang ditampilkan ke anggota) tetap dikirim karena status suspend menentukan status keanggotaan.
+        super_admin memiliki semua izin sehingga menerima detail utuh.
       x-kapdh-access: { audience: admin, permissions: [members.read] }
       parameters:
         - $ref: "#/components/parameters/AdminMemberUserId"
@@ -162,21 +167,30 @@ paths:
       operationId: adminSuspendMember
       summary: Batasi (suspend) anggota dari halaman anggota dengan alasan dan pesan untuk anggota (PRD 4.2, AC F12-3, F12-4).
       description: |
-        Tindakan moderasi setara keputusan laporan (izin moderation.resolve, moderasi hanya di web admin,
-        F-12). UI wajib meminta konfirmasi (PRD 4.5); body `confirm` harus true. Prasyarat: anggota tidak sedang
-        suspended dan akun tidak deletion_pending (400 bila dilanggar dengan versi terkini). Tindakan atas akun
-        alumni yang tertaut ke admin pelaku ditolak 403 FORBIDDEN (konflik kepentingan, PRD 2.3).
+        Tindakan moderasi setara keputusan suspend pada adminResolveReport (moderasi hanya di web admin, F-12),
+        sehingga memakai aturan izin yang SAMA dengan jalur moderasi: moderation.read dan moderation.resolve
+        (PRD 2.3 "moderation.read dan moderation.resolve"), ditambah members.read untuk halaman anggota. Pelaku
+        dengan demikian selalu dapat membaca kembali alasan internal yang ditulisnya. UI wajib meminta konfirmasi
+        (PRD 4.5); body `confirm` harus true. Prasyarat: anggota tidak sedang suspended dan akun tidak
+        deletion_pending (400 bila dilanggar dengan versi terkini). Tindakan atas akun alumni yang tertaut ke admin
+        pelaku ditolak 403 FORBIDDEN (konflik kepentingan, PRD 2.3).
 
         Dalam SATU transaksi (AC F12-3, F17-1, F04-1): alumni.suspended_at/suspension_reason/suspension_message/
         suspended_by_admin_id diisi; tanggal periode TIDAK diubah (PRD 4.2); membership_event `suspend` dengan
-        aktor dan alasan; audit `member.suspended`; seluruh sesi mobile anggota dicabut dan socket diputus
-        setelah commit (AC F12-4, F02-6); notifikasi kategori account (wajib) ke anggota dengan rute
-        /restricted. Akibat: effective_status suspended mengalahkan masa aktif, direktori menyembunyikan profil,
-        verifikasi KTA menjadi Tidak aktif (AC F12-4), tiket anggota tidak berlaku untuk check-in dan refund
-        diputuskan per kasus (PRD 2.2). Persetujuan pembayaran berikutnya tidak menghapus suspend (AC F07-4).
-        Pengulangan dengan Idempotency-Key sama mengembalikan hasil pertama. Respons dan `current` pada 409
-        disaring per izin seperti GET detail (alasan internal hanya untuk pemegang moderation.read).
-      x-kapdh-access: { audience: admin, permissions: [members.read, moderation.resolve], idempotent: true }
+        aktor dan alasan; audit `member.suspended`; notifikasi kategori account (wajib) ke anggota dengan rute
+        /restricted. Setelah commit seluruh sesi umum anggota dicabut (`session.revoked` reason
+        account_suspended, all_sessions true) dan socket diputus (AC F12-4, F02-6), sama dengan jalur moderasi.
+        Akibat: effective_status suspended mengalahkan masa aktif, direktori menyembunyikan profil, verifikasi KTA
+        menjadi Tidak aktif (AC F12-4), tiket anggota tidak berlaku untuk check-in dan refund diputuskan per kasus
+        (PRD 2.2). Persetujuan pembayaran berikutnya tidak menghapus suspend (AC F07-4). Anggota dapat mengajukan
+        banding dari portal pembatasan (POST /appeals, domain moderation). Pengulangan dengan Idempotency-Key sama
+        mengembalikan hasil pertama. Respons dan `current` pada 409 disaring per izin seperti GET detail.
+      x-kapdh-access:
+        {
+          audience: admin,
+          permissions: [members.read, moderation.read, moderation.resolve],
+          idempotent: true,
+        }
       parameters:
         - $ref: "#/components/parameters/AdminMemberUserId"
         - $ref: "#/components/parameters/IfMatch"
@@ -205,16 +219,32 @@ paths:
       operationId: adminUnsuspendMember
       summary: Cabut pembatasan anggota; status dihitung ulang dari expires_at (PRD 4.2, AC F12-3, F12-5).
       description: |
-        Izin moderation.resolve; UI wajib meminta konfirmasi (PRD 4.5), body `confirm` harus true. Prasyarat:
-        anggota sedang suspended (400 bila tidak, dengan versi terkini). Admin tidak dapat mencabut pembatasan
-        akun alumni yang tertaut ke dirinya sendiri (403 FORBIDDEN, konflik kepentingan PRD 2.3).
+        Izin sama dengan jalur moderasi (moderation.read dan moderation.resolve, PRD 2.3) ditambah members.read;
+        UI wajib meminta konfirmasi (PRD 4.5), body `confirm` harus true. Prasyarat: anggota sedang suspended
+        (400 bila tidak, dengan versi terkini). Admin tidak dapat mencabut pembatasan akun alumni yang tertaut ke
+        dirinya sendiri (403 FORBIDDEN, konflik kepentingan PRD 2.3).
 
-        Dalam SATU transaksi: kolom suspend dikosongkan, membership_event `unsuspend` dengan aktor dan alasan,
-        audit `member.unsuspended`, notifikasi kategori account ke anggota. effective_status dihitung ulang dari
-        verifikasi dan expires_at, bukan otomatis verified: anggota yang masa aktifnya habis menjadi expired dan
-        yang belum pernah paid menjadi unverified (AC F12-5). Idempotency-Key dihormati. Respons dan `current`
-        pada 409 disaring per izin seperti GET detail.
-      x-kapdh-access: { audience: admin, permissions: [members.read, moderation.resolve], idempotent: true }
+        Dalam SATU transaksi (AC F12-3, F12-5, F17-1), dengan baris alumni terkunci:
+        1. kolom suspend dikosongkan; membership_event `unsuspend` dengan aktor dan alasan; audit
+           `member.unsuspended`;
+        2. setiap banding aktif milik anggota (reports berkategori `appeal`, target_user_id = anggota, status
+           open/in_review; dikunci FOR UPDATE) ditutup sebagai DIKABULKAN, sama dengan aturan adminResolveReport
+           untuk "jalur unsuspend lain (menu anggota admin)": status resolved, action unsuspend,
+           resolution_note merujuk pencabutan dari menu anggota beserta `reason`, resolved_by_admin_id = pelaku,
+           resolved_at = waktu server transaksi ini, version naik, audit `moderation.report_resolved` per
+           banding. Banding tampil bagi pemohon dengan outcome action_taken dan `decision_message` =
+           `member_message` (atau teks baku "Pembatasan akun Anda telah dicabut pengurus" bila kosong);
+        3. satu notifikasi kategori account ke anggota yang memuat `member_message` (atau teks baku) dan, bila ada
+           banding yang ditutup, menyatakan banding dikabulkan; tidak ada notifikasi ganda per banding.
+        effective_status dihitung ulang dari verifikasi dan expires_at, bukan otomatis verified: anggota yang masa
+        aktifnya habis menjadi expired dan yang belum pernah paid menjadi unverified (AC F12-5). Idempotency-Key
+        dihormati. Respons dan `current` pada 409 disaring per izin seperti GET detail.
+      x-kapdh-access:
+        {
+          audience: admin,
+          permissions: [members.read, moderation.read, moderation.resolve],
+          idempotent: true,
+        }
       parameters:
         - $ref: "#/components/parameters/AdminMemberUserId"
         - $ref: "#/components/parameters/IfMatch"
@@ -249,21 +279,26 @@ paths:
 
         Dalam SATU transaksi (AC F16-4, F17-1): baris users dikunci; challenge OTP purpose password_reset
         diterbitkan (challenge aktif sebelumnya untuk tujuan yang sama disupersede, otp_codes_active_key,
-        PRD 2.5); seluruh sesi akun target dicabut dan socket diputus setelah commit; notifikasi keamanan
-        (kategori security, wajib) ke target; audit `member.password_reset_initiated` tanpa kode/token; outbox
-        `member.password_reset_initiated`. Kode tidak pernah ada di respons, log, audit atau URL (ARCHITECTURE §2).
+        PRD 2.5); seluruh sesi akun target dicabut dan socket diputus setelah commit (`session.revoked` reason
+        password_reset, all_sessions true); notifikasi keamanan (kategori security, wajib) ke target; audit
+        `member.password_reset_initiated` tanpa kode/token; outbox `member.password_reset_initiated`. Kode tidak
+        pernah ada di respons, log, audit atau URL (ARCHITECTURE §2).
 
-        Penyerahan dan penukaran challenge (AC F16-4 "hanya melalui kanal terverifikasi", AC F02-4):
+        Penyerahan dan penukaran challenge (AC F16-4 "hanya melalui kanal terverifikasi", AC F02-4), satu bentuk
+        kanonik yang sama dengan forgotPassword di domain auth:
         1. Email OTP dikirim ke email terverifikasi target (sinkron, ADR-004) dan memuat kode OTP serta tautan
-           aplikasi `${PUBLIC_WEB_URL}/app/forgot/otp?challenge=<challenge_id>` (App Links/Universal Links;
-           bentuk skema `kapdh://app/forgot/otp?challenge=<challenge_id>` setara, ARCHITECTURE §4.7). challenge_id
-           bukan rahasia tanpa kode (kode terikat challenge, 5 percobaan, 10 menit); kode hanya ada di badan email.
+           aplikasi `kapdh://app/forgot/otp?challenge_id=<challenge_id>` (bentuk eksternal deep link
+           ARCHITECTURE §4.7, rute /forgot/otp §8.4; nama parameter sama dengan field `challenge_id` pada
+           PasswordResetVerifyRequest). Tidak ada bentuk tautan lain (tanpa App Links/Universal Links di R1.0).
+           challenge_id bukan rahasia tanpa kode (kode terikat challenge, 5 percobaan, 10 menit); kode hanya ada di
+           badan email.
         2. Tautan membuka layar /forgot/otp yang terikat challenge tersebut (tanpa memanggil POST
            /auth/password/forgot, sehingga challenge pengurus TIDAK disupersede). Anggota memasukkan kode dan
-           menukarnya dengan reset_token lewat verifikasi OTP pemulihan domain auth (challenge_id + code), lalu
-           menyimpan sandi baru dengan POST /auth/password/reset (AC F02-4).
-        3. Kode kedaluwarsa atau tidak diterima: anggota meminta kirim ulang untuk challenge yang sama
-           (POST /auth/otp/resend) atau memulai "Lupa sandi" mandiri. Challenge baru mana pun menggantikan
+           menukarnya dengan reset_token lewat POST /auth/password/forgot/verify (verifyPasswordResetOtp,
+           challenge_id + code), lalu menyimpan sandi baru dengan POST /auth/password/reset (AC F02-4).
+        3. Kode kedaluwarsa atau tidak diterima di layar itu: anggota meminta kirim ulang untuk challenge yang sama
+           (POST /auth/otp/resend dengan challenge_id). Tautan tidak dapat dibuka (mis. klien email tidak
+           mendukung skema aplikasi): anggota memulai "Lupa sandi" mandiri. Challenge baru mana pun menggantikan
            challenge pengurus dan tetap hanya dikirim ke email terverifikasi, sehingga pemulihan tetap dapat
            diselesaikan.
         Notifikasi keamanan (inbox/push/email pemberitahuan) hanya memberi tahu bahwa pemulihan dimulai pengurus
@@ -507,7 +542,8 @@ components:
       description: |
         Tampilan administratif lengkap (F-15). Kontak dan sosial ditampilkan terlepas dari flag privasi; flag
         tetap ditampilkan agar pengurus tahu preferensi anggota (F-10). Disaring per izin pemanggil, juga pada
-        `current` 409: recent_payments (payments.read), moderation dan suspension.reason (moderation.read).
+        `current` 409: recent_payments (payments.read), recent_tickets (events.manage atau payments.read),
+        moderation dan suspension.reason (moderation.read).
       allOf:
         - $ref: "#/components/schemas/AdminMemberSummary"
         - type: object
@@ -584,15 +620,20 @@ components:
                 - type: "null"
             periods:
               type: array
-              description: Periode registration/renewal, terbaru lebih dulu.
+              description: |
+                Periode activation/renewal, terbaru lebih dulu. `kind` memakai kosakata yang sama dengan
+                AdminMembershipEventKind dan membership_events.kind sehingga satu baris tampil identik di detail
+                dan di GET /admin/members/{userId}/membership-events.
               items: { $ref: "#/components/schemas/MembershipPeriod" }
             recent_payments:
               type: [array, "null"]
               description: Maksimal 10 pembayaran terbaru; null bila admin tidak memiliki izin payments.read (PRD 2.3).
               items: { $ref: "#/components/schemas/AdminMemberPaymentSummary" }
             recent_tickets:
-              type: array
-              description: Maksimal 10 tiket terbaru.
+              type: [array, "null"]
+              description: |
+                Maksimal 10 tiket terbaru; null bila admin tidak memiliki events.manage maupun payments.read
+                (partisipasi event dan pembayaran tiket di luar area izinnya, PRD 2.3, AC F15-1).
               items: { $ref: "#/components/schemas/AdminMemberTicketSummary" }
             moderation:
               oneOf:
@@ -687,7 +728,15 @@ components:
           type: string
           minLength: 3
           maxLength: 1000
-          description: Alasan pencabutan pembatasan untuk audit dan histori.
+          description: Alasan pencabutan pembatasan untuk audit, histori dan resolution_note banding yang ditutup.
+        member_message:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: |
+            Opsional. Pesan aman untuk anggota pada notifikasi pencabutan dan sebagai `decision_message` banding
+            yang ditutup sebagai dikabulkan (sama dengan member_message adminResolveReport); bila tidak dikirim,
+            server memakai teks baku "Pembatasan akun Anda telah dicabut pengurus".
         confirm:
           type: boolean
           const: true
@@ -723,7 +772,9 @@ components:
     AdminMembershipEventKind:
       type: string
       enum: [activation, renewal, suspend, unsuspend, number_correction, warn]
-      description: Jenis histori keanggotaan/moderasi (membership_events.kind, PRD 6.3).
+      description: |
+        Jenis histori keanggotaan/moderasi (membership_events.kind, PRD 6.3). Nilai activation dan renewal sama
+        dengan MembershipPeriodKind pada AdminMemberDetail.periods.
 
     AdminMembershipEvent:
       type: object
