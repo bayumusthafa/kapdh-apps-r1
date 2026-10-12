@@ -54,6 +54,9 @@ class RealtimeClient {
   bool _desired = false;
   int _attempt = 0;
   String? _handshakeToken;
+
+  /// Token yang baru didapat dari refresh karena handshake ditolak; bila token ini pun ditolak, tidak di-refresh lagi.
+  String? _refreshedHandshakeToken;
   bool _disposed = false;
 
   /// Semua event bertipe dari server.
@@ -80,6 +83,7 @@ class RealtimeClient {
     _retryTimer?.cancel();
     _retryTimer = null;
     _attempt = 0;
+    _refreshedHandshakeToken = null;
     _closeSocket();
     _seen.clear();
     _state.value = RealtimeConnectionState.disconnected;
@@ -159,6 +163,7 @@ class RealtimeClient {
 
   void _handleConnected() {
     _attempt = 0;
+    _refreshedHandshakeToken = null;
     _state.value = RealtimeConnectionState.connected;
   }
 
@@ -171,7 +176,9 @@ class RealtimeClient {
 
   Future<void> _handleConnectError(Object? error) async {
     if (!_desired) return;
-    if (!isUnauthenticated(error)) {
+    // Token hasil refresh untuk handshake ini juga ditolak: jangan me-refresh lagi (mencegah rotasi berulang);
+    // cukup tunggu backoff. Sesi yang benar-benar dicabut terdeteksi koordinator lewat request HTTP berikutnya.
+    if (!isUnauthenticated(error) || (_handshakeToken != null && _handshakeToken == _refreshedHandshakeToken)) {
       _scheduleRetry();
       return;
     }
@@ -189,6 +196,7 @@ class RealtimeClient {
       return;
     }
     // Token baru tersedia: coba lagi segera, tetap dihitung agar penolakan berulang tidak berputar cepat.
+    _refreshedHandshakeToken = fresh;
     _scheduleRetry(delay: _attempt == 0 ? Duration.zero : backoffFor(_attempt));
   }
 
