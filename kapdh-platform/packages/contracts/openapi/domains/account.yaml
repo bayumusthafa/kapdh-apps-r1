@@ -7,6 +7,11 @@
 #                 deletion_token) -> POST /public/deletion/confirm (deletion_token, konfirmasi).
 # Status        : akun deletion_pending tidak memiliki sesi. Statusnya terlihat lewat POST /auth/login
 #                 (next=deletion_pending, sandi sebagai challenge) atau alur web challenge -> verify (OTP).
+# pending_otp   : pendaftaran yang belum pernah diverifikasi tidak memiliki sesi, tetapi datanya (nama, jenis
+#                 kelamin, email, angkatan/kelas, hash sandi) tetap data pribadi (D2, N-15). Pemilik email dapat
+#                 membatalkan pendaftaran dan menghapus datanya lewat alur web yang sama tanpa harus mengaktifkan akun
+#                 (yang akan mengalokasikan nomor anggota): OTP `deletion` ke email akun membuktikan kepemilikan
+#                 alamat itu. Layar OTP aplikasi menautkan "Batalkan pendaftaran" ke /delete-account (F-14).
 tags:
   - name: Account
     description: |
@@ -113,10 +118,12 @@ paths:
       description: |
         Dipakai situs publik /delete-account (tanpa aplikasi) dan layar status penghapusan aplikasi. Bila email
         milik akun alumni `active` (semua effective_status termasuk suspended: challenge deletion-only tanpa akses
-        komunitas), `deletion_pending` (cek status) atau `disabled` (cek status), challenge `deletion` dibuat
-        (baris users dikunci, challenge lama dibatalkan) dan kode dikirim ke email. Untuk email lain (tidak
-        terdaftar, `pending_otp`, akun admin, akun yang sudah selesai dihapus) server mengembalikan challenge
-        pengganti berbentuk sama tanpa email; respons, waktu dan batas 429 identik (non-enumerasi, PRD 2.5).
+        komunitas), `pending_otp` (pembatalan pendaftaran yang belum diverifikasi, kepala berkas),
+        `deletion_pending` (cek status) atau `disabled` (cek status), challenge `deletion` dibuat (baris users
+        dikunci, challenge `deletion` lama dibatalkan; challenge aktivasi signup/email_change tidak disentuh) dan
+        kode dikirim ke email akun. Untuk email lain (tidak terdaftar, akun admin, akun yang sudah selesai dihapus)
+        server mengembalikan challenge pengganti berbentuk sama tanpa email; respons, waktu dan batas 429 identik
+        (non-enumerasi, PRD 2.5).
         Kirim ulang memakai POST /auth/otp/resend. Galat: 400 VALIDATION_ERROR email tidak valid; 429 RATE_LIMITED
         (5 pengiriman per jam per email plus batas IP).
       security: []
@@ -146,9 +153,14 @@ paths:
         sesi, hanya status permintaan penghapusan terbuka (`deletion`) dan, bila akun dapat dihapus, pengungkapan
         retensi/peringatan (`disclosure`) serta `deletion_token` hanya untuk POST /public/deletion/confirm: JWT
         audience `kapdh-web-deletion` berumur maksimal 10 menit (sama dengan batas reautentikasi F-14), subject
-        akun, klaim `cid` challenge yang dikonsumsi dan `sv` (users.session_version). Token tidak disimpan di server;
-        sifat sekali pakainya dijamin konfirmasi yang mengubah akun menjadi `deletion_pending` (kepala auth.yaml).
+        akun, klaim `cid` challenge yang dikonsumsi, `sv` (users.session_version) dan `st` (users.status saat
+        verifikasi: `active` atau `pending_otp`). Token tidak disimpan di server; sifat sekali pakainya dijamin
+        konfirmasi yang mengubah akun menjadi `deletion_pending` (kepala auth.yaml).
         Bila respons hilang, kode sudah dikonsumsi: pengguna meminta challenge baru.
+        Akun `active` (termasuk suspended) -> `deletable` true, `registration_pending` false.
+        Akun `pending_otp` -> `deletable` true, `registration_pending` true: konfirmasi membatalkan pendaftaran yang
+        belum diverifikasi dan menghapus datanya; pengungkapan berisi kategori data yang sama dengan daftar
+        peringatan pribadi kosong (akun pending_otp tidak dapat membayar, memesan tiket atau masuk grup).
         Akun `deletion_pending` -> `deletable` false, `blocked_reason: deletion_in_progress`, `deletion` terisi.
         Akun `disabled` -> `deletable` false, `blocked_reason: account_disabled` (pemulihan atau penghapusan melalui
         kanal bantuan, PRD 2.2).
@@ -191,14 +203,23 @@ paths:
         `confirm: true` dan `acknowledged_disclosure_version` wajib sama dengan pengungkapan terkini. Dalam satu
         transaksi dengan baris users terkunci (FOR UPDATE): deletion_token diverifikasi (tanda tangan, audience,
         kedaluwarsa, challenge `cid` milik akun bertujuan `deletion` dan sudah dikonsumsi, `sv` sama dengan
-        session_version saat ini) dan akun harus masih `active` (semua effective_status, termasuk suspended); lalu
-        transisi bersyarat users `active` -> `deletion_pending` (`UPDATE ... WHERE status = 'active' RETURNING`)
-        serta insert account_deletions (`account_deletions_user_id_open_key`). Karena akun tidak lagi
-        `active` dan session_version naik, token yang sama tidak pernah berhasil dua kali (sekali pakai tanpa
-        penyimpanan token). Efek sama dengan POST /me/deletion (sumber `web`, termasuk perlakuan refund):
-        sesi/socket dicabut, audit, job dan email konfirmasi lewat outbox. Pengulangan dengan Idempotency-Key sama
-        mengembalikan respons pertama; tanpa key, pengulangan setelah berhasil menghasilkan 410 dan pengguna
-        memeriksa status lewat challenge -> verify (`deletion` terisi).
+        session_version saat ini) dan akun harus masih berstatus `st` yang tercatat di token (`active` dengan
+        effective_status apa pun termasuk suspended, atau `pending_otp`); lalu transisi bersyarat users
+        `st` -> `deletion_pending` (`UPDATE ... WHERE status = <st> RETURNING`) serta insert account_deletions
+        (`account_deletions_user_id_open_key`). Karena akun tidak lagi `st` dan session_version naik, token yang
+        sama tidak pernah berhasil dua kali (sekali pakai tanpa penyimpanan token). Efek sama dengan
+        POST /me/deletion (sumber `web`, termasuk perlakuan refund): sesi/socket dicabut, audit, job dan email
+        konfirmasi lewat outbox. Pengulangan dengan Idempotency-Key sama mengembalikan respons pertama; tanpa key,
+        pengulangan setelah berhasil menghasilkan 410 dan pengguna memeriksa status lewat challenge -> verify
+        (`deletion` terisi).
+
+        Pendaftaran `pending_otp`: dalam transaksi yang sama challenge signup/email_change yang masih aktif
+        dibatalkan, sehingga kode aktivasi yang sudah terkirim tidak dapat lagi mengaktifkan akun; aktivasi dan
+        konfirmasi saling eksklusif karena keduanya memakai UPDATE bersyarat pada status dengan baris users
+        terkunci (aktivasi lebih dahulu -> konfirmasi 410; konfirmasi lebih dahulu -> verifikasi OTP 410). Nomor
+        anggota tidak pernah dialokasikan. Job menghapus data pendaftaran seperti akun lain; email akun dapat
+        dipakai mendaftar lagi setelah permintaan selesai (`users_kind_email_key` hanya berlaku untuk akun yang
+        belum `deleted`).
         Galat: 400 VALIDATION_ERROR; 409 VERSION_CONFLICT bila pengungkapan berubah (`current` berisi
         AccountDeletionDisclosure terkini; token tetap berlaku sampai kedaluwarsa) atau IDEMPOTENCY_CONFLICT;
         410 OTP_EXPIRED bila deletion_token kedaluwarsa, tidak sah, sudah dipakai, atau keadaan akun berubah
@@ -523,6 +544,7 @@ components:
       required:
         - email_masked
         - deletable
+        - registration_pending
         - blocked_reason
         - deletion
         - disclosure
@@ -531,6 +553,12 @@ components:
       properties:
         email_masked: { type: string, maxLength: 254, examples: ["ah***@email.com"] }
         deletable: { type: boolean, description: True bila permintaan penghapusan baru dapat dikonfirmasi. }
+        registration_pending:
+          type: boolean
+          description: |
+            True bila akun adalah pendaftaran `pending_otp` yang belum pernah diverifikasi; UI menampilkan
+            "Batalkan pendaftaran dan hapus data" alih-alih penghapusan akun anggota (F-14, D2). False untuk akun
+            lain.
         blocked_reason:
           type: [string, "null"]
           enum: [deletion_in_progress, account_disabled, null]
@@ -552,8 +580,9 @@ components:
           maxLength: 512
           x-sensitive: true
           description: |
-            Token sekali pakai (JWT audience kapdh-web-deletion, terikat akun, challenge dan session_version) untuk
-            POST /public/deletion/confirm; hanya bila `deletable`. Simpan hanya di memori halaman.
+            Token sekali pakai (JWT audience kapdh-web-deletion, terikat akun, challenge, session_version dan status
+            akun saat verifikasi) untuk POST /public/deletion/confirm; hanya bila `deletable`. Simpan hanya di
+            memori halaman.
         deletion_token_expires_at:
           type: [string, "null"]
           format: date-time
