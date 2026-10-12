@@ -15,7 +15,7 @@
     "test": "turbo run test",
     "contracts:lint": "pnpm --filter @kapdh/contracts lint",
     "contracts:gen": "pnpm --filter @kapdh/contracts generate",
-    "tokens:gen": "python3 packages/design-tokens/build.py",
+    "tokens:gen": "node packages/design-tokens/build.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
