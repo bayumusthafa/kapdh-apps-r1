@@ -1,5 +1,5 @@
 import { outboxEvents } from "@kapdh/database";
-import { MemoryStorage } from "@kapdh/storage";
+import { MemoryDriver } from "@kapdh/storage";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { v7 as uuidv7 } from "uuid";
 import { expectOperation } from "../support/contract.js";
@@ -114,7 +114,7 @@ describe("API dasar (PRD 5.2, 5.5, N-14)", () => {
 
 describe("PRD 5.5: readiness gagal bila dependensi wajib tidak siap", () => {
   it("storage tidak terjangkau → 503 dengan status per komponen tanpa pesan galat", async () => {
-    const broken = new MemoryStorage();
+    const broken = new MemoryDriver();
     broken.stat = () => Promise.reject(new Error("ECONNREFUSED 10.0.0.5:9000 rahasia-host"));
     const t = await createTestApp({ storage: broken });
     try {

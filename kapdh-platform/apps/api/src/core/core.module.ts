@@ -14,7 +14,9 @@ import { TxRunner } from "./db/tx-runner.js";
 import { setAfterCommitErrorReporter } from "./db/tx.js";
 import type { Db } from "./db/types.js";
 import { ErrorFilter } from "./errors/error.filter.js";
+import { FilesService } from "./files/files.service.js";
 import { AuthGuard } from "./guards/auth.guard.js";
+import { SessionValidator } from "./guards/session-validator.js";
 import { RequestGate } from "./http/request-gate.js";
 import { IdempotencyService } from "./idempotency/idempotency.service.js";
 import { IdempotencyInterceptor } from "./idempotency/idempotent.js";
@@ -22,10 +24,18 @@ import { JobRegistry } from "./jobs/job-registry.js";
 import { JobRunner } from "./jobs/job-runner.js";
 import { AppLogger } from "./logging/logger.js";
 import { safeError } from "./logging/safe-error.js";
+import { MembershipKernel } from "./membership/membership.kernel.js";
+import { NotificationService } from "./notifications-kernel/notification.service.js";
 import { OutboxService } from "./outbox/outbox.service.js";
+import { MembershipPaymentHandlers, PaymentHandlerRegistry } from "./payments-kernel/payment-handler.registry.js";
+import { BlockPolicy } from "./policy/block.policy.js";
+import { QrTokenService } from "./qr/qr-token.service.js";
 import { RateLimitService } from "./rate-limit/rate-limit.service.js";
 import { RedisRateLimitStore } from "./rate-limit/redis-store.js";
 import { MemoryRateLimitStore, type RateLimitStore } from "./rate-limit/store.js";
+import { RealtimeGateway } from "./realtime/realtime.gateway.js";
+import { RealtimeService } from "./realtime/realtime.service.js";
+import { RedisEmitterTransport } from "./realtime/transports.js";
 import { SettingsService } from "./settings/settings.service.js";
 import {
   CLOCK,
@@ -47,7 +57,10 @@ export interface CoreDeps<Env extends BaseEnv = BaseEnv> {
   mailer: Mailer;
   clock: Clock;
   push: PushSender;
-  /** Driver berkas (PRD 5.4); null sampai driver local/S3 dipasang (core-api tahap 2). */
+  /**
+   * Driver berkas (PRD 5.4): main.ts/worker memasang createStorageDriver(env), uji memakai MemoryDriver. null hanya untuk
+   * konteks tanpa berkas (FilesService melempar bila dipakai; readiness melaporkan storage "skipped").
+   */
   storage?: StorageDriver | null;
   /** Redis bila REDIS_URL diisi; null = implementasi memori (development/test). */
   redis?: RedisClient | null;
@@ -72,10 +85,28 @@ const SHARED_SERVICES = [
   IdempotencyInterceptor,
   JobRegistry,
   JobRunner,
+  RealtimeService,
+  NotificationService,
+  MembershipKernel,
+  PaymentHandlerRegistry,
+  MembershipPaymentHandlers,
+  FilesService,
+  BlockPolicy,
 ];
 
-/** Khusus runtime HTTP: verifikasi token, guard, gerbang maintenance/versi, filter galat. */
-const API_SERVICES = [TokenService, AuthGuard, RequestGate, ErrorFilter];
+/**
+ * Khusus runtime HTTP: verifikasi token dan sesi, guard, gerbang maintenance/versi, filter galat, token QR KTA
+ * (secret QR tidak diberikan ke worker), dan gateway Socket.IO /realtime.
+ */
+const API_SERVICES = [
+  TokenService,
+  SessionValidator,
+  AuthGuard,
+  RequestGate,
+  ErrorFilter,
+  QrTokenService,
+  RealtimeGateway,
+];
 
 /**
  * CoreModule global (ARCHITECTURE §4.1, §4.2): token adapter (DB, ENV, CLOCK, MAILER, STORAGE, PUSH, REDIS),
@@ -84,7 +115,12 @@ const API_SERVICES = [TokenService, AuthGuard, RequestGate, ErrorFilter];
  */
 @Module({})
 export class CoreModule implements OnModuleInit {
-  constructor(@Inject(ROOT_LOGGER) private readonly logger: Logger) {}
+  constructor(
+    @Inject(ROOT_LOGGER) private readonly logger: Logger,
+    @Inject(RUNTIME_MODE) private readonly mode: "api" | "worker",
+    @Inject(REDIS) private readonly redis: RedisClient | null,
+    private readonly realtime: RealtimeService,
+  ) {}
 
   onModuleInit(): void {
     setAfterCommitErrorReporter((error) => {
@@ -94,6 +130,9 @@ export class CoreModule implements OnModuleInit {
         "efek setelah commit gagal (data tetap tersimpan)",
       );
     });
+    // Worker tidak memiliki gateway: event realtime dari job dikirim lewat emitter Redis ke adapter gateway API.
+    // Tanpa Redis (development/test) event worker tidak dikirim; klien memuat ulang lewat HTTP (PRD 5.2).
+    if (this.mode === "worker" && this.redis) this.realtime.useTransport(new RedisEmitterTransport(this.redis));
   }
 
   static forRoot(deps: CoreDeps, runtime: CoreRuntime): DynamicModule {

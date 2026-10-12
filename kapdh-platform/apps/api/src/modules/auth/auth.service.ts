@@ -10,12 +10,11 @@ import type { Mailer, OtpPurpose } from "../../core/adapters/mailer.js";
 import { AuditService } from "../../core/audit/audit.service.js";
 import { tryCtx } from "../../core/context/request-context.js";
 import { isUniqueViolation } from "../../core/db/errors.js";
-import { rows } from "../../core/db/rows.js";
 import type { Db, DbOrTx, Tx } from "../../core/db/types.js";
 import { AppException, unauthenticated } from "../../core/errors/app-exception.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
 import { ADMIN_IDLE_MS } from "../../core/guards/auth.guard.js";
-import { memberNumber } from "../../core/membership/member-number.js";
+import { MembershipKernel } from "../../core/membership/membership.kernel.js";
 import { RateLimitService } from "../../core/rate-limit/rate-limit.service.js";
 import { CLOCK, DB, ENV, MAILER } from "../../core/tokens.js";
 import {
@@ -107,6 +106,7 @@ export class AuthService {
     private readonly tokens: TokenService,
     private readonly limits: RateLimitService,
     private readonly audit: AuditService,
+    private readonly membership: MembershipKernel,
   ) {}
 
   private now() {
@@ -421,8 +421,8 @@ export class AuthService {
         .where(and(eq(users.id, user.id), eq(users.status, "pending_otp")))
         .returning({ id: users.id });
       if (activated.length === 0) throw otpExpired();
-      const profile = await tx.query.alumni.findFirst({ where: eq(alumni.userId, user.id) });
-      const allocated = profile ? await this.allocateMemberNumber(tx, profile) : null;
+      // Nomor AA.SS.JK.N dialokasikan sekali oleh MembershipKernel (nextval di transaksi yang sama, AC F05-1).
+      const allocated = await this.membership.allocateMemberNumber(tx, user.id);
       await this.audit.write(tx, {
         actor: { kind: "alumni", userId: user.id, adminId: null, adminRole: null },
         action: "account.activated",
@@ -433,27 +433,6 @@ export class AuthService {
       const issued = await this.createSession(tx, user.id, "mobile", 1, deviceName);
       return { session: issued.pair };
     });
-  }
-
-  /** N dari nextval di transaksi yang sama, lalu UPDATE nomor sekaligus (alumni_member_seq_source_chk, PRD 3.5). */
-  private async allocateMemberNumber(tx: Tx, profile: typeof alumni.$inferSelect): Promise<string> {
-    if (profile.memberNumber) return profile.memberNumber;
-    const [next] = rows<{ seq: string }>(
-      await tx.execute(sql`select nextval('app.membership_no_seq')::text as seq`),
-    );
-    const seq = Number(next!.seq);
-    const number = memberNumber({
-      cohort: profile.cohort,
-      classIn: profile.classIn,
-      classOut: profile.classOut,
-      gender: profile.gender,
-      seq,
-    });
-    await tx
-      .update(alumni)
-      .set({ memberSeq: seq, memberNumber: number, updatedAt: this.now() })
-      .where(eq(alumni.userId, profile.userId));
-    return number;
   }
 
   async resendOtp(challengeId: string): Promise<OtpChallenge> {

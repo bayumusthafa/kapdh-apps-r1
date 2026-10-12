@@ -200,3 +200,22 @@ describe("nilai kosong dan .env.example", () => {
     expect(() => loadApiEnv({ ...example, NODE_ENV: "production" })).toThrow();
   });
 });
+
+describe("API_PUBLIC_URL (URL absolut berkas, PRD 5.4)", () => {
+  it("bawaan https://api.kapdh.or.id dan dinormalisasi tanpa garis miring penutup", () => {
+    expect(loadApiEnv(api).API_PUBLIC_URL).toBe("https://api.kapdh.or.id");
+    expect(loadWorkerEnv(base).API_PUBLIC_URL).toBe("https://api.kapdh.or.id");
+    expect(loadApiEnv({ ...api, API_PUBLIC_URL: "http://localhost:3000/" }).API_PUBLIC_URL).toBe(
+      "http://localhost:3000",
+    );
+  });
+
+  it("wajib https di production (N-07)", () => {
+    expect(() => loadApiEnv({ ...production, API_PUBLIC_URL: "http://api.kapdh.or.id" })).toThrow(
+      /API_PUBLIC_URL/,
+    );
+    expect(loadApiEnv({ ...production, API_PUBLIC_URL: "https://api.kapdh.or.id" }).API_PUBLIC_URL).toBe(
+      "https://api.kapdh.or.id",
+    );
+  });
+});
