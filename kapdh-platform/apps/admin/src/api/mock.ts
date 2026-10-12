@@ -51,6 +51,7 @@ function item(
       effective_status: type === "registration" ? "unverified" : "expiring",
     },
     event_title: null,
+    event_starts_at: null,
     submitted_at: submitted,
     decided_at: null,
     review_due_at: null,

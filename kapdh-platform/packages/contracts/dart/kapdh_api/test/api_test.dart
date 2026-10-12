@@ -77,6 +77,7 @@ Map<String, Object?> paymentJson() => <String, Object?>{
       'events': <Object?>[],
       'adjustments': <Object?>[],
       'method_active': true,
+      'instructions_hidden': false,
     };
 
 Map<String, Object?> errorJson(String code, {Object? current, int? retry}) => <String, Object?>{
