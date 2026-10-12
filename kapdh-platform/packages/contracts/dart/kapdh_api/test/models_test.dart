@@ -118,6 +118,20 @@ void main() {
       expect(error.current, <String, Object?>{'version': '4', 'status': 'paid'});
       expect(ApiError.fromJson(error.toJson()), error);
     });
+
+    test('field bebas opsional yang kosong tidak dikirim sebagai null', () {
+      const error = ApiError(code: ErrorCode.notFound, message: 'Tidak ditemukan.', requestId: 'req-2');
+      expect(error.toJson().containsKey('current'), isFalse);
+      expect(error.toJson(), <String, Object?>{
+        'code': 'NOT_FOUND',
+        'message': 'Tidak ditemukan.',
+        'request_id': 'req-2',
+      });
+    });
+
+    test('status kartu expired berlabel kedaluwarsa (PRD 2.2)', () {
+      expect(MemberCardStatus.fromJson('expired'), MemberCardStatus.expired);
+    });
   });
 
   group('enum dengan cadangan unknown (N-13)', () {
@@ -209,5 +223,47 @@ void main() {
     expect(envelope.type, RealtimeEventType.messageCreated);
     expect(envelope.payload['room_id'], '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61');
     expect(RealtimeEventType.fromJson('event.baru'), RealtimeEventType.unknown);
+    // Payload dapat memuat isi chat: tidak dicetak toString (N-09).
+    expect(envelope.toString(), isNot(contains('0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e61')));
+  });
+
+  group('RealtimeEvent bertipe per jenis (ARCHITECTURE §4.9)', () {
+    Map<String, Object?> eventJson(String type, Map<String, Object?> payload) => <String, Object?>{
+          'v': 1,
+          'event_id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e5f',
+          'type': type,
+          'entity_id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e60',
+          'ts': '2026-10-12T03:15:00.000Z',
+          'payload': payload,
+        };
+
+    test('setiap jenis kontrak menjadi subkelas sendiri dan switch exhaustive', () {
+      for (final type in RealtimeEventType.values.where((t) => t != RealtimeEventType.unknown)) {
+        final event = RealtimeEvent.fromJson(eventJson(type.value, <String, Object?>{}));
+        expect(event.type, type);
+        expect(event, isNot(isA<UnknownRealtimeEvent>()));
+        expect(event.eventId, '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e5f');
+        expect(event.ts, DateTime.utc(2026, 10, 12, 3, 15));
+      }
+      final event = RealtimeEvent.fromJson(eventJson('session.revoked', <String, Object?>{}));
+      final handled = switch (event) {
+        SessionRevokedEvent() => 'logout',
+        UnknownRealtimeEvent() => 'abaikan',
+        _ => 'lain',
+      };
+      expect(handled, 'logout');
+    });
+
+    test('jenis yang belum dikenal menjadi UnknownRealtimeEvent (kompatibilitas maju, N-13)', () {
+      final event = RealtimeEvent.fromJson(eventJson('poll.created', <String, Object?>{'x': 1}));
+      expect(event, isA<UnknownRealtimeEvent>());
+      expect(event.type, RealtimeEventType.unknown);
+      expect(event, RealtimeEvent.fromJson(eventJson('poll.created', <String, Object?>{'x': 1})));
+    });
+
+    test('amplop yang menyimpang melempar FormatException', () {
+      final json = eventJson('typing', <String, Object?>{})..remove('event_id');
+      expect(() => RealtimeEvent.fromJson(json), throwsFormatException);
+    });
   });
 }

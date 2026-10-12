@@ -197,8 +197,12 @@ components:
 
     MemberCardStatus:
       type: string
-      enum: [active, expiring, inactive, suspended]
-      description: Label status kartu; selalu ditampilkan dengan teks, bukan warna saja (PRD 4.5).
+      enum: [active, expiring, inactive, expired, suspended]
+      description: >-
+        Label status kartu, selalu ditampilkan dengan teks, bukan warna saja (PRD 4.5). active = KTA Aktif
+        (verified); expiring = tetap aktif dengan tanggal habis; inactive = KTA Tidak Aktif (unverified, iuran
+        pendaftaran belum dibayar, F-05); expired = kartu berlabel kedaluwarsa dengan ajakan perpanjang (PRD 2.2);
+        suspended = dibatasi.
 
     MemberCardQr:
       type: object

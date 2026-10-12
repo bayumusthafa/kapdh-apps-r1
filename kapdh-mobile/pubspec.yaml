@@ -19,8 +19,10 @@ dependencies:
   google_fonts: ^6.2.1
   intl: ^0.20.2
   # SDK terbangkit dari kontrak OpenAPI (PRD 5.2, N-13; ADR-001). lib/src paket ini dibangkitkan oleh
-  # `pnpm contracts:gen` di kapdh-platform dan tidak di-commit; jalankan setelah pull. Saat rilis diganti
-  # dependensi git bertag `contracts-vX.Y.Z`.
+  # `pnpm contracts:gen` di kapdh-platform dan tidak di-commit; jalankan setelah pull. Saat rilis, tag
+  # `contracts-vX.Y.Z` dibuat `pnpm contracts:release-sdk` (commit rilis berisi lib/src terbangkit) dan repo
+  # Flutter terpisah memakai: git: {url: <repo KAPDHAPPS>, path: kapdh-platform/packages/contracts/dart/kapdh_api,
+  # ref: contracts-vX.Y.Z}.
   kapdh_api:
     path: ../kapdh-platform/packages/contracts/dart/kapdh_api
 

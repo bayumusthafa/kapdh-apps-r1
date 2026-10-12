@@ -19,7 +19,9 @@
     "generate:dart": "node scripts/assemble.mjs && node scripts/gen-dart.mjs",
     "typecheck": "pnpm run generate && tsc -p tsconfig.json --noEmit",
     "build": "pnpm run generate && tsc -p tsconfig.json",
-    "test": "node --test scripts/test/*.test.mjs"
+    "test": "node --test scripts/test/*.test.mjs",
+    "test:dart": "pnpm run generate:dart && node scripts/check-dart.mjs",
+    "release:dart": "node scripts/release-dart-sdk.mjs"
   },
   "devDependencies": {
     "@redocly/cli": "2.62.1",

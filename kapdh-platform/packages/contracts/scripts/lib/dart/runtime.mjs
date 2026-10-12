@@ -274,6 +274,7 @@ Future<T> sendRequest<T>(
 `;
 
 export const API_EXCEPTION_DART = `${GENERATED_HEADER}
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -281,6 +282,7 @@ import 'package:meta/meta.dart';
 
 import '../error_catalog.dart';
 import '../models.dart';
+import 'io_failure.dart' if (dart.library.io) 'io_failure_io.dart';
 import 'json.dart';
 
 /// Jenis kegagalan permintaan API.
@@ -288,8 +290,9 @@ enum ApiFailureKind {
   /// Server mengirim galat baku [ApiError] (PRD 5.2); lihat [ApiException.code].
   api,
 
-  /// Tidak ada respons: koneksi gagal, timeout, atau sertifikat. Token sesi TIDAK boleh dihapus karena ini
-  /// (ARCHITECTURE §8.3); tampilkan keadaan offline dan coba lagi.
+  /// Tidak ada respons karena koneksi gagal atau habis waktu (connectionError, connectionTimeout, sendTimeout,
+  /// receiveTimeout, atau galat I/O soket/HTTP/TLS). Token sesi TIDAK boleh dihapus karena ini (ARCHITECTURE §8.3);
+  /// tampilkan keadaan offline dan coba lagi.
   network,
 
   /// Permintaan dibatalkan klien (CancelToken).
@@ -297,6 +300,11 @@ enum ApiFailureKind {
 
   /// Ada respons tetapi bentuknya bukan yang dijanjikan kontrak (mis. halaman HTML 502 dari proxy).
   invalidResponse,
+
+  /// Kegagalan tak terduga di sisi klien tanpa respons: galat pemrograman atau keadaan (mis. body yang sudah
+  /// difinalisasi dikirim ulang), interceptor aplikasi yang menolak tanpa respons, atau sertifikat TLS yang ditolak
+  /// (badCertificate). Bukan masalah jaringan sehingga tidak ditampilkan sebagai offline; catat [ApiException.cause].
+  unexpected,
 }
 
 /// Kegagalan setiap operasi SDK. Pemetaan ke perilaku UI memakai katalog tunggal [errorUiFor] (PRD 5.2).
@@ -319,7 +327,11 @@ final class ApiException implements Exception {
     }
     final response = exception.response;
     if (response == null) {
-      return ApiException(kind: ApiFailureKind.network, operationId: operationId, cause: exception);
+      return ApiException(
+        kind: _isNetworkFailure(exception) ? ApiFailureKind.network : ApiFailureKind.unexpected,
+        operationId: operationId,
+        cause: exception,
+      );
     }
     return ApiException.fromResponse(
       statusCode: response.statusCode,
@@ -369,7 +381,7 @@ final class ApiException implements Exception {
   /// operationId kontrak yang gagal, bila diketahui.
   final String? operationId;
 
-  /// Status HTTP; null untuk [ApiFailureKind.network] dan [ApiFailureKind.cancelled].
+  /// Status HTTP; null untuk [ApiFailureKind.network], [ApiFailureKind.cancelled] dan [ApiFailureKind.unexpected].
   final int? statusCode;
 
   /// Body galat baku dari server; hanya ada untuk [ApiFailureKind.api].
@@ -387,7 +399,8 @@ final class ApiException implements Exception {
   /// Kode galat server; null bila bukan [ApiFailureKind.api].
   ErrorCode? get code => error?.code;
 
-  /// Perilaku UI seragam untuk kegagalan ini.
+  /// Perilaku UI seragam untuk kegagalan ini: kode server lewat [errorUiFor]; tanpa body Error, jaringan memakai
+  /// [ClientErrorCode.network] dan selainnya (respons tak sesuai, kegagalan tak terduga) [ClientErrorCode.unknown].
   ErrorUi get ui {
     final apiError = error;
     if (apiError != null) return errorUiFor(apiError.code);
@@ -412,6 +425,20 @@ final class ApiException implements Exception {
       'ApiException(kind: \${kind.name}, operation: $operationId, status: $statusCode, '
       'code: \${error?.code.value}, requestId: $requestId)';
 
+  /// Hanya kegagalan koneksi/timeout yang dianggap jaringan (PRD 4.5: offline tidak mengeluarkan pengguna).
+  /// [DioExceptionType.unknown] hanya jaringan bila penyebabnya galat I/O (SocketException, HttpException,
+  /// HandshakeException) atau TimeoutException; selain itu galat pemrograman/interceptor yang tidak boleh
+  /// disamarkan sebagai offline dan diulang terus.
+  static bool _isNetworkFailure(DioException exception) => switch (exception.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.sendTimeout ||
+        DioExceptionType.receiveTimeout ||
+        DioExceptionType.connectionError =>
+          true,
+        DioExceptionType.unknown => exception.error is TimeoutException || isIoFailure(exception.error),
+        _ => false,
+      };
+
   static ApiError? _parseError(Object? data) {
     Object? body = data;
     try {
@@ -433,5 +460,35 @@ final class ApiException implements Exception {
     final seconds = int.tryParse(header.trim());
     return seconds == null || seconds < 0 ? null : Duration(seconds: seconds);
   }
+}
+`;
+
+// Deteksi galat I/O lewat impor bersyarat agar paket tetap dapat dikompilasi di platform tanpa dart:io.
+export const IO_FAILURE_DART = `${GENERATED_HEADER}
+// Platform tanpa dart:io (web): kegagalan jaringan dilaporkan dio sebagai DioExceptionType.connectionError.
+
+/// Apakah [error] adalah galat I/O jaringan (selalu false tanpa dart:io).
+bool isIoFailure(Object? error) => false;
+`;
+
+export const IO_FAILURE_IO_DART = `${GENERATED_HEADER}
+// Platform dengan dart:io (Android, iOS, desktop, VM uji).
+
+import 'dart:io';
+
+/// Apakah [error] adalah galat I/O jaringan (SocketException, HttpException, HandshakeException/TlsException).
+bool isIoFailure(Object? error) => error is IOException;
+`;
+
+export const RETRY_DART = `${GENERATED_HEADER}
+import 'package:dio/dio.dart';
+
+/// Salinan [options] yang aman dikirim ulang oleh interceptor aplikasi, mis. setelah refresh token saat 401
+/// (ARCHITECTURE §8.3) atau "Coba lagi" (PRD 4.3). Body [FormData] diklon karena dio memfinalisasi
+/// FormData/MultipartFile setelah terkirim; mengirim ulang objek yang sama gagal dengan
+/// "FormData has already been finalized". Pakai: \`dio.fetch<Object?>(retryableRequest(error.requestOptions))\`.
+RequestOptions retryableRequest(RequestOptions options) {
+  final data = options.data;
+  return data is FormData ? options.copyWith(data: data.clone()) : options;
 }
 `;

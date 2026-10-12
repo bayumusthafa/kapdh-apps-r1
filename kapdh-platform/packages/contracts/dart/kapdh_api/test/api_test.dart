@@ -1,18 +1,23 @@
 // Uji kelas API terbangkit di atas Dio yang diinjeksi: path/query/header (Idempotency-Key, If-Match,
-// X-Reauth-Token), body JSON dan multipart, respons bertipe, 204 -> void, serta pemetaan galat ke ApiException.
+// X-Reauth-Token), body JSON dan multipart (termasuk kirim ulang), respons bertipe, 204 -> void, serta pemetaan
+// galat ke ApiException (server, jaringan, dan kegagalan tak terduga).
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 import 'package:test/test.dart';
 
-/// Adapter HTTP palsu: merekam request dan mengembalikan respons dari [handler].
+/// Adapter HTTP palsu: merekam request beserta body terkirim dan mengembalikan respons dari [handler].
 class FakeAdapter implements HttpClientAdapter {
   FakeAdapter(this.handler);
 
   final ResponseBody Function(RequestOptions options) handler;
   final List<RequestOptions> requests = <RequestOptions>[];
+
+  /// Body mentah setiap request (stream dibaca habis seperti adapter sungguhan).
+  final List<String> bodies = <String>[];
 
   @override
   Future<ResponseBody> fetch(
@@ -21,6 +26,13 @@ class FakeAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    final bytes = <int>[];
+    if (requestStream != null) {
+      await for (final chunk in requestStream) {
+        bytes.addAll(chunk);
+      }
+    }
+    bodies.add(latin1.decode(bytes));
     return handler(options);
   }
 
@@ -178,6 +190,62 @@ void main() {
     expect(form.files.single.value.filename, 'bukti.png');
   });
 
+  group('multipart dapat dikirim ulang (PRD 4.3, F03-2)', () {
+    Map<String, Object?> fileJson() => <String, Object?>{
+          'id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e67',
+          'purpose': 'payment_proof',
+          'mime': 'image/png',
+          'bytes': 3,
+        };
+
+    test('objek request yang sama dikirim dua kali ("Coba lagi") tanpa galat finalized', () async {
+      final (dio, adapter) = dioWith((_) => jsonBody(fileJson(), 201));
+      final request = FileUploadRequest(
+        purpose: FilePurpose.paymentProof,
+        file: MultipartFile.fromBytes(<int>[0x41, 0x42, 0x43], filename: 'bukti.png'),
+      );
+      final api = FilesApi(dio);
+      await api.uploadFile(request);
+      await api.uploadFile(request);
+      expect(adapter.requests, hasLength(2));
+      for (final body in adapter.bodies) {
+        expect(body, contains('filename="bukti.png"'));
+        expect(body, contains('ABC'));
+      }
+    });
+
+    test('interceptor refresh 401 mengirim ulang body multipart lewat retryableRequest (ARCHITECTURE §8.3)', () async {
+      var calls = 0;
+      final (dio, adapter) = dioWith((_) {
+        calls += 1;
+        return calls == 1 ? jsonBody(errorJson('UNAUTHENTICATED'), 401) : jsonBody(fileJson(), 201);
+      });
+      dio.interceptors.add(InterceptorsWrapper(
+        onError: (error, handler) async {
+          if (error.response?.statusCode != 401 || error.requestOptions.extra['retried'] == true) {
+            handler.next(error);
+            return;
+          }
+          final retry = retryableRequest(error.requestOptions)..extra['retried'] = true;
+          try {
+            handler.resolve(await dio.fetch<Object?>(retry));
+          } on DioException catch (e) {
+            handler.next(e);
+          }
+        },
+      ));
+      final file = await FilesApi(dio).uploadFile(
+        FileUploadRequest(
+          purpose: FilePurpose.paymentProof,
+          file: MultipartFile.fromBytes(<int>[0x41, 0x42, 0x43], filename: 'bukti.png'),
+        ),
+      );
+      expect(file.bytes, 3);
+      expect(adapter.requests, hasLength(2));
+      expect(adapter.bodies.last, contains('ABC'));
+    });
+  });
+
   group('ApiException dari skema Error (PRD 5.2)', () {
     test('konflik versi membawa kode, current dan perilaku muat ulang', () async {
       final (dio, _) = dioWith(
@@ -234,6 +302,38 @@ void main() {
             .having((e) => e.isNetwork, 'isNetwork', isTrue)
             .having((e) => e.ui.action, 'action', ErrorUiAction.showOffline)),
       );
+    });
+
+    test('galat I/O soket dan timeout menjadi network', () async {
+      final (dio, _) = dioWith((_) => throw const SocketException('Network is unreachable'));
+      await expectLater(
+        MeApi(dio).getMe(),
+        throwsA(isA<ApiException>().having((e) => e.kind, 'kind', ApiFailureKind.network)),
+      );
+      final timeout = ApiException.fromDio(
+        DioException.connectionTimeout(
+          timeout: const Duration(seconds: 10),
+          requestOptions: RequestOptions(path: '/me'),
+        ),
+      );
+      expect(timeout.kind, ApiFailureKind.network);
+    });
+
+    test('galat pemrograman/interceptor dan sertifikat ditolak bukan offline (PRD 4.5)', () async {
+      final (dio, _) = dioWith((_) => throw StateError('bug di interceptor'));
+      await expectLater(
+        MeApi(dio).getMe(),
+        throwsA(isA<ApiException>()
+            .having((e) => e.kind, 'kind', ApiFailureKind.unexpected)
+            .having((e) => e.isNetwork, 'isNetwork', isFalse)
+            .having((e) => e.ui.action, 'action', ErrorUiAction.showRetry)
+            .having((e) => e.cause, 'cause', isA<DioException>())),
+      );
+      final certificate = ApiException.fromDio(
+        DioException.badCertificate(requestOptions: RequestOptions(path: '/me')),
+      );
+      expect(certificate.kind, ApiFailureKind.unexpected);
+      expect(certificate.ui.action, ErrorUiAction.showRetry);
     });
 
     test('HTML 502 dari proxy menjadi invalidResponse dengan pesan cadangan', () async {

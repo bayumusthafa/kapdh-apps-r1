@@ -24,6 +24,10 @@
     },
     "test": {
       "dependsOn": ["^build"]
+    },
+    "@kapdh/contracts#test": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/shared/src/**"]
     }
   },
   "agentGuidance": false
