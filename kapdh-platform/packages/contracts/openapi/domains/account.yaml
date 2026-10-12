@@ -24,10 +24,12 @@ paths:
         Ditampilkan di layar /account/delete sebelum reautentikasi dan konfirmasi (N-15: retensi dan penggunaan data
         dijelaskan sebelum pengguna menyetujui). Memuat kategori data yang dihapus dan yang tersisa anonim (D2),
         perkiraan penyelesaian maksimal 7 hari kalender, rotasi backup 30 hari, serta peringatan pribadi: tiket aktif
-        dengan hak refund menurut D6 (akun dihapus -> tiket hangus; pengguna diberi tahu untuk mengajukan refund lebih
-        dahulu, PRD 3.9), pembayaran yang masih menunggu verifikasi, grup chat yang admin tunggalnya pengguna
-        (AC F14-5), dan identitas pengurus tertaut. `version` wajib dikirim kembali saat konfirmasi.
-        Tersedia untuk semua effective_status termasuk suspended (penghapusan deletion-only, F-14).
+        beserta kebijakan refund D6 yang berlaku (akun dihapus -> tiket hangus; pengguna diberi tahu untuk mengajukan
+        refund lebih dahulu, PRD 3.9), refund yang sedang diproses bendahara tetapi belum ditransfer (PRD 4.4),
+        pembayaran yang masih menunggu verifikasi, grup chat yang admin tunggalnya pengguna (AC F14-5), dan identitas
+        pengurus tertaut. `version` wajib dikirim kembali saat konfirmasi.
+        Tersedia untuk semua effective_status termasuk suspended (penghapusan deletion-only, F-14). Token sesi admin
+        ditolak 403 FORBIDDEN (audience mobile).
       x-kapdh-access: { audience: mobile, member_access: any }
       responses:
         "200":
@@ -36,6 +38,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AccountDeletionDisclosure" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN; dipanggil dengan token sesi admin (audience salah).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         default: { $ref: "#/components/responses/Error" }
 
   /me/deletion:
@@ -57,9 +64,20 @@ paths:
         dengan Idempotency-Key yang sama mengembalikan permintaan yang sama. Anggota suspended dapat menghapus akun
         tanpa akses komunitas (F-14). Akun alumni pengurus tetap dapat dihapus; identitas admin tertaut tidak ikut
         terhapus dan diputus tautannya oleh job (PRD 3.14). Job dapat dilanjutkan setelah gagal (AC F14-2, N-15).
-        Galat: 400 VALIDATION_ERROR (`confirm` bukan true); 403 REAUTH_REQUIRED; 409 VERSION_CONFLICT bila
-        pengungkapan berubah (mis. tiket baru) dengan `current` berisi AccountDeletionDisclosure terkini, atau
-        IDEMPOTENCY_CONFLICT.
+
+        Refund dan pembayaran terbuka (PRD 4.4, D6, D2): penghapusan tidak menunggu refund dan tidak pernah
+        menganggap dana sudah dikembalikan. Job tidak menyelesaikan atau membatalkan payment_adjustments refund
+        `pending` secara otomatis; catatan itu tetap ada (anonim) untuk diselesaikan atau dibatalkan bendahara
+        dengan catatan penyelesaian tersendiri. Data rekening tujuan refund (`refund_destination`) disimpan paling
+        lama sampai refund selesai/batal atau sampai langkah akhir job (batas `estimated_completion_at`), mana yang
+        lebih dahulu, lalu dihapus bersama data pribadi lain; setelah itu bendahara tidak lagi dapat menghubungi
+        pemilik. Karena itu UI menampilkan `pending_refunds` dan `active_tickets` sebelum konfirmasi dan menyarankan
+        menunggu refund selesai atau mengajukan refund lebih dahulu. Pembayaran `pending` dibatalkan job; dana yang
+        sudah ditransfer diselesaikan lewat bendahara.
+
+        Galat: 400 VALIDATION_ERROR (`confirm` bukan true); 403 REAUTH_REQUIRED, atau FORBIDDEN bila dipanggil
+        dengan token sesi admin; 409 VERSION_CONFLICT bila pengungkapan berubah (mis. tiket atau refund baru)
+        dengan `current` berisi AccountDeletionDisclosure terkini, atau IDEMPOTENCY_CONFLICT.
       x-kapdh-access: { audience: mobile, member_access: any, reauth: true, idempotent: true }
       parameters:
         - $ref: "#/components/parameters/ReauthToken"
@@ -77,7 +95,13 @@ paths:
               schema: { $ref: "#/components/schemas/AccountDeletion" }
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/ReauthRequired" }
+        "403":
+          description: |
+            REAUTH_REQUIRED (X-Reauth-Token tidak ada, tidak sah atau lebih dari 10 menit; UI membuka reautentikasi)
+            atau FORBIDDEN (token sesi admin).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "409": { $ref: "#/components/responses/Conflict" }
         default: { $ref: "#/components/responses/Error" }
 
@@ -120,10 +144,14 @@ paths:
       description: |
         Kode `deletion` benar dikonsumsi sekali secara atomik. Respons adalah challenge terbatas (PRD 2.2): tidak ada
         sesi, hanya status permintaan penghapusan terbuka (`deletion`) dan, bila akun dapat dihapus, pengungkapan
-        retensi/peringatan (`disclosure`) serta `deletion_token` (acak, disimpan sebagai hash, berlaku maksimal
-        10 menit, sekali pakai, hanya untuk POST /public/deletion/confirm). Akun `deletion_pending` -> `deletable`
-        false, `blocked_reason: deletion_in_progress`, `deletion` terisi. Akun `disabled` -> `deletable` false,
-        `blocked_reason: account_disabled` (pemulihan atau penghapusan melalui kanal bantuan, PRD 2.2).
+        retensi/peringatan (`disclosure`) serta `deletion_token` hanya untuk POST /public/deletion/confirm: JWT
+        audience `kapdh-web-deletion` berumur maksimal 10 menit (sama dengan batas reautentikasi F-14), subject
+        akun, klaim `cid` challenge yang dikonsumsi dan `sv` (users.session_version). Token tidak disimpan di server;
+        sifat sekali pakainya dijamin konfirmasi yang mengubah akun menjadi `deletion_pending` (kepala auth.yaml).
+        Bila respons hilang, kode sudah dikonsumsi: pengguna meminta challenge baru.
+        Akun `deletion_pending` -> `deletable` false, `blocked_reason: deletion_in_progress`, `deletion` terisi.
+        Akun `disabled` -> `deletable` false, `blocked_reason: account_disabled` (pemulihan atau penghapusan melalui
+        kanal bantuan, PRD 2.2).
         Challenge pengganti dari email tak terdaftar selalu diperlakukan sebagai kode salah sampai percobaan habis.
         Galat: 400 VALIDATION_ERROR kode salah dengan sisa percobaan di `field_errors.code`; 410 OTP_EXPIRED
         (kedaluwarsa, dipakai, diganti, percobaan habis, tujuan lain); 429 RATE_LIMITED.
@@ -160,13 +188,21 @@ paths:
       summary: Konfirmasi penghapusan dari web dengan deletion_token; nomor permintaan ditampilkan (AC F14-1).
       description: |
         Halaman web benar-benar menerima permintaan, bukan hanya menyarankan menghubungi pengurus (F-14).
-        `deletion_token` dikonsumsi dengan UPDATE bersyarat; `confirm: true` dan `acknowledged_disclosure_version`
-        wajib sama dengan pengungkapan terkini. Efek sama dengan POST /me/deletion (sumber `web`): akun
-        `deletion_pending`, sesi/socket dicabut, audit, job dan email konfirmasi lewat outbox. Request bersamaan
-        atau ulangan dengan Idempotency-Key sama menghasilkan satu permintaan yang sama.
+        `confirm: true` dan `acknowledged_disclosure_version` wajib sama dengan pengungkapan terkini. Dalam satu
+        transaksi dengan baris users terkunci (FOR UPDATE): deletion_token diverifikasi (tanda tangan, audience,
+        kedaluwarsa, challenge `cid` milik akun bertujuan `deletion` dan sudah dikonsumsi, `sv` sama dengan
+        session_version saat ini) dan akun harus masih `active` (semua effective_status, termasuk suspended); lalu
+        transisi bersyarat users `active` -> `deletion_pending` (`UPDATE ... WHERE status = 'active' RETURNING`)
+        serta insert account_deletions (`account_deletions_user_id_open_key`). Karena akun tidak lagi
+        `active` dan session_version naik, token yang sama tidak pernah berhasil dua kali (sekali pakai tanpa
+        penyimpanan token). Efek sama dengan POST /me/deletion (sumber `web`, termasuk perlakuan refund):
+        sesi/socket dicabut, audit, job dan email konfirmasi lewat outbox. Pengulangan dengan Idempotency-Key sama
+        mengembalikan respons pertama; tanpa key, pengulangan setelah berhasil menghasilkan 410 dan pengguna
+        memeriksa status lewat challenge -> verify (`deletion` terisi).
         Galat: 400 VALIDATION_ERROR; 409 VERSION_CONFLICT bila pengungkapan berubah (`current` berisi
         AccountDeletionDisclosure terkini; token tetap berlaku sampai kedaluwarsa) atau IDEMPOTENCY_CONFLICT;
-        410 OTP_EXPIRED bila deletion_token kedaluwarsa atau sudah dipakai; 429 RATE_LIMITED.
+        410 OTP_EXPIRED bila deletion_token kedaluwarsa, tidak sah, sudah dipakai, atau keadaan akun berubah
+        (tidak dibedakan); 429 RATE_LIMITED.
       security: []
       x-kapdh-access: { audience: public, idempotent: true }
       parameters:
@@ -283,11 +319,27 @@ components:
       enum: [awaiting_payment, awaiting_review, paid]
       description: Status tiket aktif yang akan hangus saat akun dihapus (PRD 3.9, 4.4).
 
+    AccountDeletionRefundPolicy:
+      type: string
+      enum: [full_refund, no_refund, case_by_case, payment_pending]
+      description: |
+        Kebijakan refund D6 (PRD 3.9) yang berlaku untuk tiket bila pengguna bertindak SEBELUM menghapus akun;
+        setelah akun dihapus tiket hangus. Dievaluasi berurutan:
+        `payment_pending` tiket belum lunas (awaiting_payment/awaiting_review): pembayarannya ada di `open_payments`
+        dan dibatalkan job; dana yang sudah ditransfer diselesaikan lewat bendahara (PRD 4.4).
+        `case_by_case` pemilik sedang disuspend: tiket tidak berlaku dan refund diputuskan pengurus per kasus (D6
+        baris "Anggota disuspend"), termasuk bila event dibatalkan; anggota suspended tidak dapat membatalkan tiket
+        sendiri.
+        `full_refund` tiket berbayar lunas dan event dibatalkan pengurus, atau pembatalan sendiri masih sebelum
+        `self_cancel_deadline_at` (H-3): ajukan pembatalan/refund lebih dahulu.
+        `no_refund` tiket gratis, atau batas H-3 sudah lewat.
+
     AccountDeletionTicketWarning:
       type: object
       description: |
-        Tiket aktif (menahan atau memakai kursi) pada event yang belum selesai, termasuk event yang dibatalkan dan
-        belum direfund. Akun dihapus -> tiket hangus; refund harus diajukan lebih dahulu (PRD 3.9, D6).
+        Tiket aktif (status awaiting_payment, awaiting_review atau paid) pada event yang belum selesai, termasuk event
+        yang dibatalkan dan belum diproses refund-nya. Akun dihapus -> tiket hangus; refund harus diajukan lebih
+        dahulu (PRD 3.9, D6). Tiket yang sudah dibatalkan dan refund-nya sedang diproses tampil di `pending_refunds`.
       required:
         - ticket_id
         - event_id
@@ -297,7 +349,7 @@ components:
         - event_cancelled
         - status
         - total
-        - refund_eligible
+        - refund_policy
         - self_cancel_deadline_at
       properties:
         ticket_id: { type: string, format: uuid }
@@ -309,15 +361,53 @@ components:
         event_cancelled: { type: boolean, description: "Event dibatalkan pengurus (refund penuh, D6)." }
         status: { $ref: "#/components/schemas/AccountDeletionTicketStatus" }
         total: { $ref: "#/components/schemas/Money" }
-        refund_eligible:
-          type: boolean
-          description: |
-            True bila tiket berbayar masih berhak refund penuh menurut D6: event dibatalkan, atau pembatalan sendiri
-            sebelum `self_cancel_deadline_at` (H-3). Tiket gratis dan pembatalan setelah H-3 tidak direfund.
+        refund_policy: { $ref: "#/components/schemas/AccountDeletionRefundPolicy" }
         self_cancel_deadline_at:
           type: [string, "null"]
           format: date-time
           description: Batas pembatalan sendiri dengan refund penuh (mulai event - 3 hari); null untuk event gratis.
+
+    AccountDeletionRefundWarning:
+      type: object
+      description: |
+        Refund yang sudah dicatat (payment_adjustments kind `refund`, status `pending`) tetapi belum ditransfer
+        bendahara, misalnya tiket yang dibatalkan sendiri sebelum H-3 atau event yang dibatalkan (D6, tenggat 7 hari
+        kerja). Penghapusan akun tidak menganggap dana sudah dikembalikan (PRD 4.4); setelah akun dihapus bendahara
+        tidak lagi dapat menghubungi pemilik dan data rekening tujuan ikut dihapus (D2), sehingga pengguna disarankan
+        menunggu refund selesai.
+      required:
+        - adjustment_id
+        - payment_id
+        - payment_type
+        - ticket_id
+        - event_title
+        - amount
+        - due_at
+        - destination_provided
+        - created_at
+      properties:
+        adjustment_id: { type: string, format: uuid }
+        payment_id:
+          type: string
+          format: uuid
+          description: "Pembayaran asal (deep link `/payments/{paymentId}`)."
+        payment_type: { $ref: "#/components/schemas/AccountDeletionPaymentType" }
+        ticket_id:
+          type: [string, "null"]
+          format: uuid
+          description: Tiket terkait bila refund berasal dari tiket event; null untuk iuran.
+        event_title: { type: [string, "null"], maxLength: 200 }
+        amount: { $ref: "#/components/schemas/Money" }
+        due_at:
+          type: [string, "null"]
+          format: date-time
+          description: Tenggat bendahara (paling lambat 7 hari kerja sejak pembatalan, D6).
+        destination_provided:
+          type: boolean
+          description: |
+            True bila rekening tujuan refund sudah diberikan. Nilai rekening tidak pernah dikembalikan di sini
+            (ARCHITECTURE §2 butir 3).
+        created_at: { type: string, format: date-time }
 
     AccountDeletionPaymentType:
       type: string
@@ -352,6 +442,7 @@ components:
         - privacy_policy_slug
         - privacy_policy_version
         - active_tickets
+        - pending_refunds
         - open_payments
         - sole_admin_group_count
         - linked_admin_identity
@@ -360,7 +451,8 @@ components:
           type: string
           maxLength: 128
           description: |
-            Versi opaque dari isi pengungkapan dan peringatan pribadi; berubah bila tiket/pembayaran/kebijakan berubah.
+            Versi opaque dari isi pengungkapan dan peringatan pribadi (termasuk active_tickets, pending_refunds,
+            open_payments dan status suspend pemilik); berubah bila tiket/refund/pembayaran/kebijakan berubah.
             Dikirim kembali sebagai `acknowledged_disclosure_version`.
         estimated_completion_days:
           type: integer
@@ -389,6 +481,11 @@ components:
           type: array
           maxItems: 100
           items: { $ref: "#/components/schemas/AccountDeletionTicketWarning" }
+        pending_refunds:
+          type: array
+          maxItems: 100
+          description: Refund yang belum ditransfer bendahara (PRD 4.4, D6).
+          items: { $ref: "#/components/schemas/AccountDeletionRefundWarning" }
         open_payments:
           type: array
           maxItems: 100
@@ -453,7 +550,10 @@ components:
         deletion_token:
           type: [string, "null"]
           maxLength: 512
-          description: Token sekali pakai untuk POST /public/deletion/confirm; hanya bila `deletable`.
+          x-sensitive: true
+          description: |
+            Token sekali pakai (JWT audience kapdh-web-deletion, terikat akun, challenge dan session_version) untuk
+            POST /public/deletion/confirm; hanya bila `deletable`. Simpan hanya di memori halaman.
         deletion_token_expires_at:
           type: [string, "null"]
           format: date-time
@@ -463,7 +563,7 @@ components:
       type: object
       required: [deletion_token, confirm, acknowledged_disclosure_version]
       properties:
-        deletion_token: { type: string, minLength: 16, maxLength: 512 }
+        deletion_token: { type: string, minLength: 16, maxLength: 512, x-sensitive: true }
         confirm: { type: boolean, const: true, description: Konfirmasi eksplisit pengguna. }
         acknowledged_disclosure_version:
           type: string
