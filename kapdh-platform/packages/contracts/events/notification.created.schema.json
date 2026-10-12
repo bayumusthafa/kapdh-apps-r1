@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/contracts/events/notification.created.schema.json",
+  "title": "NotificationCreatedPayload",
+  "description": "Notifikasi baru di kotak masuk in-app (F-13). entity_id = ID notifikasi. Dikirim sesudah commit ke kanal user:<user_id> pemilik notifikasi saja. Bentuk field sama dengan InboxNotification (notifications.yaml) dan tidak pernah memuat isi chat, bukti bayar, atau kontak (§4.7). Klien memeriksa autentikasi/otorisasi sebelum membuka deep link (AC F13-3).",
+  "type": "object",
+  "required": ["notification_id", "category", "title", "body", "deep_link", "created_at", "unread_count"],
+  "additionalProperties": false,
+  "properties": {
+    "notification_id": { "type": "string", "format": "uuid" },
+    "category": {
+      "description": "Sama dengan NotificationCategory (ARCHITECTURE §4.7).",
+      "type": "string",
+      "enum": ["payment", "membership", "event", "news", "chat", "security", "account"]
+    },
+    "title": { "type": "string" },
+    "body": { "type": ["string", "null"] },
+    "deep_link": {
+      "description": "Rute aplikasi bentuk eksternal kapdh://app/<rute>.",
+      "type": ["string", "null"]
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "unread_count": {
+      "description": "Jumlah notifikasi belum dibaca pemilik sesudah notifikasi ini (badge).",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "examples": [
+    {
+      "notification_id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4ea0",
+      "category": "chat",
+      "title": "Undangan grup baru",
+      "body": "Ahmad Islam mengundang Anda ke grup Angkatan 29.",
+      "deep_link": "kapdh://app/chat/invitations",
+      "created_at": "2026-10-12T03:15:00.000Z",
+      "unread_count": 2
+    }
+  ]
+}

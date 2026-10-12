@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/contracts/events/realtime-chat-reply.schema.json",
+  "title": "RealtimeChatReply",
+  "description": "Rujukan pesan yang dibalas. Bentuk JSON sama dengan ChatMessageReply pada kontrak HTTP. Pada event realtime `available` selalu false dan pratinjau selalu null karena riwayat yang boleh dibaca berbeda per anggota (anggota baru hanya melihat pesan sejak bergabung); klien memakai salinan lokal pesan `id` atau memuat riwayat lewat HTTP.",
+  "type": "object",
+  "required": ["id", "available", "sender_name", "preview", "has_image"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "available": { "type": "boolean" },
+    "sender_name": { "type": ["string", "null"] },
+    "preview": { "type": ["string", "null"], "maxLength": 120, "x-sensitive": true },
+    "has_image": { "type": "boolean" }
+  },
+  "examples": [
+    {
+      "id": "0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e5a",
+      "available": false,
+      "sender_name": null,
+      "preview": null,
+      "has_image": false
+    }
+  ]
+}

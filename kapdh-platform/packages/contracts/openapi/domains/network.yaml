@@ -1,7 +1,280 @@
-# Domain network (C6 Community): direktori anggota dan profil anggota lain dengan privasi.
-# Modul API: apps/api/src/modules/network. Path ditambahkan oleh penulis kontrak C6.
+# Domain network (C6 Community): direktori anggota dan profil anggota lain dengan privasi (F-10, PRD 3.10).
+# Modul API: apps/api/src/modules/network.
+#
+# Aturan bersama domain ini (ARCHITECTURE §3.5, PRD 2.2):
+# - Pemanggil wajib sesi mobile dengan effective_status verified/expiring yang tidak suspended
+#   (x-kapdh-access member_access: active). unverified/expired -> 403 MEMBERSHIP_REQUIRED; suspended -> 403
+#   ACCOUNT_SUSPENDED; tanpa sesi -> 401 (AC F10-3).
+# - Anggota yang tampil: akun users.status=active, effective_status verified/expiring, tidak suspended,
+#   alumni.show_in_directory=true. Anggota yang memblokir pemanggil tidak tampil di direktori maupun profil
+#   (404), sedangkan anggota yang diblokir pemanggil tetap tampil dengan is_blocked_by_me=true agar dapat dibuka.
+# - Field privat yang flag pemiliknya mati TIDAK dikirim sama sekali (kunci tidak ada di payload), bukan sekadar
+#   disembunyikan UI (AC F10-2). Skema memakai additionalProperties: false sehingga uji kontrak menolak kebocoran field.
+# - Tidak ada endpoint ubah profil orang lain di domain ini; perubahan profil hanya PATCH /me/profile milik sendiri
+#   (AC F10-5).
 tags:
   - name: Network
     description: Direktori anggota aktif dan profil anggota lain; field tersembunyi tidak ikut payload (F-10, AC F10-2).
 
-paths: {}
+paths:
+  /directory:
+    get:
+      tags: [Network]
+      operationId: searchDirectory
+      summary: Cari dan filter direktori anggota aktif dengan paging keyset (F-10, AC F10-1, F10-3).
+      description: |
+        Hanya untuk anggota aktif (verified/expiring, tidak suspended). Hasil hanya memuat anggota yang memenuhi
+        aturan tampil direktori pada saat request (status terkini, bukan cache): users.status=active,
+        effective_status verified/expiring, tidak suspended, dan show_in_directory=true. Pemanggil sendiri dan
+        anggota yang memblokir pemanggil tidak ikut hasil.
+
+        Pencarian `q` mencocokkan nama (tanpa membedakan huruf besar/kecil, sebagian kata). Filter angkatan, kelas,
+        kota, profesi dan keahlian digabung dengan AND; profesi/keahlian memakai ID master terkontrol dari
+        GET /masters/{kind}. Master yang sudah nonaktif tetap dapat dipakai sebagai filter agar anggota dengan label
+        historis tetap dapat ditemukan (AC F10-4).
+
+        Paging keyset stabil tanpa duplikasi antarhalaman (AC F10-1): urutan `name_asc` = (nama, user_id),
+        `cohort_desc` = (angkatan menurun, nama, user_id). `total` dihitung dengan filter yang sama. Bawaan 30,
+        maksimum 100 per halaman. Request dibatasi laju untuk mencegah scraping (429 RATE_LIMITED).
+
+        Kartu hasil hanya memuat field kartu guideline p7 (avatar, nama, profesi, kota, lulusan terakhir, keahlian,
+        kode angkatan); kontak (email, telepon, sosial) tidak pernah ada di hasil pencarian (AC F10-2).
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Kata kunci nama anggota (minimal 2 karakter setelah dipangkas).
+          schema: { type: string, minLength: 2, maxLength: 100 }
+        - name: cohort
+          in: query
+          required: false
+          description: Angkatan (AA pada nomor anggota, PRD 3.5).
+          schema: { type: integer, minimum: 1, maximum: 99 }
+        - name: class_level
+          in: query
+          required: false
+          description: |
+            Kelas yang pernah ditempuh (1-3 = 1-3 MTs, 4-6 = 1-3 Aliyah); cocok bila
+            class_in <= class_level <= class_out.
+          schema: { $ref: "#/components/schemas/ClassLevel" }
+        - name: city
+          in: query
+          required: false
+          description: Kota domisili; cocok persis tanpa membedakan huruf besar/kecil.
+          schema: { type: string, minLength: 1, maxLength: 80 }
+        - name: profession_id
+          in: query
+          required: false
+          description: ID master profesi (master_professions).
+          schema: { type: string, format: uuid }
+        - name: skill_id
+          in: query
+          required: false
+          description: ID master keahlian (master_skills).
+          schema: { type: string, format: uuid }
+        - name: sort
+          in: query
+          required: false
+          description: Urutan hasil; bawaan name_asc.
+          schema: { $ref: "#/components/schemas/DirectorySort" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Halaman direktori beserta total sesuai filter.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DirectoryPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /directory/{userId}:
+    get:
+      tags: [Network]
+      operationId: getMemberProfile
+      summary: Profil anggota lain yang menghormati flag privasi (F-10, AC F10-2, F10-4).
+      description: |
+        Hanya untuk anggota aktif. Profil hanya tersedia bila anggota tersebut memenuhi aturan tampil direktori
+        (lihat GET /directory) dan tidak memblokir pemanggil; selain itu 404 NOT_FOUND tanpa membedakan alasan
+        (N-09). Pemanggil boleh membuka profilnya sendiri (is_me=true) untuk pratinjau tampilan publik, termasuk
+        saat show_in_directory=false.
+
+        Privasi (AC F10-2, N-15): `email` hanya dikirim bila show_email=true, `phone` hanya bila show_phone=true,
+        `social` hanya bila show_social=true. Bila flag mati, kuncinya tidak ada di payload. Data administratif
+        (nomor anggota, masa aktif, alasan suspend, kelas masuk/keluar) tidak pernah dikirim; pengurus berizin
+        membacanya lewat API admin yang diaudit.
+
+        Master profesi/keahlian yang sudah dinonaktifkan tetap ditampilkan sebagai label historis dengan
+        active=false (AC F10-4). `can_message` false bila salah satu pihak memblokir, atau profil milik sendiri;
+        alasan tidak dibedakan. `direct_room_id` berisi room direct yang sudah ada antara keduanya (bila ada) agar
+        tombol "Kirim Pesan" langsung membuka percakapan; bila null, klien memanggil POST /chat/direct.
+      x-kapdh-access: { audience: mobile, member_access: active }
+      parameters:
+        - $ref: "#/components/parameters/NetworkUserId"
+      responses:
+        "200":
+          description: Profil anggota sesuai privasi pemiliknya.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NetworkMemberProfile" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  parameters:
+    NetworkUserId:
+      name: userId
+      in: path
+      required: true
+      description: user_id akun alumni yang dibuka profilnya.
+      schema: { type: string, format: uuid }
+
+  schemas:
+    DirectorySort:
+      type: string
+      enum: [name_asc, cohort_desc]
+      description: name_asc = nama A-Z; cohort_desc = angkatan terbaru dulu lalu nama (paging keyset, AC F10-1).
+
+    NetworkMasterRef:
+      type: object
+      description: |
+        Rujukan master profesi/keahlian pada profil anggota. active=false berarti master sudah dinonaktifkan;
+        label historis tetap ditampilkan tetapi tidak dapat dipilih lagi (AC F10-4).
+      required: [id, label, active]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        label: { type: string, maxLength: 100 }
+        active: { type: boolean }
+
+    DirectoryMember:
+      type: object
+      description: |
+        Kartu anggota di direktori (guideline p7): avatar, nama, profesi - kota, lulusan terakhir, chip keahlian,
+        kode angkatan. Tidak pernah memuat email, telepon, tautan sosial, nomor anggota, atau masa aktif (AC F10-2).
+      required: [user_id, full_name, cohort, cohort_code, skills]
+      additionalProperties: false
+      properties:
+        user_id: { type: string, format: uuid }
+        full_name: { type: string, maxLength: 120 }
+        avatar_url:
+          type: [string, "null"]
+          format: uri
+          description: URL avatar (publik atau bertanda tangan maksimal 10 menit, PRD 5.4); null bila tidak ada.
+        cohort: { type: integer, minimum: 1, maximum: 99 }
+        cohort_code:
+          type: string
+          description: Kode angkatan, format sama dengan MemberCard.cohort_code; UI dapat menampilkannya sebagai tagar.
+          examples: ["KAPDH 29"]
+        city: { type: [string, "null"], maxLength: 80 }
+        profession:
+          oneOf:
+            - $ref: "#/components/schemas/NetworkMasterRef"
+            - type: "null"
+        last_education_institution:
+          type: [string, "null"]
+          maxLength: 120
+          description: Institusi pendidikan terakhir ("Lulusan Terakhir").
+        last_education_city: { type: [string, "null"], maxLength: 80 }
+        skills:
+          type: array
+          maxItems: 10
+          description: Keahlian (maksimal 10, urut label).
+          items: { $ref: "#/components/schemas/NetworkMasterRef" }
+
+    DirectoryPage:
+      type: object
+      required: [items, total]
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/DirectoryMember" }
+        total:
+          type: integer
+          minimum: 0
+          description: Jumlah seluruh anggota yang cocok dengan filter yang sama (AC F10-1).
+        next_cursor: { type: [string, "null"] }
+
+    NetworkSocialLinks:
+      type: object
+      description: Tautan sosial; seluruh objek hanya dikirim bila show_social=true (AC F10-2).
+      required: [instagram, x, facebook, linkedin]
+      additionalProperties: false
+      properties:
+        instagram: { type: [string, "null"], maxLength: 120 }
+        x: { type: [string, "null"], maxLength: 120 }
+        facebook: { type: [string, "null"], maxLength: 120 }
+        linkedin: { type: [string, "null"], maxLength: 200 }
+
+    NetworkMemberProfile:
+      type: object
+      description: |
+        Profil anggota untuk anggota lain (guideline p7: Angkatan, Lulusan Terakhir, Profesi, Skill, Nomor Telpon,
+        Tentang, Social Media, tombol Kirim Pesan). Kunci `email`, `phone` dan `social` hanya ada bila flag privasi
+        pemiliknya aktif; bila mati kuncinya tidak dikirim (AC F10-2). Nilainya dapat null bila pemilik mengaktifkan
+        flag tetapi belum mengisi datanya.
+      required:
+        [
+          user_id,
+          full_name,
+          cohort,
+          cohort_code,
+          graduation_year,
+          skills,
+          is_me,
+          is_blocked_by_me,
+          can_message,
+        ]
+      additionalProperties: false
+      properties:
+        user_id: { type: string, format: uuid }
+        full_name: { type: string, maxLength: 120 }
+        avatar_url:
+          type: [string, "null"]
+          format: uri
+          description: URL avatar (publik atau bertanda tangan maksimal 10 menit, PRD 5.4).
+        cohort: { type: integer, minimum: 1, maximum: 99 }
+        cohort_code: { type: string, examples: ["KAPDH 29"] }
+        graduation_year: { type: integer, description: Tahun lulus = 1996 + angkatan (PRD 3.5). }
+        city: { type: [string, "null"], maxLength: 80 }
+        profession:
+          oneOf:
+            - $ref: "#/components/schemas/NetworkMasterRef"
+            - type: "null"
+        skills:
+          type: array
+          maxItems: 10
+          items: { $ref: "#/components/schemas/NetworkMasterRef" }
+        last_education_institution: { type: [string, "null"], maxLength: 120 }
+        last_education_city: { type: [string, "null"], maxLength: 80 }
+        bio: { type: [string, "null"], maxLength: 500, description: '"Tentang"; teks bebas pemilik profil.' }
+        email:
+          type: [string, "null"]
+          format: email
+          description: Hanya dikirim bila show_email=true (AC F10-2).
+        phone:
+          type: [string, "null"]
+          maxLength: 20
+          description: Hanya dikirim bila show_phone=true; bila false kunci ini tidak ada (AC F10-2).
+        social: { $ref: "#/components/schemas/NetworkSocialLinks" }
+        is_me: { type: boolean, description: True bila profil milik pemanggil (pratinjau tampilan publik). }
+        is_blocked_by_me:
+          type: boolean
+          description: True bila pemanggil memblokir anggota ini (F-12); UI menawarkan "Buka blokir".
+        can_message:
+          type: boolean
+          description: |
+            True bila pemanggil dapat memulai/melanjutkan pesan langsung. False bila salah satu pihak memblokir atau
+            profil milik sendiri; alasan sengaja tidak dibedakan (AC F12-1).
+        direct_room_id:
+          type: [string, "null"]
+          format: uuid
+          description: Room direct yang sudah ada antara pemanggil dan anggota ini; null bila belum ada.
