@@ -74,6 +74,7 @@ void main() {
         ],
         'adjustments': <Object?>[],
         'method_active': true,
+        'instructions_hidden': false,
       });
       final Payment asPayment = detail;
       expect(asPayment.amount, '60000.00');
