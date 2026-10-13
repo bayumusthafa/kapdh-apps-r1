@@ -159,7 +159,8 @@ export class SmtpMailer implements Mailer {
       };
       const onAbort = () => finish(abortError(signal!));
       signal?.addEventListener("abort", onAbort, { once: true });
-      connection.once("error", (error: unknown) => finish(error));
+      // `on`, bukan `once`: galat susulan saat koneksi ditutup tidak boleh menjadi 'error' tanpa listener (crash).
+      connection.on("error", (error: unknown) => finish(error));
       connection.once("end", () =>
         finish(
           Object.assign(new Error("Koneksi SMTP ditutup sebelum pesan diterima"), { code: "ECONNECTION" }),
