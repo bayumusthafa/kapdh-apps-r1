@@ -41,7 +41,13 @@ import { RealtimeService } from "../../core/realtime/realtime.service.js";
 import { CLOCK, DB, MAILER, STORAGE } from "../../core/tokens.js";
 import { forfeitableTicketWhere } from "./deletion-disclosure.service.js";
 import { writeLedgerEntry, type LedgerEntry } from "./deletion-ledger.js";
-import { completedMail, FORFEIT_REASON, requestedMail, SYSTEM_MESSAGES } from "./deletion-policy.js";
+import {
+  completedMail,
+  DELETION_LEASE_MS,
+  FORFEIT_REASON,
+  requestedMail,
+  SYSTEM_MESSAGES,
+} from "./deletion-policy.js";
 import { redactAuditSnapshot, scrubEvidence } from "./deletion-redaction.js";
 import { type DeletionRow, DeletionRequestService, mapLastSuperAdmin } from "./deletion-request.service.js";
 
@@ -154,16 +160,24 @@ export class DeletionSteps {
 
   // ------------------------------------------------------------------ pencatatan langkah
 
-  /** Menandai langkah selesai (idempoten) dan menyimpan salinan kerja ledger dalam transaksi `tx`. */
+  /**
+   * Menandai langkah selesai (idempoten) dan menyimpan salinan kerja ledger dalam transaksi `tx`. Sewa klaim
+   * `processing` diperpanjang sekaligus sehingga permintaan yang sedang dikerjakan tidak diklaim ulang sapuan
+   * (AC F14-2).
+   */
   async markDone(tx: Tx, ctx: StepContext, step: DeletionStep): Promise<void> {
     const marker = JSON.stringify([step]);
+    const now = this.now();
+    const lease = new Date(now.getTime() + DELETION_LEASE_MS).toISOString();
     await tx
       .update(accountDeletions)
       .set({
         stepsDone: sql`case when ${accountDeletions.stepsDone} @> ${marker}::jsonb then ${accountDeletions.stepsDone}
                        else ${accountDeletions.stepsDone} || ${marker}::jsonb end`,
         ledger: ctx.ledger as unknown as Record<string, unknown>,
-        updatedAt: this.now(),
+        nextAttemptAt: sql`case when ${accountDeletions.status} = 'processing' then ${lease}::timestamptz
+                          else ${accountDeletions.nextAttemptAt} end`,
+        updatedAt: now,
       })
       .where(eq(accountDeletions.id, ctx.deletion.id));
     ctx.done.add(step);
@@ -375,33 +389,46 @@ export class DeletionSteps {
       for (const ticket of held) {
         if (ticket.status === "paid") releasedPaid++;
         else releasedHeld++;
+        // Hold yang sudah lewat tetapi belum dilepas job expiry sudah tampil `expired` lewat proyeksi baca (tag
+        // Events, AC F09-2): dilepas sebagai expired agar status yang pernah tampil tidak berubah.
+        const lapsedHold =
+          ticket.status === "awaiting_payment" && ticket.holdExpiresAt !== null && ticket.holdExpiresAt <= now;
         await tx
           .update(tickets)
-          .set({
-            status: "cancelled",
-            cancelledAt: now,
-            cancelledBy: "system",
-            cancelReason: FORFEIT_REASON,
-            version: sql`${tickets.version} + 1`,
-            updatedAt: now,
-          })
+          .set(
+            lapsedHold
+              ? { status: "expired", version: sql`${tickets.version} + 1`, updatedAt: now }
+              : {
+                  status: "cancelled",
+                  cancelledAt: now,
+                  cancelledBy: "system",
+                  cancelReason: FORFEIT_REASON,
+                  version: sql`${tickets.version} + 1`,
+                  updatedAt: now,
+                },
+          )
           .where(eq(tickets.id, ticket.id));
         await this.audit.write(tx, {
-          action: "ticket.cancelled",
+          action: lapsedHold ? "ticket.expired" : "ticket.cancelled",
           entityType: "ticket",
           entityId: ticket.id,
           before: { status: ticket.status },
-          after: { status: "cancelled", cancelled_by: "system", reason_code: "account_deleted" },
+          after: lapsedHold
+            ? { status: "expired", reason_code: "hold_expired" }
+            : { status: "cancelled", cancelled_by: "system", reason_code: "account_deleted" },
         });
       }
-      await tx
-        .update(events)
-        .set({
-          heldQuantity: sql`${events.heldQuantity} - ${releasedHeld}`,
-          paidQuantity: sql`${events.paidQuantity} - ${releasedPaid}`,
-          updatedAt: now,
-        })
-        .where(eq(events.id, eventId));
+      // Event yang dibatalkan pengurus sudah mengenolkan held/paid (adminCancelEvent); penghitung tidak disentuh lagi
+      // agar CHECK 0 <= held + paid <= seats_total tetap terjaga dan kursi tidak dilepas dua kali.
+      if (event.status !== "cancelled")
+        await tx
+          .update(events)
+          .set({
+            heldQuantity: sql`${events.heldQuantity} - ${releasedHeld}`,
+            paidQuantity: sql`${events.paidQuantity} - ${releasedPaid}`,
+            updatedAt: now,
+          })
+          .where(eq(events.id, eventId));
       for (const payment of ticketPayments)
         if (payment.status === "pending" && payment.proofVersion === 0)
           await this.cancelPayment(tx, payment.id, now);

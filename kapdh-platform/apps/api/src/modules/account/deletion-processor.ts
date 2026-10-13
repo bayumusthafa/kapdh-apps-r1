@@ -8,6 +8,7 @@ import type { Db } from "../../core/db/types.js";
 import { JobRegistry } from "../../core/jobs/job-registry.js";
 import { safeError } from "../../core/logging/safe-error.js";
 import { CLOCK, DB, ROOT_LOGGER } from "../../core/tokens.js";
+import { DELETION_LEASE_MS } from "./deletion-policy.js";
 import type { DeletionRow } from "./deletion-request.service.js";
 import {
   DELETION_STEPS,
@@ -21,8 +22,6 @@ import {
 /** Nama job terjadwal sapuan ulang (ARCHITECTURE §4.8: topik + sapuan setiap 10 menit). */
 export const ACCOUNT_DELETION_JOB = "account.deletion";
 export const SWEEP_EVERY_MS = 10 * 60_000;
-/** Sewa klaim `processing`: permintaan yang diklaim worker yang mati dapat diklaim ulang setelah ini. */
-export const DELETION_LEASE_MS = 15 * 60_000;
 /** Email gagal sebanyak ini (atau batas 7 hari lewat) dilewati agar penghapusan tidak tertahan (F-14, D2). */
 export const EMAIL_MAX_FAILURES = 3;
 const SWEEP_BATCH = 20;
