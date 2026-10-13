@@ -129,7 +129,8 @@ export const deletedEmailFor = (userId: string) => `deleted-${userId}@akun-terha
 /** Bukan hash bcrypt sah: tidak ada sandi yang cocok (akun `deleted` juga tidak pernah dicari login). */
 const INVALID_PASSWORD_HASH = "!deleted";
 
-const union = (a: readonly string[] | undefined, b: readonly string[]) => [...new Set([...(a ?? []), ...b])].sort();
+const union = (a: readonly string[] | undefined, b: readonly string[]) =>
+  [...new Set([...(a ?? []), ...b])].sort();
 
 /** Galat langkah yang aman dicatat (tanpa data pribadi). */
 export class DeletionStepError extends Error {
@@ -242,7 +243,8 @@ export class DeletionSteps {
 
   async notifyCompleted(ctx: StepContext): Promise<void> {
     const email = await this.accountEmail(ctx.userId);
-    if (email) await this.mailer.sendTransactional({ to: email, ...completedMail(ctx.deletion.requestNumber) });
+    if (email)
+      await this.mailer.sendTransactional({ to: email, ...completedMail(ctx.deletion.requestNumber) });
     await this.finish(ctx, "notify_completed");
   }
 
@@ -251,9 +253,15 @@ export class DeletionSteps {
   async inventory(ctx: StepContext): Promise<void> {
     const userId = ctx.userId;
     await this.db.transaction(async (tx) => {
-      const paymentRows = await tx.select({ id: payments.id }).from(payments).where(eq(payments.userId, userId));
+      const paymentRows = await tx
+        .select({ id: payments.id })
+        .from(payments)
+        .where(eq(payments.userId, userId));
       const ticketRows = await tx.select({ id: tickets.id }).from(tickets).where(eq(tickets.userId, userId));
-      const paymentIds = union(ctx.ledger.inventory?.payment_ids, paymentRows.map((r) => r.id));
+      const paymentIds = union(
+        ctx.ledger.inventory?.payment_ids,
+        paymentRows.map((r) => r.id),
+      );
       const adjustmentRows = paymentIds.length
         ? await tx
             .select({ id: paymentAdjustments.id })
@@ -263,8 +271,14 @@ export class DeletionSteps {
       const reportRows = await this.reportsInvolving(tx, userId, []);
       ctx.ledger.inventory = {
         payment_ids: paymentIds,
-        ticket_ids: union(ctx.ledger.inventory?.ticket_ids, ticketRows.map((r) => r.id)),
-        adjustment_ids: union(ctx.ledger.inventory?.adjustment_ids, adjustmentRows.map((r) => r.id)),
+        ticket_ids: union(
+          ctx.ledger.inventory?.ticket_ids,
+          ticketRows.map((r) => r.id),
+        ),
+        adjustment_ids: union(
+          ctx.ledger.inventory?.adjustment_ids,
+          adjustmentRows.map((r) => r.id),
+        ),
         report_ids: union(ctx.ledger.inventory?.report_ids, reportRows),
       };
       await this.markDone(tx, ctx, "inventory");
@@ -272,9 +286,7 @@ export class DeletionSteps {
   }
 
   private inv(ctx: StepContext): DeletionInventory {
-    return (
-      ctx.ledger.inventory ?? { payment_ids: [], ticket_ids: [], adjustment_ids: [], report_ids: [] }
-    );
+    return ctx.ledger.inventory ?? { payment_ids: [], ticket_ids: [], adjustment_ids: [], report_ids: [] };
   }
 
   /**
@@ -392,7 +404,9 @@ export class DeletionSteps {
         // Hold yang sudah lewat tetapi belum dilepas job expiry sudah tampil `expired` lewat proyeksi baca (tag
         // Events, AC F09-2): dilepas sebagai expired agar status yang pernah tampil tidak berubah.
         const lapsedHold =
-          ticket.status === "awaiting_payment" && ticket.holdExpiresAt !== null && ticket.holdExpiresAt <= now;
+          ticket.status === "awaiting_payment" &&
+          ticket.holdExpiresAt !== null &&
+          ticket.holdExpiresAt <= now;
         await tx
           .update(tickets)
           .set(
@@ -506,9 +520,7 @@ export class DeletionSteps {
       if (!member) return;
       const now = this.now();
       const openGroup = room.kind === "group" && room.closedAt === null;
-      await tx
-        .delete(roomMembers)
-        .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.userId, userId)));
+      await tx.delete(roomMembers).where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.userId, userId)));
       this.realtime.leaveRoom(userId, roomId);
       if (!openGroup || member.status !== "joined") {
         if (openGroup && member.status === "invited") {
@@ -735,7 +747,10 @@ export class DeletionSteps {
           sql`${reports.evidence}::text like ${`%${userId}%`}`,
         ),
       );
-    return union(known, found.map((row) => row.id));
+    return union(
+      known,
+      found.map((row) => row.id),
+    );
   }
 
   /**
@@ -829,7 +844,9 @@ export class DeletionSteps {
           db
             .select({ id: paymentEvents.proofFileId })
             .from(paymentEvents)
-            .where(and(inArray(paymentEvents.paymentId, inv.payment_ids), isNotNull(paymentEvents.proofFileId))),
+            .where(
+              and(inArray(paymentEvents.paymentId, inv.payment_ids), isNotNull(paymentEvents.proofFileId)),
+            ),
         ),
       );
     }
@@ -848,7 +865,10 @@ export class DeletionSteps {
       .select({ id: files.id })
       .from(files)
       .where(or(...conditions));
-    return union([], found.map((row) => row.id));
+    return union(
+      [],
+      found.map((row) => row.id),
+    );
   }
 
   /**
@@ -860,7 +880,10 @@ export class DeletionSteps {
     const storage = this.requireStorage();
     const ids = await this.fileCandidateIds(this.db, ctx);
     const keyed = ids.length
-      ? await this.db.select({ id: files.id, objectKey: files.objectKey }).from(files).where(inArray(files.id, ids))
+      ? await this.db
+          .select({ id: files.id, objectKey: files.objectKey })
+          .from(files)
+          .where(inArray(files.id, ids))
       : [];
     ctx.ledger.file_ids = union(ctx.ledger.file_ids, ids);
     ctx.ledger.object_keys = union(
@@ -870,7 +893,10 @@ export class DeletionSteps {
     await this.db.transaction(async (tx) => {
       const now = this.now();
       if (ids.length > 0) {
-        await tx.update(alumni).set({ avatarFileId: null, updatedAt: now }).where(inArray(alumni.avatarFileId, ids));
+        await tx
+          .update(alumni)
+          .set({ avatarFileId: null, updatedAt: now })
+          .where(inArray(alumni.avatarFileId, ids));
         await tx
           .update(payments)
           .set({ proofFileId: null, updatedAt: now })
@@ -880,7 +906,10 @@ export class DeletionSteps {
           .set({ evidenceFileId: null, updatedAt: now })
           .where(inArray(paymentAdjustments.evidenceFileId, ids));
         await tx.update(messages).set({ imageFileId: null }).where(inArray(messages.imageFileId, ids));
-        await tx.update(rooms).set({ avatarFileId: null, updatedAt: now }).where(inArray(rooms.avatarFileId, ids));
+        await tx
+          .update(rooms)
+          .set({ avatarFileId: null, updatedAt: now })
+          .where(inArray(rooms.avatarFileId, ids));
       }
       await this.saveLedger(tx, ctx);
     });
@@ -936,7 +965,11 @@ export class DeletionSteps {
           .where(
             and(
               inArray(payments.id, inv.payment_ids),
-              or(isNotNull(payments.userId), isNotNull(payments.transferNote), isNotNull(payments.proofFileId)),
+              or(
+                isNotNull(payments.userId),
+                isNotNull(payments.transferNote),
+                isNotNull(payments.proofFileId),
+              ),
             ),
           );
       if (inv.adjustment_ids.length > 0)
@@ -944,7 +977,10 @@ export class DeletionSteps {
           .update(paymentAdjustments)
           .set({ refundDestination: null, version: sql`${paymentAdjustments.version} + 1`, updatedAt: now })
           .where(
-            and(inArray(paymentAdjustments.id, inv.adjustment_ids), isNotNull(paymentAdjustments.refundDestination)),
+            and(
+              inArray(paymentAdjustments.id, inv.adjustment_ids),
+              isNotNull(paymentAdjustments.refundDestination),
+            ),
           );
       await tx
         .delete(membershipEvents)
@@ -1074,7 +1110,9 @@ export async function remainingPersonalData(db: DbOrTx, userId: string) {
     alumni: await count(db.select({ value: c }).from(alumni).where(eq(alumni.userId, userId))),
     sessions: await count(db.select({ value: c }).from(sessions).where(eq(sessions.userId, userId))),
     otpCodes: await count(db.select({ value: c }).from(otpCodes).where(eq(otpCodes.userId, userId))),
-    deviceTokens: await count(db.select({ value: c }).from(deviceTokens).where(eq(deviceTokens.userId, userId))),
+    deviceTokens: await count(
+      db.select({ value: c }).from(deviceTokens).where(eq(deviceTokens.userId, userId)),
+    ),
     notifications: await count(
       db.select({ value: c }).from(notifications).where(eq(notifications.userId, userId)),
     ),
@@ -1104,13 +1142,19 @@ export async function remainingPersonalData(db: DbOrTx, userId: string) {
     membershipEvents: await count(
       db.select({ value: c }).from(membershipEvents).where(eq(membershipEvents.userId, userId)),
     ),
-    reportsAsReporter: await count(db.select({ value: c }).from(reports).where(eq(reports.reporterId, userId))),
-    reportsAsTarget: await count(db.select({ value: c }).from(reports).where(eq(reports.targetUserId, userId))),
+    reportsAsReporter: await count(
+      db.select({ value: c }).from(reports).where(eq(reports.reporterId, userId)),
+    ),
+    reportsAsTarget: await count(
+      db.select({ value: c }).from(reports).where(eq(reports.targetUserId, userId)),
+    ),
     auditActor: await count(db.select({ value: c }).from(auditLogs).where(eq(auditLogs.actorUserId, userId))),
     paymentEventActor: await count(
       db.select({ value: c }).from(paymentEvents).where(eq(paymentEvents.actorUserId, userId)),
     ),
-    adminLinks: await count(db.select({ value: c }).from(admins).where(eq(admins.linkedAlumniUserId, userId))),
+    adminLinks: await count(
+      db.select({ value: c }).from(admins).where(eq(admins.linkedAlumniUserId, userId)),
+    ),
     idempotencyKeys: await count(
       db.select({ value: c }).from(idempotencyKeys).where(eq(idempotencyKeys.scope, userId)),
     ),

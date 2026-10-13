@@ -57,7 +57,12 @@ function safeScalar(value: unknown, key: string | null, userId: string): { keep:
   return { keep: false, value: null };
 }
 
-function whitelist(value: unknown, key: string | null, userId: string, depth: number): { keep: boolean; value: unknown } {
+function whitelist(
+  value: unknown,
+  key: string | null,
+  userId: string,
+  depth: number,
+): { keep: boolean; value: unknown } {
   if (depth > 8) return { keep: false, value: null };
   if (Array.isArray(value)) {
     const items = value
