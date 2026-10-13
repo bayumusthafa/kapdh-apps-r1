@@ -60,7 +60,10 @@ Finder buttonLabelled(String label) => find.widgetWithText(KapdhButton, label);
 /// Cache KTA tersimpan untuk user-1 (sinkronisasi terakhir [syncedAt]).
 Future<MemorySecureStore> cachedStore(DateTime syncedAt, {String userId = 'user-1'}) async {
   final store = MemorySecureStore();
-  await KtaCacheStore(store).save(userId: userId, card: cardOf(expiresAt: expiresAt, syncedAt: syncedAt));
+  await KtaCacheStore(store).save(
+    userId: userId,
+    card: cardOf(expiresAt: expiresAt, syncedAt: syncedAt),
+  );
   return store;
 }
 
@@ -237,37 +240,38 @@ void main() {
   });
 
   group('KTA offline (prototipe layar 7; AC F05-2..F05-4)', () {
-    testWidgets('AC F05-2: cache tersinkron <= 7 hari: label Offline dan waktu sinkron, QR, Sinkronkan kembali online', (
-      tester,
-    ) async {
-      var online = false;
-      final store = await cachedStore(testNow.subtract(const Duration(days: 1)));
-      await openKta(
-        tester,
-        store: store,
-        card: () => online ? FakeResponse.json(200, memberCardJson(expiresAt: expiresAt)) : FakeResponse.network(),
-      );
+    testWidgets(
+      'AC F05-2: cache tersinkron <= 7 hari: label Offline dan waktu sinkron, QR, Sinkronkan kembali online',
+      (tester) async {
+        var online = false;
+        final store = await cachedStore(testNow.subtract(const Duration(days: 1)));
+        await openKta(
+          tester,
+          store: store,
+          card: () => online ? FakeResponse.json(200, memberCardJson(expiresAt: expiresAt)) : FakeResponse.network(),
+        );
 
-      expect(find.text('Offline. Tersinkron 11 Okt 2026, 14.00 WIB'), findsOneWidget);
-      expect(shownCard(tester).qrData, qrUrl);
-      expect(find.text('Status dari sinkronisasi terakhir.'), findsOneWidget);
-      expect(find.bySemanticsLabel('Status: KTA Aktif'), findsOneWidget);
-      expect(find.byKey(const ValueKey('kta-offline-rule')), findsOneWidget);
-      expect(
-        find.text(
-          'Kartu offline tetap bisa ditunjukkan sampai 7 hari sejak sinkronisasi terakhir. Status terkini selalu '
-          'dicek saat pemeriksa memindai QR.',
-        ),
-        findsOneWidget,
-      );
+        expect(find.text('Offline. Tersinkron 11 Okt 2026, 14.00 WIB'), findsOneWidget);
+        expect(shownCard(tester).qrData, qrUrl);
+        expect(find.text('Status dari sinkronisasi terakhir.'), findsOneWidget);
+        expect(find.bySemanticsLabel('Status: KTA Aktif'), findsOneWidget);
+        expect(find.byKey(const ValueKey('kta-offline-rule')), findsOneWidget);
+        expect(
+          find.text(
+            'Kartu offline tetap bisa ditunjukkan sampai 7 hari sejak sinkronisasi terakhir. Status terkini selalu '
+            'dicek saat pemeriksa memindai QR.',
+          ),
+          findsOneWidget,
+        );
 
-      online = true;
-      await tester.tap(buttonLabelled('Sinkronkan'));
-      await settle(tester);
+        online = true;
+        await tester.tap(buttonLabelled('Sinkronkan'));
+        await settle(tester);
 
-      expect(find.textContaining('Offline'), findsNothing);
-      expect(find.text('Tersinkron 12 Okt 2026, 14.00 WIB'), findsOneWidget);
-    });
+        expect(find.textContaining('Offline'), findsNothing);
+        expect(find.text('Tersinkron 12 Okt 2026, 14.00 WIB'), findsOneWidget);
+      },
+    );
 
     testWidgets('AC F05-3: cache lebih dari 7 hari: kartu tidak tampil dan pengguna diminta sinkron', (tester) async {
       final store = await cachedStore(testNow.subtract(const Duration(days: 8)));
@@ -317,11 +321,7 @@ void main() {
 
     testWidgets('PRD 4.5: server menjawab galat (bukan jaringan): pesan galat tanpa kartu cache', (tester) async {
       final store = await cachedStore(testNow.subtract(const Duration(hours: 1)));
-      await openKta(
-        tester,
-        store: store,
-        card: () => FakeResponse.json(403, errorJson('FORBIDDEN', 'Akses ditolak.')),
-      );
+      await openKta(tester, store: store, card: () => FakeResponse.json(403, errorJson('FORBIDDEN', 'Akses ditolak.')));
 
       expect(find.text('Akses ditolak.'), findsOneWidget);
       expect(find.byType(KtaCard), findsNothing);
