@@ -95,7 +95,7 @@ void main() {
       await scrollTo(tester, find.text('+62 87 873 465 3623'));
       expect(
         tester.getSemantics(find.bySemanticsLabel('Telepon +62 87 873 465 3623')),
-        containsSemantics(isLink: true, hasTapAction: true, hasLongPressAction: true),
+        isSemantics(isLink: true, hasTapAction: true, hasLongPressAction: true),
       );
       expect(tester.getSize(find.bySemanticsLabel('Telepon +62 87 873 465 3623')).height, greaterThanOrEqualTo(48));
 
