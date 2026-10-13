@@ -221,7 +221,7 @@ describe("PaymentsKernel.createPayment dan bukti tiket (F-09, D5)", () => {
     });
   });
 
-  it("D6: payment berbukti yang tiketnya batal karena event dibatalkan → refund_on_approve; approve membuat refund sistem", async () => {
+  it("AC F09-7, D6: payment berbukti yang tiketnya batal karena event dibatalkan → refund_on_approve; approve membuat refund sistem", async () => {
     const member = await memberSession(t, "verified");
     const fixture = await ticketFixture(t, member);
     const proof = (
@@ -298,7 +298,7 @@ describe("PaymentsKernel.createPayment dan bukti tiket (F-09, D5)", () => {
     expect((await eventRow(fixture.eventId)).heldQuantity).toBe(0);
   });
 
-  it("kontrak C3: batas review tiket = yang lebih dahulu antara 2 hari kerja dan pembukaan check-in", async () => {
+  it("D5: batas review tiket = yang lebih dahulu antara 2 hari kerja dan pembukaan check-in", async () => {
     const member = await memberSession(t, "verified");
     const fixture = await ticketFixture(t, member, { startsInMs: DAY });
     await api().put(
@@ -315,7 +315,7 @@ describe("PaymentsKernel.createPayment dan bukti tiket (F-09, D5)", () => {
 });
 
 describe("PaymentsKernel lintas modul (events, account, dasbor)", () => {
-  it("cancelForTicket: tanpa bukti → cancelled tepat sekali; terminal → unchanged; tanpa payment → none", async () => {
+  it("AC F09-2, F09-7: cancelForTicket tanpa bukti → cancelled tepat sekali; terminal → unchanged; tanpa payment → none", async () => {
     const member = await memberSession(t, "verified");
     const fixture = await ticketFixture(t, member);
     const first = await inContext(systemActor(), () =>
@@ -338,7 +338,7 @@ describe("PaymentsKernel lintas modul (events, account, dasbor)", () => {
     expect(audit?.effectiveRole).toBe("system");
   });
 
-  it("recordSystemRefund: refund penuh sekali (pemanggilan ulang tidak menggandakan); payment selain paid ditolak", async () => {
+  it("AC F09-7, D6: recordSystemRefund refund penuh sekali (pemanggilan ulang tidak menggandakan); payment selain paid ditolak", async () => {
     const member = await memberSession(t, "verified");
     const paid = await createMembershipPayment(t, { userId: member.userId, type: "renewal", status: "paid" });
     const dueAt = addBusinessDaysJakarta(t.clock.now(), 7);
@@ -385,7 +385,7 @@ describe("PaymentsKernel lintas modul (events, account, dasbor)", () => {
     ).rejects.toThrow();
   });
 
-  it("cancelUnprovenDues (F-14): hanya iuran pending tanpa bukti yang dibatalkan; payment berbukti tetap", async () => {
+  it("AC F14-4: cancelUnprovenDues hanya iuran pending tanpa bukti yang dibatalkan; payment berbukti tetap", async () => {
     const member = await memberSession(t, "expiring");
     const registration = await createInstruction(t, member, "renewal");
     const proofed = await memberSession(t);
@@ -409,7 +409,7 @@ describe("PaymentsKernel lintas modul (events, account, dasbor)", () => {
     expect(still!.status).toBe("pending");
   });
 
-  it("summary kernel sama dengan GET /admin/payments/summary (C7 DashboardPayments)", async () => {
+  it("F-15: summary kernel sama dengan GET /admin/payments/summary (C7 DashboardPayments)", async () => {
     const admin = await adminSession(t, ["payments.read"]);
     const http = (await api().get("/admin/payments/summary", { token: admin.token })).json();
     const direct = await kernel.summary();
@@ -418,7 +418,7 @@ describe("PaymentsKernel lintas modul (events, account, dasbor)", () => {
 });
 
 describe("Hari kerja Senin-Jumat Asia/Jakarta (kontrak C3/C7)", () => {
-  it("rumus JS dan SQL sama untuk setiap hari dalam sepekan dan 0-10 hari kerja", async () => {
+  it("D5, D6: rumus hari kerja JS dan SQL sama untuk setiap hari dalam sepekan dan 0-10 hari kerja", async () => {
     const base = Date.parse("2026-10-12T01:30:00Z"); // Senin 08.30 WIB
     const instants = Array.from({ length: 7 }, (_, d) => new Date(base + d * DAY + d * 3_600_123));
     instants.push(new Date(Date.parse("2026-10-16T17:30:00Z"))); // Sabtu 00.30 WIB (Jumat malam UTC)

@@ -5,7 +5,7 @@
  */
 import type { Permission } from "@kapdh/contracts";
 import { events, sessions, tickets } from "@kapdh/database";
-import { Injectable, Module, type OnModuleInit } from "@nestjs/common";
+import { Injectable, Module, type OnApplicationBootstrap } from "@nestjs/common";
 import { and, eq, sql } from "drizzle-orm";
 import { decodeJwt } from "jose";
 import { randomBytes } from "node:crypto";
@@ -48,16 +48,17 @@ const DAY_MS = 24 * HOUR_MS;
  * Handler `ticket` penguji yang mengikuti kontrak C3/C5 (aturan tag Events) selama modul events belum tersedia di
  * aplikasi: lockRelated mengunci event lalu tiket; bukti sebelum hold → awaiting_review; hold lewat → tiket expired,
  * kursi dilepas, payment dibatalkan sistem lalu RESERVATION_EXPIRED; approve → paid + QR (tiket batal → tanpa QR dan
- * refund D6); reject/cancel → tiket batal dan hold dilepas.
+ * refund D6); reject/cancel → tiket batal dan hold dilepas. Didaftarkan saat bootstrap aplikasi (setelah semua
+ * onModuleInit), sehingga handler asli modul events, bila sudah ada, selalu menang dan tidak bentrok.
  */
 @Injectable()
-export class TestTicketHandler implements OnModuleInit {
+export class TestTicketHandler implements OnApplicationBootstrap {
   constructor(
     private readonly registry: PaymentHandlerRegistry,
     private readonly kernel: PaymentsKernel,
   ) {}
 
-  onModuleInit(): void {
+  onApplicationBootstrap(): void {
     if (this.registry.has("ticket")) return;
     this.registry.register({
       type: "ticket",
