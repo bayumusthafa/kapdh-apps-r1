@@ -268,7 +268,7 @@ export function VerificationTab() {
           )}
         </Field>
         {status === "awaiting_review" ? (
-          <Field label="Urutan" className="flex-[0_1_220px]">
+          <Field label="Urutan" className="flex-[0_0_230px]">
             {(a11y) => (
               <Select
                 {...a11y}

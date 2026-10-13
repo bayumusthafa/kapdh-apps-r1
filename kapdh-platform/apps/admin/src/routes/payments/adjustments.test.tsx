@@ -42,7 +42,7 @@ describe("penyesuaian refund dan koreksi (D6, D2, PRD 3.4; server tiruan)", () =
       within(table)
         .getAllByRole("columnheader")
         .map((h) => h.textContent),
-    ).toEqual(["Tenggat", "Alumni", "Pembayaran asal", "Jenis", "Nominal", "Rekening tujuan", "Status"]);
+    ).toEqual(["Tenggat", "Alumni", "Pembayaran asal", "Penyesuaian", "Status"]);
     const names = within(table)
       .getAllByRole("rowheader")
       .map((h) => h.textContent);
