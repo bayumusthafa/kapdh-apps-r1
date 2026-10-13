@@ -236,10 +236,16 @@ export class ReportsService {
    * tidak memengaruhi hasil sehingga laporan tidak mengungkap blokir (N-09). Bukti: profil publik minimum.
    */
   private async userTarget(tx: Tx, reporterId: string, targetUserId: string, now: Date) {
-    const [profile] = await tx
+    const [account] = await tx
+      .select({ kind: users.kind, status: users.status })
+      .from(users)
+      .where(eq(users.id, targetUserId))
+      .limit(1);
+    if (!account || account.kind !== "alumni" || account.status === "pending_otp" || account.status === "deleted")
+      throw notFound("Anggota tidak ditemukan.");
+    // Baris alumni terkunci FOR SHARE: penggantian avatar bersamaan menunggu laporan ini commit (retensi bukti).
+    const [row] = await tx
       .select({
-        kind: users.kind,
-        status: users.status,
         fullName: alumni.fullName,
         bio: alumni.bio,
         avatarFileId: alumni.avatarFileId,
@@ -247,14 +253,11 @@ export class ReportsService {
         expiresAt: alumni.expiresAt,
         suspendedAt: alumni.suspendedAt,
       })
-      .from(users)
-      .innerJoin(alumni, eq(alumni.userId, users.id))
-      .where(eq(users.id, targetUserId))
-      .limit(1)
-      // Baris alumni terkunci FOR SHARE: penggantian avatar bersamaan menunggu laporan ini commit (retensi bukti).
-      .for("share", { of: alumni });
-    if (!profile || profile.kind !== "alumni" || profile.status === "pending_otp" || profile.status === "deleted")
-      throw notFound("Anggota tidak ditemukan.");
+      .from(alumni)
+      .where(eq(alumni.userId, targetUserId))
+      .for("share");
+    if (!row) throw notFound("Anggota tidak ditemukan.");
+    const profile = { ...row, status: account.status };
     const inDirectory =
       profile.status === "active" &&
       profile.showInDirectory &&
