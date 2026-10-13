@@ -11,7 +11,9 @@ import '../../core/format/formatters.dart';
 import '../../core/session/session_controller.dart';
 import '../../design/design.dart';
 import 'payment_presentation.dart';
+import 'payment_updates.dart';
 import 'payments_repository.dart';
+import 'widgets/payment_layout.dart';
 
 /// Riwayat pembayaran milik sendiri, termasuk iuran dan tiket (F-03, F-07; PRD 2.2: status efektif apa pun,
 /// termasuk expired, tetap dapat membaca riwayat sendiri). Urut terbaru, halaman keyset 30 item.
@@ -32,37 +34,73 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
   bool _loadingMore = false;
   ApiException? _error;
   ApiException? _moreError;
+  StreamSubscription<NotificationCreatedPayload>? _updates;
+  late final AppLifecycleListener _lifecycle;
 
   PaymentsRepository get _repo => ref.read(paymentsRepositoryProvider);
 
   @override
   void initState() {
     super.initState();
+    // Keputusan pengurus (notifikasi realtime) dan kembali ke aplikasi: badge status diperbarui tanpa menunggu
+    // pengguna menarik layar (PRD 4.1, 4.5).
+    _updates = ref.read(paymentUpdatesProvider).listen((_) => unawaited(_refresh(quiet: true)));
+    _lifecycle = AppLifecycleListener(onResume: () => unawaited(_refresh(quiet: true)));
     unawaited(_refresh());
   }
 
-  Future<void> _refresh() async {
+  @override
+  void dispose() {
+    unawaited(_updates?.cancel());
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  /// Memuat halaman pertama. [quiet] = muat ulang latar (realtime, kembali dari detail, kembali ke aplikasi): item
+  /// halaman pertama diperbarui dan digabung dengan halaman berikutnya yang sudah dimuat (posisi gulir dan halaman
+  /// lanjutan tetap), dan kegagalannya tidak ditampilkan. Muat ulang yang diminta pengguna mengganti seluruh daftar
+  /// dan kegagalannya ditampilkan di atas daftar lama (PRD 4.5).
+  Future<void> _refresh({bool quiet = false}) async {
     if (_loading) return;
     setState(() {
       _loading = true;
-      _error = null;
+      if (!quiet) _error = null;
     });
     try {
       final page = await _repo.listPayments(limit: _pageSize);
       if (!mounted) return;
       setState(() {
-        _items
-          ..clear()
-          ..addAll(page.items);
-        _cursor = page.nextCursor;
+        _error = null;
+        if (quiet && _loaded) {
+          // Riwayat urut terbaru dan tidak pernah berkurang: item lama yang tidak ada di halaman pertama terbaru
+          // lebih tua dari semuanya, sehingga urutannya tetap benar dan kursor lanjutan tetap berlaku.
+          final fresh = {for (final p in page.items) p.id};
+          final older = _items.where((p) => !fresh.contains(p.id)).toList();
+          _items
+            ..clear()
+            ..addAll(page.items)
+            ..addAll(older);
+          if (older.isEmpty) _cursor = page.nextCursor;
+        } else {
+          _items
+            ..clear()
+            ..addAll(page.items);
+          _cursor = page.nextCursor;
+          _moreError = null;
+        }
         _loaded = true;
-        _moreError = null;
       });
     } on ApiException catch (error) {
-      if (mounted) setState(() => _error = error);
+      if (mounted && (!quiet || !_loaded)) setState(() => _error = error);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _openPayment(Payment payment) async {
+    await context.push(AppRoutes.payment(payment.id));
+    // Bukti terkirim, instruksi dibatalkan atau rekening diganti di layar detail: badge riwayat ikut diperbarui.
+    if (mounted) unawaited(_refresh(quiet: true));
   }
 
   Future<void> _loadMore() async {
@@ -98,12 +136,21 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       if (error != null) return ErrorState.fromException(error, onRetry: () => unawaited(_refresh()));
       return const LoadingSkeleton(showCard: false, lines: 6, semanticsLabel: 'Memuat riwayat pembayaran');
     }
+    final refreshError = _error;
+    final notice = refreshError == null
+        ? null
+        : RefreshFailedNotice(
+            error: refreshError,
+            title: 'Riwayat terbaru belum dapat dimuat',
+            onRetry: () => unawaited(_refresh()),
+          );
     if (_items.isEmpty) {
       final unverified = ref.watch(sessionProvider.select((s) => s.effectiveStatus)) == EffectiveStatus.unverified;
       return RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(
           children: [
+            if (notice != null) Padding(padding: const EdgeInsets.all(KapdhSpace.s5), child: notice),
             EmptyState(
               icon: Icons.receipt_long_outlined,
               title: 'Belum ada pembayaran',
@@ -124,15 +171,19 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
         },
         child: ListView.separated(
           padding: const EdgeInsets.all(KapdhSpace.s5),
-          itemCount: _items.length + 1,
+          itemCount: _items.length + 1 + (notice == null ? 0 : 1),
           separatorBuilder: (_, _) => const SizedBox(height: KapdhSpace.s3),
           itemBuilder: (context, index) {
+            if (notice != null) {
+              if (index == 0) return notice;
+              index--;
+            }
             if (index == _items.length) return _footer();
             final payment = _items[index];
             return PaymentTile(
               key: ValueKey('payment-${payment.id}'),
               payment: payment,
-              onTap: () => context.push(AppRoutes.payment(payment.id)),
+              onTap: () => unawaited(_openPayment(payment)),
             );
           },
         ),

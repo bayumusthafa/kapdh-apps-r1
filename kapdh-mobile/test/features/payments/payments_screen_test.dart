@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kapdh_api/kapdh_api.dart';
+import 'package:kapdh_mobile/features/payments/payment_updates.dart';
 
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
@@ -27,10 +30,12 @@ Future<AppHarness> openHistory(
   String status = 'verified',
   Map<String, FakeHandler> routes = const {},
   bool settleAfter = true,
+  Stream<NotificationCreatedPayload>? updates,
 }) async {
   final app = await pumpApp(
     tester,
     tokens: savedTokens(),
+    overrides: [realtimeNotificationsProvider.overrideWithValue(updates ?? const Stream.empty())],
     handler: apiRoutes({
       '/me': (_) => FakeResponse.json(200, meJson(status: status, expiresAt: DateTime.utc(2027, 10, 12, 7))),
       '/me/fees': (_) => FakeResponse.json(200, feesJson()),
@@ -165,5 +170,118 @@ void main() {
     pending.complete(FakeResponse.json(200, page([awaitingReviewJson()])));
     await settle(tester);
     expect(find.text('Iuran pendaftaran'), findsOneWidget);
+  });
+
+  group('Status riwayat tetap terbaru (PRD 4.1, 4.5)', () {
+    Map<String, Object?> paid({String id = 'pay-1'}) =>
+        paymentJson(id: id, status: 'paid', stage: 'paid', proofVersion: 1, decidedAt: testNow);
+    const waitingLabel = 'Iuran pendaftaran, Rp60.000, 12 Okt 2026, status Menunggu Verifikasi';
+    const paidLabel = 'Iuran pendaftaran, Rp60.000, 12 Okt 2026, status Lunas';
+
+    testWidgets('PRD 4.1: keputusan pengurus (notifikasi realtime) memperbarui badge riwayat tanpa tarik layar', (
+      tester,
+    ) async {
+      final updates = StreamController<NotificationCreatedPayload>.broadcast();
+      addTearDown(updates.close);
+      var decided = false;
+      await openHistory(
+        tester,
+        (_) => FakeResponse.json(200, page([decided ? paid() : awaitingReviewJson()])),
+        updates: updates.stream,
+      );
+      expect(find.bySemanticsLabel(waitingLabel), findsOneWidget);
+
+      decided = true;
+      updates.add(notificationOf('payment'));
+      await settle(tester);
+
+      expect(find.bySemanticsLabel(paidLabel), findsOneWidget);
+      expect(find.byKey(const ValueKey('refresh-failed')), findsNothing);
+    });
+
+    testWidgets('AC F03-2: kembali dari layar status setelah bukti/pembatalan: badge riwayat dimuat ulang', (
+      tester,
+    ) async {
+      var decided = false;
+      final app = await openHistory(
+        tester,
+        (_) => FakeResponse.json(200, page([decided ? paid() : awaitingReviewJson()])),
+        routes: {'/me/payments/pay-1': (_) => FakeResponse.json(200, decided ? paid() : awaitingReviewJson())},
+      );
+      await tester.tap(find.bySemanticsLabel(waitingLabel));
+      await settle(tester);
+      expect(app.location, '/payments/pay-1');
+
+      decided = true;
+      app.router.pop();
+      await settle(tester);
+
+      expect(app.location, '/payments');
+      expect(find.bySemanticsLabel(paidLabel), findsOneWidget);
+    });
+
+    testWidgets('PRD 5.2: muat ulang latar menggabungkan halaman pertama terbaru tanpa membuang halaman berikutnya '
+        'yang sudah dimuat dan tanpa duplikasi', (tester) async {
+      final updates = StreamController<NotificationCreatedPayload>.broadcast();
+      addTearDown(updates.close);
+      var newer = false;
+      final app = await openHistory(tester, (query) {
+        if (query['cursor'] == 'c2') {
+          return FakeResponse.json(200, page([paymentJson(id: 'pay-2', type: 'renewal', status: 'paid', stage: 'paid')]));
+        }
+        return FakeResponse.json(
+          200,
+          page([
+            if (newer) paymentJson(id: 'pay-3', type: 'renewal'),
+            newer ? paid() : awaitingReviewJson(),
+          ], next: 'c2'),
+        );
+      }, updates: updates.stream);
+      await tester.tap(find.text('Muat lagi'));
+      await settle(tester);
+      expect(find.text('Iuran perpanjangan'), findsOneWidget);
+
+      newer = true;
+      updates.add(notificationOf('payment'));
+      await settle(tester);
+
+      expect(find.byKey(const ValueKey('payment-pay-3')), findsOneWidget);
+      expect(find.byKey(const ValueKey('payment-pay-1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('payment-pay-2')), findsOneWidget);
+      expect(find.bySemanticsLabel(paidLabel), findsOneWidget);
+      // Halaman kedua sudah dimuat: tidak ada tombol "Muat lagi" untuk halaman yang sama.
+      expect(find.text('Muat lagi'), findsNothing);
+      expect(app.adapter.requestsTo('/me/payments').where((r) => r.queryParameters['cursor'] == 'c2'), hasLength(1));
+    });
+
+    testWidgets('PRD 4.5: tarik untuk memuat ulang gagal: riwayat lama tetap tampil dengan pemberitahuan dan Coba '
+        'lagi', (tester) async {
+      var failing = false;
+      var decided = false;
+      await openHistory(
+        tester,
+        (_) => failing
+            ? FakeResponse.network()
+            : FakeResponse.json(200, page([decided ? paid() : awaitingReviewJson()])),
+      );
+
+      failing = true;
+      unawaited(tester.state<RefreshIndicatorState>(find.byType(RefreshIndicator)).show());
+      await settle(tester);
+
+      expect(find.byKey(const ValueKey('refresh-failed')), findsOneWidget);
+      expect(find.text('Riwayat terbaru belum dapat dimuat'), findsOneWidget);
+      expect(find.bySemanticsLabel(waitingLabel), findsOneWidget);
+
+      failing = false;
+      decided = true;
+      await tester.tap(
+        find.descendant(of: find.byKey(const ValueKey('refresh-failed')), matching: find.text('Coba lagi')),
+      );
+      await settle(tester);
+
+      expect(find.byKey(const ValueKey('refresh-failed')), findsNothing);
+      expect(find.bySemanticsLabel(paidLabel), findsOneWidget);
+    });
   });
 }

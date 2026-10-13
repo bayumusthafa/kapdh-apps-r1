@@ -170,3 +170,33 @@ class PaymentSectionTitle extends StatelessWidget {
     ),
   );
 }
+
+/// Muat ulang yang diminta pengguna (tarik ke bawah, Coba lagi) gagal sementara data lama masih tampil (PRD 4.5:
+/// galat memiliki pesan dan tindakan spesifik). Data di bawahnya tetap terbaca, tetapi pengguna tahu status yang
+/// tampil mungkin belum yang terbaru dan dapat mencoba lagi. Diumumkan pembaca layar (N-11).
+class RefreshFailedNotice extends StatelessWidget {
+  const RefreshFailedNotice({
+    super.key = const ValueKey('refresh-failed'),
+    required this.error,
+    required this.onRetry,
+    this.title = 'Status terbaru belum dapat dimuat',
+  });
+
+  final ApiException error;
+  final VoidCallback onRetry;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: InfoBox(
+        tone: InfoBoxTone.warning,
+        icon: Icons.sync_problem,
+        title: title,
+        message: '${error.message} Data yang tampil berasal dari pemuatan terakhir.',
+        trailing: TextButton(onPressed: onRetry, child: const Text('Coba lagi')),
+      ),
+    );
+  }
+}
