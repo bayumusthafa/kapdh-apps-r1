@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/redirect.dart' show homeFor;
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
@@ -25,6 +26,10 @@ import 'otp_challenge.dart';
 /// - Tautan email reset dari pengurus `/forgot/otp?challenge=<id>` (AC F16-4): keadaan challenge dibaca lewat
 ///   POST /auth/otp/status yang hanya-baca, sehingga kode yang baru diterima tidak diganti dan batas kirim tidak
 ///   terpakai. Kirim ulang hanya bila pengguna menekan "Kirim ulang".
+///   Selama tautan dimuat, gagal dimuat atau tidak berlaku, keadaannya yang ditampilkan walau challenge pemulihan
+///   lain masih di memori, agar kode dari email pengurus tidak diketik ke challenge lama yang sudah dibatalkan.
+/// - Tautan dibuka saat anggota masih masuk di perangkat ini: reset dari pengurus mencabut seluruh sesinya, jadi
+///   layar menjelaskannya dan menawarkan keluar lalu melanjutkan dengan tautan yang sama (AC F16-4, PRD 4.5).
 /// - Respons verifikasi hilang lalu 410: kode sudah terpakai; pengguna memulai ulang lupa password (kontrak C1).
 class ForgotOtpScreen extends ConsumerStatefulWidget {
   const ForgotOtpScreen({super.key});
@@ -57,6 +62,10 @@ class _ForgotOtpScreenState extends ConsumerState<ForgotOtpScreen> {
   ChallengeLinkPhase _linkPhase = ChallengeLinkPhase.idle;
   ApiException? _linkError;
 
+  /// Tautan diterima saat masih ada sesi: dibaca setelah pengguna keluar (atau sesinya dicabut server).
+  bool _linkAwaitsSignOut = false;
+  bool _signingOut = false;
+
   @override
   void initState() {
     super.initState();
@@ -73,8 +82,36 @@ class _ForgotOtpScreenState extends ConsumerState<ForgotOtpScreen> {
     final link = DeepLinks.challengeId(GoRouterState.of(context).uri);
     if (link == null || link == _handledLink) return;
     _handledLink = link;
+    final session = ref.read(sessionProvider);
+    if (session.hasSession) {
+      // Challenge tidak dapat disimpan selama ada sesi; status dibaca setelah keluar.
+      _linkAwaitsSignOut = true;
+      return;
+    }
+    _linkAwaitsSignOut = false;
+    if (session.challenge?.challengeId != link) unawaited(_loadLink(link));
+  }
+
+  /// Sesi berakhir (pengguna keluar, atau sesi dicabut reset pengurus): tautan yang menunggu dibaca sekarang.
+  void _onSessionChanged(bool hasSession) {
+    final link = _handledLink;
+    if (hasSession || !_linkAwaitsSignOut || link == null) return;
+    _linkAwaitsSignOut = false;
     if (ref.read(sessionProvider).challenge?.challengeId != link) unawaited(_loadLink(link));
   }
+
+  /// Keluar dari perangkat ini lalu melanjutkan tautan pemulihan (AC F16-4). Data privat lokal dihapus logout.
+  Future<void> _signOutAndContinue() async {
+    if (_signingOut) return;
+    setState(() => _signingOut = true);
+    try {
+      await ref.read(sessionProvider.notifier).logout();
+    } finally {
+      if (mounted) setState(() => _signingOut = false);
+    }
+  }
+
+  void _goHome() => context.go(homeFor(ref.read(sessionProvider).effectiveStatus ?? EffectiveStatus.unknown));
 
   @override
   void dispose() {
@@ -242,14 +279,14 @@ class _ForgotOtpScreenState extends ConsumerState<ForgotOtpScreen> {
     });
   }
 
-  Widget _scaffold({required Widget body, Widget? bottomBar}) => BrandSheetScaffold(
+  Widget _scaffold({required Widget body, Widget? bottomBar, VoidCallback? onBack}) => BrandSheetScaffold(
     bottomBar: bottomBar,
     body: SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AuthSheetTitle(title: 'Lupa Password', onBack: () => context.go(AppRoutes.forgot)),
+          AuthSheetTitle(title: 'Lupa Password', onBack: onBack ?? () => context.go(AppRoutes.forgot)),
           const SizedBox(height: KapdhSpace.s4),
           const RecoveryStepper(current: 1),
           const SizedBox(height: KapdhSpace.s6),
@@ -259,9 +296,40 @@ class _ForgotOtpScreenState extends ConsumerState<ForgotOtpScreen> {
     ),
   );
 
+  /// Tautan pemulihan diterima saat anggota masih masuk (AC F16-4).
+  Widget _signedInNotice() => _scaffold(
+    onBack: _goHome,
+    body: AuthResultPanel(
+      icon: Icons.lock_reset,
+      iconColor: KapdhColors.primary,
+      title: 'Tautan pemulihan password',
+      message:
+          'Tautan ini untuk membuat password baru, tetapi Anda masih masuk di perangkat ini. Keluar dahulu untuk '
+          'melanjutkan. Bila password Anda direset pengurus, sesi di perangkat ini sudah dicabut sehingga Anda tetap '
+          'perlu masuk kembali dengan password baru.',
+      actions: [
+        KapdhButton(
+          key: const ValueKey('forgot-link-signout'),
+          label: 'Keluar dan lanjutkan',
+          busyLabel: 'Keluar...',
+          busy: _signingOut,
+          onPressed: _signOutAndContinue,
+        ),
+        KapdhButton.outlined(
+          key: const ValueKey('forgot-link-home'),
+          label: 'Kembali ke beranda',
+          onPressed: _signingOut ? null : _goHome,
+        ),
+      ],
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
-    ref.listen(sessionProvider.select((s) => s.challenge), (_, next) => _onChallengeChanged(next));
+    ref
+      ..listen(sessionProvider.select((s) => s.challenge), (_, next) => _onChallengeChanged(next))
+      ..listen(sessionProvider.select((s) => s.hasSession), (_, next) => _onSessionChanged(next));
+    if (ref.watch(sessionProvider.select((s) => s.hasSession))) return _signedInNotice();
     final candidate = ref.watch(sessionProvider.select((s) => s.challenge));
     var challenge = candidate?.purpose == OtpPurpose.passwordReset ? candidate : null;
     if (challenge != null) {
@@ -271,7 +339,8 @@ class _ForgotOtpScreenState extends ConsumerState<ForgotOtpScreen> {
       challenge = _shown;
     }
 
-    if (challenge == null) {
+    // Keadaan tautan diutamakan atas challenge lain di memori: kode dari email pengurus milik challenge tautan.
+    if (challenge == null || _linkPhase != ChallengeLinkPhase.idle) {
       return _scaffold(
         body: ChallengeLinkStatusView(
           phase: _handledLink == null ? ChallengeLinkPhase.gone : _linkPhase,

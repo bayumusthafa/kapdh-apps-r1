@@ -546,12 +546,13 @@ class _ConsentField extends StatelessWidget {
             ),
           ],
         ),
+        // Sebelum dicentang hanya versi yang berlaku; "disetujui" baru setelah pengguna menyetujuinya (F-01).
         if (open)
           Padding(
             padding: const EdgeInsets.only(bottom: KapdhSpace.s1),
             child: Text(
-              'Versi yang disetujui: Kebijakan Privasi versi ${versions!.privacyVersion} · Ketentuan versi '
-              '${versions.termsVersion}',
+              '${value ? 'Versi yang disetujui' : 'Versi berlaku'}: Kebijakan Privasi versi '
+              '${versions!.privacyVersion} · Ketentuan versi ${versions.termsVersion}',
               style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
             ),
           ),

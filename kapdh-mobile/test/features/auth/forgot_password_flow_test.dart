@@ -154,14 +154,14 @@ void main() {
       expect(find.text('Kirim kode'), findsOneWidget);
     });
 
-    testWidgets('validasi email lokal sebelum dikirim', (tester) async {
+    testWidgets('F-02: validasi email lokal sebelum dikirim', (tester) async {
       final app = await openForgot(tester, recoveryRoutes());
       await requestCode(tester, email: 'bukan-email');
       expect(find.text('Masukkan email yang valid'), findsOneWidget);
       expect(app.adapter.requestsTo('/auth/password/forgot'), isEmpty);
     });
 
-    testWidgets('offline: pesan koneksi dan email tetap terisi (PRD 4.5)', (tester) async {
+    testWidgets('PRD 4.5: offline: pesan koneksi dan email tetap terisi', (tester) async {
       await openForgot(tester, recoveryRoutes({'/auth/password/forgot': (_) => FakeResponse.network()}));
       await requestCode(tester);
       expect(find.textContaining('Tidak dapat terhubung'), findsOneWidget);
@@ -193,7 +193,7 @@ void main() {
       expect(app.location, '/forgot/otp');
     });
 
-    testWidgets('kembali dari kode ke email dapat melanjutkan kode yang sudah dikirim', (tester) async {
+    testWidgets('PRD 2.5: kembali dari kode ke email melanjutkan kode yang sudah dikirim tanpa kirim ulang', (tester) async {
       final app = await openForgot(tester, recoveryRoutes());
       await requestCode(tester);
       await tester.tap(find.byTooltip('Kembali'));
@@ -278,7 +278,7 @@ void main() {
       expect(find.text('Kirim ulang dalam 1:00'), findsOneWidget);
     });
 
-    testWidgets('kirim ulang 410: challenge tidak dapat diperbarui, mulai ulang dari email', (tester) async {
+    testWidgets('AC F01-3: kirim ulang 410: challenge tidak dapat diperbarui, mulai ulang dari email', (tester) async {
       final app = await openForgot(
         tester,
         recoveryRoutes({
@@ -297,7 +297,7 @@ void main() {
       expect(app.container.read(sessionProvider).challenge, isNull);
     });
 
-    testWidgets('kontrak C1: respons verifikasi hilang lalu 410 berarti kode sudah terpakai; minta kode baru', (
+    testWidgets('AC F02-4, kontrak C1: respons verifikasi hilang lalu 410 berarti kode sudah terpakai; minta kode baru', (
       tester,
     ) async {
       var attempts = 0;
@@ -324,7 +324,7 @@ void main() {
       expect(app.location, '/forgot');
     });
 
-    testWidgets('verifikasi ditolak RATE_LIMITED: tombol Verifikasi nonaktif sampai jeda selesai', (tester) async {
+    testWidgets('PRD 2.5: verifikasi ditolak RATE_LIMITED: tombol Verifikasi nonaktif sampai jeda selesai', (tester) async {
       final app = await openForgot(
         tester,
         recoveryRoutes({
@@ -402,7 +402,7 @@ void main() {
       expect(field.controller!.text, tooLong, reason: 'tidak dipotong diam-diam');
     });
 
-    testWidgets('konfirmasi password harus sama', (tester) async {
+    testWidgets('AC F02-4: konfirmasi password harus sama', (tester) async {
       final app = await openReset(tester, recoveryRoutes());
       await enterNewPassword(tester, 'Baru#2026kapdh', confirm: 'Baru#2026kapdx');
       await saveNewPassword(tester);
@@ -410,7 +410,7 @@ void main() {
       expect(app.adapter.requestsTo('/auth/password/reset'), isEmpty);
     });
 
-    testWidgets('tombol tampil/sembunyikan password pada field password baru', (tester) async {
+    testWidgets('F-02: tombol tampil/sembunyikan password pada field password baru', (tester) async {
       await openReset(tester, recoveryRoutes());
       TextField field() => tester.widget<TextField>(
         find.descendant(of: find.byKey(const ValueKey('reset-password')), matching: find.byType(TextField)),
@@ -427,7 +427,7 @@ void main() {
       expect(field().obscureText, isFalse);
     });
 
-    testWidgets('galat server field_errors.new_password tampil di field', (tester) async {
+    testWidgets('PRD 2.5: galat server field_errors.new_password tampil di field', (tester) async {
       await openReset(
         tester,
         recoveryRoutes({
@@ -467,7 +467,7 @@ void main() {
       expect(app.container.read(sessionProvider).resetToken, isNull);
     });
 
-    testWidgets('kontrak C1, PRD 4.5: respons hilang lalu 410, arahkan masuk dengan sandi baru dahulu', (tester) async {
+    testWidgets('AC F02-4, kontrak C1, PRD 4.5: respons hilang lalu 410, arahkan masuk dengan sandi baru dahulu', (tester) async {
       var attempts = 0;
       final app = await openReset(
         tester,
@@ -519,7 +519,65 @@ void main() {
       expect(app.location, '/forgot');
     });
 
-    testWidgets('tanpa reset_token di memori: /forgot/reset dialihkan ke Lupa Password', (tester) async {
+    testWidgets('AC F02-4, PRD 4.5: keluar dari Password Baru meminta konfirmasi karena kodenya sudah terpakai', (
+      tester,
+    ) async {
+      final app = await openReset(tester, recoveryRoutes());
+      await enterNewPassword(tester, 'Baru#2026kapdh');
+
+      // Tombol kembali di judul: dialog, lalu "Lanjutkan mengisi" tetap di layar dengan isian dan izin utuh.
+      await tester.tap(find.byTooltip('Kembali'));
+      await settle(tester);
+      expect(find.text('Batalkan password baru?'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('reset-leave-stay')));
+      await settle(tester);
+      expect(app.location, '/forgot/reset');
+      expect(app.container.read(sessionProvider).resetToken, 'reset-token-rahasia');
+      final field = tester.widget<TextField>(
+        find.descendant(of: find.byKey(const ValueKey('reset-password')), matching: find.byType(TextField)),
+      );
+      expect(field.controller!.text, 'Baru#2026kapdh');
+
+      // Tombol kembali sistem (rute bersarang di /forgot) juga meminta konfirmasi, tidak diam-diam kembali.
+      await tester.binding.handlePopRoute();
+      await settle(tester);
+      expect(app.location, '/forgot/reset');
+      expect(find.text('Batalkan password baru?'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('reset-leave-confirm')));
+      await settle(tester);
+      expect(app.location, '/forgot');
+      expect(app.container.read(sessionProvider).resetToken, isNull, reason: 'izin sekali pakai dilepas');
+      expect(app.adapter.requestsTo('/auth/password/reset'), isEmpty);
+    });
+
+    testWidgets('AC F02-4: setelah izin habis, kembali tidak perlu konfirmasi', (tester) async {
+      final app = await pumpApp(tester, handler: recoveryRoutes());
+      app.container.read(sessionProvider.notifier).setResetToken('reset-token-rahasia');
+      app.router.go('/forgot/reset');
+      await settle(tester);
+      app.clock.advance(const Duration(minutes: 10));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.textContaining('Waktu membuat password baru sudah habis'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await settle(tester);
+      expect(find.text('Batalkan password baru?'), findsNothing);
+      expect(app.location, '/forgot');
+      expect(app.container.read(sessionProvider).resetToken, isNull);
+    });
+
+    testWidgets('AC F02-4: password tersimpan: tombol kembali sistem menuju masuk tanpa konfirmasi', (tester) async {
+      final app = await openReset(tester, recoveryRoutes());
+      await enterNewPassword(tester, 'Baru#2026kapdh');
+      await saveNewPassword(tester);
+      expect(find.text('Password berhasil diganti'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await settle(tester);
+      expect(find.text('Batalkan password baru?'), findsNothing);
+      expect(app.location, '/login');
+      expect(find.byKey(const ValueKey('login-notice')), findsOneWidget);
+    });
+
+    testWidgets('AC F02-4: tanpa reset_token di memori: /forgot/reset dialihkan ke Lupa Password', (tester) async {
       final app = await pumpApp(tester, handler: recoveryRoutes());
       app.router.go('/forgot/reset');
       await settle(tester);
@@ -527,7 +585,7 @@ void main() {
     });
   });
 
-  testWidgets('jam server dari header Date: kode tetap berlaku pada perangkat yang jamnya maju (PRD 2.1)', (
+  testWidgets('PRD 2.1: jam server dari header Date: kode tetap berlaku pada perangkat yang jamnya maju', (
     tester,
   ) async {
     final skewed = TestClock(testNow.add(const Duration(hours: 7)));

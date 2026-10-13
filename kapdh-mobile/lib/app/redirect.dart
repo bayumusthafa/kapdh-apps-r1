@@ -226,6 +226,9 @@ String? resolveRedirect(RedirectState state, Uri location) {
     case SessionPhase.offlineLastKnown:
       final current = status ?? EffectiveStatus.unknown;
       if (isRouteAllowed(current, group)) return null;
+      // Tautan reset dari pengurus dibuka saat masih masuk (AC F16-4): reset itu mencabut seluruh sesi, jadi tautan
+      // tidak dibuang. Layar pemulihan menjelaskannya dan menawarkan keluar lalu melanjutkan tautan yang sama.
+      if (group == RouteGroup.forgotOtp && _isChallengeLink(location)) return null;
       if (group == RouteGroup.splash || _authGroups.contains(group)) return _landing(state, _fromParam(location));
       return homeFor(current);
   }
