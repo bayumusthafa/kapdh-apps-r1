@@ -108,7 +108,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
               icon: Icons.receipt_long_outlined,
               title: 'Belum ada pembayaran',
               message: 'Iuran keanggotaan dan pembayaran tiket Anda akan tampil di sini beserta statusnya.',
-              actionLabel: unverified ? 'Bayar iuran pendaftaran' : null,
+              actionLabel: unverified ? 'Bayar iuran' : null,
               onAction: unverified ? () => context.go(AppRoutes.onboardingFees) : null,
             ),
           ],
