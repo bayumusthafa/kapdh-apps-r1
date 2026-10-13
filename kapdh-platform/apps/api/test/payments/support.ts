@@ -20,7 +20,7 @@ import {
   PaymentHandlerRegistry,
   type PaymentRow,
 } from "../../src/core/payments-kernel/payment-handler.registry.js";
-import { fullRefundOnApprove, refundDueAt } from "../../src/modules/payments/payment-rules.js";
+import { fullRefundForCancelledTicket, refundDueAt } from "../../src/modules/payments/payment-rules.js";
 import { PaymentsJobsModule } from "../../src/modules/payments/payments-jobs.module.js";
 import { PaymentsKernel } from "../../src/modules/payments/payments.kernel.js";
 import {
@@ -106,7 +106,7 @@ export class TestTicketHandler implements OnModuleInit {
         const [event] = await tx.select().from(events).where(eq(events.id, ticket.eventId));
         if (
           ticket.cancelledAt &&
-          fullRefundOnApprove({ payment, ticket, event: event!, selfCancelDays: 3 })
+          fullRefundForCancelledTicket({ ownerPresent: payment.userId !== null, ticket, event: event!, selfCancelDays: 3 })
         )
           return {
             refund: {
