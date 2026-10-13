@@ -56,7 +56,12 @@ class TicketDetailScreen extends ConsumerWidget {
     } else {
       body = RefreshIndicator(
         onRefresh: controller.reload,
-        child: _TicketContent(ticket: ticket!, cancelling: state.cancelling, controller: controller),
+        child: _TicketContent(
+          ticket: ticket!,
+          cancelling: state.cancelling,
+          controller: controller,
+          refreshError: state.error,
+        ),
       );
     }
     return AppScaffold(title: 'Detail Tiket', fallbackLocation: AppRoutes.tickets, body: body);
@@ -64,11 +69,14 @@ class TicketDetailScreen extends ConsumerWidget {
 }
 
 class _TicketContent extends ConsumerWidget {
-  const _TicketContent({required this.ticket, required this.cancelling, required this.controller});
+  const _TicketContent({required this.ticket, required this.cancelling, required this.controller, this.refreshError});
 
   final TicketDetail ticket;
   final bool cancelling;
   final TicketDetailController controller;
+
+  /// Galat muat ulang terakhir; tiket yang tampil adalah keadaan terakhir yang berhasil dimuat.
+  final ApiException? refreshError;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -80,6 +88,7 @@ class _TicketContent extends ConsumerWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s8),
       children: [
+        RefreshFailedNotice(error: refreshError, onRetry: () => unawaited(controller.reload())),
         _EventHeader(ticket: ticket, canOpenEvent: active),
         const SizedBox(height: KapdhSpace.s4),
         ..._statusSection(context, ref, active),
