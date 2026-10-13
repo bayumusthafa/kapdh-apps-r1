@@ -216,8 +216,12 @@ paths:
         pencabutan, dan membatalkan pengiriman `pending`-nya (error_class `token_revoked`). Agar ikatan tidak putus
         oleh pembersihan baris sesi lama (FK ON DELETE SET NULL), rotasi refresh memindahkan device_tokens.session_id
         dari baris lama ke baris baru dalam transaksi rotasi yang sama (modul auth), dan job pembersihan sesi
-        mencabut token keluarga yang kedaluwarsa sebelum menghapus barisnya. Token tidak pernah dicatat di log atau
-        audit (ARCHITECTURE §2) dan tidak pernah dikembalikan API.
+        mencabut token keluarga yang kedaluwarsa sebelum menghapus barisnya. Sesi yang berakhir tanpa logout (refresh
+        kedaluwarsa) juga berarti keluar: job worker `notifications.device-sweep` (setiap jam) mencabut token yang
+        keluarga sesinya tidak lagi memiliki baris aktif (belum dicabut dan belum kedaluwarsa) atau yang tidak terikat
+        baris sesi mana pun, beserta pengiriman `pending`-nya (`token_revoked`); token yang diikat ulang ke sesi baru
+        secara bersamaan tidak ikut dicabut. PUT /devices dari keluarga sesi yang sudah kedaluwarsa ditolak 401.
+        Token tidak pernah dicatat di log atau audit (ARCHITECTURE §2) dan tidak pernah dikembalikan API.
       x-kapdh-access: { audience: mobile, member_access: any }
       requestBody:
         required: true

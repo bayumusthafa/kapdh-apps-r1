@@ -62,7 +62,7 @@ async function failedPush(m: { userId: string; token: string }, category: "payme
 }
 
 describe("Otorisasi notifications.manage (AC F15-1)", () => {
-  it("tanpa izin 403, token alumni 403, tanpa sesi 401 untuk keempat operasi", async () => {
+  it("AC F15-1: tanpa izin 403, token alumni 403, tanpa sesi 401 untuk keempat operasi", async () => {
     const other = await createAdmin(t, { permissions: ["payments.read", "audit.read"] });
     const otherSession = await signInAdmin(t, other);
     const alumni = await createAlumni(t);
