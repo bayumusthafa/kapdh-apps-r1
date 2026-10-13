@@ -242,6 +242,27 @@ describe("GET /admin/reports (PRD 3.12 target penanganan, F-15)", () => {
     const visibility = t.app.get(ModerationVisibility);
     expect(await visibility.counts(linkedMember.userId)).toEqual(linkedCounts);
     expect(await visibility.counts(null)).toEqual(neutralCounts);
+    // DashboardModeration / AdminNavBadges.reports_open dari agregat yang sama.
+    const linkedSummary = await visibility.dashboardSummary(linkedMember.userId);
+    expect(linkedSummary).toMatchObject({
+      open_count: linkedCounts.open + linkedCounts.in_review,
+      urgent_count: linkedCounts.urgent,
+      overdue_count: linkedCounts.overdue,
+    });
+    expect(linkedSummary.oldest_open_created_at).not.toBeNull();
+    expect((await visibility.dashboardSummary(null)).open_count).toBe(
+      neutralCounts.open + neutralCounts.in_review,
+    );
+    // AdminMemberDetail.moderation saat pengurus membuka akun alumni tertautnya sendiri: laporan terhadap dirinya
+    // tidak terhitung; pengurus lain melihat hitungan sebenarnya.
+    expect(await visibility.memberReportCounts(linkedMember.userId, linkedMember.userId)).toEqual({
+      open_report_count: 0,
+      total_report_count: 0,
+    });
+    expect(await visibility.memberReportCounts(linkedMember.userId, null)).toEqual({
+      open_report_count: 1,
+      total_report_count: 1,
+    });
     expect((await queue(linked.token, { q: "Pengurus Sebagai" })).total).toBe(0);
     // super_admin tidak dikecualikan dari aturan ini.
     expect((await queue(linkedSuper.token, { status: "all" })).items.map((i) => i.id)).not.toContain(
@@ -285,7 +306,7 @@ describe("GET /admin/reports (PRD 3.12 target penanganan, F-15)", () => {
     );
   });
 
-  it("pengurus yang tertaut ke pelapor: laporan terlihat dengan conflict_of_interest, klaim/keputusan 403", async () => {
+  it("AC F12-2 / PRD 2.3: pengurus yang tertaut ke pelapor: laporan terlihat dengan conflict_of_interest, klaim/keputusan 403", async () => {
     const reporter = await member("Pelapor Pengurus");
     const target = await member("Terlapor Biasa");
     const linkedToReporter = await moderator({ linkedAlumniUserId: reporter.userId });
@@ -312,7 +333,7 @@ describe("GET /admin/reports (PRD 3.12 target penanganan, F-15)", () => {
     expect(resolve.statusCode).toBe(403);
   });
 
-  it("otorisasi: moderation.read wajib (dari database setiap request); sesi anggota 403; tanpa sesi 401", async () => {
+  it("AC F12-3: otorisasi: moderation.read wajib (dari database setiap request); sesi anggota 403; tanpa sesi 401", async () => {
     const other = await moderator({ permissions: ["members.read"] });
     const denied = await api().get("/admin/reports", { token: other.token });
     expect(denied.statusCode).toBe(403);

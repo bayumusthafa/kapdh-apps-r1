@@ -112,7 +112,7 @@ async function userReport(reporterToken: string, targetUserId: string, category 
 }
 
 describe("GET /admin/reports/{reportId}: bukti terminimalkan, akses diaudit (PRD 3.12, AC F17-1)", () => {
-  it("bukti pesan + konteks dengan gambar URL bertanda tangan sesi admin; audit moderation.report_viewed tanpa isi", async () => {
+  it("AC F17-1: bukti pesan + konteks dengan gambar URL bertanda tangan sesi admin; audit moderation.report_viewed tanpa isi", async () => {
     const admin = await moderator();
     const reporter = await member("Pelapor Bukti");
     const sender = await member("Pengirim Bukti");
@@ -200,7 +200,7 @@ describe("GET /admin/reports/{reportId}: bukti terminimalkan, akses diaudit (PRD
     });
   });
 
-  it("bukti profil dan grup memuat avatar saat laporan dibuat; tanpa izin moderation.read → 403; id tidak ada → 404", async () => {
+  it("AC F12-2: bukti profil dan grup memuat avatar saat laporan dibuat; tanpa izin moderation.read → 403; id tidak ada → 404", async () => {
     const admin = await moderator();
     const reporter = await member("Pelapor Profil");
     const target = await member("Pemilik Avatar");
@@ -247,7 +247,7 @@ describe("GET /admin/reports/{reportId}: bukti terminimalkan, akses diaudit (PRD
 });
 
 describe("POST /admin/reports/{reportId}/claim", () => {
-  it("open → in_review; klaim ulang pengurus sama idempoten; versi usang 409 dengan current; ambil alih dengan versi terbaru", async () => {
+  it("AC F12-3: klaim open → in_review; klaim ulang pengurus sama idempoten; versi usang 409 dengan current; ambil alih dengan versi terbaru", async () => {
     const first = await moderator({ name: "Moderator Satu" });
     const second = await moderator({ name: "Moderator Dua" });
     const reporter = await member("Pelapor Klaim");
@@ -550,7 +550,7 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     expect((await t.db.select().from(reports).where(eq(reports.id, notSuspended)))[0]!.status).toBe("open");
   });
 
-  it("banding: hanya dismiss (ditolak) atau unsuspend (dikabulkan, satu notifikasi); member_message wajib", async () => {
+  it("AC F12-3: banding hanya dismiss (ditolak) atau unsuspend (dikabulkan, satu notifikasi); member_message wajib", async () => {
     const admin = await moderator();
     const rejected = await member("Pemohon Ditolak", "suspended");
     const rejectedAppeal = (
@@ -619,7 +619,7 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     });
   });
 
-  it("banding usang (suspend sudah dicabut lewat jalur lain): dismiss 400; unsuspend menutup tanpa mengubah keanggotaan", async () => {
+  it("AC F12-5: banding usang (suspend sudah dicabut lewat jalur lain): dismiss 400; unsuspend menutup tanpa mengubah keanggotaan", async () => {
     const admin = await moderator();
     const appellant = await member("Pemohon Usang", "suspended");
     const appeal = (
@@ -659,7 +659,7 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     expect((await inboxOf(appellant.userId)).filter((n) => n.title === "Banding dikabulkan")).toHaveLength(1);
   });
 
-  it("remove_message: pesan terlapor menjadi placeholder, message.deleted ke room, bukti tetap utuh", async () => {
+  it("AC F12-3: remove_message: pesan terlapor menjadi placeholder, message.deleted ke room, bukti tetap utuh", async () => {
     const admin = await moderator();
     const reporter = await member("Pelapor Pesan");
     const sender = await member("Pengirim Pesan");
@@ -692,7 +692,7 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     expect(deleted!.data.payload).toMatchObject({ room_id: group, message_id: message });
   });
 
-  it("laporan grup: subjek wajib untuk tindakan, anggota/mantan anggota grup, bukan akun tertaut pemanggil", async () => {
+  it("AC F12-3: laporan grup: subjek wajib untuk tindakan, anggota/mantan anggota grup, bukan akun tertaut pemanggil", async () => {
     const reporter = await member("Pelapor Grup");
     const culprit = await member("Pelaku Grup");
     const outsider = await member("Bukan Anggota");
@@ -733,7 +733,7 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     });
   });
 
-  it("validasi: note kosong/spasi, member_message wajib untuk warn/suspend, subject/remove_message tidak sesuai jenis → 400", async () => {
+  it("AC F12-3: validasi: note kosong/spasi, member_message wajib untuk warn/suspend, subject/remove_message tidak sesuai jenis → 400", async () => {
     const admin = await moderator();
     const reporter = await member("Pelapor Validasi");
     const target = await member("Terlapor Validasi");

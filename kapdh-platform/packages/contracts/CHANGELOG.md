@@ -322,8 +322,15 @@ Status implementasi (slice api-moderation, tanpa perubahan bentuk kontrak):
   kernel tanpa menutup banding sendiri.
 - `FilesService.discard` (core) menahan berkas yang dirujuk `reports.evidence.file_ids` (dijadikan privat, tetap
   ready) kecuali akun pemiliknya deletion_pending/deleted (D2).
-- Hitungan laporan untuk dasbor/lencana menu/AdminMemberDetail tersedia lewat `ModerationVisibility`
-  (`condition(linkedAlumniUserId)`, `counts(linkedAlumniUserId)`) yang diekspor `ModerationModule`.
+- Hitungan laporan untuk dasbor/lencana menu/AdminMemberDetail tersedia lewat `ModerationVisibility` yang diekspor
+  `ModerationModule`: `counts(linkedAlumniUserId)` (= `AdminModerationQueueCounts`), `dashboardSummary(linkedAlumniUserId)`
+  (= `DashboardModeration`; `open_count` juga nilai `AdminNavBadges.reports_open`), `memberReportCounts(memberUserId,
+  linkedAlumniUserId)` (`open_report_count`/`total_report_count` untuk `AdminMemberDetail.moderation`, tanpa banding)
+  dan `condition(linkedAlumniUserId)` untuk kueri lain.
+- Penghapusan akun (F-14, D2, AC F14-3): job penghapusan modul account memanggil `anonymizeEvidenceOf(tx, userId, now)`
+  (`modules/moderation/evidence-anonymize.ts`, fungsi biasa yang aman dipakai worker) agar snapshot bukti laporan
+  kehilangan nama, bio, foto dan isi chat akun itu; laporan tetap ada dalam bentuk anonim. Tampilan bukti pengurus
+  sudah menyembunyikan identitas, foto dan isi chat akun berstatus deleted sebelum langkah itu berjalan.
 - Ketergantungan skema database di bawah sudah tersedia lewat migrasi `0006_final_contract_delta`.
 
 ### Event realtime
