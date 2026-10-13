@@ -9,6 +9,7 @@ import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
 import '../../core/session/session_controller.dart';
 import '../../design/design.dart';
+import 'widgets/scroll_column.dart';
 import 'account_repository.dart';
 import 'widgets/account_section.dart';
 
@@ -81,7 +82,7 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
           const SnackBar(content: Text('Profil baru saja diubah di perangkat lain. Pengaturan terbaru ditampilkan.')),
         );
       } else {
-        await ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_set(change)));
+        unawaited(ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_set(change))));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -131,7 +132,7 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
       onChanged: enabled ? (v) => unawaited(_set(change(v))) : null,
     );
 
-    return ListView(
+    return ScrollColumn(
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s8),
       children: [
         const InfoBox(

@@ -12,6 +12,7 @@ import '../../core/api/error_presenter.dart';
 import '../../core/format/formatters.dart';
 import '../../core/session/session_controller.dart';
 import '../../design/design.dart';
+import 'widgets/scroll_column.dart';
 import 'account_repository.dart';
 import 'widgets/account_section.dart';
 
@@ -78,7 +79,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
         _nextCursor = page.nextCursor;
       });
     } on ApiException catch (error) {
-      if (mounted) await ref.read(errorPresenterProvider).present(error, onRetry: _loadMore);
+      if (mounted) unawaited(ref.read(errorPresenterProvider).present(error, onRetry: _loadMore));
     } finally {
       if (mounted) setState(() => _loadingMore = false);
     }
@@ -126,7 +127,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
         setState(() => _items = _items.where((s) => s.id != session.id).toList());
         _snack('Sesi perangkat itu sudah tidak berlaku.');
       } else {
-        await ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_revoke(session)));
+        unawaited(ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_revoke(session))));
       }
     } finally {
       if (mounted) setState(() => _revoking.remove(session.id));
@@ -161,7 +162,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
       await ref.read(sessionProvider.notifier).logout(allDevices: true);
       router.go(AppRoutes.login);
     } on ApiException catch (error) {
-      if (mounted) await ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_signOutAll()));
+      if (mounted) unawaited(ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_signOutAll())));
     } finally {
       if (mounted) setState(() => _signingOutAll = false);
     }
@@ -189,7 +190,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
     final others = sorted.where((s) => !s.current).toList();
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView(
+      child: ScrollColumn(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s8),
         children: [

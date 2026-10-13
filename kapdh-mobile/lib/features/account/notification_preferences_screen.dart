@@ -10,6 +10,7 @@ import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
 import '../../core/push/push_platform.dart';
 import '../../design/design.dart';
+import 'widgets/scroll_column.dart';
 import '../notifications/notification_presentation.dart';
 import '../notifications/notifications_repository.dart';
 import '../notifications/push_permission.dart';
@@ -81,7 +82,7 @@ class _NotificationPreferencesScreenState extends ConsumerState<NotificationPref
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() => _prefs = previous);
-      await ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_save(update)));
+      unawaited(ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_save(update))));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -117,7 +118,7 @@ class _NotificationPreferencesScreenState extends ConsumerState<NotificationPref
     final push = prefs.push;
     final email = prefs.email;
     final enabled = !_saving;
-    return ListView(
+    return ScrollColumn(
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s8),
       children: [
         const _DevicePushCard(),
