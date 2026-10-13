@@ -108,7 +108,8 @@ List<TimelineEntry> paymentTimeline(PaymentDetail payment, {DateTime? cardIssued
         : '';
     entries.add(
       TimelineEntry(
-        title: '${_eventTitle(event.kind, membership: membership)}${_actorSuffix(event.actor, event.kind)}$versionSuffix',
+        title:
+            '${_eventTitle(event.kind, membership: membership)}${_actorSuffix(event.actor, event.kind)}$versionSuffix',
         subtitle: showReason ? '${formatDateTime(event.at)}\nAlasan: $reason' : formatDateTime(event.at),
         state: switch (event.kind) {
           PaymentEventKind.rejected || PaymentEventKind.cancelled => TimelineState.failed,

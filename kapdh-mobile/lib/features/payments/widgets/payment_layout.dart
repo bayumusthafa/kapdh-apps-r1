@@ -124,8 +124,7 @@ SummaryCard paymentSummaryCard(PaymentDetail payment, {bool showMethod = true, b
         ),
       if (payment.decidedAt != null && payment.stage == PaymentStage.paid)
         SummaryRow('Diverifikasi', formatDateTime(payment.decidedAt!)),
-      if (period != null)
-        SummaryRow('Masa aktif', '${formatDate(period.startsAt)} - ${formatDate(period.expiresAt)}'),
+      if (period != null) SummaryRow('Masa aktif', '${formatDate(period.startsAt)} - ${formatDate(period.expiresAt)}'),
     ],
   );
 }

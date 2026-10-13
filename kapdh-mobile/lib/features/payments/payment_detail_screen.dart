@@ -402,7 +402,8 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
   }
 
   String? get _busyLabel => switch (_phase) {
-    ProofSubmitPhase.uploading => _progress == null ? 'Mengunggah bukti...' : 'Mengunggah ${(_progress! * 100).round()}%',
+    ProofSubmitPhase.uploading =>
+      _progress == null ? 'Mengunggah bukti...' : 'Mengunggah ${(_progress! * 100).round()}%',
     ProofSubmitPhase.submitting => 'Mengirim bukti...',
     ProofSubmitPhase.checking => 'Memeriksa status...',
     ProofSubmitPhase.idle => null,
@@ -442,10 +443,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
             ],
             if (payment.type != PaymentType.registration) ...[
               const SizedBox(height: KapdhSpace.s2),
-              Text(
-                paymentTitle(payment),
-                style: const TextStyle(fontSize: 13, color: KapdhColors.textMuted),
-              ),
+              Text(paymentTitle(payment), style: const TextStyle(fontSize: 13, color: KapdhColors.textMuted)),
             ],
             const SizedBox(height: KapdhSpace.s4),
             AmountCopyBox(amount: payment.amount, onCopied: () => _snack('Nominal disalin')),
@@ -756,7 +754,11 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
             ..._adjustmentsSection(payment),
             const SizedBox(height: KapdhSpace.s5),
             if (payment.stage == PaymentStage.paid && membership)
-              KapdhButton.solid(label: 'Lihat KTA', icon: Icons.badge_outlined, onPressed: () => context.go(AppRoutes.kta)),
+              KapdhButton.solid(
+                label: 'Lihat KTA',
+                icon: Icons.badge_outlined,
+                onPressed: () => context.go(AppRoutes.kta),
+              ),
             if (payment.stage == PaymentStage.paid && ticket != null && !ticketCancelled)
               KapdhButton.solid(
                 label: 'Lihat tiket',
@@ -770,7 +772,10 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
               ),
             if ((payment.stage == PaymentStage.cancelled || payment.stage == PaymentStage.rejectedFinal) &&
                 ticket != null)
-              KapdhButton.outlined(label: 'Lihat event', onPressed: () => context.push(AppRoutes.event(ticket.eventId))),
+              KapdhButton.outlined(
+                label: 'Lihat event',
+                onPressed: () => context.push(AppRoutes.event(ticket.eventId)),
+              ),
             ..._historySection(payment),
           ],
         ),
