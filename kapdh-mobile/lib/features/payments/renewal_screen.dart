@@ -61,6 +61,17 @@ class _RenewalScreenState extends ConsumerState<RenewalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Iuran perpanjangan berubah di layar lain (bukti terkirim, dibatalkan, diputus pengurus): muat ulang masa
+    // keanggotaan dan kutipan agar tombol dan keterangan tidak usang saat pengguna kembali ke layar ini.
+    ref.listen(
+      sessionProvider.select((s) {
+        final payment = s.me?.renewalPayment;
+        return (payment?.id, payment?.stage, payment?.proofVersion, s.me?.expiresAt, s.effectiveStatus);
+      }),
+      (previous, next) {
+        if (previous != next) unawaited(_load());
+      },
+    );
     final membership = _membership;
     final fees = _fees;
     final error = _error;
