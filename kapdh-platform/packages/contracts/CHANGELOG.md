@@ -396,6 +396,28 @@ Perbaikan tinjauan kedua C7 (belum ada klien atau controller, dicatat untuk penu
   MFA_REQUIRED) untuk `adminGetDashboard`, `adminGetDashboardBadges`, `adminListPermissions`; 400 ValidationError
   untuk `getNotification`, `adminGetAdmin`, `adminGetAuditEntry`, `adminGetAuditExport`, `adminGetAuditExportAccess`.
 
+### Fase C api-admin: implementasi admin-dashboard, admin-admins, admin-audit, admin-settings (F-15, F-16, F-17)
+
+Tidak ada perubahan bentuk operasi atau skema. Komentar kepala `admin-settings.yaml` kini menyatakan bahwa SEMUA
+operasi domain itu (termasuk `adminGetFees`/`adminUpdateFees` dan `adminUpdatePaymentInstructions`) dilayani modul
+`apps/api/src/modules/admin`; modul payments hanya membaca nilai `fees` lewat SettingsService untuk snapshot payment
+baru (AC F03-5). Nilai konfigurasi server yang kontrak C7 serahkan ke implementasi (usulan, final mengikuti D1/D8):
+
+| Nilai                                            | Implementasi                                                                  |
+| ------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Masa berlaku token undangan/pemulihan admin      | 72 jam (`ADMIN_INVITE_TTL_MS`); setiap ronde undangan menggeser batasnya      |
+| Batas undangan + kirim ulang + pemulihan         | 20 per Super Admin per jam (429 RATE_LIMITED); hapus identitas 20 per jam     |
+| Batas waktu job ekspor audit                     | 1 jam sejak diminta, lalu `failed`/`timed_out`                                |
+| Masa simpan berkas ekspor audit                  | 24 jam (`expires_at`), dihapus `maintenance.cleanup` dan `files.cleanup-temp` |
+| Batas baris ekspor audit                         | 50.000 baris, melebihi = `failed`/`row_limit_exceeded`                        |
+| Percobaan job ekspor sebelum `processing_failed` | 3 (retry outbox)                                                              |
+| Batas pembuatan ekspor                           | 10 per admin per jam (429 RATE_LIMITED)                                       |
+| Jendela `DashboardJobs.failed_delivery_since`    | 7 hari                                                                        |
+
+Email undangan/pemulihan admin berisi tautan `${ADMIN_ORIGIN}/invite/<token>`; token dibuat worker saat email
+dikirim (topik outbox internal `admin.invitation.requested`) sehingga token tidak pernah ada di respons, outbox, audit,
+maupun log; hanya hash yang disimpan. Pemberitahuan keamanan admin memakai topik `admin.security_notice`.
+
 ### core-api: Files (`files.yaml`; PRD 2.5, 5.4, N-10)
 
 Pemilik `files.yaml` adalah core-api (`apps/api/src/core/files` + controller tipis `modules/files`).
