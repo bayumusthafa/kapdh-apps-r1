@@ -131,7 +131,7 @@ describe("model formulir event (F-15, kontrak adminCreateEvent/adminUpdateEvent)
   it("AC F15-2: kuota di bawah held+paid (min_seats_total) ditolak sebelum dikirim", () => {
     expect(issues(valid({ seats_total: "9" }), 10)).toHaveProperty(
       "seats_total",
-      "Kuota tidak boleh di bawah 10 (kursi ditahan + terbayar, AC F15-2).",
+      "Kuota tidak boleh di bawah 10 (kursi ditahan + terbayar).",
     );
     expect(issues(valid({ seats_total: "10" }), 10)).toEqual({});
   });

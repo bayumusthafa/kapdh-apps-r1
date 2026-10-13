@@ -57,6 +57,17 @@ export function ticketCancellable(t: AdminEventTicket, event: AdminEventDetail):
   );
 }
 
+/** Waktu sel tabel dua baris (tanggal lalu jam, WIB pada judul kolom) agar kolom tetap sempit tanpa terpotong. */
+function CellDateTime({ iso }: { iso: string }) {
+  const [date, time] = formatShortDateTime(iso).split(", ");
+  return (
+    <span className="flex flex-col whitespace-nowrap">
+      <span>{date}</span>
+      {time ? <span className="text-xs text-text-muted">{time}</span> : null}
+    </span>
+  );
+}
+
 function holderName(t: AdminEventTicket): string {
   return t.holder.full_name ?? ANONYMOUS_HOLDER;
 }
@@ -104,7 +115,7 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
                         .join(" | ")}
                 </span>
                 {!t.holder_eligible && t.holder.full_name !== null ? (
-                  <Badge tone="danger" className="mt-1">
+                  <Badge tone="danger" className="mt-1 w-auto whitespace-normal">
                     Tidak memenuhi syarat
                   </Badge>
                 ) : null}
@@ -127,7 +138,7 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
                 </span>
               ) : null}
               {t.status === "cancelled" && t.cancelled_by ? (
-                <span className="max-w-56 text-xs text-text-muted">
+                <span className="max-w-44 text-xs text-text-muted">
                   {CANCELLED_BY_LABEL[t.cancelled_by]}
                   {t.cancel_reason ? `: ${t.cancel_reason}` : ""}
                 </span>
@@ -146,7 +157,7 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
           const p = t.payment;
           return (
             <span className="flex flex-col items-start gap-1">
-              <span className="whitespace-nowrap font-medium">
+              <span className="font-medium">
                 {formatRupiah(p.amount)} | {TICKET_PAYMENT_STATUS_LABEL[p.status]}
               </span>
               <span className="text-xs text-text-muted" title={p.id}>
@@ -163,6 +174,7 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
               {t.refunds.map((r) => (
                 <Badge
                   key={r.id}
+                  className="w-auto whitespace-normal"
                   tone={r.status === "completed" ? "success" : r.status === "pending" ? "info" : "neutral"}
                 >
                   {REFUND_STATUS_LABEL[r.status]} {formatRupiah(r.amount)}
@@ -192,8 +204,7 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
       {
         id: "created_at",
         header: "Dipesan (WIB)",
-        meta: { cellClassName: "whitespace-nowrap" },
-        cell: ({ row }) => formatShortDateTime(row.original.created_at),
+        cell: ({ row }) => <CellDateTime iso={row.original.created_at} />,
       },
     ],
     [canSeePayments],
@@ -213,7 +224,7 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
         onRetry={() => void list.refetch()}
         isFetching={list.isFetching && list.isPlaceholderData}
         total={list.data?.total}
-        minWidth={980}
+        minWidth={900}
         rowClassName={(t) => (t.review_overdue ? "bg-warning-bg/50" : undefined)}
         pagination={{
           pageIndex: paging.pageIndex,
@@ -278,7 +289,7 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
               Batalkan
             </Button>
           ) : t.status === "awaiting_review" && event.status !== "cancelled" ? (
-            <span className="block max-w-40 text-right text-xs text-text-muted">
+            <span className="block max-w-28 text-right text-xs text-text-muted">
               Putuskan pembayaran dahulu
             </span>
           ) : null
@@ -456,7 +467,7 @@ function CancelTicketDialog({
               value: "refund",
               label: `Refund penuh ${formatRupiah(ticket?.total)}`,
               description:
-                "Dicatat sebagai penyesuaian refund pending; bendahara mentransfer paling lambat 7 hari kerja (D6).",
+                "Dicatat sebagai penyesuaian refund pending; bendahara mentransfer paling lambat 7 hari kerja.",
             },
             {
               value: "no_refund",

@@ -139,14 +139,16 @@ function EventOverview({ event: e }: { event: AdminEventDetail }) {
   const free = !/[1-9]/.test(e.price);
   return (
     <>
-      <div className="flex flex-wrap gap-4" aria-label="Ringkasan kursi" role="group">
+      <div
+        className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-4"
+        aria-label="Ringkasan kursi"
+        role="group"
+      >
         <StatCard label="Total tiket" value={e.seats_total.toLocaleString("id-ID")} icon={<Ticket />} />
         <StatCard
           label="Sisa tiket"
           value={e.status === "cancelled" ? "-" : e.seats_available.toLocaleString("id-ID")}
-          hint={
-            e.status === "cancelled" ? "Event dibatalkan" : `Kuota minimal ${e.min_seats_total} (AC F15-2)`
-          }
+          hint={e.status === "cancelled" ? "Event dibatalkan" : `Kuota minimal ${e.min_seats_total}`}
           icon={<Users />}
           tone={e.seats_available === 0 && e.status !== "cancelled" ? "danger" : "primary"}
         />
@@ -199,7 +201,7 @@ function EventOverview({ event: e }: { event: AdminEventDetail }) {
                     <span className="flex flex-wrap items-center gap-2">
                       {formatRange(e.effective_checkin_opens_at, e.effective_checkin_closes_at, e.timezone)}
                       <Badge tone={e.checkin_opens_at ? "info" : "neutral"}>
-                        {e.checkin_opens_at ? "Khusus" : "Bawaan D5"}
+                        {e.checkin_opens_at ? "Khusus" : "Bawaan"}
                       </Badge>
                     </span>
                   ),
