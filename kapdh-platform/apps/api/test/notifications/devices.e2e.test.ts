@@ -10,6 +10,7 @@ import { createTestApp, type TestApp } from "../support/test-app.js";
 import {
   deliveriesOf,
   deliveryOf,
+  expectIndonesianFieldErrors,
   fcmToken,
   notify,
   registerDevice,
@@ -79,11 +80,19 @@ describe("PUT /devices (registerDevice)", () => {
       { platform: "android", token: fcmToken(), app_version: "v1" },
       { platform: "android", token: fcmToken(), extra: true },
       { token: fcmToken() },
+      { platform: "android", token: fcmToken(), app_version: 100 },
+      { platform: "android", token: 12345 },
     ]) {
       const res = await api().put("/devices", body, { token: m.accessToken });
       expect(res.statusCode, JSON.stringify(body).slice(0, 60)).toBe(400);
       expect(expectOperation("put", "/devices", res)).toMatchObject({ code: "VALIDATION_ERROR" });
+      expectIndonesianFieldErrors(res.json(), JSON.stringify(body).slice(0, 60));
     }
+    const unregister = await api().post("/devices/unregister", { token: fcmToken(), extra: 1 }, { token: m.accessToken });
+    expect(unregister.statusCode).toBe(400);
+    expect((unregister.json() as { field_errors: Record<string, string[]> }).field_errors._).toContain(
+      "Kolom tidak dikenal: extra",
+    );
   });
 
   it("tanpa sesi 401; token admin 403", async () => {

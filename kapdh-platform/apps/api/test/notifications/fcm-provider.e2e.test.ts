@@ -40,7 +40,10 @@ type Reply = {
   body?: unknown;
   raw?: string;
   headers?: Record<string, string>;
+  /** Tidak pernah membalas. */
   hang?: boolean;
+  /** Mengirim header dan sebagian body lalu macet (body tidak pernah selesai). */
+  stallBody?: boolean;
 };
 
 let server: Server;
@@ -50,11 +53,18 @@ let tokenReplies: Reply[] = [];
 let sendReplies: Reply[] = [];
 let tokenCounter = 0;
 let messageCounter = 0;
-const hanging: ServerResponse[] = [];
+/** Respons yang ditahan server; `closed` menjadi true saat klien memutus koneksinya. */
+const hanging: { res: ServerResponse; closed: boolean }[] = [];
 
 function respond(res: ServerResponse, reply: Reply) {
-  if (reply.hang) {
-    hanging.push(res);
+  if (reply.hang || reply.stallBody) {
+    const entry = { res, closed: false };
+    hanging.push(entry);
+    res.on("close", () => (entry.closed = true));
+    if (reply.stallBody) {
+      res.writeHead(reply.status, { "content-type": "application/json", "content-length": "1000" });
+      res.write('{"name": "projects/');
+    }
     return;
   }
   res.writeHead(reply.status, {
@@ -103,9 +113,15 @@ beforeEach(() => {
   sendReplies = [];
 });
 afterAll(async () => {
-  for (const res of hanging) res.destroy();
+  for (const { res } of hanging) res.destroy();
   await new Promise<void>((resolve) => server.close(() => resolve()));
 });
+
+async function until(condition: () => boolean, label: string, timeoutMs = 3_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (!condition() && Date.now() < deadline) await new Promise((r) => setTimeout(r, 5));
+  expect(condition(), label).toBe(true);
+}
 
 function sender(timeoutMs = 2_000) {
   return new FcmPushSender(PROJECT, SERVICE_ACCOUNT, undefined, timeoutMs, {
@@ -301,11 +317,47 @@ describe("FcmPushSender terhadap endpoint HTTP tiruan (FCM HTTP v1)", () => {
       deactivateToken: false,
     });
     expect(Date.now() - started).toBeLessThan(5_000);
+    // Batas waktu MEMUTUS permintaan (AbortController), bukan sekadar berhenti menunggu.
+    await until(() => hanging.at(-1)!.closed, "permintaan FCM yang macet diputus klien");
     const refused = new FcmPushSender(PROJECT, SERVICE_ACCOUNT, undefined, 1_000, {
       tokenUrl: `${baseUrl}/token`,
       apiBaseUrl: "http://127.0.0.1:1",
     });
     expect(await refused.send(message)).toMatchObject({ ok: false, errorClass: "network", retryable: true });
+  });
+
+  it("AC F13-4: body respons yang macet juga dibatasi waktu dan diputus (bukan dianggap body kosong/galat permanen)", async () => {
+    sendReplies = [{ status: 200, stallBody: true }];
+    const started = Date.now();
+    expect(await sender(300).send(message)).toEqual({
+      ok: false,
+      errorClass: "network",
+      retryable: true,
+      deactivateToken: false,
+    });
+    expect(Date.now() - started).toBeLessThan(5_000);
+    await until(() => hanging.at(-1)!.closed, "pembacaan body yang macet diputus klien");
+  });
+
+  it("AC F13-4: pembatalan pemanggil (batas waktu percobaan pengiriman) memutus messages:send yang sedang berjalan", async () => {
+    const fcm = sender(10_000);
+    expect(await fcm.send(message)).toMatchObject({ ok: true }); // token OAuth sudah di-cache
+    sendReplies = [{ status: 200, hang: true }];
+    const controller = new AbortController();
+    const sending = fcm.send(message, { signal: controller.signal });
+    await until(() => sends().length === 2, "messages:send diterima server");
+    const abortedAt = Date.now();
+    controller.abort(new Error("batas waktu percobaan"));
+    expect(await sending).toEqual({ ok: false, errorClass: "network", retryable: true, deactivateToken: false });
+    expect(Date.now() - abortedAt).toBeLessThan(2_000);
+    await until(() => hanging.at(-1)!.closed, "koneksi messages:send diputus");
+    // Sinyal yang sudah dibatalkan tidak mengirim permintaan sama sekali.
+    expect(await fcm.send(message, { signal: AbortSignal.abort() })).toMatchObject({
+      ok: false,
+      errorClass: "network",
+      retryable: true,
+    });
+    expect(sends()).toHaveLength(2);
   });
 });
 

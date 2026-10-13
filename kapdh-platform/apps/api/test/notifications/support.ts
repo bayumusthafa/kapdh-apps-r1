@@ -89,6 +89,18 @@ export async function inboxCount(t: TestApp, userId: string) {
   return (await t.db.select().from(notifications).where(eq(notifications.userId, userId))).length;
 }
 
+/**
+ * ARCHITECTURE §2.9, PRD 5.2: setiap pesan field_errors berbahasa Indonesia, bukan pesan bawaan zod berbahasa Inggris
+ * ("Invalid input", "Too small", "Unrecognized key", "expected … received …").
+ */
+export function expectIndonesianFieldErrors(body: unknown, label = "") {
+  const fieldErrors = (body as { field_errors?: Record<string, string[]> }).field_errors ?? {};
+  const messages = Object.values(fieldErrors).flat();
+  expect(messages.length, `field_errors ${label}`).toBeGreaterThan(0);
+  for (const message of messages)
+    expect(message, label).not.toMatch(/invalid input|too (small|big)|unrecognized key|expected |received /i);
+}
+
 /** Token FCM sintetis unik. */
 export function fcmToken(label = "perangkat"): string {
   return `fcm-${label}-${uuidv7()}`;

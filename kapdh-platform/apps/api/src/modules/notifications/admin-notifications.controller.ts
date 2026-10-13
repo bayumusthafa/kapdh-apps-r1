@@ -9,6 +9,7 @@ import { NOTIFICATION_CATEGORIES } from "../../core/notifications-kernel/notific
 import { parsePageQuery } from "../../core/pagination/cursor.js";
 import { queryBool, validate, validateQuery } from "../../core/validation/validate.js";
 import { AdminNotificationsService } from "./admin-notifications.service.js";
+import { queryText, strictBody, uuidList } from "./validation.js";
 
 type AdminNotificationDeliveryPage = components["schemas"]["AdminNotificationDeliveryPage"];
 type AdminDeliveryRetryResult = components["schemas"]["AdminDeliveryRetryResult"];
@@ -23,7 +24,7 @@ const deliveriesQuerySchema = z.object({
   status: z.enum(["pending", "sent", "failed", "cancelled"], { message: "Status tidak dikenal" }).optional(),
   channel: z.enum(["push", "email"], { message: "Kanal tidak dikenal" }).optional(),
   category: z.enum(NOTIFICATION_CATEGORIES, { message: "Kategori tidak dikenal" }).optional(),
-  error_class: z.string().min(1).max(64, "Maksimal 64 karakter").optional(),
+  error_class: queryText(64).optional(),
   user_id: z.uuid({ message: "Format id tidak valid" }).optional(),
   notification_id: z.uuid({ message: "Format id tidak valid" }).optional(),
   retryable: queryBool().optional(),
@@ -36,7 +37,7 @@ const deliveriesQuerySchema = z.object({
 
 const outboxQuerySchema = z.object({
   status: z.enum(["pending", "dispatched", "failed", "dead"], { message: "Status tidak dikenal" }).optional(),
-  topic: z.string().min(1).max(100, "Maksimal 100 karakter").optional(),
+  topic: queryText(100).optional(),
   from: dateTime.optional(),
   to: dateTime.optional(),
   sort: z
@@ -44,19 +45,10 @@ const outboxQuerySchema = z.object({
     .optional(),
 });
 
-const idList = (field: string) =>
-  z
-    .array(z.uuid({ message: "Format id tidak valid" }))
-    .min(1, "Minimal satu id")
-    .max(100, "Maksimal 100 id")
-    .refine(
-      (ids) => new Set(ids.map((id) => id.toLowerCase())).size === ids.length,
-      `${field} tidak boleh berulang`,
-    )
-    .transform((ids) => ids.map((id) => id.toLowerCase()));
+const idList = (field: string) => uuidList(field).transform((ids) => ids.map((id) => id.toLowerCase()));
 
-const deliveryRetrySchema = z.object({ delivery_ids: idList("delivery_ids") }).strict();
-const outboxRetrySchema = z.object({ event_ids: idList("event_ids") }).strict();
+const deliveryRetrySchema = strictBody({ delivery_ids: idList("delivery_ids") });
+const outboxRetrySchema = strictBody({ event_ids: idList("event_ids") });
 
 function assertRange(from: Date | undefined, to: Date | undefined): void {
   if (from && to && from.getTime() >= to.getTime())
