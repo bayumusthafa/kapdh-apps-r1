@@ -34,6 +34,8 @@ import {
   directoryCountQuery,
   directoryPageQuery,
   directoryVisible,
+  hasControlChar,
+  hasNul,
   notBlockedByOwner,
 } from "./directory.query.js";
 
@@ -74,11 +76,13 @@ const uuidString = (message = "Format id tidak valid") =>
 
 /** Query GET /directory (kontrak searchDirectory). cursor/limit dibaca parsePageQuery. */
 const searchQuerySchema = z.object({
+  // Teks bebas tanpa karakter kontrol (NUL membuat PostgreSQL gagal 22021 → harus 400, bukan 500; PRD 5.2).
   q: z
     .string({ message: "Kata kunci tidak valid" })
     .max(100, "Maksimal 100 karakter")
     .trim()
     .min(2, "Kata kunci minimal 2 karakter")
+    .refine((value) => !hasControlChar(value), "Kata kunci tidak boleh memuat karakter kontrol")
     .optional(),
   cohort: queryInt({ min: 1, max: 99 }).optional(),
   class_level: queryInt({ min: 1, max: 6 }).optional(),
@@ -87,18 +91,25 @@ const searchQuerySchema = z.object({
     .max(80, "Maksimal 80 karakter")
     .trim()
     .min(1, "Kota tidak boleh kosong")
+    .refine((value) => !hasControlChar(value), "Kota tidak boleh memuat karakter kontrol")
     .optional(),
   profession_id: uuidString().optional(),
   skill_id: uuidString().optional(),
   sort: z.enum(["name_asc", "cohort_desc"], { message: "Gunakan name_asc atau cohort_desc" }).optional(),
 });
 
+/** Nama terurut (lower(full_name)) di cursor: nama tersimpan tidak pernah memuat NUL; cursor ber-NUL → 400 cursor. */
+const cursorName = z
+  .string()
+  .max(1000)
+  .refine((value) => !hasNul(value));
+
 const positionSchema = z.discriminatedUnion("s", [
-  z.object({ s: z.literal("name_asc"), n: z.string().max(1000), id: uuidString() }),
+  z.object({ s: z.literal("name_asc"), n: cursorName, id: uuidString() }),
   z.object({
     s: z.literal("cohort_desc"),
     c: z.number().int().min(1).max(99),
-    n: z.string().max(1000),
+    n: cursorName,
     id: uuidString(),
   }),
 ]);

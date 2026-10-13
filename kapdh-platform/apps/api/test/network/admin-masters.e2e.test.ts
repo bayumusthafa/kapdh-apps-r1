@@ -2,7 +2,8 @@ import type { Permission } from "@kapdh/contracts";
 import { alumniProfessions, alumniSkills, auditLogs, masterProfessions, masterSkills } from "@kapdh/database";
 import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { AuditService } from "../../src/core/audit/audit.service.js";
 import { expectOperation } from "../support/contract.js";
 import { createAdmin, createAlumni, signInAdmin, signInAlumni } from "../support/factories.js";
 import { type HttpClient, httpClient } from "../support/http.js";
@@ -276,6 +277,39 @@ describe("GET /admin/masters/{kind} (adminListMasters)", () => {
     });
     expect(mismatch.statusCode).toBe(400);
   });
+
+  it("F-15, PRD 5.2: q berkarakter kontrol dan cursor palsu (sort_order di luar smallint, NUL) → 400, bukan 500", async () => {
+    const forged = (position: Json) =>
+      Buffer.from(JSON.stringify({ v: 1, p: position }), "utf8").toString("base64url");
+    const id = uuidv7();
+    const cases: [Record<string, string>, string][] = [
+      [{ q: "a\u0000" }, "q"],
+      [{ q: "Gu\u0007ru" }, "q"],
+      [{ cursor: forged({ s: "manual", o: 40000, l: "x", id }) }, "cursor"],
+      [{ cursor: forged({ s: "manual", o: -40000, l: "x", id }) }, "cursor"],
+      [{ cursor: forged({ s: "manual", o: 1, l: "x\u0000", id }) }, "cursor"],
+      [{ sort: "label_asc", cursor: forged({ s: "label_asc", l: "\u0000", id }) }, "cursor"],
+      [{ sort: "label_desc", cursor: forged({ s: "label_desc", l: "a\u0000", id }) }, "cursor"],
+      [{ sort: "usage_desc", cursor: forged({ s: "usage_desc", u: -1, l: "a", id }) }, "cursor"],
+      [{ sort: "usage_desc", cursor: forged({ s: "usage_desc", u: 2, l: "a\u0000", id }) }, "cursor"],
+    ];
+    for (const kind of ["professions", "skills"] as const)
+      for (const [query, field] of cases) {
+        const res = await api.get(`/admin/masters/${kind}`, { token: manager, query });
+        expect(res.statusCode, `${kind} ${JSON.stringify(query)}`).toBe(400);
+        const error = expectOperation("get", "/admin/masters/{kind}", res) as Json;
+        expect(error.code).toBe("VALIDATION_ERROR");
+        expect(Object.keys(error.field_errors as Json), JSON.stringify(query)).toContain(field);
+      }
+    // Batas smallint sendiri masih sah.
+    for (const o of [-32768, 32767]) {
+      const res = await api.get("/admin/masters/professions", {
+        token: manager,
+        query: { cursor: forged({ s: "manual", o, l: "a", id }) },
+      });
+      expect(res.statusCode, String(o)).toBe(200);
+    }
+  });
 });
 
 describe("GET/PATCH /admin/masters/{kind}/{masterId}", () => {
@@ -447,5 +481,77 @@ describe("DELETE /admin/masters/{kind}/{masterId} (adminDeleteMaster)", () => {
 
     const again = await api.delete(url, { token: manager, headers: { "if-match": "1" } });
     expect(again.statusCode).toBe(404);
+  });
+});
+
+describe("AC F17-1: kegagalan mencatat audit membatalkan perubahan master", () => {
+  /** Penulisan audit berikutnya gagal (mis. tabel audit tidak dapat ditulis); transaksi wajib dibatalkan seluruhnya. */
+  function failNextAudit() {
+    return vi.spyOn(t.app.get(AuditService), "write").mockRejectedValueOnce(new Error("audit gagal ditulis"));
+  }
+
+  it("AC F17-1: POST gagal audit → 500 dan master tidak pernah tersimpan", async () => {
+    for (const kind of ["professions", "skills"] as const) {
+      const label = uniqueLabel("Gagal Audit");
+      const spy = failNextAudit();
+      try {
+        const res = await api.post(`/admin/masters/${kind}`, { label }, { token: manager });
+        expect(res.statusCode, res.body).toBe(500);
+        expect(res.json()).toMatchObject({ code: "INTERNAL_ERROR" });
+        expect(spy).toHaveBeenCalledTimes(1);
+      } finally {
+        spy.mockRestore();
+      }
+      const table = kind === "professions" ? masterProfessions : masterSkills;
+      expect(await t.db.select().from(table).where(eq(table.label, label))).toEqual([]);
+      // Label yang sama dapat dibuat setelah audit pulih (tidak ada sisa baris).
+      const created = await create(kind, { label });
+      expect((await audits(created.id)).map((entry) => entry.action)).toEqual(["master.created"]);
+    }
+  });
+
+  it("AC F17-1: PATCH gagal audit → 500; label, status, urutan dan versi tidak berubah", async () => {
+    const created = await create("skills", { label: uniqueLabel("Audit Ubah") });
+    const spy = failNextAudit();
+    try {
+      const res = await api.patch(
+        `/admin/masters/skills/${created.id}`,
+        { label: uniqueLabel("Label Baru"), active: false, sort_order: 9 },
+        { token: manager, headers: { "if-match": created.version } },
+      );
+      expect(res.statusCode, res.body).toBe(500);
+      expect(res.json()).toMatchObject({ code: "INTERNAL_ERROR" });
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
+    const [row] = await t.db.select().from(masterSkills).where(eq(masterSkills.id, created.id));
+    expect(row).toMatchObject({ label: created.label, active: true, sortOrder: 0, version: 1 });
+    expect((await audits(created.id)).map((entry) => entry.action)).toEqual(["master.created"]);
+  });
+
+  it("AC F17-1: DELETE gagal audit → 500 dan master tetap ada", async () => {
+    const created = await create("professions", { label: uniqueLabel("Audit Hapus") });
+    const spy = failNextAudit();
+    try {
+      const res = await api.delete(`/admin/masters/professions/${created.id}`, {
+        token: manager,
+        headers: { "if-match": created.version },
+      });
+      expect(res.statusCode, res.body).toBe(500);
+      expect(res.json()).toMatchObject({ code: "INTERNAL_ERROR" });
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
+    const [row] = await t.db.select().from(masterProfessions).where(eq(masterProfessions.id, created.id));
+    expect(row).toMatchObject({ label: created.label, version: 1 });
+    expect((await audits(created.id)).map((entry) => entry.action)).toEqual(["master.created"]);
+    // Setelah audit pulih penghapusan berjalan normal.
+    const ok = await api.delete(`/admin/masters/professions/${created.id}`, {
+      token: manager,
+      headers: { "if-match": created.version },
+    });
+    expect(ok.statusCode).toBe(204);
   });
 });
