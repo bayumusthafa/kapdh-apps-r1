@@ -26,7 +26,13 @@ import { cn } from "../../lib/cn";
 import { formatDate, formatDateTime, formatRupiah } from "../../lib/format";
 import { moneySchema, requiredText } from "../../lib/validation";
 import { ADJUSTMENT_REASON_MAX, DestinationFields } from "./CreateAdjustmentDialog";
-import { ADJUSTMENT_KIND_LABEL, AdjustmentStatusBadge, memberName, memberSubtitle, paymentTypeText } from "./labels";
+import {
+  ADJUSTMENT_KIND_LABEL,
+  AdjustmentStatusBadge,
+  memberName,
+  memberSubtitle,
+  paymentTypeText,
+} from "./labels";
 import { compareMoney } from "./money";
 import { adjustmentDetailKey, invalidateAdjustments } from "./queries";
 
@@ -60,7 +66,13 @@ function asAdjustment(value: unknown): Adjustment | null {
  * - Semua perubahan memakai If-Match `version`; konflik (mis. pemilik baru saja mengirim rekening tujuan) memuat
  *   data terbaru dan diumumkan, tidak menimpa diam-diam (AC F15-4).
  */
-export function AdjustmentPanel({ adjustmentId, focusRequest = 0 }: { adjustmentId: string; focusRequest?: number }) {
+export function AdjustmentPanel({
+  adjustmentId,
+  focusRequest = 0,
+}: {
+  adjustmentId: string;
+  focusRequest?: number;
+}) {
   const auth = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate({ from: "/payments" });
@@ -142,7 +154,12 @@ export function AdjustmentPanel({ adjustmentId, focusRequest = 0 }: { adjustment
   if (detail.isError)
     return (
       <Card>
-        <ErrorState error={detail.error} onRetry={() => void detail.refetch()} compact title="Detail gagal dimuat" />
+        <ErrorState
+          error={detail.error}
+          onRetry={() => void detail.refetch()}
+          compact
+          title="Detail gagal dimuat"
+        />
       </Card>
     );
 
@@ -260,7 +277,8 @@ function adjustmentItems(a: Adjustment): KeyValueItem[] {
         <>
           {paymentTypeText(a.payment)} {formatRupiah(a.payment.amount)}
           <span className="block text-xs font-normal text-text-muted">
-            Lunas{a.payment.decided_at ? ` ${formatDate(a.payment.decided_at)}` : ""}; status lunas tidak berubah.
+            Lunas{a.payment.decided_at ? ` ${formatDate(a.payment.decided_at)}` : ""}; status lunas tidak
+            berubah.
           </span>
         </>
       ),
@@ -307,7 +325,10 @@ function adjustmentItems(a: Adjustment): KeyValueItem[] {
 function RefundDestination({ a }: { a: Adjustment }) {
   const d = a.refund_destination;
   return (
-    <section aria-labelledby="rekening-refund" className="flex flex-col gap-2 rounded-md border border-divider p-3">
+    <section
+      aria-labelledby="rekening-refund"
+      className="flex flex-col gap-2 rounded-md border border-divider p-3"
+    >
       <h3 id="rekening-refund" className="text-sm font-semibold">
         Rekening tujuan refund
       </h3>
@@ -333,8 +354,8 @@ function RefundDestination({ a }: { a: Adjustment }) {
         </>
       ) : a.has_refund_destination ? (
         <p className="text-sm text-text-muted">
-          Rekening tujuan sudah dikirim pemilik. Rinciannya hanya terlihat oleh pengurus berizin memutus pembayaran
-          yang tidak berkonflik kepentingan.
+          Rekening tujuan sudah dikirim pemilik. Rinciannya hanya terlihat oleh pengurus berizin memutus
+          pembayaran yang tidak berkonflik kepentingan.
         </p>
       ) : a.payment.member ? (
         <p className="text-sm text-text-muted">
@@ -676,7 +697,12 @@ function EditDialog({ open, adjustment: a, onClose, onDone, onConflict }: Dialog
       }
     >
       <FormProvider {...form}>
-        <form id="ubah-penyesuaian" noValidate className="flex flex-col gap-4" onSubmit={form.handleSubmit(submit)}>
+        <form
+          id="ubah-penyesuaian"
+          noValidate
+          className="flex flex-col gap-4"
+          onSubmit={form.handleSubmit(submit)}
+        >
           <FormError message={errors.root?.server?.message} />
           <FormField<EditValues, "amount"> name="amount" label="Nominal" required>
             {(field, a11y) => (

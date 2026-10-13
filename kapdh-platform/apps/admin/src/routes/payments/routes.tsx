@@ -20,7 +20,8 @@ export function validatePaymentsSearch(search: Record<string, unknown>): Payment
   const out: PaymentsSearch = {};
   if (PAYMENT_TABS.includes(search.tab as PaymentTab)) out.tab = search.tab as PaymentTab;
   if (typeof search.payment === "string" && UUID.test(search.payment)) out.payment = search.payment;
-  if (typeof search.adjustment === "string" && UUID.test(search.adjustment)) out.adjustment = search.adjustment;
+  if (typeof search.adjustment === "string" && UUID.test(search.adjustment))
+    out.adjustment = search.adjustment;
   return out;
 }
 

@@ -626,8 +626,8 @@ function CancelInstruction({
   return (
     <div className="flex flex-col gap-2 border-t border-divider pt-4">
       <p className="text-sm text-text-muted">
-        Belum ada bukti transfer. Instruksi yang ditinggalkan dapat dibatalkan agar alumni dapat membuat instruksi
-        baru; tindakan ini tidak membuka akses apa pun.
+        Belum ada bukti transfer. Instruksi yang ditinggalkan dapat dibatalkan agar alumni dapat membuat
+        instruksi baru; tindakan ini tidak membuka akses apa pun.
       </p>
       <Button
         variant="danger"
