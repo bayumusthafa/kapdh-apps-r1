@@ -77,6 +77,9 @@ Future<ReservationOutcome> submitReservation(
   final detail = ref.read(eventDetailControllerProvider(event.id).notifier);
   try {
     final ticket = await repository.reserve(event.id, expectedPrice: event.price, paymentMethodId: paymentMethodId);
+    // Kuota, tombol "Lihat Tiket Saya" dan daftar Tiket Saya mengikuti keadaan server terbaru.
+    unawaited(detail.reload());
+    ref.invalidate(ticketsControllerProvider);
     return ReservationDone(ticket: ticket, ticketId: ticket.id, paymentId: ticket.payment?.id);
   } on ApiException catch (error) {
     final current = eventDetailFromConflict(error);
@@ -121,9 +124,13 @@ Future<ReservationOutcome> submitReservation(
 /// ulang dengan Idempotency-Key yang sama (disimpan IdempotencyStore sampai hasilnya diketahui).
 Future<ReservationOutcome> _checkAfterNetworkFailure(BuildContext context, WidgetRef ref, EventDetail event) async {
   showAppSnackBar(ref, 'Koneksi terputus. Memeriksa status pendaftaran Anda…');
+  final repository = ref.read(eventsRepositoryProvider);
   final latest = await ref.read(eventDetailControllerProvider(event.id).notifier).reload();
   final mine = latest?.myTicket;
   if (latest != null && mine != null && isActiveTicketStatus(mine.status)) {
+    // Hasil permintaan pertama sudah pasti (tiket tercatat): key reservasi dilepas (PRD 4.3).
+    await repository.completeReservation(event.id);
+    ref.invalidate(ticketsControllerProvider);
     showAppSnackBar(ref, 'Pendaftaran Anda sudah tercatat. Tiket Anda dibuka.');
     return ReservationDone(ticketId: mine.id);
   }

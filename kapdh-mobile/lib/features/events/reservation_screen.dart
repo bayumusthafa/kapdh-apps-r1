@@ -33,9 +33,9 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
   String? _methodError;
   bool _busy = false;
 
-  /// Harga yang pernah ditampilkan di layar ini; perubahan dari server ditandai agar anggota memeriksa ulang.
-  String? _shownPrice;
-  bool _priceChanged = false;
+  /// Harga saat layar ini pertama dibuka; harga terbaru dari server yang berbeda ditandai agar anggota memeriksa
+  /// ulang sebelum mengirim (PRD 4.4 `expected_price`).
+  String? _initialPrice;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +44,8 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
     if (event == null) {
       return const AppScaffold(title: 'Konfirmasi Pendaftaran', body: LoadingSkeleton(semanticsLabel: 'Memuat event'));
     }
-    _shownPrice ??= event.price;
+    _initialPrice ??= event.price;
+    final priceChanged = event.price != _initialPrice;
     final methods = ref.watch(paymentMethodsProvider);
     final price = formatEventPrice(event.price, isFree: event.isFree);
     final canSubmit = event.canReserve && !event.isFree && _methodId != null && !_busy && !maintenance;
@@ -66,7 +67,7 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
           const SizedBox(height: KapdhSpace.s4),
           const _Label('Harga Tiket'),
           _ValueBox(text: price, key: const ValueKey('reservation-price')),
-          if (_priceChanged) ...[
+          if (priceChanged) ...[
             const SizedBox(height: KapdhSpace.s2),
             InfoBox(
               tone: InfoBoxTone.warning,
@@ -174,7 +175,7 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
             padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s3, KapdhSpace.s5, KapdhSpace.s3),
             child: KapdhButton(
               key: const ValueKey('reservation-submit'),
-              label: _priceChanged ? 'Setuju Harga Baru dan Daftar' : 'Daftar dan Lanjut Bayar',
+              label: priceChanged ? 'Setuju Harga Baru dan Daftar' : 'Daftar dan Lanjut Bayar',
               busy: _busy,
               busyLabel: 'Mendaftarkan…',
               semanticsHint: _methodId == null ? 'Pilih metode pembayaran lebih dahulu' : null,
@@ -196,13 +197,11 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
     setState(() => _busy = false);
     switch (outcome) {
       case final ReservationDone done:
-        Navigator.of(context).pop();
-        openReservationResult(context, ref, done);
-      case ReservationPriceChanged(event: final latest):
-        setState(() {
-          _priceChanged = latest.price != _shownPrice;
-          _shownPrice = latest.price;
-        });
+        // Layar detail event yang membuka layar ini meneruskan ke pembayaran atau detail tiket.
+        Navigator.of(context).pop(done);
+      case ReservationPriceChanged():
+        // Detail event sudah diganti `current`; build berikutnya menandai harga baru untuk dikonfirmasi ulang.
+        break;
       case ReservationInvalidMethod(:final message):
         setState(() {
           _methodId = null;
