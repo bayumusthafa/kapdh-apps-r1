@@ -48,10 +48,13 @@ describe("Kontrak akses modul notifications (ARCHITECTURE §4.3, §6)", () => {
         .filter(([, op]) => op.tags?.some((tag) => tag === "Notifications" || tag === "Admin Notifications"))
         .map(([method, op]) => [op.operationId!, method, path] as const),
     );
-    expect(Object.fromEntries(contractOps.map(([id, method, path]) => [id, [method, path]]))).toEqual(OPERATIONS);
+    expect(Object.fromEntries(contractOps.map(([id, method, path]) => [id, [method, path]]))).toEqual(
+      OPERATIONS,
+    );
     const routes = routeAccessList(t.app).filter((route) => CONTROLLERS.has(route.name.split(".")[0]!));
     const served = new Set(routes.map((route) => `${route.method} ${route.path}`));
-    for (const [method, path] of Object.values(OPERATIONS)) expect(served, `${method} ${path}`).toContain(`${method} ${path}`);
+    for (const [method, path] of Object.values(OPERATIONS))
+      expect(served, `${method} ${path}`).toContain(`${method} ${path}`);
     expect(routes).toHaveLength(Object.keys(OPERATIONS).length);
   });
 
@@ -62,8 +65,14 @@ describe("Kontrak akses modul notifications (ARCHITECTURE §4.3, §6)", () => {
     const byPath = new Map(routes.map((route) => [`${route.method} ${route.path}`, route]));
     for (const path of ["get /notifications", "put /devices", "post /notifications/read"])
       expect(byPath.get(path)!.meta).toMatchObject({ audience: "mobile", memberAccess: "any" });
-    for (const path of ["post /admin/notifications/deliveries/retry", "post /admin/notifications/outbox/retry"]) {
-      expect(byPath.get(path)!.meta).toMatchObject({ audience: "admin", permissions: ["notifications.manage"] });
+    for (const path of [
+      "post /admin/notifications/deliveries/retry",
+      "post /admin/notifications/outbox/retry",
+    ]) {
+      expect(byPath.get(path)!.meta).toMatchObject({
+        audience: "admin",
+        permissions: ["notifications.manage"],
+      });
       expect(byPath.get(path)!.idempotent).toBe(true);
     }
   });

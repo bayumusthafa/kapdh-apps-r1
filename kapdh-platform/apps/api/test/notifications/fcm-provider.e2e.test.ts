@@ -35,7 +35,13 @@ interface Recorded {
   body: string;
 }
 
-type Reply = { status: number; body?: unknown; raw?: string; headers?: Record<string, string>; hang?: boolean };
+type Reply = {
+  status: number;
+  body?: unknown;
+  raw?: string;
+  headers?: Record<string, string>;
+  hang?: boolean;
+};
 
 let server: Server;
 let baseUrl: string;
@@ -78,7 +84,10 @@ beforeAll(async () => {
       if (req.url === `/v1/projects/${PROJECT}/messages:send`) {
         respond(
           res,
-          sendReplies.shift() ?? { status: 200, body: { name: `projects/${PROJECT}/messages/${++messageCounter}` } },
+          sendReplies.shift() ?? {
+            status: 200,
+            body: { name: `projects/${PROJECT}/messages/${++messageCounter}` },
+          },
         );
         return;
       }
@@ -182,7 +191,10 @@ describe("FcmPushSender terhadap endpoint HTTP tiruan (FCM HTTP v1)", () => {
             status: "INVALID_ARGUMENT",
             message: "The registration token is not a valid FCM registration token",
             details: [
-              { "@type": "type.googleapis.com/google.firebase.fcm.v1.FcmError", errorCode: "INVALID_ARGUMENT" },
+              {
+                "@type": "type.googleapis.com/google.firebase.fcm.v1.FcmError",
+                errorCode: "INVALID_ARGUMENT",
+              },
               {
                 "@type": "type.googleapis.com/google.rpc.BadRequest",
                 fieldViolations: [{ field: "message.token", description: "Invalid registration token" }],
@@ -219,7 +231,13 @@ describe("FcmPushSender terhadap endpoint HTTP tiruan (FCM HTTP v1)", () => {
       { ok: false, errorClass: "unregistered", retryable: false, deactivateToken: true },
       { ok: false, errorClass: "invalid_argument", retryable: false, deactivateToken: true },
       { ok: false, errorClass: "invalid_argument", retryable: false, deactivateToken: false },
-      { ok: false, errorClass: "quota_exceeded", retryable: true, deactivateToken: false, retryAfterSeconds: 45 },
+      {
+        ok: false,
+        errorClass: "quota_exceeded",
+        retryable: true,
+        deactivateToken: false,
+        retryAfterSeconds: 45,
+      },
       { ok: false, errorClass: "unavailable", retryable: true, deactivateToken: false },
       { ok: false, errorClass: "internal", retryable: true, deactivateToken: false },
       { ok: false, errorClass: "sender_mismatch", retryable: false, deactivateToken: true },
@@ -296,12 +314,18 @@ describe("Prosesor pengiriman → FCM tiruan (F-13, AC F13-1, F13-4)", () => {
     const token = fcmToken("fcm-nyata");
     await registerDeviceOk(t, session.accessToken, token);
 
-    const first = await notify(t, member.userId, { category: "membership", route: "/kta", body: "KTA aktif." });
+    const first = await notify(t, member.userId, {
+      category: "membership",
+      route: "/kta",
+      body: "KTA aktif.",
+    });
     await t.jobs.drainOutbox();
     const sent = await deliveryOf(t, first.id, "push");
     expect(sent).toMatchObject({ status: "sent", providerStatus: "accepted" });
     expect(sent.providerMessageId).toMatch(new RegExp(`^projects/${PROJECT}/messages/\\d+$`));
-    const payload = JSON.parse(sends().at(-1)!.body) as { message: { token: string; data: Record<string, string> } };
+    const payload = JSON.parse(sends().at(-1)!.body) as {
+      message: { token: string; data: Record<string, string> };
+    };
     expect(payload.message.token).toBe(token);
     expect(payload.message.data).toEqual({
       notification_id: first.id,
@@ -318,7 +342,10 @@ describe("Prosesor pengiriman → FCM tiruan (F-13, AC F13-1, F13-4)", () => {
     ];
     const second = await notify(t, member.userId, { category: "membership", route: "/kta" });
     await t.jobs.drainOutbox();
-    expect(await deliveryOf(t, second.id, "push")).toMatchObject({ status: "failed", errorClass: "UNREGISTERED" });
+    expect(await deliveryOf(t, second.id, "push")).toMatchObject({
+      status: "failed",
+      errorClass: "UNREGISTERED",
+    });
     expect((await tokenRow(t, token))!.revokedAt).not.toBeNull();
   });
 });

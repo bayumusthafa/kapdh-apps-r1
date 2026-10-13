@@ -28,7 +28,10 @@ const markReadSchema = z
       .array(z.uuid({ message: "Format id tidak valid" }))
       .min(1, "Minimal satu id")
       .max(100, "Maksimal 100 id")
-      .refine((ids) => new Set(ids.map((id) => id.toLowerCase())).size === ids.length, "Id tidak boleh berulang")
+      .refine(
+        (ids) => new Set(ids.map((id) => id.toLowerCase())).size === ids.length,
+        "Id tidak boleh berulang",
+      )
       .optional(),
     all: z.boolean().optional(),
     up_to: z.iso.datetime({ offset: true, message: "Gunakan format tanggal-waktu ISO 8601" }).optional(),
@@ -52,7 +55,9 @@ const markReadSchema = z
 const toggles = <T extends readonly string[]>(categories: T) =>
   z
     .object(
-      Object.fromEntries(categories.map((category) => [category, z.boolean({ message: "Wajib true atau false" })])) as {
+      Object.fromEntries(
+        categories.map((category) => [category, z.boolean({ message: "Wajib true atau false" })]),
+      ) as {
         [K in T[number]]: z.ZodBoolean;
       },
     )

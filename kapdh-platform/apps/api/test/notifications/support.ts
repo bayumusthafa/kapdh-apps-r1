@@ -44,11 +44,7 @@ export async function registerDevice(
   token: string,
   platform: "android" | "ios" = "android",
 ) {
-  return httpClient(t.app).put(
-    "/devices",
-    { platform, token, app_version: "1.0.0" },
-    { token: accessToken },
-  );
+  return httpClient(t.app).put("/devices", { platform, token, app_version: "1.0.0" }, { token: accessToken });
 }
 
 export async function registerDeviceOk(t: TestApp, accessToken: string, token: string) {

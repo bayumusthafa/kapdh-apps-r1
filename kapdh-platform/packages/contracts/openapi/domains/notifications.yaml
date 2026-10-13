@@ -181,7 +181,10 @@ paths:
         pencocokan token dengan sesi selalu melalui `sessions.family_id`.
 
         Langkah dalam SATU transaksi:
-        1. Baris sesi pemanggil (sid access token) dibaca untuk family_id. Baris device_tokens untuk token ini
+        1. Baris sesi pemanggil (sid access token) dibaca untuk family_id. Baris sesi AKTIF keluarga itu dikunci
+           (FOR NO KEY UPDATE, urutan kunci yang sama dengan logout/pencabutan sesi) sehingga pendaftaran yang
+           bersamaan dengan logout berurutan: bila keluarga sudah dicabut, 401 UNAUTHENTICATED dan token tidak
+           pernah aktif untuk sesi yang sudah keluar. Baris device_tokens untuk token ini
            dikunci (SELECT ... FOR UPDATE; bila belum ada, INSERT ... ON CONFLICT (token) DO NOTHING lalu dikunci).
         2. Token berpindah AKUN (device_tokens.user_id berbeda dari pemanggil, misalnya logout lalu masuk akun
            lain di perangkat yang sama): seluruh pengiriman `pending` pada token itu dibatalkan (status
@@ -287,7 +290,12 @@ components:
         Deep link satu bentuk di semua kanal (PRD 3.13, ARCHITECTURE §4.7): notifications.data.route menyimpan
         rute aplikasi sebagai STRING path (ARCHITECTURE §8.4, misalnya `/payments/<id>`); `deep_link` di REST,
         payload realtime dan payload data FCM (bersama `notification_id` dan `category`) adalah bentuk eksternal
-        `kapdh://app` + path tersebut. Klien cukup mengurai satu format. Katalog rute per kategori:
+        `kapdh://app` + path tersebut. Klien cukup mengurai satu format. Payload data FCM juga membawa `route`
+        (path yang sama, untuk klien yang membaca `data.route`); keduanya tidak ada bila notifikasi tanpa rute.
+        Bagian `notification` push hanya judul dan isi ringkas (alamat email/nomor telepon disamarkan sebagai
+        pertahanan berlapis) dengan collapse key = id notifikasi, sehingga pengiriman ulang menggantikan, bukan
+        menggandakan, notifikasi di baki perangkat. Rute tersimpan yang bukan rute aplikasi sah (§8.4) tidak pernah
+        dikirim: `deep_link` menjadi null. Katalog rute per kategori:
 
         | rute (path)              | kategori lazim   |
         | ------------------------ | ---------------- |
