@@ -3,6 +3,7 @@ import type { Clock } from "../adapters/clock.js";
 import { type Actor, ctx } from "../context/request-context.js";
 import type { DbOrTx } from "../db/types.js";
 import { CLOCK } from "../tokens.js";
+import type { AuditLimits } from "./sanitize.js";
 import { type AuditRole, writeAudit } from "./write-audit.js";
 
 export interface AuditEntry {
@@ -14,6 +15,11 @@ export interface AuditEntry {
   after?: unknown;
   /** Bawaan dari ctx().actor; isi eksplisit hanya bila aktor berbeda dari pemanggil (mis. CLI bootstrap). */
   actor?: Pick<Actor, "kind" | "userId" | "adminId" | "adminRole">;
+  /**
+   * Batas penyaring before/after; bawaan AUDIT_LIMITS. AUDIT_DOCUMENT_LIMITS untuk entri yang wajib memuat teks
+   * dokumen utuh (mis. `page.published`, F-01).
+   */
+  limits?: AuditLimits;
 }
 
 export function auditRoleOf(actor: Pick<Actor, "kind" | "adminRole">): AuditRole {
@@ -54,6 +60,7 @@ export class AuditService {
       before: entry.before,
       after: entry.after,
       createdAt: this.clock.now(),
+      ...(entry.limits ? { limits: entry.limits } : {}),
     });
   }
 }

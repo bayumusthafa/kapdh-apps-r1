@@ -77,6 +77,11 @@ paths:
         Validasi: `category_id` harus kategori `post` yang aktif; `cover_file_id` harus berkas purpose `post_cover`
         dari POST /admin/content/media yang belum dihapus. Slug sudah dipakai -> 409 VALIDATION_ERROR
         (`field_errors.slug`). Idempotency-Key mencegah draf ganda saat tombol simpan terkirim dua kali.
+
+        Rincian implementasi (aditif): cover baru wajib diunggah pengurus pemanggil dan belum dipakai objek lain
+        (satu berkas = satu objek; selain itu 400 `field_errors.cover_file_id`). Gambar di dalam `body_html` wajib
+        gambar konten KAPDH yang ada (selain itu 400 `field_errors.body_html`) dan dilampirkan agar tidak
+        dibersihkan job berkas.
       x-kapdh-access: { audience: admin, permissions: [content.manage], idempotent: true }
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -162,7 +167,8 @@ paths:
       description: |
         Hanya `draft` atau `archived`; berita yang tampil atau terjadwal diarsipkan dahulu (409 VERSION_CONFLICT
         dengan `current`). Like ikut terhapus; banner yang menunjuk berita ini menjadi `available = false` (AC F08-2).
-        Cover yang tidak lagi dipakai dibersihkan job berkas. Tercatat di audit.
+        Cover yang tidak lagi dirujuk berita/banner/halaman lain dibuang (berkas `deleted`, objek dihapus setelah
+        commit). Tercatat di audit.
       x-kapdh-access: { audience: admin, permissions: [content.manage] }
       parameters:
         - $ref: "#/components/parameters/ContentPostId"
@@ -384,6 +390,9 @@ paths:
         kemudian tidak tersedia, Beranda menandainya `available = false`. `image_file_id` harus berkas purpose
         `banner_image` dari POST /admin/content/media. `ends_at` harus setelah `starts_at`. Pelanggaran -> 400
         VALIDATION_ERROR dengan `field_errors` (mis. `target_value`).
+
+        Rincian implementasi (aditif): gambar wajib diunggah pengurus pemanggil dan belum dipakai objek lain; URL
+        target tidak boleh memuat nama pengguna/sandi; id berita/event disimpan dalam huruf kecil.
       x-kapdh-access: { audience: admin, permissions: [content.manage], idempotent: true }
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -429,8 +438,8 @@ paths:
       summary: Ubah banner, termasuk urutan, jendela, aktif dan target (AC F08-2, F15-4).
       description: |
         Hanya field yang dikirim yang berubah; `version` naik. `target_type` dan `target_value` wajib dikirim
-        bersama dan divalidasi seperti saat membuat. Mengganti gambar melepas gambar lama untuk dibersihkan job
-        berkas.
+        bersama dan divalidasi seperti saat membuat. Mengganti gambar melepas gambar lama; gambar yang tidak lagi
+        dirujuk konten lain dibuang (berkas `deleted`, objek dihapus setelah commit).
       x-kapdh-access: { audience: admin, permissions: [content.manage] }
       parameters:
         - $ref: "#/components/parameters/ContentBannerId"
@@ -1122,7 +1131,10 @@ components:
           type: string
           minLength: 1
           maxLength: 200000
-          description: HTML dari editor; disanitasi server sebelum disimpan (PRD 3.8). Kosong setelah sanitasi ditolak.
+          description: |
+            HTML dari editor; disanitasi server sebelum disimpan (PRD 3.8). Kosong setelah sanitasi ditolak. Hasil
+            sanitasi juga maksimal 200.000 karakter (atribut tautan luar dan escape `&`/`<` menambah panjang);
+            lebih dari itu -> 400 `field_errors.body_html`.
         cover_file_id:
           type: [string, "null"]
           format: uuid
@@ -1144,7 +1156,11 @@ components:
           pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
           description: Hanya bila `slug_locked = false`.
         excerpt: { type: [string, "null"], maxLength: 300 }
-        body_html: { type: string, minLength: 1, maxLength: 200000 }
+        body_html:
+          type: string
+          minLength: 1
+          maxLength: 200000
+          description: Aturan sama dengan AdminPostCreateRequest.body_html (hasil sanitasi maksimal 200.000 karakter).
         cover_file_id: { type: [string, "null"], format: uuid }
         category_id:
           type: [string, "null"]
@@ -1192,7 +1208,9 @@ components:
           description: Judul berita/event/halaman tujuan untuk tabel pengurus; null bila tidak ada atau `none`/`url`.
         route:
           type: [string, "null"]
-          description: Rute aplikasi yang akan dibuka anggota (`/news/{slug}`, `/events/{id}`, `/legal/{slug}`).
+          description: |
+            Rute aplikasi yang akan dibuka anggota (`/news/{slug}`, `/events/{id}`, `/legal/{slug}`); null untuk
+            `none`/`url` dan bila tujuan tidak tersedia (sama dengan `HomeBannerTarget.route`).
         category:
           description: |
             Kategori berita/event tujuan, untuk kolom "Kategori" tabel banner (guideline p13); banner tidak memiliki
@@ -1367,7 +1385,12 @@ components:
         slug: { type: string, minLength: 1, maxLength: 120, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" }
         title: { type: string, minLength: 1, maxLength: 200 }
         body_html:
-          { type: string, minLength: 1, maxLength: 200000, description: Disanitasi server (PRD 3.8). }
+          type: string
+          minLength: 1
+          maxLength: 200000
+          description: |
+            Disanitasi server (PRD 3.8). Hasil sanitasi juga maksimal 200.000 karakter agar teks tayang selalu
+            tercatat utuh di audit `page.published` (F-01); lebih dari itu -> 400 `field_errors.body_html`.
 
     AdminInfoPageUpdateRequest:
       type: object
@@ -1380,7 +1403,11 @@ components:
           pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
           description: Hanya bila `slug_locked = false`.
         title: { type: string, minLength: 1, maxLength: 200 }
-        body_html: { type: string, minLength: 1, maxLength: 200000 }
+        body_html:
+          type: string
+          minLength: 1
+          maxLength: 200000
+          description: Aturan sama dengan AdminInfoPageCreateRequest.body_html (hasil sanitasi maksimal 200.000 karakter).
 
     AdminInfoPagePublishRequest:
       type: object
