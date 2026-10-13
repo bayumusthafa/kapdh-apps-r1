@@ -244,7 +244,7 @@ describe("GET /me/card (F-05)", () => {
     ).rejects.toThrow();
   });
 
-  it("PRD 2.2, 3.5: expired berlabel KTA Kedaluwarsa tanpa QR dengan ajakan Perpanjang; isi kartu minimum tanpa kontak", async () => {
+  it("AC F05-3, PRD 2.2: expired berlabel KTA Kedaluwarsa tanpa QR dengan ajakan Perpanjang; isi kartu minimum tanpa kontak", async () => {
     const { token } = await member({ status: "expired", city: "Garut" });
     const card = await getCard(t, token);
     expect(card).toMatchObject({
@@ -261,7 +261,7 @@ describe("GET /me/card (F-05)", () => {
     for (const key of ["email", "phone", "address"]) expect(card).not.toHaveProperty(key);
   });
 
-  it("Akses: tanpa sesi 401, token admin 403; kartu tidak dicache perantara", async () => {
+  it("AC F05-4, N-09: tanpa sesi 401, token admin 403; kartu tidak dicache perantara", async () => {
     const api = httpClient(t.app);
     expect((await api.get("/me/card")).statusCode).toBe(401);
     const { token: adminToken } = await adminWith(t, ["members.read"]);
@@ -473,7 +473,7 @@ describe("POST /public/kta/verify (F-06)", () => {
     expectOperation("post", "/public/kta/verify", ipLimited);
   });
 
-  it("PRD 4.5: tetap dilayani selama maintenance; body di luar skema ditolak 400", async () => {
+  it("AC F06-4, PRD 4.5: tetap dilayani selama maintenance; body di luar skema ditolak 400", async () => {
     const { qr } = await activeQr();
     await setSetting(t, "maintenance", { active: true, message: "Pemeliharaan (uji)", until: null });
     try {

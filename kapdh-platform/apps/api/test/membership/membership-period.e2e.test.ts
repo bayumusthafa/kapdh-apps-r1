@@ -182,7 +182,7 @@ describe("GET /me/membership (F-07)", () => {
     expect(state).toMatchObject({ effective_status: "expired", renewal_eligible: true });
   });
 
-  it("PRD 2.1: periode 12 bulan kalender Jakarta dengan klem akhir bulan (29 Februari)", async () => {
+  it("AC F07-1, PRD 2.1: periode 12 bulan kalender Jakarta dengan klem akhir bulan (29 Februari)", async () => {
     const fixture = await createAlumni(t, { status: "unverified" });
     // 29 Februari 2032 10:00 WIB (jam uji hanya bergerak maju).
     const approvedAt = new Date("2032-02-29T03:00:00Z");
@@ -197,7 +197,7 @@ describe("GET /me/membership (F-07)", () => {
     expect(event!.kind).toBe("activation");
   });
 
-  it("Akses: semua status bersesi dapat membaca (termasuk suspended); token admin 403; tanpa sesi 401", async () => {
+  it("AC F07-4, PRD 2.2: semua status bersesi dapat membaca (termasuk suspended); token admin 403; tanpa sesi 401", async () => {
     const suspended = await createAlumni(t, { status: "suspended" });
     expect((await membershipOf(suspended)).effective_status).toBe("suspended");
     const api = httpClient(t.app);

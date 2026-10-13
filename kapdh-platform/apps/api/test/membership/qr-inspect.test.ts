@@ -67,7 +67,7 @@ describe("QrTokenService.inspect (kontrak verifyKta langkah 1; AC F06-3)", () =>
     for (const token of rejected) expect(await qr.inspect(token)).toBeNull();
   });
 
-  it("Rotasi kunci: token yang ditandatangani kunci lama tetap terbaca selama kuncinya masih terdaftar", async () => {
+  it("AC F06-3, PRD 3.5 rotasi kunci: token yang ditandatangani kunci lama tetap terbaca selama kuncinya masih terdaftar", async () => {
     const clock = new TestClock();
     const old = service(clock, "k1:" + "q".repeat(32));
     const signed = (await old.qr.sign({

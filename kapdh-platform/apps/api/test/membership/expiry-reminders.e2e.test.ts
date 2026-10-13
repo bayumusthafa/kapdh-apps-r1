@@ -100,7 +100,7 @@ describe("membership.expiry-reminders (AC F07-5)", () => {
     expect(new Set(inbox.map((n) => n.dedupKey)).size).toBe(2);
   });
 
-  it("Pemberitahuan masa habis sekali per periode; suspended, akun nonaktif dan periode yang habis lama tidak dikirimi", async () => {
+  it("AC F07-5, F13-6: pemberitahuan masa habis sekali per periode; suspended, akun nonaktif dan periode yang habis lama tidak dikirimi", async () => {
     const expired = await memberExpiringIn(-DAY_MS);
     const longAgo = await memberExpiringIn(-40 * DAY_MS);
     const suspended = await createAlumni(t, { status: "suspended" });
@@ -143,7 +143,7 @@ describe("membership.expiry-reminders (AC F07-5)", () => {
     expect(afterUnsuspend).toHaveLength(1);
   });
 
-  it("Iuran renewal yang menunggu verifikasi tidak diingatkan; pengingat dikirim bila tidak ada lagi", async () => {
+  it("AC F07-5: iuran renewal yang menunggu verifikasi tidak diingatkan; pengingat dikirim bila tidak ada lagi", async () => {
     const member = await memberExpiringIn(15 * DAY_MS);
     const pending = await createMembershipPayment(t, {
       userId: member.userId,
@@ -160,7 +160,7 @@ describe("membership.expiry-reminders (AC F07-5)", () => {
     expect(await inboxOf(member.userId)).toHaveLength(1);
   });
 
-  it("ARCHITECTURE §4.8: job terdaftar setiap jam di JobRegistry lewat modul job yang dimuat worker", () => {
+  it("AC F07-5, ARCHITECTURE §4.8: job terdaftar setiap jam di JobRegistry lewat modul job yang dimuat worker", () => {
     const job = t.jobs.registry.scheduledJob(EXPIRY_REMINDERS_JOB);
     expect(job?.everyMs).toBe(3600_000);
     expect(WORKER_MODULES).toContain(MembershipJobsModule);
