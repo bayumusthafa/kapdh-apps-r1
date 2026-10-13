@@ -227,7 +227,10 @@ void main() {
       var newer = false;
       final app = await openHistory(tester, (query) {
         if (query['cursor'] == 'c2') {
-          return FakeResponse.json(200, page([paymentJson(id: 'pay-2', type: 'renewal', status: 'paid', stage: 'paid')]));
+          return FakeResponse.json(
+            200,
+            page([paymentJson(id: 'pay-2', type: 'renewal', status: 'paid', stage: 'paid')]),
+          );
         }
         return FakeResponse.json(
           200,
@@ -260,9 +263,8 @@ void main() {
       var decided = false;
       await openHistory(
         tester,
-        (_) => failing
-            ? FakeResponse.network()
-            : FakeResponse.json(200, page([decided ? paid() : awaitingReviewJson()])),
+        (_) =>
+            failing ? FakeResponse.network() : FakeResponse.json(200, page([decided ? paid() : awaitingReviewJson()])),
       );
 
       failing = true;
