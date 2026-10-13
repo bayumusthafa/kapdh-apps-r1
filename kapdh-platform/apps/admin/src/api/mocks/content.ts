@@ -15,8 +15,9 @@ import {
 /**
  * Tiruan Manajemen Konten (F-08, F-15) mengikuti kontrak admin-content final (C4): berita dengan keadaan turunan
  * draft/terjadwal/terbit/arsip, banner dengan target tervalidasi dan jendela tayang, halaman informasi/legal
- * berversi (draf kerja vs salinan tayang), kategori berita (content.manage) dan event (events.manage), serta unggah
- * gambar konten. Bukan bukti lulus acceptance criteria (PRD 7.3); aturan nyata ditegakkan modul API content.
+ * berversi (draf kerja vs salinan tayang), kategori berita (content.manage) serta unggah gambar konten. Kategori event
+ * (/admin/content/event-categories, events.manage) ditiru area events (mocks/events.ts) karena dikelola halaman Event &
+ * Tiket (guideline p14); baris kategori event di sini hanya untuk kolom Kategori banner bertujuan event. Bukan bukti lulus acceptance criteria (PRD 7.3); aturan nyata ditegakkan modul API content.
  *
  * Aturan server yang ditiru:
  * - Pembaruan, transisi dan penghapusan wajib If-Match; versi lama -> 409 VERSION_CONFLICT dengan `current`
@@ -180,6 +181,23 @@ let seq = 0;
 const uploads = new Map<string, number>();
 const replays = new Map<string, { payload: string; status: number; body: unknown }>();
 
+/** Gerbang uji: permintaan ditahan sampai dilepas agar keadaan "sedang berjalan" dapat diuji (lihat mockContent). */
+interface Gate {
+  promise: Promise<void>;
+  release: () => void;
+  fail: boolean;
+}
+let uploadGate: Gate | null = null;
+let categoryListGate: Gate | null = null;
+
+function gate(fail: boolean): Gate {
+  let release!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { promise, release, fail };
+}
+
 export interface ContentRequestLog {
   method: string;
   path: string;
@@ -262,6 +280,10 @@ function page(spec: Partial<PageRow> & Pick<PageRow, "id" | "slug" | "title">): 
 
 export function reset(): void {
   contentRequests.length = 0;
+  uploadGate?.release();
+  uploadGate = null;
+  categoryListGate?.release();
+  categoryListGate = null;
   replays.clear();
   uploads.clear();
   seq = 0;
@@ -761,9 +783,9 @@ function pageDetail(p: PageRow): S["AdminInfoPage"] {
   };
 }
 
+/** Jumlah berita yang memakai kategori berita (hanya kategori berita yang dikelola tiruan ini). */
 function usageCount(c: CategoryRow): number {
-  if (c.kind === "post") return [...posts.values()].filter((p) => p.category_id === c.id).length;
-  return [...events.values()].filter((e) => e.category_id === c.id).length;
+  return [...posts.values()].filter((p) => p.category_id === c.id).length;
 }
 
 function categoryOut(c: CategoryRow): S["AdminContentCategory"] {
@@ -912,11 +934,15 @@ const desc = (a: string | null, b: string | null) =>
 // Kategori
 // ---------------------------------------------------------------------------------------------------------------
 
-const KIND_PERMISSION: Record<Kind, Permission> = { post: "content.manage", event: "events.manage" };
-
-function categoryRoutes(kind: Kind): MockRoute[] {
-  const base = kind === "post" ? "/admin/content/post-categories" : "/admin/content/event-categories";
-  const permission = KIND_PERMISSION[kind];
+/**
+ * Kategori berita (content.manage). /admin/content/event-categories sengaja tidak didaftarkan di sini: router tiruan
+ * memakai rute pertama yang cocok dan area dimuat berurutan nama berkas, sehingga rute kategori event di berkas ini
+ * akan menutupi tiruan milik area events.
+ */
+function postCategoryRoutes(): MockRoute[] {
+  const kind: Kind = "post";
+  const base = "/admin/content/post-categories";
+  const permission: Permission = "content.manage";
   const find = (req: MockRequest): CategoryRow | Response => {
     const bad = badId(req.params.categoryId, "categoryId");
     if (bad) return bad;
@@ -944,10 +970,16 @@ function categoryRoutes(kind: Kind): MockRoute[] {
     {
       method: "GET",
       path: base,
-      handler: (req) => {
+      handler: async (req) => {
         log(req);
         const denied = requirePermission(req, permission);
         if (denied) return denied;
+        const held = categoryListGate;
+        if (held) {
+          categoryListGate = null;
+          await held.promise;
+          if (held.fail) return error(500, "INTERNAL_ERROR", "Terjadi kesalahan. Coba lagi.");
+        }
         const params = req.url.searchParams;
         const q = (params.get("q") ?? "").trim().toLowerCase();
         const active = params.get("active");
@@ -1072,7 +1104,7 @@ function categoryRoutes(kind: Kind): MockRoute[] {
           return invalid(
             {
               _: [
-                `Kategori masih dipakai ${usageCount(c)} ${kind === "post" ? "berita" : "event"}. Nonaktifkan kategori agar tidak dipilih lagi.`,
+                `Kategori masih dipakai ${usageCount(c)} berita. Nonaktifkan kategori agar tidak dipilih lagi.`,
               ],
             },
             409,
@@ -1113,7 +1145,8 @@ function validatePostRefs(errs: FieldErrors, body: Record<string, unknown>, curr
 }
 
 function updatePost(p: PostRow, patch: Partial<PostRow>): PostRow {
-  const next = { ...p, ...patch, version: p.version + 1, updated_at: nowIso(), author: mockAdminRef() };
+  // `author` adalah pembuat berita (posts.author_admin_id), diisi sekali saat dibuat; tidak berubah saat diperbarui.
+  const next = { ...p, ...patch, version: p.version + 1, updated_at: nowIso() };
   posts.set(p.id, next);
   return next;
 }
@@ -1827,6 +1860,7 @@ const mediaRoutes: MockRoute[] = [
       const denied = requirePermission(req, "content.manage");
       if (denied) return denied;
       const form = await readMultipart(req.raw);
+      if (uploadGate) await uploadGate.promise;
       const purpose = form?.purpose;
       const file = form?.file;
       if (purpose !== "post_cover" && purpose !== "banner_image")
@@ -1859,8 +1893,7 @@ export const routes: MockRoute[] = [
   ...postRoutes,
   ...bannerRoutes,
   ...pageRoutes,
-  ...categoryRoutes("post"),
-  ...categoryRoutes("event"),
+  ...postCategoryRoutes(),
   ...mediaRoutes,
 ];
 
@@ -1891,6 +1924,28 @@ export const mockContent = {
   editPostElsewhere(id: string, patch: Partial<Pick<PostRow, "title" | "body_html" | "excerpt">> = {}): void {
     const p = posts.get(id);
     if (p) updatePost(p, { title: "Judul diubah pengurus lain", ...patch });
+  },
+  /** Berita dihapus langsung (mis. tujuan banner yang sudah dihapus pengurus lain, AC F08-2). */
+  deletePost(id: string): void {
+    posts.delete(id);
+  },
+  /** Tahan semua unggahan gambar konten sampai fungsi yang dikembalikan dipanggil (unggahan sedang berjalan). */
+  holdUploads(): () => void {
+    const held = gate(false);
+    uploadGate = held;
+    return () => {
+      if (uploadGate === held) uploadGate = null;
+      held.release();
+    };
+  },
+  /**
+   * Tahan permintaan daftar kategori berita berikutnya sampai fungsi yang dikembalikan dipanggil; dengan `fail`
+   * permintaan itu dijawab 500 setelah dilepas. Permintaan sesudahnya berjalan normal.
+   */
+  holdCategoryList(fail = false): () => void {
+    const held = gate(fail);
+    categoryListGate = held;
+    return () => held.release();
   },
   /** Waktu jadwal berita tiba (job menerbitkan): published_at dipindah ke masa lalu. */
   makeScheduledDue(id: string): void {

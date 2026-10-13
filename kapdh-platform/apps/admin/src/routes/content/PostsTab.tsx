@@ -19,7 +19,7 @@ import {
   type AdminPostSummary,
   CONTENT_PAGE_SIZE,
   contentKeys,
-  fetchCategoryOptions,
+  fetchPostCategoryOptions,
   invalidateContent,
   type S,
 } from "./contentApi";
@@ -89,9 +89,9 @@ export function PostsTab({ onManageCategories }: { onManageCategories: () => voi
   });
 
   const categories = useApiQuery({
-    queryKey: contentKeys.categoryOptions("post"),
+    queryKey: contentKeys.categoryOptions,
     staleTime: 60_000,
-    request: (ctx) => fetchCategoryOptions("post", ctx),
+    request: (ctx) => fetchPostCategoryOptions(ctx),
   });
   const categoryOptions = useMemo(
     () => [

@@ -26,6 +26,15 @@ async function openEditor(user: User, postId: string) {
   return utils;
 }
 
+/** PNG 1280x720 minimal (header IHDR) untuk unggahan tiruan. */
+function pngFile(name = "cover.png"): File {
+  const bytes = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0x05, 0x00, 0,
+    0, 0x02, 0xd0, 8, 6, 0, 0, 0,
+  ]);
+  return new File([bytes], name, { type: "image/png" });
+}
+
 const panel = () => screen.getByRole("region", { name: "Status & Penerbitan" });
 const lastRequest = (method: string, suffix: string) =>
   contentRequests.filter((r) => r.method === method && r.path.endsWith(suffix)).at(-1);
@@ -156,6 +165,12 @@ describe("editor berita (F-08, AC F08-1, F15-4, F15-5; server tiruan)", () => {
       '[role="alert"]',
     )!;
     expect(notice).toHaveTextContent("Berita ini sudah diubah pengurus lain");
+    // `author` adalah pembuat berita, bukan pengubah terakhir: tidak disebut sebagai pelaku perubahan.
+    expect(notice).not.toHaveTextContent(/ oleh /);
+    expect(notice).not.toHaveTextContent(mockContent.post(CONTENT_IDS.postDraft)!.author!.display_name);
+    // Status terbaru dari `current` ditampilkan (PRD 4.5).
+    expect(notice).toHaveTextContent("Status terbaru:");
+    expect(within(notice).getByText("Draf")).toBeInTheDocument();
     await waitFor(() => expect(notice).toHaveFocus());
     expect(lastRequest("PATCH", CONTENT_IDS.postDraft)).toMatchObject({
       ifMatch: "1",
@@ -174,6 +189,99 @@ describe("editor berita (F-08, AC F08-1, F15-4, F15-5; server tiruan)", () => {
     await findToast("success", "Perubahan disimpan.");
     expect(lastRequest("PATCH", CONTENT_IDS.postDraft)?.ifMatch).toBe("2");
     expect(mockContent.post(CONTENT_IDS.postDraft)?.title).toBe("Judul diubah pengurus lain (revisi)");
+  });
+
+  it("AC F15-5: jadwal tiba saat editor terbuka → batalkan jadwal ditolak; pemberitahuan menyebut status terbaru, bukan pengurus lain", async () => {
+    const user = userEvent.setup();
+    await openEditor(user, CONTENT_IDS.postScheduled);
+    // Job menerbitkan berita tepat waktunya; tidak ada pengurus yang menyunting (versi tetap).
+    mockContent.makeScheduledDue(CONTENT_IDS.postScheduled);
+    await user.click(within(panel()).getByRole("button", { name: "Batalkan jadwal" }));
+    await confirmIn(user, /Batalkan jadwal terbit\?/, "Batalkan jadwal");
+
+    const notice = (await screen.findByText(/Status berita ini sudah berubah/)).closest<HTMLElement>(
+      '[role="alert"]',
+    )!;
+    expect(notice).not.toHaveTextContent(/pengurus lain/);
+    expect(notice).toHaveTextContent(/Tindakan Anda tidak dijalankan/);
+    expect(within(notice).getByText("Terbit")).toBeInTheDocument();
+    expect(lastRequest("POST", "/unschedule")?.ifMatch).toBe("1");
+    expect(mockContent.post(CONTENT_IDS.postScheduled)).toMatchObject({ state: "published", version: "1" });
+
+    await user.click(within(notice).getByRole("button", { name: "Muat ulang versi terbaru" }));
+    await waitFor(() => expect(screen.queryByText(/Status berita ini sudah berubah/)).toBeNull());
+    expect(within(panel()).getByText("Terbit")).toBeInTheDocument();
+    expect(within(panel()).queryByRole("button", { name: "Batalkan jadwal" })).toBeNull();
+    expect(screen.getByRole("textbox", { name: /^Slug tautan/ })).toHaveAttribute("readonly");
+  });
+
+  it("PRD 4.5: simpan dan terbit ditahan selama cover diunggah, sehingga cover pilihan admin tidak hilang", async () => {
+    const user = userEvent.setup();
+    renderApp("/content/posts/new");
+    await signIn(user);
+    await screen.findByRole("heading", { level: 1, name: "Tambah Konten Baru" }, { timeout: 8000 });
+    const title = screen.getByRole("textbox", { name: /^Judul konten/ });
+    await user.type(title, "Bakti sosial");
+    const editor = await screen.findByRole("textbox", { name: /^Isi berita/ }, { timeout: 8000 });
+    editor.focus();
+    await user.paste("Ayo ikut bakti sosial.");
+    await waitFor(() => expect(editor).toHaveTextContent("Ayo ikut bakti sosial."));
+
+    const release = mockContent.holdUploads();
+    await user.upload(screen.getByTestId("content-image-input-post_cover"), pngFile());
+    const save = screen.getByRole("button", { name: "Simpan draf" });
+    await waitFor(() => expect(save).toHaveAttribute("aria-disabled", "true"));
+    expect(save).toHaveAccessibleDescription("Tunggu unggahan gambar cover selesai sebelum menyimpan.");
+    await user.click(save);
+    await user.type(title, "{Enter}");
+    expect(contentRequests.some((r) => r.method === "POST" && r.path === "/admin/content/posts")).toBe(false);
+
+    release();
+    expect(await screen.findByRole("img", { name: "Cover Bakti sosial" })).toBeInTheDocument();
+    await waitFor(() => expect(save).not.toHaveAttribute("aria-disabled"));
+    await user.click(save);
+    await findToast("success", "Draf berita disimpan.");
+    const created = lastRequest("POST", "/admin/content/posts");
+    expect(created?.body?.cover_file_id).toEqual(expect.stringMatching(/^0199e100-0000-7000-9000-/));
+    await screen.findByRole("heading", { level: 1, name: "Edit Konten" });
+    expect(screen.getByRole("img", { name: "Cover Bakti sosial" })).toBeInTheDocument();
+
+    // Mengganti cover berita tersimpan: aksi penerbitan juga ditahan selama unggahan berjalan.
+    const releaseAgain = mockContent.holdUploads();
+    await user.upload(screen.getByTestId("content-image-input-post_cover"), pngFile("cover-baru.png"));
+    expect(
+      await within(panel()).findByText(/Tunggu unggahan gambar cover selesai, lalu simpan/),
+    ).toBeInTheDocument();
+    expect(within(panel()).getByRole("button", { name: "Terbitkan sekarang" })).toBeDisabled();
+    releaseAgain();
+    // Cover baru menjadi perubahan yang harus disimpan sebelum terbit.
+    expect(await within(panel()).findByText(/Simpan perubahan terlebih dahulu/)).toBeInTheDocument();
+  });
+
+  it("PRD 4.5: pilihan kategori sedang dimuat atau gagal dimuat → kategori berita tetap tampil, dengan pesan dan muat ulang", async () => {
+    const release = mockContent.holdCategoryList(true);
+    const user = userEvent.setup();
+    await openEditor(user, CONTENT_IDS.postDonasi);
+    const select = screen.getByRole<HTMLSelectElement>("combobox", { name: "Kategori" });
+    expect(select).toBeDisabled();
+    expect(select).toHaveValue(CONTENT_IDS.categoryEventBulanan);
+    expect(select.selectedOptions[0]?.textContent).toBe("Event Bulanan");
+    expect(select).toHaveAccessibleDescription("Memuat pilihan kategori...");
+
+    release();
+    const retry = await screen.findByRole("button", { name: "Muat ulang pilihan kategori" });
+    expect(select).toBeEnabled();
+    expect(select).toHaveValue(CONTENT_IDS.categoryEventBulanan);
+    expect(select).toHaveAccessibleDescription(/Pilihan kategori gagal dimuat/);
+    // Kategori yang tersimpan tidak dianggap berubah.
+    expect(screen.getByText("Belum ada perubahan untuk disimpan.")).toBeInTheDocument();
+
+    await user.click(retry);
+    await waitFor(() =>
+      expect(within(select).getByRole("option", { name: "Pengumuman" })).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button", { name: "Muat ulang pilihan kategori" })).toBeNull();
+    expect(select).toHaveValue(CONTENT_IDS.categoryEventBulanan);
   });
 
   it("pratinjau menampilkan isi seperti aplikasi anggota dengan tautan luar ditandai", async () => {

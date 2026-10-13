@@ -14,6 +14,9 @@ type UploadState =
  * diperiksa dulu di klien (JPG/PNG <= 5 MB) agar admin langsung tahu aturannya (PRD 4.5 "Bukti tidak valid");
  * server tetap memeriksa magic bytes, membuang EXIF, meng-encode ulang dan membatasi 10 unggahan per 24 jam.
  * Gambar yang tidak dilampirkan dalam 24 jam dibersihkan job berkas, jadi formulir baru melampirkannya saat disimpan.
+ * Status unggah dilaporkan ke formulir induk (`onUploadingChange`) agar simpan/terbit ditahan selama unggahan
+ * berjalan: menyimpan lebih dahulu akan mengirim gambar lama dan, bila halaman berpindah, membatalkan unggahan
+ * sehingga gambar pilihan admin hilang diam-diam (PRD 4.5).
  */
 export function ContentImageField({
   purpose,
@@ -27,6 +30,7 @@ export function ContentImageField({
   previewAlt,
   buttonRef,
   onBlur,
+  onUploadingChange,
 }: {
   purpose: S["ContentMediaPurpose"];
   value: ContentImage | null;
@@ -40,14 +44,29 @@ export function ContentImageField({
   /** Ref tombol pilih (react-hook-form memfokuskannya saat galat server, N-11). */
   buttonRef?: Ref<HTMLButtonElement>;
   onBlur?: () => void;
+  /** Dipanggil saat unggahan mulai (true) dan selesai, gagal atau dibatalkan (false). */
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [state, setState] = useState<UploadState>({ kind: "idle" });
   const [dragging, setDragging] = useState(false);
+  const uploading = state.kind === "uploading";
+  const reportRef = useRef(onUploadingChange);
+  reportRef.current = onUploadingChange;
 
-  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => {
+    reportRef.current?.(uploading);
+  }, [uploading]);
+
+  useEffect(
+    () => () => {
+      abortRef.current?.abort();
+      reportRef.current?.(false);
+    },
+    [],
+  );
 
   async function handleFile(file: File) {
     const invalid = validateFileForPurpose(file, purpose);
@@ -91,7 +110,6 @@ export function ContentImageField({
   const labelId = `${id}-label`;
   const rulesId = `${id}-rules`;
   const errId = shownError ? `${id}-err` : undefined;
-  const uploading = state.kind === "uploading";
 
   return (
     <div role="group" aria-labelledby={labelId} className="flex flex-col gap-1.5">

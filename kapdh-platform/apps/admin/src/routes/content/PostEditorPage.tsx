@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { ArrowLeft, Eye, Save } from "lucide-react";
+import { ArrowLeft, Eye, RefreshCw, Save } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -21,16 +21,18 @@ import { ConflictNotice } from "./ConflictNotice";
 import { ContentImageField } from "./ContentImageField";
 import {
   type AdminPost,
-  conflictCurrent,
+  type ConflictState,
+  conflictState,
   type ContentImage,
   contentKeys,
-  fetchCategoryOptions,
+  fetchPostCategoryOptions,
   invalidateContent,
   type S,
   SLUG_HINT,
   SLUG_PATTERN,
   slugFromTitle,
 } from "./contentApi";
+import { PostStateBadge } from "./labels";
 import { PostPreviewDialog } from "./PostPreview";
 import { PostPublishPanel } from "./PostPublishPanel";
 import { useDeferredFocus } from "./useDeferredFocus";
@@ -158,29 +160,37 @@ function PostEditor({ initial }: { initial: AdminPost | null }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [base, setBase] = useState<AdminPost | null>(initial);
-  const [conflict, setConflict] = useState<{ latest: AdminPost | null } | null>(null);
+  const [conflict, setConflict] = useState<ConflictState<AdminPost> | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  // Unggahan cover yang masih berjalan menahan simpan/terbit dan meninggalkan halaman (PRD 4.5): menyimpan lebih
+  // dahulu mengirim cover lama, lalu perpindahan halaman membatalkan unggahan sehingga gambar pilihan admin hilang.
+  const [coverUploading, setCoverUploading] = useState(false);
   const form = useForm<PostFormValues>({ resolver: zodResolver(schema), defaultValues: toPostForm(initial) });
   const values = form.watch();
   const changes = base ? postChanges(values, base) : null;
   const dirty = base ? Object.keys(changes ?? {}).length > 0 : form.formState.isDirty;
-  const guard = useLeaveGuard(dirty, "Perubahan berita");
+  const guard = useLeaveGuard(dirty || coverUploading, "Perubahan berita");
   const focusTitle = useDeferredFocus(() => form.setFocus("title"));
 
   const categories = useApiQuery({
-    queryKey: contentKeys.categoryOptions("post"),
+    queryKey: contentKeys.categoryOptions,
     staleTime: 60_000,
-    request: (ctx) => fetchCategoryOptions("post", ctx),
+    request: (ctx) => fetchPostCategoryOptions(ctx),
   });
+  const baseCategory = base?.category ?? null;
   const categoryOptions = useMemo(() => {
-    const current = base?.category?.id ?? null;
     // Kategori nonaktif hanya boleh dipertahankan, tidak dipilih baru (kontrak AdminPostUpdateRequest).
-    const items = (categories.data?.items ?? []).filter((c) => c.active || c.id === current);
-    return [
+    const items = (categories.data?.items ?? []).filter((c) => c.active || c.id === baseCategory?.id);
+    const options = [
       { value: "", label: "Tanpa kategori" },
       ...items.map((c) => ({ value: c.id, label: c.active ? c.label : `${c.label} (nonaktif)` })),
     ];
-  }, [categories.data, base?.category?.id]);
+    // Kategori berita saat ini selalu menjadi pilihan, juga selama daftar dimuat atau bila gagal dimuat; tanpa ini
+    // select native menampilkan "Tanpa kategori" padahal berita berkategori (PRD 4.5).
+    if (baseCategory && !items.some((c) => c.id === baseCategory.id))
+      options.push({ value: baseCategory.id, label: baseCategory.label });
+    return options;
+  }, [categories.data, baseCategory]);
 
   /** Data terbaru dari server menjadi dasar formulir (setelah simpan, transisi, atau muat ulang konflik). */
   function applyLatest(post: AdminPost) {
@@ -202,7 +212,7 @@ function PostEditor({ initial }: { initial: AdminPost | null }) {
 
   function handleConflict(error: ApiError) {
     if (!base) return;
-    setConflict({ latest: conflictCurrent<AdminPost>(error, base.id) });
+    setConflict(conflictState<AdminPost>(error, base));
   }
 
   async function reloadLatest() {
@@ -260,7 +270,7 @@ function PostEditor({ initial }: { initial: AdminPost | null }) {
   });
 
   function submit(v: PostFormValues) {
-    if (conflict) return;
+    if (conflict || coverUploading) return;
     if (!base) {
       create.mutate(v);
       return;
@@ -282,9 +292,12 @@ function PostEditor({ initial }: { initial: AdminPost | null }) {
   const saveLabel = !base || base.state === "draft" ? "Simpan draf" : "Simpan perubahan";
   const blockedReason = conflict
     ? "Muat ulang versi terbaru sebelum menerbitkan atau mengubah status."
-    : dirty
-      ? "Simpan perubahan terlebih dahulu sebelum menerbitkan atau mengubah status."
-      : null;
+    : coverUploading
+      ? "Tunggu unggahan gambar cover selesai, lalu simpan, sebelum menerbitkan atau mengubah status."
+      : dirty
+        ? "Simpan perubahan terlebih dahulu sebelum menerbitkan atau mengubah status."
+        : null;
+  const saveHintId = `${formId}-simpan`;
 
   return (
     <>
@@ -315,10 +328,12 @@ function PostEditor({ initial }: { initial: AdminPost | null }) {
       />
 
       {conflict && base ? (
+        // `author` adalah pembuat berita, bukan pengubah terakhir, sehingga tidak disebut sebagai pelaku perubahan.
         <ConflictNotice
           subject="Berita ini"
+          cause={conflict.cause}
           updatedAt={conflict.latest?.updated_at}
-          updatedBy={conflict.latest?.author?.display_name}
+          latestStatus={conflict.latest ? <PostStateBadge state={conflict.latest.state} /> : null}
           onReload={() => void reloadLatest()}
         />
       ) : null}
@@ -396,6 +411,13 @@ function PostEditor({ initial }: { initial: AdminPost | null }) {
                 control={form.control}
                 name="category_id"
                 label="Kategori"
+                hint={
+                  categories.isPending
+                    ? "Memuat pilihan kategori..."
+                    : categories.isError
+                      ? "Pilihan kategori gagal dimuat. Kategori yang tersimpan tetap dipakai; muat ulang pilihan untuk memilih kategori lain."
+                      : undefined
+                }
               >
                 {(field, a11y) => (
                   <Select
@@ -406,9 +428,25 @@ function PostEditor({ initial }: { initial: AdminPost | null }) {
                     options={categoryOptions}
                     value={field.value}
                     onValueChange={field.onChange}
+                    disabled={categories.isPending}
                   />
                 )}
               </FormField>
+              {categories.isError ? (
+                <div role="alert" className="flex flex-wrap items-center gap-2 text-xs text-danger">
+                  <span>{categories.error.message}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    loading={categories.isFetching}
+                    loadingText="Memuat..."
+                    leftIcon={<RefreshCw aria-hidden="true" className="size-4" />}
+                    onClick={() => void categories.refetch()}
+                  >
+                    Muat ulang pilihan kategori
+                  </Button>
+                </div>
+              ) : null}
               <ContentImageField
                 purpose="post_cover"
                 label="Gambar cover"
@@ -419,6 +457,7 @@ function PostEditor({ initial }: { initial: AdminPost | null }) {
                 error={cover.fieldState.error?.message}
                 previewAlt={`Cover ${values.title || "berita"}`}
                 disabled={saving}
+                onUploadingChange={setCoverUploading}
               />
             </div>
           </Card>
@@ -431,19 +470,22 @@ function PostEditor({ initial }: { initial: AdminPost | null }) {
               loading={saving}
               loadingText="Menyimpan..."
               focusableWhenDisabled
-              disabled={Boolean(conflict) || (!isNew && !dirty)}
+              disabled={Boolean(conflict) || coverUploading || (!isNew && !dirty)}
+              aria-describedby={saveHintId}
               leftIcon={<Save aria-hidden="true" className="size-4" />}
             >
               {saveLabel}
             </Button>
-            <p className="text-xs text-text-muted">
+            <p id={saveHintId} className="text-xs text-text-muted">
               {conflict
                 ? "Simpan ditahan: muat ulang versi terbaru lebih dahulu."
-                : !isNew && !dirty
-                  ? "Belum ada perubahan untuk disimpan."
-                  : base?.state === "published"
-                    ? "Berita sedang tampil: perubahan langsung terlihat anggota setelah disimpan."
-                    : "Draf belum terlihat anggota sampai diterbitkan."}
+                : coverUploading
+                  ? "Tunggu unggahan gambar cover selesai sebelum menyimpan."
+                  : !isNew && !dirty
+                    ? "Belum ada perubahan untuk disimpan."
+                    : base?.state === "published"
+                      ? "Berita sedang tampil: perubahan langsung terlihat anggota setelah disimpan."
+                      : "Draf belum terlihat anggota sampai diterbitkan."}
             </p>
           </Card>
 

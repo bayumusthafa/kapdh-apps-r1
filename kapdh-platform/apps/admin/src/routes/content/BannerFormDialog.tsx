@@ -21,11 +21,13 @@ import { useDeferredFocus } from "./useDeferredFocus";
 import {
   type AdminBanner,
   type BannerTargetType,
-  conflictCurrent,
+  type ConflictState,
+  conflictState,
   type ContentImage,
   invalidateContent,
   type S,
 } from "./contentApi";
+import { BannerStateBadge } from "./labels";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -89,13 +91,21 @@ export const bannerSchema = z
       });
   });
 
+/** Label tujuan tersimpan untuk pemilih; tujuan yang sudah dihapus tidak ditampilkan sebagai ID mentah (AC F08-2). */
+const MISSING_TARGET_LABEL = "(tujuan tidak ditemukan)";
+
+function targetLabel(target: AdminBanner["target"]): string | null {
+  if (target.type === "none" || target.type === "url" || !target.value) return null;
+  return target.label ?? MISSING_TARGET_LABEL;
+}
+
 function toBannerForm(b: AdminBanner | null): BannerFormValues {
   return {
     title: b?.title ?? "",
     image_file_id: b?.image ?? null,
     target_type: b?.target.type ?? "none",
     target_value: b?.target.value ?? null,
-    target_label: b ? (b.target.label ?? b.target.value) : null,
+    target_label: b ? targetLabel(b.target) : null,
     sort_order: String(b?.sort_order ?? 0),
     starts_at: b?.starts_at ?? null,
     ends_at: b?.ends_at ?? null,
@@ -147,7 +157,10 @@ export function BannerFormDialog({ banner, onClose }: { banner: AdminBanner | nu
   const queryClient = useQueryClient();
   const toast = useToast();
   const [base, setBase] = useState(banner);
-  const [conflict, setConflict] = useState<{ latest: AdminBanner | null } | null>(null);
+  const [conflict, setConflict] = useState<ConflictState<AdminBanner> | null>(null);
+  // Simpan ditahan selama gambar diunggah: PATCH/POST akan mengirim gambar lama lalu menutup dialog dan
+  // membatalkan unggahan, sehingga gambar pilihan admin hilang (PRD 4.5).
+  const [imageUploading, setImageUploading] = useState(false);
   const form = useForm<BannerFormValues>({
     resolver: zodResolver(bannerSchema),
     defaultValues: toBannerForm(banner),
@@ -181,7 +194,7 @@ export function BannerFormDialog({ banner, onClose }: { banner: AdminBanner | nu
       onClose();
     },
     onReloadLatest: (error) => {
-      if (base) setConflict({ latest: conflictCurrent<AdminBanner>(error, base.id) });
+      if (base) setConflict(conflictState<AdminBanner>(error, base));
     },
   });
 
@@ -206,6 +219,13 @@ export function BannerFormDialog({ banner, onClose }: { banner: AdminBanner | nu
   const unchanged = base !== null && Object.keys(bannerChanges(values, base)).length === 0;
   const fieldError = (name: string) =>
     (errors as Record<string, { message?: string } | undefined>)[name]?.message ?? null;
+  // Tujuan tersimpan yang tidak lagi dapat dibuka anggota, selama admin belum memilih tujuan lain (AC F08-2).
+  const savedTargetUnavailable =
+    base !== null &&
+    !base.target.available &&
+    values.target_type === base.target.type &&
+    values.target_value === base.target.value;
+  const saveHintId = `${formId}-simpan`;
 
   return (
     <Dialog
@@ -217,6 +237,11 @@ export function BannerFormDialog({ banner, onClose }: { banner: AdminBanner | nu
       description="Banner tampil di Beranda aplikasi selama aktif dan berada di dalam masa tayang."
       footer={
         <>
+          {imageUploading ? (
+            <p id={saveHintId} className="mr-auto self-center text-xs text-text-muted">
+              Tunggu unggahan gambar selesai sebelum menyimpan.
+            </p>
+          ) : null}
           <Button variant="outline" onClick={onClose} disabled={save.isPending}>
             Batal
           </Button>
@@ -225,7 +250,8 @@ export function BannerFormDialog({ banner, onClose }: { banner: AdminBanner | nu
             form={formId}
             loading={save.isPending}
             loadingText="Menyimpan..."
-            disabled={Boolean(conflict) || unchanged}
+            disabled={Boolean(conflict) || unchanged || imageUploading}
+            aria-describedby={imageUploading ? saveHintId : undefined}
           >
             {base ? "Simpan perubahan" : "Buat banner"}
           </Button>
@@ -235,7 +261,9 @@ export function BannerFormDialog({ banner, onClose }: { banner: AdminBanner | nu
       {conflict ? (
         <ConflictNotice
           subject="Banner ini"
+          cause={conflict.cause}
           updatedAt={conflict.latest?.updated_at}
+          latestStatus={conflict.latest ? <BannerStateBadge state={conflict.latest.state} /> : null}
           onReload={() => void reloadLatest()}
         />
       ) : null}
@@ -244,7 +272,7 @@ export function BannerFormDialog({ banner, onClose }: { banner: AdminBanner | nu
         noValidate
         className="flex flex-col gap-4"
         onSubmit={form.handleSubmit((v) => {
-          if (conflict || unchanged) return;
+          if (conflict || unchanged || imageUploading) return;
           save.mutate(v);
         })}
       >
@@ -270,9 +298,11 @@ export function BannerFormDialog({ banner, onClose }: { banner: AdminBanner | nu
           previewAlt={`Gambar banner ${values.title || "baru"}`}
           hint="Disarankan rasio 16:9."
           disabled={save.isPending}
+          onUploadingChange={setImageUploading}
         />
         <BannerTargetField
           target={{ type: values.target_type, value: values.target_value, label: values.target_label }}
+          unavailable={savedTargetUnavailable}
           onChange={(next) => {
             form.setValue("target_type", next.type, { shouldDirty: true });
             form.setValue("target_value", next.value, { shouldDirty: true });
