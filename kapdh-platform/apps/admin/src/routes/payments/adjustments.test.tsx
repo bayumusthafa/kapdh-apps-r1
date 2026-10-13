@@ -18,7 +18,9 @@ async function adjustmentsTable() {
 }
 
 function rowOf(table: HTMLElement, name: string): HTMLElement {
-  return within(table).getByRole("button", { name: new RegExp(name) }).closest("tr")!;
+  return within(table)
+    .getByRole("button", { name: new RegExp(name) })
+    .closest("tr")!;
 }
 
 async function openAdjustment(user: User, name: string, title: string) {
@@ -94,7 +96,9 @@ describe("penyesuaian refund dan koreksi (D6, D2, PRD 3.4; server tiruan)", () =
     expect(done).toBeDisabled();
     await user.click(within(dialog).getByRole("checkbox", { name: /sudah saya transfer/ }));
     await user.click(done);
-    expect(await within(dialog).findByText("Lampirkan bukti transfer refund sebelum menandai selesai.")).toBeInTheDocument();
+    expect(
+      await within(dialog).findByText("Lampirkan bukti transfer refund sebelum menandai selesai."),
+    ).toBeInTheDocument();
     expect(requestsTo("POST", /\/complete$/)).toHaveLength(0);
 
     await user.upload(within(dialog).getByTestId("file-input"), pngFile());
@@ -120,7 +124,10 @@ describe("penyesuaian refund dan koreksi (D6, D2, PRD 3.4; server tiruan)", () =
       refund_destination: null,
       has_refund_destination: false,
     });
-    expect(mockPayments.get(IDS.laila)?.events.at(-1)).toMatchObject({ kind: "adjusted", reason: "Refund selesai" });
+    expect(mockPayments.get(IDS.laila)?.events.at(-1)).toMatchObject({
+      kind: "adjusted",
+      reason: "Refund selesai",
+    });
     await screen.findByText("Menampilkan 2 dari 2");
   });
 
@@ -163,7 +170,10 @@ describe("penyesuaian refund dan koreksi (D6, D2, PRD 3.4; server tiruan)", () =
     await user.click(within(panel).getByRole("button", { name: "Ubah" }));
     const dialog = await screen.findByRole("dialog", { name: "Ubah refund" });
     await user.click(within(dialog).getByRole("checkbox", { name: /Catat rekening tujuan refund/ }));
-    await user.type(within(dialog).getByRole("textbox", { name: /Nama bank atau e-wallet/ }), "[[Bank dari admin]");
+    await user.type(
+      within(dialog).getByRole("textbox", { name: /Nama bank atau e-wallet/ }),
+      "[[Bank dari admin]",
+    );
     await user.type(within(dialog).getByRole("textbox", { name: /Nomor rekening/ }), "111");
     await user.type(within(dialog).getByRole("textbox", { name: /Nama pemilik rekening/ }), "Fajar N");
     mockPayments.setRefundDestination(IDS.fajarRefund, {
@@ -196,9 +206,14 @@ describe("penyesuaian refund dan koreksi (D6, D2, PRD 3.4; server tiruan)", () =
     expect(dialog).toHaveTextContent("Sisa yang dapat direfund Rp10.000");
     const amount = within(dialog).getByRole("textbox", { name: /Nominal/ });
     await user.type(amount, "15.000");
-    await user.type(within(dialog).getByRole("textbox", { name: /Alasan/ }), "Anggota membatalkan perpanjangan");
+    await user.type(
+      within(dialog).getByRole("textbox", { name: /Alasan/ }),
+      "Anggota membatalkan perpanjangan",
+    );
     await user.click(within(dialog).getByRole("button", { name: "Simpan penyesuaian" }));
-    await waitFor(() => expect(amount).toHaveAccessibleDescription("Melebihi sisa yang dapat direfund (Rp10.000)."));
+    await waitFor(() =>
+      expect(amount).toHaveAccessibleDescription("Melebihi sisa yang dapat direfund (Rp10.000)."),
+    );
     expect(requestsTo("POST", /\/adjustments$/)).toHaveLength(0);
 
     await user.clear(amount);
@@ -218,7 +233,9 @@ describe("penyesuaian refund dan koreksi (D6, D2, PRD 3.4; server tiruan)", () =
     // Status lunas tidak berubah; penyesuaian dicatat terpisah (ARCHITECTURE §2 butir 13).
     expect(mockPayments.get(IDS.yusuf)?.status).toBe("paid");
     const updated = await within(panel).findByRole("region", { name: /Penyesuaian \(2\)/ });
-    await user.click(within(updated).getByRole("button", { name: "Buka refund Rp10.000 di tab Penyesuaian" }));
+    await user.click(
+      within(updated).getByRole("button", { name: "Buka refund Rp10.000 di tab Penyesuaian" }),
+    );
     const adjustment = await screen.findByRole("article", { name: "Refund Rp10.000" });
     expect(within(adjustment).getByRole("region", { name: "Rekening tujuan refund" })).toHaveTextContent(
       "Menunggu rekening tujuan dari pemilik",
@@ -233,7 +250,9 @@ describe("penyesuaian refund dan koreksi (D6, D2, PRD 3.4; server tiruan)", () =
     await user.selectOptions(screen.getByRole("combobox", { name: "Status" }), "completed");
     await screen.findByText("Menampilkan 1 dari 1");
     const panel = await openAdjustment(user, "Gita Permata", "Refund Rp75.000");
-    expect(await within(panel).findByRole("img", { name: /Bukti penyelesaian refund Gita Permata/ })).toBeInTheDocument();
+    expect(
+      await within(panel).findByRole("img", { name: /Bukti penyelesaian refund Gita Permata/ }),
+    ).toBeInTheDocument();
     expect(within(panel).getByText("Selesai", { selector: "dt" }).nextElementSibling).toHaveTextContent(
       "oleh Admin Keuangan",
     );
@@ -241,7 +260,9 @@ describe("penyesuaian refund dan koreksi (D6, D2, PRD 3.4; server tiruan)", () =
     expect(within(panel).queryByRole("button", { name: "Tandai selesai" })).toBeNull();
     await user.click(within(panel).getByRole("button", { name: "Buka pembayaran asal" }));
     const payment = await screen.findByRole("article", { name: "Gita Permata" });
-    expect(within(payment).getByRole("region", { name: /Penyesuaian \(2\)/ })).toHaveTextContent("Dibatalkan");
+    expect(within(payment).getByRole("region", { name: /Penyesuaian \(2\)/ })).toHaveTextContent(
+      "Dibatalkan",
+    );
   });
 
   it("AC F15-1, D2: admin tanpa payments.decide melihat penyesuaian tanpa tombol proses dan tanpa isi rekening", async () => {

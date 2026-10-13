@@ -32,7 +32,12 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 function valuesOf(f: Fees): Values {
-  return { registration_fee: f.registration_fee, card_fee: f.card_fee, renewal_fee: f.renewal_fee, reason: "" };
+  return {
+    registration_fee: f.registration_fee,
+    card_fee: f.card_fee,
+    renewal_fee: f.renewal_fee,
+    reason: "",
+  };
 }
 
 /** Komponen biaya sama persis dengan versi tertentu (tanpa memandang catatan). */
@@ -104,7 +109,8 @@ function FeesEditor({ latest }: { latest: Fees }) {
           ...(v.values.reason.trim() ? { reason: v.values.reason.trim() } : {}),
         },
       }),
-    successMessage: (f) => `Biaya versi ${f.version} disimpan. Berlaku untuk tagihan yang dibuat mulai sekarang.`,
+    successMessage: (f) =>
+      `Biaya versi ${f.version} disimpan. Berlaku untuk tagihan yang dibuat mulai sekarang.`,
     onReloadLatest: (error) => {
       const current = asFees(error.current);
       if (current) queryClient.setQueryData(FEES_KEY, current);
@@ -156,8 +162,9 @@ function FeesEditor({ latest }: { latest: Fees }) {
         <p role="note" className="mx-5 flex items-start gap-2 rounded-md bg-info-bg p-3 text-sm text-info">
           <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           <span>
-            Perubahan biaya hanya berlaku untuk tagihan yang dibuat setelah disimpan. Tagihan yang sudah dibuat,
-            termasuk yang sedang menunggu verifikasi, tetap memakai nominal dan versi biaya saat tagihan dibuat.
+            Perubahan biaya hanya berlaku untuk tagihan yang dibuat setelah disimpan. Tagihan yang sudah
+            dibuat, termasuk yang sedang menunggu verifikasi, tetap memakai nominal dan versi biaya saat
+            tagihan dibuat.
           </span>
         </p>
       </Card>
@@ -184,8 +191,8 @@ function FeesEditor({ latest }: { latest: Fees }) {
                   Biaya sudah diubah admin lain (versi {latest.version}). Perubahan Anda belum disimpan.
                 </p>
                 <p className="text-text">
-                  Versi terbaru: register {formatRupiah(latest.registration_fee)}, KTA {formatRupiah(latest.card_fee)},
-                  perpanjangan {formatRupiah(latest.renewal_fee)}.
+                  Versi terbaru: register {formatRupiah(latest.registration_fee)}, KTA{" "}
+                  {formatRupiah(latest.card_fee)}, perpanjangan {formatRupiah(latest.renewal_fee)}.
                 </p>
                 <div>
                   <Button size="sm" variant="outline" onClick={reloadLatest}>
@@ -207,10 +214,16 @@ function FeesEditor({ latest }: { latest: Fees }) {
               label="Catatan perubahan"
               hint="Opsional, untuk audit. Contoh: keputusan rapat pengurus."
             >
-              {(field, a11y) => <Textarea {...field} {...a11y} rows={2} maxLength={FEE_REASON_MAX} showCount />}
+              {(field, a11y) => (
+                <Textarea {...field} {...a11y} rows={2} maxLength={FEE_REASON_MAX} showCount />
+              )}
             </FormField>
             <div className="flex flex-wrap justify-end gap-3">
-              <Button variant="outline" disabled={!dirty || save.isPending} onClick={() => reset(valuesOf(base))}>
+              <Button
+                variant="outline"
+                disabled={!dirty || save.isPending}
+                onClick={() => reset(valuesOf(base))}
+              >
                 Batalkan perubahan
               </Button>
               <Button
@@ -229,7 +242,13 @@ function FeesEditor({ latest }: { latest: Fees }) {
   );
 }
 
-function MoneyFormField({ name, label }: { name: "registration_fee" | "card_fee" | "renewal_fee"; label: string }) {
+function MoneyFormField({
+  name,
+  label,
+}: {
+  name: "registration_fee" | "card_fee" | "renewal_fee";
+  label: string;
+}) {
   return (
     <FormField<Values, typeof name> name={name} label={label} required>
       {(field, a11y) => (

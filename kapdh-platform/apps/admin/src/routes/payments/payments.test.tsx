@@ -197,18 +197,32 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
     mockPayments.updateFeesAsOtherAdmin("70000.00", "15000.00", "20000.00");
     await openPayments(user);
     const panel = await selectAhmad(user);
-    const terms = within(panel).getAllByRole("term").map((t) => t.textContent);
+    const terms = within(panel)
+      .getAllByRole("term")
+      .map((t) => t.textContent);
     expect(terms).toEqual(
-      expect.arrayContaining(["Nominal tagihan", "Rekening tujuan", "Versi bukti", "Versi biaya", "Catatan transfer"]),
+      expect.arrayContaining([
+        "Nominal tagihan",
+        "Rekening tujuan",
+        "Versi bukti",
+        "Versi biaya",
+        "Catatan transfer",
+      ]),
     );
     expect(within(panel).getByText("Rp60.000")).toBeInTheDocument();
-    expect(within(panel).getByText(/Register alumni baru Rp50\.000 \+ Pembuatan KTA Rp10\.000/)).toBeInTheDocument();
+    expect(
+      within(panel).getByText(/Register alumni baru Rp50\.000 \+ Pembuatan KTA Rp10\.000/),
+    ).toBeInTheDocument();
     expect(within(panel).getByText(/Bank \[Nama bank 1\]/)).toBeInTheDocument();
     expect(within(panel).getByText("[Nomor rekening] a.n. [Nama pemilik rekening]")).toBeInTheDocument();
     const valueOf = (term: string) => within(panel).getByText(term, { selector: "dt" }).nextElementSibling;
     expect(valueOf("Versi bukti")).toHaveTextContent(/^Versi 1$/);
-    expect(valueOf("Versi biaya")).toHaveTextContent(/^Versi 1\s*Nominal mengikuti biaya saat tagihan dibuat\.$/);
-    expect(within(panel).getByText("Transfer m-banking a.n. Ahmad Islam pukul 14.15 WIB.")).toBeInTheDocument();
+    expect(valueOf("Versi biaya")).toHaveTextContent(
+      /^Versi 1\s*Nominal mengikuti biaya saat tagihan dibuat\.$/,
+    );
+    expect(
+      within(panel).getByText("Transfer m-banking a.n. Ahmad Islam pukul 14.15 WIB."),
+    ).toBeInTheDocument();
   });
 
   it("AC F04-3: admin lain memutus lebih dulu → konflik, status terbaru dimuat dan diumumkan, formulir ditutup", async () => {

@@ -32,7 +32,10 @@ export function PaymentAdjustmentsSection({
   if (p.adjustments.length === 0 && !canAdjust) return null;
 
   return (
-    <section aria-labelledby="penyesuaian-pembayaran" className="flex flex-col gap-3 border-t border-divider pt-4">
+    <section
+      aria-labelledby="penyesuaian-pembayaran"
+      className="flex flex-col gap-3 border-t border-divider pt-4"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 id="penyesuaian-pembayaran" className="text-sm font-semibold">
           Penyesuaian ({p.adjustments.length})
@@ -50,7 +53,8 @@ export function PaymentAdjustmentsSection({
       </div>
       {p.adjustments.length === 0 ? (
         <p className="text-sm text-text-muted">
-          Belum ada refund atau koreksi. Pembayaran lunas tidak pernah diubah; koreksi dan refund dicatat di sini.
+          Belum ada refund atau koreksi. Pembayaran lunas tidak pernah diubah; koreksi dan refund dicatat di
+          sini.
         </p>
       ) : (
         <ul className="flex flex-col divide-y divide-divider rounded-md border border-divider">

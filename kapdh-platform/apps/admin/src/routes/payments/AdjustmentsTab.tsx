@@ -200,8 +200,16 @@ export function AdjustmentsTab() {
         meta: { align: "right", cellClassName: "whitespace-nowrap" },
         cell: ({ row }) => formatRupiah(row.original.amount),
       },
-      { id: "destination", header: "Rekening tujuan", cell: ({ row }) => <DestinationBadge a={row.original} /> },
-      { id: "status", header: "Status", cell: ({ row }) => <AdjustmentStatusBadge status={row.original.status} /> },
+      {
+        id: "destination",
+        header: "Rekening tujuan",
+        cell: ({ row }) => <DestinationBadge a={row.original} />,
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: ({ row }) => <AdjustmentStatusBadge status={row.original.status} />,
+      },
     ],
     [selectedId],
   );
@@ -217,7 +225,9 @@ export function AdjustmentsTab() {
           className="flex-[1_1_220px]"
         />
         <Field label="Jenis" className="flex-[0_1_160px]">
-          {(a11y) => <Select {...a11y} size="sm" options={KIND_OPTIONS} value={kind} onValueChange={changeKind} />}
+          {(a11y) => (
+            <Select {...a11y} size="sm" options={KIND_OPTIONS} value={kind} onValueChange={changeKind} />
+          )}
         </Field>
         <Field label="Status" className="flex-[0_1_180px]">
           {(a11y) => (
@@ -239,7 +249,9 @@ export function AdjustmentsTab() {
           {(a11y) => <Select {...a11y} size="sm" options={DUE_OPTIONS} value={due} onValueChange={setDue} />}
         </Field>
         <Field label="Urutan" className="flex-[0_1_180px]">
-          {(a11y) => <Select {...a11y} size="sm" options={SORT_OPTIONS} value={sort} onValueChange={setSort} />}
+          {(a11y) => (
+            <Select {...a11y} size="sm" options={SORT_OPTIONS} value={sort} onValueChange={setSort} />
+          )}
         </Field>
       </div>
 
