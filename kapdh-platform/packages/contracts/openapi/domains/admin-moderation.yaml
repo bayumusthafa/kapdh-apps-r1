@@ -26,7 +26,8 @@
 #      (open_report_count, total_report_count) di admin-members.yaml saat pemanggil membuka akun alumni tertautnya
 #      sendiri. Perubahan pada domain lain itu tercatat di CHANGELOG (ketergantungan lintas domain C6).
 # - Setiap pembacaan bukti, klaim dan keputusan dicatat di audit dalam transaksi yang sama (AC F12-3, F17-1); isi
-#   bukti tidak disalin ke audit (ARCHITECTURE §2 butir 3).
+#   bukti tidak disalin ke audit (ARCHITECTURE §2 butir 3). Setiap respons yang memuat bukti (detail, klaim termasuk
+#   klaim ulang idempoten, keputusan, dan `current` pada 409) menulis `moderation.report_viewed` sebelum dikirim.
 tags:
   - name: Admin Moderation
     description: Antrean laporan, bukti terminimalkan dan penyelesaian moderasi oleh pengurus (F-12, F-15).
@@ -136,7 +137,8 @@ paths:
         (pengurus sudah melihat klaim sebelumnya); klaim ulang oleh pengurus yang sama idempoten. Versi berbeda atau
         laporan sudah diputus -> 409 VERSION_CONFLICT dengan `current` = AdminModerationReportDetail terbaru.
         Konflik kepentingan: tertaut ke pihak terlapor -> 404 NOT_FOUND; tertaut ke pelapor -> 403 FORBIDDEN.
-        Audit `moderation.report_claimed` dalam transaksi yang sama.
+        Audit `moderation.report_claimed` dalam transaksi yang sama. Respons memuat bukti sehingga setiap klaim,
+        termasuk klaim ulang idempoten, juga menulis audit `moderation.report_viewed` sebelum respons dikirim.
       x-kapdh-access:
         { audience: admin, permissions: [moderation.read, moderation.resolve], idempotent: true }
       parameters:
@@ -170,7 +172,8 @@ paths:
         membership_events, audit (alasan, aktor, waktu, rujukan bukti; AC F12-3, F17-1) dan outbox notifikasi.
 
         Pihak yang dikenai tindakan (subjek) = target_user_id laporan; untuk laporan grup subjek wajib dipilih lewat
-        `subject_user_id` (anggota atau mantan anggota grup itu) dan disimpan sebagai pihak terlapor laporan
+        `subject_user_id` (anggota atau mantan anggota grup itu yang pernah bergabung; undangan yang dibatalkan
+        sebelum diterima tidak dihitung) dan disimpan sebagai pihak terlapor laporan
         (sejak itu laporan tunduk pada aturan konflik butir a untuk akun subjek tersebut).
         - dismiss: tidak ada perubahan pada anggota; status dismissed. Untuk banding berarti banding ditolak.
         - warn: membership_events kind warn tanpa mengubah starts_at/expires_at (AC F12-3); subjek menerima
@@ -535,7 +538,7 @@ components:
             description:
               type: [string, "null"]
               maxLength: 2000
-              description: Penjelasan pelapor atau alasan banding.
+              description: Penjelasan pelapor atau alasan banding; null bila akun penulisnya sudah dihapus (D2).
               x-sensitive: true
             reporter:
               oneOf:
@@ -588,7 +591,7 @@ components:
         subject_user_id:
           type: string
           format: uuid
-          description: Hanya laporan grup; anggota/mantan anggota grup yang dikenai warn atau suspend.
+          description: Hanya laporan grup; anggota/mantan anggota grup (pernah bergabung) yang dikenai warn atau suspend.
         remove_message:
           type: boolean
           default: false
