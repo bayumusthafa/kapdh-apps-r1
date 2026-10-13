@@ -115,7 +115,8 @@ history read is allowed only for `active`. Suspended members see the restricted 
 - KTA QR token: JWT HS256 signed with `QR_SIGNING_KEYS` (first key signs, all keys verify, `kid` header), claims
   `iss=kapdh-api`, `aud=kapdh-kta`, `sub=<alumni user_id>`, `seq=<N>`, `iat`, `exp=min(iat+7d, expires_at)`.
   QR content = `${PUBLIC_WEB_URL}/kta/${member_number}#t=${token}`. Public verify checks signature, iss/aud/exp,
-  binding (`seq` and user match the number) and the **current** DB status (AC F06-*).
+  binding (`sub` and `seq` match the account AND the requested number equals the account's CURRENT number, so a QR
+  issued before a number correction is "perlu diperbarui"; `qrBindingMatches`) and the **current** DB status (AC F06-*).
 - Ticket QR: opaque random 128-bit code stored in `tickets.qr_code` (unique); verified by DB lookup at check-in.
 
 ### 3.3 Payments (PRD 3.3, 3.4, 4.3)
@@ -165,7 +166,7 @@ apps/api/src/
   worker.ts                                       export used by apps/worker: createWorkerContext(deps)
   core/                                           @Global CoreModule — built in Foundation, used by all modules
     tokens.ts  context/  logging/  errors/  http/  guards/  validation/  pagination/  concurrency/
-    idempotency/  audit/  outbox/  settings/  rate-limit/  files/  qr/  membership/  payments-kernel/
+    idempotency/  identity/  audit/  outbox/  settings/  rate-limit/  files/  qr/  membership/  payments-kernel/
     notifications-kernel/  realtime/  jobs/  policy/  db/
   modules/
     auth/            F-01, F-02 (alumni), sessions, password recovery/change, reauth, email correction
@@ -185,7 +186,11 @@ apps/api/src/
 ```
 
 Every module is a Nest `@Module` registered in `AppModule`. Foundation pre-creates all module folders with an empty
-module class so later agents never edit `app.module.ts`.
+module class so later agents never edit `app.module.ts`. Job-owning modules (membership, payments, files, content,
+events, notifications, account, admin) also have `modules/<m>/<m>-jobs.module.ts`: job processors, outbox topic
+handlers, payment type handlers and the domain services they need, with NO controllers and NO API-only providers
+(`API_ONLY_PROVIDERS` in core.module.ts: TokenService, SessionIssuer, PasswordVerifier, QrTokenService, guards,
+gateway). The domain module imports its jobs module; the worker loads only the jobs modules (`WORKER_MODULES`).
 
 ### 4.2 Core services (contract between modules)
 
@@ -195,7 +200,7 @@ All are exported by the global `CoreModule`. Names are binding; exact signatures
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `DB`, `ENV`, `CLOCK`, `MAILER`, `STORAGE`, `PUSH`, `REDIS?` tokens | injected adapters (AppDeps). Tests pass fakes. |
 | `ctx()` request context (AsyncLocalStorage) | `requestId`, `actor` {kind alumni/admin/system/anonymous, userId, adminId, adminRole}, `ip`, `appVersion`, `platform`. |
-| `TxRunner` / `withTx(fn)` + `afterCommit(fn)` | run a transaction; queue side effects (socket emits) until commit. |
+| `TxRunner` / `withTx(fn)` + `afterCommit(fn)` | run a transaction; queue side effects (socket emits) until commit. The injected `DB` is commit-aware (`commitAwareDb`): `this.db.transaction(fn)` also runs afterCommit callbacks only on commit. Savepoints (`tx.transaction`) are not commit-aware and core kernels reject them. |
 | `AppException`, `isUniqueViolation(e, constraint?)`, `isFkViolation` | domain errors, driver-agnostic DB error inspection (unwrap `DrizzleQueryError.cause`). |
 | `validate(schema, body)`, `validateQuery(schema, query)`, `UuidParam` pipe | zod 4 validation → `400 VALIDATION_ERROR` with `field_errors`. |
 | `encodeCursor/decodeCursor`, `pageOf(...)` | opaque base64url keyset cursors; `{items, next_cursor}` / admin `{items, next_cursor, total}`. |
@@ -205,11 +210,12 @@ All are exported by the global `CoreModule`. Names are binding; exact signatures
 | `OutboxService.publish(tx, {topic, dedupKey, payload})` | durable events consumed by the worker. |
 | `NotificationService.notify(tx, {...})` | inbox row (dedup) + outbox `notification.created`. |
 | `SettingsService` | typed `app_settings` (§5.4) with cache and versioned audited updates. |
-| `RateLimitService.consume(key, limit, windowMs)` | async; memory store (dev/test) or Redis store (prod). |
+| `RateLimitService.consume(key, limit, windowMs)`, `reserve`/`reserveOrThrow` | async; memory store (dev/test) or Redis store (prod). Failure limits that guard a secret check (password, TOTP, OTP) reserve a slot atomically BEFORE the check and `release()` it on success; never peek → check → hit. |
+| `TokenService`, `SessionIssuer`, `PasswordVerifier`, admin refresh cookie (`core/identity`) | API runtime only. JWT access / MFA / reauth (bound to the session FAMILY) / one-time OTP-derived tokens; session issuance (refresh rotation keeps `family_id`); email+password check with per-email and per-IP failure reservation (PRD 2.5, D1). Shared by auth and admin-auth. |
 | `FilesService` + `StorageDriver` | upload validation (N-10), EXIF strip/re-encode (sharp), quota, attach, signed access ≤10 min, temp cleanup. |
 | `QrTokenService` | sign/verify KTA tokens with key rotation. |
 | `MembershipKernel` | effective status/access, number allocation, `applyPaidPayment`, suspend/unsuspend, identity correction. |
-| `PaymentHandlerRegistry` | per-type hooks (§4.6). Membership handler registered by core. |
+| `PaymentHandlerRegistry` | per-type hooks (§4.6). Membership handler registered by core (pre-lock hook: owner users → alumni). |
 | `RealtimeService` | `emitToUser`, `emitToRoom`, `disconnectUser`, `revokeRoomSubscription` (after commit). |
 | `JobRegistry` | modules register scheduled jobs and outbox topic handlers (§4.8). |
 | `BlockPolicy` | `isBlockedEitherWay(a, b, tx?)`. |
@@ -228,12 +234,16 @@ Additional decorators (evaluated after authentication, server-side, every reques
 - `@MemberAccess("any" | "nonsuspended" | "active")` — mobile only; computes effective status (§3.1).
 - `@RequirePermission(...perms)` — admin only; all listed permissions required; evaluated from DB each request
   (AC F15-1, F16-3). `super_admin` has all permissions.
-- `@RequireReauth()` — needs header `X-Reauth-Token` (JWT aud `kapdh-reauth`, bound to session, ≤10 min).
+- `@RequireAnyPermission(...perms)` — admin only; at least ONE listed permission (contract `x-kapdh-access.permissions_any`),
+  evaluated from DB each request; `super_admin` always passes.
+- `@RequireRole("super_admin")` — admin only; Super Admin role from DB each request (contract `x-kapdh-access.role`).
+- `@RequireReauth()` — needs header `X-Reauth-Token` (JWT aud `kapdh-reauth`, `sid` = session FAMILY id
+  `AuthContext.familyId`, so a refresh rotation does not cancel it; ≤10 min; admin sessions need level 2).
 - `@Idempotent()` — honours `Idempotency-Key`.
 - `@CurrentAuth()` param decorator → `AuthContext`.
 
 Global request hooks (before guards): maintenance mode rejects mutating methods with `503 MAINTENANCE` except
-`/auth/refresh`, `/auth/logout*`, `/admin/**`, `/public/**` reads; app-version gate rejects mutations from
+`/auth/refresh`, `/auth/logout*`, `/admin/**`, `/public/**` reads (GET, plus `POST /public/kta/verify`); app-version gate rejects mutations from
 `X-App-Platform: android|ios` with `X-App-Version` below `min_app_version` → `426 UPGRADE_REQUIRED`.
 
 Fastify `trustProxy` comes from env `TRUST_PROXY_HOPS` (default 1 in prod, 0 in dev/test).
@@ -259,17 +269,24 @@ notifications.manage`. Roles: `super_admin` (all, plus admin management, MFA+rea
 ```ts
 interface PaymentTypeHandler {
   type: "registration" | "renewal" | "ticket";
+  /** Called by payments BEFORE locking the payment row (global lock order users → alumni → events → tickets →
+   *  payments, C3/C5). Fields are read without a lock; re-check them after the payment row is locked. */
+  lockRelated?(tx: Tx, payment: { id: string; ticketId: string | null; userId: string | null }): Promise<void>;
   /** Inside the proof-submission tx; may throw (e.g. RESERVATION_EXPIRED). */
   onProofSubmitted?(tx: Tx, payment: PaymentRow): Promise<void>;
-  /** Inside the approval tx. Must be idempotent per payment. */
-  onApproved(tx: Tx, payment: PaymentRow, approvedAt: Date): Promise<void>;
+  /** Inside the approval tx. Must be idempotent per payment. May report a D6 refund obligation
+   *  ({refund: {amount, dueAt, reason}}) that payments records in the same tx. */
+  onApproved(tx: Tx, payment: PaymentRow, approvedAt: Date): Promise<void | PaymentApprovalOutcome>;
   onRejected?(tx: Tx, payment: PaymentRow): Promise<void>;
   onCancelled?(tx: Tx, payment: PaymentRow): Promise<void>;
 }
 ```
 
-`registration`/`renewal` handlers are in core (`MembershipKernel.applyPaidPayment`). The `ticket` handler is
-registered by the events module (`onModuleInit`). The payments module never writes `tickets` or `alumni` directly.
+`registration`/`renewal` handlers are in core: `lockRelated` locks the owner's users row then alumni row
+(`MembershipKernel.lockPaymentOwner`); `onApproved` = `MembershipKernel.applyPaidPayment` (idempotent; deleted owner →
+`owner_deleted`, paid without membership effect; writes NO notification, because the payments module writes the single
+`payment` decision notification). The `ticket` handler is registered by the events module (`onModuleInit`, in its
+jobs module). The payments module never writes `tickets` or `alumni` directly.
 
 ### 4.7 Notifications, outbox topics, deep links
 
@@ -286,7 +303,9 @@ OTP emails are sent synchronously by the API (time-critical, user can resend) �
 
 ### 4.8 Jobs
 
-Job processors live in their module (testable with PGlite) and register with `JobRegistry`; `apps/worker` runs them.
+Job processors live in their module's jobs module (`modules/<m>/<m>-jobs.module.ts`, testable with PGlite) and
+register with `JobRegistry`; `apps/worker` runs them through `@kapdh/api/worker` (`createWorkerDeps(env)`,
+`createWorkerContext(deps)`).
 
 | Job                                  | Owner module   | Trigger                         |
 | ------------------------------------ | -------------- | ------------------------------- |
@@ -307,7 +326,9 @@ Job processors live in their module (testable with PGlite) and register with `Jo
 ### 4.9 Realtime (Socket.IO)
 
 Namespace `/realtime`, transport websocket, auth `{token: <access JWT>}` in handshake; the gateway re-validates the
-session like the HTTP guard and joins `user:<id>` and `room:<id>` for joined rooms. Server events use the envelope
+session like the HTTP guard (re-validation is per session FAMILY, so refresh rotation never drops a socket) and
+joins `user:<id>`, `session:<familyId>` and `room:<id>` for joined rooms (active members only; removal at
+`expires_at`, on any MEMBERSHIP_REQUIRED/ACCOUNT_SUSPENDED rejection, and re-join after renewal/unsuspend). Server events use the envelope
 `{v: 1, event_id, type, entity_id, ts, payload}`; types: `message.created, message.deleted, reaction.updated,
 read.updated, room.updated, room.member_changed, typing, presence, notification.created, session.revoked`.
 Client emits only `typing {room_id}` and `presence.ping`. Revocation (logout-all, suspend, expiry, leave, permission
@@ -318,7 +339,9 @@ loss) disconnects or unsubscribes (AC F02-6, F11-6, F16-3). Redis adapter when `
 
 - Controllers: `@Controller("segment")`, explicit `@HttpCode`, `@Body() body: unknown` + `validate(z.object({…}))`,
   return plain snake_case objects typed `components["schemas"]["X"]` from `@kapdh/contracts`.
-- Services: transactions via `db.transaction`; conditional updates with `.returning()` checks; audit + outbox in tx.
+- Services: transactions via the injected `this.db.transaction` (commit-aware, always a NEW transaction), `TxRunner.run`
+  or `withTx(db, fn)` (joins an outer withTx); never pass a savepoint (`tx.transaction`) to core kernels. Conditional
+  updates with `.returning()` checks; audit + outbox in tx.
 - Raw SQL results: use `rows(result)` helper (PGlite `{rows}` vs postgres-js array).
 - Lists: `cursor`, `limit` (default 30, max 100), filters as query params; admin lists add `total`, `sort`.
 - Versioned updates: `If-Match: <version>` header; responses carry `version` (string).
@@ -367,6 +390,7 @@ Platform: `files`, `audit_logs` (append-only), `outbox_events`, `idempotency_key
 | `store_links`     | `{android: url|null, ios: url|null}`                                                        |                           |
 | `support`         | `{email: "bantuan@kapdh.or.id", whatsapp: null}`                                            | 8.3                       |
 | `legal`           | `{privacy_version, terms_version, community_version}` (mirrors published `pages`)           |                           |
+| `payment_instructions` | `{dues_hidden_platforms: Array<"android" or "ios">}` (D13 iOS fallback; tickets never hidden) | `[]` |
 
 Production seed (`packages/database/seeds/reference.ts`) inserts masters, settings and legal page shells and refuses
 to run fixture data; dev seed (`seeds/dev.ts`) adds clearly marked synthetic fixtures and refuses NODE_ENV=production.

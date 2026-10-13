@@ -14,6 +14,7 @@ export const APP_SETTING_KEYS = [
   "store_links",
   "support",
   "legal",
+  "payment_instructions",
 ] as const;
 export type AppSettingKey = (typeof APP_SETTING_KEYS)[number];
 
