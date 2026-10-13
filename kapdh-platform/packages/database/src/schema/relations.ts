@@ -139,6 +139,7 @@ export const paymentEventsRelations = relations(paymentEvents, ({ one }) => ({
 export const paymentAdjustmentsRelations = relations(paymentAdjustments, ({ one }) => ({
   payment: one(payments, { fields: [paymentAdjustments.paymentId], references: [payments.id] }),
   evidenceFile: one(files, { fields: [paymentAdjustments.evidenceFileId], references: [files.id] }),
+  cancelledBy: one(admins, { fields: [paymentAdjustments.cancelledByAdminId], references: [admins.id] }),
 }));
 
 export const appSettingsRelations = relations(appSettings, ({ one }) => ({
@@ -253,6 +254,7 @@ export const reportsRelations = relations(reports, ({ one }) => ({
   }),
   room: one(rooms, { fields: [reports.roomId], references: [rooms.id], relationName: "report_room" }),
   resolvedBy: one(admins, { fields: [reports.resolvedByAdminId], references: [admins.id] }),
+  claimedBy: one(admins, { fields: [reports.claimedByAdminId], references: [admins.id] }),
 }));
 
 // ------------------------------------------------------------------ Notifikasi

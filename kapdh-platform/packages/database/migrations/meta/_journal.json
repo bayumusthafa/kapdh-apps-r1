@@ -43,6 +43,13 @@
       "when": 1791800936623,
       "tag": "0005_post_like_count",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791855412344,
+      "tag": "0006_final_contract_delta",
+      "breakpoints": true
     }
   ]
 }
