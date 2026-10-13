@@ -99,7 +99,8 @@ class _AdjustmentCardState extends State<AdjustmentCard> {
             SummaryRow('Status', statusText),
             if (a.dueAt != null && pending) SummaryRow('Tenggat proses', formatDate(a.dueAt!)),
             if (a.completedAt != null) SummaryRow('Selesai', formatDateTime(a.completedAt!)),
-            if (refund && pending) SummaryRow('Rekening tujuan', a.hasRefundDestination ? 'Sudah diterima' : 'Belum ada'),
+            if (refund && pending)
+              SummaryRow('Rekening tujuan', a.hasRefundDestination ? 'Sudah diterima' : 'Belum ada'),
           ],
           footnote: refund && pending && a.hasRefundDestination && !_editing
               ? 'Rekening tujuan tidak ditampilkan kembali demi keamanan. Kirim ulang bila ada yang salah.'
