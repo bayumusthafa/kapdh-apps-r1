@@ -364,6 +364,33 @@ describe("Reaksi emoji (PRD 6.4)", () => {
   });
 });
 
+describe("AC F11-4: ID pesan dari room lain tidak memberi akses (UUID bukan izin)", () => {
+  it("AC F11-4 negatif: anggota room X memakai ID pesan room Y pada path room X → 404/400 tanpa efek pada pesan Y", async () => {
+    const [a, b, roomX] = await pair();
+    const [c, d, roomY] = await pair();
+    const foreign = await sendText(t, c, roomY, "Pesan room Y");
+    const own = await sendText(t, a, roomX, "Pesan room X");
+    for (const res of [
+      await api(t).delete(`/chat/rooms/${roomX}/messages/${foreign.id}`, { token: a.token }),
+      await api(t).put(reactionPath(roomX, foreign.id, "👍"), {}, { token: a.token }),
+      await api(t).delete(reactionPath(roomX, foreign.id, "👍"), { token: a.token }),
+    ]) {
+      expect([res.statusCode, errorCode(res)]).toEqual([404, "NOT_FOUND"]);
+      expect(res.body).not.toContain("Pesan room Y");
+    }
+    const read = await api(t).put(`/chat/rooms/${roomX}/read`, { message_id: foreign.id }, { token: b.token });
+    expect([read.statusCode, errorCode(read)]).toEqual([400, "VALIDATION_ERROR"]);
+    const anchor = await history(t, a, roomX, { before: foreign.id });
+    expect(anchor.res.statusCode).toBe(400);
+    // Pesan room Y tidak berubah; pemilik room X juga tidak dapat dipakai pihak Y.
+    const [stored] = await t.db.select().from(messages).where(eq(messages.id, foreign.id));
+    expect(stored).toMatchObject({ body: "Pesan room Y", deletedAt: null });
+    expect(await t.db.select().from(messageReactions).where(eq(messageReactions.messageId, foreign.id))).toEqual([]);
+    const crossDelete = await api(t).delete(`/chat/rooms/${roomY}/messages/${own.id}`, { token: d.token });
+    expect(crossDelete.statusCode).toBe(404);
+  });
+});
+
 describe("Read cursor monoton (PRD 3.11)", () => {
   it("read cursor maju, paket terlambat tidak memundurkan, unread dihitung dari anggota lain", async () => {
     const [a, b, roomId] = await pair();
