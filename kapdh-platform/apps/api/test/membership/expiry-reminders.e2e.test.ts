@@ -1,8 +1,11 @@
-import { alumni, notifications, outboxEvents, payments } from "@kapdh/database";
+import { alumni, notifications, outboxEvents, payments, users } from "@kapdh/database";
 import { and, eq, inArray, like } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runAsSystem } from "../../src/core/context/request-context.js";
+import type { Db } from "../../src/core/db/types.js";
+import { JobRegistry } from "../../src/core/jobs/job-registry.js";
 import { MembershipKernel } from "../../src/core/membership/membership.kernel.js";
+import { NotificationService } from "../../src/core/notifications-kernel/notification.service.js";
 import { addCalendarMonthsJakarta } from "../../src/core/membership/period.js";
 import {
   EXPIRY_REMINDERS_JOB,
@@ -57,6 +60,46 @@ async function memberExpiringIn(ms: number) {
     .set({ startsAt: addCalendarMonthsJakarta(expiresAt, -12), expiresAt })
     .where(eq(alumni.userId, fixture.userId));
   return { ...fixture, expiresAt };
+}
+
+/**
+ * Memajukan jam jauh melewati semua periode anggota uji sebelumnya (lebih dari jendela 30 hari pemberitahuan habis),
+ * sehingga kandidat job hanya anggota yang dibuat uji itu sendiri.
+ */
+function isolateFromEarlierMembers() {
+  t.clock.set(new Date(t.clock.now().getTime() + 5 * 365 * DAY_MS));
+}
+
+/**
+ * Instance job yang sama dengan `db` yang menjalankan `gap` tepat sebelum transaksi notifikasi PERTAMA, yaitu setelah
+ * query kandidat (batch) selesai: mensimulasikan persetujuan renewal/suspend yang commit di antara keduanya.
+ */
+function serviceWithGapBeforeFirstNotify(gap: () => Promise<unknown>): ExpiryRemindersService {
+  let pending: (() => Promise<unknown>) | null = gap;
+  const db = Object.create(t.db) as Db;
+  Object.defineProperty(db, "transaction", {
+    value: async (...args: Parameters<Db["transaction"]>) => {
+      if (pending) {
+        const run = pending;
+        pending = null;
+        await run();
+      }
+      return t.db.transaction(...args);
+    },
+  });
+  return new ExpiryRemindersService(db, t.app.get(JobRegistry), t.app.get(NotificationService));
+}
+
+function suspendMember(userId: string) {
+  return runAsSystem(() =>
+    t.db.transaction((tx) =>
+      t.app.get(MembershipKernel).suspend(tx, userId, {
+        reason: "Pelanggaran ketentuan komunitas (uji)",
+        memberMessage: "Akun Anda dibatasi sementara.",
+        actorAdminId: null,
+      }),
+    ),
+  );
 }
 
 describe("membership.expiry-reminders (AC F07-5)", () => {
@@ -158,6 +201,57 @@ describe("membership.expiry-reminders (AC F07-5)", () => {
       .where(eq(payments.id, pending.id));
     await t.jobs.runScheduled(EXPIRY_REMINDERS_JOB);
     expect(await inboxOf(member.userId)).toHaveLength(1);
+  });
+
+  it("AC F07-5, PRD 5.1: renewal disetujui, suspend, atau bukti renewal terkirim SETELAH kandidat dipilih → tidak ada pengingat usang", async () => {
+    isolateFromEarlierMembers();
+    const renewed = await memberExpiringIn(5 * DAY_MS);
+    const suspended = await memberExpiringIn(6 * DAY_MS);
+    const proofSent = await memberExpiringIn(7 * DAY_MS);
+    const unchanged = await memberExpiringIn(8 * DAY_MS);
+
+    // Perubahan terjadi di antara query kandidat dan transaksi notifikasi pertama.
+    const service = serviceWithGapBeforeFirstNotify(async () => {
+      await approveMembershipPayment(t, renewed.userId, "renewal");
+      await suspendMember(suspended.userId);
+      await createMembershipPayment(t, { userId: proofSent.userId, type: "renewal", status: "pending" });
+    });
+    const result = await service.run(t.clock.now());
+
+    expect(result).toEqual({ reminders: 1, expiredNotices: 0 });
+    expect(await inboxOf(renewed.userId)).toHaveLength(0);
+    expect(await inboxOf(suspended.userId)).toHaveLength(0);
+    expect(await inboxOf(proofSent.userId)).toHaveLength(0);
+    const control = await inboxOf(unchanged.userId);
+    expect(control).toHaveLength(1);
+    expect(control[0]!.title).toBe("Masa KTA segera berakhir");
+    // Periode baru hasil renewal tetap mendapat pengingatnya sendiri saat masuk jendela 30 hari.
+    const [row] = await t.db.select().from(alumni).where(eq(alumni.userId, renewed.userId));
+    expect(row!.expiresAt!.getTime()).toBeGreaterThan(renewed.expiresAt.getTime());
+    t.clock.set(new Date(row!.expiresAt!.getTime() - 29 * DAY_MS));
+    await t.jobs.runScheduled(EXPIRY_REMINDERS_JOB);
+    const later = await inboxOf(renewed.userId);
+    expect(later.map((n) => n.dedupKey)).toEqual([
+      `u:${renewed.userId}:membership.expiring:${row!.expiresAt!.getTime()}`,
+    ]);
+  });
+
+  it("AC F07-5, PRD 5.1: renewal disetujui atau akun dinonaktifkan SETELAH kandidat dipilih → tidak ada pemberitahuan 'telah berakhir' usang", async () => {
+    isolateFromEarlierMembers();
+    const renewed = await memberExpiringIn(-DAY_MS);
+    const disabled = await memberExpiringIn(-2 * DAY_MS);
+    const unchanged = await memberExpiringIn(-3 * DAY_MS);
+
+    const service = serviceWithGapBeforeFirstNotify(async () => {
+      await approveMembershipPayment(t, renewed.userId, "renewal");
+      await t.db.update(users).set({ status: "disabled" }).where(eq(users.id, disabled.userId));
+    });
+    const result = await service.run(t.clock.now());
+
+    expect(result).toEqual({ reminders: 0, expiredNotices: 1 });
+    expect(await inboxOf(renewed.userId)).toHaveLength(0);
+    expect(await inboxOf(disabled.userId)).toHaveLength(0);
+    expect((await inboxOf(unchanged.userId)).map((n) => n.title)).toEqual(["Masa KTA telah berakhir"]);
   });
 
   it("AC F07-5, ARCHITECTURE §4.8: job terdaftar setiap jam di JobRegistry lewat modul job yang dimuat worker", () => {

@@ -111,9 +111,12 @@ paths:
         Pembatasan laju (nilai final D1) -> 429 RATE_LIMITED dengan `retry_after_seconds`:
         - per IP untuk semua request;
         - per hash token (SHA-256 dari token; token mentah tidak pernah disimpan atau dicatat) untuk semua request;
-        - per nomor anggota HANYA untuk request yang lolos langkah 1 (tanda tangan, issuer dan audience sah).
-        Token sampah untuk nomor yang ditebak (N berurutan) hanya menghabiskan kuota IP pengirimnya dan tidak
-        pernah kuota nomor tersebut, sehingga pemeriksa sah di lapangan tidak ikut diblokir (F-06, AC F06-4). Klien
+        - per nomor anggota HANYA untuk request yang lolos langkah 1 (tanda tangan, issuer dan audience sah),
+          dihitung pada anggota PEMILIK token (klaim `sub`, yaitu nomor yang terikat pada token), bukan pada
+          `member_number` di body; batas per token lebih kecil dari batas per nomor.
+        Token sampah untuk nomor yang ditebak (N berurutan), maupun token sah milik anggota lain yang dikirim dengan
+        nomor korban, hanya menghabiskan kuota IP pengirimnya dan kuota pemilik token itu, tidak pernah kuota nomor
+        korban, sehingga pemeriksa sah di lapangan tidak ikut diblokir (F-06, AC F06-4). Klien
         menampilkan 429 sebagai "Tidak dapat memverifikasi" dengan retry, bukan Tidak ditemukan.
 
         Maintenance (PRD 4.5, ARCHITECTURE §4.3): walaupun memakai metode POST, operasi ini hanya membaca sehingga

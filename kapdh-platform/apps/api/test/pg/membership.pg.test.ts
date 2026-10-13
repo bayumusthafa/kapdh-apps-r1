@@ -5,7 +5,8 @@
  * - AC F15-4: PATCH /me/profile bersamaan dengan If-Match yang sama → tepat satu berhasil, sisanya 409, versi naik
  *   sekali (baris alumni dikunci, bukan baca-lalu-tulis).
  * - AC F07-5, F13-6: job membership.expiry-reminders dijalankan bersamaan di beberapa "worker" → satu notifikasi dan
- *   satu outbox per periode.
+ *   satu outbox per periode; kandidat yang renewal-nya sedang disetujui dinilai ulang setelah kunci kernel lepas
+ *   sehingga tidak ada pengingat usang (PRD 5.1).
  * - AC F12-3: dua pengurus men-suspend anggota yang sama bersamaan dengan versi yang sama → satu keputusan, satu
  *   histori suspend.
  * - AC F16-4: inisiasi pemulihan sandi bersamaan → tepat satu challenge aktif (otp_codes_active_key), tanpa 500.
@@ -149,6 +150,41 @@ describe("membership.expiry-reminders bersamaan (AC F07-5, F13-6)", () => {
     // Diulang lagi: tidak ada notifikasi baru.
     const rerun = await service.run(clock.now());
     expect(rerun).toEqual({ reminders: 0, expiredNotices: 0 });
+  });
+
+  it("AC F07-5, PRD 5.1: renewal yang sedang disetujui (kunci kernel users → alumni) → job menunggu lalu tidak mengirim pengingat usang", async () => {
+    const member = await createAlumni(owner, { status: "verified" });
+    const oldExpiresAt = new Date(clock.now().getTime() + 5 * DAY_MS);
+    await tdb.db
+      .update(alumni)
+      .set({ startsAt: addCalendarMonthsJakarta(oldExpiresAt, -12), expiresAt: oldExpiresAt })
+      .where(eq(alumni.userId, member.userId));
+
+    // Transaksi persetujuan renewal: urutan kunci kernel (users FOR NO KEY UPDATE → alumni FOR UPDATE), periode baru
+    // ditulis tetapi belum commit saat job memilih kandidat (job masih melihat expires_at lama).
+    const { lockWaitObserved } = await withLockWaitGate(tdb, async (hold) => {
+      let signalLocked!: () => void;
+      const locked = new Promise<void>((resolve) => (signalLocked = resolve));
+      const approval = tdb.sql.begin(async (tx) => {
+        await tx`select id from app.users where id = ${member.userId} for no key update`;
+        await tx`select user_id from app.alumni where user_id = ${member.userId} for update`;
+        await tx`update app.alumni set expires_at = expires_at + interval '12 months' where user_id = ${member.userId}`;
+        signalLocked();
+        await hold();
+      });
+      await locked;
+      const run = app.get(ExpiryRemindersService).run(clock.now());
+      await approval;
+      return run;
+    });
+    expect(lockWaitObserved, "job benar-benar menunggu kunci persetujuan").toBe(true);
+    const inbox = await tdb.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.userId, member.userId), eq(notifications.category, "membership")));
+    expect(inbox).toHaveLength(0);
+    const [after] = await tdb.db.select().from(alumni).where(eq(alumni.userId, member.userId));
+    expect(after!.expiresAt!.getTime()).toBeGreaterThan(oldExpiresAt.getTime());
   });
 });
 

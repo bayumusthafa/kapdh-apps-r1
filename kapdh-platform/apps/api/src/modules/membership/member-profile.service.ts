@@ -8,6 +8,7 @@ import { AppException, notFound, versionConflict } from "../../core/errors/app-e
 import type { FileTokenSubject } from "../../core/files/file-token.js";
 import { FilesService } from "../../core/files/files.service.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
+import { memberAccessAllows } from "../../core/membership/access.js";
 import type { EffectiveStatus } from "../../core/membership/effective-status.js";
 import { MembershipKernel } from "../../core/membership/membership.kernel.js";
 import { academicYears, cohortCode, educationStatus } from "../../core/membership/member-number.js";
@@ -99,6 +100,21 @@ export class MemberProfileService {
     return (await this.files.signedUrl(file, viewer)).url;
   }
 
+  /**
+   * Foto profil pemanggil sendiri (GET /me, GET /me/card). URL privat dibuka ulang lewat FileAccessPolicy yang hanya
+   * menerima penampil anggota nonsuspended (PRD 2.2, 5.4), sehingga anggota suspended mendapat null (klien memakai
+   * inisial, juga pada salinan offline kartu) alih-alih URL yang selalu 404.
+   */
+  async ownAvatarUrl(
+    auth: AuthContext,
+    status: EffectiveStatus,
+    fileId: string | null,
+    db: DbOrTx = this.db,
+  ): Promise<string | null> {
+    if (!memberAccessAllows("nonsuspended", status)) return null;
+    return this.avatarUrl(fileId, fileSubjectOf(auth), db);
+  }
+
   /** effective_status pemanggil: hasil guard request ini, atau dihitung ulang dari data canonical. */
   async statusOf(auth: AuthContext, db: DbOrTx = this.db): Promise<EffectiveStatus> {
     return (
@@ -161,7 +177,7 @@ export class MemberProfileService {
         profession: masters.profession,
         skills: masters.skills,
         avatar_file_id: profile.avatarFileId,
-        avatar_url: await this.avatarUrl(profile.avatarFileId, fileSubjectOf(auth), db),
+        avatar_url: await this.ownAvatarUrl(auth, status, profile.avatarFileId, db),
         privacy: {
           show_in_directory: profile.showInDirectory,
           show_phone: profile.showPhone,

@@ -1,6 +1,6 @@
 import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
 import { alumni, notifications, payments, users } from "@kapdh/database";
-import { and, asc, eq, exists, gt, isNull, lte, not, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, eq, exists, gt, gte, isNull, lt, lte, not, or, type SQL, sql } from "drizzle-orm";
 import type { Db } from "../../core/db/types.js";
 import { JobRegistry } from "../../core/jobs/job-registry.js";
 import { formatDateWib } from "../../core/membership/format.js";
@@ -41,6 +41,12 @@ function notNotified(prefix: string): SQL {
   return sql`not exists (select 1 from ${notifications} where ${notifications.dedupKey} = 'u:' || ${alumni.userId}::text || ':' || ${prefix}::text || (floor(extract(epoch from ${alumni.expiresAt}) * 1000))::bigint::text)`;
 }
 
+interface NoticeText {
+  title: string;
+  body: string;
+  dedupKey: string;
+}
+
 export interface ExpiryRunResult {
   reminders: number;
   expiredNotices: number;
@@ -53,8 +59,10 @@ export interface ExpiryRunResult {
  *   verifikasi pengurus;
  * - pemberitahuan sekali saat masa aktif habis (now >= expires_at) dalam jendela 30 hari terakhir.
  * Satu notifikasi per periode lewat kunci dedup per pengguna + expires_at (notifications.dedup_key unik): job yang
- * diulang, dijalankan bersamaan di dua worker, atau terlambat tidak pernah menggandakan inbox/outbox. Hak akses
- * tidak bergantung pada job ini (AC F07-3: status selalu dihitung dari timestamp).
+ * diulang, dijalankan bersamaan di dua worker, atau terlambat tidak pernah menggandakan inbox/outbox. Setiap kandidat
+ * dinilai ulang pada data terkini di dalam transaksi notifikasinya (PRD 5.1), sehingga renewal, suspend atau
+ * penonaktifan yang terjadi setelah kandidat dipilih tidak menghasilkan notifikasi usang. Hak akses tidak bergantung
+ * pada job ini (AC F07-3: status selalu dihitung dari timestamp).
  */
 @Injectable()
 export class ExpiryRemindersService implements OnModuleInit {
@@ -84,9 +92,6 @@ export class ExpiryRemindersService implements OnModuleInit {
       and(
         gt(alumni.expiresAt, now),
         lte(alumni.expiresAt, new Date(now.getTime() + EXPIRY_REMINDER_WINDOW_MS)),
-      )!,
-      and(
-        notNotified(EXPIRING_KEY_PREFIX),
         // Iuran renewal yang sudah dikirim buktinya dan menunggu verifikasi tidak perlu diingatkan.
         not(
           exists(
@@ -103,7 +108,8 @@ export class ExpiryRemindersService implements OnModuleInit {
               ),
           ),
         ),
-      ),
+      )!,
+      notNotified(EXPIRING_KEY_PREFIX),
       (expiresAt) => ({
         title: "Masa KTA segera berakhir",
         body: `KTA Anda berlaku sampai ${formatDateWib(expiresAt)}. Perpanjang sekarang agar keanggotaan tetap aktif.`,
@@ -127,12 +133,15 @@ export class ExpiryRemindersService implements OnModuleInit {
 
   /**
    * Memproses kandidat berurutan keyset (expires_at, user_id) dalam batch; setiap notifikasi pada transaksinya
-   * sendiri (inbox + outbox notification.created atomik, AC F04-1). Mengembalikan jumlah notifikasi BARU.
+   * sendiri (inbox + outbox notification.created atomik, AC F04-1). `eligible` (jendela periode dan syarat jenis
+   * notifikasi) dinilai saat memilih kandidat DAN dinilai ulang per kandidat di dalam transaksinya, karena di antara
+   * keduanya renewal dapat disetujui, anggota disuspend/dinonaktifkan, atau bukti renewal dikirim
+   * ({@link deliverIfStillDue}). `prefilter` hanya penghemat (dedup). Mengembalikan jumlah notifikasi BARU.
    */
   private async sweep(
-    window: SQL,
-    extra: SQL | undefined,
-    message: (expiresAt: Date) => { title: string; body: string; dedupKey: string },
+    eligible: SQL,
+    prefilter: SQL,
+    message: (expiresAt: Date) => NoticeText,
   ): Promise<number> {
     let created = 0;
     let processed = 0;
@@ -153,27 +162,15 @@ export class ExpiryRemindersService implements OnModuleInit {
             eq(users.kind, "alumni"),
             eq(users.status, "active"),
             isNull(alumni.suspendedAt),
-            window,
-            extra,
+            eligible,
+            prefilter,
             after,
           ),
         )
         .orderBy(asc(alumni.expiresAt), asc(alumni.userId))
         .limit(BATCH_SIZE);
       for (const row of batch) {
-        const expiresAt = row.expiresAt!;
-        const text = message(expiresAt);
-        const result = await this.db.transaction((tx) =>
-          this.notifications.notify(tx, {
-            userId: row.userId,
-            category: "membership",
-            title: text.title,
-            body: text.body,
-            route: "/renewal",
-            dedupKey: text.dedupKey,
-          }),
-        );
-        if (result.created) created++;
+        if (await this.deliverIfStillDue(row.userId, row.expiresAt!, eligible, message)) created++;
       }
       processed += batch.length;
       if (batch.length < BATCH_SIZE) break;
@@ -181,5 +178,55 @@ export class ExpiryRemindersService implements OnModuleInit {
       cursor = { expiresAt: last.expiresAt!, userId: last.userId };
     }
     return created;
+  }
+
+  /**
+   * Satu kandidat dalam transaksinya sendiri (AC F07-5, PRD 5.1): baris users lalu alumni dikunci FOR SHARE menurut
+   * URUTAN KUNCI kernel (users → alumni, kontrak C3/C5; tidak deadlock dengan persetujuan renewal, suspend,
+   * penonaktifan atau penghapusan akun yang mengunci FOR NO KEY UPDATE/FOR UPDATE), lalu kondisi kandidat dinilai ulang
+   * pada data TERKINI: akun alumni aktif, tidak disuspend, `expires_at` masih periode yang sama, dan `eligible` masih
+   * terpenuhi. Bila tidak, notifikasi wajib yang tidak dapat ditarik ini tidak dikirim (mis. "segera berakhir" untuk
+   * tanggal lama setelah renewal disetujui). Perubahan yang commit setelah transaksi ini terserialisasi sesudah
+   * notifikasi, sehingga isi notifikasi selalu benar pada saat dibuat. Mengembalikan true bila notifikasi BARU dibuat.
+   */
+  private async deliverIfStillDue(
+    userId: string,
+    expiresAt: Date,
+    eligible: SQL,
+    message: (expiresAt: Date) => NoticeText,
+  ): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [owner] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.id, userId), eq(users.kind, "alumni"), eq(users.status, "active")))
+        .for("share");
+      if (!owner) return false;
+      const [current] = await tx
+        .select({ userId: alumni.userId })
+        .from(alumni)
+        .where(
+          and(
+            eq(alumni.userId, userId),
+            isNull(alumni.suspendedAt),
+            // Periode sama (presisi milidetik seperti kunci dedup): renewal = periode baru dengan notifikasinya sendiri.
+            gte(alumni.expiresAt, expiresAt),
+            lt(alumni.expiresAt, new Date(expiresAt.getTime() + 1)),
+            eligible,
+          ),
+        )
+        .for("share");
+      if (!current) return false;
+      const text = message(expiresAt);
+      const result = await this.notifications.notify(tx, {
+        userId,
+        category: "membership",
+        title: text.title,
+        body: text.body,
+        route: "/renewal",
+        dedupKey: text.dedupKey,
+      });
+      return result.created;
+    });
   }
 }

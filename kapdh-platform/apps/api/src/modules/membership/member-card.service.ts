@@ -7,7 +7,7 @@ import { academicYears, cohortCode } from "../../core/membership/member-number.j
 import { QrTokenService } from "../../core/qr/qr-token.service.js";
 import type { Db } from "../../core/db/types.js";
 import { CLOCK, DB } from "../../core/tokens.js";
-import { fileSubjectOf, MemberProfileService } from "./member-profile.service.js";
+import { MemberProfileService } from "./member-profile.service.js";
 import {
   cardAction,
   cardAllowsQr,
@@ -81,7 +81,8 @@ export class MemberCardService {
       profession_label: masters.profession?.label ?? null,
       // Kota saja, bukan alamat lengkap (disahkan v3.3).
       city: profile.city,
-      avatar_url: await this.profiles.avatarUrl(profile.avatarFileId, fileSubjectOf(auth)),
+      // Suspended → null: URL privat tidak dapat dibuka penampil suspended (PRD 2.2, 5.4).
+      avatar_url: await this.profiles.ownAvatarUrl(auth, status, profile.avatarFileId),
       action,
       open_payment_id: openPaymentId,
       renewal_opens_at: renewal.opensAt?.toISOString() ?? null,

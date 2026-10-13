@@ -44,6 +44,14 @@ yang sama dan menerima `member_message` opsional. Pemulihan sandi oleh Super Adm
 `${PUBLIC_WEB_URL}/app/forgot/otp?challenge=` dihapus) ke email terverifikasi anggota; anggota menukar kode lewat
 `POST /auth/password/forgot/verify` tanpa memulai ulang "Lupa sandi" (AC F16-4, F02-4).
 
+Klarifikasi perilaku api-membership (Phase C, tanpa perubahan skema, tidak memutus):
+
+- `POST /public/kta/verify`: kuota laju per nomor dihitung pada anggota pemilik token (klaim `sub`, nomor yang terikat
+  pada token), bukan pada `member_number` di body. Token sah milik anggota lain yang dikirim dengan nomor korban tidak
+  lagi menghabiskan kuota nomor korban; batas per token lebih kecil dari batas per nomor (AC F06-4).
+- `GET /me` (`Profile.avatar_url`) dan `GET /me/card` (`MemberCard.avatar_url`): selalu null selama anggota
+  suspended, karena URL privat tidak dapat dibuka penampil suspended; klien memakai inisial (PRD 2.2, 5.4).
+
 ### C1 Identity (`auth.yaml`, `admin-auth.yaml`, `account.yaml`)
 
 Kontrak lengkap F-01, F-02, F-14, F-16 (onboarding admin), PRD 2.2, 2.5 dan 5.2. Setiap operasi kini membawa
