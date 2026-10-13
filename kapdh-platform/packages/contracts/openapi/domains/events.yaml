@@ -442,7 +442,10 @@ components:
     TicketCancelledBy:
       type: string
       enum: [self, admin, system]
-      description: Pihak yang membatalkan tiket; system untuk penolakan otomatis/penghapusan akun.
+      description: |
+        Pihak yang membatalkan tiket: self (peserta), admin (pengurus membatalkan tiket atau instruksi pembayarannya,
+        termasuk hold awaiting_payment saat event dibatalkan), system (penolakan pembayaran tiket, tiket paid dan
+        awaiting_review yang dibatalkan akibat pembatalan event, penghapusan akun).
 
     EventRegistrationState:
       type: string

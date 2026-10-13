@@ -41,13 +41,18 @@ async function remindersFor(userId: string, eventId: string) {
   return t.db
     .select()
     .from(notifications)
-    .where(and(eq(notifications.userId, userId), like(notifications.dedupKey, `%event.reminder.%:${eventId}:%`)));
+    .where(
+      and(eq(notifications.userId, userId), like(notifications.dedupKey, `%event.reminder.%:${eventId}:%`)),
+    );
 }
 
 describe("Registrasi job (ARCHITECTURE §4.8)", () => {
   it("job dan handler terdaftar: reservations.expire 1 menit, events.lifecycle 5 menit, events.reminders 15 menit, topik event.cancelled, handler payment ticket", async () => {
     const names = Object.fromEntries(
-      t.app.get(JobRegistry).scheduledJobs().map((job) => [job.name, job.everyMs]),
+      t.app
+        .get(JobRegistry)
+        .scheduledJobs()
+        .map((job) => [job.name, job.everyMs]),
     );
     expect(names).toMatchObject({
       "reservations.expire": 60_000,
@@ -66,7 +71,12 @@ describe("reservations.expire (AC F09-2)", () => {
     const a = await reserve(t, await memberSession(t), first);
     const b = await reserve(t, await memberSession(t), first);
     const c = await reserve(t, await memberSession(t), second);
-    const review = await insertTicket(t, { eventId: second.id, userId: (await memberSession(t)).userId, status: "awaiting_review", total: "75000.00" });
+    const review = await insertTicket(t, {
+      eventId: second.id,
+      userId: (await memberSession(t)).userId,
+      status: "awaiting_review",
+      total: "75000.00",
+    });
     t.clock.advance(24 * HOUR + 1);
     const [one, two] = await Promise.all([
       runAsSystem(() => service.expireHolds(t.clock.now())),
@@ -79,7 +89,10 @@ describe("reservations.expire (AC F09-2)", () => {
     expect(await eventRow(t, first.id)).toMatchObject({ heldQuantity: 0 });
     expect(await eventRow(t, second.id)).toMatchObject({ heldQuantity: 1 });
     expect(await runAsSystem(() => service.expireHolds(t.clock.now()))).toBe(0);
-    const notes = await t.db.select().from(notifications).where(like(notifications.dedupKey, `%ticket.expired:${a.id}`));
+    const notes = await t.db
+      .select()
+      .from(notifications)
+      .where(like(notifications.dedupKey, `%ticket.expired:${a.id}`));
     expect(notes).toHaveLength(1);
     expect((notes[0]!.data as { route: string }).route).toBe(`/tickets/${a.id}`);
   });
@@ -88,9 +101,23 @@ describe("reservations.expire (AC F09-2)", () => {
 describe("events.lifecycle (PRD 4.4)", () => {
   it("PRD 4.4: open → closed sesudah tutup daftar; open/closed → done sesudah acara berakhir; draft/cancelled tidak berubah; berulang aman", async () => {
     const closing = await createEventRow(t, { startsInMs: 2 * HOUR, registrationClosesBeforeStartMs: HOUR });
-    const ending = await createEventRow(t, { startsInMs: 30 * 60_000, durationMs: HOUR, registrationClosesBeforeStartMs: 10 * 60_000 });
-    const draft = await createEventRow(t, { status: "draft", startsInMs: 30 * 60_000, durationMs: HOUR, registrationClosesBeforeStartMs: 10 * 60_000 });
-    const cancelled = await createEventRow(t, { status: "cancelled", startsInMs: 30 * 60_000, durationMs: HOUR, registrationClosesBeforeStartMs: 10 * 60_000 });
+    const ending = await createEventRow(t, {
+      startsInMs: 30 * 60_000,
+      durationMs: HOUR,
+      registrationClosesBeforeStartMs: 10 * 60_000,
+    });
+    const draft = await createEventRow(t, {
+      status: "draft",
+      startsInMs: 30 * 60_000,
+      durationMs: HOUR,
+      registrationClosesBeforeStartMs: 10 * 60_000,
+    });
+    const cancelled = await createEventRow(t, {
+      status: "cancelled",
+      startsInMs: 30 * 60_000,
+      durationMs: HOUR,
+      registrationClosesBeforeStartMs: 10 * 60_000,
+    });
     t.clock.advance(HOUR + 31 * 60_000);
     const result = await runAsSystem(() => service.advanceLifecycle(t.clock.now()));
     expect(result.closed).toBeGreaterThanOrEqual(1);
@@ -175,7 +202,11 @@ describe("events.reminders (AC F13-6)", () => {
     expect(after).toHaveLength(2);
     expect(after.some((n) => n.dedupKey.endsWith(`:${moved.getTime()}`))).toBe(true);
 
-    const cancelledEvent = await createEventRow(t, { price: "0.00", startsInMs: 2 * DAY, status: "cancelled" });
+    const cancelledEvent = await createEventRow(t, {
+      price: "0.00",
+      startsInMs: 2 * DAY,
+      status: "cancelled",
+    });
     const other = await memberSession(t);
     await insertTicket(t, { eventId: cancelledEvent.id, userId: other.userId, status: "paid" });
     await t.jobs.runScheduled("events.reminders");
@@ -192,21 +223,35 @@ describe("events.cancelled.fanout (AC F09-7)", () => {
     const ticketA = await reserve(t, a, event);
     await reserve(t, b, event);
     const old = await reserve(t, earlier, event);
-    await api().post(`/me/tickets/${old.id}/cancel`, { expected_refund_eligible: false }, {
-      token: earlier.token,
-      headers: { "if-match": old.version },
-    });
+    await api().post(
+      `/me/tickets/${old.id}/cancel`,
+      { expected_refund_eligible: false },
+      {
+        token: earlier.token,
+        headers: { "if-match": old.version },
+      },
+    );
     const manager = await adminSession(t, ["events.manage"]);
-    const res = await api().post(`/admin/events/${event.id}/cancel`, { reason: "Lokasi tidak tersedia" }, {
-      token: manager.token,
-      headers: { "if-match": "1" },
-    });
+    const res = await api().post(
+      `/admin/events/${event.id}/cancel`,
+      { reason: "Lokasi tidak tersedia" },
+      {
+        token: manager.token,
+        headers: { "if-match": "1" },
+      },
+    );
     expect(res.statusCode, res.body).toBe(200);
     await t.jobs.drainOutbox();
-    const [outbox] = await t.db.select().from(outboxEvents).where(eq(outboxEvents.dedupKey, `event.cancelled:${event.id}`));
+    const [outbox] = await t.db
+      .select()
+      .from(outboxEvents)
+      .where(eq(outboxEvents.dedupKey, `event.cancelled:${event.id}`));
     expect(outbox!.status).toBe("dispatched");
     expect(await runAsSystem(() => service.fanoutCancellation(event.id))).toBe(2);
-    const notes = await t.db.select().from(notifications).where(like(notifications.dedupKey, `%:event.cancelled:${event.id}`));
+    const notes = await t.db
+      .select()
+      .from(notifications)
+      .where(like(notifications.dedupKey, `%:event.cancelled:${event.id}`));
     expect(notes.map((n) => n.userId).sort()).toEqual([a.userId, b.userId].sort());
     const noteA = notes.find((n) => n.userId === a.userId)!;
     expect(noteA.body).toMatch(/Lokasi tidak tersedia/);

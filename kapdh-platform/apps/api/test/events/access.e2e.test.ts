@@ -38,7 +38,9 @@ describe("ARCHITECTURE §4.3: dekorator controller events = x-kapdh-access kontr
     const operations = contractOperations();
     expect(operations).toHaveLength(22);
     const routes = routeAccessList(t.app).filter((route) =>
-      operations.some(([method, path]) => method === route.method && normalize(path) === normalize(route.path)),
+      operations.some(
+        ([method, path]) => method === route.method && normalize(path) === normalize(route.path),
+      ),
     );
     for (const [method, path] of operations)
       expect(
@@ -49,7 +51,9 @@ describe("ARCHITECTURE §4.3: dekorator controller events = x-kapdh-access kontr
     for (const route of routes) expect(route.meta.problems, route.name).toEqual([]);
     expect(accessMismatches(routes)).toEqual([]);
     for (const [method, path] of operations) {
-      const access = (spec.paths[path] as Record<string, Record<string, unknown>>)[method]!["x-kapdh-access"] as {
+      const access = (spec.paths[path] as Record<string, Record<string, unknown>>)[method]![
+        "x-kapdh-access"
+      ] as {
         idempotent?: boolean;
       };
       expect(access, `${method} ${path} tanpa x-kapdh-access`).toBeDefined();

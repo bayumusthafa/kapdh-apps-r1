@@ -1,4 +1,12 @@
-import { auditLogs, files, notifications, outboxEvents, paymentAdjustments, payments, tickets } from "@kapdh/database";
+import {
+  auditLogs,
+  files,
+  notifications,
+  outboxEvents,
+  paymentAdjustments,
+  payments,
+  tickets,
+} from "@kapdh/database";
 import { and, eq, like } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -81,7 +89,10 @@ describe("Buat, ubah, hapus event (F-15, AC F15-2, F15-4)", () => {
     const cover = await uploadCover(manager.token);
     const media = expectOperation("post", "/admin/event-covers", cover) as JsonBody;
     expect(cover.statusCode).toBe(201);
-    expect(media).toMatchObject({ mime: "image/jpeg", url: expect.stringContaining(`/files/public/${media.file_id}`) });
+    expect(media).toMatchObject({
+      mime: "image/jpeg",
+      url: expect.stringContaining(`/files/public/${media.file_id}`),
+    });
     const category = await createCategory(t, { label: "Kemah" });
     const res = await api().post(
       "/admin/events",
@@ -107,7 +118,9 @@ describe("Buat, ubah, hapus event (F-15, AC F15-2, F15-4)", () => {
       allowed_actions: ["edit", "publish", "delete"],
       version: "1",
     });
-    expect(event.effective_checkin_opens_at).toBe(new Date(Date.parse(event.starts_at) - 2 * HOUR).toISOString());
+    expect(event.effective_checkin_opens_at).toBe(
+      new Date(Date.parse(event.starts_at) - 2 * HOUR).toISOString(),
+    );
     const [file] = await t.db.select().from(files).where(eq(files.id, media.file_id));
     expect(file!.attachedAt).not.toBeNull();
     const [audit] = await t.db
@@ -155,7 +168,11 @@ describe("Buat, ubah, hapus event (F-15, AC F15-2, F15-4)", () => {
       token: manager.token,
     });
     expect(foreign.json().field_errors.cover_file_id).toBeDefined();
-    const empty = await api().patch(`/admin/events/${uuidv7()}`, {}, { token: manager.token, headers: { "if-match": "1" } });
+    const empty = await api().patch(
+      `/admin/events/${uuidv7()}`,
+      {},
+      { token: manager.token, headers: { "if-match": "1" } },
+    );
     expect(empty.statusCode).toBe(400);
   });
 
@@ -170,7 +187,12 @@ describe("Buat, ubah, hapus event (F-15, AC F15-2, F15-4)", () => {
       { token: manager.token, headers: { "if-match": "1" } },
     );
     const updated = expectOperation("patch", "/admin/events/{eventId}", res) as JsonBody;
-    expect(updated).toMatchObject({ price: "90000.00", title: "Reuni Akbar 2026", description: null, version: "2" });
+    expect(updated).toMatchObject({
+      price: "90000.00",
+      title: "Reuni Akbar 2026",
+      description: null,
+      version: "2",
+    });
     expect((await ticketRow(t, ticket.id)).totalSnapshot).toBe("75000.00");
     const [payment] = await t.db.select().from(payments).where(eq(payments.ticketId, ticket.id));
     expect(payment!.amount).toBe("75000.00");
@@ -204,7 +226,12 @@ describe("Buat, ubah, hapus event (F-15, AC F15-2, F15-4)", () => {
       holdExpiresAt: new Date(t.clock.now().getTime() - 1000),
     });
     const detail = (await api().get(`/admin/events/${event.id}`, { token: manager.token })).json();
-    expect(detail).toMatchObject({ held_quantity: 0, paid_quantity: 2, min_seats_total: 2, seats_available: 3 });
+    expect(detail).toMatchObject({
+      held_quantity: 0,
+      paid_quantity: 2,
+      min_seats_total: 2,
+      seats_available: 3,
+    });
     const below = await api().patch(
       `/admin/events/${event.id}`,
       { seats_total: 1 },
@@ -231,10 +258,14 @@ describe("Buat, ubah, hapus event (F-15, AC F15-2, F15-4)", () => {
     const withTickets = await createEventRow(t, { price: "0.00" });
     const member = await memberSession(t);
     const ticket = await reserve(t, member, withTickets);
-    await api().post(`/me/tickets/${ticket.id}/cancel`, { expected_refund_eligible: false }, {
-      token: member.token,
-      headers: { "if-match": ticket.version },
-    });
+    await api().post(
+      `/me/tickets/${ticket.id}/cancel`,
+      { expected_refund_eligible: false },
+      {
+        token: member.token,
+        headers: { "if-match": ticket.version },
+      },
+    );
     const refused = await api().delete(`/admin/events/${withTickets.id}`, {
       token: manager.token,
       headers: { "if-match": "1" },
@@ -245,10 +276,14 @@ describe("Buat, ubah, hapus event (F-15, AC F15-2, F15-4)", () => {
     });
     expect(refused.statusCode).toBe(409);
     const list = (await api().get("/admin/events", { token: manager.token, query: { q: "Reuni" } })).json();
-    expect(list.items.find((e: { id: string }) => e.id === withTickets.id)).toMatchObject({ has_tickets: true });
+    expect(list.items.find((e: { id: string }) => e.id === withTickets.id)).toMatchObject({
+      has_tickets: true,
+    });
 
     const cover = (await uploadCover(manager.token)).json();
-    const created = (await api().post("/admin/events", eventBody({ cover_file_id: cover.file_id }), { token: manager.token })).json();
+    const created = (
+      await api().post("/admin/events", eventBody({ cover_file_id: cover.file_id }), { token: manager.token })
+    ).json();
     const removed = await api().delete(`/admin/events/${created.id}`, {
       token: manager.token,
       headers: { "if-match": created.version },
@@ -260,10 +295,14 @@ describe("Buat, ubah, hapus event (F-15, AC F15-2, F15-4)", () => {
 
     for (const status of ["done", "cancelled"] as const) {
       const event = await createEventRow(t, { status });
-      const res = await api().patch(`/admin/events/${event.id}`, { title: "Ubah" }, {
-        token: manager.token,
-        headers: { "if-match": "1" },
-      });
+      const res = await api().patch(
+        `/admin/events/${event.id}`,
+        { title: "Ubah" },
+        {
+          token: manager.token,
+          headers: { "if-match": "1" },
+        },
+      );
       expect(res.statusCode).toBe(400);
     }
   });
@@ -274,10 +313,14 @@ describe("Status event (PRD 4.4)", () => {
     await freshManager();
     const created = (await api().post("/admin/events", eventBody(), { token: manager.token })).json();
     const set = (status: string, version: string, key?: string) =>
-      api().post(`/admin/events/${created.id}/status`, { status }, {
-        token: manager.token,
-        headers: { "if-match": version, ...(key ? { "idempotency-key": key } : {}) },
-      });
+      api().post(
+        `/admin/events/${created.id}/status`,
+        { status },
+        {
+          token: manager.token,
+          headers: { "if-match": version, ...(key ? { "idempotency-key": key } : {}) },
+        },
+      );
     const close = await set("closed", "1");
     expect(expectOperation("post", "/admin/events/{eventId}/status", close)).toMatchObject({
       code: "VALIDATION_ERROR",
@@ -297,7 +340,10 @@ describe("Status event (PRD 4.4)", () => {
     expect(same.statusCode).toBe(200);
     expect(same.json().version).toBe("2");
     const closed = await set("closed", "2");
-    expect(closed.json()).toMatchObject({ status: "closed", allowed_actions: ["edit", "reopen", "cancel", "delete"] });
+    expect(closed.json()).toMatchObject({
+      status: "closed",
+      allowed_actions: ["edit", "reopen", "cancel", "delete"],
+    });
     const stale = await set("open", "2");
     expect(stale.json()).toMatchObject({ code: "VERSION_CONFLICT", current: { version: "3" } });
     expect((await set("open", "3")).json().status).toBe("open");
@@ -310,11 +356,19 @@ describe("Status event (PRD 4.4)", () => {
     const member = await memberSession(t);
     expect((await api().get(`/events/${created.id}`, { token: member.token })).statusCode).toBe(200);
     // Buka kembali sesudah batas tutup daftar ditolak.
-    const past = await createEventRow(t, { status: "closed", startsInMs: 2 * HOUR, registrationClosesBeforeStartMs: 3 * HOUR });
-    const reopen = await api().post(`/admin/events/${past.id}/status`, { status: "open" }, {
-      token: manager.token,
-      headers: { "if-match": "1" },
+    const past = await createEventRow(t, {
+      status: "closed",
+      startsInMs: 2 * HOUR,
+      registrationClosesBeforeStartMs: 3 * HOUR,
     });
+    const reopen = await api().post(
+      `/admin/events/${past.id}/status`,
+      { status: "open" },
+      {
+        token: manager.token,
+        headers: { "if-match": "1" },
+      },
+    );
     expect(reopen.statusCode).toBe(400);
   });
 });
@@ -360,7 +414,11 @@ describe("Pembatalan event (AC F09-7, D6)", () => {
         allowed_actions: [],
       },
     });
-    expect(await eventRow(t, event.id)).toMatchObject({ heldQuantity: 0, paidQuantity: 0, status: "cancelled" });
+    expect(await eventRow(t, event.id)).toMatchObject({
+      heldQuantity: 0,
+      paidQuantity: 0,
+      status: "cancelled",
+    });
     expect(await ticketRow(t, paid.id)).toMatchObject({ status: "cancelled", cancelledBy: "system" });
     expect(await ticketRow(t, inReview.id)).toMatchObject({ status: "cancelled", cancelledBy: "system" });
     expect(await ticketRow(t, held.id)).toMatchObject({ status: "cancelled", cancelledBy: "admin" });
@@ -377,10 +435,20 @@ describe("Pembatalan event (AC F09-7, D6)", () => {
     // QR seluruh tiket tidak berlaku (detail anggota dan check-in).
     const mine = (await api().get(`/me/tickets/${paid.id}`, { token: paidMember.token })).json();
     expect(mine).toMatchObject({ status: "cancelled", qr_code: null, refunds: [{ status: "pending" }] });
-    const scan = await api().post("/admin/checkin", { event_id: event.id, qr_code: paid.qr_code }, { token: checker.token });
-    expect(scan.json()).toMatchObject({ code: "VALIDATION_ERROR", current: { rejection_reason: "event_cancelled" } });
+    const scan = await api().post(
+      "/admin/checkin",
+      { event_id: event.id, qr_code: paid.qr_code },
+      { token: checker.token },
+    );
+    expect(scan.json()).toMatchObject({
+      code: "VALIDATION_ERROR",
+      current: { rejection_reason: "event_cancelled" },
+    });
     // Outbox + fanout notifikasi (idempoten bila diulang).
-    const [outbox] = await t.db.select().from(outboxEvents).where(eq(outboxEvents.dedupKey, `event.cancelled:${event.id}`));
+    const [outbox] = await t.db
+      .select()
+      .from(outboxEvents)
+      .where(eq(outboxEvents.dedupKey, `event.cancelled:${event.id}`));
     expect(outbox).toBeDefined();
     await t.jobs.drainOutbox();
     await runAsSystem(() => t.app.get(EventsJobsService).fanoutCancellation(event.id));
@@ -394,14 +462,21 @@ describe("Pembatalan event (AC F09-7, D6)", () => {
     expect(notes.every((n) => n.category === "event")).toBe(true);
     // Approve payment berbukti sesudah event dibatalkan → paid + refund sistem, tiket tetap cancelled (D6).
     const approve = await decidePayment(t, treasurer, inReview.payment.id, "approve");
-    expect(approve.json()).toMatchObject({ status: "paid", adjustments: [{ kind: "refund", status: "pending" }] });
+    expect(approve.json()).toMatchObject({
+      status: "paid",
+      adjustments: [{ kind: "refund", status: "pending" }],
+    });
     expect((await ticketRow(t, inReview.id)).status).toBe("cancelled");
     expect(await eventRow(t, event.id)).toMatchObject({ heldQuantity: 0, paidQuantity: 0 });
     // Event cancelled tidak dapat dibatalkan lagi; histori tetap dapat dibaca.
-    const again = await api().post(`/admin/events/${event.id}/cancel`, { reason: "Ulang" }, {
-      token: manager.token,
-      headers: { "if-match": result.event.version },
-    });
+    const again = await api().post(
+      `/admin/events/${event.id}/cancel`,
+      { reason: "Ulang" },
+      {
+        token: manager.token,
+        headers: { "if-match": result.event.version },
+      },
+    );
     expect(again.statusCode).toBe(400);
     expect(await t.db.select().from(tickets).where(eq(tickets.eventId, event.id))).toHaveLength(4);
     const audit = await t.db
@@ -422,10 +497,14 @@ describe("Statistik dan tiket event (F-15, PRD 1.6)", () => {
     const ticketA = await paidTicket(t, a, event, treasurer);
     await paidTicket(t, b, event, treasurer);
     await reserve(t, await memberSession(t), event);
-    await api().post(`/me/tickets/${ticketA.id}/cancel`, { expected_refund_eligible: true }, {
-      token: a.token,
-      headers: { "if-match": ticketA.version },
-    });
+    await api().post(
+      `/me/tickets/${ticketA.id}/cancel`,
+      { expected_refund_eligible: true },
+      {
+        token: a.token,
+        headers: { "if-match": ticketA.version },
+      },
+    );
     const res = await api().get(`/admin/events/${event.id}/stats`, { token: manager.token });
     expect(expectOperation("get", "/admin/events/{eventId}/stats", res)).toMatchObject({
       event_id: event.id,
@@ -442,7 +521,9 @@ describe("Statistik dan tiket event (F-15, PRD 1.6)", () => {
       refunds_completed_amount: "0.00",
       net_revenue: "100000.00",
     });
-    expect((await api().get(`/admin/events/${uuidv7()}/stats`, { token: manager.token })).statusCode).toBe(404);
+    expect((await api().get(`/admin/events/${uuidv7()}/stats`, { token: manager.token })).statusCode).toBe(
+      404,
+    );
   });
 
   it("F-15: tabel tiket dengan filter status (proyeksi), check-in, kata kunci, urutan, total; pemegang terhapus anonim; can_refund", async () => {
@@ -470,23 +551,41 @@ describe("Statistik dan tiket event (F-15, PRD 1.6)", () => {
     const sitiRow = page.items.find((x: { id: string }) => x.id === ticketSiti.id);
     expect(sitiRow).toMatchObject({
       status: "paid",
-      holder: { user_id: siti.userId, full_name: "Siti Aminah", member_number: siti.memberNumber, cohort_code: "KAPDH 29" },
+      holder: {
+        user_id: siti.userId,
+        full_name: "Siti Aminah",
+        member_number: siti.memberNumber,
+        cohort_code: "KAPDH 29",
+      },
       holder_eligible: true,
       payment: null,
       refunds: [],
       can_refund: false,
       review_overdue: false,
     });
-    const expired = (await api().get(`/admin/events/${event.id}/tickets`, { token: manager.token, query: { status: "expired" } })).json();
+    const expired = (
+      await api().get(`/admin/events/${event.id}/tickets`, {
+        token: manager.token,
+        query: { status: "expired" },
+      })
+    ).json();
     expect(expired.total).toBe(1);
-    const byName = (await api().get(`/admin/events/${event.id}/tickets`, { token: manager.token, query: { q: "siti" } })).json();
+    const byName = (
+      await api().get(`/admin/events/${event.id}/tickets`, { token: manager.token, query: { q: "siti" } })
+    ).json();
     expect(byName.items.map((x: { id: string }) => x.id)).toEqual([ticketSiti.id]);
     const byNumber = (
-      await api().get(`/admin/events/${event.id}/tickets`, { token: manager.token, query: { q: siti.memberNumber! } })
+      await api().get(`/admin/events/${event.id}/tickets`, {
+        token: manager.token,
+        query: { q: siti.memberNumber! },
+      })
     ).json();
     expect(byNumber.total).toBe(1);
     const sorted = (
-      await api().get(`/admin/events/${event.id}/tickets`, { token: manager.token, query: { sort: "holder_name_asc", limit: "2" } })
+      await api().get(`/admin/events/${event.id}/tickets`, {
+        token: manager.token,
+        query: { sort: "holder_name_asc", limit: "2" },
+      })
     ).json();
     const rest = (
       await api().get(`/admin/events/${event.id}/tickets`, {
@@ -494,11 +593,16 @@ describe("Statistik dan tiket event (F-15, PRD 1.6)", () => {
         query: { sort: "holder_name_asc", limit: "2", cursor: sorted.next_cursor },
       })
     ).json();
-    const order = [...sorted.items, ...rest.items].map((x: { holder: { full_name: string | null } }) => x.holder.full_name);
+    const order = [...sorted.items, ...rest.items].map(
+      (x: { holder: { full_name: string | null } }) => x.holder.full_name,
+    );
     expect(order.slice(0, 2)).toEqual([null, "Alumni Uji"]);
     expect(order.slice(2)).toEqual(["Budi Santoso", "Siti Aminah"]);
     const notChecked = (
-      await api().get(`/admin/events/${event.id}/tickets`, { token: manager.token, query: { checked_in: "true" } })
+      await api().get(`/admin/events/${event.id}/tickets`, {
+        token: manager.token,
+        query: { checked_in: "true" },
+      })
     ).json();
     expect(notChecked.total).toBe(0);
   });
@@ -518,10 +622,14 @@ describe("Pembatalan tiket oleh pengurus (D6, PRD 2.2, 2.3)", () => {
       { reason: "Anggota disuspend", refund: true },
       { token: manager.token, headers: { "if-match": ticket.version } },
     );
-    expect(expectOperation("post", "/admin/events/{eventId}/tickets/{ticketId}/cancel", noPermission)).toMatchObject({
+    expect(
+      expectOperation("post", "/admin/events/{eventId}/tickets/{ticketId}/cancel", noPermission),
+    ).toMatchObject({
       code: "FORBIDDEN",
     });
-    const linked = await adminSession(t, ["events.manage", "payments.decide"], { linkedAlumniUserId: member.userId });
+    const linked = await adminSession(t, ["events.manage", "payments.decide"], {
+      linkedAlumniUserId: member.userId,
+    });
     const own = await api().post(
       `/admin/events/${event.id}/tickets/${ticket.id}/cancel`,
       { reason: "Konflik", refund: true },
@@ -538,7 +646,9 @@ describe("Pembatalan tiket oleh pengurus (D6, PRD 2.2, 2.3)", () => {
     const event = await createEventRow(t);
     const member = await memberSession(t);
     const ticket = await paidTicket(t, member, event, treasurer);
-    const decider = await adminSession(t, ["events.manage", "payments.decide"], { displayName: "Bendahara Event" });
+    const decider = await adminSession(t, ["events.manage", "payments.decide"], {
+      displayName: "Bendahara Event",
+    });
     const list = (await api().get(`/admin/events/${event.id}/tickets`, { token: decider.token })).json();
     expect(list.items[0]).toMatchObject({ can_refund: true, payment: { status: "paid" } });
     const res = await api().post(
@@ -546,7 +656,11 @@ describe("Pembatalan tiket oleh pengurus (D6, PRD 2.2, 2.3)", () => {
       { reason: "Anggota disuspend pengurus", refund: true },
       { token: decider.token, headers: { "if-match": ticket.version } },
     );
-    const body = expectOperation("post", "/admin/events/{eventId}/tickets/{ticketId}/cancel", res) as JsonBody;
+    const body = expectOperation(
+      "post",
+      "/admin/events/{eventId}/tickets/{ticketId}/cancel",
+      res,
+    ) as JsonBody;
     expect(body).toMatchObject({
       status: "cancelled",
       cancelled_by: "admin",
@@ -555,7 +669,10 @@ describe("Pembatalan tiket oleh pengurus (D6, PRD 2.2, 2.3)", () => {
       can_refund: false,
     });
     const [payment] = await t.db.select().from(payments).where(eq(payments.ticketId, ticket.id));
-    const [refund] = await t.db.select().from(paymentAdjustments).where(eq(paymentAdjustments.paymentId, payment!.id));
+    const [refund] = await t.db
+      .select()
+      .from(paymentAdjustments)
+      .where(eq(paymentAdjustments.paymentId, payment!.id));
     expect(refund!.createdByAdminId).toBe(decider.adminId);
     expect((await eventRow(t, event.id)).paidQuantity).toBe(0);
     const [note] = await t.db
@@ -578,7 +695,10 @@ describe("Pembatalan tiket oleh pengurus (D6, PRD 2.2, 2.3)", () => {
       { reason: "Uji", refund: false },
       { token: manager.token, headers: { "if-match": current.version } },
     );
-    expect(conflict.json()).toMatchObject({ code: "PAYMENT_STATE_CONFLICT", current: { status: "awaiting_review" } });
+    expect(conflict.json()).toMatchObject({
+      code: "PAYMENT_STATE_CONFLICT",
+      current: { status: "awaiting_review" },
+    });
     const holder = await memberSession(t);
     const held = await reserve(t, holder, event);
     const refundUnpaid = await api().post(
@@ -610,18 +730,27 @@ describe("Daftar event pengurus dan kategori (guideline p14)", () => {
     const a = await createEventRow(t, { title: `${tag} A`, startsInMs: 5 * DAY, categoryId: category.id });
     const b = await createEventRow(t, { title: `${tag} B`, startsInMs: 15 * DAY, status: "draft" });
     const c = await createEventRow(t, { title: `${tag} C`, startsInMs: 25 * DAY });
-    const page1 = (await api().get("/admin/events", { token: manager.token, query: { q: tag, limit: "2" } })).json();
+    const page1 = (
+      await api().get("/admin/events", { token: manager.token, query: { q: tag, limit: "2" } })
+    ).json();
     expect(page1.total).toBe(3);
     expect(page1.items.map((e: { id: string }) => e.id)).toEqual([c.id, b.id]);
     const page2 = expectOperation(
       "get",
       "/admin/events",
-      await api().get("/admin/events", { token: manager.token, query: { q: tag, limit: "2", cursor: page1.next_cursor } }),
+      await api().get("/admin/events", {
+        token: manager.token,
+        query: { q: tag, limit: "2", cursor: page1.next_cursor },
+      }),
     ) as JsonBody;
     expect(page2.items.map((e: { id: string }) => e.id)).toEqual([a.id]);
-    const titles = (await api().get("/admin/events", { token: manager.token, query: { q: tag, sort: "title_asc" } })).json();
+    const titles = (
+      await api().get("/admin/events", { token: manager.token, query: { q: tag, sort: "title_asc" } })
+    ).json();
     expect(titles.items.map((e: { id: string }) => e.id)).toEqual([a.id, b.id, c.id]);
-    const drafts = (await api().get("/admin/events", { token: manager.token, query: { q: tag, status: "draft" } })).json();
+    const drafts = (
+      await api().get("/admin/events", { token: manager.token, query: { q: tag, status: "draft" } })
+    ).json();
     expect(drafts.items.map((e: { id: string }) => e.id)).toEqual([b.id]);
     const byCategory = (
       await api().get("/admin/events", { token: manager.token, query: { category_id: category.id } })
@@ -638,7 +767,9 @@ describe("Daftar event pengurus dan kategori (guideline p14)", () => {
       "/admin/event-categories",
       await api().get("/admin/event-categories", { token: manager.token }),
     ) as JsonBody;
-    expect(cats.items.some((x: { label: string; active: boolean }) => x.label === "Arsip" && !x.active)).toBe(true);
+    expect(cats.items.some((x: { label: string; active: boolean }) => x.label === "Arsip" && !x.active)).toBe(
+      true,
+    );
     expect(cats.items.every((x: { label: string }) => x.label !== "Berita")).toBe(true);
   });
 });

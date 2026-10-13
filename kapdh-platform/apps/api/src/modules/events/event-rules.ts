@@ -243,11 +243,7 @@ export function checkinRejectionMessage(
 // ------------------------------------------------------------------------------------ pembatalan dan refund D6
 
 /** Batas refund penuh pembatalan mandiri (H-`self_cancel_days`); null untuk event/tiket gratis (D6). */
-export function fullRefundUntil(
-  startsAt: Date,
-  amount: string,
-  selfCancelDays: number,
-): Date | null {
+export function fullRefundUntil(startsAt: Date, amount: string, selfCancelDays: number): Date | null {
   if (toCents(amount) <= 0n) return null;
   return selfCancelFullRefundUntil(startsAt, selfCancelDays);
 }

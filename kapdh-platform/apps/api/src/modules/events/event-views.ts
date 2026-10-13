@@ -155,11 +155,7 @@ export class EventViews implements OnModuleInit {
             .select({ id: files.id })
             .from(files)
             .where(
-              and(
-                inArray(files.id, coverIds),
-                eq(files.status, "ready"),
-                eq(files.visibility, "public"),
-              ),
+              and(inArray(files.id, coverIds), eq(files.status, "ready"), eq(files.visibility, "public")),
             )
         : Promise.resolve([]),
       ids.length
@@ -193,7 +189,11 @@ export class EventViews implements OnModuleInit {
   }
 
   /** Tiket terbaru pemanggil per event (status apa pun). */
-  async latestTickets(db: DbOrTx, userId: string, eventIds: readonly string[]): Promise<Map<string, TicketRow>> {
+  async latestTickets(
+    db: DbOrTx,
+    userId: string,
+    eventIds: readonly string[],
+  ): Promise<Map<string, TicketRow>> {
     if (eventIds.length === 0) return new Map();
     const rows = await db
       .selectDistinctOn([tickets.eventId])
@@ -241,16 +241,15 @@ export class EventViews implements OnModuleInit {
     return new Map(rows.map((row) => [row.ticketId!, row]));
   }
 
-  async refundsForPayments(
-    db: DbOrTx,
-    paymentIds: readonly string[],
-  ): Promise<Map<string, AdjustmentRow[]>> {
+  async refundsForPayments(db: DbOrTx, paymentIds: readonly string[]): Promise<Map<string, AdjustmentRow[]>> {
     const map = new Map<string, AdjustmentRow[]>();
     if (paymentIds.length === 0) return map;
     const rows = await db
       .select()
       .from(paymentAdjustments)
-      .where(and(inArray(paymentAdjustments.paymentId, [...paymentIds]), eq(paymentAdjustments.kind, "refund")))
+      .where(
+        and(inArray(paymentAdjustments.paymentId, [...paymentIds]), eq(paymentAdjustments.kind, "refund")),
+      )
       .orderBy(desc(paymentAdjustments.createdAt), desc(paymentAdjustments.id));
     for (const row of rows) {
       const list = map.get(row.paymentId) ?? [];
@@ -318,12 +317,7 @@ export class EventViews implements OnModuleInit {
 
   // ------------------------------------------------------------------------------------------- DTO anggota
 
-  eventSummary(
-    event: EventRow,
-    extras: EventExtras,
-    myTicket: TicketRow | null,
-    now: Date,
-  ): EventSummaryDto {
+  eventSummary(event: EventRow, extras: EventExtras, myTicket: TicketRow | null, now: Date): EventSummaryDto {
     const seats = seatProjection(event, extras.lapsed);
     return {
       id: event.id,
@@ -484,7 +478,9 @@ export class EventViews implements OnModuleInit {
       this.eventsSetting(),
     ]);
     const myTicket = latest.get(event.id) ?? null;
-    const myPayment = myTicket ? ((await this.paymentsForTickets(db, [myTicket.id])).get(myTicket.id) ?? null) : null;
+    const myPayment = myTicket
+      ? ((await this.paymentsForTickets(db, [myTicket.id])).get(myTicket.id) ?? null)
+      : null;
     return this.eventDetail(event, extras.get(event.id)!, viewer, myTicket, myPayment, setting, now);
   }
 
@@ -505,7 +501,15 @@ export class EventViews implements OnModuleInit {
     ]);
     const payment = paymentMap.get(row.ticket.id) ?? null;
     const refunds = payment ? ((await this.refundsForPayments(db, [payment.id])).get(payment.id) ?? []) : [];
-    return this.ticketDetail(row.ticket, row.event, extras.get(row.event.id)!, payment, refunds, setting, now);
+    return this.ticketDetail(
+      row.ticket,
+      row.event,
+      extras.get(row.event.id)!,
+      payment,
+      refunds,
+      setting,
+      now,
+    );
   }
 
   // ------------------------------------------------------------------------------------------ DTO pengurus
@@ -710,9 +714,7 @@ export class EventViews implements OnModuleInit {
         sortOrder: categories.sortOrder,
       })
       .from(categories)
-      .where(
-        and(eq(categories.kind, "event"), options.activeOnly ? eq(categories.active, true) : undefined),
-      )
+      .where(and(eq(categories.kind, "event"), options.activeOnly ? eq(categories.active, true) : undefined))
       .orderBy(asc(categories.sortOrder), asc(categories.label), asc(categories.id));
   }
 

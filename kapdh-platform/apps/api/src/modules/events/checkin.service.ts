@@ -110,7 +110,10 @@ export class CheckinService {
     };
   }
 
-  async checkIn(auth: AuthContext, input: z.infer<typeof checkinSchema>): Promise<Schemas["AdminCheckinResult"]> {
+  async checkIn(
+    auth: AuthContext,
+    input: z.infer<typeof checkinSchema>,
+  ): Promise<Schemas["AdminCheckinResult"]> {
     const [requested] = await this.db
       .select({ id: events.id })
       .from(events)
@@ -250,7 +253,10 @@ export class CheckinService {
     const by =
       checkedInBy ??
       (state.ticket.checkedInAt
-        ? { admin_id: state.ticket.checkedInByAdminId, display_name: await this.adminName(state.ticket.checkedInByAdminId) }
+        ? {
+            admin_id: state.ticket.checkedInByAdminId,
+            display_name: await this.adminName(state.ticket.checkedInByAdminId),
+          }
         : null);
     return {
       ticket_id: state.ticket.id,
