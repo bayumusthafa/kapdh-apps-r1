@@ -160,7 +160,12 @@ describe("Driver BullMQ (PRD 5.1: dispatcher meneruskan ke BullMQ dengan dedup k
       { jobId: "outbox.b", attempt: 2 },
     ]);
     const processing = lines.filter((line) => line.msg === "memproses");
-    expect(processing[0]).toMatchObject({ queue: "outbox", driver: "bullmq", job_id: "outbox.a", attempt: 1 });
+    expect(processing[0]).toMatchObject({
+      queue: "outbox",
+      driver: "bullmq",
+      job_id: "outbox.a",
+      attempt: 1,
+    });
     // Redaksi logger root: kunci rahasia disensor.
     expect(processing[0]!.token).toBe("[REDACTED]");
     // Galat antrean dari koneksi Redis dicatat lewat logger (bukan crash).

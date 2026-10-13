@@ -62,10 +62,16 @@ async function harness(options: { concurrency?: number; leaseMs?: number; queue?
 describe("Dispatcher outbox (PRD 5.1, ARCHITECTURE §4.8)", () => {
   it("PRD 5.1: event jatuh tempo diklaim, diteruskan ke antrean, dirutekan ke handler topiknya, lalu dispatched", async () => {
     const h = await harness();
-    const cancelled = await insertOutboxEvent(tdb.db, h.clock, { topic: "event.cancelled", requestId: "req-api-1" });
+    const cancelled = await insertOutboxEvent(tdb.db, h.clock, {
+      topic: "event.cancelled",
+      requestId: "req-api-1",
+    });
     const exported = await insertOutboxEvent(tdb.db, h.clock, {
       topic: "audit.export.requested",
-      payload: { export_id: "0190a6f2-0000-7000-8000-000000000001", admin_id: "0190a6f2-0000-7000-8000-000000000002" },
+      payload: {
+        export_id: "0190a6f2-0000-7000-8000-000000000001",
+        admin_id: "0190a6f2-0000-7000-8000-000000000002",
+      },
     });
     expect(await h.dispatcher.pollOnce()).toEqual({ claimed: 2, limit: 4 });
     await h.queue.drained();
@@ -104,7 +110,12 @@ describe("Dispatcher outbox (PRD 5.1, ARCHITECTURE §4.8)", () => {
     await h.dispatcher.pollOnce();
     await h.queue.drained();
     const first = await outboxRow(tdb.db, id);
-    expect(first).toMatchObject({ status: "failed", attempts: 1, lockedUntil: null, lastError: "Error:ECONNRESET" });
+    expect(first).toMatchObject({
+      status: "failed",
+      attempts: 1,
+      lockedUntil: null,
+      lastError: "Error:ECONNRESET",
+    });
     expect(first.nextAttemptAt.getTime()).toBe(h.clock.now().getTime() + outboxBackoffMs(1));
     // N-14: pesan galat (berisi alamat email) tidak tersimpan maupun tercatat.
     expect(first.lastError).not.toContain("rahasia");
@@ -197,7 +208,11 @@ describe("Dispatcher outbox (PRD 5.1, ARCHITECTURE §4.8)", () => {
     await h.dispatcher.pollOnce();
     await h.queue.drained();
     expect(observedLease).toBe(claimedAt + 2_500);
-    expect(await outboxRow(tdb.db, id)).toMatchObject({ status: "dispatched", lockedUntil: null, attempts: 1 });
+    expect(await outboxRow(tdb.db, id)).toMatchObject({
+      status: "dispatched",
+      lockedUntil: null,
+      attempts: 1,
+    });
     await h.queue.close(1_000);
   });
 
@@ -234,12 +249,23 @@ describe("Dispatcher outbox (PRD 5.1, ARCHITECTURE §4.8)", () => {
     };
     const dispatcher = new OutboxDispatcher(
       { jobs: base.jobs, queue: broken, clock: base.clock, logger: base.logs.logger },
-      { pollIntervalMs: 250, batchSize: 50, leaseMs: OUTBOX_LOCK_MS, concurrency: 4, attempts: 3, backoffMs: 10 },
+      {
+        pollIntervalMs: 250,
+        batchSize: 50,
+        leaseMs: OUTBOX_LOCK_MS,
+        concurrency: 4,
+        attempts: 3,
+        backoffMs: 10,
+      },
     );
     const ids = [await insertOutboxEvent(tdb.db, base.clock), await insertOutboxEvent(tdb.db, base.clock)];
     await expect(dispatcher.pollOnce()).rejects.toThrow(/ECONNREFUSED/);
     for (const id of ids)
-      expect(await outboxRow(tdb.db, id)).toMatchObject({ status: "pending", lockedUntil: null, attempts: 0 });
+      expect(await outboxRow(tdb.db, id)).toMatchObject({
+        status: "pending",
+        lockedUntil: null,
+        attempts: 0,
+      });
     expect(dispatcher.status().totals).toMatchObject({ claimed: 2, released: 2 });
     // Dispatcher yang sehat langsung mengambilnya (tidak menunggu lease 5 menit).
     expect((await base.dispatcher.pollOnce()).claimed).toBe(2);
@@ -268,7 +294,9 @@ describe("Dispatcher outbox (PRD 5.1, ARCHITECTURE §4.8)", () => {
     const h = await harness();
     const failing = {
       claimOutbox: async () => {
-        throw Object.assign(new Error("password authentication failed for user kapdh_worker"), { code: "28P01" });
+        throw Object.assign(new Error("password authentication failed for user kapdh_worker"), {
+          code: "28P01",
+        });
       },
       processOutboxClaim: h.jobs.processOutboxClaim.bind(h.jobs),
       releaseOutboxClaim: h.jobs.releaseOutboxClaim.bind(h.jobs),
@@ -276,7 +304,14 @@ describe("Dispatcher outbox (PRD 5.1, ARCHITECTURE §4.8)", () => {
     const queue = new InlineQueueDriver(h.logs.logger);
     const dispatcher = new OutboxDispatcher(
       { jobs: failing, queue, clock: h.clock, logger: h.logs.logger },
-      { pollIntervalMs: 250, batchSize: 50, leaseMs: OUTBOX_LOCK_MS, concurrency: 2, attempts: 1, backoffMs: 10 },
+      {
+        pollIntervalMs: 250,
+        batchSize: 50,
+        leaseMs: OUTBOX_LOCK_MS,
+        concurrency: 2,
+        attempts: 1,
+        backoffMs: 10,
+      },
     );
     dispatcher.attach();
     await queue.start();

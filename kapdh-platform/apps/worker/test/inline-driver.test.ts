@@ -139,7 +139,12 @@ describe("Antrean inline tanpa Redis (ARCHITECTURE §1, PRD 5.1)", () => {
       { concurrency: 2, discard: async (data) => void discarded.push(data.n) },
     );
     await driver.start();
-    await driver.enqueue("outbox", { jobId: "outbox.retry", data: { n: "retry" }, attempts: 5, backoffMs: 60_000 });
+    await driver.enqueue("outbox", {
+      jobId: "outbox.retry",
+      data: { n: "retry" },
+      attempts: 5,
+      backoffMs: 60_000,
+    });
     await driver.enqueue("outbox", { jobId: "outbox.hang", data: { n: "hang" }, attempts: 1, backoffMs: 1 });
     await eventually(() => calls === 2);
     expect(await driver.close(150)).toBe(false);
