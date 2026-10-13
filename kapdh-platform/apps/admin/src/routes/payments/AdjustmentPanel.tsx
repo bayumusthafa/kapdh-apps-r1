@@ -34,7 +34,7 @@ import {
   paymentTypeText,
 } from "./labels";
 import { compareMoney } from "./money";
-import { adjustmentDetailKey, invalidateAdjustments } from "./queries";
+import { adjustmentDetailKey, invalidateAdjustments, paymentDetailKey } from "./queries";
 
 type Adjustment = components["schemas"]["AdminPaymentAdjustment"];
 type FileRef = components["schemas"]["FileRef"];
@@ -97,6 +97,16 @@ export function AdjustmentPanel({
         signal,
         headers,
       }),
+  });
+
+  // Payment asal untuk `conflict_of_interest` yang dihitung server (PRD 2.3: pengurus tidak dapat menyesuaikan
+  // payment milik alumni yang tertaut ke akunnya). Hanya diperlukan bila admin dapat memproses penyesuaian pending.
+  const paymentId = detail.data?.payment_id ?? "";
+  const payment = useApiQuery({
+    queryKey: paymentDetailKey(paymentId),
+    enabled: paymentId !== "" && detail.data?.status === "pending" && auth.can("payments.decide"),
+    request: ({ signal, headers }) =>
+      api.GET("/admin/payments/{paymentId}", { params: { path: { paymentId } }, signal, headers }),
   });
 
   const loaded = detail.data !== undefined;
@@ -165,7 +175,11 @@ export function AdjustmentPanel({
 
   const a = detail.data;
   const pending = a.status === "pending";
-  const canProcess = pending && auth.can("payments.decide");
+  const mayDecide = pending && auth.can("payments.decide");
+  // Konflik kepentingan (PRD 2.3) dihitung server pada payment asal (`conflict_of_interest`); selama belum
+  // diketahui tombol proses tidak ditampilkan agar admin tertaut tidak mengisi dialog yang pasti ditolak.
+  const conflict = payment.data?.conflict_of_interest ?? null;
+  const canProcess = mayDecide && (conflict === false || payment.isError);
 
   return (
     <Card as="article" aria-labelledby="detail-penyesuaian" className="flex flex-col gap-4 p-5">
@@ -209,6 +223,13 @@ export function AdjustmentPanel({
             Batalkan
           </Button>
         </div>
+      ) : mayDecide && conflict === true ? (
+        <p role="note" className="rounded-md bg-warning-bg p-3 text-sm text-warning">
+          Pembayaran asal milik akun alumni yang tertaut ke akun admin Anda. Mintalah pengurus lain untuk
+          memproses penyesuaian ini.
+        </p>
+      ) : mayDecide ? (
+        <p className="text-sm text-text-muted">Memeriksa pembayaran asal...</p>
       ) : pending && !auth.can("payments.decide") ? (
         <p className="text-sm text-text-muted">
           Akun Anda hanya dapat melihat penyesuaian. Memproses refund memerlukan izin memutus pembayaran.
@@ -465,6 +486,12 @@ function CompleteDialog({ open, adjustment: a, onClose, onDone, onConflict }: Di
         <p className="rounded-md bg-green-50 p-3 text-sm">
           Transfer {formatRupiah(a.amount)} ke {d.provider} {d.account_number} a.n. {d.account_holder}.
         </p>
+      ) : refund ? (
+        <p role="note" className="rounded-md bg-warning-bg p-3 text-sm text-warning">
+          {a.has_refund_destination
+            ? "Rincian rekening tujuan tidak ditampilkan untuk akun Anda. Pastikan dana ditransfer ke rekening yang dikirim pemilik."
+            : `Belum ada rekening tujuan yang tercatat. Catat rekening lewat Ubah bila diterima lewat kontak dukungan resmi. Setelah refund ditandai selesai, ${a.payment.member ? "pemilik tidak dapat lagi mengirim rekening tujuan" : "rekening tujuan tidak dapat dicatat lagi"}.`}
+        </p>
       ) : null}
       {a.evidence_file_id ? (
         <p className="text-sm text-text-muted">
@@ -485,7 +512,11 @@ function CompleteDialog({ open, adjustment: a, onClose, onDone, onConflict }: Di
       />
       {refund ? (
         <Checkbox
-          label="Dana refund sudah saya transfer ke rekening tujuan di atas."
+          label={
+            d
+              ? "Dana refund sudah saya transfer ke rekening tujuan di atas."
+              : "Dana refund sudah saya transfer ke rekening yang sudah saya pastikan benar, walau rekeningnya tidak tercatat di sini."
+          }
           checked={transferred}
           onCheckedChange={setTransferred}
           disabled={complete.isPending}
@@ -505,10 +536,14 @@ interface CancelVars {
 function CancelDialog({ open, adjustment: a, onClose, onDone, onConflict }: DialogProps) {
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string | null>(null);
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
+  /** Alasan ditolak: fokus ke isian alasan setelah galat dirender dan permintaan selesai (N-11, PRD 4.5). */
+  const [focusReason, setFocusReason] = useState(false);
   useEffect(() => {
     if (open) {
       setReason("");
       setReasonError(null);
+      setFocusReason(false);
     }
   }, [open]);
 
@@ -524,7 +559,10 @@ function CancelDialog({ open, adjustment: a, onClose, onDone, onConflict }: Dial
     onReloadLatest: (error) => onConflict(error),
     onError: (error) => {
       const message = error.fieldErrors.reason?.join(" ");
-      if (message) setReasonError(message);
+      if (message) {
+        setReasonError(message);
+        setFocusReason(true);
+      }
     },
     onSuccess: (result) =>
       onDone(
@@ -535,10 +573,18 @@ function CancelDialog({ open, adjustment: a, onClose, onDone, onConflict }: Dial
       ),
   });
 
+  const cancelPending = cancel.isPending;
+  useEffect(() => {
+    if (!focusReason || cancelPending) return;
+    setFocusReason(false);
+    reasonRef.current?.focus();
+  }, [focusReason, cancelPending]);
+
   function confirm() {
     const trimmed = reason.trim();
     if (trimmed.length < 3) {
       setReasonError("Alasan pembatalan minimal 3 karakter dan tidak boleh hanya spasi.");
+      setFocusReason(true);
       return;
     }
     setReasonError(null);
@@ -560,6 +606,7 @@ function CancelDialog({ open, adjustment: a, onClose, onDone, onConflict }: Dial
         {(a11y) => (
           <Textarea
             {...a11y}
+            ref={reasonRef}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={3}
@@ -633,8 +680,15 @@ function EditDialog({ open, adjustment: a, onClose, onDone, onConflict }: Dialog
   // tetap ditolak server lewat If-Match).
   const latest = useRef(a);
   latest.current = a;
+  /**
+   * Perubahan yang akan MENGHAPUS rekening tujuan tersimpan (refund_destination null) menunggu konfirmasi dua
+   * langkah: rekening kiriman pemilik hilang permanen dan pemilik harus mengirim ulang (PRD 4.5, D2).
+   */
+  const [removal, setRemoval] = useState<EditVars["body"] | null>(null);
   useEffect(() => {
-    if (open) reset(editDefaults(latest.current));
+    if (!open) return;
+    reset(editDefaults(latest.current));
+    setRemoval(null);
   }, [open, reset]);
 
   const save = useApiMutation<Adjustment, EditVars, EditValues>({
@@ -644,8 +698,21 @@ function EditDialog({ open, adjustment: a, onClose, onDone, onConflict }: Dialog
         params: { path: { adjustmentId: v.id }, header: { "If-Match": v.version } },
         body: v.body,
       }),
-    onReloadLatest: (error) => onConflict(error),
-    onSuccess: (result) => onDone(result, "Penyesuaian diperbarui."),
+    onReloadLatest: (error) => {
+      setRemoval(null);
+      onConflict(error);
+    },
+    // Galat lain (mis. VALIDATION_ERROR): konfirmasi ditutup agar galat isian di formulir terlihat.
+    onError: () => setRemoval(null),
+    onSuccess: (result, v) => {
+      setRemoval(null);
+      onDone(
+        result,
+        v.body.refund_destination === null
+          ? "Penyesuaian diperbarui. Rekening tujuan refund dihapus."
+          : "Penyesuaian diperbarui.",
+      );
+    },
   });
 
   function submit(v: EditValues) {
@@ -671,6 +738,10 @@ function EditDialog({ open, adjustment: a, onClose, onDone, onConflict }: Dialog
     }
     if (Object.keys(body).length === 0) {
       onClose();
+      return;
+    }
+    if (body.refund_destination === null) {
+      setRemoval(body);
       return;
     }
     save.mutate({ id: a.id, version: a.version, body });
@@ -738,6 +809,18 @@ function EditDialog({ open, adjustment: a, onClose, onDone, onConflict }: Dialog
           ) : null}
         </form>
       </FormProvider>
+      <ConfirmDialog
+        open={removal !== null}
+        onCancel={() => setRemoval(null)}
+        onConfirm={() => {
+          if (removal) save.mutate({ id: a.id, version: a.version, body: removal });
+        }}
+        pending={save.isPending}
+        title="Hapus rekening tujuan refund?"
+        description={`Rekening tujuan refund ${formatRupiah(a.amount)} untuk ${memberName(a.payment.member)} dihapus permanen dan tidak dapat dipulihkan. Pemilik perlu mengirim ulang rekening lewat aplikasi, atau pengurus mencatatnya lagi dari kontak dukungan resmi.`}
+        confirmLabel="Hapus rekening dan simpan"
+        acknowledgement="Saya memahami rekening tujuan yang tersimpan dihapus permanen."
+      />
     </Dialog>
   );
 }

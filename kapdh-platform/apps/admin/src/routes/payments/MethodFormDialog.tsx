@@ -68,6 +68,37 @@ interface SaveVars {
   version: string | null;
 }
 
+/** Body permintaan sesuai yang dikirim ke server (teks dipangkas, petunjuk kosong = null). */
+function requestBody(v: Values) {
+  const instructions = v.instructions.trim();
+  return {
+    kind: v.kind,
+    provider: v.provider.trim(),
+    account_number: v.account_number.trim(),
+    account_holder: v.account_holder.trim(),
+    instructions: instructions === "" ? null : instructions,
+    active: v.active,
+    sort_order: v.sort_order,
+  };
+}
+
+/**
+ * Isian sama persis dengan versi dasar: menyimpan tidak mengubah apa pun, sehingga tidak boleh meminta
+ * reautentikasi atau membuat versi dan entri audit baru tanpa perubahan (AC F15-3).
+ */
+function sameAsBase(v: Values, base: Method): boolean {
+  const body = requestBody(v);
+  return (
+    body.kind === base.kind &&
+    body.provider === base.provider &&
+    body.account_number === base.account_number &&
+    body.account_holder === base.account_holder &&
+    body.instructions === (base.instructions ?? null) &&
+    body.active === base.active &&
+    body.sort_order === base.sort_order
+  );
+}
+
 /**
  * Tambah/ubah rekening tujuan transfer (F-15, AC F15-3, F15-4, D13). Rekening menentukan ke mana anggota
  * mentransfer dana, sehingga setiap penyimpanan meminta reautentikasi lebih dahulu dan diaudit server.
@@ -115,15 +146,7 @@ export function MethodFormDialog({
     setError: form.setError,
     successMessage: editing ? "Metode pembayaran diperbarui." : "Metode pembayaran ditambahkan.",
     request: (v, ctx) => {
-      const body = {
-        kind: v.values.kind,
-        provider: v.values.provider,
-        account_number: v.values.account_number,
-        account_holder: v.values.account_holder,
-        instructions: v.values.instructions.trim() === "" ? null : v.values.instructions.trim(),
-        active: v.values.active,
-        sort_order: v.values.sort_order,
-      };
+      const body = requestBody(v.values);
       const reauth = ctx.reauthToken ?? "";
       if (v.version === null || !base)
         return api.POST("/admin/payment-methods", {
@@ -160,9 +183,17 @@ export function MethodFormDialog({
     setConflict(null);
   }
 
-  const kind = form.watch("kind");
-  const active = form.watch("active");
+  const watched = form.watch();
+  const kind = watched.kind;
+  const active = watched.active;
+  // Ubah tanpa perubahan apa pun: Simpan nonaktif (seperti tab Biaya), tidak ada reautentikasi atau PUT.
+  const unchanged = base !== null && sameAsBase(watched, base);
   const errors = form.formState.errors;
+
+  function submit(values: Values) {
+    if (base !== null && sameAsBase(values, base)) return;
+    save.mutate({ values, version: base?.version ?? null });
+  }
   const kindOptions: { value: MethodKind; label: string; disabled: boolean }[] = (
     ["bank", "ewallet"] as const
   ).map((k) => ({ value: k, label: METHOD_KIND_LABEL[k], disabled: locked }));
@@ -184,7 +215,7 @@ export function MethodFormDialog({
             form="metode-bayar"
             loading={save.isPending}
             loadingText="Menyimpan..."
-            disabled={conflict !== null}
+            disabled={conflict !== null || unchanged}
           >
             Simpan metode
           </Button>
@@ -217,7 +248,7 @@ export function MethodFormDialog({
           id="metode-bayar"
           noValidate
           className="flex flex-col gap-4"
-          onSubmit={form.handleSubmit((values) => save.mutate({ values, version: base?.version ?? null }))}
+          onSubmit={form.handleSubmit(submit)}
         >
           <FormError message={errors.root?.server?.message} />
           {locked ? (
