@@ -8,7 +8,7 @@ import { expectOperation } from "../support/contract.js";
 import { createAdmin, createAlumni, signInAdmin, signInAlumni, uniqueEmail } from "../support/factories.js";
 import { httpClient, type HttpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import { type AdminActor, adminActor, superAdminActor } from "./helpers.js";
+import { type AdminActor, adminActor, type JsonBody, reauthTokenFor, superAdminActor } from "./helpers.js";
 
 let t: TestApp;
 let api: HttpClient;
@@ -28,7 +28,7 @@ const ADMIN_PATH = "/admin/admins/{adminId}";
 async function detail(adminId: string) {
   const res = await api.get(`/admin/admins/${adminId}`, { token: root.token });
   expect(res.statusCode, res.body).toBe(200);
-  return expectOperation("get", ADMIN_PATH, res) as Record<string, any>;
+  return expectOperation("get", ADMIN_PATH, res) as JsonBody;
 }
 
 /** Header sensitif Super Admin pemanggil + Idempotency-Key opsional. */
@@ -107,7 +107,7 @@ describe("POST /admin/admins: undangan dari alumni (AC F16-1, PRD 3.16)", () => 
       role: "admin",
       permissions: ["payments.decide", "payments.read"],
     });
-    const body = expectOperation("post", "/admin/admins", res) as Record<string, any>;
+    const body = expectOperation("post", "/admin/admins", res) as JsonBody;
     expect(res.statusCode, res.body).toBe(201);
     expect(body.admin).toMatchObject({
       display_name: "Siti Aminah",
@@ -199,7 +199,7 @@ describe("POST /admin/admins: undangan dari alumni (AC F16-1, PRD 3.16)", () => 
       role: "super_admin",
       permissions: [],
     });
-    const body = expectOperation("post", "/admin/admins", res) as Record<string, any>;
+    const body = expectOperation("post", "/admin/admins", res) as JsonBody;
     expect(res.statusCode).toBe(201);
     expect(body.admin).toMatchObject({ email, role: "super_admin", linked_alumni: null });
     expect(body.admin.permissions).toHaveLength(15);
@@ -311,6 +311,26 @@ describe("POST /admin/admins: undangan dari alumni (AC F16-1, PRD 3.16)", () => 
       expect(res.statusCode, path).toBe(403);
     }
   });
+
+  it("AC F16-1: Super Admin yang belum menyelesaikan TOTP ditolak 403 MFA_REQUIRED; reautentikasi level 1 ditolak", async () => {
+    const pending = await createAdmin(t, { role: "super_admin" });
+    const login = await api.post("/admin/auth/login", { email: pending.email, password: pending.password });
+    expect(login.statusCode).toBe(200);
+    const mfaToken = login.json().mfa_token as string;
+    const list = await api.get("/admin/admins", { token: mfaToken });
+    expect(list.statusCode).toBe(403);
+    expect(expectOperation("get", "/admin/admins", list)).toMatchObject({ code: "MFA_REQUIRED" });
+
+    // Token reautentikasi tingkat sandi (level 1) tidak cukup untuk sesi admin (ARCHITECTURE §4.3).
+    const weak = await reauthTokenFor(t, root.token, 1);
+    const res = await api.post(
+      "/admin/admins",
+      { email: uniqueEmail("x"), display_name: "X", role: "admin", permissions: [] },
+      { token: root.token, headers: { "x-reauth-token": weak } },
+    );
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toMatchObject({ code: "REAUTH_REQUIRED" });
+  });
 });
 
 describe("GET /admin/admins/candidates (F-16, guideline hlm. 15)", () => {
@@ -342,7 +362,7 @@ describe("GET /admin/admins/candidates (F-16, guideline hlm. 15)", () => {
       query: { q: `kandidat ${tag}` },
     });
     const body = expectOperation("get", "/admin/admins/candidates", res) as {
-      items: Record<string, any>[];
+      items: JsonBody[];
       total: number;
     };
     expect(res.statusCode).toBe(200);
@@ -412,7 +432,7 @@ describe("GET /admin/admins dan /admin/admins/{adminId} (F-16)", () => {
     await createAdmin(t, { displayName: `Diundang ${tag}`, status: "invited" });
 
     const all = await api.get("/admin/admins", { token: root.token, query: { q: tag } });
-    const body = expectOperation("get", "/admin/admins", all) as Record<string, any>;
+    const body = expectOperation("get", "/admin/admins", all) as JsonBody;
     expect(body.total).toBe(3);
     expect(body.items.map((i: { display_name: string }) => i.display_name)).toEqual([
       `Auditor ${tag}`,
@@ -457,7 +477,7 @@ describe("GET /admin/admins dan /admin/admins/{adminId} (F-16)", () => {
         const query: Record<string, string> = { q: `Urut ${tag}`, sort, limit: "3" };
         if (cursor) query.cursor = cursor;
         const res = await api.get("/admin/admins", { token: root.token, query });
-        const body = expectOperation("get", "/admin/admins", res) as Record<string, any>;
+        const body = expectOperation("get", "/admin/admins", res) as JsonBody;
         seen.push(...body.items.map((i: { display_name: string }) => i.display_name));
         cursor = body.next_cursor;
       } while (cursor);
@@ -505,7 +525,7 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
       { permissions: ["payments.read"], reason: "Rotasi tugas" },
       await sensitive(before.version),
     );
-    const body = expectOperation("patch", ADMIN_PATH, res) as Record<string, any>;
+    const body = expectOperation("patch", ADMIN_PATH, res) as JsonBody;
     expect(res.statusCode, res.body).toBe(200);
     expect(body).toMatchObject({
       permissions: ["payments.read"],
@@ -575,7 +595,7 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
       { display_name: "Menimpa" },
       await sensitive(current.version),
     );
-    const body = expectOperation("patch", ADMIN_PATH, stale) as Record<string, any>;
+    const body = expectOperation("patch", ADMIN_PATH, stale) as JsonBody;
     expect(stale.statusCode).toBe(409);
     expect(body).toMatchObject({ code: "VERSION_CONFLICT", current: { display_name: "Versi Baru" } });
     const noIfMatch = await api.patch(
@@ -610,7 +630,7 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
       { status: "disabled", reason: "Masa jabatan berakhir" },
       await sensitive(current.version),
     );
-    const body = expectOperation("patch", ADMIN_PATH, res) as Record<string, any>;
+    const body = expectOperation("patch", ADMIN_PATH, res) as JsonBody;
     expect(res.statusCode, res.body).toBe(200);
     expect(body).toMatchObject({
       status: "disabled",
@@ -684,7 +704,7 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
       { email: newEmail.toUpperCase() },
       await sensitive(created.json().admin.version),
     );
-    const body = expectOperation("patch", ADMIN_PATH, res) as Record<string, any>;
+    const body = expectOperation("patch", ADMIN_PATH, res) as JsonBody;
     expect(res.statusCode, res.body).toBe(200);
     expect(body.email).toBe(newEmail);
     expect(Date.parse(body.invite_expires_at)).toBeGreaterThan(
@@ -808,7 +828,7 @@ describe("POST /admin/admins/{adminId}/invitation (F-16)", () => {
     const firstLink = await invitationLink(email);
     t.clock.advance(60_000);
     const res = await api.post(`/admin/admins/${adminId}/invitation`, {}, await sensitive(version, uuidv7()));
-    const body = expectOperation("post", "/admin/admins/{adminId}/invitation", res) as Record<string, any>;
+    const body = expectOperation("post", "/admin/admins/{adminId}/invitation", res) as JsonBody;
     expect(res.statusCode, res.body).toBe(200);
     expect(body.admin).toMatchObject({ status: "invited", version: String(Number(version) + 1) });
     expect(Date.parse(body.invitation_expires_at)).toBe(t.clock.now().getTime() + 72 * 3600_000);
@@ -885,7 +905,7 @@ describe("POST /admin/admins/{adminId}/recovery (F-16, PRD 3.16)", () => {
       { reason: "Perangkat TOTP hilang, diverifikasi lewat telepon", email: newEmail },
       await sensitive(before.version, uuidv7()),
     );
-    const body = expectOperation("post", "/admin/admins/{adminId}/recovery", res) as Record<string, any>;
+    const body = expectOperation("post", "/admin/admins/{adminId}/recovery", res) as JsonBody;
     expect(res.statusCode, res.body).toBe(200);
     expect(body.admin).toMatchObject({
       status: "invited",
@@ -999,10 +1019,7 @@ describe("AC F16-2: Super Admin aktif terakhir (penjaga transaksi admins_last_su
   });
 
   async function soloDetail(adminId: string) {
-    return (await soloApi.get(`/admin/admins/${adminId}`, { token: only.token })).json() as Record<
-      string,
-      any
-    >;
+    return (await soloApi.get(`/admin/admins/${adminId}`, { token: only.token })).json() as JsonBody;
   }
 
   it("AC F16-2: menurunkan atau menonaktifkan dirinya sebagai Super Admin terakhir ditolak 409 dengan current", async () => {

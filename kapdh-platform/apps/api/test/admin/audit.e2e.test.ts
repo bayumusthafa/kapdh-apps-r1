@@ -9,7 +9,7 @@ import { expectOperation } from "../support/contract.js";
 import { createAlumni, signInAlumni } from "../support/factories.js";
 import { httpClient, type HttpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import { type AdminActor, adminActor, signInActor, superAdminActor } from "./helpers.js";
+import { type AdminActor, adminActor, type JsonBody, signInActor, superAdminActor } from "./helpers.js";
 
 let t: TestApp;
 let api: HttpClient;
@@ -84,7 +84,7 @@ async function seed(count = 6): Promise<Seeded> {
 
 async function search(token: string, query: Record<string, string>) {
   const res = await api.get(ENTRIES, { token, query });
-  return { res, body: expectOperation("get", ENTRIES, res) as Record<string, any> };
+  return { res, body: expectOperation("get", ENTRIES, res) as JsonBody };
 }
 
 async function createExport(actor: AdminActor, filters: Record<string, unknown>, key = uuidv7()) {
@@ -210,7 +210,7 @@ describe("GET /admin/audit/entries (AC F17-2, F17-4)", () => {
   it("detail memuat before/after sebagaimana disimpan (tanpa penyamaran di dalam sistem); 404 dan 400", async () => {
     const s = await seed(1);
     const res = await api.get(`${ENTRIES}/${s.ids[0]}`, { token: auditor.token });
-    const body = expectOperation("get", "/admin/audit/entries/{entryId}", res) as Record<string, any>;
+    const body = expectOperation("get", "/admin/audit/entries/{entryId}", res) as JsonBody;
     expect(body.before).toMatchObject({ email: "lama-0@contoh.test" });
     expect(body.after).toMatchObject({ status: "paid" });
     expect((await api.get(`${ENTRIES}/${uuidv7()}`, { token: auditor.token })).statusCode).toBe(404);
@@ -243,7 +243,7 @@ describe("Ekspor audit CSV asinkron (AC F17-2, F17-3, F17-4)", () => {
     const searched = await search(exporter.token, filters);
 
     const created = await createExport(exporter, filters);
-    const exp = expectOperation("post", EXPORTS, created) as Record<string, any>;
+    const exp = expectOperation("post", EXPORTS, created) as JsonBody;
     expect(created.statusCode, created.body).toBe(202);
     expect(exp).toMatchObject({
       status: "processing",
@@ -277,7 +277,7 @@ describe("Ekspor audit CSV asinkron (AC F17-2, F17-3, F17-4)", () => {
 
     await t.jobs.drainOutbox();
     const ready = await api.get(`${EXPORTS}/${exp.id}`, { token: exporter.token });
-    const readyBody = expectOperation("get", EXPORT, ready) as Record<string, any>;
+    const readyBody = expectOperation("get", EXPORT, ready) as JsonBody;
     const day = t.clock.now().toISOString().slice(0, 10).replace(/-/g, "");
     expect(readyBody).toMatchObject({
       status: "ready",
@@ -421,7 +421,7 @@ describe("Ekspor audit CSV asinkron (AC F17-2, F17-3, F17-4)", () => {
 
     // Super Admin melihat semua ekspor beserta peminta dan dapat mengunduh.
     const list = await api.get(EXPORTS, { token: root.token });
-    const item = (expectOperation("get", EXPORTS, list) as { items: Record<string, any>[] }).items.find(
+    const item = (expectOperation("get", EXPORTS, list) as { items: JsonBody[] }).items.find(
       (i) => i.id === id,
     );
     expect(item).toMatchObject({ status: "ready", requested_by: { admin_id: exporter.admin.adminId } });
