@@ -28,7 +28,7 @@ import {
 } from "../support/factories.js";
 import { httpClient, type HttpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import { type AdminActor, adminActor, signInActor, superAdminActor } from "./helpers.js";
+import { type AdminActor, adminActor, type JsonBody, signInActor, superAdminActor } from "./helpers.js";
 
 const HOUR = 3600_000;
 const DAY = 24 * HOUR;
@@ -366,7 +366,7 @@ afterAll(async () => {
 async function dashboard(actor: AdminActor) {
   const res = await api.get("/admin/dashboard", { token: actor.token });
   expect(res.statusCode, res.body).toBe(200);
-  return expectOperation("get", "/admin/dashboard", res) as Record<string, any>;
+  return expectOperation("get", "/admin/dashboard", res) as JsonBody;
 }
 
 async function badges(actor: AdminActor) {
