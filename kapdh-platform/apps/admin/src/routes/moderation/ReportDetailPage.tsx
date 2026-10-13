@@ -20,7 +20,7 @@ import { FormError, FormField } from "../../components/ui/FormField";
 import { Select, Textarea } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { PermissionGate } from "../../components/ui/PermissionGate";
-import { ErrorState, Loading } from "../../components/ui/States";
+import { ErrorState, ForbiddenState, Loading } from "../../components/ui/States";
 import { cn } from "../../lib/cn";
 import { formatDateTime } from "../../lib/format";
 import { useNow } from "../../lib/hooks";
@@ -64,7 +64,20 @@ export const ACTION_CONSEQUENCE: Record<Action, string> = {
 export function ReportDetailPage() {
   const { reportId } = useParams({ from: "/app/moderation/$reportId" });
   return (
-    <PermissionGate anyOf={["moderation.read", "moderation.resolve"]}>
+    <PermissionGate
+      allOf={["moderation.read"]}
+      fallback={
+        <>
+          <PageHeader
+            title="Detail Laporan"
+            breadcrumbs={[{ label: "Moderasi", to: "/moderation" }, { label: "Detail Laporan" }]}
+          />
+          <Card>
+            <ForbiddenState description="Bukti laporan memerlukan izin Membaca laporan moderasi (moderation.read). Hubungi Super Admin bila Anda memerlukannya." />
+          </Card>
+        </>
+      }
+    >
       <ReportDetail reportId={reportId} />
     </PermissionGate>
   );
@@ -167,7 +180,7 @@ function ReportDetail({ reportId }: { reportId: string }) {
           ) : null}
           {!canResolve && decidable ? (
             <p role="note" className="text-sm text-text-muted">
-              Akun Anda hanya dapat membaca laporan. Keputusan memerlukan izin Putuskan laporan.
+              Akun Anda hanya dapat membaca laporan. Klaim dan keputusan memerlukan izin Menyelesaikan laporan moderasi (moderation.resolve).
             </p>
           ) : null}
         </div>
