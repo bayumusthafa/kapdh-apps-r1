@@ -152,7 +152,7 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     expect(mockAdmins.get(MOCK_ADMIN_IDS.ahmad)?.permissions).not.toContain("content.manage");
   });
 
-  it("AC F16-2: Super Admin aktif terakhir tidak dapat diturunkan; galat server tampil pada isian peran", async () => {
+  it("AC F16-2: Super Admin aktif terakhir tidak dapat diturunkan; dialog konfirmasi tertutup, galat tampil dan difokuskan pada isian peran", async () => {
     const user = userEvent.setup();
     await openDetail(user, MOCK_ADMIN_IDS.bayu, "Bayu Musthafa");
     const card = await section("Peran & izin");
@@ -160,12 +160,14 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     await user.click(within(card).getByLabelText(/^Admin/));
     await user.click(await within(card).findByLabelText(/^Lihat audit/));
     await saveAccess(user);
-    await waitFor(() =>
-      expect(within(card).getByRole("group", { name: /Peran/ })).toHaveAccessibleDescription(
-        /Minimal satu Super Admin aktif/,
-      ),
-    );
+    const roleGroup = within(card).getByRole("group", { name: /Peran/ });
+    await waitFor(() => expect(roleGroup).toHaveAccessibleDescription(/Minimal satu Super Admin aktif/));
+    // Galat yang ditolak server tidak boleh tertinggal di balik dialog yang masih terbuka (N-11, PRD 4.5).
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() => expect(roleGroup).toContainElement(document.activeElement as HTMLElement));
+    expect(document.activeElement).toHaveAttribute("type", "radio");
     expect(mockAdmins.get(MOCK_ADMIN_IDS.bayu)?.role).toBe("super_admin");
+    expect(writes().filter((r) => r.method === "PATCH")).toHaveLength(1);
   });
 
   it("AC F15-4: data admin diubah pengurus lain → 409, tampilan dimuat ulang tanpa menimpa", async () => {
