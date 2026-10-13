@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_api/kapdh_api.dart';
+import 'package:kapdh_mobile/core/cache/kta_avatar_cache.dart';
 import 'package:kapdh_mobile/core/cache/kta_cache_store.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/design/design.dart';
@@ -12,6 +13,7 @@ import 'package:kapdh_mobile/features/status/restricted_screen.dart';
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
 import '../payments/payments_fixtures.dart';
+import 'kta_fakes.dart';
 
 const qrUrl = 'https://kapdh.or.id/kta/29.01.01.7#t=token-uji';
 
@@ -29,13 +31,19 @@ Future<AppHarness> openKta(
   bool settleAfter = true,
   double textScale = 1,
   Stream<NotificationCreatedPayload>? updates,
+  Stream<void>? reconnects,
+  KtaAvatarCache? avatars,
 }) async {
   final app = await pumpApp(
     tester,
     tokens: savedTokens(),
     store: store,
     textScale: textScale,
-    overrides: [realtimeNotificationsProvider.overrideWithValue(updates ?? const Stream.empty())],
+    overrides: [
+      realtimeNotificationsProvider.overrideWithValue(updates ?? const Stream.empty()),
+      realtimeReconnectedProvider.overrideWithValue(reconnects ?? const Stream.empty()),
+      if (avatars != null) ktaAvatarCacheProvider.overrideWithValue(avatars),
+    ],
     handler: apiRoutes({
       '/me': (_) => FakeResponse.json(200, meJson(status: status, expiresAt: meExpiresAt)),
       '/me/card': (_) => card(),
@@ -333,6 +341,89 @@ void main() {
 
       expect(shownCard(tester).qrData, qrUrl);
     });
+
+    testWidgets('AC F05-4: jaringan putus saat sesi tetap aktif lalu server terjangkau lagi: kartu cache disinkronkan '
+        'ulang otomatis; status dibatasi menghapus kartu aktif dan mengarahkan ke portal pembatasan', (tester) async {
+      var online = false;
+      var status = 'verified';
+      final store = await cachedStore(testNow.subtract(const Duration(days: 1)));
+      final app = await openKta(
+        tester,
+        store: store,
+        card: () {
+          if (!online) return FakeResponse.network();
+          // Selama offline pengurus membatasi akun.
+          status = 'suspended';
+          return FakeResponse.json(200, memberCardJson(status: 'suspended', expiresAt: expiresAt, withQr: false));
+        },
+        routes: {'/me': (_) => FakeResponse.json(200, meJson(status: status))},
+      );
+      expect(find.textContaining('Offline. Tersinkron'), findsOneWidget);
+      expect(shownCard(tester).qrData, qrUrl);
+      final attempts = app.adapter.requestsTo('/me/card').length;
+
+      // Masih offline: dicoba ulang otomatis dengan jeda, kartu cache tetap berlabel Offline.
+      await tester.pump(const Duration(seconds: 15));
+      await settle(tester);
+      expect(app.adapter.requestsTo('/me/card').length, attempts + 1);
+      expect(find.textContaining('Offline. Tersinkron'), findsOneWidget);
+
+      online = true;
+      await tester.pump(const Duration(seconds: 30));
+      await settle(tester);
+
+      expect(app.location, '/restricted');
+      final cached = await KtaCacheStore(store).read(userId: 'user-1');
+      expect((cached as KtaCacheMiss).reason, KtaCacheMissReason.restricted);
+    });
+
+    testWidgets('AC F05-4: koneksi realtime tersambung kembali saat kartu cache tampil: sinkron ulang langsung; saat '
+        'kartu sudah online tidak ada request tambahan', (tester) async {
+      var online = false;
+      final reconnects = StreamController<void>.broadcast();
+      addTearDown(reconnects.close);
+      final store = await cachedStore(testNow.subtract(const Duration(days: 1)));
+      final app = await openKta(
+        tester,
+        store: store,
+        reconnects: reconnects.stream,
+        card: () => online ? FakeResponse.json(200, memberCardJson(expiresAt: expiresAt)) : FakeResponse.network(),
+      );
+      expect(find.textContaining('Offline. Tersinkron'), findsOneWidget);
+
+      online = true;
+      reconnects.add(null);
+      await settle(tester);
+
+      expect(find.textContaining('Offline'), findsNothing);
+      expect(find.text('Tersinkron 12 Okt 2026, 14.00 WIB'), findsOneWidget);
+      final attempts = app.adapter.requestsTo('/me/card').length;
+
+      reconnects.add(null);
+      await settle(tester);
+      // Kartu online tidak perlu dicoba ulang: tidak ada sinkron otomatis maupun timer tersisa.
+      await tester.pump(const Duration(minutes: 10));
+      await settle(tester);
+      expect(app.adapter.requestsTo('/me/card').length, attempts);
+    });
+
+    testWidgets('AC F05-3: kartu tidak dapat tampil offline lalu server terjangkau lagi: kartu tampil tanpa menunggu '
+        'pengguna menekan Sinkronkan', (tester) async {
+      var online = false;
+      final store = await cachedStore(testNow.subtract(const Duration(days: 8)));
+      await openKta(
+        tester,
+        store: store,
+        card: () => online ? FakeResponse.json(200, memberCardJson(expiresAt: expiresAt)) : FakeResponse.network(),
+      );
+      expect(find.text('Kartu offline perlu disinkronkan'), findsOneWidget);
+
+      online = true;
+      await tester.pump(const Duration(seconds: 15));
+      await settle(tester);
+
+      expect(shownCard(tester).qrData, qrUrl);
+    });
   });
 
   group('Keadaan layar KTA', () {
@@ -352,6 +443,66 @@ void main() {
 
       expect(find.text('Akses ditolak.'), findsOneWidget);
       expect(find.byType(KtaCard), findsNothing);
+    });
+
+    testWidgets('N-11: teks 200 % pada KTA yang tidak dapat tampil offline (cache usang, belum pernah sinkron, akun '
+        'lain) tanpa meluap', (tester) async {
+      for (final store in [
+        await cachedStore(testNow.subtract(const Duration(days: 8))),
+        MemorySecureStore(),
+        await cachedStore(testNow.subtract(const Duration(hours: 2)), userId: 'user-lain'),
+      ]) {
+        await openKta(tester, store: store, textScale: 2, card: FakeResponse.network);
+
+        expect(tester.takeException(), isNull);
+        final view = find.byKey(const ValueKey('kta-offline-unavailable'));
+        expect(view, findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.text('Sinkronkan'),
+          200,
+          scrollable: find.descendant(of: view, matching: find.byType(Scrollable)),
+        );
+        await settle(tester);
+        expect(tester.takeException(), isNull);
+        expect(find.text('Sinkronkan'), findsOneWidget);
+      }
+    });
+
+    testWidgets('AC F07-5, N-11: Perpanjang nonaktif tanpa tanggal pembukaan dari server: alasannya tetap tertulis', (
+      tester,
+    ) async {
+      await openKta(
+        tester,
+        card: () => FakeResponse.json(200, {...memberCardJson(expiresAt: expiresAt), 'renewal_opens_at': null}),
+      );
+
+      expect(find.text('Seluruh fitur alumni aktif. Perpanjangan belum dibuka.'), findsOneWidget);
+      expect(tester.widget<KapdhButton>(buttonLabelled('Perpanjang')).onPressed, isNull);
+    });
+
+    testWidgets('PRD 3.5, 5.2: foto KTA dimuat lewat cache foto KTA tersendiri dengan kunci akun dan berkas avatar', (
+      tester,
+    ) async {
+      final avatars = RecordingAvatarCache();
+      final me = meJson();
+      await openKta(
+        tester,
+        avatars: avatars,
+        card: () => FakeResponse.json(200, {
+          ...memberCardJson(expiresAt: expiresAt),
+          'avatar_url': 'https://files.test/avatar.jpg?sig=1',
+        }),
+        routes: {
+          '/me': (_) => FakeResponse.json(200, {
+            ...me,
+            'profile': {...(me['profile']! as Map<String, Object?>), 'avatar_file_id': 'file-avatar-1'},
+          }),
+        },
+      );
+
+      expect(avatars.requests.last.url, 'https://files.test/avatar.jpg?sig=1');
+      expect(avatars.requests.last.cacheKey, 'kta-avatar-user-1-file-avatar-1');
+      expect(shownCard(tester).avatar, isA<MemoryImage>());
     });
 
     testWidgets('N-11: teks 200 % pada KTA aktif tanpa meluap', (tester) async {
