@@ -121,7 +121,9 @@ export function eventFormSchema(opts: { minSeats?: number } = {}) {
       description: z.string().max(DESCRIPTION_MAX, `Deskripsi maksimal ${DESCRIPTION_MAX} karakter.`),
       category_id: z.string(),
       location_name: z.string().max(LOCATION_NAME_MAX, `Nama lokasi maksimal ${LOCATION_NAME_MAX} karakter.`),
-      location_address: z.string().max(LOCATION_ADDRESS_MAX, `Alamat maksimal ${LOCATION_ADDRESS_MAX} karakter.`),
+      location_address: z
+        .string()
+        .max(LOCATION_ADDRESS_MAX, `Alamat maksimal ${LOCATION_ADDRESS_MAX} karakter.`),
       location_url: z
         .string()
         .trim()
@@ -142,7 +144,10 @@ export function eventFormSchema(opts: { minSeats?: number } = {}) {
         .trim()
         .min(1, "Kuota wajib diisi.")
         .regex(/^\d+$/, "Kuota harus bilangan bulat.")
-        .refine((v) => Number(v) >= 1 && Number(v) <= SEATS_MAX, `Kuota 1 sampai ${SEATS_MAX.toLocaleString("id-ID")}.`)
+        .refine(
+          (v) => !/^\d+$/.test(v) || (Number(v) >= 1 && Number(v) <= SEATS_MAX),
+          `Kuota 1 sampai ${SEATS_MAX.toLocaleString("id-ID")}.`,
+        )
         .refine(
           (v) => !/^\d+$/.test(v) || Number(v) >= minSeats,
           `Kuota tidak boleh di bawah ${minSeats} (kursi ditahan + terbayar, AC F15-2).`,
@@ -158,7 +163,11 @@ export function eventFormSchema(opts: { minSeats?: number } = {}) {
       for (const [field, message] of required)
         if (!v[field]) ctx.addIssue({ code: "custom", path: [field], message });
       if (v.starts_at && v.ends_at && !(ms(v.ends_at) > ms(v.starts_at)))
-        ctx.addIssue({ code: "custom", path: ["ends_at"], message: "Waktu selesai harus setelah waktu mulai." });
+        ctx.addIssue({
+          code: "custom",
+          path: ["ends_at"],
+          message: "Waktu selesai harus setelah waktu mulai.",
+        });
       if (v.registration_opens_at && v.registration_closes_at) {
         if (!(ms(v.registration_opens_at) < ms(v.registration_closes_at)))
           ctx.addIssue({
@@ -177,7 +186,11 @@ export function eventFormSchema(opts: { minSeats?: number } = {}) {
         if (!v.checkin_opens_at)
           ctx.addIssue({ code: "custom", path: ["checkin_opens_at"], message: "Buka check-in wajib diisi." });
         if (!v.checkin_closes_at)
-          ctx.addIssue({ code: "custom", path: ["checkin_closes_at"], message: "Tutup check-in wajib diisi." });
+          ctx.addIssue({
+            code: "custom",
+            path: ["checkin_closes_at"],
+            message: "Tutup check-in wajib diisi.",
+          });
         if (v.checkin_opens_at && v.checkin_closes_at && !(ms(v.checkin_closes_at) > ms(v.checkin_opens_at)))
           ctx.addIssue({
             code: "custom",

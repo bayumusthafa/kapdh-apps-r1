@@ -99,7 +99,9 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
                 <span className="text-xs text-text-muted">
                   {t.holder.full_name === null
                     ? "Data pemegang sudah dihapus"
-                    : [t.holder.member_number ?? "Belum bernomor", t.holder.cohort_code].filter(Boolean).join(" | ")}
+                    : [t.holder.member_number ?? "Belum bernomor", t.holder.cohort_code]
+                        .filter(Boolean)
+                        .join(" | ")}
                 </span>
                 {!t.holder_eligible && t.holder.full_name !== null ? (
                   <Badge tone="danger" className="mt-1">
@@ -120,7 +122,9 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
             <span className="flex flex-col items-start gap-1">
               <TicketStatusBadge status={t.status} />
               {t.status === "awaiting_payment" && t.hold_expires_at ? (
-                <span className="text-xs text-text-muted">Batas bayar {formatShortDateTime(t.hold_expires_at)} WIB</span>
+                <span className="text-xs text-text-muted">
+                  Batas bayar {formatShortDateTime(t.hold_expires_at)} WIB
+                </span>
               ) : null}
               {t.status === "cancelled" && t.cancelled_by ? (
                 <span className="max-w-56 text-xs text-text-muted">
@@ -157,7 +161,10 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
                 </Link>
               ) : null}
               {t.refunds.map((r) => (
-                <Badge key={r.id} tone={r.status === "completed" ? "success" : r.status === "pending" ? "info" : "neutral"}>
+                <Badge
+                  key={r.id}
+                  tone={r.status === "completed" ? "success" : r.status === "pending" ? "info" : "neutral"}
+                >
                   {REFUND_STATUS_LABEL[r.status]} {formatRupiah(r.amount)}
                   {r.status === "pending" && r.due_at ? `, tenggat ${formatShortDateTime(r.due_at)}` : ""}
                 </Badge>
@@ -175,7 +182,9 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
           return (
             <span className="flex flex-col">
               <span className="whitespace-nowrap font-medium">{formatShortDateTime(t.checked_in_at)}</span>
-              <span className="text-xs text-text-muted">oleh {t.checked_in_by?.display_name ?? "petugas"}</span>
+              <span className="text-xs text-text-muted">
+                oleh {t.checked_in_by?.display_name ?? "petugas"}
+              </span>
             </span>
           );
         },
@@ -224,7 +233,13 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
             />
             <Field label="Status tiket" className="flex-[0_1_200px]">
               {(a11y) => (
-                <Select {...a11y} size="sm" options={STATUS_OPTIONS} value={filters.status} onValueChange={(v) => set("status", v)} />
+                <Select
+                  {...a11y}
+                  size="sm"
+                  options={STATUS_OPTIONS}
+                  value={filters.status}
+                  onValueChange={(v) => set("status", v)}
+                />
               )}
             </Field>
             <Field label="Check-in" className="flex-[0_1_170px]">
@@ -263,7 +278,9 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
               Batalkan
             </Button>
           ) : t.status === "awaiting_review" && event.status !== "cancelled" ? (
-            <span className="block max-w-40 text-right text-xs text-text-muted">Putuskan pembayaran dahulu</span>
+            <span className="block max-w-40 text-right text-xs text-text-muted">
+              Putuskan pembayaran dahulu
+            </span>
           ) : null
         }
         emptyState={
@@ -360,7 +377,8 @@ function CancelTicketDialog({
     if (!ticket) return;
     const trimmed = reason.trim();
     const next: typeof errors = {};
-    if (trimmed.length < CANCEL_REASON_MIN) next.reason = `Alasan wajib diisi, minimal ${CANCEL_REASON_MIN} karakter.`;
+    if (trimmed.length < CANCEL_REASON_MIN)
+      next.reason = `Alasan wajib diisi, minimal ${CANCEL_REASON_MIN} karakter.`;
     if (askRefund && refund === null) next.refund = "Pilih refund penuh atau tanpa refund.";
     setErrors(next);
     if (next.reason) {
@@ -437,20 +455,22 @@ function CancelTicketDialog({
             {
               value: "refund",
               label: `Refund penuh ${formatRupiah(ticket?.total)}`,
-              description: "Dicatat sebagai penyesuaian refund pending; bendahara mentransfer paling lambat 7 hari kerja (D6).",
+              description:
+                "Dicatat sebagai penyesuaian refund pending; bendahara mentransfer paling lambat 7 hari kerja (D6).",
             },
             {
               value: "no_refund",
               label: "Tanpa refund",
-              description: "Misalnya pembatalan setelah H-3 atau keputusan pengurus untuk anggota yang disuspend.",
+              description:
+                "Misalnya pembatalan setelah H-3 atau keputusan pengurus untuk anggota yang disuspend.",
             },
           ]}
         />
       ) : paidWithMoney ? (
         <p className="rounded-md bg-warning-bg p-3 text-sm text-warning">
-          Pilihan refund tidak tersedia untuk akun Anda (memerlukan izin memutus pembayaran, dan refund untuk tiket
-          akun alumni Anda sendiri harus diputus pengurus lain). Tiket dibatalkan tanpa refund; refund dapat dicatat
-          kemudian oleh pengurus pembayaran.
+          Pilihan refund tidak tersedia untuk akun Anda (memerlukan izin memutus pembayaran, dan refund untuk
+          tiket akun alumni Anda sendiri harus diputus pengurus lain). Tiket dibatalkan tanpa refund; refund
+          dapat dicatat kemudian oleh pengurus pembayaran.
         </p>
       ) : null}
     </ConfirmDialog>

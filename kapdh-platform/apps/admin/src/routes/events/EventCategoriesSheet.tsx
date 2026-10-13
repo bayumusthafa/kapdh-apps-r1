@@ -20,13 +20,23 @@ import { eventKeys } from "./api";
 type Category = components["schemas"]["AdminContentCategory"];
 
 const schema = z.object({
-  label: z.string().trim().min(1, "Nama kategori wajib diisi.").max(60, "Nama kategori maksimal 60 karakter."),
+  label: z
+    .string()
+    .trim()
+    .min(1, "Nama kategori wajib diisi.")
+    .max(60, "Nama kategori maksimal 60 karakter."),
   slug: z
     .string()
     .trim()
     .max(60, "Slug maksimal 60 karakter.")
-    .refine((v) => v === "" || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v), "Slug hanya huruf kecil, angka dan tanda hubung."),
-  sort_order: z.string().trim().regex(/^-?\d+$/, "Urutan harus bilangan bulat."),
+    .refine(
+      (v) => v === "" || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v),
+      "Slug hanya huruf kecil, angka dan tanda hubung.",
+    ),
+  sort_order: z
+    .string()
+    .trim()
+    .regex(/^-?\d+$/, "Urutan harus bilangan bulat."),
 });
 type Values = z.infer<typeof schema>;
 
@@ -55,11 +65,15 @@ function CategoryForm({
       >
         <FormError message={form.formState.errors.root?.server?.message} />
         <FormField<Values, "label"> name="label" label="Nama kategori" required>
-          {(field, a11y) => <Input {...a11y} {...field} maxLength={60} autoComplete="off" disabled={pending} />}
+          {(field, a11y) => (
+            <Input {...a11y} {...field} maxLength={60} autoComplete="off" disabled={pending} />
+          )}
         </FormField>
         <div className="grid grid-cols-[1fr_7rem] gap-3">
           <FormField<Values, "slug"> name="slug" label="Slug" hint="Kosongkan agar dibuat dari nama.">
-            {(field, a11y) => <Input {...a11y} {...field} maxLength={60} autoComplete="off" disabled={pending} />}
+            {(field, a11y) => (
+              <Input {...a11y} {...field} maxLength={60} autoComplete="off" disabled={pending} />
+            )}
           </FormField>
           <FormField<Values, "sort_order"> name="sort_order" label="Urutan">
             {(field, a11y) => <Input {...a11y} {...field} inputMode="numeric" disabled={pending} />}
@@ -179,7 +193,10 @@ export function EventCategoriesSheet({ open, onClose }: { open: boolean; onClose
         description="Kategori tampil sebagai tab daftar event di aplikasi anggota."
         className="max-w-lg"
       >
-        <section aria-labelledby="kategori-baru" className="flex flex-col gap-3 rounded-lg border border-divider p-4">
+        <section
+          aria-labelledby="kategori-baru"
+          className="flex flex-col gap-3 rounded-lg border border-divider p-4"
+        >
           <h3 id="kategori-baru" className="flex items-center gap-2 font-semibold text-primary">
             <Plus aria-hidden="true" className="size-4" />
             Tambah kategori
@@ -201,7 +218,11 @@ export function EventCategoriesSheet({ open, onClose }: { open: boolean; onClose
           ) : list.isError ? (
             <ErrorState error={list.error} onRetry={() => void list.refetch()} compact />
           ) : items.length === 0 ? (
-            <EmptyState compact title="Belum ada kategori event" description="Tambahkan kategori pertama di atas." />
+            <EmptyState
+              compact
+              title="Belum ada kategori event"
+              description="Tambahkan kategori pertama di atas."
+            />
           ) : (
             <ul className="flex flex-col divide-y divide-divider rounded-lg border border-divider">
               {items.map((c) => (
@@ -217,7 +238,9 @@ export function EventCategoriesSheet({ open, onClose }: { open: boolean; onClose
                         const body = {
                           ...(v.label !== c.label ? { label: v.label } : {}),
                           ...(v.slug && v.slug !== c.slug ? { slug: v.slug } : {}),
-                          ...(Number(v.sort_order) !== c.sort_order ? { sort_order: Number(v.sort_order) } : {}),
+                          ...(Number(v.sort_order) !== c.sort_order
+                            ? { sort_order: Number(v.sort_order) }
+                            : {}),
                         };
                         if (Object.keys(body).length === 0) setEditing(null);
                         else update.mutate({ category: c, body });

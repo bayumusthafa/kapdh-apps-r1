@@ -133,7 +133,8 @@ export const CHECKIN_REJECTION: Record<RejectionReason, RejectionCopy> = {
   },
   ticket_awaiting_review: {
     title: "Pembayaran belum diverifikasi",
-    action: "Minta pengurus pembayaran memutus bukti transfer di antrean Verifikasi Pembayaran, lalu pindai ulang.",
+    action:
+      "Minta pengurus pembayaran memutus bukti transfer di antrean Verifikasi Pembayaran, lalu pindai ulang.",
     tone: "warning",
   },
   already_checked_in: {
