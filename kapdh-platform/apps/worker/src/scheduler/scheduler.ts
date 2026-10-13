@@ -1,6 +1,6 @@
 import { type Clock, safeError, type ScheduledJob } from "@kapdh/api/worker";
-import { randomUUID } from "node:crypto";
 import type { Logger } from "pino";
+import { v7 as uuidv7 } from "uuid";
 import { type QueueDriver, queueJobId } from "../queue/queue-driver.js";
 import type { LeaderLock } from "./leader-lock.js";
 
@@ -233,7 +233,8 @@ export class Scheduler {
       const jobId = queueJobId("scheduled", job.name, String(slot));
       const added = await this.deps.queue.enqueue<ScheduledJobData>("scheduled", {
         jobId,
-        data: { name: job.name, slot: new Date(slot).toISOString(), job_id: `${job.name}:${randomUUID()}` },
+        // ARCHITECTURE §2.7: UUID v7 dari aplikasi, format sama dengan bawaan JobRunner (`<nama>:<uuidv7>`).
+        data: { name: job.name, slot: new Date(slot).toISOString(), job_id: `${job.name}:${uuidv7()}` },
         attempts: this.options.attempts,
         backoffMs: this.options.backoffMs,
         // Catatan slot disimpan melewati slot berikutnya agar leader baru tidak menjadwalkan slot yang sama.
