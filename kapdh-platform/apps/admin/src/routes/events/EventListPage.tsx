@@ -111,6 +111,7 @@ export function EventListPage() {
       {
         id: "cover",
         header: "Gambar",
+        meta: { headerClassName: "px-2", cellClassName: "px-2" },
         cell: ({ row }) =>
           row.original.cover_url ? (
             <img
@@ -131,7 +132,10 @@ export function EventListPage() {
         header: "Kategori",
         cell: ({ row }) =>
           row.original.category ? (
-            <Badge tone="neutral">{row.original.category.label}</Badge>
+            // Label panjang (mis. "Hari Kemerdekaan") dilipat seperti guideline p14 agar tabel muat tanpa geser.
+            <Badge tone="neutral" className="w-auto max-w-28 whitespace-normal leading-tight">
+              {row.original.category.label}
+            </Badge>
           ) : (
             <span className="text-text-muted">-</span>
           ),
@@ -149,25 +153,25 @@ export function EventListPage() {
       {
         id: "registration_opens_at",
         header: "Buka Daftar",
-        meta: { cellClassName: "min-w-20" },
+        meta: { headerClassName: "px-2", cellClassName: "min-w-16 px-2" },
         cell: ({ row }) => formatTableDate(row.original.registration_opens_at, row.original.timezone),
       },
       {
         id: "registration_closes_at",
         header: "Tutup Daftar",
-        meta: { cellClassName: "min-w-20" },
+        meta: { headerClassName: "px-2", cellClassName: "min-w-16 px-2" },
         cell: ({ row }) => formatTableDate(row.original.registration_closes_at, row.original.timezone),
       },
       {
         id: "seats_total",
         header: "Total Tiket",
-        meta: { align: "right" },
+        meta: { align: "right", headerClassName: "px-2", cellClassName: "px-2" },
         cell: ({ row }) => row.original.seats_total.toLocaleString("id-ID"),
       },
       {
         id: "seats_available",
         header: "Sisa Tiket",
-        meta: { align: "right" },
+        meta: { align: "right", headerClassName: "px-2", cellClassName: "px-2" },
         cell: ({ row }) => {
           const e = row.original;
           if (e.status === "cancelled") return <span className="text-text-muted">Dibatalkan</span>;
@@ -342,7 +346,7 @@ export function EventListPage() {
       >
         <p className="text-sm">
           Hapus hanya untuk event yang belum pernah memiliki tiket. Event yang sudah memiliki tiket harus
-          dibatalkan agar peserta diberi notifikasi dan refund tercatat (AC F15-2).
+          dibatalkan agar peserta diberi notifikasi dan refund tercatat.
         </p>
       </ConfirmDialog>
     </div>

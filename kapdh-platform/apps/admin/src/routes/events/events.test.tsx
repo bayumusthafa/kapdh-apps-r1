@@ -10,6 +10,8 @@ import { findToast, renderApp, signIn, type User } from "../../test/utils";
  * (PRD 7.3); uji ini membuktikan perilaku UI: tabel, filter, formulir, konflik versi, kuota, pembatalan, tiket.
  */
 const REUNI = "Reuni Akbar KAPDH 2026";
+/** Pencarian di-debounce lalu data dimuat ulang; saat suite berjalan paralel, bawaan 1 detik bisa terlalu ketat. */
+const SEARCH_WAIT = 4_000;
 const MANCING = "Mancing Bareng Alumni";
 
 const requests = (method: string, path: string) =>
@@ -103,17 +105,17 @@ describe("tabel Event dan Tiket (guideline p14, F-15; server tiruan)", () => {
   it("F-15: pencarian (debounce), filter status dan kategori serta urutan dikirim ke server", async () => {
     const user = userEvent.setup();
     await open(user, "/events", "Event dan Tiket");
-    await screen.findByText("Menampilkan 6 dari 6");
+    await screen.findByText("Menampilkan 6 dari 6", {}, { timeout: SEARCH_WAIT });
     await user.type(screen.getByRole("searchbox", { name: "Cari event" }), "lubuk");
-    await screen.findByText("Menampilkan 1 dari 1");
+    await screen.findByText("Menampilkan 1 dari 1", {}, { timeout: SEARCH_WAIT });
     expect(requests("GET", "/admin/events").at(-1)?.query).toMatchObject({ q: "lubuk" });
     await user.clear(screen.getByRole("searchbox", { name: "Cari event" }));
-    await screen.findByText("Menampilkan 6 dari 6");
+    await screen.findByText("Menampilkan 6 dari 6", {}, { timeout: SEARCH_WAIT });
     await user.selectOptions(screen.getByRole("combobox", { name: "Status" }), "open");
-    await screen.findByText("Menampilkan 2 dari 2");
+    await screen.findByText("Menampilkan 2 dari 2", {}, { timeout: SEARCH_WAIT });
     await screen.findByRole("option", { name: "Seminar" });
     await user.selectOptions(screen.getByRole("combobox", { name: "Kategori" }), "Seminar");
-    await screen.findByText("Menampilkan 1 dari 1");
+    await screen.findByText("Menampilkan 1 dari 1", {}, { timeout: SEARCH_WAIT });
     await user.selectOptions(screen.getByRole("combobox", { name: "Urutkan" }), "title_asc");
     await waitFor(() =>
       expect(requests("GET", "/admin/events").at(-1)?.query).toMatchObject({
@@ -215,7 +217,7 @@ describe("detail event (F-09, F-15)", () => {
   it("F-09, D5: ringkasan memakai zona event, jendela check-in bawaan D5, kursi dan statistik pendapatan", async () => {
     const user = userEvent.setup();
     await open(user, `/events/${MOCK_EVENT_IDS.reuni}`, REUNI);
-    expect(screen.getByText("Bawaan D5")).toBeInTheDocument();
+    expect(screen.getByText("Bawaan", { selector: "span" })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Ringkasan kursi" })).toHaveTextContent("Total tiket");
     const stats = await screen.findByText("Pendapatan kotor");
     const card = stats.closest("section")!;
@@ -287,7 +289,7 @@ describe("detail event (F-09, F-15)", () => {
     await user.type(seats, String(min - 1));
     await user.click(screen.getByRole("button", { name: "Simpan perubahan" }));
     expect(
-      await screen.findByText(`Kuota tidak boleh di bawah ${min} (kursi ditahan + terbayar, AC F15-2).`),
+      await screen.findByText(`Kuota tidak boleh di bawah ${min} (kursi ditahan + terbayar).`),
     ).toBeInTheDocument();
     expect(requests("PATCH", `/admin/events/${MOCK_EVENT_IDS.reuni}`)).toHaveLength(0);
     // Sementara formulir terbuka, anggota menahan 3 kursi lagi: server menolak dengan batas terbaru.
@@ -304,7 +306,7 @@ describe("detail event (F-09, F-15)", () => {
     expect(screen.getByLabelText(/^Total tiket/)).toHaveFocus();
     expect(screen.getByLabelText(/^Total tiket/)).toHaveAttribute("aria-invalid", "true");
     expect(
-      await screen.findByText(new RegExp(`Kuota minimal ${latest.min_seats_total} \\(AC F15-2\\)`)),
+      await screen.findByText(new RegExp(`Kuota minimal ${latest.min_seats_total}\\.`)),
     ).toBeInTheDocument();
     expect(requests("PATCH", `/admin/events/${MOCK_EVENT_IDS.reuni}`)[0]?.body).toEqual({ seats_total: min });
     // Reservasi anggota tidak menaikkan versi: tidak ada peringatan konflik palsu.
@@ -392,7 +394,7 @@ describe("peserta dan tiket (F-09)", () => {
     ).toBeInTheDocument();
 
     await user.selectOptions(screen.getByRole("combobox", { name: "Check-in" }), "true");
-    await screen.findByText("Menampilkan 1 dari 1");
+    await screen.findByText("Menampilkan 1 dari 1", {}, { timeout: SEARCH_WAIT });
     await user.selectOptions(screen.getByRole("combobox", { name: "Status tiket" }), "paid");
     await waitFor(() =>
       expect(requests("GET", `/admin/events/${MOCK_EVENT_IDS.reuni}/tickets`).at(-1)?.query).toMatchObject({
@@ -478,9 +480,9 @@ describe("Manajemen Kategori event (guideline p14, izin events.manage)", () => {
     await user.type(order, "-1");
     await user.click(within(sheet).getByRole("button", { name: "Tambah kategori" }));
     expect(await within(sheet).findByText("Urutan harus bilangan bulat 0 atau lebih.")).toBeInTheDocument();
-    expect(eventRequests.some((r) => r.method === "POST" && r.path === "/admin/content/event-categories")).toBe(
-      false,
-    );
+    expect(
+      eventRequests.some((r) => r.method === "POST" && r.path === "/admin/content/event-categories"),
+    ).toBe(false);
     await user.clear(order);
     await user.type(order, "6");
     await user.click(within(sheet).getByRole("button", { name: "Tambah kategori" }));
