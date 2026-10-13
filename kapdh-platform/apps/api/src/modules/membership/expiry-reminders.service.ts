@@ -81,25 +81,28 @@ export class ExpiryRemindersService implements OnModuleInit {
 
   async run(now: Date): Promise<ExpiryRunResult> {
     const reminders = await this.sweep(
-      and(gt(alumni.expiresAt, now), lte(alumni.expiresAt, new Date(now.getTime() + EXPIRY_REMINDER_WINDOW_MS)))!,
+      and(
+        gt(alumni.expiresAt, now),
+        lte(alumni.expiresAt, new Date(now.getTime() + EXPIRY_REMINDER_WINDOW_MS)),
+      )!,
       and(
         notNotified(EXPIRING_KEY_PREFIX),
         // Iuran renewal yang sudah dikirim buktinya dan menunggu verifikasi tidak perlu diingatkan.
         not(
-        exists(
-          this.db
-            .select({ one: sql`1` })
-            .from(payments)
-            .where(
-              and(
-                eq(payments.userId, alumni.userId),
-                eq(payments.type, "renewal"),
-                eq(payments.status, "pending"),
-                gt(payments.proofVersion, 0),
+          exists(
+            this.db
+              .select({ one: sql`1` })
+              .from(payments)
+              .where(
+                and(
+                  eq(payments.userId, alumni.userId),
+                  eq(payments.type, "renewal"),
+                  eq(payments.status, "pending"),
+                  gt(payments.proofVersion, 0),
+                ),
               ),
-            ),
+          ),
         ),
-      ),
       ),
       (expiresAt) => ({
         title: "Masa KTA segera berakhir",

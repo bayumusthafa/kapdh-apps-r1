@@ -34,7 +34,9 @@ export interface OpenMembershipPayments {
 }
 
 /** Penampil berkas = sesi pemanggil (URL foto bertanda tangan terikat sesi, PRD 5.4). */
-export function fileSubjectOf(auth: Pick<AuthContext, "userId" | "sessionId" | "sessionVersion">): FileTokenSubject {
+export function fileSubjectOf(
+  auth: Pick<AuthContext, "userId" | "sessionId" | "sessionVersion">,
+): FileTokenSubject {
   return { userId: auth.userId, sessionId: auth.sessionId, sessionVersion: auth.sessionVersion };
 }
 
@@ -206,7 +208,12 @@ export class MemberProfileService {
 
       const professionChanged = await replaceProfession(tx, auth.userId, input.profession_id, now);
       const skillsChanged = await replaceSkills(tx, auth.userId, input.skill_ids, now);
-      const avatarChanged = await this.replaceAvatar(tx, auth.userId, locked.avatarFileId, input.avatar_file_id);
+      const avatarChanged = await this.replaceAvatar(
+        tx,
+        auth.userId,
+        locked.avatarFileId,
+        input.avatar_file_id,
+      );
       if (avatarChanged) changes.avatarFileId = input.avatar_file_id ?? null;
 
       if (Object.keys(changes).length === 0 && !professionChanged && !skillsChanged) return;

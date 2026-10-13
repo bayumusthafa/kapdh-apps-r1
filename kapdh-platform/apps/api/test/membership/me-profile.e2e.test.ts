@@ -87,14 +87,22 @@ describe("PATCH /me/profile (F-10)", () => {
     expect(Number(updated.version)).toBeGreaterThan(Number(v1));
 
     // Master dinonaktifkan pengurus setelah dipakai: label historis tetap, pilihan ulang yang sama diterima.
-    await t.db.update(masterProfessions).set({ active: false }).where(eq(masterProfessions.id, activeProfession));
+    await t.db
+      .update(masterProfessions)
+      .set({ active: false })
+      .where(eq(masterProfessions.id, activeProfession));
     await t.db.update(masterSkills).set({ active: false }).where(eq(masterSkills.id, skills[0]!));
     const historic = await m.get();
     expect(historic.profile.profession).toMatchObject({ id: activeProfession, active: false });
     expect(historic.profile.skills.find((s) => s.id === skills[0])).toMatchObject({ active: false });
-    const keep = await m.patch({ profession_id: activeProfession, skill_ids: [skills[0]!, skills[1]!] }, historic.version);
+    const keep = await m.patch(
+      { profession_id: activeProfession, skill_ids: [skills[0]!, skills[1]!] },
+      historic.version,
+    );
     expect(keep.statusCode, keep.body).toBe(200);
-    expect(((keep.json() as MeBody).profile.skills).map((s) => s.id).sort()).toEqual([skills[0]!, skills[1]!].sort());
+    expect((keep.json() as MeBody).profile.skills.map((s) => s.id).sort()).toEqual(
+      [skills[0]!, skills[1]!].sort(),
+    );
 
     // Keahlian nonaktif yang BELUM terpasang tidak dapat dipilih baru.
     const inactiveSkill = await master("skill", false);
@@ -125,7 +133,9 @@ describe("PATCH /me/profile (F-10)", () => {
     expect(first.statusCode).toBe(200);
     const replaced = await m.patch({ skill_ids: eleven.slice(5, 11) }, (first.json() as MeBody).version);
     expect(replaced.statusCode, replaced.body).toBe(200);
-    expect((replaced.json() as MeBody).profile.skills.map((s) => s.id).sort()).toEqual(eleven.slice(5, 11).sort());
+    expect((replaced.json() as MeBody).profile.skills.map((s) => s.id).sort()).toEqual(
+      eleven.slice(5, 11).sort(),
+    );
   });
 
   it("AC F05-6: identitas keanggotaan, email dan nomor tidak dapat diubah anggota; field di luar skema ditolak tanpa perubahan", async () => {
@@ -210,7 +220,10 @@ describe("PATCH /me/profile (F-10)", () => {
     ] as const) {
       const res = await m.patch({ [field]: value }, version);
       expect(res.statusCode, `${field}=${JSON.stringify(value)}`).toBe(400);
-      expect(Object.keys(res.json().field_errors).some((key) => key.startsWith(field)), field).toBe(true);
+      expect(
+        Object.keys(res.json().field_errors).some((key) => key.startsWith(field)),
+        field,
+      ).toBe(true);
     }
     const nulled = await m.patch({ phone: null, social_instagram: null }, version);
     expect((nulled.json() as MeBody).profile).toMatchObject({ phone: null, social_instagram: null });
@@ -261,10 +274,12 @@ describe("PATCH /me/profile (F-10)", () => {
 
     const api = httpClient(t.app);
     const { token } = await adminWith(t, ["members.manage", "members.read"]);
-    expect((await api.patch("/me/profile", { city: "X" }, { token, headers: { "if-match": "1" } })).statusCode).toBe(
-      403,
+    expect(
+      (await api.patch("/me/profile", { city: "X" }, { token, headers: { "if-match": "1" } })).statusCode,
+    ).toBe(403);
+    expect((await api.patch("/me/profile", { city: "X" }, { headers: { "if-match": "1" } })).statusCode).toBe(
+      401,
     );
-    expect((await api.patch("/me/profile", { city: "X" }, { headers: { "if-match": "1" } })).statusCode).toBe(401);
   });
 });
 

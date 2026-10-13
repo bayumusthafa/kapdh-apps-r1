@@ -58,7 +58,9 @@ describe("ARCHITECTURE §4.3: dekorator controller membership = x-kapdh-access k
         expect(route!.meta.isPublic, operationId).toBe(access!.audience === "public");
         if (access!.audience !== "public") expect(route!.meta.audience, operationId).toBe(access!.audience);
         expect(route!.meta.memberAccess, operationId).toBe(access!.member_access ?? null);
-        expect([...route!.meta.permissions].sort(), operationId).toEqual([...(access!.permissions ?? [])].sort());
+        expect([...route!.meta.permissions].sort(), operationId).toEqual(
+          [...(access!.permissions ?? [])].sort(),
+        );
         expect([...route!.meta.permissionsAny].sort(), operationId).toEqual(
           [...(access!.permissions_any ?? [])].sort(),
         );

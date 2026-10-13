@@ -125,20 +125,31 @@ describe("membership.expiry-reminders (AC F07-5)", () => {
     // Setelah unsuspend, anggota yang masih expiring diingatkan pada jalan berikutnya.
     await runAsSystem(() =>
       t.db.transaction((tx) =>
-        t.app.get(MembershipKernel).unsuspend(tx, suspended.userId, { reason: "Banding diterima", actorAdminId: null }),
+        t.app
+          .get(MembershipKernel)
+          .unsuspend(tx, suspended.userId, { reason: "Banding diterima", actorAdminId: null }),
       ),
     );
     await t.jobs.runScheduled(EXPIRY_REMINDERS_JOB);
     const afterUnsuspend = await t.db
       .select()
       .from(notifications)
-      .where(and(eq(notifications.userId, suspended.userId), like(notifications.dedupKey, "%membership.expiring%")));
+      .where(
+        and(
+          eq(notifications.userId, suspended.userId),
+          like(notifications.dedupKey, "%membership.expiring%"),
+        ),
+      );
     expect(afterUnsuspend).toHaveLength(1);
   });
 
   it("Iuran renewal yang menunggu verifikasi tidak diingatkan; pengingat dikirim bila tidak ada lagi", async () => {
     const member = await memberExpiringIn(15 * DAY_MS);
-    const pending = await createMembershipPayment(t, { userId: member.userId, type: "renewal", status: "pending" });
+    const pending = await createMembershipPayment(t, {
+      userId: member.userId,
+      type: "renewal",
+      status: "pending",
+    });
     await t.jobs.runScheduled(EXPIRY_REMINDERS_JOB);
     expect(await inboxOf(member.userId)).toHaveLength(0);
     await t.db
