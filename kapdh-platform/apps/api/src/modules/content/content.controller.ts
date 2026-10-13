@@ -89,7 +89,9 @@ export class ContentController {
   @Audience("any")
   listCategories(@Query() query: unknown): Promise<ContentCategoryList> {
     const { kind } = validateQuery(
-      z.object({ kind: z.enum(["post", "event"], { message: "Jenis kategori post atau event." }).optional() }),
+      z.object({
+        kind: z.enum(["post", "event"], { message: "Jenis kategori post atau event." }).optional(),
+      }),
       query,
     );
     return this.categories.listActive(kind);

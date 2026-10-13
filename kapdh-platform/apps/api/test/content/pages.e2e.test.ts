@@ -116,7 +116,11 @@ describe("F-08, F-01: halaman baku dari seed dan alur draf -> terbit", () => {
     expect(saved.statusCode).toBe(200);
     privacy = saved.json();
     expect(privacy.body_html).not.toContain("script");
-    expect(privacy).toMatchObject({ published: null, published_version: null, has_unpublished_changes: true });
+    expect(privacy).toMatchObject({
+      published: null,
+      published_version: null,
+      has_unpublished_changes: true,
+    });
     // Draf tidak pernah terlihat publik sebelum terbit.
     expect((await api().get("/public/pages/kebijakan-privasi")).statusCode).toBe(404);
 
@@ -178,7 +182,10 @@ describe("F-08, F-01: halaman baku dari seed dan alur draf -> terbit", () => {
     const firstText = privacy.published!.body_html;
     const noChange = await publish(privacy);
     expect(noChange.statusCode).toBe(409);
-    expect(noChange.json()).toMatchObject({ code: "VALIDATION_ERROR", field_errors: { _: expect.any(Array) } });
+    expect(noChange.json()).toMatchObject({
+      code: "VALIDATION_ERROR",
+      field_errors: { _: expect.any(Array) },
+    });
     expect(await legalSetting()).toMatchObject({ privacy_version: "1" });
 
     privacy = (await saveDraft(privacy, { body_html: "<p>Versi kedua kebijakan privasi.</p>" })).json();
@@ -194,7 +201,10 @@ describe("F-08, F-01: halaman baku dari seed dan alur draf -> terbit", () => {
     expect(stale.json()).toMatchObject({ code: "VERSION_CONFLICT", current: { id: privacy.id } });
 
     const second = (await publish(privacy)).json() as AdminInfoPage;
-    expect(second.published).toMatchObject({ version: "2", body_html: "<p>Versi kedua kebijakan privasi.</p>" });
+    expect(second.published).toMatchObject({
+      version: "2",
+      body_html: "<p>Versi kedua kebijakan privasi.</p>",
+    });
     expect(await legalSetting()).toMatchObject({ privacy_version: "2", terms_version: "1" });
     expect((await api().get("/public/pages")).json().consent.policy_version).toBe("privacy:2;terms:1");
 
@@ -257,7 +267,10 @@ describe("F-08: halaman informasi buatan pengurus", () => {
     expect(page.slug_locked).toBe(true);
     const locked = await saveDraft(page, { slug: unique("x") });
     expect(locked.statusCode).toBe(400);
-    expect((await api().get(`/public/pages/${renamed}`)).json()).toMatchObject({ legal_document: null, version: "1" });
+    expect((await api().get(`/public/pages/${renamed}`)).json()).toMatchObject({
+      legal_document: null,
+      version: "1",
+    });
 
     const systemPage = await pageBySlug("bantuan");
     const systemSlug = await saveDraft(systemPage, { slug: "bantuan-baru" });
@@ -292,7 +305,9 @@ describe("F-08: halaman informasi buatan pengurus", () => {
     });
     expect(removed.statusCode).toBe(204);
     expectOperation("delete", "/admin/content/pages/{pageId}", removed);
-    expect((await api().get(`/admin/content/pages/${created.id}`, { token: admin.token })).statusCode).toBe(404);
+    expect((await api().get(`/admin/content/pages/${created.id}`, { token: admin.token })).statusCode).toBe(
+      404,
+    );
   });
 
   it("F-15: tabel halaman mendukung pencarian, semua urutan dan paging tanpa duplikasi", async () => {

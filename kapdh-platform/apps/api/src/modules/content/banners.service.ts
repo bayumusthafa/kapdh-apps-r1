@@ -130,7 +130,11 @@ interface ResolvedTarget {
   category: ContentCategoryRef | null;
 }
 
-function categoryRef(id: string | null, slug: string | null, label: string | null): ContentCategoryRef | null {
+function categoryRef(
+  id: string | null,
+  slug: string | null,
+  label: string | null,
+): ContentCategoryRef | null {
   return id && slug && label ? { id, slug, label } : null;
 }
 
@@ -246,7 +250,12 @@ export class BannersService {
     });
   }
 
-  async update(auth: AuthContext, id: string, expectedVersion: number, input: BannerUpdateInput): Promise<AdminBanner> {
+  async update(
+    auth: AuthContext,
+    id: string,
+    expectedVersion: number,
+    input: BannerUpdateInput,
+  ): Promise<AdminBanner> {
     if ((input.target_type === undefined) !== (input.target_value === undefined))
       throw fieldError(
         input.target_type === undefined ? "target_type" : "target_value",
@@ -342,7 +351,8 @@ export class BannersService {
       }
       case "url": {
         const url = safeHttpsUrl(value);
-        if (!url) throw fieldError(field, "Tautan wajib diawali https:// dan tidak memuat nama pengguna/sandi.");
+        if (!url)
+          throw fieldError(field, "Tautan wajib diawali https:// dan tidak memuat nama pengguna/sandi.");
         return url;
       }
     }
@@ -353,7 +363,11 @@ export class BannersService {
    * event bila open/closed dan belum berakhir (draft, dibatalkan, selesai = tidak tersedia); halaman bila pernah
    * terbit. Target yang dihapus = tidak tersedia.
    */
-  private async resolveTargets(db: DbOrTx, rows: BannerRow[], now: Date): Promise<Map<string, ResolvedTarget>> {
+  private async resolveTargets(
+    db: DbOrTx,
+    rows: BannerRow[],
+    now: Date,
+  ): Promise<Map<string, ResolvedTarget>> {
     const idsOf = (type: BannerTargetType) => [
       ...new Set(
         rows.filter((r) => r.targetType === type && isUuid(r.targetValue)).map((r) => r.targetValue!),

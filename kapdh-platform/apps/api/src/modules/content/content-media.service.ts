@@ -11,7 +11,10 @@ import { ENV } from "../../core/tokens.js";
 import { createContentSanitizer, type SanitizedContentHtml } from "./html-sanitizer.js";
 
 /** Purpose gambar konten publik (kontrak C4 `ContentMediaPurpose`). */
-export const CONTENT_MEDIA_PURPOSES = ["post_cover", "banner_image"] as const satisfies readonly FilePurpose[];
+export const CONTENT_MEDIA_PURPOSES = [
+  "post_cover",
+  "banner_image",
+] as const satisfies readonly FilePurpose[];
 export type ContentMediaPurpose = (typeof CONTENT_MEDIA_PURPOSES)[number];
 
 /**
@@ -44,7 +47,13 @@ export class ContentMediaService {
    * Melampirkan gambar baru (cover/banner) milik pengurus pemanggil di dalam transaksi objek: berkas wajib milik
    * akun login pemanggil, ber-purpose sesuai, siap, dan belum dipakai objek lain (400 pada `field`).
    */
-  async attachNew(tx: Tx, fileId: string, uploaderUserId: string, purpose: ContentMediaPurpose, field: string) {
+  async attachNew(
+    tx: Tx,
+    fileId: string,
+    uploaderUserId: string,
+    purpose: ContentMediaPurpose,
+    field: string,
+  ) {
     return this.files.attach(tx, fileId, uploaderUserId, purpose, { field });
   }
 

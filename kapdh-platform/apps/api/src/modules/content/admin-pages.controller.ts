@@ -33,7 +33,12 @@ export class AdminPagesController {
   list(@Query() query: unknown): Promise<AdminInfoPageList> {
     const page = parsePageQuery(query);
     const filters = validateQuery(pageListQuerySchema, query);
-    return this.pagesService.list({ q: filters.q, sort: filters.sort, cursor: page.cursor, limit: page.limit });
+    return this.pagesService.list({
+      q: filters.q,
+      sort: filters.sort,
+      cursor: page.cursor,
+      limit: page.limit,
+    });
   }
 
   @Post()

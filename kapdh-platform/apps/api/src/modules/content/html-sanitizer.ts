@@ -150,8 +150,9 @@ export function createContentSanitizer(apiPublicUrl: string): (dirty: string) =>
         },
       },
     }).trim();
+    // Spasi tak terputus (entitas maupun karakter U+00A0, yang dibuang trim()) tidak dihitung sebagai isi.
     const text = sanitizeHtml(html, { allowedTags: [], allowedAttributes: {} })
-      .replace(/&nbsp;|&#160;| /g, " ")
+      .replace(/&nbsp;|&#160;/g, " ")
       .trim();
     return { html, imageFileIds, hasContent: text.length > 0 || imageFileIds.length > 0 };
   };

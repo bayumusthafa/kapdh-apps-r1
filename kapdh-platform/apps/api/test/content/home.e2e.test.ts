@@ -152,21 +152,54 @@ describe("AC F08-2: banner hanya dalam jendela tanggal; target tidak tersedia di
       .where(eq(pages.slug, "tentang"));
 
     const cases: [Parameters<typeof insertBanner>[2], Record<string, unknown>][] = [
-      [{ targetType: "post", targetValue: visible.id }, { available: true, route: `/news/${visible.slug}` }],
-      [{ targetType: "post", targetValue: archived.id }, { available: false, route: null }],
-      [{ targetType: "post", targetValue: scheduled.id }, { available: false, route: null }],
-      [{ targetType: "post", targetValue: uuidv7() }, { available: false, route: null }],
-      [{ targetType: "event", targetValue: openEvent.id }, { available: true, route: `/events/${openEvent.id}` }],
-      [{ targetType: "event", targetValue: cancelled.id }, { available: false, route: null }],
-      [{ targetType: "event", targetValue: draftEvent.id }, { available: false, route: null }],
-      [{ targetType: "event", targetValue: endedEvent.id }, { available: false, route: null }],
-      [{ targetType: "page", targetValue: "tentang" }, { available: true, route: "/legal/tentang" }],
-      [{ targetType: "page", targetValue: "ketentuan" }, { available: false, route: null }],
+      [
+        { targetType: "post", targetValue: visible.id },
+        { available: true, route: `/news/${visible.slug}` },
+      ],
+      [
+        { targetType: "post", targetValue: archived.id },
+        { available: false, route: null },
+      ],
+      [
+        { targetType: "post", targetValue: scheduled.id },
+        { available: false, route: null },
+      ],
+      [
+        { targetType: "post", targetValue: uuidv7() },
+        { available: false, route: null },
+      ],
+      [
+        { targetType: "event", targetValue: openEvent.id },
+        { available: true, route: `/events/${openEvent.id}` },
+      ],
+      [
+        { targetType: "event", targetValue: cancelled.id },
+        { available: false, route: null },
+      ],
+      [
+        { targetType: "event", targetValue: draftEvent.id },
+        { available: false, route: null },
+      ],
+      [
+        { targetType: "event", targetValue: endedEvent.id },
+        { available: false, route: null },
+      ],
+      [
+        { targetType: "page", targetValue: "tentang" },
+        { available: true, route: "/legal/tentang" },
+      ],
+      [
+        { targetType: "page", targetValue: "ketentuan" },
+        { available: false, route: null },
+      ],
       [
         { targetType: "url", targetValue: "https://kapdh.or.id/donasi" },
         { available: true, route: null, url: "https://kapdh.or.id/donasi", external: true },
       ],
-      [{ targetType: "none", targetValue: null }, { available: true, route: null, url: null, external: false }],
+      [
+        { targetType: "none", targetValue: null },
+        { available: true, route: null, url: null, external: false },
+      ],
     ];
     const created = [];
     for (const [i, [options]] of cases.entries())
@@ -240,6 +273,11 @@ describe("PRD 3.8: event mendatang dan berita terbaru di Beranda", () => {
     await insertPost(t, { status: "draft" });
     await insertPost(t, { publishedAt: new Date(t.clock.now().getTime() + 60_000) });
     const ids = (await home(member.token)).posts.map((p) => p.id);
-    expect(ids).toEqual(visible.slice(1).map((p) => p.id).reverse());
+    expect(ids).toEqual(
+      visible
+        .slice(1)
+        .map((p) => p.id)
+        .reverse(),
+    );
   });
 });
