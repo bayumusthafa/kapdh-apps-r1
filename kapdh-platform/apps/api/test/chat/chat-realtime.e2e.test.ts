@@ -121,7 +121,11 @@ describe("N-02 / AC F11-2: penyampaian message.created sesudah commit", () => {
     type Delivered = { image: { url: string; url_expires_at: string }; sender: { avatar_url: string } };
     const received = async (socket: TestSocket) =>
       (await socket.waitFor("message.created", isMessage(sent.id))).payload.message as Delivered;
-    const [onPhone, onTablet, onC] = [await received(bPhone), await received(bTablet), await received(cSocket)];
+    const [onPhone, onTablet, onC] = [
+      await received(bPhone),
+      await received(bTablet),
+      await received(cSocket),
+    ];
     // Tepat satu salinan per perangkat; URL berbeda per sesi (bukan satu URL untuk seluruh room).
     for (const socket of [bPhone, bTablet, cSocket])
       expect(socket.of("message.created").filter(isMessage(sent.id))).toHaveLength(1);

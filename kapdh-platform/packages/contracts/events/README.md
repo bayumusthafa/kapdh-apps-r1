@@ -46,9 +46,14 @@ Emit klien (tidak memakai amplop; tidak ada endpoint HTTP untuk typing/presence,
 
 ## Pencabutan langganan room (AC F11-4, F11-6, PRD 4.5)
 
-Kanal `room:<id>` membawa isi pesan dan URL gambar, sehingga hanya boleh diikuti socket anggota joined yang status
-efektifnya aktif (verified/expiring, tidak suspended), sama dengan izin baca riwayat HTTP (ARCHITECTURE §3.1). Aturan
-gateway (mengikat, juga tercantum di kepala `openapi/domains/chat.yaml`):
+Kanal `room:<id>` membawa isi pesan, sehingga hanya boleh diikuti socket anggota joined yang status efektifnya aktif
+(verified/expiring, tidak suspended), sama dengan izin baca riwayat HTTP (ARCHITECTURE §3.1). URL berkas privat
+(gambar pesan, avatar privat pengirim, avatar grup) tidak pernah disiarkan sebagai satu payload ke kanal room: event
+yang memuatnya (`message.created`, `room.updated`) dikirim per keluarga sesi penerima (`session:<id>`, tepat satu
+salinan per perangkat) dengan URL terikat sesi itu, kepada penerima yang sama dengan kanal room (pesan juga dibatasi
+`history_visible_from`). Membuka URL mengulang otorisasi, sehingga URL yang sudah diterima anggota yang kemudian keluar
+atau dikeluarkan langsung ditolak (PRD 5.4, AC F11-4). Aturan gateway (mengikat, juga tercantum di kepala
+`openapi/domains/chat.yaml`):
 
 1. Saat handshake dan setiap join room, gateway memeriksa sesi, status efektif dan keanggotaan joined. Socket yang
    tidak aktif hanya bergabung ke `user:<id>` (kotak masuk dan `session.revoked` tetap sampai untuk semua status).
@@ -100,18 +105,18 @@ Setiap jenis di `properties.type.enum` amplop WAJIB berada di tepat satu keadaan
 
 Kesepuluh jenis sudah bertipe (penulis kontrak C6). Ringkasan payload, `entity_id` dan kanal pengiriman:
 
-| Jenis                  | `entity_id`   | Kanal                                      | Payload (ringkas)                                                         |
-| ---------------------- | ------------- | ------------------------------------------ | ------------------------------------------------------------------------- |
-| `message.created`      | ID pesan      | `room:<id>`                                | `room_id`, `message` (`RealtimeChatMessage`, bentuk = `ChatMessage` HTTP) |
-| `message.deleted`      | ID pesan      | `room:<id>`                                | `room_id`, `message_id`, `deleted_at`                                     |
-| `reaction.updated`     | ID pesan      | `room:<id>`                                | `room_id`, `message_id`, `user_id`, `emoji`, `action`, `counts`           |
-| `read.updated`         | ID room       | `room:<id>`                                | `room_id`, `user_id`, `last_read_message_id`, `last_read_at`              |
-| `room.updated`         | ID room       | `room:<id>`; `user:<id>` untuk mute/blokir | `room_id`, `version`, `changes`, `name`, `avatar_url`, `closed_at`        |
-| `room.member_changed`  | ID room       | lihat catatan kanal di bawah               | `room_id`, `user_id`, `change`, `role`, `member_count`, `actor_user_id`   |
-| `typing`               | ID room       | `room:<id>` (kecuali pengirim)             | `room_id`, `user_id`, `ttl_seconds`                                       |
-| `presence`             | user_id       | anggota room yang sama                     | `user_id`, `status`, `ttl_seconds`                                        |
-| `notification.created` | ID notifikasi | `user:<id>`                                | field `InboxNotification` (tanpa `read_at`) + `unread_count`              |
-| `session.revoked`      | ID sesi       | socket sesi yang dicabut                   | `reason`, `all_sessions`                                                  |
+| Jenis                  | `entity_id`   | Kanal                                                                         | Payload (ringkas)                                                         |
+| ---------------------- | ------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `message.created`      | ID pesan      | `room:<id>`; `session:<id>` bila ada URL privat                               | `room_id`, `message` (`RealtimeChatMessage`, bentuk = `ChatMessage` HTTP) |
+| `message.deleted`      | ID pesan      | `room:<id>`                                                                   | `room_id`, `message_id`, `deleted_at`                                     |
+| `reaction.updated`     | ID pesan      | `room:<id>`                                                                   | `room_id`, `message_id`, `user_id`, `emoji`, `action`, `counts`           |
+| `read.updated`         | ID room       | `room:<id>`                                                                   | `room_id`, `user_id`, `last_read_message_id`, `last_read_at`              |
+| `room.updated`         | ID room       | `room:<id>`; `user:<id>` untuk mute/blokir; `session:<id>` bila avatar privat | `room_id`, `version`, `changes`, `name`, `avatar_url`, `closed_at`        |
+| `room.member_changed`  | ID room       | lihat catatan kanal di bawah                                                  | `room_id`, `user_id`, `change`, `role`, `member_count`, `actor_user_id`   |
+| `typing`               | ID room       | `room:<id>` (kecuali pengirim)                                                | `room_id`, `user_id`, `ttl_seconds`                                       |
+| `presence`             | user_id       | anggota room yang sama                                                        | `user_id`, `status`, `ttl_seconds`                                        |
+| `notification.created` | ID notifikasi | `user:<id>`                                                                   | field `InboxNotification` (tanpa `read_at`) + `unread_count`              |
+| `session.revoked`      | ID sesi       | socket sesi yang dicabut                                                      | `reason`, `all_sessions`                                                  |
 
 Kanal `room.member_changed` (undangan tertunda hanya terlihat admin grup, PRD 3.11, N-09):
 
