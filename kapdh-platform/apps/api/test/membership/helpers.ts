@@ -109,7 +109,11 @@ export async function verifyKta(
   token: string,
   headers: Record<string, string> = {},
 ) {
-  const res = await httpClient(t.app).post("/public/kta/verify", { member_number: memberNumber, token }, { headers });
+  const res = await httpClient(t.app).post(
+    "/public/kta/verify",
+    { member_number: memberNumber, token },
+    { headers },
+  );
   const body = expectOperation("post", "/public/kta/verify", res) as {
     result: string;
     checked_at: string;

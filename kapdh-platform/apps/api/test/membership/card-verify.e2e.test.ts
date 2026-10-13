@@ -8,22 +8,11 @@ import { MembershipKernel } from "../../src/core/membership/membership.kernel.js
 import { addCalendarMonthsJakarta } from "../../src/core/membership/period.js";
 import { QR_AUDIENCE, QR_ISSUER, QrTokenService } from "../../src/core/qr/qr-token.service.js";
 import { expectOperation } from "../support/contract.js";
-import {
-  createAlumni,
-  createMembershipPayment,
-  setSetting,
-  signInAlumni,
-} from "../support/factories.js";
+import { createAlumni, createMembershipPayment, setSetting, signInAlumni } from "../support/factories.js";
 import { uploadTestFile } from "../support/files.js";
 import { httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import {
-  adminWith,
-  approveMembershipPayment,
-  getCard,
-  parseQr,
-  verifyKta,
-} from "./helpers.js";
+import { adminWith, approveMembershipPayment, getCard, parseQr, verifyKta } from "./helpers.js";
 
 /**
  * KTA digital (F-05) dan verifikasi KTA publik (F-06): label status kartu, QR bertanda tangan hanya untuk kartu aktif,
@@ -80,7 +69,10 @@ describe("GET /me/card (F-05)", () => {
       type: "registration",
       status: "pending",
     });
-    expect(await getCard(t, token)).toMatchObject({ action: "continue_payment", open_payment_id: pending.id });
+    expect(await getCard(t, token)).toMatchObject({
+      action: "continue_payment",
+      open_payment_id: pending.id,
+    });
 
     // Persetujuan pengurus (alur payments): payment paid + MembershipKernel.applyPaidPayment pada satu transaksi.
     const approvedAt = t.clock.now();
@@ -89,7 +81,9 @@ describe("GET /me/card (F-05)", () => {
       .set({ status: "paid", decidedAt: approvedAt })
       .where(eq(payments.id, pending.id));
     await runAsSystem(() =>
-      t.db.transaction((tx) => t.app.get(MembershipKernel).applyPaidPayment(tx, { id: pending.id }, approvedAt)),
+      t.db.transaction((tx) =>
+        t.app.get(MembershipKernel).applyPaidPayment(tx, { id: pending.id }, approvedAt),
+      ),
     );
     const active = await getCard(t, token);
     expect(active.status_label).toBe("active");
@@ -101,7 +95,11 @@ describe("GET /me/card (F-05)", () => {
     expect(qr.memberNumber).toBe(fixture.memberNumber);
     expect(active.qr!.url.startsWith(`${t.env.PUBLIC_WEB_URL}/kta/`)).toBe(true);
     const { body } = await verifyKta(t, qr.memberNumber, qr.token);
-    expect(body).toMatchObject({ result: "active", expiring: false, checked_at: t.clock.now().toISOString() });
+    expect(body).toMatchObject({
+      result: "active",
+      expiring: false,
+      checked_at: t.clock.now().toISOString(),
+    });
   });
 
   it("AC F05-2, F05-3: offline_valid_until = min(synced_at + 7 hari, expires_at, token QR); tanpa QR = tidak boleh tampil aktif offline", async () => {
@@ -218,7 +216,9 @@ describe("GET /me/card (F-05)", () => {
     const [event] = await t.db
       .select()
       .from(membershipEvents)
-      .where(and(eq(membershipEvents.userId, fixture.userId), eq(membershipEvents.kind, "number_correction")));
+      .where(
+        and(eq(membershipEvents.userId, fixture.userId), eq(membershipEvents.kind, "number_correction")),
+      );
     expect(event).toMatchObject({
       beforeMemberNumber: `12.02.01.${seq}`,
       afterMemberNumber: `12.01.01.${seq}`,
@@ -377,7 +377,10 @@ describe("POST /public/kta/verify (F-06)", () => {
     });
 
     t.clock.set(new Date(expiresAt.getTime() + 31 * DAY_MS));
-    expect((await verifyKta(t, qr.memberNumber, qr.token)).body).toMatchObject({ result: "expired", member: null });
+    expect((await verifyKta(t, qr.memberNumber, qr.token)).body).toMatchObject({
+      result: "expired",
+      member: null,
+    });
   });
 
   it("AC F06-3: token diubah, kunci tidak dikenal, issuer/audience salah, nomor lain, atau token 7 hari lewat → QR tidak valid, tidak pernah Aktif", async () => {
@@ -435,7 +438,8 @@ describe("POST /public/kta/verify (F-06)", () => {
 
     // Per token: token yang sama dipindai berulang kali dibatasi.
     t.rateLimits.clear();
-    for (let i = 0; i < 20; i++) expect((await verifyKta(t, qr.memberNumber, qr.token)).res.statusCode).toBe(200);
+    for (let i = 0; i < 20; i++)
+      expect((await verifyKta(t, qr.memberNumber, qr.token)).res.statusCode).toBe(200);
     const limited = await verifyKta(t, qr.memberNumber, qr.token);
     expect(limited.res.statusCode).toBe(429);
     expect(limited.body).toMatchObject({ code: "RATE_LIMITED", retry_after_seconds: expect.any(Number) });
@@ -457,7 +461,10 @@ describe("POST /public/kta/verify (F-06)", () => {
     // Per IP untuk semua request.
     t.rateLimits.clear();
     for (let i = 0; i < 60; i++)
-      await api.post("/public/kta/verify", { member_number: qr.memberNumber, token: `ip-${i}-${"y".repeat(20)}` });
+      await api.post("/public/kta/verify", {
+        member_number: qr.memberNumber,
+        token: `ip-${i}-${"y".repeat(20)}`,
+      });
     const ipLimited = await api.post("/public/kta/verify", {
       member_number: qr.memberNumber,
       token: `ip-akhir-${"y".repeat(20)}`,
@@ -475,7 +482,11 @@ describe("POST /public/kta/verify (F-06)", () => {
       await setSetting(t, "maintenance", { active: false, message: null, until: null });
     }
     const api = httpClient(t.app);
-    const extra = await api.post("/public/kta/verify", { member_number: qr.memberNumber, token: qr.token, x: 1 });
+    const extra = await api.post("/public/kta/verify", {
+      member_number: qr.memberNumber,
+      token: qr.token,
+      x: 1,
+    });
     expect(extra.statusCode).toBe(400);
     expectOperation("post", "/public/kta/verify", extra);
     const badNumber = await api.post("/public/kta/verify", { member_number: "12-01-01-7", token: qr.token });

@@ -196,7 +196,9 @@ describe("Pemulihan sandi bersamaan (AC F16-4)", () => {
       .from(sessionsTable)
       .where(eq(sessionsTable.id, String(claims.sid)));
     const reauth = (
-      await app.get(TokenService).signReauth({ userId: superAdmin.userId, familyId: family!.familyId, level: 2 })
+      await app
+        .get(TokenService)
+        .signReauth({ userId: superAdmin.userId, familyId: family!.familyId, level: 2 })
     ).token;
     const http = httpClient(app);
     const results = await Promise.all(
