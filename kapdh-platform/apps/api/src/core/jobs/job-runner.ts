@@ -29,10 +29,11 @@ export interface DispatchResult {
 }
 
 /**
- * Klaim lease satu event outbox (PRD 5.1). `lockedUntil` adalah token kepemilikan (fencing): pemrosesan, perpanjangan
- * lease, finalisasi, dan pelepasan hanya berlaku selama `locked_until` di database masih sama dengan nilai klaim ini.
- * Klaim ulang setelah lease habis selalu menghasilkan nilai yang lebih besar, sehingga klaim lama tidak pernah dapat
- * menimpa hasil klaim baru.
+ * Klaim lease satu event outbox (PRD 5.1). `lockedUntil` adalah token kepemilikan (fencing): pengambilalihan saat mulai
+ * diproses dan pelepasan hanya berlaku selama `locked_until` di database masih sama dengan nilai klaim ini; setelah
+ * diambil alih, perpanjangan lease dan finalisasi memakai token baru milik pemrosesan itu. Klaim ulang setelah lease
+ * habis dan pengambilalihan selalu menghasilkan nilai yang lebih besar, sehingga klaim lama tidak pernah dapat
+ * dimulai lagi maupun menimpa hasil klaim baru.
  */
 export interface OutboxClaim {
   id: string;
@@ -48,7 +49,8 @@ export type OutboxClaimRef = Pick<OutboxClaim, "id" | "lockedUntil">;
 
 /**
  * Hasil memproses satu klaim. `lost`: lease sudah bukan milik klaim ini (kedaluwarsa lalu diklaim dispatcher lain,
- * atau event sudah selesai), sehingga handler tidak dijalankan / hasilnya tidak dicatat.
+ * klaim yang sama sudah dimulai pemrosesan lain, atau event sudah selesai), sehingga handler tidak dijalankan /
+ * hasilnya tidak dicatat.
  */
 export type OutboxOutcome = "dispatched" | "failed" | "dead" | "lost";
 
@@ -73,11 +75,15 @@ export class JobRunner {
     @Inject(ROOT_LOGGER) private readonly logger: Logger,
   ) {}
 
-  /** Menjalankan satu job terjadwal sekali (scheduler worker, atau uji: `await t.jobs.runScheduled(name)`). */
-  async runScheduled(name: string): Promise<void> {
+  /**
+   * Menjalankan satu job terjadwal sekali (scheduler worker, atau uji: `await t.jobs.runScheduled(name)`). `jobId`
+   * opsional dari pemanggil (apps/worker: id yang sama dengan log antrean, sehingga satu job_id menghubungkan log
+   * antrean, log job, dan audit; N-14). Bawaan `<nama>:<uuidv7>`.
+   */
+  async runScheduled(name: string, options: { jobId?: string } = {}): Promise<void> {
     const job = this.registry.scheduledJob(name);
     if (!job) throw new Error(`Job ${name} tidak terdaftar`);
-    const jobId = `${name}:${uuidv7()}`;
+    const jobId = options.jobId ?? `${name}:${uuidv7()}`;
     const logger = this.logger.child({ job_id: jobId, job: name });
     await runAsSystem(
       async () => {
@@ -165,39 +171,52 @@ export class JobRunner {
   }
 
   /**
-   * Memproses satu klaim: memuat ulang event HANYA bila lease masih milik klaim ini (sekaligus bukti kepemilikan
-   * setelah klaim menunggu di antrean), menjalankan handler topik dalam konteks system dengan request_id asal event,
-   * lalu menandai `dispatched`, atau `failed` + backoff + last_error aman, atau `dead` setelah percobaan maksimum.
-   * Selama handler berjalan, lease diperpanjang berkala (heartbeat) agar job panjang (ekspor audit, penghapusan akun)
-   * tidak diklaim ulang worker lain. Galat handler tidak dilempar (dicatat ke baris outbox); galat database dilempar
-   * agar pemanggil (antrean) dapat mencoba lagi.
+   * Memproses satu klaim. Langkah pertama MENGAMBIL ALIH lease secara atomik (ARCHITECTURE §2.11): satu UPDATE bersyarat
+   * `locked_until = token klaim` yang sekaligus memajukan lease ke `now + lockMs` (selalu > token lama) dan memuat event.
+   * Akibatnya (PRD 5.1, "tidak boleh menggandakan … notifikasi"):
+   *   - klaim yang lease-nya sudah diklaim ulang dispatcher lain → token berbeda → `lost`, handler tidak dijalankan;
+   *   - klaim yang menunggu di antrean melewati lease tetapi belum diklaim ulang → diambil alih dengan lease baru,
+   *     sehingga dispatcher lain tidak dapat mengklaimnya selama handler berjalan (tidak ada jendela sampai heartbeat);
+   *   - klaim yang sama diproses dua kali (job antrean diulang/stalled) → token sudah maju → proses kedua `lost`.
+   * Handler topik berjalan dalam konteks system dengan request_id asal event, lalu event ditandai `dispatched`, atau
+   * `failed` + backoff + last_error aman, atau `dead` setelah percobaan maksimum. Selama handler berjalan, lease
+   * diperpanjang berkala (heartbeat) agar job panjang (ekspor audit, penghapusan akun) tidak diklaim ulang worker lain.
+   * Galat handler tidak dilempar (dicatat ke baris outbox); galat database dilempar agar pemanggil (antrean) dapat
+   * mencoba lagi (bila galat terjadi setelah pengambilalihan, percobaan ulang menjadi `lost` dan event diklaim ulang
+   * setelah lease habis; handler idempoten).
    */
   async processOutboxClaim(claim: OutboxClaimRef, options: { lockMs?: number } = {}): Promise<OutboxOutcome> {
     const lockMs = options.lockMs ?? OUTBOX_LOCK_MS;
     const jobId = `outbox:${claim.id}`;
+    // Token baru selalu lebih besar dari token klaim (juga saat jam tidak bergerak), sehingga satu klaim hanya dapat
+    // dimulai sekali.
+    const token = new Date(
+      Math.max(this.clock.now().getTime() + lockMs, claim.lockedUntil.getTime() + 1),
+    );
     const [event] = await this.db
-      .select({
-        id: outboxEvents.id,
-        topic: outboxEvents.topic,
-        dedupKey: outboxEvents.dedupKey,
-        payload: outboxEvents.payload,
-        attempts: outboxEvents.attempts,
-        requestId: outboxEvents.requestId,
-      })
-      .from(outboxEvents)
+      .update(outboxEvents)
+      .set({ lockedUntil: token })
       .where(
         and(
           eq(outboxEvents.id, claim.id),
           eq(outboxEvents.lockedUntil, claim.lockedUntil),
           inArray(outboxEvents.status, CLAIMABLE),
         ),
-      );
+      )
+      .returning({
+        id: outboxEvents.id,
+        topic: outboxEvents.topic,
+        dedupKey: outboxEvents.dedupKey,
+        payload: outboxEvents.payload,
+        attempts: outboxEvents.attempts,
+        requestId: outboxEvents.requestId,
+      });
     if (!event) {
       this.logger.debug({ job_id: jobId }, "klaim outbox tidak lagi berlaku; dilewati");
       return "lost";
     }
 
-    const lease = new LeaseKeeper(this.db, this.clock, claim.id, claim.lockedUntil, lockMs);
+    const lease = new LeaseKeeper(this.db, this.clock, claim.id, token, lockMs);
     lease.start();
     let failure: unknown = null;
     try {
@@ -327,7 +346,8 @@ class LeaseKeeper {
   }
 
   private async renew(): Promise<void> {
-    const next = new Date(this.clock.now().getTime() + this.lockMs);
+    // Lease tidak pernah dimundurkan (token pengambilalihan bisa 1 ms di atas now + lockMs).
+    const next = new Date(Math.max(this.clock.now().getTime() + this.lockMs, this.token.getTime()));
     try {
       const renewed = await this.db
         .update(outboxEvents)

@@ -49,6 +49,8 @@ function schedulerStatus(clock: TestClock, overrides: Partial<SchedulerStatus> =
     role: "leader",
     lastTickAt: clock.now(),
     lastLeaderCheckAt: clock.now(),
+    lastLeaderCheckOkAt: clock.now(),
+    enqueueFailingSince: null,
     jobs: [
       {
         name: "reservations.expire",
@@ -206,6 +208,57 @@ describe("Health worker (PRD 5.5: DB, umur job/outbox tertua, tick penjadwal)", 
     const stopping = await buildHealthReport(inputs(clock, { stopping: true }));
     expect(stopping.status).toBe("stopping");
     expect(httpStatusFor(stopping.status)).toBe(503);
+  });
+
+  it("PRD 5.5: loop yang terus berputar tetapi gagal setiap iterasi (DB/Redis probe tetap ok) → error dispatcher_failing / scheduler_failing (HTTP 503) setelah batas macet", async () => {
+    const clock = new TestClock(T0);
+    const ago = (ms: number) => new Date(T0.getTime() - ms);
+    // Dispatcher: iterasi terakhir baru saja (loop hidup), tetapi poll terakhir yang berhasil 2 menit lalu (mis. grant
+    // kapdh_worker pada outbox_events hilang, atau Redis menolak tulis walau PING lolos).
+    const dispatcherFailing = await buildHealthReport(
+      inputs(clock, {
+        dispatcher: dispatcherStatus(clock, { lastPollOkAt: ago(120_001), consecutiveFailures: 61 }),
+      }),
+    );
+    expect(dispatcherFailing).toMatchObject({ status: "error", issues: ["dispatcher_failing"] });
+    expect(httpStatusFor(dispatcherFailing.status)).toBe(503);
+    expect(dispatcherFailing.checks.outbox).toMatchObject({
+      ok: false,
+      dispatcher: { consecutive_failures: 61, last_poll_ok_at: ago(120_001).toISOString() },
+    });
+    // Belum pernah berhasil sejak start lebih dari batas macet.
+    const neverOk = await buildHealthReport(
+      inputs(clock, {
+        startedAt: ago(180_000),
+        dispatcher: dispatcherStatus(clock, { lastPollOkAt: null, consecutiveFailures: 90 }),
+      }),
+    );
+    expect(neverOk).toMatchObject({ status: "error", issues: ["dispatcher_failing"] });
+    // Kegagalan singkat (di bawah batas) belum memicu restart.
+    const transient = await buildHealthReport(
+      inputs(clock, { dispatcher: dispatcherStatus(clock, { lastPollOkAt: ago(30_000), consecutiveFailures: 15 }) }),
+    );
+    expect(transient.status).toBe("ok");
+
+    // Penjadwal: pemeriksaan kunci leader terus gagal walau loop berputar.
+    const leaderFailing = await buildHealthReport(
+      inputs(clock, { scheduler: schedulerStatus(clock, { lastLeaderCheckOkAt: ago(120_001), role: "standby" }) }),
+    );
+    expect(leaderFailing).toMatchObject({ status: "error", issues: ["scheduler_failing"] });
+    // Leader: setiap enqueue job terjadwal gagal sejak 2 menit lalu.
+    const enqueueFailing = await buildHealthReport(
+      inputs(clock, { scheduler: schedulerStatus(clock, { enqueueFailingSince: ago(120_001) }) }),
+    );
+    expect(enqueueFailing).toMatchObject({ status: "error", issues: ["scheduler_failing"] });
+    expect(enqueueFailing.checks.scheduler).toMatchObject({
+      ok: false,
+      enqueue_failing_since: ago(120_001).toISOString(),
+      last_leader_check_ok_at: T0.toISOString(),
+    });
+    const enqueueTransient = await buildHealthReport(
+      inputs(clock, { scheduler: schedulerStatus(clock, { enqueueFailingSince: ago(30_000) }) }),
+    );
+    expect(enqueueTransient.status).toBe("ok");
   });
 
   it("PRD 5.5: GET/HEAD /healthz melayani JSON no-store; path lain 404, metode lain 405", async () => {

@@ -83,6 +83,8 @@ export class OutboxDispatcher {
         discard: async (data) => {
           if (await this.deps.jobs.releaseOutboxClaim(toClaimRef(data))) this.state.totals.released++;
         },
+        // N-14: log antrean memakai job_id yang sama dengan JobRunner (`outbox:<id event>`) dan audit handler.
+        correlate: (data) => outboxJobId(data.outbox_id),
       },
     );
   }
@@ -181,6 +183,11 @@ export class OutboxDispatcher {
     }
     this.schedule(next);
   }
+}
+
+/** job_id JobRunner untuk satu event outbox (`outbox:<id>`), dipakai juga oleh log antrean (N-14). */
+export function outboxJobId(outboxId: string): string {
+  return `outbox:${outboxId}`;
 }
 
 function toClaimRef(data: OutboxJobData): OutboxClaimRef {

@@ -7,7 +7,7 @@ import {
 } from "@kapdh/api/worker";
 import type { WorkerEnv } from "@kapdh/config";
 import { drizzle } from "drizzle-orm/postgres-js";
-import { Redis } from "ioredis";
+import { Redis, type RedisOptions } from "ioredis";
 import type { AddressInfo } from "node:net";
 import type { Logger } from "pino";
 import postgres from "postgres";
@@ -77,7 +77,7 @@ export class WorkerService {
     const { settings, logger, clock, jobs, registry, queue, leader } = parts;
     this.dispatcher = new OutboxDispatcher(
       { jobs, queue, clock, logger: logger.child({ component: "outbox-dispatcher" }) },
-      { ...settings.outbox, concurrency: settings.concurrency },
+      { ...settings.outbox, concurrency: settings.outboxConcurrency },
     );
     this.scheduler = new Scheduler(
       { registry, jobs, queue, leader, clock, logger: logger.child({ component: "scheduler" }) },
@@ -108,6 +108,7 @@ export class WorkerService {
         {
           queue_driver: queue.kind,
           concurrency: settings.concurrency,
+          outbox_concurrency: settings.outboxConcurrency,
           scheduled_concurrency: settings.scheduledConcurrency,
           poll_interval_ms: settings.outbox.pollIntervalMs,
           scheduled_jobs: registry.scheduledJobs().map((job) => job.name),
@@ -201,48 +202,82 @@ export class WorkerService {
 
 /**
  * Driver antrean dari env: BullMQ + ioredis bila REDIS_URL diisi (wajib di production; dedup jobId, retry, lintas
- * instance), atau inline dalam proses (development/uji tanpa Redis, ARCHITECTURE §1). Koneksi BullMQ terpisah dari klien
- * Redis core (rate limit) karena BullMQ mewajibkan `maxRetriesPerRequest: null` untuk koneksi blocking.
+ * instance), atau inline dalam proses (development/uji tanpa Redis, ARCHITECTURE §1). Dua koneksi Redis khusus BullMQ,
+ * terpisah dari klien Redis core (rate limit):
+ *   - konsumen (`kapdh-worker-bullmq`): `maxRetriesPerRequest: null`, syarat BullMQ untuk Worker/koneksi blocking;
+ *   - produsen (`kapdh-worker-bullmq-producer`): gagal cepat (`enableOfflineQueue: false`, tanpa kirim ulang, batas
+ *     waktu perintah), sehingga enqueue/hitungan slot/status job tidak pernah menggantung saat Redis putus.
+ * Keduanya lazy dan disambungkan oleh `start()` driver, yang menunggu Redis siap sampai batas waktu.
  */
 export function createQueueDriver(
   env: Pick<WorkerEnv, "REDIS_URL">,
-  settings: Pick<WorkerSettings, "queuePrefix">,
+  settings: Pick<WorkerSettings, "queuePrefix" | "queue">,
   logger: Logger,
 ): { driver: QueueDriver; resource: NamedResource | null } {
   if (!env.REDIS_URL)
     return { driver: new InlineQueueDriver(logger.child({ driver: "inline" })), resource: null };
-  const connection = new Redis(env.REDIS_URL, {
-    connectionName: "kapdh-worker-bullmq",
+  const connection = bullConnection(env.REDIS_URL, "kapdh-worker-bullmq", logger, {
     maxRetriesPerRequest: null,
-    lazyConnect: true,
   });
-  let errors = 0;
-  connection.on("error", (error) => {
-    errors++;
-    // Redis putus: dibatasi agar log tidak banjir; health melaporkan queue_unreachable.
-    if (errors === 1 || errors % 60 === 0)
-      logger.error({ error: safeError(error), consecutive_errors: errors }, "koneksi Redis BullMQ galat");
-  });
-  connection.on("ready", () => {
-    if (errors > 0) logger.info("koneksi Redis BullMQ pulih");
-    errors = 0;
+  const producerConnection = bullConnection(env.REDIS_URL, "kapdh-worker-bullmq-producer", logger, {
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: 0,
+    // Cadangan di atas batas waktu operasi driver (yang menolak lebih dulu dengan QueueUnavailableError): perintah
+    // yang tidak pernah dijawab tidak menumpuk di koneksi.
+    commandTimeout: settings.queue.operationTimeoutMs + 1_000,
   });
   const driver = new BullMqQueueDriver({
     connection,
+    producerConnection,
     prefix: settings.queuePrefix,
     logger: logger.child({ driver: "bullmq" }),
+    readyTimeoutMs: settings.queue.readyTimeoutMs,
+    operationTimeoutMs: settings.queue.operationTimeoutMs,
   });
   return {
     driver,
     resource: {
       name: "koneksi Redis BullMQ",
       close: async () => {
-        // Koneksi lazy yang belum pernah tersambung cukup diputus (quit akan mencoba menyambung dulu).
-        if (connection.status === "wait" || connection.status === "end") connection.disconnect();
-        else await connection.quit().catch(() => connection.disconnect());
+        await Promise.all([closeRedis(producerConnection), closeRedis(connection)]);
       },
     },
   };
+}
+
+/** Koneksi ioredis lazy untuk BullMQ; galat koneksi dicatat aman dan dibatasi (Redis putus tidak membanjiri log). */
+function bullConnection(url: string, connectionName: string, logger: Logger, options: RedisOptions): Redis {
+  const connection = new Redis(url, { ...options, connectionName, lazyConnect: true });
+  let errors = 0;
+  connection.on("error", (error) => {
+    errors++;
+    // Health melaporkan queue_unreachable; log hanya galat pertama dan setiap 60 galat berturut-turut.
+    if (errors === 1 || errors % 60 === 0)
+      logger.error(
+        { connection: connectionName, error: safeError(error), consecutive_errors: errors },
+        "koneksi Redis BullMQ galat",
+      );
+  });
+  connection.on("ready", () => {
+    if (errors > 0) logger.info({ connection: connectionName }, "koneksi Redis BullMQ pulih");
+    errors = 0;
+  });
+  return connection;
+}
+
+/** Menutup koneksi ioredis tanpa pernah menggantung: QUIT bila tersambung (dibatasi waktu), selain itu diputus. */
+async function closeRedis(connection: Redis): Promise<void> {
+  if (connection.status === "ready") {
+    let quit = false;
+    await settledWithin(
+      connection.quit().then(() => {
+        quit = true;
+      }),
+      2_000,
+    );
+    if (quit) return;
+  }
+  connection.disconnect();
 }
 
 export interface BootOptions {

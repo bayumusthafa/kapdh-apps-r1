@@ -120,6 +120,10 @@ export interface HealthReport {
       /** Tick terakhir sebagai leader (jadwal dievaluasi); null pada instance standby. */
       last_tick_at: string | null;
       last_leader_check_at: string | null;
+      /** Pemeriksaan kunci leader terakhir yang berhasil menjangkau PostgreSQL. */
+      last_leader_check_ok_at: string | null;
+      /** Awal rangkaian kegagalan menjadwalkan job yang belum pulih; null bila tidak ada. */
+      enqueue_failing_since: string | null;
       jobs: {
         name: string;
         every_ms: number;
@@ -173,16 +177,21 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 export const dispatcherStallMs = (pollIntervalMs: number) => Math.max(10 * pollIntervalMs, 120_000);
 export const schedulerStallMs = (tickMs: number) => Math.max(60 * tickMs, 120_000);
 
-/** Loop dianggap macet bila tidak ada iterasi selama batas ini (setelah masa tenggang start). */
-function loopStale(last: Date | null, now: Date, startedAt: Date, staleMs: number): boolean {
+/**
+ * Loop dianggap macet (tidak ada iterasi) atau gagal terus (tidak ada iterasi yang berhasil) bila waktu terakhir lebih
+ * tua dari batas ini; sebelum pernah terjadi, dihitung dari waktu start (masa tenggang start).
+ */
+function olderThan(last: Date | null, now: Date, startedAt: Date, staleMs: number): boolean {
   const reference = last ?? startedAt;
   return now.getTime() - reference.getTime() > staleMs;
 }
 
 /**
  * Menyusun laporan health. HTTP 503 (`error`/`stopping`) hanya untuk masalah liveness: database atau antrean tidak
- * terjangkau, loop dispatcher/penjadwal macet, atau proses sedang berhenti. Backlog outbox (keterlambatan melewati
- * ambang) dan event `dead` dilaporkan `degraded` (HTTP 200) agar monitor memberi alert tanpa memicu restart berulang.
+ * terjangkau, loop dispatcher/penjadwal macet (`*_stalled`: tidak ada iterasi) atau gagal terus (`*_failing`: iterasi
+ * berjalan tetapi tidak ada yang berhasil selama batas macet, mis. grant kapdh_worker hilang atau Redis menolak tulis
+ * walau PING lolos), atau proses sedang berhenti. Backlog outbox (keterlambatan melewati ambang) dan event `dead`
+ * dilaporkan `degraded` (HTTP 200) agar monitor memberi alert tanpa memicu restart berulang.
  */
 export async function buildHealthReport(input: HealthInputs): Promise<HealthReport> {
   const now = input.clock.now();
@@ -223,17 +232,31 @@ export async function buildHealthReport(input: HealthInputs): Promise<HealthRepo
 
   if (!databaseOk) issues.push("database_unreachable");
   if (!queueOk) issues.push("queue_unreachable");
+  const dispatcherLimit = dispatcherStallMs(input.pollIntervalMs);
   const dispatcherStale =
-    input.dispatcher.running &&
-    loopStale(input.dispatcher.lastLoopAt, now, input.startedAt, dispatcherStallMs(input.pollIntervalMs));
+    input.dispatcher.running && olderThan(input.dispatcher.lastLoopAt, now, input.startedAt, dispatcherLimit);
   if (dispatcherStale) issues.push("dispatcher_stalled");
+  const dispatcherFailing =
+    input.dispatcher.running &&
+    !dispatcherStale &&
+    olderThan(input.dispatcher.lastPollOkAt, now, input.startedAt, dispatcherLimit);
+  if (dispatcherFailing) issues.push("dispatcher_failing");
+  const schedulerLimit = schedulerStallMs(input.tickMs);
   const schedulerStale =
     input.scheduler.running &&
-    loopStale(input.scheduler.lastLeaderCheckAt, now, input.startedAt, schedulerStallMs(input.tickMs));
+    olderThan(input.scheduler.lastLeaderCheckAt, now, input.startedAt, schedulerLimit);
   if (schedulerStale) issues.push("scheduler_stalled");
+  const enqueueFailingSince = input.scheduler.enqueueFailingSince;
+  const schedulerFailing =
+    input.scheduler.running &&
+    !schedulerStale &&
+    (olderThan(input.scheduler.lastLeaderCheckOkAt, now, input.startedAt, schedulerLimit) ||
+      (enqueueFailingSince !== null && now.getTime() - enqueueFailingSince.getTime() > schedulerLimit));
+  if (schedulerFailing) issues.push("scheduler_failing");
   if (!outbox && databaseOk) issues.push("outbox_stats_unavailable");
 
-  const fatal = !databaseOk || !queueOk || dispatcherStale || schedulerStale;
+  const fatal =
+    !databaseOk || !queueOk || dispatcherStale || dispatcherFailing || schedulerStale || schedulerFailing;
   const lagging = (outbox?.oldestDueLagSeconds ?? 0) > input.outboxLagDegradedSeconds;
   if (lagging) issues.push("outbox_lagging");
   const dead = (outbox?.dead ?? 0) > 0;
@@ -258,7 +281,7 @@ export async function buildHealthReport(input: HealthInputs): Promise<HealthRepo
       database: { ok: databaseOk, latency_ms: databaseOk ? latency : null },
       queue: { ok: queueOk, driver: input.queue.kind },
       outbox: {
-        ok: Boolean(outbox) && !lagging && !dispatcherStale,
+        ok: Boolean(outbox) && !lagging && !dispatcherStale && !dispatcherFailing,
         pending: outbox?.pending ?? null,
         dead: outbox?.dead ?? null,
         oldest_pending_age_seconds: outbox?.oldestPendingAgeSeconds ?? null,
@@ -272,11 +295,13 @@ export async function buildHealthReport(input: HealthInputs): Promise<HealthRepo
         },
       },
       scheduler: {
-        ok: !schedulerStale,
+        ok: !schedulerStale && !schedulerFailing,
         running: input.scheduler.running,
         role: input.scheduler.role,
         last_tick_at: iso(input.scheduler.lastTickAt),
         last_leader_check_at: iso(input.scheduler.lastLeaderCheckAt),
+        last_leader_check_ok_at: iso(input.scheduler.lastLeaderCheckOkAt),
+        enqueue_failing_since: iso(enqueueFailingSince),
         jobs: input.scheduler.jobs.map((job) => ({
           name: job.name,
           every_ms: job.everyMs,

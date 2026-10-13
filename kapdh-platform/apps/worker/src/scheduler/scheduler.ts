@@ -1,4 +1,5 @@
 import { type Clock, safeError, type ScheduledJob } from "@kapdh/api/worker";
+import { randomUUID } from "node:crypto";
 import type { Logger } from "pino";
 import { type QueueDriver, queueJobId } from "../queue/queue-driver.js";
 import type { LeaderLock } from "./leader-lock.js";
@@ -8,13 +9,18 @@ export interface ScheduledJobSource {
   scheduledJobs(): ScheduledJob[];
 }
 export interface ScheduledJobRunner {
-  runScheduled(name: string): Promise<void>;
+  runScheduled(name: string, options?: { jobId?: string }): Promise<void>;
 }
 
-/** Data job antrean `scheduled`: nama job + awal slot jadwal (ISO), tanpa data bisnis. */
+/** Data job antrean `scheduled`: nama job + awal slot jadwal (ISO) + id eksekusi, tanpa data bisnis. */
 export interface ScheduledJobData {
   name: string;
   slot: string;
+  /**
+   * job_id eksekusi (`<nama>:<uuid>`) yang dipakai log antrean, log JobRunner, dan audit job (N-14). Sama untuk semua
+   * percobaan ulang job antrean yang sama.
+   */
+  job_id: string;
 }
 
 export interface SchedulerOptions {
@@ -46,6 +52,13 @@ export interface SchedulerStatus {
   lastTickAt: Date | null;
   /** Pemeriksaan leader terakhir (leader maupun standby): bukti loop hidup. */
   lastLeaderCheckAt: Date | null;
+  /** Pemeriksaan leader terakhir yang BERHASIL menjangkau PostgreSQL (kegagalan berturut-turut → health error). */
+  lastLeaderCheckOkAt: Date | null;
+  /**
+   * Awal rangkaian kegagalan menjadwalkan (enqueue/status antrean) yang belum pulih untuk job mana pun; null bila
+   * penjadwalan terakhir setiap job berhasil.
+   */
+  enqueueFailingSince: Date | null;
   jobs: ScheduledJobStatus[];
 }
 
@@ -67,7 +80,10 @@ export class Scheduler {
   private role: SchedulerRole = "standby";
   private lastTickAt: Date | null = null;
   private lastLeaderCheckAt: Date | null = null;
+  private lastLeaderCheckOkAt: Date | null = null;
   private leaderErrors = 0;
+  /** Awal kegagalan menjadwalkan per job (dihapus saat penjadwalan job itu berhasil). */
+  private readonly failingSince = new Map<string, Date>();
   private readonly nextDue = new Map<string, number>();
   private readonly lastJobId = new Map<string, string>();
   private readonly jobStatus = new Map<string, Omit<ScheduledJobStatus, "name" | "everyMs" | "nextDueAt">>();
@@ -93,7 +109,7 @@ export class Scheduler {
         status.lastStartedAt = this.deps.clock.now();
         const started = performance.now();
         try {
-          await this.deps.jobs.runScheduled(data.name);
+          await this.deps.jobs.runScheduled(data.name, data.job_id ? { jobId: data.job_id } : {});
           status.lastStatus = "ok";
           meta.logger.info(
             { job: data.name, slot: data.slot, duration_ms: Math.round(performance.now() - started) },
@@ -106,7 +122,8 @@ export class Scheduler {
           status.lastFinishedAt = this.deps.clock.now();
         }
       },
-      { concurrency: this.options.concurrency },
+      // N-14: log antrean memakai job_id eksekusi yang sama dengan JobRunner dan audit.
+      { concurrency: this.options.concurrency, correlate: (data) => data.job_id },
     );
   }
 
@@ -146,6 +163,8 @@ export class Scheduler {
       role: this.role,
       lastTickAt: this.lastTickAt,
       lastLeaderCheckAt: this.lastLeaderCheckAt,
+      lastLeaderCheckOkAt: this.lastLeaderCheckOkAt,
+      enqueueFailingSince: oldest([...this.failingSince.values()]),
       jobs: this.deps.registry.scheduledJobs().map((job) => {
         const due = this.nextDue.get(job.name);
         return {
@@ -165,6 +184,7 @@ export class Scheduler {
     try {
       leader = await this.deps.leader.tryAcquire();
       this.leaderErrors = 0;
+      this.lastLeaderCheckOkAt = now;
     } catch (error) {
       this.leaderErrors++;
       if (this.leaderErrors === 1 || this.leaderErrors % 60 === 0)
@@ -180,6 +200,7 @@ export class Scheduler {
       this.deps.logger.info("instance ini menjadi leader penjadwal");
     } else if (!leader && this.role === "leader") {
       this.role = "standby";
+      this.failingSince.clear();
       this.deps.logger.warn("kunci leader penjadwal hilang; instance ini menjadi standby");
     }
     if (!leader) return;
@@ -202,6 +223,7 @@ export class Scheduler {
       const previous = this.lastJobId.get(job.name);
       if (previous && (await this.deps.queue.isPending("scheduled", previous))) {
         this.nextDue.set(job.name, nextSlot);
+        this.failingSince.delete(job.name);
         this.deps.logger.warn(
           { job: job.name, slot: new Date(slot).toISOString() },
           "run sebelumnya masih berjalan; slot jadwal dilewati",
@@ -211,7 +233,7 @@ export class Scheduler {
       const jobId = queueJobId("scheduled", job.name, String(slot));
       const added = await this.deps.queue.enqueue<ScheduledJobData>("scheduled", {
         jobId,
-        data: { name: job.name, slot: new Date(slot).toISOString() },
+        data: { name: job.name, slot: new Date(slot).toISOString(), job_id: `${job.name}:${randomUUID()}` },
         attempts: this.options.attempts,
         backoffMs: this.options.backoffMs,
         // Catatan slot disimpan melewati slot berikutnya agar leader baru tidak menjadwalkan slot yang sama.
@@ -219,10 +241,15 @@ export class Scheduler {
       });
       this.lastJobId.set(job.name, jobId);
       this.nextDue.set(job.name, nextSlot);
+      this.failingSince.delete(job.name);
       if (added) this.statusFor(job.name).lastEnqueuedAt = now;
       else
-        this.deps.logger.debug({ job: job.name, job_id: jobId }, "slot jadwal sudah ada di antrean (dedup)");
+        this.deps.logger.debug(
+          { job: job.name, queue_job_id: jobId },
+          "slot jadwal sudah ada di antrean (dedup)",
+        );
     } catch (error) {
+      if (!this.failingSince.has(job.name)) this.failingSince.set(job.name, now);
       this.nextDue.set(job.name, now.getTime() + Math.min(job.everyMs, ENQUEUE_RETRY_MAX_MS));
       this.deps.logger.warn(
         { job: job.name, error: safeError(error) },
@@ -252,4 +279,8 @@ export class Scheduler {
         });
     }, delayMs);
   }
+}
+
+function oldest(dates: Date[]): Date | null {
+  return dates.reduce<Date | null>((min, date) => (min === null || date < min ? date : min), null);
 }
