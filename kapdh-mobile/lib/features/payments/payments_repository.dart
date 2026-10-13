@@ -93,11 +93,10 @@ class PaymentsRepository {
   Future<PaymentDetail> cancel(PaymentDetail payment, {String? reason}) {
     final trimmed = reason?.trim();
     final body = CancelPaymentRequest(reason: trimmed == null || trimmed.isEmpty ? null : trimmed);
-    return _idempotency.run(
-      cancelIntent(payment.id),
-      {...body.toJson(), 'version': payment.version},
-      (key) => _payments.cancelMyPayment(payment.id, body, ifMatch: payment.version, idempotencyKey: key),
-    );
+    return _idempotency.run(cancelIntent(payment.id), {
+      ...body.toJson(),
+      'version': payment.version,
+    }, (key) => _payments.cancelMyPayment(payment.id, body, ifMatch: payment.version, idempotencyKey: key));
   }
 
   /// Rekening tujuan refund (D6). Nilai rekening tidak pernah dicatat atau disimpan klien (ARCHITECTURE §2 butir 3).
