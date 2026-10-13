@@ -44,7 +44,7 @@ const normalize = (path: string) => path.replace(/\{[^}]+\}/g, "{}");
 
 describe("ARCHITECTURE §4.3: dekorator controller membership = x-kapdh-access kontrak", () => {
   for (const [controller, operations] of Object.entries(OPERATIONS)) {
-    it(`${controller}: setiap operasi kontrak terimplementasi dengan dekorator akses yang sama`, () => {
+    it(`AC F15-1, F16-3: ${controller}: setiap operasi kontrak terimplementasi dengan dekorator akses yang sama`, () => {
       const routes = routeAccessList(t.app).filter((route) => route.name.startsWith(`${controller}.`));
       expect(routes.length).toBe(operations.length);
       for (const [method, path, operationId] of operations) {

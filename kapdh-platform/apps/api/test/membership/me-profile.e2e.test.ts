@@ -229,7 +229,7 @@ describe("PATCH /me/profile (F-10)", () => {
     expect((nulled.json() as MeBody).profile).toMatchObject({ phone: null, social_instagram: null });
   });
 
-  it("PRD 5.4: avatar wajib berkas avatar milik sendiri yang siap (422 FILE_INVALID); foto lama dibuang; null menghapus", async () => {
+  it("AC F10-5, PRD 5.4: avatar wajib berkas avatar milik sendiri yang siap (422 FILE_INVALID); foto lama dibuang; null menghapus", async () => {
     const m = await setup();
     const other = await setup();
     const first = await uploadTestFile(t, m.token, "avatar");
@@ -261,7 +261,7 @@ describe("PATCH /me/profile (F-10)", () => {
     expect(row!.avatarFileId).toBeNull();
   });
 
-  it("PRD 2.2: unverified dan expired boleh mengubah profil; suspended 403 ACCOUNT_SUSPENDED; admin 403; tanpa sesi 401", async () => {
+  it("AC F12-4, PRD 2.2: unverified dan expired boleh mengubah profil; suspended 403 ACCOUNT_SUSPENDED; admin 403; tanpa sesi 401", async () => {
     for (const status of ["unverified", "expired"] as const) {
       const m = await setup(status);
       const res = await m.patch({ city: "Banjar" }, (await m.get()).version);

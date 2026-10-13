@@ -286,7 +286,7 @@ describe("GET /admin/members (F-15, AC F10-1)", () => {
 });
 
 describe("GET /admin/members/{userId} (F-10, F-15, AC F15-1)", () => {
-  it("F-10: kontak tampil terlepas dari privasi; setiap pembukaan dicatat audit member.viewed tanpa salinan data", async () => {
+  it("AC F15-1, F-10: kontak tampil terlepas dari privasi; setiap pembukaan dicatat audit member.viewed tanpa salinan data", async () => {
     const member = await createAlumni(t, { status: "verified" });
     await t.db
       .update(alumni)
@@ -387,7 +387,7 @@ describe("GET /admin/members/{userId} (F-10, F-15, AC F15-1)", () => {
     expect(own.linked_admin).toMatchObject({ admin_id: self.admin.adminId, role: "admin", status: "active" });
   });
 
-  it("404 untuk akun bukan alumni, id acak, akun terhapus dan id bukan UUID", async () => {
+  it("AC F15-1, N-09: 404 untuk akun bukan alumni, id acak, akun terhapus dan id bukan UUID", async () => {
     const reader = await adminWith(t, ["members.read"]);
     const deleted = await createAlumni(t, { status: "verified", accountStatus: "deleted" });
     for (const id of [reader.admin.userId, uuidv7(), deleted.userId, "bukan-uuid"]) {
@@ -399,7 +399,7 @@ describe("GET /admin/members/{userId} (F-10, F-15, AC F15-1)", () => {
 });
 
 describe("PATCH /admin/members/{userId} (PRD 2.3, 3.5, AC F15-4)", () => {
-  it("PRD 2.3: koreksi data administratif beralasan dengan audit tanpa salinan kontak; master aktif; hapus foto", async () => {
+  it("AC F17-1, F10-4: koreksi data administratif beralasan dengan audit tanpa salinan kontak; master aktif; hapus foto", async () => {
     const member = await createAlumni(t, { status: "verified" });
     const session = await signInAlumni(t, member);
     const avatar = await uploadTestFile(t, session.accessToken, "avatar");
@@ -860,7 +860,7 @@ describe("POST /admin/members/{userId}/password-reset (F-16, AC F16-4)", () => {
 });
 
 describe("GET /admin/members/{userId}/membership-events (PRD 4.2, 6.3)", () => {
-  it("PRD 4.2: histori beraktor dan beralasan, keyset dengan total; tanpa moderation.read warn disembunyikan dan alasan suspend disunting", async () => {
+  it("AC F12-3, F15-1: histori beraktor dan beralasan, keyset dengan total; tanpa moderation.read warn disembunyikan dan alasan suspend disunting", async () => {
     const member = await createAlumni(t, { status: "unverified", cohort: 12, classIn: 1, classOut: 4 });
     await approveMembershipPayment(t, member.userId, "registration");
     const superAdmin = await adminWith(t, [], { role: "super_admin" });
