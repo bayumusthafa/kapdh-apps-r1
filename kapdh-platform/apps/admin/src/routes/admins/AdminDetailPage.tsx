@@ -207,6 +207,7 @@ function useDetailMutation<T, V extends FieldValues>({
   request,
   onSuccess,
   onConflict,
+  onFailed,
   notify,
 }: {
   admin: Detail;
@@ -216,6 +217,11 @@ function useDetailMutation<T, V extends FieldValues>({
   request: (vars: V, ctx: MutationRequestContext) => Promise<FetchResult<T>>;
   onSuccess: (data: T) => void;
   onConflict: () => void;
+  /**
+   * Galat selain versi usang (mis. penjaga Super Admin terakhir, AC F16-2) setelah galatnya dipasang di formulir.
+   * Pemicu yang berada di dialog konfirmasi menutup dialognya di sini agar galat terlihat dan dapat difokus.
+   */
+  onFailed?: () => void;
   notify: (tone: Notice["tone"], message: string) => void;
 }) {
   const queryClient = useQueryClient();
@@ -263,6 +269,7 @@ function useDetailMutation<T, V extends FieldValues>({
           type: "server",
           message: rootMessages.length > 0 ? rootMessages.join(" ") : error.message,
         });
+      onFailed?.();
     },
   });
 }
@@ -292,6 +299,9 @@ function AccessCard({
 }) {
   const catalog = usePermissionCatalog();
   const [confirm, setConfirm] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  /** Naik setiap kali server menolak: fokus dipindah ke isian bergalat SETELAH dialog menutup (N-11). */
+  const [failedSeq, setFailedSeq] = useState(0);
   const original: AccessValues = {
     display_name: a.display_name,
     role: a.role,
@@ -329,8 +339,26 @@ function AccessCard({
       notify("success", `Perubahan ${data.display_name} tersimpan (versi izin ${data.permissions_version}).`);
     },
     onConflict: () => setConfirm(false),
+    // Mis. 409 "Minimal satu Super Admin aktif" (AC F16-2): dialog ditutup agar galat pada isian peran terlihat.
+    onFailed: () => {
+      setConfirm(false);
+      setFailedSeq((n) => n + 1);
+    },
     notify,
   });
+
+  // Efek pasif berjalan setelah dialog mengembalikan fokus ke tombol pemicu, sehingga fokus akhirnya berada pada
+  // isian bergalat pertama (radio peran yang dipilih untuk grup Peran) atau tombol simpan bila galat tingkat formulir.
+  useEffect(() => {
+    if (failedSeq === 0) return;
+    const invalid = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+    const target =
+      invalid?.tagName === "FIELDSET"
+        ? (invalid.querySelector<HTMLElement>("input:checked") ??
+          invalid.querySelector<HTMLElement>("input:not([disabled])"))
+        : invalid;
+    target?.focus();
+  }, [failedSeq]);
 
   const labelOf = (p: Permission) => catalog.data?.permissions.find((c) => c.permission === p)?.label ?? p;
   const before = a.role === "admin" ? a.permissions : [];
@@ -350,6 +378,7 @@ function AccessCard({
         description="Izin dievaluasi server di setiap permintaan; perubahan langsung berlaku walau token admin belum kedaluwarsa (AC F16-3)."
       />
       <form
+        ref={formRef}
         noValidate
         className="flex flex-col gap-4 px-5"
         onSubmit={(e) =>
