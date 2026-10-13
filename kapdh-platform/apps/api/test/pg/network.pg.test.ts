@@ -14,7 +14,13 @@ import { createApp } from "../../src/bootstrap.js";
 import { MemoryMailer } from "../../src/core/adapters/mailer.js";
 import type { Db } from "../../src/core/db/types.js";
 import { directoryPageQuery } from "../../src/modules/network/directory.query.js";
-import { createAdmin, createAlumni, signInAdmin, signInAlumni } from "../support/factories.js";
+import {
+  type AlumniFixture,
+  createAdmin,
+  createAlumni,
+  signInAdmin,
+  signInAlumni,
+} from "../support/factories.js";
 import { FakePush, TestClock, testEnv } from "../support/test-app.js";
 import { connectAs, createPgTestDatabase, id, type PgTestDatabase, withLockWaitGate } from "./support.js";
 
@@ -30,7 +36,14 @@ beforeAll(async () => {
   api = connectAs(tdb, "kapdh_app", 16);
   owner = { db: tdb.db as unknown as Db, clock };
   app = await createApp(
-    { env: testEnv, db: api.db as unknown as Db, mailer: new MemoryMailer(), clock, push: new FakePush(), redis: null },
+    {
+      env: testEnv,
+      db: api.db as unknown as Db,
+      mailer: new MemoryMailer(),
+      clock,
+      push: new FakePush(),
+      redis: null,
+    },
     { logger: false },
   );
   await app.init();
@@ -98,8 +111,8 @@ describe("AC F15-4: perubahan master bersamaan (PostgreSQL 17, role kapdh_app)",
   it("label sama (beda huruf) dibuat paralel → satu 201, sisanya 409 VALIDATION_ERROR, tanpa 500", async () => {
     const label = `Paralel ${id().slice(-12)}`;
     const responses = await Promise.all(
-      [label, label.toUpperCase(), label.toLowerCase(), ` ${label} `, label, label.toUpperCase()].map((value) =>
-        inject("POST", "/admin/masters/skills", { payload: { label: value } }),
+      [label, label.toUpperCase(), label.toLowerCase(), ` ${label} `, label, label.toUpperCase()].map(
+        (value) => inject("POST", "/admin/masters/skills", { payload: { label: value } }),
       ),
     );
     expect(tally(responses)).toEqual({ "201:ok": 1, "409:VALIDATION_ERROR": 5 });
@@ -125,7 +138,10 @@ describe("AC F15-4: perubahan master bersamaan (PostgreSQL 17, role kapdh_app)",
     });
     expect(lockWaitObserved).toBe(true);
     expect(result.statusCode).toBe(409);
-    expect(result.json()).toMatchObject({ code: "VALIDATION_ERROR", current: { id: master.id, usage_count: 1 } });
+    expect(result.json()).toMatchObject({
+      code: "VALIDATION_ERROR",
+      current: { id: master.id, usage_count: 1 },
+    });
     const [row] = await tdb.sql<{ n: number }[]>`
       select count(*)::int as n from app.master_skills where id = ${master.id}`;
     expect(row!.n).toBe(1);
@@ -178,23 +194,38 @@ describe("AC F10-1: direktori pada PostgreSQL 17", () => {
     const city = `Kota PG ${id().slice(-10)}`;
     const viewer = await createAlumni(owner, { status: "verified" });
     const token = (await signInAlumni({ app }, viewer)).accessToken;
-    const specs = ["Zaki", "ahmad", "Ahmad", "Ahmad Zaki", "Ahmadi", "budi", "Budi", "Élan", "Ömer", "Sama"].map(
-      (fullName, i) => ({ fullName, cohort: 10 + (i % 4) }),
-    );
-    const created = [];
+    const specs = [
+      "Zaki",
+      "ahmad",
+      "Ahmad",
+      "Ahmad Zaki",
+      "Ahmadi",
+      "budi",
+      "Budi",
+      "Élan",
+      "Ömer",
+      "Sama",
+    ].map((fullName, i) => ({ fullName, cohort: 10 + (i % 4) }));
+    const created: (AlumniFixture & { fullName: string; cohort: number })[] = [];
     for (const spec of specs) created.push({ ...(await createAlumni(owner, { city, ...spec })), ...spec });
     const [lowered] = await tdb.sql<{ names: string[] }[]>`
       select array_agg(lower(full_name) order by user_id) as names from app.alumni where city = ${city}`;
     const lowerOf = new Map(
-      [...created].sort((a, b) => (a.userId < b.userId ? -1 : 1)).map((m, i) => [m.userId, lowered!.names[i]!]),
+      [...created]
+        .sort((a, b) => (a.userId < b.userId ? -1 : 1))
+        .map((m, i) => [m.userId, lowered!.names[i]!]),
     );
     const bytes = (s: string) => Buffer.from(s, "utf8");
     const byName = (a: { userId: string }, b: { userId: string }) =>
-      Buffer.compare(bytes(lowerOf.get(a.userId)!), bytes(lowerOf.get(b.userId)!)) || (a.userId < b.userId ? -1 : 1);
+      Buffer.compare(bytes(lowerOf.get(a.userId)!), bytes(lowerOf.get(b.userId)!)) ||
+      (a.userId < b.userId ? -1 : 1);
 
     for (const [sort, compare] of [
       ["name_asc", byName],
-      ["cohort_desc", (a: (typeof created)[number], b: (typeof created)[number]) => b.cohort - a.cohort || byName(a, b)],
+      [
+        "cohort_desc",
+        (a: (typeof created)[number], b: (typeof created)[number]) => b.cohort - a.cohort || byName(a, b),
+      ],
     ] as const) {
       const ids: string[] = [];
       let cursor: string | null = null;
@@ -204,7 +235,11 @@ describe("AC F10-1: direktori pada PostgreSQL 17", () => {
           query: { city, sort, limit: "3", ...(cursor ? { cursor } : {}) },
         });
         expect(res.statusCode, res.body).toBe(200);
-        const body = res.json() as { items: { user_id: string }[]; total: number; next_cursor: string | null };
+        const body = res.json() as {
+          items: { user_id: string }[];
+          total: number;
+          next_cursor: string | null;
+        };
         expect(body.total).toBe(specs.length);
         ids.push(...body.items.map((item) => item.user_id));
         cursor = body.next_cursor;
@@ -225,7 +260,13 @@ describe("AC F10-1: direktori pada PostgreSQL 17", () => {
     const alumniRows = [];
     for (let n = 0; n < 4000; n++) {
       const userId = id();
-      userRows.push({ id: userId, email: `rencana-${n}-${userId.slice(-6)}@contoh.test`, password_hash: "x", status: "active", kind: "alumni" });
+      userRows.push({
+        id: userId,
+        email: `rencana-${n}-${userId.slice(-6)}@contoh.test`,
+        password_hash: "x",
+        status: "active",
+        kind: "alumni",
+      });
       alumniRows.push({
         user_id: userId,
         full_name: `${names[n % 8]} ${names[(n * 5) % 8]} ${n}`,

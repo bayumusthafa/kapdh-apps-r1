@@ -102,7 +102,10 @@ describe("AC F15-1: izin pengurus dievaluasi per operasi", () => {
         { active: false },
         { token: reader, headers: { "if-match": "1" } },
       ),
-      await api.delete(`/admin/masters/skills/${created.id}`, { token: reader, headers: { "if-match": "1" } }),
+      await api.delete(`/admin/masters/skills/${created.id}`, {
+        token: reader,
+        headers: { "if-match": "1" },
+      }),
     ]) {
       expect(res.statusCode).toBe(403);
       expect(res.json()).toMatchObject({ code: "FORBIDDEN" });
@@ -149,7 +152,11 @@ describe("POST /admin/masters/{kind} (adminCreateMaster)", () => {
   it("AC F10-4: label ganda per jenis (tanpa huruf besar/kecil, termasuk master nonaktif) → 409 VALIDATION_ERROR", async () => {
     const label = uniqueLabel("Penerjemah");
     await create("professions", { label, active: false });
-    const dup = await api.post("/admin/masters/professions", { label: ` ${label.toUpperCase()} ` }, { token: manager });
+    const dup = await api.post(
+      "/admin/masters/professions",
+      { label: ` ${label.toUpperCase()} ` },
+      { token: manager },
+    );
     expect(dup.statusCode).toBe(409);
     expect(expectOperation("post", "/admin/masters/{kind}", dup)).toMatchObject({
       code: "VALIDATION_ERROR",
@@ -193,7 +200,11 @@ describe("GET /admin/masters/{kind} (adminListMasters)", () => {
     ];
     const created = [];
     for (const spec of specs) {
-      const item = await create("skills", { label: spec.label, sort_order: spec.sort_order, active: spec.active });
+      const item = await create("skills", {
+        label: spec.label,
+        sort_order: spec.sort_order,
+        active: spec.active,
+      });
       for (let i = 0; i < spec.uses; i++) {
         const member = await createAlumni(t, { status: "verified" });
         await t.db.insert(alumniSkills).values({ alumniUserId: member.userId, skillId: item.id });
@@ -204,7 +215,9 @@ describe("GET /admin/masters/{kind} (adminListMasters)", () => {
     const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : 1);
     const expected: Record<string, string[]> = {
       manual: [...created]
-        .sort((a, b) => a.sort_order - b.sort_order || (lower(a.label) < lower(b.label) ? -1 : 1) || byId(a, b))
+        .sort(
+          (a, b) => a.sort_order - b.sort_order || (lower(a.label) < lower(b.label) ? -1 : 1) || byId(a, b),
+        )
         .map((m) => m.id),
       label_asc: [...created].sort((a, b) => (lower(a.label) < lower(b.label) ? -1 : 1)).map((m) => m.id),
       label_desc: [...created].sort((a, b) => (lower(a.label) > lower(b.label) ? -1 : 1)).map((m) => m.id),
@@ -242,10 +255,19 @@ describe("GET /admin/masters/{kind} (adminListMasters)", () => {
   it("master referensi (seed, nonaktif) ikut tampil; parameter tidak valid → 400", async () => {
     const seeded = await list({ q: "Guru", active: "false" });
     expect(seeded.items.some((item) => item.label === "Guru")).toBe(true);
-    for (const query of [{ sort: "acak" }, { active: "mungkin" }, { limit: "101" }, { cursor: "!!" }, { q: "" }]) {
+    const invalid: Record<string, string>[] = [
+      { sort: "acak" },
+      { active: "mungkin" },
+      { limit: "101" },
+      { cursor: "!!" },
+      { q: "" },
+    ];
+    for (const query of invalid) {
       const res = await api.get("/admin/masters/professions", { token: manager, query });
       expect(res.statusCode, JSON.stringify(query)).toBe(400);
-      expect(expectOperation("get", "/admin/masters/{kind}", res)).toMatchObject({ code: "VALIDATION_ERROR" });
+      expect(expectOperation("get", "/admin/masters/{kind}", res)).toMatchObject({
+        code: "VALIDATION_ERROR",
+      });
     }
     const page = await list({ limit: "1" });
     const mismatch = await api.get("/admin/masters/professions", {
@@ -286,7 +308,11 @@ describe("GET/PATCH /admin/masters/{kind}/{masterId}", () => {
 
     const newLabel = uniqueLabel("Bidan Desa");
     t.clock.advance(1000);
-    const ok = await api.patch(url, { label: ` ${newLabel} `, sort_order: 3 }, { token: manager, headers: { "if-match": "1" } });
+    const ok = await api.patch(
+      url,
+      { label: ` ${newLabel} `, sort_order: 3 },
+      { token: manager, headers: { "if-match": "1" } },
+    );
     expect(ok.statusCode).toBe(200);
     const updated = expectOperation("patch", "/admin/masters/{kind}/{masterId}", ok) as Json;
     expect(updated).toMatchObject({
@@ -343,7 +369,9 @@ describe("GET/PATCH /admin/masters/{kind}/{masterId}", () => {
     const links = await t.db
       .select()
       .from(alumniProfessions)
-      .where(and(eq(alumniProfessions.alumniUserId, owner.userId), eq(alumniProfessions.professionId, created.id)));
+      .where(
+        and(eq(alumniProfessions.alumniUserId, owner.userId), eq(alumniProfessions.professionId, created.id)),
+      );
     expect(links).toHaveLength(1);
   });
 
@@ -410,7 +438,9 @@ describe("DELETE /admin/masters/{kind}/{masterId} (adminDeleteMaster)", () => {
     const ok = await api.delete(url, { token: manager, headers: { "if-match": "1" } });
     expect(ok.statusCode).toBe(204);
     expectOperation("delete", "/admin/masters/{kind}/{masterId}", ok);
-    expect(await t.db.select().from(masterProfessions).where(eq(masterProfessions.id, created.id))).toEqual([]);
+    expect(await t.db.select().from(masterProfessions).where(eq(masterProfessions.id, created.id))).toEqual(
+      [],
+    );
     const entries = await audits(created.id);
     expect(entries.map((entry) => entry.action)).toEqual(["master.created", "master.deleted"]);
     expect(entries[1]).toMatchObject({ before: { label: created.label, version: 1 } });
