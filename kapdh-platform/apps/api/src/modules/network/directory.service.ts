@@ -57,6 +57,15 @@ export const DIRECTORY_RATE_LIMITS = {
   ],
 } as const;
 
+/** Kunci kuota per anggota per jendela; RateLimitService meng-hash kunci sebelum disimpan. */
+export function directoryRateLimitKey(
+  kind: keyof typeof DIRECTORY_RATE_LIMITS,
+  windowMs: number,
+  userId: string,
+): string {
+  return `network:${kind}:${windowMs}:${userId}`;
+}
+
 const uuidString = (message = "Format id tidak valid") =>
   z
     .string()
@@ -362,7 +371,7 @@ export class DirectoryService implements OnModuleInit {
   private async consume(kind: keyof typeof DIRECTORY_RATE_LIMITS, userId: string): Promise<void> {
     for (const { limit, windowMs } of DIRECTORY_RATE_LIMITS[kind])
       await this.rateLimits.consumeOrThrow(
-        `network:${kind}:${windowMs}:${userId}`,
+        directoryRateLimitKey(kind, windowMs, userId),
         limit,
         windowMs,
         "Terlalu banyak permintaan jejaring. Coba lagi beberapa saat lagi.",
