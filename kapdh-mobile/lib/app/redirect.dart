@@ -31,8 +31,13 @@ enum RouteGroup {
   notifications,
   account,
 
-  /// Blokir dan laporan milik sendiri: tindakan komunitas, hanya anggota aktif.
+  /// Daftar blokir milik sendiri: tindakan komunitas, hanya anggota aktif (moderation.yaml listBlocks
+  /// member_access active).
   accountCommunity,
+
+  /// Laporan dan banding milik sendiri: riwayat sendiri untuk semua status anggota, termasuk expired dan suspended
+  /// (moderation.yaml listMyReports/getMyReport member_access any; tujuan notifikasi hasil moderasi dan banding).
+  accountReports,
   accountDelete,
   restricted,
   deletionStatus,
@@ -82,7 +87,8 @@ RouteGroup routeGroupOf(String path) {
     'chat' when !single => RouteGroup.chat,
     'notifications' when single => RouteGroup.notifications,
     'account' when single => RouteGroup.account,
-    'account' when second == 'blocked' || second == 'reports' => RouteGroup.accountCommunity,
+    'account' when second == 'blocked' => RouteGroup.accountCommunity,
+    'account' when second == 'reports' => RouteGroup.accountReports,
     'account' when second == 'delete' => RouteGroup.accountDelete,
     'account' => RouteGroup.account,
     'restricted' when single => RouteGroup.restricted,
@@ -92,7 +98,8 @@ RouteGroup routeGroupOf(String path) {
 }
 
 /// Fitur anggota yang tersedia untuk unverified, verified, expiring dan expired: beranda/berita (informasi resmi),
-/// KTA (dengan label status), riwayat pembayaran sendiri, kotak masuk, pengaturan akun dan hapus akun.
+/// KTA (dengan label status), riwayat pembayaran sendiri, kotak masuk, pengaturan akun, laporan sendiri dan hapus
+/// akun.
 const Set<RouteGroup> _memberBase = {
   RouteGroup.home,
   RouteGroup.news,
@@ -100,6 +107,7 @@ const Set<RouteGroup> _memberBase = {
   RouteGroup.payments,
   RouteGroup.notifications,
   RouteGroup.account,
+  RouteGroup.accountReports,
   RouteGroup.accountDelete,
 };
 
@@ -133,8 +141,8 @@ const Map<EffectiveStatus, Set<RouteGroup>> _allowed = {
   // Riwayat sendiri, kartu kedaluwarsa, perpanjangan, pengaturan akun, hapus akun; tiket yang sudah paid sebelum
   // kedaluwarsa tetap dapat dilihat dan dipakai. Ditolak: pemesanan baru, direktori, chat.
   EffectiveStatus.expired: {..._memberBase, RouteGroup.renewal, RouteGroup.tickets},
-  // Portal pembatasan, bantuan (legal) dan penghapusan setelah verifikasi identitas.
-  EffectiveStatus.suspended: {RouteGroup.restricted, RouteGroup.accountDelete},
+  // Portal pembatasan, bantuan (legal), status laporan/banding sendiri dan penghapusan setelah verifikasi identitas.
+  EffectiveStatus.suspended: {RouteGroup.restricted, RouteGroup.accountReports, RouteGroup.accountDelete},
   // Pemeriksaan status penghapusan/pemulihan dengan challenge terbatas.
   EffectiveStatus.disabled: {RouteGroup.deletionStatus},
   EffectiveStatus.deletionPending: {RouteGroup.deletionStatus},

@@ -98,8 +98,18 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> with SingleTicker
     ),
   );
 
+  /// Kotak pencarian mengikuti filter: "Atur ulang filter" (atau sumber lain yang mengosongkan kata kunci) juga
+  /// mengosongkan teks, sehingga kotak tidak menampilkan kata kunci yang sudah tidak berlaku (F-10, PRD 4.5).
+  void _syncSearchBox(String? previous, String? next) {
+    if (previous == null || next != null || DirectoryFilter.normalizeQuery(_search.text) == null) return;
+    _debounce?.cancel();
+    _search.clear();
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(directoryFilterProvider.select((f) => f.query), _syncSearchBox);
     final filter = ref.watch(directoryFilterProvider);
     final directUnread = unreadRoomsIn(ref.watch(chatRoomListProvider(ChatRoomKind.direct)));
     final groupUnread = unreadRoomsIn(ref.watch(chatRoomListProvider(ChatRoomKind.group)));

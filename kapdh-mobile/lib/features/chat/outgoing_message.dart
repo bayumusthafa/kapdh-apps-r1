@@ -100,6 +100,7 @@ class OutgoingMessage {
     this.image,
     this.status = OutgoingStatus.sending,
     this.failureMessage,
+    this.failureCode,
     this.autoRetry = false,
     this.attempts = 0,
   });
@@ -119,6 +120,10 @@ class OutgoingMessage {
   /// Pesan galat terakhir untuk ditampilkan (dari server atau katalog galat).
   final String? failureMessage;
 
+  /// Kode galat server percobaan terakhir (mis. FORBIDDEN saat diblokir/lawan bicara tidak tersedia, NOT_FOUND saat
+  /// bukan lagi anggota) agar layar percakapan dapat memuat ulang izin kirim room (AC F12-1, F11-4).
+  final ErrorCode? failureCode;
+
   /// Dikirim ulang otomatis saat koneksi realtime kembali atau room dibuka lagi.
   final bool autoRetry;
 
@@ -130,6 +135,7 @@ class OutgoingMessage {
   OutgoingMessage _copy({
     OutgoingStatus? status,
     String? failureMessage,
+    ErrorCode? failureCode,
     bool clearFailure = false,
     bool? autoRetry,
     int? attempts,
@@ -144,6 +150,7 @@ class OutgoingMessage {
     image: image ?? this.image,
     status: status ?? this.status,
     failureMessage: clearFailure ? null : (failureMessage ?? this.failureMessage),
+    failureCode: clearFailure ? null : (failureCode ?? this.failureCode),
     autoRetry: autoRetry ?? this.autoRetry,
     attempts: attempts ?? this.attempts,
   );
@@ -156,15 +163,40 @@ class OutgoingMessage {
   OutgoingMessage uploaded(String fileId) => _copy(image: image?.withUploadedFile(fileId));
 
   /// Percobaan gagal dengan [error].
-  OutgoingMessage failedWith(ApiException error) => switch (classifySendFailure(error)) {
-    SendFailureKind.transient => _copy(status: OutgoingStatus.failed, failureMessage: error.message, autoRetry: true),
-    SendFailureKind.rejected => _copy(status: OutgoingStatus.failed, failureMessage: error.message, autoRetry: false),
-    SendFailureKind.membership => _copy(status: OutgoingStatus.held, failureMessage: error.message, autoRetry: false),
-  };
+  OutgoingMessage failedWith(ApiException error) {
+    // Kode lama dibuang dulu agar percobaan tanpa kode (mis. jaringan) tidak mewarisi kode percobaan sebelumnya.
+    final base = _copy(clearFailure: true);
+    final code = error.code;
+    return switch (classifySendFailure(error)) {
+      SendFailureKind.transient => base._copy(
+        status: OutgoingStatus.failed,
+        failureMessage: error.message,
+        failureCode: code,
+        autoRetry: true,
+      ),
+      SendFailureKind.rejected => base._copy(
+        status: OutgoingStatus.failed,
+        failureMessage: error.message,
+        failureCode: code,
+        autoRetry: false,
+      ),
+      SendFailureKind.membership => base._copy(
+        status: OutgoingStatus.held,
+        failureMessage: error.message,
+        failureCode: code,
+        autoRetry: false,
+      ),
+    };
+  }
+
+  /// Ditolak pasti karena izin kirim room berubah: diblokir/lawan bicara tidak tersedia/grup ditutup (403
+  /// FORBIDDEN) atau bukan lagi anggota (404 NOT_FOUND), chat.yaml sendChatMessage.
+  bool get rejectedByRoomAccess =>
+      status == OutgoingStatus.failed && (failureCode == ErrorCode.forbidden || failureCode == ErrorCode.notFound);
 
   /// Ditahan tanpa mencoba server (klien sudah tahu keanggotaan berakhir dari `expires_at` GET /me, PRD 4.5).
   OutgoingMessage heldLocally(String message) =>
-      _copy(status: OutgoingStatus.held, failureMessage: message, autoRetry: false);
+      _copy(clearFailure: true)._copy(status: OutgoingStatus.held, failureMessage: message, autoRetry: false);
 
   /// Body request kirim; `client_message_id` selalu sama untuk pesan ini (AC F11-2).
   ChatSendMessageRequest toRequest() {
