@@ -69,7 +69,9 @@ function call(
     .replace("{emoji}", encodeURIComponent("👍"));
   const body = BODIES[`${method} ${template}`];
   const client = api(t);
-  const options = { token, headers: method === "patch" && template === "/chat/rooms/{roomId}" ? { "if-match": "1" } : {} };
+  const headers: Record<string, string> =
+    method === "patch" && template === "/chat/rooms/{roomId}" ? { "if-match": "1" } : {};
+  const options = { token, headers };
   switch (method) {
     case "get":
       return client.get(url, options);
