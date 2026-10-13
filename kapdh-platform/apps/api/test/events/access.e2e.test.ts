@@ -62,6 +62,35 @@ describe("ARCHITECTURE §4.3: dekorator controller events = x-kapdh-access kontr
     }
   });
 
+  /** Jumlah operasi kontrak per controller modul events (events.yaml 8 operasi, admin-events.yaml 14 operasi). */
+  const CONTROLLER_OPERATIONS: [string, number][] = [
+    ["EventsController", 5],
+    ["MyTicketsController", 3],
+    ["AdminEventCategoriesController", 1],
+    ["AdminEventsController", 10],
+    ["AdminEventCoversController", 1],
+    ["AdminCheckinController", 2],
+  ];
+
+  it.each(CONTROLLER_OPERATIONS)(
+    "ARCHITECTURE §4.3: %s — setiap rute adalah operasi kontrak dengan dekorator = x-kapdh-access (%i operasi)",
+    (controller, expected) => {
+      const operations = contractOperations();
+      const routes = routeAccessList(t.app).filter((route) => route.name.startsWith(`${controller}.`));
+      expect(routes, controller).toHaveLength(expected);
+      for (const route of routes) {
+        expect(
+          operations.some(
+            ([method, path]) => method === route.method && normalize(path) === normalize(route.path),
+          ),
+          `${route.name} (${route.method.toUpperCase()} ${route.path}) tidak ada di kontrak`,
+        ).toBe(true);
+        expect(route.meta.problems, route.name).toEqual([]);
+      }
+      expect(accessMismatches(routes)).toEqual([]);
+    },
+  );
+
   it("tanpa token setiap operasi event ditolak 401 UNAUTHENTICATED", async () => {
     for (const [method, path] of contractOperations()) {
       const url = `/api/v1${path.replace(/\{[^}]+\}/g, uuidv7())}`;
