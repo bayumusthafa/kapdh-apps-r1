@@ -3,14 +3,14 @@ import type { components } from "@kapdh/contracts";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Ban, CircleCheck, Clock, Download, FileDown, Filter, RotateCcw, TriangleAlert } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { api } from "../../api/client";
 import { unwrap, useApiMutation, useApiQuery } from "../../api/query";
 import { useAuth } from "../../auth/session";
 import { Badge, type BadgeTone } from "../../components/ui/Badge";
-import { Button } from "../../components/ui/Button";
+import { Button, buttonClass } from "../../components/ui/Button";
 import { Card, CardHeader } from "../../components/ui/Card";
 import { KeyValueList } from "../../components/ui/DataDisplay";
 import { DataTable, useCursorPaging } from "../../components/ui/DataTable";
@@ -23,12 +23,14 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, ErrorState, ForbiddenState, Loading } from "../../components/ui/States";
 import { useToast } from "../../components/ui/Toast";
 import { formatDateTime, formatShortDateTime } from "../../lib/format";
+import { useNow } from "../../lib/hooks";
 
 type Entry = components["schemas"]["AuditEntry"];
 type EntryDetail = components["schemas"]["AuditEntryDetail"];
 type AuditFilter = components["schemas"]["AuditFilter"];
 type Role = components["schemas"]["AuditEffectiveRole"];
 type Export = components["schemas"]["AuditExport"];
+type ExportAccess = components["schemas"]["AuditExportAccess"];
 type ExportStatus = components["schemas"]["AuditExportStatus"];
 type Sort = components["schemas"]["AuditEntrySort"];
 
@@ -454,18 +456,33 @@ function ExportPanel({ filter }: { filter: AuditFilter }) {
     successMessage: "Ekspor diminta. Berkas diproses di latar; status diperbarui otomatis.",
   });
 
-  async function download(x: Export) {
+  /**
+   * Tautan unduh siap per ekspor. URL bertanda tangan diminta baru setiap kali (izin dan kepemilikan diperiksa ulang
+   * server, AC F17-2; berlaku <= 10 menit) lalu ditampilkan sebagai tautan yang DIKLIK admin. Membuka jendela setelah
+   * `await` berada di luar gestur pengguna sehingga dapat diblokir peramban tanpa terdeteksi (window.open dengan
+   * noopener selalu mengembalikan null), jadi UI tidak pernah mengklaim unduhan sudah dimulai.
+   */
+  const [ready, setReady] = useState<{ exportId: string; access: ExportAccess } | null>(null);
+  const [readySeq, setReadySeq] = useState(0);
+  const readyLinkRef = useRef<HTMLAnchorElement>(null);
+  const now = useNow(15_000);
+  const readyValid = ready !== null && Date.parse(ready.access.expires_at) > now.getTime();
+  useEffect(() => {
+    if (readySeq > 0) readyLinkRef.current?.focus();
+  }, [readySeq]);
+
+  async function prepareDownload(x: Export) {
     setDownloading(x.id);
     try {
-      // URL baru setiap kali: izin dan kepemilikan diperiksa ulang server (AC F17-2); URL <= 10 menit.
       const access = await unwrap(
         api.GET("/admin/audit/exports/{exportId}/access", { params: { path: { exportId: x.id } } }),
       );
-      const opened = window.open(access.url, "_blank", "noopener,noreferrer");
-      if (opened === null) toast.info(`Unduhan ${access.file_name} dimulai di tab baru.`);
+      setReady({ exportId: x.id, access });
+      setReadySeq((n) => n + 1);
     } catch (e) {
       const err = e as { message?: string; code?: string };
-      toast.error(err.message ?? "Unduhan gagal.");
+      setReady(null);
+      toast.error(err.message ?? "Tautan unduh gagal disiapkan.");
       void queryClient.invalidateQueries({ queryKey: [...AUDIT_KEY, "exports"] });
     } finally {
       setDownloading(null);
@@ -492,6 +509,9 @@ function ExportPanel({ filter }: { filter: AuditFilter }) {
       />
       <p className="px-5 text-sm">
         Filter ekspor: <span className="font-medium">{describeFilter(filter)}</span>
+      </p>
+      <p role="status" aria-live="polite" className="sr-only">
+        {readyValid ? `Tautan unduh ${ready.access.file_name} siap; pilih Unduh berkas.` : ""}
       </p>
       <div className="px-5">
         {exportsQuery.isPending ? (
@@ -533,16 +553,37 @@ function ExportPanel({ filter }: { filter: AuditFilter }) {
                     ) : null}
                   </div>
                   {x.status === "ready" ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      aria-label={`Unduh ${x.file_name ?? "ekspor"}`}
-                      leftIcon={<Download aria-hidden="true" className="size-4" />}
-                      loading={downloading === x.id}
-                      onClick={() => void download(x)}
-                    >
-                      Unduh
-                    </Button>
+                    readyValid && ready.exportId === x.id ? (
+                      <div className="flex flex-col items-start gap-1">
+                        <a
+                          ref={readyLinkRef}
+                          href={ready.access.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download={ready.access.file_name}
+                          aria-label={`Unduh ${ready.access.file_name}`}
+                          className={buttonClass({ variant: "primary", size: "sm" })}
+                        >
+                          <Download aria-hidden="true" className="size-4" />
+                          Unduh berkas
+                        </a>
+                        <span className="text-xs text-text-muted">
+                          Tautan berlaku sampai {formatDateTime(ready.access.expires_at)}.
+                        </span>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label={`Siapkan unduhan ${x.file_name ?? "ekspor"}`}
+                        leftIcon={<Download aria-hidden="true" className="size-4" />}
+                        loading={downloading === x.id}
+                        loadingText="Menyiapkan..."
+                        onClick={() => void prepareDownload(x)}
+                      >
+                        Siapkan unduhan
+                      </Button>
+                    )
                   ) : null}
                 </li>
               );

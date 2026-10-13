@@ -121,13 +121,29 @@ describe("audit (F-17, AC F17-2..F17-4; server tiruan)", () => {
     expect(polls.length).toBeGreaterThan(0);
     expect(polls.every((r) => r.background)).toBe(true);
 
-    await user.click(within(panel).getByRole("button", { name: /^Unduh audit-/ }));
-    await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
-    expect(open.mock.calls[0]?.[0]).toMatch(
-      /^https:\/\/files\.kapdh\.test\/signed\/audit-\d{8}-[0-9a-f]{8}\.csv/,
+    // Unduhan dua langkah: URL bertanda tangan baru diminta, lalu admin mengklik tautan (gestur pengguna), sehingga
+    // pemblokir popup tidak membatalkannya diam-diam dan UI tidak mengklaim unduhan sudah dimulai.
+    await user.click(within(panel).getByRole("button", { name: /^Siapkan unduhan audit-/ }));
+    const link = await within(panel).findByRole("link", { name: /^Unduh audit-\d{8}-[0-9a-f]{8}\.csv$/ });
+    expect(link).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^https:\/\/files\.kapdh\.test\/signed\/audit-\d{8}-[0-9a-f]{8}\.csv/),
     );
-    expect(open.mock.calls[0]?.[2]).toContain("noopener");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(link).toHaveFocus();
+    expect(within(panel).getByRole("status")).toHaveTextContent(/Tautan unduh audit-.*siap/);
+    expect(within(panel).getByText(/Tautan berlaku sampai/)).toBeInTheDocument();
+    expect(open).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Unduhan .* dimulai/)).toBeNull();
     expect(auditRequests.some((r) => r.path.endsWith("/access"))).toBe(true);
+
+    // URL berlaku maksimal 10 menit: setelah lewat, tautan hilang dan URL baru harus diminta ulang (AC F17-2).
+    await act(async () => {
+      vi.advanceTimersByTime(10 * 60_000 + 20_000);
+    });
+    await waitFor(() => expect(within(panel).queryByRole("link", { name: /^Unduh audit-/ })).toBeNull());
+    expect(within(panel).getByRole("button", { name: /^Siapkan unduhan audit-/ })).toBeInTheDocument();
   });
 
   it("ekspor yang melebihi batas baris gagal dengan alasan dan saran mempersempit filter", async () => {
@@ -142,7 +158,7 @@ describe("audit (F-17, AC F17-2..F17-4; server tiruan)", () => {
     await advancePolling();
     expect(await within(panel).findByText("Gagal")).toBeInTheDocument();
     expect(within(panel).getByText(/melebihi batas baris ekspor; persempit filter/)).toBeInTheDocument();
-    expect(within(panel).queryByRole("button", { name: /^Unduh/ })).toBeNull();
+    expect(within(panel).queryByRole("button", { name: /^(Unduh|Siapkan unduhan)/ })).toBeNull();
   });
 
   it("AC F17-4: berkas ekspor kedaluwarsa otomatis dan tidak dapat diunduh", async () => {
@@ -158,7 +174,7 @@ describe("audit (F-17, AC F17-2..F17-4; server tiruan)", () => {
     await advancePolling();
     expect(await within(panel).findByText("Kedaluwarsa")).toBeInTheDocument();
     expect(within(panel).getByText(/Berkas sudah dihapus otomatis/)).toBeInTheDocument();
-    expect(within(panel).queryByRole("button", { name: /^Unduh/ })).toBeNull();
+    expect(within(panel).queryByRole("button", { name: /^(Unduh|Siapkan unduhan)/ })).toBeNull();
   });
 
   it("AC F17-2: tanpa audit.export panel ekspor tidak ada; tanpa audit.read halaman menolak tanpa memanggil API", async () => {
