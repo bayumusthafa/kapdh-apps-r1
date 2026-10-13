@@ -264,10 +264,7 @@ function CategoryManager() {
       </p>
 
       {editing !== null ? (
-        <CategoryFormDialog
-          category={editing === "new" ? null : editing}
-          onClose={() => setEditing(null)}
-        />
+        <CategoryFormDialog category={editing === "new" ? null : editing} onClose={() => setEditing(null)} />
       ) : null}
       <ConfirmDialog
         open={toDelete !== null}
