@@ -922,7 +922,10 @@ export const mockMembers = {
     const m = members.get(userId);
     if (!m) return;
     const at = Date.now() - HOUR_MS + retryAfterSeconds * 1000;
-    otpSends.set(m.email, Array.from({ length: OTP_SENDS_PER_HOUR }, () => at));
+    otpSends.set(
+      m.email,
+      Array.from({ length: OTP_SENDS_PER_HOUR }, () => at),
+    );
   },
   master(id: string): MasterItem | undefined {
     const m = masters.get(id);

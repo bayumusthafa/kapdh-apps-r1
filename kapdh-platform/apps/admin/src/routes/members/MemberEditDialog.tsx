@@ -394,7 +394,14 @@ export function MemberEditDialog({
               </FormField>
               <FormField<MemberEditValues, "cohort"> name="cohort" label="Angkatan" required>
                 {(field, a11y) => (
-                  <Input {...field} {...a11y} type="number" inputMode="numeric" min={1} max={latestCohort()} />
+                  <Input
+                    {...field}
+                    {...a11y}
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={latestCohort()}
+                  />
                 )}
               </FormField>
               <FormField<MemberEditValues, "class_in"> name="class_in" label="Kelas masuk" required>

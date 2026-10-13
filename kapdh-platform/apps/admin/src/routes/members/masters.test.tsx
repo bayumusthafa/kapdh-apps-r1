@@ -165,6 +165,48 @@ describe("master profesi dan keahlian (F-10, AC F10-4; server tiruan)", () => {
     expect(writes().map((w) => w.ifMatch)).toEqual(["1"]);
   });
 
+  it("AC F15-4: ubah master yang sama berturut-turut memakai data dan versi terbaru, bukan cache lama", async () => {
+    const user = userEvent.setup();
+    await openMasters(user);
+    await screen.findByText("Menampilkan 11 dari 11");
+    const id = professionId("Dokter");
+
+    // Ubah pertama: label baru disimpan (versi server menjadi 2).
+    await user.click(within(row("Dokter")).getByRole("button", { name: "Ubah Dokter" }));
+    let dialog = await screen.findByRole("dialog", { name: "Ubah profesi" });
+    let label = await within(dialog).findByRole("textbox", { name: /Label/ });
+    await user.clear(label);
+    await user.type(label, "Dokter Umum");
+    await user.click(within(dialog).getByRole("button", { name: "Simpan" }));
+    expect(await findToast("success", "Dokter Umum disimpan.")).toBeInTheDocument();
+    await screen.findByRole("rowheader", { name: "Dokter Umum" });
+    expect(mockMembers.master(id)?.version).toBe("2");
+
+    // Ubah kedua oleh admin yang sama: formulir menampilkan label yang baru disimpan dan If-Match versi 2.
+    await user.click(within(row("Dokter Umum")).getByRole("button", { name: "Ubah Dokter Umum" }));
+    dialog = await screen.findByRole("dialog", { name: "Ubah profesi" });
+    label = await within(dialog).findByRole("textbox", { name: /Label/ });
+    expect(label).toHaveValue("Dokter Umum");
+    const sort = within(dialog).getByRole("spinbutton", { name: /Urutan tampil/ });
+    await user.clear(sort);
+    await user.type(sort, "5");
+    await user.click(within(dialog).getByRole("button", { name: "Simpan" }));
+    expect(await findToast("success", "Dokter Umum disimpan.")).toBeInTheDocument();
+    await waitFor(() => expect(mockMembers.master(id)?.version).toBe("3"));
+    expect(writes().map((w) => [w.ifMatch, w.body])).toEqual([
+      ["1", { label: "Dokter Umum" }],
+      ["2", { sort_order: 5 }],
+    ]);
+    expect(screen.queryByText(/sudah diubah admin lain/)).toBeNull();
+
+    // Admin lain mengubah setelah dialog ditutup: membuka lagi memuat data terbaru, bukan cache sebelumnya.
+    mockMembers.touchMasterByOtherAdmin(id, { label: "Dokter Keluarga" });
+    await user.click(within(row("Dokter Umum")).getByRole("button", { name: "Ubah Dokter Umum" }));
+    dialog = await screen.findByRole("dialog", { name: "Ubah profesi" });
+    label = await within(dialog).findByRole("textbox", { name: /Label/ });
+    expect(label).toHaveValue("Dokter Keluarga");
+  });
+
   it("PRD 4.5: galat server pada daftar master ditampilkan dengan tombol coba lagi", async () => {
     mockMembers.fail("GET", /^\/admin\/masters\/professions$/);
     const user = userEvent.setup();
