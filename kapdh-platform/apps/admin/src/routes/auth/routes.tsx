@@ -47,8 +47,10 @@ export const enrollRoute = createRoute({
     const { state } = context.auth.snapshot();
     if (state.status === "authenticated") throw redirect({ href: safeRedirectPath(search.redirect) ?? "/" });
     if (state.status !== "mfa") throw redirect({ to: "/login", search });
+    // Token tahap sandi (login) tidak pernah membuka pendaftaran TOTP (kontrak admin-auth, AC F02-2).
+    if (!state.enrollmentRequired) throw redirect({ to: "/login/mfa", search });
   },
-  component: lazyRouteComponent(() => import("./PendingAuthPages"), "EnrollPage"),
+  component: lazyRouteComponent(() => import("./EnrollPage"), "EnrollPage"),
 });
 
 /**
@@ -59,7 +61,7 @@ export const enrollRoute = createRoute({
 export const inviteRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/invite",
-  component: lazyRouteComponent(() => import("./PendingAuthPages"), "InvitePage"),
+  component: lazyRouteComponent(() => import("./InvitePage"), "InvitePage"),
 });
 
 export const authRoutes = [loginRoute, mfaRoute, enrollRoute, inviteRoute] as const;
