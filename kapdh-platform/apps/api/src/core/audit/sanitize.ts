@@ -59,13 +59,15 @@ export const AUDIT_LIMITS = {
 
 /**
  * Batas untuk entri yang WAJIB menyimpan teks dokumen utuh agar versi yang pernah disetujui dapat direproduksi
- * (audit `page.published`: judul + body HTML tayang <= 200.000 karakter, F-01, F-17). Kunci rahasia tetap dibuang;
- * hanya batas panjang string dan ukuran yang dilonggarkan. Jangan dipakai untuk payload biasa.
+ * (audit `page.published`: judul <= 200 dan body HTML tayang HASIL SANITASI <= 200.000 karakter, F-01, F-17). Kunci
+ * rahasia tetap dibuang; hanya batas panjang string dan ukuran yang dilonggarkan. Jangan dipakai untuk payload biasa.
+ * `maxBytes` menampung kasus terburuk JSON: setiap karakter kontrol menjadi escape 6 byte (`\u0001`), sehingga
+ * 200.000 karakter body + judul + catatan perubahan (500) tetap < 1,3 MB, jauh di bawah 2 MiB.
  */
 export const AUDIT_DOCUMENT_LIMITS = {
   ...AUDIT_LIMITS,
   maxStringLength: 250_000,
-  maxBytes: 1024 * 1024,
+  maxBytes: 2 * 1024 * 1024,
 } as const satisfies AuditLimits;
 
 function segments(key: string): string[] {

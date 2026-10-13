@@ -136,6 +136,44 @@ describe("F-08: membuat berita draft (PRD 3.8 sanitasi server)", () => {
     expect(Object.keys(invalid.json().field_errors).sort()).toEqual(["slug", "title"]);
   });
 
+  it("PRD 3.8: isi yang melebar setelah sanitasi melebihi 200.000 karakter ditolak 400 (buat dan ubah)", async () => {
+    // Setiap tautan https mendapat target/rel/data-external/class: masukan <= 200.000 tetapi hasil sanitasi jauh lebih.
+    const link = '<a href="https://contoh.id/x">a</a>';
+    const dense = `<p>${link.repeat(Math.floor(199_000 / link.length))}</p>`;
+    expect(dense.length).toBeLessThanOrEqual(200_000);
+    const created = await api().post(
+      "/admin/content/posts",
+      { title: "Tautan Padat", body_html: dense },
+      { token: admin.token },
+    );
+    expect(created.statusCode).toBe(400);
+    expect(created.json()).toMatchObject({
+      code: "VALIDATION_ERROR",
+      field_errors: { body_html: expect.any(Array) },
+    });
+    expectOperation("post", "/admin/content/posts", created);
+
+    const post = await createPost();
+    const updated = await api().patch(
+      `/admin/content/posts/${post.id}`,
+      { body_html: `<p>${"&".repeat(40_100)}</p>` },
+      { token: admin.token, headers: { "if-match": post.version } },
+    );
+    expect(updated.statusCode).toBe(400);
+    expect(updated.json().field_errors.body_html).toBeDefined();
+    expectOperation("patch", "/admin/content/posts/{postId}", updated);
+    expect((await postRow(t, post.id))!.version).toBe(Number(post.version));
+
+    // Batasnya pada hasil sanitasi: 39.990 '&' menjadi 199.957 karakter dan tetap diterima.
+    const largest = await api().patch(
+      `/admin/content/posts/${post.id}`,
+      { body_html: `<p>${"&".repeat(39_990)}</p>` },
+      { token: admin.token, headers: { "if-match": post.version } },
+    );
+    expect(largest.statusCode, largest.body).toBe(200);
+    expect((largest.json() as AdminPost).body_html).toHaveLength(199_957);
+  });
+
   it("F-08: kategori harus kategori berita aktif; cover harus post_cover milik pemanggil yang belum dipakai", async () => {
     const inactive = await insertCategory(t, { kind: "post", active: false });
     const eventCategory = await insertCategory(t, { kind: "event" });

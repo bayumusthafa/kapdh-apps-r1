@@ -19,6 +19,7 @@ import {
   containsPattern,
   decodeSortCursor,
   iso,
+  retryContentTransaction,
   SLUG_PATTERN,
   type SortSpec,
   sortAfter,
@@ -212,42 +213,45 @@ export class BannersService {
   async create(auth: AuthContext, input: BannerCreateInput): Promise<AdminBanner> {
     if (input.ends_at && input.ends_at.getTime() <= input.starts_at.getTime())
       throw fieldError("ends_at", "Waktu selesai harus setelah waktu mulai.");
-    return this.db.transaction(async (tx) => {
-      const now = this.clock.now();
-      const targetValue = await this.validateTarget(tx, input.target_type, input.target_value);
-      await this.media.attachNew(tx, input.image_file_id, auth.userId, "banner_image", "image_file_id");
-      const id = uuidv7();
-      await tx.insert(banners).values({
-        id,
-        title: input.title.trim(),
-        imageFileId: input.image_file_id,
-        targetType: input.target_type,
-        targetValue,
-        sortOrder: input.sort_order,
-        startsAt: input.starts_at,
-        endsAt: input.ends_at,
-        active: input.active,
-        version: 1,
-        createdAt: now,
-        updatedAt: now,
-      });
-      await this.audit.write(tx, {
-        action: "banner.created",
-        entityType: "banner",
-        entityId: id,
-        after: {
+    return retryContentTransaction(() =>
+      this.db.transaction(async (tx) => {
+        const now = this.clock.now();
+        const targetValue = await this.validateTarget(tx, input.target_type, input.target_value);
+        await this.media.lockFiles(tx, [input.image_file_id]);
+        await this.media.attachNew(tx, input.image_file_id, auth.userId, "banner_image", "image_file_id");
+        const id = uuidv7();
+        await tx.insert(banners).values({
+          id,
           title: input.title.trim(),
-          image_file_id: input.image_file_id,
-          target_type: input.target_type,
-          target_value: targetValue,
-          sort_order: input.sort_order,
-          starts_at: input.starts_at,
-          ends_at: input.ends_at,
+          imageFileId: input.image_file_id,
+          targetType: input.target_type,
+          targetValue,
+          sortOrder: input.sort_order,
+          startsAt: input.starts_at,
+          endsAt: input.ends_at,
           active: input.active,
-        },
-      });
-      return (await this.load(tx, id, now))!;
-    });
+          version: 1,
+          createdAt: now,
+          updatedAt: now,
+        });
+        await this.audit.write(tx, {
+          action: "banner.created",
+          entityType: "banner",
+          entityId: id,
+          after: {
+            title: input.title.trim(),
+            image_file_id: input.image_file_id,
+            target_type: input.target_type,
+            target_value: targetValue,
+            sort_order: input.sort_order,
+            starts_at: input.starts_at,
+            ends_at: input.ends_at,
+            active: input.active,
+          },
+        });
+        return (await this.load(tx, id, now))!;
+      }),
+    );
   }
 
   async update(
@@ -261,59 +265,66 @@ export class BannersService {
         input.target_type === undefined ? "target_type" : "target_value",
         "Jenis dan nilai target wajib dikirim bersama.",
       );
-    return this.db.transaction(async (tx) => {
-      const now = this.clock.now();
-      const row = await this.lockCurrent(tx, id, expectedVersion, now);
-      const startsAt = input.starts_at ?? row.startsAt;
-      const endsAt = input.ends_at === undefined ? row.endsAt : input.ends_at;
-      if (endsAt && endsAt.getTime() <= startsAt.getTime())
-        throw fieldError("ends_at", "Waktu selesai harus setelah waktu mulai.");
-      const changes: Partial<typeof banners.$inferInsert> = {};
-      if (input.title !== undefined) changes.title = input.title.trim();
-      if (input.target_type !== undefined) {
-        changes.targetType = input.target_type;
-        changes.targetValue = await this.validateTarget(tx, input.target_type, input.target_value ?? null);
-      }
-      if (input.sort_order !== undefined) changes.sortOrder = input.sort_order;
-      if (input.starts_at !== undefined) changes.startsAt = input.starts_at;
-      if (input.ends_at !== undefined) changes.endsAt = input.ends_at;
-      if (input.active !== undefined) changes.active = input.active;
-      let releasedImage: string | null = null;
-      if (input.image_file_id !== undefined && input.image_file_id !== row.imageFileId) {
-        await this.media.attachNew(tx, input.image_file_id, auth.userId, "banner_image", "image_file_id");
-        changes.imageFileId = input.image_file_id;
-        releasedImage = row.imageFileId;
-      }
-      await tx
-        .update(banners)
-        .set({ ...changes, version: row.version + 1, updatedAt: now })
-        .where(and(eq(banners.id, id), eq(banners.version, expectedVersion)));
-      // Gambar lama dilepas setelah banner menunjuk gambar baru (FK RESTRICT), lalu dibuang bila tidak dirujuk.
-      await this.media.discardIfUnreferenced(tx, releasedImage);
-      await this.audit.write(tx, {
-        action: "banner.updated",
-        entityType: "banner",
-        entityId: id,
-        before: this.auditView(row),
-        after: this.auditView({ ...row, ...changes } as BannerRow),
-      });
-      return (await this.load(tx, id, now))!;
-    });
+    return retryContentTransaction(() =>
+      this.db.transaction(async (tx) => {
+        const now = this.clock.now();
+        const row = await this.lockCurrent(tx, id, expectedVersion, now);
+        const imageChanges = input.image_file_id !== undefined && input.image_file_id !== row.imageFileId;
+        // Gambar baru dan gambar lama yang dilepas dikunci urut id sesudah baris banner (urutan ContentMediaService).
+        if (imageChanges) await this.media.lockFiles(tx, [input.image_file_id, row.imageFileId]);
+        const startsAt = input.starts_at ?? row.startsAt;
+        const endsAt = input.ends_at === undefined ? row.endsAt : input.ends_at;
+        if (endsAt && endsAt.getTime() <= startsAt.getTime())
+          throw fieldError("ends_at", "Waktu selesai harus setelah waktu mulai.");
+        const changes: Partial<typeof banners.$inferInsert> = {};
+        if (input.title !== undefined) changes.title = input.title.trim();
+        if (input.target_type !== undefined) {
+          changes.targetType = input.target_type;
+          changes.targetValue = await this.validateTarget(tx, input.target_type, input.target_value ?? null);
+        }
+        if (input.sort_order !== undefined) changes.sortOrder = input.sort_order;
+        if (input.starts_at !== undefined) changes.startsAt = input.starts_at;
+        if (input.ends_at !== undefined) changes.endsAt = input.ends_at;
+        if (input.active !== undefined) changes.active = input.active;
+        let releasedImage: string | null = null;
+        if (imageChanges && input.image_file_id) {
+          await this.media.attachNew(tx, input.image_file_id, auth.userId, "banner_image", "image_file_id");
+          changes.imageFileId = input.image_file_id;
+          releasedImage = row.imageFileId;
+        }
+        await tx
+          .update(banners)
+          .set({ ...changes, version: row.version + 1, updatedAt: now })
+          .where(and(eq(banners.id, id), eq(banners.version, expectedVersion)));
+        // Gambar lama dilepas setelah banner menunjuk gambar baru (FK RESTRICT), lalu dibuang bila tidak dirujuk.
+        await this.media.discardIfUnreferenced(tx, releasedImage);
+        await this.audit.write(tx, {
+          action: "banner.updated",
+          entityType: "banner",
+          entityId: id,
+          before: this.auditView(row),
+          after: this.auditView({ ...row, ...changes } as BannerRow),
+        });
+        return (await this.load(tx, id, now))!;
+      }),
+    );
   }
 
   async remove(id: string, expectedVersion: number): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      const now = this.clock.now();
-      const row = await this.lockCurrent(tx, id, expectedVersion, now);
-      await tx.delete(banners).where(and(eq(banners.id, id), eq(banners.version, expectedVersion)));
-      await this.media.discardIfUnreferenced(tx, row.imageFileId);
-      await this.audit.write(tx, {
-        action: "banner.deleted",
-        entityType: "banner",
-        entityId: id,
-        before: this.auditView(row),
-      });
-    });
+    await retryContentTransaction(() =>
+      this.db.transaction(async (tx) => {
+        const now = this.clock.now();
+        const row = await this.lockCurrent(tx, id, expectedVersion, now);
+        await tx.delete(banners).where(and(eq(banners.id, id), eq(banners.version, expectedVersion)));
+        await this.media.discardIfUnreferenced(tx, row.imageFileId);
+        await this.audit.write(tx, {
+          action: "banner.deleted",
+          entityType: "banner",
+          entityId: id,
+          before: this.auditView(row),
+        });
+      }),
+    );
   }
 
   /**

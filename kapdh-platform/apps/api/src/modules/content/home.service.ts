@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
-import { categories, events, files } from "@kapdh/database";
-import { and, asc, eq, gt, inArray } from "drizzle-orm";
+import { categories, events, files, tickets } from "@kapdh/database";
+import { and, asc, eq, gt, inArray, lte, sql } from "drizzle-orm";
 import type { Clock } from "../../core/adapters/clock.js";
 import type { Db } from "../../core/db/types.js";
 import { notFound } from "../../core/errors/app-exception.js";
@@ -24,12 +24,28 @@ export const HOME_POST_LIMIT = 5;
 
 type EventRow = typeof events.$inferSelect;
 
+type SeatCounters = Pick<EventRow, "seatsTotal" | "heldQuantity" | "paidQuantity">;
+
+/**
+ * Kursi tersedia menurut proyeksi baca kursi (aturan tag Events, AC F09-1/F09-2): hold kedaluwarsa (tiket
+ * `awaiting_payment` dengan `hold_expires_at <= now`) yang belum dilepas fisik oleh job expiry dianggap sudah lepas,
+ * sehingga `seats_available = seats_total - paid_quantity - held_aktif` dengan
+ * `held_aktif = held_quantity - hold kedaluwarsa`. Sama dengan respons daftar/detail event (satu label kartu).
+ */
+export function seatsAvailable(event: SeatCounters, expiredHolds: number): number {
+  const activeHeld = Math.max(0, event.heldQuantity - expiredHolds);
+  return Math.max(0, event.seatsTotal - event.paidQuantity - activeHeld);
+}
+
 /** Label pendaftaran kartu event (kontrak `HomeEventRegistrationState`, guideline p8). */
-export function registrationState(event: EventRow, now: Date): HomeEventRegistrationState {
+export function registrationState(
+  event: EventRow,
+  now: Date,
+  expiredHolds: number,
+): HomeEventRegistrationState {
   if (event.status === "closed" || now.getTime() >= event.registrationClosesAt.getTime()) return "closed";
   if (now.getTime() < event.registrationOpensAt.getTime()) return "not_yet_open";
-  const available = event.seatsTotal - event.heldQuantity - event.paidQuantity;
-  return available <= 0 ? "sold_out" : "open";
+  return seatsAvailable(event, expiredHolds) <= 0 ? "sold_out" : "open";
 }
 
 /**
@@ -74,11 +90,25 @@ export class HomeService {
     };
   }
 
-  /** Event open/closed yang belum berakhir, tanpa draft/done/cancelled; urut mulai naik; maksimal 5. */
+  /**
+   * Event open/closed yang belum berakhir, tanpa draft/done/cancelled; urut mulai naik; maksimal 5. Baca saja:
+   * hold kedaluwarsa dihitung (indeks tickets_event_id_status_idx) untuk proyeksi kursi, tidak pernah dilepas di sini.
+   */
   private async upcomingEvents(now: Date): Promise<HomeEvent[]> {
+    const expiredHolds = this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(tickets)
+      .where(
+        and(
+          eq(tickets.eventId, events.id),
+          eq(tickets.status, "awaiting_payment"),
+          lte(tickets.holdExpiresAt, now),
+        ),
+      );
     const rows = await this.db
       .select({
         event: events,
+        expiredHolds: sql<number>`(${expiredHolds})`.mapWith(Number),
         categoryId: categories.id,
         categorySlug: categories.slug,
         categoryLabel: categories.label,
@@ -93,7 +123,7 @@ export class HomeService {
       .where(and(inArray(events.status, ["open", "closed"]), gt(events.endsAt, now)))
       .orderBy(asc(events.startsAt), asc(events.id))
       .limit(HOME_EVENT_LIMIT);
-    return rows.map(({ event, categoryId, categorySlug, categoryLabel, coverId }) => ({
+    return rows.map(({ event, expiredHolds: expired, categoryId, categorySlug, categoryLabel, coverId }) => ({
       id: event.id,
       title: event.title,
       cover_url: coverId ? this.media.publicUrl(coverId) : null,
@@ -108,8 +138,8 @@ export class HomeService {
       price: event.price,
       is_free: isZeroMoney(event.price),
       seats_total: event.seatsTotal,
-      seats_available: Math.max(0, event.seatsTotal - event.heldQuantity - event.paidQuantity),
-      registration_state: registrationState(event, now),
+      seats_available: seatsAvailable(event, expired),
+      registration_state: registrationState(event, now, expired),
       registration_opens_at: iso(event.registrationOpensAt),
       registration_closes_at: iso(event.registrationClosesAt),
     }));

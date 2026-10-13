@@ -222,8 +222,9 @@ paths:
 
         Dipakai situs publik, layar legal aplikasi, dan layar registrasi sebelum aktivasi (PRD 2.2: pending_otp dan
         unverified tetap dapat membaca legal). Tanpa autentikasi; dibatasi rate limit per IP (120 permintaan
-        per menit per IP, bersama GET /public/pages/{slug}; 429 dengan `retry_after_seconds`). Respons dapat
-        di-cache publik paling lama 60 detik.
+        per menit per IP, bersama GET /public/pages/{slug}; 429 dengan `retry_after_seconds`). Respons 200
+        dapat di-cache publik paling lama 60 detik (`Cache-Control: public, max-age=60`); respons galat (400,
+        404, 429) membawa `Cache-Control: no-store`.
 
         `consent` memuat versi persetujuan registrasi (F-01): `policy_version` adalah string gabungan kanonis
         versi tayang kebijakan privasi DAN ketentuan layanan (`privacy:<v>;terms:<v>`) yang dikirim klien apa
@@ -258,7 +259,9 @@ paths:
         Slug baku: `kebijakan-privasi`, `ketentuan`, `ketentuan-komunitas`, `bantuan`, `tentang`. Halaman yang
         belum pernah terbit atau slug yang tidak ada menghasilkan 404 NOT_FOUND; slug melebihi panjang maksimum
         -> 400 VALIDATION_ERROR. Tanpa autentikasi; dibatasi rate limit per IP (120 permintaan per menit per IP,
-        bersama GET /public/pages). Respons dapat di-cache publik paling lama 60 detik.
+        bersama GET /public/pages). Respons 200 dapat di-cache publik paling lama 60 detik
+        (`Cache-Control: public, max-age=60`); respons galat (400, 404, 429) membawa `Cache-Control: no-store`
+        sehingga halaman yang baru pertama kali terbit tidak tertahan 404 di cache.
       security: []
       x-kapdh-access: { audience: public }
       parameters:
@@ -419,7 +422,11 @@ components:
         seats_available:
           type: integer
           minimum: 0
-          description: seats_total - held_quantity - paid_quantity (PRD 4.4).
+          description: |
+            seats_total - held_quantity - paid_quantity (PRD 4.4), dengan proyeksi baca kursi aturan tag Events:
+            hold kedaluwarsa (tiket awaiting_payment dengan hold_expires_at <= now) yang belum dilepas job expiry
+            dianggap sudah lepas, sehingga nilainya = seats_total - paid_quantity - held_aktif dan sama dengan
+            respons daftar/detail event. `registration_state` memakai nilai yang sama.
         registration_state: { $ref: "#/components/schemas/HomeEventRegistrationState" }
         registration_opens_at: { type: string, format: date-time }
         registration_closes_at: { type: string, format: date-time }
