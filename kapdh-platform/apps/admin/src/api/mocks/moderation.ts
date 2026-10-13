@@ -73,6 +73,58 @@ const PEOPLE = {
 /** Akun alumni tertaut admin tiruan yang sedang masuk (admins.linked_alumni_user_id). */
 const CALLER_LINKED_USER = PEOPLE.bayu.user_id;
 
+/** Grup "Info Bisnis Alumni" yang dilaporkan (laporan grup tanpa subjek). */
+const GROUP_ROOM_ID = "0199e000-0000-7000-8000-00000000a010";
+
+const NEVER_JOINED: Party = {
+  user_id: "0199e000-0000-7000-8000-0000000000c9",
+  full_name: "Hasan Basri",
+  member_number: "13.02.01.1",
+  cohort: 13,
+};
+
+interface RoomMembership {
+  person: Party;
+  status: S["ChatMemberStatus"];
+  role: S["ChatMemberRole"];
+  /** joined_at terisi: pernah bergabung. Undangan yang dibatalkan sebelum diterima tidak pernah bergabung. */
+  everJoined: boolean;
+}
+
+/** Keanggotaan room tiruan (room_members) untuk calon subjek laporan grup. */
+function roomFixtures(): Map<string, RoomMembership[]> {
+  return new Map([
+    [
+      GROUP_ROOM_ID,
+      [
+        { person: PEOPLE.ridwan, status: "joined", role: "member", everJoined: true },
+        { person: PEOPLE.dimas, status: "joined", role: "admin", everJoined: true },
+        { person: PEOPLE.arya, status: "joined", role: "member", everJoined: true },
+        { person: PEOPLE.sari, status: "left", role: "member", everJoined: true },
+        { person: PEOPLE.lina, status: "removed", role: "admin", everJoined: true },
+        // Akun tertaut admin pemanggil pernah bergabung lalu keluar: laporan tetap terlihat, tetapi ia bukan calon.
+        { person: PEOPLE.bayu, status: "left", role: "member", everJoined: true },
+        // Undangan dibatalkan sebelum diterima (joined_at kosong): tidak pernah bergabung, bukan calon subjek.
+        { person: NEVER_JOINED, status: "removed", role: "member", everJoined: false },
+      ],
+    ],
+  ]);
+}
+
+/** Status keanggotaan terkini alumni tiruan (dipakai calon subjek dan keputusan laporan grup). */
+function memberFixtures(): Map<string, Target> {
+  const states = new Map<string, Target>(Object.values(PEOPLE).map((p) => [p.user_id, target(p)]));
+  states.set(
+    PEOPLE.sari.user_id,
+    target(PEOPLE.sari, {
+      effective_status: "suspended",
+      suspended_at: iso(-3 * 24 * HOUR),
+      suspension_message: "Akun dibatasi karena spam berulang.",
+    }),
+  );
+  return states;
+}
+
 export interface ModerationRequestLog {
   method: string;
   path: string;
@@ -87,6 +139,10 @@ export interface ModerationRequestLog {
 export const moderationRequests: ModerationRequestLog[] = [];
 
 let reports = new Map<string, Detail>();
+let rooms = new Map<string, RoomMembership[]>();
+let members = new Map<string, Target>();
+/** Simulasi server lama yang belum mengimplementasikan adminListReportSubjectCandidates (404 rute tidak dikenal). */
+let candidatesUnavailable = false;
 const replays = new Map<string, { payload: string; body: unknown }>();
 
 function iso(offsetMs: number): string {
@@ -233,25 +289,14 @@ function fixtures(): Map<string, Detail> {
       created_at: iso(-5 * HOUR),
       due_at: iso(43 * HOUR),
       room_name: "Info Bisnis Alumni",
-      room_id: "0199e000-0000-7000-8000-00000000a010",
+      room_id: GROUP_ROOM_ID,
       description: "Grup dipakai untuk promosi investasi bodong.",
       evidence: {
         captured_at: iso(-5 * HOUR),
-        messages: [
-          {
-            message_id: "0199e000-0000-7000-8000-00000000b003",
-            reported: false,
-            sender_user_id: PEOPLE.dimas.user_id,
-            sender_name: PEOPLE.dimas.full_name,
-            kind: "image",
-            body: null,
-            image: image("0199e000-0000-7000-8000-00000000d002"),
-            created_at: iso(-6 * HOUR),
-            deleted_since_report: false,
-          },
-        ],
+        // Kontrak createReport: bukti laporan grup hanya nama, avatar dan jumlah anggota, TANPA pesan.
+        messages: [],
         room: {
-          room_id: "0199e000-0000-7000-8000-00000000a010",
+          room_id: GROUP_ROOM_ID,
           kind: "group",
           name: "Info Bisnis Alumni",
           avatar: { file_id: "0199e000-0000-7000-8000-00000000d003", url: null, url_expires_at: null },
@@ -371,6 +416,9 @@ function fixtures(): Map<string, Detail> {
 
 export function reset(): void {
   reports = fixtures();
+  rooms = roomFixtures();
+  members = memberFixtures();
+  candidatesUnavailable = false;
   replays.clear();
   moderationRequests.length = 0;
 }
@@ -388,9 +436,52 @@ function log(req: MockRequest): void {
   });
 }
 
-/** Aturan konflik butir a: pemanggil tertaut ke pihak terlapor tidak pernah melihat laporan itu. */
+/** Anggota room yang pernah bergabung (joined, atau left/removed dengan joined_at terisi). */
+function everJoined(roomId: string | null): RoomMembership[] {
+  return (roomId ? (rooms.get(roomId) ?? []) : []).filter(
+    (m) => m.everJoined && (m.status === "joined" || m.status === "left" || m.status === "removed"),
+  );
+}
+
+/**
+ * Aturan konflik butir a: pemanggil tertaut ke pihak terlapor tidak pernah melihat laporan itu, termasuk laporan grup
+ * tanpa subjek yang pemanggilnya anggota joined grup tersebut.
+ */
 function visibleToCaller(r: Detail): boolean {
-  return r.subject?.user_id !== CALLER_LINKED_USER && r.target_member?.user_id !== CALLER_LINKED_USER;
+  if (r.subject?.user_id === CALLER_LINKED_USER || r.target_member?.user_id === CALLER_LINKED_USER)
+    return false;
+  if (r.target_type === "room" && !r.subject)
+    return !everJoined(r.room_id).some(
+      (m) => m.person.user_id === CALLER_LINKED_USER && m.status === "joined",
+    );
+  return true;
+}
+
+const ROOM_STATUS_ORDER: Record<S["AdminModerationRoomMemberStatus"], number> = {
+  joined: 0,
+  left: 1,
+  removed: 1,
+};
+
+/** Calon subjek laporan grup (kontrak adminListReportSubjectCandidates). */
+function candidatesFor(r: Detail, q: string): S["AdminModerationSubjectCandidate"][] {
+  return everJoined(r.room_id)
+    .filter((m) => m.person.user_id !== CALLER_LINKED_USER)
+    .filter(
+      (m) =>
+        !q || m.person.full_name.toLowerCase().includes(q) || (m.person.member_number ?? "").startsWith(q),
+    )
+    .map((m) => ({
+      ...(members.get(m.person.user_id) ?? target(m.person)),
+      room_status: m.status as S["AdminModerationRoomMemberStatus"],
+      room_role: m.role,
+    }))
+    .sort((a, b) => {
+      const rank = (c: typeof a) =>
+        ROOM_STATUS_ORDER[c.room_status] * 2 +
+        (c.room_status === "joined" && c.room_role === "admin" ? 0 : 1);
+      return rank(a) - rank(b) || a.full_name.localeCompare(b.full_name, "id");
+    });
 }
 
 function active(r: Detail): boolean {
@@ -479,6 +570,14 @@ export const mockModeration = {
   get(id: string): Detail | undefined {
     const r = reports.get(id);
     return r ? present(r) : undefined;
+  },
+  /** Status keanggotaan terkini alumni tiruan. */
+  member(userId: string): Target | undefined {
+    return members.get(userId);
+  },
+  /** Server tanpa operasi calon subjek (belum diimplementasikan): rute menjawab 404 seperti rute tak dikenal. */
+  setCandidatesUnavailable(value: boolean): void {
+    candidatesUnavailable = value;
   },
   /** Pengurus lain memutus laporan ini lebih dulu (keputusan kalah balapan → 409). */
   resolveElsewhere(id: string): void {
@@ -639,20 +738,26 @@ export const routes: MockRoute[] = [
       if (stale && action === "dismiss")
         fe.action = ["Suspend yang dibanding sudah dicabut; tutup banding sebagai dikabulkan."];
       let subject: Target | null = r.target_member;
-      if (r.target_type === "room" && !subject && (action === "warn" || action === "suspend")) {
-        const sid = b.subject_user_id;
-        const sender = r.evidence.messages.find((m) => m.sender_user_id === sid);
-        if (typeof sid !== "string" || !sender)
-          fe.subject_user_id = ["Pilih anggota grup yang dikenai tindakan."];
-        else
-          subject = target(
-            Object.values(PEOPLE).find((p) => p.user_id === sid) ?? {
-              user_id: sid,
-              full_name: sender.sender_name ?? "Anggota",
-              member_number: null,
-              cohort: null,
-            },
-          );
+      const sid = b.subject_user_id;
+      if (sid !== undefined && r.target_type !== "room")
+        fe.subject_user_id = ["Subjek hanya dipilih untuk laporan grup."];
+      if (r.target_type === "room" && !subject) {
+        if (action === "dismiss" && sid !== undefined)
+          fe.subject_user_id = ["Subjek hanya dipilih untuk warn, suspend, atau unsuspend."];
+        if (action !== "dismiss") {
+          // Kontrak adminResolveReport: subjek laporan grup = anggota/mantan anggota grup yang pernah bergabung.
+          if (typeof sid !== "string" || !UUID.test(sid))
+            fe.subject_user_id = ["Pilih anggota grup yang dikenai tindakan."];
+          else if (sid === CALLER_LINKED_USER)
+            return error(
+              403,
+              "FORBIDDEN",
+              "Anda tidak dapat memutus perkara yang menyangkut akun Anda sendiri (konflik kepentingan).",
+            );
+          else if (!everJoined(r.room_id).some((m) => m.person.user_id === sid))
+            fe.subject_user_id = ["Pilih anggota atau mantan anggota grup ini."];
+          else subject = members.get(sid) ?? null;
+        }
       }
       if (!stale && action === "suspend" && subject?.suspended_at)
         fe.action = ["Anggota sudah dalam status suspend."];
@@ -724,9 +829,32 @@ export const routes: MockRoute[] = [
         },
       });
       reports.set(r.id, next);
+      if (member && !stale) members.set(member.user_id, member);
       const body = present(next);
       replay.remember(body);
       return json(200, body);
+    },
+  },
+  {
+    method: "GET",
+    path: "/admin/reports/{reportId}/subject-candidates",
+    handler: (req) => {
+      log(req);
+      if (candidatesUnavailable) return error(404, "NOT_FOUND", "Data tidak ditemukan.");
+      const denied =
+        requirePermission(req, "moderation.read") ?? requirePermission(req, "moderation.resolve");
+      if (denied) return denied;
+      const found = find(req);
+      if ("response" in found) return found.response;
+      const r = found.report;
+      if (r.conflict_of_interest)
+        return error(403, "FORBIDDEN", "Laporan yang Anda buat sendiri tidak dapat Anda tangani.");
+      if (r.target_type !== "room" || !active(r))
+        return bad({ reportId: ["Calon subjek hanya untuk laporan grup yang masih aktif."] });
+      const q = (req.url.searchParams.get("q") ?? "").trim().toLowerCase();
+      // Server menulis audit moderation.report_viewed (tanpa daftar anggota) sebelum respons.
+      const { items, next_cursor } = paginate(candidatesFor(r, q), req.url);
+      return json(200, { items, next_cursor } satisfies S["AdminModerationSubjectCandidatePage"]);
     },
   },
 ];
