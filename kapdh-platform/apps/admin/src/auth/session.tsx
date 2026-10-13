@@ -227,7 +227,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const current = stateRef.current;
       if (current.status !== "authenticated") return;
       const permissionsChanged = !samePermissions(current.profile, profile);
-      if (!permissionsChanged && current.profile.display_name === profile.display_name) return;
+      // Field tampilan lain (sisa backup code, email, login sebelumnya) ikut diperbarui, mis. setelah backup code
+      // dibuat ulang di halaman Akun (F-02).
+      const sameDisplay =
+        current.profile.display_name === profile.display_name &&
+        current.profile.email === profile.email &&
+        current.profile.backup_codes_remaining === profile.backup_codes_remaining &&
+        current.profile.has_linked_alumni === profile.has_linked_alumni &&
+        current.profile.previous_login_at === profile.previous_login_at;
+      if (!permissionsChanged && sameDisplay) return;
       commit({ ...current, profile });
       if (permissionsChanged) {
         toast.info("Izin akun Anda diperbarui oleh Super Admin. Menu disesuaikan.");
