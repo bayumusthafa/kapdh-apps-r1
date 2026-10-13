@@ -5,7 +5,14 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectOperation } from "../support/contract.js";
 import { httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import { adminSession, insertCategory, insertEvent, insertPost, uploadContentMedia, unique } from "./support.js";
+import {
+  adminSession,
+  insertCategory,
+  insertEvent,
+  insertPost,
+  uploadContentMedia,
+  unique,
+} from "./support.js";
 
 /**
  * Banner Beranda untuk pengurus (F-08, AC F08-2, F15-4, guideline p13 tab Banner): target tervalidasi, jendela tayang,
@@ -29,7 +36,14 @@ type AdminBanner = {
   version: string;
   state: string;
   image: { file_id: string; url: string };
-  target: { type: string; value: string | null; available: boolean; label: string | null; route: string | null; category: unknown };
+  target: {
+    type: string;
+    value: string | null;
+    available: boolean;
+    label: string | null;
+    route: string | null;
+    category: unknown;
+  };
 };
 
 const api = () => httpClient(t.app);
@@ -42,7 +56,8 @@ async function createBanner(body: Record<string, unknown>, as?: { token: string 
   const who = as ?? (await adminSession(t, ["content.manage"]));
   const token = who.token;
   const imageId =
-    (body.image_file_id as string | undefined) ?? (await uploadContentMedia(t, token, "banner_image")).file_id;
+    (body.image_file_id as string | undefined) ??
+    (await uploadContentMedia(t, token, "banner_image")).file_id;
   const res = await api().post(
     "/admin/content/banners",
     {
@@ -67,10 +82,38 @@ describe("AC F08-2: target banner tervalidasi saat disimpan", () => {
     const event = await insertEvent(t, { categoryId: eventCategory.id, title: "Kajian Akbar" });
     const cases: [string, string | null, Record<string, unknown>][] = [
       ["none", null, { value: null, available: true, label: null, route: null, category: null }],
-      ["post", post.id, { value: post.id, available: true, label: "Kabar Reuni", route: `/news/${post.slug}`, category: { id: category.id, slug: category.slug, label: "Kabar" } }],
-      ["event", event.id.toUpperCase(), { value: event.id, available: true, label: "Kajian Akbar", route: `/events/${event.id}`, category: { id: eventCategory.id, slug: eventCategory.slug, label: "Kajian" } }],
-      ["page", "bantuan", { value: "bantuan", available: false, label: "Bantuan", route: null, category: null }],
-      ["url", "https://kapdh.or.id/donasi", { value: "https://kapdh.or.id/donasi", available: true, label: null, route: null, category: null }],
+      [
+        "post",
+        post.id,
+        {
+          value: post.id,
+          available: true,
+          label: "Kabar Reuni",
+          route: `/news/${post.slug}`,
+          category: { id: category.id, slug: category.slug, label: "Kabar" },
+        },
+      ],
+      [
+        "event",
+        event.id.toUpperCase(),
+        {
+          value: event.id,
+          available: true,
+          label: "Kajian Akbar",
+          route: `/events/${event.id}`,
+          category: { id: eventCategory.id, slug: eventCategory.slug, label: "Kajian" },
+        },
+      ],
+      [
+        "page",
+        "bantuan",
+        { value: "bantuan", available: false, label: "Bantuan", route: null, category: null },
+      ],
+      [
+        "url",
+        "https://kapdh.or.id/donasi",
+        { value: "https://kapdh.or.id/donasi", available: true, label: null, route: null, category: null },
+      ],
     ];
     for (const [type, value, expected] of cases) {
       const res = await createBanner({ target_type: type, target_value: value });
@@ -159,7 +202,10 @@ describe("AC F15-4: banner diubah/dihapus dengan If-Match", () => {
       { token: admin.token, headers: { "if-match": created.version } },
     );
     expect(stale.statusCode).toBe(409);
-    expect(stale.json()).toMatchObject({ code: "VERSION_CONFLICT", current: { title: "Banner Baru", version: "2" } });
+    expect(stale.json()).toMatchObject({
+      code: "VERSION_CONFLICT",
+      current: { title: "Banner Baru", version: "2" },
+    });
 
     const window = await api().patch(
       `/admin/content/banners/${created.id}`,
@@ -181,15 +227,19 @@ describe("AC F15-4: banner diubah/dihapus dengan If-Match", () => {
       .select({ action: auditLogs.action })
       .from(auditLogs)
       .where(and(eq(auditLogs.entityType, "banner"), eq(auditLogs.entityId, created.id)));
-    expect(audits.map((a) => a.action).sort()).toEqual(["banner.created", "banner.deleted", "banner.updated"]);
-    expect((await api().get(`/admin/content/banners/${created.id}`, { token: admin.token })).statusCode).toBe(404);
+    expect(audits.map((a) => a.action).sort()).toEqual([
+      "banner.created",
+      "banner.deleted",
+      "banner.updated",
+    ]);
+    expect((await api().get(`/admin/content/banners/${created.id}`, { token: admin.token })).statusCode).toBe(
+      404,
+    );
   });
 
   it("AC F08-2: berita tujuan dihapus/diarsipkan -> pengurus melihat available=false", async () => {
     const post = await insertPost(t);
-    const banner = (
-      await createBanner({ target_type: "post", target_value: post.id })
-    ).json() as AdminBanner;
+    const banner = (await createBanner({ target_type: "post", target_value: post.id })).json() as AdminBanner;
     expect(banner.target.available).toBe(true);
     await t.db.update(posts).set({ status: "archived" }).where(eq(posts.id, post.id));
     const archived = await api().get(`/admin/content/banners/${banner.id}`, { token: admin.token });
@@ -211,7 +261,10 @@ describe("F-15: tabel banner dengan state, pencarian, urutan dan paging server",
       ["scheduled", { starts_at: new Date(now + 3600_000).toISOString() }],
       [
         "ended",
-        { starts_at: new Date(now - 7200_000).toISOString(), ends_at: new Date(now - 3600_000).toISOString() },
+        {
+          starts_at: new Date(now - 7200_000).toISOString(),
+          ends_at: new Date(now - 3600_000).toISOString(),
+        },
       ],
       ["inactive", { active: false }],
     ];

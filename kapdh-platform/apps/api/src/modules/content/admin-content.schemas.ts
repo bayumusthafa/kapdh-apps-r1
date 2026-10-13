@@ -9,17 +9,14 @@ import { CATEGORY_SLUG_MAX, PAGE_SLUG_MAX, POST_SLUG_MAX, SLUG_PATTERN } from ".
 
 const SLUG_MESSAGE = "Slug hanya huruf kecil, angka, dan tanda hubung (contoh: kegiatan-alumni).";
 const slug = (max: number) =>
-  z.string().min(1, "Slug wajib diisi.").max(max, `Slug maksimal ${max} karakter.`).regex(SLUG_PATTERN, SLUG_MESSAGE);
-const text = (max: number, label: string) =>
   z
     .string()
-    .trim()
-    .min(1, `${label} wajib diisi.`)
-    .max(max, `${label} maksimal ${max} karakter.`);
-const html = z
-  .string()
-  .min(1, "Isi wajib diisi.")
-  .max(200_000, "Isi maksimal 200.000 karakter.");
+    .min(1, "Slug wajib diisi.")
+    .max(max, `Slug maksimal ${max} karakter.`)
+    .regex(SLUG_PATTERN, SLUG_MESSAGE);
+const text = (max: number, label: string) =>
+  z.string().trim().min(1, `${label} wajib diisi.`).max(max, `${label} maksimal ${max} karakter.`);
+const html = z.string().min(1, "Isi wajib diisi.").max(200_000, "Isi maksimal 200.000 karakter.");
 const dateTime = z.iso.datetime({ offset: true, message: "Format waktu ISO 8601 dengan zona waktu." });
 const id = z.uuid({ message: "Format id tidak valid." });
 
@@ -59,7 +56,9 @@ export const postListQuerySchema = z.object({
   q: z.string().trim().max(100, "Pencarian maksimal 100 karakter.").optional(),
   state: z.enum(["draft", "scheduled", "published", "archived"]).optional(),
   category_id: id.optional(),
-  sort: z.enum(["updated_at_desc", "published_at_desc", "created_at_desc", "title_asc"]).default("updated_at_desc"),
+  sort: z
+    .enum(["updated_at_desc", "published_at_desc", "created_at_desc", "title_asc"])
+    .default("updated_at_desc"),
 });
 
 // ------------------------------------------------------------------------------------------------- banner
@@ -95,7 +94,9 @@ export const bannerUpdateSchema = atLeastOne(
 export const bannerListQuerySchema = z.object({
   q: z.string().trim().max(100, "Pencarian maksimal 100 karakter.").optional(),
   state: z.enum(["inactive", "scheduled", "live", "ended"]).optional(),
-  sort: z.enum(["sort_order_asc", "starts_at_desc", "updated_at_desc", "title_asc"]).default("sort_order_asc"),
+  sort: z
+    .enum(["sort_order_asc", "starts_at_desc", "updated_at_desc", "title_asc"])
+    .default("sort_order_asc"),
 });
 
 // ------------------------------------------------------------------------------------------------ halaman

@@ -23,11 +23,19 @@ function multipartError(error: unknown): AppException {
       return new AppException(413, "FILE_INVALID", "Kirim satu gambar per unggahan.");
     case "FST_PARTS_LIMIT":
     case "FST_FIELDS_LIMIT":
-      return new AppException(413, "FILE_INVALID", "Isian unggahan terlalu banyak. Kirim purpose dan satu gambar.");
+      return new AppException(
+        413,
+        "FILE_INVALID",
+        "Isian unggahan terlalu banyak. Kirim purpose dan satu gambar.",
+      );
     case "FST_INVALID_MULTIPART_CONTENT_TYPE":
       return new AppException(415, "FILE_INVALID", "Kirim gambar sebagai multipart/form-data.");
     default:
-      return new AppException(400, "VALIDATION_ERROR", "Format unggahan tidak valid. Pilih gambar lalu coba lagi.");
+      return new AppException(
+        400,
+        "VALIDATION_ERROR",
+        "Format unggahan tidak valid. Pilih gambar lalu coba lagi.",
+      );
   }
 }
 

@@ -6,7 +6,11 @@ import { Idempotent } from "../../core/idempotency/idempotent.js";
 import { parsePageQuery } from "../../core/pagination/cursor.js";
 import { UuidParamOrValidationError } from "../../core/validation/uuid-param.pipe.js";
 import { validate, validateQuery } from "../../core/validation/validate.js";
-import { categoryCreateSchema, categoryListQuerySchema, categoryUpdateSchema } from "./admin-content.schemas.js";
+import {
+  categoryCreateSchema,
+  categoryListQuerySchema,
+  categoryUpdateSchema,
+} from "./admin-content.schemas.js";
 import { CategoriesService, type ContentCategoryKind } from "./categories.service.js";
 
 type AdminContentCategory = components["schemas"]["AdminContentCategory"];
