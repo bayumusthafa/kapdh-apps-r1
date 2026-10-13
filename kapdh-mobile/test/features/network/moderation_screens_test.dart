@@ -77,7 +77,9 @@ void main() {
         tester,
         '/account/blocked',
         textScale: 2,
-        routes: {'/blocks': (_) => FakeResponse.json(200, pageJson([blockedJson('user-2', 'Gamerisa Dewi Lestari')]))},
+        routes: {
+          '/blocks': (_) => FakeResponse.json(200, pageJson([blockedJson('user-2', 'Gamerisa Dewi Lestari')])),
+        },
       );
       expect(tester.takeException(), isNull);
     });
@@ -112,7 +114,15 @@ void main() {
                 status: 'resolved',
                 outcome: 'action_taken',
               ),
-              reportJson(id: 'r-3', category: 'other', targetType: 'room', targetName: null, roomName: 'Jual Beli', status: 'dismissed', outcome: 'no_action'),
+              reportJson(
+                id: 'r-3',
+                category: 'other',
+                targetType: 'room',
+                targetName: null,
+                roomName: 'Jual Beli',
+                status: 'dismissed',
+                outcome: 'no_action',
+              ),
             ]),
           ),
           '/reports/r-2': (_) => FakeResponse.json(
@@ -193,7 +203,9 @@ void main() {
         tester,
         '/account/reports',
         textScale: 2,
-        routes: {'/reports': (_) => FakeResponse.json(200, pageJson([reportJson()]))},
+        routes: {
+          '/reports': (_) => FakeResponse.json(200, pageJson([reportJson()])),
+        },
       );
       expect(tester.takeException(), isNull);
     });

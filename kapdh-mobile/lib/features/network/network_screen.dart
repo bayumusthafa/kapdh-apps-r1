@@ -105,8 +105,7 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> with SingleTicker
     final groupUnread = unreadRoomsIn(ref.watch(chatRoomListProvider(ChatRoomKind.group)));
     final pendingInvitations = ref.watch(chatBadgeCountsProvider.select((c) => c.pendingInvitations));
     final banner = AppBannerScope.of(context);
-    final queryTooShort =
-        _search.text.trim().isNotEmpty && _search.text.trim().length < directoryMinQueryLength;
+    final queryTooShort = _search.text.trim().isNotEmpty && _search.text.trim().length < directoryMinQueryLength;
 
     return Scaffold(
       backgroundColor: KapdhColors.background,

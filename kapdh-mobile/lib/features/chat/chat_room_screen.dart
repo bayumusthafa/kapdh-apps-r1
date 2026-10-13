@@ -115,15 +115,21 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
     if (!_scroll.hasClients) return;
     final position = _scroll.position;
     // Daftar terbalik: offset 0 = pesan terbaru di bawah; extentAfter kecil = mendekati awal riwayat.
-    if (position.extentAfter < 300) unawaited(_controller.loadOlder());
+    final nearTop = position.extentAfter < 300;
     final atBottom = position.pixels <= 48;
-    if (atBottom != _atBottom) {
-      setState(() {
-        _atBottom = atBottom;
-        if (atBottom) _hasNewBelow = false;
-      });
-      if (atBottom) _requestRead(force: true);
-    }
+    // Posisi gulir dapat berubah di tengah tata letak; perubahan keadaan ditunda ke microtask agar tidak membangun
+    // ulang widget saat fase layout.
+    scheduleMicrotask(() {
+      if (!mounted) return;
+      if (nearTop) unawaited(_controller.loadOlder());
+      if (atBottom != _atBottom) {
+        setState(() {
+          _atBottom = atBottom;
+          if (atBottom) _hasNewBelow = false;
+        });
+        if (atBottom) _requestRead(force: true);
+      }
+    });
   }
 
   void _requestRead({bool force = false}) {
@@ -297,7 +303,9 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
           useRootNavigator: true,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Hapus pesan?'),
-            content: const Text('Isi pesan dihapus untuk semua anggota dan diganti keterangan "Pesan ini telah dihapus".'),
+            content: const Text(
+              'Isi pesan dihapus untuk semua anggota dan diganti keterangan "Pesan ini telah dihapus".',
+            ),
             actions: [
               TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Batal')),
               TextButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: const Text('Hapus')),
@@ -434,9 +442,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
       time: time,
       semanticsLabel: label,
       senderName: senderName,
-      reply: reply == null
-          ? null
-          : ReplyQuote.fromReply(reply, localCopy: state.timeline.byId(reply.id), onDark: mine),
+      reply: reply == null ? null : ReplyQuote.fromReply(reply, localCopy: state.timeline.byId(reply.id), onDark: mine),
       image: message.image == null || deleted
           ? null
           : ChatImageView(
@@ -505,7 +511,9 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
       body: entry.body,
       status: status,
       onTap: entry.status == OutgoingStatus.sending ? null : () => _outgoingActions(entry, state.membershipLapsed),
-      onLongPress: entry.status == OutgoingStatus.sending ? null : () => _outgoingActions(entry, state.membershipLapsed),
+      onLongPress: entry.status == OutgoingStatus.sending
+          ? null
+          : () => _outgoingActions(entry, state.membershipLapsed),
       footer: failure == null && hint == null
           ? null
           : Padding(
@@ -535,10 +543,8 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                 child: InteractiveViewer(
                   child: Image.network(
                     url,
-                    errorBuilder: (_, _, _) => const Text(
-                      'Foto tidak dapat dimuat.',
-                      style: TextStyle(color: KapdhColors.onPrimary),
-                    ),
+                    errorBuilder: (_, _, _) =>
+                        const Text('Foto tidak dapat dimuat.', style: TextStyle(color: KapdhColors.onPrimary)),
                   ),
                 ),
               ),
@@ -673,7 +679,11 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                IconButton(tooltip: 'Kirim foto', icon: const Icon(Icons.add_photo_alternate_outlined), onPressed: _pickImage),
+                IconButton(
+                  tooltip: 'Kirim foto',
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  onPressed: _pickImage,
+                ),
                 Expanded(
                   child: TextField(
                     controller: _text,
@@ -917,7 +927,10 @@ class _ConnectionNotice extends StatelessWidget {
             const Icon(Icons.sync_problem, size: 18, color: KapdhColors.warning),
             const SizedBox(width: KapdhSpace.s2),
             Expanded(
-              child: Text(message, style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.warning)),
+              child: Text(
+                message,
+                style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.warning),
+              ),
             ),
             if (onRetry != null) TextButton(onPressed: onRetry, child: const Text('Coba lagi')),
           ],

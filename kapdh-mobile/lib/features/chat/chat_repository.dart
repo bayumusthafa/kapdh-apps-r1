@@ -61,11 +61,10 @@ class ChatRepository {
       _chat.updateChatRoomMember(roomId, userId, ChatMemberUpdate(role: role));
 
   /// Keluarkan anggota joined atau batalkan undangan tertunda (AC F11-4).
-  Future<void> removeMember(String roomId, String userId) => _idempotency.run(
-    'chat.member.remove.$roomId.$userId',
-    {'room_id': roomId, 'user_id': userId},
-    (key) => _chat.removeChatRoomMember(roomId, userId, idempotencyKey: key),
-  );
+  Future<void> removeMember(String roomId, String userId) => _idempotency.run('chat.member.remove.$roomId.$userId', {
+    'room_id': roomId,
+    'user_id': userId,
+  }, (key) => _chat.removeChatRoomMember(roomId, userId, idempotencyKey: key));
 
   Future<ChatInviteOutcome> invite(String roomId, List<String> userIds) {
     final request = ChatInviteRequest(userIds: userIds);
@@ -79,17 +78,13 @@ class ChatRepository {
   Future<ChatInvitationPage> listInvitations({String? cursor, int limit = chatPageSize}) =>
       _chat.listChatInvitations(cursor: cursor, limit: limit);
 
-  Future<ChatRoom> acceptInvitation(String roomId) => _idempotency.run(
-    'chat.invitation.accept.$roomId',
-    {'room_id': roomId},
-    (key) => _chat.acceptChatInvitation(roomId, idempotencyKey: key),
-  );
+  Future<ChatRoom> acceptInvitation(String roomId) => _idempotency.run('chat.invitation.accept.$roomId', {
+    'room_id': roomId,
+  }, (key) => _chat.acceptChatInvitation(roomId, idempotencyKey: key));
 
-  Future<void> declineInvitation(String roomId) => _idempotency.run(
-    'chat.invitation.decline.$roomId',
-    {'room_id': roomId},
-    (key) => _chat.declineChatInvitation(roomId, idempotencyKey: key),
-  );
+  Future<void> declineInvitation(String roomId) => _idempotency.run('chat.invitation.decline.$roomId', {
+    'room_id': roomId,
+  }, (key) => _chat.declineChatInvitation(roomId, idempotencyKey: key));
 
   /// Keluar grup; admin terakhir wajib menunjuk [successorUserId] (AC F11-5).
   Future<void> leave(String roomId, {String? successorUserId}) {

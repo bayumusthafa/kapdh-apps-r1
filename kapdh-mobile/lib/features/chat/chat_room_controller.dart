@@ -158,8 +158,9 @@ ChatRoomMember _memberWithCursor(ChatRoomMember member, String cursor) => ChatRo
 ///   yang ditampilkan dimuat ulang (AC F11-3).
 /// - Pengiriman lewat [ChatOutbox] dengan `client_message_id` tetap (AC F11-2); keanggotaan tidak aktif menahan
 ///   pengiriman dan menampilkan ajakan perpanjang (PRD 4.5).
-final chatRoomControllerProvider =
-    NotifierProvider.autoDispose.family<ChatRoomController, ChatRoomViewState, String>(ChatRoomController.new);
+final chatRoomControllerProvider = NotifierProvider.autoDispose.family<ChatRoomController, ChatRoomViewState, String>(
+  ChatRoomController.new,
+);
 
 class ChatRoomController extends Notifier<ChatRoomViewState> {
   ChatRoomController(this.roomId);
@@ -413,7 +414,10 @@ class ChatRoomController extends Notifier<ChatRoomViewState> {
       case TypingEvent(:final payload) when payload.roomId == roomId:
         if (payload.userId == _me) return;
         state = state.copyWith(
-          typing: {...state.typing, payload.userId: _deviceNow().add(Duration(seconds: payload.ttlSeconds))},
+          typing: {
+            ...state.typing,
+            payload.userId: _deviceNow().add(Duration(seconds: payload.ttlSeconds)),
+          },
         );
       case PresenceEvent(:final payload):
         final online = {...state.online};

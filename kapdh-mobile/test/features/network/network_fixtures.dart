@@ -62,12 +62,7 @@ Map<String, Object?> profileJson({
   'graduation_year': 1997,
   'city': 'Pekanbaru',
   'profession': profession ?? masterRefJson('p-1', 'Guru'),
-  'skills':
-      skills ??
-      [
-        masterRefJson('s-1', 'Mengajar'),
-        masterRefJson('s-2', 'Berhitung Cepat', active: false),
-      ],
+  'skills': skills ?? [masterRefJson('s-1', 'Mengajar'), masterRefJson('s-2', 'Berhitung Cepat', active: false)],
   'last_education_institution': 'Universitas Indonesia',
   'last_education_city': 'Jakarta',
   'bio': bio,
@@ -123,10 +118,8 @@ Map<String, Object?> reportJson({
 Map<String, FakeHandler> networkBaseRoutes() => {
   '/me': (_) => FakeResponse.json(200, meJson()),
   '/chat/rooms': (_) => FakeResponse.json(200, roomPageJson(const [])),
-  '/masters/professions': (_) => FakeResponse.json(
-    200,
-    mastersJson([masterItemJson('p-1', 'Guru'), masterItemJson('p-2', 'Senior Developer')]),
-  ),
+  '/masters/professions': (_) =>
+      FakeResponse.json(200, mastersJson([masterItemJson('p-1', 'Guru'), masterItemJson('p-2', 'Senior Developer')])),
   '/masters/skills': (_) => FakeResponse.json(
     200,
     mastersJson([masterItemJson('s-1', 'Publik Speaking'), masterItemJson('s-2', 'English Reading')]),

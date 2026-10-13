@@ -59,7 +59,9 @@ String? _previewText(String? body) {
   if (body == null) return null;
   final runes = body.trim().runes.toList();
   if (runes.isEmpty) return null;
-  return runes.length <= chatPreviewMaxChars ? String.fromCharCodes(runes) : String.fromCharCodes(runes.take(chatPreviewMaxChars));
+  return runes.length <= chatPreviewMaxChars
+      ? String.fromCharCodes(runes)
+      : String.fromCharCodes(runes.take(chatPreviewMaxChars));
 }
 
 /// Pratinjau daftar room dari pesan lengkap (event `message.created` atau ack pengiriman).
@@ -120,10 +122,8 @@ ChatRoomSummary _withMemberCount(ChatRoomSummary room, int memberCount) => ChatR
 /// terakhir dan status mute. Event realtime memperbarui pratinjau dan unread seketika (N-02); event bukan sumber
 /// kebenaran, sehingga perubahan keanggotaan/metadata dan reconnect memuat ulang daftar lewat HTTP (events/README.md
 /// "Sinkron setelah reconnect" butir 5).
-final chatRoomListProvider =
-    NotifierProvider.autoDispose.family<ChatRoomListController, PagedState<ChatRoomSummary>, ChatRoomKind>(
-      ChatRoomListController.new,
-    );
+final chatRoomListProvider = NotifierProvider.autoDispose
+    .family<ChatRoomListController, PagedState<ChatRoomSummary>, ChatRoomKind>(ChatRoomListController.new);
 
 class ChatRoomListController extends PagedController<ChatRoomSummary> {
   ChatRoomListController(this.kind);
@@ -203,10 +203,7 @@ class ChatRoomListController extends PagedController<ChatRoomSummary> {
     final counts = ref.read(chatBadgeCountsProvider);
     ref
         .read(chatBadgeCountsProvider.notifier)
-        .set(
-          pendingInvitations: counts.pendingInvitations,
-          unreadRooms: math.max(0, counts.unreadRooms + delta),
-        );
+        .set(pendingInvitations: counts.pendingInvitations, unreadRooms: math.max(0, counts.unreadRooms + delta));
   }
 
   /// Unread room menjadi 0 setelah read cursor sendiri maju (layar percakapan atau perangkat lain).

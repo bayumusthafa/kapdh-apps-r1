@@ -50,7 +50,12 @@ class _BubbleColors {
   const _BubbleColors(this.background, this.foreground, this.muted, this.border);
 
   static const mine = _BubbleColors(KapdhColors.green700, KapdhColors.onPrimary, KapdhExtraColors.mutedOnDark, null);
-  static const theirs = _BubbleColors(KapdhColors.surface, KapdhColors.text, KapdhColors.textMuted, KapdhColors.divider);
+  static const theirs = _BubbleColors(
+    KapdhColors.surface,
+    KapdhColors.text,
+    KapdhColors.textMuted,
+    KapdhColors.divider,
+  );
 
   final Color background;
   final Color foreground;
@@ -260,7 +265,10 @@ class BubbleMeta extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(time, style: TextStyle(fontSize: KapdhFontSize.overline, color: muted)),
+        Text(
+          time,
+          style: TextStyle(fontSize: KapdhFontSize.overline, color: muted),
+        ),
         if (status != null) ...[
           const SizedBox(width: KapdhSpace.s1),
           Icon(status!.icon, size: 14, color: statusColor),
@@ -336,14 +344,21 @@ class ChatBubble extends StatelessWidget {
             ),
           ),
         ?reply,
-        if (image != null) Padding(padding: const EdgeInsets.only(bottom: KapdhSpace.s1), child: image),
+        if (image != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: KapdhSpace.s1),
+            child: image,
+          ),
         if (deleted)
           Text(
             'Pesan ini telah dihapus',
             style: TextStyle(fontStyle: FontStyle.italic, color: colors.muted, fontSize: KapdhFontSize.body),
           )
         else if (body != null && body!.isNotEmpty)
-          Text(body!, style: TextStyle(color: colors.foreground, fontSize: KapdhFontSize.body, height: 1.4)),
+          Text(
+            body!,
+            style: TextStyle(color: colors.foreground, fontSize: KapdhFontSize.body, height: 1.4),
+          ),
         const SizedBox(height: 2),
         Align(
           alignment: Alignment.centerRight,
@@ -441,7 +456,10 @@ class DateSeparator extends StatelessWidget {
           const Expanded(child: Divider()),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s2),
-            child: Text(label, style: const TextStyle(fontSize: KapdhFontSize.overline, color: KapdhColors.textMuted)),
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: KapdhFontSize.overline, color: KapdhColors.textMuted),
+            ),
           ),
           const Expanded(child: Divider()),
         ],
