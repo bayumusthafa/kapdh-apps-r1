@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
-import { categories, events, posts } from "@kapdh/database";
+import { categories } from "@kapdh/database";
 import { and, asc, count, eq, ilike, or, type SQL, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../../core/adapters/clock.js";
@@ -52,11 +52,14 @@ export type CategoryUpdateInput = Partial<CategoryCreateInput>;
 const CATEGORY_IN_USE =
   "Kategori masih dipakai sehingga tidak dapat dihapus. Nonaktifkan kategori agar tidak dipilih lagi.";
 
-/** Jumlah berita (semua keadaan) atau event (semua status) yang memakai kategori (kontrak `usage_count`). */
+/**
+ * Jumlah berita (semua keadaan) atau event (semua status) yang memakai kategori (kontrak `usage_count`). Subkueri
+ * berkorelasi ditulis dengan alias eksplisit: Drizzle tidak mengkualifikasi kolom tabel utama pada kueri tanpa join,
+ * sehingga `${categories.id}` di dalam subkueri akan terbaca sebagai kolom tabel subkueri.
+ */
 function usageCount(kind: ContentCategoryKind): SQL<number> {
-  return kind === "post"
-    ? sql<number>`(select count(*) from ${posts} where ${posts.categoryId} = ${categories.id})::int`
-    : sql<number>`(select count(*) from ${events} where ${events.categoryId} = ${categories.id})::int`;
+  const table = kind === "post" ? sql.raw(`"app"."posts"`) : sql.raw(`"app"."events"`);
+  return sql<number>`(select count(*) from ${table} as "usage_ref" where "usage_ref"."category_id" = "categories"."id")::int`;
 }
 
 function sortSpec(kind: ContentCategoryKind, sort: AdminContentCategorySort): SortSpec {
