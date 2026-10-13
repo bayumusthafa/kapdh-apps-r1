@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
 import { applyMaintenance, applyStoreLinks, applySupport, mountConfigConsumers } from "./config-page";
 import { API, fakeFetch, json, networkError, PUBLIC_CONFIG as CONFIG } from "./testing";
@@ -109,5 +111,99 @@ describe("mountConfigConsumers", () => {
     );
     expect(f.calls).toHaveLength(0);
     expect($<HTMLAnchorElement>('a[data-store="android"]').href).toBe(CONFIG.store_links.android);
+  });
+});
+
+/** Markup banner maintenance (Base.astro) dan kartu WhatsApp halaman kontak (kontak.astro). */
+const KONTAK_MARKUP = `
+  <div data-maintenance hidden role="status">
+    <span data-maintenance-text></span>
+    <span>Butuh bantuan? Hubungi
+      <a data-support-email href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a><span data-support-whatsapp hidden>
+      atau WhatsApp <a></a></span>.
+      <button type="button" data-config-retry data-maintenance-retry>Periksa lagi</button>
+    </span>
+  </div>
+  <a data-support-email id="kontak-email" href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a>
+  <p data-support-pending>Memuat kontak terbaru…</p>
+  <p data-support-error hidden>Kontak terbaru belum dapat dimuat.
+    <button type="button" data-config-retry id="kontak-retry">Coba lagi</button></p>
+  <p data-support-whatsapp id="kontak-wa" hidden><a></a></p>
+`;
+
+const MAINTENANCE = {
+  ...CONFIG,
+  maintenance: { active: true, message: "Peningkatan server.", until: "2026-10-13T03:00:00Z" },
+};
+
+async function settleClicks() {
+  await new Promise((r) => setTimeout(r, 0));
+  await new Promise((r) => setTimeout(r, 0));
+}
+
+describe("PRD 4.5: keadaan gagal dan maintenance punya pesan, retry dan kanal dukungan", () => {
+  beforeEach(() => {
+    document.body.innerHTML = KONTAK_MARKUP;
+  });
+
+  it("PRD 4.5: banner maintenance memuat rentang estimasi, retry dan kanal dukungan dari konfigurasi", async () => {
+    const f = fakeFetch({ "GET /public/config": [() => json(200, MAINTENANCE), () => json(200, CONFIG)] });
+    await mountConfigConsumers(document, API, f.fetcher);
+    const banner = $("[data-maintenance]");
+    expect(banner.hidden).toBe(false);
+    expect(banner.textContent).toContain("Perkiraan selesai 13 Okt 2026, 10.00 WIB");
+    expect(banner.textContent).toContain("Coba lagi setelah pemeliharaan selesai.");
+    expect(banner.querySelector<HTMLAnchorElement>("a[data-support-email]")!.href).toBe(
+      "mailto:bantuan@kapdh.or.id",
+    );
+    const wa = banner.querySelector<HTMLElement>("[data-support-whatsapp]")!;
+    expect(wa.hidden).toBe(false);
+    expect(wa.querySelector<HTMLAnchorElement>("a")!.href).toBe("https://wa.me/6281234567890");
+    // Periksa lagi: pemeliharaan selesai -> banner hilang.
+    banner.querySelector<HTMLButtonElement>("[data-maintenance-retry]")!.click();
+    await settleClicks();
+    expect(f.callsTo("GET /public/config")).toHaveLength(2);
+    expect(banner.hidden).toBe(true);
+  });
+
+  it("PRD 4.5: memeriksa ulang yang gagal tidak menghapus banner dan kontak yang sudah tampil", async () => {
+    const f = fakeFetch({ "GET /public/config": [() => json(200, MAINTENANCE), networkError] });
+    await mountConfigConsumers(document, API, f.fetcher);
+    $<HTMLButtonElement>("[data-maintenance-retry]").click();
+    await settleClicks();
+    expect(f.callsTo("GET /public/config")).toHaveLength(2);
+    expect($("[data-maintenance]").hidden).toBe(false);
+    expect($("#kontak-wa").hidden).toBe(false);
+    expect($("[data-support-error]").hidden).toBe(true);
+  });
+
+  it("PRD 4.5/8.3: /kontak gagal memuat konfigurasi -> pesan 'Kontak terbaru belum dapat dimuat' dan coba lagi yang berhasil", async () => {
+    const f = fakeFetch({ "GET /public/config": [networkError, () => json(200, CONFIG)] });
+    await mountConfigConsumers(document, API, f.fetcher);
+    expect($("[data-support-pending]").hidden).toBe(true);
+    const error = $("[data-support-error]");
+    expect(error.hidden).toBe(false);
+    expect(error.textContent).toContain("Kontak terbaru belum dapat dimuat");
+    // Email baku tetap dapat dipakai.
+    expect($<HTMLAnchorElement>("#kontak-email").href).toBe("mailto:bantuan@kapdh.or.id");
+    expect($("#kontak-wa").hidden).toBe(true);
+    $<HTMLButtonElement>("#kontak-retry").click();
+    await settleClicks();
+    expect(error.hidden).toBe(true);
+    expect($("#kontak-wa").hidden).toBe(false);
+    expect($<HTMLAnchorElement>("#kontak-wa a").textContent).toBe("0812-3456-7890");
+  });
+
+  it("markup Base.astro dan kontak.astro memuat kait yang diisi config-page.ts", () => {
+    const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
+    const base = read("../layouts/Base.astro");
+    const banner = base.slice(base.indexOf("data-maintenance hidden"), base.indexOf("<main"));
+    for (const hook of ["data-maintenance-text", "data-support-email", "data-support-whatsapp", "data-config-retry"]) {
+      expect(banner).toContain(hook);
+    }
+    const kontak = read("../pages/kontak.astro");
+    const errorBlock = kontak.slice(kontak.indexOf("data-support-error"), kontak.indexOf("data-support-whatsapp"));
+    expect(errorBlock).toContain("Kontak terbaru belum dapat dimuat");
+    expect(errorBlock).toContain("data-config-retry");
   });
 });
