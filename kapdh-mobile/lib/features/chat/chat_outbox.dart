@@ -79,24 +79,29 @@ class ChatOutbox extends Notifier<Map<String, List<OutgoingMessage>>> {
     state = next;
   }
 
-  /// Menulis pesan teks baru (1..4000 karakter, tidak hanya spasi; D5 v3.2) lalu mengirimnya.
-  OutgoingMessage sendText(String roomId, String text, {OutgoingReply? replyTo}) {
-    final entry = OutgoingMessage(
+  /// Menulis pesan teks baru (1..4000 karakter, tidak hanya spasi; D5 v3.2) lalu mengirimnya. Dengan
+  /// [holdReason] pesan langsung ditahan tanpa dikirim (keanggotaan tidak aktif, PRD 4.5).
+  OutgoingMessage sendText(String roomId, String text, {OutgoingReply? replyTo, String? holdReason}) => _enqueue(
+    OutgoingMessage(
       clientMessageId: ref.read(clientMessageIdProvider)(),
       roomId: roomId,
       kind: ChatSendKind.text,
       createdAt: ref.read(clockProvider)().toUtc(),
       body: text,
       replyTo: replyTo,
-    );
-    _put(entry);
-    _schedule(entry);
-    return entry;
-  }
+    ),
+    holdReason,
+  );
 
   /// Menulis pesan gambar (diunggah dulu sebagai chat_image) dengan keterangan opsional.
-  OutgoingMessage sendImage(String roomId, OutgoingImage image, {String? caption, OutgoingReply? replyTo}) {
-    final entry = OutgoingMessage(
+  OutgoingMessage sendImage(
+    String roomId,
+    OutgoingImage image, {
+    String? caption,
+    OutgoingReply? replyTo,
+    String? holdReason,
+  }) => _enqueue(
+    OutgoingMessage(
       clientMessageId: ref.read(clientMessageIdProvider)(),
       roomId: roomId,
       kind: ChatSendKind.image,
@@ -104,7 +109,16 @@ class ChatOutbox extends Notifier<Map<String, List<OutgoingMessage>>> {
       body: caption == null || caption.trim().isEmpty ? null : caption,
       image: image,
       replyTo: replyTo,
-    );
+    ),
+    holdReason,
+  );
+
+  OutgoingMessage _enqueue(OutgoingMessage entry, String? holdReason) {
+    if (holdReason != null) {
+      final held = entry.heldLocally(holdReason);
+      _put(held);
+      return held;
+    }
     _put(entry);
     _schedule(entry);
     return entry;
