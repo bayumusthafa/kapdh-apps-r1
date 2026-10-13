@@ -10,12 +10,16 @@ import { AuditService } from "../../core/audit/audit.service.js";
 import { tryCtx } from "../../core/context/request-context.js";
 import { isUniqueViolation } from "../../core/db/errors.js";
 import type { Db, DbOrTx } from "../../core/db/types.js";
-import { AppException, unauthenticated } from "../../core/errors/app-exception.js";
+import { AppException, rateLimited, unauthenticated } from "../../core/errors/app-exception.js";
 import type { AuthContext, SessionAudience } from "../../core/guards/auth-context.js";
 import { ADMIN_IDLE_MS } from "../../core/guards/auth.guard.js";
 import { sha256 } from "../../core/identity/crypto.js";
 import { maskEmail, normalizeEmail } from "../../core/identity/email.js";
-import { PasswordVerifier } from "../../core/identity/password-verifier.js";
+import {
+  type LoginAttempt,
+  LOGIN_WINDOW_MS,
+  PasswordVerifier,
+} from "../../core/identity/password-verifier.js";
 import { type IssuedSession, SessionIssuer } from "../../core/identity/session-issuer.js";
 import type { AccountStatus } from "../../core/membership/effective-status.js";
 import { MembershipKernel } from "../../core/membership/membership.kernel.js";
@@ -38,6 +42,7 @@ import {
   otpExpired,
 } from "./otp-challenge.service.js";
 import { notifySecurityEvent } from "./security-notices.js";
+import { lockOwnerForRevocation, lockOwnerForRotation } from "./session-locks.js";
 
 type OtpChallenge = components["schemas"]["OtpChallenge"];
 type LoginResponse = components["schemas"]["LoginResponse"];
@@ -143,8 +148,9 @@ export class AuthService {
    * app_settings.legal SEBELUM email diperiksa, lalu sekali lagi di dalam transaksi dengan baris pengaturan dikunci
    * FOR SHARE; berbeda atau dokumen belum terbit → 409 VERSION_CONFLICT dengan `current` LegalConsentVersions.
    * Sebelum bcrypt pertama, satu jatah anggaran registrasi per IP dicadangkan atomik (429 bila habis), sehingga
-   * permintaan anonim tidak dapat menghabiskan CPU tanpa batas (PRD 2.5, 5.1). Idempotency-Key ditangani
-   * interceptor @Idempotent (PRD 4.3).
+   * permintaan anonim tidak dapat menghabiskan CPU tanpa batas (PRD 2.5, 5.1); untuk akun pending_otp yang sudah ada,
+   * perbandingan sandi juga memakai jatah batas kegagalan login (lihat {@link beginReRegisterAttempt}). Idempotency-Key
+   * ditangani interceptor @Idempotent (PRD 4.3).
    */
   async register(input: RegisterInput, attempt = 0): Promise<OtpChallenge> {
     await this.assertConsent(this.db, input.accept_policy_version, false);
@@ -152,9 +158,21 @@ export class AuthService {
     const existing = await this.passwords.findAccount(this.db, email, "alumni");
     if (existing && existing.status !== "pending_otp") throw emailTaken();
     if (attempt === 0) await this.consumeRegisterBudget();
+    // Registrasi ulang akun pending_otp MENILAI sandi tersimpan (challenge dipakai ulang hanya bila sandi sama), jadi
+    // respons membedakan sandi benar dan salah. Agar tidak menjadi oracle sandi di luar batas PRD 2.5, satu jatah
+    // kegagalan login `login:<email>` (+ IP) dicadangkan atomik SEBELUM bcrypt: sandi sama → penghitung direset;
+    // sandi berbeda (data baru yang sah maupun tebakan) → jatah tetap tercatat; habis → 429 tanpa penulisan.
+    const guess = existing ? await this.beginReRegisterAttempt(email) : null;
     // Selalu satu bcrypt.compare (hash tiruan bila akun belum ada) dan satu bcrypt.hash dengan BCRYPT_COST, sehingga
     // waktu respons 201 tidak membedakan email baru dari akun pending_otp yang sudah ada (PRD 2.5).
-    const samePassword = await this.passwords.comparePassword(input.password, existing?.passwordHash ?? null);
+    let samePassword: boolean;
+    try {
+      samePassword = await this.passwords.comparePassword(input.password, existing?.passwordHash ?? null);
+    } catch (error) {
+      await guess?.cancel().catch(() => undefined);
+      throw error;
+    }
+    if (samePassword) await guess?.succeeded();
     const newHash = await bcrypt.hash(input.password, this.env.BCRYPT_COST);
     const now = this.now();
     const policy = { policyVersion: input.accept_policy_version, policyAcceptedAt: now, updatedAt: now };
@@ -221,6 +239,23 @@ export class AuthService {
       if (!existing && attempt === 0 && isUniqueViolation(e, "users_kind_email_key"))
         return this.register(input, 1);
       throw e;
+    }
+  }
+
+  /**
+   * Jatah kegagalan sandi untuk registrasi ulang akun pending_otp (PRD 2.5: 10 kegagalan per email dalam 15 menit,
+   * dibagi dengan login, koreksi email dan ganti sandi). Pesan 429 khusus pendaftaran ulang.
+   */
+  private async beginReRegisterAttempt(email: string): Promise<LoginAttempt> {
+    try {
+      return await this.passwords.beginAttempt(email);
+    } catch (error) {
+      if (error instanceof AppException && error.code === "RATE_LIMITED")
+        throw rateLimited(
+          error.extra.retryAfterSeconds ?? LOGIN_WINDOW_MS / 1000,
+          "Terlalu banyak percobaan pendaftaran ulang untuk email ini. Coba lagi nanti.",
+        );
+      throw error;
     }
   }
 
@@ -424,6 +459,12 @@ export class AuthService {
    *   selain itu satu challenge baru bertujuan sama dengan challenge aktivasi terakhir, slot signup/email_change);
    * - deletion_pending → `deletion_pending` + status permintaan penghapusan, tanpa sesi (F-14);
    * - disabled → `account_disabled` tanpa sesi (pemulihan hanya lewat pengurus).
+   *
+   * Penerbitan sesi menilai ulang kredensial DI BAWAH KUNCI baris users (AC F02-4, N-08): bcrypt berjalan di luar
+   * transaksi, jadi reset/ganti sandi dapat commit di antaranya. UPDATE bersyarat `WHERE password_hash = <hash yang
+   * dinilai> AND status = 'active'` menunggu kunci FOR UPDATE reset/ganti sandi lalu menilai ulang baris terbaru: sandi
+   * sudah diganti → nol baris → 401 generik yang sama, tanpa sesi. Sebaliknya bila login commit lebih dulu, reset/ganti
+   * sandi (yang mengunci users lebih dulu) melihat sesi baru itu dan ikut mencabutnya.
    */
   async login(emailRaw: string, password: string, deviceName: string | undefined): Promise<LoginResponse> {
     const user = await this.passwords.verify(emailRaw, password, "alumni", (account) =>
@@ -446,7 +487,20 @@ export class AuthService {
         throw unauthenticated("Email atau password salah.");
     }
     const issued = await this.db.transaction(async (tx) => {
-      await tx.update(users).set({ lastLoginAt: now }).where(eq(users.id, user.id));
+      const current = await tx
+        .update(users)
+        .set({ lastLoginAt: now })
+        .where(
+          and(
+            eq(users.id, user.id),
+            eq(users.kind, "alumni"),
+            eq(users.passwordHash, user.passwordHash),
+            eq(users.status, "active"),
+          ),
+        )
+        .returning({ id: users.id });
+      // Sandi atau status berubah sejak bcrypt (reset/ganti sandi/penonaktifan bersamaan): kredensial tidak berlaku.
+      if (current.length === 0) throw unauthenticated("Email atau password salah.");
       return this.sessionIssuer.issue(tx, { userId: user.id, audience: "mobile", mfaLevel: 1, deviceName });
     });
     return { next: "home", session: issued.pair };
@@ -503,6 +557,10 @@ export class AuthService {
    *   401 tanpa kejadian keamanan, sehingga tab admin kedua atau pengulangan klien setelah idle tidak mencemari audit.
    * Refresh admin tidak memperpanjang aktivitas; sesi admin idle 30 menit tidak bisa diperbarui dan seluruh keluarganya
    * dicabut (AC F02-5). Akun selain `active` (disabled, deletion_pending, deleted) dan admin nonaktif ditolak 401.
+   *
+   * Pencabutan yang berlomba dengan rotasi yang sedang berjalan (logout, logout semua, pencabutan sesi, deteksi
+   * pemakaian ulang, reset/ganti sandi) diserialkan lewat kunci baris users (session-locks.ts): pencabutan selalu ikut
+   * mencabut baris hasil rotasi, atau rotasi kalah dan menjawab 401.
    */
   async refresh(refreshToken: string, expectedAudience: SessionAudience): Promise<IssuedSession> {
     const now = this.now();
@@ -522,20 +580,22 @@ export class AuthService {
         .where(and(eq(sessions.familyId, current.familyId), isNull(sessions.revokedAt)));
       throw unauth;
     }
-    const user = await this.db.query.users.findFirst({ where: eq(users.id, current.userId) });
-    if (
-      !user ||
-      user.status !== "active" ||
-      user.kind !== (expectedAudience === "admin" ? "admin" : "alumni")
-    )
-      throw unauth;
-    if (expectedAudience === "admin") {
-      const admin = await this.db.query.admins.findFirst({ where: eq(admins.userId, user.id) });
-      if (admin?.status !== "active") throw unauth;
-    }
-
     try {
       return await this.db.transaction(async (tx) => {
+        // Pernyataan PERTAMA: baris users pemilik FOR SHARE (session-locks.ts). Pencabutan sesi dan perubahan akun
+        // bersamaan menunggu rotasi ini atau membuatnya gagal, sehingga baris hasil rotasi tidak pernah lolos dari
+        // logout semua/pencabutan sesi/deteksi pemakaian ulang (AC F02-3, F02-6). Status dinilai di bawah kunci itu.
+        const owner = await lockOwnerForRotation(tx, current.userId);
+        if (
+          !owner ||
+          owner.status !== "active" ||
+          owner.kind !== (expectedAudience === "admin" ? "admin" : "alumni")
+        )
+          throw unauth;
+        if (expectedAudience === "admin") {
+          const admin = await tx.query.admins.findFirst({ where: eq(admins.userId, current.userId) });
+          if (admin?.status !== "active") throw unauth;
+        }
         const issued = await this.sessionIssuer.issue(tx, {
           userId: current.userId,
           audience: current.audience as SessionAudience,
@@ -594,6 +654,9 @@ export class AuthService {
   ) {
     const now = this.now();
     await this.db.transaction(async (tx) => {
+      // Pernyataan pertama: kunci pemilik (session-locks.ts) — rotasi pencuri yang sedang berjalan di keluarga ini
+      // selesai dulu, lalu baris hasil rotasinya ikut dicabut dan terhitung di audit.
+      await lockOwnerForRevocation(tx, session.userId);
       const revoked = await tx
         .update(sessions)
         .set({ revokedAt: now })
@@ -614,11 +677,13 @@ export class AuthService {
 
   /**
    * Logout (F-02, AC F13-5): keluarga sesi pemanggil dicabut dan token push perangkat sesi itu dinonaktifkan dalam satu
-   * transaksi (pengiriman push yang belum terkirim dibatalkan), lalu socket keluarga itu diputus setelah commit.
+   * transaksi (pengiriman push yang belum terkirim dibatalkan), lalu socket keluarga itu diputus setelah commit. Baris
+   * users dikunci lebih dulu (session-locks.ts) agar rotasi refresh keluarga ini yang sedang berjalan ikut dicabut.
    */
   async logout(auth: Pick<AuthContext, "userId" | "familyId">) {
     const now = this.now();
     await this.db.transaction(async (tx) => {
+      await lockOwnerForRevocation(tx, auth.userId);
       await tx
         .update(sessions)
         .set({ revokedAt: now })
@@ -638,11 +703,14 @@ export class AuthService {
   /**
    * Keluar semua perangkat (AC F02-6): dalam satu transaksi semua sesi dicabut dan session_version naik sehingga
    * access token lama ditolak, token push semua perangkat berhenti menerima notifikasi akun ini (AC F13-5), kejadian
-   * diaudit, dan alumni menerima notifikasi keamanan; setelah commit semua socket pengguna diputus.
+   * diaudit, dan alumni menerima notifikasi keamanan; setelah commit semua socket pengguna diputus. Pernyataan pertama
+   * mengunci baris users FOR UPDATE (session-locks.ts): rotasi refresh atau login yang sedang berjalan di perangkat
+   * lain selesai dulu dan sesinya ikut dicabut, atau menunggu lalu gagal; tidak ada perangkat yang tertinggal masuk.
    */
   async logoutAll(auth: Pick<AuthContext, "userId" | "audience">) {
     const now = this.now();
     await this.db.transaction(async (tx) => {
+      await lockOwnerForRevocation(tx, auth.userId);
       const revoked = await tx
         .update(sessions)
         .set({ revokedAt: now })
