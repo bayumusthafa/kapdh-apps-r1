@@ -1,54 +1,43 @@
 ---
 import Base from "../../layouts/Base.astro";
-const apiBase = import.meta.env.PUBLIC_API_URL ?? "https://api.kapdh.or.id/api/v1";
+// Shell /kta/{nomor}#t=<token> (F-06): nginx melayani file ini untuk setiap /kta/<nomor> (infra/nginx-web.conf).
 ---
-<Base title="Verifikasi KTA" noindex>
-  <section class="mx-auto flex max-w-lg flex-col gap-5">
-    <h1 class="font-heading text-h1 font-semibold">Verifikasi KTA</h1>
-    <div id="kta-result" role="status" aria-live="polite" data-api={apiBase} class="rounded-lg border border-divider bg-surface p-5">
-      <p class="text-sm">Memeriksa status keanggotaan...</p>
+
+<Base title="Verifikasi KTA" description="Verifikasi status kartu tanda anggota KAPDH dari QR." noindex>
+  <section class="bg-surface-dark text-text-on-dark">
+    <div class="mx-auto flex max-w-xl flex-col gap-2 px-4 py-8 sm:px-6">
+      <p class="text-sm font-semibold tracking-wide text-accent uppercase">Pemeriksa KTA</p>
+      <h1 class="font-heading text-3xl font-bold">Verifikasi KTA</h1>
+      <p class="text-sm text-green-100">Status dibaca langsung dari server KAPDH saat QR dipindai.</p>
     </div>
-    <button id="kta-retry" type="button" hidden class="h-12 self-start rounded-md border border-primary px-5 text-sm font-semibold text-primary">Coba lagi</button>
-    <p class="text-xs text-text-muted">Status diambil langsung dari server KAPDH saat pemindaian. Halaman ini tidak menampilkan kontak atau data pribadi anggota.</p>
   </section>
-  <script>
-    import { parseKtaLocation, toViewState, verify } from "../../scripts/kta-verify";
-
-    const box = document.getElementById("kta-result")!;
-    const retry = document.getElementById("kta-retry") as HTMLButtonElement;
-    const STYLE: Record<string, string> = {
-      active: "bg-success-bg text-success",
-      expired: "bg-warning-bg text-warning",
-      inactive: "bg-neutral-bg text-neutral",
-      not_found: "bg-neutral-bg text-neutral",
-      invalid: "bg-danger-bg text-danger",
-      unreachable: "bg-info-bg text-info",
-    };
-
-    function render(kind: string, title: string, detail: string) {
-      box.replaceChildren();
-      const badge = document.createElement("p");
-      badge.className = `inline-block rounded-pill px-3 py-1 text-sm font-semibold ${STYLE[kind] ?? ""}`;
-      badge.textContent = title;
-      const text = document.createElement("p");
-      text.className = "mt-3 text-sm";
-      text.textContent = detail;
-      box.append(badge, text);
-      retry.hidden = kind !== "unreachable";
-    }
-
-    async function run() {
-      const { memberNumber, token } = parseKtaLocation(location.pathname, location.hash);
-      if (!memberNumber || !token) {
-        render("invalid", "QR tidak valid atau perlu diperbarui", "Tautan tidak lengkap. Pindai ulang QR dari aplikasi KAPDH.");
-        return;
-      }
-      render("unreachable", "Memeriksa...", "Menghubungi server KAPDH.");
-      const state = toViewState(await verify(box.dataset.api!, memberNumber, token));
-      render(state.kind, state.title, state.detail);
-    }
-
-    retry.addEventListener("click", () => void run());
-    void run();
-  </script>
+  <div class="mx-auto flex max-w-xl flex-col gap-5 px-4 py-8 sm:px-6">
+    <div id="kta-result" role="status" aria-live="polite" aria-busy="true" class="card min-h-36 p-5">
+      <noscript>
+        <p class="text-sm">Aktifkan JavaScript untuk memverifikasi KTA.</p>
+      </noscript>
+    </div>
+    <button id="kta-retry" type="button" hidden disabled class="btn-outline self-start">Coba lagi</button>
+    <div class="info-box flex flex-col gap-1 text-xs text-neutral-700">
+      <p>
+        Hasil ini hanya berlaku saat diperiksa. Kartu offline di aplikasi bukan bukti status terkini; pemeriksaan selalu
+        memakai status server.
+      </p>
+      <p>Halaman ini tidak menampilkan kontak, alamat, atau data pribadi lain anggota.</p>
+    </div>
+  </div>
 </Base>
+
+<script>
+  import { readApiBase } from "../../scripts/api";
+  import { byId } from "../../scripts/dom";
+  import { mountKtaPage } from "../../scripts/kta-page";
+
+  void mountKtaPage({
+    doc: document,
+    root: byId(document, "kta-result"),
+    retryButton: byId<HTMLButtonElement>(document, "kta-retry"),
+    apiBase: readApiBase(),
+    getLocation: () => ({ pathname: location.pathname, hash: location.hash }),
+  }).run();
+</script>
