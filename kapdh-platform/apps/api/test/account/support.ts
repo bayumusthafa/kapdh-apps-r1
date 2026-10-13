@@ -350,7 +350,9 @@ export interface RichMember {
  * Anggota verified dengan data di semua tabel yang disentuh F-14, ditautkan ke identitas Super Admin, beserta pihak
  * lain (rekan aktif, rekan expired, calon anggota grup) yang datanya TIDAK boleh ikut terhapus (AC F14-2).
  */
-export async function createRichMember(t: TestApp): Promise<RichMember> {
+export async function createRichMember(
+  t: Pick<TestApp, "app" | "db" | "clock" | "storage">,
+): Promise<RichMember> {
   const now = t.clock.now();
   const member = await createAlumni(t, { status: "verified", fullName: "Budi Penghapus" });
   const expiredPeer = await createAlumni(t, { status: "expired", fullName: "Citra Kedaluwarsa" });
@@ -367,7 +369,16 @@ export async function createRichMember(t: TestApp): Promise<RichMember> {
   // Profil lengkap (kontak, sosial, profesi) dan avatar.
   const avatar = await storeFile(t, member.userId, "avatar");
   const peerAvatar = await storeFile(t, peer.userId, "avatar");
-  const [profession] = await t.db.select({ id: masterProfessions.id }).from(masterProfessions).limit(1);
+  // Master profesi dari seed referensi (PGlite); database jalur PG tanpa seed mendapat satu master uji.
+  let [profession] = await t.db.select({ id: masterProfessions.id }).from(masterProfessions).limit(1);
+  if (!profession) {
+    profession = { id: uuidv7() };
+    await t.db
+      .insert(masterProfessions)
+      .values({ id: profession.id, label: "Profesi Uji", createdAt: now, updatedAt: now })
+      .onConflictDoNothing();
+    [profession] = await t.db.select({ id: masterProfessions.id }).from(masterProfessions).limit(1);
+  }
   await t.db
     .update(alumni)
     .set({

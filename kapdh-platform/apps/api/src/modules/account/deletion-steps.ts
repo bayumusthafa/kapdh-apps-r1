@@ -686,9 +686,14 @@ export class DeletionSteps {
         createdAt: sql`greatest(clock_timestamp(), (select ${rooms.lastMessageAt} from ${rooms} where ${rooms.id} = ${roomId}) + interval '1 microsecond')`,
       })
       .returning({ id: messages.id, createdAt: messages.createdAt });
-    await tx.execute(
-      sql`update ${rooms} set last_message_at = (select ${messages.createdAt} from ${messages} where ${messages.id} = ${id}), updated_at = ${this.now()} where ${rooms.id} = ${roomId}`,
-    );
+    // last_message_at disalin di SQL (presisi mikrodetik), bukan dari Date JS yang hanya milidetik.
+    await tx
+      .update(rooms)
+      .set({
+        lastMessageAt: sql`(select ${messages.createdAt} from ${messages} where ${messages.id} = ${id})`,
+        updatedAt: this.now(),
+      })
+      .where(eq(rooms.id, roomId));
     return row!;
   }
 
