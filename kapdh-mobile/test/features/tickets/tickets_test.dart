@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/design/design.dart';
@@ -276,6 +278,30 @@ void main() {
       );
       expect(find.textContaining('Daftar ulang bila kuota masih tersedia'), findsOneWidget);
       expect(find.byKey(const ValueKey('ticket-cancel')), findsNothing);
+    });
+
+    testWidgets('N-03 memuat: kerangka daftar dan detail tiket selagi request berjalan', (tester) async {
+      final list = Completer<FakeResponse>();
+      final detail = Completer<FakeResponse>();
+      await pumpMemberApp(
+        tester,
+        settled: false,
+        location: '/tickets',
+        routes: {
+          '/me/tickets': (options) =>
+              options.queryParameters['view'] == 'history' ? FakeResponse.json(200, ticketPageJson([])) : list.future,
+          '/me/tickets/ticket-1': (_) => detail.future,
+        },
+      );
+      expect(find.bySemanticsLabel('Memuat tiket'), findsWidgets);
+      list.complete(FakeResponse.json(200, ticketPageJson([ticketSummaryJson()])));
+      await settle(tester);
+      await tester.tap(find.text('Camping Alumni KAPDH'));
+      await pumpFrames(tester, count: 10);
+      expect(find.bySemanticsLabel('Memuat tiket'), findsOneWidget);
+      detail.complete(FakeResponse.json(200, ticketDetailJson()));
+      await settle(tester);
+      expect(find.byKey(const ValueKey('ticket-qr')), findsOneWidget);
     });
 
     testWidgets('tiket tidak ditemukan atau milik akun lain (404)', (tester) async {

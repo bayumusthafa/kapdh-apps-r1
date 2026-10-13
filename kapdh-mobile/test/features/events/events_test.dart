@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/design/design.dart';
@@ -165,6 +167,34 @@ void main() {
         expect(app.location, '/network/members/user-2');
       },
     );
+
+    testWidgets('N-03 memuat: kerangka daftar dan detail event selagi request berjalan', (tester) async {
+      final list = Completer<FakeResponse>();
+      final detail = Completer<FakeResponse>();
+      await pumpMemberApp(
+        tester,
+        settled: false,
+        location: '/events',
+        push: false,
+        routes: {
+          '/event-categories': (_) => FakeResponse.json(200, _categories()),
+          '/events': (_) => list.future,
+          '/events/event-1': (_) => detail.future,
+          '/events/event-1/participants': _participants,
+        },
+      );
+      expect(find.bySemanticsLabel('Memuat event'), findsOneWidget);
+      list.complete(FakeResponse.json(200, eventPageJson([eventSummaryJson()])));
+      await settle(tester);
+      await tester.tap(find.text('Camping Alumni KAPDH'));
+      await pumpFrames(tester, count: 10);
+      expect(find.bySemanticsLabel('Memuat event'), findsOneWidget);
+      // Tombol daftar baru muncul setelah server menentukan `can_reserve`.
+      expect(find.byKey(const ValueKey('event-reserve')), findsNothing);
+      detail.complete(FakeResponse.json(200, eventDetailJson()));
+      await settle(tester);
+      expect(find.byKey(const ValueKey('event-reserve')), findsOneWidget);
+    });
 
     testWidgets('PRD 3.8 tautan peta lokasi ditandai tautan luar dan dikonfirmasi', (tester) async {
       final app = await pumpMemberApp(tester, location: '/events/event-1', routes: _detailRoutes(eventDetailJson()));
