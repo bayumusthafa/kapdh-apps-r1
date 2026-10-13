@@ -7,6 +7,7 @@ import {
   SetMetadata,
   UseInterceptors,
 } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
 import type { FastifyReply } from "fastify";
 import { catchError, from, mergeMap, type Observable, of, throwError } from "rxjs";
 import { isSensitiveAuditKey } from "../audit/sanitize.js";
@@ -16,15 +17,47 @@ import { isUuid } from "../validation/validate.js";
 import { IdempotencyService } from "./idempotency.service.js";
 
 export const IDEMPOTENT_KEY = "kapdh:idempotent";
+export const IDEMPOTENT_OPTIONS_KEY = "kapdh:idempotent-options";
 const HEADER = "idempotency-key";
 
-/** true bila body respons memuat kunci rahasia (token, secret, kode) di kedalaman mana pun. */
-export function containsSecretKeys(value: unknown, depth = 0): boolean {
+/**
+ * Opsi `@Idempotent(options)` (tambahan aditif; tanpa opsi perilakunya sama seperti sebelumnya).
+ */
+export interface IdempotentOptions {
+  /**
+   * Path kunci respons yang diketahui BUKAN rahasia walaupun namanya cocok daftar kunci sensitif audit, mis.
+   * `method.account_number` = rekening ORGANISASI tujuan transfer yang memang ditampilkan ke semua anggota (D13).
+   * Path bertitik dari akar body; segmen `*` mewakili indeks array apa pun (`items.*.method.account_number`).
+   * Kunci sensitif di bawah path ini tetap diperiksa.
+   */
+  publicResponsePaths?: readonly string[];
+  /**
+   * Bentuk body yang DISIMPAN untuk diputar ulang. Dipakai bila respons boleh memuat data yang tidak boleh disalin ke
+   * idempotency_keys (mis. rekening tujuan refund, D2 dan ARCHITECTURE §2.3): replay mengembalikan versi tersaring.
+   */
+  storedBody?: (body: unknown) => unknown;
+}
+
+/**
+ * true bila body respons memuat kunci rahasia (token, secret, kode, rekening refund) bernilai di kedalaman mana pun.
+ * Kunci rahasia bernilai null/undefined tidak memuat data sehingga tidak dihitung. `publicPaths` dikecualikan
+ * (lihat {@link IdempotentOptions.publicResponsePaths}).
+ */
+export function containsSecretKeys(
+  value: unknown,
+  depth = 0,
+  publicPaths: readonly string[] = [],
+  path: readonly string[] = [],
+): boolean {
   if (depth > 8 || value === null || typeof value !== "object") return false;
-  if (Array.isArray(value)) return value.some((item) => containsSecretKeys(item, depth + 1));
-  return Object.entries(value as Record<string, unknown>).some(
-    ([key, inner]) => isSensitiveAuditKey(key) || containsSecretKeys(inner, depth + 1),
-  );
+  if (Array.isArray(value))
+    return value.some((item) => containsSecretKeys(item, depth + 1, publicPaths, [...path, "*"]));
+  return Object.entries(value as Record<string, unknown>).some(([key, inner]) => {
+    if (inner === null || inner === undefined) return false;
+    const childPath = [...path, key];
+    if (isSensitiveAuditKey(key) && !publicPaths.includes(childPath.join("."))) return true;
+    return containsSecretKeys(inner, depth + 1, publicPaths, childPath);
+  });
 }
 
 /**
@@ -33,11 +66,15 @@ export function containsSecretKeys(value: unknown, depth = 0): boolean {
  * Hanya untuk endpoint yang seluruh hasilnya ada di body JSON (header seperti Set-Cookie tidak diputar ulang).
  *
  * Respons yang memuat rahasia (access/refresh token, secret, kode) TIDAK PERNAH disimpan di idempotency_keys
- * (ARCHITECTURE §2.3): kunci dilepas dan galat konfigurasi dicatat. Jangan pasang @Idempotent pada endpoint seperti itu.
+ * (ARCHITECTURE §2.3): kunci dilepas dan galat konfigurasi dicatat. Jangan pasang @Idempotent pada endpoint seperti itu,
+ * kecuali rahasia itu disaring lewat `storedBody` atau kuncinya bukan rahasia (`publicResponsePaths`).
  */
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
-  constructor(private readonly idempotency: IdempotencyService) {}
+  constructor(
+    private readonly idempotency: IdempotencyService,
+    private readonly reflector: Reflector,
+  ) {}
 
   async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
     const request = context.switchToHttp().getRequest<AuthedRequest>();
@@ -48,6 +85,8 @@ export class IdempotencyInterceptor implements NestInterceptor {
       throw new AppException(400, "VALIDATION_ERROR", "Periksa kembali isian yang ditandai.", {
         fieldErrors: { "Idempotency-Key": ["Idempotency-Key harus berupa UUID"] },
       });
+    const options =
+      this.reflector.get<IdempotentOptions | undefined>(IDEMPOTENT_OPTIONS_KEY, context.getHandler()) ?? {};
 
     const endpoint = `${request.method} ${request.routeOptions?.url ?? request.url.split("?")[0]}`;
     const begin = await this.idempotency.begin({
@@ -64,10 +103,11 @@ export class IdempotencyInterceptor implements NestInterceptor {
     const recordId = begin.recordId;
     return next.handle().pipe(
       mergeMap(async (body: unknown) => {
-        // Disimpan sebagai JSON persis seperti yang dikirim ke klien.
-        const stored = body === undefined ? null : (JSON.parse(JSON.stringify(body)) as unknown);
+        // Disimpan sebagai JSON persis seperti yang dikirim ke klien (atau versi tersaring `storedBody`).
+        const toStore = body !== undefined && options.storedBody ? options.storedBody(body) : body;
+        const stored = toStore === undefined ? null : (JSON.parse(JSON.stringify(toStore)) as unknown);
         const success = reply.statusCode >= 200 && reply.statusCode < 300;
-        if (success && containsSecretKeys(stored)) {
+        if (success && containsSecretKeys(stored, 0, options.publicResponsePaths ?? [])) {
           request.log.error({ endpoint }, "endpoint @Idempotent mengembalikan rahasia; hasil tidak disimpan");
           await this.idempotency.abandon(recordId);
         } else if (success) await this.idempotency.complete(recordId, reply.statusCode, stored);
@@ -81,6 +121,10 @@ export class IdempotencyInterceptor implements NestInterceptor {
   }
 }
 
-/** Menghormati header Idempotency-Key pada handler ini (ARCHITECTURE §4.3). */
-export const Idempotent = () =>
-  applyDecorators(SetMetadata(IDEMPOTENT_KEY, true), UseInterceptors(IdempotencyInterceptor));
+/** Menghormati header Idempotency-Key pada handler ini (ARCHITECTURE §4.3). Opsi: {@link IdempotentOptions}. */
+export const Idempotent = (options: IdempotentOptions = {}) =>
+  applyDecorators(
+    SetMetadata(IDEMPOTENT_KEY, true),
+    SetMetadata(IDEMPOTENT_OPTIONS_KEY, options),
+    UseInterceptors(IdempotencyInterceptor),
+  );
