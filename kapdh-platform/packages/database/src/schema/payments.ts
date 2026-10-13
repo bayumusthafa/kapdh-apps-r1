@@ -190,6 +190,12 @@ export const paymentAdjustments = app.table(
     dueAt: tstz("due_at"),
     completedAt: tstz("completed_at"),
     cancelledAt: tstz("cancelled_at"),
+    /**
+     * Alasan pembatalan, wajib dan tidak hanya spasi saat status cancelled (migrasi 0006). Kontrak C3
+     * (AdminPaymentAdjustment.cancel_reason/cancelled_by) membaca kolom ini, tidak pernah dari audit_logs.
+     */
+    cancelReason: text("cancel_reason"),
+    cancelledByAdminId: uuid("cancelled_by_admin_id").references(() => admins.id, { onDelete: "set null" }),
     version: version(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -206,6 +212,9 @@ export const paymentAdjustments = app.table(
     index("payment_adjustments_completed_by_admin_id_idx")
       .on(t.completedByAdminId)
       .where(sql`${t.completedByAdminId} is not null`),
+    index("payment_adjustments_cancelled_by_admin_id_idx")
+      .on(t.cancelledByAdminId)
+      .where(sql`${t.cancelledByAdminId} is not null`),
     check("payment_adjustments_amount_chk", sql`${t.amount} >= 0`),
     check("payment_adjustments_reason_chk", sql`btrim(${t.reason}) <> ''`),
     check(
@@ -216,9 +225,10 @@ export const paymentAdjustments = app.table(
       "payment_adjustments_completed_chk",
       sql`${t.status} <> 'completed' or ${t.completedAt} is not null`,
     ),
+    // cancelled_by_admin_id sengaja tidak diwajibkan karena ON DELETE SET NULL (pola reports_resolution_note_chk).
     check(
       "payment_adjustments_cancelled_chk",
-      sql`${t.status} <> 'cancelled' or ${t.cancelledAt} is not null`,
+      sql`${t.status} <> 'cancelled' or (${t.cancelledAt} is not null and ${t.cancelReason} is not null and btrim(${t.cancelReason}) <> '')`,
     ),
   ],
 );

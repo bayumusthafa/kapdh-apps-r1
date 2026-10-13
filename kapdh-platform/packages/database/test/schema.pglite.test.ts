@@ -6,7 +6,8 @@
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { readFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -23,6 +24,21 @@ let db: Database;
 const journal = JSON.parse(readFileSync(join(MIGRATIONS_FOLDER, "meta", "_journal.json"), "utf8")) as {
   entries: { tag: string; when: number }[];
 };
+
+/**
+ * Salinan folder migrasi yang journal-nya berhenti di `lastTag`: mensimulasikan database lingkungan yang sudah
+ * dimigrasi sebelum migrasi aditif berikutnya dirilis. Pemanggil menghapus folder setelah dipakai.
+ */
+function migrationsUpTo(lastTag: string): string {
+  const cut = journal.entries.findIndex((e) => e.tag === lastTag);
+  if (cut < 0) throw new Error(`Tag migrasi tidak ada di journal: ${lastTag}`);
+  const entries = journal.entries.slice(0, cut + 1);
+  const dir = mkdtempSync(join(tmpdir(), "kapdh-migrations-"));
+  mkdirSync(join(dir, "meta"));
+  for (const e of entries) copyFileSync(join(MIGRATIONS_FOLDER, `${e.tag}.sql`), join(dir, `${e.tag}.sql`));
+  writeFileSync(join(dir, "meta", "_journal.json"), JSON.stringify({ ...journal, entries }));
+  return dir;
+}
 
 beforeAll(async () => {
   pg = new PGlite();
@@ -132,6 +148,44 @@ describe("migrasi journal pada PGlite", () => {
         const body = chunk.replace(/\$\$[\s\S]*?\$\$/g, "$$$$").replace(/--[^\n]*/g, "");
         expect(body.split(";").filter((s) => s.trim()).length).toBeLessThanOrEqual(1);
       }
+    }
+  });
+
+  it("0006 sebagai migrasi aditif pada database yang sudah sampai 0005: enum appeal, kolom, dan CHECK baru", async () => {
+    const dir = migrationsUpTo("0005_post_like_count");
+    const existing = new PGlite();
+    try {
+      // Lingkungan lama: 0000-0005 sudah di-commit, sehingga ADD VALUE berjalan pada tipe enum yang sudah ada dan
+      // migrator berikutnya hanya menerapkan 0006 dalam transaksinya sendiri (seperti job migrasi production).
+      await migrate(drizzle(existing), { migrationsFolder: dir });
+      await migrate(drizzle(existing), { migrationsFolder: MIGRATIONS_FOLDER });
+      const recorded = await existing.query<{ n: number }>(
+        "select count(*)::int as n from drizzle.__drizzle_migrations",
+      );
+      expect(recorded.rows[0]!.n).toBe(journal.entries.length);
+      const labels = await existing.query<{ label: string }>(
+        `select e.enumlabel as label from pg_enum e join pg_type t on t.oid = e.enumtypid
+         join pg_namespace n on n.oid = t.typnamespace
+         where n.nspname = 'app' and t.typname = 'report_category' order by e.enumsortorder`,
+      );
+      expect(labels.rows.map((r) => r.label).at(-1)).toBe("appeal");
+      const userId = uuidv7();
+      await existing.query(
+        "insert into app.users (id, email, password_hash, kind) values ($1, $2, 'hash', 'alumni')",
+        [userId, `banding-${userId}@contoh.test`],
+      );
+      await existing.query(
+        `insert into app.reports (id, reporter_id, target_type, target_user_id, category, due_at)
+         values ($1, $2, 'user', $2, 'appeal', now() + interval '2 days')`,
+        [uuidv7(), userId],
+      );
+      const notNull = await existing.query<{ attnotnull: boolean }>(
+        `select attnotnull from pg_attribute where attrelid = 'app.reports'::regclass and attname = 'due_at'`,
+      );
+      expect(notNull.rows[0]!.attnotnull).toBe(true);
+    } finally {
+      await existing.close();
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });
@@ -460,8 +514,8 @@ describe("constraint data pada PGlite", () => {
   it("AC F12-3: laporan yang diselesaikan atau ditolak wajib memiliki alasan", async () => {
     const insert = (status: string, action: string, note: string | null) =>
       pg.query(
-        `insert into app.reports (id, target_type, category, status, action, resolution_note, resolved_at)
-         values ($1, 'user', 'harassment', $2, $3, $4, now())`,
+        `insert into app.reports (id, target_type, category, status, action, resolution_note, resolved_at, due_at)
+         values ($1, 'user', 'harassment', $2, $3, $4, now(), now() + interval '2 days')`,
         [uuidv7(), status, action, note],
       );
     for (const note of [null, "   "]) {
@@ -474,6 +528,115 @@ describe("constraint data pada PGlite", () => {
       });
     }
     await insert("resolved", "warn", "Pesan melanggar pedoman komunitas; peringatan pertama.");
+  });
+
+  it("kontrak C6 (migrasi 0006): due_at wajib, klaim in_review, pesan anggota maks. 500, kategori appeal", async () => {
+    const reporter = await insertUser();
+    const insert = (columns: Record<string, unknown>) => {
+      const row: Record<string, unknown> = {
+        id: uuidv7(),
+        reporter_id: reporter,
+        target_type: "user",
+        target_user_id: reporter,
+        category: "harassment",
+        due_at: new Date(),
+        ...columns,
+      };
+      const names = Object.keys(row);
+      return pg.query(
+        `insert into app.reports (${names.join(", ")}) values (${names.map((_, i) => `$${i + 1}`).join(", ")})`,
+        Object.values(row),
+      );
+    };
+    // Kontrak: due_at selalu dihitung server saat insert.
+    await expect(insert({ due_at: null })).rejects.toMatchObject({ code: "23502" });
+    // in_review hanya setelah klaim.
+    await expect(insert({ status: "in_review" })).rejects.toMatchObject({
+      code: "23514",
+      constraint: "reports_claimed_chk",
+    });
+    await expect(insert({ member_message: "x".repeat(501) })).rejects.toMatchObject({
+      code: "23514",
+      constraint: "reports_member_message_chk",
+    });
+    await insert({ member_message: "x".repeat(500) });
+
+    // Banding (PRD 3.12): kategori appeal atas diri sendiri; nilai enum dapat dipakai setelah migrasi di-commit.
+    const claimer = await insertAdmin("admin");
+    const appealId = uuidv7();
+    await insert({
+      id: appealId,
+      category: "appeal",
+      status: "in_review",
+      claimed_by_admin_id: claimer.id,
+      claimed_at: new Date(),
+      message_removed_at: null,
+    });
+    // Pengurus pengklaim dihapus: FK SET NULL, klaim tetap tercatat lewat claimed_at sehingga CHECK tetap lolos.
+    await pg.query("delete from app.admins where id = $1", [claimer.id]);
+    const row = (
+      await pg.query<{ category: string; claimed_by_admin_id: string | null; claimed: boolean }>(
+        `select category, claimed_by_admin_id, claimed_at is not null as claimed from app.reports where id = $1`,
+        [appealId],
+      )
+    ).rows[0]!;
+    expect(row).toEqual({ category: "appeal", claimed_by_admin_id: null, claimed: true });
+  });
+
+  it("kontrak C3 (migrasi 0006): pembatalan penyesuaian wajib beralasan; pengurus pembatal SET NULL", async () => {
+    const paymentId = uuidv7();
+    await pg.query(
+      `insert into app.payments (id, user_id, type, status, amount, lines_snapshot, method_snapshot, settings_version,
+                                 proof_version, decided_at)
+       values ($1, $2, 'registration', 'paid', 60000, '[]', '{}', 1, 1, now())`,
+      [paymentId, await insertUser()],
+    );
+    const insert = (columns: Record<string, unknown>) => {
+      const row: Record<string, unknown> = {
+        id: uuidv7(),
+        payment_id: paymentId,
+        kind: "refund",
+        amount: "60000.00",
+        reason: "Event dibatalkan panitia (D6).",
+        ...columns,
+      };
+      const names = Object.keys(row);
+      return pg.query(
+        `insert into app.payment_adjustments (${names.join(", ")})
+         values (${names.map((_, i) => `$${i + 1}`).join(", ")})`,
+        Object.values(row),
+      );
+    };
+    const cancelled = { code: "23514", constraint: "payment_adjustments_cancelled_chk" };
+    for (const cancel_reason of [null, "", "   "]) {
+      await expect(
+        insert({ status: "cancelled", cancelled_at: new Date(), cancel_reason }),
+      ).rejects.toMatchObject(cancelled);
+    }
+    await expect(insert({ status: "cancelled", cancel_reason: "Dobel input." })).rejects.toMatchObject(
+      cancelled,
+    );
+
+    const admin = await insertAdmin("admin");
+    const id = uuidv7();
+    await insert({
+      id,
+      status: "cancelled",
+      cancelled_at: new Date(),
+      cancel_reason: "Dana sudah dikembalikan lewat jalur lain.",
+      cancelled_by_admin_id: admin.id,
+    });
+    await pg.query("delete from app.admins where id = $1", [admin.id]);
+    const row = (
+      await pg.query<{ cancel_reason: string; cancelled_by_admin_id: string | null }>(
+        "select cancel_reason, cancelled_by_admin_id from app.payment_adjustments where id = $1",
+        [id],
+      )
+    ).rows[0]!;
+    expect(row).toEqual({
+      cancel_reason: "Dana sudah dikembalikan lewat jalur lain.",
+      cancelled_by_admin_id: null,
+    });
   });
 
   it("F-01 / PRD 6.2: salinan tayang halaman legal lengkap dan versi legal terpisah dari version draf", async () => {
@@ -554,5 +717,37 @@ describe("seed pada PGlite", () => {
       { slug: "ketentuan", published_version: 1, same: true },
       { slug: "ketentuan-komunitas", published_version: 1, same: true },
     ]);
+  });
+
+  it("kunci baru payment_instructions ditambahkan ke lingkungan yang sudah di-seed tanpa menimpa nilai lain", async () => {
+    await seedReference(db);
+    // Lingkungan yang di-seed sebelum kunci D13 ada, lalu pengurus mengubah biaya.
+    await pg.query("delete from app.app_settings where key = 'payment_instructions'");
+    await pg.query(
+      `update app.app_settings set value = jsonb_set(value, '{renewal_fee}', '"15000.00"'), version = 2
+       where key = 'fees'`,
+    );
+    expect((await seedReference(db)).settings_inserted).toBe(1);
+    const rows = await pg.query<{ key: string; value: Record<string, unknown>; version: number }>(
+      "select key, value, version from app.app_settings where key in ('fees', 'payment_instructions') order by key",
+    );
+    expect(rows.rows).toEqual([
+      {
+        key: "fees",
+        value: { registration_fee: "50000.00", card_fee: "10000.00", renewal_fee: "15000.00" },
+        version: 2,
+      },
+      { key: "payment_instructions", value: { dues_hidden_platforms: [] }, version: 1 },
+    ]);
+    // Pengurus mengubah nilainya (D13 iOS): seed berikutnya tidak menimpa.
+    await pg.query(
+      `update app.app_settings set value = '{"dues_hidden_platforms": ["ios"]}', version = 2
+       where key = 'payment_instructions'`,
+    );
+    expect((await seedReference(db)).settings_inserted).toBe(0);
+    const edited = await pg.query<{ value: Record<string, unknown> }>(
+      "select value from app.app_settings where key = 'payment_instructions'",
+    );
+    expect(edited.rows[0]!.value).toEqual({ dues_hidden_platforms: ["ios"] });
   });
 });

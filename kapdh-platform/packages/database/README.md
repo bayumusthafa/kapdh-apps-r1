@@ -36,7 +36,9 @@ Modul skema baru wajib didaftarkan di `src/client.ts` (objek `schema`) dan `src/
   payment iuran terbuka per pengguna/jenis, payment tiket unik per tiket, satu membership_event per payment, satu
   tiket aktif per anggota/event, `0 <= held + paid <= seats_total`, direct_key kanonik, client_message_id unik per
   pengirim, dedup notifikasi, satu permintaan penghapusan terbuka per akun, alasan wajib untuk keputusan moderasi
-  (`reports_resolution_note_chk`, AC F12-3), salinan tayang halaman legal lengkap (`pages_published_chk`).
+  (`reports_resolution_note_chk`, AC F12-3), salinan tayang halaman legal lengkap (`pages_published_chk`), alasan
+  wajib untuk pembatalan penyesuaian payment (`payment_adjustments_cancelled_chk`), laporan `in_review` selalu sudah
+  diklaim (`reports_claimed_chk`), dan `reports.due_at` selalu terisi (NOT NULL).
 
 ## Aturan untuk layanan
 
@@ -61,6 +63,20 @@ Modul skema baru wajib didaftarkan di `src/client.ts` (objek `schema`) dan `src/
   yang disimpan bersama manifest backup (PRD 5.5); runbook restore membaca ledger eksternal itu (AC F14-6).
 - Anonimisasi aktor audit dan histori payment saat akun dihapus (F-17, D2, AC F14-4) dijalankan job worker:
   `SET LOCAL ROLE kapdh_audit_purge` hanya untuk langkah itu (lihat Role dan grant).
+- `payment_adjustments` (migrasi 0006, kontrak C3): pembatalan mengisi `status = 'cancelled'`, `cancelled_at`,
+  `cancel_reason` (tidak kosong) dan `cancelled_by_admin_id` dalam satu UPDATE bersyarat. Respons
+  `AdminPaymentAdjustment.cancel_reason`/`cancelled_by` dibaca dari kolom ini, tidak pernah dari `audit_logs`.
+  `cancelled_by_admin_id` boleh null (pembatalan sistem atau admin yang dihapus, ON DELETE SET NULL).
+- `reports` (migrasi 0006, kontrak C6):
+  - `due_at` wajib diisi layanan saat insert (urgent 24 jam, lainnya 2 hari kerja); NOT NULL.
+  - Klaim (`adminClaimReport`) mengubah `open -> in_review` sekaligus mengisi `claimed_by_admin_id` dan `claimed_at`
+    dalam satu UPDATE bersyarat (`reports_claimed_chk`).
+  - `member_message` (maks. 500) adalah pesan aman untuk anggota; `resolution_note` tetap catatan internal.
+    `message_removed_at` diisi saat tindak lanjut `remove_message` menghapus pesan terlapor.
+  - Banding: `category = 'appeal'`, `target_type = 'user'`, `target_user_id = reporter_id` (PRD 3.12). Bentuk ini
+    dijaga layanan (POST /appeals), belum oleh CHECK.
+- app_settings `payment_instructions` = `{dues_hidden_platforms: ("android"|"ios")[]}` (D13, rencana cadangan iOS);
+  skema zod dan nilai bawaan ada di `apps/api/src/core/settings/keys.ts`.
 
 ## Migrasi
 
@@ -77,6 +93,15 @@ pnpm --filter @kapdh/database db:check
 - SQL wajib berjalan di PostgreSQL 17 (production) dan PGlite 0.5.x (PostgreSQL 18, uji bawaan): tanpa `uuidv7()`,
   tanpa kolom generated virtual, tanpa sintaks khusus PG 18, tanpa `CREATE INDEX CONCURRENTLY`, tanpa memakai nilai
   enum baru di migrasi yang sama dengan `ALTER TYPE ... ADD VALUE`.
+- Nilai enum baru: job migrasi menerapkan SEMUA migrasi tertunda dalam satu transaksi, jadi nilai dari `ADD VALUE`
+  juga tidak boleh dipakai sebagai literal enum (`'appeal'::app.report_category`, CHECK, default, indeks parsial)
+  oleh migrasi berikutnya yang mungkin diterapkan bersama dalam satu job (SQLSTATE `55P04`, "unsafe use of new
+  value"). Pakai perbandingan teks (`category::text = 'appeal'`) atau rilis migrasi itu setelah migrasi `ADD VALUE`
+  diterapkan di semua lingkungan. Uji PGlite pada database baru TIDAK mendeteksi masalah ini (tipe enum dibuat di
+  transaksi yang sama sehingga dianggap aman); uji jalur upgrade (`migrationsUpTo(...)` di
+  `test/schema.pglite.test.ts` dan `apps/api/test/pg/migrate-and-seed.pg.test.ts`) mendeteksinya.
+- Migrasi aditif yang menambah NOT NULL atau CHECK baru gagal bila ada baris lama yang melanggar; periksa data
+  lingkungan yang sudah berjalan sebelum rilis.
 - Beda perilaku yang diketahui: FK `ON DELETE RESTRICT` melapor `23503` di PostgreSQL 17 tetapi `23001` di PostgreSQL 18
   (PGlite). Helper galat API harus menerima keduanya.
 
@@ -89,6 +114,12 @@ Migrasi kustom yang ada:
 | `0003_alumni_skills_limit` | Maksimal 10 keahlian per alumni (`alumni_skills_limit_chk`), mengunci baris alumni.                                                                                                                                                                                                                                                                                                                                                                                             |
 | `0004_identity_guards`     | `users.kind` tidak dapat diubah (`users_kind_immutable_chk`); jenis akun rujukan alumni/admins (`alumni_user_kind_chk`, `admins_user_kind_chk`, `admins_linked_alumni_kind_chk`); N anggota hanya dari `nextval` sesi ini dan tidak dapat diubah (`alumni_member_seq_source_chk`, `alumni_member_seq_immutable_chk`, PRD 3.5).                                                                                                                                                  |
 | `0005_post_like_count`     | `posts.like_count` = jumlah `post_likes` lewat trigger statement dengan transition table (kunci posts berurutan id, aman untuk penghapusan massal), UPDATE `post_likes` ditolak (`post_likes_immutable_chk`), TRUNCATE menolkan penghitung (AC F08-3).                                                                                                                                                                                                                          |
+
+Migrasi aditif hasil `drizzle-kit generate` setelah fondasi:
+
+| Migrasi                     | Isi                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0006_final_contract_delta` | Delta kontrak final C3/C6: `payment_adjustments.cancel_reason`, `cancelled_by_admin_id` (FK admins SET NULL, indeks parsial) dan `payment_adjustments_cancelled_chk` yang mewajibkan alasan tidak kosong; enum `app.report_category` + `appeal`; `reports.claimed_by_admin_id` (FK admins SET NULL, indeks parsial), `claimed_at`, `member_message` (`reports_member_message_chk` <= 500), `message_removed_at`, `reports_claimed_chk`, dan `due_at` NOT NULL. |
 
 ### Job migrasi deployment (PRD 5.5)
 
@@ -152,6 +183,9 @@ NODE_ENV=development DATABASE_URL=... pnpm --filter @kapdh/database seed:dev    
   `ketentuan-komunitas`, `bantuan`, `tentang` berstatus **DRAF** (kolom `published_*` null). Tidak menyisipkan akun,
   fixture, atau metode bayar (metode bayar diisi bendahara lewat web admin). Idempoten (`ON CONFLICT DO NOTHING`, nilai
   yang sudah diubah pengurus tidak ditimpa) dan setiap eksekusi dicatat di `audit_logs` (`seed.reference`).
+  Kunci baru (misalnya `payment_instructions` = `{dues_hidden_platforms: []}`) ditambahkan ke lingkungan yang sudah
+  di-seed dengan menjalankan ulang `seed:reference` setelah migrasi; hanya kunci yang belum ada yang disisipkan.
+  Sebelum itu SettingsService memakai nilai bawaan (versi 0).
 - `seeds/dev.ts`: menolak `NODE_ENV=production`. Menjalankan seed referensi, mengaktifkan master, menerbitkan halaman
   draf sebagai contoh (`published_version` 1, dicerminkan app_settings `legal`), lalu menambah fixture sintetis bertanda
   `[Contoh]`/`.test`: metode bayar `[Bank Contoh]`, kategori, satu berita, satu event terbuka, tiga alumni (belum bayar,
@@ -160,7 +194,9 @@ NODE_ENV=development DATABASE_URL=... pnpm --filter @kapdh/database seed:dev    
 
 ## Pengujian
 
-- `pnpm --filter @kapdh/database test`: PGlite, migrasi journal yang sama, trigger, constraint, seed.
+- `pnpm --filter @kapdh/database test`: PGlite, migrasi journal yang sama, trigger, constraint, seed, dan jalur
+  upgrade (database sampai 0005 di-commit lalu 0006 diterapkan terpisah). Jalur upgrade yang sama diuji di
+  PostgreSQL 17 pada `apps/api/test/pg/migrate-and-seed.pg.test.ts`.
 - `pnpm --filter @kapdh/api test`: harness `test/support/test-app.ts` memigrasi sekali per run ke template PGlite
   (globalSetup) lalu setiap `createTestApp()` memuat dump template.
 - `pnpm test:pg` (root) atau `pnpm --filter @kapdh/api test:pg`: PostgreSQL 17.6 nyata lewat `embedded-postgres`,

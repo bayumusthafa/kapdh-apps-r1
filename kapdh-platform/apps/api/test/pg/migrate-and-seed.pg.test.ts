@@ -2,11 +2,27 @@ import { MIGRATIONS_FOLDER, runMigrations } from "@kapdh/database";
 import { DEV_IDS, ProductionSeedRefused, seedDev } from "@kapdh/database/seeds/dev";
 import { REFERENCE_SETTINGS, seedReference } from "@kapdh/database/seeds/reference";
 import { spawn } from "node:child_process";
-import { lstatSync, readFileSync, realpathSync } from "node:fs";
+import {
+  copyFileSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
-import { createEmptyPgDatabase, createPgTestDatabase, type PgTestDatabase } from "./support.js";
+import {
+  createEmptyPgDatabase,
+  createPgTestDatabase,
+  id,
+  insertUser,
+  type PgTestDatabase,
+} from "./support.js";
 
 /**
  * Paket database seperti di image production (`pnpm deploy`): dirujuk lewat symlink/junction pnpm
@@ -42,6 +58,21 @@ const journal = JSON.parse(readFileSync(join(MIGRATIONS_FOLDER, "meta", "_journa
   entries: { tag: string }[];
 };
 
+/**
+ * Salinan folder migrasi yang journal-nya berhenti di `lastTag`: database lingkungan yang sudah dimigrasi sebelum
+ * migrasi aditif berikutnya dirilis. Pemanggil menghapus folder setelah dipakai.
+ */
+function migrationsUpTo(lastTag: string): { dir: string; count: number } {
+  const cut = journal.entries.findIndex((e) => e.tag === lastTag);
+  if (cut < 0) throw new Error(`Tag migrasi tidak ada di journal: ${lastTag}`);
+  const entries = journal.entries.slice(0, cut + 1);
+  const dir = mkdtempSync(join(tmpdir(), "kapdh-migrations-"));
+  mkdirSync(join(dir, "meta"));
+  for (const e of entries) copyFileSync(join(MIGRATIONS_FOLDER, `${e.tag}.sql`), join(dir, `${e.tag}.sql`));
+  writeFileSync(join(dir, "meta", "_journal.json"), JSON.stringify({ ...journal, entries }));
+  return { dir, count: entries.length };
+}
+
 const databases: PgTestDatabase[] = [];
 afterAll(async () => {
   for (const d of databases) await d.drop();
@@ -60,6 +91,45 @@ describe("PRD 5.5: job migrasi tunggal dengan advisory lock pada PostgreSQL 17",
     >`select count(*)::int as n from drizzle.__drizzle_migrations`;
     expect(recorded!.n).toBe(journal.entries.length);
     expect((await runMigrations({ url: empty.url })).applied).toBe(0);
+  });
+
+  it("migrasi aditif 0006 pada database yang sudah sampai 0005: ADD VALUE enum aman di transaksi job migrasi", async () => {
+    const existing = await createEmptyPgDatabase("upgrade_0006");
+    databases.push(existing);
+    // Lingkungan lama: 0000-0005 sudah di-commit, lalu job migrasi berikutnya hanya menerapkan sisa journal.
+    const upTo0005 = migrationsUpTo("0005_post_like_count");
+    try {
+      expect((await runMigrations({ url: existing.url, migrationsFolder: upTo0005.dir })).applied).toBe(
+        upTo0005.count,
+      );
+    } finally {
+      rmSync(upTo0005.dir, { recursive: true, force: true });
+    }
+    expect((await runMigrations({ url: existing.url })).applied).toBe(
+      journal.entries.length - upTo0005.count,
+    );
+
+    // Nilai enum baru dapat dipakai setelah transaksi migrasi di-commit (banding PRD 3.12).
+    const userId = await insertUser(existing.sql);
+    await existing.sql`
+      insert into app.reports (id, reporter_id, target_type, target_user_id, category, due_at)
+      values (${id()}, ${userId}, 'user', ${userId}, 'appeal', now() + interval '2 days')`;
+    const constraints = await existing.sql<{ conname: string }[]>`
+      select conname from pg_constraint
+      where conrelid in ('app.reports'::regclass, 'app.payment_adjustments'::regclass)
+        and conname in ('reports_claimed_chk', 'reports_member_message_chk', 'reports_claimed_by_admin_id_admins_id_fk',
+                        'payment_adjustments_cancelled_chk', 'payment_adjustments_cancelled_by_admin_id_admins_id_fk')
+      order by conname`;
+    expect(constraints.map((c) => c.conname)).toEqual([
+      "payment_adjustments_cancelled_by_admin_id_admins_id_fk",
+      "payment_adjustments_cancelled_chk",
+      "reports_claimed_by_admin_id_admins_id_fk",
+      "reports_claimed_chk",
+      "reports_member_message_chk",
+    ]);
+    const [dueAt] = await existing.sql<{ attnotnull: boolean }[]>`
+      select attnotnull from pg_attribute where attrelid = 'app.reports'::regclass and attname = 'due_at'`;
+    expect(dueAt!.attnotnull).toBe(true);
   });
 
   it("skema hasil migrasi lengkap: 39 tabel, sequence nomor anggota, trigger penjaga", async () => {
