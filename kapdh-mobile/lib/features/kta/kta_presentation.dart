@@ -11,7 +11,7 @@ enum KtaNavigation { go, push }
 /// Aksi pada kartu status di bawah KTA (guideline hal. 6 "Perpanjang", prototipe layar 6 "Bayar").
 @immutable
 class KtaAction {
-  const KtaAction({required this.label, this.location, this.navigation = KtaNavigation.push, this.hint});
+  const KtaAction({required this.label, this.location, this.navigation = KtaNavigation.push});
 
   final String label;
 
@@ -19,14 +19,15 @@ class KtaAction {
   final String? location;
   final KtaNavigation navigation;
 
-  /// Penjelasan untuk pembaca layar saat tombol nonaktif.
-  final String? hint;
-
   bool get enabled => location != null;
 }
 
 /// Keterangan dan aksi kartu status untuk KTA online. Mengikuti `status_label` dan `action` dari server
 /// (MemberCardAction, kontrak C2); klien tidak menghitung kelayakan sendiri (PRD 2.2, AC F07-5).
+///
+/// Bila "Perpanjang" tampil nonaktif, alasannya selalu tertulis di keterangan tepat sebelum tombol (terbaca pengguna
+/// dan pembaca layar): tanggal pembukaan jendela, atau "belum dibuka" bila server belum menetapkannya (N-11,
+/// PRD 4.5).
 ({String message, KtaAction? action}) ktaStatusOf(MemberCard card) {
   final expires = card.expiresAt;
   final opens = card.renewalOpensAt;
@@ -45,17 +46,16 @@ class KtaAction {
   };
   switch (card.statusLabel) {
     case MemberCardStatus.active:
-      return (
-        message: opens == null
-            ? 'Seluruh fitur alumni aktif.'
-            : 'Seluruh fitur alumni aktif. Perpanjangan dibuka mulai ${formatDate(opens)}.',
-        action:
-            serverAction ??
-            KtaAction(
-              label: 'Perpanjang',
-              hint: opens == null ? 'Perpanjangan belum dibuka' : 'Perpanjangan dibuka mulai ${formatDate(opens)}',
-            ),
-      );
+      final String message;
+      if (opens != null) {
+        message = 'Seluruh fitur alumni aktif. Perpanjangan dibuka mulai ${formatDate(opens)}.';
+      } else if (serverAction == null) {
+        // Tombol Perpanjang nonaktif tanpa tanggal pembukaan: alasannya tetap disebutkan.
+        message = 'Seluruh fitur alumni aktif. Perpanjangan belum dibuka.';
+      } else {
+        message = 'Seluruh fitur alumni aktif.';
+      }
+      return (message: message, action: serverAction ?? const KtaAction(label: 'Perpanjang'));
     case MemberCardStatus.expiring:
       return (
         message: expires == null
