@@ -142,6 +142,54 @@ describe("undangan admin /invite#t= (F-16, kontrak admin-auth)", () => {
     expect(screen.getByText(/Minta undangan ulang ke Super Admin/)).toBeInTheDocument();
   });
 
+  it("AC F02-2, PRD 4.5: membatalkan aktivasi wajib dikonfirmasi karena token pendaftaran tidak dapat diterbitkan ulang", async () => {
+    const user = userEvent.setup();
+    const { router } = await openInvite();
+    await acceptInvite(user);
+    expect(screen.queryByRole("button", { name: /kembali ke halaman masuk/ })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Batalkan aktivasi" }));
+    let dialog = await screen.findByRole("alertdialog", { name: /Batalkan aktivasi akun admin/ });
+    expect(within(dialog).getByText(/Super Admin KAPDH perlu mengirim undangan ulang/)).toBeInTheDocument();
+    // Fokus awal pada tombol aman; memilih lanjut menjaga token pendaftaran tetap di memori.
+    expect(within(dialog).getByRole("button", { name: "Lanjutkan aktivasi" })).toHaveFocus();
+    await user.click(within(dialog).getByRole("button", { name: "Lanjutkan aktivasi" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(router.state.location.pathname).toBe("/login/enroll");
+    expect(screen.getByText(groupSecret(MOCK_TOTP_SECRET))).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Batalkan aktivasi" }));
+    dialog = await screen.findByRole("alertdialog", { name: /Batalkan aktivasi akun admin/ });
+    const confirm = within(dialog).getByRole("button", { name: "Ya, batalkan aktivasi" });
+    expect(confirm).toBeDisabled();
+    await user.click(within(dialog).getByLabelText(/memerlukan undangan baru dari Super Admin/));
+    await user.click(confirm);
+    await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
+    // Token sudah dibuang: /login/enroll tidak dapat dibuka lagi.
+    await router.navigate({ to: "/login/enroll" });
+    await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
+  });
+
+  it("AC F02-2: memuat ulang/menutup tab selama pendaftaran dan saat backup code tampil meminta konfirmasi peramban", async () => {
+    const unload = () => {
+      const event = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    const user = userEvent.setup();
+    await openInvite();
+    expect(unload()).toBe(false);
+    await acceptInvite(user);
+    expect(unload()).toBe(true);
+    await user.type(screen.getByLabelText(/^Kode autentikator/), MOCK_CREDENTIALS.totp);
+    await user.click(screen.getByRole("button", { name: "Konfirmasi dan aktifkan akun" }));
+    await screen.findByRole("list", { name: "Daftar backup code" });
+    expect(unload()).toBe(true);
+    await user.click(screen.getByLabelText("Saya sudah menyimpan backup code di tempat yang aman."));
+    await user.click(screen.getByRole("button", { name: "Masuk ke Dashboard" }));
+    await screen.findByRole("heading", { level: 1, name: "Dashboard" });
+    expect(unload()).toBe(false);
+  });
+
   it("PRD 4.5: konfirmasi yang hasilnya hilang lalu diulang (403 aktivasi selesai) mengarahkan ke masuk", async () => {
     const user = userEvent.setup();
     const { router } = await openInvite();
