@@ -5,6 +5,8 @@ import { MembershipKernel } from "../membership/membership.kernel.js";
 
 export type PaymentRow = typeof payments.$inferSelect;
 export type PaymentType = PaymentRow["type"];
+/** Kolom payment yang dibaca TANPA kunci sebelum hook pra-kunci (URUTAN KUNCI kontrak C3). */
+export type PaymentLockTarget = Pick<PaymentRow, "id" | "ticketId" | "userId">;
 
 /**
  * Akibat persetujuan yang wajib dicatat modul payments di transaksi yang sama (kontrak C3 adminDecidePayment, D6):
@@ -24,19 +26,21 @@ export interface PaymentApprovalOutcome {
 
 /**
  * Hook per jenis payment (ARCHITECTURE §3.3, §4.6). Modul payments memanggil handler di dalam transaksinya sendiri
- * (dari withTx/TxRunner) dan TIDAK pernah menulis `alumni` atau `tickets` secara langsung; efek domain dimiliki
+ * (commit-aware: this.db.transaction dari DB yang diinjeksi, TxRunner, atau withTx) dan TIDAK pernah menulis `alumni` atau `tickets` secara langsung; efek domain dimiliki
  * handler: registration/renewal oleh core (MembershipKernel), ticket oleh modul events (`onModuleInit`).
  */
 export interface PaymentTypeHandler {
   type: PaymentType;
   /**
-   * Urutan kunci global (kontrak C5 "lock order", PRD 6.4: events → tickets → payments). Dipanggil modul payments
-   * SEBELUM `SELECT payments … FOR UPDATE` pada pengiriman bukti, keputusan dan pembatalan, sehingga handler mengunci
-   * baris induknya lebih dulu (tiket: baris events lalu tickets). Id induk dibaca tanpa kunci oleh pemanggil; keadaan
-   * diperiksa ulang setelah semua kunci dipegang. onApproved/onRejected/onCancelled TIDAK boleh mengunci events/tickets
-   * lagi setelah payment terkunci (mencegah deadlock 40P01).
+   * URUTAN KUNCI global (kepala payments.yaml dan events.yaml, PRD 6.4: users → alumni → events → tickets →
+   * payments). Dipanggil modul payments SEBELUM `SELECT payments … FOR UPDATE` pada pengiriman bukti, keputusan,
+   * pembatalan dan adminRecordPayment, sehingga handler mengunci baris induknya lebih dulu: tiket = baris events lalu
+   * tickets (modul events); iuran = baris users lalu alumni pemilik bila masih ada (core). `type`, `user_id` dan
+   * `ticket_id` dibaca TANPA kunci oleh pemanggil; keadaan (termasuk user_id/ticket_id) diperiksa ulang setelah semua
+   * kunci dipegang. onApproved/onRejected/onCancelled TIDAK boleh mengunci baris tingkat lebih awal setelah payment
+   * terkunci (mencegah deadlock 40P01 dengan suspend, penghapusan akun, pembatalan event).
    */
-  lockRelated?(tx: Tx, payment: Pick<PaymentRow, "id" | "ticketId">): Promise<void>;
+  lockRelated?(tx: Tx, payment: PaymentLockTarget): Promise<void>;
   /** Di dalam transaksi pengiriman bukti; boleh melempar (mis. 410 RESERVATION_EXPIRED untuk tiket). */
   onProofSubmitted?(tx: Tx, payment: PaymentRow): Promise<void>;
   /**
@@ -84,17 +88,25 @@ export class PaymentHandlerRegistry {
   }
 
   /**
-   * Mengunci baris induk payment sesuai urutan kunci global (lihat {@link PaymentTypeHandler.lockRelated}); tanpa
-   * hook (iuran) tidak ada yang dikunci. Wajib dipanggil modul payments sebelum mengunci baris payment.
+   * Mengunci baris induk payment sesuai urutan kunci global (lihat {@link PaymentTypeHandler.lockRelated}); jenis
+   * tanpa hook tidak mengunci apa pun. Wajib dipanggil modul payments sebelum mengunci baris payment:
+   *
+   *   const [p] = await tx.select({ id, type, userId, ticketId }).from(payments).where(eq(payments.id, id)); // tanpa kunci
+   *   await registry.lockRelated(tx, p);                       // iuran: users → alumni; tiket: events → tickets
+   *   const [locked] = await tx.select().from(payments).where(eq(payments.id, id)).for("update");
+   *   // periksa ulang status/version/user_id/ticket_id terhadap p
    */
-  async lockRelated(tx: Tx, payment: Pick<PaymentRow, "id" | "type" | "ticketId">): Promise<void> {
+  async lockRelated(tx: Tx, payment: PaymentLockTarget & Pick<PaymentRow, "type">): Promise<void> {
     await this.handlerFor(payment.type).lockRelated?.(tx, payment);
   }
 }
 
 /**
- * Handler iuran registration/renewal milik core (ARCHITECTURE §4.6): persetujuan menerapkan periode lewat
- * MembershipKernel.applyPaidPayment (idempoten per payment). Penolakan/pembatalan iuran tidak mengubah keanggotaan.
+ * Handler iuran registration/renewal milik core (ARCHITECTURE §4.6): hook pra-kunci mengunci users lalu alumni pemilik
+ * (URUTAN KUNCI kontrak C3; pemilik terhapus dilewati) dan persetujuan menerapkan periode lewat
+ * MembershipKernel.applyPaidPayment (idempoten per payment; pemilik terhapus → paid tanpa efek keanggotaan).
+ * Notifikasi keputusan ditulis modul payments (kategori payment). Penolakan/pembatalan iuran tidak mengubah
+ * keanggotaan.
  */
 @Injectable()
 export class MembershipPaymentHandlers implements OnModuleInit {
@@ -107,6 +119,7 @@ export class MembershipPaymentHandlers implements OnModuleInit {
     for (const type of ["registration", "renewal"] as const)
       this.registry.register({
         type,
+        lockRelated: (tx, payment) => this.membership.lockPaymentOwner(tx, payment.userId),
         onApproved: async (tx, payment, approvedAt) => {
           await this.membership.applyPaidPayment(tx, payment, approvedAt);
         },

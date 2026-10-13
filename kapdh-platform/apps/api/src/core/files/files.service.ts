@@ -389,7 +389,7 @@ export class FilesService implements OnModuleInit {
   /**
    * Menghapus berkas yang diganti/tidak dipakai lagi: baris langsung `deleted` (tidak lagi dilayani) dan objek dihapus
    * setelah commit. Kegagalan hapus objek dicatat; pembersihan yang wajib terjamin (penghapusan akun) memakai
-   * {@link deleteNow}. Wajib tx dari withTx.
+   * {@link deleteNow}. Wajib tx commit-aware (this.db.transaction dari DB yang diinjeksi, TxRunner, atau withTx).
    */
   async discard(tx: Tx, fileId: string): Promise<boolean> {
     assertCommitAware(tx, "FilesService.discard");

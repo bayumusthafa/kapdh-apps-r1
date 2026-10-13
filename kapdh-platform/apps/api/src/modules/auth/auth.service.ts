@@ -1,18 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { ApiEnv } from "@kapdh/config";
-import { type components, PERMISSION_VALUES } from "@kapdh/contracts";
-import {
-  accountDeletions,
-  admins,
-  alumni,
-  auditLogs,
-  mfaTotp,
-  otpCodes,
-  sessions,
-  users,
-} from "@kapdh/database";
+import type { components } from "@kapdh/contracts";
+import { accountDeletions, admins, alumni, otpCodes, sessions, users } from "@kapdh/database";
 import bcrypt from "bcryptjs";
-import { and, desc, eq, gt, inArray, isNull, lt, min, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../../core/adapters/clock.js";
 import type { Mailer, OtpPurpose } from "../../core/adapters/mailer.js";
@@ -21,8 +12,12 @@ import { tryCtx } from "../../core/context/request-context.js";
 import { isUniqueViolation } from "../../core/db/errors.js";
 import type { Db, DbOrTx, Tx } from "../../core/db/types.js";
 import { AppException, unauthenticated } from "../../core/errors/app-exception.js";
-import type { AuthContext } from "../../core/guards/auth-context.js";
+import type { AuthContext, SessionAudience } from "../../core/guards/auth-context.js";
 import { ADMIN_IDLE_MS } from "../../core/guards/auth.guard.js";
+import { generateOtp, otpHmac, safeEqualHex, sha256 } from "../../core/identity/crypto.js";
+import { maskEmail, normalizeEmail } from "../../core/identity/email.js";
+import { LOGIN_WINDOW_MS, PasswordVerifier } from "../../core/identity/password-verifier.js";
+import { type IssuedSession, SessionIssuer } from "../../core/identity/session-issuer.js";
 import type { AccountStatus } from "../../core/membership/effective-status.js";
 import { MembershipKernel } from "../../core/membership/membership.kernel.js";
 import {
@@ -34,24 +29,10 @@ import { RealtimeService } from "../../core/realtime/realtime.service.js";
 import { legalConsentVersions } from "../../core/settings/legal-consent.js";
 import { SettingsService } from "../../core/settings/settings.service.js";
 import { CLOCK, DB, ENV, MAILER } from "../../core/tokens.js";
-import {
-  backupCodeHash,
-  decryptSecret,
-  generateOtp,
-  matchTotpStep,
-  otpHmac,
-  randomToken,
-  safeEqualHex,
-  sha256,
-} from "./crypto.js";
-import { type Audience, TokenService } from "./token.service.js";
 
 type OtpChallenge = components["schemas"]["OtpChallenge"];
-type TokenPair = components["schemas"]["TokenPair"];
 type LoginResponse = components["schemas"]["LoginResponse"];
 type AccountDeletion = components["schemas"]["AccountDeletion"];
-type AdminLoginResponse = components["schemas"]["AdminLoginResponse"];
-type AdminProfile = components["schemas"]["AdminProfile"];
 type OtpRow = typeof otpCodes.$inferSelect;
 
 /**
@@ -80,22 +61,20 @@ const OTP_SENDS_PER_HOUR = 5;
 const OTP_SENDS_PER_IP_PER_HOUR = 60;
 /** Usulan D1: kegagalan verifikasi OTP per IP per 15 menit (menahan tebakan lintas banyak challenge). */
 const OTP_VERIFY_FAILS_PER_IP = 50;
-const LOGIN_FAILS_LIMIT = 10; // dalam 15 menit, PRD 2.5 / D1
-const LOGIN_WINDOW_MS = 15 * 60_000;
-const MFA_FAILS_LIMIT = 5;
-/** PRD 2.5: sandi maksimal 72 byte UTF-8 (batas bcrypt); server menolak, bukan memotong. */
-const PASSWORD_MAX_BYTES = 72;
-/** TTL refresh (D1, dikunci pengembang Tahap 0): mobile 60 hari, admin 12 jam. */
-const REFRESH_TTL_MS: Record<Audience, number> = { mobile: 60 * 24 * HOUR_MS, admin: 12 * HOUR_MS };
-
-export function normalizeEmail(email: string): string {
-  return email.normalize("NFKC").trim().toLowerCase();
-}
-
-export function maskEmail(email: string): string {
-  const [local = "", domain = ""] = email.split("@");
-  return `${local.slice(0, 2)}***@${domain}`;
-}
+/**
+ * Anggaran percobaan registrasi per IP per jam yang dicadangkan SEBELUM bcrypt (PRD 2.5, D1; PRD 5.1): kuota kirim
+ * OTP baru diperiksa di dalam transaksi sesudah hash dihitung, sehingga tanpa anggaran ini permintaan yang pasti
+ * ditolak 429 tetap menghabiskan CPU bcrypt tanpa batas. Dua kali batas kirim OTP per IP agar koreksi data dan
+ * pengulangan di satu Wi-Fi acara reuni tetap lolos.
+ */
+const REGISTER_ATTEMPTS_PER_IP_PER_HOUR = OTP_SENDS_PER_IP_PER_HOUR * 2;
+/** Keadaan akun alumni yang lolos pemeriksaan sandi login; hanya `active` memperoleh sesi (PRD 2.2, 4.2). */
+const LOGIN_PASSWORD_STATES: readonly AccountStatus[] = [
+  "active",
+  "pending_otp",
+  "disabled",
+  "deletion_pending",
+];
 
 export interface RegisterInput {
   full_name: string;
@@ -106,13 +85,6 @@ export interface RegisterInput {
   class_in: number;
   class_out: number;
   accept_policy_version: string;
-}
-
-export interface IssuedSession {
-  pair: TokenPair;
-  refreshToken: string;
-  refreshExpiresAt: Date;
-  sessionId: string;
 }
 
 const otpExpired = (message = "Kode tidak berlaku lagi. Minta kode baru.") =>
@@ -129,25 +101,18 @@ const emailTaken = () =>
   );
 
 /**
- * Penanda internal kode MFA salah (TOTP tidak cocok/diputar ulang, backup code tidak dikenal). Diubah menjadi 400
- * VALIDATION_ERROR dengan sisa percobaan setelah transaksi dibatalkan (kontrak adminVerifyMfa).
+ * Alumni: registrasi, OTP aktivasi, login, rotasi refresh, logout (F-01, F-02). Pemeriksaan sandi + batas kegagalan
+ * (PasswordVerifier) dan penerbitan sesi (SessionIssuer) milik core, dipakai bersama modul admin-auth.
  */
-class WrongMfaCode extends Error {
-  constructor(readonly field: "totp_code" | "backup_code") {
-    super("kode MFA salah");
-  }
-}
-
 @Injectable()
 export class AuthService {
-  private dummyHash: Promise<string> | null = null;
-
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(ENV) private readonly env: ApiEnv,
     @Inject(MAILER) private readonly mailer: Mailer,
     @Inject(CLOCK) private readonly clock: Clock,
-    private readonly tokens: TokenService,
+    private readonly passwords: PasswordVerifier,
+    private readonly sessionIssuer: SessionIssuer,
     private readonly limits: RateLimitService,
     private readonly audit: AuditService,
     private readonly membership: MembershipKernel,
@@ -157,22 +122,6 @@ export class AuthService {
 
   private now() {
     return this.clock.now();
-  }
-
-  /**
-   * Hash tiruan dengan cost yang SAMA dengan hash asli (BCRYPT_COST) agar waktu respons login untuk email yang tidak
-   * terdaftar tidak berbeda (anti enumerasi, PRD 2.5). Sebelumnya cost 10 tetap vs cost 12 asli.
-   */
-  private dummyPasswordHash(): Promise<string> {
-    this.dummyHash ??= bcrypt.hash(randomToken(), this.env.BCRYPT_COST);
-    return this.dummyHash;
-  }
-
-  private findAccount(db: DbOrTx, email: string, kind: "alumni" | "admin") {
-    // Email unik per jenis identitas selama akun belum terhapus (users_kind_email_key, PRD 2.3).
-    return db.query.users.findFirst({
-      where: and(eq(users.email, email), eq(users.kind, kind), ne(users.status, "deleted")),
-    });
   }
 
   // ------------------------------------------------------------------ OTP
@@ -324,12 +273,15 @@ export class AuthService {
    * Persetujuan (F-01): `accept_policy_version` dibandingkan dengan versi persetujuan yang disusun ulang dari
    * app_settings.legal SEBELUM email diperiksa, lalu sekali lagi di dalam transaksi dengan baris pengaturan dikunci
    * FOR SHARE; berbeda atau dokumen belum terbit → 409 VERSION_CONFLICT dengan `current` LegalConsentVersions.
+   * Sebelum bcrypt pertama, satu jatah anggaran registrasi per IP dicadangkan atomik (429 bila habis), sehingga
+   * permintaan anonim tidak dapat menghabiskan CPU tanpa batas (PRD 2.5, 5.1).
    */
   async register(input: RegisterInput, attempt = 0): Promise<OtpChallenge> {
     await this.assertConsent(this.db, input.accept_policy_version, false);
     const email = normalizeEmail(input.email);
-    const existing = await this.findAccount(this.db, email, "alumni");
+    const existing = await this.passwords.findAccount(this.db, email, "alumni");
     if (existing && existing.status !== "pending_otp") throw emailTaken();
+    if (attempt === 0) await this.consumeRegisterBudget();
     const samePassword = existing ? await bcrypt.compare(input.password, existing.passwordHash) : false;
     const newHash = samePassword ? null : await bcrypt.hash(input.password, this.env.BCRYPT_COST);
     const now = this.now();
@@ -394,6 +346,18 @@ export class AuthService {
     }
   }
 
+  /** Anggaran registrasi per IP (lihat REGISTER_ATTEMPTS_PER_IP_PER_HOUR), dicadangkan sebelum bcrypt. */
+  private async consumeRegisterBudget(): Promise<void> {
+    const ip = tryCtx()?.ip;
+    if (!ip) return;
+    await this.limits.consumeOrThrow(
+      `register-ip:${ip}`,
+      REGISTER_ATTEMPTS_PER_IP_PER_HOUR,
+      HOUR_MS,
+      "Terlalu banyak pendaftaran dari jaringan ini. Coba lagi nanti.",
+    );
+  }
+
   /**
    * Persetujuan privasi + ketentuan (F-01, kontrak register): nilai klien hanya diterima bila sama persis dengan
    * `LegalConsentVersions.policy_version` terkini. `lock` = FOR SHARE pada baris app_settings legal (di dalam
@@ -429,36 +393,49 @@ export class AuthService {
    * dibandingkan (`attempts < 5` dalam predikat UPDATE), sehingga permintaan paralel tidak dapat mencoba lebih dari 5
    * kode per challenge dan tidak pernah melanggar CHECK otp_codes_attempts_chk. Hanya challenge `signup` dan
    * `email_change`; tujuan lain (pemulihan sandi, hapus akun) tidak disentuh dan ditolak 410 seperti challenge yang
-   * tidak dikenal (kontrak verifyOtp).
+   * tidak dikenal (kontrak verifyOtp). Batas kegagalan per IP juga dicadangkan atomik SEBELUM kode dibandingkan
+   * (jatah dikembalikan bila kode benar atau challenge tidak dapat dicoba), sehingga tebakan paralel lintas banyak
+   * challenge tidak melewati batas (PRD 2.5, D1).
    */
   async verifyOtp(challengeId: string, code: string, deviceName: string | undefined) {
     const now = this.now();
     const ip = tryCtx()?.ip ?? null;
-    if (ip)
-      await this.limits.assertNotLimited(
-        `otp-verify-ip:${ip}`,
-        OTP_VERIFY_FAILS_PER_IP,
-        LOGIN_WINDOW_MS,
-        "Terlalu banyak percobaan kode dari jaringan ini. Coba lagi nanti.",
-      );
-    const [reserved] = await this.db
-      .update(otpCodes)
-      .set({ attempts: sql`${otpCodes.attempts} + 1` })
-      .where(
-        and(
-          eq(otpCodes.id, challengeId),
-          inArray(otpCodes.purpose, [...ACTIVATION_PURPOSES]),
-          isNull(otpCodes.consumedAt),
-          isNull(otpCodes.supersededAt),
-          gt(otpCodes.expiresAt, now),
-          lt(otpCodes.attempts, OTP_MAX_ATTEMPTS),
-        ),
-      )
-      .returning();
-    if (!reserved) throw otpExpired();
+    const ipSlot = ip
+      ? await this.limits.reserveOrThrow(
+          `otp-verify-ip:${ip}`,
+          OTP_VERIFY_FAILS_PER_IP,
+          LOGIN_WINDOW_MS,
+          "Terlalu banyak percobaan kode dari jaringan ini. Coba lagi nanti.",
+        )
+      : null;
+    let reserved: OtpRow | undefined;
+    try {
+      [reserved] = await this.db
+        .update(otpCodes)
+        .set({ attempts: sql`${otpCodes.attempts} + 1` })
+        .where(
+          and(
+            eq(otpCodes.id, challengeId),
+            inArray(otpCodes.purpose, [...ACTIVATION_PURPOSES]),
+            isNull(otpCodes.consumedAt),
+            isNull(otpCodes.supersededAt),
+            gt(otpCodes.expiresAt, now),
+            lt(otpCodes.attempts, OTP_MAX_ATTEMPTS),
+          ),
+        )
+        .returning();
+    } catch (error) {
+      await ipSlot?.release();
+      throw error;
+    }
+    if (!reserved) {
+      // Tidak ada kode yang dinilai: bukan kegagalan tebakan.
+      await ipSlot?.release();
+      throw otpExpired();
+    }
 
     if (!safeEqualHex(reserved.codeHmac, otpHmac(this.env.OTP_HMAC_SECRET, reserved.id, code))) {
-      if (ip) await this.limits.hit(`otp-verify-ip:${ip}`, LOGIN_WINDOW_MS);
+      // Kode salah: jatah IP tetap tercatat sebagai kegagalan.
       const left = OTP_MAX_ATTEMPTS - reserved.attempts;
       if (left <= 0) throw otpExpired();
       throw new AppException(400, "VALIDATION_ERROR", `Kode salah. Sisa percobaan ${left}.`, {
@@ -466,6 +443,7 @@ export class AuthService {
       });
     }
 
+    await ipSlot?.release();
     return this.completeActivation(reserved, deviceName);
   }
 
@@ -510,7 +488,12 @@ export class AuthService {
         entityId: user.id,
         after: { member_number: allocated },
       });
-      const issued = await this.createSession(tx, user.id, "mobile", 1, deviceName);
+      const issued = await this.sessionIssuer.issue(tx, {
+        userId: user.id,
+        audience: "mobile",
+        mfaLevel: 1,
+        deviceName,
+      });
       return { session: issued.pair };
     });
   }
@@ -541,65 +524,11 @@ export class AuthService {
 
   // ------------------------------------------------------------------ F-02 Login dan sesi
 
-  private async assertLoginAllowed(email: string, ip: string | null) {
-    const message = "Terlalu banyak percobaan masuk. Coba lagi nanti atau gunakan lupa password.";
-    await this.limits.assertNotLimited(`login:${email}`, LOGIN_FAILS_LIMIT, LOGIN_WINDOW_MS, message);
-    if (ip)
-      await this.limits.assertNotLimited(`login-ip:${ip}`, LOGIN_FAILS_LIMIT * 5, LOGIN_WINDOW_MS, message);
-  }
-
-  private async recordLoginFailure(email: string, ip: string | null) {
-    await this.limits.hit(`login:${email}`, LOGIN_WINDOW_MS);
-    if (ip) await this.limits.hit(`login-ip:${ip}`, LOGIN_WINDOW_MS);
-  }
-
   /**
-   * Pemeriksaan sandi dengan waktu respons serupa untuk email terdaftar/tidak (PRD 2.5). Sandi > 72 byte ditolak
-   * (bukan dipotong bcrypt). Alumni: semua akun yang belum `deleted` (pending_otp, active, disabled,
-   * deletion_pending) lolos pemeriksaan sandi, tetapi hanya `active` yang memperoleh sesi (lihat login, PRD 2.2).
-   * Admin: users `active`, baris admin `active` dan TOTP terverifikasi (kontrak adminLogin); selain itu diperlakukan
-   * PERSIS seperti sandi salah (dicatat ke batas kegagalan, penghitung tidak direset) agar keabsahan sandi admin yang
-   * belum aktif tidak dapat ditebak dari perilaku rate limit.
-   */
-  private async checkPassword(emailRaw: string, password: string, kind: "alumni" | "admin") {
-    const email = normalizeEmail(emailRaw);
-    const ip = tryCtx()?.ip ?? null;
-    await this.assertLoginAllowed(email, ip);
-    const user = await this.findAccount(this.db, email, kind);
-    const tooLong = Buffer.byteLength(password, "utf8") > PASSWORD_MAX_BYTES;
-    const hash = user && !tooLong ? user.passwordHash : await this.dummyPasswordHash();
-    const matches = await bcrypt.compare(password, hash);
-    const allowed =
-      !!user &&
-      !tooLong &&
-      matches &&
-      (kind === "alumni"
-        ? user.status === "active" ||
-          user.status === "pending_otp" ||
-          user.status === "disabled" ||
-          user.status === "deletion_pending"
-        : user.status === "active" && (await this.adminCanLogin(user.id)));
-    if (!user || !allowed) {
-      await this.recordLoginFailure(email, ip);
-      throw unauthenticated("Email atau password salah.");
-    }
-    await this.limits.reset(`login:${email}`);
-    return user;
-  }
-
-  /** Admin `active` dengan TOTP terverifikasi (AC F02-2, F-16): satu-satunya yang boleh tahap sandi admin. */
-  private async adminCanLogin(userId: string): Promise<boolean> {
-    const [row] = await this.db
-      .select({ status: admins.status, totpVerifiedAt: mfaTotp.verifiedAt })
-      .from(admins)
-      .leftJoin(mfaTotp, eq(mfaTotp.userId, admins.userId))
-      .where(eq(admins.userId, userId))
-      .limit(1);
-    return row?.status === "active" && row.totpVerifiedAt !== null;
-  }
-
-  /**
-   * Login alumni (F-02, AC F02-1; kontrak login). Sandi benar, lalu menurut users.status (PRD 2.2, 4.2):
+   * Login alumni (F-02, AC F02-1; kontrak login). Pemeriksaan sandi lewat PasswordVerifier (batas kegagalan per email
+   * dan IP dicadangkan atomik sebelum bcrypt, PRD 2.5/D1; sandi > 72 byte ditolak; waktu respons setara untuk email
+   * tidak terdaftar). Semua akun alumni yang belum `deleted` lolos pemeriksaan sandi. Sandi benar, lalu menurut
+   * users.status (PRD 2.2, 4.2):
    * - active → `home` + sesi mobile;
    * - pending_otp → `verify_otp` + challenge aktivasi (yang masih aktif dipakai ulang agar tidak memakan batas kirim;
    *   selain itu satu challenge baru bertujuan sama dengan challenge aktivasi terakhir, slot signup/email_change);
@@ -607,7 +536,9 @@ export class AuthService {
    * - disabled → `account_disabled` tanpa sesi (pemulihan hanya lewat pengurus).
    */
   async login(emailRaw: string, password: string, deviceName: string | undefined): Promise<LoginResponse> {
-    const user = await this.checkPassword(emailRaw, password, "alumni");
+    const user = await this.passwords.verify(emailRaw, password, "alumni", (account) =>
+      LOGIN_PASSWORD_STATES.includes(account.status),
+    );
     const now = this.now();
     switch (user.status) {
       case "pending_otp":
@@ -626,7 +557,7 @@ export class AuthService {
     }
     const issued = await this.db.transaction(async (tx) => {
       await tx.update(users).set({ lastLoginAt: now }).where(eq(users.id, user.id));
-      return this.createSession(tx, user.id, "mobile", 1, deviceName);
+      return this.sessionIssuer.issue(tx, { userId: user.id, audience: "mobile", mfaLevel: 1, deviceName });
     });
     return { next: "home", session: issued.pair };
   }
@@ -668,77 +599,30 @@ export class AuthService {
     };
   }
 
-  async createSession(
-    tx: DbOrTx,
-    userId: string,
-    audience: Audience,
-    mfaLevel: number,
-    deviceName?: string,
-    familyId?: string,
-  ): Promise<IssuedSession> {
-    const now = this.now();
-    const user = await tx.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { sessionVersion: true },
-    });
-    const context = tryCtx();
-    const sessionId = uuidv7();
-    const refreshToken = randomToken();
-    const refreshExpiresAt = new Date(now.getTime() + REFRESH_TTL_MS[audience]);
-    await tx.insert(sessions).values({
-      id: sessionId,
-      userId,
-      familyId: familyId ?? uuidv7(),
-      refreshHash: sha256(refreshToken),
-      audience,
-      mfaLevel,
-      deviceName: deviceName ?? null,
-      // Daftar sesi perangkat (F-02): platform dari X-App-Platform; web admin = web.
-      platform: audience === "admin" ? "web" : (context?.appPlatform ?? null),
-      appVersion: audience === "admin" ? null : (context?.appVersion ?? null),
-      lastSeenAt: now,
-      lastActivityAt: now,
-      expiresAt: refreshExpiresAt,
-      createdAt: now,
-    });
-    const access = await this.tokens.signAccess({
-      userId,
-      sessionId,
-      sessionVersion: user?.sessionVersion ?? 1,
-      audience,
-      mfaLevel,
-    });
-    return {
-      sessionId,
-      refreshToken,
-      refreshExpiresAt,
-      pair: {
-        access_token: access.token,
-        access_expires_at: access.expiresAt.toISOString(),
-        ...(audience === "mobile"
-          ? { refresh_token: refreshToken, refresh_expires_at: refreshExpiresAt.toISOString() }
-          : {}),
-      },
-    };
-  }
-
   /**
-   * Rotasi refresh token. Token yang sudah dipakai mencabut seluruh keluarga sesi (AC F02-3).
-   * Refresh admin tidak memperpanjang aktivitas; sesi admin idle 30 menit tidak bisa diperbarui (AC F02-5).
+   * Rotasi refresh token (AC F02-3; kontrak refreshSession). Hanya token yang SUDAH DIROTASI (`replaced_by` terisi)
+   * lalu dipakai lagi yang dianggap pencurian: seluruh keluarga dicabut dan kejadian keamanan diaudit. Token yang
+   * dicabut tanpa rotasi (logout, idle admin, pencabutan sesi, logout semua) cukup ditolak 401 tanpa kejadian keamanan,
+   * sehingga tab admin kedua atau pengulangan klien setelah idle tidak mencemari jejak audit F-17.
+   * Refresh admin tidak memperpanjang aktivitas; sesi admin idle 30 menit tidak bisa diperbarui dan seluruh keluarganya
+   * dicabut (AC F02-5).
    */
-  async refresh(refreshToken: string, expectedAudience: Audience): Promise<IssuedSession> {
+  async refresh(refreshToken: string, expectedAudience: SessionAudience): Promise<IssuedSession> {
     const now = this.now();
     const hash = sha256(refreshToken);
     const unauth = unauthenticated();
     const current = await this.db.query.sessions.findFirst({ where: eq(sessions.refreshHash, hash) });
     if (!current || current.audience !== expectedAudience) throw unauth;
-    if (current.revokedAt || current.replacedBy) {
+    if (current.replacedBy) {
       await this.revokeFamilyOnReuse(current);
       throw unauth;
     }
-    if (current.expiresAt <= now) throw unauth;
+    if (current.revokedAt || current.expiresAt <= now) throw unauth;
     if (current.audience === "admin" && now.getTime() - current.lastActivityAt.getTime() > ADMIN_IDLE_MS) {
-      await this.db.update(sessions).set({ revokedAt: now }).where(eq(sessions.id, current.id));
+      await this.db
+        .update(sessions)
+        .set({ revokedAt: now })
+        .where(and(eq(sessions.familyId, current.familyId), isNull(sessions.revokedAt)));
       throw unauth;
     }
     const user = await this.db.query.users.findFirst({ where: eq(users.id, current.userId) });
@@ -754,14 +638,13 @@ export class AuthService {
     }
 
     return this.db.transaction(async (tx) => {
-      const issued = await this.createSession(
-        tx,
-        current.userId,
-        current.audience as Audience,
-        current.mfaLevel,
-        current.deviceName ?? undefined,
-        current.familyId,
-      );
+      const issued = await this.sessionIssuer.issue(tx, {
+        userId: current.userId,
+        audience: current.audience as SessionAudience,
+        mfaLevel: current.mfaLevel,
+        deviceName: current.deviceName ?? undefined,
+        familyId: current.familyId,
+      });
       const rotated = await tx
         .update(sessions)
         .set({ revokedAt: now, replacedBy: issued.sessionId })
@@ -794,9 +677,9 @@ export class AuthService {
   }
 
   /**
-   * Refresh token yang sudah dirotasi/dicabut dipakai lagi: indikasi token dicuri (AC F02-3). Seluruh keluarga sesi
-   * dicabut dan kejadian keamanan diaudit dalam transaksi yang sama (F-17). Aktor = pemanggil anonim (pemegang token
-   * tidak terautentikasi); entitas = pemilik akun.
+   * Refresh token yang sudah DIROTASI dipakai lagi: indikasi token dicuri (AC F02-3). Seluruh keluarga sesi dicabut dan
+   * kejadian keamanan diaudit dalam transaksi yang sama (F-17). Aktor = pemanggil anonim (pemegang token tidak
+   * terautentikasi); entitas = pemilik akun.
    */
   private async revokeFamilyOnReuse(session: { userId: string; familyId: string; audience: string }) {
     const now = this.now();
@@ -821,25 +704,25 @@ export class AuthService {
 
   /**
    * Logout (F-02, AC F13-5): keluarga sesi pemanggil dicabut dan token push perangkat sesi itu dinonaktifkan dalam satu
-   * transaksi (pengiriman push yang belum terkirim dibatalkan), lalu socket sesi itu diputus setelah commit.
+   * transaksi (pengiriman push yang belum terkirim dibatalkan), lalu socket keluarga itu diputus setelah commit.
    */
-  async logout(auth: Pick<AuthContext, "userId" | "sessionId">) {
+  async logout(auth: Pick<AuthContext, "userId" | "familyId">) {
     const now = this.now();
-    const familyId = await this.db.transaction(async (tx) => {
-      const [current] = await tx
-        .select({ familyId: sessions.familyId })
-        .from(sessions)
-        .where(and(eq(sessions.id, auth.sessionId), eq(sessions.userId, auth.userId)));
-      if (!current) return null;
+    await this.db.transaction(async (tx) => {
       await tx
         .update(sessions)
         .set({ revokedAt: now })
-        .where(and(eq(sessions.familyId, current.familyId), isNull(sessions.revokedAt)));
-      await revokeDeviceTokens(tx, { userId: auth.userId, familyIds: [current.familyId] }, now);
-      return current.familyId;
+        .where(
+          and(
+            eq(sessions.familyId, auth.familyId),
+            eq(sessions.userId, auth.userId),
+            isNull(sessions.revokedAt),
+          ),
+        );
+      await revokeDeviceTokens(tx, { userId: auth.userId, familyIds: [auth.familyId] }, now);
     });
     // Socket realtime keluarga sesi ini menerima session.revoked lalu diputus (ARCHITECTURE §4.9).
-    if (familyId) this.realtime.disconnectSession(familyId, "logout");
+    this.realtime.disconnectSession(auth.familyId, "logout");
   }
 
   /**
@@ -868,180 +751,5 @@ export class AuthService {
     });
     // Setelah commit: semua socket pengguna menerima session.revoked lalu diputus (AC F02-6).
     this.realtime.disconnectUser(userId, "logout_all");
-  }
-
-  // ------------------------------------------------------------------ Admin (F-02, F-16)
-
-  /**
-   * Tahap sandi admin (AC F02-2; kontrak adminLogin). Hanya admin `active` dengan TOTP terverifikasi yang memperoleh
-   * mfa_token (5 menit, hanya untuk POST /admin/auth/mfa). Admin `invited`/`disabled` atau tanpa TOTP terverifikasi
-   * mendapat 401 yang sama dengan sandi salah, sehingga sandi bocor tidak cukup untuk mendaftarkan autentikator
-   * penyerang; pendaftaran TOTP hanya lewat token penerimaan undangan (F-16).
-   */
-  async adminLogin(emailRaw: string, password: string): Promise<AdminLoginResponse> {
-    // Admin aktif + TOTP terverifikasi diperiksa di checkPassword (401 sama dengan sandi salah).
-    const user = await this.checkPassword(emailRaw, password, "admin");
-    const mfa = await this.tokens.signMfa(user.id);
-    return {
-      mfa_token: mfa.token,
-      mfa_expires_at: mfa.expiresAt.toISOString(),
-      totp_enrollment_required: false,
-    };
-  }
-
-  /**
-   * Tahap TOTP admin (AC F02-2; kontrak adminVerifyMfa). Baris mfa_totp dikunci sehingga percobaan bersamaan berurutan:
-   * kode TOTP hanya berlaku untuk langkah waktu yang lebih baru dari last_used_step (anti replay, RFC 6238 §5.2) dan
-   * backup code dikonsumsi atomik sekali pakai. Kode salah → 400 VALIDATION_ERROR pada field kode dengan sisa
-   * percobaan (mfa_token tetap berlaku); 401 hanya untuk mfa_token tidak sah/kedaluwarsa, admin atau akun tidak lagi
-   * aktif, atau TOTP tidak terverifikasi; 429 setelah 5 kegagalan dalam 15 menit per admin.
-   */
-  async adminVerifyMfa(
-    mfaToken: string,
-    totpCode: string | undefined,
-    backupCode: string | undefined,
-  ): Promise<IssuedSession> {
-    const unauth = unauthenticated("Sesi masuk tidak berlaku lagi. Masuk kembali.");
-    const userId = await this.tokens.verifyMfa(mfaToken);
-    if (!userId) throw unauth;
-    const ip = tryCtx()?.ip ?? null;
-    await this.limits.assertNotLimited(
-      `mfa:${userId}`,
-      MFA_FAILS_LIMIT,
-      LOGIN_WINDOW_MS,
-      "Terlalu banyak percobaan kode. Coba lagi nanti.",
-    );
-    const now = this.now();
-    try {
-      return await this.db.transaction(async (tx) => {
-        const [totpRow] = await tx.select().from(mfaTotp).where(eq(mfaTotp.userId, userId)).for("update");
-        const user = await tx.query.users.findFirst({ where: eq(users.id, userId) });
-        const admin = await tx.query.admins.findFirst({ where: eq(admins.userId, userId) });
-        // Keadaan token/admin tidak sah → 401 (kembali ke login), bukan galat kode.
-        if (
-          !totpRow?.verifiedAt ||
-          !user ||
-          user.status !== "active" ||
-          user.kind !== "admin" ||
-          admin?.status !== "active"
-        )
-          throw unauth;
-
-        let method: "totp" | "backup_code";
-        if (totpCode) {
-          const step = matchTotpStep(
-            decryptSecret(totpRow.secretEncrypted, this.env.TOTP_ENC_KEY),
-            totpCode,
-            now,
-          );
-          if (step === null || (totpRow.lastUsedStep !== null && step <= totpRow.lastUsedStep))
-            throw new WrongMfaCode("totp_code");
-          await tx
-            .update(mfaTotp)
-            .set({ lastUsedStep: step, updatedAt: now })
-            .where(eq(mfaTotp.userId, userId));
-          method = "totp";
-        } else if (backupCode) {
-          const hash = backupCodeHash(this.env.OTP_HMAC_SECRET, backupCode);
-          const consumed = await tx
-            .update(mfaTotp)
-            .set({ backupCodeHashes: sql`${mfaTotp.backupCodeHashes} - ${hash}::text`, updatedAt: now })
-            .where(
-              and(
-                eq(mfaTotp.userId, userId),
-                sql`${mfaTotp.backupCodeHashes} @> ${JSON.stringify([hash])}::jsonb`,
-              ),
-            )
-            .returning({ userId: mfaTotp.userId });
-          if (consumed.length === 0) throw new WrongMfaCode("backup_code");
-          method = "backup_code";
-        } else throw new WrongMfaCode("totp_code");
-
-        await tx.update(users).set({ lastLoginAt: now }).where(eq(users.id, userId));
-        const issued = await this.createSession(tx, userId, "admin", 2, "Web admin");
-        await this.audit.write(tx, {
-          actor: { kind: "admin", userId, adminId: admin.id, adminRole: admin.role },
-          action: "admin.login",
-          entityType: "admin",
-          entityId: admin.id,
-          after: { mfa_method: method },
-        });
-        return issued;
-      });
-    } catch (e) {
-      if (!(e instanceof WrongMfaCode)) throw e;
-      const failures = await this.limits.hit(`mfa:${userId}`, LOGIN_WINDOW_MS);
-      if (ip) await this.limits.hit(`login-ip:${ip}`, LOGIN_WINDOW_MS);
-      // Galat formulir: tetap di layar MFA dengan sisa percobaan (kontrak adminVerifyMfa); mfa_token tetap berlaku.
-      const left = Math.max(0, MFA_FAILS_LIMIT - failures);
-      const message =
-        left > 0
-          ? `Kode salah. Sisa percobaan ${left}.`
-          : "Kode salah. Batas percobaan tercapai; coba lagi dalam 15 menit.";
-      throw new AppException(400, "VALIDATION_ERROR", message, { fieldErrors: { [e.field]: [message] } });
-    }
-  }
-
-  /**
-   * Profil admin dari AuthContext yang dievaluasi guard pada request ini (izin dari database, AC F15-1, F16-3), plus
-   * email login, penanda akun alumni tertaut (konflik kepentingan PRD 2.3), sisa backup code, dan waktu login berhasil
-   * SEBELUM sesi ini (audit `admin.login` terbaru yang lebih awal dari awal keluarga sesi pemanggil; F-02, N-08).
-   */
-  async adminProfile(auth: AuthContext): Promise<AdminProfile> {
-    const [row] = await this.db
-      .select({
-        id: admins.id,
-        displayName: admins.displayName,
-        role: admins.role,
-        status: admins.status,
-        permissionsVersion: admins.permissionsVersion,
-        linkedAlumniUserId: admins.linkedAlumniUserId,
-        email: users.email,
-        backupCodeHashes: mfaTotp.backupCodeHashes,
-      })
-      .from(admins)
-      .innerJoin(users, eq(users.id, admins.userId))
-      .leftJoin(mfaTotp, eq(mfaTotp.userId, admins.userId))
-      .where(eq(admins.id, auth.adminId!))
-      .limit(1);
-    if (!row || row.status !== "active") throw new AppException(403, "FORBIDDEN", "Akun admin tidak aktif.");
-    const [family] = await this.db
-      .select({ startedAt: min(sessions.createdAt) })
-      .from(sessions)
-      .where(
-        eq(
-          sessions.familyId,
-          this.db
-            .select({ familyId: sessions.familyId })
-            .from(sessions)
-            .where(eq(sessions.id, auth.sessionId)),
-        ),
-      );
-    const startedAt = family?.startedAt ?? null;
-    const [previous] = startedAt
-      ? await this.db
-          .select({ at: auditLogs.createdAt })
-          .from(auditLogs)
-          .where(
-            and(
-              eq(auditLogs.actorAdminId, row.id),
-              eq(auditLogs.action, "admin.login"),
-              lt(auditLogs.createdAt, startedAt),
-            ),
-          )
-          .orderBy(desc(auditLogs.createdAt))
-          .limit(1)
-      : [];
-    return {
-      admin_id: row.id,
-      display_name: row.displayName,
-      email: row.email,
-      role: row.role,
-      permissions: PERMISSION_VALUES.filter((p) => auth.permissions.has(p)),
-      permissions_version: row.permissionsVersion,
-      has_linked_alumni: row.linkedAlumniUserId !== null,
-      backup_codes_remaining: Math.min(10, row.backupCodeHashes?.length ?? 0),
-      previous_login_at: previous?.at.toISOString() ?? null,
-    };
   }
 }

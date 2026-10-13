@@ -97,7 +97,10 @@ describe("NotificationService.notify (ARCHITECTURE §4.7; AC F04-1, F13-1, F13-6
         inTx((tx) => service.notify(tx, { ...base, ...patch })),
         JSON.stringify(patch),
       ).rejects.toBeInstanceOf(NotificationInputError);
-    await expect(t.db.transaction((tx) => service.notify(tx, base))).rejects.toThrow(/withTx/);
+    // Savepoint tidak commit-aware: ditolak (efek setelah commit tidak dapat menunggu commit transaksi luar).
+    await expect(
+      t.db.transaction((tx) => tx.transaction((savepoint) => service.notify(savepoint, base))),
+    ).rejects.toThrow(/tx commit-aware/);
     expect(await service.unreadCount(member.userId)).toBe(0);
   });
 });

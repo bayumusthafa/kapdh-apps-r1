@@ -4,6 +4,7 @@ import {
   membershipEvents,
   notifications,
   outboxEvents,
+  payments,
   sessions,
   users,
 } from "@kapdh/database";
@@ -126,12 +127,13 @@ describe("MembershipKernel.allocateMemberNumber (AC F05-1)", () => {
 });
 
 describe("MembershipKernel.applyPaidPayment (PRD 3.7; AC F04-1, F04-5, F05-1, F07-1, F07-2, F07-4)", () => {
-  it("registration: periode mulai approved_at +12 bulan kalender Jakarta; histori, audit, notifikasi, outbox; idempoten", async () => {
+  it("registration: periode mulai approved_at +12 bulan kalender Jakarta; histori dan audit; idempoten; tanpa notifikasi kedua", async () => {
     const member = await createAlumni(t, { status: "unverified" });
     const payment = await createMembershipPayment(t, { userId: member.userId, type: "registration" });
     const approvedAt = new Date("2026-01-31T10:00:00Z");
     const result = await inTx((tx) => kernel.applyPaidPayment(tx, payment, approvedAt));
     expect(result).toMatchObject({
+      outcome: "applied",
       applied: true,
       kind: "activation",
       periodStartsAt: approvedAt,
@@ -145,25 +147,18 @@ describe("MembershipKernel.applyPaidPayment (PRD 3.7; AC F04-1, F04-5, F05-1, F0
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({ kind: "activation", paymentId: payment.id, beforeExpiresAt: null });
     expect(await auditsOf(member.userId, "membership.activated")).toHaveLength(1);
-    const inbox = await notificationsOf(member.userId);
-    expect(inbox).toHaveLength(1);
-    expect(inbox[0]).toMatchObject({
-      category: "membership",
-      title: "KTA Anda aktif",
-      data: { route: "/kta" },
-    });
-    const outbox = await t.db
-      .select()
-      .from(outboxEvents)
-      .where(eq(outboxEvents.dedupKey, `notification.created:${inbox[0]!.id}`));
-    expect(outbox).toHaveLength(1);
+    // AC F13-1: satu keputusan = satu notification_id. Notifikasi keputusan (kategori payment, /payments/{id}) ditulis
+    // modul payments di transaksi yang sama; kernel tidak menambah notifikasi membership kedua.
+    expect(await notificationsOf(member.userId)).toHaveLength(0);
+    expect(
+      await t.db.select().from(outboxEvents).where(eq(outboxEvents.topic, "notification.created")),
+    ).toEqual([]);
 
-    // AC F04-5: pemanggilan ulang (retry worker/handler) tidak memperpanjang dua kali dan tidak menggandakan inbox.
+    // AC F04-5: pemanggilan ulang (retry worker/handler) tidak memperpanjang dua kali.
     const again = await inTx((tx) => kernel.applyPaidPayment(tx, payment, new Date()));
-    expect(again).toMatchObject({ applied: false, eventId: result.eventId });
+    expect(again).toMatchObject({ outcome: "already_applied", applied: false, eventId: result.eventId });
     expect((await profileOf(member.userId)).expiresAt).toEqual(profile.expiresAt);
     expect(await eventsOf(member.userId)).toHaveLength(1);
-    expect(await notificationsOf(member.userId)).toHaveLength(1);
 
     // Status dihitung ulang dari periode baru.
     expect(
@@ -214,6 +209,39 @@ describe("MembershipKernel.applyPaidPayment (PRD 3.7; AC F04-1, F04-5, F05-1, F0
     expect((await kernel.effectiveStatusFor(member.userId))?.status).toBe("suspended");
   });
 
+  it("kontrak adminDecidePayment: pemilik terhapus (user_id NULL / akun deleted) → paid tanpa efek keanggotaan", async () => {
+    // Baris users dihapus: payments.user_id menjadi NULL (ON DELETE SET NULL), profil alumni ikut terhapus.
+    const gone = await createAlumni(t, { status: "unverified" });
+    const orphan = await createMembershipPayment(t, { userId: gone.userId });
+    await t.db.delete(users).where(eq(users.id, gone.userId));
+    const [orphanRow] = await t.db.select().from(payments).where(eq(payments.id, orphan.id));
+    expect(orphanRow!.userId).toBeNull();
+    expect(await inTx((tx) => kernel.applyPaidPayment(tx, orphan, t.clock.now()))).toEqual({
+      outcome: "owner_deleted",
+      applied: false,
+      kind: "activation",
+      eventId: null,
+      periodStartsAt: null,
+      periodExpiresAt: null,
+    });
+    // Hook pra-kunci iuran melewati pemilik yang sudah tidak ada.
+    const registry = t.app.get(PaymentHandlerRegistry);
+    await inTx((tx) => registry.lockRelated(tx, { ...orphanRow!, type: "registration" }));
+    await inTx((tx) => registry.handlerFor("registration").onApproved(tx, orphanRow!, t.clock.now()));
+    expect(
+      await t.db.select().from(membershipEvents).where(eq(membershipEvents.paymentId, orphan.id)),
+    ).toEqual([]);
+
+    // Akun berstatus deleted (baris dipertahankan): tidak pernah diaktifkan.
+    const deleted = await createAlumni(t, { status: "unverified", accountStatus: "deleted" });
+    const payment = await createMembershipPayment(t, { userId: deleted.userId, type: "registration" });
+    expect(await inTx((tx) => kernel.applyPaidPayment(tx, payment, t.clock.now()))).toMatchObject({
+      outcome: "owner_deleted",
+    });
+    expect((await profileOf(deleted.userId)).expiresAt).toBeNull();
+    expect(await eventsOf(deleted.userId)).toHaveLength(0);
+  });
+
   it("menolak payment belum paid, registration ganda, renewal sebelum aktivasi, dan payment tiket", async () => {
     const unverified = await createAlumni(t, { status: "unverified" });
     const pending = await createMembershipPayment(t, { userId: unverified.userId, status: "pending" });
@@ -236,12 +264,14 @@ describe("MembershipKernel.applyPaidPayment (PRD 3.7; AC F04-1, F04-5, F05-1, F0
     expect(await eventsOf(unverified.userId)).toHaveLength(0);
   });
 
-  it("wajib tx dari withTx (efek setelah commit); rollback membatalkan periode, histori, dan inbox", async () => {
+  it("wajib tx commit-aware (bukan savepoint); rollback membatalkan periode, histori, dan audit", async () => {
     const member = await createAlumni(t, { status: "unverified" });
     const payment = await createMembershipPayment(t, { userId: member.userId });
     await expect(
-      t.db.transaction((tx) => kernel.applyPaidPayment(tx, payment, t.clock.now())),
-    ).rejects.toThrow(/wajib dipanggil dengan tx dari withTx/);
+      runAsSystem(() =>
+        t.db.transaction((tx) => tx.transaction((sp) => kernel.applyPaidPayment(sp, payment, t.clock.now()))),
+      ),
+    ).rejects.toThrow(/wajib dipanggil dengan tx commit-aware/);
     await expect(
       inTx(async (tx) => {
         await kernel.applyPaidPayment(tx, payment, t.clock.now());
@@ -250,7 +280,17 @@ describe("MembershipKernel.applyPaidPayment (PRD 3.7; AC F04-1, F04-5, F05-1, F0
     ).rejects.toThrow("keputusan dibatalkan");
     expect((await profileOf(member.userId)).expiresAt).toBeNull();
     expect(await eventsOf(member.userId)).toHaveLength(0);
-    expect(await notificationsOf(member.userId)).toHaveLength(0);
+    expect(await auditsOf(member.userId, "membership.activated")).toHaveLength(0);
+  });
+
+  it("ARCHITECTURE §4.10: db.transaction dari DB yang diinjeksi commit-aware → kernel diterima dan efek menunggu commit", async () => {
+    const member = await createAlumni(t, { status: "unverified" });
+    const payment = await createMembershipPayment(t, { userId: member.userId });
+    const result = await runAsSystem(() =>
+      t.db.transaction((tx) => kernel.applyPaidPayment(tx, payment, t.clock.now())),
+    );
+    expect(result.outcome).toBe("applied");
+    expect((await kernel.effectiveStatusFor(member.userId))?.status).toBe("verified");
   });
 });
 
@@ -272,23 +312,41 @@ describe("PaymentHandlerRegistry (ARCHITECTURE §4.6)", () => {
     if (!registry.has("ticket")) expect(() => registry.handlerFor("ticket")).toThrow(/belum terdaftar/);
   });
 
-  it("kontrak C5: lockRelated mengunci induk sebelum payment (iuran tanpa hook = no-op); onApproved dapat melaporkan refund D6", async () => {
+  it("URUTAN KUNCI kontrak C3: handler iuran core memiliki hook pra-kunci users → alumni pemilik", async () => {
+    const registry = t.app.get(PaymentHandlerRegistry);
+    for (const type of ["registration", "renewal"] as const)
+      expect(registry.handlerFor(type).lockRelated, type).toBeTypeOf("function");
+    const member = await createAlumni(t, { status: "expiring" });
+    const payment = await createMembershipPayment(t, { userId: member.userId, type: "renewal" });
+    // Pola modul payments: baca tanpa kunci → hook pra-kunci → payment FOR UPDATE → onApproved (kunci dipakai ulang).
+    const outcome = await inTx(async (tx) => {
+      await registry.lockRelated(tx, payment);
+      await tx.select().from(payments).where(eq(payments.id, payment.id)).for("update");
+      return kernel.applyPaidPayment(tx, payment, t.clock.now());
+    });
+    expect(outcome.outcome).toBe("applied");
+  });
+
+  it("kontrak C3/C5: lockRelated menerima user_id + ticket_id (jenis tanpa hook = no-op); onApproved dapat melaporkan refund D6", async () => {
     const registry = new PaymentHandlerRegistry();
     const calls: string[] = [];
     registry.register({ type: "registration", onApproved: async () => {} });
     registry.register({
       type: "ticket",
       lockRelated: async (_tx, payment) => {
-        calls.push(`lock:${payment.ticketId}`);
+        calls.push(`lock:${payment.ticketId}:${payment.userId}`);
       },
       onApproved: async () => ({
         refund: { amount: "75000.00", dueAt: new Date("2026-10-23T00:00:00Z"), reason: "Event dibatalkan" },
       }),
     });
     const ticketId = uuidv7();
-    await inTx((tx) => registry.lockRelated(tx, { id: uuidv7(), type: "ticket", ticketId }));
-    await inTx((tx) => registry.lockRelated(tx, { id: uuidv7(), type: "registration", ticketId: null }));
-    expect(calls).toEqual([`lock:${ticketId}`]);
+    const userId = uuidv7();
+    await inTx((tx) => registry.lockRelated(tx, { id: uuidv7(), type: "ticket", ticketId, userId }));
+    await inTx((tx) =>
+      registry.lockRelated(tx, { id: uuidv7(), type: "registration", ticketId: null, userId }),
+    );
+    expect(calls).toEqual([`lock:${ticketId}:${userId}`]);
     const outcome = await registry
       .handlerFor("ticket")
       .onApproved(undefined as never, {} as never, new Date());
@@ -332,7 +390,7 @@ describe("MembershipKernel.suspend / unsuspend (AC F12-3, F12-4, F12-5)", () => 
       actorAdminId: moderator.adminId,
       afterExpiresAt: profile.expiresAt,
     });
-    const [audit] = await auditsOf(member.userId, "membership.suspended");
+    const [audit] = await auditsOf(member.userId, "member.suspended");
     expect(audit).toMatchObject({ reason: "Spam berulang di grup (catatan internal)" });
     const [notice] = await notificationsOf(member.userId);
     expect(notice).toMatchObject({
@@ -350,11 +408,16 @@ describe("MembershipKernel.suspend / unsuspend (AC F12-3, F12-4, F12-5)", () => 
       suspension_message: "Akun Anda dibatasi karena melanggar ketentuan komunitas.",
     });
 
+    // Kontrak adminSuspendMember: prasyarat dilanggar → 400 dengan versi terkini (bukan 409).
     await expect(
       inTx((tx) =>
         kernel.suspend(tx, member.userId, { reason: "lagi", memberMessage: "lagi", actorAdminId: null }),
       ),
-    ).rejects.toMatchObject({ status: 409, code: "VERSION_CONFLICT" });
+    ).rejects.toMatchObject({
+      status: 400,
+      code: "VALIDATION_ERROR",
+      extra: { current: { version: String(profile.version), account_status: "active" } },
+    });
     await expect(
       inTx((tx) =>
         kernel.suspend(tx, member.userId, { reason: "  ", memberMessage: "x", actorAdminId: null }),
@@ -363,6 +426,22 @@ describe("MembershipKernel.suspend / unsuspend (AC F12-3, F12-4, F12-5)", () => 
     await expect(
       inTx((tx) => kernel.suspend(tx, uuidv7(), { reason: "x", memberMessage: "x", actorAdminId: null })),
     ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("kontrak adminSuspendMember: akun deletion_pending tidak dapat dibatasi (400, tanpa perubahan)", async () => {
+    const pending = await createAlumni(t, { status: "verified", accountStatus: "deletion_pending" });
+    expect(pending.deletionRequestNumber).toMatch(/^DEL-\d{4}-[0-9A-Z]{4,}$/);
+    await expect(
+      inTx((tx) =>
+        kernel.suspend(tx, pending.userId, { reason: "uji", memberMessage: "uji", actorAdminId: null }),
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: "VALIDATION_ERROR",
+      extra: { current: { account_status: "deletion_pending", suspended_at: null } },
+    });
+    expect((await profileOf(pending.userId)).suspendedAt).toBeNull();
+    expect(await eventsOf(pending.userId)).toHaveLength(0);
   });
 
   it("AC F12-5: unsuspend menghitung ulang dari expires_at — masa habis menjadi expired, bukan verified", async () => {
@@ -377,18 +456,49 @@ describe("MembershipKernel.suspend / unsuspend (AC F12-3, F12-4, F12-5)", () => 
       (n) => n.title === "Pembatasan akun dicabut",
     );
     expect(notice!.data).toEqual({ route: "/renewal" });
+    // Tanpa member_message: teks baku kontrak adminUnsuspendMember.
+    expect(notice!.body).toContain("Pembatasan akun Anda telah dicabut pengurus.");
 
     const current = await createAlumni(t, { status: "suspended" });
     const restored = await inTx((tx) =>
       kernel.unsuspend(tx, current.userId, { reason: "Banding diterima", actorAdminId: null }),
     );
     expect(restored.effectiveStatus).toBe("verified");
-    expect(await auditsOf(current.userId, "membership.unsuspended")).toHaveLength(1);
+    expect(await auditsOf(current.userId, "member.unsuspended")).toHaveLength(1);
     const kinds = (await eventsOf(current.userId)).map((e) => e.kind);
     expect(kinds).toEqual(["unsuspend"]);
+    // Kontrak adminUnsuspendMember: anggota tidak sedang suspended → 400 dengan versi terkini.
     await expect(
       inTx((tx) => kernel.unsuspend(tx, current.userId, { reason: "x", actorAdminId: null })),
-    ).rejects.toMatchObject({ status: 409 });
+    ).rejects.toMatchObject({
+      status: 400,
+      code: "VALIDATION_ERROR",
+      extra: { current: { suspended_at: null } },
+    });
+  });
+
+  it("kontrak adminUnsuspendMember: SATU notifikasi memuat member_message; banding dikabulkan dinyatakan", async () => {
+    const member = await createAlumni(t, { status: "suspended" });
+    await inTx((tx) =>
+      kernel.unsuspend(tx, member.userId, {
+        reason: "Banding diterima pengurus",
+        memberMessage: "Terima kasih atas klarifikasinya",
+        appealGranted: true,
+        actorAdminId: null,
+      }),
+    );
+    const inbox = await notificationsOf(member.userId);
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]).toMatchObject({
+      category: "account",
+      title: "Banding dikabulkan",
+      data: { route: "/kta" },
+    });
+    expect(inbox[0]!.body).toContain("Banding Anda dikabulkan.");
+    expect(inbox[0]!.body).toContain("Terima kasih atas klarifikasinya.");
+    expect(inbox[0]!.body).not.toContain("Banding diterima pengurus");
+    const [audit] = await auditsOf(member.userId, "member.unsuspended");
+    expect(audit!.after).toMatchObject({ appeal_granted: true, effective_status: "verified" });
   });
 });
 
@@ -433,11 +543,11 @@ describe("MembershipKernel.correctIdentity (PRD 3.5, AC F05-6)", () => {
       afterMemberNumber: `12.01.01.${seq}`,
       actorAdminId: admin.adminId,
     });
-    const [audit] = await auditsOf(member.userId, "membership.identity_corrected");
+    const [audit] = await auditsOf(member.userId, "member.number_corrected");
     expect(audit!.before).toMatchObject({ member_number: `12.02.01.${seq}`, class_out: 3 });
     expect(audit!.after).toMatchObject({ member_number: `12.01.01.${seq}`, class_out: 6 });
 
-    // QR terikat user_id + N: token yang diterbitkan ulang tetap merujuk anggota yang sama dengan nomor baru.
+    // AC F05-6: QR lama (URL nomor lama) menjadi "perlu diperbarui"; kartu terbitan ulang memuat nomor baru dan lolos.
     const qr = t.app.get(QrTokenService);
     const signed = (await qr.sign({
       userId: member.userId,
@@ -445,9 +555,9 @@ describe("MembershipKernel.correctIdentity (PRD 3.5, AC F05-6)", () => {
       membershipExpiresAt: after.expiresAt!,
     }))!;
     const claims = (await qr.verify(signed.token))!;
-    expect(
-      qrBindingMatches(claims, { userId: member.userId, memberSeq: after.memberSeq }, after.memberNumber!),
-    ).toBe(true);
+    const current = { userId: member.userId, memberSeq: after.memberSeq, memberNumber: after.memberNumber };
+    expect(qrBindingMatches(claims, current, `12.01.01.${seq}`)).toBe(true);
+    expect(qrBindingMatches(claims, current, `12.02.01.${seq}`)).toBe(false);
   });
 
   it("validasi kelas/angkatan, versi usang → 409 dengan keadaan terbaru, tanpa perubahan → changed false", async () => {
@@ -477,5 +587,20 @@ describe("MembershipKernel.correctIdentity (PRD 3.5, AC F05-6)", () => {
       memberNumber: profile.memberNumber,
     });
     expect(await eventsOf(member.userId)).toHaveLength(0);
+  });
+
+  it("tanpa nomor (belum aktivasi) → audit member.identity_corrected; deletion_pending → 400", async () => {
+    const unverified = await createAlumni(t, { status: "pending_otp", cohort: 20 });
+    const corrected = await inTx((tx) =>
+      kernel.correctIdentity(tx, unverified.userId, { cohort: 21 }, { adminId: null }, "Koreksi angkatan"),
+    );
+    expect(corrected).toMatchObject({ changed: true, memberNumber: null });
+    expect(await auditsOf(unverified.userId, "member.identity_corrected")).toHaveLength(1);
+    expect(await auditsOf(unverified.userId, "member.number_corrected")).toHaveLength(0);
+
+    const pending = await createAlumni(t, { status: "verified", accountStatus: "deletion_pending" });
+    await expect(
+      inTx((tx) => kernel.correctIdentity(tx, pending.userId, { classOut: 5 }, { adminId: null }, "Koreksi")),
+    ).rejects.toMatchObject({ status: 400, extra: { current: { account_status: "deletion_pending" } } });
   });
 });

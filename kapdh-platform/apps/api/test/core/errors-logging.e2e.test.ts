@@ -1,7 +1,8 @@
 import { Writable } from "node:stream";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { createAlumni, DEFAULT_PASSWORD } from "../support/factories.js";
+import { createAlumni, DEFAULT_PASSWORD, signInAlumni } from "../support/factories.js";
+import { uploadTestFile } from "../support/files.js";
 import { type HttpClient, httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
 import { ProbeModule, SECRET_MARKER } from "./probe.js";
@@ -170,6 +171,45 @@ describe("N-14: log JSON tanpa rahasia", () => {
       module: "ProbeController",
     });
     expect(line!.request_id).toBeTruthy();
+  });
+
+  it("PRD 5.4, ARCHITECTURE §2 butir 3: token URL berkas privat di path tidak pernah tercatat", async () => {
+    const member = await createAlumni(t, { status: "verified" });
+    const { accessToken } = await signInAlumni(t, member);
+    const ref = await uploadTestFile(t, accessToken, "payment_proof");
+    const access = (await api.get(`/files/${ref.id}/access`, { token: accessToken })).json() as {
+      url: string;
+    };
+    const path = access.url.slice(t.env.API_PUBLIC_URL.length);
+    const token = path.split("/").pop()!;
+    expect(token.length).toBeGreaterThan(40);
+    sink.clear();
+    const content = await t.app.inject({ method: "GET", url: path });
+    expect(content.statusCode).toBe(200);
+    const line = sink.lines.find((l) => l.msg === "request selesai");
+    expect(line).toMatchObject({
+      req: {
+        method: "GET",
+        url: "/api/v1/files/content/[REDACTED]",
+        route: "/api/v1/files/content/:token",
+      },
+      res: { status_code: 200 },
+    });
+    expect(sink.text()).not.toContain(token);
+    // Parameter path biasa (UUID) tetap tercatat untuk diagnosis.
+    sink.clear();
+    await api.get(`/files/${ref.id}/access`, { token: accessToken });
+    expect(sink.lines.find((l) => l.msg === "request selesai")).toMatchObject({
+      req: { url: `/api/v1/files/${ref.id}/access` },
+    });
+    // Rute tidak dikenal: segmen berbentuk token disamarkan (404 dengan path mentah).
+    sink.clear();
+    const stray = await t.app.inject({ method: "GET", url: `/api/v1/files/kontent/${token}` });
+    expect(stray.statusCode).toBe(404);
+    expect(sink.text()).not.toContain(token);
+    expect(sink.lines.find((l) => l.msg === "request selesai")).toMatchObject({
+      req: { url: "/api/v1/files/kontent/[REDACTED]" },
+    });
   });
 
   it("login gagal dan header Authorization tidak pernah tercatat", async () => {

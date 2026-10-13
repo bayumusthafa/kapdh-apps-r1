@@ -8,15 +8,18 @@ import { unauthenticated } from "../../core/errors/app-exception.js";
 import type { AuthContext, AuthedRequest } from "../../core/guards/auth-context.js";
 import { Audience, CurrentAuth, MemberAccess, Public } from "../../core/guards/decorators.js";
 import { assertTrustedOrigin } from "../../core/http/origin.js";
+import {
+  ADMIN_REFRESH_COOKIE,
+  clearAdminRefreshCookie,
+  secureCookies,
+  setAdminRefreshCookie,
+} from "../../core/identity/admin-refresh-cookie.js";
 import { Idempotent } from "../../core/idempotency/idempotent.js";
 import { COHORT_BASE_YEAR } from "../../core/membership/member-number.js";
 import { jakartaYear } from "../../core/membership/period.js";
 import { CLOCK, ENV } from "../../core/tokens.js";
 import { validate } from "../../core/validation/validate.js";
 import { AuthService } from "./auth.service.js";
-
-export const ADMIN_REFRESH_COOKIE = "kapdh_admin_rt";
-export const ADMIN_REFRESH_COOKIE_PATH = "/api/v1/auth";
 
 const passwordSchema = z.string().refine((v) => checkPassword(v).valid, {
   message: "Password 8 sampai 72 byte dengan huruf besar, huruf kecil, angka, dan simbol.",
@@ -124,7 +127,7 @@ export class AuthController {
     // Mutasi berbasis cookie wajib Origin web admin (CSRF, PRD 5.2). ADMIN_ORIGIN sudah dinormalisasi config.
     assertTrustedOrigin(req, this.env.ADMIN_ORIGIN);
     const issued = await this.auth.refresh(cookie, "admin");
-    setAdminRefreshCookie(reply, issued.refreshToken, issued.refreshExpiresAt, this.secureCookies());
+    setAdminRefreshCookie(reply, issued.refreshToken, issued.refreshExpiresAt, secureCookies(this.env));
     return issued.pair;
   }
 
@@ -135,13 +138,7 @@ export class AuthController {
   @MemberAccess("any")
   async logout(@CurrentAuth() auth: AuthContext, @Res({ passthrough: true }) reply: FastifyReply) {
     await this.auth.logout(auth);
-    if (auth.audience === "admin")
-      reply.clearCookie(ADMIN_REFRESH_COOKIE, {
-        path: ADMIN_REFRESH_COOKIE_PATH,
-        httpOnly: true,
-        secure: this.secureCookies(),
-        sameSite: "strict",
-      });
+    if (auth.audience === "admin") clearAdminRefreshCookie(reply, secureCookies(this.env));
   }
 
   @Post("logout-all")
@@ -151,18 +148,4 @@ export class AuthController {
   async logoutAll(@CurrentAuth() auth: AuthContext) {
     await this.auth.logoutAll(auth.userId);
   }
-
-  private secureCookies(): boolean {
-    return this.env.NODE_ENV !== "development" && this.env.NODE_ENV !== "test";
-  }
-}
-
-export function setAdminRefreshCookie(reply: FastifyReply, token: string, expires: Date, secure: boolean) {
-  reply.setCookie(ADMIN_REFRESH_COOKIE, token, {
-    httpOnly: true,
-    secure,
-    sameSite: "strict",
-    path: ADMIN_REFRESH_COOKIE_PATH,
-    expires,
-  });
 }

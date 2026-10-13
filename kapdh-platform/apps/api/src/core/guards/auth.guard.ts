@@ -4,11 +4,11 @@ import { PERMISSION_VALUES, type AdminRole, type Permission } from "@kapdh/contr
 import { adminPermissions, admins, sessions } from "@kapdh/database";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Logger } from "pino";
-import { TokenService } from "../../modules/auth/token.service.js";
 import type { Clock } from "../adapters/clock.js";
 import { setActor } from "../context/request-context.js";
 import type { Db } from "../db/types.js";
 import { AppException, forbidden, unauthenticated } from "../errors/app-exception.js";
+import { TokenService } from "../identity/token.service.js";
 import type { MemberAccessLevel } from "../membership/access.js";
 import { MembershipKernel } from "../membership/membership.kernel.js";
 import { RealtimeService } from "../realtime/realtime.service.js";
@@ -90,6 +90,7 @@ export class AuthGuard implements CanActivate {
     const auth: AuthContext = {
       userId: claims.userId,
       sessionId: claims.sessionId,
+      familyId: row.familyId,
       sessionVersion: claims.sessionVersion,
       audience: claims.audience,
       mfaLevel: claims.mfaLevel,
@@ -103,10 +104,12 @@ export class AuthGuard implements CanActivate {
 
     if (claims.audience === "admin") {
       if (now.getTime() - row.lastActivityAt.getTime() > ADMIN_IDLE_MS) {
+        // Idle mencabut seluruh KELUARGA sesi (kontrak C1 "Keluarga sesi"): refresh token keluarga ini tidak dapat
+        // dipakai lagi dan tidak tercatat sebagai pemakaian ulang (AC F02-5).
         await this.db
           .update(sessions)
           .set({ revokedAt: now })
-          .where(and(eq(sessions.id, claims.sessionId), isNull(sessions.revokedAt)));
+          .where(and(eq(sessions.familyId, row.familyId), isNull(sessions.revokedAt)));
         throw unauthenticated("Sesi admin berakhir karena tidak ada aktivitas selama 30 menit.");
       }
       const [admin] = await this.db
@@ -190,7 +193,11 @@ export class AuthGuard implements CanActivate {
     this.membership.assertAccess(level, status);
   }
 
-  /** X-Reauth-Token terikat user + sesi, <= 10 menit; sesi admin wajib reautentikasi dengan TOTP (F-16). */
+  /**
+   * X-Reauth-Token (kontrak C1 reauthenticate): tanda tangan + audience kapdh-reauth sah, umur iat <= 10 menit, `sub`
+   * = pengguna access token, `sid` = KELUARGA sesi access token (bukan id baris, sehingga rotasi refresh di tengah
+   * alur sensitif tidak membatalkan reautentikasi), dan sesi admin wajib tingkat 2 (TOTP/backup code, F-16).
+   */
   private async checkReauth(request: AuthedRequest, auth: AuthContext) {
     const raw = request.headers[REAUTH_HEADER];
     const token = typeof raw === "string" ? raw.trim() : "";
@@ -204,7 +211,7 @@ export class AuthGuard implements CanActivate {
     if (
       !claims ||
       claims.userId !== auth.userId ||
-      claims.sessionId !== auth.sessionId ||
+      claims.familyId !== auth.familyId ||
       (auth.audience === "admin" && claims.level < 2)
     ) {
       this.logger.debug({ request_id: String(request.id) }, "X-Reauth-Token ditolak");

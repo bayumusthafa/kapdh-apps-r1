@@ -50,6 +50,15 @@ export class KapdhIoAdapter extends IoAdapter {
         callback(null, origin === undefined || allowed.has(origin));
       },
     }) as Server;
+    // Tolak bawaan di lapisan socket (ARCHITECTURE §4.3, §4.9): namespace utama "/" selalu ada di Socket.IO dan tidak
+    // memiliki handshake terautentikasi, sehingga setiap koneksi ke sana ditolak; hanya /realtime yang menerima socket.
+    server.of("/").use((_socket, next) => {
+      next(
+        Object.assign(new Error("FORBIDDEN"), {
+          data: { code: "FORBIDDEN", message: "Gunakan namespace /realtime." },
+        }),
+      );
+    });
     if (this.options.redis) {
       const pub = this.options.redis.duplicate();
       const sub = this.options.redis.duplicate();

@@ -113,14 +113,21 @@ describe("QrTokenService (PRD 3.5, 3.6; ARCHITECTURE §3.2)", () => {
     expect(qr.qrContent("12.01.01.7", "abc.def.ghi")).toBe("https://kapdh.test/kta/12.01.01.7#t=abc.def.ghi");
   });
 
-  it("AC F05-6: keterikatan memakai user_id + N, bukan prefix; N dari URL wajib sama", () => {
+  it("AC F05-6, F06-3: keterikatan = user_id + N + nomor TERKINI; URL lama atau prefix rekaan → tidak terikat", () => {
     const claims = { userId, seq: 7 };
-    expect(qrBindingMatches(claims, { userId, memberSeq: 7 })).toBe(true);
-    // Setelah koreksi 12.02.01.7 → 12.01.01.7, token lama tetap terikat ke anggota yang sama.
-    expect(qrBindingMatches(claims, { userId, memberSeq: 7 }, "12.01.01.7")).toBe(true);
-    expect(qrBindingMatches(claims, { userId, memberSeq: 7 }, "12.01.01.8")).toBe(false);
-    expect(qrBindingMatches(claims, { userId: uuidv7(), memberSeq: 7 })).toBe(false);
-    expect(qrBindingMatches(claims, { userId, memberSeq: null })).toBe(false);
+    // Nomor terkini setelah koreksi 12.02.01.7 → 12.01.01.7 oleh pengurus.
+    const member = { userId, memberSeq: 7, memberNumber: "12.01.01.7" };
+    expect(qrBindingMatches(claims, member, "12.01.01.7")).toBe(true);
+    // URL + token terbitan sebelum koreksi: "QR tidak valid atau perlu diperbarui" (kontrak verifyKta langkah 3).
+    expect(qrBindingMatches(claims, member, "12.02.01.7")).toBe(false);
+    // Prefix rekaan dengan N yang sama tidak lagi lolos.
+    expect(qrBindingMatches(claims, member, "99.03.02.7")).toBe(false);
+    expect(qrBindingMatches(claims, member, "12.01.01.8")).toBe(false);
+    expect(qrBindingMatches({ userId, seq: 8 }, member, "12.01.01.7")).toBe(false);
+    expect(qrBindingMatches(claims, { ...member, userId: uuidv7() }, "12.01.01.7")).toBe(false);
+    expect(qrBindingMatches(claims, { userId, memberSeq: null, memberNumber: null }, "12.01.01.7")).toBe(
+      false,
+    );
     expect(memberSeqOf("30.01.02.12345")).toBe(12345);
     expect(memberSeqOf("30.01.02.0")).toBeNull();
     expect(memberSeqOf("3.01.02.1")).toBeNull();

@@ -206,6 +206,29 @@ describe("createStorageDriver", () => {
       }),
     ).toBeInstanceOf(S3Driver);
   });
+  it("STORAGE_LOCAL_ROOT relatif (.env.example) diselesaikan dari cwd, sama untuk API/worker/CLI", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "kapdh-cwd-"));
+    try {
+      const driver = createStorageDriver(
+        { ...base, STORAGE_DRIVER: "local", STORAGE_LOCAL_ROOT: "./.data/files" },
+        { cwd },
+      );
+      await driver.put("avatar/2026/10/obj-relatif", Buffer.from("isi"), { contentType: "text/plain" });
+      expect((await stat(join(cwd, ".data", "files", "avatar", "2026", "10", "obj-relatif"))).size).toBe(3);
+      // Folder publik tetap ditolak walau relatif.
+      expect(() =>
+        createStorageDriver(
+          { ...base, STORAGE_DRIVER: "local", STORAGE_LOCAL_ROOT: "./public/files" },
+          { cwd },
+        ),
+      ).toThrow(StorageConfigError);
+      expect(() =>
+        createStorageDriver({ ...base, STORAGE_DRIVER: "local", STORAGE_LOCAL_ROOT: "  " }, { cwd }),
+      ).toThrow(StorageConfigError);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
   it("s3 tanpa kredensial ditolak", () => {
     expect(() => createStorageDriver({ ...base, STORAGE_DRIVER: "s3", S3_BUCKET: "b" })).toThrow(
       StorageConfigError,

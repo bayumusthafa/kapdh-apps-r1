@@ -10,6 +10,7 @@ import type { DestinationStream } from "pino";
 import { inject } from "vitest";
 import { createApp } from "../../src/bootstrap.js";
 import { MemoryMailer } from "../../src/core/adapters/mailer.js";
+import { commitAwareDb } from "../../src/core/db/tx.js";
 import type { Db } from "../../src/core/db/types.js";
 import { JobRunner } from "../../src/core/jobs/job-runner.js";
 import { MemoryRateLimitStore } from "../../src/core/rate-limit/store.js";
@@ -89,6 +90,7 @@ export interface TestAppOptions {
 
 export interface TestApp {
   app: NestFastifyApplication;
+  /** DB yang SAMA dengan token DB aplikasi (commit-aware: `t.db.transaction` dapat memanggil kernel core). */
   db: Db;
   mailer: MemoryMailer;
   clock: TestClock;
@@ -114,7 +116,8 @@ export function resetRateLimits(): void {
  * memori yang direset per tes. `app.close()` juga menutup PGlite.
  */
 export async function createTestApp(options: TestAppOptions = {}): Promise<TestApp> {
-  const { pg, db } = await createTestDatabase();
+  const { pg, db: rawDb } = await createTestDatabase();
+  const db = commitAwareDb(rawDb);
   const env: ApiEnv = { ...testEnv, ...options.env };
   const mailer = new MemoryMailer();
   const clock = options.clock ?? new TestClock();

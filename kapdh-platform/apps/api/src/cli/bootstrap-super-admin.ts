@@ -10,8 +10,8 @@ import {
   adminInviteTokenHash,
   newAdminInviteToken,
   randomToken,
-} from "../modules/auth/crypto.js";
-import { normalizeEmail } from "../modules/auth/auth.service.js";
+} from "../core/identity/crypto.js";
+import { normalizeEmail } from "../core/identity/email.js";
 
 export interface BootstrapSuperAdminInput {
   email: string;

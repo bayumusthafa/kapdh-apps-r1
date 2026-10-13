@@ -146,6 +146,24 @@ describe("Gateway /realtime: handshake (ARCHITECTURE §4.9)", () => {
     ).toBe(204);
     await expect(connect(session.accessToken)).rejects.toMatchObject({ data: { code: "UNAUTHENTICATED" } });
   });
+
+  it("ARCHITECTURE §4.3 tolak bawaan: namespace utama '/' menolak semua koneksi, termasuk dengan token sah", async () => {
+    const member = await createAlumni(t);
+    const session = await signInAlumni(t, member);
+    for (const auth of [{}, { token: session.accessToken }]) {
+      const socket = io(baseUrl, { transports: ["websocket"], auth, reconnection: false, forceNew: true });
+      sockets.push(socket);
+      const error = await new Promise<ConnectError | null>((resolve) => {
+        socket.once("connect", () => resolve(null));
+        socket.once("connect_error", (e: ConnectError) => resolve(e));
+      });
+      expect(error, "namespace utama tidak boleh menerima socket").not.toBeNull();
+      expect(error!.data).toMatchObject({ code: "FORBIDDEN" });
+      expect(socket.connected).toBe(false);
+    }
+    // Namespace /realtime tetap menerima sesi anggota yang sah.
+    expect((await connect(session.accessToken)).connected).toBe(true);
+  });
 });
 
 describe("RealtimeService: emit setelah commit (PRD 5.2)", () => {
