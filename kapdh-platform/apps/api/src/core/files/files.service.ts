@@ -85,6 +85,13 @@ export interface FileAccessGrant extends FileUrl {
   mime: string;
 }
 
+/**
+ * Kait yang dijalankan {@link FilesService.accessFor} SETELAH kebijakan akses berkas privat mengizinkan dan SEBELUM URL
+ * bertanda tangan diterbitkan, mis. audit `audit.export.downloaded` untuk setiap akses ekspor audit (PRD 3.17, kontrak
+ * C7). Galat kait menggagalkan akses (tanpa jejak audit tidak ada URL). Didaftarkan modul di onModuleInit.
+ */
+export type FileAccessHook = (input: { file: FileRow; viewer: FileViewer }) => Promise<void>;
+
 export interface FileContent {
   file: FileRow;
   body: Readable;
@@ -105,7 +112,8 @@ const LINK_EXPIRED = "Tautan berkas tidak berlaku. Buka ulang dari aplikasi.";
  * - `beginUpload` + `completeUpload` (POST /files: purpose diperiksa sebelum isi dibaca) atau `upload` sekaligus,
  * - `attach(tx, fileId, ownerUserId, purpose)` saat berkas dipakai objek (bukti bayar, avatar, cover),
  * - `discard(tx, fileId)` saat berkas diganti/dihapus; `setVisibility` untuk avatar publik,
- * - `registerAccessPolicy(purpose, policy)` di onModuleInit untuk aturan baca berkas privat,
+ * - `registerAccessPolicy(purpose, policy)` di onModuleInit untuk aturan baca berkas privat, dan
+ *   `registerAccessHook(purpose, hook)` untuk efek wajib saat akses diberikan (mis. audit unduhan ekspor audit),
  * - `signedUrl(file, viewer)` / `publicUrl(fileId)` / `toFileRef(file)` untuk payload,
  * - `storeGenerated` untuk berkas buatan sistem (ekspor audit).
  * Berkas baru berstatus `pending` sampai objek tersimpan, lalu `ready`; yang tidak terlampir > 24 jam dihapus job
@@ -114,6 +122,7 @@ const LINK_EXPIRED = "Tautan berkas tidak berlaku. Buka ulang dari aplikasi.";
 @Injectable()
 export class FilesService implements OnModuleInit {
   private readonly policies = new Map<FilePurpose, FileAccessPolicy[]>();
+  private readonly accessHooks = new Map<FilePurpose, FileAccessHook[]>();
   private readonly urlKey: Uint8Array;
 
   constructor(
@@ -545,6 +554,18 @@ export class FilesService implements OnModuleInit {
     this.policies.set(purpose, list);
   }
 
+  /**
+   * Menambah kait akses untuk purpose (lihat {@link FileAccessHook}); dijalankan berurutan pada setiap
+   * {@link accessFor} berkas privat yang diizinkan, termasuk GET /files/{fileId}/access.
+   */
+  registerAccessHook(purpose: FilePurpose, hook: FileAccessHook): void {
+    if (!(FILE_PURPOSES as readonly string[]).includes(purpose))
+      throw new Error(`Purpose tidak dikenal: ${purpose}`);
+    const list = this.accessHooks.get(purpose) ?? [];
+    list.push(hook);
+    this.accessHooks.set(purpose, list);
+  }
+
   /** true bila penampil boleh membuka berkas (publik selalu boleh). */
   async canAccess(file: FileRow, viewer: FileViewer, db: DbOrTx = this.db): Promise<boolean> {
     if (file.visibility === "public") return true;
@@ -562,7 +583,8 @@ export class FilesService implements OnModuleInit {
   /**
    * GET /files/{fileId}/access: kebijakan diperiksa lebih dulu (TTL tidak menggantikan otorisasi, PRD 5.4), lalu URL
    * bertanda tangan <= 10 menit terikat berkas + purpose + penampil (user, sesi, session_version). Berkas yang tidak
-   * ada, belum siap, atau tidak boleh dibuka → 404 (N-09). Berkas publik → URL publik tetap.
+   * ada, belum siap, atau tidak boleh dibuka → 404 (N-09). Berkas publik → URL publik tetap. Kait akses purpose
+   * ({@link registerAccessHook}) dijalankan setelah izin lolos dan sebelum URL diterbitkan.
    */
   async accessFor(
     fileId: string,
@@ -574,6 +596,7 @@ export class FilesService implements OnModuleInit {
     if (file.visibility === "public")
       return { url: this.publicUrl(file.id), expiresAt: null, mime: file.mime };
     if (!(await this.canAccess(file, viewer))) throw notFound("Berkas tidak ditemukan.");
+    for (const hook of this.accessHooks.get(file.purpose as FilePurpose) ?? []) await hook({ file, viewer });
     const signed = await this.signedUrl(
       file,
       { userId: viewer.userId, sessionId: viewer.sessionId, sessionVersion: viewer.sessionVersion },

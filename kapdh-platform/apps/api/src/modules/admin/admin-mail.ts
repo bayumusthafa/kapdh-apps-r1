@@ -25,6 +25,16 @@ const FOOTER =
   "\n\nEmail ini dikirim otomatis oleh KAPDH Apps. Pengurus KAPDH tidak pernah meminta sandi, kode TOTP, atau " +
   "backup code Anda.";
 
+/**
+ * Tautan undangan/pemulihan admin `${ADMIN_ORIGIN}/invite#t=<token>` (kontrak admin-auth C1, AC F16-1): token berada di
+ * FRAGMEN URL yang tidak pernah dikirim browser ke server, proxy, maupun header Referer, sehingga tidak tercatat di log
+ * akses (ARCHITECTURE §2 butir 3). Bentuk `/invite/<token>` atau `?token=` dilarang karena preview tidak mengonsumsi
+ * token: pembaca log dapat menerima undangan lebih dahulu. Halaman /invite web admin membaca `t` dari `location.hash`.
+ */
+export function adminInvitationLink(adminOrigin: string, token: string): string {
+  return `${adminOrigin.replace(/\/+$/, "")}/invite#t=${encodeURIComponent(token)}`;
+}
+
 export interface InvitationMailInput {
   to: string;
   displayName: string;

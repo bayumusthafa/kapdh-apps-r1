@@ -3,14 +3,14 @@ import type { BaseEnv } from "@kapdh/config";
 import { admins, auditLogs, users } from "@kapdh/database";
 import { and, eq, gt } from "drizzle-orm";
 import type { Clock } from "../../core/adapters/clock.js";
-import type { Mailer } from "../../core/adapters/mailer.js";
+import type { MailMessage, Mailer } from "../../core/adapters/mailer.js";
 import type { Db } from "../../core/db/types.js";
 import { adminInviteTokenHash, newAdminInviteToken } from "../../core/identity/crypto.js";
 import { maskEmail } from "../../core/identity/email.js";
 import type { JobContext, OutboxEvent } from "../../core/jobs/job-registry.js";
 import { JobRegistry } from "../../core/jobs/job-registry.js";
 import { CLOCK, DB, ENV, MAILER } from "../../core/tokens.js";
-import { invitationMail, securityNoticeMail } from "./admin-mail.js";
+import { adminInvitationLink, invitationMail, securityNoticeMail } from "./admin-mail.js";
 
 /**
  * Handler outbox email pengurus (F-16, PRD 3.16; ARCHITECTURE §4.7) yang dijalankan worker:
@@ -75,11 +75,11 @@ export class AdminMailJob implements OnModuleInit {
       .where(eq(users.id, admin.userId))
       .limit(1);
     if (!account) return;
-    await this.mailer.send(
+    await this.deliver(
       invitationMail({
         to: account.email,
         displayName: admin.displayName,
-        link: `${this.env.ADMIN_ORIGIN}/invite/${token}`,
+        link: adminInvitationLink(this.env.ADMIN_ORIGIN, token),
         expiresAt: admin.inviteExpiresAt ?? round,
         recovery: admin.activatedAt !== null,
       }),
@@ -114,8 +114,18 @@ export class AdminMailJob implements OnModuleInit {
       to = previous;
       maskedNewEmail = maskEmail(admin.email);
     }
-    await this.mailer.send(
+    await this.deliver(
       securityNoticeMail({ to, displayName: admin.displayName, kind, at: this.clock.now(), maskedNewEmail }),
     );
+  }
+
+  /**
+   * Mengirim lewat {@link Mailer.send}. Implementasi Mailer tanpa jalur transaksional (mis. pengganti uji lama) gagal
+   * jelas sehingga outbox mengulang lalu menandai event `dead`, bukan diam-diam membuang email undangan.
+   */
+  private async deliver(message: MailMessage): Promise<void> {
+    const send = this.mailer.send?.bind(this.mailer);
+    if (!send) throw new Error("Mailer tidak mendukung email transaksional (Mailer.send)");
+    await send(message);
   }
 }

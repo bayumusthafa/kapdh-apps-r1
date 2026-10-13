@@ -288,26 +288,29 @@ export class AdminsService {
 
     let keyset: SQL | undefined;
     let order: SQL[];
+    // Skema cursor per urutan (AdminCursorSchema) sudah menjamin bentuk `v`; sort cursor = sort query (cek di atas).
     if (sort === "created_at_desc") {
       order = [desc(admins.createdAt), desc(admins.id)];
-      if (cursor)
+      if (cursor?.sort === "created_at_desc")
         keyset = keysetAfter([
-          { column: admins.createdAt, value: new Date(cursor.v ?? 0), direction: "desc" },
+          { column: admins.createdAt, value: new Date(cursor.v), direction: "desc" },
           { column: admins.id, value: cursor.id, direction: "desc" },
         ]);
     } else if (sort === "last_login_at_desc") {
       // Belum pernah login di akhir (NULLS LAST eksplisit; DESC bawaan PostgreSQL menaruh NULL di awal).
       order = [sql`${users.lastLoginAt} desc nulls last`, desc(admins.id)];
-      if (cursor)
+      if (cursor?.sort === "last_login_at_desc") {
+        const at = cursor.v === null ? null : new Date(cursor.v).toISOString();
         keyset =
-          cursor.v === null
+          at === null
             ? and(isNull(users.lastLoginAt), sql`${admins.id} < ${cursor.id}`)
-            : sql`(${users.lastLoginAt} < ${new Date(cursor.v).toISOString()}::timestamptz or (${users.lastLoginAt} = ${new Date(cursor.v).toISOString()}::timestamptz and ${admins.id} < ${cursor.id}) or ${users.lastLoginAt} is null)`;
+            : sql`(${users.lastLoginAt} < ${at}::timestamptz or (${users.lastLoginAt} = ${at}::timestamptz and ${admins.id} < ${cursor.id}) or ${users.lastLoginAt} is null)`;
+      }
     } else {
       order = [asc(admins.displayName), asc(admins.id)];
-      if (cursor)
+      if (cursor?.sort === "display_name_asc")
         keyset = keysetAfter([
-          { column: admins.displayName, value: cursor.v ?? "", direction: "asc" },
+          { column: admins.displayName, value: cursor.v, direction: "asc" },
           { column: admins.id, value: cursor.id, direction: "asc" },
         ]);
     }
@@ -584,12 +587,15 @@ export class AdminsService {
         let email = input.email ? normalizeEmail(input.email) : null;
         let displayName = input.display_name ?? null;
         if (input.alumni_user_id) {
-          // Kunci SHARE baris akun alumni: suspend/penghapusan bersamaan menunggu sampai undangan selesai.
+          // Kunci NO KEY UPDATE baris akun alumni (urutan global users -> alumni): suspend/penghapusan bersamaan
+          // menunggu sampai undangan selesai, DAN dua undangan untuk alumni yang sama berurutan sehingga yang kedua
+          // melihat tautan yang pertama dan ditolak 409 pada `alumni_user_id` (kontrak C7 adminInviteAdmin), bukan
+          // bentrok email bawaan alumni di users_kind_email_key. Tidak menghalangi FOR KEY SHARE (insert FK ke users).
           const [account] = await tx
             .select({ kind: users.kind, status: users.status, email: users.email })
             .from(users)
             .where(eq(users.id, input.alumni_user_id))
-            .for("share");
+            .for("no key update");
           if (!account || account.kind !== "alumni")
             throw fieldError("alumni_user_id", "Alumni tidak ditemukan.");
           if (account.status !== "active")
@@ -819,10 +825,11 @@ export class AdminsService {
         if (statusChanged && targetStatus === "disabled") {
           await this.revokeSessions(tx, current.userId, now);
           this.realtime.disconnectUser(current.userId, "account_disabled");
-        } else if (accessChanged) {
-          // Socket tersambung ulang dan dievaluasi dengan izin terbaru (AC F16-3).
-          this.realtime.disconnectUser(current.userId, "permissions_changed");
         }
+        // Perubahan peran/izin saja TIDAK mencabut sesi, sehingga `session.revoked` (C6: "sesi ini dicabut", klien
+        // menghapus token) tidak dikirim. Pencabutan berlaku seketika karena izin dibaca ulang dari database setiap
+        // request dan permissions_version naik (AC F16-3); identitas admin tidak memiliki socket realtime (gateway
+        // hanya menerima audience mobile), dan sesi alumni tertaut tidak pernah membawa hak admin.
 
         const auditId = await this.audit.write(tx, {
           action: "admin.updated",

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
 import { admins } from "@kapdh/database";
 import { and, desc, eq, type SQL, sql } from "drizzle-orm";
@@ -18,6 +18,7 @@ import { validate, validateQuery } from "../../core/validation/validate.js";
 import { AuditFilterSchema, compactFilter } from "./audit-filter.js";
 import {
   AUDIT_EXPORT_RATE_LIMIT,
+  EXPORT_COMPLETED,
   EXPORT_DOWNLOADED,
   EXPORT_ENTITY,
   EXPORT_REQUESTED,
@@ -40,16 +41,17 @@ const ListQuerySchema = z.object({
     .optional(),
 });
 const cursorSchema = z.object({ created_at: z.coerce.date(), id: z.uuid() });
-const { requested } = exportTables;
+const { requested, completed } = exportTables;
 
 /**
  * Ekspor audit asinkron (F-17, AC F17-2..F17-4; kontrak C7 adminCreateAuditExport dst.). Keadaan job disimpan pada
  * audit_logs (append-only) + files tanpa tabel baru; worker `audit.export` (admin-jobs) menulis berkas dan entri
  * terminal. Admin melihat ekspor yang ia minta; Super Admin melihat semua. Kepemilikan dan izin diperiksa ulang setiap
- * permintaan (AC F17-2); bukan pemilik = 404 (N-09).
+ * permintaan (AC F17-2); bukan pemilik = 404 (N-09). SETIAP akses berkas ekspor diaudit `audit.export.downloaded`
+ * (PRD 3.17), baik lewat adminGetAuditExportAccess maupun GET /files/{fileId}/access, melalui kait akses FilesService.
  */
 @Injectable()
-export class AuditExportService {
+export class AuditExportService implements OnModuleInit {
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -58,6 +60,37 @@ export class AuditExportService {
     private readonly files: FilesService,
     private readonly limits: RateLimitService,
   ) {}
+
+  onModuleInit(): void {
+    this.files.registerAccessHook("audit_export", ({ file }) => this.recordDownload(file.id));
+  }
+
+  /**
+   * Audit `audit.export.downloaded` (entity = id ekspor dari entri `audit.export.completed` yang mencatat berkas ini)
+   * sebelum URL diterbitkan; gagal mencatat = tanpa URL (AC F17-1). Berkas tanpa entri completed tidak dilayani (404).
+   */
+  private async recordDownload(fileId: string): Promise<void> {
+    const [owner] = await this.db
+      .select({ exportId: completed.entityId })
+      .from(completed)
+      .where(
+        and(
+          eq(completed.entityType, EXPORT_ENTITY),
+          eq(completed.action, EXPORT_COMPLETED),
+          sql`${completed.after} ->> 'file_id' = ${fileId}`,
+        ),
+      )
+      .limit(1);
+    if (!owner?.exportId) throw notFound("Berkas tidak ditemukan.");
+    await this.db.transaction((tx) =>
+      this.audit.write(tx, {
+        action: EXPORT_DOWNLOADED,
+        entityType: EXPORT_ENTITY,
+        entityId: owner.exportId,
+        after: { file_id: fileId },
+      }),
+    );
+  }
 
   /** Satu transaksi: audit `audit.export.requested` (after.filters) + outbox dengan dedup id ekspor (AC F17-1). */
   async create(auth: AuthContext, body: unknown): Promise<AuditExport> {
@@ -159,7 +192,8 @@ export class AuditExportService {
   /**
    * URL unduh bertanda tangan (<= 10 menit) untuk ekspor `ready`; izin (audit.read + audit.export) dan kepemilikan
    * diperiksa ulang oleh guard dan kebijakan berkas `audit_export` pada setiap permintaan (AC F17-2). Status lain 409
-   * dengan `current`; berkas kedaluwarsa/terhapus 404. Setiap akses diaudit `audit.export.downloaded` (PRD 3.17).
+   * dengan `current`; berkas kedaluwarsa/terhapus 404. Setiap akses diaudit `audit.export.downloaded` (PRD 3.17) oleh
+   * kait akses yang dijalankan FilesService.accessFor (satu entri per akses, sama dengan jalur GET /files).
    */
   async access(auth: AuthContext, exportId: string): Promise<AuditExportAccess> {
     const row = await this.find(auth, exportId);
@@ -176,14 +210,6 @@ export class AuditExportService {
         throw notFound("Berkas ekspor sudah kedaluwarsa. Minta ekspor baru.");
       throw error;
     }
-    await this.db.transaction((tx) =>
-      this.audit.write(tx, {
-        action: EXPORT_DOWNLOADED,
-        entityType: EXPORT_ENTITY,
-        entityId: exportId,
-        after: { file_id: row.fileId },
-      }),
-    );
     return {
       url: grant.url,
       expires_at: (grant.expiresAt ?? this.clock.now()).toISOString(),
