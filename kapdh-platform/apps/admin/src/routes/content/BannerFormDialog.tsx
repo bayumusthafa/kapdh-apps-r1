@@ -17,6 +17,7 @@ import { requiredText } from "../../lib/validation";
 import { BannerTargetField } from "./BannerTargetField";
 import { ConflictNotice } from "./ConflictNotice";
 import { ContentImageField } from "./ContentImageField";
+import { useDeferredFocus } from "./useDeferredFocus";
 import {
   type AdminBanner,
   type BannerTargetType,
@@ -154,6 +155,7 @@ export function BannerFormDialog({ banner, onClose }: { banner: AdminBanner | nu
   const values = form.watch();
   const errors = form.formState.errors;
   const image = useController({ control: form.control, name: "image_file_id" });
+  const focusTitle = useDeferredFocus(() => form.setFocus("title"));
 
   useEffect(() => {
     form.setFocus("title");
@@ -195,7 +197,7 @@ export function BannerFormDialog({ banner, onClose }: { banner: AdminBanner | nu
       setBase(latest);
       form.reset(toBannerForm(latest));
       void invalidateContent(queryClient);
-      form.setFocus("title");
+      focusTitle();
     } catch (e) {
       toast.error(toApiError(e).message);
     }

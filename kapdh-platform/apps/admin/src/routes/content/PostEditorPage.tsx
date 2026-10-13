@@ -33,6 +33,7 @@ import {
 } from "./contentApi";
 import { PostPreviewDialog } from "./PostPreview";
 import { PostPublishPanel } from "./PostPublishPanel";
+import { useDeferredFocus } from "./useDeferredFocus";
 import { useLeaveGuard } from "./useLeaveGuard";
 
 /**
@@ -164,6 +165,7 @@ function PostEditor({ initial }: { initial: AdminPost | null }) {
   const changes = base ? postChanges(values, base) : null;
   const dirty = base ? Object.keys(changes ?? {}).length > 0 : form.formState.isDirty;
   const guard = useLeaveGuard(dirty, "Perubahan berita");
+  const focusTitle = useDeferredFocus(() => form.setFocus("title"));
 
   const categories = useApiQuery({
     queryKey: contentKeys.categoryOptions("post"),
@@ -219,7 +221,7 @@ function PostEditor({ initial }: { initial: AdminPost | null }) {
       setConflict(null);
       applyLatest(latest);
       toast.info("Versi terbaru dimuat.");
-      form.setFocus("title");
+      focusTitle();
     } catch (e) {
       toast.error(toApiError(e).message);
     }
