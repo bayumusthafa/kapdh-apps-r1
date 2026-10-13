@@ -7,14 +7,14 @@ import {
   notifications,
   users,
 } from "@kapdh/database";
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, type SQL, sql } from "drizzle-orm";
 import type { Logger } from "pino";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../../core/adapters/clock.js";
 import type { Mailer } from "../../core/adapters/mailer.js";
 import type { PushMessage, PushSender } from "../../core/adapters/push.js";
 import { rows } from "../../core/db/rows.js";
-import type { Db } from "../../core/db/types.js";
+import type { Db, Tx } from "../../core/db/types.js";
 import { JobRegistry } from "../../core/jobs/job-registry.js";
 import { safeError } from "../../core/logging/safe-error.js";
 import { deepLinkFor } from "../../core/notifications-kernel/app-routes.js";
@@ -67,8 +67,20 @@ export interface DeliveryRunSummary {
   sent: number;
   retried: number;
   failed: number;
+  /** Dibatalkan tanpa dikirim: saat klaim atau saat pemeriksaan ulang tepat sebelum provider dipanggil. */
   cancelled: number;
+  /**
+   * Diklaim tetapi tidak dikirim karena klaim sudah berpindah tangan sebelum gilirannya (lease klaim habis lalu baris
+   * diklaim worker lain dengan attempt baru); worker pemilik klaim baru yang mengirim.
+   */
+  skipped: number;
 }
+
+/** Hasil pemeriksaan ulang tepat sebelum provider dipanggil (lihat {@link NotificationDeliveryService.begin}). */
+type BeginResult =
+  | { kind: "send"; delivery: ClaimedDelivery }
+  | { kind: "cancelled"; reason: ClaimCancelReason }
+  | { kind: "skipped" };
 
 interface ClaimRow extends Record<string, unknown> {
   id: string;
@@ -114,8 +126,18 @@ const UNAVAILABLE_ACCOUNT_STATUSES = new Set(["disabled", "deleted"]);
  * Klaim: `SELECT … FOR UPDATE OF d SKIP LOCKED` lalu attempt + 1 dan lease `next_retry_at` dalam satu transaksi,
  * sehingga dua worker tidak mengirim pengiriman yang sama bersamaan. Pada statement klaim yang sama diperiksa ulang:
  * penerima tersedia, preferensi kategori/kanal masih aktif, dan untuk push token belum dicabut serta masih milik
- * penerima notifikasi (kontrak C7); selain itu pengiriman dibatalkan tanpa dikirim. Pengiriman ke provider dilakukan di
- * luar transaksi; hasil dicatat dengan predikat kepemilikan (`status = 'pending' AND attempt = <klaim>`).
+ * penerima notifikasi (kontrak C7); selain itu pengiriman dibatalkan tanpa dikirim.
+ *
+ * Satu klaim memuat banyak baris yang dikirim bergiliran ({@link SEND_CONCURRENCY} sekaligus), jadi keadaan saat klaim
+ * bisa basi ketika giliran sebuah baris tiba (logout, unregister, token berpindah akun, preferensi dimatikan, atau lease
+ * klaim habis lalu baris diklaim worker lain). Karena itu TEPAT SEBELUM provider dipanggil setiap baris diperiksa ulang
+ * dalam transaksi pendek ({@link NotificationDeliveryService.begin}): token dikunci FOR SHARE lalu baris pengiriman FOR
+ * UPDATE dengan predikat kepemilikan klaim (`status = 'pending' AND attempt = <klaim>`) dan aturan target yang sama
+ * dengan klaim. Target tidak sah → dibatalkan tanpa dikirim; klaim berpindah tangan → dilewati; selain itu lease
+ * diperpanjang untuk satu percobaan ({@link DELIVERY_SEND_TIMEOUT_MS} ≪ {@link DELIVERY_LEASE_MS}). Logout/pencabutan
+ * yang commit sebelum pemeriksaan ini selalu mencegah pengiriman (AC F13-5); yang tersisa hanya percobaan yang SUDAH
+ * berjalan di provider (paling lama batas waktu satu percobaan). Pengiriman ke provider dilakukan di luar transaksi;
+ * hasil dicatat dengan predikat kepemilikan yang sama.
  *
  * "Accepted" provider (status `sent`) berarti diterima provider, bukan dibaca perangkat (F-13). Payload push hanya judul,
  * isi ringkas dan rute (bersama notification_id dan kategori), tidak pernah isi chat, bukti bayar atau kontak.
@@ -166,11 +188,11 @@ export class NotificationDeliveryService implements OnModuleInit {
 
   /** `notifications.retry`: putaran klaim sampai tidak ada lagi yang jatuh tempo (dibatasi per eksekusi). */
   async retryDue(logger: Logger = this.rootLogger): Promise<DeliveryRunSummary> {
-    const total: DeliveryRunSummary = { claimed: 0, sent: 0, retried: 0, failed: 0, cancelled: 0 };
+    const total: DeliveryRunSummary = { claimed: 0, sent: 0, retried: 0, failed: 0, cancelled: 0, skipped: 0 };
     for (let round = 0; round < RETRY_MAX_ROUNDS; round++) {
-      const result = await this.sendDue({ limit: RETRY_BATCH, logger });
-      for (const key of Object.keys(total) as (keyof DeliveryRunSummary)[]) total[key] += result[key];
-      if (result.claimed + result.cancelled < RETRY_BATCH) break;
+      const { summary, examined } = await this.runDue({ limit: RETRY_BATCH, logger });
+      for (const key of Object.keys(total) as (keyof DeliveryRunSummary)[]) total[key] += summary[key];
+      if (examined < RETRY_BATCH) break;
     }
     return total;
   }
@@ -259,6 +281,13 @@ export class NotificationDeliveryService implements OnModuleInit {
   async sendDue(
     options: { notificationId?: string; limit?: number; logger?: Logger } = {},
   ): Promise<DeliveryRunSummary> {
+    return (await this.runDue(options)).summary;
+  }
+
+  /** {@link sendDue} beserta jumlah baris yang diperiksa klaim (diklaim + dibatalkan saat klaim) untuk putaran retry. */
+  private async runDue(
+    options: { notificationId?: string; limit?: number; logger?: Logger },
+  ): Promise<{ summary: DeliveryRunSummary; examined: number }> {
     const logger = options.logger ?? this.rootLogger;
     const { claimed, cancelled } = await this.claim(options.notificationId ?? null, options.limit ?? 50);
     const summary: DeliveryRunSummary = {
@@ -267,16 +296,28 @@ export class NotificationDeliveryService implements OnModuleInit {
       retried: 0,
       failed: 0,
       cancelled,
+      skipped: 0,
     };
-    if (claimed.length === 0) return summary;
+    const examined = claimed.length + cancelled;
+    if (claimed.length === 0) return { summary, examined };
     const supportEmail = (await this.settings.get("support")).email;
     const queue = [...claimed];
     const errors: unknown[] = [];
     const worker = async () => {
       for (let next = queue.shift(); next; next = queue.shift()) {
         try {
-          const outcome = await this.sendOne(next, supportEmail);
-          const status = await this.record(next, outcome, logger);
+          // Pemeriksaan ulang tepat sebelum provider: keadaan saat klaim bisa basi selama baris menunggu giliran.
+          const started = await this.begin(next);
+          if (started.kind === "cancelled") {
+            summary.cancelled++;
+            continue;
+          }
+          if (started.kind === "skipped") {
+            summary.skipped++;
+            continue;
+          }
+          const outcome = await this.sendOne(started.delivery, supportEmail);
+          const status = await this.record(started.delivery, outcome, logger);
           if (status === "sent") summary.sent++;
           else if (status === "pending") summary.retried++;
           else if (status === "failed") summary.failed++;
@@ -293,7 +334,7 @@ export class NotificationDeliveryService implements OnModuleInit {
     await Promise.all(Array.from({ length: Math.min(SEND_CONCURRENCY, claimed.length) }, () => worker()));
     // Handler outbox gagal → event dicoba ulang (idempoten: pengiriman sudah ada, yang terkirim tidak dikirim lagi).
     if (errors.length > 0) throw errors[0];
-    return summary;
+    return { summary, examined };
   }
 
   /**
@@ -309,26 +350,14 @@ export class NotificationDeliveryService implements OnModuleInit {
     const nowIso = now.toISOString();
     const leaseUntil = new Date(now.getTime() + DELIVERY_LEASE_MS);
     return this.db.transaction(async (tx) => {
-      const due = rows<ClaimRow>(
-        await tx.execute(sql`
-          select d.id, d.attempt, d.channel, d.device_token_id,
-                 n.id as notification_id, n.user_id, n.category, n.title, n.body, n.data,
-                 u.status as user_status, u.email, a.full_name,
-                 t.token, t.platform, (t.revoked_at is not null) as token_revoked, t.user_id as token_user_id,
-                 p.enabled as pref_enabled
-          from ${notificationDeliveries} d
-          join ${notifications} n on n.id = d.notification_id
-          join ${users} u on u.id = n.user_id
-          left join ${alumni} a on a.user_id = n.user_id
-          left join ${deviceTokens} t on t.id = d.device_token_id
-          left join ${notificationPreferences} p
-            on p.user_id = n.user_id and p.category = n.category and p.channel = d.channel
-          where d.status = 'pending'
+      const due = await this.targetRows(
+        tx,
+        sql`d.status = 'pending'
             and (d.next_retry_at is null or d.next_retry_at <= ${nowIso}::timestamptz)
-            ${notificationId ? sql`and d.notification_id = ${notificationId}::uuid` : sql``}
-          order by d.next_retry_at nulls first, d.id
-          limit ${limit}
-          for update of d skip locked`),
+            ${notificationId ? sql`and d.notification_id = ${notificationId}::uuid` : sql``}`,
+        sql`order by d.next_retry_at nulls first, d.id
+            limit ${limit}
+            for update of d skip locked`,
       );
       const cancel = new Map<ClaimCancelReason, string[]>();
       const claimable: ClaimRow[] = [];
@@ -360,24 +389,106 @@ export class NotificationDeliveryService implements OnModuleInit {
               claimable.map((row) => row.id),
             ),
           );
-      const claimed = claimable.map<ClaimedDelivery>((row) => ({
-        id: row.id,
-        attempt: Number(row.attempt) + 1,
-        channel: row.channel,
-        notificationId: row.notification_id,
-        userId: row.user_id,
-        category: row.category,
-        title: row.title,
-        body: row.body,
-        route: safeRoute(typeof row.data === "string" ? JSON.parse(row.data) : row.data),
-        deviceTokenId: row.device_token_id,
-        token: row.token,
-        platform: row.platform,
-        email: row.email ?? "",
-        recipientName: row.full_name,
-      }));
+      const claimed = claimable.map((row) => this.toClaimed(row, Number(row.attempt) + 1));
       return { claimed, cancelled };
     });
+  }
+
+  /**
+   * Baris pengiriman beserta keadaan targetnya (penerima, token, preferensi) dalam satu statement, dipakai klaim dan
+   * {@link begin} agar aturan target identik. `where`/`tail` adalah fragmen tepercaya dari kelas ini.
+   */
+  private async targetRows(tx: Tx, where: SQL, tail: SQL): Promise<ClaimRow[]> {
+    return rows<ClaimRow>(
+      await tx.execute(sql`
+        select d.id, d.attempt, d.channel, d.device_token_id,
+               n.id as notification_id, n.user_id, n.category, n.title, n.body, n.data,
+               u.status as user_status, u.email, a.full_name,
+               t.token, t.platform, (t.revoked_at is not null) as token_revoked, t.user_id as token_user_id,
+               p.enabled as pref_enabled
+        from ${notificationDeliveries} d
+        join ${notifications} n on n.id = d.notification_id
+        join ${users} u on u.id = n.user_id
+        left join ${alumni} a on a.user_id = n.user_id
+        left join ${deviceTokens} t on t.id = d.device_token_id
+        left join ${notificationPreferences} p
+          on p.user_id = n.user_id and p.category = n.category and p.channel = d.channel
+        where ${where}
+        ${tail}`),
+    );
+  }
+
+  private toClaimed(row: ClaimRow, attempt: number): ClaimedDelivery {
+    return {
+      id: row.id,
+      attempt,
+      channel: row.channel,
+      notificationId: row.notification_id,
+      userId: row.user_id,
+      category: row.category,
+      title: row.title,
+      body: row.body,
+      route: safeRoute(typeof row.data === "string" ? JSON.parse(row.data) : row.data),
+      deviceTokenId: row.device_token_id,
+      token: row.token,
+      platform: row.platform,
+      email: row.email ?? "",
+      recipientName: row.full_name,
+    };
+  }
+
+  /**
+   * Pemeriksaan ulang tepat sebelum provider dipanggil (AC F13-5, PRD 5.1), satu transaksi pendek per pengiriman:
+   * 1. untuk push, baris token yang saat ini ditunjuk pengiriman dikunci FOR SHARE (urutan kunci token → pengiriman, sama
+   *    dengan registerDevice, logout, unregister, sapuan dan pencatatan hasil), sehingga pencabutan/perpindahan token
+   *    yang sedang berjalan selesai lebih dulu dan terlihat di sini;
+   * 2. baris pengiriman dikunci FOR UPDATE dengan predikat kepemilikan klaim (`status = 'pending' AND attempt = <klaim>`);
+   *    tidak cocok → klaim sudah berpindah tangan (lease habis lalu diklaim ulang) atau sudah dibatalkan → `skipped`;
+   * 3. aturan target yang sama dengan klaim ({@link cancelReason}); tidak sah → `cancelled` tanpa dikirim;
+   * 4. lease diperpanjang untuk satu percobaan sehingga worker lain tidak mengklaimnya selama percobaan berjalan.
+   * Token yang dipakai adalah token terkini (registerDevice dapat memindahkan pengiriman pending ke token baru perangkat).
+   */
+  private async begin(delivery: ClaimedDelivery): Promise<BeginResult> {
+    for (let round = 0; round < 3; round++) {
+      const now = this.clock.now();
+      const result = await this.db.transaction(async (tx): Promise<BeginResult | "moved"> => {
+        let lockedTokenId: string | null = null;
+        if (delivery.channel === "push") {
+          const [current] = rows<{ device_token_id: string | null }>(
+            await tx.execute(sql`
+              select device_token_id from ${notificationDeliveries} where id = ${delivery.id}::uuid`),
+          );
+          if (!current) return { kind: "skipped" };
+          lockedTokenId = current.device_token_id;
+          if (lockedTokenId)
+            await tx.execute(sql`select id from ${deviceTokens} where id = ${lockedTokenId}::uuid for share`);
+        }
+        const [row] = await this.targetRows(
+          tx,
+          sql`d.id = ${delivery.id}::uuid and d.status = 'pending' and d.attempt = ${delivery.attempt}::int`,
+          sql`for update of d`,
+        );
+        if (!row) return { kind: "skipped" };
+        // Dipindahkan ke token lain di antara pembacaan dan penguncian: ulangi dengan mengunci token baru lebih dulu.
+        if (delivery.channel === "push" && row.device_token_id !== lockedTokenId) return "moved";
+        const reason = this.cancelReason(row);
+        if (reason) {
+          await tx
+            .update(notificationDeliveries)
+            .set({ status: "cancelled", errorClass: reason, nextRetryAt: null, updatedAt: now })
+            .where(eq(notificationDeliveries.id, delivery.id));
+          return { kind: "cancelled", reason };
+        }
+        await tx
+          .update(notificationDeliveries)
+          .set({ nextRetryAt: new Date(now.getTime() + DELIVERY_LEASE_MS), updatedAt: now })
+          .where(eq(notificationDeliveries.id, delivery.id));
+        return { kind: "send", delivery: this.toClaimed(row, delivery.attempt) };
+      });
+      if (result !== "moved") return result;
+    }
+    // Pengiriman terus berpindah token (sangat jarang): dibiarkan pending, diklaim ulang setelah lease habis.
+    return { kind: "skipped" };
   }
 
   private cancelReason(row: ClaimRow): ClaimCancelReason | null {
@@ -394,12 +505,16 @@ export class NotificationDeliveryService implements OnModuleInit {
     return null;
   }
 
-  /** Satu percobaan ke provider; tidak pernah melempar (galat diklasifikasi). */
+  /**
+   * Satu percobaan ke provider dengan batas waktu keras (AbortSignal memutus koneksi SMTP/permintaan FCM saat habis);
+   * tidak pernah melempar (galat diklasifikasi).
+   */
   private async sendOne(delivery: ClaimedDelivery, supportEmail: string): Promise<SendOutcome> {
     if (delivery.channel === "push") {
       try {
+        const message = this.pushMessage(delivery);
         return classifyPushResult(
-          await withProviderTimeout(this.push.send(this.pushMessage(delivery)), DELIVERY_SEND_TIMEOUT_MS),
+          await withProviderTimeout((signal) => this.push.send(message, { signal }), DELIVERY_SEND_TIMEOUT_MS),
         );
       } catch {
         return { kind: "retry", errorClass: "NETWORK" };
@@ -415,7 +530,11 @@ export class NotificationDeliveryService implements OnModuleInit {
         recipientName: delivery.recipientName,
         supportEmail,
       });
-      const result = await withProviderTimeout(this.mailer.send(message), DELIVERY_SEND_TIMEOUT_MS);
+      // Message-ID stabil per pengiriman: percobaan ulang pesan yang sama dikenali penerima sebagai pesan yang sama.
+      const result = await withProviderTimeout(
+        (signal) => this.mailer.send({ ...message, dedupKey: delivery.id }, { signal }),
+        DELIVERY_SEND_TIMEOUT_MS,
+      );
       return { kind: "sent", providerMessageId: result.messageId };
     } catch (error) {
       return classifyMailError(error);
@@ -447,6 +566,11 @@ export class NotificationDeliveryService implements OnModuleInit {
    * Mencatat hasil dengan predikat kepemilikan klaim. Urutan kunci token → pengiriman (sama dengan registerDevice,
    * logout dan unregister) mencegah deadlock. Token UNREGISTERED/INVALID_ARGUMENT dinonaktifkan dan pengiriman
    * pending lain pada token itu dibatalkan; gangguan sementara tidak menonaktifkan token (AC F13-4).
+   *
+   * Pembatalan sisi server (logout, token berpindah akun, preferensi) yang commit SELAMA percobaan sudah berjalan di
+   * provider tidak dapat menarik kembali pesan yang diterima provider. Agar riwayat jujur, hasil "diterima provider"
+   * untuk percobaan yang sama (`attempt` sama) tetap dicatat `sent` menimpa `cancelled`; hasil gagal/retry tidak
+   * menghidupkan kembali pengiriman yang sudah dibatalkan.
    */
   private async record(
     delivery: ClaimedDelivery,
@@ -463,11 +587,12 @@ export class NotificationDeliveryService implements OnModuleInit {
           await this.devices.markRejected(tx, tokenId, decision.errorClass, now);
         else await this.devices.markTransientFailure(tx, tokenId, decision.errorClass, now);
       }
-      const owned = and(
-        eq(notificationDeliveries.id, delivery.id),
-        eq(notificationDeliveries.status, "pending"),
-        eq(notificationDeliveries.attempt, delivery.attempt),
-      );
+      const owned = (status: "pending" | "cancelled") =>
+        and(
+          eq(notificationDeliveries.id, delivery.id),
+          eq(notificationDeliveries.status, status),
+          eq(notificationDeliveries.attempt, delivery.attempt),
+        );
       const changes =
         decision.status === "sent"
           ? {
@@ -487,14 +612,19 @@ export class NotificationDeliveryService implements OnModuleInit {
                 nextRetryAt: null,
                 updatedAt: now,
               };
-      const rowsUpdated = await tx
-        .update(notificationDeliveries)
-        .set(changes)
-        .where(owned)
-        .returning({ id: notificationDeliveries.id });
+      const update = (status: "pending" | "cancelled") =>
+        tx
+          .update(notificationDeliveries)
+          .set(changes)
+          .where(owned(status))
+          .returning({ id: notificationDeliveries.id });
+      let outcome: "recorded" | "sent_after_cancel" | "lost" = (await update("pending")).length > 0 ? "recorded" : "lost";
+      // Dibatalkan selama percobaan yang sama sudah berjalan, tetapi provider menerimanya: catat apa adanya (sent).
+      if (outcome === "lost" && decision.status === "sent" && (await update("cancelled")).length > 0)
+        outcome = "sent_after_cancel";
       if (tokenId && decision.status === "failed" && decision.revokeToken)
         await cancelPendingDeliveries(tx, [tokenId], "token_revoked", now, { exceptDeliveryId: delivery.id });
-      return rowsUpdated.length > 0;
+      return outcome;
     });
     const context = {
       delivery_id: delivery.id,
@@ -504,11 +634,16 @@ export class NotificationDeliveryService implements OnModuleInit {
       status: decision.status,
       ...(decision.status === "sent" ? {} : { error_class: decision.errorClass }),
     };
-    if (!updated) {
-      // Pengiriman dibatalkan/diubah selama dikirim (logout, retry pengurus); hasil tidak menimpa keadaan baru.
+    if (updated === "lost") {
+      // Pengiriman dibatalkan/diklaim ulang selama dikirim; hasil gagal/retry tidak menimpa keadaan baru.
       logger.warn(context, "hasil pengiriman notifikasi tidak dicatat: keadaan berubah selama pengiriman");
       return "lost";
     }
+    if (updated === "sent_after_cancel")
+      logger.warn(
+        context,
+        "notifikasi diterima provider padahal dibatalkan selama percobaan berjalan; dicatat sebagai terkirim",
+      );
     if (decision.status === "failed") logger.warn(context, "pengiriman notifikasi gagal");
     else if (decision.status === "pending") logger.info(context, "pengiriman notifikasi dijadwalkan ulang");
     return decision.status;
