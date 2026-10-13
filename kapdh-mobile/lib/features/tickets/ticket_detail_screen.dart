@@ -346,7 +346,13 @@ class _TicketContent extends ConsumerWidget {
       case ErrorCode.paymentStateConflict:
         await _explain(context, 'Tiket tidak dapat dibatalkan', error.message);
       default:
-        await presenter.present(error, onReload: () => unawaited(controller.reload()));
+        // Muat ulang hanya selama detail masih terbuka: pengendalinya dilepas bersama layar.
+        await presenter.present(
+          error,
+          onReload: () {
+            if (context.mounted) unawaited(controller.reload());
+          },
+        );
     }
   }
 }

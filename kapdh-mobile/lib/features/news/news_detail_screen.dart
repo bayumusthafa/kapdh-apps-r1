@@ -56,18 +56,25 @@ class NewsDetailScreen extends ConsumerWidget {
             )
           : ErrorState.fromException(error, onRetry: () => unawaited(controller.reload()));
     } else {
-      body = _PostContent(post: post!, state: state, onToggleLike: () => _toggleLike(ref, controller));
+      body = _PostContent(post: post!, state: state, onToggleLike: () => _toggleLike(context, ref, controller));
     }
     return AppScaffold(title: 'Detail Berita', fallbackLocation: AppRoutes.news, body: body);
   }
 
-  Future<void> _toggleLike(WidgetRef ref, PostDetailController controller) async {
+  Future<void> _toggleLike(BuildContext context, WidgetRef ref, PostDetailController controller) async {
     // Dibaca sebelum await: WidgetRef tidak boleh dipakai lagi bila layar ditutup selama request (AC F08-3).
     final presenter = ref.read(errorPresenterProvider);
     final error = await controller.toggleLike();
-    if (error != null) {
-      await presenter.present(error, onRetry: () => unawaited(controller.toggleLike()));
-    }
+    if (error == null) return;
+    // "Coba lagi" hanya selama detail masih terbuka: pengendalinya dilepas bersama layar.
+    await presenter.present(
+      error,
+      onRetry: context.mounted
+          ? () {
+              if (context.mounted) unawaited(controller.toggleLike());
+            }
+          : null,
+    );
   }
 }
 
