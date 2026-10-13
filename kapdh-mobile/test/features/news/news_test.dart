@@ -311,6 +311,59 @@ void main() {
       expect(find.text('Terjadi kesalahan pada server.'), findsOneWidget);
     });
 
+    testWidgets('AC F08-3 detail ditutup selagi like terkirim: tanpa galat, feed memakai keadaan akhir dari server', (
+      tester,
+    ) async {
+      final pending = Completer<FakeResponse>();
+      final app = await pumpMemberApp(
+        tester,
+        location: '/news',
+        routes: {
+          '/categories': (_) => FakeResponse.json(200, {'items': <Object?>[]}),
+          '/posts': (_) => FakeResponse.json(200, postPageJson([postSummaryJson(withCover: false)])),
+          '/posts/halal-bihalal-2026': (_) => FakeResponse.json(200, postJson()),
+          '/posts/halal-bihalal-2026/like': (_) => pending.future,
+        },
+      );
+      await tester.tap(find.text('Halal Bihalal Alumni 2026'));
+      await settle(tester);
+      await scrollUntil(tester, find.byKey(const ValueKey('post-like')));
+      await tester.tap(find.byKey(const ValueKey('post-like')));
+      await pumpFrames(tester, count: 5);
+      app.router.pop();
+      await settle(tester);
+      expect(app.location, '/news');
+
+      pending.complete(FakeResponse.json(200, likeStateJson(liked: true, count: 4)));
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(find.text('4 suka'), findsOneWidget);
+    });
+
+    testWidgets('AC F08-3 detail ditutup selagi like gagal: galat tetap disajikan tanpa galat Riverpod', (
+      tester,
+    ) async {
+      final pending = Completer<FakeResponse>();
+      final app = await pumpMemberApp(
+        tester,
+        location: '/news/halal-bihalal-2026',
+        routes: {
+          '/posts/halal-bihalal-2026': (_) => FakeResponse.json(200, postJson()),
+          '/posts/halal-bihalal-2026/like': (_) => pending.future,
+        },
+      );
+      await scrollUntil(tester, find.byKey(const ValueKey('post-like')));
+      await tester.tap(find.byKey(const ValueKey('post-like')));
+      await pumpFrames(tester, count: 5);
+      app.router.pop();
+      await settle(tester);
+
+      pending.complete(FakeResponse.json(500, errorJson('INTERNAL', 'Terjadi kesalahan pada server.')));
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(find.text('Terjadi kesalahan pada server.'), findsOneWidget);
+    });
+
     testWidgets('AC F08-3 keadaan like dari detail tercermin di feed tanpa memuat ulang', (tester) async {
       final app = await pumpMemberApp(
         tester,
