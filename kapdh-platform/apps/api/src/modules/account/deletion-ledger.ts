@@ -57,6 +57,22 @@ export async function writeLedgerEntry(storage: StorageDriver, entry: LedgerEntr
   return key;
 }
 
+/**
+ * Menulis entri secara monoton terhadap entri yang sudah tersimpan untuk permintaan yang sama: entri `completed` tidak
+ * pernah ditimpa `requested`, dan object key yang sudah tercatat tidak pernah hilang (gabungan). Melindungi pemulihan
+ * (AC F14-6) dari penulisan oleh eksekusi job yang tertinggal. Objek yang rusak ditimpa entri sah.
+ */
+export async function writeLedgerEntryMonotonic(storage: StorageDriver, entry: LedgerEntry): Promise<string> {
+  const key = ledgerObjectKey(entry.request_number, new Date(entry.requested_at));
+  const stored = (await storage.exists(key)) ? await readLedgerObject(storage, key).catch(() => null) : null;
+  if (!stored || stored.deletion_id !== entry.deletion_id) return writeLedgerEntry(storage, entry);
+  if (stored.state === "completed" && entry.state === "requested") return key;
+  return writeLedgerEntry(storage, {
+    ...entry,
+    object_keys: [...new Set([...stored.object_keys, ...entry.object_keys])].sort(),
+  });
+}
+
 export async function readLedgerObject(storage: StorageDriver, key: string): Promise<LedgerEntry> {
   return parseLedgerEntry((await readAll(await storage.get(key))).toString("utf8"));
 }

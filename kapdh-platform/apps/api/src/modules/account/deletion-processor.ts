@@ -11,6 +11,7 @@ import { CLOCK, DB, ROOT_LOGGER } from "../../core/tokens.js";
 import { DELETION_LEASE_MS } from "./deletion-policy.js";
 import type { DeletionRow } from "./deletion-request.service.js";
 import {
+  DeletionClaimLostError,
   DELETION_STEPS,
   type DeletionStep,
   DeletionSteps,
@@ -34,6 +35,8 @@ export function deletionRetryBackoffMs(attempts: number): number {
 export type DeletionRunResult =
   | { outcome: "completed"; requestNumber: string }
   | { outcome: "failed"; requestNumber: string; step: DeletionStep | "complete" }
+  /** Klaim eksekusi ini direbut worker lain (sewa habis); tidak ada tulisan lagi dari eksekusi ini. */
+  | { outcome: "claim_lost"; requestNumber: string; step: DeletionStep | "complete" }
   | { outcome: "skipped" };
 
 /**
@@ -46,6 +49,15 @@ export type DeletionStepObserver = (event: {
   step: DeletionStep;
 }) => void | Promise<void>;
 
+/** Baris permintaan masih diklaim eksekusi ini: `attempts` hasil klaim adalah token fencing (lihat DeletionSteps.fence). */
+function claimedBy(ctx: StepContext) {
+  return and(
+    eq(accountDeletions.id, ctx.deletion.id),
+    eq(accountDeletions.status, "processing"),
+    eq(accountDeletions.attempts, ctx.deletion.attempts),
+  );
+}
+
 function normalizeLedger(raw: unknown): WorkingLedger {
   const value = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Partial<WorkingLedger>) : {};
   return { ...value, v: 1 };
@@ -53,8 +65,11 @@ function normalizeLedger(raw: unknown): WorkingLedger {
 
 /**
  * Job `account.deletion` (F-14, AC F14-2; ARCHITECTURE §4.8): dipicu outbox `account.deletion.requested` dan sapuan
- * ulang setiap 10 menit. Satu permintaan diklaim dengan UPDATE bersyarat (status `processing` + sewa), lalu
- * {@link DELETION_STEPS} dijalankan berurutan melewati langkah yang sudah ada di `steps_done`. Gagal: status
+ * ulang setiap 10 menit. Satu permintaan diklaim dengan UPDATE bersyarat (status `processing` + sewa 15 menit), lalu
+ * {@link DELETION_STEPS} dijalankan berurutan melewati langkah yang sudah ada di `steps_done`. `attempts` hasil klaim
+ * adalah token fencing: setiap transaksi langkah, email dan tulisan ledger eksternal lebih dahulu memeriksa klaim dan
+ * memperpanjang sewa; eksekusi yang klaimnya sudah direbut worker lain (sewa habis karena macet) berhenti dengan
+ * `claim_lost` tanpa menimpa steps_done, salinan kerja ledger atau ledger eksternal. Gagal: status
  * `failed`, `last_error` aman (langkah + tipe/kode galat, tanpa pesan/PII), dicoba ulang dengan backoff tanpa
  * mengulang langkah yang selesai. Selesai: `completed`, `completed_at` (target <= 7 hari kalender).
  */
@@ -152,6 +167,15 @@ export class AccountDeletionProcessor implements OnModuleInit {
       logger.info({ deletion_id: deletionId }, "penghapusan akun selesai");
       return { outcome: "completed", requestNumber: claimed.requestNumber };
     } catch (error) {
+      if (error instanceof DeletionClaimLostError) {
+        // Klaim direbut worker lain setelah sewa habis (atau permintaan sudah selesai): berhenti tanpa menulis apa
+        // pun; pemegang klaim baru melanjutkan dari steps_done (AC F14-2, F14-6).
+        logger.warn(
+          { deletion_id: deletionId, step: current, attempts: claimed.attempts },
+          "klaim penghapusan akun hilang; eksekusi ini berhenti",
+        );
+        return { outcome: "claim_lost", requestNumber: claimed.requestNumber, step: current };
+      }
       await this.fail(ctx, current, error, logger);
       return { outcome: "failed", requestNumber: claimed.requestNumber, step: current };
     }
@@ -185,7 +209,7 @@ export class AccountDeletionProcessor implements OnModuleInit {
     try {
       await this.execute(step, ctx);
     } catch (error) {
-      if (!EMAIL_STEPS.has(step)) throw error;
+      if (!EMAIL_STEPS.has(step) || error instanceof DeletionClaimLostError) throw error;
       // Email gagal: dicoba ulang; setelah EMAIL_MAX_FAILURES kali atau batas 7 hari lewat, dilewati agar data
       // pribadi tidak tertahan lebih lama dari batas (D2).
       const failures = (ctx.ledger.email_failures?.[step] ?? 0) + 1;
@@ -250,9 +274,9 @@ export class AccountDeletionProcessor implements OnModuleInit {
           ledger: ctx.ledger as unknown as Record<string, unknown>,
           updatedAt: now,
         })
-        .where(and(eq(accountDeletions.id, ctx.deletion.id), eq(accountDeletions.status, "processing")))
+        .where(claimedBy(ctx))
         .returning({ id: accountDeletions.id });
-      if (!done) throw new Error("Permintaan penghapusan tidak lagi diklaim eksekusi ini");
+      if (!done) throw new DeletionClaimLostError("Permintaan penghapusan tidak lagi diklaim eksekusi ini");
       await this.audit.write(tx, {
         action: "account.deletion_completed",
         entityType: "account_deletion",
@@ -279,7 +303,7 @@ export class AccountDeletionProcessor implements OnModuleInit {
       .filter(Boolean)
       .join(":")
       .slice(0, 200);
-    await this.db
+    const recorded = await this.db
       .update(accountDeletions)
       .set({
         status: "failed",
@@ -288,10 +312,13 @@ export class AccountDeletionProcessor implements OnModuleInit {
         ledger: ctx.ledger as unknown as Record<string, unknown>,
         updatedAt: now,
       })
-      .where(and(eq(accountDeletions.id, ctx.deletion.id), eq(accountDeletions.status, "processing")));
+      .where(claimedBy(ctx))
+      .returning({ id: accountDeletions.id });
     logger.warn(
       { deletion_id: ctx.deletion.id, step, attempts: ctx.deletion.attempts, error: safe },
-      "langkah penghapusan akun gagal; dijadwalkan ulang",
+      recorded.length > 0
+        ? "langkah penghapusan akun gagal; dijadwalkan ulang"
+        : "langkah penghapusan akun gagal setelah klaim hilang; tidak dicatat (pemegang klaim baru melanjutkan)",
     );
   }
 }
