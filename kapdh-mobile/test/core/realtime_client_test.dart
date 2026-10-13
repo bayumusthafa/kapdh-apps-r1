@@ -47,6 +47,35 @@ Map<String, Object?> envelope(String type, {String eventId = 'ev-1', Map<String,
   'payload': payload,
 };
 
+/// Payload `notification.created` sesuai skema kontrak (events/notification.created.schema.json).
+Map<String, Object?> notificationPayload() => {
+  'id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4ea0',
+  'category': 'chat',
+  'title': 'Undangan grup baru',
+  'body': 'Ahmad Islam mengundang Anda ke grup Angkatan 29.',
+  'deep_link': 'kapdh://app/chat/invitations',
+  'created_at': testNow.toIso8601String(),
+  'unread_count': 2,
+};
+
+/// Payload `message.created` sesuai skema kontrak (events/message.created.schema.json).
+Map<String, Object?> messagePayload(String roomId) => {
+  'room_id': roomId,
+  'message': {
+    'id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e60',
+    'room_id': roomId,
+    'client_message_id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e90',
+    'kind': 'text',
+    'sender': {'user_id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e70', 'full_name': 'Ahmad Islam', 'avatar_url': null},
+    'body': 'Assalamu\'alaikum, kapan reuni angkatan?',
+    'image': null,
+    'reply_to': null,
+    'reactions': <Object?>[],
+    'created_at': testNow.toIso8601String(),
+    'deleted_at': null,
+  },
+};
+
 void main() {
   late TokenStore tokens;
   late List<FakeSocket> sockets;
@@ -116,19 +145,24 @@ void main() {
     await pumpEventQueue();
     final listener = sockets.single.listener;
 
-    listener.onEvent('notification.created', envelope('notification.created'));
-    listener.onEvent('notification.created', envelope('notification.created'));
-    listener.onEvent('message.created', envelope('message.created', eventId: 'ev-2', payload: {'room_id': 'r1'}));
+    listener.onEvent('notification.created', envelope('notification.created', payload: notificationPayload()));
+    listener.onEvent('notification.created', envelope('notification.created', payload: notificationPayload()));
+    listener.onEvent('message.created', envelope('message.created', eventId: 'ev-2', payload: messagePayload('r1')));
     listener.onEvent('jenis.baru', envelope('jenis.baru', eventId: 'ev-3'));
     listener.onEvent('rusak', {'v': 1, 'type': 'typing'});
+    // Payload bertipe yang kehilangan field wajib ditolak (FormatException), tidak diteruskan ke layar.
+    listener.onEvent('message.created', envelope('message.created', eventId: 'ev-4', payload: {'room_id': 'r1'}));
     listener.onEvent('bukan-map', 'teks');
     await pumpEventQueue();
 
     expect(received.map((e) => e.eventId), ['ev-1', 'ev-2', 'ev-3']);
     expect(received[1], isA<MessageCreatedEvent>());
-    expect((received[1] as MessageCreatedEvent).payload['room_id'], 'r1');
+    final message = received[1] as MessageCreatedEvent;
+    expect(message.payload.roomId, 'r1');
+    expect(message.payload.message.body, 'Assalamu\'alaikum, kapan reuni angkatan?');
     expect(received[2], isA<UnknownRealtimeEvent>());
     expect(notifications, hasLength(1));
+    expect(notifications.single.payload.unreadCount, 2);
     await sub.cancel();
     await sub2.cancel();
     await client.dispose();

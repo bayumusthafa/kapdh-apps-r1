@@ -44,8 +44,8 @@ class _UpdateRequiredScreenState extends ConsumerState<UpdateRequiredScreen> {
     final info = ref.watch(appInfoProvider);
     final config = gate.config;
     final (String? minimum, String? storeUrl, String storeName) = switch (info.platform) {
-      DevicePlatform.android => (config?.minAppVersion.android, config?.storeLinks?.android, 'Play Store'),
-      DevicePlatform.ios => (config?.minAppVersion.ios, config?.storeLinks?.ios, 'App Store'),
+      DevicePlatform.android => (config?.minAppVersion.android, config?.storeLinks.android, 'Play Store'),
+      DevicePlatform.ios => (config?.minAppVersion.ios, config?.storeLinks.ios, 'App Store'),
       DevicePlatform.unknown => (null, null, 'toko aplikasi'),
     };
     final versionGate = gate.status == GateStatus.updateRequired;

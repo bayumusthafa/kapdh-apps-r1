@@ -10,10 +10,13 @@ import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/format/formatters.dart';
 import '../../core/session/session_controller.dart';
+import '../../core/ui/support_section.dart';
 import '../../design/design.dart';
 
 /// Login alumni (F-02, AC F02-1; guideline hal. 5). Setelah token terbit, router mengarahkan sesuai effective_status
-/// (atau ke tujuan tertunda `?from=`); akun pending_otp diarahkan ke OTP dengan challenge baru.
+/// (atau ke tujuan tertunda `?from=`); akun pending_otp diarahkan ke OTP dengan challenge baru. Akun yang sedang
+/// dihapus atau dinonaktifkan tidak mendapat sesi (kontrak C1, PRD 2.2): statusnya ditampilkan di layar ini
+/// beserta kontak pengurus.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -26,6 +29,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
   bool _busy = false;
   String? _error;
+
+  /// Akun tanpa sesi (deletion_pending/disabled) dari login terakhir; null bila tidak ada.
+  LoginResult? _restricted;
   Map<String, List<String>> _fieldErrors = const {};
   DateTime? _blockedUntil;
   Timer? _ticker;
@@ -66,11 +72,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _busy = true;
       _error = null;
+      _restricted = null;
       _fieldErrors = const {};
     });
     try {
-      final outcome = await ref.read(sessionProvider.notifier).login(email: _email.text, password: _password.text);
-      if (outcome == LoginOutcome.verifyOtp && mounted) context.go(AppRoutes.registerOtp);
+      final result = await ref.read(sessionProvider.notifier).login(email: _email.text, password: _password.text);
+      if (!mounted) return;
+      switch (result.outcome) {
+        case LoginOutcome.verifyOtp:
+          context.go(AppRoutes.registerOtp);
+        case LoginOutcome.deletionPending || LoginOutcome.accountDisabled:
+          setState(() {
+            _restricted = result;
+            _password.clear();
+          });
+        case LoginOutcome.signedIn:
+          break;
+      }
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -172,6 +190,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: InfoBox(tone: InfoBoxTone.danger, message: _error!),
                 ),
               ],
+              if (_restricted case final restricted?) ...[
+                const SizedBox(height: KapdhSpace.s2),
+                Semantics(liveRegion: true, child: _RestrictedAccountNotice(result: restricted)),
+                const SizedBox(height: KapdhSpace.s3),
+                const SupportSection(subject: 'Status Akun KAPDH', title: 'Hubungi pengurus'),
+              ],
               const SizedBox(height: KapdhSpace.s5),
               KapdhButton(
                 key: const ValueKey('login-submit'),
@@ -204,6 +228,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Status akun tanpa sesi setelah sandi benar (kontrak C1 `LoginNext`, PRD 2.2): permintaan penghapusan yang sedang
+/// diproses (nomor permintaan dan batas penyelesaian, AC F14-1) atau akun yang dinonaktifkan pengurus.
+class _RestrictedAccountNotice extends StatelessWidget {
+  const _RestrictedAccountNotice({required this.result});
+
+  final LoginResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    if (result.outcome == LoginOutcome.accountDisabled) {
+      return const InfoBox(
+        tone: InfoBoxTone.warning,
+        title: 'Akun tidak aktif',
+        message:
+            'Akun ini sedang dinonaktifkan sehingga tidak dapat dipakai masuk. Pemulihan hanya dapat dilakukan '
+            'pengurus setelah verifikasi identitas.',
+      );
+    }
+    final deletion = result.deletion;
+    final detail = deletion == null
+        ? 'Anda akan menerima email setelah penghapusan selesai.'
+        : 'Nomor permintaan ${deletion.requestNumber} (${StatusStyles.deletion(deletion.status).label}). '
+              'Selesai paling lambat ${formatDateTime(deletion.estimatedCompletionAt)}.';
+    return InfoBox(
+      tone: InfoBoxTone.warning,
+      title: 'Penghapusan akun sedang diproses',
+      message: 'Akun ini tidak dapat dipakai masuk selama penghapusan berjalan. $detail',
     );
   }
 }
