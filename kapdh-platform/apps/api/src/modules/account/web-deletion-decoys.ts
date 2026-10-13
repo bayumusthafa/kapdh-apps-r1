@@ -26,14 +26,20 @@ type OtpChallenge = components["schemas"]["OtpChallenge"];
  *   percobaan) disimpan di {@link DecoyChallengeStore} (Redis bila REDIS_URL diisi, wajib di production; memori di
  *   development/uji) dengan TTL 24 jam. Email asli hanya disimpan terenkripsi (AES-256-GCM, kunci turunan
  *   OTP_HMAC_SECRET) karena kirim ulang wajib memakai batas kirim per email yang sama (PRD 2.5).
+ * - Aturan "diganti" sama dengan challenge nyata: challenge baru untuk email yang sama (POST /public/deletion/challenge
+ *   atau kirim ulang) membatalkan challenge sebelumnya. Penunjuk decoy terbaru per email disimpan dengan kunci
+ *   HMAC(OTP_HMAC_SECRET, email ternormalisasi), bukan email polos; tanpa aturan ini verifikasi challenge lama
+ *   membedakan email terdaftar (410) dari yang tidak (400 kode salah).
  * - Verifikasi selalu "kode salah" sampai percobaan habis, lalu 410 (kontrak verifyWebDeletion).
  *
- * Integrasi modul auth (pemilik POST /auth/otp/resend dan /auth/otp/status): sebelum mencari otp_codes, panggil
- * `resendIfDecoy(challengeId)` / `statusIfDecoy(challengeId)`; hasil null berarti bukan decoy (lanjutkan alur biasa).
+ * POST /auth/otp/resend dan /auth/otp/status (operasi modul auth) untuk decoy dijawab
+ * {@link DeletionDecoyOtpInterceptor} memakai `resendIfDecoy(challengeId)` / `statusIfDecoy(challengeId)`; hasil null
+ * berarti bukan decoy. Modul auth juga boleh memanggil keduanya langsung sebelum mencari otp_codes.
  */
 
 const DECOY_TAG_BYTES = 7;
 const DECOY_DOMAIN = "kapdh-deletion-decoy:v1";
+const DECOY_EMAIL_DOMAIN = "kapdh-deletion-decoy-email:v1";
 /** Masa simpan keadaan decoy; challenge nyata juga dapat dikirim ulang setelah kedaluwarsa (kontrak resendOtp). */
 export const DECOY_STATE_TTL_MS = 24 * 3600_000;
 
@@ -85,11 +91,17 @@ export interface DecoyChallengeStore {
   /** Menambah satu percobaan secara atomik; mengembalikan jumlah percobaan sesudahnya. */
   addAttempt(id: string, ttlMs: number): Promise<number>;
   attempts(id: string): Promise<number>;
+  /**
+   * Secara atomik menjadikan `id` decoy terbaru untuk `emailKey` (HMAC email, bukan email polos) dan mengembalikan
+   * decoy terbaru sebelumnya (atau null).
+   */
+  swapLatest(emailKey: string, id: string, ttlMs: number): Promise<string | null>;
 }
 
 class MemoryDecoyStore implements DecoyChallengeStore {
   private readonly states = new Map<string, { state: DecoyState; expiresAt: number }>();
   private readonly counters = new Map<string, { count: number; expiresAt: number }>();
+  private readonly latest = new Map<string, { id: string; expiresAt: number }>();
   private static readonly MAX_ENTRIES = 10_000;
 
   constructor(private readonly clock: Clock) {}
@@ -127,13 +139,31 @@ class MemoryDecoyStore implements DecoyChallengeStore {
     const entry = this.counters.get(id);
     return entry && entry.expiresAt > this.now() ? entry.count : 0;
   }
+
+  async swapLatest(emailKey: string, id: string, ttlMs: number): Promise<string | null> {
+    this.prune(this.latest);
+    const current = this.latest.get(emailKey);
+    this.latest.set(emailKey, { id, expiresAt: this.now() + ttlMs });
+    return current && current.expiresAt > this.now() ? current.id : null;
+  }
 }
+
+/** GET lalu SET PX dalam satu skrip (atomik di Redis): penunjuk decoy terbaru per email. */
+const SWAP_LATEST_SCRIPT = `
+local previous = redis.call('GET', KEYS[1])
+redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[2])
+return previous`;
 
 class RedisDecoyStore implements DecoyChallengeStore {
   constructor(private readonly redis: RedisClient) {}
 
-  private key(kind: "s" | "a", id: string) {
+  private key(kind: "s" | "a" | "e", id: string) {
     return `kapdh:decoy:${kind}:${id}`;
+  }
+
+  async swapLatest(emailKey: string, id: string, ttlMs: number): Promise<string | null> {
+    const previous = await this.redis.eval(SWAP_LATEST_SCRIPT, 1, this.key("e", emailKey), id, String(ttlMs));
+    return typeof previous === "string" ? previous : null;
   }
 
   async put(id: string, state: DecoyState, ttlMs: number): Promise<void> {
@@ -183,7 +213,8 @@ export class WebDeletionDecoys {
 
   /**
    * Menerbitkan decoy untuk email ternormalisasi `email` SETELAH kuota kirim dikonsumsi pemanggil (urutan dan pesan
-   * 429 sama dengan challenge nyata). Tidak mengirim email.
+   * 429 sama dengan challenge nyata). Tidak mengirim email. Decoy sebelumnya untuk email yang sama ditandai diganti,
+   * sama dengan challenge `deletion` nyata yang dibatalkan challenge baru (PRD 2.5: tanpa pembeda email terdaftar).
    */
   async issue(email: string): Promise<OtpChallenge> {
     const now = this.clock.now();
@@ -195,7 +226,23 @@ export class WebDeletionDecoys {
       superseded: false,
     };
     await this.store.put(id, state, DECOY_STATE_TTL_MS);
+    const previous = await this.store.swapLatest(this.emailKey(email), id, DECOY_STATE_TTL_MS);
+    if (previous && previous !== id) await this.supersede(previous);
     return this.toChallenge(id, now, state, 0);
+  }
+
+  /** Kunci penunjuk decoy terbaru per email: HMAC email ternormalisasi (email polos tidak pernah menjadi kunci). */
+  private emailKey(email: string): string {
+    return createHmac("sha256", this.env.OTP_HMAC_SECRET)
+      .update(DECOY_EMAIL_DOMAIN)
+      .update(email)
+      .digest("hex");
+  }
+
+  private async supersede(id: string): Promise<void> {
+    const state = await this.store.get(id);
+    if (state && !state.superseded)
+      await this.store.put(id, { ...state, superseded: true }, DECOY_STATE_TTL_MS);
   }
 
   /**
@@ -242,7 +289,7 @@ export class WebDeletionDecoys {
     }
     const email = decryptSecret(state.emailSealed, this.sealKey);
     await this.quota.consume(email);
-    await this.store.put(challengeId, { ...state, superseded: true }, DECOY_STATE_TTL_MS);
+    await this.supersede(challengeId);
     return this.issue(email);
   }
 
