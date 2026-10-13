@@ -176,7 +176,7 @@ describe("POST /reports — pengguna (AC F12-2)", () => {
     expect(new Date(body.due_at).getTime() - new Date(body.created_at).getTime()).toBe(24 * HOUR);
   });
 
-  it("Idempotency-Key: pengulangan mengembalikan hasil pertama", async () => {
+  it("AC F12-2: Idempotency-Key: pengulangan mengembalikan hasil pertama", async () => {
     const reporter = await member();
     const target = await member();
     const key = uuidv7();
@@ -272,7 +272,7 @@ describe("POST /reports — pesan dan grup (PRD 3.12 bukti terminimalkan)", () =
     expect(evidence.messages[0]).toMatchObject({ sender_name: "Pengirim Uji", body: "Konteks sebelum" });
   });
 
-  it("pesan: sendiri/sistem → 400; bukan anggota, dihapus, atau sebelum history_visible_from → 404; konteks salah → 400", async () => {
+  it("AC F12-2: pesan: sendiri/sistem → 400; bukan anggota, dihapus, atau sebelum history_visible_from → 404; konteks salah → 400", async () => {
     const reporter = await member();
     const sender = await member();
     const outsider = await member();
@@ -323,7 +323,7 @@ describe("POST /reports — pesan dan grup (PRD 3.12 bukti terminimalkan)", () =
     await reportOk(t.app, reporter.token, { target_type: "message", category: "spam", message_id: visible });
   });
 
-  it("grup: bukti nama, avatar dan jumlah anggota; room direct → 400; bukan anggota → 404", async () => {
+  it("AC F12-2: grup: bukti nama, avatar dan jumlah anggota; room direct → 400; bukan anggota → 404", async () => {
     const reporter = await member();
     const owner = await member();
     const avatar = await uploadTestFile(t, owner.token, "chat_image");
@@ -376,7 +376,7 @@ describe("POST /reports — pesan dan grup (PRD 3.12 bukti terminimalkan)", () =
 });
 
 describe("POST /reports — validasi, laju dan otorisasi", () => {
-  it("field target sesuai target_type, kategori other wajib penjelasan, diri sendiri → 400", async () => {
+  it("AC F12-2: field target sesuai target_type, kategori other wajib penjelasan, diri sendiri → 400", async () => {
     const reporter = await member();
     const target = await member();
     const cases: [Record<string, unknown>, string][] = [
@@ -413,7 +413,7 @@ describe("POST /reports — validasi, laju dan otorisasi", () => {
     });
   });
 
-  it("laju pelaporan dibatasi 10 per jam per pelapor (429 dengan retry_after_seconds)", async () => {
+  it("AC F12-2: laju pelaporan dibatasi 10 per jam per pelapor (429 dengan retry_after_seconds)", async () => {
     const reporter = await member();
     const target = await member();
     const body = { target_type: "user", target_user_id: target.userId, category: "spam" };
@@ -425,7 +425,7 @@ describe("POST /reports — validasi, laju dan otorisasi", () => {
     expect(limited.json().retry_after_seconds).toBeGreaterThan(0);
   });
 
-  it("otorisasi: melapor hanya anggota aktif; riwayat laporan sendiri untuk semua status; sesi admin 403; tanpa sesi 401", async () => {
+  it("AC F12-2: otorisasi: melapor hanya anggota aktif; riwayat laporan sendiri untuk semua status; sesi admin 403; tanpa sesi 401", async () => {
     const target = await member();
     const body = { target_type: "user", target_user_id: target.userId, category: "spam" };
     const expired = await member("expired");
@@ -454,7 +454,7 @@ describe("POST /reports — validasi, laju dan otorisasi", () => {
 });
 
 describe("Retensi berkas bukti (PRD 3.12, D2; core FilesService.discard)", () => {
-  it("gambar pesan dan avatar yang dirujuk bukti ditahan saat dihapus/diganti; dihapus bila akun pemilik dihapus", async () => {
+  it("AC F12-2 / D2: gambar pesan dan avatar yang dirujuk bukti ditahan saat dihapus/diganti; dihapus bila akun pemilik dihapus", async () => {
     const reporter = await member();
     const sender = await member();
     const filesService = t.app.get(FilesService);
@@ -648,7 +648,7 @@ describe("POST /appeals (PRD 3.12 mekanisme banding)", () => {
     }
   });
 
-  it("unsuspend dari menu anggota (MembershipKernel) menutup banding aktif sebagai dikabulkan; satu notifikasi", async () => {
+  it("AC F12-5: unsuspend dari menu anggota (MembershipKernel) menutup banding aktif sebagai dikabulkan; satu notifikasi", async () => {
     const appellant = await member("suspended");
     const appealId = (
       await api().post(

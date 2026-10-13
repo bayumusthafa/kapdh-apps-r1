@@ -130,7 +130,7 @@ describe("PUT/DELETE /blocks/{userId} (AC F12-1)", () => {
     expect(g1Emit.data.payload).toMatchObject({ user_id: b.userId, member_count: 1 });
   });
 
-  it("room direct yang ada: hanya perangkat pemanggil menerima room.updated (send_permission)", async () => {
+  it("AC F12-1: room direct yang ada: hanya perangkat pemanggil menerima room.updated (send_permission)", async () => {
     const a = await member();
     const b = await member();
     const roomId = await createDirectRoom(t, a.userId, b.userId);
@@ -148,7 +148,7 @@ describe("PUT/DELETE /blocks/{userId} (AC F12-1)", () => {
     ]);
   });
 
-  it("validasi: diri sendiri dan id bukan UUID → 400; akun tidak ada/admin/pending_otp → 404", async () => {
+  it("AC F12-1: validasi: diri sendiri dan id bukan UUID → 400; akun tidak ada/admin/pending_otp → 404", async () => {
     const a = await member();
     const self = await api().put(`/blocks/${a.userId}`, undefined, { token: a.token });
     expect(self.statusCode).toBe(400);
@@ -168,7 +168,7 @@ describe("PUT/DELETE /blocks/{userId} (AC F12-1)", () => {
     );
   });
 
-  it("otorisasi: hanya anggota aktif (expired/suspended 403), sesi admin 403, tanpa sesi 401", async () => {
+  it("AC F12-1: otorisasi: hanya anggota aktif (expired/suspended 403), sesi admin 403, tanpa sesi 401", async () => {
     const target = await member();
     const expired = await member("expired");
     const res = await api().put(`/blocks/${target.userId}`, undefined, { token: expired.token });
@@ -188,7 +188,7 @@ describe("PUT/DELETE /blocks/{userId} (AC F12-1)", () => {
 });
 
 describe("GET /blocks", () => {
-  it("hanya blokir milik pemanggil, terbaru dulu, keyset cursor", async () => {
+  it("AC F12-1: hanya blokir milik pemanggil, terbaru dulu, keyset cursor", async () => {
     const owner = await member();
     const targets = [];
     for (let i = 0; i < 3; i++) {
