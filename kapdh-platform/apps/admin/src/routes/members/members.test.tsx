@@ -12,10 +12,13 @@ import { findToast, renderApp, signIn, type User } from "../../test/utils";
  * UI: data yang dikirim, konfirmasi, penyaringan izin dan penanganan konflik.
  */
 
+/** Potongan kode area dimuat lazy; saat suite berjalan paralel pemuatan pertama dapat melebihi 1 detik. */
+const LAZY_ROUTE_TIMEOUT_MS = 5_000;
+
 async function open(user: User, path: string, heading: string | RegExp) {
   renderApp(path);
   await signIn(user);
-  return screen.findByRole("heading", { level: 1, name: heading });
+  return screen.findByRole("heading", { level: 1, name: heading }, { timeout: LAZY_ROUTE_TIMEOUT_MS });
 }
 
 const listRequests = () => memberRequests.filter((r) => r.method === "GET" && r.path === "/admin/members");
@@ -130,7 +133,9 @@ describe("daftar anggota (F-15, guideline hal. 16; server tiruan)", () => {
     const user = userEvent.setup();
     const first = renderApp("/members");
     await signIn(user);
-    expect(await screen.findByRole("alert")).toHaveTextContent("Akses ditolak");
+    expect(await screen.findByRole("alert", {}, { timeout: LAZY_ROUTE_TIMEOUT_MS })).toHaveTextContent(
+      "Akses ditolak",
+    );
     expect(listRequests()).toHaveLength(0);
     await user.click(screen.getByRole("button", { name: "Keluar" }));
     await screen.findByLabelText(/^Kata sandi/);
@@ -148,9 +153,43 @@ describe("daftar anggota (F-15, guideline hal. 16; server tiruan)", () => {
     await open(user, "/members", "Manajemen Users");
     await screen.findByText("Menampilkan 24 dari 33");
     await user.click(within(card("Umar Faruq")).getByRole("button", { name: "Ubah data Umar Faruq" }));
-    const dialog = await screen.findByRole("dialog", { name: "Ubah data anggota" });
+    const dialog = await screen.findByRole(
+      "dialog",
+      { name: "Ubah data anggota" },
+      { timeout: LAZY_ROUTE_TIMEOUT_MS },
+    );
     expect(within(dialog).getByRole("textbox", { name: /Nama lengkap/ })).toHaveValue("Umar Faruq");
     expect(screen.getByRole("heading", { level: 1, name: "Umar Faruq" })).toBeInTheDocument();
+  });
+});
+
+describe("keadaan layar anggota (PRD 4.5)", () => {
+  it("PRD 4.5: daftar menampilkan status memuat lalu kartu alumni", async () => {
+    const release = mockMembers.hold();
+    const user = userEvent.setup();
+    await open(user, "/members", "Manajemen Users");
+    expect(await screen.findByText("Memuat daftar alumni...")).toBeInTheDocument();
+    expect(screen.getByText("Memuat jumlah alumni...")).toBeInTheDocument();
+    release();
+    expect(await screen.findByText("Menampilkan 24 dari 33")).toBeInTheDocument();
+  });
+
+  it("PRD 4.5: galat server pada daftar ditampilkan dengan tombol coba lagi", async () => {
+    mockMembers.fail("GET", /^\/admin\/members$/);
+    const user = userEvent.setup();
+    await open(user, "/members", "Manajemen Users");
+    expect(await screen.findByText("Data gagal dimuat")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Coba lagi" }));
+    expect(await screen.findByText("Menampilkan 24 dari 33")).toBeInTheDocument();
+  });
+
+  it("PRD 4.5: galat server pada detail ditampilkan dengan tombol coba lagi", async () => {
+    mockMembers.fail("GET", /^\/admin\/members\/[^/]+$/);
+    const user = userEvent.setup();
+    await open(user, `/members/${MOCK_MEMBER.umar}`, "Informasi Pengguna");
+    expect(await screen.findByText("Data gagal dimuat")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Coba lagi" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Umar Faruq" })).toBeInTheDocument();
   });
 });
 
@@ -257,7 +296,9 @@ describe("detail anggota (F-15, F-10; server tiruan)", () => {
     const user = userEvent.setup();
     renderApp("/members/0199e000-0000-7000-8000-ffffffffffff");
     await signIn(user);
-    expect(await screen.findByText("Data tidak ditemukan")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Data tidak ditemukan", {}, { timeout: LAZY_ROUTE_TIMEOUT_MS }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Kembali ke daftar alumni" })).toBeInTheDocument();
   });
 });
@@ -360,7 +401,7 @@ describe("ubah data dan koreksi identitas (AC F05-6, F15-4)", () => {
         name: "Manajemen Users",
       }),
     );
-    await screen.findByText("Menampilkan 24 dari 33");
+    await screen.findByText("Menampilkan 24 dari 33", {}, { timeout: LAZY_ROUTE_TIMEOUT_MS });
     await user.click(
       within(card("Siti Rahmawati")).getByRole("button", { name: "Ubah data Siti Rahmawati" }),
     );
