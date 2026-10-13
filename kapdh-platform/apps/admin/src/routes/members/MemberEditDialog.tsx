@@ -13,7 +13,8 @@ import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { Dialog } from "../../components/ui/Dialog";
 import { FormError, FormField } from "../../components/ui/FormField";
 import { Input, Select, Textarea } from "../../components/ui/Input";
-import { CLASS_OPTIONS, classLabel, GENDER_LABEL, GENDER_OPTIONS } from "./labels";
+import { CLASS_OPTIONS, classLabel, GENDER_LABEL, GENDER_OPTIONS, latestCohort } from "./labels";
+import { usePreconditionHandler } from "./MemberActionDialogs";
 import type { MemberNotice } from "./MemberDetailPage";
 import {
   type MemberDetail,
@@ -54,11 +55,15 @@ export const memberEditSchema = z
       .min(2, "Nama lengkap minimal 2 karakter.")
       .max(120, "Nama maksimal 120 karakter."),
     gender: z.enum(["male", "female"], { error: "Pilih jenis kelamin." }),
+    // Rentang sama dengan server: angkatan 1 sampai tahun berjalan WIB - 1996 (PRD 3.5, MembershipKernel).
     cohort: z
       .string()
       .trim()
-      .regex(/^\d{1,2}$/, "Angkatan berupa angka 1 sampai 99.")
-      .refine((v) => Number(v) >= 1 && Number(v) <= 99, "Angkatan berupa angka 1 sampai 99."),
+      .superRefine((v, ctx) => {
+        const max = latestCohort();
+        if (!/^\d{1,2}$/.test(v) || Number(v) < 1 || Number(v) > max)
+          ctx.addIssue({ code: "custom", message: `Angkatan berupa angka 1 sampai ${max}.` });
+      }),
     class_in: z.string().regex(/^[1-6]$/, "Pilih kelas masuk."),
     class_out: z.string().regex(/^[1-6]$/, "Pilih kelas keluar."),
     city: optionalText("Kota", 80),
@@ -231,6 +236,7 @@ export function MemberEditDialog({
   });
   const professions = useMasterOptions("professions");
   const skills = useMasterOptions("skills");
+  const onPrecondition = usePreconditionHandler(member, onClose, onDone);
 
   const save = useApiMutation<MemberDetail, SaveVars, MemberEditValues>({
     setError: form.setError,
@@ -258,7 +264,12 @@ export function MemberEditDialog({
       });
       onClose();
     },
-    onError: () => setConfirmBody(null),
+    onError: (error) => {
+      setConfirmBody(null);
+      // Prasyarat gagal (mis. anggota mulai menghapus akunnya: status akun berubah tanpa versi data naik):
+      // formulir ditutup, data terbaru dimuat dan alasannya diumumkan (PRD 4.5).
+      onPrecondition(error);
+    },
   });
 
   function reloadLatest() {
@@ -383,7 +394,7 @@ export function MemberEditDialog({
               </FormField>
               <FormField<MemberEditValues, "cohort"> name="cohort" label="Angkatan" required>
                 {(field, a11y) => (
-                  <Input {...field} {...a11y} type="number" inputMode="numeric" min={1} max={99} />
+                  <Input {...field} {...a11y} type="number" inputMode="numeric" min={1} max={latestCohort()} />
                 )}
               </FormField>
               <FormField<MemberEditValues, "class_in"> name="class_in" label="Kelas masuk" required>

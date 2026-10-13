@@ -26,6 +26,7 @@ import { SearchInput } from "../../components/ui/SearchInput";
 import { EmptyState, ErrorState, Loading } from "../../components/ui/States";
 import { TabPanel, Tabs } from "../../components/ui/Tabs";
 import { MASTER_KIND_LABEL } from "./labels";
+import { lastMembersSearch } from "./listMemory";
 import { masterKeys, type MasterKind } from "./queries";
 
 type MasterItem = components["schemas"]["AdminMasterItem"];
@@ -57,8 +58,12 @@ export function MastersPage() {
   const search = useSearch({ from: "/app/members/masters" });
   const navigate = useNavigate({ from: "/members/masters" });
   const kind: MasterKind = search.kind ?? "professions";
+  // Kembali ke daftar dengan pencarian/filter terakhir yang dipakai (F-15).
   const breadcrumbs: Breadcrumb[] = auth.canAny(ROUTE_ACCESS["/members"])
-    ? [{ label: "Manajemen Users", to: "/members" }, { label: "Skill & Profesi" }]
+    ? [
+        { label: "Manajemen Users", to: "/members", search: { ...lastMembersSearch() } },
+        { label: "Skill & Profesi" },
+      ]
     : [{ label: "Skill & Profesi" }];
 
   return (
@@ -125,8 +130,10 @@ function MasterTable({ kind }: { kind: MasterKind }) {
   });
 
   function refreshLists() {
-    // Daftar master dan pilihan filter/formulir anggota (label baru, status aktif) dimuat ulang.
+    // Daftar master dan pilihan filter/formulir anggota (label baru, status aktif) dimuat ulang. Detail master
+    // dibuang dari cache agar formulir ubah berikutnya memakai versi terbaru untuk If-Match (AC F15-4).
     void queryClient.invalidateQueries({ queryKey: masterKeys.all });
+    queryClient.removeQueries({ queryKey: masterKeys.details(kind) });
     void queryClient.invalidateQueries({ queryKey: ["admin-member"] });
     void queryClient.invalidateQueries({ queryKey: ["admin-members"] });
   }
@@ -394,6 +401,9 @@ function MasterFormDialog({
   const detail = useApiQuery({
     queryKey: masterKeys.detail(kind, itemId ?? "new"),
     enabled: itemId !== null,
+    // Setiap formulir dibuka memuat versi terbaru; detail tidak disimpan setelah dialog ditutup sehingga data
+    // lama (perubahan sendiri atau admin lain) tidak pernah menjadi dasar If-Match (AC F15-4).
+    gcTime: 0,
     request: ({ signal, headers }) =>
       api.GET("/admin/masters/{kind}/{masterId}", {
         params: { path: { kind, masterId: itemId ?? "" } },

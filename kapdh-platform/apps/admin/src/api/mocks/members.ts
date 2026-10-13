@@ -26,6 +26,10 @@ import { error, json, type MockRequest, type MockRoute, noContent, paginate, typ
  * - If-Match berbeda -> 409 VERSION_CONFLICT dengan `current`; Idempotency-Key yang sama dengan payload sama
  *   mengembalikan hasil pertama.
  * - Master terpakai tidak dapat dihapus (409 VALIDATION_ERROR dengan `current`), dinonaktifkan sebagai gantinya.
+ * - Prasyarat gagal dengan bentuk server yang sama: suspend/unsuspend memakai bentuk MembershipKernel (400 tanpa
+ *   field_errors, `current` {suspended_at, account_status, version}); ubah data akun yang sedang dihapus dan
+ *   pemulihan sandi akun tidak aktif memakai galat akar `field_errors._`.
+ * - Pemulihan sandi tunduk pada batas OTP 5 per jam per email (429 RATE_LIMITED dengan retry_after_seconds).
  */
 type Detail = S["AdminMemberDetail"];
 type Summary = S["AdminMemberSummary"];
@@ -139,6 +143,17 @@ let eventSeq = 0;
 let masterSeq = 0;
 /** Idempotency-Key tindakan anggota: payload pertama dan respons pertama (ARCHITECTURE §4.2). */
 const replays = new Map<string, { payload: string; status: number; body: unknown }>();
+/** Waktu pengiriman OTP per email dalam jendela satu jam (kunci server `otp:<email>`, PRD 2.5). */
+const otpSends = new Map<string, number[]>();
+/** PRD 2.5 (Usulan D1): 5 pengiriman OTP per jam per email, sama dengan modul auth server. */
+const OTP_SENDS_PER_HOUR = 5;
+const HOUR_MS = 3_600_000;
+
+/** Angkatan terbaru menurut tahun Jakarta, seperti MembershipKernel.latestCohort server (PRD 3.5). */
+function serverLatestCohort(now = new Date()): number {
+  const jakartaYear = new Date(now.getTime() + 7 * 3_600_000).getUTCFullYear();
+  return jakartaYear - 1996;
+}
 
 export interface MemberRequestLog {
   method: string;
@@ -731,6 +746,7 @@ let held: Promise<void> | null = null;
 export function reset(): void {
   memberRequests.length = 0;
   replays.clear();
+  otpSends.clear();
   failures = [];
   held = null;
   eventSeq = 0;
@@ -890,6 +906,24 @@ export const mockMembers = {
     Object.assign(m, patch);
     m.version += 1;
   },
+  /**
+   * Anggota meminta penghapusan akun (F-14) setelah halaman dimuat: users.status menjadi deletion_pending tanpa
+   * menaikkan alumni.version, sehingga If-Match tetap cocok dan server menjawab prasyarat gagal (400).
+   */
+  requestDeletion(userId: string): void {
+    const m = members.get(userId);
+    if (m) m.account_status = "deletion_pending";
+  },
+  /**
+   * Batas OTP email anggota habis (PRD 2.5): 5 pengiriman tercatat sehingga pengiriman berikutnya ditolak 429
+   * RATE_LIMITED dengan retry_after_seconds = `retryAfterSeconds`.
+   */
+  exhaustOtpSends(userId: string, retryAfterSeconds: number): void {
+    const m = members.get(userId);
+    if (!m) return;
+    const at = Date.now() - HOUR_MS + retryAfterSeconds * 1000;
+    otpSends.set(m.email, Array.from({ length: OTP_SENDS_PER_HOUR }, () => at));
+  },
   master(id: string): MasterItem | undefined {
     const m = masters.get(id);
     return m ? presentMaster(m) : undefined;
@@ -1026,7 +1060,9 @@ function validateUpdate(body: Record<string, unknown>, m: MemberState): FieldErr
   }
   if ("gender" in body && body.gender !== "male" && body.gender !== "female")
     errors.gender = ["Jenis kelamin tidak valid."];
-  if ("cohort" in body && !isInt(body.cohort, 1, 99)) errors.cohort = ["Angkatan harus 1 sampai 99."];
+  // Kernel server menolak angkatan setelah tahun berjalan (tahun Jakarta - 1996, PRD 3.5).
+  if ("cohort" in body && !isInt(body.cohort, 1, serverLatestCohort()))
+    errors.cohort = [`Angkatan harus 1 sampai ${serverLatestCohort()}.`];
   if ("class_in" in body && !isInt(body.class_in, 1, 6)) errors.class_in = ["Kelas masuk harus 1 sampai 6."];
   if ("class_out" in body && !isInt(body.class_out, 1, 6))
     errors.class_out = ["Kelas keluar harus 1 sampai 6."];
@@ -1109,6 +1145,20 @@ function conflictOfInterest(): Response {
 function versionConflict(m: MemberState): Response {
   return error(409, "VERSION_CONFLICT", "Data anggota sudah diubah admin lain. Muat ulang data terbaru.", {
     current: present(m),
+  });
+}
+
+/**
+ * Prasyarat tindakan gagal dengan keadaan terkini, bentuk MembershipKernel server (preconditionFailed): 400
+ * VALIDATION_ERROR TANPA field_errors, dengan `current` {suspended_at, account_status, version}.
+ */
+function preconditionFailed(m: MemberState, message: string): Response {
+  return error(400, "VALIDATION_ERROR", message, {
+    current: {
+      suspended_at: m.suspension?.suspended_at ?? null,
+      account_status: m.account_status,
+      version: String(m.version),
+    },
   });
 }
 
@@ -1372,10 +1422,11 @@ const memberRoutes: MockRoute[] = [
       const fieldErrors = validateUpdate(body, m);
       if (Object.keys(fieldErrors).length > 0) return validationError(fieldErrors);
       if (req.headers.get("If-Match") !== String(m.version)) return versionConflict(m);
+      // Bentuk server (AdminMembersService.update): galat akar `_` tanpa `current`.
       if (m.account_status === "deletion_pending")
         return validationError(
           { _: ["Akun sedang dalam proses penghapusan dan tidak dapat diubah."] },
-          "Akun sedang dalam proses penghapusan.",
+          "Akun sedang dalam proses penghapusan dan tidak dapat diubah.",
         );
 
       const before = memberNumber(m);
@@ -1444,12 +1495,10 @@ const memberRoutes: MockRoute[] = [
       if (body.confirm !== true) fieldErrors.confirm = ["Konfirmasi tindakan wajib."];
       if (Object.keys(fieldErrors).length > 0) return validationError(fieldErrors);
       if (req.headers.get("If-Match") !== String(m.version)) return versionConflict(m);
-      if (m.suspension) return validationError({ _: ["Anggota sudah dibatasi."] }, "Anggota sudah dibatasi.");
+      // Prasyarat MembershipKernel.suspend (urutan dan bentuk sama dengan server).
       if (m.account_status === "deletion_pending")
-        return validationError(
-          { _: ["Akun sedang dalam proses penghapusan."] },
-          "Akun sedang dalam proses penghapusan.",
-        );
+        return preconditionFailed(m, "Akun sedang dalam proses penghapusan dan tidak dapat dibatasi.");
+      if (m.suspension) return preconditionFailed(m, "Anggota sudah dalam status dibatasi.");
       const at = new Date().toISOString();
       // Satu transaksi: kolom suspend, histori, audit, notifikasi; tanggal periode tidak diubah (PRD 4.2).
       m.suspension = {
@@ -1492,8 +1541,7 @@ const memberRoutes: MockRoute[] = [
       if (body.confirm !== true) fieldErrors.confirm = ["Konfirmasi tindakan wajib."];
       if (Object.keys(fieldErrors).length > 0) return validationError(fieldErrors);
       if (req.headers.get("If-Match") !== String(m.version)) return versionConflict(m);
-      if (!m.suspension)
-        return validationError({ _: ["Anggota tidak sedang dibatasi."] }, "Anggota tidak sedang dibatasi.");
+      if (!m.suspension) return preconditionFailed(m, "Anggota tidak sedang dibatasi.");
       const at = new Date().toISOString();
       // Satu transaksi: kolom suspend dikosongkan, histori, banding aktif ditutup sebagai dikabulkan (AC F12-5).
       m.suspension = null;
@@ -1540,12 +1588,20 @@ const memberRoutes: MockRoute[] = [
           "FORBIDDEN",
           "Akun alumni Anda sendiri memakai alur lupa sandi mandiri di aplikasi.",
         );
+      // Bentuk server (MemberPasswordResetService): galat akar `_` tanpa `current`.
       if (m.account_status !== "active")
         return validationError(
-          { _: ["Pemulihan sandi hanya untuk akun alumni yang aktif."] },
-          "Pemulihan sandi hanya untuk akun alumni yang aktif.",
+          { _: ["Pemulihan sandi hanya untuk akun aktif yang emailnya sudah terverifikasi."] },
+          "Pemulihan sandi hanya untuk akun aktif yang emailnya sudah terverifikasi.",
         );
       const now = Date.now();
+      // Batas pengiriman OTP per email (kunci `otp:<email>` yang sama dengan modul auth, PRD 2.5).
+      const sends = (otpSends.get(m.email) ?? []).filter((t) => t > now - HOUR_MS);
+      if (sends.length >= OTP_SENDS_PER_HOUR)
+        return error(429, "RATE_LIMITED", "Terlalu banyak permintaan kode untuk akun ini. Coba lagi nanti.", {
+          retry_after_seconds: Math.max(1, Math.ceil(((sends[0] ?? now) + HOUR_MS - now) / 1000)),
+        });
+      otpSends.set(m.email, [...sends, now]);
       const result: S["AdminMemberPasswordResetResult"] = {
         initiated_at: new Date(now).toISOString(),
         sessions_revoked: m.sessions,

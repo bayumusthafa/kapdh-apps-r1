@@ -2,7 +2,7 @@ import type { components } from "@kapdh/contracts";
 import { keepPreviousData } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Pencil, Settings2, ShieldCheck, SlidersHorizontal, Users } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { api } from "../../api/client";
 import { useApiQuery } from "../../api/query";
 import { useAuth } from "../../auth/session";
@@ -19,7 +19,9 @@ import { EmptyState, ErrorState, ForbiddenState, Loading } from "../../component
 import { cn } from "../../lib/cn";
 import { GENDER_OPTIONS, latestCohort, MEMBER_SORT_OPTIONS, STATUS_FILTER_OPTIONS } from "./labels";
 import { CursorPager, pageSummary } from "./CursorPager";
+import { rememberMembersSearch } from "./listMemory";
 import { masterOptionLabel, memberKeys, useMasterOptions } from "./queries";
+import { RefreshFailedBanner } from "./RefreshFailedBanner";
 import type { MembersSearch } from "./routes";
 
 type Summary = components["schemas"]["AdminMemberSummary"];
@@ -78,6 +80,8 @@ function MembersBrowser() {
   const panelId = useId();
   const query = listQuery(search);
   const paging = useCursorPaging(query, MEMBER_PAGE_SIZE);
+  // Breadcrumb detail anggota dan halaman master kembali ke daftar dengan filter yang sama (F-15).
+  useEffect(() => rememberMembersSearch(search), [search]);
 
   const list = useApiQuery({
     queryKey: memberKeys.list({ ...query, cursor: paging.cursor }),
@@ -316,7 +320,7 @@ function FilterPanel({
 }
 
 interface ListQuery {
-  data?: components["schemas"]["AdminMemberPage"];
+  data?: components["schemas"]["AdminMemberPage"] | undefined;
   status: "pending" | "error" | "success";
   error: unknown;
   isFetching: boolean;
@@ -349,7 +353,7 @@ function MemberGrid({
   const items = list.data?.items ?? [];
   const loadingPage = list.isFetching && list.isPlaceholderData;
   const shown = items.length;
-  const emptyLaterPage = list.status === "success" && shown === 0 && pageIndex > 0;
+  const emptyLaterPage = list.data !== undefined && shown === 0 && pageIndex > 0;
 
   let body;
   if (list.status === "pending")
@@ -358,7 +362,7 @@ function MemberGrid({
         <Loading label="Memuat daftar alumni..." rows={6} />
       </Card>
     );
-  else if (list.status === "error")
+  else if (list.status === "error" && list.data === undefined)
     body = (
       <Card>
         <ErrorState error={list.error} onRetry={() => void list.refetch()} compact />
@@ -435,8 +439,17 @@ function MemberGrid({
 
   return (
     <>
+      {/* Refetch latar gagal padahal kartu sudah tampil: kartu dipertahankan, galat sebaris (PRD 4.5). */}
+      {list.status === "error" && list.data !== undefined ? (
+        <RefreshFailedBanner
+          error={list.error}
+          subject="Daftar alumni"
+          retrying={list.isFetching}
+          onRetry={() => void list.refetch()}
+        />
+      ) : null}
       {body}
-      {list.status === "success" ? (
+      {list.data !== undefined ? (
         <CursorPager
           className="rounded-lg border border-divider bg-surface"
           summary={summary}
@@ -500,7 +513,8 @@ function MemberCard({ member: m, canEdit }: { member: Summary; canEdit: boolean 
         </dl>
         <MembershipStatusBadge status={m.effective_status} />
         <div className="mt-auto flex items-center gap-2 pt-1">
-          {canEdit ? (
+          {/* Akun yang sedang dihapus tidak dapat diubah (F-14); konflik kepentingan diperiksa di detail. */}
+          {canEdit && m.account_status !== "deletion_pending" && m.account_status !== "deleted" ? (
             <IconButton
               tone="primary"
               icon={<Pencil />}
