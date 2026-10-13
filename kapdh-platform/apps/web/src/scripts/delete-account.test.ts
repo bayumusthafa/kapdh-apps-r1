@@ -151,10 +151,69 @@ describe("pemetaan galat setiap langkah", () => {
     );
     expect(view.action).toBe("review");
     expect(view.disclosure?.version).toBe("v2-warn");
+    // Body berubah (versi baru) sehingga Idempotency-Key baru wajib.
+    expect(view.rotateKey).toBe(true);
+    // Pengungkapan terkini tidak terbaca: verifikasi ulang (bukan mengulang versi lama yang pasti bentrok lagi).
     expect(
       describeFailure("confirm", http(409, { code: "VERSION_CONFLICT", current: { x: 1 } })).action,
-    ).toBe("retry");
-    expect(describeFailure("confirm", http(409, { code: "IDEMPOTENCY_CONFLICT" })).action).toBe("retry");
+    ).toBe("restart");
+  });
+
+  it("PRD 4.3: 409 IDEMPOTENCY_CONFLICT 'masih diproses' (retry_after_seconds) mempertahankan key; tanpa jeda berarti key bentrok", () => {
+    const stillRunning = describeFailure(
+      "confirm",
+      http(409, { code: "IDEMPOTENCY_CONFLICT", message: "Permintaan yang sama masih diproses." }, 2),
+    );
+    expect(stillRunning).toMatchObject({ action: "pending", retryAfterSeconds: 2 });
+    expect(stillRunning.rotateKey).toBeUndefined();
+    expect(stillRunning.message).toContain("tidak akan dibuat dua kali");
+    const otherPayload = describeFailure("confirm", http(409, { code: "IDEMPOTENCY_CONFLICT" }));
+    expect(otherPayload).toMatchObject({ action: "retry", rotateKey: true });
+    // 409 tanpa body Error kontrak (proxy) tidak pernah mengganti key.
+    const proxy = describeFailure("confirm", http(409, null));
+    expect(proxy.action).toBe("retry");
+    expect(proxy.rotateKey).toBeUndefined();
+  });
+
+  it("PRD 5.2: perilaku mengikuti kode galat kontrak, bukan status saja", () => {
+    // 410 tanpa body OTP_EXPIRED (HTML dari proxy) bukan "kode tidak berlaku".
+    expect(describeFailure("verify", http(410, null)).action).toBe("retry");
+    // 400 tanpa body VALIDATION_ERROR bukan "kode salah": kode tetap terisi dan sisa percobaan tidak berkurang.
+    expect(describeFailure("verify", http(400, null)).action).toBe("retry");
+    expect(describeFailure("challenge", http(400, null)).action).toBe("retry");
+    // 429 tanpa body (limit_req nginx) tetap jeda.
+    expect(describeFailure("verify", http(429, null, 15))).toMatchObject({ action: "wait", retryAfterSeconds: 15 });
+  });
+
+  it("F-14: pesan konfirmasi menyebut tombol yang benar-benar tampil (pembatalan pendaftaran pending_otp)", () => {
+    const label = "Batalkan pendaftaran dan hapus data";
+    const cases: ApiFailure[] = [
+      network,
+      http(409, { code: "IDEMPOTENCY_CONFLICT" }),
+      http(409, { code: "IDEMPOTENCY_CONFLICT" }, 2),
+      http(429, { code: "RATE_LIMITED" }, 30),
+    ];
+    for (const failure of cases) {
+      const message = describeFailure("confirm", failure, { confirmLabel: label }).message;
+      expect(message).toContain(label);
+      expect(message).not.toContain("Hapus akun saya");
+    }
+    expect(describeFailure("confirm", network).message).toContain("Hapus akun saya");
+  });
+
+  it("N-11/PRD 4.5: pesan 429 statis menyebut tindakan yang dibatasi dan lama jeda (tanpa hitung mundur)", () => {
+    const resend = describeFailure("resend", http(429, { code: "RATE_LIMITED" }, 3000));
+    expect(resend.message).toBe(
+      "Batas pengiriman kode tercapai. Tombol Kirim ulang kode dapat dipakai lagi dalam 50 menit. Kode yang sudah dikirim tetap dapat dipakai selama masih berlaku.",
+    );
+    const verify = describeFailure("verify", http(429, { code: "RATE_LIMITED" }, 45));
+    expect(verify.message).toBe(
+      "Terlalu banyak percobaan verifikasi kode. Tombol Verifikasi dapat dipakai lagi dalam 45 detik.",
+    );
+    expect(describeFailure("challenge", http(429, null, null)).message).toContain(
+      "Tombol Kirim kode verifikasi dapat dipakai lagi dalam 1 menit.",
+    );
+    for (const m of [resend.message, verify.message]) expect(m).not.toMatch(/\d+:\d\d/);
   });
 
   it("503 MAINTENANCE dan 5xx tanpa body", () => {

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatCountdown, formatDate, formatDateTime, formatMoney, secondsUntil, zoneLabel } from "./format";
+import {
+  formatCountdown,
+  formatDate,
+  formatDateTime,
+  formatDuration,
+  formatMoney,
+  secondsUntil,
+  zoneLabel,
+} from "./format";
 
 describe("format waktu (ARCHITECTURE §2 butir 6: Asia/Jakarta, WIB)", () => {
   it("tanggal panjang di Asia/Jakarta", () => {
@@ -48,5 +56,17 @@ describe("hitung mundur", () => {
     expect(secondsUntil("2026-10-13T05:00:00Z", now, 60)).toBe(60);
     expect(secondsUntil("2026-10-12T00:00:00Z", now, 60)).toBe(0);
     expect(secondsUntil("rusak", now, 60)).toBe(0);
+  });
+});
+
+describe("formatDuration (pesan jeda yang diumumkan sekali, N-11)", () => {
+  it("detik, menit, jam dibulatkan ke atas", () => {
+    expect(formatDuration(30)).toBe("30 detik");
+    expect(formatDuration(0)).toBe("1 detik");
+    expect(formatDuration(59.2)).toBe("1 menit");
+    expect(formatDuration(60)).toBe("1 menit");
+    expect(formatDuration(61)).toBe("2 menit");
+    expect(formatDuration(3000)).toBe("50 menit");
+    expect(formatDuration(3600)).toBe("1 jam");
   });
 });

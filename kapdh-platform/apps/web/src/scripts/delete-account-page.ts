@@ -2,6 +2,7 @@ import { newIdempotencyKey, type ApiFailure } from "./api";
 import { applySupport } from "./config-page";
 import { fetchPublicConfigTimed, serverOffsetMs, type PublicConfig, type TimedConfig } from "./config";
 import {
+  CONFIRM_LABEL_DEFAULT,
   confirmDeletion,
   deletionFacts,
   describeFailure,
@@ -13,9 +14,11 @@ import {
   validateCode,
   validateEmail,
   verifyChallenge,
+  waitMessage,
   type AccountDeletion,
   type AccountDeletionDisclosure,
   type FailureView,
+  type FlowStep,
   type OtpChallenge,
 } from "./delete-account";
 import { el, icon, ICONS } from "./dom";
@@ -26,16 +29,38 @@ import { createOtpInput, type OtpInput } from "./otp-input";
  * Alur /delete-account tanpa aplikasi (F-14, R2): email -> kode OTP -> pengungkapan D2 dan peringatan refund ->
  * konfirmasi eksplisit -> nomor permintaan (AC F14-1). Akun yang sudah deletion_pending melihat status permintaan;
  * akun disabled diarahkan ke bantuan (PRD 2.2). Token penghapusan dan kode hanya ada di memori halaman.
+ *
+ * Jeda 429 dicatat PER TINDAKAN (kirim kode, kirim ulang, verifikasi, konfirmasi) karena batasnya terpisah di server
+ * (PRD 2.5: batas kirim OTP per email; batas verifikasi per IP, auth.yaml). Batas kirim ulang tidak pernah mengunci
+ * tombol Verifikasi selama kode yang sudah terkirim masih berlaku, dan sebaliknya.
+ *
+ * Aksesibilitas (N-11): pesan 429 diumumkan SEKALI lewat role=alert dengan lama jeda dalam kalimat; hitung mundur per
+ * detik tampil di elemen `[data-wait]` (aria-live=off) dan label tombol kirim ulang, di luar wilayah live.
  */
 
 const OTP_VALIDITY_MS = 10 * 60_000; // PRD 2.5
 const RESEND_COOLDOWN_MAX_S = 60; // PRD 2.5
 const TOKEN_VALIDITY_MAX_S = 10 * 60; // F-14: reautentikasi maksimal 10 menit
+/**
+ * 409 IDEMPOTENCY_CONFLICT "masih diproses" (PRD 4.3): konfirmasi diulang otomatis dengan Idempotency-Key yang SAMA
+ * setelah jeda server, paling banyak 3 kali, sehingga nomor permintaan dari permintaan pertama tampil (AC F14-1).
+ */
+const MAX_AUTO_CONFIRM_RETRIES = 3;
+const MAX_AUTO_CONFIRM_DELAY_S = 30;
 
 type Step = "email" | "code" | "confirm" | "done" | "status" | "disabled";
 
 const STEP_LABELS = ["Email", "Verifikasi", "Konfirmasi", "Selesai"] as const;
 const STEP_INDEX: Partial<Record<Step, number>> = { email: 0, code: 1, confirm: 2, done: 3 };
+/** Tindakan tombol utama setiap langkah (kunci jeda 429). */
+const PRIMARY_ACTION: Partial<Record<Step, FlowStep>> = { email: "challenge", code: "verify", confirm: "confirm" };
+const FLOW_ACTIONS: readonly FlowStep[] = ["challenge", "resend", "verify", "confirm"];
+
+const PENDING_AUTO_MESSAGE =
+  "Permintaan Anda sebelumnya masih diproses server. Halaman ini memeriksa hasilnya lagi secara otomatis; permintaan yang sama tidak akan dibuat dua kali.";
+const CANCEL_NOTICE = "Penghapusan dibatalkan. Akun Anda tidak berubah.";
+const CANCEL_UNCERTAIN_NOTICE =
+  "Halaman kembali ke awal. Permintaan konfirmasi sebelumnya mungkin sudah tercatat; masukkan email Anda lagi untuk memeriksa statusnya.";
 
 export interface DeleteAccountOptions {
   doc: Document;
@@ -57,6 +82,10 @@ interface Deletable {
   emailMasked: string;
 }
 
+/** Label tombol konfirmasi; pendaftaran pending_otp dibatalkan, bukan "dihapus" (account.yaml). */
+const confirmLabelFor = (d: Deletable) =>
+  d.registrationPending ? "Batalkan pendaftaran dan hapus data" : CONFIRM_LABEL_DEFAULT;
+
 export function mountDeleteAccount(options: DeleteAccountOptions) {
   const { doc, root, apiBase, fetcher } = options;
   const now = options.now ?? (() => Date.now());
@@ -74,7 +103,15 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
     config: null as PublicConfig | null,
     /** Selisih jam server - perangkat (ms); null bila belum diketahui. */
     offsetMs: null as number | null,
-    waitUntil: null as number | null,
+    /** Batas jeda 429 per tindakan (jam perangkat, ms). */
+    waits: { challenge: null, resend: null, verify: null, confirm: null } as Record<FlowStep, number | null>,
+    /** Tindakan yang pesan jedanya sedang tampil di role=alert (diganti sekali saat jeda berakhir). */
+    alertWait: null as FlowStep | null,
+    /** Jeda konfirmasi berasal dari 409 "masih diproses", bukan 429. */
+    confirmPending: false,
+    autoConfirmRetries: 0,
+    /** Konfirmasi dengan key saat ini terkirim tetapi hasilnya tidak diketahui (jaringan, 5xx, masih diproses). */
+    confirmUncertain: false,
     busy: false,
   };
 
@@ -107,15 +144,18 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
   let expiryText: HTMLElement | null = null;
   let attemptsText: HTMLElement | null = null;
   let tokenText: HTMLElement | null = null;
-  let alertBase = "";
+  /** Hitung mundur jeda tombol utama; di luar wilayah live (N-11). */
+  let waitText: HTMLElement | null = null;
+  let autoConfirmTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** Pesan role=alert ditulis sekali per kejadian; tick() tidak pernah menulis ulang setiap detik (N-11). */
   const showAlert = (message: string) => {
-    alertBase = message;
+    state.alertWait = null;
     alertBox.textContent = message;
     alertBox.hidden = false;
   };
   const clearAlert = () => {
-    alertBase = "";
+    state.alertWait = null;
     alertBox.hidden = true;
     alertBox.textContent = "";
   };
@@ -128,8 +168,11 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
     notice.textContent = "";
   };
 
-  const waitSeconds = () =>
-    state.waitUntil === null ? 0 : Math.max(0, Math.ceil((state.waitUntil - now()) / 1000));
+  /** Detik jeda 429 (atau "masih diproses") yang tersisa untuk satu tindakan. */
+  const waitSeconds = (action: FlowStep | undefined) => {
+    const until = action ? state.waits[action] : null;
+    return until === null || until === undefined ? 0 : Math.max(0, Math.ceil((until - now()) / 1000));
+  };
 
   /** Tombol yang dimatikan selama request berjalan; dinyalakan lagi setelahnya (tick() menerapkan ulang jeda). */
   let busyDisabled: HTMLButtonElement[] = [];
@@ -201,18 +244,32 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
     });
   };
 
-  // ---- Pembaruan per detik: hitung mundur OTP, kirim ulang, token, dan 429 ----
+  // ---- Pembaruan per detik: hitung mundur OTP, kirim ulang, token, dan jeda per tindakan ----
   const tick = () => {
-    const wait = waitSeconds();
-    if (state.waitUntil !== null && wait === 0) {
-      state.waitUntil = null;
-      if (alertBase) alertBox.textContent = "Silakan coba lagi sekarang.";
-    } else if (wait > 0) {
-      alertBox.textContent = `${alertBase} Coba lagi dalam ${formatCountdown(wait)}.`;
+    for (const action of FLOW_ACTIONS) {
+      if (state.waits[action] === null || waitSeconds(action) > 0) continue;
+      state.waits[action] = null;
+      if (action === "confirm") state.confirmPending = false;
+      if (state.alertWait === action) {
+        // Diumumkan sekali saat jeda berakhir, hanya bila pesan jeda tindakan ini yang sedang tampil.
+        state.alertWait = null;
+        alertBox.textContent =
+          action === "resend" ? "Kode baru dapat diminta lagi sekarang." : "Silakan coba lagi sekarang.";
+      }
     }
+    const wait = waitSeconds(PRIMARY_ACTION[state.step]);
     if (primaryButton && !state.busy) {
       primaryButton.disabled = wait > 0;
       primaryButton.textContent = primaryLabel;
+    }
+    if (waitText) {
+      waitText.hidden = wait === 0;
+      waitText.textContent =
+        wait === 0
+          ? ""
+          : state.step === "confirm" && state.confirmPending
+            ? `Memeriksa hasil permintaan lagi dalam ${formatCountdown(wait)}.`
+            : `Coba lagi dalam ${formatCountdown(wait)}.`;
     }
     if (state.step === "code" && state.challenge) {
       // Dibatasi nilai PRD 2.5 agar jam perangkat yang menyimpang tidak mengunci tombol terlalu lama.
@@ -231,7 +288,8 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
           serverNow(),
           RESEND_COOLDOWN_MAX_S,
         );
-        const blocked = Math.max(cooldown, wait);
+        // Hanya jeda kirim ulang (cooldown PRD 2.5 atau 429 kirim ulang); jeda verifikasi tidak menahannya.
+        const blocked = Math.max(cooldown, waitSeconds("resend"));
         resendButton.disabled = blocked > 0;
         resendButton.textContent =
           blocked > 0 ? `Kirim ulang dalam ${formatCountdown(blocked)}` : "Kirim ulang kode";
@@ -247,12 +305,19 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
     if (resendButton && state.busy) resendButton.disabled = true;
   };
 
-  const handleWait = (failure: FailureView) => {
-    if (failure.action === "wait" && failure.retryAfterSeconds) {
-      state.waitUntil = now() + failure.retryAfterSeconds * 1000;
-    }
+  /** Galat sebuah tindakan: 429 menahan HANYA tindakan itu selama jeda server. */
+  const handleFailure = (action: FlowStep, failure: FailureView) => {
     showAlert(failure.message);
+    if (failure.action === "wait" && failure.retryAfterSeconds) {
+      state.waits[action] = now() + failure.retryAfterSeconds * 1000;
+      state.alertWait = action;
+    }
     tick();
+  };
+
+  const cancelAutoConfirm = () => {
+    if (autoConfirmTimer !== null) clearTimeout(autoConfirmTimer);
+    autoConfirmTimer = null;
   };
 
   // ---- Langkah ----
@@ -264,22 +329,50 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
     expiryText = null;
     attemptsText = null;
     tokenText = null;
+    waitText = null;
     const section = renderStep(step);
     container.replaceChildren(section);
     updateStepper();
     applySupport(doc, state.config);
+    // Tombol utama langkah baru masih tertahan jeda 429: alasannya diumumkan lagi dengan sisa jeda (PRD 4.5), bukan
+    // tombol mati tanpa pesan.
+    const action = PRIMARY_ACTION[step];
+    const left = waitSeconds(action);
+    if (action && left > 0 && alertBox.hidden && !(action === "confirm" && state.confirmPending)) {
+      showAlert(waitMessage(action, left, state.deletable ? confirmLabelFor(state.deletable) : undefined));
+      state.alertWait = action;
+    }
     tick();
     if (opts.focus !== false) section.querySelector<HTMLElement>("h2")?.focus();
   };
 
   const restart = (message: string | null) => {
+    cancelAutoConfirm();
     state.challenge = null;
     state.deletable = null;
     state.idempotencyKey = null;
+    state.autoConfirmRetries = 0;
+    state.confirmUncertain = false;
+    // Jeda kirim ulang dan konfirmasi terikat pada challenge/token lama. Jeda kirim kode dan verifikasi (batas per
+    // email/IP di server) tetap berlaku dan, bila masih berjalan, ditampilkan lagi oleh enter().
+    state.waits.resend = null;
+    state.waits.confirm = null;
+    state.confirmPending = false;
     clearNotice();
+    clearAlert();
     enter("email");
     if (message) showAlert(message);
-    else clearAlert();
+  };
+
+  /** Elemen hitung mundur jeda tombol utama (aria-live=off: tidak dibacakan setiap detik, N-11). */
+  const makeWaitText = () => {
+    const p = el(doc, "p", {
+      class: "text-sm font-medium text-text-muted",
+      attrs: { "data-wait": "", "aria-live": "off" },
+    });
+    p.hidden = true;
+    waitText = p;
+    return p;
   };
 
   const renderStep = (step: Step): HTMLElement => {
@@ -332,12 +425,13 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
           input,
           error,
         ]),
+        makeWaitText(),
         primaryButton,
       ],
     );
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      if (state.busy || waitSeconds() > 0) return;
+      if (state.busy || waitSeconds("challenge") > 0) return;
       const checked = validateEmail(input.value);
       if ("error" in checked) {
         error.textContent = checked.error;
@@ -370,7 +464,7 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
         input.focus();
         return;
       }
-      handleWait(failure);
+      handleFailure("challenge", failure);
     };
     return el(
       doc,
@@ -434,6 +528,7 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
           resendButton,
         ]),
         changeEmail,
+        makeWaitText(),
         primaryButton,
       ],
     );
@@ -444,7 +539,8 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
     };
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      if (state.busy || waitSeconds() > 0 || !state.challenge) return;
+      // Hanya jeda verifikasi yang menahan tombol ini; 429 kirim ulang tidak membatalkan kode yang sudah terkirim.
+      if (state.busy || waitSeconds("verify") > 0 || !state.challenge) return;
       const checked = validateCode(input.value());
       if ("error" in checked) {
         showCodeError(checked.error);
@@ -474,6 +570,8 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
             emailMasked: outcome.emailMasked,
           };
           state.idempotencyKey = newKey();
+          state.autoConfirmRetries = 0;
+          state.confirmUncertain = false;
           enter("confirm");
         } else if (outcome.kind === "in_progress") {
           state.deletion = outcome.deletion;
@@ -501,7 +599,7 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
         resendButton?.focus();
         return;
       }
-      handleWait(failure);
+      handleFailure("verify", failure);
     };
     resendButton.addEventListener("click", () => void resend());
     const resend = async () => {
@@ -523,7 +621,7 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
       }
       const failure = describeFailure("resend", result);
       if (failure.action === "restart") return restart(failure.message);
-      handleWait(failure);
+      handleFailure("resend", failure);
     };
     changeEmail.addEventListener("click", () => {
       if (state.busy) return;
@@ -625,7 +723,7 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
     const checkError = el(doc, "p", { class: "field-error", attrs: { id: "del-ack-error" } });
     checkError.hidden = true;
     tokenText = el(doc, "p", { class: "text-xs text-text-muted", attrs: { "data-token-expiry": "" } });
-    primaryLabel = pending ? "Batalkan pendaftaran dan hapus data" : "Hapus akun saya";
+    primaryLabel = confirmLabelFor(d);
     primaryButton = el(doc, "button", { class: "btn-danger", text: primaryLabel, attrs: { type: "submit" } });
     const cancel = el(doc, "button", { class: "btn-ghost", text: "Batal", attrs: { type: "button" } });
     const form = el(
@@ -643,6 +741,7 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
         ]),
         checkError,
         tokenText,
+        makeWaitText(),
         el(doc, "div", { class: "flex flex-col gap-3 sm:flex-row-reverse sm:justify-start" }, [
           primaryButton,
           cancel,
@@ -651,7 +750,7 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
     );
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      if (state.busy || waitSeconds() > 0) return;
+      if (state.busy || waitSeconds("confirm") > 0) return;
       if (!check.checked) {
         checkError.textContent = "Centang pernyataan di atas untuk melanjutkan.";
         checkError.hidden = false;
@@ -661,37 +760,15 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
       }
       checkError.hidden = true;
       check.removeAttribute("aria-invalid");
-      void confirm();
+      state.autoConfirmRetries = 0;
+      void submitConfirm();
     });
-    const confirm = async () => {
-      const current = state.deletable!;
-      clearAlert();
-      clearNotice();
-      setBusy(true, "Memproses…");
-      state.idempotencyKey ??= newKey();
-      const result = await confirmDeletion(
-        apiBase,
-        {
-          deletionToken: current.token,
-          disclosureVersion: current.disclosure.version,
-          idempotencyKey: state.idempotencyKey,
-        },
-        fetcher,
-      );
-      setBusy(false);
-      if (result.ok) {
-        state.deletion = result.data;
-        state.deletable = { ...current, token: "" };
-        state.idempotencyKey = null;
-        enter("done");
-        return;
-      }
-      handleConfirmFailure(describeFailure("confirm", result), result);
-    };
     cancel.addEventListener("click", () => {
       if (state.busy) return;
+      // Setelah konfirmasi yang hasilnya tidak diketahui, halaman tidak boleh menjanjikan akun tidak berubah.
+      const uncertain = state.confirmUncertain;
       restart(null);
-      showNotice("Penghapusan dibatalkan. Akun Anda tidak berubah.");
+      showNotice(uncertain ? CANCEL_UNCERTAIN_NOTICE : CANCEL_NOTICE);
     });
     parts.push(form);
     return el(
@@ -702,17 +779,92 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
     );
   };
 
+  /**
+   * POST /public/deletion/confirm dengan Idempotency-Key yang tetap sama selama body sama (PRD 4.3): pengulangan
+   * setelah jaringan putus atau 409 "masih diproses" memutar ulang respons pertama sehingga nomor permintaan tampil.
+   */
+  const submitConfirm = async () => {
+    const current = state.deletable;
+    if (!current || state.busy || state.step !== "confirm") return;
+    cancelAutoConfirm();
+    state.waits.confirm = null;
+    state.confirmPending = false;
+    clearAlert();
+    clearNotice();
+    setBusy(true, "Memproses…");
+    state.idempotencyKey ??= newKey();
+    const result = await confirmDeletion(
+      apiBase,
+      {
+        deletionToken: current.token,
+        disclosureVersion: current.disclosure.version,
+        idempotencyKey: state.idempotencyKey,
+      },
+      fetcher,
+    );
+    setBusy(false);
+    if (result.ok) {
+      state.deletion = result.data;
+      state.deletable = { ...current, token: "" };
+      state.idempotencyKey = null;
+      state.confirmUncertain = false;
+      enter("done");
+      return;
+    }
+    handleConfirmFailure(
+      describeFailure("confirm", result, { confirmLabel: confirmLabelFor(current) }),
+      result,
+    );
+  };
+
+  /**
+   * Hasil konfirmasi tidak diketahui bila jawaban server tidak terbaca (jaringan putus, respons di luar kontrak, 5xx
+   * dari proxy) atau permintaan masih diproses; galat berbody `Error` lain (400, 410, 429, MAINTENANCE) berarti
+   * permintaan tidak dibuat.
+   */
+  const outcomeUnknown = (failure: FailureView, result: ApiFailure) =>
+    failure.action === "pending" ||
+    result.kind !== "http" ||
+    result.error === null ||
+    (result.status >= 500 && result.error.code !== "MAINTENANCE");
+
   const handleConfirmFailure = (failure: FailureView, result: ApiFailure) => {
     if (failure.action === "review" && failure.disclosure && state.deletable) {
+      // Body berubah (versi pengungkapan baru): key baru wajib, dan permintaan lama pasti ditolak server.
       state.deletable = { ...state.deletable, disclosure: failure.disclosure };
       state.idempotencyKey = newKey();
+      state.autoConfirmRetries = 0;
+      state.confirmUncertain = false;
       enter("confirm");
       showAlert(failure.message);
       return;
     }
     if (failure.action === "restart") return restart(failure.message);
-    if (result.kind === "http" && result.status === 409) state.idempotencyKey = newKey();
-    handleWait(failure);
+    if (failure.rotateKey) {
+      // Key bentrok dengan payload lain (409 IDEMPOTENCY_CONFLICT tanpa jeda): permintaan dengan key itu tidak dibuat.
+      state.idempotencyKey = newKey();
+    } else if (outcomeUnknown(failure, result)) {
+      state.confirmUncertain = true;
+    }
+    if (failure.action === "pending") {
+      // Permintaan dengan key yang SAMA masih diproses: key dipertahankan dan dicoba lagi setelah jeda server.
+      const seconds = failure.retryAfterSeconds ?? 2;
+      state.waits.confirm = now() + seconds * 1000;
+      state.confirmPending = true;
+      if (state.autoConfirmRetries < MAX_AUTO_CONFIRM_RETRIES && seconds <= MAX_AUTO_CONFIRM_DELAY_S) {
+        state.autoConfirmRetries += 1;
+        showAlert(PENDING_AUTO_MESSAGE);
+        autoConfirmTimer = setTimeout(() => {
+          autoConfirmTimer = null;
+          void submitConfirm();
+        }, seconds * 1000);
+      } else {
+        showAlert(failure.message);
+      }
+      tick();
+      return;
+    }
+    handleFailure("confirm", failure);
   };
 
   const renderDone = () => {
@@ -829,7 +981,10 @@ export function mountDeleteAccount(options: DeleteAccountOptions) {
 
   return {
     configReady,
-    destroy: () => clearInterval(interval),
+    destroy: () => {
+      clearInterval(interval);
+      cancelAutoConfirm();
+    },
     /** Untuk uji: langkah aktif. */
     currentStep: () => state.step,
   };
