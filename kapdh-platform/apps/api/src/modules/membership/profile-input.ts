@@ -143,12 +143,12 @@ const SERVER_OWNED_KEYS = new Set([
 /**
  * Menolak field di luar skema dengan 400 VALIDATION_ERROR per field (kontrak `additionalProperties: false`;
  * AC F05-6: nomor anggota tidak pernah dari klien) SEBELUM validasi lain, sehingga tidak ada field yang berubah.
- * `minFields` = jumlah field minimum yang dikenal (kontrak minProperties).
+ * Jumlah minimum perubahan (kontrak minProperties) diperiksa {@link assertHasChange} sesudah validasi skema.
  */
 export function assertKnownFields(
   body: unknown,
   allowed: readonly string[],
-  options: { identityEditable: boolean; minFields: number },
+  options: { identityEditable: boolean },
 ): Record<string, unknown> {
   if (body === null || typeof body !== "object" || Array.isArray(body))
     throw new AppException(400, "VALIDATION_ERROR", "Periksa kembali isian yang ditandai.", {
@@ -171,11 +171,19 @@ export function assertKnownFields(
   }
   if (Object.keys(fieldErrors).length > 0)
     throw new AppException(400, "VALIDATION_ERROR", "Periksa kembali isian yang ditandai.", { fieldErrors });
-  if (Object.keys(record).length < options.minFields)
-    throw new AppException(400, "VALIDATION_ERROR", "Periksa kembali isian yang ditandai.", {
-      fieldErrors: { _: ["Kirim minimal satu perubahan."] },
-    });
   return record;
+}
+
+/**
+ * Minimal satu field perubahan selain `ignore` (mis. `reason` yang wajib), diperiksa sesudah validasi skema sehingga
+ * field wajib yang hilang dilaporkan pada field-nya sendiri (kontrak minProperties).
+ */
+export function assertHasChange(input: Record<string, unknown>, ignore: readonly string[] = []): void {
+  const skip = new Set(ignore);
+  if (Object.keys(input).some((key) => !skip.has(key) && input[key] !== undefined)) return;
+  throw new AppException(400, "VALIDATION_ERROR", "Periksa kembali isian yang ditandai.", {
+    fieldErrors: { _: ["Kirim minimal satu perubahan."] },
+  });
 }
 
 export const PROFILE_UPDATE_KEYS = Object.keys(profileUpdateSchema.shape);

@@ -6,7 +6,12 @@ import { Audience, CurrentAuth, MemberAccess } from "../../core/guards/decorator
 import { validate } from "../../core/validation/validate.js";
 import { MemberCardService } from "./member-card.service.js";
 import { MemberProfileService } from "./member-profile.service.js";
-import { assertKnownFields, PROFILE_UPDATE_KEYS, profileUpdateSchema } from "./profile-input.js";
+import {
+  assertHasChange,
+  assertKnownFields,
+  PROFILE_UPDATE_KEYS,
+  profileUpdateSchema,
+} from "./profile-input.js";
 
 export { toMembershipPayment } from "./membership-view.js";
 
@@ -48,8 +53,9 @@ export class MeController {
     @Body() body: unknown,
   ): Promise<Me> {
     const expectedVersion = parseIfMatch(ifMatch);
-    const known = assertKnownFields(body, PROFILE_UPDATE_KEYS, { identityEditable: false, minFields: 1 });
+    const known = assertKnownFields(body, PROFILE_UPDATE_KEYS, { identityEditable: false });
     const input = validate(profileUpdateSchema, known);
+    assertHasChange(input);
     return this.profiles.updateProfile(auth, expectedVersion, input);
   }
 

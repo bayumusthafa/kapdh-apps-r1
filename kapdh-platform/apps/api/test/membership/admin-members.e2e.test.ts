@@ -486,16 +486,17 @@ describe("PATCH /admin/members/{userId} (PRD 2.3, 3.5, AC F15-4)", () => {
     });
 
     const fresh = conflict.current.version;
-    for (const body of [
-      { city: "X" },
-      { reason: "   ", city: "Banjar" },
-      { reason: "Hanya alasan" },
-      { reason: "Email baru", email: "baru@contoh.test" },
-      { reason: "Privasi", privacy: { show_phone: true } },
-      { reason: "Kelas", class_in: 5, class_out: 4 },
-    ]) {
+    for (const [body, field] of [
+      [{ city: "X" }, "reason"],
+      [{ reason: "   ", city: "Banjar" }, "reason"],
+      [{ reason: "Hanya alasan" }, "_"],
+      [{ reason: "Email baru", email: "baru@contoh.test" }, "email"],
+      [{ reason: "Privasi", privacy: { show_phone: true } }, "privacy"],
+      [{ reason: "Kelas", class_in: 5, class_out: 4 }, "class_out"],
+    ] as const) {
       const res = await patch(body, manager.token, fresh);
       expect(res.statusCode, JSON.stringify(body)).toBe(400);
+      expect(res.json().field_errors, JSON.stringify(body)).toHaveProperty([field]);
     }
     expect((await patch({ reason: "Tanpa If-Match", city: "Banjar" }, manager.token, "")).statusCode).toBe(
       400,
