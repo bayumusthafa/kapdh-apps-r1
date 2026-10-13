@@ -63,6 +63,15 @@ export class InlineQueueDriver implements QueueDriver {
     return true;
   }
 
+  /**
+   * Selesai saat antrean tidak memiliki job menunggu, berjalan, maupun menunggu retry (uji dan diagnosis). Tidak
+   * menunggu job yang ditambahkan setelah promise selesai.
+   */
+  async drained(queue?: QueueName): Promise<void> {
+    const targets = queue ? [this.queueFor(queue)] : [...this.queues.values()];
+    await Promise.all(targets.map((target) => target.drained()));
+  }
+
   async close(timeoutMs: number): Promise<boolean> {
     this.started = false;
     const queues = [...this.queues.values()];
@@ -83,6 +92,7 @@ class InlineQueue {
   private active = 0;
   private closed = false;
   private idleWaiters: (() => void)[] = [];
+  private drainWaiters: (() => void)[] = [];
 
   constructor(
     private readonly name: QueueName,
@@ -135,6 +145,12 @@ class InlineQueue {
     this.notifyIdle();
   }
 
+  /** Selesai saat tidak ada job menunggu, berjalan, atau menunggu retry. */
+  drained(): Promise<void> {
+    if (this.entries.size === 0) return Promise.resolve();
+    return new Promise((resolve) => this.drainWaiters.push(resolve));
+  }
+
   /** Selesai saat tidak ada job yang berjalan. */
   idle(): Promise<void> {
     if (this.active === 0) return Promise.resolve();
@@ -182,6 +198,7 @@ class InlineQueue {
   }
 
   private notifyIdle(): void {
+    if (this.entries.size === 0) for (const resolve of this.drainWaiters.splice(0)) resolve();
     if (this.active !== 0) return;
     const waiters = this.idleWaiters.splice(0);
     for (const resolve of waiters) resolve();
