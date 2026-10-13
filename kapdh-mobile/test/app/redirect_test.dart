@@ -347,6 +347,25 @@ void main() {
       expect(go(const SessionState.anonymous(), '/forgot/reset'), '/forgot');
       expect(go(const SessionState.anonymous(resetToken: 'reset-1'), '/forgot/reset'), isNull);
     });
+
+    test('F-14 kontrak C1: portal status penghapusan bekerja tanpa sesi, juga saat pemeliharaan', () {
+      const anon = SessionState.anonymous();
+      expect(go(anon, '/deletion-status'), isNull);
+      expect(go(anon, '/deletion-status', gate: GateStatus.maintenance), isNull);
+      // Gerbang lain tetap didahulukan.
+      expect(go(anon, '/deletion-status', gate: GateStatus.updateRequired), '/update-required?from=%2Fdeletion-status');
+      // Sesi aktif dengan status lain tidak membuka portal.
+      expect(go(authed('verified'), '/deletion-status'), '/home');
+    });
+
+    test('AC F13-3: gerbang ketukan push /notifications/<id> memerlukan login lalu kembali ke gerbang', () {
+      const path = '/notifications/0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e01';
+      expect(routeGroupOf(path), RouteGroup.notifications);
+      expect(go(const SessionState.anonymous(), path), '/login?from=${Uri.encodeComponent(path)}');
+      expect(go(authed('unverified'), path), isNull);
+      expect(go(authed('suspended'), path), '/restricted');
+      expect(go(authed('verified'), '/login?from=${Uri.encodeComponent(path)}'), path);
+    });
   });
 
   group('tujuan tertunda ?from=', () {
