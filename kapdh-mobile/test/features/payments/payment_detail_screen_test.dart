@@ -420,6 +420,45 @@ void main() {
       expect(find.textContaining('Bukti ke-2 akan diganti'), findsOneWidget);
     });
 
+    testWidgets('AC F03-3, F04-2: pengurus menolak bukti saat anggota sedang mengganti bukti: mode ganti ditutup, '
+        'catatan pengurus tampil dan tetap terlihat saat unggah ulang; berkas yang dipilih tidak hilang', (tester) async {
+      const reason = 'Foto bukti buram sehingga nominal tidak terbaca.';
+      final updates = StreamController<NotificationCreatedPayload>.broadcast();
+      addTearDown(updates.close);
+      var rejected = false;
+      await openPayment(tester, {
+        '/me/payments/pay-1': (_) =>
+            FakeResponse.json(200, rejected ? needsFixJson(reason: reason) : awaitingReviewJson()),
+      }, updates: updates.stream);
+
+      await tester.tap(find.byKey(const ValueKey('proof-replace')));
+      await settle(tester);
+      await pickFromGallery(tester);
+      expect(find.text('Bukti transfer pengganti'), findsOneWidget);
+
+      rejected = true;
+      updates.add(notificationOf('payment', title: 'Bukti pembayaran perlu diperbaiki'));
+      await settle(tester);
+
+      // Tidak diam-diam berganti judul menjadi "Unggah ulang bukti": layar status penolakan dengan alasannya.
+      expect(find.text('Bukti pembayaran belum dapat diterima'), findsOneWidget);
+      expect(find.byKey(const ValueKey('rejection-note')), findsOneWidget);
+      expect(
+        find.descendant(of: find.byKey(const ValueKey('rejection-note')), matching: find.text(reason)),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('proof-reupload')));
+      await settle(tester);
+      expect(find.text('Unggah ulang bukti'), findsWidgets);
+      expect(
+        find.descendant(of: find.byKey(const ValueKey('rejection-note')), matching: find.text(reason)),
+        findsOneWidget,
+      );
+      expect(find.text('bukti-transfer.jpg'), findsOneWidget);
+      expect(tester.widget<KapdhButton>(submitButton).onPressed, isNotNull);
+    });
+
     testWidgets(
       'PRD 2.2: ACCOUNT_SUSPENDED saat kirim bukti: status dimuat ulang dan diarahkan ke portal pembatasan (PRD 2.2)',
       (tester) async {
@@ -727,6 +766,48 @@ void main() {
       expect(find.text('Data tidak ditemukan'), findsOneWidget);
       expect(find.text('Pembayaran tidak ditemukan.'), findsOneWidget);
       expect(find.text('Coba lagi'), findsNothing);
+    });
+
+    testWidgets('PRD 4.5: tarik untuk memuat ulang gagal (5xx) saat status tampil: pemberitahuan "Status terbaru belum '
+        'dapat dimuat" dengan Coba lagi; muat ulang latar yang gagal tetap diam', (tester) async {
+      final updates = StreamController<NotificationCreatedPayload>.broadcast();
+      addTearDown(updates.close);
+      var failing = false;
+      var rejected = false;
+      final app = await openPayment(tester, {
+        '/me/payments/pay-1': (_) => failing
+            ? FakeResponse.json(500, errorJson('INTERNAL_ERROR', 'Server sedang bermasalah.'))
+            : FakeResponse.json(200, rejected ? needsFixJson() : awaitingReviewJson()),
+      }, updates: updates.stream);
+      expect(find.text('Bukti pembayaran sedang diperiksa'), findsOneWidget);
+
+      failing = true;
+      // Muat ulang latar (notifikasi realtime) yang gagal tidak menampilkan apa pun.
+      updates.add(notificationOf('payment'));
+      await settle(tester);
+      final calls = app.adapter.requestsTo('/me/payments/pay-1').length;
+      expect(calls, greaterThan(1));
+      expect(find.byKey(const ValueKey('refresh-failed')), findsNothing);
+
+      unawaited(tester.state<RefreshIndicatorState>(find.byType(RefreshIndicator)).show());
+      await settle(tester);
+
+      expect(app.adapter.requestsTo('/me/payments/pay-1').length, greaterThan(calls));
+      expect(find.byKey(const ValueKey('refresh-failed')), findsOneWidget);
+      expect(find.text('Status terbaru belum dapat dimuat'), findsOneWidget);
+      expect(find.textContaining('Server sedang bermasalah.'), findsOneWidget);
+      // Status lama tetap terbaca.
+      expect(find.text('Bukti pembayaran sedang diperiksa'), findsOneWidget);
+
+      failing = false;
+      rejected = true;
+      await tester.tap(
+        find.descendant(of: find.byKey(const ValueKey('refresh-failed')), matching: find.text('Coba lagi')),
+      );
+      await settle(tester);
+
+      expect(find.byKey(const ValueKey('refresh-failed')), findsNothing);
+      expect(find.text('Bukti pembayaran belum dapat diterima'), findsOneWidget);
     });
 
     testWidgets('PRD 4.5: offline saat membuka: Tidak ada koneksi, lalu coba lagi memuat status', (tester) async {

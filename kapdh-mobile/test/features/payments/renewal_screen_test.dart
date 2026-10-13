@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/design/design.dart';
@@ -373,6 +375,41 @@ void main() {
     online = true;
     await tester.tap(find.text('Coba lagi'));
     await settle(tester);
+    expect(find.text('Masa keanggotaan'), findsOneWidget);
+  });
+
+  testWidgets('PRD 4.5: tarik untuk memuat ulang gagal: masa keanggotaan lama tetap tampil dengan pemberitahuan dan '
+      'Coba lagi', (tester) async {
+    var failing = false;
+    await openRenewal(
+      tester,
+      membership: membershipJson(status: 'verified', startsAt: starts, expiresAt: expires, renewalOpensAt: opens),
+      fees: renewalFees(eligible: false, ineligibleReason: 'renewal_window_not_open', renewalOpensAt: opens),
+      routes: {
+        '/me/membership': (_) => failing
+            ? FakeResponse.network()
+            : FakeResponse.json(
+                200,
+                membershipJson(status: 'verified', startsAt: starts, expiresAt: expires, renewalOpensAt: opens),
+              ),
+      },
+    );
+    expect(find.text('Masa keanggotaan'), findsOneWidget);
+
+    failing = true;
+    unawaited(tester.state<RefreshIndicatorState>(find.byType(RefreshIndicator)).show());
+    await settle(tester);
+
+    expect(find.byKey(const ValueKey('refresh-failed')), findsOneWidget);
+    expect(find.text('Data perpanjangan terbaru belum dapat dimuat'), findsOneWidget);
+    expect(find.text('Masa keanggotaan'), findsOneWidget);
+
+    failing = false;
+    await tester.tap(
+      find.descendant(of: find.byKey(const ValueKey('refresh-failed')), matching: find.text('Coba lagi')),
+    );
+    await settle(tester);
+    expect(find.byKey(const ValueKey('refresh-failed')), findsNothing);
     expect(find.text('Masa keanggotaan'), findsOneWidget);
   });
 

@@ -118,6 +118,15 @@ class _OnboardingFeesScreenState extends ConsumerState<OnboardingFeesScreen> {
             padding: padding,
             children: [
               ...header,
+              if (fees != null && error != null) ...[
+                // Tarik ke bawah gagal: rincian lama tetap tampil dengan pemberitahuan (PRD 4.5).
+                const SizedBox(height: KapdhSpace.s4),
+                RefreshFailedNotice(
+                  error: error,
+                  title: 'Rincian iuran terbaru belum dapat dimuat',
+                  onRetry: () => unawaited(_load()),
+                ),
+              ],
               const SizedBox(height: 18),
               Semantics(
                 header: true,

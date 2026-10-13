@@ -13,6 +13,7 @@ import '../../core/ui/support_section.dart';
 import '../../design/design.dart';
 import 'payment_presentation.dart';
 import 'payments_repository.dart';
+import 'widgets/payment_layout.dart';
 
 /// Perpanjang KTA (F-07; PRD 3.7, 4.2; AC F07-1, F07-2, F07-5): masa keanggotaan dan jendela perpanjangan dari
 /// GET /me/membership, iuran perpanjangan dari GET /me/fees, lalu alur pembayaran yang sama dengan pendaftaran
@@ -39,10 +40,12 @@ class _RenewalScreenState extends ConsumerState<RenewalScreen> {
     unawaited(_load());
   }
 
-  Future<void> _load() async {
+  /// [quiet] = muat ulang latar (status iuran berubah di layar lain): kegagalannya tidak ditampilkan selama data lama
+  /// masih ada. Muat ulang yang diminta pengguna yang gagal ditampilkan di atas data lama (PRD 4.5).
+  Future<void> _load({bool quiet = false}) async {
     if (_loading) return;
     _loading = true;
-    setState(() => _error = null);
+    if (!quiet) setState(() => _error = null);
     final repo = ref.read(paymentsRepositoryProvider);
     try {
       final membership = await repo.getMembership();
@@ -51,9 +54,11 @@ class _RenewalScreenState extends ConsumerState<RenewalScreen> {
       setState(() {
         _membership = membership;
         _fees = fees;
+        _error = null;
       });
     } on ApiException catch (error) {
-      if (mounted) setState(() => _error = error);
+      final hasData = _membership != null && _fees != null;
+      if (mounted && (!quiet || !hasData)) setState(() => _error = error);
     } finally {
       _loading = false;
     }
@@ -69,7 +74,7 @@ class _RenewalScreenState extends ConsumerState<RenewalScreen> {
         return (payment?.id, payment?.stage, payment?.proofVersion, s.me?.expiresAt, s.effectiveStatus);
       }),
       (previous, next) {
-        if (previous != next) unawaited(_load());
+        if (previous != next) unawaited(_load(quiet: true));
       },
     );
     final membership = _membership;
@@ -82,11 +87,11 @@ class _RenewalScreenState extends ConsumerState<RenewalScreen> {
           ? (error != null
                 ? ErrorState.fromException(error, onRetry: () => unawaited(_load()))
                 : const LoadingSkeleton(semanticsLabel: 'Memuat masa keanggotaan'))
-          : RefreshIndicator(onRefresh: _load, child: _content(membership, fees)),
+          : RefreshIndicator(onRefresh: _load, child: _content(membership, fees, refreshError: error)),
     );
   }
 
-  Widget _content(Membership membership, MyFeeQuotes fees) {
+  Widget _content(Membership membership, MyFeeQuotes fees, {ApiException? refreshError}) {
     final me = ref.watch(sessionProvider.select((s) => s.me));
     final quote = fees.renewal;
     final open = membership.renewalPayment;
@@ -118,6 +123,14 @@ class _RenewalScreenState extends ConsumerState<RenewalScreen> {
     return ListView(
       padding: const EdgeInsets.all(KapdhSpace.s5),
       children: [
+        if (refreshError != null) ...[
+          RefreshFailedNotice(
+            error: refreshError,
+            title: 'Data perpanjangan terbaru belum dapat dimuat',
+            onRetry: () => unawaited(_load()),
+          ),
+          const SizedBox(height: KapdhSpace.s4),
+        ],
         if (me != null)
           KtaMiniCard(
             fullName: me.profile.fullName,

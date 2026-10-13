@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/design/design.dart';
@@ -207,5 +209,34 @@ void main() {
     expect(app.location, '/onboarding/fees');
     expect(tester.takeException(), isNull);
     expect(find.text('Lanjut ke pembayaran'), findsOneWidget);
+  });
+
+  testWidgets('PRD 4.5: tarik untuk memuat ulang rincian iuran gagal: rincian lama tetap tampil dengan pemberitahuan '
+      'dan Coba lagi', (tester) async {
+    var failing = false;
+    await openFees(
+      tester,
+      routes: {
+        '/me/fees': (_) => failing
+            ? FakeResponse.json(500, errorJson('INTERNAL_ERROR', 'Server sedang bermasalah.'))
+            : FakeResponse.json(200, feesJson()),
+      },
+    );
+    expect(find.byKey(const ValueKey('fees-summary')), findsOneWidget);
+
+    failing = true;
+    unawaited(tester.state<RefreshIndicatorState>(find.byType(RefreshIndicator)).show());
+    await settle(tester);
+
+    expect(find.byKey(const ValueKey('refresh-failed')), findsOneWidget);
+    expect(find.text('Rincian iuran terbaru belum dapat dimuat'), findsOneWidget);
+    expect(find.byKey(const ValueKey('fees-summary')), findsOneWidget);
+
+    failing = false;
+    await tester.tap(
+      find.descendant(of: find.byKey(const ValueKey('refresh-failed')), matching: find.text('Coba lagi')),
+    );
+    await settle(tester);
+    expect(find.byKey(const ValueKey('refresh-failed')), findsNothing);
   });
 }
