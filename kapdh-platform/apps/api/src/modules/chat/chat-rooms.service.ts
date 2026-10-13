@@ -153,7 +153,7 @@ export class ChatRoomsService {
   async roomDto(db: DbOrTx, roomId: string, viewer: ChatViewer): Promise<ChatRoomDto> {
     const [row] = await roomSummaries(db, { viewerId: viewer.userId, roomId, limit: 1 });
     if (!row) throw notFound(MSG.roomNotFound);
-    return this.presenter.room(row, viewer);
+    return this.presenter.room(db, row, viewer);
   }
 
   /** Room + keanggotaan joined penampil, dengan kunci baris room (kunci pertama transaksi) bila `tx` diberikan. */
@@ -191,9 +191,7 @@ export class ChatRoomsService {
     const hasMore = found.length > page.limit;
     const pageRows = hasMore ? found.slice(0, page.limit) : found;
     const last = pageRows[pageRows.length - 1];
-    const items: ChatRoomSummaryDto[] = await Promise.all(
-      pageRows.map((row) => this.presenter.summary(row, auth)),
-    );
+    const items: ChatRoomSummaryDto[] = await this.presenter.summaries(this.db, pageRows, auth);
     return {
       items,
       next_cursor: hasMore && last ? encodeCursor({ us: last.activity_us, id: last.id }) : null,
@@ -327,8 +325,11 @@ export class ChatRoomsService {
         updatedAt: now,
       });
       this.events.join(auth.userId, roomId);
-      const creator = await this.writer.displayName(tx, auth.userId);
-      const systemId = await this.writer.systemMessage(tx, roomId, `${creator} membuat grup "${name}".`);
+      const systemId = await this.writer.systemMessage(tx, roomId, {
+        type: "group_created",
+        actor: auth.userId,
+        name,
+      });
       await tx
         .update(roomMembers)
         .set({ lastReadMessageId: systemId, lastReadAt: now })
@@ -381,31 +382,25 @@ export class ChatRoomsService {
         .where(and(eq(rooms.id, roomId), eq(rooms.version, expected)))
         .returning();
       if (!updated) throw versionConflict(await this.roomDto(tx, roomId, auth));
-      const actor = await this.writer.displayName(tx, auth.userId);
       if (changes.includes("group_name"))
-        await this.writer.systemMessage(tx, roomId, `${actor} mengubah nama grup menjadi "${updated.name}".`);
+        await this.writer.systemMessage(tx, roomId, {
+          type: "group_renamed",
+          actor: auth.userId,
+          name: updated.name!,
+        });
       if (changes.includes("group_avatar"))
-        await this.writer.systemMessage(
-          tx,
-          roomId,
-          avatarFileId ? `${actor} mengubah foto grup.` : `${actor} menghapus foto grup.`,
-        );
+        await this.writer.systemMessage(tx, roomId, {
+          type: avatarFileId ? "group_photo_changed" : "group_photo_removed",
+          actor: auth.userId,
+        });
       const avatar = avatarFileId ? await this.files.findReady(avatarFileId, tx) : null;
       this.events.roomUpdated({
-        room_id: roomId,
-        version: String(updated.version),
+        roomId,
+        version: updated.version,
         changes,
         name: updated.name,
-        avatar_url: avatar
-          ? ((
-              await this.presenter.fileUrl(
-                { id: avatar.id, visibility: avatar.visibility, status: avatar.status },
-                "chat_image",
-                null,
-              )
-            )?.url ?? null)
-          : null,
-        closed_at: updated.closedAt?.toISOString() ?? null,
+        avatar: avatar ? { id: avatar.id, visibility: avatar.visibility, status: avatar.status } : null,
+        closedAt: updated.closedAt,
       });
       return this.roomDto(tx, roomId, auth);
     });
@@ -485,12 +480,10 @@ export class ChatRoomsService {
           .update(roomMembers)
           .set({ role, updatedAt: this.clock.now() })
           .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.userId, targetId)));
-        const targetName = await this.writer.displayName(tx, targetId);
-        await this.writer.systemMessage(
-          tx,
-          roomId,
-          role === "admin" ? `${targetName} sekarang admin grup.` : `${targetName} bukan lagi admin grup.`,
-        );
+        await this.writer.systemMessage(tx, roomId, {
+          type: role === "admin" ? "admin_granted" : "admin_revoked",
+          user: targetId,
+        });
         this.events.memberChanged({
           roomId,
           userId: targetId,
@@ -515,11 +508,11 @@ export class ChatRoomsService {
       const target = await findMembership(tx, roomId, targetId);
       if (target?.status === "joined") {
         await this.writer.endMembership(tx, roomId, targetId, "removed");
-        const [targetName, actor] = await Promise.all([
-          this.writer.displayName(tx, targetId),
-          this.writer.displayName(tx, auth.userId),
-        ]);
-        await this.writer.systemMessage(tx, roomId, `${targetName} dikeluarkan dari grup oleh ${actor}.`);
+        await this.writer.systemMessage(tx, roomId, {
+          type: "member_removed",
+          user: targetId,
+          actor: auth.userId,
+        });
         this.events.memberChanged({
           roomId,
           userId: targetId,
@@ -751,8 +744,10 @@ export class ChatRoomsService {
       const now = this.clock.now();
       // Socket penerima bergabung sebelum pesan sistem disiarkan sehingga event "bergabung" ikut diterima.
       this.events.join(auth.userId, roomId);
-      const name = await this.writer.displayName(tx, auth.userId);
-      const systemId = await this.writer.systemMessage(tx, roomId, `${name} bergabung ke grup.`);
+      const systemId = await this.writer.systemMessage(tx, roomId, {
+        type: "member_joined",
+        user: auth.userId,
+      });
       const joined = rows<{ user_id: string }>(
         await tx.execute(sql`
           update app.room_members rm
@@ -848,8 +843,7 @@ export class ChatRoomsService {
             .update(roomMembers)
             .set({ role: "admin", updatedAt: now })
             .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.userId, successorId)));
-          const successorName = await this.writer.displayName(tx, successorId);
-          await this.writer.systemMessage(tx, roomId, `${successorName} sekarang admin grup.`);
+          await this.writer.systemMessage(tx, roomId, { type: "admin_granted", user: successorId });
           this.events.memberChanged({
             roomId,
             userId: successorId,
@@ -860,8 +854,7 @@ export class ChatRoomsService {
           });
         }
       }
-      const name = await this.writer.displayName(tx, auth.userId);
-      await this.writer.systemMessage(tx, roomId, `${name} keluar dari grup.`);
+      await this.writer.systemMessage(tx, roomId, { type: "member_left", user: auth.userId });
       await this.writer.endMembership(tx, roomId, auth.userId, "left");
       if (others.length === 0) {
         await tx
@@ -901,25 +894,16 @@ export class ChatRoomsService {
     if (!room) throw notFound(MSG.roomNotFound);
     const avatar =
       room.kind === "group" && room.avatarFileId ? await this.files.findReady(room.avatarFileId) : null;
-    // Perangkat lain pemanggil menyesuaikan preferensi (kanal user saja; field per pengguna dimuat ulang lewat HTTP).
-    this.events.roomUpdated(
-      {
-        room_id: roomId,
-        version: String(room.version),
-        changes: ["muted"],
-        name: room.kind === "group" ? room.name : null,
-        avatar_url: avatar
-          ? ((
-              await this.presenter.fileUrl(
-                { id: avatar.id, visibility: avatar.visibility, status: avatar.status },
-                "chat_image",
-                null,
-              )
-            )?.url ?? null)
-          : null,
-        closed_at: room.closedAt?.toISOString() ?? null,
-      },
-      auth.userId,
-    );
+    // Perangkat lain pemanggil menyesuaikan preferensi (perangkat pemanggil saja; field per pengguna dimuat ulang
+    // lewat HTTP).
+    this.events.roomUpdated({
+      roomId,
+      version: room.version,
+      changes: ["muted"],
+      name: room.kind === "group" ? room.name : null,
+      avatar: avatar ? { id: avatar.id, visibility: avatar.visibility, status: avatar.status } : null,
+      closedAt: room.closedAt,
+      toUserId: auth.userId,
+    });
   }
 }

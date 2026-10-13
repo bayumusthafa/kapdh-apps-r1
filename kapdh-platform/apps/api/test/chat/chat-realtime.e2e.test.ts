@@ -12,7 +12,7 @@ import { runAsSystem } from "../../src/core/context/request-context.js";
 import { withTx } from "../../src/core/db/tx.js";
 import { MembershipKernel } from "../../src/core/membership/membership.kernel.js";
 import { BlockPolicy } from "../../src/core/policy/block.policy.js";
-import { REALTIME_FILE_URL_TTL_SECONDS } from "../../src/modules/chat/chat.constants.js";
+import { ChatEvents } from "../../src/modules/chat/chat.events.js";
 import { ChatLifecycleService } from "../../src/modules/chat/chat-lifecycle.service.js";
 import { expectOperation } from "../support/contract.js";
 import { signInAlumni } from "../support/factories.js";
@@ -29,8 +29,10 @@ import {
   type Member,
   member,
   openDirect,
+  openFileUrl,
   sendRaw,
   sendText,
+  setAvatar,
   TestSocket,
 } from "./support.js";
 
@@ -93,27 +95,98 @@ describe("N-02 / AC F11-2: penyampaian message.created sesudah commit", () => {
     await bSocket.waitFor("message.created", isMessage(sent.id));
   });
 
-  it("PRD 5.4: gambar pada siaran realtime memakai URL singkat; respons HTTP memakai URL terikat sesi penampil", async () => {
-    const a = await member(t);
+  it("PRD 5.4 / AC F11-4: URL gambar dan avatar privat pada message.created dan room.updated terikat sesi penerima; anggota yang dikeluarkan tidak dapat membuka URL yang sudah diterimanya", async () => {
+    const admin = await member(t);
     const b = await member(t);
-    const room = await openDirect(t, a, b);
-    const bSocket = await connect(b);
-    const image = await uploadTestFile(t, a.token, "chat_image");
-    const res = await sendRaw(t, a, room.id, { kind: "image", image_file_id: image.id });
+    const c = await member(t);
+    const outsider = await member(t);
+    await setAvatar(t, admin);
+    const roomId = await groupWith(t, admin, [b, c], "Grup Foto Realtime");
+    const bTabletSession = await signInAlumni(t, b);
+    const [bPhone, bTablet, cSocket, outsiderSocket] = [
+      await connect(b),
+      await connect(bTabletSession.accessToken),
+      await connect(c),
+      await connect(outsider),
+    ];
+
+    const image = await uploadTestFile(t, admin.token, "chat_image");
+    const res = await sendRaw(t, admin, roomId, { kind: "image", image_file_id: image.id, body: "Foto" });
     expect(res.statusCode, res.body).toBe(201);
     const sent = expectOperation("post", "/chat/rooms/{roomId}/messages", res) as {
       id: string;
-      image: { url: string; url_expires_at: string };
+      image: { url: string };
+      sender: { avatar_url: string };
     };
-    const event = await bSocket.waitFor("message.created", isMessage(sent.id));
-    const image$ = (event.payload.message as { image: { url: string; url_expires_at: string } }).image;
-    const now = t.clock.now().getTime();
-    expect(Date.parse(image$.url_expires_at) - now).toBe(REALTIME_FILE_URL_TTL_SECONDS * 1000);
-    expect(Date.parse(sent.image.url_expires_at) - now).toBeGreaterThan(REALTIME_FILE_URL_TTL_SECONDS * 1000);
-    expect(Date.parse(sent.image.url_expires_at) - now).toBeLessThanOrEqual(600_000);
-    // URL siaran tetap dapat dibuka selama masa berlakunya (penampil berhak menerima event room).
-    const content = await t.app.inject({ method: "GET", url: image$.url.slice(t.env.API_PUBLIC_URL.length) });
-    expect(content.statusCode).toBe(200);
+    type Delivered = { image: { url: string; url_expires_at: string }; sender: { avatar_url: string } };
+    const received = async (socket: TestSocket) =>
+      (await socket.waitFor("message.created", isMessage(sent.id))).payload.message as Delivered;
+    const [onPhone, onTablet, onC] = [await received(bPhone), await received(bTablet), await received(cSocket)];
+    // Tepat satu salinan per perangkat; URL berbeda per sesi (bukan satu URL untuk seluruh room).
+    for (const socket of [bPhone, bTablet, cSocket])
+      expect(socket.of("message.created").filter(isMessage(sent.id))).toHaveLength(1);
+    expect(new Set([onPhone.image.url, onTablet.image.url, onC.image.url, sent.image.url]).size).toBe(4);
+    expect(onPhone.sender.avatar_url).not.toBe(onTablet.sender.avatar_url);
+    expect(Date.parse(onPhone.image.url_expires_at) - t.clock.now().getTime()).toBeLessThanOrEqual(600_000);
+    for (const url of [onPhone.image.url, onPhone.sender.avatar_url, onTablet.image.url, onC.image.url])
+      expect(await openFileUrl(t, url)).toBe(200);
+    await outsiderSocket.none("message.created", isMessage(sent.id));
+
+    // b dikeluarkan: URL yang sudah diterima b mati seketika (otorisasi diulang saat dibuka), milik c tetap berlaku.
+    const removed = await api(t).delete(`/chat/rooms/${roomId}/members/${b.userId}`, { token: admin.token });
+    expect(removed.statusCode).toBe(204);
+    for (const url of [
+      onPhone.image.url,
+      onPhone.sender.avatar_url,
+      onTablet.image.url,
+      onTablet.sender.avatar_url,
+    ])
+      expect(await openFileUrl(t, url)).toBe(404);
+    expect(await openFileUrl(t, onC.image.url)).toBe(200);
+
+    // Avatar grup baru: room.updated per sesi anggota aktif; b yang sudah dikeluarkan tidak menerimanya.
+    const groupAvatar = await uploadTestFile(t, admin.token, "chat_image");
+    const current = await api(t).get(`/chat/rooms/${roomId}`, { token: admin.token });
+    const patched = await api(t).patch(
+      `/chat/rooms/${roomId}`,
+      { avatar_file_id: groupAvatar.id },
+      { token: admin.token, headers: { "if-match": (current.json() as { version: string }).version } },
+    );
+    expect(patched.statusCode, patched.body).toBe(200);
+    const updated = await cSocket.waitFor("room.updated", (e) => e.entity_id === roomId);
+    expect(updated.payload.changes).toEqual(["group_avatar"]);
+    expect(await openFileUrl(t, updated.payload.avatar_url as string)).toBe(200);
+    expect(cSocket.of("room.updated").filter((e) => e.entity_id === roomId)).toHaveLength(1);
+    await bPhone.none("room.updated", (e) => e.entity_id === roomId);
+    await outsiderSocket.none("room.updated", (e) => e.entity_id === roomId, 50);
+    // c kemudian keluar: URL avatar grup yang diterimanya ikut mati.
+    expect((await api(t).post(`/chat/rooms/${roomId}/leave`, {}, { token: c.token })).statusCode).toBe(204);
+    expect(await openFileUrl(t, updated.payload.avatar_url as string)).toBe(404);
+  });
+
+  it("PRD 3.11: penyiaran per sesi yang tertunda tidak mengirim pesan sebelum penerima bergabung (history_visible_from)", async () => {
+    const admin = await member(t);
+    const newcomer = await member(t);
+    const roomId = await groupWith(t, admin, []);
+    await setAvatar(t, admin);
+    const invited = await api(t).post(
+      `/chat/rooms/${roomId}/invitations`,
+      { user_ids: [newcomer.userId] },
+      { token: admin.token },
+    );
+    expect(invited.statusCode).toBe(200);
+    // Avatar privat pengirim → jalur per keluarga sesi.
+    const before = await sendText(t, admin, roomId, "Sebelum bergabung");
+    const accepted = await api(t).post(`/chat/invitations/${roomId}/accept`, {}, { token: newcomer.token });
+    expect(accepted.statusCode).toBe(200);
+    const [adminSocket, newcomerSocket] = [await connect(admin), await connect(newcomer)];
+    // Penyiaran pesan lama yang baru berjalan sesudah anggota baru bergabung (mis. tertunda): penerima dihitung ulang
+    // dengan batas history_visible_from, sehingga anggota baru tidak menerima pesan sebelum ia bergabung.
+    t.app.get(ChatEvents).messageCreated(roomId, before.id);
+    await adminSocket.waitFor("message.created", isMessage(before.id));
+    await newcomerSocket.none("message.created", isMessage(before.id));
+    const after = await sendText(t, admin, roomId, "Sesudah bergabung");
+    await newcomerSocket.waitFor("message.created", isMessage(after.id));
   });
 
   it("N-02: read.updated, reaction.updated dan message.deleted sampai ke anggota room", async () => {

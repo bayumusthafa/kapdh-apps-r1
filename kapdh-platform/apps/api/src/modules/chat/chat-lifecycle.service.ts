@@ -10,7 +10,6 @@ import { MembershipKernel } from "../../core/membership/membership.kernel.js";
 import { CLOCK, DB } from "../../core/tokens.js";
 import { DELETION_EVENT_CAP } from "./chat.constants.js";
 import { ChatEvents } from "./chat.events.js";
-import { ChatPresenter } from "./chat.presenter.js";
 import { findDirectRoom, joinedCount, lockRoom } from "./chat.queries.js";
 import { ChatWriter } from "./chat.writer.js";
 
@@ -43,7 +42,6 @@ export class ChatLifecycleService {
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly writer: ChatWriter,
     private readonly events: ChatEvents,
-    private readonly presenter: ChatPresenter,
     private readonly files: FilesService,
     private readonly membership: MembershipKernel,
   ) {}
@@ -85,17 +83,15 @@ export class ChatLifecycleService {
   private async sendPermissionChanged(db: DbOrTx, userId: string, otherId: string): Promise<void> {
     const room = await findDirectRoom(db, userId, otherId);
     if (!room) return;
-    this.events.roomUpdated(
-      {
-        room_id: room.id,
-        version: String(room.version),
-        changes: ["send_permission"],
-        name: null,
-        avatar_url: null,
-        closed_at: room.closedAt?.toISOString() ?? null,
-      },
-      userId,
-    );
+    this.events.roomUpdated({
+      roomId: room.id,
+      version: room.version,
+      changes: ["send_permission"],
+      name: null,
+      avatar: null,
+      closedAt: room.closedAt,
+      toUserId: userId,
+    });
   }
 
   /**
@@ -146,6 +142,9 @@ export class ChatLifecycleService {
    * - Undangan tertunda untuk pengguna dibatalkan (actor null).
    * - Pesan buatan pengguna menjadi placeholder tanpa isi dan reaksinya dihapus (AC F14-3); berkas gambar dilepas
    *   kecuali dirujuk bukti laporan (PRD 3.12, D2).
+   * - Pesan sistem grup tidak perlu ditulis ulang: body-nya hanya menyimpan id pengguna (chat.system-messages.ts) dan
+   *   teksnya dirangkai saat dibaca, sehingga setelah akun berstatus deleted pengguna tampil "Seorang anggota" di semua
+   *   riwayat grup tanpa nama tersisa (AC F14-3).
    * Room direct tetap ada: lawan bicara melihat "Akun dihapus" dan tidak dapat mengirim (peer_unavailable).
    * Wajib dipanggil SEBELUM baris users/berkas pengguna dihapus (catatan skema messages).
    */
@@ -227,12 +226,7 @@ export class ChatLifecycleService {
           .update(roomMembers)
           .set({ role: "admin", updatedAt: now })
           .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.userId, successor.userId)));
-        const name = await this.writer.displayName(tx, successor.userId);
-        await this.writer.systemMessage(
-          tx,
-          roomId,
-          `${name} sekarang admin grup karena admin sebelumnya menghapus akunnya.`,
-        );
+        await this.writer.systemMessage(tx, roomId, { type: "admin_reassigned", user: successor.userId });
         this.events.memberChanged({
           roomId,
           userId: successor.userId,
@@ -246,7 +240,7 @@ export class ChatLifecycleService {
         closed = true;
       }
     }
-    await this.writer.systemMessage(tx, roomId, "Seorang anggota keluar dari grup karena akunnya dihapus.");
+    await this.writer.systemMessage(tx, roomId, { type: "deleted_member_left" });
     await this.writer.endMembership(tx, roomId, userId, "left");
     if (others.length === 0 && !room.closedAt) closed = true;
     if (closed) {
@@ -259,20 +253,12 @@ export class ChatLifecycleService {
       if (updated) {
         const avatar = updated.avatarFileId ? await this.files.findReady(updated.avatarFileId, tx) : null;
         this.events.roomUpdated({
-          room_id: roomId,
-          version: String(updated.version),
+          roomId,
+          version: updated.version,
           changes: ["closed"],
           name: updated.name,
-          avatar_url: avatar
-            ? ((
-                await this.presenter.fileUrl(
-                  { id: avatar.id, visibility: avatar.visibility, status: avatar.status },
-                  "chat_image",
-                  null,
-                )
-              )?.url ?? null)
-            : null,
-          closed_at: now.toISOString(),
+          avatar: avatar ? { id: avatar.id, visibility: avatar.visibility, status: avatar.status } : null,
+          closedAt: now,
         });
       }
     }

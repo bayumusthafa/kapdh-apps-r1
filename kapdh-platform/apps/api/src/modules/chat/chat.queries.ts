@@ -508,6 +508,55 @@ export async function messageRows(db: DbOrTx, query: MessageQuery): Promise<Mess
   return rows<MessageRow>(result);
 }
 
+export interface SessionRecipientRow {
+  family_id: string;
+  /** Baris sesi terbaru keluarga itu (pengikat URL berkas; FilesService memeriksa keluarga sesinya saat dibuka). */
+  session_id: string;
+  user_id: string;
+  session_version: number;
+}
+
+export interface SessionRecipientQuery {
+  roomId: string;
+  now: Date;
+  /** Hanya anggota yang dapat melihat pesan ini (history_visible_from <= created_at pesan, PRD 3.11). */
+  messageId?: string;
+  /** Hanya satu pengguna (mis. room.updated muted ke perangkat lain pemanggil). */
+  userId?: string;
+}
+
+/**
+ * Keluarga sesi aplikasi yang berhak menerima event room, setara socket di kanal room:<id> (kontrak C6 "Pencabutan
+ * langganan room"): anggota joined yang akunnya active, tidak suspended, dan masa keanggotaannya belum habis
+ * (verified/expiring, PRD 2.2), dengan keluarga sesi mobile yang belum dicabut/kedaluwarsa. Satu baris per keluarga
+ * (sesi terbaru) beserta session_version untuk URL berkas terikat sesi (PRD 5.4).
+ */
+export async function sessionRecipients(
+  db: DbOrTx,
+  query: SessionRecipientQuery,
+): Promise<SessionRecipientRow[]> {
+  const now = query.now.toISOString();
+  const filters: SQL[] = [];
+  if (query.userId) filters.push(sql`and rm.user_id = ${query.userId}::uuid`);
+  if (query.messageId)
+    filters.push(
+      sql`and (rm.history_visible_from is null
+               or rm.history_visible_from <= (select m.created_at from app.messages m where m.id = ${query.messageId}::uuid))`,
+    );
+  return rows<SessionRecipientRow>(
+    await db.execute(sql`
+      select distinct on (s.family_id) s.family_id, s.id as session_id, s.user_id, u.session_version
+      from app.room_members rm
+      join app.users u on u.id = rm.user_id and u.status = 'active' and u.kind = 'alumni'
+      join app.alumni a on a.user_id = rm.user_id and a.suspended_at is null
+        and a.expires_at is not null and a.expires_at > ${now}::timestamptz
+      join app.sessions s on s.user_id = rm.user_id and s.audience = 'mobile'
+        and s.revoked_at is null and s.expires_at > ${now}::timestamptz
+      where rm.room_id = ${query.roomId}::uuid and rm.status = 'joined' ${sql.join(filters, sql` `)}
+      order by s.family_id, s.created_at desc, s.id desc`),
+  );
+}
+
 /** Fakta akun alumni untuk kelayakan direct/undangan dan status "tersedia" (PRD 2.2, N-09). */
 export interface UserFactsRow {
   user_id: string;
@@ -532,6 +581,30 @@ export async function alumniFacts(
       where u.kind = 'alumni' and u.id in (${uuidList(userIds)})`),
   );
   for (const row of result) found.set(row.user_id, row);
+  return found;
+}
+
+/**
+ * Nama tampilan terkini untuk pesan sistem: nama alumni, atau null bila akun sudah dihapus (status deleted, baris
+ * alumni/users tidak ada, atau nama dikosongkan; D2, AC F14-3). Id yang tidak ditemukan tidak ada di peta (= dihapus).
+ */
+export async function displayNames(
+  db: DbOrTx,
+  userIds: readonly string[],
+): Promise<Map<string, string | null>> {
+  const found = new Map<string, string | null>();
+  if (userIds.length === 0) return found;
+  const result = rows<{ user_id: string; account_status: string | null; full_name: string | null }>(
+    await db.execute(sql`
+      select u.id as user_id, u.status::text as account_status, a.full_name
+      from app.users u left join app.alumni a on a.user_id = u.id
+      where u.id in (${uuidList(userIds)})`),
+  );
+  for (const row of result)
+    found.set(
+      row.user_id,
+      !row.account_status || row.account_status === "deleted" || !row.full_name ? null : row.full_name,
+    );
   return found;
 }
 
