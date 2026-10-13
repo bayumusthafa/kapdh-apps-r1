@@ -53,7 +53,13 @@ describe("Pengaturan worker dari WorkerEnv (packages/config, PRD 5.1, 5.3)", () 
       TOTP_ENC_KEY: "a".repeat(64),
       QR_SIGNING_KEYS: "k1:rahasia-qr-yang-tidak-boleh-sampai-worker-123",
     }) as Record<string, unknown>;
-    for (const key of ["JWT_ACCESS_SECRET", "OTP_HMAC_SECRET", "TOTP_ENC_KEY", "QR_SIGNING_KEYS", "BCRYPT_COST"])
+    for (const key of [
+      "JWT_ACCESS_SECRET",
+      "OTP_HMAC_SECRET",
+      "TOTP_ENC_KEY",
+      "QR_SIGNING_KEYS",
+      "BCRYPT_COST",
+    ])
       expect(key in env).toBe(false);
   });
 });

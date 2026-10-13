@@ -37,7 +37,12 @@ describe("Log terstruktur worker (N-14)", () => {
     // Handler yang ceroboh mencatat objek berisi rahasia: logger root menyensornya (lapis kedua, N-14).
     fake.control.onHandle = () => {
       logger.info(
-        { refresh_token: "rt-rahasia", password: "sandi-rahasia", push_token: "fcm-rahasia", nested: { otp: "123456" } },
+        {
+          refresh_token: "rt-rahasia",
+          password: "sandi-rahasia",
+          push_token: "fcm-rahasia",
+          nested: { otp: "123456" },
+        },
         "handler mencatat konteks",
       );
     };

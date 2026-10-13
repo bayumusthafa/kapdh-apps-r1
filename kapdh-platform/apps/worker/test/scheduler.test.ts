@@ -114,7 +114,11 @@ describe("Penjadwal job terdaftar dengan leader tunggal (ARCHITECTURE §4.8, PRD
     await a.queue.drained();
     expect(a.runs.filter((run) => run.name === "events.lifecycle")).toHaveLength(2);
     const status = a.scheduler.status().jobs.find((job) => job.name === "events.lifecycle");
-    expect(status).toMatchObject({ everyMs: 300_000, lastStatus: "ok", nextDueAt: new Date(T0.getTime() + 600_000) });
+    expect(status).toMatchObject({
+      everyMs: 300_000,
+      lastStatus: "ok",
+      nextDueAt: new Date(T0.getTime() + 600_000),
+    });
     await a.queue.close(1_000);
   });
 
@@ -162,12 +166,14 @@ describe("Penjadwal job terdaftar dengan leader tunggal (ARCHITECTURE §4.8, PRD
     await a.queue.drained();
     expect(a.scheduler.status().role).toBe("standby");
     expect(a.runs).toHaveLength(2);
-    const errors = a.logs.lines.filter((line) => String(line.msg).startsWith("pemeriksaan kunci leader penjadwal gagal"));
+    const errors = a.logs.lines.filter((line) =>
+      String(line.msg).startsWith("pemeriksaan kunci leader penjadwal gagal"),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({ level: "error", error: { error_code: "57P01" } });
-    expect(a.logs.lines.some((line) => line.msg === "kunci leader penjadwal hilang; instance ini menjadi standby")).toBe(
-      true,
-    );
+    expect(
+      a.logs.lines.some((line) => line.msg === "kunci leader penjadwal hilang; instance ini menjadi standby"),
+    ).toBe(true);
     await a.queue.close(1_000);
   });
 
@@ -186,7 +192,9 @@ describe("Penjadwal job terdaftar dengan leader tunggal (ARCHITECTURE §4.8, PRD
     clock.advance(60_000);
     await a.scheduler.tick();
     expect(a.runs).toHaveLength(1);
-    expect(a.logs.lines.filter((line) => line.msg === "run sebelumnya masih berjalan; slot jadwal dilewati")).toHaveLength(2);
+    expect(
+      a.logs.lines.filter((line) => line.msg === "run sebelumnya masih berjalan; slot jadwal dilewati"),
+    ).toHaveLength(2);
     gate = undefined;
     release();
     await a.queue.drained();

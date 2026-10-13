@@ -96,7 +96,17 @@ function build(options: { settings?: WorkerSettings; order?: string[]; leaseMs?:
     probes: createDbHealthProbes(tdb.db),
     resources,
   });
-  return { service, clock, logs, fake, jobs, queue, order, isLeader: () => held, scheduledRuns: () => scheduledRuns };
+  return {
+    service,
+    clock,
+    logs,
+    fake,
+    jobs,
+    queue,
+    order,
+    isLeader: () => held,
+    scheduledRuns: () => scheduledRuns,
+  };
 }
 
 async function getHealth(service: WorkerService) {
@@ -167,7 +177,11 @@ describe("Runtime worker (ARCHITECTURE §4.8, PRD 5.1, 5.5)", () => {
       "close:adapter",
     ]);
     expect(await outboxRow(tdb.db, id)).toMatchObject({ status: "dispatched" });
-    expect(await outboxRow(tdb.db, late)).toMatchObject({ status: "pending", lockedUntil: null, attempts: 0 });
+    expect(await outboxRow(tdb.db, late)).toMatchObject({
+      status: "pending",
+      lockedUntil: null,
+      attempts: 0,
+    });
     expect(w.service.healthAddress()).toBeNull();
     // Idempoten: panggilan kedua mengembalikan hasil yang sama tanpa menutup ulang.
     expect(await w.service.stop("SIGINT")).toEqual({ graceful: true, reason: "SIGTERM" });

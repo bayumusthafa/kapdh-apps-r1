@@ -70,7 +70,10 @@ export interface BullMqDriverOptions {
 export class BullMqQueueDriver implements QueueDriver {
   readonly kind = "bullmq" as const;
   private readonly factories: BullFactories;
-  private readonly registrations = new Map<QueueName, RegisterOptions<unknown> & { processor: Processor<unknown> }>();
+  private readonly registrations = new Map<
+    QueueName,
+    RegisterOptions<unknown> & { processor: Processor<unknown> }
+  >();
   private readonly queues = new Map<QueueName, BullQueueLike>();
   private readonly workers = new Map<QueueName, BullWorkerLike>();
   private accepting = false;
@@ -142,7 +145,13 @@ export class BullMqQueueDriver implements QueueDriver {
   async capacity(queue: QueueName): Promise<number> {
     if (!this.accepting) return 0;
     const registration = this.registrations.get(queue);
-    const counts = await this.queueFor(queue).getJobCounts("waiting", "active", "delayed", "prioritized", "paused");
+    const counts = await this.queueFor(queue).getJobCounts(
+      "waiting",
+      "active",
+      "delayed",
+      "prioritized",
+      "paused",
+    );
     const backlog = Object.values(counts).reduce((sum, value) => sum + value, 0);
     return Math.max(0, (registration?.concurrency ?? 1) * BACKLOG_FACTOR - backlog);
   }
@@ -155,7 +164,9 @@ export class BullMqQueueDriver implements QueueDriver {
     try {
       const pong = await Promise.race([
         this.options.connection.ping(),
-        new Promise<string>((_, reject) => setTimeout(() => reject(new Error("timeout")), PING_TIMEOUT_MS).unref()),
+        new Promise<string>((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), PING_TIMEOUT_MS).unref(),
+        ),
       ]);
       return pong === "PONG";
     } catch {

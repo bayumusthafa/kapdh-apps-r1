@@ -133,7 +133,10 @@ export class Scheduler {
       this.deps.logger.info("kunci leader penjadwal dilepas");
     } catch (error) {
       // Koneksi kunci ditutup sesudahnya; PostgreSQL melepas kunci sesi saat backend berakhir.
-      this.deps.logger.warn({ error: safeError(error) }, "gagal melepas kunci leader; dilepas saat koneksi ditutup");
+      this.deps.logger.warn(
+        { error: safeError(error) },
+        "gagal melepas kunci leader; dilepas saat koneksi ditutup",
+      );
     }
   }
 
@@ -217,10 +220,14 @@ export class Scheduler {
       this.lastJobId.set(job.name, jobId);
       this.nextDue.set(job.name, nextSlot);
       if (added) this.statusFor(job.name).lastEnqueuedAt = now;
-      else this.deps.logger.debug({ job: job.name, job_id: jobId }, "slot jadwal sudah ada di antrean (dedup)");
+      else
+        this.deps.logger.debug({ job: job.name, job_id: jobId }, "slot jadwal sudah ada di antrean (dedup)");
     } catch (error) {
       this.nextDue.set(job.name, now.getTime() + Math.min(job.everyMs, ENQUEUE_RETRY_MAX_MS));
-      this.deps.logger.warn({ job: job.name, error: safeError(error) }, "gagal menjadwalkan job; dicoba lagi");
+      this.deps.logger.warn(
+        { job: job.name, error: safeError(error) },
+        "gagal menjadwalkan job; dicoba lagi",
+      );
     }
   }
 

@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { DispatcherStatus } from "../src/outbox/dispatcher.js";
-import { buildHealthReport, createDbHealthProbes, type HealthInputs, httpStatusFor } from "../src/health/health.js";
+import {
+  buildHealthReport,
+  createDbHealthProbes,
+  type HealthInputs,
+  httpStatusFor,
+} from "../src/health/health.js";
 import { HealthServer } from "../src/health/health-server.js";
 import type { SchedulerStatus } from "../src/scheduler/scheduler.js";
 import {
@@ -90,7 +95,10 @@ describe("Health worker (PRD 5.5: DB, umur job/outbox tertua, tick penjadwal)", 
       nextAttemptAt: new Date(T0.getTime() - 900_000),
       lockedUntil: new Date(T0.getTime() + 60_000),
     });
-    await insertOutboxEvent(tdb.db, clock, { status: "dispatched", createdAt: new Date(T0.getTime() - 86_400_000) });
+    await insertOutboxEvent(tdb.db, clock, {
+      status: "dispatched",
+      createdAt: new Date(T0.getTime() - 86_400_000),
+    });
 
     const report = await buildHealthReport(inputs(clock));
     expect(report.status).toBe("ok");
@@ -139,9 +147,12 @@ describe("Health worker (PRD 5.5: DB, umur job/outbox tertua, tick penjadwal)", 
       inputs(clock, {
         probes: {
           database: async () => {
-            throw Object.assign(new Error("connect ECONNREFUSED postgres://kapdh_worker:rahasia@db:5432/kapdh"), {
-              code: "ECONNREFUSED",
-            });
+            throw Object.assign(
+              new Error("connect ECONNREFUSED postgres://kapdh_worker:rahasia@db:5432/kapdh"),
+              {
+                code: "ECONNREFUSED",
+              },
+            );
           },
           outbox: async () => {
             throw new Error("tidak tersambung");
@@ -158,7 +169,9 @@ describe("Health worker (PRD 5.5: DB, umur job/outbox tertua, tick penjadwal)", 
     // N-14: URL koneksi/sandi dalam pesan galat tidak pernah masuk laporan maupun log.
     expect(JSON.stringify(down)).not.toContain("rahasia");
     expect(JSON.stringify(lines)).not.toContain("rahasia");
-    expect(lines.find((line) => line.probe === "database")).toMatchObject({ error: { error_code: "ECONNREFUSED" } });
+    expect(lines.find((line) => line.probe === "database")).toMatchObject({
+      error: { error_code: "ECONNREFUSED" },
+    });
 
     const stalled = await buildHealthReport(
       inputs(clock, {
