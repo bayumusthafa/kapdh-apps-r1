@@ -421,7 +421,9 @@ void main() {
     });
 
     testWidgets('AC F03-3, F04-2: pengurus menolak bukti saat anggota sedang mengganti bukti: mode ganti ditutup, '
-        'catatan pengurus tampil dan tetap terlihat saat unggah ulang; berkas yang dipilih tidak hilang', (tester) async {
+        'catatan pengurus tampil dan tetap terlihat saat unggah ulang; berkas yang dipilih tidak hilang', (
+      tester,
+    ) async {
       const reason = 'Foto bukti buram sehingga nominal tidak terbaca.';
       final updates = StreamController<NotificationCreatedPayload>.broadcast();
       addTearDown(updates.close);

@@ -61,7 +61,8 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
   /// lanjutan tetap), dan kegagalannya tidak ditampilkan. Muat ulang yang diminta pengguna mengganti seluruh daftar
   /// dan kegagalannya ditampilkan di atas daftar lama (PRD 4.5).
   Future<void> _refresh({bool quiet = false}) async {
-    if (_loading) return;
+    // Muat ulang latar tidak berjalan bersamaan dengan pemuatan halaman berikutnya (kursor tetap konsisten).
+    if (_loading || (quiet && _loadingMore)) return;
     setState(() {
       _loading = true;
       if (!quiet) _error = null;
