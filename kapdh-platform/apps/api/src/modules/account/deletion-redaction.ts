@@ -43,12 +43,21 @@ const SAFE_ENUM_KEYS = new Set([
   "request_number",
 ]);
 
+/**
+ * Kunci yang nilai angkanya berupa hitungan, versi, durasi atau nominal (bukan identitas) dan boleh dipertahankan.
+ * Angka pada kunci lain dibuang karena dapat mengidentifikasi orang (angkatan `cohort`, `class_in`/`class_out`,
+ * nomor urut anggota `member_seq`, tahun), sesuai prinsip whitelist snapshot (PRD 6.5, AC F14-4).
+ */
+const SAFE_NUMBER_KEY =
+  /^(version|attempts|quantity|seats|total|amount|price|days|position|sort_order|[a-z_]+_(count|quantity|version|days|hours|minutes|seconds|attempts|total|amount|price))$/;
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function safeScalar(value: unknown, key: string | null, userId: string): { keep: boolean; value: unknown } {
-  if (value === null || typeof value === "number" || typeof value === "boolean") return { keep: true, value };
+  if (value === null || typeof value === "boolean") return { keep: true, value };
+  if (typeof value === "number") return { keep: key !== null && SAFE_NUMBER_KEY.test(key), value };
   if (typeof value !== "string") return { keep: false, value: null };
   if (UUID.test(value)) return { keep: true, value: value.toLowerCase() === userId ? null : value };
   if (ISO_DATETIME.test(value) || MONEY.test(value)) return { keep: true, value };
@@ -83,9 +92,10 @@ function whitelist(
 }
 
 /**
- * Snapshot audit (before/after) yang hanya mempertahankan nilai non-identitas: angka, boolean, waktu, nominal Money,
- * UUID rujukan (UUID akun yang dihapus menjadi null), dan kode/enum pada kunci {@link SAFE_ENUM_KEYS}. Teks bebas
- * lain dibuang. Nilai null/undefined tetap null.
+ * Snapshot audit (before/after) yang hanya mempertahankan nilai non-identitas: boolean, angka pada kunci
+ * {@link SAFE_NUMBER_KEY} (versi, hitungan, nominal), waktu, nominal Money, UUID rujukan (UUID akun yang dihapus
+ * menjadi null), dan kode/enum pada kunci {@link SAFE_ENUM_KEYS}. Teks bebas dan angka identitas (angkatan, kelas,
+ * nomor urut) dibuang. Nilai null/undefined tetap null.
  */
 export function redactAuditSnapshot(value: unknown, userId: string): unknown {
   if (value === null || value === undefined) return null;

@@ -140,6 +140,11 @@ export async function expectFullyDeleted(
   expect(byPayment[rich.payments.ticketWithProof]).toMatchObject({ status: "pending", proofVersion: 1 });
   expect(byPayment[rich.payments.ticketPaid]).toMatchObject({ status: "paid" });
   expect(byPayment[rich.payments.ticketPast]).toMatchObject({ status: "paid" });
+  // Alasan pembatalan yang ditulis pemilik dihapus; status dan waktu pembatalan tetap (AC F14-4, D2).
+  for (const id of [rich.payments.ownerCancelled, rich.payments.ticketSelfCancelled]) {
+    expect(byPayment[id]).toMatchObject({ status: "cancelled", cancelReason: null });
+    expect(byPayment[id]!.cancelledAt).not.toBeNull();
+  }
   const paymentEventRows = await db
     .select()
     .from(paymentEvents)
@@ -148,7 +153,14 @@ export async function expectFullyDeleted(
   expect(paymentEventRows.filter((e) => e.reason === "Transfer dari rekening a.n. pemilik")).toEqual([]);
   // Satu event pembatalan per payment yang dibatalkan, tidak pernah dihitung ulang (AC F14-2).
   const cancelledEvents = paymentEventRows.filter((e) => e.kind === "cancelled").map((e) => e.paymentId);
-  expect(cancelledEvents.sort()).toEqual([rich.payments.renewalNoProof, rich.payments.ticketNoProof].sort());
+  expect(cancelledEvents.sort()).toEqual(
+    [
+      rich.payments.renewalNoProof,
+      rich.payments.ticketNoProof,
+      rich.payments.ownerCancelled,
+      rich.payments.ticketSelfCancelled,
+    ].sort(),
+  );
 
   // Penyesuaian: refund pending tidak diselesaikan/dibatalkan job; rekening tujuan dihapus (D2, PRD 4.4).
   const [refund] = await db
@@ -176,6 +188,12 @@ export async function expectFullyDeleted(
       cancelReason: FORFEIT_REASON,
     });
   expect(byTicket[rich.tickets.past]).toMatchObject({ status: "paid", totalSnapshot: "50000.00" });
+  // Tiket yang dibatalkan peserta: pelaku dan waktu tetap, alasan tertulis peserta dihapus (D2).
+  expect(byTicket[rich.tickets.selfCancelled]).toMatchObject({
+    status: "cancelled",
+    cancelledBy: "self",
+    cancelReason: null,
+  });
   const eventRows = await db
     .select()
     .from(events)
@@ -334,6 +352,18 @@ export async function expectFullyDeleted(
     actorAdminId: expect.any(String),
     reason: "Dana sesuai mutasi",
     after: { status: "paid", amount: "60000.00" },
+  });
+  // Koreksi identitas atas akun: angkatan, kelas, jenis kelamin dan nomor anggota tidak tersisa (AC F14-4).
+  const [identityAudit] = await db
+    .select()
+    .from(auditLogs)
+    .where(eq(auditLogs.id, rich.auditIds.identityCorrection));
+  expect(identityAudit).toMatchObject({
+    action: "member.number_corrected",
+    actorAdminId: expect.any(String),
+    reason: null,
+    before: {},
+    after: {},
   });
   expect(await count(db.select().from(auditLogs).where(eq(auditLogs.actorUserId, userId)))).toBe(0);
 
