@@ -61,8 +61,11 @@ paths:
 
         Galat: 401 UNAUTHENTICATED "Email atau sandi salah" untuk kredensial salah, akun tidak dikenal, admin
         `disabled`, admin `invited`, atau admin tanpa TOTP terverifikasi (tidak dibedakan); 429 RATE_LIMITED
-        setelah 10 kegagalan dalam 15 menit per email atau ambang per IP (PRD 2.5). Admin yang lupa sandi meminta
-        undangan ulang ke Super Admin (F-16).
+        setelah 10 kegagalan dalam 15 menit per email atau ambang per IP (PRD 2.5); 400 VALIDATION_ERROR untuk
+        masukan yang melanggar AdminLoginRequest (format email, sandi lebih dari 128 karakter) tanpa menyentuh batas
+        kegagalan. Admin yang lupa sandi meminta undangan ulang ke Super Admin (F-16). Kegagalan untuk email milik
+        identitas admin diaudit `admin.auth_failed` (`after.stage` password) paling banyak sekali per admin per
+        15 menit, tanpa sandi atau email yang dicoba (F-17); email yang tidak dikenal tidak diaudit.
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -94,13 +97,21 @@ paths:
         `users.last_login_at` diperbarui, audit `admin.login` ditulis, access token di body dan refresh token di
         cookie `kapdh_admin_rt` (tidak pernah di localStorage, PRD 5.2).
 
+        mfa_token SEKALI PAKAI: setelah kode benar menghasilkan sesi, `jti` token dikonsumsi dalam transaksi yang
+        sama; token yang sama dengan kode apa pun (kode yang sama saat mengulang permintaan yang responsnya hilang,
+        kode TOTP langkah berikutnya, backup code lain, atau kode salah) ditolak 401 SEBELUM kode dinilai, sehingga
+        kode yang dikirim tidak dikonsumsi dan percobaan itu tidak dihitung ke batas 5 kode per admin (pemegang
+        token bekas tidak dapat mengunci admin, PRD 2.5). Kode salah tidak mengonsumsi token.
+
         Kode salah adalah galat formulir, sama dengan /totp/confirm dan POST /auth/reauth: 400 VALIDATION_ERROR
         dengan `field_errors.totp_code` atau `field_errors.backup_code` berisi sisa percobaan (mis. "Kode salah.
         Sisa percobaan 3."); mfa_token tetap berlaku sampai kedaluwarsa sehingga UI tetap di layar /login/mfa.
         401 UNAUTHENTICATED hanya untuk mfa_token yang tidak sah atau kedaluwarsa (termasuk mfa_token pendaftaran),
         admin tidak lagi `active`, atau TOTP tidak terverifikasi; UI kembali ke /login.
         Galat lain: 400 VALIDATION_ERROR bila tidak ada kode atau keduanya dikirim; 429 RATE_LIMITED setelah 5
-        kegagalan dalam 15 menit per admin (juga dihitung ke ambang per IP).
+        kegagalan dalam 15 menit per admin (juga dihitung ke ambang per IP). Kegagalan ke-5 yang mengunci tahap
+        kode ditulis sekali sebagai audit `admin.mfa_locked` (tanpa kode); kode salah pertama dalam jendela 15 menit
+        diaudit `admin.auth_failed` (`after.stage` mfa, tanpa kode; F-17).
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -176,8 +187,8 @@ paths:
       description: |
         Dalam satu transaksi dengan baris admin terkunci: token undangan diverifikasi (hash, belum kedaluwarsa,
         status `invited`) lalu dikonsumsi (`invite_token_hash` dan `invite_expires_at` dikosongkan), sandi awal
-        acak diganti sandi pilihan admin (aturan PRD 2.5), email akun admin dianggap terverifikasi, dan audit
-        `admin.invitation_accepted` ditulis. Admin TETAP `invited` sampai TOTP dikonfirmasi; respons memberi
+        acak diganti sandi pilihan admin (aturan PRD 2.5), email akun admin dianggap terverifikasi, secret TOTP
+        dari pendaftaran sebelumnya yang tidak selesai dibuang, dan audit `admin.invitation_accepted` ditulis. Admin TETAP `invited` sampai TOTP dikonfirmasi; respons memberi
         `mfa_token` PENDAFTARAN dengan `totp_enrollment_required: true`: audience `kapdh-admin-enroll`, berlaku
         30 menit sejak penerimaan (`mfa_expires_at`), terikat admin dan HMAC password_hash yang baru disimpan. Token
         ini satu-satunya kredensial pendaftaran TOTP, tidak diperpanjang oleh /totp/enroll, dan tidak dapat
@@ -287,7 +298,9 @@ paths:
         Galat: 400 VALIDATION_ERROR `field_errors.totp_code` kode salah atau pendaftaran belum dimulai; 401
         UNAUTHENTICATED mfa_token tidak berlaku atau admin tidak lagi dalam pendaftaran; 403 FORBIDDEN aktivasi
         sudah selesai (termasuk pengulangan setelah respons hilang dan konfirmasi bersamaan yang kalah); 429
-        RATE_LIMITED setelah 5 kode salah dalam 15 menit.
+        RATE_LIMITED setelah 5 kode salah dalam 15 menit (penguncian diaudit sekali sebagai `admin.mfa_locked`;
+        kode salah pertama dalam jendela diaudit `admin.auth_failed` dengan `after.stage` enrollment).
+        /totp/enroll menulis audit `admin.mfa_enrollment_started` tanpa secret.
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -396,7 +409,8 @@ paths:
         dicabut (sesi saat ini tetap), audit `admin.password_changed` ditulis tanpa nilai sandi, dan email
         pemberitahuan keamanan dijadwalkan lewat outbox (`admin.security_notice`). Socket sesi lain diputus setelah
         commit. Sandi lama salah -> 400 VALIDATION_ERROR `field_errors.current_password` (bukan 401) dan dihitung
-        ke batas kegagalan login (429 setelah ambang).
+        ke batas kegagalan login (429 setelah ambang); kegagalan pertama dalam jendela 15 menit diaudit
+        `admin.auth_failed` (`after.stage` change_password, tanpa nilai sandi; F-17).
       x-kapdh-access: { audience: admin }
       requestBody:
         required: true
@@ -487,14 +501,20 @@ components:
         Identitas admin untuk shell web admin (nama dan peran di sidebar, menu berizin). Tidak memuat data akun
         alumni tertaut selain penanda keberadaannya.
 
-        `email`, `has_linked_alumni` dan `backup_codes_remaining` WAJIB dikirim server pada setiap respons 200
-        (F-16, PRD 2.3); di skema masih opsional hanya karena implementasi API saat ini belum mengisinya dan uji
-        kontrak `expectSchema("AdminProfile")` memvalidasinya. Modul admin-auth fase C mengisinya dan menjadikannya
-        wajib di kontrak dalam perubahan yang sama (perubahan opsional -> wajib pada respons tidak memutus klien
-        di kabel, N-13). Klien yang menerima respons tanpa field ini memperlakukannya sebagai "tidak diketahui":
-        petunjuk konflik kepentingan tidak ditampilkan dan saran backup code tidak muncul; penolakan memutus
-        pembayaran akun tertaut tetap ditegakkan server (ARCHITECTURE §3.3).
-      required: [admin_id, display_name, role, permissions, permissions_version]
+        `email`, `has_linked_alumni` dan `backup_codes_remaining` wajib (F-16, PRD 2.3) sejak modul admin-auth fase C
+        mengisinya pada setiap respons 200 (perubahan opsional -> wajib pada respons tidak memutus klien di kabel,
+        N-13). Penolakan memutus pembayaran akun tertaut tetap ditegakkan server (ARCHITECTURE §3.3).
+      required:
+        [
+          admin_id,
+          display_name,
+          email,
+          role,
+          permissions,
+          permissions_version,
+          has_linked_alumni,
+          backup_codes_remaining,
+        ]
       properties:
         admin_id: { type: string, format: uuid }
         display_name: { type: string, maxLength: 120 }
@@ -502,7 +522,7 @@ components:
           type: string
           format: email
           maxLength: 254
-          description: Email login admin; selalu dikirim server (lihat deskripsi skema).
+          description: Email login admin.
         role: { $ref: "#/components/schemas/AdminRole" }
         permissions:
           type: array
@@ -514,14 +534,14 @@ components:
           description: |
             True bila identitas admin ditautkan ke akun alumni (`admins.linked_alumni_user_id` terisi) untuk
             pemeriksaan konflik kepentingan; pembayaran milik akun itu tidak dapat diputus admin ini (PRD 2.3,
-            ARCHITECTURE §3.3). Selalu dikirim server (lihat deskripsi skema).
+            ARCHITECTURE §3.3).
         backup_codes_remaining:
           type: integer
           minimum: 0
           maximum: 10
           description: |
             Sisa backup code yang belum dipakai (panjang `mfa_totp.backup_code_hashes`); UI menyarankan buat ulang
-            bila sedikit. Selalu dikirim server (lihat deskripsi skema).
+            bila sedikit.
         previous_login_at:
           type: [string, "null"]
           format: date-time

@@ -119,6 +119,25 @@ Ketergantungan skema (pemilik skema/integrator): migrasi baru `0007_auth_otp_dec
 email mentah atau kode). Modul account (hapus akun web, tujuan `deletion`) dan admin-members (AC F16-4) memakai
 `OtpChallengeService` yang diekspor `AuthModule` agar status, kirim ulang dan percobaan konsisten.
 
+### Fase C api-admin-auth (`admin-auth.yaml`; F-02, F-16, PRD 8.2)
+
+Implementasi API seluruh operasi admin-auth. Perubahan kontrak aditif (tidak memutus klien):
+
+| Operasi / skema                                                                   | Perubahan                                                                                                                                                                                                                                                                                                                                     |
+| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AdminProfile`                                                                    | `email`, `has_linked_alumni` dan `backup_codes_remaining` kini wajib (server selalu mengirimnya sejak implementasi ini; opsional -> wajib pada respons tidak memutus klien di kabel, N-13).                                                                                                                                                   |
+| `POST /admin/auth/mfa`                                                            | Deskripsi: `mfa_token` sekali pakai. Setelah kode benar menghasilkan sesi, `jti` token dikonsumsi; pemakaian ulang token yang sama ditolak 401 dan kode yang dikirim tidak dikonsumsi. Kode salah tetap tidak mengonsumsi token.                                                                                                              |
+| `POST /admin/auth/invitations/accept`                                             | Deskripsi: secret TOTP dari pendaftaran sebelumnya yang tidak selesai dibuang saat undangan diterima, sehingga /totp/confirm hanya menerima secret yang dibuat dengan token pendaftaran baru.                                                                                                                                                 |
+| `POST /admin/auth/mfa`, `/totp/confirm`, `/totp/enroll`                           | Deskripsi audit: kegagalan kode ke-5 yang mengunci tahap kode diaudit sekali (`admin.mfa_locked`, tanpa kode); /totp/enroll mengaudit `admin.mfa_enrollment_started` tanpa secret.                                                                                                                                                            |
+| `POST /admin/auth/mfa` (perbaikan review)                                         | Deskripsi: `mfa_token` yang sudah menghasilkan sesi ditolak 401 SEBELUM kode dinilai, dengan kode apa pun (termasuk kode salah dan pengulangan permintaan yang responsnya hilang); percobaan itu tidak dihitung ke batas 5 kode per admin. Kode salah pertama dalam jendela 15 menit diaudit `admin.auth_failed` (`after.stage` mfa).         |
+| `POST /admin/auth/login` (perbaikan review)                                       | Deskripsi: 400 VALIDATION_ERROR untuk masukan yang melanggar `AdminLoginRequest` (format email, sandi > 128) tanpa menyentuh batas kegagalan (skema tidak berubah; server kini menegakkannya). Kegagalan untuk email milik identitas admin diaudit `admin.auth_failed` (`after.stage` password), paling banyak sekali per admin per 15 menit. |
+| `POST /admin/auth/totp/confirm`, `/admin/auth/password/change` (perbaikan review) | Deskripsi audit: kode salah / sandi lama salah pertama dalam jendela 15 menit diaudit `admin.auth_failed` (`after.stage` enrollment / change_password), tanpa nilai rahasia.                                                                                                                                                                  |
+
+CLI bootstrap Super Admin (PRD 8.2 langkah 3) kini mencetak satu tautan `${ADMIN_ORIGIN}/invite#t=<token>` (sebelumnya
+`/invite/<token>`, dilarang kontrak C1). Penerbitan ulang undangan untuk email yang sama kini mengunci baris admins lalu
+users dan memeriksa ulang keadaannya: bila Super Admin itu baru saja aktif (aktivasi /totp/confirm commit selagi CLI
+menunggu), CLI menolak tanpa mengubah apa pun. Validasi email CLI sama dengan `AdminLoginRequest`.
+
 ### C3 Finance: payments, admin-payments, admin-settings (F-03, F-04, F-07, F-15, D4, D6, D13)
 
 Kontrak keuangan dilengkapi sesuai PRD 3.3, 3.4, 3.9, 4.3 dan ARCHITECTURE §3.3. Belum ada controller API untuk
