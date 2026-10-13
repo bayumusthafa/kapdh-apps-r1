@@ -50,7 +50,8 @@ export class FeedService {
       categoryId: categories.id,
       categorySlug: categories.slug,
       categoryLabel: categories.label,
-      likedByMe: sql<boolean>`exists (select 1 from ${postLikes} where ${postLikes.postId} = ${posts.id} and ${postLikes.userId} = ${userId})`,
+      // Alias eksplisit: subkueri berkorelasi tidak bergantung pada kualifikasi kolom oleh Drizzle.
+      likedByMe: sql<boolean>`exists (select 1 from "app"."post_likes" as "my_like" where "my_like"."post_id" = "posts"."id" and "my_like"."user_id" = ${userId})`,
     };
   }
 
