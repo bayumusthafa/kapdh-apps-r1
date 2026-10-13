@@ -452,11 +452,11 @@ function ContactCard({ member: m }: { member: MemberDetail }) {
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
+                      aria-label={`${s.label} ${value} (tab baru)`}
                       className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
                     >
                       {value}
                       <ExternalLink aria-hidden="true" className="size-3.5" />
-                      <span className="sr-only"> (tab baru)</span>
                     </a>
                   ) : (
                     (value ?? "-")
