@@ -35,6 +35,11 @@ export const ADVISORY_LOCK_NAMESPACES = {
   fileQuota: 47_110_001,
   /** Pasangan pengguna untuk blokir vs kirim direct/undangan (AC F12-1). */
   blockPair: 47_110_002,
+  /**
+   * Slot challenge pengganti non-enumerasi per (email_key, tujuan) (modul auth, otp_decoys_active_key; PRD 2.5):
+   * penerbit bersamaan berurutan seperti penerbit challenge nyata yang mengunci baris users.
+   */
+  otpDecoy: 47_110_003,
 } as const;
 
 /**
