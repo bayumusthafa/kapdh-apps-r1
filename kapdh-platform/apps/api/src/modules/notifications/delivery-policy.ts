@@ -14,15 +14,21 @@ export const DELIVERY_BACKOFF_BASE_MS = 60_000;
 export const DELIVERY_BACKOFF_MAX_MS = 3_600_000;
 /**
  * Lease klaim: pengiriman yang diklaim worker (attempt + 1, next_retry_at = sekarang + lease) tidak diklaim worker lain
- * sampai lease habis. Worker yang mati setelah klaim membuat pengiriman diklaim ulang setelah lease (at-least-once).
+ * sampai lease habis. Lease diperbarui per pengiriman tepat sebelum provider dipanggil (pemeriksaan ulang target), jadi
+ * lease hanya perlu menutupi SATU percobaan ({@link DELIVERY_SEND_TIMEOUT_MS}) ditambah pencatatan hasil, bukan seluruh
+ * batch yang menunggu giliran. Baris yang masih menunggu giliran ketika lease klaim habis boleh diklaim worker lain
+ * (attempt + 1); worker pertama lalu melewatinya karena attempt tidak lagi cocok. Worker yang mati setelah klaim membuat
+ * pengiriman diklaim ulang setelah lease (at-least-once).
  */
 export const DELIVERY_LEASE_MS = 5 * 60_000;
 /** Interval job `notifications.retry` (ARCHITECTURE §4.8). */
 export const DELIVERY_RETRY_EVERY_MS = 60_000;
 /**
- * Batas waktu satu percobaan ke provider (SMTP/FCM), jauh di bawah {@link DELIVERY_LEASE_MS}: pengiriman yang macet
- * (mis. socket SMTP menggantung, batas bawaan nodemailer 10 menit) dicatat sebagai gangguan sementara dan dijadwalkan
- * ulang dengan backoff, bukan diklaim ulang worker lain selagi percobaan pertama masih berjalan.
+ * Batas waktu keras satu percobaan ke provider (SMTP/FCM), jauh di bawah {@link DELIVERY_LEASE_MS}. Saat batas habis
+ * percobaan DIBATALKAN (AbortSignal): koneksi SMTP ditutup sebelum server menerima akhir DATA dan permintaan HTTP FCM
+ * diputus, lalu pengiriman dijadwalkan ulang dengan backoff. Satu-satunya sisa ambiguitas adalah balasan provider yang
+ * hilang tepat setelah provider menerima pesan (sifat semua jaringan); dampaknya diredam collapse key (push) dan
+ * Message-ID stabil per pengiriman (email).
  */
 export const DELIVERY_SEND_TIMEOUT_MS = 60_000;
 
@@ -35,14 +41,26 @@ export class ProviderTimeoutError extends Error {
   }
 }
 
-/** Menolak dengan {@link ProviderTimeoutError} bila `promise` tidak selesai dalam `timeoutMs`; timer selalu dilepas. */
-export async function withProviderTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+/**
+ * Menjalankan satu percobaan provider dengan batas waktu keras: setelah `timeoutMs` sinyal dibatalkan dengan
+ * {@link ProviderTimeoutError} (provider WAJIB menghentikan koneksinya, lihat Mailer.send dan PushSender.send) dan janji
+ * ditolak dengan galat yang sama. Timer selalu dilepas.
+ */
+export async function withProviderTimeout<T>(
+  send: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+): Promise<T> {
+  const controller = new AbortController();
   let timer: NodeJS.Timeout | undefined;
   try {
     return await Promise.race([
-      promise,
+      send(controller.signal),
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new ProviderTimeoutError()), timeoutMs);
+        timer = setTimeout(() => {
+          const error = new ProviderTimeoutError();
+          controller.abort(error);
+          reject(error);
+        }, timeoutMs);
         timer.unref();
       }),
     ]);
@@ -158,7 +176,8 @@ export function classifyMailError(error: unknown): SendOutcome {
       return { kind: "failed", errorClass: "bounce_hard", revokeToken: false };
     if (responseCode >= 500) return { kind: "failed", errorClass: "rejected", revokeToken: false };
   }
-  if (code === "ETIMEDOUT" || (typeof e.name === "string" && /timeout/i.test(e.name)))
+  // Batas waktu SMTP nodemailer (ETIMEDOUT) atau percobaan yang dibatalkan pemanggil sebelum diterima server.
+  if (code === "ETIMEDOUT" || (typeof e.name === "string" && /timeout|^AbortError$/i.test(e.name)))
     return { kind: "retry", errorClass: "timeout" };
   if (code !== undefined && NETWORK_CODES.has(code)) return { kind: "retry", errorClass: "network" };
   if (code === "EAUTH") return { kind: "retry", errorClass: "auth_error" };

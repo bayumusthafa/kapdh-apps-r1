@@ -53,16 +53,30 @@ describe("Jadwal backoff pengiriman (AC F13-4, R5)", () => {
     });
   });
 
-  it("AC F13-4: percobaan provider yang macet dihentikan sebelum lease klaim habis lalu dijadwalkan ulang (timeout)", async () => {
+  it("AC F13-4: percobaan provider yang macet DIBATALKAN (AbortSignal) sebelum lease klaim habis lalu dijadwalkan ulang (timeout)", async () => {
     expect(DELIVERY_SEND_TIMEOUT_MS).toBeLessThan(DELIVERY_LEASE_MS);
-    const hanging = new Promise<string>(() => {});
-    const error = await withProviderTimeout(hanging, 20).catch((e: unknown) => e);
+    let seen: AbortSignal | undefined;
+    const error = await withProviderTimeout((signal) => {
+      seen = signal;
+      return new Promise<string>(() => {});
+    }, 20).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ProviderTimeoutError);
+    // Provider menerima pembatalan dengan alasan yang sama, sehingga koneksinya ikut diputus (bukan dibiarkan berjalan).
+    expect(seen?.aborted).toBe(true);
+    expect(seen?.reason).toBe(error);
     expect(classifyMailError(error)).toEqual({ kind: "retry", errorClass: "timeout" });
-    expect(await withProviderTimeout(Promise.resolve("ok"), 1_000)).toBe("ok");
-    await expect(withProviderTimeout(Promise.reject(new Error("galat asli")), 1_000)).rejects.toThrow(
-      "galat asli",
-    );
+
+    let finished: AbortSignal | undefined;
+    expect(
+      await withProviderTimeout(async (signal) => {
+        finished = signal;
+        return "ok";
+      }, 1_000),
+    ).toBe("ok");
+    expect(finished?.aborted).toBe(false);
+    await expect(
+      withProviderTimeout(() => Promise.reject(new Error("galat asli")), 1_000),
+    ).rejects.toThrow("galat asli");
   });
 });
 

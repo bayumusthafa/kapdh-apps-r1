@@ -44,10 +44,18 @@ export type PushResult =
       retryAfterSeconds?: number;
     };
 
+export interface PushSendOptions {
+  /**
+   * Pembatalan dari pemanggil (batas waktu percobaan pengiriman, F-13): permintaan HTTP yang sedang berjalan DIPUTUS,
+   * bukan dibiarkan selesai di latar belakang, lalu hasilnya `network` yang dapat dicoba ulang.
+   */
+  signal?: AbortSignal;
+}
+
 export interface PushSender {
   /** false bila FCM belum dikonfigurasi (development/test/staging tanpa proyek FCM). */
   readonly enabled: boolean;
-  send(message: PushMessage): Promise<PushResult>;
+  send(message: PushMessage, options?: PushSendOptions): Promise<PushResult>;
 }
 
 /** Push nonaktif: notifikasi tetap tercatat di inbox (F-13), hanya kanal push yang dilewati. */
@@ -111,7 +119,7 @@ const FCM_API_BASE = "https://fcm.googleapis.com";
 
 type FetchLike = (
   input: string,
-  init: { method: string; headers: Record<string, string>; body: string },
+  init: { method: string; headers: Record<string, string>; body: string; signal?: AbortSignal },
 ) => Promise<{
   status: number;
   headers: { get(name: string): string | null };
@@ -144,27 +152,46 @@ function isInvalidTokenError(body: FcmErrorBody): boolean {
   return /registration token/i.test(body.error?.message ?? "");
 }
 
-/** Menolak bila promise tidak selesai dalam batas waktu; timer dilepas setelah selesai. */
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
-  let timer: NodeJS.Timeout | undefined;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(label)), timeoutMs);
-        timer.unref();
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+/** Alasan pembatalan sebagai Error (AbortSignal.reason bisa berupa nilai apa pun). */
+function abortReason(signal: AbortSignal): Error {
+  return signal.reason instanceof Error ? signal.reason : new Error("Permintaan FCM dibatalkan");
+}
+
+/**
+ * Menolak segera saat `signal` dibatalkan. Jaring pengaman untuk implementasi fetch yang mengabaikan sinyal; fetch
+ * bawaan Node (undici) sendiri sudah memutus koneksi dan pembacaan body saat sinyal dibatalkan.
+ */
+function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(abortReason(signal));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(abortReason(signal));
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
+interface FcmHttpResponse {
+  status: number;
+  retryAfter: string | null;
+  body: unknown;
 }
 
 /**
  * FCM HTTP v1 dengan OAuth akun layanan (JWT RS256 ditandatangani jose), tanpa SDK Firebase penuh ("FcmPushProvider"
  * F-13). Token akses di-cache sampai 60 detik sebelum kedaluwarsa dan diambil sekali untuk pengiriman paralel. Setiap
- * panggilan HTTP dibatasi `timeoutMs`; galat dikelompokkan sesuai kode FCM (R5): UNREGISTERED/SENDER_ID_MISMATCH dan
- * INVALID_ARGUMENT token menonaktifkan token, 429/5xx/jaringan dicoba ulang (AC F13-4).
+ * panggilan HTTP (termasuk membaca body respons) dibatasi `timeoutMs` dengan AbortController sehingga permintaan yang
+ * macet benar-benar DIPUTUS, bukan dibiarkan selesai di latar belakang; pembatalan pemanggil (`options.signal`) memutus
+ * permintaan messages:send dengan cara yang sama. Galat dikelompokkan sesuai kode FCM (R5): UNREGISTERED/
+ * SENDER_ID_MISMATCH dan INVALID_ARGUMENT token menonaktifkan token, 429/5xx/jaringan dicoba ulang (AC F13-4).
  */
 export class FcmPushSender implements PushSender {
   readonly enabled = true;
@@ -207,29 +234,65 @@ export class FcmPushSender implements PushSender {
       .setIssuedAt(iat)
       .setExpirationTime(iat + 3600)
       .sign(key);
-    const res = await withTimeout(
-      this.fetchImpl(this.tokenUrl, {
+    // Dipakai bersama pengiriman paralel: hanya dibatasi timeoutMs, tidak ikut dibatalkan sinyal satu pemanggil.
+    const res = await this.request(
+      this.tokenUrl,
+      {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
           grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
           assertion,
         }).toString(),
-      }),
-      this.timeoutMs,
-      "timeout OAuth FCM",
+      },
+      "Batas waktu OAuth FCM habis",
     );
-    const body = (await res.json().catch(() => ({}))) as { access_token?: string; expires_in?: number };
+    const body = res.body as { access_token?: string; expires_in?: number };
     if (res.status !== 200 || !body.access_token) throw new Error(`OAuth FCM gagal (HTTP ${res.status})`);
     this.accessToken = { value: body.access_token, expiresAt: nowMs + (body.expires_in ?? 3600) * 1000 };
     return body.access_token;
   }
 
-  async send(message: PushMessage): Promise<PushResult> {
+  /**
+   * Satu permintaan HTTP beserta pembacaan body-nya dengan batas waktu keras `timeoutMs` dan pembatalan pemanggil;
+   * keduanya membatalkan AbortController yang diteruskan ke fetch sehingga koneksi diputus.
+   */
+  private async request(
+    url: string,
+    init: { method: string; headers: Record<string, string>; body: string },
+    timeoutLabel: string,
+    signal?: AbortSignal,
+  ): Promise<FcmHttpResponse> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new Error(timeoutLabel)), this.timeoutMs);
+    timer.unref();
+    const onAbort = () => controller.abort(signal ? abortReason(signal) : undefined);
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener("abort", onAbort, { once: true });
+    try {
+      const res = await untilAborted(this.fetchImpl(url, { ...init, signal: controller.signal }), controller.signal);
+      const body = await untilAborted(
+        res.json().catch(() => ({})),
+        controller.signal,
+      );
+      // Body yang gagal dibaca karena pembatalan bukan "body kosong": tetap diperlakukan sebagai pembatalan.
+      if (controller.signal.aborted) throw abortReason(controller.signal);
+      return { status: res.status, retryAfter: res.headers.get("retry-after"), body };
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+    }
+  }
+
+  async send(message: PushMessage, options: PushSendOptions = {}): Promise<PushResult> {
+    const { signal } = options;
+    const networkFailure = { ok: false, errorClass: "network", retryable: true, deactivateToken: false } as const;
+    if (signal?.aborted) return networkFailure;
     let accessToken: string;
     try {
-      accessToken = await this.token();
+      accessToken = await (signal ? untilAborted(this.token(), signal) : this.token());
     } catch {
+      if (signal?.aborted) return networkFailure;
       return { ok: false, errorClass: "auth_error", retryable: true, deactivateToken: false };
     }
     const payload = {
@@ -253,26 +316,27 @@ export class FcmPushSender implements PushSender {
       },
     };
     try {
-      const res = await withTimeout(
-        this.fetchImpl(`${this.apiBaseUrl}/v1/projects/${encodeURIComponent(this.projectId)}/messages:send`, {
+      const res = await this.request(
+        `${this.apiBaseUrl}/v1/projects/${encodeURIComponent(this.projectId)}/messages:send`,
+        {
           method: "POST",
           headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
           body: JSON.stringify(payload),
-        }),
-        this.timeoutMs,
-        "timeout FCM",
+        },
+        "Batas waktu FCM habis",
+        signal,
       );
-      const body = (await res.json().catch(() => ({}))) as FcmErrorBody;
+      const body = (res.body ?? {}) as FcmErrorBody;
       if (res.status === 200 && body.name) return { ok: true, messageId: body.name };
       if (res.status === 401) this.accessToken = null;
       const errorCode = body.error?.details?.find((d) => d.errorCode)?.errorCode ?? body.error?.status;
       const result = classifyFcmError(res.status, errorCode, { invalidToken: isInvalidTokenError(body) });
-      const retryAfter = Number(res.headers.get("retry-after"));
+      const retryAfter = Number(res.retryAfter);
       return Number.isFinite(retryAfter) && retryAfter > 0
         ? { ...result, retryAfterSeconds: retryAfter }
         : result;
     } catch {
-      return { ok: false, errorClass: "network", retryable: true, deactivateToken: false };
+      return networkFailure;
     }
   }
 }
