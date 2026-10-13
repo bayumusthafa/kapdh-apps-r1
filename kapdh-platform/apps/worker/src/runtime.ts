@@ -21,7 +21,7 @@ import { HealthServer } from "./health/health-server.js";
 import { OutboxDispatcher, type OutboxJobs } from "./outbox/dispatcher.js";
 import { BullMqQueueDriver } from "./queue/bullmq-driver.js";
 import { InlineQueueDriver } from "./queue/inline-driver.js";
-import type { QueueDriver } from "./queue/queue-driver.js";
+import { type QueueDriver, settledWithin } from "./queue/queue-driver.js";
 import { connectLeaderLock, type LeaderLock } from "./scheduler/leader-lock.js";
 import { type ScheduledJobRunner, type ScheduledJobSource, Scheduler } from "./scheduler/scheduler.js";
 import { resolveWorkerSettings, type WorkerSettings } from "./settings.js";
@@ -163,13 +163,21 @@ export class WorkerService {
       { reason, timeout_ms: settings.shutdownTimeoutMs },
       "worker berhenti: tidak menerima pekerjaan baru",
     );
-    await Promise.all([this.dispatcher.stop(), this.scheduler.stop()]);
+    // Satu tenggat untuk seluruh penghentian (waktu operasional, bukan logika bisnis). Poll/tick yang menggantung
+    // (mis. Redis hilang) tidak boleh menahan shutdown melewati batas waktunya.
+    const deadline = performance.now() + settings.shutdownTimeoutMs;
+    const loopsStopped = await settledWithin(
+      Promise.all([this.dispatcher.stop(), this.scheduler.stop()]),
+      settings.shutdownTimeoutMs,
+    );
+    if (!loopsStopped) logger.warn("poll outbox/tick penjadwal tidak selesai sebelum batas waktu shutdown");
     let graceful = false;
     try {
-      graceful = await queue.close(settings.shutdownTimeoutMs);
+      graceful = await queue.close(Math.max(0, deadline - performance.now()));
     } catch (error) {
       logger.error({ error: safeError(error) }, "gagal menutup antrean");
     }
+    graceful &&= loopsStopped;
     if (!graceful)
       logger.warn(
         { timeout_ms: settings.shutdownTimeoutMs },
