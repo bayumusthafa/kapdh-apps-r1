@@ -37,9 +37,10 @@ bool _chatActive(SessionState session) =>
 
 /// Lencana navigasi chat (tab Jejaring di navigasi bawah, tab Pesan/Pesan Grup, tombol Undangan). Selama daftar room
 /// hidup (tab Jejaring pernah dibuka), daftar itulah yang memperbarui jumlah dari setiap halaman GET /chat/rooms.
-/// Sebelumnya, pengendali ini memuat jumlah sendiri lewat satu halaman kecil GET /chat/rooms saat realtime
-/// tersambung dan saat event chat yang mengubah jumlah tiba (digabung: paling banyak satu request berjalan dan satu
-/// menunggu), sehingga anggota di Beranda/Akun tetap melihat ada pesan atau undangan baru (F-11).
+/// Sebelum tab Jejaring dibuka, pengendali ini memuat jumlah sendiri lewat satu halaman kecil GET /chat/rooms
+/// (`limit=1`) saat realtime tersambung dan saat event chat yang dapat mengubah jumlah tiba (digabung: paling banyak
+/// satu request berjalan dan satu menunggu), sehingga anggota di Beranda/Akun tetap melihat ada pesan atau undangan
+/// baru (F-11; chat.yaml ChatRoomPage "untuk badge navigasi"). Hanya untuk anggota aktif (PRD 2.2).
 final chatBadgeCountsProvider = NotifierProvider<ChatBadgeCountsController, ChatBadgeCounts>(
   ChatBadgeCountsController.new,
 );

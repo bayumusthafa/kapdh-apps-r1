@@ -502,11 +502,11 @@ void main() {
       expect(find.bySemanticsLabel(RegExp(r'^Gamerisa Dewi, .*, Foto$')), findsOneWidget);
       expect(
         tester.getSemantics(find.byType(ChatImageView)),
-        containsSemantics(label: 'Foto', isImage: true, isButton: true, hasTapAction: true),
+        isSemantics(label: 'Foto', isImage: true, isButton: true, hasTapAction: true),
       );
       expect(
         tester.getSemantics(find.widgetWithText(TextButton, 'Muat ulang foto')),
-        containsSemantics(label: 'Muat ulang foto', isButton: true, hasTapAction: true),
+        isSemantics(label: 'Muat ulang foto', isButton: true, hasTapAction: true),
       );
 
       final syncsBefore = app.adapter
