@@ -16,6 +16,7 @@
     "@fontsource/poppins": "5.3.0",
     "@kapdh/contracts": "workspace:*",
     "@kapdh/design-tokens": "workspace:*",
+    "@kapdh/shared": "workspace:*",
     "astro": "7.3.8"
   },
   "devDependencies": {

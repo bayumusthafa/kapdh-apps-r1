@@ -31,6 +31,11 @@ import Base from "../layouts/Base.astro";
         WhatsApp admin
       </h2>
       <p data-support-pending class="text-sm text-text-muted">Memuat kontak terbaru…</p>
+      {/* PRD 4.5: gagal memuat /public/config tidak disembunyikan diam-diam; tampil pesan dan coba lagi. */}
+      <p data-support-error hidden class="info-box flex flex-wrap items-center gap-x-2 text-sm">
+        Kontak terbaru belum dapat dimuat. Email bantuan pada halaman ini tetap dapat dipakai.
+        <button type="button" data-config-retry class="btn-link min-h-11 text-primary">Coba lagi</button>
+      </p>
       <p data-support-whatsapp hidden>
         <a target="_blank" rel="noopener noreferrer" class="text-lg font-semibold text-primary underline"></a>
       </p>

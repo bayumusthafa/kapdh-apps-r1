@@ -1,6 +1,6 @@
 import type { components } from "@kapdh/contracts";
-import { fieldMessage, requestJson, type ApiFailure } from "./api";
-import { formatDate, formatDateTime, formatMoney } from "./format";
+import { failureAction, fieldMessage, requestJson, type ApiFailure } from "./api";
+import { formatDate, formatDateTime, formatDuration, formatMoney } from "./format";
 
 /**
  * Logika /delete-account (F-14, account.yaml): challenge -> OTP -> pengungkapan D2 + konfirmasi -> nomor
@@ -145,8 +145,12 @@ export function validateCode(raw: string): { code: string } | { error: string } 
 
 export type FlowStep = "challenge" | "resend" | "verify" | "confirm";
 
-/** Tindakan UI setelah galat: perbaiki input, tunggu (429), minta kode baru, mulai ulang, atau coba lagi. */
-export type FailureAction = "fix" | "wait" | "resend" | "restart" | "retry" | "review";
+/**
+ * Tindakan UI setelah galat: perbaiki input, tunggu (429), minta kode baru, mulai ulang, coba lagi, tinjau
+ * pengungkapan baru (409 VERSION_CONFLICT), atau `pending`: 409 IDEMPOTENCY_CONFLICT "masih diproses" sehingga
+ * Idempotency-Key yang SAMA diulang setelah jeda server (PRD 4.3).
+ */
+export type FailureAction = "fix" | "wait" | "resend" | "restart" | "retry" | "review" | "pending";
 
 export interface FailureView {
   action: FailureAction;
@@ -154,109 +158,147 @@ export interface FailureView {
   retryAfterSeconds: number | null;
   /** 409 VERSION_CONFLICT pada konfirmasi: pengungkapan terkini dari `current`. */
   disclosure?: AccountDeletionDisclosure;
+  /** Idempotency-Key baru diperlukan (body berubah atau key bentrok dengan payload lain). */
+  rotateKey?: boolean;
 }
 
+export interface DescribeOptions {
+  /** Label tombol konfirmasi yang sedang tampil ("Hapus akun saya" atau pembatalan pendaftaran pending_otp). */
+  confirmLabel?: string;
+}
+
+export const CONFIRM_LABEL_DEFAULT = "Hapus akun saya";
+
 const NETWORK_MESSAGE = "Tidak dapat menghubungi server KAPDH. Periksa koneksi Anda lalu coba lagi.";
+const SERVER_MESSAGE = "Server KAPDH sedang bermasalah. Coba lagi beberapa saat lagi.";
+/** Jeda bawaan bila 429 tidak membawa retry_after_seconds maupun header Retry-After. */
+const DEFAULT_WAIT_SECONDS = 60;
+
+/** Label tombol yang dibatasi per langkah; 429 menyebut tindakan yang dibatasi (PRD 4.5: pesan spesifik). */
+export function actionLabel(step: FlowStep, confirmLabel: string = CONFIRM_LABEL_DEFAULT): string {
+  switch (step) {
+    case "challenge":
+      return "Kirim kode verifikasi";
+    case "resend":
+      return "Kirim ulang kode";
+    case "verify":
+      return "Verifikasi";
+    case "confirm":
+      return confirmLabel;
+  }
+}
+
+const WAIT_REASON: Record<FlowStep, string> = {
+  challenge: "Terlalu banyak permintaan kode verifikasi.",
+  resend: "Batas pengiriman kode tercapai.",
+  verify: "Terlalu banyak percobaan verifikasi kode.",
+  confirm: "Terlalu banyak percobaan konfirmasi.",
+};
 
 /**
- * Memetakan galat setiap langkah ke pesan Bahasa Indonesia dan tindakan. Respons non-JSON (proxy/captive
- * portal) dan jaringan putus tidak pernah dianggap jawaban server.
+ * Pesan 429 statis (diumumkan sekali oleh role=alert, N-11): alasan, tombol yang tertahan dan lama jeda. Hitung
+ * mundur per detik tampil di luar wilayah live. Batas kirim ulang tidak membatalkan kode yang sudah terkirim.
  */
-export function describeFailure(step: FlowStep, failure: ApiFailure): FailureView {
+function waitMessage(step: FlowStep, seconds: number, confirmLabel: string): string {
+  const base = `${WAIT_REASON[step]} Tombol ${actionLabel(step, confirmLabel)} dapat dipakai lagi dalam ${formatDuration(seconds)}.`;
+  return step === "resend" ? `${base} Kode yang sudah dikirim tetap dapat dipakai selama masih berlaku.` : base;
+}
+
+/**
+ * Memetakan galat setiap langkah ke pesan Bahasa Indonesia dan tindakan lewat katalog galat tunggal @kapdh/shared
+ * (PRD 5.2): perilaku ditentukan KODE galat kontrak, bukan status HTTP saja. Respons non-JSON (proxy, WAF, captive
+ * portal) dan jaringan putus tidak pernah dianggap jawaban server; 429 tanpa body tetap jeda.
+ */
+export function describeFailure(
+  step: FlowStep,
+  failure: ApiFailure,
+  options: DescribeOptions = {},
+): FailureView {
+  const confirmLabel = options.confirmLabel ?? CONFIRM_LABEL_DEFAULT;
+  const view = (action: FailureAction, message: string, extra: Partial<FailureView> = {}): FailureView => ({
+    action,
+    message,
+    retryAfterSeconds: null,
+    ...extra,
+  });
   if (failure.kind !== "http") {
-    return {
-      action: "retry",
-      message:
-        step === "confirm"
-          ? "Tidak dapat memastikan permintaan terkirim karena koneksi terputus. Tekan Hapus akun saya lagi; permintaan yang sama tidak akan dibuat dua kali."
-          : NETWORK_MESSAGE,
-      retryAfterSeconds: null,
-    };
+    return view(
+      "retry",
+      step === "confirm"
+        ? `Tidak dapat memastikan permintaan terkirim karena koneksi terputus. Tekan ${confirmLabel} lagi; permintaan yang sama tidak akan dibuat dua kali.`
+        : NETWORK_MESSAGE,
+    );
   }
   const { status, error } = failure;
-  if (status === 429) {
-    return {
-      action: "wait",
-      message: "Terlalu banyak percobaan. Tunggu hitung mundur selesai lalu coba lagi.",
-      retryAfterSeconds: failure.retryAfterSeconds ?? 60,
-    };
-  }
-  if (status === 400) {
-    if (step === "challenge") {
-      return {
-        action: "fix",
-        message: fieldMessage(error, "email") ?? "Email tidak valid.",
-        retryAfterSeconds: null,
-      };
+  switch (failureAction(failure)) {
+    case "show_countdown": {
+      const seconds = failure.retryAfterSeconds ?? DEFAULT_WAIT_SECONDS;
+      return view("wait", waitMessage(step, seconds, confirmLabel), { retryAfterSeconds: seconds });
     }
-    if (step === "verify") {
-      return {
-        action: "fix",
-        message:
+    case "show_field_errors":
+      if (step === "challenge") return view("fix", fieldMessage(error, "email") ?? "Email tidak valid.");
+      if (step === "verify") {
+        return view(
+          "fix",
           fieldMessage(error, "code") ?? error?.message ?? "Kode salah. Periksa kembali kode di email Anda.",
-        retryAfterSeconds: null,
-      };
-    }
-    return {
-      action: "retry",
-      message: error?.message ?? "Permintaan tidak valid. Coba lagi.",
-      retryAfterSeconds: null,
-    };
-  }
-  if (status === 410) {
-    if (step === "verify") {
-      return {
-        action: "resend",
-        message:
+        );
+      }
+      return view("retry", error?.message ?? "Permintaan tidak valid. Coba lagi.");
+    case "offer_new_otp":
+      if (step === "verify") {
+        return view(
+          "resend",
           "Kode tidak berlaku lagi (kedaluwarsa, sudah dipakai, atau percobaan habis). Minta kode baru.",
-        retryAfterSeconds: null,
-      };
-    }
-    if (step === "confirm") {
-      return {
-        action: "restart",
-        message:
-          "Batas waktu konfirmasi sudah lewat atau status akun berubah. Verifikasi email Anda lagi untuk melihat status terbaru.",
-        retryAfterSeconds: null,
-      };
-    }
-    return {
-      action: "restart",
-      message: "Permintaan kode ini sudah tidak berlaku. Masukkan email Anda lagi untuk memulai ulang.",
-      retryAfterSeconds: null,
-    };
+        );
+      }
+      if (step === "confirm") {
+        return view(
+          "restart",
+          "Batas waktu konfirmasi sudah lewat atau status akun berubah. Verifikasi email Anda lagi untuk melihat status terbaru, termasuk nomor permintaan bila penghapusan sudah tercatat.",
+        );
+      }
+      return view("restart", "Permintaan kode ini sudah tidak berlaku. Masukkan email Anda lagi untuk memulai ulang.");
+    case "reload_latest":
+      if (step === "confirm" && error?.code === "VERSION_CONFLICT") {
+        if (isDisclosure(error.current)) {
+          return view(
+            "review",
+            "Rincian akun Anda berubah (misalnya tiket, refund, atau pembayaran baru). Periksa lagi sebelum mengonfirmasi.",
+            { disclosure: error.current, rotateKey: true },
+          );
+        }
+        // Pengungkapan terbaru tidak terbaca: verifikasi ulang menerbitkan pengungkapan dan token baru.
+        return view(
+          "restart",
+          "Rincian akun Anda berubah. Verifikasi email Anda lagi untuk melihat rincian terbaru sebelum mengonfirmasi.",
+        );
+      }
+      if (step === "confirm" && error?.code === "IDEMPOTENCY_CONFLICT") {
+        // Server mengirim retry_after_seconds hanya untuk "permintaan yang sama masih diproses": key TETAP dipakai
+        // agar hasil permintaan pertama (nomor permintaan) diputar ulang. Tanpa jeda berarti key bentrok dengan
+        // payload lain, sehingga key baru diperlukan.
+        if (failure.retryAfterSeconds !== null) {
+          return view(
+            "pending",
+            `Permintaan sebelumnya masih diproses server. Tekan ${confirmLabel} lagi sebentar lagi; permintaan yang sama tidak akan dibuat dua kali.`,
+            { retryAfterSeconds: failure.retryAfterSeconds },
+          );
+        }
+        return view(
+          "retry",
+          `Permintaan bentrok dengan percobaan sebelumnya. Tekan ${confirmLabel} sekali lagi.`,
+          { rotateKey: true },
+        );
+      }
+      return view("retry", error?.message ?? SERVER_MESSAGE);
+    case "show_maintenance":
+      return view(
+        "retry",
+        `${error?.message ?? "Layanan sedang dalam pemeliharaan."} Penghapusan akun dapat diajukan lagi setelah pemeliharaan selesai.`,
+      );
+    default:
+      return view("retry", status >= 500 || !error ? SERVER_MESSAGE : error.message);
   }
-  if (status === 409 && step === "confirm") {
-    if (error?.code === "VERSION_CONFLICT" && isDisclosure(error.current)) {
-      return {
-        action: "review",
-        message:
-          "Rincian akun Anda berubah (misalnya tiket, refund, atau pembayaran baru). Periksa lagi sebelum mengonfirmasi.",
-        retryAfterSeconds: null,
-        disclosure: error.current,
-      };
-    }
-    return {
-      action: "retry",
-      message: "Permintaan bentrok dengan percobaan sebelumnya. Tekan Hapus akun saya sekali lagi.",
-      retryAfterSeconds: null,
-    };
-  }
-  if (status === 503 && error?.code === "MAINTENANCE") {
-    return {
-      action: "retry",
-      message: `${error.message} Penghapusan akun dapat diajukan lagi setelah pemeliharaan selesai.`,
-      retryAfterSeconds: null,
-    };
-  }
-  return {
-    action: "retry",
-    message:
-      status >= 500 || !error
-        ? "Server KAPDH sedang bermasalah. Coba lagi beberapa saat lagi."
-        : error.message,
-    retryAfterSeconds: null,
-  };
 }
 
 export type VerifyOutcome =

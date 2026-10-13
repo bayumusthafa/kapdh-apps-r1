@@ -13,6 +13,7 @@ import { formatDateTime } from "./format";
  * Mengisi bagian halaman yang bergantung pada GET /public/config saat runtime (PRD 4.6, 8.3): tombol toko
  * (`[data-store]`), kontak bantuan (`[data-support-*]`) dan banner maintenance (`[data-maintenance]`). Nilai dari
  * pengurus (app_settings) tidak ditanam saat build agar perubahan tautan toko/kontak langsung berlaku.
+ * Setiap keadaan gagal memuat menampilkan pesan dan tombol `[data-config-retry]` (PRD 4.5).
  */
 
 type Platform = "android" | "ios";
@@ -39,7 +40,11 @@ export function applyStoreLinks(doc: Document, config: PublicConfig | null, fail
   }
 }
 
-export function applySupport(doc: Document, config: PublicConfig | null): void {
+/**
+ * Kontak bantuan dari konfigurasi; email baku PRD 8.3 bila belum terbaca. `failed`: konfigurasi gagal dimuat, sehingga
+ * `[data-support-error]` ("Kontak terbaru belum dapat dimuat" + coba lagi) tampil alih-alih diam-diam memakai default.
+ */
+export function applySupport(doc: Document, config: PublicConfig | null, failed = false): void {
   const email = config?.support.email ?? DEFAULT_SUPPORT_EMAIL;
   const emailHref = mailtoHref(email) ?? mailtoHref(DEFAULT_SUPPORT_EMAIL)!;
   for (const anchor of Array.from(doc.querySelectorAll<HTMLAnchorElement>("a[data-support-email]"))) {
@@ -58,9 +63,16 @@ export function applySupport(doc: Document, config: PublicConfig | null): void {
   for (const pending of Array.from(doc.querySelectorAll<HTMLElement>("[data-support-pending]"))) {
     pending.hidden = true;
   }
+  for (const error of Array.from(doc.querySelectorAll<HTMLElement>("[data-support-error]"))) {
+    error.hidden = !failed;
+  }
 }
 
-/** Banner maintenance (PRD 4.5: rentang estimasi dan kanal dukungan). */
+/**
+ * Banner maintenance (PRD 4.5: "Jelaskan rentang estimasi, retry dan kanal dukungan"). Markup banner (Base.astro)
+ * memuat tautan `[data-support-email]`/`[data-support-whatsapp]` yang diisi applySupport dan tombol
+ * `[data-config-retry]` untuk memeriksa ulang apakah pemeliharaan sudah selesai.
+ */
 export function applyMaintenance(doc: Document, config: PublicConfig | null): void {
   const banner = doc.querySelector<HTMLElement>("[data-maintenance]");
   if (!banner) return;
@@ -74,22 +86,32 @@ export function applyMaintenance(doc: Document, config: PublicConfig | null): vo
     : "";
   const message = config.maintenance.message?.trim() ? ` ${config.maintenance.message.trim()}` : "";
   if (text) {
-    text.textContent = `Layanan KAPDH sedang dalam pemeliharaan; pendaftaran dan perubahan data ditunda sementara.${until}${message}`;
+    text.textContent = `Layanan KAPDH sedang dalam pemeliharaan; pendaftaran dan perubahan data ditunda sementara.${until}${message} Coba lagi setelah pemeliharaan selesai.`;
   }
   banner.hidden = false;
 }
 
-export function applyConfig(doc: Document, result: ApiResult<PublicConfig>): PublicConfig | null {
-  const config = result.ok ? result.data : null;
-  applyStoreLinks(doc, config, !result.ok);
-  applySupport(doc, config);
+/**
+ * Menerapkan hasil GET /public/config. `lastGood`: konfigurasi terakhir yang berhasil dimuat; bila pemuatan ulang
+ * (tombol coba lagi/periksa lagi) gagal, nilai itu tetap dipakai sehingga banner maintenance dan tautan yang sudah
+ * tampil tidak hilang hanya karena jaringan putus sesaat.
+ */
+export function applyConfig(
+  doc: Document,
+  result: ApiResult<PublicConfig>,
+  lastGood: PublicConfig | null = null,
+): PublicConfig | null {
+  const config = result.ok ? result.data : lastGood;
+  const failed = config === null;
+  applyStoreLinks(doc, config, failed);
+  applySupport(doc, config, failed);
   applyMaintenance(doc, config);
   return config;
 }
 
 /**
  * Satu permintaan konfigurasi per halaman (`initial` bila halaman sudah memulainya); tombol `[data-config-retry]`
- * memuat ulang bila gagal.
+ * memuat ulang (gagal memuat tautan toko/kontak, atau memeriksa ulang status maintenance).
  */
 export async function mountConfigConsumers(
   doc: Document,
@@ -97,9 +119,11 @@ export async function mountConfigConsumers(
   fetcher?: typeof fetch,
   initial?: Promise<ApiResult<PublicConfig>>,
 ): Promise<PublicConfig | null> {
-  const load = async () => applyConfig(doc, await fetchPublicConfig(apiBase, fetcher));
+  let lastGood: PublicConfig | null = null;
+  const apply = (result: ApiResult<PublicConfig>) => (lastGood = applyConfig(doc, result, lastGood));
+  const load = async () => apply(await fetchPublicConfig(apiBase, fetcher));
   for (const button of Array.from(doc.querySelectorAll<HTMLButtonElement>("[data-config-retry]"))) {
     button.addEventListener("click", () => void load());
   }
-  return initial ? applyConfig(doc, await initial) : load();
+  return initial ? apply(await initial) : load();
 }

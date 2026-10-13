@@ -108,9 +108,23 @@ const year = new Date().getFullYear();
               <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z" />
               <path d="M12 6v6l4 2" />
             </svg>
-            <span>
-              <strong class="font-semibold">Pemeliharaan. </strong>
-              <span data-maintenance-text />
+            <span class="flex min-w-0 flex-col gap-1">
+              <span>
+                <strong class="font-semibold">Pemeliharaan. </strong>
+                <span data-maintenance-text />
+              </span>
+              {/* PRD 4.5: maintenance menjelaskan rentang estimasi, retry dan kanal dukungan (diisi dari /public/config). */}
+              <span>
+                Butuh bantuan? Hubungi
+                <a data-support-email href="mailto:bantuan@kapdh.or.id" class="font-semibold break-all text-primary underline"
+                  >bantuan@kapdh.or.id</a
+                ><span data-support-whatsapp hidden>
+                  atau WhatsApp <a target="_blank" rel="noopener noreferrer" class="font-semibold text-primary underline"></a></span
+                >.
+                <button type="button" data-config-retry data-maintenance-retry class="btn-link min-h-11 text-primary"
+                  >Periksa lagi</button
+                >
+              </span>
             </span>
           </p>
         </div>

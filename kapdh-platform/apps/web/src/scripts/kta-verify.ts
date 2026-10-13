@@ -1,5 +1,5 @@
 import type { components } from "@kapdh/contracts";
-import { requestJson, type ApiResult } from "./api";
+import { failureAction, requestJson, type ApiResult } from "./api";
 import { formatDate, formatDateTime } from "./format";
 
 /** POST /public/kta/verify (public.yaml, F-06). */
@@ -93,19 +93,27 @@ export type KtaView =
   | { kind: "inactive"; checkedAt: string }
   | { kind: "not_found"; checkedAt: string }
   | { kind: "invalid"; checkedAt: string | null; cause: "token" | "link" }
-  | { kind: "unreachable"; retryAfterSeconds: number | null };
+  /** `rateLimited`: 429 RATE_LIMITED; `retryAfterSeconds` menahan tombol coba lagi selama jeda server. */
+  | { kind: "unreachable"; rateLimited: boolean; retryAfterSeconds: number | null };
 
 /**
  * Hasil API -> keadaan tampilan. Jaringan putus, timeout, 429, 5xx dan respons yang tidak dapat dipercaya SELALU
  * `unreachable` ("Tidak dapat memverifikasi" + coba lagi), tidak pernah Tidak ditemukan (AC F06-4).
+ *
+ * Galat dipetakan lewat kode katalog (PRD 5.2), bukan status saja: hanya 400 VALIDATION_ERROR berbody `Error` dari
+ * API yang menjadi putusan "QR tidak valid" (AC F06-3). HTML 400 dari WAF/proxy berarti token belum pernah diperiksa,
+ * sehingga tetap `unreachable` dengan coba lagi.
  */
 export function toKtaView(result: ApiResult<KtaVerification>): KtaView {
   if (!result.ok) {
-    if (result.kind === "http" && result.status === 400)
+    const action = failureAction(result);
+    if (result.status === 400 && action === "show_field_errors")
       return { kind: "invalid", checkedAt: null, cause: "token" };
+    const rateLimited = action === "show_countdown";
     return {
       kind: "unreachable",
-      retryAfterSeconds: result.kind === "http" ? result.retryAfterSeconds : null,
+      rateLimited,
+      retryAfterSeconds: rateLimited && result.kind === "http" ? result.retryAfterSeconds : null,
     };
   }
   const v = result.data;
@@ -234,7 +242,7 @@ export function describeKta(view: KtaView): KtaDescription {
         tone: "info",
         title: "Tidak dapat memverifikasi",
         detail:
-          view.retryAfterSeconds !== null
+          view.rateLimited
             ? "Terlalu banyak pemeriksaan dalam waktu singkat. Tunggu sebentar lalu coba lagi. Ini bukan berarti anggota tidak terdaftar."
             : "Server KAPDH tidak dapat dihubungi. Periksa koneksi lalu coba lagi. Ini bukan berarti anggota tidak terdaftar.",
         retry: true,
