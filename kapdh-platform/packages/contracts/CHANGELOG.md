@@ -407,6 +407,40 @@ sehingga aturan berikut dicatat di sini untuk diterapkan pemilik domainnya sebel
 - Inti berkas (`core/files`): berkas yang dirujuk `reports.evidence` (gambar pesan, avatar profil, avatar grup) tidak
   dihapus saat pesan dihapus atau avatar diganti; hanya dihapus sesuai retensi D2.
 
+Status implementasi (slice api-moderation, tanpa perubahan bentuk kontrak):
+
+- `MembershipKernel.unsuspend` (core) kini menutup setiap banding aktif anggota sebagai dikabulkan di transaksi
+  pencabutan yang sama (status resolved, action unsuspend, `member_message` = pesan untuk anggota, audit
+  `moderation.report_resolved` per banding) dan mengirim SATU notifikasi; `adminUnsuspendMember` cukup memanggil
+  kernel tanpa menutup banding sendiri.
+- `FilesService.discard` (core) menahan berkas yang dirujuk `reports.evidence.file_ids` (dijadikan privat, tetap
+  ready) kecuali akun pemiliknya deletion_pending/deleted (D2).
+- Hitungan laporan untuk dasbor/lencana menu/AdminMemberDetail tersedia lewat `ModerationVisibility` yang diekspor
+  `ModerationModule`: `counts(linkedAlumniUserId)` (= `AdminModerationQueueCounts`), `dashboardSummary(linkedAlumniUserId)`
+  (= `DashboardModeration`; `open_count` juga nilai `AdminNavBadges.reports_open`), `memberReportCounts(memberUserId,
+linkedAlumniUserId)` (`open_report_count`/`total_report_count` untuk `AdminMemberDetail.moderation`, tanpa banding)
+  dan `condition(linkedAlumniUserId)` untuk kueri lain.
+- Penghapusan akun (F-14, D2, AC F14-3): job penghapusan modul account memanggil `anonymizeEvidenceOf(tx, userId, now)`
+  (`modules/moderation/evidence-anonymize.ts`, fungsi biasa yang aman dipakai worker) agar snapshot bukti laporan
+  kehilangan nama, bio, foto dan isi chat akun itu; laporan tetap ada dalam bentuk anonim. Tampilan bukti pengurus
+  sudah menyembunyikan identitas, foto dan isi chat akun berstatus deleted sebelum langkah itu berjalan.
+  Langkah yang sama juga mengosongkan `reports.description` yang DITULIS akun itu (penjelasan pelapor dan alasan
+  banding); `AdminModerationReportDetail.description` sudah null untuk penulis berstatus deleted (deskripsi field
+  diperjelas, bentuk tidak berubah). Catatan pengurus (`resolution_note`, `member_message`, snapshot suspend yang
+  dibanding) tetap disimpan sebagai catatan keputusan organisasi.
+- Audit pembacaan bukti (PRD 3.12, AC F17-1): setiap respons yang memuat bukti, yaitu `adminGetReport`,
+  `adminClaimReport` (termasuk klaim ulang idempoten oleh pengurus yang sama), `adminResolveReport` dan `current`
+  pada 409, menulis `moderation.report_viewed` (`after.via` = detail | claim | resolve | conflict, rujukan id pesan
+  dan id berkas gambar yang URL-nya diterbitkan, tanpa isi maupun URL) sebelum respons dikirim. Aturan domain dan
+  deskripsi `adminClaimReport` diperjelas (dokumentasi saja).
+- "Pernah berada di room yang sama" (`createReport` target user) dan "anggota atau mantan anggota grup"
+  (`AdminModerationResolveRequest.subject_user_id`) mensyaratkan pernah bergabung (`room_members.joined_at` terisi);
+  undangan yang dibatalkan sebelum diterima (invited → removed karena blokir atau dibatalkan admin grup) tidak
+  dihitung. Deskripsi kedua field diperjelas (dokumentasi saja).
+- Penutupan otomatis banding usang di `createAppeal` diaudit dengan aktor system (`effective_role` system,
+  `after.closed_by` system), bukan pemohon yang memicu permintaan (AC F12-3, F17-1).
+- Ketergantungan skema database di bawah sudah tersedia lewat migrasi `0006_final_contract_delta`.
+
 ### Event realtime
 
 - **[memutus]** Kesepuluh jenis event kini memiliki payload bertipe (`events/<type>.schema.json`) dan
