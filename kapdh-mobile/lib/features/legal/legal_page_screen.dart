@@ -11,6 +11,7 @@ import '../../core/format/formatters.dart';
 import '../../core/ui/external_links.dart';
 import '../../core/ui/support_section.dart';
 import '../../design/design.dart';
+import '../account/widgets/scroll_column.dart';
 
 /// Halaman legal dan informasi versi tayang (GET /public/pages/{slug}; F-08, PRD 3.8). Terbuka untuk semua status,
 /// sebelum login dan dari portal status (PRD 2.2: legal selalu boleh). HTML sudah disanitasi server; tautan hanya
@@ -85,9 +86,9 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
     final error = _error;
     if (error != null) {
       if (error.code == ErrorCode.notFound || error.code == ErrorCode.validationError) {
-        return ListView(
-          padding: const EdgeInsets.all(KapdhSpace.s5),
-          children: const [
+        return const ScrollColumn(
+          padding: EdgeInsets.all(KapdhSpace.s5),
+          children: [
             SizedBox(
               height: 320,
               child: EmptyState(
@@ -103,7 +104,7 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
       return ErrorState.fromException(error, onRetry: _load);
     }
     final page = _page!;
-    return ListView(
+    return ScrollColumn(
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s8),
       children: [
         Semantics(

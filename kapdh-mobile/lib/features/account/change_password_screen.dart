@@ -12,6 +12,7 @@ import '../../core/api/error_presenter.dart';
 import '../../core/format/formatters.dart';
 import '../../core/validation/password.dart';
 import '../../design/design.dart';
+import 'widgets/scroll_column.dart';
 import 'account_repository.dart';
 
 /// Ganti password (F-02, AC F02-4: ganti sandi normal mensyaratkan sandi lama). Password baru mengikuti PRD 2.5
@@ -103,7 +104,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         _error = fieldErrors['_']?.join(' ');
       });
       if (fieldErrors.isEmpty) {
-        await ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_submit()));
+        unawaited(ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_submit())));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -131,7 +132,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       title: 'Ganti Password',
       fallbackLocation: AppRoutes.account,
       body: AutofillGroup(
-        child: ListView(
+        child: ScrollColumn(
           padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s8),
           children: [
             const InfoBox(

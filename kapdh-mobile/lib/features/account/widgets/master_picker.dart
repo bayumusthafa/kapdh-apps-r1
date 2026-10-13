@@ -133,9 +133,11 @@ class _MasterSheetState extends State<_MasterSheet> {
     final items = _items;
     final activeIds = {for (final item in items ?? const <MasterItem>[]) item.id};
     // Pilihan yang sudah nonaktif (tidak ada di daftar aktif) hanya ditampilkan bila sedang terpilih.
+    // Profesi tunggal: label historis cukup tampil di formulir; daftar hanya berisi pilihan yang dapat dipilih.
     final historical = [
-      for (final item in _selected)
-        if (items != null && !activeIds.contains(item.id)) item,
+      if (widget.multi)
+        for (final item in _selected)
+          if (items != null && !activeIds.contains(item.id)) item,
     ];
     final visible = [
       for (final item in items ?? const <MasterItem>[])

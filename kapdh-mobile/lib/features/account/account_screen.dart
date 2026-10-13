@@ -93,119 +93,117 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     final banner = AppBannerScope.of(context);
     return Scaffold(
       backgroundColor: KapdhColors.background,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _Header(me: me)),
-                if (banner != null) SliverToBoxAdapter(child: banner),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s8),
-                  sliver: SliverList.list(
+      // Menu pendek: dibangun sekaligus (bukan sliver malas) agar seluruh baris terjangkau pembaca layar.
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Header(me: me),
+            ?banner,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AccountSection(
+                    title: 'PROFIL',
                     children: [
-                      AccountSection(
-                        title: 'PROFIL',
-                        children: [
-                          tile(
-                            AppRoutes.accountProfile,
-                            'Ubah profil',
-                            Icons.person_outline,
-                            subtitle: 'Foto, kota, profesi, keahlian, kontak',
-                          ),
-                          tile(
-                            AppRoutes.accountPrivacy,
-                            'Privasi profil',
-                            Icons.visibility_outlined,
-                            subtitle: 'Atur data yang terlihat anggota lain',
-                          ),
-                        ],
+                      tile(
+                        AppRoutes.accountProfile,
+                        'Ubah profil',
+                        Icons.person_outline,
+                        subtitle: 'Foto, kota, profesi, keahlian, kontak',
                       ),
-                      const SizedBox(height: KapdhSpace.s5),
-                      AccountSection(
-                        title: 'AKTIVITAS',
-                        children: [
-                          tile(
-                            AppRoutes.notifications,
-                            'Notifikasi',
-                            Icons.notifications_outlined,
-                            subtitle: 'Kotak masuk resmi',
-                            badge: unread != null && unread > 0 ? (unread > 99 ? '99+' : '$unread') : null,
-                          ),
-                          tile(AppRoutes.payments, 'Riwayat pembayaran', Icons.receipt_long_outlined),
-                          tile(AppRoutes.tickets, 'Tiket saya', Icons.confirmation_number_outlined),
-                        ],
-                      ),
-                      const SizedBox(height: KapdhSpace.s5),
-                      AccountSection(
-                        title: 'KEAMANAN DAN NOTIFIKASI',
-                        children: [
-                          tile(AppRoutes.accountNotifications, 'Preferensi notifikasi', Icons.tune),
-                          tile(
-                            AppRoutes.accountSessions,
-                            'Sesi perangkat',
-                            Icons.devices_outlined,
-                            subtitle: 'Perangkat yang masuk ke akun Anda',
-                          ),
-                          tile(AppRoutes.accountPassword, 'Ganti password', Icons.lock_reset),
-                        ],
-                      ),
-                      const SizedBox(height: KapdhSpace.s5),
-                      AccountSection(
-                        title: 'KOMUNITAS',
-                        children: [
-                          tile(AppRoutes.accountBlocked, 'Anggota diblokir', Icons.block),
-                          tile(AppRoutes.accountReports, 'Laporan saya', Icons.flag_outlined),
-                        ],
-                      ),
-                      const SizedBox(height: KapdhSpace.s5),
-                      AccountSection(
-                        title: 'INFORMASI',
-                        children: [
-                          legal(AppRoutes.privacySlug, 'Kebijakan privasi', Icons.privacy_tip_outlined),
-                          legal(AppRoutes.termsSlug, 'Ketentuan layanan', Icons.description_outlined),
-                          legal(AppRoutes.communitySlug, 'Ketentuan komunitas', Icons.gavel_outlined),
-                          legal(AppRoutes.helpSlug, 'Bantuan', Icons.help_outline),
-                          legal(AppRoutes.aboutSlug, 'Tentang KAPDH', Icons.info_outline),
-                        ],
-                      ),
-                      const SizedBox(height: KapdhSpace.s5),
-                      AccountSection(
-                        title: 'DATA AKUN',
-                        children: [
-                          AccountMenuTile(
-                            key: const ValueKey('account-menu-delete'),
-                            icon: Icons.delete_outline,
-                            label: 'Hapus akun',
-                            subtitle: 'Hapus akun dan data pribadi Anda',
-                            danger: true,
-                            onTap: () => _open(AppRoutes.accountDelete, label: 'Hapus akun', icon: Icons.delete),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: KapdhSpace.s6),
-                      KapdhButton.outlined(
-                        key: const ValueKey('account-logout'),
-                        label: 'Keluar',
-                        busyLabel: 'Keluar...',
-                        busy: _signingOut,
-                        icon: Icons.logout,
-                        onPressed: _signOut,
-                      ),
-                      const SizedBox(height: KapdhSpace.s4),
-                      Text(
-                        'KAPDH Apps versi ${info.version} (${info.buildNumber})',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                      tile(
+                        AppRoutes.accountPrivacy,
+                        'Privasi profil',
+                        Icons.visibility_outlined,
+                        subtitle: 'Atur data yang terlihat anggota lain',
                       ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: KapdhSpace.s5),
+                  AccountSection(
+                    title: 'AKTIVITAS',
+                    children: [
+                      tile(
+                        AppRoutes.notifications,
+                        'Notifikasi',
+                        Icons.notifications_outlined,
+                        subtitle: 'Kotak masuk resmi',
+                        badge: unread != null && unread > 0 ? (unread > 99 ? '99+' : '$unread') : null,
+                      ),
+                      tile(AppRoutes.payments, 'Riwayat pembayaran', Icons.receipt_long_outlined),
+                      tile(AppRoutes.tickets, 'Tiket saya', Icons.confirmation_number_outlined),
+                    ],
+                  ),
+                  const SizedBox(height: KapdhSpace.s5),
+                  AccountSection(
+                    title: 'KEAMANAN DAN NOTIFIKASI',
+                    children: [
+                      tile(AppRoutes.accountNotifications, 'Preferensi notifikasi', Icons.tune),
+                      tile(
+                        AppRoutes.accountSessions,
+                        'Sesi perangkat',
+                        Icons.devices_outlined,
+                        subtitle: 'Perangkat yang masuk ke akun Anda',
+                      ),
+                      tile(AppRoutes.accountPassword, 'Ganti password', Icons.lock_reset),
+                    ],
+                  ),
+                  const SizedBox(height: KapdhSpace.s5),
+                  AccountSection(
+                    title: 'KOMUNITAS',
+                    children: [
+                      tile(AppRoutes.accountBlocked, 'Anggota diblokir', Icons.block),
+                      tile(AppRoutes.accountReports, 'Laporan saya', Icons.flag_outlined),
+                    ],
+                  ),
+                  const SizedBox(height: KapdhSpace.s5),
+                  AccountSection(
+                    title: 'INFORMASI',
+                    children: [
+                      legal(AppRoutes.privacySlug, 'Kebijakan privasi', Icons.privacy_tip_outlined),
+                      legal(AppRoutes.termsSlug, 'Ketentuan layanan', Icons.description_outlined),
+                      legal(AppRoutes.communitySlug, 'Ketentuan komunitas', Icons.gavel_outlined),
+                      legal(AppRoutes.helpSlug, 'Bantuan', Icons.help_outline),
+                      legal(AppRoutes.aboutSlug, 'Tentang KAPDH', Icons.info_outline),
+                    ],
+                  ),
+                  const SizedBox(height: KapdhSpace.s5),
+                  AccountSection(
+                    title: 'DATA AKUN',
+                    children: [
+                      AccountMenuTile(
+                        key: const ValueKey('account-menu-delete'),
+                        icon: Icons.delete_outline,
+                        label: 'Hapus akun',
+                        subtitle: 'Hapus akun dan data pribadi Anda',
+                        danger: true,
+                        onTap: () => _open(AppRoutes.accountDelete, label: 'Hapus akun', icon: Icons.delete),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: KapdhSpace.s6),
+                  KapdhButton.outlined(
+                    key: const ValueKey('account-logout'),
+                    label: 'Keluar',
+                    busyLabel: 'Keluar...',
+                    busy: _signingOut,
+                    icon: Icons.logout,
+                    onPressed: _signOut,
+                  ),
+                  const SizedBox(height: KapdhSpace.s4),
+                  Text(
+                    'KAPDH Apps versi ${info.version} (${info.buildNumber})',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -32,7 +32,14 @@ class ProfileAvatar extends StatelessWidget {
     final local = bytes;
     final remote = url;
     if (local != null) {
-      image = Image.memory(local, width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true);
+      image = Image.memory(
+        local,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) => initials,
+      );
     } else if (remote != null && remote.isNotEmpty) {
       image = Image.network(
         remote,
