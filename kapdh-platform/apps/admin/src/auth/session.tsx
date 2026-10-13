@@ -25,6 +25,7 @@ import { ApiError, toApiError } from "../api/errors";
 import { useToast } from "../components/ui/Toast";
 
 type AdminProfile = components["schemas"]["AdminProfile"];
+type AdminSession = components["schemas"]["AdminSession"];
 
 /** Nilai default sama dengan server (PRD 5.2, N-08); dipakai saat sesi dipulihkan dari cookie. */
 export const DEFAULT_IDLE_TIMEOUT_SECONDS = 1800;
@@ -44,7 +45,13 @@ export const LOGOUT_UNCONFIRMED_MESSAGE =
 export type AuthState =
   | { status: "restoring" }
   | { status: "anonymous" }
-  | { status: "mfa"; mfaToken: string; enrollmentRequired: boolean }
+  | {
+      status: "mfa";
+      mfaToken: string;
+      enrollmentRequired: boolean;
+      /** Batas mfa_token (`mfa_expires_at`): 5 menit untuk login, 30 menit untuk token pendaftaran TOTP (F-16). */
+      expiresAt?: string;
+    }
   | { status: "authenticated"; profile: AdminProfile; idleTimeoutSeconds: number };
 
 export type LogoutReason = "idle" | "manual" | "expired";
@@ -60,6 +67,17 @@ export interface AuthApi {
   profile: AdminProfile | null;
   login(email: string, password: string): Promise<LoginResult>;
   verifyMfa(code: string): Promise<ApiError | null>;
+  /**
+   * Penerimaan undangan admin berhasil (F-16, PRD 8.2 langkah 3): simpan token PENDAFTARAN TOTP (audience
+   * kapdh-admin-enroll, 30 menit) hanya di memori lalu lanjut ke /login/enroll. Token ini tidak pernah dikirim ke
+   * /admin/auth/mfa.
+   */
+  beginEnrollment(mfaToken: string, expiresAt: string): void;
+  /**
+   * Konfirmasi TOTP pertama berhasil (POST /admin/auth/totp/confirm): pasang sesi admin yang diterbitkan server
+   * (access token di memori, refresh cookie HttpOnly sudah dipasang server) lalu muat profil.
+   */
+  completeEnrollment(session: AdminSession): Promise<ApiError | null>;
   /** Batalkan login yang berhenti di tahap MFA/pendaftaran TOTP dan kembali ke halaman masuk. */
   cancelLogin(): void;
   logout(reason?: LogoutReason): Promise<void>;
@@ -272,13 +290,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Kontrak admin-auth: login selalu false (hanya admin aktif dengan TOTP); true hanya dari penerimaan
         // undangan. Tetap dihormati agar token pendaftaran tidak pernah dikirim ke /admin/auth/mfa.
         const enrollmentRequired = data.totp_enrollment_required;
-        commit({ status: "mfa", mfaToken: data.mfa_token, enrollmentRequired });
+        commit({
+          status: "mfa",
+          mfaToken: data.mfa_token,
+          enrollmentRequired,
+          expiresAt: data.mfa_expires_at,
+        });
         return { ok: true, next: enrollmentRequired ? "enroll" : "mfa" };
       } catch (e) {
         return { ok: false, error: toApiError(e) };
       }
     },
     [commit, setLastLogoutReason],
+  );
+
+  /** Pasang sesi admin tingkat MFA 2 (dari /admin/auth/mfa atau /admin/auth/totp/confirm) lalu muat profil. */
+  const adoptSession = useCallback(
+    async (session: AdminSession): Promise<ApiError | null> => {
+      setAccessToken(session.access_token, session.access_expires_at);
+      const me = await api.GET("/admin/me");
+      if (!me.data) {
+        setAccessToken(null);
+        return ApiError.fromResponse(me.error, me.response.status);
+      }
+      queryClient.clear();
+      setLastLogoutReason(null);
+      setSessionOwner(me.data.admin_id);
+      commit({
+        status: "authenticated",
+        profile: me.data,
+        idleTimeoutSeconds: session.idle_timeout_seconds,
+      });
+      return null;
+    },
+    [queryClient, commit, setLastLogoutReason],
   );
 
   const verifyMfa = useCallback(
@@ -292,25 +337,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const mfa = await api.POST("/admin/auth/mfa", { body });
         if (!mfa.data) return ApiError.fromResponse(mfa.error, mfa.response.status);
-        setAccessToken(mfa.data.access_token, mfa.data.access_expires_at);
-        const me = await api.GET("/admin/me");
-        if (!me.data) {
-          setAccessToken(null);
-          return ApiError.fromResponse(me.error, me.response.status);
-        }
-        queryClient.clear();
-        setSessionOwner(me.data.admin_id);
-        commit({
-          status: "authenticated",
-          profile: me.data,
-          idleTimeoutSeconds: mfa.data.idle_timeout_seconds,
-        });
-        return null;
+        return await adoptSession(mfa.data);
       } catch (e) {
         return toApiError(e);
       }
     },
-    [queryClient, commit],
+    [adoptSession],
+  );
+
+  const beginEnrollment = useCallback(
+    (mfaToken: string, expiresAt: string) => {
+      setLastLogoutReason(null);
+      commit({ status: "mfa", mfaToken, enrollmentRequired: true, expiresAt });
+    },
+    [commit, setLastLogoutReason],
+  );
+
+  const completeEnrollment = useCallback(
+    async (session: AdminSession): Promise<ApiError | null> => {
+      try {
+        return await adoptSession(session);
+      } catch (e) {
+        return toApiError(e);
+      }
+    },
+    [adoptSession],
   );
 
   const cancelLogin = useCallback(() => {
@@ -345,6 +396,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile: state.status === "authenticated" ? state.profile : null,
       login,
       verifyMfa,
+      beginEnrollment,
+      completeEnrollment,
       cancelLogin,
       logout,
       touch,
@@ -359,6 +412,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       state,
       login,
       verifyMfa,
+      beginEnrollment,
+      completeEnrollment,
       cancelLogin,
       logout,
       touch,
