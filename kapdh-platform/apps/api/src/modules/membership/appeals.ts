@@ -44,7 +44,13 @@ export async function closeAppealsAsGranted(
   tx: Tx,
   audit: AuditService,
   appeals: readonly LockedAppeal[],
-  input: { actorAdminId: string | null; reason: string; memberMessage: string; resolutionNote: string; now: Date },
+  input: {
+    actorAdminId: string | null;
+    reason: string;
+    memberMessage: string;
+    resolutionNote: string;
+    now: Date;
+  },
 ): Promise<number> {
   let closed = 0;
   for (const appeal of appeals) {

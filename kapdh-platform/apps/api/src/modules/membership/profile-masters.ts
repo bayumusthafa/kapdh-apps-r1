@@ -1,9 +1,4 @@
-import {
-  alumniProfessions,
-  alumniSkills,
-  masterProfessions,
-  masterSkills,
-} from "@kapdh/database";
+import { alumniProfessions, alumniSkills, masterProfessions, masterSkills } from "@kapdh/database";
 import { asc, eq, inArray } from "drizzle-orm";
 import type { DbOrTx, Tx } from "../../core/db/types.js";
 import { fieldError } from "../../core/errors/app-exception.js";
@@ -59,7 +54,10 @@ export async function replaceProfession(
       .where(eq(masterProfessions.id, professionId))
       .for("share");
     if (!master || !master.active)
-      throw fieldError("profession_id", "Profesi tidak tersedia untuk dipilih. Pilih dari daftar profesi aktif.");
+      throw fieldError(
+        "profession_id",
+        "Profesi tidak tersedia untuk dipilih. Pilih dari daftar profesi aktif.",
+      );
   }
   await tx.delete(alumniProfessions).where(eq(alumniProfessions.alumniUserId, userId));
   if (professionId !== null)
@@ -98,7 +96,10 @@ export async function replaceSkills(
       .for("share");
     const activeIds = new Set(masters.filter((m) => m.active).map((m) => m.id));
     if (added.some((id) => !activeIds.has(id)))
-      throw fieldError("skill_ids", "Ada keahlian yang tidak tersedia untuk dipilih. Pilih dari daftar keahlian aktif.");
+      throw fieldError(
+        "skill_ids",
+        "Ada keahlian yang tidak tersedia untuk dipilih. Pilih dari daftar keahlian aktif.",
+      );
   }
   await tx.delete(alumniSkills).where(eq(alumniSkills.alumniUserId, userId));
   if (next.size > 0)

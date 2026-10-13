@@ -59,7 +59,8 @@ export class MemberPasswordResetService {
     const now = this.clock.now();
     const issued = await this.db.transaction(async (tx) => {
       const [user] = await tx.select().from(users).where(eq(users.id, userId)).for("no key update");
-      if (!user || user.kind !== "alumni" || user.status === "deleted") throw notFound("Anggota tidak ditemukan.");
+      if (!user || user.kind !== "alumni" || user.status === "deleted")
+        throw notFound("Anggota tidak ditemukan.");
       // Akun alumni pelaku sendiri memakai alur lupa sandi mandiri (konflik kepentingan, PRD 2.3).
       if (auth.linkedAlumniUserId === userId)
         throw forbidden("Gunakan alur lupa sandi mandiri untuk akun alumni Anda sendiri.");
@@ -69,7 +70,9 @@ export class MemberPasswordResetService {
           400,
           "VALIDATION_ERROR",
           "Pemulihan sandi hanya untuk akun aktif yang emailnya sudah terverifikasi.",
-          { fieldErrors: { _: ["Pemulihan sandi hanya untuk akun aktif yang emailnya sudah terverifikasi."] } },
+          {
+            fieldErrors: { _: ["Pemulihan sandi hanya untuk akun aktif yang emailnya sudah terverifikasi."] },
+          },
         );
       await this.limits.consumeOrThrow(
         `otp:${user.email}`,

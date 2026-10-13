@@ -40,7 +40,10 @@ describe("QrTokenService.inspect (kontrak verifyKta langkah 1; AC F06-3)", () =>
     }))!;
     const secret = new TextEncoder().encode(testEnv.QR_SIGNING_KEYS.split(":")[1]);
     const now = Math.floor(clock.now().getTime() / 1000);
-    const build = (claims: Record<string, unknown>, options: { kid?: string; iss?: string; aud?: string } = {}) =>
+    const build = (
+      claims: Record<string, unknown>,
+      options: { kid?: string; iss?: string; aud?: string } = {},
+    ) =>
       new SignJWT(claims)
         .setProtectedHeader({ alg: "HS256", kid: options.kid ?? "k1", typ: "JWT" })
         .setIssuer(options.iss ?? QR_ISSUER)

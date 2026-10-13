@@ -44,10 +44,7 @@ import { FilesService } from "../../core/files/files.service.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
 import { type AccountStatus, effectiveStatus } from "../../core/membership/effective-status.js";
 import { academicYears, cohortCode, educationStatus } from "../../core/membership/member-number.js";
-import {
-  DEFAULT_UNSUSPEND_MESSAGE,
-  MembershipKernel,
-} from "../../core/membership/membership.kernel.js";
+import { DEFAULT_UNSUSPEND_MESSAGE, MembershipKernel } from "../../core/membership/membership.kernel.js";
 import { decodeCursor, encodeCursor, parsePageQuery } from "../../core/pagination/cursor.js";
 import { CLOCK, DB } from "../../core/tokens.js";
 import { queryBool, queryInt, validateQuery } from "../../core/validation/validate.js";
@@ -156,7 +153,10 @@ function param(value: string | number, type: KeyType): SQL {
  * Predikat keyset "sesudah posisi cursor" untuk urutan multi-kolom berarah campuran dengan NULLS LAST:
  * OR_i (AND_{j<i} k_j = v_j) AND k_i > v_i, dengan nilai null diperlakukan setelah semua nilai bukan null.
  */
-function keysetAfterNullable<Row>(keys: readonly SortKey<Row>[], values: readonly (string | number | null)[]): SQL {
+function keysetAfterNullable<Row>(
+  keys: readonly SortKey<Row>[],
+  values: readonly (string | number | null)[],
+): SQL {
   const equal = (key: SortKey<Row>, value: string | number | null): SQL =>
     value === null ? sql`${key.expr} is null` : sql`${key.expr} = ${param(value, key.type)}`;
   const after = (key: SortKey<Row>, value: string | number | null): SQL | null => {
@@ -179,9 +179,7 @@ function keysetAfterNullable<Row>(keys: readonly SortKey<Row>[], values: readonl
 
 function orderOf<Row>(keys: readonly SortKey<Row>[]): SQL[] {
   return keys.map((key) =>
-    key.nullable
-      ? sql`${key.expr} ${sql.raw(key.dir)} nulls last`
-      : sql`${key.expr} ${sql.raw(key.dir)}`,
+    key.nullable ? sql`${key.expr} ${sql.raw(key.dir)} nulls last` : sql`${key.expr} ${sql.raw(key.dir)}`,
   );
 }
 
@@ -217,6 +215,13 @@ interface ListRow {
 
 const NAME_KEY = sql<string>`lower(${alumni.fullName})`;
 const MEMBER_PREFIX = sql<string | null>`left(${alumni.memberNumber}, 8)`;
+/**
+ * Kunci waktu keyset dipotong ke milidetik (presisi cursor/Date JS) sehingga baris yang ditulis dengan default now()
+ * berpresisi mikrodetik tetap tidak terduplikasi/terlewat; seri dalam milidetik yang sama diurai user_id.
+ */
+const REGISTERED_KEY = sql`date_trunc('milliseconds', ${users.createdAt})`;
+const EXPIRES_KEY = sql`date_trunc('milliseconds', ${alumni.expiresAt})`;
+const EVENT_TIME_KEY = sql`date_trunc('milliseconds', ${membershipEvents.createdAt})`;
 
 function sortKeys(sort: AdminMemberSort): SortKey<ListRow>[] {
   const id = (dir: "asc" | "desc"): SortKey<ListRow> => ({
@@ -231,7 +236,7 @@ function sortKeys(sort: AdminMemberSort): SortKey<ListRow>[] {
     case "registered_asc": {
       const dir = sort === "registered_desc" ? "desc" : "asc";
       return [
-        { expr: users.createdAt, dir, type: "timestamp", nullable: false, read: (r) => iso(r.registeredAt) },
+        { expr: REGISTERED_KEY, dir, type: "timestamp", nullable: false, read: (r) => iso(r.registeredAt) },
         id(dir),
       ];
     }
@@ -257,7 +262,7 @@ function sortKeys(sort: AdminMemberSort): SortKey<ListRow>[] {
       const dir = sort === "expires_at_asc" ? "asc" : "desc";
       // expires_at null (belum paid) diletakkan di akhir pada kedua arah (kontrak AdminMemberSort).
       return [
-        { expr: alumni.expiresAt, dir, type: "timestamp", nullable: true, read: (r) => iso(r.expiresAt) },
+        { expr: EXPIRES_KEY, dir, type: "timestamp", nullable: true, read: (r) => iso(r.expiresAt) },
         id(dir),
       ];
     }
@@ -346,7 +351,9 @@ export class AdminMembersService {
       // Cursor dari kombinasi filter/urutan lain ditolak (kontrak: 400 VALIDATION_ERROR).
       if (decoded.f !== fingerprint || decoded.s !== sort || decoded.k.length !== keys.length)
         throw new AppException(400, "VALIDATION_ERROR", "Parameter pencarian tidak valid.", {
-          fieldErrors: { cursor: ["Cursor tidak cocok dengan filter atau urutan. Muat ulang daftar dari awal."] },
+          fieldErrors: {
+            cursor: ["Cursor tidak cocok dengan filter atau urutan. Muat ulang daftar dari awal."],
+          },
         });
       const values = decoded.k.map((value, index) => {
         const key = keys[index]!;
@@ -412,7 +419,9 @@ export class AdminMembersService {
     return {
       items,
       next_cursor:
-        hasMore && last ? encodeCursor({ f: fingerprint, s: sort, k: keys.map((key) => key.read(last)) }) : null,
+        hasMore && last
+          ? encodeCursor({ f: fingerprint, s: sort, k: keys.map((key) => key.read(last)) })
+          : null,
       total: Number(totalRow?.value ?? 0),
     };
   }
@@ -460,7 +469,10 @@ export class AdminMembersService {
       );
     if (filters.has_linked_admin !== undefined) {
       const linked = exists(
-        this.db.select({ one: sql`1` }).from(admins).where(eq(admins.linkedAlumniUserId, users.id)),
+        this.db
+          .select({ one: sql`1` })
+          .from(admins)
+          .where(eq(admins.linkedAlumniUserId, users.id)),
       );
       conditions.push(filters.has_linked_admin ? linked : not(linked));
     }
@@ -469,7 +481,11 @@ export class AdminMembersService {
 
   private async summaryOf(auth: AuthContext, row: ListRow, now: Date): Promise<AdminMemberSummary> {
     const status = effectiveStatus(
-      { accountStatus: row.accountStatus as AccountStatus, expiresAt: row.expiresAt, suspendedAt: row.suspendedAt },
+      {
+        accountStatus: row.accountStatus as AccountStatus,
+        expiresAt: row.expiresAt,
+        suspendedAt: row.suspendedAt,
+      },
       now,
     );
     const avatarReady = row.avatarFileId && row.avatarStatus === "ready" && row.avatarPurpose === "avatar";
@@ -537,12 +553,21 @@ export class AdminMembersService {
     const now = this.clock.now();
     const can = (permission: Permission) => auth.permissions.has(permission);
     const status = effectiveStatus(
-      { accountStatus: user.status as AccountStatus, expiresAt: profile.expiresAt, suspendedAt: profile.suspendedAt },
+      {
+        accountStatus: user.status as AccountStatus,
+        expiresAt: profile.expiresAt,
+        suspendedAt: profile.suspendedAt,
+      },
       now,
     );
     const masters = await loadMemberMasters(db, userId);
     const [linked] = await db
-      .select({ adminId: admins.id, displayName: admins.displayName, role: admins.role, status: admins.status })
+      .select({
+        adminId: admins.id,
+        displayName: admins.displayName,
+        role: admins.role,
+        status: admins.status,
+      })
       .from(admins)
       .where(eq(admins.linkedAlumniUserId, userId))
       .limit(1);
@@ -689,7 +714,9 @@ export class AdminMembersService {
     if (auth.linkedAlumniUserId !== userId) {
       const [counts] = await db
         .select({
-          open: sql<number>`count(*) filter (where ${reports.status} in ('open', 'in_review'))`.mapWith(Number),
+          open: sql<number>`count(*) filter (where ${reports.status} in ('open', 'in_review'))`.mapWith(
+            Number,
+          ),
           total: count(),
         })
         .from(reports)
@@ -735,7 +762,8 @@ export class AdminMembersService {
       .from(users)
       .where(eq(users.id, userId))
       .for("no key update");
-    if (!user || user.kind !== "alumni" || user.status === "deleted") throw notFound("Anggota tidak ditemukan.");
+    if (!user || user.kind !== "alumni" || user.status === "deleted")
+      throw notFound("Anggota tidak ditemukan.");
     const [profile] = await tx.select().from(alumni).where(eq(alumni.userId, userId)).for("update");
     if (!profile) throw notFound("Anggota tidak ditemukan.");
     if (auth.linkedAlumniUserId === userId)
@@ -761,9 +789,14 @@ export class AdminMembersService {
     await this.db.transaction(async (tx) => {
       const { user, profile } = await this.lockForAdmin(tx, auth, userId, expectedVersion);
       if (user.status === "deletion_pending")
-        throw new AppException(400, "VALIDATION_ERROR", "Akun sedang dalam proses penghapusan dan tidak dapat diubah.", {
-          fieldErrors: { _: ["Akun sedang dalam proses penghapusan dan tidak dapat diubah."] },
-        });
+        throw new AppException(
+          400,
+          "VALIDATION_ERROR",
+          "Akun sedang dalam proses penghapusan dan tidak dapat diubah.",
+          {
+            fieldErrors: { _: ["Akun sedang dalam proses penghapusan dan tidak dapat diubah."] },
+          },
+        );
       const now = this.clock.now();
       const reason = input.reason;
 
@@ -836,7 +869,10 @@ export class AdminMembersService {
         entityId: userId,
         reason,
         before,
-        after: { ...after, ...(changedContactFields.length ? { changed_contact_fields: changedContactFields } : {}) },
+        after: {
+          ...after,
+          ...(changedContactFields.length ? { changed_contact_fields: changedContactFields } : {}),
+        },
       });
     });
     return this.detail(auth, userId);
@@ -912,7 +948,11 @@ export class AdminMembersService {
    * total. Tanpa moderation.read: entri warn tidak dikembalikan maupun dihitung (filter kind=warn → 403) dan alasan
    * suspend/unsuspend disembunyikan (`reason_redacted`); alasan koreksi nomor tetap tampil (PRD 2.3, AC F15-1).
    */
-  async membershipEvents(auth: AuthContext, userId: string, query: unknown): Promise<AdminMembershipEventPage> {
+  async membershipEvents(
+    auth: AuthContext,
+    userId: string,
+    query: unknown,
+  ): Promise<AdminMembershipEventPage> {
     const { kind } = validateQuery(eventsQuerySchema, query);
     const page = parsePageQuery(query);
     const moderationRead = auth.permissions.has("moderation.read");
@@ -943,9 +983,9 @@ export class AdminMembersService {
           fieldErrors: { cursor: ["Cursor tidak cocok dengan filter. Muat ulang histori dari awal."] },
         });
       after = or(
-        sql`${membershipEvents.createdAt} < ${decoded.c}::timestamptz`,
+        sql`${EVENT_TIME_KEY} < ${decoded.c}::timestamptz`,
         and(
-          sql`${membershipEvents.createdAt} = ${decoded.c}::timestamptz`,
+          sql`${EVENT_TIME_KEY} = ${decoded.c}::timestamptz`,
           sql`${membershipEvents.id} < ${decoded.i}::uuid`,
         ),
       );
@@ -955,7 +995,7 @@ export class AdminMembersService {
       .from(membershipEvents)
       .leftJoin(admins, eq(admins.id, membershipEvents.actorAdminId))
       .where(after ? and(where, after) : where)
-      .orderBy(desc(membershipEvents.createdAt), desc(membershipEvents.id))
+      .orderBy(desc(EVENT_TIME_KEY), desc(membershipEvents.id))
       .limit(page.limit + 1);
     const [totalRow] = await this.db.select({ value: count() }).from(membershipEvents).where(where);
     const hasMore = rows.length > page.limit;
@@ -969,7 +1009,9 @@ export class AdminMembersService {
           kind: event.kind,
           created_at: event.createdAt.toISOString(),
           actor:
-            event.actorAdminId && actorName ? { admin_id: event.actorAdminId, display_name: actorName } : null,
+            event.actorAdminId && actorName
+              ? { admin_id: event.actorAdminId, display_name: actorName }
+              : null,
           payment_id: event.paymentId,
           reason: redacted ? null : event.reason,
           reason_redacted: redacted,

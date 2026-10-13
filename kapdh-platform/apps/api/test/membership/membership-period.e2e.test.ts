@@ -33,7 +33,13 @@ type MembershipBody = {
   renewal_eligible: boolean;
   renewal_opens_at: string | null;
   renewal_payment: unknown;
-  periods: { kind: string; starts_at: string; expires_at: string; approved_at: string; payment_id: string | null }[];
+  periods: {
+    kind: string;
+    starts_at: string;
+    expires_at: string;
+    approved_at: string;
+    payment_id: string | null;
+  }[];
 };
 
 async function membershipOf(fixture: AlumniFixture): Promise<MembershipBody> {

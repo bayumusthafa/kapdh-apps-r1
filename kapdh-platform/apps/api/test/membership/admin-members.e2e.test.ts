@@ -26,7 +26,15 @@ import { type AlumniFixture, createAlumni, signInAlumni } from "../support/facto
 import { uploadTestFile } from "../support/files.js";
 import { httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import { type AdminActor, adminWith, approveMembershipPayment, getCard, parseQr, reauthTokenFor, verifyKta } from "./helpers.js";
+import {
+  type AdminActor,
+  adminWith,
+  approveMembershipPayment,
+  getCard,
+  parseQr,
+  reauthTokenFor,
+  verifyKta,
+} from "./helpers.js";
 
 /**
  * Anggota untuk pengurus (kontrak admin-members.yaml; F-15, F-16; PRD 2.3, 4.2): daftar server-side, detail tersaring
@@ -84,7 +92,11 @@ async function seedMaster(kind: "profession" | "skill") {
 
 async function insertReport(
   targetUserId: string,
-  options: { category?: "spam" | "appeal"; status?: "open" | "in_review" | "resolved"; reporterId?: string } = {},
+  options: {
+    category?: "spam" | "appeal";
+    status?: "open" | "in_review" | "resolved";
+    reporterId?: string;
+  } = {},
 ) {
   const id = uuidv7();
   const now = t.clock.now();
@@ -116,10 +128,16 @@ describe("GET /admin/members (F-15, AC F10-1)", () => {
 
   beforeAll(async () => {
     reader = await adminWith(t, ["members.read"]);
-    const make = (status: Parameters<typeof createAlumni>[1]) => createAlumni(t, { cohort: COHORT, ...status });
+    const make = (status: Parameters<typeof createAlumni>[1]) =>
+      createAlumni(t, { cohort: COHORT, ...status });
     fixtures = {
       verified: await make({ status: "verified", fullName: "Zainal Verified", city: "Cianjur" }),
-      expiring: await make({ status: "expiring", fullName: "Aisyah Expiring", gender: "female", city: "cianjur" }),
+      expiring: await make({
+        status: "expiring",
+        fullName: "Aisyah Expiring",
+        gender: "female",
+        city: "cianjur",
+      }),
       expired: await make({ status: "expired", fullName: "Budi Expired", city: "Garut" }),
       unverified: await make({ status: "unverified", fullName: "Citra Belum Bayar", gender: "female" }),
       suspended: await make({ status: "suspended", fullName: "Dodi Dibatasi" }),
@@ -134,7 +152,9 @@ describe("GET /admin/members (F-15, AC F10-1)", () => {
     await t.db
       .insert(alumniProfessions)
       .values({ alumniUserId: fixtures.verified!.userId, professionId, createdAt: now });
-    await t.db.insert(alumniSkills).values({ alumniUserId: fixtures.expired!.userId, skillId, createdAt: now });
+    await t.db
+      .insert(alumniSkills)
+      .values({ alumniUserId: fixtures.expired!.userId, skillId, createdAt: now });
     await adminWith(t, ["payments.read"], { linkedAlumniUserId: fixtures.expiring!.userId });
   });
 
@@ -151,7 +171,10 @@ describe("GET /admin/members (F-15, AC F10-1)", () => {
       profession_label: expect.any(String),
       has_linked_admin: false,
     });
-    expect(byId.get(fixtures.pending!.userId)).toMatchObject({ effective_status: "pending_otp", member_number: null });
+    expect(byId.get(fixtures.pending!.userId)).toMatchObject({
+      effective_status: "pending_otp",
+      member_number: null,
+    });
     expect(byId.get(fixtures.disabled!.userId)).toMatchObject({ effective_status: "disabled" });
     expect(byId.get(fixtures.expiring!.userId)).toMatchObject({ has_linked_admin: true });
 
@@ -174,9 +197,15 @@ describe("GET /admin/members (F-15, AC F10-1)", () => {
   it("AC F10-1: filter kota (tidak peka huruf besar), jenis kelamin, profesi, keahlian, tertaut admin dan pencarian q", async () => {
     const base = { cohort: String(COHORT) };
     const ids = async (query: Record<string, string>) =>
-      (await list(reader.token, { ...base, ...query, limit: "100" })).items.map((item) => item.user_id).sort();
-    expect(await ids({ city: "CIANJUR" })).toEqual([fixtures.verified!.userId, fixtures.expiring!.userId].sort());
-    expect(await ids({ gender: "female" })).toEqual([fixtures.expiring!.userId, fixtures.unverified!.userId].sort());
+      (await list(reader.token, { ...base, ...query, limit: "100" })).items
+        .map((item) => item.user_id)
+        .sort();
+    expect(await ids({ city: "CIANJUR" })).toEqual(
+      [fixtures.verified!.userId, fixtures.expiring!.userId].sort(),
+    );
+    expect(await ids({ gender: "female" })).toEqual(
+      [fixtures.expiring!.userId, fixtures.unverified!.userId].sort(),
+    );
     expect(await ids({ profession_id: professionId })).toEqual([fixtures.verified!.userId]);
     expect(await ids({ skill_id: skillId })).toEqual([fixtures.expired!.userId]);
     expect(await ids({ has_linked_admin: "true" })).toEqual([fixtures.expiring!.userId]);
@@ -233,7 +262,10 @@ describe("GET /admin/members (F-15, AC F10-1)", () => {
       query: { ...base, sort: "name_desc", cursor: first.next_cursor! },
     });
     expect(otherSort.statusCode).toBe(400);
-    const garbage = await api().get("/admin/members", { token: reader.token, query: { cursor: "bukan-cursor" } });
+    const garbage = await api().get("/admin/members", {
+      token: reader.token,
+      query: { cursor: "bukan-cursor" },
+    });
     expect(garbage.statusCode).toBe(400);
   });
 
@@ -347,7 +379,9 @@ describe("GET /admin/members/{userId} (F-10, F-15, AC F15-1)", () => {
     expect(detail.periods).toEqual([expect.objectContaining({ kind: "renewal" })]);
 
     // Konflik kepentingan C6 butir c: pengurus yang membuka akun tertautnya sendiri tidak melihat hitungan laporan.
-    const self = await adminWith(t, ["members.read", "moderation.read"], { linkedAlumniUserId: member.userId });
+    const self = await adminWith(t, ["members.read", "moderation.read"], {
+      linkedAlumniUserId: member.userId,
+    });
     const own = await detailOf(self.token, member.userId);
     expect(own.moderation).toMatchObject({ open_report_count: 0, total_report_count: 0 });
     expect(own.linked_admin).toMatchObject({ admin_id: self.admin.adminId, role: "admin", status: "active" });
@@ -400,7 +434,10 @@ describe("PATCH /admin/members/{userId} (PRD 2.3, 3.5, AC F15-4)", () => {
       .select()
       .from(auditLogs)
       .where(and(eq(auditLogs.action, "member.updated"), eq(auditLogs.entityId, member.userId)));
-    expect(audit).toMatchObject({ reason: "Permintaan anggota lewat bantuan", actorAdminId: manager.admin.adminId });
+    expect(audit).toMatchObject({
+      reason: "Permintaan anggota lewat bantuan",
+      actorAdminId: manager.admin.adminId,
+    });
     expect(audit!.before).toMatchObject({ full_name: "Alumni Uji", avatar_removed: false });
     expect(audit!.after).toMatchObject({
       full_name: "Nama Dikoreksi",
@@ -460,20 +497,24 @@ describe("PATCH /admin/members/{userId} (PRD 2.3, 3.5, AC F15-4)", () => {
       const res = await patch(body, manager.token, fresh);
       expect(res.statusCode, JSON.stringify(body)).toBe(400);
     }
-    expect((await patch({ reason: "Tanpa If-Match", city: "Banjar" }, manager.token, "")).statusCode).toBe(400);
+    expect((await patch({ reason: "Tanpa If-Match", city: "Banjar" }, manager.token, "")).statusCode).toBe(
+      400,
+    );
 
     const readOnly = await adminWith(t, ["members.read"]);
     expect((await patch({ reason: "Coba", city: "Banjar" }, readOnly.token, fresh)).statusCode).toBe(403);
-    const self = await adminWith(t, ["members.read", "members.manage"], { linkedAlumniUserId: member.userId });
+    const self = await adminWith(t, ["members.read", "members.manage"], {
+      linkedAlumniUserId: member.userId,
+    });
     const own = await patch({ reason: "Ubah akun sendiri", city: "Banjar" }, self.token, fresh);
     expect(own.statusCode).toBe(403);
     expect(own.json().code).toBe("FORBIDDEN");
 
     const deleting = await createAlumni(t, { status: "verified", accountStatus: "deletion_pending" });
     const dv = (await detailOf(manager.token, deleting.userId)).version;
-    expect((await patch({ reason: "Koreksi", city: "Banjar" }, manager.token, dv, deleting.userId)).statusCode).toBe(
-      400,
-    );
+    expect(
+      (await patch({ reason: "Koreksi", city: "Banjar" }, manager.token, dv, deleting.userId)).statusCode,
+    ).toBe(400);
   });
 
   it("AC F05-6: koreksi identitas akun pending_otp (belum bernomor) tercatat member.identity_corrected tanpa nomor", async () => {
@@ -498,10 +539,20 @@ describe("PATCH /admin/members/{userId} (PRD 2.3, 3.5, AC F15-4)", () => {
 describe("POST /admin/members/{userId}/suspend dan /unsuspend (AC F12-3, F12-4, F12-5)", () => {
   const moderatorPermissions = ["members.read", "moderation.read", "moderation.resolve"] as const;
 
-  async function suspendCall(actor: AdminActor, userId: string, version: string, key = uuidv7(), body?: unknown) {
+  async function suspendCall(
+    actor: AdminActor,
+    userId: string,
+    version: string,
+    key = uuidv7(),
+    body?: unknown,
+  ) {
     return api().post(
       `/admin/members/${userId}/suspend`,
-      body ?? { reason: "Spam berulang di grup (uji)", member_message: "Akun Anda dibatasi karena spam.", confirm: true },
+      body ?? {
+        reason: "Spam berulang di grup (uji)",
+        member_message: "Akun Anda dibatasi karena spam.",
+        confirm: true,
+      },
       { token: actor.token, headers: { "if-match": version, "idempotency-key": key } },
     );
   }
@@ -546,12 +597,18 @@ describe("POST /admin/members/{userId}/suspend dan /unsuspend (AC F12-3, F12-4, 
       .select()
       .from(membershipEvents)
       .where(and(eq(membershipEvents.userId, member.userId), eq(membershipEvents.kind, "suspend")));
-    expect(event).toMatchObject({ actorAdminId: moderator.admin.adminId, reason: "Spam berulang di grup (uji)" });
+    expect(event).toMatchObject({
+      actorAdminId: moderator.admin.adminId,
+      reason: "Spam berulang di grup (uji)",
+    });
     const [audit] = await t.db
       .select()
       .from(auditLogs)
       .where(and(eq(auditLogs.action, "member.suspended"), eq(auditLogs.entityId, member.userId)));
-    expect(audit).toMatchObject({ actorAdminId: moderator.admin.adminId, reason: "Spam berulang di grup (uji)" });
+    expect(audit).toMatchObject({
+      actorAdminId: moderator.admin.adminId,
+      reason: "Spam berulang di grup (uji)",
+    });
     const [notice] = await t.db
       .select()
       .from(notifications)
@@ -589,7 +646,11 @@ describe("POST /admin/members/{userId}/suspend dan /unsuspend (AC F12-3, F12-4, 
     const v = (await detailOf(moderator.token, member.userId)).version;
     const res = await api().post(
       `/admin/members/${member.userId}/unsuspend`,
-      { reason: "Banding diterima setelah klarifikasi", member_message: "Terima kasih atas klarifikasinya.", confirm: true },
+      {
+        reason: "Banding diterima setelah klarifikasi",
+        member_message: "Terima kasih atas klarifikasinya.",
+        confirm: true,
+      },
       { token: moderator.token, headers: { "if-match": v, "idempotency-key": uuidv7() } },
     );
     expect(res.statusCode, res.body).toBe(200);
@@ -620,7 +681,10 @@ describe("POST /admin/members/{userId}/suspend dan /unsuspend (AC F12-3, F12-4, 
 
     // Belum pernah paid → unverified; tidak sedang dibatasi → 400.
     const unpaid = await createAlumni(t, { status: "suspended" });
-    await t.db.update(alumni).set({ startsAt: null, expiresAt: null }).where(eq(alumni.userId, unpaid.userId));
+    await t.db
+      .update(alumni)
+      .set({ startsAt: null, expiresAt: null })
+      .where(eq(alumni.userId, unpaid.userId));
     const uv = (await detailOf(moderator.token, unpaid.userId)).version;
     const unpaidRes = await api().post(
       `/admin/members/${unpaid.userId}/unsuspend`,
@@ -665,7 +729,10 @@ describe("POST /admin/members/{userId}/password-reset (F-16, AC F16-4)", () => {
 
     const res = await reset(superAdmin, member.userId);
     expect(res.statusCode, res.body).toBe(202);
-    const body = expectOperation("post", "/admin/members/{userId}/password-reset", res) as Record<string, unknown>;
+    const body = expectOperation("post", "/admin/members/{userId}/password-reset", res) as Record<
+      string,
+      unknown
+    >;
     expect(Object.keys(body).sort()).toEqual(["challenge_expires_at", "initiated_at", "sessions_revoked"]);
     expect(body.sessions_revoked).toBe(2);
     expect(body.challenge_expires_at).toBe(new Date(t.clock.now().getTime() + 10 * 60_000).toISOString());
@@ -686,7 +753,10 @@ describe("POST /admin/members/{userId}/password-reset (F-16, AC F16-4)", () => {
       .where(and(eq(otpCodes.userId, member.userId), eq(otpCodes.purpose, "password_reset")))
       .orderBy(desc(otpCodes.createdAt));
     const mail = t.mailer.sent.filter((m) => m.to === member.email).at(-1)!;
-    expect(mail).toMatchObject({ purpose: "password_reset", options: { adminInitiatedChallengeId: challenge!.id } });
+    expect(mail).toMatchObject({
+      purpose: "password_reset",
+      options: { adminInitiatedChallengeId: challenge!.id },
+    });
     expect(mail.text).toContain(`kapdh://app/forgot/otp?challenge_id=${challenge!.id}`);
     expect(mail.text).toContain(mail.code);
     expect(mail.text).not.toMatch(/https?:\/\//);
@@ -702,7 +772,9 @@ describe("POST /admin/members/{userId}/password-reset (F-16, AC F16-4)", () => {
     const [audit] = await t.db
       .select()
       .from(auditLogs)
-      .where(and(eq(auditLogs.action, "member.password_reset_initiated"), eq(auditLogs.entityId, member.userId)));
+      .where(
+        and(eq(auditLogs.action, "member.password_reset_initiated"), eq(auditLogs.entityId, member.userId)),
+      );
     expect(audit).toMatchObject({ actorAdminId: superAdmin.admin.adminId, effectiveRole: "super_admin" });
     expect(JSON.stringify(audit)).not.toContain(mail.code);
     expect(res.body).not.toContain(mail.code);
@@ -715,7 +787,10 @@ describe("POST /admin/members/{userId}/password-reset (F-16, AC F16-4)", () => {
       .orderBy(desc(outboxEvents.createdAt))
       .limit(1);
     expect(event!.dedupKey).not.toContain(challenge!.id);
-    expect(event).toMatchObject({ topic: "member.password_reset_initiated", payload: { user_id: member.userId } });
+    expect(event).toMatchObject({
+      topic: "member.password_reset_initiated",
+      payload: { user_id: member.userId },
+    });
     await t.jobs.dispatchOutbox();
     const [processed] = await t.db.select().from(outboxEvents).where(eq(outboxEvents.id, event!.id));
     expect(processed!.status).toBe("dispatched");
@@ -779,9 +854,7 @@ describe("POST /admin/members/{userId}/password-reset (F-16, AC F16-4)", () => {
     expect(expectOperation("post", "/admin/members/{userId}/password-reset", limited)).toMatchObject({
       code: "RATE_LIMITED",
     });
-    expect(
-      (await t.db.select().from(users).where(eq(users.id, member.userId)))[0]!.status,
-    ).toBe("active");
+    expect((await t.db.select().from(users).where(eq(users.id, member.userId)))[0]!.status).toBe("active");
   });
 });
 

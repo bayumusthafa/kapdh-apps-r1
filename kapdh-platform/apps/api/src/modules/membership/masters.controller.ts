@@ -34,7 +34,11 @@ export class MastersController {
             .select({ id: masterProfessions.id, label: masterProfessions.label })
             .from(masterProfessions)
             .where(eq(masterProfessions.active, true))
-            .orderBy(asc(masterProfessions.sortOrder), asc(masterProfessions.label), asc(masterProfessions.id))
+            .orderBy(
+              asc(masterProfessions.sortOrder),
+              asc(masterProfessions.label),
+              asc(masterProfessions.id),
+            )
         : await this.db
             .select({ id: masterSkills.id, label: masterSkills.label })
             .from(masterSkills)

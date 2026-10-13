@@ -38,11 +38,7 @@ const uuid = z
 
 /** Teks opsional yang dirapikan; kosong setelah dirapikan ditolak (minLength 1 kontrak). */
 const trimmedText = (max: number) =>
-  z
-    .string()
-    .trim()
-    .min(1, "Wajib diisi atau kosongkan dengan null")
-    .max(max, `Maksimal ${max} karakter`);
+  z.string().trim().min(1, "Wajib diisi atau kosongkan dengan null").max(max, `Maksimal ${max} karakter`);
 
 const phone = z.union([
   z
