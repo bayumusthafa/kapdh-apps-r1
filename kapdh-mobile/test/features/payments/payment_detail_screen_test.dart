@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kapdh_api/kapdh_api.dart';
 import 'package:kapdh_mobile/design/design.dart';
 import 'package:kapdh_mobile/features/payments/payment_presentation.dart';
+import 'package:kapdh_mobile/features/payments/payment_updates.dart';
 import 'package:kapdh_mobile/features/payments/proof_file.dart';
 import 'package:kapdh_mobile/features/payments/widgets/proof_upload_section.dart';
 
@@ -20,12 +22,16 @@ Future<AppHarness> openPayment(
   double textScale = 1,
   bool tall = true,
   bool settleAfter = true,
+  Stream<NotificationCreatedPayload>? updates,
 }) async {
   final app = await pumpApp(
     tester,
     tokens: savedTokens(),
     textScale: textScale,
-    overrides: [proofPickerProvider.overrideWithValue(picker ?? FakeProofPicker())],
+    overrides: [
+      proofPickerProvider.overrideWithValue(picker ?? FakeProofPicker()),
+      realtimeNotificationsProvider.overrideWithValue(updates ?? const Stream.empty()),
+    ],
     handler: apiRoutes({
       '/me': (_) => FakeResponse.json(200, me ?? meJson(status: status)),
       '/me/fees': (_) => FakeResponse.json(200, feesJson()),
@@ -468,6 +474,51 @@ void main() {
   });
 
   group('Hasil akhir dan penyesuaian', () {
+    testWidgets('AC F05-1, PRD 4.1: keputusan pengurus tiba lewat notifikasi realtime: layar menunggu menjadi lunas '
+        'dan status keanggotaan dimuat ulang', (tester) async {
+      final updates = StreamController<NotificationCreatedPayload>.broadcast();
+      addTearDown(updates.close);
+      var approved = false;
+      final paid = paymentJson(
+        status: 'paid',
+        stage: 'paid',
+        proofVersion: 1,
+        proofFileId: 'file-1',
+        decidedAt: testNow,
+        period: {'starts_at': iso(testNow), 'expires_at': iso(DateTime.utc(2027, 10, 12, 7))},
+        canSubmitProof: false,
+        canChangeMethod: false,
+        canCancel: false,
+      );
+      final app = await openPayment(
+        tester,
+        {
+          '/me': (_) => FakeResponse.json(200, {
+            ...meJson(status: approved ? 'verified' : 'unverified'),
+            'registration_payment': approved ? null : meMembershipPaymentJson(),
+          }),
+          '/me/payments/pay-1': (_) => FakeResponse.json(200, approved ? paid : awaitingReviewJson()),
+        },
+        updates: updates.stream,
+      );
+      expect(find.text('Bukti pembayaran sedang diperiksa'), findsOneWidget);
+      final meCalls = app.adapter.requestsTo('/me').length;
+
+      // Notifikasi kategori lain tidak memicu muat ulang.
+      updates.add(notificationOf('news', title: 'Berita baru'));
+      await settle(tester);
+      expect(app.adapter.requestsTo('/me/payments/pay-1'), hasLength(1));
+
+      approved = true;
+      updates.add(notificationOf('payment'));
+      await settle(tester);
+
+      expect(find.text('Iuran pendaftaran diterima'), findsOneWidget);
+      expect(find.bySemanticsLabel('Status: Lunas'), findsOneWidget);
+      expect(app.adapter.requestsTo('/me').length, greaterThan(meCalls));
+      expect(app.location, '/payments/pay-1');
+    });
+
     testWidgets('AC F05-1: iuran pendaftaran lunas: periode keanggotaan dan Lihat KTA', (tester) async {
       final app = await openPayment(tester, status: 'verified', {
         '/me/payments/pay-1': (_) => FakeResponse.json(
