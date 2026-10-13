@@ -386,7 +386,10 @@ components:
         avatar_url:
           type: [string, "null"]
           format: uri
-          description: URL foto (publik atau bertanda tangan maksimal 10 menit, PRD 5.4).
+          description: >-
+            URL foto (publik atau bertanda tangan maksimal 10 menit, PRD 5.4). Null bila belum ada foto, dan selalu
+            null selama anggota suspended karena URL privat tidak dapat dibuka penampil suspended (klien memakai
+            inisial).
         privacy: { $ref: "#/components/schemas/ProfilePrivacy" }
 
     ProfileUpdate:
@@ -552,7 +555,9 @@ components:
         avatar_url:
           type: [string, "null"]
           format: uri
-          description: Foto (publik atau bertanda tangan maksimal 10 menit); klien menyimpan salinan gambar untuk offline.
+          description: >-
+            Foto (publik atau bertanda tangan maksimal 10 menit); klien menyimpan salinan gambar untuk offline. Null
+            bila belum ada foto dan selalu null pada kartu `suspended` (klien memakai inisial).
         expires_at:
           type: [string, "null"]
           format: date-time
