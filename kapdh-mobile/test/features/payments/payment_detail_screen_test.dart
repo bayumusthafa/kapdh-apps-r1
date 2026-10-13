@@ -70,7 +70,9 @@ void main() {
   group('Instruksi bayar dan unggah bukti (prototipe layar 3)', () {
     testWidgets('AC F03-1: nominal server, rekening tujuan terpilih dengan salin, rekening lain dan langkah '
         'Pembayaran', (tester) async {
-      final app = await openPayment(tester, {'/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingTransferJson())});
+      final app = await openPayment(tester, {
+        '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingTransferJson()),
+      });
       final copied = captureClipboard(tester);
 
       expect(app.location, '/payments/pay-1');
@@ -184,8 +186,7 @@ void main() {
         'ulang, lalu dikirim ulang dengan key yang sama', (tester) async {
       var online = true;
       final app = await openPayment(tester, {
-        '/me/payments/pay-1': (_) =>
-            online ? FakeResponse.json(200, awaitingTransferJson()) : FakeResponse.network(),
+        '/me/payments/pay-1': (_) => online ? FakeResponse.json(200, awaitingTransferJson()) : FakeResponse.network(),
         '/files': (_) => FakeResponse.json(201, fileRefJson()),
         '/me/payments/pay-1/proof': (_) =>
             online ? FakeResponse.json(200, awaitingReviewJson(proofFileId: 'file-2')) : FakeResponse.network(),
@@ -291,54 +292,57 @@ void main() {
       expect(find.byType(UploadTile), findsNothing);
     });
 
-    testWidgets('PRD 4.5: tiket: batas kirim bukti; RESERVATION_EXPIRED menampilkan reservasi berakhir dan status terbaru', (
-      tester,
-    ) async {
-      final hold = testNow.add(const Duration(hours: 5));
-      Map<String, Object?> ticketRef(String status) => {
-        'ticket_id': 'tk-1',
-        'event_id': 'ev-1',
-        'event_title': 'Silaturahmi Akbar',
-        'event_starts_at': iso(testNow.add(const Duration(days: 10))),
-        'event_timezone': 'Asia/Jakarta',
-        'ticket_status': status,
-        'hold_expires_at': status == 'awaiting_payment' ? iso(hold) : null,
-        'event_status': 'open',
-        'ticket_cancelled_by': null,
-      };
-      await openPayment(tester, status: 'verified', {
-        '/me/payments/pay-1': (_) =>
-            FakeResponse.json(200, paymentJson(type: 'ticket', ticket: ticketRef('awaiting_payment'), canCancel: false)),
-        '/files': (_) => FakeResponse.json(201, fileRefJson()),
-        '/me/payments/pay-1/proof': (_) => FakeResponse.json(
-          409,
-          errorJson(
-            'RESERVATION_EXPIRED',
-            'Batas waktu reservasi sudah lewat.',
-            current: paymentJson(
-              type: 'ticket',
-              status: 'cancelled',
-              stage: 'cancelled',
-              ticket: ticketRef('expired'),
-              canSubmitProof: false,
-              canChangeMethod: false,
-              canCancel: false,
+    testWidgets(
+      'PRD 4.5: tiket: batas kirim bukti; RESERVATION_EXPIRED menampilkan reservasi berakhir dan status terbaru',
+      (tester) async {
+        final hold = testNow.add(const Duration(hours: 5));
+        Map<String, Object?> ticketRef(String status) => {
+          'ticket_id': 'tk-1',
+          'event_id': 'ev-1',
+          'event_title': 'Silaturahmi Akbar',
+          'event_starts_at': iso(testNow.add(const Duration(days: 10))),
+          'event_timezone': 'Asia/Jakarta',
+          'ticket_status': status,
+          'hold_expires_at': status == 'awaiting_payment' ? iso(hold) : null,
+          'event_status': 'open',
+          'ticket_cancelled_by': null,
+        };
+        await openPayment(tester, status: 'verified', {
+          '/me/payments/pay-1': (_) => FakeResponse.json(
+            200,
+            paymentJson(type: 'ticket', ticket: ticketRef('awaiting_payment'), canCancel: false),
+          ),
+          '/files': (_) => FakeResponse.json(201, fileRefJson()),
+          '/me/payments/pay-1/proof': (_) => FakeResponse.json(
+            409,
+            errorJson(
+              'RESERVATION_EXPIRED',
+              'Batas waktu reservasi sudah lewat.',
+              current: paymentJson(
+                type: 'ticket',
+                status: 'cancelled',
+                stage: 'cancelled',
+                ticket: ticketRef('expired'),
+                canSubmitProof: false,
+                canChangeMethod: false,
+                canCancel: false,
+              ),
             ),
           ),
-        ),
-      });
+        });
 
-      expect(find.text('Tiket Silaturahmi Akbar'), findsOneWidget);
-      expect(find.textContaining('Kirim bukti sebelum 12 Okt 2026, 19.00 WIB'), findsOneWidget);
-      await pickFromGallery(tester);
-      await submit(tester);
+        expect(find.text('Tiket Silaturahmi Akbar'), findsOneWidget);
+        expect(find.textContaining('Kirim bukti sebelum 12 Okt 2026, 19.00 WIB'), findsOneWidget);
+        await pickFromGallery(tester);
+        await submit(tester);
 
-      expect(find.text('Reservasi berakhir'), findsOneWidget);
-      await tester.tap(find.text('Tutup'));
-      await settle(tester);
-      expect(find.text('Instruksi pembayaran dibatalkan'), findsOneWidget);
-      expect(find.text('Lihat event'), findsOneWidget);
-    });
+        expect(find.text('Reservasi berakhir'), findsOneWidget);
+        await tester.tap(find.text('Tutup'));
+        await settle(tester);
+        expect(find.text('Instruksi pembayaran dibatalkan'), findsOneWidget);
+        expect(find.text('Lihat event'), findsOneWidget);
+      },
+    );
   });
 
   group('Menunggu verifikasi dan ganti bukti (prototipe layar 4)', () {
@@ -392,25 +396,26 @@ void main() {
       expect(find.textContaining('Bukti ke-2 akan diganti'), findsOneWidget);
     });
 
-    testWidgets('PRD 2.2: ACCOUNT_SUSPENDED saat kirim bukti: status dimuat ulang dan diarahkan ke portal pembatasan (PRD 2.2)', (
-      tester,
-    ) async {
-      var status = 'unverified';
-      final app = await openPayment(tester, {
-        '/me': (_) => FakeResponse.json(200, meJson(status: status)),
-        '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingTransferJson()),
-        '/files': (_) => FakeResponse.json(201, fileRefJson()),
-        '/me/payments/pay-1/proof': (_) {
-          status = 'suspended';
-          return FakeResponse.json(403, errorJson('ACCOUNT_SUSPENDED', 'Akun Anda sedang dibatasi.'));
-        },
-      });
+    testWidgets(
+      'PRD 2.2: ACCOUNT_SUSPENDED saat kirim bukti: status dimuat ulang dan diarahkan ke portal pembatasan (PRD 2.2)',
+      (tester) async {
+        var status = 'unverified';
+        final app = await openPayment(tester, {
+          '/me': (_) => FakeResponse.json(200, meJson(status: status)),
+          '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingTransferJson()),
+          '/files': (_) => FakeResponse.json(201, fileRefJson()),
+          '/me/payments/pay-1/proof': (_) {
+            status = 'suspended';
+            return FakeResponse.json(403, errorJson('ACCOUNT_SUSPENDED', 'Akun Anda sedang dibatasi.'));
+          },
+        });
 
-      await pickFromGallery(tester);
-      await submit(tester);
+        await pickFromGallery(tester);
+        await submit(tester);
 
-      expect(app.location, '/restricted');
-    });
+        expect(app.location, '/restricted');
+      },
+    );
   });
 
   group('Bukti ditolak (prototipe layar 5)', () {
@@ -490,17 +495,13 @@ void main() {
         canChangeMethod: false,
         canCancel: false,
       );
-      final app = await openPayment(
-        tester,
-        {
-          '/me': (_) => FakeResponse.json(200, {
-            ...meJson(status: approved ? 'verified' : 'unverified'),
-            'registration_payment': approved ? null : meMembershipPaymentJson(),
-          }),
-          '/me/payments/pay-1': (_) => FakeResponse.json(200, approved ? paid : awaitingReviewJson()),
-        },
-        updates: updates.stream,
-      );
+      final app = await openPayment(tester, {
+        '/me': (_) => FakeResponse.json(200, {
+          ...meJson(status: approved ? 'verified' : 'unverified'),
+          'registration_payment': approved ? null : meMembershipPaymentJson(),
+        }),
+        '/me/payments/pay-1': (_) => FakeResponse.json(200, approved ? paid : awaitingReviewJson()),
+      }, updates: updates.stream);
       expect(find.text('Bukti pembayaran sedang diperiksa'), findsOneWidget);
       final meCalls = app.adapter.requestsTo('/me').length;
 
@@ -517,6 +518,39 @@ void main() {
       expect(find.bySemanticsLabel('Status: Lunas'), findsOneWidget);
       expect(app.adapter.requestsTo('/me').length, greaterThan(meCalls));
       expect(app.location, '/payments/pay-1');
+    });
+
+    testWidgets('AC F03-4: pembayaran sudah diputus saat bukti hendak diganti: ditolak server, status terbaru tampil '
+        'tanpa pengulangan', (tester) async {
+      final paid = paymentJson(
+        status: 'paid',
+        stage: 'paid',
+        proofVersion: 1,
+        proofFileId: 'file-1',
+        decidedAt: testNow,
+        canSubmitProof: false,
+        canChangeMethod: false,
+        canCancel: false,
+      );
+      final app = await openPayment(tester, {
+        '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingReviewJson()),
+        '/files': (_) => FakeResponse.json(201, fileRefJson(id: 'file-3')),
+        '/me/payments/pay-1/proof': (_) => FakeResponse.json(
+          409,
+          errorJson('PAYMENT_STATE_CONFLICT', 'Pembayaran sudah diputus pengurus.', current: paid),
+        ),
+      });
+
+      await tester.tap(find.byKey(const ValueKey('proof-replace')));
+      await settle(tester);
+      await pickFromGallery(tester);
+      await submit(tester);
+
+      expect(app.adapter.requestsTo('/me/payments/pay-1/proof'), hasLength(1));
+      expect(find.text('Pembayaran sudah diputus pengurus.'), findsOneWidget);
+      expect(find.text('Iuran pendaftaran diterima'), findsOneWidget);
+      expect(find.byType(UploadTile), findsNothing);
+      expect(find.text('Ganti bukti'), findsNothing);
     });
 
     testWidgets('AC F05-1: iuran pendaftaran lunas: periode keanggotaan dan Lihat KTA', (tester) async {
@@ -545,6 +579,9 @@ void main() {
       expect(find.text('Masa aktif'), findsOneWidget);
       expect(find.text('12 Okt 2026 - 12 Okt 2027'), findsOneWidget);
       expect(find.text('Dana diverifikasi pengurus'), findsOneWidget);
+      // AC F03-4: transaksi paid tidak menawarkan penggantian bukti.
+      expect(find.byType(UploadTile), findsNothing);
+      expect(find.text('Ganti bukti'), findsNothing);
       await tester.tap(find.text('Lihat KTA'));
       await settle(tester);
       expect(app.location, '/kta');

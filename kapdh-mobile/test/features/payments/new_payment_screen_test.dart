@@ -46,9 +46,7 @@ List<String?> createKeys(AppHarness app) =>
 void main() {
   testWidgets('AC F03-1: instruksi iuran dibuat server dengan rekening aktif pertama dan Idempotency-Key, lalu layar '
       'instruksi menggantikan rute pembuatan', (tester) async {
-    final app = await openNew(tester, {
-      '/me/payments': (_) => FakeResponse.json(201, awaitingTransferJson()),
-    });
+    final app = await openNew(tester, {'/me/payments': (_) => FakeResponse.json(201, awaitingTransferJson())});
 
     final create = app.adapter.requestsTo('/me/payments').where((r) => r.method == 'POST').single;
     expect(create.method, 'POST');
@@ -66,7 +64,9 @@ void main() {
     final app = await openNew(tester, {
       '/me/fees': (_) => FakeResponse.json(
         200,
-        feesJson(registration: feeQuoteJson(type: 'registration', openPaymentId: 'pay-1')),
+        feesJson(
+          registration: feeQuoteJson(type: 'registration', openPaymentId: 'pay-1'),
+        ),
       ),
     });
 
@@ -84,7 +84,9 @@ void main() {
       },
       '/me/fees': (_) => FakeResponse.json(
         200,
-        feesJson(registration: feeQuoteJson(type: 'registration', openPaymentId: created ? 'pay-1' : null)),
+        feesJson(
+          registration: feeQuoteJson(type: 'registration', openPaymentId: created ? 'pay-1' : null),
+        ),
       ),
     });
 
@@ -172,9 +174,7 @@ void main() {
   testWidgets('D13: instruksi iuran disembunyikan untuk platform ini: tidak ada POST, arahan ke pengurus', (
     tester,
   ) async {
-    final app = await openNew(tester, {
-      '/me/fees': (_) => FakeResponse.json(200, feesJson(instructionsHidden: true)),
-    });
+    final app = await openNew(tester, {'/me/fees': (_) => FakeResponse.json(200, feesJson(instructionsHidden: true))});
 
     expect(createKeys(app), isEmpty);
     expect(find.byKey(const ValueKey('dues-hidden')), findsOneWidget);
@@ -191,9 +191,7 @@ void main() {
   });
 
   testWidgets('PRD 4.5: rekening tujuan belum diaktifkan pengurus: pesan spesifik dan kontak pengurus', (tester) async {
-    final app = await openNew(tester, {
-      '/payment-methods': (_) => FakeResponse.json(200, methodsJson(const [])),
-    });
+    final app = await openNew(tester, {'/payment-methods': (_) => FakeResponse.json(200, methodsJson(const []))});
 
     expect(createKeys(app), isEmpty);
     expect(find.text('Rekening tujuan belum tersedia'), findsOneWidget);

@@ -19,8 +19,10 @@ void main() {
     });
 
     test('nama unggahan selalu sesuai isi (server menolak ekstensi yang menyamarkan tipe)', () {
-      expect(const PickedProof(name: 'foto.png.exe', sizeBytes: 1, kind: ProofKind.png, path: '/x').uploadName,
-          'bukti-transfer.png');
+      expect(
+        const PickedProof(name: 'foto.png.exe', sizeBytes: 1, kind: ProofKind.png, path: '/x').uploadName,
+        'bukti-transfer.png',
+      );
       expect(ProofKind.pdf.mime, 'application/pdf');
     });
   });

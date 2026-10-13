@@ -1,4 +1,3 @@
-
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -104,9 +103,7 @@ Map<String, Object?> paymentJson({
   'created_at': iso(testNow.subtract(const Duration(minutes: 30))),
   'version': version,
   'actions': {'can_submit_proof': canSubmitProof, 'can_change_method': canChangeMethod, 'can_cancel': canCancel},
-  'events':
-      events ??
-      [paymentEventJson('created', at: testNow.subtract(const Duration(minutes: 30)))],
+  'events': events ?? [paymentEventJson('created', at: testNow.subtract(const Duration(minutes: 30)))],
   'adjustments': adjustments,
   'method_active': methodActive,
   'instructions_hidden': instructionsHidden,
@@ -182,8 +179,7 @@ Map<String, Object?> feesJson({
   bool instructionsHidden = false,
 }) => {
   'registration': registration ?? feeQuoteJson(type: 'registration'),
-  'renewal':
-      renewal ?? feeQuoteJson(type: 'renewal', eligible: false, ineligibleReason: 'registration_required'),
+  'renewal': renewal ?? feeQuoteJson(type: 'renewal', eligible: false, ineligibleReason: 'registration_required'),
   'period_months': 12,
   'settings_version': '4',
   'instructions_hidden': instructionsHidden,
