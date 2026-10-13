@@ -27,6 +27,11 @@ export interface HealthProbes {
 
 const PROBE_TIMEOUT_MS = 2_000;
 
+/** Umur tidak pernah negatif (selisih jam API/DB); null = tidak ada event (greatest() SQL mengabaikan NULL). */
+function nonNegative(value: number | null | undefined): number | null {
+  return value === null || value === undefined ? null : Math.max(0, Number(value));
+}
+
 /** Hasil kueri mentah: postgres-js mengembalikan array, PGlite `{rows}`. */
 function resultRows<T>(result: unknown): T[] {
   if (Array.isArray(result)) return result as T[];
@@ -62,21 +67,21 @@ export function createDbHealthProbes(db: SqlExecutor): HealthProbes {
           select
             count(*) filter (where status in ('pending', 'failed'))::int as pending,
             count(*) filter (where status = 'dead')::int as dead,
-            greatest(0, floor(extract(epoch from (${at}::timestamptz
-              - min(created_at) filter (where status in ('pending', 'failed'))))))::int as oldest_pending_age_seconds,
-            greatest(0, floor(extract(epoch from (${at}::timestamptz
+            floor(extract(epoch from (${at}::timestamptz
+              - min(created_at) filter (where status in ('pending', 'failed')))))::int as oldest_pending_age_seconds,
+            floor(extract(epoch from (${at}::timestamptz
               - min(next_attempt_at) filter (
                   where status in ('pending', 'failed') and next_attempt_at <= ${at}::timestamptz
                     and (locked_until is null or locked_until < ${at}::timestamptz)
-                )))))::int as oldest_due_lag_seconds
+                ))))::int as oldest_due_lag_seconds
           from app.outbox_events
           where status in ('pending', 'failed', 'dead')`),
       );
       return {
         pending: Number(row?.pending ?? 0),
         dead: Number(row?.dead ?? 0),
-        oldestPendingAgeSeconds: row?.oldest_pending_age_seconds ?? null,
-        oldestDueLagSeconds: row?.oldest_due_lag_seconds ?? null,
+        oldestPendingAgeSeconds: nonNegative(row?.oldest_pending_age_seconds),
+        oldestDueLagSeconds: nonNegative(row?.oldest_due_lag_seconds),
       };
     },
   };
