@@ -723,9 +723,16 @@ function masterFixtures(): MasterState[] {
   return [...professions, ...skills];
 }
 
+/** Kegagalan buatan (uji keadaan galat): permintaan yang cocok dijawab galat server `remaining` kali. */
+let failures: { method: string; path: RegExp; status: number; remaining: number }[] = [];
+/** Permintaan ditahan sampai dilepas (uji keadaan memuat). */
+let held: Promise<void> | null = null;
+
 export function reset(): void {
   memberRequests.length = 0;
   replays.clear();
+  failures = [];
+  held = null;
   eventSeq = 0;
   masterSeq = 100;
   masters = new Map(masterFixtures().map((m) => [m.id, m]));
@@ -902,7 +909,41 @@ export const mockMembers = {
     if (master.kind === "professions") m.profession_id = masterId;
     else if (!m.skill_ids.includes(masterId)) m.skill_ids = [...m.skill_ids, masterId];
   },
+  /** Permintaan `method` yang path-nya cocok dijawab galat server (bawaan 500) sebanyak `times` kali. */
+  fail(method: string, path: RegExp, status = 500, times = 1): void {
+    failures.push({ method, path, status, remaining: times });
+  },
+  /** Tahan semua permintaan anggota/master sampai fungsi yang dikembalikan dipanggil. */
+  hold(): () => void {
+    let release: () => void = () => undefined;
+    held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return () => {
+      held = null;
+      release();
+    };
+  },
 };
+
+/** Bungkus handler: tahanan dan kegagalan buatan diterapkan sebelum logika server tiruan. */
+function controlled(route: MockRoute): MockRoute {
+  return {
+    ...route,
+    handler: async (req) => {
+      if (held) await held;
+      const failure = failures.find(
+        (f) => f.method === req.method && f.path.test(req.path) && f.remaining > 0,
+      );
+      if (failure) {
+        failure.remaining -= 1;
+        log(req);
+        return error(failure.status, "INTERNAL_ERROR", "Terjadi kesalahan. Coba lagi.");
+      }
+      return route.handler(req);
+    },
+  };
+}
 
 /* ------------------------------------------------------------------------------------------------------------ */
 /* Validasi                                                                                                      */
@@ -1253,7 +1294,7 @@ function findMember(req: MockRequest): MemberState | undefined {
   return m && m.account_status !== "deleted" ? m : undefined;
 }
 
-export const routes: MockRoute[] = [
+const memberRoutes: MockRoute[] = [
   {
     method: "GET",
     path: "/admin/members",
@@ -1657,3 +1698,5 @@ export const routes: MockRoute[] = [
     },
   },
 ];
+
+export const routes: MockRoute[] = memberRoutes.map(controlled);
