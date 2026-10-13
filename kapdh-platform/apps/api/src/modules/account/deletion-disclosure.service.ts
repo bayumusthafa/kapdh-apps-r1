@@ -11,7 +11,7 @@ import {
   rooms,
   tickets,
 } from "@kapdh/database";
-import { and, asc, count, eq, gt, inArray, isNull, lte, ne, not, sql } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray, isNull, lte, ne, not, notExists, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Clock } from "../../core/adapters/clock.js";
 import type { DbOrTx } from "../../core/db/types.js";
@@ -243,8 +243,19 @@ export class DeletionDisclosureService {
           eq(roomMembers.role, "admin"),
           eq(rooms.kind, "group"),
           isNull(rooms.closedAt),
-          sql`not exists (select 1 from ${other} where ${other.roomId} = ${roomMembers.roomId}
-                and ${other.userId} <> ${userId} and ${other.status} = 'joined' and ${other.role} = 'admin')`,
+          notExists(
+            db
+              .select({ one: sql`1` })
+              .from(other)
+              .where(
+                and(
+                  eq(other.roomId, roomMembers.roomId),
+                  ne(other.userId, userId),
+                  eq(other.status, "joined"),
+                  eq(other.role, "admin"),
+                ),
+              ),
+          ),
         ),
       );
     return Number(row?.value ?? 0);
