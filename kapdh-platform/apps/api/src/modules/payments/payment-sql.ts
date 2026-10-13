@@ -1,5 +1,6 @@
 import { events, paymentAdjustments, payments, tickets } from "@kapdh/database";
 import { type AnyColumn, and, asc, count, desc, eq, gt, lt, or, type SQL, sql } from "drizzle-orm";
+import { z } from "zod";
 import type { DbOrTx } from "../../core/db/types.js";
 import { addBusinessDaysSql } from "./business-days.js";
 import type { ReviewRules } from "./payment-rules.js";
@@ -21,6 +22,20 @@ export function reviewDueSql(rules: ReviewRules): SQL<Date | null> {
     payments.submittedAt,
   ) as SQL<Date | null>;
 }
+
+const CANONICAL_ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+/**
+ * Kunci waktu di dalam cursor keyset: hanya bentuk kanonik `Date.toISOString()` (yang ditulis `cursorOf`) dengan
+ * tanggal sah tahun 1..9999. Cursor yang dimanipulasi (bukan tanggal, 31 Februari, tahun 0) gagal di validasi skema
+ * sehingga decodeCursor menjawab 400 VALIDATION_ERROR field `cursor` (kontrak root.yaml Cursor, PRD 7.3), bukan
+ * 500 dari cast `::timestamptz` PostgreSQL.
+ */
+export const cursorTimestamp = z.string().refine((value) => {
+  if (!CANONICAL_ISO.test(value)) return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime()) && date.getUTCFullYear() >= 1 && date.toISOString() === value;
+}, "Cursor tidak valid");
 
 /** Literal timestamptz untuk perbandingan SQL (presisi milidetik dari Clock aplikasi). */
 export function tsParam(at: Date): SQL {

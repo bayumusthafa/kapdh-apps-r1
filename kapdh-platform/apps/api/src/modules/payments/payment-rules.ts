@@ -65,6 +65,31 @@ export function methodSnapshotOf(row: PaymentMethodRow): MethodSnapshot {
   };
 }
 
+/**
+ * Bentuk tersimpan payments.method_snapshot: snapshot rekening tujuan yang berlaku ditambah `previous_method_ids`,
+ * yaitu metode yang pernah dirujuk payment ini sebelum anggota mengganti rekening tujuan (PRD 4.3, sebelum bukti).
+ * Daftar ini membuat AdminPaymentMethod.in_use bermakna "pernah dirujuk payment" secara permanen (AC F15-3): metode
+ * yang ditinggalkan tetap tidak dapat dihapus atau diubah identitas rekeningnya. Tidak pernah dikirim ke klien
+ * ({@link readMethodSnapshot} hanya membaca field kontrak).
+ */
+export interface StoredMethodSnapshot extends MethodSnapshot {
+  previous_method_ids?: string[];
+}
+
+/** Daftar metode yang pernah dirujuk sebelum snapshot diganti ke metode baru (urut kemunculan, tanpa duplikat). */
+export function previousMethodIdsAfterChange(
+  payment: Pick<PaymentRow, "methodSnapshot" | "paymentMethodId">,
+): string[] {
+  const raw = (payment.methodSnapshot ?? {}) as Partial<StoredMethodSnapshot>;
+  const earlier = Array.isArray(raw.previous_method_ids)
+    ? raw.previous_method_ids.filter((id): id is string => typeof id === "string")
+    : [];
+  const current = [raw.id, payment.paymentMethodId].filter(
+    (id): id is string => typeof id === "string" && id.length > 0,
+  );
+  return [...new Set([...earlier, ...current])];
+}
+
 /** Membaca snapshot metode tersimpan; data lama tanpa `id` memakai metode asal payment. */
 export function readMethodSnapshot(
   payment: Pick<PaymentRow, "methodSnapshot" | "paymentMethodId">,

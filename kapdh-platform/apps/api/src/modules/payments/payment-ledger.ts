@@ -30,6 +30,8 @@ import {
   methodSnapshotOf,
   type PaymentMethodRow,
   type PaymentRow,
+  previousMethodIdsAfterChange,
+  type StoredMethodSnapshot,
 } from "./payment-rules.js";
 
 export type PaymentEventKind = (typeof paymentEvents.$inferInsert)["kind"];
@@ -199,12 +201,19 @@ export class PaymentLedger {
     return row!;
   }
 
-  /** Mengganti snapshot rekening tujuan (nominal tetap) dan mencatat `method_changed`. */
+  /**
+   * Mengganti snapshot rekening tujuan (nominal tetap) dan mencatat `method_changed`. Metode sebelumnya disimpan di
+   * `previous_method_ids` snapshot sehingga tetap terhitung "pernah dirujuk" (AdminPaymentMethod.in_use, AC F15-3).
+   */
   async changeMethod(tx: Tx, locked: PaymentRow, method: PaymentMethodRow, at: Date): Promise<PaymentRow> {
+    const snapshot: StoredMethodSnapshot = {
+      ...methodSnapshotOf(method),
+      previous_method_ids: previousMethodIdsAfterChange(locked),
+    };
     const [row] = await tx
       .update(payments)
       .set({
-        methodSnapshot: methodSnapshotOf(method),
+        methodSnapshot: snapshot,
         paymentMethodId: method.id,
         version: sql`${payments.version} + 1`,
         updatedAt: at,
@@ -311,6 +320,9 @@ export class PaymentLedger {
         reason: outcome.refund.reason,
         createdByAdminId: null,
         at: input.at,
+        // Satu keputusan = satu notification_id (AC F13-1): permintaan rekening tujuan refund digabung ke
+        // notifikasi keputusan (notifyApproved), bukan notifikasi kedua.
+        notify: false,
       });
     await this.audit.write(tx, {
       action: input.auditAction ?? "payment.approved",
@@ -448,8 +460,9 @@ export class PaymentLedger {
   /**
    * Refund (payment_adjustments kind refund, pending) atas payment paid (D6, PRD 3.9). Total refund pending +
    * completed tidak pernah melebihi nominal payment; refund sistem (created_by null) yang sudah menutup nominal penuh
-   * tidak digandakan (idempoten bila handler/job diulang). Pemilik diberi notifikasi permintaan rekening tujuan.
-   * Pemanggil memegang kunci baris payment.
+   * tidak digandakan (idempoten bila handler/job diulang). Pemilik diberi notifikasi permintaan rekening tujuan,
+   * kecuali `notify` false: refund yang lahir dari keputusan approve memakai notifikasi keputusan itu sendiri (satu
+   * notification_id per keputusan pembayaran, AC F13-1). Pemanggil memegang kunci baris payment.
    */
   async recordRefund(
     tx: Tx,
@@ -462,6 +475,8 @@ export class PaymentLedger {
       at: Date;
       refundDestination?: { provider: string; account_number: string; account_holder: string } | null;
       evidenceFileId?: string | null;
+      /** false: tanpa notifikasi terpisah (pemanggil menyertakan permintaan rekening di notifikasinya). Bawaan true. */
+      notify?: boolean;
     },
   ): Promise<AdjustmentRow | null> {
     if (payment.status !== "paid") throw new Error("Refund hanya untuk payment paid");
@@ -513,11 +528,12 @@ export class PaymentLedger {
         has_refund_destination: Boolean(input.refundDestination),
       },
     });
-    await this.notifyOwner(tx, payment, {
-      dedupKey: `payment.refund_requested:${row!.id}`,
-      title: "Refund sedang diproses bendahara",
-      body: "Kirim rekening tujuan refund dari detail pembayaran agar bendahara dapat mentransfer dana Anda.",
-    });
+    if (input.notify !== false)
+      await this.notifyOwner(tx, payment, {
+        dedupKey: `payment.refund_requested:${row!.id}`,
+        title: "Refund sedang diproses bendahara",
+        body: "Kirim rekening tujuan refund dari detail pembayaran agar bendahara dapat mentransfer dana Anda.",
+      });
     return row!;
   }
 
@@ -569,6 +585,11 @@ export class PaymentLedger {
     });
   }
 
+  /**
+   * Notifikasi keputusan approve, tepat satu per keputusan (AC F13-1, dedup `payment.approved:<id>`). Bila keputusan
+   * melahirkan refund sistem D6 (tiket sudah dibatalkan), notifikasi ini sekaligus meminta rekening tujuan refund
+   * (kontrak adminDecidePayment/adminCreatePaymentAdjustment), dengan deep link yang sama `/payments/{id}`.
+   */
   private async notifyApproved(tx: Tx, paid: PaymentRow, refund: AdjustmentRow | null): Promise<void> {
     const dedupKey = `payment.approved:${paid.id}`;
     if (paid.type === "ticket") {
@@ -578,11 +599,15 @@ export class PaymentLedger {
       const issued = ticket?.status === "paid";
       await this.notifyOwner(tx, paid, {
         dedupKey,
-        title: issued ? "Pembayaran tiket disetujui" : "Dana tiket diterima",
+        title: issued
+          ? "Pembayaran tiket disetujui"
+          : refund
+            ? "Dana tiket diterima, refund sedang diproses bendahara"
+            : "Dana tiket diterima",
         body: issued
           ? "Dana sudah diverifikasi pengurus dan tiket Anda terbit. Buka tiket untuk melihat QR."
           : refund
-            ? "Dana sudah diterima, tetapi tiket sudah dibatalkan sehingga refund penuh diproses bendahara."
+            ? "Tiket sudah dibatalkan sehingga dana dikembalikan penuh. Kirim rekening tujuan refund dari detail pembayaran agar bendahara dapat mentransfer dana Anda."
             : "Dana sudah diterima, tetapi tiket tidak aktif. Hubungi kontak dukungan untuk penyelesaiannya.",
       });
       return;

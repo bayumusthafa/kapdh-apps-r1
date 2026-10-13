@@ -33,30 +33,48 @@ export interface IdempotentOptions {
   publicResponsePaths?: readonly string[];
   /**
    * Bentuk body yang DISIMPAN untuk diputar ulang. Dipakai bila respons boleh memuat data yang tidak boleh disalin ke
-   * idempotency_keys (mis. rekening tujuan refund, D2 dan ARCHITECTURE §2.3): replay mengembalikan versi tersaring.
+   * idempotency_keys (mis. rekening tujuan refund, D2 dan ARCHITECTURE §2.3): replay mengembalikan versi tersaring
+   * (kontrak operasi wajib menyebutkannya). Penyaring mengganti nilai rahasia dengan null; hanya pada endpoint dengan
+   * `storedBody` kunci sensitif bernilai null dianggap kosong saat pemeriksaan rahasia (tanpa opsi: perilaku semula,
+   * kunci sensitif bernilai apa pun membuat hasil tidak disimpan).
    */
   storedBody?: (body: unknown) => unknown;
 }
 
+/** Opsi {@link containsSecretKeys}. */
+export interface SecretScanOptions {
+  /** Path yang dikecualikan (lihat {@link IdempotentOptions.publicResponsePaths}). */
+  publicPaths?: readonly string[];
+  /**
+   * true: kunci sensitif bernilai null/undefined tidak dihitung (body hasil {@link IdempotentOptions.storedBody}).
+   * Bawaan false.
+   */
+  ignoreNullValues?: boolean;
+}
+
 /**
- * true bila body respons memuat kunci rahasia (token, secret, kode, rekening refund) bernilai di kedalaman mana pun.
- * Kunci rahasia bernilai null/undefined tidak memuat data sehingga tidak dihitung. `publicPaths` dikecualikan
- * (lihat {@link IdempotentOptions.publicResponsePaths}).
+ * true bila body respons memuat kunci rahasia (token, secret, kode, rekening refund) di kedalaman mana pun, kecuali
+ * path `publicPaths`; dengan `ignoreNullValues` kunci rahasia bernilai null/undefined tidak dihitung.
  */
-export function containsSecretKeys(
+export function containsSecretKeys(value: unknown, options: SecretScanOptions = {}): boolean {
+  return scanSecrets(value, 0, options.publicPaths ?? [], options.ignoreNullValues === true, []);
+}
+
+function scanSecrets(
   value: unknown,
-  depth = 0,
-  publicPaths: readonly string[] = [],
-  path: readonly string[] = [],
+  depth: number,
+  publicPaths: readonly string[],
+  ignoreNull: boolean,
+  path: readonly string[],
 ): boolean {
   if (depth > 8 || value === null || typeof value !== "object") return false;
   if (Array.isArray(value))
-    return value.some((item) => containsSecretKeys(item, depth + 1, publicPaths, [...path, "*"]));
+    return value.some((item) => scanSecrets(item, depth + 1, publicPaths, ignoreNull, [...path, "*"]));
   return Object.entries(value as Record<string, unknown>).some(([key, inner]) => {
-    if (inner === null || inner === undefined) return false;
     const childPath = [...path, key];
-    if (isSensitiveAuditKey(key) && !publicPaths.includes(childPath.join("."))) return true;
-    return containsSecretKeys(inner, depth + 1, publicPaths, childPath);
+    if (isSensitiveAuditKey(key) && !publicPaths.includes(childPath.join(".")))
+      return !(ignoreNull && (inner === null || inner === undefined));
+    return scanSecrets(inner, depth + 1, publicPaths, ignoreNull, childPath);
   });
 }
 
@@ -107,7 +125,11 @@ export class IdempotencyInterceptor implements NestInterceptor {
         const toStore = body !== undefined && options.storedBody ? options.storedBody(body) : body;
         const stored = toStore === undefined ? null : (JSON.parse(JSON.stringify(toStore)) as unknown);
         const success = reply.statusCode >= 200 && reply.statusCode < 300;
-        if (success && containsSecretKeys(stored, 0, options.publicResponsePaths ?? [])) {
+        const secret = containsSecretKeys(stored, {
+          publicPaths: options.publicResponsePaths ?? [],
+          ignoreNullValues: options.storedBody !== undefined,
+        });
+        if (success && secret) {
           request.log.error({ endpoint }, "endpoint @Idempotent mengembalikan rahasia; hasil tidak disimpan");
           await this.idempotency.abandon(recordId);
         } else if (success) await this.idempotency.complete(recordId, reply.statusCode, stored);

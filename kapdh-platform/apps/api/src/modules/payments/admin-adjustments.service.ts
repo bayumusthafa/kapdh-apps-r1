@@ -16,7 +16,7 @@ import { adminViewerOf, conflictOfInterestError } from "./admin-payments.service
 import { fromCents, MONEY_INPUT_PATTERN, toCents } from "./money.js";
 import { PaymentLedger, paymentStateConflict } from "./payment-ledger.js";
 import { type AdjustmentRow, type PaymentRow, refundDueAt } from "./payment-rules.js";
-import { escapeLike, nullableKeysetAfter, nullableOrderBy, tsParam } from "./payment-sql.js";
+import { cursorTimestamp, escapeLike, nullableKeysetAfter, nullableOrderBy, tsParam } from "./payment-sql.js";
 import {
   type AdminPaymentAdjustmentDto,
   type AdminViewer,
@@ -75,11 +75,14 @@ export const adjustmentListQuery = z.object({
   sort: z.enum(["due_at_asc", "created_at_desc"]).optional(),
 });
 
-const cursorSchema = z.object({
-  s: z.enum(["due_at_asc", "created_at_desc"]),
-  k: z.string().nullable(),
-  id: z.uuid(),
-});
+/** Cursor keyset; `created_at` tidak pernah null sehingga cursor `created_at_desc` wajib berkunci waktu. */
+const cursorSchema = z
+  .object({
+    s: z.enum(["due_at_asc", "created_at_desc"]),
+    k: cursorTimestamp.nullable(),
+    id: z.uuid(),
+  })
+  .refine((cursor) => cursor.s !== "created_at_desc" || cursor.k !== null);
 
 /**
  * Penyesuaian refund dan koreksi atas payment paid (PRD 3.4, 4.3, D6, D2): paid tidak pernah diubah; penyesuaian
@@ -176,7 +179,8 @@ export class AdminAdjustmentsService {
         k: (sort === "due_at_asc" ? row.adjustment.dueAt : row.adjustment.createdAt)?.toISOString() ?? null,
         id: row.adjustment.id,
       }),
-      toItem: (row) => this.views.adminAdjustment(row, viewer, now),
+      // Daftar tidak pernah memuat rekening tujuan refund, juga bagi pemegang payments.decide (kontrak, D2).
+      toItem: (row) => this.views.adminAdjustment(row, viewer, now, { listing: true }),
     });
   }
 

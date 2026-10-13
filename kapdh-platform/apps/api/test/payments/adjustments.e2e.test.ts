@@ -352,6 +352,44 @@ describe("Siklus refund: rekening tujuan, selesai, batal (D2, D6, PRD 10.2)", ()
 });
 
 describe("GET /admin/payment-adjustments (D6)", () => {
+  it("D2: daftar tidak pernah memuat rekening tujuan refund, juga bagi pemegang payments.decide; detail tetap memuatnya", async () => {
+    const { admin, paymentId } = await paidPayment();
+    const created = await api().post(
+      `/admin/payments/${paymentId}/adjustments`,
+      {
+        kind: "refund",
+        amount: "60000.00",
+        reason: "Refund penuh",
+        refund_destination: { provider: "BRI", account_number: "5566778899", account_holder: "Penerima" },
+      },
+      { token: admin.token },
+    );
+    expect(created.statusCode).toBe(201);
+    const id = created.json().id as string;
+    for (const sort of ["due_at_asc", "created_at_desc"]) {
+      const list = await api().get("/admin/payment-adjustments", {
+        token: admin.token,
+        query: { payment_id: paymentId, sort },
+      });
+      const page = expectOperation("get", "/admin/payment-adjustments", list) as { items: JsonBody[] };
+      expect(page.items).toEqual([
+        expect.objectContaining({ id, has_refund_destination: true, refund_destination: null }),
+      ]);
+      expect(list.body).not.toContain("5566778899");
+    }
+    const filtered = await api().get("/admin/payment-adjustments", {
+      token: admin.token,
+      query: { has_refund_destination: "true", payment_id: paymentId },
+    });
+    expect(filtered.json().items.map((item: { id: string }) => item.id)).toEqual([id]);
+    expect(filtered.body).not.toContain("5566778899");
+    // Detail satu penyesuaian dan AdminPaymentDetail.adjustments (pemutus tanpa konflik kepentingan) tetap memuatnya.
+    const detail = (await api().get(`/admin/payment-adjustments/${id}`, { token: admin.token })).json();
+    expect(detail.refund_destination).toMatchObject({ account_number: "5566778899" });
+    const payment = (await api().get(`/admin/payments/${paymentId}`, { token: admin.token })).json();
+    expect(payment.adjustments[0].refund_destination).toMatchObject({ account_number: "5566778899" });
+  });
+
   it("D6: urut tenggat terdekat, overdue setelah 7 hari kerja, saring rekening tujuan dan jenis, total", async () => {
     const t2 = await createPaymentsApp();
     const local = t;

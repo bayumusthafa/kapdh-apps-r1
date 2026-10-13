@@ -40,6 +40,16 @@ export type PaymentMethodInput = z.infer<typeof paymentMethodInputSchema>;
 
 export const methodListQuery = z.object({ active: queryBool().optional() });
 
+/**
+ * Cursor keyset daftar metode dalam rentang kolom skema (sort_order smallint): cursor yang dimanipulasi menjadi
+ * 400 VALIDATION_ERROR field `cursor`, bukan 500 overflow smallint (kontrak root.yaml Cursor, PRD 7.3).
+ */
+const methodCursorSchema = z.object({
+  sort_order: z.number().int().min(-32768).max(32767),
+  provider: z.string().min(1).max(256),
+  id: z.uuid(),
+});
+
 /** Identitas rekening yang dikunci setelah metode dipakai payment (kontrak adminUpdatePaymentMethod). */
 const IDENTITY_FIELDS = ["kind", "provider", "account_number", "account_holder"] as const;
 
@@ -61,12 +71,7 @@ export class AdminPaymentMethodsService {
     const page = parsePageQuery(query);
     const filters = validateQuery(methodListQuery, query);
     const where = filters.active === undefined ? undefined : eq(paymentMethods.active, filters.active);
-    const after = page.cursor
-      ? decodeCursor(
-          page.cursor,
-          z.object({ sort_order: z.number().int(), provider: z.string(), id: z.uuid() }),
-        )
-      : null;
+    const after = page.cursor ? decodeCursor(page.cursor, methodCursorSchema) : null;
     const rows = await this.db
       .select({ method: paymentMethods, inUse: this.inUseSql() })
       .from(paymentMethods)
@@ -217,11 +222,11 @@ export class AdminPaymentMethodsService {
   }
 
   /**
-   * Dirujuk payment (kontrak AdminPaymentMethod.in_use): sebagai metode asal yang tertaut (`payment_method_id`) atau
-   * sebagai snapshot rekening tujuan (`method_snapshot.id`, termasuk payment yang tautannya sudah kosong). Selama ada
-   * rujukan, identitas rekening dikunci sehingga tidak ada snapshot yang diam-diam berbeda dari rekening berlaku
-   * (AC F15-3). Metode yang sudah ditinggalkan semua payment (anggota mengganti rekening sebelum bukti, PRD 4.3) tidak
-   * lagi dirujuk snapshot mana pun.
+   * PERNAH dirujuk payment (kontrak AdminPaymentMethod.in_use "Pernah dirujuk payment"): sebagai metode yang tertaut
+   * (`payment_method_id`), sebagai snapshot rekening tujuan (`method_snapshot.id`, termasuk payment yang tautannya
+   * sudah kosong), atau sebagai metode yang ditinggalkan saat anggota mengganti rekening sebelum bukti
+   * (`method_snapshot.previous_method_ids`, PRD 4.3). Rujukan ini permanen, sehingga identitas rekening tetap terkunci
+   * dan metode hanya dapat dinonaktifkan, tidak dihapus (AC F15-3).
    */
   private async inUse(db: DbOrTx, methodId: string): Promise<boolean> {
     const [row] = await db
@@ -242,11 +247,15 @@ export class AdminPaymentMethodsService {
   }
 }
 
-/** Payment merujuk metode lewat payment_method_id atau snapshot `method_snapshot.id`. */
+/**
+ * Payment pernah merujuk metode lewat payment_method_id, snapshot `method_snapshot.id`, atau
+ * `method_snapshot.previous_method_ids` (StoredMethodSnapshot di payment-rules.ts).
+ */
 function referencesMethod(methodId: SQL | typeof paymentMethods.id): SQL {
   return or(
     eq(payments.paymentMethodId, methodId),
     sql`(${payments.methodSnapshot} ->> 'id') = (${methodId})::text`,
+    sql`coalesce(${payments.methodSnapshot} -> 'previous_method_ids', '[]'::jsonb) @> jsonb_build_array((${methodId})::text)`,
   )!;
 }
 
