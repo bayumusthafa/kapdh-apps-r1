@@ -101,6 +101,9 @@ describe("N-02 / AC F11-2: penyampaian message.created sesudah commit", () => {
     const c = await member(t);
     const outsider = await member(t);
     await setAvatar(t, admin);
+    // Pemilik avatar disembunyikan dari direktori agar hanya kebijakan akses chat yang berlaku: kebijakan avatar
+    // direktori (modul network) sah memberi akses kepada anggota aktif mana pun selama profil tampil di direktori.
+    await t.db.update(alumni).set({ showInDirectory: false }).where(eq(alumni.userId, admin.userId));
     const roomId = await groupWith(t, admin, [b, c], "Grup Foto Realtime");
     const bTabletSession = await signInAlumni(t, b);
     const [bPhone, bTablet, cSocket, outsiderSocket] = [
