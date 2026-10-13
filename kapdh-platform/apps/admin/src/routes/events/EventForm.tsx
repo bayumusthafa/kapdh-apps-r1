@@ -1,13 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, Save, TriangleAlert } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, FormProvider, useController, useForm } from "react-hook-form";
 import { api } from "../../api/client";
 import { useApiMutation } from "../../api/query";
 import { Button } from "../../components/ui/Button";
 import { Card, CardHeader } from "../../components/ui/Card";
 import { Switch } from "../../components/ui/Choice";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { DateTimeField, MoneyField } from "../../components/ui/FormatFields";
 import { FormError, FormField } from "../../components/ui/FormField";
 import { Input, Select, Textarea } from "../../components/ui/Input";
@@ -60,6 +61,9 @@ function coverFromDetail(e: AdminEventDetail | undefined): CoverValue | null {
   return e?.cover_file_id ? { fileId: e.cover_file_id, url: e.cover_url } : null;
 }
 
+/** Simpan ditahan selama cover diunggah: menyimpan lebih dulu akan melepas cover baru tanpa pemberitahuan. */
+export const COVER_UPLOAD_WAIT = "Gambar cover masih diunggah. Tunggu sampai selesai, lalu simpan lagi.";
+
 /**
  * Formulir buat/ubah event (F-15, guideline p14: informasi, kategori, lokasi, gambar, periode pendaftaran, total
  * tiket). Waktu diketik sebagai jam dinding zona event dan dikirim sebagai ISO UTC (PRD 2.1).
@@ -68,7 +72,10 @@ function coverFromDetail(e: AdminEventDetail | undefined): CoverValue | null {
  *   lain (409 VERSION_CONFLICT atau versi baru terlihat), formulir TIDAK menimpa diam-diam: admin ditawari memuat
  *   versi terbaru (AC F15-4). Kuota di bawah kursi ditahan + terbayar ditolak server dengan galat di isian kuota
  *   dan batas terbaru ditampilkan (AC F15-2).
- * - Harga dikunci setelah event memiliki tiket: tiket/payment yang sudah ada memakai harga snapshot (PRD 4.4).
+ * - Harga tetap dapat diubah (kontrak adminUpdateEvent): harga baru hanya berlaku untuk reservasi baru, tiket dan
+ *   payment yang sudah dibuat memakai total snapshot (PRD 4.4, AC F03-5). Pada event bertiket, perubahan harga
+ *   meminta konfirmasi yang menjelaskan hal itu.
+ * - Simpan ditahan selama gambar cover masih diunggah agar cover baru tidak hilang tanpa pemberitahuan.
  */
 export function EventForm({
   mode,
@@ -97,7 +104,17 @@ export function EventForm({
     resolver: zodResolver(schema),
     defaultValues: detail ? formFromDetail(detail) : emptyEventForm(),
   });
-  const lockPrice = mode === "edit" && Boolean(detail?.has_tickets);
+  /** Event sudah memiliki tiket: perubahan harga hanya berlaku untuk reservasi baru (PRD 4.4). */
+  const hasTickets = mode === "edit" && Boolean(detail?.has_tickets);
+  const [coverUploading, setCoverUploading] = useState(false);
+  /** Admin mencoba menyimpan saat cover masih diunggah. */
+  const [waitUpload, setWaitUpload] = useState(false);
+  /** PATCH berisi perubahan harga event bertiket yang menunggu konfirmasi. */
+  const [priceConfirm, setPriceConfirm] = useState<{
+    patch: ReturnType<typeof toUpdateRequest>;
+    version: string;
+    from: string;
+  } | null>(null);
   const timezone = form.watch("timezone");
   const customCheckin = form.watch("custom_checkin");
 
@@ -125,6 +142,10 @@ export function EventForm({
   useEffect(() => {
     if (stale) staleRef.current?.focus();
   }, [stale]);
+
+  useEffect(() => {
+    if (!coverUploading) setWaitUpload(false);
+  }, [coverUploading]);
 
   function reloadLatest() {
     if (!stale) return;
@@ -169,11 +190,13 @@ export function EventForm({
       } else void queryClient.invalidateQueries({ queryKey: eventKeys.detail(base!.id) });
     },
     onError: (err) => {
+      setPriceConfirm(null);
       // AC F15-2: kuota di bawah held+paid -> 409 VALIDATION_ERROR dengan `current`; batas terbaru ditampilkan.
       const latest = err.code === "VALIDATION_ERROR" ? currentEventDetail(err.current) : null;
       if (latest) storeEventDetail(queryClient, latest);
     },
     onSuccess: (saved, { patch }) => {
+      setPriceConfirm(null);
       storeEventDetail(queryClient, saved);
       setBase(saved);
       setCover(coverFromDetail(saved));
@@ -197,13 +220,28 @@ export function EventForm({
       return;
     }
     if (!base) return;
-    const patch = toUpdateRequest(base, values, { lockPrice });
+    const patch = toUpdateRequest(base, values);
     if (Object.keys(patch).length === 0) {
       toast.info("Tidak ada perubahan untuk disimpan.");
       return;
     }
+    // PRD 4.4, AC F03-5: tiket dan payment yang sudah dibuat tetap memakai harga saat dipesan; admin diberi tahu
+    // sebelum harga event bertiket berubah.
+    if ("price" in patch && base.has_tickets) {
+      setPriceConfirm({ patch, version: base.version, from: base.price });
+      return;
+    }
     update.mutate({ patch, version: base.version });
   });
+
+  function submitForm(e: FormEvent<HTMLFormElement>) {
+    if (coverUploading) {
+      e.preventDefault();
+      setWaitUpload(true);
+      return;
+    }
+    void onSubmit(e);
+  }
 
   function changeZone(next: string) {
     const prev = form.getValues("timezone");
@@ -232,7 +270,7 @@ export function EventForm({
     <FormProvider {...form}>
       <form
         noValidate
-        onSubmit={(e) => void onSubmit(e)}
+        onSubmit={submitForm}
         className="flex flex-col gap-5"
         aria-label={mode === "create" ? "Formulir event baru" : "Formulir ubah event"}
       >
@@ -313,7 +351,12 @@ export function EventForm({
               />
             )}
           </FormField>
-          <CoverFormField cover={cover} disabled={pending} onCoverChange={setCover} />
+          <CoverFormField
+            cover={cover}
+            disabled={pending}
+            onCoverChange={setCover}
+            onUploadingChange={setCoverUploading}
+          />
         </Section>
 
         <Section title="Lokasi" description="Ditampilkan kepada peserta beserta tautan peta.">
@@ -453,8 +496,8 @@ export function EventForm({
               label="Harga tiket"
               required
               hint={
-                lockPrice
-                  ? `Harga terkunci (${formatRupiah(detail?.price)}) karena event sudah memiliki tiket; tiket dan pembayaran yang ada memakai harga saat dipesan.`
+                hasTickets
+                  ? `Event sudah memiliki tiket: harga baru hanya berlaku untuk reservasi baru. Tiket dan pembayaran yang sudah dibuat tetap memakai harga saat dipesan (sekarang ${formatRupiah(base?.price)}).`
                   : "Isi 0 untuk event gratis: tiket langsung lunas tanpa pembayaran."
               }
             >
@@ -466,8 +509,6 @@ export function EventForm({
                   onBlur={field.onBlur}
                   value={field.value}
                   onValueChange={field.onChange}
-                  readOnly={lockPrice}
-                  aria-readonly={lockPrice || undefined}
                   disabled={pending}
                 />
               )}
@@ -489,6 +530,11 @@ export function EventForm({
           </div>
         </Section>
 
+        {waitUpload ? (
+          <p role="alert" className="rounded-md bg-warning-bg p-3 text-sm font-medium text-warning">
+            {COVER_UPLOAD_WAIT}
+          </p>
+        ) : null}
         <div className="flex flex-wrap justify-end gap-3">
           <Button variant="outline" onClick={onCancel} disabled={pending}>
             Batal
@@ -506,6 +552,32 @@ export function EventForm({
           </Button>
         </div>
       </form>
+      <ConfirmDialog
+        open={priceConfirm !== null}
+        tone="primary"
+        onCancel={() => setPriceConfirm(null)}
+        onConfirm={() => {
+          if (priceConfirm) update.mutate({ patch: priceConfirm.patch, version: priceConfirm.version });
+        }}
+        pending={update.isPending}
+        title="Ubah harga tiket?"
+        description={
+          priceConfirm
+            ? `Harga berubah dari ${formatRupiah(priceConfirm.from)} menjadi ${formatRupiah(priceConfirm.patch.price)}.`
+            : undefined
+        }
+        confirmLabel="Simpan harga baru"
+      >
+        <ul className="list-inside list-disc space-y-1 text-sm">
+          <li>Harga baru hanya berlaku untuk reservasi baru.</li>
+          <li>
+            Tiket dan pembayaran yang sudah dibuat
+            {base ? ` (ditahan ${base.held_quantity}, terbayar ${base.paid_quantity})` : ""} tetap memakai
+            harga saat dipesan; tidak ada tagihan tambahan atau refund selisih.
+          </li>
+          <li>Anggota yang masih melihat harga lama diminta memuat ulang sebelum memesan.</li>
+        </ul>
+      </ConfirmDialog>
     </FormProvider>
   );
 }
@@ -515,10 +587,12 @@ function CoverFormField({
   cover,
   disabled,
   onCoverChange,
+  onUploadingChange,
 }: {
   cover: CoverValue | null;
   disabled?: boolean;
   onCoverChange: (value: CoverValue | null) => void;
+  onUploadingChange: (uploading: boolean) => void;
 }) {
   const { field, fieldState } = useController<EventFormValues, "cover_file_id">({ name: "cover_file_id" });
   return (
@@ -526,6 +600,7 @@ function CoverFormField({
       value={cover}
       error={fieldState.error?.message}
       disabled={disabled}
+      onUploadingChange={onUploadingChange}
       buttonRef={field.ref}
       onChange={(next) => {
         onCoverChange(next);

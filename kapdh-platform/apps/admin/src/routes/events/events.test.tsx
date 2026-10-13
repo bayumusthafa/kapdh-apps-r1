@@ -1,9 +1,11 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { mockAuth } from "../../api/mocks";
-import { eventRequests, MOCK_EVENT_IDS, mockEvents } from "../../api/mocks/events";
+import { eventRequests, MOCK_EVENT_CATEGORY_IDS, MOCK_EVENT_IDS, mockEvents } from "../../api/mocks/events";
 import { findToast, renderApp, signIn, type User } from "../../test/utils";
+import { eventKeys } from "./api";
+import { COVER_UPLOAD_WAIT } from "./EventForm";
 
 /**
  * Manajemen Event & Tiket (F-09, F-15, guideline p14) pada server tiruan. Mock bukan bukti AC sisi server
@@ -314,19 +316,99 @@ describe("detail event (F-09, F-15)", () => {
     expect(screen.queryByText(/sudah diubah di tempat lain/)).toBeNull();
   });
 
-  it("PRD 4.4: harga terkunci setelah event memiliki tiket dan tidak ikut dikirim", async () => {
+  it("PRD 4.4, AC F03-5: harga event bertiket dapat diubah (kontrak adminUpdateEvent) setelah konfirmasi bahwa tiket lama memakai harga saat dipesan", async () => {
     const user = userEvent.setup();
     await open(user, `/events/${MOCK_EVENT_IDS.reuni}?tab=edit`, REUNI);
     const price = await screen.findByLabelText(/^Harga tiket/);
-    expect(price).toHaveAttribute("readonly");
-    expect(screen.getByText(/Harga terkunci \(Rp60\.000\)/)).toBeInTheDocument();
-    await user.type(screen.getByLabelText(/^Nama lokasi/), " Pekanbaru");
+    expect(price).not.toHaveAttribute("readonly");
+    expect(screen.getByText(/harga baru hanya berlaku untuk reservasi baru/)).toBeInTheDocument();
+    await user.clear(price);
+    await user.type(price, "75000");
+    await user.click(screen.getByRole("button", { name: "Simpan perubahan" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Ubah harga tiket?" });
+    expect(within(dialog).getByText(/dari Rp60\.000 menjadi Rp75\.000/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/tetap memakai harga saat dipesan/)).toBeInTheDocument();
+    expect(requests("PATCH", `/admin/events/${MOCK_EVENT_IDS.reuni}`)).toHaveLength(0);
+    await user.click(within(dialog).getByRole("button", { name: "Simpan harga baru" }));
+    await findToast("success", "Perubahan event disimpan.");
+    expect(requests("PATCH", `/admin/events/${MOCK_EVENT_IDS.reuni}`)[0]?.body).toEqual({
+      price: "75000.00",
+    });
+    expect(mockEvents.event(MOCK_EVENT_IDS.reuni)!.price).toBe("75000.00");
+    // Pembatalan event menjelaskan refund per tiket sebesar total yang dibayar, bukan harga event saat ini.
+    await user.click(await screen.findByRole("button", { name: "Batalkan event" }));
+    const cancel = await screen.findByRole("alertdialog", { name: /Batalkan event\?/ });
+    expect(
+      within(cancel).getByText(/refund penuh sebesar total yang dibayar pemegangnya/),
+    ).toBeInTheDocument();
+    expect(within(cancel).queryByText(/Rp75\.000/)).toBeNull();
+  });
+
+  it("N-10, F-15: simpan ditahan selama gambar cover masih diunggah; setelah selesai cover ikut tersimpan", async () => {
+    const user = userEvent.setup();
+    await open(user, `/events/${MOCK_EVENT_IDS.reuni}?tab=edit`, REUNI);
+    await user.type(await screen.findByLabelText(/^Nama lokasi/), " Pekanbaru");
+    const release = mockEvents.holdCoverUploads();
+    await user.upload(
+      screen.getByTestId("cover-input"),
+      new File([new Uint8Array([137, 80, 78, 71])], "sampul.png", { type: "image/png" }),
+    );
+    expect(await screen.findByRole("button", { name: /^Mengunggah/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Simpan perubahan" }));
+    // Pesan dibacakan (role=alert) di dekat tombol simpan.
+    expect(await screen.findByText(COVER_UPLOAD_WAIT)).toHaveAttribute("role", "alert");
+    expect(requests("PATCH", `/admin/events/${MOCK_EVENT_IDS.reuni}`)).toHaveLength(0);
+    // Formulir tetap terbuka: unggahan tidak dibatalkan.
+    expect(screen.getByLabelText(/^Nama lokasi/)).toHaveValue("Pondok Darel Hikmah Pekanbaru");
+
+    release();
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^Mengunggah/ })).toBeNull());
+    await waitFor(() => expect(screen.queryByText(COVER_UPLOAD_WAIT)).toBeNull());
     await user.click(screen.getByRole("button", { name: "Simpan perubahan" }));
     // Perubahan lokasi pada event bertiket diberitahukan kepada pemegang tiket (AC F13-6).
     await findToast("success", "Pemegang tiket diberi notifikasi perubahan jadwal atau lokasi.");
-    expect(requests("PATCH", `/admin/events/${MOCK_EVENT_IDS.reuni}`)[0]?.body).toEqual({
-      location_name: "Pondok Darel Hikmah Pekanbaru",
-    });
+    const patch = requests("PATCH", `/admin/events/${MOCK_EVENT_IDS.reuni}`)[0]!;
+    expect(patch.body).toMatchObject({ location_name: "Pondok Darel Hikmah Pekanbaru" });
+    expect(typeof patch.body?.cover_file_id).toBe("string");
+    expect(mockEvents.event(MOCK_EVENT_IDS.reuni)!.cover_file_id).toBe(patch.body?.cover_file_id);
+  });
+
+  it("PRD 4.5: muat ulang detail yang gagal tidak mengganti halaman; isian formulir ubah tetap ada", async () => {
+    const user = userEvent.setup();
+    const { queryClient } = renderApp(`/events/${MOCK_EVENT_IDS.reuni}?tab=edit`);
+    await signIn(user);
+    await screen.findByRole("heading", { level: 1, name: REUNI }, { timeout: 5_000 });
+    const title = await screen.findByLabelText(/^Nama event/);
+    await user.clear(title);
+    await user.type(title, "Reuni Akbar (draf revisi)");
+    mockEvents.failDetailReads(1);
+    await act(() => queryClient.invalidateQueries({ queryKey: eventKeys.detail(MOCK_EVENT_IDS.reuni) }));
+    expect(await screen.findByText(/Data event terbaru gagal dimuat/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Nama event/)).toHaveValue("Reuni Akbar (draf revisi)");
+    await user.click(screen.getByRole("button", { name: "Coba lagi" }));
+    await waitFor(() => expect(screen.queryByText(/Data event terbaru gagal dimuat/)).toBeNull());
+    expect(screen.getByLabelText(/^Nama event/)).toHaveValue("Reuni Akbar (draf revisi)");
+  });
+
+  it("N-11: setelah terbitkan atau simpan perubahan, fokus pindah ke status event (tidak jatuh ke body)", async () => {
+    const user = userEvent.setup();
+    await open(user, `/events/${MOCK_EVENT_IDS.mancing}`, MANCING);
+    await user.click(screen.getByRole("button", { name: "Terbitkan" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Terbitkan event?" });
+    await user.click(within(dialog).getByRole("button", { name: "Terbitkan" }));
+    await findToast("success", "Event diterbitkan");
+    const status = screen.getByTestId("event-status-line");
+    await waitFor(() => expect(status).toHaveFocus());
+    await waitFor(() => expect(status).toHaveTextContent("Pendaftaran dibuka"));
+    expect(screen.queryByRole("button", { name: "Terbitkan" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Ubah" }));
+    await user.type(await screen.findByLabelText(/^Nama event/), " Edisi 2");
+    await user.click(screen.getByRole("button", { name: "Simpan perubahan" }));
+    await findToast("success", "Perubahan event disimpan.");
+    await waitFor(() => expect(screen.queryByLabelText(/^Nama event/)).toBeNull());
+    expect(screen.getByTestId("event-status-line")).toHaveFocus();
+    expect(document.activeElement).not.toBe(document.body);
   });
 
   it("AC F09-7: batalkan event dengan alasan; konfirmasi menjelaskan QR, notifikasi dan refund; ringkasan dampak tampil", async () => {
@@ -335,7 +417,9 @@ describe("detail event (F-09, F-15)", () => {
     await user.click(screen.getByRole("button", { name: "Batalkan event" }));
     const dialog = await screen.findByRole("alertdialog", { name: /Batalkan event\?/ });
     expect(within(dialog).getByText(/QR seluruh tiket tidak berlaku lagi/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/refund penuh \(Rp60\.000\).*7 hari kerja/)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/refund penuh sebesar total yang dibayar pemegangnya.*7 hari kerja/),
+    ).toBeInTheDocument();
     expect(within(dialog).getByText(/tetap di antrean\s+verifikasi/)).toBeInTheDocument();
     expect(within(dialog).getByText(/tetap tersimpan sebagai riwayat/)).toBeInTheDocument();
     await within(dialog).findByText(/6 lunas, 2 masih ditahan/);
@@ -519,6 +603,44 @@ describe("Manajemen Kategori event (guideline p14, izin events.manage)", () => {
     await user.click(within(confirm).getByRole("button", { name: "Hapus kategori" }));
     await findToast("success", 'Kategori "Bakti Sosial" dihapus.');
     await waitFor(() => expect(within(sheet).queryByText("Bakti Sosial")).toBeNull());
+  });
+
+  it("AC F15-4: kategori diubah admin lain saat formulir ubah terbuka; simpan ditolak, versi terbaru ditawarkan dan tidak tertimpa", async () => {
+    const tour = MOCK_EVENT_CATEGORY_IDS.tour;
+    const patches = () => requests("PATCH", `/admin/content/event-categories/${tour}`);
+    const user = userEvent.setup();
+    await open(user, "/events", "Event dan Tiket");
+    await user.click(screen.getByRole("button", { name: "Manajemen Kategori" }));
+    const sheet = await screen.findByRole("dialog", { name: "Manajemen Kategori Event" });
+    await user.click(await within(sheet).findByRole("button", { name: "Ubah kategori Tour" }));
+    const editForm = within(sheet).getByRole("form", { name: "Ubah kategori Tour" });
+    const label = within(editForm).getByLabelText(/^Nama kategori/);
+    await user.clear(label);
+    await user.type(label, "Wisata Alumni");
+    // Sementara itu pengurus lain mengganti label (versi naik).
+    mockEvents.editCategoryElsewhere(tour, { label: "Tour Religi" });
+    await user.click(within(sheet).getByRole("button", { name: "Simpan" }));
+
+    const alert = (await within(sheet).findByText(/sudah diubah admin lain/)).closest("[role=alert]")!;
+    await waitFor(() => expect(alert).toHaveFocus());
+    expect(alert).toHaveTextContent("Versi terbaru: Tour Religi");
+    expect(patches()).toHaveLength(1);
+    expect(patches()[0]).toMatchObject({ ifMatch: "1", body: { label: "Wisata Alumni" } });
+    // Tidak menimpa diam-diam: isian admin tetap, simpan dikunci sampai versi terbaru dimuat.
+    expect(label).toHaveValue("Wisata Alumni");
+    const save = within(sheet).getByRole("button", { name: "Simpan" });
+    expect(save).toHaveAttribute("aria-disabled", "true");
+    await user.click(save);
+    expect(patches()).toHaveLength(1);
+    expect(mockEvents.category(tour)!.label).toBe("Tour Religi");
+
+    await user.click(within(sheet).getByRole("button", { name: "Muat versi terbaru" }));
+    expect(label).toHaveValue("Tour Religi");
+    expect(within(sheet).queryByText(/sudah diubah admin lain/)).toBeNull();
+    await user.type(label, " 2026");
+    await user.click(within(sheet).getByRole("button", { name: "Simpan" }));
+    await findToast("success", 'Kategori "Tour Religi 2026" disimpan.');
+    expect(patches()[1]).toMatchObject({ ifMatch: "2", body: { label: "Tour Religi 2026" } });
   });
 });
 

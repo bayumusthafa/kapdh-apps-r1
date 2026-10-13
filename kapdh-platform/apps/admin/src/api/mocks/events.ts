@@ -188,6 +188,21 @@ let idempotency = new Map<string, { fingerprint: string; status: number; body: u
 let seq = 0;
 /** Kegagalan jaringan buatan untuk POST /admin/checkin (uji "status belum diketahui"). */
 let failCheckins = 0;
+/** Kegagalan jaringan buatan untuk GET /admin/events/{eventId} (uji muat ulang detail gagal, PRD 4.5). */
+let failDetailReads = 0;
+/** Gerbang buatan: POST /admin/checkin menunggu sampai dilepas (uji jaringan lambat dan antrean pemindai). */
+let checkinGate: Promise<void> | null = null;
+/** Gerbang buatan: POST /admin/event-covers menunggu sampai dilepas (uji simpan saat unggahan berjalan). */
+let coverGate: Promise<void> | null = null;
+
+/** Gerbang yang ditahan sampai fungsi pelepas dipanggil. */
+function gate(): { promise: Promise<void>; release: () => void } {
+  let release!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { promise, release };
+}
 
 export interface EventRequestLog {
   method: string;
@@ -537,6 +552,9 @@ export function reset(): void {
   idempotency = new Map();
   eventRequests.length = 0;
   failCheckins = 0;
+  failDetailReads = 0;
+  checkinGate = null;
+  coverGate = null;
   seq = 0;
   const t0 = nowMs();
   // Menit bulat agar data contoh mudah dibaca di dev:mock; hold dan jendela tetap relatif terhadap waktu nyata.
@@ -832,6 +850,44 @@ export const mockEvents = {
   /** POST /admin/checkin gagal karena jaringan `times` kali berikutnya. */
   failCheckins(times = 1) {
     failCheckins = times;
+  },
+  /**
+   * POST /admin/checkin tertahan (jaringan lambat) sampai fungsi yang dikembalikan dipanggil; permintaan tetap
+   * tercatat di `eventRequests` saat diterima.
+   */
+  holdCheckins(): () => void {
+    const g = gate();
+    checkinGate = g.promise;
+    return () => {
+      checkinGate = null;
+      g.release();
+    };
+  },
+  /** POST /admin/event-covers tertahan sampai fungsi yang dikembalikan dipanggil. */
+  holdCoverUploads(): () => void {
+    const g = gate();
+    coverGate = g.promise;
+    return () => {
+      coverGate = null;
+      g.release();
+    };
+  },
+  /** GET /admin/events/{eventId} gagal karena jaringan `times` kali berikutnya. */
+  failDetailReads(times = 1) {
+    failDetailReads = times;
+  },
+  /** Pengurus lain mengubah kategori event (versi naik), untuk uji konflik versi kategori (AC F15-4). */
+  editCategoryElsewhere(
+    categoryId: string,
+    patch: Partial<Pick<CategoryRec, "label" | "slug" | "sort_order" | "active">>,
+  ) {
+    const c = categories.get(categoryId);
+    if (!c) throw new Error(`Kategori ${categoryId} tidak ada`);
+    Object.assign(c, patch, { version: c.version + 1, updated_at: iso(nowMs()) });
+  },
+  category(categoryId: string): Category | null {
+    const c = categories.get(categoryId);
+    return c ? categoryView(c) : null;
   },
   /** Pengurus lain membatalkan event (semua tiket aktif cancelled), mis. saat petugas sedang memindai (AC F09-7). */
   cancelElsewhere(eventId: string, reason = "Dibatalkan pengurus lain.") {
@@ -1403,6 +1459,7 @@ export const routes: MockRoute[] = [
       log(req);
       const denied = requirePermission(req, "events.manage");
       if (denied) return denied;
+      if (coverGate) await coverGate;
       const form = await readMultipart(req.raw);
       const file = form?.file;
       if (!file || typeof file === "string")
@@ -1539,6 +1596,10 @@ export const routes: MockRoute[] = [
     path: "/admin/events/{eventId}",
     handler: (req) => {
       log(req);
+      if (failDetailReads > 0) {
+        failDetailReads -= 1;
+        throw new TypeError("Failed to fetch");
+      }
       const denied = requirePermission(req, "events.manage");
       if (denied) return denied;
       const e = findEvent(req);
@@ -1927,8 +1988,9 @@ export const routes: MockRoute[] = [
   {
     method: "POST",
     path: "/admin/checkin",
-    handler: (req) => {
+    handler: async (req) => {
       log(req);
+      if (checkinGate) await checkinGate;
       if (failCheckins > 0) {
         failCheckins -= 1;
         throw new TypeError("Failed to fetch");

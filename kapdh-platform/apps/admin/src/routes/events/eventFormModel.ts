@@ -227,14 +227,11 @@ export function toCreateRequest(v: EventFormValues): CreateRequest {
 
 /**
  * Body PATCH hanya berisi field yang berbeda dari event saat formulir dimuat (kontrak adminUpdateEvent: field yang
- * tidak dikirim tidak berubah). `lockPrice`: harga tidak dikirim bila event sudah memiliki tiket (PRD 4.4).
- * Objek kosong berarti tidak ada perubahan.
+ * tidak dikirim tidak berubah). Harga ikut dikirim bila berubah: server menerapkannya hanya untuk reservasi baru,
+ * tiket dan payment yang sudah dibuat memakai total snapshot (PRD 4.4, AC F03-5). Objek kosong berarti tidak ada
+ * perubahan.
  */
-export function toUpdateRequest(
-  base: AdminEventDetail,
-  v: EventFormValues,
-  opts: { lockPrice: boolean },
-): UpdateRequest {
+export function toUpdateRequest(base: AdminEventDetail, v: EventFormValues): UpdateRequest {
   const next = toCreateRequest(v);
   const before: CreateRequest = {
     title: base.title,
@@ -256,7 +253,6 @@ export function toUpdateRequest(
   };
   const out: Record<string, unknown> = {};
   for (const key of Object.keys(next) as (keyof CreateRequest)[]) {
-    if (key === "price" && opts.lockPrice) continue;
     const a = before[key];
     const b = next[key];
     const same =
