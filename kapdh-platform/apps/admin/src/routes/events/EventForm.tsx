@@ -400,7 +400,7 @@ export function EventForm({
 
         <Section
           title="Check-in"
-          description="Bawaan: dibuka 2 jam sebelum event mulai sampai event selesai (D5)."
+          description="Bawaan: dibuka 2 jam sebelum event mulai sampai event selesai."
         >
           <Controller<EventFormValues, "custom_checkin">
             name="custom_checkin"
@@ -408,7 +408,7 @@ export function EventForm({
             render={({ field }) => (
               <Switch
                 label="Atur jendela check-in sendiri"
-                description="Matikan untuk memakai jendela bawaan D5."
+                description="Matikan untuk memakai jendela bawaan."
                 checked={field.value}
                 onCheckedChange={(on) => {
                   field.onChange(on);
@@ -454,8 +454,8 @@ export function EventForm({
               required
               hint={
                 lockPrice
-                  ? `Harga terkunci (${formatRupiah(detail?.price)}) karena event sudah memiliki tiket; tiket dan pembayaran yang ada memakai harga saat dipesan (PRD 4.4).`
-                  : "Isi 0 untuk event gratis: tiket langsung lunas tanpa pembayaran (AC F09-3)."
+                  ? `Harga terkunci (${formatRupiah(detail?.price)}) karena event sudah memiliki tiket; tiket dan pembayaran yang ada memakai harga saat dipesan.`
+                  : "Isi 0 untuk event gratis: tiket langsung lunas tanpa pembayaran."
               }
             >
               {(field, a11y) => (
@@ -478,7 +478,7 @@ export function EventForm({
               required
               hint={
                 mode === "edit" && detail
-                  ? `Saat ini ditahan ${detail.held_quantity}, terbayar ${detail.paid_quantity}, sisa ${detail.seats_available}. Kuota minimal ${detail.min_seats_total} (AC F15-2).`
+                  ? `Saat ini ditahan ${detail.held_quantity}, terbayar ${detail.paid_quantity}, sisa ${detail.seats_available}. Kuota minimal ${detail.min_seats_total}.`
                   : "Jumlah kursi; satu tiket satu kursi."
               }
             >

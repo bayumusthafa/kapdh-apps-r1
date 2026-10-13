@@ -150,7 +150,7 @@ export function eventFormSchema(opts: { minSeats?: number } = {}) {
         )
         .refine(
           (v) => !/^\d+$/.test(v) || Number(v) >= minSeats,
-          `Kuota tidak boleh di bawah ${minSeats} (kursi ditahan + terbayar, AC F15-2).`,
+          `Kuota tidak boleh di bawah ${minSeats} (kursi ditahan + terbayar).`,
         ),
     })
     .superRefine((v, ctx) => {

@@ -227,7 +227,7 @@ export function EventActions({
       >
         <p className="text-sm">
           Event ini belum pernah memiliki tiket sehingga dapat dihapus. Event yang sudah memiliki tiket hanya
-          dapat dibatalkan (AC F15-2).
+          dapat dibatalkan.
         </p>
       </ConfirmDialog>
     </>
@@ -332,7 +332,7 @@ function CancelEventDialog({
             <>
               <li>
                 Setiap tiket lunas mendapat refund penuh ({formatRupiah(event.price)}) yang dicatat untuk
-                diproses manual oleh bendahara paling lambat 7 hari kerja (D6).
+                diproses manual oleh bendahara paling lambat 7 hari kerja.
               </li>
               <li>
                 Reservasi tanpa bukti dibatalkan. Pembayaran yang buktinya sedang ditinjau tetap di antrean

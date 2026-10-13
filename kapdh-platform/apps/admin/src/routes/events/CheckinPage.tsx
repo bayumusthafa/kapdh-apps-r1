@@ -184,7 +184,7 @@ export function CheckinPage() {
       <Card className="flex flex-col gap-3 pb-5">
         <CardHeader
           title="Event"
-          description="Event dibuka atau ditutup yang jendela check-in-nya dibuka paling lambat 24 jam dari sekarang (D5)."
+          description="Event dibuka atau ditutup yang jendela check-in-nya dibuka paling lambat 24 jam dari sekarang."
         />
         <div className="px-5">
           {list.isPending ? (
@@ -201,9 +201,9 @@ export function CheckinPage() {
             <>
               {search.event && !selected ? (
                 <p role="alert" className="mb-3 rounded-md bg-warning-bg p-3 text-sm text-warning">
-                  Event yang dipilih belum atau tidak lagi tersedia untuk check-in: pemindai hanya memuat event
-                  yang jendela check-in-nya dibuka paling lambat 24 jam lagi dan belum berakhir (D5). Pilih event
-                  di bawah.
+                  Event yang dipilih belum atau tidak lagi tersedia untuk check-in: pemindai hanya memuat
+                  event yang jendela check-in-nya dibuka paling lambat 24 jam lagi dan belum berakhir. Pilih
+                  event di bawah.
                 </p>
               ) : null}
               <RadioGroup<string>
@@ -339,6 +339,14 @@ export function ScanResultCard({
   seq: number;
   event: CheckinEvent;
 }) {
+  const sectionRef = useRef<HTMLElement>(null);
+  // Layar sempit (ponsel petugas): kartu hasil dapat berada di luar layar; gulir seperlunya agar setiap hasil
+  // baru terlihat tanpa memindahkan fokus dari isian kode (N-11).
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (seq === 0 || typeof el?.scrollIntoView !== "function") return;
+    el.scrollIntoView({ block: "nearest" });
+  }, [seq]);
   let tone: ResultTone | "neutral" = "neutral";
   let title = "Siap memindai";
   let body: ReactNode = (
@@ -409,6 +417,7 @@ export function ScanResultCard({
   const style = TONE[tone];
   return (
     <section
+      ref={sectionRef}
       aria-label="Hasil pemindaian"
       aria-live="assertive"
       aria-atomic="true"

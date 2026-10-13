@@ -55,8 +55,8 @@ export function formatTableDate(iso: string, timeZone = DEFAULT_TIME_ZONE): stri
 }
 
 export const EVENT_SORT_OPTIONS: readonly { value: EventSort; label: string }[] = [
-  { value: "starts_at_desc", label: "Tanggal acara terbaru" },
-  { value: "starts_at_asc", label: "Tanggal acara terdekat" },
+  { value: "starts_at_desc", label: "Acara terbaru" },
+  { value: "starts_at_asc", label: "Acara terdekat" },
   { value: "registration_closes_at_asc", label: "Tutup daftar terdekat" },
   { value: "created_at_desc", label: "Baru dibuat" },
   { value: "title_asc", label: "Nama A-Z" },
