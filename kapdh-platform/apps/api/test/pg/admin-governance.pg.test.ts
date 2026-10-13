@@ -3,7 +3,8 @@
  * saling menurunkan/menonaktifkan/memulihkan pada request bersamaan. Penjaga transaksi admins_last_super_admin_chk
  * (advisory lock + hitungan Super Admin yang dapat login) memastikan minimal satu tersisa; pihak yang kalah menerima
  * 409 VALIDATION_ERROR dengan `current`, tanpa 500, tanpa deadlock, dan tanpa audit dari transaksi yang batal
- * (AC F17-1). API berjalan dengan login role kapdh_app (grant production).
+ * (AC F17-1). Juga dua undangan bersamaan untuk alumni yang sama (kontrak C7 adminInviteAdmin, AC F16-1) dan job
+ * ekspor audit ganda (AC F17-4). API berjalan dengan login role kapdh_app (grant production).
  */
 import "reflect-metadata";
 import { admins, auditLogs, createDb, files, sessions } from "@kapdh/database";
@@ -22,7 +23,7 @@ import { TokenService } from "../../src/core/identity/token.service.js";
 import { MemoryRateLimitStore } from "../../src/core/rate-limit/store.js";
 import { AuditExportJob } from "../../src/modules/admin/audit-export.job.js";
 import { createWorkerContext } from "../../src/worker.js";
-import { createAdmin, type EnrolledAdminFixture, signInAdmin } from "../support/factories.js";
+import { createAdmin, createAlumni, type EnrolledAdminFixture, signInAdmin } from "../support/factories.js";
 import { FakePush, TestClock, testEnv } from "../support/test-app.js";
 import { connectAs, createPgTestDatabase, type PgTestDatabase, sleep } from "./support.js";
 
@@ -259,6 +260,79 @@ describe("AC F16-2: dua Super Admin terakhir saling menurunkan lewat API secara 
     expect(responses.map((r) => r.statusCode)).toEqual([409, 409]);
     for (const res of responses) expect(res.json()).toMatchObject({ code: "VALIDATION_ERROR" });
     expect(await usableSuperAdmins()).toEqual([solo.admin.adminId]);
+  });
+});
+
+describe("AC F16-1 (kontrak C7 adminInviteAdmin): dua undangan bersamaan berebut alumni yang sama", () => {
+  it("AC F16-1: tepat satu 201; yang lain 409 VALIDATION_ERROR pada alumni_user_id (bukan email); satu identitas admin tertaut", async () => {
+    const root = await superAdmin();
+    const member = await createAlumni(owner, { status: "verified", fullName: "Alumni Rebutan" });
+    const inviteRequest = async () => {
+      const reauth = await app
+        .get(TokenService)
+        .signReauth({ userId: root.admin.userId, familyId: root.familyId, level: 2 });
+      const headers = {
+        authorization: `Bearer ${root.token}`,
+        "x-reauth-token": reauth.token,
+        "idempotency-key": uuidv7(),
+      };
+      // Email login tidak dikirim: keduanya memakai email alumni sebagai bawaan (alur "Delegasi User jadi Admin").
+      return () =>
+        app.inject({
+          method: "POST",
+          url: "/api/v1/admin/admins",
+          headers,
+          payload: { alumni_user_id: member.userId, role: "admin", permissions: ["audit.read"] },
+        });
+    };
+    const first = await inviteRequest();
+    const second = await inviteRequest();
+
+    // Uji memegang kunci baris akun alumni sampai KEDUA transaksi undangan menunggunya, lalu melepasnya, sehingga
+    // keduanya benar-benar bersaing (bukan berurutan karena kebetulan).
+    const holder = createDb(tdb.url, { max: 1, applicationName: "kapdh-pg-test-alumni-holder" }).sql;
+    let waiting = 0;
+    let pending!: Promise<Awaited<ReturnType<typeof first>>[]>;
+    try {
+      await holder.begin(async (tx) => {
+        await tx`select id from app.users where id = ${member.userId} for update`;
+        pending = Promise.all([first(), second()]);
+        const deadline = Date.now() + 10_000;
+        while (Date.now() < deadline) {
+          // Koneksi lain (snapshot pg_stat_activity di dalam transaksi tidak diperbarui).
+          const [row] = await tdb.sql<{ n: number }[]>`
+            select count(*)::int as n from pg_stat_activity
+            where datname = current_database() and wait_event_type = 'Lock'`;
+          waiting = row?.n ?? 0;
+          if (waiting >= 2) break;
+          await sleep(5);
+        }
+      });
+    } finally {
+      await holder.end({ timeout: 5 });
+    }
+    const responses = await pending;
+    expect(waiting).toBe(2);
+    expect(responses.map((r) => r.statusCode).sort(), responses.map((r) => r.body).join("\n")).toEqual([
+      201, 409,
+    ]);
+    const loser = responses.find((r) => r.statusCode === 409)!.json() as {
+      code: string;
+      field_errors: Record<string, string[]>;
+    };
+    expect(loser.code).toBe("VALIDATION_ERROR");
+    expect(Object.keys(loser.field_errors)).toEqual(["alumni_user_id"]);
+
+    const linked = await tdb.db.select().from(admins).where(eq(admins.linkedAlumniUserId, member.userId));
+    expect(linked).toHaveLength(1);
+    const logins = await tdb.sql<{ n: number }[]>`
+      select count(*)::int as n from app.users where kind = 'admin' and email = ${member.email}`;
+    expect(logins[0]!.n).toBe(1);
+    // Hanya transaksi pemenang yang meninggalkan audit (AC F17-1).
+    const invited = await tdb.sql<{ n: number }[]>`
+      select count(*)::int as n from app.audit_logs
+      where action = 'admin.invited' and after ->> 'linked_alumni_user_id' = ${member.userId}`;
+    expect(invited[0]!.n).toBe(1);
   });
 });
 

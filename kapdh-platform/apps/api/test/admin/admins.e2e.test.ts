@@ -52,12 +52,17 @@ async function lastAudit(action: string, entityId: string) {
   return row;
 }
 
-/** Menjalankan worker outbox lalu mengambil tautan undangan terakhir ke alamat itu (email undangan F-16). */
+/**
+ * Menjalankan worker outbox lalu mengambil tautan undangan terakhir ke alamat itu (email undangan F-16). Bentuk tautan
+ * wajib `${ADMIN_ORIGIN}/invite#t=<token>` (kontrak admin-auth C1): token hanya di fragmen, tidak pernah di path/query.
+ */
 async function invitationLink(email: string): Promise<{ token: string; subject: string; text: string }> {
   await t.jobs.drainOutbox();
-  const message = [...t.mailer.messages].reverse().find((m) => m.to === email && m.text.includes("/invite/"));
+  const message = [...t.mailer.messages].reverse().find((m) => m.to === email && m.text.includes("/invite"));
   expect(message, `email undangan ke ${email}`).toBeDefined();
-  const match = /http:\/\/admin\.test\/invite\/(\S+)/.exec(message!.text);
+  expect(message!.text, "token undangan tidak boleh di path").not.toMatch(/\/invite\/\S/);
+  expect(message!.text, "token undangan tidak boleh di query").not.toMatch(/\/invite\?/);
+  const match = /(?:^|\s)http:\/\/admin\.test\/invite#t=([A-Za-z0-9_-]{32,})(?=\s|$)/.exec(message!.text);
   expect(match, message!.text).not.toBeNull();
   return { token: match![1]!, subject: message!.subject, text: message!.text };
 }
@@ -497,6 +502,42 @@ describe("GET /admin/admins dan /admin/admins/{adminId} (F-16)", () => {
     expect(wrong.statusCode).toBe(400);
   });
 
+  it("cursor yang dimanipulasi (nilai urutan bukan waktu/teks yang sah) ditolak 400 VALIDATION_ERROR pada cursor, bukan 500", async () => {
+    const forge = (position: Record<string, unknown>) =>
+      Buffer.from(JSON.stringify({ v: 1, p: { ...position, id: uuidv7() } }), "utf8").toString("base64url");
+    const cases: [string, unknown][] = [
+      ["created_at_desc", "bukan-tanggal"],
+      ["created_at_desc", null],
+      ["created_at_desc", 12345],
+      ["last_login_at_desc", "bukan-tanggal"],
+      ["last_login_at_desc", "2026-02-31T00:00:00Z"],
+      ["display_name_asc", null],
+    ];
+    for (const [sort, v] of cases) {
+      const res = await api.get("/admin/admins", {
+        token: root.token,
+        query: { sort, cursor: forge({ sort, v }) },
+      });
+      expect(res.statusCode, `${sort} v=${JSON.stringify(v)}: ${res.body}`).toBe(400);
+      const body = expectOperation("get", "/admin/admins", res) as JsonBody;
+      expect(body).toMatchObject({ code: "VALIDATION_ERROR" });
+      expect(Object.keys(body.field_errors)).toEqual(["cursor"]);
+    }
+    // Cursor sah buatan tangan tetap diterima (null = belum pernah login untuk last_login_at_desc).
+    for (const [sort, v] of [
+      ["created_at_desc", "2026-10-14T00:00:00.000Z"],
+      ["last_login_at_desc", null],
+      ["last_login_at_desc", "2026-10-14T07:00:00+07:00"],
+      ["display_name_asc", "M"],
+    ] as const) {
+      const res = await api.get("/admin/admins", {
+        token: root.token,
+        query: { sort, cursor: forge({ sort, v }) },
+      });
+      expect(res.statusCode, `${sort}: ${res.body}`).toBe(200);
+    }
+  });
+
   it("detail: id bukan UUID 400, tidak ada 404; admin aktif membawa jumlah sesi aktif", async () => {
     const bad = await api.get("/admin/admins/bukan-uuid", { token: root.token });
     expect(bad.statusCode).toBe(400);
@@ -532,8 +573,17 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
       permissions_version: before.permissions_version + 1,
       version: String(Number(before.version) + 1),
     });
-    expect(disconnect).toHaveBeenCalledWith(auditor.admin.userId, "permissions_changed");
+    // Sesi tidak dicabut, jadi `session.revoked` (C6: klien menghapus token) tidak boleh dikirim; hak dicabut lewat
+    // evaluasi izin dari database pada request berikutnya.
+    expect(disconnect).not.toHaveBeenCalled();
     disconnect.mockRestore();
+    const [stillActive] = await t.db
+      .select({ revokedAt: sessions.revokedAt })
+      .from(sessions)
+      .where(eq(sessions.userId, auditor.admin.userId))
+      .orderBy(desc(sessions.createdAt))
+      .limit(1);
+    expect(stillActive?.revokedAt).toBeNull();
 
     // Token yang sama: audit.read sudah tidak berlaku, payments.read tetap (dasbor hanya bagian pembayaran).
     const denied = await api.get("/admin/audit/entries", { token: auditor.token });
@@ -944,7 +994,7 @@ describe("POST /admin/admins/{adminId}/recovery (F-16, PRD 3.16)", () => {
     expect(toNew).toContain("Sandi dan autentikator akun pengurus Anda direset");
     const toOld = t.mailer.messages.filter((m) => m.to === target.admin.email);
     expect(toOld.map((m) => m.subject)).toContain("Email login akun pengurus Anda dialihkan");
-    expect(toOld.every((m) => !m.text.includes("/invite/"))).toBe(true);
+    expect(toOld.every((m) => !m.text.includes("/invite"))).toBe(true);
   });
 
   it("Super Admin memulihkan dirinya, admin invited/belum pernah aktif: 409 pada _; If-Match usang 409 VERSION_CONFLICT", async () => {
