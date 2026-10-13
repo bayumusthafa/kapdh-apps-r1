@@ -20,7 +20,12 @@ import {
   type RoomSummaryRow,
   toDate,
 } from "./chat.queries.js";
-import { decodeSystemEvent, type NameLookup, systemEventUserIds, systemText } from "./chat.system-messages.js";
+import {
+  decodeSystemEvent,
+  type NameLookup,
+  systemEventUserIds,
+  systemText,
+} from "./chat.system-messages.js";
 import { previewOf } from "./content-filter.js";
 
 export type ChatRoomSummaryDto = components["schemas"]["ChatRoomSummary"];

@@ -8,7 +8,12 @@ import { safeError } from "../../core/logging/safe-error.js";
 import { RealtimeService } from "../../core/realtime/realtime.service.js";
 import { CLOCK, DB, ROOT_LOGGER } from "../../core/tokens.js";
 import { type ChatViewer, ChatPresenter, type FileRefLite, isPrivateReady } from "./chat.presenter.js";
-import { type MemberRole, messageRows, type SessionRecipientQuery, sessionRecipients } from "./chat.queries.js";
+import {
+  type MemberRole,
+  messageRows,
+  type SessionRecipientQuery,
+  sessionRecipients,
+} from "./chat.queries.js";
 
 export type MemberChange = RealtimePayloads["room.member_changed"]["change"];
 export type RoomChange = RealtimePayloads["room.updated"]["changes"][number];
@@ -149,7 +154,12 @@ export class ChatEvents {
         closed_at: input.closedAt?.toISOString() ?? null,
       });
       if (input.avatar && isPrivateReady(input.avatar)) {
-        await this.perSession({ roomId: input.roomId, userId: input.toUserId }, "room.updated", input.roomId, build);
+        await this.perSession(
+          { roomId: input.roomId, userId: input.toUserId },
+          "room.updated",
+          input.roomId,
+          build,
+        );
         return;
       }
       const payload = await build(null);
@@ -174,7 +184,6 @@ export class ChatEvents {
     entityId: string,
     build: (viewer: ChatViewer) => Promise<RealtimePayloads[T]>,
   ): Promise<void> {
-    if (this.realtime.transportKind === "none") return;
     const recipients = await sessionRecipients(this.db, { ...query, now: this.clock.now() });
     const payloads = await Promise.all(
       recipients.map((recipient) =>
@@ -190,9 +199,13 @@ export class ChatEvents {
     );
   }
 
-  /** Dijalankan sesudah commit (segera bila di luar transaksi); galat hanya dicatat tanpa isi pesan. */
+  /**
+   * Dijalankan sesudah commit (segera bila di luar transaksi); galat hanya dicatat tanpa isi pesan. Tanpa transport
+   * (worker tanpa Redis) tidak ada kueri maupun penandatanganan URL.
+   */
   private afterCommit(label: string, task: () => Promise<void>): void {
     afterCommit(async () => {
+      if (this.realtime.transportKind === "none") return;
       try {
         await task();
       } catch (error) {
