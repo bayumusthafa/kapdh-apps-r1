@@ -11,6 +11,11 @@ export interface TabItem<V extends string = string> {
   label: ReactNode;
   /** Angka kecil di samping label (mis. jumlah menunggu). */
   count?: number;
+  /**
+   * Teks pembaca layar pengganti angka `count`, mis. "23 menunggu verifikasi" (N-11). Bila diisi, angka visual
+   * disembunyikan dari teknologi bantu dan nama tab menjadi "Label, 23 menunggu verifikasi".
+   */
+  countLabel?: string;
   disabled?: boolean;
 }
 
@@ -94,6 +99,7 @@ export function Tabs<V extends string = string>({
             {item.label}
             {item.count !== undefined ? (
               <span
+                aria-hidden={item.countLabel ? true : undefined}
                 className={cn(
                   "rounded-pill px-2 py-0.5 text-xs font-bold",
                   selected ? "bg-accent text-on-accent" : "bg-green-100 text-primary",
@@ -101,6 +107,9 @@ export function Tabs<V extends string = string>({
               >
                 {item.count}
               </span>
+            ) : null}
+            {item.count !== undefined && item.countLabel ? (
+              <span className="sr-only">, {item.countLabel}</span>
             ) : null}
           </button>
         );

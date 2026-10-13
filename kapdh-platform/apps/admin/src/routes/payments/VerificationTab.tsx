@@ -129,10 +129,15 @@ export function VerificationTab() {
   const filters = { q, type, status, sort };
   const paging = useCursorPaging(filters, PAYMENT_PAGE_SIZE);
 
-  // Tautan dari luar tab (mis. "Buka pembayaran asal" di tab Penyesuaian) mengganti pilihan.
+  // Tautan URL (mis. "Buka pembayaran asal" di tab Penyesuaian) mengganti pilihan. Tombol pemicunya ikut hilang
+  // bersama tab asal sehingga fokus jatuh ke <body>; panel diminta memindah fokus ke judul detail setelah termuat
+  // (N-11, PRD 4.5). Pilihan baris juga memperbarui URL; permintaan fokus yang berulang hanya memfokus judul yang
+  // sama.
   const linked = search.payment;
   useEffect(() => {
-    if (linked) setSelectedId(linked);
+    if (!linked) return;
+    setSelectedId(linked);
+    setFocusRequest((n) => n + 1);
   }, [linked]);
 
   const list = useApiQuery({

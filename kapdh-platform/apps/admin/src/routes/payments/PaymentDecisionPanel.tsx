@@ -578,6 +578,13 @@ function CancelInstruction({
   const [openVersion, setOpenVersion] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string | null>(null);
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
+  /**
+   * Alasan ditolak (validasi klien atau VALIDATION_ERROR server): fokus dipindah ke isian alasan SETELAH galat
+   * dirender dan permintaan selesai (isian nonaktif selama memuat), sehingga pembaca layar membacakan galatnya
+   * lewat aria-describedby (N-11, PRD 4.5), sama seperti alur Tolak.
+   */
+  const [focusReason, setFocusReason] = useState(false);
 
   const cancel = useApiMutation<Detail, CancelVars>({
     request: (v, ctx) =>
@@ -606,9 +613,19 @@ function CancelInstruction({
     },
     onError: (error) => {
       const message = error.fieldErrors.reason?.join(" ");
-      if (message) setReasonError(message);
+      if (message) {
+        setReasonError(message);
+        setFocusReason(true);
+      }
     },
   });
+
+  const cancelPending = cancel.isPending;
+  useEffect(() => {
+    if (!focusReason || cancelPending) return;
+    setFocusReason(false);
+    reasonRef.current?.focus();
+  }, [focusReason, cancelPending]);
 
   if (!p.actions.can_cancel || !auth.can("payments.decide")) return null;
 
@@ -617,6 +634,7 @@ function CancelInstruction({
     const trimmed = reason.trim();
     if (trimmed.length < REASON_MIN) {
       setReasonError(`Alasan pembatalan minimal ${REASON_MIN} karakter dan tidak boleh hanya spasi.`);
+      setFocusReason(true);
       return;
     }
     setReasonError(null);
@@ -653,6 +671,7 @@ function CancelInstruction({
           {(a11y) => (
             <Textarea
               {...a11y}
+              ref={reasonRef}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={3}
