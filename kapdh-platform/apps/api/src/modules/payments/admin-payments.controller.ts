@@ -34,12 +34,12 @@ import {
   decisionSchema,
   recordPaymentSchema,
 } from "./admin-payments.service.js";
-import { PUBLIC_METHOD_PATHS, redactRefundDestinations } from "./payment-views.js";
+import { PUBLIC_PAYMENT_PATHS, redactRefundDestinations } from "./payment-views.js";
 
 type Schemas = components["schemas"];
 
 /** Respons AdminPaymentDetail/AdminPaymentAdjustment disimpan untuk replay tanpa rekening tujuan refund (D2). */
-const ADMIN_IDEMPOTENCY = { publicResponsePaths: PUBLIC_METHOD_PATHS, storedBody: redactRefundDestinations };
+const ADMIN_IDEMPOTENCY = { publicResponsePaths: PUBLIC_PAYMENT_PATHS, storedBody: redactRefundDestinations };
 
 /**
  * Antrean, detail, keputusan, pembatalan dan pencatatan pembayaran oleh pengurus (kontrak admin-payments.yaml; F-04,
