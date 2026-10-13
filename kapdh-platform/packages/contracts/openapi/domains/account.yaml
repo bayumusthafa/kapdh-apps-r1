@@ -77,8 +77,10 @@ paths:
         lama sampai refund selesai/batal atau sampai langkah akhir job (batas `estimated_completion_at`), mana yang
         lebih dahulu, lalu dihapus bersama data pribadi lain; setelah itu bendahara tidak lagi dapat menghubungi
         pemilik. Karena itu UI menampilkan `pending_refunds` dan `active_tickets` sebelum konfirmasi dan menyarankan
-        menunggu refund selesai atau mengajukan refund lebih dahulu. Pembayaran `pending` dibatalkan job; dana yang
-        sudah ditransfer diselesaikan lewat bendahara.
+        menunggu refund selesai atau mengajukan refund lebih dahulu. Pembayaran `pending` TANPA bukti dibatalkan job
+        (aktor system); pembayaran `pending` yang sudah berbukti tidak dibatalkan karena dana mungkin sudah
+        ditransfer, melainkan tetap diputus pengurus dalam bentuk anonim (berkas bukti dan catatan transfer dihapus;
+        admin-payments adminDecidePayment). Dana yang sudah ditransfer diselesaikan lewat bendahara.
 
         Galat: 400 VALIDATION_ERROR (`confirm` bukan true); 403 REAUTH_REQUIRED, atau FORBIDDEN bila dipanggil
         dengan token sesi admin; 409 VERSION_CONFLICT bila pengungkapan berubah (mis. tiket atau refund baru)
@@ -346,8 +348,9 @@ components:
       description: |
         Kebijakan refund D6 (PRD 3.9) yang berlaku untuk tiket bila pengguna bertindak SEBELUM menghapus akun;
         setelah akun dihapus tiket hangus. Dievaluasi berurutan:
-        `payment_pending` tiket belum lunas (awaiting_payment/awaiting_review): pembayarannya ada di `open_payments`
-        dan dibatalkan job; dana yang sudah ditransfer diselesaikan lewat bendahara (PRD 4.4).
+        `payment_pending` tiket belum lunas (awaiting_payment/awaiting_review): pembayarannya ada di `open_payments`;
+        tiket hangus, pembayaran tanpa bukti dibatalkan job, pembayaran berbukti tetap diputus pengurus dan dana yang
+        sudah ditransfer diselesaikan lewat bendahara (PRD 4.4).
         `case_by_case` pemilik sedang disuspend: tiket tidak berlaku dan refund diputuskan pengurus per kasus (D6
         baris "Anggota disuspend"), termasuk bila event dibatalkan; anggota suspended tidak dapat membatalkan tiket
         sendiri.
@@ -438,8 +441,10 @@ components:
     AccountDeletionPaymentWarning:
       type: object
       description: |
-        Pembayaran `pending` yang akan dibatalkan saat penghapusan. Dana yang sudah ditransfer tidak otomatis
-        dianggap dikembalikan; pengguna menghubungi bendahara sebelum menghapus (PRD 4.4).
+        Pembayaran `pending` milik pengguna. Saat penghapusan, yang belum berbukti (`proof_submitted` false)
+        dibatalkan job; yang sudah berbukti tidak dibatalkan dan tetap diputus pengurus dalam bentuk anonim. Dana yang
+        sudah ditransfer tidak otomatis dianggap dikembalikan; pengguna menghubungi bendahara sebelum menghapus
+        (PRD 4.4).
       required: [payment_id, type, amount, proof_submitted, created_at]
       properties:
         payment_id: { type: string, format: uuid }

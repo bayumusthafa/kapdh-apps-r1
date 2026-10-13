@@ -13,6 +13,11 @@ export const DELETION_COMPLETION_DAYS = 7;
 export const BACKUP_RETENTION_DAYS = 30;
 /** Slug halaman kebijakan privasi (seed referensi LEGAL_PAGE_SHELLS). */
 export const PRIVACY_POLICY_SLUG = "kebijakan-privasi";
+/**
+ * Sewa klaim `processing` job penghapusan (AC F14-2): diperpanjang setiap langkah selesai; permintaan yang diklaim
+ * worker yang mati dapat diklaim ulang sapuan setelah sewa habis.
+ */
+export const DELETION_LEASE_MS = 15 * 60_000;
 const DAY_MS = 24 * 3600_000;
 
 /**
