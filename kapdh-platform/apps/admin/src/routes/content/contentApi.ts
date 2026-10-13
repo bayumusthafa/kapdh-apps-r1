@@ -77,13 +77,7 @@ export function invalidateContent(queryClient: QueryClient): Promise<void> {
   return queryClient.invalidateQueries({ queryKey: contentKeys.all });
 }
 
-/** Path daftar kategori per jenis (izin: berita content.manage, event events.manage). */
-export const CATEGORY_PATH = {
-  post: "/admin/content/post-categories",
-  event: "/admin/content/event-categories",
-} as const;
-
-/** Pilihan kategori berita aktif untuk formulir dan filter (maks 100; jumlah kategori kecil). */
+/** Pilihan kategori untuk formulir dan filter (maks 100; jumlah kategori kecil). */
 export function fetchCategoryOptions(
   kind: ContentCategoryKind,
   { signal, headers }: { signal: AbortSignal; headers: Record<string, string> },
