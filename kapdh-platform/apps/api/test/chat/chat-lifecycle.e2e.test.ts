@@ -179,7 +179,7 @@ describe("Keputusan moderasi remove_message (kontrak admin-moderation, PRD 3.12)
 });
 
 describe("Runtime worker (ARCHITECTURE §4.1, §4.8)", () => {
-  it("ChatLifecycleModule dapat dimuat di worker tanpa provider khusus API (job penghapusan akun F-14)", async () => {
+  it("AC F14-5: ChatLifecycleModule dapat dimuat di worker tanpa provider khusus API (job penghapusan akun F-14)", async () => {
     const { pg, db } = await createTestDatabase();
     const env: WorkerEnv = {
       NODE_ENV: "test",
