@@ -188,7 +188,9 @@ function ModerationQueue() {
           <span className="flex flex-col items-start gap-1">
             <ReportStatusBadge status={row.original.status} />
             {row.original.claimed_by ? (
-              <span className="text-xs text-text-muted">Peninjau: {row.original.claimed_by.display_name}</span>
+              <span className="text-xs text-text-muted">
+                Peninjau: {row.original.claimed_by.display_name}
+              </span>
             ) : null}
           </span>
         ),
@@ -201,8 +203,20 @@ function ModerationQueue() {
   return (
     <>
       <section aria-label="Ringkasan antrean" className="flex flex-wrap gap-4">
-        <StatCard label="Terbuka" value={counts?.open ?? "-"} icon={<Flag />} tone="warning" loading={list.isPending} />
-        <StatCard label="Sedang ditinjau" value={counts?.in_review ?? "-"} icon={<Eye />} tone="info" loading={list.isPending} />
+        <StatCard
+          label="Terbuka"
+          value={counts?.open ?? "-"}
+          icon={<Flag />}
+          tone="warning"
+          loading={list.isPending}
+        />
+        <StatCard
+          label="Sedang ditinjau"
+          value={counts?.in_review ?? "-"}
+          icon={<Eye />}
+          tone="info"
+          loading={list.isPending}
+        />
         <StatCard
           label="Lewat target"
           value={counts?.overdue ?? "-"}
@@ -210,7 +224,13 @@ function ModerationQueue() {
           tone="danger"
           loading={list.isPending}
         />
-        <StatCard label="Mendesak" value={counts?.urgent ?? "-"} icon={<Siren />} tone="danger" loading={list.isPending} />
+        <StatCard
+          label="Mendesak"
+          value={counts?.urgent ?? "-"}
+          icon={<Siren />}
+          tone="danger"
+          loading={list.isPending}
+        />
       </section>
       <section aria-label="Antrean laporan">
         <DataTable<Item>
@@ -242,11 +262,25 @@ function ModerationQueue() {
                 className="flex-[1_1_220px]"
               />
               <Field label="Status" className="flex-[0_1_180px]">
-                {(a11y) => <Select {...a11y} size="sm" options={STATUS_OPTIONS} value={status} onValueChange={setStatus} />}
+                {(a11y) => (
+                  <Select
+                    {...a11y}
+                    size="sm"
+                    options={STATUS_OPTIONS}
+                    value={status}
+                    onValueChange={setStatus}
+                  />
+                )}
               </Field>
               <Field label="Prioritas" className="flex-[0_1_160px]">
                 {(a11y) => (
-                  <Select {...a11y} size="sm" options={PRIORITY_OPTIONS} value={priority} onValueChange={setPriority} />
+                  <Select
+                    {...a11y}
+                    size="sm"
+                    options={PRIORITY_OPTIONS}
+                    value={priority}
+                    onValueChange={setPriority}
+                  />
                 )}
               </Field>
               <Field label="Kategori" className="flex-[0_1_180px]">
@@ -272,7 +306,9 @@ function ModerationQueue() {
                 )}
               </Field>
               <Field label="Urutkan" className="flex-[0_1_160px]">
-                {(a11y) => <Select {...a11y} size="sm" options={SORT_OPTIONS} value={sort} onValueChange={setSort} />}
+                {(a11y) => (
+                  <Select {...a11y} size="sm" options={SORT_OPTIONS} value={sort} onValueChange={setSort} />
+                )}
               </Field>
               <Checkbox label="Hanya yang lewat target" checked={overdue} onCheckedChange={setOverdue} />
             </>
@@ -280,7 +316,11 @@ function ModerationQueue() {
           emptyState={
             <EmptyState
               compact
-              title={status === "active" ? "Tidak ada laporan yang perlu ditangani" : "Tidak ada laporan yang cocok"}
+              title={
+                status === "active"
+                  ? "Tidak ada laporan yang perlu ditangani"
+                  : "Tidak ada laporan yang cocok"
+              }
               description="Ubah filter atau kata kunci untuk melihat laporan lain."
             />
           }

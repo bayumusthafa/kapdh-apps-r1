@@ -20,7 +20,9 @@ describe("akun admin sendiri (F-02, AC F02-4, F02-6; server tiruan)", () => {
     const card = await section("Profil admin");
     expect(within(card).getByText(MOCK_CREDENTIALS.email)).toBeInTheDocument();
     expect(within(card).getByText("Belum ada (ini login pertama)")).toBeInTheDocument();
-    expect(within(within(card).getByRole("list", { name: "Daftar izin" })).getAllByRole("listitem")).toHaveLength(15);
+    expect(
+      within(within(card).getByRole("list", { name: "Daftar izin" })).getAllByRole("listitem"),
+    ).toHaveLength(15);
   });
 
   it("AC F02-4: ganti sandi mensyaratkan sandi lama; salah tampil di isian; berhasil mencabut sesi lain", async () => {
@@ -35,7 +37,9 @@ describe("akun admin sendiri (F-02, AC F02-4, F02-6; server tiruan)", () => {
     await user.type(within(card).getByLabelText(/^Sandi baru/), NEW_PASSWORD);
     await user.type(within(card).getByLabelText(/^Ulangi sandi baru/), NEW_PASSWORD);
     await user.click(within(card).getByRole("button", { name: "Ganti sandi" }));
-    await waitFor(() => expect(current).toHaveAccessibleDescription(/Sandi saat ini salah\. Sisa percobaan 4\./));
+    await waitFor(() =>
+      expect(current).toHaveAccessibleDescription(/Sandi saat ini salah\. Sisa percobaan 4\./),
+    );
     expect(current).toHaveValue("");
 
     await user.type(current, MOCK_CREDENTIALS.password);
@@ -108,7 +112,9 @@ describe("akun admin sendiri (F-02, AC F02-4, F02-6; server tiruan)", () => {
     await user.click(within(confirm).getByRole("button", { name: "Buat kode baru" }));
     await confirmReauth(user);
     const dialog = await screen.findByRole("dialog", { name: "Backup code baru" });
-    const codes = within(within(dialog).getByRole("list", { name: "Daftar backup code" })).getAllByRole("listitem");
+    const codes = within(within(dialog).getByRole("list", { name: "Daftar backup code" })).getAllByRole(
+      "listitem",
+    );
     expect(codes).toHaveLength(10);
     expect(accountRequests.find((r) => r.path === "/admin/auth/backup-codes")?.reauth).toBe(true);
     // Kode lama (dipakai uji login) tidak berlaku lagi.

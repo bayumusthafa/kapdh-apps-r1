@@ -204,13 +204,10 @@ export function PermissionEditor({
 }
 
 /** Pembungkus katalog: memuat, galat, atau editor. */
-export function CatalogGate({
-  children,
-}: {
-  children: (catalog: Catalog["permissions"]) => ReactNode;
-}) {
+export function CatalogGate({ children }: { children: (catalog: Catalog["permissions"]) => ReactNode }) {
   const catalog = usePermissionCatalog();
   if (catalog.isPending) return <Loading label="Memuat katalog izin..." rows={3} />;
-  if (catalog.isError) return <ErrorState error={catalog.error} onRetry={() => void catalog.refetch()} compact />;
+  if (catalog.isError)
+    return <ErrorState error={catalog.error} onRetry={() => void catalog.refetch()} compact />;
   return <>{children(catalog.data.permissions)}</>;
 }

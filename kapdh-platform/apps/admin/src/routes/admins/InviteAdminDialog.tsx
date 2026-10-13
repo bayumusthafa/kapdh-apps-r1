@@ -37,15 +37,16 @@ const schema = z
   .object({
     mode: z.enum(["alumni", "email"]),
     alumni_user_id: z.string().optional(),
-  email: z.string().trim().max(254, "Email terlalu panjang."),
-  display_name: z.string().trim().max(120, "Nama tampilan maksimal 120 karakter."),
-  role: z.enum(["admin", "super_admin"]),
+    email: z.string().trim().max(254, "Email terlalu panjang."),
+    display_name: z.string().trim().max(120, "Nama tampilan maksimal 120 karakter."),
+    role: z.enum(["admin", "super_admin"]),
     permissions: z.array(z.string()),
   })
   .superRefine((v, ctx) => {
     const emailOk = z.email().safeParse(v.email).success;
     if (v.mode === "email") {
-      if (v.email === "") ctx.addIssue({ code: "custom", path: ["email"], message: "Email login wajib diisi." });
+      if (v.email === "")
+        ctx.addIssue({ code: "custom", path: ["email"], message: "Email login wajib diisi." });
       if (v.display_name === "")
         ctx.addIssue({ code: "custom", path: ["display_name"], message: "Nama tampilan wajib diisi." });
     }
@@ -91,7 +92,9 @@ export function InviteAdminDialog({ open, onClose }: { open: boolean; onClose: (
     setError: form.setError,
     request: (v, ctx) =>
       api.POST("/admin/admins", {
-        params: { header: { "X-Reauth-Token": ctx.reauthToken ?? "", "Idempotency-Key": ctx.idempotencyKey } },
+        params: {
+          header: { "X-Reauth-Token": ctx.reauthToken ?? "", "Idempotency-Key": ctx.idempotencyKey },
+        },
         body: {
           ...(v.alumni_user_id ? { alumni_user_id: v.alumni_user_id } : {}),
           ...(v.email ? { email: v.email } : {}),
@@ -153,14 +156,17 @@ export function InviteAdminDialog({ open, onClose }: { open: boolean; onClose: (
     >
       {result ? (
         <div className="flex flex-col gap-4">
-          <div role="status" className="flex items-start gap-3 rounded-md bg-success-bg p-4 text-sm text-success">
+          <div
+            role="status"
+            className="flex items-start gap-3 rounded-md bg-success-bg p-4 text-sm text-success"
+          >
             <MailCheck aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
             <div className="flex flex-col gap-1 text-text">
               <p className="font-semibold text-success">Undangan dijadwalkan</p>
               <p>
                 Tautan undangan dikirim ke <strong>{result.admin.email}</strong> dan berlaku sampai{" "}
-                {formatDateTime(result.invitation_expires_at)}. Tautan tidak ditampilkan di sini; admin baru wajib
-                membuat sandi dan mendaftarkan autentikator sebelum aktif.
+                {formatDateTime(result.invitation_expires_at)}. Tautan tidak ditampilkan di sini; admin baru
+                wajib membuat sandi dan mendaftarkan autentikator sebelum aktif.
               </p>
             </div>
           </div>
@@ -186,7 +192,11 @@ export function InviteAdminDialog({ open, onClose }: { open: boolean; onClose: (
             value={mode}
             onValueChange={changeMode}
             options={[
-              { value: "alumni", label: "Pilih alumni", description: "Tertaut untuk cek konflik kepentingan" },
+              {
+                value: "alumni",
+                label: "Pilih alumni",
+                description: "Tertaut untuk cek konflik kepentingan",
+              },
               { value: "email", label: "Undang lewat email", description: "Admin tanpa akun alumni" },
             ]}
           />
@@ -219,18 +229,25 @@ export function InviteAdminDialog({ open, onClose }: { open: boolean; onClose: (
                           <span className="font-semibold">{c.full_name}</span>
                           <span className="font-mono text-xs">{c.member_number ?? "Belum bernomor"}</span>
                           <span className="break-all text-xs text-text-muted">{c.email}</span>
-                          {c.profession ? <span className="text-xs text-text-muted">{c.profession}</span> : null}
+                          {c.profession ? (
+                            <span className="text-xs text-text-muted">{c.profession}</span>
+                          ) : null}
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <MembershipStatusBadge status={c.effective_status} />
                         {c.eligible ? (
-                          <Button size="sm" aria-label={`Jadikan Admin ${c.full_name}`} onClick={() => pick(c)}>
+                          <Button
+                            size="sm"
+                            aria-label={`Jadikan Admin ${c.full_name}`}
+                            onClick={() => pick(c)}
+                          >
                             Jadikan Admin
                           </Button>
                         ) : (
                           <span className="text-xs text-text-muted">
-                            Tidak dapat dipilih: {c.ineligible_reason ? INELIGIBLE_LABEL[c.ineligible_reason] : ""}
+                            Tidak dapat dipilih:{" "}
+                            {c.ineligible_reason ? INELIGIBLE_LABEL[c.ineligible_reason] : ""}
                           </span>
                         )}
                       </div>
@@ -251,7 +268,8 @@ export function InviteAdminDialog({ open, onClose }: { open: boolean; onClose: (
               {chosen ? (
                 <div className="flex flex-col gap-2 rounded-md bg-green-50 p-3 text-sm">
                   <p>
-                    Alumni terpilih: <strong>{chosen.full_name}</strong> ({chosen.member_number ?? "belum bernomor"})
+                    Alumni terpilih: <strong>{chosen.full_name}</strong> (
+                    {chosen.member_number ?? "belum bernomor"})
                   </p>
                   {errors.alumni_user_id?.message ? (
                     <p role="alert" className="font-medium text-danger">
@@ -297,7 +315,8 @@ export function InviteAdminDialog({ open, onClose }: { open: boolean; onClose: (
                   {
                     value: "super_admin",
                     label: "Super Admin",
-                    description: "Semua izin termasuk mengelola admin; perubahan sensitif dengan MFA dan reautentikasi.",
+                    description:
+                      "Semua izin termasuk mengelola admin; perubahan sensitif dengan MFA dan reautentikasi.",
                   },
                 ]}
               />

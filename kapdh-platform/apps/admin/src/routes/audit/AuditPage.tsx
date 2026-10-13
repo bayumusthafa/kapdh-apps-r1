@@ -251,7 +251,11 @@ function AuditContent({ canExport }: { canExport: boolean }) {
             <FormField<FilterValues, "actor_q"> control={form.control} name="actor_q" label="Nama pelaku">
               {(field, a11y) => <Input {...field} {...a11y} size="sm" placeholder="Nama admin atau alumni" />}
             </FormField>
-            <FormField<FilterValues, "effective_role"> control={form.control} name="effective_role" label="Peran pelaku">
+            <FormField<FilterValues, "effective_role">
+              control={form.control}
+              name="effective_role"
+              label="Peran pelaku"
+            >
               {(field, a11y) => (
                 <Select
                   {...a11y}
@@ -265,13 +269,21 @@ function AuditContent({ canExport }: { canExport: boolean }) {
             <FormField<FilterValues, "action"> control={form.control} name="action" label="Tindakan">
               {(field, a11y) => <Input {...field} {...a11y} size="sm" placeholder="mis. payment.approved" />}
             </FormField>
-            <FormField<FilterValues, "entity_type"> control={form.control} name="entity_type" label="Jenis entitas">
+            <FormField<FilterValues, "entity_type">
+              control={form.control}
+              name="entity_type"
+              label="Jenis entitas"
+            >
               {(field, a11y) => <Input {...field} {...a11y} size="sm" placeholder="mis. payment, admin" />}
             </FormField>
             <FormField<FilterValues, "entity_id"> control={form.control} name="entity_id" label="Id entitas">
               {(field, a11y) => <Input {...field} {...a11y} size="sm" />}
             </FormField>
-            <FormField<FilterValues, "request_id"> control={form.control} name="request_id" label="Request ID">
+            <FormField<FilterValues, "request_id">
+              control={form.control}
+              name="request_id"
+              label="Request ID"
+            >
               {(field, a11y) => <Input {...field} {...a11y} size="sm" />}
             </FormField>
             <FormField<FilterValues, "from"> control={form.control} name="from" label="Dari (WIB)">
@@ -280,7 +292,9 @@ function AuditContent({ canExport }: { canExport: boolean }) {
               )}
             </FormField>
             <FormField<FilterValues, "to"> control={form.control} name="to" label="Sebelum (WIB)">
-              {(field, a11y) => <DateTimeField {...a11y} value={field.value} onValueChange={field.onChange} />}
+              {(field, a11y) => (
+                <DateTimeField {...a11y} value={field.value} onValueChange={field.onChange} />
+              )}
             </FormField>
           </div>
           <div className="flex flex-wrap items-end gap-3">
@@ -336,7 +350,11 @@ function AuditContent({ canExport }: { canExport: boolean }) {
             onPrev: paging.prev,
           }}
           emptyState={
-            <EmptyState compact title="Tidak ada entri audit" description="Tidak ada entri yang cocok dengan filter ini." />
+            <EmptyState
+              compact
+              title="Tidak ada entri audit"
+              description="Tidak ada entri yang cocok dengan filter ini."
+            />
           }
         />
       </section>
@@ -384,15 +402,19 @@ function EntryDialog({ entryId, onClose }: { entryId: string; onClose: () => voi
             items={[
               { label: "Waktu", value: formatDateTime(entry.data.created_at) },
               { label: "Tindakan", value: <span className="font-mono">{entry.data.action}</span> },
-              { label: "Pelaku", value: `${actorName(entry.data)} (${ROLE_LABEL[entry.data.effective_role]})` },
+              {
+                label: "Pelaku",
+                value: `${actorName(entry.data)} (${ROLE_LABEL[entry.data.effective_role]})`,
+              },
               { label: "Entitas", value: `${entry.data.entity_type} ${entry.data.entity_id ?? ""}`.trim() },
               { label: "Request ID", value: <span className="font-mono">{entry.data.request_id}</span> },
               { label: "Alasan", value: entry.data.reason ?? "-" },
             ]}
           />
           <p className="text-xs text-text-muted">
-            Secret (sandi, OTP, token, secret TOTP, isi chat, bukti bayar, NIK) tidak pernah dicatat. Data kontak
-            terlihat di sini untuk penelusuran berizin, tetapi disamarkan pada berkas ekspor (AC F17-3).
+            Secret (sandi, OTP, token, secret TOTP, isi chat, bukti bayar, NIK) tidak pernah dicatat. Data
+            kontak terlihat di sini untuk penelusuran berizin, tetapi disamarkan pada berkas ekspor (AC
+            F17-3).
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             <JsonBlock label="Sebelum" value={entry.data.before} />
@@ -422,7 +444,10 @@ function ExportPanel({ filter }: { filter: AuditFilter }) {
 
   const create = useApiMutation<Export, AuditFilter>({
     request: (f, ctx) =>
-      api.POST("/admin/audit/exports", { params: { header: { "Idempotency-Key": ctx.idempotencyKey } }, body: f }),
+      api.POST("/admin/audit/exports", {
+        params: { header: { "Idempotency-Key": ctx.idempotencyKey } },
+        body: f,
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [...AUDIT_KEY, "exports"] });
     },
@@ -489,20 +514,22 @@ function ExportPanel({ filter }: { filter: AuditFilter }) {
                       <span className="font-medium">{x.file_name ?? "Berkas belum tersedia"}</span>
                     </span>
                     <span className="text-xs text-text-muted">
-                      Diminta {formatDateTime(x.requested_at)} oleh {x.requested_by.display_name ?? "akun dihapus"} |{" "}
-                      {describeFilter(x.filters)}
+                      Diminta {formatDateTime(x.requested_at)} oleh{" "}
+                      {x.requested_by.display_name ?? "akun dihapus"} | {describeFilter(x.filters)}
                     </span>
                     {x.status === "ready" ? (
                       <span className="text-xs text-text-muted">
-                        {x.row_count ?? 0} baris | {x.bytes !== null ? formatBytes(x.bytes) : "-"} | dihapus otomatis{" "}
-                        {formatDateTime(x.expires_at)}
+                        {x.row_count ?? 0} baris | {x.bytes !== null ? formatBytes(x.bytes) : "-"} | dihapus
+                        otomatis {formatDateTime(x.expires_at)}
                       </span>
                     ) : null}
                     {x.status === "failed" && x.failure_reason ? (
                       <span className="text-xs text-danger">{FAILURE_LABEL[x.failure_reason]}</span>
                     ) : null}
                     {x.status === "expired" ? (
-                      <span className="text-xs text-text-muted">Berkas sudah dihapus otomatis; minta ekspor baru.</span>
+                      <span className="text-xs text-text-muted">
+                        Berkas sudah dihapus otomatis; minta ekspor baru.
+                      </span>
                     ) : null}
                   </div>
                   {x.status === "ready" ? (

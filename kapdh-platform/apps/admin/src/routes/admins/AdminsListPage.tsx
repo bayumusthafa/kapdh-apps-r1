@@ -71,7 +71,10 @@ export function AdminsPage() {
         description="Akun administrator, peran dan hak akses. Akun admin terpisah dari akun alumni (PRD 2.3)."
         actions={
           <PermissionGate anyOf={["admins.manage"]} fallback={null}>
-            <Button leftIcon={<UserPlus aria-hidden="true" className="size-4" />} onClick={() => setInviteOpen(true)}>
+            <Button
+              leftIcon={<UserPlus aria-hidden="true" className="size-4" />}
+              onClick={() => setInviteOpen(true)}
+            >
               Delegasi User jadi Admin
             </Button>
           </PermissionGate>
@@ -140,7 +143,11 @@ function AdminsList() {
           );
         },
       },
-      { id: "email", header: "Email", cell: ({ row }) => <span className="break-all">{row.original.email}</span> },
+      {
+        id: "email",
+        header: "Email",
+        cell: ({ row }) => <span className="break-all">{row.original.email}</span>,
+      },
       { id: "access", header: "Role & Akses", cell: ({ row }) => <AccessChips admin={row.original} /> },
       {
         id: "status",
@@ -218,15 +225,25 @@ function AdminsList() {
                   className="flex-[1_1_240px]"
                 />
                 <Field label="Peran" className="flex-[0_1_180px]">
-                  {(a11y) => <Select {...a11y} size="sm" options={ROLE_OPTIONS} value={role} onValueChange={setRole} />}
+                  {(a11y) => (
+                    <Select {...a11y} size="sm" options={ROLE_OPTIONS} value={role} onValueChange={setRole} />
+                  )}
                 </Field>
                 <Field label="Status" className="flex-[0_1_180px]">
                   {(a11y) => (
-                    <Select {...a11y} size="sm" options={STATUS_OPTIONS} value={status} onValueChange={setStatus} />
+                    <Select
+                      {...a11y}
+                      size="sm"
+                      options={STATUS_OPTIONS}
+                      value={status}
+                      onValueChange={setStatus}
+                    />
                   )}
                 </Field>
                 <Field label="Urutkan" className="flex-[0_1_180px]">
-                  {(a11y) => <Select {...a11y} size="sm" options={SORT_OPTIONS} value={sort} onValueChange={setSort} />}
+                  {(a11y) => (
+                    <Select {...a11y} size="sm" options={SORT_OPTIONS} value={sort} onValueChange={setSort} />
+                  )}
                 </Field>
               </>
             }

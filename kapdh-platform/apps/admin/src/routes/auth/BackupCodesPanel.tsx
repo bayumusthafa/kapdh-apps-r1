@@ -67,8 +67,8 @@ export function BackupCodesPanel({
             Simpan backup code sekarang
           </h2>
           <p className="text-text">
-            Kode ini hanya ditampilkan sekali. Pakai salah satunya bila aplikasi autentikator tidak tersedia; setiap
-            kode hanya berlaku satu kali. Backup code lama tidak berlaku lagi.
+            Kode ini hanya ditampilkan sekali. Pakai salah satunya bila aplikasi autentikator tidak tersedia;
+            setiap kode hanya berlaku satu kali. Backup code lama tidak berlaku lagi.
           </p>
         </div>
       </div>

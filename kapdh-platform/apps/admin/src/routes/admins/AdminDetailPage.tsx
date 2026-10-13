@@ -25,7 +25,14 @@ import { ErrorState, Loading } from "../../components/ui/States";
 import { useToast } from "../../components/ui/Toast";
 import { cn } from "../../lib/cn";
 import { formatDateTime } from "../../lib/format";
-import { AccessChips, ADMINS_KEY, adminDetailKey, CatalogGate, PermissionEditor, usePermissionCatalog } from "./shared";
+import {
+  AccessChips,
+  ADMINS_KEY,
+  adminDetailKey,
+  CatalogGate,
+  PermissionEditor,
+  usePermissionCatalog,
+} from "./shared";
 
 type Detail = components["schemas"]["AdminAccountDetail"];
 type AdminRole = components["schemas"]["AdminRole"];
@@ -88,7 +95,11 @@ function AdminDetail({ adminId }: { adminId: string }) {
       <>
         <PageHeader title="Detail Admin" breadcrumbs={breadcrumbs} />
         <Card>
-          <ErrorState error={detail.error} onRetry={() => void detail.refetch()} title="Detail admin gagal dimuat" />
+          <ErrorState
+            error={detail.error}
+            onRetry={() => void detail.refetch()}
+            title="Detail admin gagal dimuat"
+          />
         </Card>
       </>
     );
@@ -161,10 +172,16 @@ function IdentityCard({ admin: a, self }: { admin: Detail; self: boolean }) {
               value: a.mfa_enrolled ? "Terverifikasi" : "Belum terdaftar",
             },
             { label: "Sesi aktif", value: String(a.active_session_count) },
-            { label: "Login terakhir", value: a.last_login_at ? formatDateTime(a.last_login_at) : "Belum pernah" },
+            {
+              label: "Login terakhir",
+              value: a.last_login_at ? formatDateTime(a.last_login_at) : "Belum pernah",
+            },
             { label: "Dibuat", value: formatDateTime(a.created_at) },
             { label: "Diundang oleh", value: a.invited_by?.display_name ?? "Bootstrap/akun dihapus" },
-            { label: "Aktif sejak", value: a.activated_at ? formatDateTime(a.activated_at) : "Belum pernah aktif" },
+            {
+              label: "Aktif sejak",
+              value: a.activated_at ? formatDateTime(a.activated_at) : "Belum pernah aktif",
+            },
             ...(a.invite_expires_at
               ? [{ label: "Undangan berlaku sampai", value: formatDateTime(a.invite_expires_at) }]
               : []),
@@ -233,7 +250,11 @@ function useDetailMutation<T, V extends FieldValues>({
       const rootMessages: string[] = [];
       for (const [field, messages] of Object.entries(error.fieldErrors)) {
         if ((fields as readonly string[]).includes(field)) {
-          form.setError(field as Path<V>, { type: "server", message: messages.join(" ") }, { shouldFocus: !placed });
+          form.setError(
+            field as Path<V>,
+            { type: "server", message: messages.join(" ") },
+            { shouldFocus: !placed },
+          );
           placed = true;
         } else rootMessages.push(messages.join(" "));
       }
@@ -249,7 +270,11 @@ function useDetailMutation<T, V extends FieldValues>({
 // ------------------------------------------------------------------------------------------------ Peran & izin
 
 const accessSchema = z.object({
-  display_name: z.string().trim().min(1, "Nama tampilan wajib diisi.").max(120, "Nama tampilan maksimal 120 karakter."),
+  display_name: z
+    .string()
+    .trim()
+    .min(1, "Nama tampilan wajib diisi.")
+    .max(120, "Nama tampilan maksimal 120 karakter."),
   role: z.enum(["admin", "super_admin"]),
   permissions: z.array(z.string()),
   reason: z.string().max(500, "Alasan maksimal 500 karakter."),
@@ -288,7 +313,8 @@ function AccessCard({
       if (v.role !== a.role) body.role = v.role;
       const perms = v.role === "admin" ? (v.permissions as Permission[]) : [];
       const before = a.role === "admin" ? a.permissions : [];
-      if (v.role === "admin" && (v.role !== a.role || perms.join() !== before.join())) body.permissions = perms;
+      if (v.role === "admin" && (v.role !== a.role || perms.join() !== before.join()))
+        body.permissions = perms;
       if (v.reason.trim()) body.reason = v.reason.trim();
       return api.PATCH("/admin/admins/{adminId}", {
         params: {
@@ -338,7 +364,12 @@ function AccessCard({
           </p>
         ) : null}
         <FormError message={errors.root?.server?.message} />
-        <FormField<AccessValues, "display_name"> control={form.control} name="display_name" label="Nama tampilan" required>
+        <FormField<AccessValues, "display_name">
+          control={form.control}
+          name="display_name"
+          label="Nama tampilan"
+          required
+        >
           {(field, a11y) => <Input {...field} {...a11y} maxLength={120} />}
         </FormField>
         <RadioGroup<AdminRole>
@@ -348,7 +379,11 @@ function AccessCard({
           error={errors.role?.message}
           options={[
             { value: "admin", label: "Admin", description: "Hanya izin yang dipilih." },
-            { value: "super_admin", label: "Super Admin", description: "Semua izin termasuk mengelola admin." },
+            {
+              value: "super_admin",
+              label: "Super Admin",
+              description: "Semua izin termasuk mengelola admin.",
+            },
           ]}
         />
         {role === "admin" ? (
@@ -440,32 +475,56 @@ function StatusCard({
       />
       <div className="flex flex-col gap-2 px-5">
         {canActivate ? (
-          <Button variant="outline" leftIcon={<UserCheck aria-hidden="true" className="size-4" />} onClick={() => setAction("activate")}>
+          <Button
+            variant="outline"
+            leftIcon={<UserCheck aria-hidden="true" className="size-4" />}
+            onClick={() => setAction("activate")}
+          >
             Aktifkan kembali
           </Button>
         ) : null}
         {canResend ? (
-          <Button variant="outline" leftIcon={<MailPlus aria-hidden="true" className="size-4" />} onClick={() => setAction("resend")}>
+          <Button
+            variant="outline"
+            leftIcon={<MailPlus aria-hidden="true" className="size-4" />}
+            onClick={() => setAction("resend")}
+          >
             Kirim ulang undangan
           </Button>
         ) : null}
         {canEmail ? (
-          <Button variant="outline" leftIcon={<RotateCcw aria-hidden="true" className="size-4" />} onClick={() => setAction("email")}>
+          <Button
+            variant="outline"
+            leftIcon={<RotateCcw aria-hidden="true" className="size-4" />}
+            onClick={() => setAction("email")}
+          >
             Koreksi email login
           </Button>
         ) : null}
         {canRecover ? (
-          <Button variant="outline" leftIcon={<KeyRound aria-hidden="true" className="size-4" />} onClick={() => setAction("recover")}>
+          <Button
+            variant="outline"
+            leftIcon={<KeyRound aria-hidden="true" className="size-4" />}
+            onClick={() => setAction("recover")}
+          >
             Pulihkan akun (reset sandi &amp; autentikator)
           </Button>
         ) : null}
         {canDisable ? (
-          <Button variant="danger" leftIcon={<Power aria-hidden="true" className="size-4" />} onClick={() => setAction("disable")}>
+          <Button
+            variant="danger"
+            leftIcon={<Power aria-hidden="true" className="size-4" />}
+            onClick={() => setAction("disable")}
+          >
             {a.status === "invited" ? "Nonaktifkan (batalkan undangan)" : "Nonaktifkan admin"}
           </Button>
         ) : null}
         {canDelete ? (
-          <Button variant="danger" leftIcon={<Trash2 aria-hidden="true" className="size-4" />} onClick={() => setAction("delete")}>
+          <Button
+            variant="danger"
+            leftIcon={<Trash2 aria-hidden="true" className="size-4" />}
+            onClick={() => setAction("delete")}
+          >
             Hapus identitas admin
           </Button>
         ) : null}
@@ -477,7 +536,8 @@ function StatusCard({
         {self ? (
           <p className="flex items-start gap-1.5 text-xs text-text-muted">
             <ShieldOff aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-            Akun sendiri tidak dapat dipulihkan dari sini; gunakan ganti sandi atau backup code di halaman Akun.
+            Akun sendiri tidak dapat dipulihkan dari sini; gunakan ganti sandi atau backup code di halaman
+            Akun.
           </p>
         ) : null}
       </div>
@@ -497,9 +557,16 @@ interface DialogProps {
   notify: (tone: Notice["tone"], message: string) => void;
 }
 
-const reasonField = z.string().trim().min(3, "Alasan minimal 3 karakter.").max(500, "Alasan maksimal 500 karakter.");
+const reasonField = z
+  .string()
+  .trim()
+  .min(3, "Alasan minimal 3 karakter.")
+  .max(500, "Alasan maksimal 500 karakter.");
 
-const disableSchema = z.object({ reason: reasonField, acknowledged: z.literal(true, "Centang pernyataan ini.") });
+const disableSchema = z.object({
+  reason: reasonField,
+  acknowledged: z.literal(true, "Centang pernyataan ini."),
+});
 type DisableValues = z.infer<typeof disableSchema>;
 
 function DisableDialog({ admin: a, onClose, notify }: DialogProps) {
@@ -514,7 +581,10 @@ function DisableDialog({ admin: a, onClose, notify }: DialogProps) {
     fields: ["reason"],
     request: (v, ctx) =>
       api.PATCH("/admin/admins/{adminId}", {
-        params: { path: { adminId: a.id }, header: { "If-Match": a.version, "X-Reauth-Token": ctx.reauthToken ?? "" } },
+        params: {
+          path: { adminId: a.id },
+          header: { "If-Match": a.version, "X-Reauth-Token": ctx.reauthToken ?? "" },
+        },
         body: { status: "disabled", reason: v.reason.trim() },
       }),
     onSuccess: (data) => {
@@ -548,13 +618,20 @@ function DisableDialog({ admin: a, onClose, notify }: DialogProps) {
       }
     >
       <FormError message={form.formState.errors.root?.server?.message} />
-      <FormField<DisableValues, "reason"> control={form.control} name="reason" label="Alasan (dicatat di audit)" required>
+      <FormField<DisableValues, "reason">
+        control={form.control}
+        name="reason"
+        label="Alasan (dicatat di audit)"
+        required
+      >
         {(field, a11y) => <Textarea {...field} {...a11y} rows={3} maxLength={500} />}
       </FormField>
       <AckField
         label="Saya memahami admin ini langsung keluar dari semua perangkat."
         checked={form.watch("acknowledged") === true}
-        onChange={(v) => form.setValue("acknowledged", v as true, { shouldValidate: form.formState.isSubmitted })}
+        onChange={(v) =>
+          form.setValue("acknowledged", v as true, { shouldValidate: form.formState.isSubmitted })
+        }
         error={form.formState.errors.acknowledged?.message}
       />
     </Dialog>
@@ -588,7 +665,10 @@ function ActivateDialog({ admin: a, onClose, notify }: DialogProps) {
     fields: [],
     request: (_v, ctx) =>
       api.PATCH("/admin/admins/{adminId}", {
-        params: { path: { adminId: a.id }, header: { "If-Match": a.version, "X-Reauth-Token": ctx.reauthToken ?? "" } },
+        params: {
+          path: { adminId: a.id },
+          header: { "If-Match": a.version, "X-Reauth-Token": ctx.reauthToken ?? "" },
+        },
         body: { status: "active" },
       }),
     onSuccess: (data) => {
@@ -683,7 +763,10 @@ const emailSchema = z.object({
 type EmailValues = z.infer<typeof emailSchema>;
 
 function EmailDialog({ admin: a, onClose, notify }: DialogProps) {
-  const form = useForm<EmailValues>({ resolver: zodResolver(emailSchema), defaultValues: { email: a.email } });
+  const form = useForm<EmailValues>({
+    resolver: zodResolver(emailSchema),
+    defaultValues: { email: a.email },
+  });
   const correct = useDetailMutation<Detail, EmailValues>({
     admin: a,
     reauthReason: `Mengoreksi email login ${a.display_name}`,
@@ -691,7 +774,10 @@ function EmailDialog({ admin: a, onClose, notify }: DialogProps) {
     fields: ["email"],
     request: (v, ctx) =>
       api.PATCH("/admin/admins/{adminId}", {
-        params: { path: { adminId: a.id }, header: { "If-Match": a.version, "X-Reauth-Token": ctx.reauthToken ?? "" } },
+        params: {
+          path: { adminId: a.id },
+          header: { "If-Match": a.version, "X-Reauth-Token": ctx.reauthToken ?? "" },
+        },
         body: { email: v.email.trim() },
       }),
     onSuccess: (data) => {
@@ -718,7 +804,10 @@ function EmailDialog({ admin: a, onClose, notify }: DialogProps) {
           <Button variant="outline" onClick={onClose} disabled={correct.isPending}>
             Batal
           </Button>
-          <Button loading={correct.isPending} onClick={() => void form.handleSubmit((v) => correct.mutate(v))()}>
+          <Button
+            loading={correct.isPending}
+            onClick={() => void form.handleSubmit((v) => correct.mutate(v))()}
+          >
             Simpan email
           </Button>
         </>
@@ -819,7 +908,9 @@ function RecoverDialog({ admin: a, onClose, notify }: DialogProps) {
       <AckField
         label="Saya sudah memverifikasi identitas admin ini di luar sistem."
         checked={form.watch("acknowledged") === true}
-        onChange={(v) => form.setValue("acknowledged", v as true, { shouldValidate: form.formState.isSubmitted })}
+        onChange={(v) =>
+          form.setValue("acknowledged", v as true, { shouldValidate: form.formState.isSubmitted })
+        }
         error={form.formState.errors.acknowledged?.message}
       />
     </Dialog>
@@ -837,7 +928,10 @@ function DeleteDialog({ admin: a, onClose }: { admin: Detail; onClose: () => voi
     toastErrors: false,
     request: (_v, ctx) =>
       api.DELETE("/admin/admins/{adminId}", {
-        params: { path: { adminId: a.id }, header: { "If-Match": a.version, "X-Reauth-Token": ctx.reauthToken ?? "" } },
+        params: {
+          path: { adminId: a.id },
+          header: { "If-Match": a.version, "X-Reauth-Token": ctx.reauthToken ?? "" },
+        },
       }),
     onSuccess: async () => {
       queryClient.removeQueries({ queryKey: adminDetailKey(a.id) });

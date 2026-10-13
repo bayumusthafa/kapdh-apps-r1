@@ -64,7 +64,9 @@ export function InvitePage() {
   const tokenRef = useRef<string | null | undefined>(undefined);
   if (tokenRef.current === undefined) tokenRef.current = parseInviteToken(hash);
   const token = tokenRef.current;
-  const [stage, setStage] = useState<Stage>(token ? { kind: "form" } : { kind: "invalid", reason: "missing" });
+  const [stage, setStage] = useState<Stage>(
+    token ? { kind: "form" } : { kind: "invalid", reason: "missing" },
+  );
   const authenticated = auth.state.status === "authenticated";
 
   // Hapus fragmen dari bilah alamat (history.replaceState lewat router) segera setelah token dibaca.
@@ -87,10 +89,13 @@ export function InvitePage() {
 
   if (authenticated && auth.profile)
     return (
-      <AuthLayout title="Undangan admin" subtitle="Aktivasi akun admin KAPDH melalui undangan dari Super Admin.">
+      <AuthLayout
+        title="Undangan admin"
+        subtitle="Aktivasi akun admin KAPDH melalui undangan dari Super Admin."
+      >
         <p role="note" className="rounded-md bg-warning-bg p-3 text-sm text-warning">
-          Anda sedang masuk sebagai <strong>{auth.profile.display_name}</strong>. Undangan ini untuk identitas admin
-          lain; keluar dahulu agar sesi Anda tidak tertimpa.
+          Anda sedang masuk sebagai <strong>{auth.profile.display_name}</strong>. Undangan ini untuk identitas
+          admin lain; keluar dahulu agar sesi Anda tidak tertimpa.
         </p>
         <Button variant="primary" fullWidth onClick={() => void auth.logout("manual")}>
           Keluar lalu lanjutkan undangan
@@ -103,7 +108,10 @@ export function InvitePage() {
 
   if (stage.kind === "invalid")
     return (
-      <AuthLayout title="Undangan admin" subtitle="Aktivasi akun admin KAPDH melalui undangan dari Super Admin.">
+      <AuthLayout
+        title="Undangan admin"
+        subtitle="Aktivasi akun admin KAPDH melalui undangan dari Super Admin."
+      >
         <div role="alert" className="flex flex-col gap-2 rounded-md bg-danger-bg p-4 text-sm text-danger">
           <p className="font-semibold">
             {stage.reason === "missing" ? "Tautan undangan tidak lengkap" : "Undangan tidak berlaku"}
@@ -121,7 +129,10 @@ export function InvitePage() {
     );
 
   return (
-    <AuthLayout title="Undangan admin" subtitle="Aktivasi akun admin KAPDH melalui undangan dari Super Admin.">
+    <AuthLayout
+      title="Undangan admin"
+      subtitle="Aktivasi akun admin KAPDH melalui undangan dari Super Admin."
+    >
       <Steps current={1} />
       {preview.isPending ? (
         <Loading label="Memeriksa undangan..." rows={3} />
@@ -181,7 +192,10 @@ export function Steps({ current }: { current: 1 | 2 | 3 }) {
 function InvitationSummary({ preview }: { preview: Preview }) {
   const all = preview.role === "super_admin";
   return (
-    <section aria-labelledby="ringkasan-undangan" className="flex flex-col gap-3 rounded-lg border border-divider p-4">
+    <section
+      aria-labelledby="ringkasan-undangan"
+      className="flex flex-col gap-3 rounded-lg border border-divider p-4"
+    >
       <h2 id="ringkasan-undangan" className="flex items-center gap-2 font-heading text-h3 font-semibold">
         <MailCheck aria-hidden="true" className="size-5 text-primary" />
         {preview.display_name}
@@ -252,14 +266,20 @@ function AcceptForm({
         return;
       }
       if (err.code === "VALIDATION_ERROR" && err.fieldErrors.password) {
-        form.setError("password", { type: "server", message: err.fieldErrors.password.join(" ") }, {
-          shouldFocus: true,
-        });
+        form.setError(
+          "password",
+          { type: "server", message: err.fieldErrors.password.join(" ") },
+          {
+            shouldFocus: true,
+          },
+        );
         return;
       }
       form.setError("root.server", {
         type: "server",
-        message: err.retryAfterSeconds ? `${err.message} Coba lagi dalam ${err.retryAfterSeconds} detik.` : err.message,
+        message: err.retryAfterSeconds
+          ? `${err.message} Coba lagi dalam ${err.retryAfterSeconds} detik.`
+          : err.message,
       });
     } catch (e) {
       form.setError("root.server", { type: "server", message: toApiError(e).message });
