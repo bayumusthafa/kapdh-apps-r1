@@ -103,6 +103,12 @@ export async function createEventRow(t: TestApp, options: EventFixtureOptions = 
   const startsAt = new Date(now.getTime() + (options.startsInMs ?? 10 * DAY));
   const endsAt = new Date(startsAt.getTime() + (options.durationMs ?? 4 * HOUR));
   const status = options.status ?? "open";
+  const closesAt = new Date(startsAt.getTime() - (options.registrationClosesBeforeStartMs ?? HOUR));
+  // Bawaan: pendaftaran sudah dibuka sehari (atau sehari sebelum tutup untuk event lampau; events_registration_chk).
+  const opensAt =
+    options.registrationOpensInMs !== undefined
+      ? new Date(now.getTime() + options.registrationOpensInMs)
+      : new Date(Math.min(now.getTime() - DAY, closesAt.getTime() - DAY));
   const [row] = await t.db
     .insert(events)
     .values({
@@ -114,8 +120,8 @@ export async function createEventRow(t: TestApp, options: EventFixtureOptions = 
       timezone: options.timezone ?? "Asia/Jakarta",
       startsAt,
       endsAt,
-      registrationOpensAt: new Date(now.getTime() + (options.registrationOpensInMs ?? -DAY)),
-      registrationClosesAt: new Date(startsAt.getTime() - (options.registrationClosesBeforeStartMs ?? HOUR)),
+      registrationOpensAt: opensAt,
+      registrationClosesAt: closesAt,
       checkinOpensAt: options.checkinOpensAt ?? null,
       checkinClosesAt: options.checkinClosesAt ?? null,
       price: options.price ?? "75000.00",
@@ -159,6 +165,52 @@ export async function eventRow(t: TestApp, eventId: string) {
 
 export async function ticketRow(t: TestApp, ticketId: string) {
   const [row] = await t.db.select().from(tickets).where(eq(tickets.id, ticketId));
+  return row!;
+}
+
+/**
+ * Tiket langsung di database untuk keadaan yang tidak dapat dicapai anggota lewat API (mis. tiket paid milik anggota
+ * yang kemudian expired/suspended). Penghitung kursi event ikut disesuaikan agar CHECK dan proyeksi tetap konsisten.
+ */
+export async function insertTicket(
+  t: TestApp,
+  input: {
+    eventId: string;
+    userId: string | null;
+    status?: "awaiting_payment" | "awaiting_review" | "paid" | "expired" | "cancelled";
+    total?: string;
+    holdExpiresAt?: Date | null;
+    createdAt?: Date;
+  },
+) {
+  const now = t.clock.now();
+  const status = input.status ?? "paid";
+  const [row] = await t.db
+    .insert(tickets)
+    .values({
+      id: uuidv7(),
+      eventId: input.eventId,
+      userId: input.userId,
+      status,
+      totalSnapshot: input.total ?? "0.00",
+      holdExpiresAt:
+        status === "awaiting_payment" ? (input.holdExpiresAt ?? new Date(now.getTime() + DAY)) : null,
+      qrCode: status === "paid" ? uuidv7().replace(/-/g, "") : null,
+      cancelledAt: status === "cancelled" ? now : null,
+      cancelledBy: status === "cancelled" ? "self" : null,
+      createdAt: input.createdAt ?? now,
+      updatedAt: now,
+    })
+    .returning();
+  const held = status === "awaiting_payment" || status === "awaiting_review" ? 1 : 0;
+  const paid = status === "paid" ? 1 : 0;
+  if (held || paid) {
+    const event = await eventRow(t, input.eventId);
+    await t.db
+      .update(events)
+      .set({ heldQuantity: event.heldQuantity + held, paidQuantity: event.paidQuantity + paid })
+      .where(eq(events.id, input.eventId));
+  }
   return row!;
 }
 
