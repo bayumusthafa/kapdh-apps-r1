@@ -3,9 +3,11 @@
  */
 import { blocks } from "@kapdh/database";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
+import type { Namespace } from "socket.io";
 import { io, type Socket } from "socket.io-client";
 import { v7 as uuidv7 } from "uuid";
 import { expect } from "vitest";
+import { RealtimeGateway } from "../../src/core/realtime/realtime.gateway.js";
 import { expectOperation, expectRealtimeEnvelope, type InjectResponse } from "../support/contract.js";
 import {
   type AlumniFixture,
@@ -139,7 +141,12 @@ export class TestSocket {
     });
   }
 
-  static async connect(baseUrl: string, token: string): Promise<TestSocket> {
+  /**
+   * Menyambung ke /realtime. Gateway menyelesaikan join kanal (user/sesi/room) dan mendaftarkan listener event klien
+   * secara async setelah `connect`; dengan `t` uji menunggu sampai socket sisi server siap (listener `presence.ping`
+   * terdaftar = langkah terakhir handleConnection), sehingga tidak bergantung pada jeda waktu tetap.
+   */
+  static async connect(baseUrl: string, token: string, t?: TestApp): Promise<TestSocket> {
     const socket = io(`${baseUrl}/realtime`, {
       transports: ["websocket"],
       auth: { token },
@@ -147,13 +154,20 @@ export class TestSocket {
       forceNew: true,
       timeout: 5000,
     });
+    const wrapped = new TestSocket(socket);
     await new Promise<void>((resolve, reject) => {
       socket.once("connect", () => resolve());
       socket.once("connect_error", (error) => reject(error));
     });
-    // Gateway menyelesaikan join kanal (user/sesi/room) secara async setelah connect.
-    await new Promise((resolve) => setTimeout(resolve, 60));
-    return new TestSocket(socket);
+    if (t) await serverSocketReady(t, socket.id!);
+    else await new Promise((resolve) => setTimeout(resolve, 60));
+    return wrapped;
+  }
+
+  /** Kanal yang diikuti socket ini di sisi server (mis. `room:<id>`). */
+  serverChannels(t: TestApp): Set<string> {
+    const server = gatewayNamespace(t).sockets.get(this.socket.id!);
+    return new Set(server ? [...server.rooms] : []);
   }
 
   of(type: string): Envelope[] {
@@ -190,4 +204,30 @@ export class TestSocket {
 export async function listenApp(app: NestFastifyApplication): Promise<string> {
   await app.listen(0, "127.0.0.1");
   return app.getUrl();
+}
+
+/** Namespace /realtime milik gateway (uji membaca status socket sisi server). */
+export function gatewayNamespace(t: TestApp): Namespace {
+  const namespace = (t.app.get(RealtimeGateway) as unknown as { namespace: Namespace | null }).namespace;
+  if (!namespace) throw new Error("Gateway realtime belum siap");
+  return namespace;
+}
+
+async function serverSocketReady(t: TestApp, socketId: string, timeoutMs = 5000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const server = gatewayNamespace(t).sockets.get(socketId);
+    if (server && server.listeners("presence.ping").length > 0) return;
+    if (Date.now() > deadline) throw new Error("socket sisi server tidak siap");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
+
+/** Menunggu sampai kondisi terpenuhi (mis. langganan kanal yang berubah setelah commit). */
+export async function eventually(check: () => boolean, timeoutMs = 3000, label = "kondisi"): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!check()) {
+    if (Date.now() > deadline) throw new Error(`${label} tidak terpenuhi`);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
 }

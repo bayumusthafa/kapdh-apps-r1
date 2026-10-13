@@ -66,7 +66,7 @@ const historyQuery = z.object({
 });
 
 /** Satu emoji (grapheme): piktograf, bendera (regional indicator), atau keycap (kontrak parameter ChatEmoji). */
-const EMOJI = /\p{Extended_Pictographic}|\p{Regional_Indicator}|[0-9#*]️?⃣/u;
+const EMOJI = /\p{Extended_Pictographic}|\p{Regional_Indicator}|[0-9#*]\uFE0F?\u20E3/u;
 const graphemes = new Intl.Segmenter("id", { granularity: "grapheme" });
 
 export function parseEmoji(raw: string): string {
