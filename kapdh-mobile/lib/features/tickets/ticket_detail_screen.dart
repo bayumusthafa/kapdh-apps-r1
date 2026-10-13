@@ -6,11 +6,15 @@ import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../app/redirect.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
+import '../../core/api/api_providers.dart';
 import '../../core/api/error_presenter.dart';
+import '../../core/app_gate/app_gate.dart';
 import '../../core/format/formatters.dart';
 import '../../core/session/session_controller.dart';
+import '../../core/ui/app_keys.dart';
 import '../../design/design.dart';
 import '../events/event_format.dart';
 import '../events/events_controllers.dart';
@@ -59,6 +63,7 @@ class TicketDetailScreen extends ConsumerWidget {
         child: _TicketContent(
           ticket: ticket!,
           cancelling: state.cancelling,
+          checking: state.loading,
           controller: controller,
           refreshError: state.error,
         ),
@@ -69,10 +74,19 @@ class TicketDetailScreen extends ConsumerWidget {
 }
 
 class _TicketContent extends ConsumerWidget {
-  const _TicketContent({required this.ticket, required this.cancelling, required this.controller, this.refreshError});
+  const _TicketContent({
+    required this.ticket,
+    required this.cancelling,
+    required this.checking,
+    required this.controller,
+    this.refreshError,
+  });
 
   final TicketDetail ticket;
   final bool cancelling;
+
+  /// Status sedang dimuat ulang dari server.
+  final bool checking;
   final TicketDetailController controller;
 
   /// Galat muat ulang terakhir; tiket yang tampil adalah keadaan terakhir yang berhasil dimuat.
@@ -80,18 +94,29 @@ class _TicketContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final active = isActiveMember(ref.watch(sessionProvider.select((session) => session.effectiveStatus)));
+    final session = ref.watch(sessionProvider);
+    final active = isActiveMember(session.effectiveStatus);
+    // Detail event mengikuti matriks rute (PRD 2.2): anggota expired tetap membuka event yang pernah ia pesan
+    // (kontrak C5 getEvent), anggota aktif membuka event apa pun.
+    final canOpenEvent = isLocationAllowed(
+      RedirectState(gate: ref.watch(appGateProvider).status, session: session),
+      AppRoutes.event(ticket.event.id),
+    );
     final payment = ticket.payment;
-    final policy = _policyText(ticket);
+    // Batas hold menurut perkiraan jam server sudah lewat tetapi status server belum terbaru (mis. offline): tiket
+    // tidak lagi menawarkan bayar atau batal agar anggota tidak mentransfer untuk hold yang sudah berakhir
+    // (D5, AC F09-2, PRD 4.5). Pemicu muat ulang: HoldCountdown saat batas tercapai.
+    final holdPassed = _holdPassed(ref, ticket);
+    final policy = holdPassed ? null : _policyText(ticket);
     return ListView(
       key: const ValueKey('ticket-detail'),
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s8),
       children: [
         RefreshFailedNotice(error: refreshError, onRetry: () => unawaited(controller.reload())),
-        _EventHeader(ticket: ticket, canOpenEvent: active),
+        _EventHeader(ticket: ticket, canOpenEvent: canOpenEvent),
         const SizedBox(height: KapdhSpace.s4),
-        ..._statusSection(context, ref, active),
+        ..._statusSection(context, ref, active: active, holdPassed: holdPassed),
         if (payment != null) ...[const SizedBox(height: KapdhSpace.s4), _PaymentCard(payment: payment)],
         if (ticket.refunds.isNotEmpty) ...[
           const SizedBox(height: KapdhSpace.s4),
@@ -106,7 +131,7 @@ class _TicketContent extends ConsumerWidget {
             message: policy,
           ),
         ],
-        if (ticket.canCancel) ...[
+        if (ticket.canCancel && !holdPassed) ...[
           const SizedBox(height: KapdhSpace.s4),
           OutlinedButton.icon(
             key: const ValueKey('ticket-cancel'),
@@ -130,7 +155,7 @@ class _TicketContent extends ConsumerWidget {
     );
   }
 
-  List<Widget> _statusSection(BuildContext context, WidgetRef ref, bool active) {
+  List<Widget> _statusSection(BuildContext context, WidgetRef ref, {required bool active, required bool holdPassed}) {
     final event = ticket.event;
     final zone = event.timezone;
     final payment = ticket.payment;
@@ -138,8 +163,33 @@ class _TicketContent extends ConsumerWidget {
     switch (ticket.status) {
       case TicketStatus.awaitingPayment:
         final hold = ticket.holdExpiresAt;
+        final countdown = hold == null
+            ? null
+            : HoldCountdown(expiresAt: hold, zone: zone, onExpired: () => unawaited(controller.reload()));
+        if (holdPassed) {
+          return [
+            ?countdown,
+            const SizedBox(height: KapdhSpace.s3),
+            InfoBox(
+              key: const ValueKey('ticket-hold-passed'),
+              tone: InfoBoxTone.warning,
+              icon: Icons.sync_problem,
+              title: checking ? 'Memeriksa status reservasi…' : 'Status reservasi belum terbaru',
+              message:
+                  'Batas kirim bukti sudah lewat, sehingga reservasi ini kemungkinan sudah berakhir dan kursinya '
+                  'dilepas. Jangan transfer untuk reservasi ini sebelum statusnya diperbarui.',
+              trailing: checking
+                  ? null
+                  : TextButton(
+                      key: const ValueKey('ticket-hold-reload'),
+                      onPressed: () => unawaited(controller.reload()),
+                      child: const Text('Muat ulang'),
+                    ),
+            ),
+          ];
+        }
         return [
-          if (hold != null) HoldCountdown(expiresAt: hold, zone: zone, onExpired: () => unawaited(controller.reload())),
+          ?countdown,
           const SizedBox(height: KapdhSpace.s3),
           const InfoBox(
             icon: Icons.account_balance_outlined,
@@ -244,19 +294,31 @@ class _TicketContent extends ConsumerWidget {
   }
 
   Future<void> _cancel(BuildContext context, WidgetRef ref) async {
+    // Diambil sebelum await: hasil pembatalan tetap diberitahukan walau layar ditutup selama request (PRD 4.5),
+    // tanpa memakai WidgetRef layar yang sudah dilepas.
+    final presenter = ref.read(errorPresenterProvider);
+    final messenger = ref.read(scaffoldMessengerKeyProvider);
+    final container = ProviderScope.containerOf(context, listen: false);
     final reason = await showDialog<String>(
       context: context,
       builder: (_) => _CancelDialog(ticket: ticket),
     );
-    if (reason == null) return;
+    if (reason == null || !context.mounted) return;
     final expectedRefundEligible = ticket.refundEligible;
-    final error = await controller.cancel(expectedRefundEligible: expectedRefundEligible, reason: reason);
-    if (!context.mounted) return;
-    final current = ref.read(ticketDetailControllerProvider(ticket.id)).ticket;
+    final result = await controller.cancel(expectedRefundEligible: expectedRefundEligible, reason: reason);
+    final error = result.error;
+    final current = result.ticket;
     if (error == null) {
-      final refundPending = current?.refunds.any((r) => r.status == TicketRefundStatus.pending) ?? false;
-      showAppSnackBar(
-        ref,
+      if (current == null) return;
+      if (!context.mounted) {
+        // Layar sudah dilepas sebelum respons tiba: daftar Tiket Saya dan detail event tetap diperbarui.
+        container
+          ..invalidate(ticketsControllerProvider)
+          ..invalidate(eventDetailControllerProvider(ticket.event.id));
+      }
+      final refundPending = current.refunds.any((r) => r.status == TicketRefundStatus.pending);
+      showMessengerSnackBar(
+        messenger,
         refundPending
             ? 'Tiket dibatalkan. Refund penuh diproses bendahara paling lambat $refundBusinessDays hari kerja; '
                   'rekening tujuan diminta di halaman pembayaran.'
@@ -266,7 +328,10 @@ class _TicketContent extends ConsumerWidget {
       );
       return;
     }
-    final presenter = ref.read(errorPresenterProvider);
+    if (!context.mounted) {
+      await presenter.present(error);
+      return;
+    }
     switch (error.code) {
       case ErrorCode.versionConflict:
         final refundLost = expectedRefundEligible && current != null && !current.refundEligible;
@@ -284,6 +349,14 @@ class _TicketContent extends ConsumerWidget {
         await presenter.present(error, onReload: () => unawaited(controller.reload()));
     }
   }
+}
+
+/// Reservasi menunggu bukti yang batas hold-nya sudah lewat menurut perkiraan jam server (`ServerClock`, bukan jam
+/// perangkat; PRD 2.1) sementara status dari server belum berubah menjadi expired.
+bool _holdPassed(WidgetRef ref, TicketDetail ticket) {
+  final hold = ticket.holdExpiresAt;
+  if (ticket.status != TicketStatus.awaitingPayment || hold == null) return false;
+  return !ref.read(serverClockProvider).now().isBefore(hold);
 }
 
 Future<void> _explain(BuildContext context, String title, String message) async {
@@ -361,8 +434,8 @@ class _EventHeader extends StatelessWidget {
 
   final TicketDetail ticket;
 
-  /// Detail event dibuka dari tab Event yang hanya untuk anggota aktif (matriks rute PRD 2.2); anggota expired
-  /// melihat jadwal dan lokasi di kartu ini.
+  /// Rute detail event diizinkan matriks rute status saat ini (anggota aktif dan expired pemegang tiket, PRD 2.2);
+  /// selain itu jadwal dan lokasi tetap terlihat di kartu ini.
   final bool canOpenEvent;
 
   @override

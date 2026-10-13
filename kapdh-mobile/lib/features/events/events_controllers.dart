@@ -136,6 +136,10 @@ class TicketDetailState {
   final bool cancelling;
 }
 
+/// Hasil pembatalan tiket sendiri: [ticket] keadaan terbaru (hasil pembatalan atau `current` 409), [error] null bila
+/// berhasil.
+typedef TicketCancelResult = ({TicketDetail? ticket, ApiException? error});
+
 final ticketDetailControllerProvider = NotifierProvider.autoDispose
     .family<TicketDetailController, TicketDetailState, String>(TicketDetailController.new);
 
@@ -173,32 +177,38 @@ class TicketDetailController extends Notifier<TicketDetailState> {
     state = TicketDetailState(ticket: ticket, loading: false);
   }
 
-  /// Membatalkan tiket sendiri (D6). Mengembalikan galat untuk ditampilkan layar; 409 dengan `current` langsung
-  /// diterapkan sehingga anggota melihat keadaan terbaru (mis. batas H-3 terlewati) sebelum memutuskan lagi.
-  Future<ApiException?> cancel({required bool expectedRefundEligible, String? reason}) async {
+  /// Membatalkan tiket sendiri (D6). Mengembalikan tiket hasil pembatalan, atau galat untuk ditampilkan layar
+  /// (`current` 409, bila ada, ikut dikembalikan). 409 dengan `current` langsung diterapkan sehingga anggota melihat
+  /// keadaan terbaru (mis. batas H-3 terlewati) sebelum memutuskan lagi. Hasil tetap dikembalikan walau layar sudah
+  /// ditutup selama request, agar anggota tetap diberi tahu.
+  Future<TicketCancelResult> cancel({required bool expectedRefundEligible, String? reason}) async {
     final ticket = state.ticket;
-    if (ticket == null || state.cancelling) return null;
+    if (ticket == null || state.cancelling) return const (ticket: null, error: null);
     state = TicketDetailState(ticket: ticket, loading: false, cancelling: true);
+    // Diambil sebelum await: Ref pengendali autoDispose tidak boleh dipakai lagi sesudah layarnya dilepas.
+    final repository = ref.read(eventsRepositoryProvider);
     try {
-      final result = await ref
-          .read(eventsRepositoryProvider)
-          .cancelTicket(ticket, expectedRefundEligible: expectedRefundEligible, reason: reason);
-      if (!ref.mounted) return null;
+      final result = await repository.cancelTicket(
+        ticket,
+        expectedRefundEligible: expectedRefundEligible,
+        reason: reason,
+      );
+      if (!ref.mounted) return (ticket: result, error: null);
       apply(result);
       ref
         ..invalidate(ticketsControllerProvider)
         ..invalidate(eventDetailControllerProvider(ticket.event.id));
-      return null;
+      return (ticket: result, error: null);
     } on ApiException catch (error) {
-      if (!ref.mounted) return error;
       final current = ticketDetailFromConflict(error);
+      if (!ref.mounted) return (ticket: current, error: error);
       if (current != null) {
         apply(current);
       } else {
         state = TicketDetailState(ticket: ticket, loading: false);
       }
       reportStatusError(ref, error);
-      return error;
+      return (ticket: current, error: error);
     }
   }
 }

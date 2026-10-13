@@ -22,10 +22,19 @@ Uri? externalLinkUri(String? raw) {
 }
 
 /// Menampilkan snackbar singkat lewat messenger akar.
-void showAppSnackBar(WidgetRef ref, String message) {
-  ref.read(scaffoldMessengerKeyProvider).currentState
+void showAppSnackBar(WidgetRef ref, String message) => showMessengerSnackBar(ref.read(scaffoldMessengerKeyProvider), message);
+
+/// Snackbar lewat kunci messenger akar yang sudah diambil sebelumnya. Dipakai sesudah `await`: kunci messenger
+/// hidup selama aplikasi, sedangkan WidgetRef layar tidak boleh dipakai lagi bila layarnya sudah ditutup.
+void showMessengerSnackBar(
+  GlobalKey<ScaffoldMessengerState> messenger,
+  String message, {
+  SnackBarAction? action,
+  Duration duration = const Duration(seconds: 4),
+}) {
+  messenger.currentState
     ?..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
+    ..showSnackBar(SnackBar(content: Text(message), action: action, duration: duration));
 }
 
 /// Membuka tautan dari konten (body berita, banner, peta lokasi event):
@@ -47,11 +56,18 @@ Future<bool> openContentLink(BuildContext context, WidgetRef ref, String raw) as
     showAppSnackBar(ref, 'Tautan ini tidak dapat dibuka.');
     return true;
   }
-  final confirmed = await confirmExternalLink(context, external);
-  if (!confirmed) return true;
-  final launched = await ref.read(externalLinkLauncherProvider)(external);
-  if (!launched) showAppSnackBar(ref, 'Tidak ada aplikasi yang dapat membuka tautan ini.');
+  await confirmAndLaunchExternal(context, ref, external);
   return true;
+}
+
+/// Konfirmasi lalu buka tautan luar (PRD 3.8). Peluncur dan messenger diambil sebelum dialog karena layar asal
+/// bisa ditutup selama dialog terbuka (WidgetRef tidak boleh dipakai sesudahnya).
+Future<void> confirmAndLaunchExternal(BuildContext context, WidgetRef ref, Uri uri) async {
+  final launcher = ref.read(externalLinkLauncherProvider);
+  final messenger = ref.read(scaffoldMessengerKeyProvider);
+  if (!await confirmExternalLink(context, uri)) return;
+  final launched = await launcher(uri);
+  if (!launched) showMessengerSnackBar(messenger, 'Tidak ada aplikasi yang dapat membuka tautan ini.');
 }
 
 String? _internalRoute(String raw) {

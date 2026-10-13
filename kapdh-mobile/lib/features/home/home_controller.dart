@@ -36,11 +36,9 @@ class HomeController extends Notifier<HomeState> {
 
   @override
   HomeState build() {
+    // Cache Beranda dihapus pengendali sesi saat logout/berganti akun (SessionController, PRD 5.2), terlepas dari
+    // apakah pengendali ini sedang hidup.
     final userId = ref.watch(sessionProvider.select((session) => session.userId));
-    // Keluar dari sesi: cache Beranda akun ini dihapus (PRD 5.2), sama seperti cache KTA dan snapshot /me.
-    ref.listen(sessionProvider.select((session) => session.hasSession), (previous, next) {
-      if (previous == true && !next) unawaited(ref.read(homeCacheStoreProvider).clear());
-    });
     // Like dari detail berita langsung tercermin di kartu Beranda (AC F08-3).
     ref.listen(postLikeEventProvider, (previous, event) {
       final home = state.home;
@@ -83,12 +81,14 @@ class HomeController extends Notifier<HomeState> {
     } else {
       state = HomeState(home: state.home, fromCache: state.fromCache, loading: true);
     }
+    // Dicatat sebelum request: respons yang tiba sesudah logout menghapus cache tidak menulisnya kembali.
+    final epoch = cache.epoch;
     try {
       final home = await ref.read(homeRepositoryProvider).getHome();
       if (!ref.mounted || generation != _generation) return;
       state = HomeState(home: home);
       try {
-        await cache.save(userId, home);
+        await cache.save(userId, home, ifEpoch: epoch);
       } on Object catch (error) {
         debugPrint('beranda: cache gagal disimpan (${error.runtimeType})');
       }

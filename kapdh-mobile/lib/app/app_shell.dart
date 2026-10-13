@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -94,8 +96,10 @@ class _TabIcon extends StatelessWidget {
   }
 }
 
-/// Lembar penjelasan tab terkunci dengan ajakan sesuai status (bayar iuran atau perpanjang; PRD 2.2).
+/// Lembar penjelasan tab terkunci dengan ajakan sesuai status (bayar iuran atau perpanjang; PRD 2.2). Untuk tab
+/// Event, anggota expired juga diarahkan ke Tiket Saya: tiket yang sudah lunas tetap berlaku (PRD 2.2).
 Future<void> showLockedTabSheet(BuildContext context, {required ShellTab tab, required EffectiveStatus? status}) {
+  final showTickets = status == EffectiveStatus.expired && tab.location == AppRoutes.events;
   final (String message, String? actionLabel, String? actionLocation) = switch (status) {
     EffectiveStatus.unverified => (
       '${tab.label} terbuka setelah KTA aktif. Selesaikan iuran pendaftaran agar pengurus dapat memverifikasi '
@@ -104,8 +108,8 @@ Future<void> showLockedTabSheet(BuildContext context, {required ShellTab tab, re
       AppRoutes.onboardingFees,
     ),
     EffectiveStatus.expired => (
-      '${tab.label} hanya untuk anggota aktif. Perpanjang KTA untuk membuka kembali fitur ini. Tiket yang sudah '
-          'lunas tetap dapat dilihat di menu Akun.',
+      '${tab.label} hanya untuk anggota aktif. Perpanjang KTA untuk membuka kembali fitur ini.'
+          '${showTickets ? ' Tiket yang sudah lunas tetap dapat dibuka di Tiket Saya.' : ''}',
       'Perpanjang KTA',
       AppRoutes.renewal,
     ),
@@ -141,6 +145,18 @@ Future<void> showLockedTabSheet(BuildContext context, {required ShellTab tab, re
                   router.go(actionLocation);
                 },
               ),
+            if (showTickets) ...[
+              const SizedBox(height: KapdhSpace.s2),
+              KapdhButton.outlined(
+                key: const ValueKey('locked-tab-tickets'),
+                label: 'Lihat Tiket Saya',
+                icon: Icons.confirmation_number_outlined,
+                onPressed: () {
+                  Navigator.of(sheetContext).pop();
+                  unawaited(router.push(AppRoutes.tickets));
+                },
+              ),
+            ],
             const SizedBox(height: KapdhSpace.s2),
             TextButton(onPressed: () => Navigator.of(sheetContext).pop(), child: const Text('Tutup')),
           ],
