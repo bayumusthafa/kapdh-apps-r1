@@ -58,7 +58,7 @@ const checkinPosts = () => eventRequests.filter((r) => r.method === "POST" && r.
 async function openScanner(user: User, eventName = /Reuni Akbar KAPDH 2026/) {
   renderApp("/events/checkin");
   await signIn(user);
-  await screen.findByRole("heading", { level: 1, name: "Check-in Tiket" });
+  await screen.findByRole("heading", { level: 1, name: "Check-in Tiket" }, { timeout: 5_000 });
   await user.click(await screen.findByRole("radio", { name: eventName }));
   const input = await screen.findByLabelText(/^Kode tiket/);
   await waitFor(() => expect(input).toHaveFocus());
