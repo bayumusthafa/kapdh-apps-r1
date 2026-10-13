@@ -34,21 +34,25 @@ const PHONE = /^\+?[0-9][0-9 -]{5,22}$/;
 export const MAX_SKILLS = 10;
 
 const optionalText = (label: string, max: number) =>
-  z
-    .string()
-    .trim()
-    .max(max, `${label} maksimal ${max} karakter.`);
+  z.string().trim().max(max, `${label} maksimal ${max} karakter.`);
 
 const social = z
   .string()
   .trim()
   .max(200, "Maksimal 200 karakter.")
-  .refine((v) => v === "" || SOCIAL_HANDLE.test(v), "Isi nama pengguna tanpa spasi atau tautan yang diawali https://.");
+  .refine(
+    (v) => v === "" || SOCIAL_HANDLE.test(v),
+    "Isi nama pengguna tanpa spasi atau tautan yang diawali https://.",
+  );
 
 /** Pra-validasi klien sesuai AdminMemberUpdate; server tetap sumber kebenaran (ARCHITECTURE §2.1). */
 export const memberEditSchema = z
   .object({
-    full_name: z.string().trim().min(2, "Nama lengkap minimal 2 karakter.").max(120, "Nama maksimal 120 karakter."),
+    full_name: z
+      .string()
+      .trim()
+      .min(2, "Nama lengkap minimal 2 karakter.")
+      .max(120, "Nama maksimal 120 karakter."),
     gender: z.enum(["male", "female"], { error: "Pilih jenis kelamin." }),
     cohort: z
       .string()
@@ -169,7 +173,11 @@ export function identityChanges(body: Update, base: MemberDetail): IdentityChang
   if (body.class_in !== undefined)
     out.push({ label: "Kelas masuk", before: classLabel(base.class_in), after: classLabel(body.class_in) });
   if (body.class_out !== undefined)
-    out.push({ label: "Kelas keluar", before: classLabel(base.class_out), after: classLabel(body.class_out) });
+    out.push({
+      label: "Kelas keluar",
+      before: classLabel(base.class_out),
+      after: classLabel(body.class_out),
+    });
   return out;
 }
 
@@ -313,7 +321,10 @@ export function MemberEditDialog({
       <FormProvider {...form}>
         <form id={formId} noValidate onSubmit={onSubmit} className="flex flex-col gap-5">
           {conflict ? (
-            <div role="alert" className="flex flex-col gap-2 rounded-md bg-warning-bg p-3 text-sm text-warning">
+            <div
+              role="alert"
+              className="flex flex-col gap-2 rounded-md bg-warning-bg p-3 text-sm text-warning"
+            >
               <span className="flex items-start gap-2 font-medium">
                 <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
                 Data anggota ini sudah diubah admin lain setelah formulir dibuka. Simpan dinonaktifkan agar
@@ -339,7 +350,8 @@ export function MemberEditDialog({
             <legend className="mb-1 font-heading text-base font-semibold">Identitas</legend>
             <p role="note" className="rounded-md bg-info-bg p-3 text-xs text-info">
               Mengubah jenis kelamin, angkatan atau kelas menghitung ulang nomor anggota (AA.SS.JK) di server.
-              Nomor urut tetap, nomor lama dan baru tercatat di audit, dan QR lama perlu diperbarui (AC F05-6).
+              Nomor urut tetap, nomor lama dan baru tercatat di audit, dan QR lama perlu diperbarui (AC
+              F05-6).
             </p>
             <FormField<MemberEditValues, "full_name"> name="full_name" label="Nama lengkap" required>
               {(field, a11y) => (
@@ -406,20 +418,31 @@ export function MemberEditDialog({
           <fieldset className="flex flex-col gap-3">
             <legend className="mb-1 font-heading text-base font-semibold">Domisili dan kontak</legend>
             <p className="text-xs text-text-muted">
-              Email hanya dapat dikoreksi lewat alur verifikasi email (F-01); flag privasi tetap pilihan anggota.
+              Email hanya dapat dikoreksi lewat alur verifikasi email (F-01); flag privasi tetap pilihan
+              anggota.
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField<MemberEditValues, "city"> name="city" label="Kota domisili" hint="Kosongkan untuk menghapus.">
+              <FormField<MemberEditValues, "city">
+                name="city"
+                label="Kota domisili"
+                hint="Kosongkan untuk menghapus."
+              >
                 {(field, a11y) => <Input {...field} {...a11y} maxLength={80} />}
               </FormField>
-              <FormField<MemberEditValues, "phone"> name="phone" label="Telepon" hint="Contoh: +62 812-3456-7890">
+              <FormField<MemberEditValues, "phone">
+                name="phone"
+                label="Telepon"
+                hint="Contoh: +62 812-3456-7890"
+              >
                 {(field, a11y) => <Input {...field} {...a11y} type="tel" maxLength={24} autoComplete="off" />}
               </FormField>
             </div>
           </fieldset>
 
           <fieldset className="flex flex-col gap-3">
-            <legend className="mb-1 font-heading text-base font-semibold">Profesi, keahlian dan pendidikan</legend>
+            <legend className="mb-1 font-heading text-base font-semibold">
+              Profesi, keahlian dan pendidikan
+            </legend>
             <FormField<MemberEditValues, "profession_id">
               name="profession_id"
               label="Profesi"
@@ -451,8 +474,8 @@ export function MemberEditDialog({
             >
               <legend className="text-sm font-medium">Keahlian</legend>
               <p id="keahlian-petunjuk" className="text-xs text-text-muted">
-                Maksimal {MAX_SKILLS} keahlian ({selectedSkills.length} dipilih). Keahlian nonaktif tidak dapat
-                dipilih baru.
+                Maksimal {MAX_SKILLS} keahlian ({selectedSkills.length} dipilih). Keahlian nonaktif tidak
+                dapat dipilih baru.
               </p>
               {skills.isPending && skillChoices.length === 0 ? (
                 <p className="text-sm text-text-muted">Memuat keahlian...</p>
@@ -489,7 +512,10 @@ export function MemberEditDialog({
               >
                 {(field, a11y) => <Input {...field} {...a11y} maxLength={120} />}
               </FormField>
-              <FormField<MemberEditValues, "last_education_city"> name="last_education_city" label="Kota pendidikan">
+              <FormField<MemberEditValues, "last_education_city">
+                name="last_education_city"
+                label="Kota pendidikan"
+              >
                 {(field, a11y) => <Input {...field} {...a11y} maxLength={80} />}
               </FormField>
             </div>

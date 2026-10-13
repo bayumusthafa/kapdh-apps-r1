@@ -45,7 +45,8 @@ export function parseMembersSearch(search: Record<string, unknown>): MembersSear
     cohort: Number.isInteger(cohort) && cohort >= 1 && cohort <= 99 ? cohort : undefined,
     city: text(search.city, 80),
     gender: oneOf(GENDER_VALUES, search.gender),
-    profession: typeof search.profession === "string" && UUID.test(search.profession) ? search.profession : undefined,
+    profession:
+      typeof search.profession === "string" && UUID.test(search.profession) ? search.profession : undefined,
     skill: typeof search.skill === "string" && UUID.test(search.skill) ? search.skill : undefined,
     sort: oneOf(ADMIN_MEMBER_SORT_VALUES, search.sort),
   };
