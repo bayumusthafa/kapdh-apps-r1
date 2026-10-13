@@ -173,6 +173,48 @@ describe("Metode bayar pengurus (F-15, AC F15-3, F15-4)", () => {
     expect(list.items.map((i: { id: string }) => i.id)).not.toContain(created.id);
   });
 
+  it("AC F15-3: in_use mengikuti rujukan payment saat ini; metode yang ditinggalkan semua payment tidak mengubah snapshot mana pun", async () => {
+    const original = (
+      await api().post("/admin/payment-methods", input({ provider: "BTN" }), {
+        token: admin.token,
+        headers: headers(),
+      })
+    ).json();
+    const replacement = (
+      await api().post("/admin/payment-methods", input({ provider: "BJB" }), {
+        token: admin.token,
+        headers: headers(),
+      })
+    ).json();
+    const member = await memberSession(t);
+    const instruction = await createInstruction(t, member, "registration", original.id);
+    const changed = await api().put(
+      `/me/payments/${instruction.paymentId}/method`,
+      { payment_method_id: replacement.id },
+      { token: member.token, headers: { "if-match": instruction.version } },
+    );
+    expect(changed.statusCode).toBe(200);
+    const current = (
+      await api().get(`/admin/payment-methods/${replacement.id}`, { token: admin.token })
+    ).json();
+    expect(current.in_use).toBe(true);
+    const deleteCurrent = await api().delete(`/admin/payment-methods/${replacement.id}`, {
+      token: admin.token,
+      headers: headers({ "if-match": current.version }),
+    });
+    expect(deleteCurrent.statusCode).toBe(400);
+    const left = (await api().get(`/admin/payment-methods/${original.id}`, { token: admin.token })).json();
+    expect(left.in_use).toBe(false);
+    const fixed = await api().put(
+      `/admin/payment-methods/${original.id}`,
+      input({ provider: "BTN", account_number: "8000111222" }),
+      { token: admin.token, headers: headers({ "if-match": left.version }) },
+    );
+    expect(fixed.statusCode).toBe(200);
+    const owner = (await api().get(`/me/payments/${instruction.paymentId}`, { token: member.token })).json();
+    expect(owner.method).toMatchObject({ id: replacement.id, provider: "BJB", account_number: "7123456789" });
+  });
+
   it("F-15: metode yang belum pernah dipakai dapat dihapus (204); If-Match usang 409; tidak ada → 404", async () => {
     const created = (
       await api().post("/admin/payment-methods", input({ provider: "Sementara" }), {
