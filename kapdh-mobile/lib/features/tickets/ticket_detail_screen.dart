@@ -83,10 +83,7 @@ class _TicketContent extends ConsumerWidget {
         _EventHeader(ticket: ticket, canOpenEvent: active),
         const SizedBox(height: KapdhSpace.s4),
         ..._statusSection(context, ref, active),
-        if (payment != null) ...[
-          const SizedBox(height: KapdhSpace.s4),
-          _PaymentCard(payment: payment),
-        ],
+        if (payment != null) ...[const SizedBox(height: KapdhSpace.s4), _PaymentCard(payment: payment)],
         if (ticket.refunds.isNotEmpty) ...[
           const SizedBox(height: KapdhSpace.s4),
           _RefundsCard(refunds: ticket.refunds, paymentId: payment?.id),
@@ -207,7 +204,8 @@ class _TicketContent extends ConsumerWidget {
             title: 'Reservasi berakhir',
             message:
                 'Bukti transfer tidak dikirim sebelum batas waktu, sehingga kursi sudah dilepas. Jangan transfer untuk '
-                'reservasi ini. ${active ? 'Anda dapat mendaftar ulang bila kuota masih tersedia.' : ''}'.trim(),
+                        'reservasi ini. ${active ? 'Anda dapat mendaftar ulang bila kuota masih tersedia.' : ''}'
+                    .trim(),
           ),
           if (active && !eventCancelled) ...[
             const SizedBox(height: KapdhSpace.s3),
@@ -328,7 +326,9 @@ String _cancelledText(TicketDetail ticket) {
   if (ticket.event.status == EventStatus.cancelled) {
     parts.add('Event dibatalkan pengurus$at; seluruh QR tidak berlaku.');
     if (payment != null) {
-      parts.add('Peserta berbayar mendapat refund penuh yang diproses bendahara paling lambat $refundBusinessDays hari kerja.');
+      parts.add(
+        'Peserta berbayar mendapat refund penuh yang diproses bendahara paling lambat $refundBusinessDays hari kerja.',
+      );
     }
   } else if (payment?.status == TicketPaymentStatus.rejected) {
     final reason = payment?.rejectionReason;
@@ -360,72 +360,86 @@ class _EventHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final event = ticket.event;
     final free = ticket.payment == null;
+    // Kartu ringkas "Nama Event" (guideline hal. 8 Detail Tiket): gambar kecil di kiri sehingga status, hitung
+    // mundur dan QR tetap terlihat tanpa menggulir.
     return Container(
+      padding: const EdgeInsets.all(KapdhSpace.s3),
       decoration: BoxDecoration(
         color: KapdhColors.surface,
         border: Border.all(color: KapdhColors.divider),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
       ),
-      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AspectRatio(
-            aspectRatio: 16 / 7,
-            child: RemoteImage(url: event.coverUrl, placeholderIcon: Icons.event),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(KapdhSpace.s4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: KapdhSpace.s2,
-                  runSpacing: KapdhSpace.s1,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RemoteImage(
+                url: event.coverUrl,
+                width: 88,
+                height: 72,
+                borderRadius: BorderRadius.circular(KapdhRadius.md),
+                placeholderIcon: Icons.event,
+              ),
+              const SizedBox(width: KapdhSpace.s3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    StatusBadge(ticketStatusStyle(ticket.status, checkedInAt: ticket.checkedInAt)),
-                    if (event.status == EventStatus.cancelled)
-                      StatusBadge(StatusStyles.event(EventBadgeStatus.cancelled)),
+                    Wrap(
+                      spacing: KapdhSpace.s2,
+                      runSpacing: KapdhSpace.s1,
+                      children: [
+                        StatusBadge(ticketStatusStyle(ticket.status, checkedInAt: ticket.checkedInAt)),
+                        if (event.status == EventStatus.cancelled)
+                          StatusBadge(StatusStyles.event(EventBadgeStatus.cancelled)),
+                      ],
+                    ),
+                    const SizedBox(height: KapdhSpace.s2),
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        event.title,
+                        style: const TextStyle(
+                          fontSize: KapdhFontSize.bodyLg,
+                          fontWeight: FontWeight.w700,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: KapdhSpace.s2),
-                Semantics(
-                  header: true,
-                  child: Text(
-                    event.title,
-                    style: const TextStyle(fontSize: KapdhFontSize.h3, fontWeight: FontWeight.w700, height: 1.3),
-                  ),
-                ),
-                const SizedBox(height: KapdhSpace.s2),
-                IconLine(
-                  icon: Icons.calendar_today_outlined,
-                  text: formatEventSchedule(event.startsAt, event.endsAt, event.timezone),
-                  color: KapdhColors.text,
-                  size: 13,
-                ),
-                if (event.locationName != null) ...[
-                  const SizedBox(height: KapdhSpace.s1),
-                  IconLine(icon: Icons.place_outlined, text: event.locationName!, color: KapdhColors.text, size: 13),
-                ],
-                const SizedBox(height: KapdhSpace.s1),
-                IconLine(
-                  icon: Icons.payments_outlined,
-                  text: free ? 'Gratis' : 'Total ${formatRupiah(ticket.total)} (1 orang)',
-                  color: KapdhColors.text,
-                  size: 13,
-                ),
-                if (canOpenEvent)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      key: const ValueKey('ticket-open-event'),
-                      onPressed: () => unawaited(context.push(AppRoutes.event(event.id))),
-                      child: const Text('Lihat detail event'),
-                    ),
-                  ),
-              ],
-            ),
+              ),
+            ],
           ),
+          const SizedBox(height: KapdhSpace.s3),
+          IconLine(
+            icon: Icons.calendar_today_outlined,
+            text: formatEventSchedule(event.startsAt, event.endsAt, event.timezone),
+            color: KapdhColors.text,
+            size: 13,
+          ),
+          if (event.locationName != null) ...[
+            const SizedBox(height: KapdhSpace.s1),
+            IconLine(icon: Icons.place_outlined, text: event.locationName!, color: KapdhColors.text, size: 13),
+          ],
+          const SizedBox(height: KapdhSpace.s1),
+          IconLine(
+            icon: Icons.payments_outlined,
+            text: free ? 'Gratis' : 'Total ${formatRupiah(ticket.total)} (1 orang)',
+            color: KapdhColors.text,
+            size: 13,
+          ),
+          if (canOpenEvent)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                key: const ValueKey('ticket-open-event'),
+                onPressed: () => unawaited(context.push(AppRoutes.event(event.id))),
+                child: const Text('Lihat detail event'),
+              ),
+            ),
         ],
       ),
     );
@@ -494,14 +508,20 @@ class _PaymentCard extends StatelessWidget {
           Row(
             children: [
               const Expanded(
-                child: Text('Pembayaran', style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600)),
+                child: Text(
+                  'Pembayaran',
+                  style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
+                ),
               ),
               StatusBadge(style),
             ],
           ),
           const SizedBox(height: KapdhSpace.s3),
           _Row(label: 'Nominal', value: formatRupiah(payment.amount), emphasis: true),
-          _Row(label: 'Rekening tujuan', value: '${method.provider} ${method.accountNumber}\na.n. ${method.accountHolder}'),
+          _Row(
+            label: 'Rekening tujuan',
+            value: '${method.provider} ${method.accountNumber}\na.n. ${method.accountHolder}',
+          ),
           if (payment.submittedAt != null) _Row(label: 'Bukti dikirim', value: formatDateTime(payment.submittedAt!)),
           if (payment.decidedAt != null) _Row(label: 'Diputus', value: formatDateTime(payment.decidedAt!)),
           if (rejection != null && rejection.trim().isNotEmpty) _Row(label: 'Alasan penolakan', value: rejection),
@@ -574,7 +594,10 @@ class _RefundsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Refund', style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600)),
+          const Text(
+            'Refund',
+            style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: KapdhSpace.s3),
           for (final refund in refunds) ...[
             Row(
@@ -584,16 +607,13 @@ class _RefundsCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(formatRupiah(refund.amount), style: const TextStyle(fontWeight: FontWeight.w600)),
-                      Text(
-                        switch (refund.status) {
-                          TicketRefundStatus.completed when refund.completedAt != null =>
-                            'Selesai ${formatDateTime(refund.completedAt!)}',
-                          TicketRefundStatus.cancelled => 'Dicatat ulang atau dibatalkan bendahara',
-                          _ when refund.dueAt != null => 'Paling lambat ${formatDate(refund.dueAt!)}',
-                          _ => 'Diproses bendahara',
-                        },
-                        style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
-                      ),
+                      Text(switch (refund.status) {
+                        TicketRefundStatus.completed when refund.completedAt != null =>
+                          'Selesai ${formatDateTime(refund.completedAt!)}',
+                        TicketRefundStatus.cancelled => 'Dicatat ulang atau dibatalkan bendahara',
+                        _ when refund.dueAt != null => 'Paling lambat ${formatDate(refund.dueAt!)}',
+                        _ => 'Diproses bendahara',
+                      }, style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted)),
                     ],
                   ),
                 ),
@@ -663,8 +683,8 @@ class _CancelDialogState extends State<_CancelDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final noRefund = widget.ticket.payment != null && !widget.ticket.refundEligible &&
-        widget.ticket.status == TicketStatus.paid;
+    final noRefund =
+        widget.ticket.payment != null && !widget.ticket.refundEligible && widget.ticket.status == TicketStatus.paid;
     return AlertDialog(
       title: Text(widget.ticket.status == TicketStatus.awaitingPayment ? 'Batalkan reservasi?' : 'Batalkan tiket?'),
       content: SingleChildScrollView(

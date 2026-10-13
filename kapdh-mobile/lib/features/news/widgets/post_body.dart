@@ -95,10 +95,7 @@ class _ExternalAnchor extends StatelessWidget {
               TextSpan(text: text),
               const WidgetSpan(
                 alignment: PlaceholderAlignment.middle,
-                child: Padding(
-                  padding: EdgeInsets.only(left: 2),
-                  child: ExternalLinkMark(size: 14),
-                ),
+                child: Padding(padding: EdgeInsets.only(left: 2), child: ExternalLinkMark(size: 14)),
               ),
             ],
           ),

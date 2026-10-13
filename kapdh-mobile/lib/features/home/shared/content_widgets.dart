@@ -18,7 +18,11 @@ class CategoryChip extends StatelessWidget {
         decoration: BoxDecoration(color: KapdhColors.green100, borderRadius: BorderRadius.circular(KapdhRadius.sm)),
         child: Text(
           label,
-          style: const TextStyle(fontSize: KapdhFontSize.overline, fontWeight: FontWeight.w600, color: KapdhColors.primary),
+          style: const TextStyle(
+            fontSize: KapdhFontSize.overline,
+            fontWeight: FontWeight.w600,
+            color: KapdhColors.primary,
+          ),
         ),
       ),
     );
@@ -27,7 +31,13 @@ class CategoryChip extends StatelessWidget {
 
 /// Baris ikon kecil + teks (tanggal, lokasi, kuota) pada kartu dan detail.
 class IconLine extends StatelessWidget {
-  const IconLine({super.key, required this.icon, required this.text, this.color = KapdhColors.textMuted, this.size = 12});
+  const IconLine({
+    super.key,
+    required this.icon,
+    required this.text,
+    this.color = KapdhColors.textMuted,
+    this.size = 12,
+  });
 
   final IconData icon;
   final String text;
@@ -41,11 +51,16 @@ class IconLine extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 1),
-          child: ExcludeSemantics(child: Icon(icon, size: size + 2, color: color)),
+          child: ExcludeSemantics(
+            child: Icon(icon, size: size + 2, color: color),
+          ),
         ),
         const SizedBox(width: 6),
         Expanded(
-          child: Text(text, style: TextStyle(fontSize: size, color: color, height: 1.35)),
+          child: Text(
+            text,
+            style: TextStyle(fontSize: size, color: color, height: 1.35),
+          ),
         ),
       ],
     );
@@ -68,7 +83,10 @@ class TappableCard extends StatelessWidget {
     final radius = BorderRadius.circular(KapdhRadius.lg);
     final card = Material(
       color: KapdhColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: radius, side: const BorderSide(color: KapdhColors.divider)),
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: const BorderSide(color: KapdhColors.divider),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -76,13 +94,7 @@ class TappableCard extends StatelessWidget {
       ),
     );
     if (semanticsLabel == null) return card;
-    return Semantics(
-      button: onTap != null,
-      label: semanticsLabel,
-      excludeSemantics: true,
-      onTap: onTap,
-      child: card,
-    );
+    return Semantics(button: onTap != null, label: semanticsLabel, excludeSemantics: true, onTap: onTap, child: card);
   }
 }
 
@@ -101,7 +113,10 @@ class HomeSectionTitle extends StatelessWidget {
         Expanded(
           child: Semantics(
             header: true,
-            child: Text(title, style: const TextStyle(fontSize: KapdhFontSize.bodyLg, fontWeight: FontWeight.w600)),
+            child: Text(
+              title,
+              style: const TextStyle(fontSize: KapdhFontSize.bodyLg, fontWeight: FontWeight.w600),
+            ),
           ),
         ),
         if (onAction != null)

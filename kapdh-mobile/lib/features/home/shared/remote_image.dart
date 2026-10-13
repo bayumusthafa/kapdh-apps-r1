@@ -53,7 +53,11 @@ class RemoteImage extends ConsumerWidget {
     if (uri == null) {
       child = semanticLabel == null
           ? placeholder
-          : Semantics(image: true, label: semanticLabel, child: ExcludeSemantics(child: placeholder));
+          : Semantics(
+              image: true,
+              label: semanticLabel,
+              child: ExcludeSemantics(child: placeholder),
+            );
     } else {
       child = Image(
         image: ref.watch(remoteImageProviderFactoryProvider)(uri.toString()),

@@ -32,7 +32,10 @@ void main() {
         routes: {
           '/categories': (_) => FakeResponse.json(200, _categories()),
           '/posts': (options) => options.queryParameters['cursor'] == 'c2'
-              ? FakeResponse.json(200, postPageJson([postSummaryJson(id: 'post-3', slug: 'p3', title: 'Berita ketiga')]))
+              ? FakeResponse.json(
+                  200,
+                  postPageJson([postSummaryJson(id: 'post-3', slug: 'p3', title: 'Berita ketiga')]),
+                )
               : FakeResponse.json(
                   200,
                   postPageJson([

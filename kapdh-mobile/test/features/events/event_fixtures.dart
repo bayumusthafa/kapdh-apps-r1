@@ -110,14 +110,13 @@ Map<String, Object?> eventPageJson(List<Map<String, Object?>> items, {String? ne
   'next_cursor': nextCursor,
 };
 
-Map<String, Object?> participantJson({String userId = 'user-2', String fullName = 'Ahmad Yusiana', int cohort = 1}) =>
-    {
-      'user_id': userId,
-      'full_name': fullName,
-      'cohort': cohort,
-      'cohort_code': 'KAPDH ${cohort.toString().padLeft(2, '0')}',
-      'avatar_url': null,
-    };
+Map<String, Object?> participantJson({String userId = 'user-2', String fullName = 'Ahmad Yusiana', int cohort = 1}) => {
+  'user_id': userId,
+  'full_name': fullName,
+  'cohort': cohort,
+  'cohort_code': 'KAPDH ${cohort.toString().padLeft(2, '0')}',
+  'avatar_url': null,
+};
 
 Map<String, Object?> ticketEventInfoJson({String id = 'event-1', String status = 'open'}) => {
   'id': id,

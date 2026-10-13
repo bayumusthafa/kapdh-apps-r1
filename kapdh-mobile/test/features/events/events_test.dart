@@ -8,10 +8,7 @@ import '../home/feature_harness.dart';
 import 'event_fixtures.dart';
 
 Map<String, Object?> _categories() => {
-  'items': [
-    eventCategoryJson(),
-    eventCategoryJson(id: 'cat-workshop', slug: 'workshop', label: 'Workshop'),
-  ],
+  'items': [eventCategoryJson(), eventCategoryJson(id: 'cat-workshop', slug: 'workshop', label: 'Workshop')],
 };
 
 FakeResponse _participants(_) => FakeResponse.json(
@@ -123,9 +120,7 @@ void main() {
         push: false,
         routes: {
           '/event-categories': (_) => FakeResponse.json(200, {'items': <Object?>[]}),
-          '/events': (_) => fail
-              ? FakeResponse.network()
-              : FakeResponse.json(200, eventPageJson([])),
+          '/events': (_) => fail ? FakeResponse.network() : FakeResponse.json(200, eventPageJson([])),
         },
       );
       expect(find.byType(ErrorState), findsOneWidget);
@@ -142,33 +137,34 @@ void main() {
   });
 
   group('Detail Event (F-09, guideline hal. 8)', () {
-    testWidgets('F-09 cover, jadwal WIB, lokasi, kuota "20/36 Kuota Peserta", jendela, aturan D6, peserta, Daftar Sekarang', (
-      tester,
-    ) async {
-      final app = await pumpMemberApp(tester, location: '/events/event-1', routes: _detailRoutes(eventDetailJson()));
-      expect(find.text('Detail Event'), findsOneWidget);
-      expect(find.bySemanticsLabel('Cover event Camping Alumni KAPDH'), findsOneWidget);
-      expect(find.text('Camping Alumni KAPDH'), findsOneWidget);
-      expect(find.textContaining('mempererat silaturahmi'), findsOneWidget);
-      expect(find.text('Selasa, 20 Okt 2026 · 09.00–15.00 WIB'), findsOneWidget);
-      expect(find.textContaining('Bumi Perkemahan Cibubur'), findsOneWidget);
-      expect(find.byKey(const ValueKey('event-quota')), findsOneWidget);
-      expect(find.text('20/36'), findsOneWidget);
-      expect(find.text('Kuota Peserta'), findsOneWidget);
-      expect(find.bySemanticsLabel('Kuota peserta: 20 kursi tersedia dari 36'), findsOneWidget);
-      expect(_button(tester, 'event-reserve').label, 'Daftar Sekarang');
-      expect(_button(tester, 'event-reserve').onPressed, isNotNull);
+    testWidgets(
+      'F-09 cover, jadwal WIB, lokasi, kuota "20/36 Kuota Peserta", jendela, aturan D6, peserta, Daftar Sekarang',
+      (tester) async {
+        final app = await pumpMemberApp(tester, location: '/events/event-1', routes: _detailRoutes(eventDetailJson()));
+        expect(find.text('Detail Event'), findsOneWidget);
+        expect(find.bySemanticsLabel('Cover event Camping Alumni KAPDH'), findsOneWidget);
+        expect(find.text('Camping Alumni KAPDH'), findsOneWidget);
+        expect(find.textContaining('mempererat silaturahmi'), findsOneWidget);
+        expect(find.text('Selasa, 20 Okt 2026 · 09.00–15.00 WIB'), findsOneWidget);
+        expect(find.textContaining('Bumi Perkemahan Cibubur'), findsOneWidget);
+        expect(find.byKey(const ValueKey('event-quota')), findsOneWidget);
+        expect(find.text('20/36'), findsOneWidget);
+        expect(find.text('Kuota Peserta'), findsOneWidget);
+        expect(find.bySemanticsLabel('Kuota peserta: 20 kursi tersedia dari 36'), findsOneWidget);
+        expect(_button(tester, 'event-reserve').label, 'Daftar Sekarang');
+        expect(_button(tester, 'event-reserve').onPressed, isNotNull);
 
-      await scrollUntil(tester, find.textContaining('(H-3) untuk refund penuh'));
-      expect(find.text('Pembatalan dan refund'), findsOneWidget);
-      await scrollUntil(tester, find.text('Peserta (16)'));
-      await scrollUntil(tester, find.text('Siti Aminah'));
-      expect(find.text('Ahmad Yusiana'), findsOneWidget);
-      expect(find.text('#KAPDH01'), findsOneWidget);
-      await tester.tap(find.text('Ahmad Yusiana'));
-      await settle(tester);
-      expect(app.location, '/network/members/user-2');
-    });
+        await scrollUntil(tester, find.textContaining('(H-3) untuk refund penuh'));
+        expect(find.text('Pembatalan dan refund'), findsOneWidget);
+        await scrollUntil(tester, find.text('Peserta (16)'));
+        await scrollUntil(tester, find.text('Siti Aminah'));
+        expect(find.text('Ahmad Yusiana'), findsOneWidget);
+        expect(find.text('#KAPDH01'), findsOneWidget);
+        await tester.tap(find.text('Ahmad Yusiana'));
+        await settle(tester);
+        expect(app.location, '/network/members/user-2');
+      },
+    );
 
     testWidgets('PRD 3.8 tautan peta lokasi ditandai tautan luar dan dikonfirmasi', (tester) async {
       final app = await pumpMemberApp(tester, location: '/events/event-1', routes: _detailRoutes(eventDetailJson()));
@@ -217,18 +213,19 @@ void main() {
       expect(_button(tester, 'event-reserve-disabled').onPressed, isNull);
       expect(find.text('Pendaftaran dibuka 14 Okt 2026, 08.00 WIB.'), findsOneWidget);
 
-      detail = eventDetailJson(registrationState: 'sold_out', seatsAvailable: 0, canReserve: false, blockedReason: 'sold_out');
+      detail = eventDetailJson(
+        registrationState: 'sold_out',
+        seatsAvailable: 0,
+        canReserve: false,
+        blockedReason: 'sold_out',
+      );
       await tester.drag(find.byKey(const ValueKey('event-detail')), const Offset(0, 400));
       await settle(tester);
       expect(_button(tester, 'event-reserve-disabled').label, 'Kuota Penuh');
       expect(find.text('0/36'), findsOneWidget);
       expect(find.textContaining('Kursi dapat tersedia kembali'), findsOneWidget);
 
-      detail = eventDetailJson(
-        canReserve: false,
-        blockedReason: 'has_active_ticket',
-        myTicket: ticketSummaryJson(),
-      );
+      detail = eventDetailJson(canReserve: false, blockedReason: 'has_active_ticket', myTicket: ticketSummaryJson());
       await tester.drag(find.byKey(const ValueKey('event-detail')), const Offset(0, 400));
       await settle(tester);
       await scrollUntil(tester, find.text('Tiket Anda'));
@@ -237,7 +234,9 @@ void main() {
       expect(app.location, '/tickets/ticket-1');
     });
 
-    testWidgets('AC F09-7 event dibatalkan: alasan, QR tidak berlaku, refund penuh, pendaftaran tertutup', (tester) async {
+    testWidgets('AC F09-7 event dibatalkan: alasan, QR tidak berlaku, refund penuh, pendaftaran tertutup', (
+      tester,
+    ) async {
       await pumpMemberApp(
         tester,
         location: '/events/event-1',

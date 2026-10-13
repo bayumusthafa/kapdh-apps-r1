@@ -106,10 +106,7 @@ class _CategoryFilter extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s2, KapdhSpace.s3, KapdhSpace.s2),
         child: Row(
-          children: [
-            chip('Semua', null),
-            for (final category in categories) chip(category.label, category.slug),
-          ],
+          children: [chip('Semua', null), for (final category in categories) chip(category.label, category.slug)],
         ),
       ),
     );
