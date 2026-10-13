@@ -859,7 +859,9 @@ const failures: InjectedFailure[] = [];
 const holds: HeldRequest[] = [];
 
 function matchesRequest(m: RequestMatcher, req: MockRequest): boolean {
-  return m.method === req.method && (typeof m.path === "string" ? m.path === req.path : m.path.test(req.path));
+  return (
+    m.method === req.method && (typeof m.path === "string" ? m.path === req.path : m.path.test(req.path))
+  );
 }
 
 /** Galat suntikan pertama yang cocok (jatahnya dikurangi), atau null. */
@@ -1103,6 +1105,10 @@ export const mockPayments = {
       new Date().toISOString(),
       OTHER_ADMIN,
     );
+  },
+  /** Belum ada metode bayar sama sekali (mis. sebelum go-live), untuk keadaan kosong tab metode. */
+  clearMethods(): void {
+    methods.clear();
   },
   /** Pemilik payment tertaut ke akun admin yang sedang masuk (admins.linked_alumni_user_id, PRD 2.3). */
   linkOwnerToAdmin(paymentId: string): void {
