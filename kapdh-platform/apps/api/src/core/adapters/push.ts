@@ -250,14 +250,11 @@ export class FcmPushSender implements PushSender {
     };
     try {
       const res = await withTimeout(
-        this.fetchImpl(
-          `${this.apiBaseUrl}/v1/projects/${encodeURIComponent(this.projectId)}/messages:send`,
-          {
-            method: "POST",
-            headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
-            body: JSON.stringify(payload),
-          },
-        ),
+        this.fetchImpl(`${this.apiBaseUrl}/v1/projects/${encodeURIComponent(this.projectId)}/messages:send`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        }),
         this.timeoutMs,
         "timeout FCM",
       );

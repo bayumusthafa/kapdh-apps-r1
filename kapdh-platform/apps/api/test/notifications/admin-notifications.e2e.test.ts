@@ -1,4 +1,4 @@
-import { auditLogs, notificationDeliveries, outboxEvents, users } from "@kapdh/database";
+import { auditLogs, outboxEvents, users } from "@kapdh/database";
 import { and, eq, inArray } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -51,7 +51,10 @@ async function memberWithDevice() {
 /** Notifikasi dengan push yang gagal permanen (tanpa menonaktifkan token) → failed & retryable. */
 async function failedPush(m: { userId: string; token: string }, category: "payment" | "event" = "payment") {
   t.push.failNext(m.token, { ok: false, errorClass: "auth_error", retryable: false, deactivateToken: false });
-  const created = await notify(t, m.userId, { category, route: category === "event" ? "/events" : "/payments" });
+  const created = await notify(t, m.userId, {
+    category,
+    route: category === "event" ? "/events" : "/payments",
+  });
   await t.jobs.drainOutbox();
   const push = await deliveryOf(t, created.id, "push");
   expect(push).toMatchObject({ status: "failed", errorClass: "AUTH_ERROR" });
@@ -115,7 +118,12 @@ describe("GET /admin/notifications/deliveries", () => {
       recipient: { user_id: m.userId, full_name: "Siti Aminah", member_number: m.memberNumber },
     });
     const email = body.items.find((item) => item.channel === "email")!;
-    expect(email).toMatchObject({ status: "sent", provider_status: "accepted", platform: null, retryable: false });
+    expect(email).toMatchObject({
+      status: "sent",
+      provider_status: "accepted",
+      platform: null,
+      retryable: false,
+    });
     const raw = res.body;
     expect(raw).not.toContain(m.token);
     expect(raw).not.toContain(m.email);
@@ -181,7 +189,7 @@ describe("GET /admin/notifications/deliveries", () => {
       query: { user_id: m.userId, channel: "push", to: from.toISOString() },
     });
     expect((window.json() as { total: number }).total).toBe(0);
-    for (const bad of [
+    for (const bad of <Record<string, string>[]>[
       { status: "dibaca" },
       { channel: "sms" },
       { user_id: "x" },
@@ -287,7 +295,12 @@ describe("POST /admin/notifications/deliveries/retry (AC F13-4)", () => {
     const audits = await t.db
       .select()
       .from(auditLogs)
-      .where(and(eq(auditLogs.action, "notification.delivery.retried"), eq(auditLogs.entityId, retryable.deliveryId)));
+      .where(
+        and(
+          eq(auditLogs.action, "notification.delivery.retried"),
+          eq(auditLogs.entityId, retryable.deliveryId),
+        ),
+      );
     expect(audits).toHaveLength(1);
     expect(audits[0]).toMatchObject({
       actorAdminId: managerAdminId,
@@ -310,13 +323,19 @@ describe("POST /admin/notifications/deliveries/retry (AC F13-4)", () => {
       { delivery_ids: [retryable.deliveryId] },
       auth(),
     );
-    expect(again.json()).toEqual({ requeued: [], skipped: [{ delivery_id: retryable.deliveryId, reason: "not_failed" }] });
+    expect(again.json()).toEqual({
+      requeued: [],
+      skipped: [{ delivery_id: retryable.deliveryId, reason: "not_failed" }],
+    });
 
     // Percobaan pertama yang gagal sudah tercatat di FakePush; retry menambah tepat satu kiriman ke pemiliknya.
     expect(t.push.to(ok.token)).toHaveLength(1);
     const reassignedBefore = t.push.to(reassigned.token).length;
     await t.jobs.runScheduled("notifications.retry");
-    expect(await deliveryOf(t, retryable.notificationId, "push")).toMatchObject({ status: "sent", attempt: 2 });
+    expect(await deliveryOf(t, retryable.notificationId, "push")).toMatchObject({
+      status: "sent",
+      attempt: 2,
+    });
     expect(t.push.to(ok.token)).toHaveLength(2);
     expect(t.push.to(reassigned.token)).toHaveLength(reassignedBefore);
     expect(await inboxCount(t, ok.userId)).toBe(1);
@@ -386,7 +405,13 @@ describe("Outbox (PRD 5.1, 5.5)", () => {
     const res = await api().get("/admin/notifications/outbox", { ...auth(), query: { limit: "100" } });
     expect(res.statusCode).toBe(200);
     const body = expectOperation("get", "/admin/notifications/outbox", res) as {
-      items: { id: string; status: string; in_progress: boolean; retryable: boolean; last_error: string | null }[];
+      items: {
+        id: string;
+        status: string;
+        in_progress: boolean;
+        retryable: boolean;
+        last_error: string | null;
+      }[];
       total: number;
     };
     const byId = new Map(body.items.map((item) => [item.id, item]));
@@ -405,7 +430,9 @@ describe("Outbox (PRD 5.1, 5.5)", () => {
       ...auth(),
       query: { sort: "next_attempt_at_asc", limit: "1" },
     });
-    const sortedBody = expectOperation("get", "/admin/notifications/outbox", sorted) as { next_cursor: string };
+    const sortedBody = expectOperation("get", "/admin/notifications/outbox", sorted) as {
+      next_cursor: string;
+    };
     const next = await api().get("/admin/notifications/outbox", {
       ...auth(),
       query: { sort: "next_attempt_at_asc", limit: "1", cursor: sortedBody.next_cursor },
@@ -431,7 +458,13 @@ describe("Outbox (PRD 5.1, 5.5)", () => {
     );
     expect(res.statusCode, res.body).toBe(200);
     const body = expectOperation("post", "/admin/notifications/outbox/retry", res) as {
-      requeued: { id: string; status: string; attempts: number; last_error: string | null; next_attempt_at: string }[];
+      requeued: {
+        id: string;
+        status: string;
+        attempts: number;
+        last_error: string | null;
+        next_attempt_at: string;
+      }[];
       skipped: { event_id: string; reason: string }[];
     };
     expect(body.requeued.map((e) => [e.id, e.status])).toEqual([

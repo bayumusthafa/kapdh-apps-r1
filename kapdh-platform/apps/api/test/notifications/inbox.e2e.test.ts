@@ -40,7 +40,11 @@ describe("GET /notifications (AC F13-2)", () => {
     "AC F13-2: anggota %s tanpa izin push OS (tanpa token perangkat) tetap membuka kotak masuk",
     async (status) => {
       const m = await member(status);
-      const created = await notify(t, m.userId, { category: "account", title: "Info akun", route: "/account" });
+      const created = await notify(t, m.userId, {
+        category: "account",
+        title: "Info akun",
+        route: "/account",
+      });
       const res = await api().get("/notifications", { token: m.token });
       expect(res.statusCode, res.body).toBe(200);
       const body = expectOperation("get", "/notifications", res) as {
@@ -61,7 +65,8 @@ describe("GET /notifications (AC F13-2)", () => {
     for (let i = 0; i < 5; i++) {
       t.clock.advance(1000);
       ids.push(
-        (await notify(t, m.userId, { category: i % 2 === 0 ? "payment" : "event", title: `Notifikasi ${i}` })).id,
+        (await notify(t, m.userId, { category: i % 2 === 0 ? "payment" : "event", title: `Notifikasi ${i}` }))
+          .id,
       );
     }
     const newestFirst = [...ids].reverse();
@@ -129,7 +134,7 @@ describe("GET /notifications (AC F13-2)", () => {
       code: "VALIDATION_ERROR",
       field_errors: { cursor: expect.any(Array) },
     });
-    for (const query of [
+    for (const query of <Record<string, string>[]>[
       { cursor: "bukan-cursor!" },
       { limit: "101" },
       { limit: "0" },
@@ -212,7 +217,9 @@ describe("GET /notifications/{notificationId} (AC F13-3, F13-5)", () => {
         createdAt: t.clock.now(),
       });
       const res = await api().get(`/notifications/${id}`, { token: m.token });
-      expect(expectOperation("get", "/notifications/{notificationId}", res)).toMatchObject({ deep_link: null });
+      expect(expectOperation("get", "/notifications/{notificationId}", res)).toMatchObject({
+        deep_link: null,
+      });
     }
   });
 
@@ -224,7 +231,10 @@ describe("GET /notifications/{notificationId} (AC F13-3, F13-5)", () => {
     expect(foreign.statusCode).toBe(404);
     const missing = await api().get(`/notifications/${uuidv7()}`, { token: other.token });
     expect(missing.statusCode).toBe(404);
-    expect(foreign.json()).toMatchObject({ code: "NOT_FOUND", message: (missing.json() as { message: string }).message });
+    expect(foreign.json()).toMatchObject({
+      code: "NOT_FOUND",
+      message: (missing.json() as { message: string }).message,
+    });
     expectOperation("get", "/notifications/{notificationId}", foreign);
     const invalid = await api().get("/notifications/bukan-uuid", { token: owner.token });
     expect(invalid.statusCode).toBe(400);
@@ -245,7 +255,10 @@ describe("POST /notifications/read", () => {
     const theirs = await notify(t, other.userId);
     const res = await api().post("/notifications/read", { ids: [mine.id, theirs.id] }, { token: m.token });
     expect(res.statusCode).toBe(200);
-    expect(expectOperation("post", "/notifications/read", res)).toEqual({ updated_count: 1, unread_count: 0 });
+    expect(expectOperation("post", "/notifications/read", res)).toEqual({
+      updated_count: 1,
+      unread_count: 0,
+    });
     const again = await api().post("/notifications/read", { ids: [mine.id] }, { token: m.token });
     expect(again.json()).toEqual({ updated_count: 0, unread_count: 0 });
     const [foreign] = await t.db.select().from(notifications).where(eq(notifications.id, theirs.id));
@@ -263,7 +276,10 @@ describe("POST /notifications/read", () => {
     t.clock.advance(5_000);
     const later = await notify(t, m.userId);
     const res = await api().post("/notifications/read", { all: true, up_to: shown }, { token: m.token });
-    expect(expectOperation("post", "/notifications/read", res)).toEqual({ updated_count: 1, unread_count: 1 });
+    expect(expectOperation("post", "/notifications/read", res)).toEqual({
+      updated_count: 1,
+      unread_count: 1,
+    });
     const [laterRow] = await t.db.select().from(notifications).where(eq(notifications.id, later.id));
     expect(laterRow!.readAt).toBeNull();
     const all = await api().post("/notifications/read", { all: true }, { token: m.token });

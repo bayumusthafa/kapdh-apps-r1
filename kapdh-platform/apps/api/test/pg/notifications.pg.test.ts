@@ -13,13 +13,7 @@
  */
 import "reflect-metadata";
 import type { WorkerEnv } from "@kapdh/config";
-import {
-  auditLogs,
-  deviceTokens,
-  notificationDeliveries,
-  notifications,
-  sessions,
-} from "@kapdh/database";
+import { auditLogs, deviceTokens, notificationDeliveries, notifications, sessions } from "@kapdh/database";
 import { MemoryDriver } from "@kapdh/storage";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { and, eq, inArray, isNull, sql as dsql } from "drizzle-orm";
@@ -241,8 +235,11 @@ describe("Token perangkat bersamaan (AC F13-5)", () => {
       const [delivery] = await tdb.db
         .select()
         .from(notificationDeliveries)
-        .where(and(eq(notificationDeliveries.notificationId, forA.id), eq(notificationDeliveries.channel, "push")));
-      if (row!.userId === b.userId) expect(delivery).toMatchObject({ status: "cancelled", errorClass: "token_reassigned" });
+        .where(
+          and(eq(notificationDeliveries.notificationId, forA.id), eq(notificationDeliveries.channel, "push")),
+        );
+      if (row!.userId === b.userId)
+        expect(delivery).toMatchObject({ status: "cancelled", errorClass: "token_reassigned" });
     }
   });
 
@@ -275,17 +272,29 @@ describe("Retry pengurus bersamaan (AC F13-4, F17-1)", () => {
     const alumni = await member();
     const token = `pg-retry-${uuidv7()}`;
     expect((await register(alumni.accessToken, token)).statusCode).toBe(204);
-    workers[0]!.push.failNext(token, { ok: false, errorClass: "auth_error", retryable: false, deactivateToken: false });
+    workers[0]!.push.failNext(token, {
+      ok: false,
+      errorClass: "auth_error",
+      retryable: false,
+      deactivateToken: false,
+    });
     const created = await notify(alumni.userId, "event");
     await workers[0]!.service.deliver(created.id);
     const [failed] = await tdb.db
       .select()
       .from(notificationDeliveries)
-      .where(and(eq(notificationDeliveries.notificationId, created.id), eq(notificationDeliveries.channel, "push")));
+      .where(
+        and(
+          eq(notificationDeliveries.notificationId, created.id),
+          eq(notificationDeliveries.channel, "push"),
+        ),
+      );
     expect(failed!.status).toBe("failed");
 
     const sessionsOf = await Promise.all(
-      [0, 1].map(async () => signInAdmin({ app, clock }, await createAdmin(owner, { permissions: ["notifications.manage"] }))),
+      [0, 1].map(async () =>
+        signInAdmin({ app, clock }, await createAdmin(owner, { permissions: ["notifications.manage"] })),
+      ),
     );
     const results = await Promise.all(
       sessionsOf.map((session) =>
