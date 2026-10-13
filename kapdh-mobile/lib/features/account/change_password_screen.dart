@@ -166,8 +166,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               trailingText: counter.text,
               trailingTextColor: counter.problem ? KapdhColors.danger : KapdhColors.textMuted,
               errorText:
-                  _fieldError('new_password') ??
-                  (_submitted && !check.valid ? 'Belum memenuhi aturan password' : null),
+                  _fieldError('new_password') ?? (_submitted && !check.valid ? 'Belum memenuhi aturan password' : null),
               onChanged: (_) => setState(() {}),
             ),
             _PasswordRules(check: check),
