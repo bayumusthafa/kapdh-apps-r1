@@ -89,6 +89,7 @@ class _OnboardingFeesScreenState extends ConsumerState<OnboardingFeesScreen> {
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const SheetStatusBanner(),
             Padding(
               padding: padding,
               child: Column(children: header),
@@ -110,65 +111,67 @@ class _OnboardingFeesScreenState extends ConsumerState<OnboardingFeesScreen> {
               onPressed: () => _continue(quote),
             )
           : null,
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          padding: padding,
-          children: [
-            ...header,
-            const SizedBox(height: 18),
-            Semantics(
-              header: true,
-              child: const Text(
-                'KTA Anda sudah dibuat',
-                style: TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w600),
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'KTA akan aktif setelah iuran pendaftaran diverifikasi pengurus.',
-              style: TextStyle(fontSize: 13, height: 1.5, color: KapdhColors.textMuted),
-            ),
-            if (me != null) ...[
+      body: withSheetBanner(
+        RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(
+            padding: padding,
+            children: [
+              ...header,
               const SizedBox(height: 18),
-              KtaMiniCard(
-                fullName: me.profile.fullName,
-                subtitle: 'Angkatan ${me.profile.cohort} | Lulus ${me.profile.graduationYear}',
-                memberNumber: me.memberNumber ?? '-',
-                status: StatusStyles.card(MemberCardStatus.inactive),
-              ),
-            ],
-            const SizedBox(height: 18),
-            if (fees == null || quote == null)
-              const LoadingSkeleton(showCard: false, lines: 4, semanticsLabel: 'Memuat rincian iuran')
-            else ...[
-              SummaryCard(
-                key: const ValueKey('fees-summary'),
-                title: 'Rincian iuran pendaftaran',
-                labelMuted: false,
-                rows: [for (final line in quote.lines) SummaryRow(line.label, formatRupiah(line.amount))],
-                total: SummaryRow('Total', formatRupiah(quote.total)),
-                footnote:
-                    'Masa aktif ${fees.periodMonths} bulan sejak iuran diverifikasi. Perpanjangan berikutnya '
-                    '${formatRupiah(fees.renewal.total)} per tahun.',
-              ),
-              if (hidden) ...[
-                const SizedBox(height: KapdhSpace.s4),
-                const InfoBox(
-                  key: ValueKey('dues-hidden'),
-                  title: 'Iuran melalui pengurus',
-                  message: duesHiddenMessage,
+              Semantics(
+                header: true,
+                child: const Text(
+                  'KTA Anda sudah dibuat',
+                  style: TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w600),
                 ),
-                const SizedBox(height: KapdhSpace.s4),
-                const SupportSection(subject: 'Iuran keanggotaan KAPDH', title: 'Hubungi pengurus'),
-              ] else if (!quote.eligible && quote.openPaymentId == null) ...[
-                const SizedBox(height: KapdhSpace.s4),
-                InfoBox(tone: InfoBoxTone.warning, message: ineligibleMessage(quote)),
-                const SizedBox(height: KapdhSpace.s3),
-                KapdhButton.outlined(label: 'Lihat KTA', onPressed: () => context.go(AppRoutes.kta)),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'KTA akan aktif setelah iuran pendaftaran diverifikasi pengurus.',
+                style: TextStyle(fontSize: 13, height: 1.5, color: KapdhColors.textMuted),
+              ),
+              if (me != null) ...[
+                const SizedBox(height: 18),
+                KtaMiniCard(
+                  fullName: me.profile.fullName,
+                  subtitle: 'Angkatan ${me.profile.cohort} | Lulus ${me.profile.graduationYear}',
+                  memberNumber: me.memberNumber ?? '-',
+                  status: StatusStyles.card(MemberCardStatus.inactive),
+                ),
+              ],
+              const SizedBox(height: 18),
+              if (fees == null || quote == null)
+                const LoadingSkeleton(showCard: false, lines: 4, semanticsLabel: 'Memuat rincian iuran')
+              else ...[
+                SummaryCard(
+                  key: const ValueKey('fees-summary'),
+                  title: 'Rincian iuran pendaftaran',
+                  labelMuted: false,
+                  rows: [for (final line in quote.lines) SummaryRow(line.label, formatRupiah(line.amount))],
+                  total: SummaryRow('Total', formatRupiah(quote.total)),
+                  footnote:
+                      'Masa aktif ${fees.periodMonths} bulan sejak iuran diverifikasi. Perpanjangan berikutnya '
+                      '${formatRupiah(fees.renewal.total)} per tahun.',
+                ),
+                if (hidden) ...[
+                  const SizedBox(height: KapdhSpace.s4),
+                  const InfoBox(
+                    key: ValueKey('dues-hidden'),
+                    title: 'Iuran melalui pengurus',
+                    message: duesHiddenMessage,
+                  ),
+                  const SizedBox(height: KapdhSpace.s4),
+                  const SupportSection(subject: 'Iuran keanggotaan KAPDH', title: 'Hubungi pengurus'),
+                ] else if (!quote.eligible && quote.openPaymentId == null) ...[
+                  const SizedBox(height: KapdhSpace.s4),
+                  InfoBox(tone: InfoBoxTone.warning, message: ineligibleMessage(quote)),
+                  const SizedBox(height: KapdhSpace.s3),
+                  KapdhButton.outlined(label: 'Lihat KTA', onPressed: () => context.go(AppRoutes.kta)),
+                ],
               ],
             ],
-          ],
+          ),
         ),
       ),
     );

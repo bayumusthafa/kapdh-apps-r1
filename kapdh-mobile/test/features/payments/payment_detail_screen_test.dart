@@ -275,6 +275,18 @@ void main() {
       expect(find.text('Buat instruksi baru'), findsOneWidget);
     });
 
+    testWidgets('D13: bukti sedang diperiksa dari platform tersembunyi: status tetap tampil tanpa Ganti bukti', (
+      tester,
+    ) async {
+      await openPayment(tester, {
+        '/me/payments/pay-1': (_) => FakeResponse.json(200, {...awaitingReviewJson(), 'instructions_hidden': true}),
+      });
+
+      expect(find.text('Bukti pembayaran sedang diperiksa'), findsOneWidget);
+      expect(find.byKey(const ValueKey('proof-replace')), findsNothing);
+      expect(find.text('Ke Beranda'), findsOneWidget);
+    });
+
     testWidgets('D13: instruksi iuran disembunyikan untuk platform ini: tanpa rekening dan unggah bukti, hanya status '
         'dan kontak pengurus', (tester) async {
       await openPayment(tester, {
@@ -651,6 +663,41 @@ void main() {
   });
 
   group('Keadaan layar', () {
+    testWidgets('PRD 4.5: pemeliharaan: instruksi tetap terbaca dengan pita Pemeliharaan di lembar; kirim bukti '
+        'ditolak tanpa mengubah status', (tester) async {
+      final app = await pumpApp(
+        tester,
+        tokens: savedTokens(),
+        overrides: [
+          proofPickerProvider.overrideWithValue(FakeProofPicker()),
+          realtimeNotificationsProvider.overrideWithValue(const Stream.empty()),
+        ],
+        handler: apiRoutes({
+          '/me': (_) => FakeResponse.json(200, meJson(status: 'unverified')),
+          '/me/fees': (_) => FakeResponse.json(200, feesJson()),
+          '/me/membership': (_) => FakeResponse.json(200, membershipJson()),
+          '/payment-methods': (_) => FakeResponse.json(200, methodsJson()),
+          '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingTransferJson()),
+          '/files': (_) => FakeResponse.json(503, errorJson('MAINTENANCE', 'Sistem sedang dalam pemeliharaan.')),
+        }, config: publicConfigJson(maintenance: true, maintenanceUntil: DateTime.utc(2026, 10, 12, 9))),
+      );
+      await useTallScreen(tester);
+      app.router.go('/payments/pay-1');
+      await settle(tester);
+
+      expect(app.location, '/payments/pay-1');
+      expect(find.byType(MaintenanceBanner), findsOneWidget);
+      expect(find.textContaining('Perubahan data ditunda sampai sekitar 12 Okt 2026, 16.00 WIB'), findsOneWidget);
+      expect(find.text('Transfer tepat sebesar'), findsOneWidget);
+
+      await pickFromGallery(tester);
+      await submit(tester);
+
+      expect(app.adapter.requestsTo('/me/payments/pay-1/proof'), isEmpty);
+      expect(find.text('Transfer tepat sebesar'), findsOneWidget);
+      expect(find.byKey(const ValueKey('proof-checking-status')), findsNothing);
+    });
+
     testWidgets('PRD 4.5: memuat: kerangka pemuatan dengan judul layar', (tester) async {
       final pending = Completer<FakeResponse>();
       await openPayment(tester, {'/me/payments/pay-1': (_) => pending.future}, settleAfter: false);

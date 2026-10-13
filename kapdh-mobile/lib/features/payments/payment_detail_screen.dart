@@ -72,6 +72,10 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
 
   bool get _busy => _phase != ProofSubmitPhase.idle || _changingMethodId != null || _cancelling;
 
+  /// Bukti boleh dikirim dari perangkat ini: izin server (`actions.can_submit_proof`) dan instruksi iuran tidak
+  /// disembunyikan untuk platform ini (server menolak 403 FORBIDDEN, rencana cadangan D13).
+  bool _canSendProof(PaymentDetail payment) => payment.actions.canSubmitProof && !payment.instructionsHidden;
+
   @override
   void initState() {
     super.initState();
@@ -141,7 +145,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
     setState(() {
       _payment = payment;
       _loadError = null;
-      if (!payment.actions.canSubmitProof) _editingProof = false;
+      if (!_canSendProof(payment)) _editingProof = false;
     });
     // Iuran yang baru diputus atau dibatalkan: status keanggotaan dan penunjuk iuran di /me ikut diperbarui
     // (perutean PRD 2.2, kartu KTA AC F05-1).
@@ -405,7 +409,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
     }
     final hiddenStage = payment.stage == PaymentStage.awaitingTransfer || payment.stage == PaymentStage.needsFix;
     if (payment.instructionsHidden && hiddenStage) return _hiddenView(payment);
-    if (payment.stage == PaymentStage.awaitingTransfer || (_editingProof && payment.actions.canSubmitProof)) {
+    if (payment.stage == PaymentStage.awaitingTransfer || (_editingProof && _canSendProof(payment))) {
       return _instructionView(payment);
     }
     return switch (payment.stage) {
@@ -429,7 +433,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
     final title = !replacing
         ? 'Pembayaran'
         : (payment.stage == PaymentStage.needsFix ? 'Unggah ulang bukti' : 'Ganti bukti');
-    final canSubmit = payment.actions.canSubmitProof && !_busy && (_proof != null || _unknownOutcome);
+    final canSubmit = _canSendProof(payment) && !_busy && (_proof != null || _unknownOutcome);
     final hold = payment.ticket?.holdExpiresAt;
     return PopScope(
       canPop: !replacing && !_busy,
@@ -444,72 +448,74 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
           busyLabel: _busyLabel,
           onPressed: canSubmit ? () => unawaited(_submitProof()) : null,
         ),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s4),
-          children: [
-            SheetTitleRow(
-              title: title,
-              onBack: _busy ? null : () => replacing ? setState(() => _editingProof = false) : _back(),
-            ),
-            if (payment.type == PaymentType.registration && !replacing) ...[
+        body: withSheetBanner(
+          ListView(
+            padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s4),
+            children: [
+              SheetTitleRow(
+                title: title,
+                onBack: _busy ? null : () => replacing ? setState(() => _editingProof = false) : _back(),
+              ),
+              if (payment.type == PaymentType.registration && !replacing) ...[
+                const SizedBox(height: KapdhSpace.s4),
+                const RegisterStepper(current: 3, compact: true),
+              ],
+              if (payment.type != PaymentType.registration) ...[
+                const SizedBox(height: KapdhSpace.s2),
+                Text(paymentTitle(payment), style: const TextStyle(fontSize: 13, color: KapdhColors.textMuted)),
+              ],
               const SizedBox(height: KapdhSpace.s4),
-              const RegisterStepper(current: 3, compact: true),
-            ],
-            if (payment.type != PaymentType.registration) ...[
-              const SizedBox(height: KapdhSpace.s2),
-              Text(paymentTitle(payment), style: const TextStyle(fontSize: 13, color: KapdhColors.textMuted)),
-            ],
-            const SizedBox(height: KapdhSpace.s4),
-            AmountCopyBox(amount: payment.amount, onCopied: () => _snack('Nominal disalin')),
-            if (hold != null) ...[
-              const SizedBox(height: KapdhSpace.s3),
-              InfoBox(
-                tone: InfoBoxTone.warning,
-                icon: Icons.timer_outlined,
-                message:
-                    'Kirim bukti sebelum ${formatDateTime(hold, zone: payment.ticket!.eventTimezone)}. Setelah itu '
-                    'reservasi berakhir dan kursi dilepas.',
-              ),
-            ],
-            const SizedBox(height: KapdhSpace.s4),
-            if (replacing) _methodReadOnly(payment) else ..._methodChoices(payment),
-            const SizedBox(height: KapdhSpace.s4),
-            ProofUploadSection(
-              title: replacing ? 'Bukti transfer pengganti' : 'Bukti transfer',
-              proof: _proof,
-              phase: _phase,
-              progress: _progress,
-              errorText: _proofError,
-              onPick: payment.actions.canSubmitProof ? () => unawaited(_pickProof()) : null,
-              noteController: _note,
-              unknownOutcome: _unknownOutcome,
-              onCheckStatus: () => unawaited(_checkStatus()),
-            ),
-            if (!payment.actions.canSubmitProof) ...[
-              const SizedBox(height: KapdhSpace.s3),
-              const InfoBox(
-                tone: InfoBoxTone.warning,
-                message: 'Bukti tidak dapat dikirim untuk pembayaran ini. Muat ulang untuk melihat status terbaru.',
-              ),
-            ],
-            if (replacing && payment.proofVersion > 0) ...[
-              const SizedBox(height: KapdhSpace.s3),
-              InfoBox(
-                message:
-                    'Bukti ke-${payment.proofVersion} akan diganti. Bukti lama tetap tersimpan di riwayat untuk '
-                    'pengurus; Anda tidak perlu transfer ulang.',
-              ),
-            ],
-            if (!replacing && payment.actions.canCancel) ...[
-              const SizedBox(height: KapdhSpace.s3),
-              Center(
-                child: KapdhLinkButton(
-                  label: _cancelling ? 'Membatalkan...' : 'Batalkan instruksi',
-                  onPressed: _busy ? null : () => unawaited(_cancelInstruction()),
+              AmountCopyBox(amount: payment.amount, onCopied: () => _snack('Nominal disalin')),
+              if (hold != null) ...[
+                const SizedBox(height: KapdhSpace.s3),
+                InfoBox(
+                  tone: InfoBoxTone.warning,
+                  icon: Icons.timer_outlined,
+                  message:
+                      'Kirim bukti sebelum ${formatDateTime(hold, zone: payment.ticket!.eventTimezone)}. Setelah itu '
+                      'reservasi berakhir dan kursi dilepas.',
                 ),
+              ],
+              const SizedBox(height: KapdhSpace.s4),
+              if (replacing) _methodReadOnly(payment) else ..._methodChoices(payment),
+              const SizedBox(height: KapdhSpace.s4),
+              ProofUploadSection(
+                title: replacing ? 'Bukti transfer pengganti' : 'Bukti transfer',
+                proof: _proof,
+                phase: _phase,
+                progress: _progress,
+                errorText: _proofError,
+                onPick: _canSendProof(payment) ? () => unawaited(_pickProof()) : null,
+                noteController: _note,
+                unknownOutcome: _unknownOutcome,
+                onCheckStatus: () => unawaited(_checkStatus()),
               ),
+              if (!_canSendProof(payment)) ...[
+                const SizedBox(height: KapdhSpace.s3),
+                const InfoBox(
+                  tone: InfoBoxTone.warning,
+                  message: 'Bukti tidak dapat dikirim untuk pembayaran ini. Muat ulang untuk melihat status terbaru.',
+                ),
+              ],
+              if (replacing && payment.proofVersion > 0) ...[
+                const SizedBox(height: KapdhSpace.s3),
+                InfoBox(
+                  message:
+                      'Bukti ke-${payment.proofVersion} akan diganti. Bukti lama tetap tersimpan di riwayat untuk '
+                      'pengurus; Anda tidak perlu transfer ulang.',
+                ),
+              ],
+              if (!replacing && payment.actions.canCancel) ...[
+                const SizedBox(height: KapdhSpace.s3),
+                Center(
+                  child: KapdhLinkButton(
+                    label: _cancelling ? 'Membatalkan...' : 'Batalkan instruksi',
+                    onPressed: _busy ? null : () => unawaited(_cancelInstruction()),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -577,7 +583,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
       header: GreetingBand(name: name, onBack: router.canPop() ? () => router.pop() : null),
       overlap: GreetingBand.overlap,
       bottomBar: bottomBar,
-      body: RefreshIndicator(onRefresh: _load, child: body),
+      body: withSheetBanner(RefreshIndicator(onRefresh: _load, child: body)),
     );
   }
 
@@ -605,7 +611,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
     return _greetingScaffold(
       bottomBar: Row(
         children: [
-          if (payment.actions.canSubmitProof) ...[
+          if (_canSendProof(payment)) ...[
             Expanded(
               child: KapdhButton.outlined(
                 key: const ValueKey('proof-replace'),
@@ -653,7 +659,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
           KapdhButton(
             key: const ValueKey('proof-reupload'),
             label: 'Unggah ulang bukti',
-            onPressed: payment.actions.canSubmitProof ? () => setState(() => _editingProof = true) : null,
+            onPressed: _canSendProof(payment) ? () => setState(() => _editingProof = true) : null,
           ),
           Center(
             child: KapdhLinkButton(label: 'Hubungi pengurus', onPressed: () => unawaited(_contactSupport())),
