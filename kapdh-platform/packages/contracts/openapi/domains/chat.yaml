@@ -48,6 +48,15 @@
 # - Event undangan (room.member_changed invited/invitation_cancelled/declined) tidak pernah dikirim ke kanal
 #   room:<room_id>; hanya ke kanal user:<id> calon anggota dan admin grup, karena undangan tertunda hanya boleh
 #   dilihat admin grup (lihat events/room.member_changed.schema.json).
+# - URL berkas privat (gambar pesan, avatar privat anggota, avatar grup) pada respons HTTP maupun event realtime
+#   SELALU terikat berkas dan sesi penerimanya; membuka URL mengulang kebijakan akses, sehingga anggota yang keluar
+#   atau dikeluarkan langsung ditolak walau URL sudah diterimanya (PRD 5.4 "TTL tidak menggantikan otorisasi",
+#   AC F11-4). Event yang memuat URL seperti itu (message.created, room.updated) dikirim per keluarga sesi penerima
+#   (kanal session:<id>) kepada penerima yang sama dengan kanal room:<id> (anggota joined berstatus aktif; pesan juga
+#   dibatasi history_visible_from), tepat satu salinan per perangkat.
+# - Pesan sistem: teksnya dirangkai server saat dibaca dari peristiwa yang hanya menyimpan id pengguna, dengan nama
+#   terkini; akun yang sudah dihapus tampil "Seorang anggota", sehingga namanya tidak tersisa di riwayat grup mana pun
+#   (AC F14-3, D2).
 # - Isi pesan tidak pernah dicatat di log atau audit (ARCHITECTURE §2 butir 3); push tidak memuat isi pesan (§4.7).
 # - Semua skema respons domain ini memakai additionalProperties: false (tanpa allOf, field induk diulang) sehingga
 #   uji kontrak (expectOperation) menolak respons yang membocorkan field di luar kontrak, mis. kontak anggota (N-09).
@@ -458,7 +467,8 @@ paths:
       summary: Bisukan atau aktifkan notifikasi push room untuk diri sendiri (F-11, F-12).
       description: |
         Hanya anggota joined. Mute hanya menahan push kategori chat dari room ini; pesan, unread dan inbox tetap
-        tersedia. Idempoten. Perangkat lain milik pemanggil menerima `room.updated` (changes berisi muted).
+        tersedia (notifikasi kotak masuk "Pesan baru" tetap ditulis, hanya push yang tidak dijadwalkan, AC F13-2).
+        Idempoten. Perangkat lain milik pemanggil menerima `room.updated` (changes berisi muted).
       x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/ChatRoomId"
@@ -554,11 +564,13 @@ paths:
         mengembalikan pesan yang sama (200) tanpa pesan baru (AC F11-2, unique messages_sender_id_client_message_id_key);
         client_message_id sama dengan room/isi berbeda -> 409 IDEMPOTENCY_CONFLICT. Sesudah commit server mengirim
         `message.created` ke kanal room (hanya socket anggota aktif yang masih berlangganan, lihat aturan domain
-        langganan realtime) dan menjadwalkan push kategori chat (tanpa isi pesan) HANYA untuk anggota joined selain
+        langganan realtime; pesan yang memuat URL berkas privat dikirim per keluarga sesi penerima yang sama dengan
+        URL terikat sesi itu) dan menjadwalkan push kategori chat (tanpa isi pesan) HANYA untuk anggota joined selain
         pengirim yang effective_status-nya verified/expiring dan tidak suspended saat penjadwalan, tidak mute room,
-        dan preferensi push chat-nya aktif. Anggota expired/suspended tidak menerima push chat karena deep link
-        `/chat/<roomId>` akan menjawab 403 dan mereka tidak dapat mute/keluar grup (PRD 2.2). Laju pengiriman
-        dibatasi (429).
+        dan preferensi push chat-nya aktif. Notifikasi kotak masuk (tanpa isi pesan, satu per episode belum dibaca)
+        tetap ditulis untuk anggota aktif yang mute room atau mematikan push chat (riwayat resmi, AC F13-2). Anggota
+        expired/suspended tidak menerima notifikasi chat karena deep link `/chat/<roomId>` akan menjawab 403 dan
+        mereka tidak dapat mute/keluar grup (PRD 2.2). Laju pengiriman dibatasi (429).
       x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
         - $ref: "#/components/parameters/ChatRoomId"
@@ -1116,7 +1128,7 @@ components:
 
     ChatImage:
       type: object
-      description: Gambar pesan; URL bertanda tangan maksimal 10 menit, terikat berkas (PRD 5.4).
+      description: Gambar pesan; URL bertanda tangan maksimal 10 menit, terikat berkas dan sesi penerima (PRD 5.4).
       required: [file_id, url, url_expires_at, mime, width, height]
       additionalProperties: false
       properties:
@@ -1187,7 +1199,9 @@ components:
         body:
           type: [string, "null"]
           maxLength: 4000
-          description: Isi teks atau keterangan gambar; pesan sistem berisi teks server. Tidak pernah dilog.
+          description: |
+            Isi teks atau keterangan gambar; pesan sistem berisi teks yang dirangkai server dengan nama terkini (akun
+            yang sudah dihapus tampil "Seorang anggota", AC F14-3). Tidak pernah dilog.
           x-sensitive: true
         image:
           oneOf:

@@ -24,7 +24,7 @@
       "maxLength": 80
     },
     "avatar_url": {
-      "description": "Avatar grup terbaru (URL bertanda tangan maksimal 10 menit); null bila tidak ada atau room direct.",
+      "description": "Avatar grup terbaru (URL bertanda tangan maksimal 10 menit, terikat sesi penerima; event dengan avatar privat dikirim per keluarga sesi penerima); null bila tidak ada atau room direct.",
       "type": ["string", "null"],
       "format": "uri"
     },
