@@ -142,6 +142,73 @@ describe("shell /kta/{nomor} (F-06)", () => {
     await first;
   });
 
+  it("AC F06-3: QR yang diperbarui dipindai saat verifikasi lama berjalan (hashchange): putusan token lama dibuang, token baru diverifikasi", async () => {
+    const NEW_TOKEN = `${TOKEN}baru`;
+    const location = { pathname: "/kta/25.01.01.7", hash: `#t=${TOKEN}` };
+    const pending: Array<{ token: string; resolve: (r: Response) => void }> = [];
+    const { page, f } = mount(
+      (call) =>
+        new Promise<Response>((resolve) =>
+          pending.push({ token: (call.body as { token: string }).token, resolve }),
+        ),
+      location,
+    );
+    const first = page.run();
+    expect(f.calls).toHaveLength(1);
+    location.hash = `#t=${NEW_TOKEN}`;
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await flush();
+    // hashchange tidak diabaikan walau request lama masih berjalan.
+    expect(f.calls).toHaveLength(2);
+    expect(pending.map((p) => p.token)).toEqual([TOKEN, NEW_TOKEN]);
+    expect(resultKind()).toBe("loading");
+    // Token baru selesai lebih dahulu, lalu jawaban token lama (invalid) datang terlambat.
+    pending[1]!.resolve(json(200, { result: "active", checked_at: CHECKED, expiring: false, member: MEMBER }));
+    await flush();
+    expect(resultKind()).toBe("active");
+    pending[0]!.resolve(json(200, { result: "invalid_token", checked_at: CHECKED, expiring: false, member: null }));
+    await first;
+    await flush();
+    expect(resultKind()).toBe("active");
+    expect(retry.hidden).toBe(true);
+  });
+
+  it("AC F06-3: jawaban token lama yang datang SEBELUM token baru juga tidak ditampilkan", async () => {
+    const NEW_TOKEN = `${TOKEN}baru`;
+    const location = { pathname: "/kta/25.01.01.7", hash: `#t=${TOKEN}` };
+    const pending: Array<(r: Response) => void> = [];
+    const { page } = mount(() => new Promise<Response>((resolve) => pending.push(resolve)), location);
+    const first = page.run();
+    location.hash = `#t=${NEW_TOKEN}`;
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await flush();
+    pending[0]!(json(200, { result: "invalid_token", checked_at: CHECKED, expiring: false, member: null }));
+    await first;
+    await flush();
+    // Masih menunggu token baru; putusan token lama tidak pernah tampil.
+    expect(resultKind()).toBe("loading");
+    expect(retry.hidden).toBe(true);
+    pending[1]!(json(200, { result: "active", checked_at: CHECKED, expiring: false, member: MEMBER }));
+    await flush();
+    expect(resultKind()).toBe("active");
+  });
+
+  it("hashchange ke tautan rusak saat request berjalan: QR tidak valid, hasil lama dibuang", async () => {
+    const location = { pathname: "/kta/25.01.01.7", hash: `#t=${TOKEN}` };
+    let release: (r: Response) => void = () => {};
+    const { page, f } = mount(() => new Promise<Response>((resolve) => (release = resolve)), location);
+    const first = page.run();
+    location.hash = "#t=%E0%A4%A";
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await flush();
+    expect(resultKind()).toBe("invalid");
+    release(json(200, { result: "active", checked_at: CHECKED, expiring: false, member: MEMBER }));
+    await first;
+    await flush();
+    expect(resultKind()).toBe("invalid");
+    expect(f.calls).toHaveLength(1);
+  });
+
   it("/kta tanpa QR menampilkan petunjuk pindai tanpa memanggil API", async () => {
     const { page, f } = mount(() => json(200, {}), { pathname: "/kta/", hash: "" });
     await page.run();

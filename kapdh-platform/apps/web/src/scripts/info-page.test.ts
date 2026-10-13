@@ -69,7 +69,29 @@ describe("F-08: halaman legal/informasi dibaca saat runtime dari GET /public/pag
     await page.load();
     expect(state()).toBe("not_published");
     expect(root.textContent).toContain("Belum diterbitkan");
-    expect(root.querySelector("[data-state='not_published']")!.getAttribute("role")).toBe("status");
+    const live = root.querySelector("[data-state='not_published'] [role='status']")!;
+    expect(live.textContent).toContain("Belum diterbitkan");
+    // Tautan tindakan berada di luar wilayah live (N-11).
+    expect(live.querySelector("a")).toBeNull();
+    expect(root.querySelector("[data-state='not_published'] a[href='/kontak']")).not.toBeNull();
+  });
+
+  it("PRD 5.2: 404 tanpa body Error kontrak (router/proxy saat deploy) -> tidak terjangkau dengan coba lagi, bukan belum diterbitkan", async () => {
+    for (const handler of [
+      () => text(404, "Not Found", "text/plain"),
+      () => text(404, "<html><body>404 Not Found</body></html>"),
+      () => json(404, { message: "no route" }),
+      () => apiError(404, "INTERNAL_ERROR", "x"),
+    ]) {
+      const { page } = mount([handler, () => json(200, PAGE)]);
+      await page.load();
+      expect(state()).toBe("unreachable");
+      expect(root.textContent).not.toContain("Belum diterbitkan");
+      expect(root.textContent).toContain("Server KAPDH tidak dapat dihubungi");
+      root.querySelector("button")!.click();
+      await flush();
+      expect(state()).toBe("ready");
+    }
   });
 
   it("jaringan putus atau respons non-JSON -> tidak dapat memuat dengan coba lagi yang berhasil", async () => {
@@ -96,6 +118,26 @@ describe("F-08: halaman legal/informasi dibaca saat runtime dari GET /public/pag
     expect(button.disabled).toBe(false);
   });
 
+  it("N-11: hitung mundur 429 tidak mengubah wilayah live tiap detik; tombol coba lagi di luar role=status", async () => {
+    vi.useFakeTimers();
+    const { page } = mount(() => apiError(429, "RATE_LIMITED", "Terlalu sering", { retry_after_seconds: 30 }));
+    await page.load();
+    const live = root.querySelector<HTMLElement>("[role='status']")!;
+    expect(live.textContent).toContain("Terlalu banyak permintaan");
+    const button = root.querySelector("button")!;
+    expect(button.closest("[role='status'], [role='alert'], [aria-live]")).toBeNull();
+    const before = live.textContent;
+    const mutations: MutationRecord[] = [];
+    const observer = new MutationObserver((records) => mutations.push(...records));
+    observer.observe(live, { subtree: true, childList: true, characterData: true, attributes: true });
+    await vi.advanceTimersByTimeAsync(5000);
+    observer.disconnect();
+    expect(mutations).toHaveLength(0);
+    expect(live.textContent).toBe(before);
+    // Hitung mundur tetap terlihat pada label tombol.
+    expect(button.textContent).toBe("Coba lagi (0:25)");
+  });
+
   it("slug di-encode pada path request", async () => {
     const { page, f } = mount(() => apiError(404, "NOT_FOUND", "x"), "a b");
     await page.load();
@@ -116,8 +158,24 @@ describe("guard dan teks meta", () => {
       toInfoPageView({ ok: false, kind: "network", status: 0, error: null, retryAfterSeconds: null }),
     ).toEqual({
       kind: "unreachable",
+      rateLimited: false,
       retryAfterSeconds: null,
     });
+    expect(
+      toInfoPageView({
+        ok: false,
+        kind: "http",
+        status: 404,
+        error: { code: "NOT_FOUND", message: "x", request_id: "r" },
+        retryAfterSeconds: null,
+      }),
+    ).toEqual({ kind: "not_published" });
+    expect(
+      toInfoPageView({ ok: false, kind: "http", status: 404, error: null, retryAfterSeconds: null }),
+    ).toEqual({ kind: "unreachable", rateLimited: false, retryAfterSeconds: null });
+    expect(
+      toInfoPageView({ ok: false, kind: "http", status: 429, error: null, retryAfterSeconds: 9 }),
+    ).toEqual({ kind: "unreachable", rateLimited: true, retryAfterSeconds: 9 });
     expect(pageMetaText({ ...PAGE, version: "12" })).toBe("Versi 12 · Diterbitkan 1 Oktober 2026");
   });
 });
