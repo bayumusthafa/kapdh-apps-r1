@@ -41,13 +41,14 @@ Future<AppHarness> openRenewal(
   FakeProofPicker? picker,
   bool navigate = true,
   double textScale = 1,
+  Map<String, Object?>? config,
 }) async {
   final app = await pumpApp(
     tester,
     tokens: savedTokens(),
     textScale: textScale,
     overrides: [proofPickerProvider.overrideWithValue(picker ?? FakeProofPicker())],
-    handler: apiRoutes({
+    handler: apiRoutes(config: config, {
       '/me': (_) => FakeResponse.json(200, meJson(status: status, expiresAt: meExpiresAt ?? expires)),
       '/me/membership': (_) => FakeResponse.json(200, membership),
       '/me/fees': (_) => FakeResponse.json(200, fees),
@@ -174,6 +175,41 @@ void main() {
     expect(find.text('9 Okt 2026'), findsOneWidget);
     expect(find.textContaining('dihitung sejak iuran diverifikasi pengurus'), findsOneWidget);
     expect(tester.widget<KapdhButton>(buttonLabelled('Lanjut ke pembayaran')).onPressed, isNotNull);
+  });
+
+  testWidgets('AC F07-2, PRD 4.5: pemeliharaan: anggota expired masuk mode baca ke Perpanjang KTA (tanggal berakhir '
+      'terbaca); membuat instruksi perpanjangan tetap ditunda ke layar pemeliharaan', (tester) async {
+    final past = testNow.subtract(const Duration(days: 3));
+    final app = await openRenewal(
+      tester,
+      status: 'expired',
+      meExpiresAt: past,
+      navigate: false,
+      config: publicConfigJson(maintenance: true, maintenanceUntil: DateTime.utc(2026, 10, 12, 9)),
+      membership: membershipJson(
+        status: 'expired',
+        startsAt: past.subtract(const Duration(days: 365)),
+        expiresAt: past,
+        renewalEligible: true,
+        renewalOpensAt: past.subtract(const Duration(days: 30)),
+      ),
+      fees: renewalFees(),
+    );
+    await settle(tester);
+
+    expect(app.location, startsWith('/maintenance'));
+    await tester.tap(find.text('Lanjut dalam mode baca'));
+    await settle(tester);
+
+    expect(app.location, '/renewal');
+    expect(find.byType(MaintenanceBanner), findsOneWidget);
+    expect(find.text('Berakhir'), findsOneWidget);
+    expect(find.text('9 Okt 2026'), findsOneWidget);
+
+    await scrollAndTap(tester, buttonLabelled('Lanjut ke pembayaran'));
+    await settle(tester);
+    expect(app.location, '/maintenance?from=%2Fpayments%2Fnew%2Frenewal');
+    expect(app.adapter.requestsTo('/me/payments').where((r) => r.method == 'POST'), isEmpty);
   });
 
   testWidgets('AC F03-1, F03-2: iuran perpanjangan berjalan: Lanjutkan membuka payment yang sama; setelah bukti '
