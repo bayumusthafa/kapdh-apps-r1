@@ -323,9 +323,11 @@ paths:
         - hold kedaluwarsa yang belum dilepas menjadi expired lebih dahulu (sama dengan createEventReservation
           langkah 1), sehingga status yang sudah tampil kepada anggota lewat proyeksi baca tidak berubah.
         - tiket awaiting_payment lainnya -> cancelled (`cancelled_by=admin`), payment pending tanpa bukti dibatalkan.
-        - tiket paid -> cancelled, QR tidak berlaku; payment tetap paid dan untuk total > 0 dibuat
-          payment_adjustment refund pending sebesar total dengan tenggat 7 hari kerja (D6). Tiket gratis tanpa refund.
-        - tiket awaiting_review -> cancelled; payment-nya tetap pending di antrean verifikasi karena dana mungkin
+        - tiket paid -> cancelled (`cancelled_by=system`), QR tidak berlaku; payment tetap paid dan untuk total > 0
+          dibuat payment_adjustment refund pending sebesar total dengan tenggat 7 hari kerja (D6). Tiket gratis tanpa
+          refund.
+        - tiket awaiting_review -> cancelled (`cancelled_by=system`, akibat pembatalan event, bukan keputusan per tiket,
+          sehingga persetujuan dana sesudahnya memicu refund penuh D6); payment-nya tetap pending di antrean verifikasi karena dana mungkin
           sudah ditransfer. Bila pengurus kemudian menyetujui (dana terverifikasi), payment menjadi paid dan refund
           penuh otomatis dibuat, tiket tetap cancelled dan penghitung kursi tidak berubah; bila ditolak, tidak ada
           refund dan kursi tidak dilepas kedua kalinya (aturan payment tiket pada deskripsi tag Events dan

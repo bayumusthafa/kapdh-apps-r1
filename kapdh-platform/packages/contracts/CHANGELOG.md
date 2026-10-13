@@ -240,6 +240,10 @@ dicatat sebagai garis dasar gerbang N-13.
   nonaktif hanya membuka event yang ia punya tiketnya).
 - Urutan kunci global event -> tiket -> payment (PRD 6.4) didokumentasikan di deskripsi tag Events dan mengikat
   modul pembayaran untuk payment `type=ticket`.
+- Implementasi API (slice api-events, aditif, hanya deskripsi): `TicketCancelledBy` dan `adminCancelEvent` kini
+  menyebut nilai `cancelled_by` per jalur: tiket paid dan awaiting_review yang dibatalkan oleh pembatalan event
+  bercatatan `system` (akibat event, bukan keputusan per tiket; persetujuan dana sesudahnya memicu refund penuh D6),
+  hold awaiting_payment `admin`, penolakan pembayaran tiket `system`. Tidak ada field atau operasi yang berubah.
 
 ### Komunitas (C6: F-10, F-11, F-12)
 

@@ -55,9 +55,21 @@ describe("Kategori dan daftar event (guideline p8)", () => {
   it("F-09: mendatang urut mulai naik (draft tidak tampil, cancelled tetap tampil), lampau urut turun; filter kategori dan kata kunci; paging stabil", async () => {
     const category = await createCategory(t, { label: "Kajian" });
     const tag = `Kajian-${uuidv7().slice(-6)}`;
-    const soon = await createEventRow(t, { title: `${tag} Pekan Ini`, startsInMs: 2 * DAY, categoryId: category.id });
-    const later = await createEventRow(t, { title: `${tag} Bulan Depan`, startsInMs: 30 * DAY, categoryId: category.id });
-    const cancelled = await createEventRow(t, { title: `${tag} Batal`, startsInMs: 5 * DAY, status: "cancelled" });
+    const soon = await createEventRow(t, {
+      title: `${tag} Pekan Ini`,
+      startsInMs: 2 * DAY,
+      categoryId: category.id,
+    });
+    const later = await createEventRow(t, {
+      title: `${tag} Bulan Depan`,
+      startsInMs: 30 * DAY,
+      categoryId: category.id,
+    });
+    const cancelled = await createEventRow(t, {
+      title: `${tag} Batal`,
+      startsInMs: 5 * DAY,
+      status: "cancelled",
+    });
     await createEventRow(t, { title: `${tag} Draft`, status: "draft" });
     const done = await createEventRow(t, { title: `${tag} Lalu`, startsInMs: -5 * DAY, status: "done" });
     const member = await memberSession(t);
@@ -79,7 +91,9 @@ describe("Kategori dan daftar event (guideline p8)", () => {
       cover_url: null,
       timezone: "Asia/Jakarta",
     });
-    const past = (await api().get("/events", { token: member.token, query: { q: tag, period: "past" } })).json();
+    const past = (
+      await api().get("/events", { token: member.token, query: { q: tag, period: "past" } })
+    ).json();
     expect(past.items.map((e: { id: string }) => e.id)).toEqual([done.id]);
     const byCategory = (
       await api().get("/events", { token: member.token, query: { q: tag, category_id: category.id } })
@@ -89,7 +103,10 @@ describe("Kategori dan daftar event (guideline p8)", () => {
     const page1 = (await api().get("/events", { token: member.token, query: { q: tag, limit: "2" } })).json();
     expect(page1.items).toHaveLength(2);
     const page2 = (
-      await api().get("/events", { token: member.token, query: { q: tag, limit: "2", cursor: page1.next_cursor } })
+      await api().get("/events", {
+        token: member.token,
+        query: { q: tag, limit: "2", cursor: page1.next_cursor },
+      })
     ).json();
     expect(page2.items.map((e: { id: string }) => e.id)).toEqual([later.id]);
     expect(page2.next_cursor).toBeNull();
@@ -103,15 +120,28 @@ describe("Kategori dan daftar event (guideline p8)", () => {
   it("F-09: label pendaftaran not_yet_open, closed, sold_out dihitung server; my_ticket_status memakai tiket terbaru", async () => {
     const member = await memberSession(t);
     const notYet = await createEventRow(t, { registrationOpensInMs: DAY });
-    const closedByTime = await createEventRow(t, { startsInMs: 2 * HOUR, registrationClosesBeforeStartMs: 3 * HOUR });
+    const closedByTime = await createEventRow(t, {
+      startsInMs: 2 * HOUR,
+      registrationClosesBeforeStartMs: 3 * HOUR,
+    });
     const full = await createEventRow(t, { seatsTotal: 1, price: "0.00" });
     await reserve(t, await memberSession(t), full);
     const mine = await createEventRow(t);
     await reserve(t, member, mine);
     const states = async (id: string) => (await api().get(`/events/${id}`, { token: member.token })).json();
-    expect(await states(notYet.id)).toMatchObject({ registration_state: "not_yet_open", reservation_blocked_reason: "not_yet_open" });
-    expect(await states(closedByTime.id)).toMatchObject({ registration_state: "closed", reservation_blocked_reason: "closed" });
-    expect(await states(full.id)).toMatchObject({ registration_state: "sold_out", seats_available: 0, reservation_blocked_reason: "sold_out" });
+    expect(await states(notYet.id)).toMatchObject({
+      registration_state: "not_yet_open",
+      reservation_blocked_reason: "not_yet_open",
+    });
+    expect(await states(closedByTime.id)).toMatchObject({
+      registration_state: "closed",
+      reservation_blocked_reason: "closed",
+    });
+    expect(await states(full.id)).toMatchObject({
+      registration_state: "sold_out",
+      seats_available: 0,
+      reservation_blocked_reason: "sold_out",
+    });
     expect(await states(mine.id)).toMatchObject({
       my_ticket_status: "awaiting_payment",
       reservation_blocked_reason: "has_active_ticket",
@@ -151,7 +181,10 @@ describe("Detail event (PRD 2.2, D5, D6)", () => {
     expect(freeBody.cancellation_policy.summary).toMatch(/tidak ada refund/);
     // Override jendela check-in.
     const opens = new Date(event.startsAt.getTime() - 5 * HOUR);
-    const custom = await createEventRow(t, { checkinOpensAt: opens, checkinClosesAt: new Date(opens.getTime() + HOUR) });
+    const custom = await createEventRow(t, {
+      checkinOpensAt: opens,
+      checkinClosesAt: new Date(opens.getTime() + HOUR),
+    });
     expect((await api().get(`/events/${custom.id}`, { token: member.token })).json()).toMatchObject({
       checkin_opens_at: opens.toISOString(),
     });
@@ -160,7 +193,13 @@ describe("Detail event (PRD 2.2, D5, D6)", () => {
   it("N-09: draft atau id tidak dikenal → 404; id bukan UUID → 400", async () => {
     const member = await memberSession(t);
     const draft = await createEventRow(t, { status: "draft" });
-    expect(expectOperation("get", "/events/{eventId}", await api().get(`/events/${draft.id}`, { token: member.token }))).toMatchObject({ code: "NOT_FOUND" });
+    expect(
+      expectOperation(
+        "get",
+        "/events/{eventId}",
+        await api().get(`/events/${draft.id}`, { token: member.token }),
+      ),
+    ).toMatchObject({ code: "NOT_FOUND" });
     expect((await api().get(`/events/${uuidv7()}`, { token: member.token })).statusCode).toBe(404);
     expect((await api().get("/events/bukan-uuid", { token: member.token })).statusCode).toBe(400);
   });
@@ -177,10 +216,16 @@ describe("Detail event (PRD 2.2, D5, D6)", () => {
     });
     const other = await createEventRow(t);
     const denied = await api().get(`/events/${other.id}`, { token: expired.token });
-    expect(expectOperation("get", "/events/{eventId}", denied)).toMatchObject({ code: "MEMBERSHIP_REQUIRED" });
-    expect((await api().get(`/events/${uuidv7()}`, { token: expired.token })).json().code).toBe("MEMBERSHIP_REQUIRED");
+    expect(expectOperation("get", "/events/{eventId}", denied)).toMatchObject({
+      code: "MEMBERSHIP_REQUIRED",
+    });
+    expect((await api().get(`/events/${uuidv7()}`, { token: expired.token })).json().code).toBe(
+      "MEMBERSHIP_REQUIRED",
+    );
     const unverified = await memberSession(t, "unverified");
-    expect((await api().get(`/events/${event.id}`, { token: unverified.token })).json().code).toBe("MEMBERSHIP_REQUIRED");
+    expect((await api().get(`/events/${event.id}`, { token: unverified.token })).json().code).toBe(
+      "MEMBERSHIP_REQUIRED",
+    );
   });
 });
 
@@ -190,7 +235,10 @@ describe("Peserta (PRD 3.10, AC F10-2, F10-3)", () => {
     const viewer = await memberSession(t, "verified", { fullName: "Penonton Uji" });
     const visible = await memberSession(t, "verified", { fullName: "Budi Hadir" });
     const expiring = await memberSession(t, "expiring", { fullName: "Ahmad Hadir" });
-    const hidden = await memberSession(t, "verified", { fullName: "Citra Tersembunyi", showInDirectory: false });
+    const hidden = await memberSession(t, "verified", {
+      fullName: "Citra Tersembunyi",
+      showInDirectory: false,
+    });
     const expired = await memberSession(t, "expired", { fullName: "Dodi Kedaluwarsa" });
     const suspended = await memberSession(t, "suspended", { fullName: "Eka Ditangguhkan" });
     const blocker = await memberSession(t, "verified", { fullName: "Fajar Memblokir" });
@@ -207,7 +255,13 @@ describe("Peserta (PRD 3.10, AC F10-2, F10-3)", () => {
     const res = await api().get(`/events/${event.id}/participants`, { token: viewer.token });
     const body = expectOperation("get", "/events/{eventId}/participants", res) as JsonBody;
     expect(body.items.map((p: { full_name: string }) => p.full_name)).toEqual(["Ahmad Hadir", "Budi Hadir"]);
-    expect(Object.keys(body.items[0]).sort()).toEqual(["avatar_url", "cohort", "cohort_code", "full_name", "user_id"]);
+    expect(Object.keys(body.items[0]).sort()).toEqual([
+      "avatar_url",
+      "cohort",
+      "cohort_code",
+      "full_name",
+      "user_id",
+    ]);
     expect(body.items[1]).toMatchObject({ user_id: visible.userId, cohort: 29, cohort_code: "KAPDH 29" });
     const page = (
       await api().get(`/events/${event.id}/participants`, { token: viewer.token, query: { limit: "1" } })
@@ -221,9 +275,13 @@ describe("Peserta (PRD 3.10, AC F10-2, F10-3)", () => {
     ).json();
     expect(next.items[0].full_name).toBe("Budi Hadir");
     // Detail event tetap menghitung semua kursi terkonfirmasi.
-    expect((await api().get(`/events/${event.id}`, { token: viewer.token })).json().participant_count).toBe(7);
+    expect((await api().get(`/events/${event.id}`, { token: viewer.token })).json().participant_count).toBe(
+      7,
+    );
     const draft = await createEventRow(t, { status: "draft" });
-    expect((await api().get(`/events/${draft.id}/participants`, { token: viewer.token })).statusCode).toBe(404);
+    expect((await api().get(`/events/${draft.id}/participants`, { token: viewer.token })).statusCode).toBe(
+      404,
+    );
   });
 });
 
@@ -243,11 +301,21 @@ describe("Tiket saya (PRD 2.2, 4.4)", () => {
       total: "75000.00",
       holdExpiresAt: new Date(t.clock.now().getTime() - 1000),
     });
-    const cancelled = await insertTicket(t, { eventId: cancelledEvent.id, userId: member.userId, status: "cancelled" });
-    const active = expectOperation("get", "/me/tickets", await api().get("/me/tickets", { token: member.token })) as JsonBody;
+    const cancelled = await insertTicket(t, {
+      eventId: cancelledEvent.id,
+      userId: member.userId,
+      status: "cancelled",
+    });
+    const active = expectOperation(
+      "get",
+      "/me/tickets",
+      await api().get("/me/tickets", { token: member.token }),
+    ) as JsonBody;
     expect(active.items.map((x: { id: string }) => x.id)).toEqual([soonTicket.id, laterTicket.id]);
     expect(active.items[0]).toMatchObject({ status: "paid", payment_status: null, event: { id: soon.id } });
-    const history = (await api().get("/me/tickets", { token: member.token, query: { view: "history" } })).json();
+    const history = (
+      await api().get("/me/tickets", { token: member.token, query: { view: "history" } })
+    ).json();
     expect(history.items.map((x: { id: string }) => x.id)).toEqual([cancelled.id, lapsed.id]);
     expect(history.items[1]).toMatchObject({ status: "expired" });
     const bad = await api().get("/me/tickets", { token: member.token, query: { view: "semua" } });

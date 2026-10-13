@@ -108,7 +108,9 @@ async function admin(permissions: Permission[]) {
 }
 
 /** Event open relatif terhadap jam aplikasi (TestClock), bukan jam database. */
-async function insertEvent(options: { seats?: number; price?: string; startsInMs?: number } = {}): Promise<string> {
+async function insertEvent(
+  options: { seats?: number; price?: string; startsInMs?: number } = {},
+): Promise<string> {
   const id = uuidv7();
   const now = clock.now().getTime();
   const startsAt = new Date(now + (options.startsInMs ?? 10 * DAY));
@@ -152,7 +154,11 @@ describe("AC F09-1 / PRD 9.2: kursi terakhir diperebutkan banyak anggota (Postgr
     const [event] = await sql<{ held_quantity: number; paid_quantity: number }[]>`
       select held_quantity, paid_quantity from app.events where id = ${eventId}`;
     expect(event).toEqual({ held_quantity: 3, paid_quantity: 0 });
-    expect(await count(sql<{ n: number }[]>`select count(*)::int as n from app.tickets where event_id = ${eventId}`)).toBe(3);
+    expect(
+      await count(
+        sql<{ n: number }[]>`select count(*)::int as n from app.tickets where event_id = ${eventId}`,
+      ),
+    ).toBe(3);
     expect(
       await count(sql<{ n: number }[]>`
         select count(*)::int as n from app.payments p join app.tickets t on t.id = p.ticket_id
@@ -190,7 +196,9 @@ describe("PRD 9.2: satu anggota mengirim reservasi ganda bersamaan (PostgreSQL 1
       await count(sql<{ n: number }[]>`
         select count(*)::int as n from app.tickets where event_id = ${eventId} and user_id = ${owner.userId}`),
     ).toBe(1);
-    const [event] = await sql<{ paid_quantity: number }[]>`select paid_quantity from app.events where id = ${eventId}`;
+    const [event] = await sql<
+      { paid_quantity: number }[]
+    >`select paid_quantity from app.events where id = ${eventId}`;
     expect(event!.paid_quantity).toBe(1);
   });
 });
@@ -226,7 +234,9 @@ describe("AC F09-2: job kedaluwarsa bersaing dengan kiriman bukti sesudah batas 
     expect(observed, "job dan kiriman bukti menunggu kunci event").toBe(true);
     const submitted = results[1]!;
     expect(submitted!.json()).toMatchObject({ code: "RESERVATION_EXPIRED" });
-    const [event] = await sql<{ held_quantity: number }[]>`select held_quantity from app.events where id = ${eventId}`;
+    const [event] = await sql<
+      { held_quantity: number }[]
+    >`select held_quantity from app.events where id = ${eventId}`;
     expect(event!.held_quantity).toBe(0);
     const [row] = await sql<{ status: string }[]>`select status from app.tickets where id = ${ticket.id}`;
     expect(row!.status).toBe("expired");
@@ -250,7 +260,11 @@ describe("AC F09-5 / PRD 4.5: dua petugas memindai QR yang sama bersamaan (Postg
   it("tepat satu check-in tercatat; pemindaian lain 409 TICKET_ALREADY_CHECKED_IN dengan waktu dan petugas pertama", async () => {
     const eventId = await insertEvent({ price: "0.00", startsInMs: HOUR });
     const owner = await member();
-    const reserved = await http().post(`/events/${eventId}/reservations`, { expected_price: "0.00" }, { token: owner.token });
+    const reserved = await http().post(
+      `/events/${eventId}/reservations`,
+      { expected_price: "0.00" },
+      { token: owner.token },
+    );
     expect(reserved.statusCode, reserved.body).toBe(201);
     const ticket = reserved.json();
     const officers = [await admin(["events.checkin"]), await admin(["events.checkin"])];
@@ -270,7 +284,10 @@ describe("AC F09-5 / PRD 4.5: dua petugas memindai QR yang sama bersamaan (Postg
       code: "TICKET_ALREADY_CHECKED_IN",
       current: {
         rejection_reason: "already_checked_in",
-        ticket: { checked_in_at: winner.checked_in_at, checked_in_by: { admin_id: winner.checked_in_by.admin_id } },
+        ticket: {
+          checked_in_at: winner.checked_in_at,
+          checked_in_by: { admin_id: winner.checked_in_by.admin_id },
+        },
       },
     });
     expect(
@@ -306,20 +323,31 @@ describe("PRD 6.4: urutan kunci event → tiket → payment (PostgreSQL 17)", ()
       () => [
         http().post(
           `/admin/payments/${ticket.payment.id}/decision`,
-          { decision: "approve", expected_proof_version: 1, expected_version: proofed.json().version, funds_verified: true },
+          {
+            decision: "approve",
+            expected_proof_version: 1,
+            expected_version: proofed.json().version,
+            funds_verified: true,
+          },
           { token: treasurer.token },
         ),
-        http().post(`/admin/events/${eventId}/cancel`, { reason: "Bencana alam" }, {
-          token: manager.token,
-          headers: { "if-match": "1" },
-        }),
+        http().post(
+          `/admin/events/${eventId}/cancel`,
+          { reason: "Bencana alam" },
+          {
+            token: manager.token,
+            headers: { "if-match": "1" },
+          },
+        ),
       ],
     );
     expect(observed).toBe(true);
     for (const res of results) expect(res.statusCode, res.body).toBe(200);
     const [row] = await sql<{ status: string }[]>`select status from app.tickets where id = ${ticket.id}`;
     expect(row!.status).toBe("cancelled");
-    const [payment] = await sql<{ status: string }[]>`select status from app.payments where id = ${ticket.payment.id}`;
+    const [payment] = await sql<
+      { status: string }[]
+    >`select status from app.payments where id = ${ticket.payment.id}`;
     expect(payment!.status).toBe("paid");
     const refunds = await sql<{ amount: string; status: string }[]>`
       select amount::text as amount, status from app.payment_adjustments where payment_id = ${ticket.payment.id}`;

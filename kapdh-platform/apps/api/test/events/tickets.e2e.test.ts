@@ -36,7 +36,12 @@ afterAll(async () => {
   await t.app.close();
 });
 
-function cancel(member: MemberFixture, ticket: { id: string; version: string }, eligible: boolean, extra = {}) {
+function cancel(
+  member: MemberFixture,
+  ticket: { id: string; version: string },
+  eligible: boolean,
+  extra = {},
+) {
   return api().post(
     `/me/tickets/${ticket.id}/cancel`,
     { expected_refund_eligible: eligible, ...extra },
@@ -48,7 +53,12 @@ describe("cancelMyTicket (D6)", () => {
   it("D6: tiket paid berbayar dibatalkan sebelum H-3 → refund penuh pending tenggat 7 hari kerja; payment tetap paid; kursi dilepas; QR tidak berlaku", async () => {
     const event = await createEventRow(t, { startsInMs: 10 * DAY });
     const member = await memberSession(t);
-    const ticket = await paidTicket(t, member, event, await adminSession(t, ["payments.read", "payments.decide"]));
+    const ticket = await paidTicket(
+      t,
+      member,
+      event,
+      await adminSession(t, ["payments.read", "payments.decide"]),
+    );
     expect(ticket).toMatchObject({ status: "paid", refund_eligible: true, can_cancel: true });
     const res = await cancel(member, ticket, true, { reason: "Berhalangan hadir" });
     const body = expectOperation("post", "/me/tickets/{ticketId}/cancel", res) as JsonBody;
@@ -64,7 +74,10 @@ describe("cancelMyTicket (D6)", () => {
     expect(await eventRow(t, event.id)).toMatchObject({ heldQuantity: 0, paidQuantity: 0 });
     const [payment] = await t.db.select().from(payments).where(eq(payments.ticketId, ticket.id));
     expect(payment!.status).toBe("paid");
-    const [refund] = await t.db.select().from(paymentAdjustments).where(eq(paymentAdjustments.paymentId, payment!.id));
+    const [refund] = await t.db
+      .select()
+      .from(paymentAdjustments)
+      .where(eq(paymentAdjustments.paymentId, payment!.id));
     expect(refund).toMatchObject({ kind: "refund", status: "pending", createdByAdminId: null });
     const [audit] = await t.db
       .select()
@@ -125,7 +138,9 @@ describe("cancelMyTicket (D6)", () => {
     });
     const stranger = await memberSession(t);
     const foreign = await cancel(stranger, ticket, false);
-    expect(expectOperation("post", "/me/tickets/{ticketId}/cancel", foreign)).toMatchObject({ code: "NOT_FOUND" });
+    expect(expectOperation("post", "/me/tickets/{ticketId}/cancel", foreign)).toMatchObject({
+      code: "NOT_FOUND",
+    });
     t.clock.advance(6 * HOUR);
     await relogin(t, member);
     const started = await cancel(member, ticket, false);

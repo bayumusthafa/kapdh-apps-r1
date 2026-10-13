@@ -43,7 +43,10 @@ describe("createEventReservation: kuota dan hold (AC F09-1, D5)", () => {
     const event = await createEventRow(t, { seatsTotal: 2 });
     const method = await methodId(t);
     const first = await memberSession(t);
-    const res = await reserveRaw(t, first, event.id, { expected_price: "75000.00", payment_method_id: method });
+    const res = await reserveRaw(t, first, event.id, {
+      expected_price: "75000.00",
+      payment_method_id: method,
+    });
     const ticket = expectOperation("post", "/events/{eventId}/reservations", res) as JsonBody;
     expect(res.statusCode).toBe(201);
     expect(ticket).toMatchObject({
@@ -51,7 +54,12 @@ describe("createEventReservation: kuota dan hold (AC F09-1, D5)", () => {
       total: "75000.00",
       payment_status: "pending",
       qr_code: null,
-      payment: { status: "pending", amount: "75000.00", proof_version: 0, method: { provider: "Bank Event Uji" } },
+      payment: {
+        status: "pending",
+        amount: "75000.00",
+        proof_version: 0,
+        method: { provider: "Bank Event Uji" },
+      },
       refunds: [],
       can_cancel: true,
       refund_eligible: false,
@@ -61,11 +69,19 @@ describe("createEventReservation: kuota dan hold (AC F09-1, D5)", () => {
     expect(ticket.hold_expires_at).toBe(new Date(t.clock.now().getTime() + 24 * HOUR).toISOString());
     expect(await eventRow(t, event.id)).toMatchObject({ heldQuantity: 1, paidQuantity: 0 });
     const [payment] = await t.db.select().from(payments).where(eq(payments.ticketId, ticket.id));
-    expect(payment).toMatchObject({ type: "ticket", status: "pending", amount: "75000.00", settingsVersion: null });
+    expect(payment).toMatchObject({
+      type: "ticket",
+      status: "pending",
+      amount: "75000.00",
+      settingsVersion: null,
+    });
 
     await reserve(t, await memberSession(t), event, method);
     const late = await memberSession(t);
-    const soldOut = await reserveRaw(t, late, event.id, { expected_price: "75000.00", payment_method_id: method });
+    const soldOut = await reserveRaw(t, late, event.id, {
+      expected_price: "75000.00",
+      payment_method_id: method,
+    });
     const error = expectOperation("post", "/events/{eventId}/reservations", soldOut) as JsonBody;
     expect(error).toMatchObject({
       code: "EVENT_SOLD_OUT",
@@ -87,7 +103,10 @@ describe("createEventReservation: kuota dan hold (AC F09-1, D5)", () => {
     const event = await createEventRow(t);
     const member = await memberSession(t);
     const inactive = await createPaymentMethod(t, { active: false });
-    const res = await reserveRaw(t, member, event.id, { expected_price: "75000.00", payment_method_id: inactive.id });
+    const res = await reserveRaw(t, member, event.id, {
+      expected_price: "75000.00",
+      payment_method_id: inactive.id,
+    });
     expect(expectOperation("post", "/events/{eventId}/reservations", res)).toMatchObject({
       code: "VALIDATION_ERROR",
       field_errors: { payment_method_id: expect.any(Array) },
@@ -119,7 +138,10 @@ describe("createEventReservation: kuota dan hold (AC F09-1, D5)", () => {
     const member = await memberSession(t);
     const method = await methodId(t);
     const first = await reserve(t, member, event, method);
-    const again = await reserveRaw(t, member, event.id, { expected_price: "75000.00", payment_method_id: method });
+    const again = await reserveRaw(t, member, event.id, {
+      expected_price: "75000.00",
+      payment_method_id: method,
+    });
     expect(expectOperation("post", "/events/{eventId}/reservations", again)).toMatchObject({
       code: "VERSION_CONFLICT",
       current: {
@@ -149,19 +171,30 @@ describe("createEventReservation: kuota dan hold (AC F09-1, D5)", () => {
   it("PRD 4.4: jendela pendaftaran — belum dibuka, sudah ditutup, event closed/cancelled → 409 RESERVATION_EXPIRED; draft → 404", async () => {
     const member = await memberSession(t);
     const notYet = await createEventRow(t, { registrationOpensInMs: 2 * DAY });
-    const res = await reserveRaw(t, member, notYet.id, { expected_price: "75000.00", payment_method_id: await methodId(t) });
+    const res = await reserveRaw(t, member, notYet.id, {
+      expected_price: "75000.00",
+      payment_method_id: await methodId(t),
+    });
     expect(expectOperation("post", "/events/{eventId}/reservations", res)).toMatchObject({
       code: "RESERVATION_EXPIRED",
       current: { registration_state: "not_yet_open", reservation_blocked_reason: "not_yet_open" },
     });
     for (const status of ["closed", "cancelled"] as const) {
       const event = await createEventRow(t, { status });
-      const closed = await reserveRaw(t, member, event.id, { expected_price: "75000.00", payment_method_id: await methodId(t) });
-      expect(closed.json()).toMatchObject({ code: "RESERVATION_EXPIRED", current: { registration_state: status } });
+      const closed = await reserveRaw(t, member, event.id, {
+        expected_price: "75000.00",
+        payment_method_id: await methodId(t),
+      });
+      expect(closed.json()).toMatchObject({
+        code: "RESERVATION_EXPIRED",
+        current: { registration_state: status },
+      });
     }
     const draft = await createEventRow(t, { status: "draft" });
     const notFound = await reserveRaw(t, member, draft.id, { expected_price: "75000.00" });
-    expect(expectOperation("post", "/events/{eventId}/reservations", notFound)).toMatchObject({ code: "NOT_FOUND" });
+    expect(expectOperation("post", "/events/{eventId}/reservations", notFound)).toMatchObject({
+      code: "NOT_FOUND",
+    });
     const unknown = await reserveRaw(t, member, uuidv7(), { expected_price: "75000.00" });
     expect(unknown.statusCode).toBe(404);
   });
@@ -210,7 +243,11 @@ describe("Hold kedaluwarsa (AC F09-2)", () => {
     const detail = (await api().get(`/events/${event.id}`, { token: other.token })).json();
     expect(detail).toMatchObject({ seats_available: 1, registration_state: "open", can_reserve: true });
     const mine = (await api().get(`/me/tickets/${ticket.id}`, { token: member.token })).json();
-    expect(mine).toMatchObject({ status: "expired", hold_expires_at: ticket.hold_expires_at, can_cancel: false });
+    expect(mine).toMatchObject({
+      status: "expired",
+      hold_expires_at: ticket.hold_expires_at,
+      can_cancel: false,
+    });
     expect((await ticketRow(t, ticket.id)).status).toBe("awaiting_payment");
 
     await t.jobs.runScheduled("reservations.expire");
@@ -275,7 +312,12 @@ describe("Keputusan pembayaran tiket (handler ticket; AC F04-1, F09-4)", () => {
     expect(approved.statusCode, approved.body).toBe(200);
     await relogin(t, member);
     const detail = (await api().get(`/me/tickets/${ticket.id}`, { token: member.token })).json();
-    expect(detail).toMatchObject({ status: "paid", payment_status: "paid", can_cancel: true, refund_eligible: true });
+    expect(detail).toMatchObject({
+      status: "paid",
+      payment_status: "paid",
+      can_cancel: true,
+      refund_eligible: true,
+    });
     expect(detail.qr_code).toMatch(/^[0-9a-f]{32}$/);
     expect(await eventRow(t, event.id)).toMatchObject({ heldQuantity: 0, paidQuantity: 1 });
   });

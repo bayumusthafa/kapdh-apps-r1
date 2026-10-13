@@ -247,7 +247,12 @@ export async function reserve(
 }
 
 /** Bukti transfer lewat API pembayaran (PUT /me/payments/{id}/proof); mengembalikan PaymentDetail. */
-export async function submitProof(t: TestApp, member: MemberFixture, paymentId: string, expectedProofVersion = 0) {
+export async function submitProof(
+  t: TestApp,
+  member: MemberFixture,
+  paymentId: string,
+  expectedProofVersion = 0,
+) {
   const proof = await uploadTestFile(t, member.token, "payment_proof");
   const res = await httpClient(t.app).put(
     `/me/payments/${paymentId}/proof`,
@@ -273,7 +278,9 @@ export async function decidePayment(
       decision,
       expected_proof_version: body.proof_version,
       expected_version: body.version,
-      ...(decision === "approve" ? { funds_verified: true } : { reason: "Transfer tidak ditemukan di rekening" }),
+      ...(decision === "approve"
+        ? { funds_verified: true }
+        : { reason: "Transfer tidak ditemukan di rekening" }),
     },
     { token: admin.token },
   );
