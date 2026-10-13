@@ -1,4 +1,5 @@
 import type { components } from "@kapdh/contracts";
+import { CLIENT_ERROR_UI, errorUiFor, type ErrorUiAction } from "@kapdh/shared";
 
 /** Bentuk galat baku API (PRD 5.2, root.yaml `Error`). */
 export type ApiError = components["schemas"]["Error"];
@@ -121,8 +122,32 @@ export async function requestJson<T>(
     kind: "http",
     status: res.status,
     error,
-    retryAfterSeconds: res.status === 429 ? retryAfterFrom(error, res.headers.get("retry-after")) : null,
+    // `retry_after_seconds` di body berlaku untuk status apa pun (mis. 409 IDEMPOTENCY_CONFLICT "masih diproses"
+    // membawa 2 detik); header Retry-After tanpa body hanya dipercaya pada 429 (limit_req proxy).
+    retryAfterSeconds: retryAfterFrom(error, res.status === 429 ? res.headers.get("retry-after") : null),
   };
+}
+
+const ERROR_UI_RATE_LIMITED: ErrorUiAction = errorUiFor("RATE_LIMITED").action;
+
+/**
+ * Perilaku UI untuk kegagalan menurut katalog galat tunggal @kapdh/shared (PRD 5.2, PRD 4.5), sama dengan web
+ * admin dan aplikasi. Jaringan putus -> `show_offline`; respons yang tidak dapat dipercaya atau body galat yang bukan
+ * kontrak `Error` (HTML 400/404 dari WAF, proxy atau router saat deploy) -> `show_retry`, sehingga TIDAK PERNAH
+ * ditafsirkan sebagai jawaban bisnis seperti "QR tidak valid" atau "belum diterbitkan". Pengecualian: 429 tanpa
+ * body (limit_req nginx) tetap pembatasan laju karena statusnya tidak ambigu.
+ */
+export function failureAction(failure: ApiFailure): ErrorUiAction {
+  if (failure.kind === "network") return CLIENT_ERROR_UI.NETWORK.action;
+  if (failure.kind === "invalid") return CLIENT_ERROR_UI.UNKNOWN.action;
+  if (failure.error) return errorUiFor(failure.error.code).action;
+  return failure.status === 429 ? ERROR_UI_RATE_LIMITED : CLIENT_ERROR_UI.UNKNOWN.action;
+}
+
+
+/** Kode galat kontrak dari server, atau null bila kegagalan bukan body `Error` yang sah. */
+export function failureCode(failure: ApiFailure): string | null {
+  return failure.kind === "http" ? (failure.error?.code ?? null) : null;
 }
 
 /** Pesan pertama `field_errors[field]` (atau `_`) dari galat validasi. */

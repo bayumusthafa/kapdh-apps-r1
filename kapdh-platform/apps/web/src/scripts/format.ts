@@ -77,6 +77,17 @@ export function formatCountdown(totalSeconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+/**
+ * Lama jeda dalam kalimat untuk pesan yang diumumkan sekali (N-11): "45 detik", "2 menit", "1 jam"; dibulatkan ke
+ * atas agar tidak menjanjikan waktu lebih cepat daripada jeda server.
+ */
+export function formatDuration(totalSeconds: number): string {
+  const s = Math.max(1, Math.ceil(totalSeconds));
+  if (s < 60) return `${s} detik`;
+  if (s < 3600) return `${Math.ceil(s / 60)} menit`;
+  return `${Math.ceil(s / 3600)} jam`;
+}
+
 /** Detik tersisa sampai `targetIso` menurut jam `nowMs`, dibatasi [0, maxSeconds] (jam perangkat bisa menyimpang). */
 export function secondsUntil(targetIso: string, nowMs: number, maxSeconds: number): number {
   const at = Date.parse(targetIso);

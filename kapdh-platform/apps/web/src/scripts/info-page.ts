@@ -1,5 +1,5 @@
 import type { components } from "@kapdh/contracts";
-import { requestJson, type ApiResult } from "./api";
+import { failureAction, requestJson, type ApiResult } from "./api";
 import { byId, el, icon, ICONS } from "./dom";
 import { formatCountdown, formatDate } from "./format";
 import { sanitizeRichHtml } from "./sanitize";
@@ -37,12 +37,22 @@ export type InfoPageView =
   | { kind: "ready"; page: PublicPage }
   /** 404: halaman belum pernah diterbitkan pengurus (content.yaml getPublicPage). */
   | { kind: "not_published" }
-  | { kind: "unreachable"; retryAfterSeconds: number | null };
+  | { kind: "unreachable"; rateLimited: boolean; retryAfterSeconds: number | null };
 
+/**
+ * Hanya 404 NOT_FOUND berbody `Error` dari API yang berarti "belum diterbitkan" (katalog galat PRD 5.2). 404 HTML
+ * atau teks dari router/proxy saat deploy berarti API belum menjawab, sehingga tampil tidak terjangkau + coba lagi.
+ */
 export function toInfoPageView(result: ApiResult<PublicPage>): InfoPageView {
   if (result.ok) return { kind: "ready", page: result.data };
-  if (result.kind === "http" && result.status === 404) return { kind: "not_published" };
-  return { kind: "unreachable", retryAfterSeconds: result.kind === "http" ? result.retryAfterSeconds : null };
+  const action = failureAction(result);
+  if (result.status === 404 && action === "show_not_found") return { kind: "not_published" };
+  const rateLimited = action === "show_countdown";
+  return {
+    kind: "unreachable",
+    rateLimited,
+    retryAfterSeconds: rateLimited && result.kind === "http" ? result.retryAfterSeconds : null,
+  };
 }
 
 /** "Versi 3 · Diterbitkan 12 Oktober 2026" (versi tayang dan tanggal terbit, F-01/F-08). */
@@ -76,6 +86,11 @@ export function mountInfoPage(options: InfoPageOptions): { load: () => Promise<v
     timer = null;
   };
 
+  /**
+   * role=status hanya membungkus judul dan pesan: keadaan belum terbit/galat diumumkan sekali tanpa membacakan
+   * seluruh dokumen (N-11). Tombol dan tautan (`extra`) berada DI LUAR wilayah live sehingga label hitung mundur
+   * "Coba lagi (m:ss)" yang berubah tiap detik tidak dibacakan berulang.
+   */
   const notice = (
     tone: string,
     iconPaths: readonly string[],
@@ -83,10 +98,11 @@ export function mountInfoPage(options: InfoPageOptions): { load: () => Promise<v
     body: string,
     extra: Node[] = [],
   ) =>
-    // role=status: keadaan belum terbit/galat diumumkan pembaca layar tanpa membacakan seluruh dokumen (N-11).
-    el(doc, "div", { class: `flex flex-col gap-3 rounded-lg p-5 ${tone}`, attrs: { role: "status" } }, [
-      el(doc, "p", { class: "flex items-center gap-2 font-semibold" }, [icon(doc, [...iconPaths]), heading]),
-      el(doc, "p", { class: "text-sm text-text", text: body }),
+    el(doc, "div", { class: `flex flex-col gap-3 rounded-lg p-5 ${tone}` }, [
+      el(doc, "div", { class: "flex flex-col gap-3", attrs: { role: "status", "data-notice-message": "" } }, [
+        el(doc, "p", { class: "flex items-center gap-2 font-semibold" }, [icon(doc, [...iconPaths]), heading]),
+        el(doc, "p", { class: "text-sm text-text", text: body }),
+      ]),
       ...extra,
     ]);
 
@@ -149,7 +165,7 @@ export function mountInfoPage(options: InfoPageOptions): { load: () => Promise<v
             "bg-info-bg",
             ICONS.wifiOff,
             "Tidak dapat memuat halaman",
-            view.retryAfterSeconds !== null
+            view.rateLimited
               ? "Terlalu banyak permintaan dalam waktu singkat. Tunggu sebentar lalu coba lagi."
               : "Server KAPDH tidak dapat dihubungi. Periksa koneksi Anda lalu coba lagi.",
             [retry],
