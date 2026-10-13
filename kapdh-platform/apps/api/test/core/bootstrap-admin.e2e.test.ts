@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { bootstrapSuperAdmin } from "../../src/cli/bootstrap-super-admin.js";
 import type { Db } from "../../src/core/db/types.js";
-import { adminInviteTokenHash, ADMIN_INVITE_TTL_MS } from "../../src/modules/auth/crypto.js";
+import { adminInviteTokenHash, ADMIN_INVITE_TTL_MS } from "../../src/core/identity/crypto.js";
 import { createAdmin } from "../support/factories.js";
 import { createTestDatabase, TestClock } from "../support/test-app.js";
 

@@ -14,6 +14,7 @@ export * from "./files/index.js";
 export * from "./guards/index.js";
 export * from "./http/index.js";
 export * from "./idempotency/index.js";
+export * from "./identity/index.js";
 export * from "./jobs/index.js";
 export * from "./logging/index.js";
 export * from "./membership/index.js";

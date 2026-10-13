@@ -1,11 +1,8 @@
-import { accountDeletions, users } from "@kapdh/database";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
-import { eq } from "drizzle-orm";
-import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { MemoryMailer } from "../../src/core/adapters/mailer.js";
 import type { Db } from "../../src/core/db/types.js";
-import { totp } from "../../src/modules/auth/crypto.js";
+import { totp } from "../../src/core/identity/crypto.js";
 import {
   accessMismatches,
   ajv,
@@ -269,30 +266,28 @@ describe("kesesuaian kontrak OpenAPI irisan Auth", () => {
   });
 
   it("login akun deletion_pending dan disabled: next tanpa sesi sesuai kontrak (PRD 2.2, F-14)", async () => {
-    const pending = await createAlumni({ db, clock }, { status: "verified", password: PASSWORD });
-    const now = clock.now();
-    await db.update(users).set({ status: "deletion_pending" }).where(eq(users.id, pending.userId));
-    await db.insert(accountDeletions).values({
-      id: uuidv7(),
-      requestNumber: "DEL-2026-UJI1",
-      userId: pending.userId,
-      source: "app",
-      requestedAt: now,
-      deadlineAt: new Date(now.getTime() + 7 * 24 * 3600_000),
-      createdAt: now,
-      updatedAt: now,
-    });
+    const pending = await createAlumni(
+      { db, clock },
+      { status: "verified", accountStatus: "deletion_pending", password: PASSWORD },
+    );
     const deletion = await post("/auth/login", { email: pending.email, password: PASSWORD });
     expect(deletion.statusCode).toBe(200);
     expectOperation("post", "/auth/login", deletion);
     expect(deletion.json()).toMatchObject({
       next: "deletion_pending",
-      deletion: { request_number: "DEL-2026-UJI1", status: "pending", source: "app", completed_at: null },
+      deletion: {
+        request_number: pending.deletionRequestNumber,
+        status: "pending",
+        source: "app",
+        completed_at: null,
+      },
     });
     expect(deletion.json().session).toBeUndefined();
 
-    const disabled = await createAlumni({ db, clock }, { status: "verified", password: PASSWORD });
-    await db.update(users).set({ status: "disabled" }).where(eq(users.id, disabled.userId));
+    const disabled = await createAlumni(
+      { db, clock },
+      { status: "verified", accountStatus: "disabled", password: PASSWORD },
+    );
     const off = await post("/auth/login", { email: disabled.email, password: PASSWORD });
     expect(off.statusCode).toBe(200);
     expectOperation("post", "/auth/login", off);

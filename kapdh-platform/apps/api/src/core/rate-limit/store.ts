@@ -14,8 +14,26 @@ export interface RateLimitStore {
    * pencatatan (untuk "sisa percobaan n", kontrak adminVerifyMfa).
    */
   hit(key: string, windowMs: number, nowMs: number): Promise<number>;
+  /**
+   * Reservasi atomik (pemeriksaan + pencatatan dalam satu langkah): bila jumlah hit dalam jendela < limit, satu hit
+   * dicatat dan dikembalikan bersama `ticket` untuk {@link release}; selain itu `waitMs` > 0 tanpa pencatatan. Dipakai
+   * sebelum verifikasi mahal (bcrypt, TOTP) sehingga permintaan paralel tidak dapat melewati batas kegagalan
+   * (PRD 2.5, D1).
+   */
+  acquire(key: string, limit: number, windowMs: number, nowMs: number): Promise<RateLimitAcquisition>;
+  /** Mengembalikan satu hit hasil {@link acquire} (mis. percobaan yang ternyata berhasil tidak dihitung gagal). */
+  release(key: string, ticket: string): Promise<void>;
   /** Menghapus seluruh hit sebuah kunci (mis. login berhasil). */
   reset(key: string): Promise<void>;
+}
+
+export interface RateLimitAcquisition {
+  /** 0 = jatah diambil dan tercatat; > 0 = ms tunggu (tidak tercatat). */
+  waitMs: number;
+  /** Jumlah hit dalam jendela termasuk jatah ini (0 bila ditolak). */
+  count: number;
+  /** Penanda hit tercatat untuk release; null bila ditolak. */
+  ticket: string | null;
 }
 
 /** Batas hit yang disimpan per kunci; cukup untuk semua limit PRD dan menjaga memori/Redis terbatas. */
@@ -111,6 +129,28 @@ export class MemoryRateLimitStore implements RateLimitStore {
     this.record(id, windowMs, nowMs);
     const cutoff = nowMs - windowMs;
     return this.buckets.get(id)!.hits.filter((at) => at > cutoff).length;
+  }
+
+  async acquire(key: string, limit: number, windowMs: number, nowMs: number): Promise<RateLimitAcquisition> {
+    this.maybeSweep(nowMs);
+    const id = storageKey(key);
+    const wait = this.wait(this.prune(id, nowMs, windowMs), limit, windowMs, nowMs);
+    if (wait > 0) return { waitMs: wait, count: 0, ticket: null };
+    this.record(id, windowMs, nowMs);
+    const cutoff = nowMs - windowMs;
+    const count = this.buckets.get(id)!.hits.filter((at) => at > cutoff).length;
+    // Hit memori hanya berupa waktu; hit dengan waktu yang sama saling dapat menggantikan untuk release.
+    return { waitMs: 0, count, ticket: String(nowMs) };
+  }
+
+  async release(key: string, ticket: string): Promise<void> {
+    const id = storageKey(key);
+    const bucket = this.buckets.get(id);
+    if (!bucket) return;
+    const at = Number(ticket);
+    const index = bucket.hits.lastIndexOf(at);
+    if (index >= 0) bucket.hits.splice(index, 1);
+    if (bucket.hits.length === 0) this.buckets.delete(id);
   }
 
   async reset(key: string): Promise<void> {

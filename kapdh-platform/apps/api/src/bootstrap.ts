@@ -68,7 +68,9 @@ export async function createApp(
     adapter,
     // Parser bawaan Nest (JSON + urlencoded) dimatikan: API hanya menerima application/json lewat parser Fastify
     // (bodyLimit dan penolakan __proto__ tetap berlaku). Unggahan multipart dipasang modul files per rute.
-    { logger: new NestPinoLogger(logger), bodyParser: false },
+    // abortOnError false: galat DI/inisialisasi menolak promise createApp (main.ts mencatatnya aman; uji melihat
+    // pesan UnknownDependenciesException) alih-alih process.abort() yang mematikan worker vitest tanpa petunjuk.
+    { logger: new NestPinoLogger(logger), bodyParser: false, abortOnError: false },
   );
   // text/plain dan tipe lain di luar JSON → 415 VALIDATION_ERROR (multipart → 415 FILE_INVALID), bukan body string.
   const fastify = adapter.getInstance();

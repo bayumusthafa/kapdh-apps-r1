@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { afterCommit, assertCommitAware, currentTx, setAfterCommitErrorReporter, withTx } from "../index.js";
+import {
+  afterCommit,
+  assertCommitAware,
+  commitAwareDb,
+  currentTx,
+  isCommitAware,
+  setAfterCommitErrorReporter,
+  withTx,
+} from "../index.js";
 import type { Db, Tx } from "./types.js";
 
 /** Db tiruan: transaction() menjalankan fn dengan objek tx unik; galat fn = rollback (dilempar ulang). */
@@ -114,5 +122,66 @@ describe("assertCommitAware (efek setelah commit wajib menunggu commit)", () => 
     await withTx(db, async () => {
       expect(() => assertCommitAware(txLike(3), "Uji")).toThrow();
     });
+  });
+});
+
+describe("commitAwareDb (ARCHITECTURE §4.10: db.transaction dari DB yang diinjeksi selalu commit-aware)", () => {
+  it("db.transaction langsung: kernel menerima tx-nya dan afterCommit menunggu commit; batal membuang efek", async () => {
+    const { db: raw, log } = fakeDb();
+    const db = commitAwareDb(raw);
+    expect(isCommitAware(db)).toBe(true);
+    expect(commitAwareDb(db)).toBe(db);
+    await db.transaction(async (tx) => {
+      expect(() => assertCommitAware(tx, "Uji")).not.toThrow();
+      afterCommit(() => log.push("efek"));
+      log.push("kerja");
+    });
+    expect(log).toEqual(["begin:1", "kerja", "commit:1", "efek"]);
+    await expect(
+      db.transaction(async () => {
+        afterCommit(() => log.push("tidak-boleh"));
+        throw new Error("batal");
+      }),
+    ).rejects.toThrow("batal");
+    expect(log).not.toContain("tidak-boleh");
+  });
+
+  it("db.transaction di dalam withTx tetap transaksi BARU (semantik Drizzle) dengan antrean sendiri", async () => {
+    const { db: raw, log } = fakeDb();
+    const db = commitAwareDb(raw);
+    await withTx(db, async (outer) => {
+      afterCommit(() => log.push("efek-luar"));
+      await db.transaction(async (inner) => {
+        expect(inner).not.toBe(outer);
+        expect(() => assertCommitAware(inner, "Uji")).not.toThrow();
+        afterCommit(() => log.push("efek-dalam"));
+      });
+      log.push("setelah-dalam");
+    });
+    expect(log).toEqual([
+      "begin:1",
+      "begin:2",
+      "commit:2",
+      "efek-dalam",
+      "setelah-dalam",
+      "commit:1",
+      "efek-luar",
+    ]);
+  });
+
+  it("API Drizzle lain diteruskan lewat prototipe dengan `this` yang benar", async () => {
+    const raw = {
+      session: "sesi-asli",
+      query: { users: "q" },
+      whoami(this: { session: string }) {
+        return this.session;
+      },
+      async transaction<T>(fn: (tx: Tx) => Promise<T>) {
+        return fn({ id: 1 } as unknown as Tx);
+      },
+    };
+    const db = commitAwareDb(raw as unknown as Db) as unknown as typeof raw;
+    expect(db.whoami()).toBe("sesi-asli");
+    expect(db.query.users).toBe("q");
   });
 });

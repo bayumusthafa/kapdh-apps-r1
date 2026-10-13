@@ -16,10 +16,10 @@ import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { MemoryMailer } from "../../src/core/adapters/mailer.js";
 import type { Db } from "../../src/core/db/types.js";
-import { backupCodeHash, newBackupCode, totp } from "../../src/modules/auth/crypto.js";
+import { backupCodeHash, newBackupCode, totp } from "../../src/core/identity/crypto.js";
 import { expectOperation } from "../support/contract.js";
 import {
-  type AdminFixture,
+  type EnrolledAdminFixture,
   createAdmin,
   publishLegalVersions,
   setSetting,
@@ -431,7 +431,7 @@ describe("PRD 2.5: OTP atomik dan registrasi ulang", () => {
 });
 
 describe("F-02 admin dengan TOTP", () => {
-  let admin: AdminFixture;
+  let admin: EnrolledAdminFixture;
 
   beforeAll(async () => {
     admin = await createAdmin({ db, clock }, { role: "super_admin", displayName: "Bayu Musthafa" });

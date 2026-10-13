@@ -11,6 +11,7 @@
  */
 import type { Permission } from "@kapdh/contracts";
 import {
+  accountDeletions,
   adminPermissions,
   admins,
   alumni,
@@ -38,7 +39,7 @@ import {
   newAdminInviteToken,
   newTotpSecret,
   totp,
-} from "../../src/modules/auth/crypto.js";
+} from "../../src/core/identity/crypto.js";
 import type { TestClock } from "./fakes.js";
 import { httpClient } from "./http.js";
 import { testEnv } from "./test-app.js";
@@ -74,8 +75,22 @@ interface Fixtures {
 export type AlumniFixtureStatus =
   "pending_otp" | "unverified" | "verified" | "expiring" | "expired" | "suspended";
 
+/**
+ * users.status lapisan autentikasi (PRD 2.2, ARCHITECTURE §3.1) untuk akun yang sudah lewat OTP. disabled,
+ * deletion_pending dan deleted tidak memakai API biasa (AuthGuard menolak 401; login mengembalikan next khusus).
+ */
+export type AlumniAccountStatus = "active" | "disabled" | "deletion_pending" | "deleted";
+
 export interface CreateAlumniOptions {
+  /** Keadaan keanggotaan (periode/suspend) yang membentuk effective_status. */
   status?: AlumniFixtureStatus;
+  /**
+   * Status akun (users.status); bawaan `active` (atau pending_otp bila status pending_otp). deletion_pending juga
+   * membuat baris account_deletions terbuka yang konsisten (AC F14-1) dan mengembalikan nomornya.
+   */
+  accountStatus?: AlumniAccountStatus;
+  /** Rincian permintaan penghapusan untuk accountStatus deletion_pending. */
+  deletion?: { source?: "app" | "web"; status?: "pending" | "processing" | "failed" };
   email?: string;
   password?: string;
   fullName?: string;
@@ -93,6 +108,9 @@ export interface AlumniFixture {
   email: string;
   password: string;
   status: AlumniFixtureStatus;
+  accountStatus: AlumniAccountStatus | "pending_otp";
+  /** Nomor permintaan penghapusan (DEL-YYYY-XXXX) bila accountStatus deletion_pending, selain itu null. */
+  deletionRequestNumber: string | null;
   memberSeq: number | null;
   memberNumber: string | null;
   startsAt: Date | null;
@@ -126,6 +144,9 @@ function periodFor(status: AlumniFixtureStatus, now: Date): { startsAt: Date; ex
  */
 export async function createAlumni(t: Fixtures, options: CreateAlumniOptions = {}): Promise<AlumniFixture> {
   const status = options.status ?? "verified";
+  if (status === "pending_otp" && options.accountStatus && options.accountStatus !== "active")
+    throw new Error("Fixture pending_otp tidak dapat memiliki accountStatus lain");
+  const accountStatus = status === "pending_otp" ? "pending_otp" : (options.accountStatus ?? "active");
   const now = t.clock.now();
   const password = options.password ?? DEFAULT_PASSWORD;
   const passwordHash = await hashPassword(password);
@@ -144,7 +165,7 @@ export async function createAlumni(t: Fixtures, options: CreateAlumniOptions = {
       id: userId,
       email,
       passwordHash,
-      status: status === "pending_otp" ? "pending_otp" : "active",
+      status: accountStatus,
       kind: "alumni",
       emailVerifiedAt: status === "pending_otp" ? null : now,
       policyVersion: "1",
@@ -177,11 +198,29 @@ export async function createAlumni(t: Fixtures, options: CreateAlumniOptions = {
       createdAt: now,
       updatedAt: now,
     });
+    let deletionRequestNumber: string | null = null;
+    if (accountStatus === "deletion_pending") {
+      deletionRequestNumber = `DEL-${now.getUTCFullYear()}-${uuidv7().replace(/-/g, "").slice(-8).toUpperCase()}`;
+      await tx.insert(accountDeletions).values({
+        id: uuidv7(),
+        requestNumber: deletionRequestNumber,
+        userId,
+        source: options.deletion?.source ?? "app",
+        status: options.deletion?.status ?? "pending",
+        requestedAt: now,
+        // Batas penyelesaian otomatis 7 hari kalender (F-14).
+        deadlineAt: new Date(now.getTime() + 7 * DAY_MS),
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
     return {
       userId,
       email,
       password,
       status,
+      accountStatus,
+      deletionRequestNumber,
       memberSeq,
       memberNumber: number,
       startsAt: period?.startsAt ?? null,
@@ -230,18 +269,36 @@ export interface AdminFixture {
   email: string;
   password: string;
   role: "super_admin" | "admin";
-  /** Secret TOTP; null untuk admin `invited` (TOTP didaftarkan saat aktivasi, F-16). */
-  totpSecret: string;
+  status: "active" | "disabled" | "invited";
+  /**
+   * Secret TOTP terverifikasi yang tersimpan di mfa_totp; null untuk admin `invited` (belum ada TOTP, didaftarkan saat
+   * penerimaan undangan, F-16), sehingga uji tidak pernah menghitung kode dari secret yang tidak dikenal server.
+   */
+  totpSecret: string | null;
   /** Token undangan mentah untuk admin `invited` (tautan /invite/<token>), selain itu null. */
   inviteToken: string | null;
   /** Langkah TOTP terakhir yang dipakai fixture (anti replay di server). */
   lastTotpStep?: number;
 }
 
+/** Admin yang sudah mendaftarkan TOTP (status active/disabled). */
+export type EnrolledAdminFixture = AdminFixture & { totpSecret: string; inviteToken: null };
+/** Admin undangan yang belum menerima undangan: tanpa TOTP, dengan token undangan. */
+export type InvitedAdminFixture = AdminFixture & { status: "invited"; totpSecret: null; inviteToken: string };
+
 /**
  * Admin dengan izin tertentu (super_admin = semua izin tanpa baris admin_permissions). Status `active`/`disabled`:
- * TOTP terverifikasi. Status `invited`: belum ada TOTP, token undangan 72 jam dikembalikan (alur aktivasi F-16).
+ * TOTP terverifikasi. Status `invited`: belum ada TOTP (totpSecret null), token undangan 72 jam dikembalikan (alur
+ * aktivasi F-16).
  */
+export async function createAdmin(
+  t: Fixtures,
+  options: CreateAdminOptions & { status: "invited" },
+): Promise<InvitedAdminFixture>;
+export async function createAdmin(
+  t: Fixtures,
+  options?: CreateAdminOptions & { status?: "active" | "disabled" },
+): Promise<EnrolledAdminFixture>;
 export async function createAdmin(t: Fixtures, options: CreateAdminOptions = {}): Promise<AdminFixture> {
   const now = t.clock.now();
   const role = options.role ?? "admin";
@@ -250,7 +307,7 @@ export async function createAdmin(t: Fixtures, options: CreateAdminOptions = {})
   const email = (options.email ?? uniqueEmail("admin")).trim().toLowerCase();
   const userId = uuidv7();
   const adminId = uuidv7();
-  const totpSecret = newTotpSecret();
+  const totpSecret = status === "invited" ? null : newTotpSecret();
   const inviteToken = status === "invited" ? newAdminInviteToken() : null;
   await t.db.transaction(async (tx) => {
     await tx.insert(users).values({
@@ -281,7 +338,7 @@ export async function createAdmin(t: Fixtures, options: CreateAdminOptions = {})
       await tx
         .insert(adminPermissions)
         .values(options.permissions.map((permission) => ({ adminId, permission, createdAt: now })));
-    if (status !== "invited")
+    if (totpSecret)
       await tx.insert(mfaTotp).values({
         userId,
         secretEncrypted: encryptSecret(totpSecret, testEnv.TOTP_ENC_KEY),
@@ -290,7 +347,7 @@ export async function createAdmin(t: Fixtures, options: CreateAdminOptions = {})
         updatedAt: now,
       });
   });
-  return { adminId, userId, email, password, role, totpSecret, inviteToken };
+  return { adminId, userId, email, password, role, status, totpSecret, inviteToken };
 }
 
 export interface AdminSessionFixture {
@@ -307,6 +364,7 @@ export async function signInAdmin(
   t: { app: NestFastifyApplication; clock: TestClock },
   admin: AdminFixture,
 ): Promise<AdminSessionFixture> {
+  if (!admin.totpSecret) throw new Error("Admin invited belum mendaftarkan TOTP; tidak dapat masuk (F-16)");
   const api = httpClient(t.app);
   const login = await api.post("/admin/auth/login", { email: admin.email, password: admin.password });
   expect(login.statusCode, `login admin: ${login.body}`).toBe(200);

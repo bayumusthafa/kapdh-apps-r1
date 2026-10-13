@@ -27,8 +27,9 @@ async function main() {
   const redis = env.REDIS_URL ? createRedis(env.REDIS_URL, "kapdh-api") : null;
   const smtp = env.SMTP_URL ? new SmtpMailer(env.SMTP_URL, env.MAIL_FROM) : null;
   const mailer: Mailer = smtp ?? new DevLogMailer();
-  // Storage berkas (PRD 5.4): path lokal relatif diselesaikan dari folder kerja proses; root di folder publik ditolak.
-  const storage = createStorageDriver({ ...env, STORAGE_LOCAL_ROOT: resolve(env.STORAGE_LOCAL_ROOT) });
+  // Storage berkas (PRD 5.4): path lokal relatif diselesaikan createStorageDriver dari folder kerja proses (sama
+  // dengan worker/CLI); root di folder publik ditolak.
+  const storage = createStorageDriver(env);
   const app = await createApp({
     env,
     db: db as unknown as Db,

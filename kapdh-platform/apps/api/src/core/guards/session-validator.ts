@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { sessions, users } from "@kapdh/database";
 import { and, eq, gt, inArray, isNull } from "drizzle-orm";
-import { type AccessClaims, TokenService } from "../../modules/auth/token.service.js";
+import { type AccessClaims, TokenService } from "../identity/token.service.js";
 import type { Clock } from "../adapters/clock.js";
 import type { Db } from "../db/types.js";
 import type { SessionRevokedReason } from "../realtime/envelope.js";

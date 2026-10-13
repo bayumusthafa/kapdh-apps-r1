@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { RedisClient } from "../adapters/redis.js";
-import { MAX_HITS_PER_KEY, type RateLimitStore, storageKey } from "./store.js";
+import { MAX_HITS_PER_KEY, type RateLimitAcquisition, type RateLimitStore, storageKey } from "./store.js";
 
 /**
  * Sliding window di Redis sorted set (PRD 5.1: rate limit lintas replica). Setiap operasi satu skrip Lua sehingga
@@ -40,6 +40,26 @@ local count = redis.call('ZCARD', key)
 if count > cap then redis.call('ZREMRANGEBYRANK', key, 0, count - cap - 1) end
 redis.call('PEXPIRE', key, window)
 return count
+`;
+
+/** Reservasi atomik: {0, jumlah sesudah dicatat} atau {ms tunggu, 0} tanpa pencatatan. */
+const ACQUIRE_SCRIPT = `
+local key = KEYS[1]
+local now = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+local limit = tonumber(ARGV[3])
+local member = ARGV[4]
+redis.call('ZREMRANGEBYSCORE', key, '-inf', now - window)
+local count = redis.call('ZCARD', key)
+if count < limit then
+  redis.call('ZADD', key, now, member)
+  redis.call('PEXPIRE', key, window)
+  return {0, count + 1}
+end
+local pivot = redis.call('ZRANGE', key, count - limit, count - limit, 'WITHSCORES')
+local wait = tonumber(pivot[2]) + window - now
+if wait < 1 then wait = 1 end
+return {wait, 0}
 `;
 
 function member(nowMs: number): string {
@@ -82,6 +102,25 @@ export class RedisRateLimitStore implements RateLimitStore {
       String(MAX_HITS_PER_KEY),
     );
     return Number(count);
+  }
+
+  async acquire(key: string, limit: number, windowMs: number, nowMs: number): Promise<RateLimitAcquisition> {
+    const ticket = member(nowMs);
+    const result = (await this.redis.eval(
+      ACQUIRE_SCRIPT,
+      1,
+      storageKey(key),
+      String(nowMs),
+      String(windowMs),
+      String(limit),
+      ticket,
+    )) as [number | string, number | string];
+    const waitMs = Number(result[0]);
+    return waitMs > 0 ? { waitMs, count: 0, ticket: null } : { waitMs: 0, count: Number(result[1]), ticket };
+  }
+
+  async release(key: string, ticket: string): Promise<void> {
+    await this.redis.zrem(storageKey(key), ticket);
   }
 
   async reset(key: string): Promise<void> {

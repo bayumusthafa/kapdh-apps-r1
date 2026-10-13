@@ -13,7 +13,6 @@ import { RealtimeService } from "../realtime/realtime.service.js";
 import { CLOCK, DB } from "../tokens.js";
 import { assertMemberAccess, type MemberAccessLevel, memberAccessAllows } from "./access.js";
 import { type AccountStatus, effectiveStatus, type EffectiveStatus } from "./effective-status.js";
-import { formatDateWib } from "./format.js";
 import {
   assertClasses,
   COHORT_BASE_YEAR,
@@ -36,15 +35,32 @@ export interface MemberStatusSnapshot {
   suspendedAt: Date | null;
 }
 
-export interface AppliedPeriod {
-  /** false = payment ini sudah pernah diterapkan (idempoten; tidak ada perubahan). */
-  applied: boolean;
-  kind: "activation" | "renewal";
-  eventId: string;
-  /** Awal dan akhir periode milik payment ini (membership_events.after_*). */
-  periodStartsAt: Date;
-  periodExpiresAt: Date;
-}
+/**
+ * Hasil {@link MembershipKernel.applyPaidPayment}:
+ * - `applied`: periode baru diterapkan oleh pemanggilan ini;
+ * - `already_applied`: payment ini sudah pernah diterapkan (idempoten, AC F04-5); periode yang sama dikembalikan;
+ * - `owner_deleted`: pemilik sudah dihapus (payments.user_id NULL, akun `deleted` atau tanpa profil alumni; F-14,
+ *   D2): payment tetap paid TANPA efek keanggotaan (kontrak adminDecidePayment "member null").
+ */
+export type AppliedPeriod =
+  | {
+      outcome: "applied" | "already_applied";
+      /** true hanya untuk `applied`. */
+      applied: boolean;
+      kind: "activation" | "renewal";
+      eventId: string;
+      /** Awal dan akhir periode milik payment ini (membership_events.after_*). */
+      periodStartsAt: Date;
+      periodExpiresAt: Date;
+    }
+  | {
+      outcome: "owner_deleted";
+      applied: false;
+      kind: "activation" | "renewal";
+      eventId: null;
+      periodStartsAt: null;
+      periodExpiresAt: null;
+    };
 
 export interface SuspendInput {
   /** Alasan internal pengurus (audit, membership_events); tidak pernah ditampilkan ke anggota atau publik. */
@@ -53,6 +69,22 @@ export interface SuspendInput {
   memberMessage: string;
   actorAdminId: string | null;
 }
+
+export interface UnsuspendInput {
+  /** Alasan pencabutan untuk audit dan histori (wajib). */
+  reason: string;
+  /**
+   * Pesan aman untuk anggota pada notifikasi pencabutan (kontrak adminUnsuspendMember `member_message`); null/kosong =
+   * teks baku {@link DEFAULT_UNSUSPEND_MESSAGE}.
+   */
+  memberMessage?: string | null;
+  /** true bila pemanggil menutup banding anggota sebagai dikabulkan dalam transaksi yang sama (satu notifikasi). */
+  appealGranted?: boolean;
+  actorAdminId: string | null;
+}
+
+/** Teks baku notifikasi pencabutan pembatasan bila `member_message` tidak dikirim (kontrak adminUnsuspendMember). */
+export const DEFAULT_UNSUSPEND_MESSAGE = "Pembatasan akun Anda telah dicabut pengurus";
 
 export interface IdentityChanges {
   cohort?: number;
@@ -71,6 +103,21 @@ export interface IdentityCorrection {
 const conflict = (message: string, current?: unknown) =>
   new AppException(409, "PAYMENT_STATE_CONFLICT", message, current === undefined ? {} : { current });
 
+/**
+ * Prasyarat tindakan pengurus tidak terpenuhi dengan keadaan terkini (kontrak admin-members: 400 "dengan versi terkini").
+ */
+const preconditionFailed = (
+  message: string,
+  member: { suspendedAt: Date | null; version: number; accountStatus: AccountStatus },
+) =>
+  new AppException(400, "VALIDATION_ERROR", message, {
+    current: {
+      suspended_at: member.suspendedAt?.toISOString() ?? null,
+      account_status: member.accountStatus,
+      version: String(member.version),
+    },
+  });
+
 /** Angkatan terbaru menurut tahun Jakarta: 30 pada 2026 (PRD 3.5). */
 export function latestCohort(now: Date): number {
   return jakartaYear(now) - COHORT_BASE_YEAR;
@@ -78,9 +125,10 @@ export function latestCohort(now: Date): number {
 
 /**
  * Kernel keanggotaan (ARCHITECTURE §3.1, §3.2, §4.2): satu-satunya penulis kolom keanggotaan di `alumni` (nomor,
- * periode, suspend) di luar profil. Semua metode transaksional menerima `tx` dari withTx/TxRunner (diperiksa
- * {@link assertCommitAware}) karena efek realtime/notifikasi dijadwalkan setelah commit. Setiap perubahan mengunci
- * baris alumni (`SELECT … FOR UPDATE`) lalu menulis audit dan histori pada transaksi yang sama (AC F17-1).
+ * periode, suspend) di luar profil. Semua metode transaksional menerima `tx` commit-aware (this.db.transaction dari DB
+ * yang diinjeksi, TxRunner, atau withTx; savepoint ditolak {@link assertCommitAware}) karena efek realtime/notifikasi
+ * dijadwalkan setelah commit. Setiap perubahan mengunci baris users lalu alumni (`FOR NO KEY UPDATE` / `FOR UPDATE`,
+ * URUTAN KUNCI kontrak C3/C5) lalu menulis audit dan histori pada transaksi yang sama (AC F17-1).
  */
 @Injectable()
 export class MembershipKernel {
@@ -196,14 +244,30 @@ export class MembershipKernel {
   // --------------------------------------------------------------------------------------------------- periode
 
   /**
+   * Mengunci baris induk payment iuran sesuai URUTAN KUNCI kontrak C3 (kepala payments.yaml; PRD 6.4): baris users
+   * pemilik lalu baris alumni-nya, SEBELUM `SELECT payments … FOR UPDATE`. Dipanggil hook `lockRelated` handler
+   * registration/renewal (PaymentHandlerRegistry.lockRelated) dan oleh {@link applyPaidPayment} sendiri. Pemilik yang
+   * sudah dihapus (user_id null) dilewati. Aman dipanggil ulang di transaksi yang sama (kunci sudah dipegang).
+   */
+  async lockPaymentOwner(tx: Tx, ownerUserId: string | null): Promise<void> {
+    if (ownerUserId) await this.lockMember(tx, ownerUserId);
+  }
+
+  /**
    * Menerapkan payment registration/renewal yang sudah `paid` (PRD 3.7, ARCHITECTURE §3.2, §4.6) dalam transaksi
    * persetujuan:
+   * - urutan kunci kontrak C3: pemilik dibaca TANPA kunci, lalu users → alumni pemilik → payment (tidak pernah
+   *   mengunci users/alumni sesudah payment terkunci, sehingga tidak deadlock dengan penghapusan akun atau suspend);
+   *   bila modul payments sudah memanggil `lockRelated`, kunci yang sama dipakai ulang tanpa menunggu;
    * - registration: periode mulai `approvedAt`, +12 bulan kalender Jakarta (AC F05-1);
    * - renewal: mulai `max(expires_at lama, approvedAt)` sehingga sisa masa aktif tidak hilang (AC F07-1, F07-2);
    * - satu membership_event per payment (UNIQUE payment_id): pemanggilan ulang/bersamaan untuk payment yang sama
-   *   tidak memperpanjang dua kali (AC F04-5); baris payment lalu alumni dikunci berurutan;
+   *   tidak memperpanjang dua kali (AC F04-5) → `already_applied`;
+   * - pemilik sudah dihapus (F-14, D2) → `owner_deleted` tanpa efek keanggotaan (kontrak adminDecidePayment);
    * - suspend tidak dihapus (AC F07-4): periode diperbarui tetapi effective_status tetap suspended;
-   * - audit + notifikasi kategori `membership` (inbox + outbox) dalam transaksi yang sama (AC F04-1).
+   * - audit di transaksi yang sama (AC F17-1). TIDAK menulis notifikasi: satu-satunya notifikasi keputusan adalah
+   *   kategori `payment` (deep link /payments/{id}) yang ditulis modul payments di transaksi yang sama (AC F13-1:
+   *   satu notification_id per keputusan); tanggal habis baru tersedia di `periodExpiresAt` (format formatDateWib).
    *
    * Kolom `alumni.starts_at/expires_at` menyimpan rentang keanggotaan BERJALAN yang bersambung: renewal sebelum habis
    * hanya memperpanjang `expires_at` (starts_at tetap), renewal setelah expired memulai rentang baru dari approvedAt.
@@ -211,10 +275,19 @@ export class MembershipKernel {
    */
   async applyPaidPayment(tx: Tx, payment: Pick<PaymentRow, "id">, approvedAt: Date): Promise<AppliedPeriod> {
     assertCommitAware(tx, "MembershipKernel.applyPaidPayment");
+    // Tingkat (0) urutan kunci: pemilik dibaca tanpa kunci, users lalu alumni dikunci, baru kemudian payment.
+    const [unlocked] = await tx
+      .select({ type: payments.type, userId: payments.userId })
+      .from(payments)
+      .where(eq(payments.id, payment.id))
+      .limit(1);
+    if (!unlocked) throw notFound("Pembayaran tidak ditemukan.");
+    if (unlocked.type !== "registration" && unlocked.type !== "renewal")
+      throw new Error(`applyPaidPayment hanya untuk iuran registration/renewal, bukan ${unlocked.type}`);
+    const member = unlocked.userId ? await this.lockMember(tx, unlocked.userId) : undefined;
+
     const [current] = await tx.select().from(payments).where(eq(payments.id, payment.id)).for("update");
     if (!current) throw notFound("Pembayaran tidak ditemukan.");
-    if (current.type !== "registration" && current.type !== "renewal")
-      throw new Error(`applyPaidPayment hanya untuk iuran registration/renewal, bukan ${current.type}`);
     if (current.status !== "paid")
       throw conflict("Pembayaran belum berstatus paid.", {
         status: current.status,
@@ -229,16 +302,25 @@ export class MembershipKernel {
       .limit(1);
     if (existing)
       return {
+        outcome: "already_applied",
         applied: false,
         kind,
         eventId: existing.id,
         periodStartsAt: existing.afterStartsAt!,
         periodExpiresAt: existing.afterExpiresAt!,
       };
-    if (!current.userId) throw conflict("Pemilik pembayaran sudah tidak ada.");
 
-    const member = await this.lockMember(tx, current.userId);
-    if (!member) throw conflict("Profil anggota pemilik pembayaran tidak ditemukan.");
+    // Pemilik sudah dihapus (user_id menjadi NULL lewat ON DELETE SET NULL, akun `deleted`, atau profil alumni tidak
+    // ada lagi): payment tetap paid tanpa membership_event; akun tidak dapat diaktifkan (kontrak adminDecidePayment).
+    if (!current.userId || !member || member.userId !== current.userId || member.accountStatus === "deleted")
+      return {
+        outcome: "owner_deleted",
+        applied: false,
+        kind,
+        eventId: null,
+        periodStartsAt: null,
+        periodExpiresAt: null,
+      };
     if (!member.memberNumber) await this.allocateMemberNumber(tx, member.userId);
 
     let period: { startsAt: Date; expiresAt: Date };
@@ -293,20 +375,9 @@ export class MembershipKernel {
         approved_at: approvedAt,
       },
     });
-    const until = formatDateWib(period.expiresAt);
-    await this.notifications.notify(tx, {
-      userId: member.userId,
-      category: "membership",
-      title: kind === "activation" ? "KTA Anda aktif" : "Keanggotaan diperpanjang",
-      body:
-        kind === "activation"
-          ? `Iuran pendaftaran telah diverifikasi. KTA berlaku sampai ${until}.`
-          : `Iuran perpanjangan telah diverifikasi. KTA kini berlaku sampai ${until}.`,
-      route: "/kta",
-      dedupKey: `membership.period:${current.id}`,
-    });
     this.resyncRoomsAfterCommit(member.userId);
     return {
+      outcome: "applied",
       applied: true,
       kind,
       eventId,
@@ -318,10 +389,12 @@ export class MembershipKernel {
   // --------------------------------------------------------------------------------------------------- moderasi
 
   /**
-   * Suspend anggota (AC F12-3, F12-4): tanggal periode tidak dibuang (PRD 4.2); seluruh sesi dicabut dan
-   * session_version naik sehingga access token lama langsung ditolak; setelah commit socket diputus dengan
-   * `session.revoked` (account_suspended). Direktori, chat, dan verifikasi KTA otomatis menolak karena effective_status
-   * dihitung dari `suspended_at`. Alasan internal hanya di audit/histori; anggota melihat `memberMessage`.
+   * Suspend anggota (AC F12-3, F12-4; kontrak adminSuspendMember dan adminResolveReport action suspend): tanggal
+   * periode tidak dibuang (PRD 4.2); seluruh sesi dicabut dan session_version naik sehingga access token lama langsung
+   * ditolak; setelah commit socket diputus dengan `session.revoked` (account_suspended). Direktori, chat, dan verifikasi
+   * KTA otomatis menolak karena effective_status dihitung dari `suspended_at`. Alasan internal hanya di audit/histori;
+   * anggota melihat `memberMessage` (notifikasi kategori account, rute /restricted). Audit `member.suspended`.
+   * Prasyarat (400 VALIDATION_ERROR dengan `current` versi terkini): belum suspended dan akun tidak deletion_pending.
    */
   async suspend(
     tx: Tx,
@@ -336,11 +409,10 @@ export class MembershipKernel {
     if (memberMessage.length === 0 || memberMessage.length > 500)
       throw fieldError("member_message", "Pesan untuk anggota wajib diisi (maksimal 500 karakter).");
     const member = await this.lockMember(tx, userId);
-    if (!member) throw notFound("Anggota tidak ditemukan.");
-    if (member.suspendedAt)
-      throw new AppException(409, "VERSION_CONFLICT", "Anggota sudah dalam status dibatasi.", {
-        current: { suspended_at: member.suspendedAt.toISOString(), version: String(member.version) },
-      });
+    if (!member || member.accountStatus === "deleted") throw notFound("Anggota tidak ditemukan.");
+    if (member.accountStatus === "deletion_pending")
+      throw preconditionFailed("Akun sedang dalam proses penghapusan dan tidak dapat dibatasi.", member);
+    if (member.suspendedAt) throw preconditionFailed("Anggota sudah dalam status dibatasi.", member);
 
     const now = this.clock.now();
     await tx
@@ -369,7 +441,7 @@ export class MembershipKernel {
     });
     const revoked = await this.revokeAllSessions(tx, userId, now);
     await this.audit.write(tx, {
-      action: "membership.suspended",
+      action: "member.suspended",
       entityType: "alumni",
       entityId: userId,
       reason,
@@ -389,24 +461,30 @@ export class MembershipKernel {
   }
 
   /**
-   * Mencabut suspend (AC F12-5): status dihitung ulang dari expires_at, sehingga anggota yang masa aktifnya sudah habis
-   * menjadi expired, bukan otomatis verified. Mengembalikan effective_status baru.
+   * Mencabut suspend (AC F12-5; kontrak adminUnsuspendMember dan adminResolveReport action unsuspend): status dihitung
+   * ulang dari expires_at, sehingga anggota yang masa aktifnya sudah habis menjadi expired dan yang belum pernah paid
+   * menjadi unverified, bukan otomatis verified. Audit `member.unsuspended`; SATU notifikasi kategori account yang
+   * memuat `memberMessage` (atau teks baku) dan menyatakan banding dikabulkan bila `appealGranted`. Prasyarat: sedang
+   * suspended (selain itu 400 VALIDATION_ERROR dengan `current`). Mengembalikan effective_status baru.
+   *
+   * Belum dilakukan di sini (menunggu migrasi kategori laporan `appeal`, kontrak C2/C6): menutup banding aktif anggota.
+   * Pemanggil yang menutup banding di transaksi yang sama mengirim `appealGranted: true`.
    */
   async unsuspend(
     tx: Tx,
     userId: string,
-    input: { reason: string; actorAdminId: string | null },
+    input: UnsuspendInput,
   ): Promise<{ effectiveStatus: EffectiveStatus; eventId: string }> {
     assertCommitAware(tx, "MembershipKernel.unsuspend");
     const reason = input.reason.trim();
     if (reason.length === 0 || reason.length > 1000)
       throw fieldError("reason", "Alasan wajib diisi (maksimal 1.000 karakter).");
+    const memberMessage = input.memberMessage?.trim() || DEFAULT_UNSUSPEND_MESSAGE;
+    if (memberMessage.length > 500)
+      throw fieldError("member_message", "Pesan untuk anggota maksimal 500 karakter.");
     const member = await this.lockMember(tx, userId);
-    if (!member) throw notFound("Anggota tidak ditemukan.");
-    if (!member.suspendedAt)
-      throw new AppException(409, "VERSION_CONFLICT", "Anggota tidak sedang dibatasi.", {
-        current: { suspended_at: null, version: String(member.version) },
-      });
+    if (!member || member.accountStatus === "deleted") throw notFound("Anggota tidak ditemukan.");
+    if (!member.suspendedAt) throw preconditionFailed("Anggota tidak sedang dibatasi.", member);
     const now = this.clock.now();
     await tx
       .update(alumni)
@@ -437,23 +515,27 @@ export class MembershipKernel {
       now,
     );
     await this.audit.write(tx, {
-      action: "membership.unsuspended",
+      action: "member.unsuspended",
       entityType: "alumni",
       entityId: userId,
       reason,
       before: { suspended_at: member.suspendedAt },
-      after: { suspended_at: null, effective_status: status },
+      after: { suspended_at: null, effective_status: status, appeal_granted: input.appealGranted === true },
     });
     const active = status === "verified" || status === "expiring";
+    const guidance = active
+      ? "Akses anggota Anda telah dipulihkan."
+      : status === "expired"
+        ? "Masa keanggotaan Anda telah berakhir. Perpanjang untuk kembali aktif."
+        : "Selesaikan iuran pendaftaran untuk mengaktifkan KTA.";
+    const sentence = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`);
     await this.notifications.notify(tx, {
       userId,
       category: "account",
-      title: "Pembatasan akun dicabut",
-      body: active
-        ? "Akses anggota Anda telah dipulihkan."
-        : status === "expired"
-          ? "Pembatasan dicabut, tetapi masa keanggotaan Anda telah berakhir. Perpanjang untuk kembali aktif."
-          : "Pembatasan dicabut. Selesaikan iuran pendaftaran untuk mengaktifkan KTA.",
+      title: input.appealGranted ? "Banding dikabulkan" : "Pembatasan akun dicabut",
+      body: [input.appealGranted ? "Banding Anda dikabulkan." : null, sentence(memberMessage), guidance]
+        .filter(Boolean)
+        .join(" "),
       route: active ? "/kta" : status === "expired" ? "/renewal" : "/onboarding/fees",
       dedupKey: `membership.unsuspended:${eventId}`,
     });
@@ -475,11 +557,13 @@ export class MembershipKernel {
   // ------------------------------------------------------------------------------------------- koreksi identitas
 
   /**
-   * Koreksi angkatan/kelas/jenis kelamin oleh pengurus `members.manage` (PRD 3.5, AC F05-6): prefix AA.SS.JK dihitung
-   * ulang, N tetap, segmen dan nomor ditulis dalam SATU UPDATE (alumni_member_number_chk), histori
-   * `number_correction` + audit nomor lama/baru. Token QR terikat user_id + N (bukan prefix), sehingga kartu berikutnya
-   * memuat nomor baru dan verifikasi tidak salah sasaran. Nomor dari klien tidak pernah diterima.
-   * `expectedVersion` (If-Match) opsional → 409 VERSION_CONFLICT dengan keadaan terbaru.
+   * Koreksi angkatan/kelas/jenis kelamin oleh pengurus `members.manage` (PRD 3.5, AC F05-6; kontrak adminUpdateMember):
+   * prefix AA.SS.JK dihitung ulang, N tetap, segmen dan nomor ditulis dalam SATU UPDATE (alumni_member_number_chk),
+   * histori `number_correction` + audit `member.number_corrected` dengan nomor lama/baru bila nomor berubah (selain itu
+   * audit `member.identity_corrected`), notifikasi kategori membership (rute /kta). QR lama menjadi "perlu diperbarui"
+   * karena verifikasi publik mensyaratkan nomor TERKINI (qrBindingMatches). Nomor dari klien tidak pernah diterima.
+   * Akun deletion_pending tidak dapat diubah (400). `expectedVersion` (If-Match) opsional → 409 VERSION_CONFLICT
+   * dengan keadaan terbaru.
    */
   async correctIdentity(
     tx: Tx,
@@ -494,7 +578,7 @@ export class MembershipKernel {
     if (trimmed.length === 0 || trimmed.length > 1000)
       throw fieldError("reason", "Alasan koreksi wajib diisi (maksimal 1.000 karakter).");
     const member = await this.lockMember(tx, userId);
-    if (!member) throw notFound("Anggota tidak ditemukan.");
+    if (!member || member.accountStatus === "deleted") throw notFound("Anggota tidak ditemukan.");
     const snapshot = (m: Pick<AlumniRow, "cohort" | "classIn" | "classOut" | "gender" | "memberNumber">) => ({
       cohort: m.cohort,
       class_in: m.classIn,
@@ -504,6 +588,8 @@ export class MembershipKernel {
     });
     if (options.expectedVersion !== undefined && options.expectedVersion !== member.version)
       throw versionConflict({ ...snapshot(member), version: String(member.version) });
+    if (member.accountStatus === "deletion_pending")
+      throw preconditionFailed("Akun sedang dalam proses penghapusan dan tidak dapat diubah.", member);
 
     const next = {
       cohort: changes.cohort ?? member.cohort,
@@ -534,6 +620,7 @@ export class MembershipKernel {
       };
 
     const number = member.memberSeq ? memberNumber({ ...next, seq: member.memberSeq }) : null;
+    const numberChanged = !!member.memberNumber && !!number && number !== member.memberNumber;
     const [updated] = await tx
       .update(alumni)
       .set({
@@ -547,7 +634,7 @@ export class MembershipKernel {
       })
       .where(eq(alumni.userId, userId))
       .returning({ version: alumni.version });
-    if (member.memberNumber && number && number !== member.memberNumber)
+    if (numberChanged)
       await tx.insert(membershipEvents).values({
         id: uuidv7(),
         userId,
@@ -559,7 +646,7 @@ export class MembershipKernel {
         createdAt: now,
       });
     const auditId = await this.audit.write(tx, {
-      action: "membership.identity_corrected",
+      action: numberChanged ? "member.number_corrected" : "member.identity_corrected",
       entityType: "alumni",
       entityId: userId,
       reason: trimmed,
@@ -570,10 +657,9 @@ export class MembershipKernel {
       userId,
       category: "membership",
       title: "Data keanggotaan diperbarui",
-      body:
-        number && number !== member.memberNumber
-          ? `Pengurus mengoreksi data angkatan/kelas Anda. Nomor anggota Anda kini ${number}.`
-          : "Pengurus mengoreksi data angkatan/kelas Anda.",
+      body: numberChanged
+        ? `Pengurus mengoreksi data angkatan/kelas Anda. Nomor anggota Anda kini ${number}.`
+        : "Pengurus mengoreksi data angkatan/kelas Anda.",
       route: "/kta",
       dedupKey: `membership.identity_corrected:${auditId}`,
     });
@@ -588,8 +674,10 @@ export class MembershipKernel {
   // ---------------------------------------------------------------------------------------------------- internal
 
   /**
-   * Mengunci baris users lalu alumni (urutan yang sama dengan AuthService: users → alumni, sehingga tidak ada
-   * deadlock dengan verifikasi OTP). Hanya akun berjenis alumni.
+   * Mengunci baris users (FOR NO KEY UPDATE) lalu alumni (FOR UPDATE): tingkat (0) URUTAN KUNCI kontrak C3/C5 dan
+   * urutan yang sama dengan verifikasi OTP, suspend dan penghapusan akun (users → alumni → events → tickets →
+   * payments), sehingga tidak ada deadlock 40P01. Hanya akun berjenis alumni; selain itu undefined (baris users tetap
+   * terkunci sampai akhir transaksi).
    */
   private async lockMember(tx: Tx, userId: string) {
     const [user] = await tx

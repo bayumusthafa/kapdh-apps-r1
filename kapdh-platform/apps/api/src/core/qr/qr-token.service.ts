@@ -38,18 +38,23 @@ export function memberSeqOf(memberNumber: string): number | null {
 }
 
 /**
- * Keterikatan token pada anggota (AC F06-*, F05-6): `sub` = user_id dan `seq` = N anggota di database. Bila nomor dari
- * URL pemeriksa (`/kta/<nomor>`) diberikan, N-nya wajib sama dengan `seq`; prefix AA.SS.JK boleh berbeda karena
- * koreksi admin tidak mengubah N dan tidak boleh membuat verifikasi salah sasaran.
+ * Keterikatan token pada anggota (kontrak verifyKta langkah 3; AC F05-6, F06-3): `sub` = user_id anggota, `seq` = N
+ * anggota di database, DAN nomor pada request (`member_number`, dari URL pemeriksa `/kta/<nomor>`) sama persis dengan
+ * nomor TERKINI akun itu. Setelah koreksi identitas oleh pengurus, URL + token lama (prefix lama) atau prefix rekaan
+ * menghasilkan false → `invalid_token` ("QR tidak valid atau perlu diperbarui"); kartu berikutnya memuat nomor baru.
  */
 export function qrBindingMatches(
   claims: Pick<QrTokenClaims, "userId" | "seq">,
-  member: { userId: string; memberSeq: number | null },
-  numberFromUrl?: string,
+  member: { userId: string; memberSeq: number | null; memberNumber: string | null },
+  numberFromRequest: string,
 ): boolean {
-  if (member.memberSeq === null || claims.userId !== member.userId || claims.seq !== member.memberSeq)
-    return false;
-  return numberFromUrl === undefined || memberSeqOf(numberFromUrl) === claims.seq;
+  if (member.memberSeq === null || member.memberNumber === null) return false;
+  return (
+    claims.userId === member.userId &&
+    claims.seq === member.memberSeq &&
+    memberSeqOf(member.memberNumber) === member.memberSeq &&
+    numberFromRequest === member.memberNumber
+  );
 }
 
 /**

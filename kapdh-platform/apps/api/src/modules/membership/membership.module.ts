@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { MembershipJobsModule } from "./membership-jobs.module.js";
 import { MeController } from "./me.controller.js";
 
 /**
@@ -6,6 +7,7 @@ import { MeController } from "./me.controller.js";
  * kedaluwarsa (ARCHITECTURE §4.1). Fungsi murni nomor anggota/periode/effective_status ada di core/membership.
  */
 @Module({
+  imports: [MembershipJobsModule],
   controllers: [MeController],
 })
 export class MembershipModule {}

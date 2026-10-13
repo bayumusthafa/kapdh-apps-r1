@@ -1,4 +1,5 @@
 import { Inject, Injectable, Module, type OnModuleInit } from "@nestjs/common";
+import { MODULE_METADATA } from "@nestjs/common/constants.js";
 import type { WorkerEnv } from "@kapdh/config";
 import { auditLogs, outboxEvents } from "@kapdh/database";
 import { MemoryDriver } from "@kapdh/storage";
@@ -17,6 +18,9 @@ import { OutboxService } from "../../src/core/outbox/outbox.service.js";
 import { PaymentHandlerRegistry } from "../../src/core/payments-kernel/payment-handler.registry.js";
 import { QrTokenService } from "../../src/core/qr/qr-token.service.js";
 import { DB } from "../../src/core/tokens.js";
+import { DOMAIN_MODULES, WORKER_MODULES } from "../../src/app.module.js";
+import { API_ONLY_PROVIDERS } from "../../src/core/core.module.js";
+import { createRootLogger } from "../../src/core/logging/logger.js";
 import { createWorkerContext } from "../../src/worker.js";
 import {
   createTestApp,
@@ -334,32 +338,112 @@ describe("JobRunner.drainOutbox (helper uji)", () => {
   });
 });
 
+/** WorkerEnv uji: tanpa secret JWT/OTP/TOTP/QR (least privilege, ARCHITECTURE §4.8). */
+function workerEnv(): WorkerEnv {
+  return {
+    NODE_ENV: "test",
+    DATABASE_URL: testEnv.DATABASE_URL,
+    REDIS_URL: undefined,
+    LOG_LEVEL: "silent",
+    PUBLIC_WEB_URL: testEnv.PUBLIC_WEB_URL,
+    API_PUBLIC_URL: testEnv.API_PUBLIC_URL,
+    ADMIN_ORIGIN: testEnv.ADMIN_ORIGIN,
+    SMTP_URL: undefined,
+    MAIL_FROM: testEnv.MAIL_FROM,
+    STORAGE_DRIVER: "local",
+    STORAGE_LOCAL_ROOT: "/tmp",
+    S3_ENDPOINT: undefined,
+    S3_REGION: undefined,
+    S3_BUCKET: undefined,
+    S3_ACCESS_KEY_ID: undefined,
+    S3_SECRET_ACCESS_KEY: undefined,
+    S3_FORCE_PATH_STYLE: false,
+    FILE_URL_SECRET: testEnv.FILE_URL_SECRET,
+    FCM_PROJECT_ID: undefined,
+    FCM_SERVICE_ACCOUNT_JSON: undefined,
+    WORKER_CONCURRENCY: 2,
+  };
+}
+
+/** Semua modul yang dimuat secara transitif (imports) dari daftar modul akar. */
+function moduleClosure(roots: readonly unknown[]): Set<unknown> {
+  const seen = new Set<unknown>();
+  const visit = (mod: unknown) => {
+    if (!mod || seen.has(mod)) return;
+    seen.add(mod);
+    const imports = (Reflect.getMetadata(MODULE_METADATA.IMPORTS, mod as object) ?? []) as unknown[];
+    for (const child of imports) visit(child);
+  };
+  for (const root of roots) visit(root);
+  return seen;
+}
+
+describe("Batas modul worker (ARCHITECTURE §1, §4.8; least privilege)", () => {
+  it("WORKER_MODULES hanya modul job: tanpa controller dan tanpa provider khusus API; modul domain mengimpornya", () => {
+    const closure = moduleClosure(WORKER_MODULES);
+    const apiOnly = new Set<unknown>(API_ONLY_PROVIDERS);
+    for (const mod of closure) {
+      const name = (mod as { name?: string }).name;
+      expect(
+        Reflect.getMetadata(MODULE_METADATA.CONTROLLERS, mod as object) ?? [],
+        `controller di ${name}`,
+      ).toEqual([]);
+      const providers = (Reflect.getMetadata(MODULE_METADATA.PROVIDERS, mod as object) ?? []) as unknown[];
+      for (const provider of providers)
+        expect(apiOnly.has(provider), `${name} menyediakan layanan khusus API`).toBe(false);
+    }
+    // Modul domain utama tetap memuat modul job-nya (job terdaftar juga di aplikasi API/uji).
+    const domainClosure = moduleClosure(DOMAIN_MODULES);
+    for (const jobs of WORKER_MODULES) expect(domainClosure.has(jobs), jobs.name).toBe(true);
+  });
+
+  it("provider worker yang bergantung pada layanan khusus API → createWorkerContext MENOLAK dengan pesan DI (bukan abort)", async () => {
+    @Injectable()
+    class NeedsQr {
+      constructor(readonly qr: QrTokenService) {}
+    }
+    @Module({ providers: [NeedsQr] })
+    class BadJobsModule {}
+    const { pg, db } = await createTestDatabase();
+    try {
+      await expect(
+        createWorkerContext(
+          {
+            env: workerEnv(),
+            db,
+            mailer: new MemoryMailer(),
+            clock: new TestClock(),
+            push: new FakePush(),
+            storage: new MemoryDriver(),
+            redis: null,
+          },
+          {
+            extraModules: [BadJobsModule],
+            logger: createRootLogger({ level: "silent", service: "kapdh-worker" }),
+          },
+        ),
+      ).rejects.toThrow(/QrTokenService|NeedsQr/);
+    } finally {
+      await pg.close();
+    }
+  });
+
+  it("galat DI di aplikasi API → createTestApp MENOLAK dengan pesan (bukan process.abort())", async () => {
+    const MISSING = Symbol("TIDAK_ADA");
+    @Injectable()
+    class Broken {
+      constructor(@Inject(MISSING) readonly missing: unknown) {}
+    }
+    @Module({ providers: [Broken] })
+    class BrokenModule {}
+    await expect(createTestApp({ extraModules: [BrokenModule] })).rejects.toThrow(/Broken|TIDAK_ADA/);
+  });
+});
+
 describe("createWorkerContext (ARCHITECTURE §1, §4.8)", () => {
   it("memuat modul pemilik job dengan WorkerEnv tanpa secret API dan memproses outbox", async () => {
     const { pg, db } = await createTestDatabase();
-    const env: WorkerEnv = {
-      NODE_ENV: "test",
-      DATABASE_URL: testEnv.DATABASE_URL,
-      REDIS_URL: undefined,
-      LOG_LEVEL: "silent",
-      PUBLIC_WEB_URL: testEnv.PUBLIC_WEB_URL,
-      API_PUBLIC_URL: testEnv.API_PUBLIC_URL,
-      ADMIN_ORIGIN: testEnv.ADMIN_ORIGIN,
-      SMTP_URL: undefined,
-      MAIL_FROM: testEnv.MAIL_FROM,
-      STORAGE_DRIVER: "local",
-      STORAGE_LOCAL_ROOT: "/tmp",
-      S3_ENDPOINT: undefined,
-      S3_REGION: undefined,
-      S3_BUCKET: undefined,
-      S3_ACCESS_KEY_ID: undefined,
-      S3_SECRET_ACCESS_KEY: undefined,
-      S3_FORCE_PATH_STYLE: false,
-      FILE_URL_SECRET: testEnv.FILE_URL_SECRET,
-      FCM_PROJECT_ID: undefined,
-      FCM_SERVICE_ACCOUNT_JSON: undefined,
-      WORKER_CONCURRENCY: 2,
-    };
+    const env = workerEnv();
     const clock = new TestClock();
     const worker = await createWorkerContext(
       {

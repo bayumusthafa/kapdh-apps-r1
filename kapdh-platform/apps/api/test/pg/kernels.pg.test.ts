@@ -4,13 +4,15 @@
  * dibuat dengan koneksi pemilik database uji.
  *
  * - AC F04-5 / PRD 9.2 "double approval": applyPaidPayment untuk payment yang sama dipanggil bersamaan → satu periode,
- *   satu membership_event, satu notifikasi.
+ *   satu membership_event, tanpa notifikasi dari kernel (notifikasi keputusan tunggal milik modul payments, AC F13-1).
+ * - URUTAN KUNCI kontrak C3 (PRD 6.4): persetujuan iuran (hook pra-kunci users → alumni, lalu payment) bersamaan dengan
+ *   transaksi users FOR UPDATE → payments (pola penghapusan akun) tidak deadlock (40P01).
  * - Dua renewal paid berbeda untuk anggota yang sama diterapkan bersamaan → keduanya berlaku berurutan (tidak ada
  *   lost update pada expires_at).
  * - N-10: unggahan bersamaan oleh pengguna yang sama tidak melewati kuota 10 per purpose (kunci advisory).
  */
 import "reflect-metadata";
-import { alumni, files, membershipEvents, notifications } from "@kapdh/database";
+import { alumni, files, membershipEvents, notifications, payments } from "@kapdh/database";
 import { MemoryDriver } from "@kapdh/storage";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { and, eq } from "drizzle-orm";
@@ -22,6 +24,7 @@ import { withTx } from "../../src/core/db/tx.js";
 import type { Db } from "../../src/core/db/types.js";
 import { MembershipKernel } from "../../src/core/membership/membership.kernel.js";
 import { addCalendarMonthsJakarta } from "../../src/core/membership/period.js";
+import { PaymentHandlerRegistry } from "../../src/core/payments-kernel/payment-handler.registry.js";
 import { createAlumni, createMembershipPayment, signInAlumni } from "../support/factories.js";
 import { postFile, testJpeg } from "../support/files.js";
 import { FakePush, TestClock, testEnv } from "../support/test-app.js";
@@ -30,6 +33,7 @@ import {
   connectAs,
   createPgTestDatabase,
   type PgTestDatabase,
+  pgError,
   withLockWaitGate,
 } from "./support.js";
 
@@ -74,7 +78,7 @@ function approve(paymentId: string, approvedAt: Date) {
 }
 
 describe("MembershipKernel.applyPaidPayment bersamaan (AC F04-5, PRD 9.2 double approval)", () => {
-  it("payment yang sama diterapkan 8x bersamaan: satu periode, satu membership_event, satu notifikasi", async () => {
+  it("payment yang sama diterapkan 8x bersamaan: satu periode, satu membership_event, tanpa notifikasi ganda", async () => {
     for (let round = 0; round < 3; round++) {
       const member = await createAlumni(owner, { status: "unverified" });
       const payment = await createMembershipPayment(owner, { userId: member.userId, type: "registration" });
@@ -106,11 +110,12 @@ describe("MembershipKernel.applyPaidPayment bersamaan (AC F04-5, PRD 9.2 double 
       expect(events).toHaveLength(1);
       const [profile] = await tdb.db.select().from(alumni).where(eq(alumni.userId, member.userId));
       expect(profile!.expiresAt).toEqual(addCalendarMonthsJakarta(approvedAt, 12));
+      // AC F13-1: kernel tidak menulis notifikasi; satu-satunya notifikasi keputusan ditulis modul payments.
       const inbox = await tdb.db
         .select()
         .from(notifications)
         .where(and(eq(notifications.userId, member.userId), eq(notifications.category, "membership")));
-      expect(inbox).toHaveLength(1);
+      expect(inbox).toHaveLength(0);
     }
   });
 
@@ -129,9 +134,64 @@ describe("MembershipKernel.applyPaidPayment bersamaan (AC F04-5, PRD 9.2 double 
     expect(results.every((r) => r.applied)).toBe(true);
     const [profile] = await tdb.db.select().from(alumni).where(eq(alumni.userId, member.userId));
     expect(profile!.expiresAt).toEqual(addCalendarMonthsJakarta(member.expiresAt!, 24));
-    const periods = results.map((r) => [r.periodStartsAt.getTime(), r.periodExpiresAt.getTime()]).sort();
+    const periods = results.map((r) => [r.periodStartsAt!.getTime(), r.periodExpiresAt!.getTime()]).sort();
     // Periode kedua bersambung tepat dari akhir periode pertama.
     expect(periods[1]![0]).toBe(periods[0]![1]);
+  });
+});
+
+describe("URUTAN KUNCI kontrak C3: persetujuan iuran vs transaksi users → payments (PRD 6.4, AC F04-1)", () => {
+  const variants = ["hook pra-kunci registry lalu payment FOR UPDATE", "applyPaidPayment mandiri"] as const;
+
+  it.each(variants)("tidak deadlock 40P01: %s", async (variant) => {
+    const member = await createAlumni(owner, { status: "unverified" });
+    const payment = await createMembershipPayment(owner, { userId: member.userId, type: "registration" });
+    const registry = app.get(PaymentHandlerRegistry);
+    const { result, lockWaitObserved } = await withLockWaitGate(tdb, async (hold) => {
+      let signalLocked!: () => void;
+      const locked = new Promise<void>((resolve) => (signalLocked = resolve));
+      // Pola penghapusan akun / suspend: baris users pemilik dikunci lebih dulu, payment miliknya sesudahnya.
+      const deletion = tdb.sql.begin(async (tx) => {
+        await tx`select id from app.users where id = ${member.userId} for update`;
+        signalLocked();
+        // Persetujuan dipastikan sudah menunggu kunci sebelum transaksi ini meminta kunci payment.
+        await hold();
+        await tx`select id from app.payments where user_id = ${member.userId} for update`;
+      });
+      await locked;
+      const approval = runAsSystem(() =>
+        withTx(apiDb, async (tx) => {
+          if (variant === "hook pra-kunci registry lalu payment FOR UPDATE") {
+            const [unlocked] = await tx
+              .select({
+                id: payments.id,
+                type: payments.type,
+                userId: payments.userId,
+                ticketId: payments.ticketId,
+              })
+              .from(payments)
+              .where(eq(payments.id, payment.id));
+            await registry.lockRelated(tx, unlocked!);
+            await tx
+              .select({ id: payments.id })
+              .from(payments)
+              .where(eq(payments.id, payment.id))
+              .for("update");
+          }
+          return kernel.applyPaidPayment(tx, payment, clock.now());
+        }),
+      );
+      return Promise.allSettled([deletion, approval]);
+    });
+    const failures = result
+      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+      .map((r) => pgError(r.reason).code ?? String(r.reason));
+    expect(failures, "tidak ada 40P01 maupun galat lain").toEqual([]);
+    expect(lockWaitObserved, "persetujuan benar-benar menunggu kunci users").toBe(true);
+    const approval = result[1] as PromiseFulfilledResult<{ outcome: string }>;
+    expect(approval.value.outcome).toBe("applied");
+    const [profile] = await tdb.db.select().from(alumni).where(eq(alumni.userId, member.userId));
+    expect(profile!.expiresAt).not.toBeNull();
   });
 });
 
