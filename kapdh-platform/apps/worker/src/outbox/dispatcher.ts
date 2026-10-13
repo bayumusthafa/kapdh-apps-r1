@@ -46,9 +46,10 @@ export interface DispatcherStatus {
 /**
  * Dispatcher outbox (PRD 5.1, ARCHITECTURE §4.8): setiap ~2 detik mengklaim event jatuh tempo (`FOR UPDATE SKIP
  * LOCKED` + lease `locked_until`) sebanyak slot antrean yang kosong, lalu meneruskannya ke antrean dengan jobId = dedup
- * key event + nomor percobaan. Konsumen antrean memanggil `processOutboxClaim` (handler topik terdaftar, dispatched /
- * failed + backoff / dead). Bila enqueue gagal, klaim dilepas; bila proses mati, lease habis dan event diklaim ulang,
- * sehingga event tidak pernah hilang.
+ * key event + token lease klaim. Konsumen antrean memanggil `processOutboxClaim`, yang lebih dulu mengambil alih lease
+ * secara atomik (klaim usang/ganda → `lost`), lalu menjalankan handler topik terdaftar (dispatched / failed + backoff /
+ * dead). Bila enqueue gagal atau melewati batas waktu (Redis putus/menggantung), klaim dilepas; bila proses mati, lease
+ * habis dan event diklaim ulang, sehingga event tidak pernah hilang.
  */
 export class OutboxDispatcher {
   private running = false;

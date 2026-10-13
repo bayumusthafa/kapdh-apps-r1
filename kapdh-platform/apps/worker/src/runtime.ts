@@ -284,6 +284,8 @@ export interface BootOptions {
   logger?: Logger;
   /** Modul Nest tambahan untuk konteks worker (uji). */
   extraModules?: NonNullable<Parameters<typeof createWorkerContext>[1]>["extraModules"];
+  /** Penyesuaian pengaturan turunan env (uji: mis. batas tunggu Redis yang singkat). */
+  adjustSettings?: (settings: WorkerSettings) => WorkerSettings;
 }
 
 /**
@@ -292,7 +294,8 @@ export interface BootOptions {
  * kunci leader, dan koneksi health khusus. Bila salah satu langkah gagal, sumber daya yang sudah dibuat ditutup.
  */
 export async function bootWorker(env: WorkerEnv, options: BootOptions = {}): Promise<WorkerService> {
-  const settings = resolveWorkerSettings(env);
+  const resolved = resolveWorkerSettings(env);
+  const settings = options.adjustSettings ? options.adjustSettings(resolved) : resolved;
   const logger = options.logger ?? createRootLogger({ level: env.LOG_LEVEL, service: "kapdh-worker" });
   const created: NamedResource[] = [];
   try {

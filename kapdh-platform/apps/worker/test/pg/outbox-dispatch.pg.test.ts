@@ -94,6 +94,63 @@ describe("Dispatcher outbox di PostgreSQL 17 nyata (FOR UPDATE SKIP LOCKED + lea
     expect(left.length + right.length).toBe(100);
   });
 
+  it("PRD 5.1: job antrean dengan lease kedaluwarsa mulai diproses BERSAMAAN dengan klaim ulang dispatcher lain (dua koneksi nyata) → setiap event ditangani tepat sekali dan tidak pernah berjalan bersamaan", async () => {
+    const clock = new TestClock(new Date(T0.getTime() + 10_800_000));
+    const inFlight = new Set<string>();
+    const overlaps: string[] = [];
+    const handled = new Map<string, string[]>();
+    const racer = (name: string) => {
+      const { db, sql } = connectWorker(tdb, `kapdh-worker-race-${name}`, 8);
+      pools.push(sql);
+      const registry = new JobRegistry();
+      registry.registerTopicHandler({
+        topic: "event.cancelled",
+        handle: async (event) => {
+          if (inFlight.has(event.id)) overlaps.push(event.id);
+          inFlight.add(event.id);
+          handled.set(event.id, [...(handled.get(event.id) ?? []), name]);
+          // Handler "mengirim notifikasi" cukup lama agar jendela balapan terbuka lebar.
+          await sleep(15);
+          inFlight.delete(event.id);
+        },
+      });
+      return { db, jobs: new JobRunner(registry, db, clock, silentLogger()) };
+    };
+    const stale = racer("stale");
+    const fresh = racer("fresh");
+    const ids: string[] = [];
+    for (let i = 0; i < 40; i++) ids.push(await insertOutboxEvent(stale.db, clock));
+    // Job antrean diklaim lalu menunggu melewati lease (mis. semua worker mati > 5 menit, Redis menyimpan job).
+    const waiting = await stale.jobs.claimOutbox({ limit: 40, lockMs: 60_000 });
+    expect(waiting).toHaveLength(40);
+    clock.advance(60_001);
+
+    const outcomes = await Promise.all([
+      Promise.all(waiting.map((claim) => stale.jobs.processOutboxClaim(claim, { lockMs: 60_000 }))),
+      (async () => {
+        const results: string[] = [];
+        for (let round = 0; round < 6; round++) {
+          const claims = await fresh.jobs.claimOutbox({ limit: 40, lockMs: 60_000 });
+          results.push(
+            ...(await Promise.all(
+              claims.map((claim) => fresh.jobs.processOutboxClaim(claim, { lockMs: 60_000 })),
+            )),
+          );
+          await sleep(5);
+        }
+        return results;
+      })(),
+    ]);
+
+    expect(overlaps).toEqual([]);
+    expect(ids.every((id) => handled.get(id)?.length === 1)).toBe(true);
+    const all = outcomes.flat();
+    expect(all.filter((outcome) => outcome === "dispatched")).toHaveLength(40);
+    const [left] = await tdb.admin<{ n: number }[]>`
+      select count(*)::int as n from app.outbox_events where status <> 'dispatched' or locked_until is not null`;
+    expect(left!.n).toBe(0);
+  });
+
   it("PRD 5.1: worker mati setelah klaim → lease habis → worker lain mengklaim ulang dan memproses sekali; klaim lama ditolak", async () => {
     const clock = new TestClock(new Date(T0.getTime() + 7200_000));
     const handled = new Map<string, string[]>();

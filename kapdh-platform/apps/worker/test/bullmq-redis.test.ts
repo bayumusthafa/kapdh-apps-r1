@@ -118,7 +118,7 @@ describe("Antrean BullMQ dengan Redis yang putus (PRD 5.1, 5.5)", () => {
 
     await fake.stop();
     for (const operation of [
-      () => queue.capacity("outbox"),
+      (): Promise<unknown> => queue.capacity("outbox"),
       () => queue.enqueue("outbox", { jobId: "outbox.b.1", data: {}, attempts: 1, backoffMs: 1 }),
       () => queue.isPending("scheduled", "scheduled.x.1"),
     ]) {
