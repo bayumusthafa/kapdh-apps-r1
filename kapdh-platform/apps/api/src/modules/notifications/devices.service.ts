@@ -1,8 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { deviceTokens, notificationDeliveries, sessions } from "@kapdh/database";
-import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../../core/adapters/clock.js";
+import { rows } from "../../core/db/rows.js";
 import type { Db, DbOrTx, Tx } from "../../core/db/types.js";
 import { unauthenticated } from "../../core/errors/app-exception.js";
 import {
@@ -29,6 +30,15 @@ export interface DeviceSessionRef {
 /** Alasan pembatalan pengiriman push yang menunggu (kontrak C7 registerDevice/unregisterDevice). */
 export type DeliveryCancelReason = "token_reassigned" | "token_revoked";
 
+/** Token aktif yang keluarga sesinya sudah berakhir (kandidat sapuan) beserta ikatan sesi saat dipilih. */
+export interface EndedSessionToken {
+  id: string;
+  sessionId: string | null;
+}
+
+/** Interval job `notifications.device-sweep` (AC F13-5): setiap jam. */
+export const DEVICE_SWEEP_EVERY_MS = 60 * 60_000;
+
 /**
  * Token perangkat FCM (F-13, AC F13-4, F13-5; kontrak notifications.yaml registerDevice/unregisterDevice). Token tidak
  * pernah dicatat di log/audit dan tidak pernah dikembalikan API (ARCHITECTURE §2 butir 3).
@@ -39,7 +49,8 @@ export type DeliveryCancelReason = "token_reassigned" | "token_revoked";
  *
  * Pencabutan saat sesi berakhir/berganti akun (AC F13-5): modul auth memanggil core `revokeDeviceTokens` di transaksi
  * logout, logout-all, reuse refresh token, dan pencabutan sesi; modul account memanggilnya saat penghapusan akun.
- * {@link DevicesService.revokeForSessions} tersedia bagi modul lain yang mengimpor NotificationsJobsModule.
+ * {@link DevicesService.revokeForSessions} tersedia bagi modul lain yang mengimpor NotificationsJobsModule. Sesi yang
+ * berakhir tanpa logout (kedaluwarsa) disapu job `notifications.device-sweep` ({@link DevicesService.revokeEndedSessionTokens}).
  */
 @Injectable()
 export class DevicesService {
@@ -62,7 +73,7 @@ export class DevicesService {
   async register(session: DeviceSessionRef, input: RegisterDeviceInput): Promise<void> {
     const now = this.clock.now();
     await this.db.transaction(async (tx) => {
-      const sessionRowId = await this.lockActiveFamilySession(tx, session);
+      const sessionRowId = await this.lockActiveFamilySession(tx, session, now);
       let tokenId: string;
       const existing = await this.lockToken(tx, input.token);
       if (existing) {
@@ -168,11 +179,89 @@ export class DevicesService {
   }
 
   /**
-   * Baris sesi aktif (belum dicabut dan belum dirotasi) keluarga pemanggil, dikunci FOR NO KEY UPDATE. Access token
+   * Job `notifications.device-sweep` (AC F13-5): sesi yang BERAKHIR tanpa logout (refresh kedaluwarsa, 60 hari mobile)
+   * juga berarti pengguna keluar, jadi token perangkat keluarga itu tidak boleh terus menerima notifikasi akun tersebut.
+   * Token aktif yang keluarga sesinya tidak lagi memiliki baris aktif (definisi sama dengan SessionValidator:
+   * revoked_at IS NULL dan expires_at > sekarang), atau yang tidak lagi terikat baris sesi mana pun (session_id kosong,
+   * sehingga pencabutan berbasis keluarga tidak dapat menjangkaunya), dicabut beserta pengiriman `pending`-nya
+   * (`token_revoked`). Berjalan per kelompok sampai habis (dibatasi per eksekusi).
+   */
+  async revokeEndedSessionTokens(options: { batch?: number; maxRounds?: number } = {}): Promise<number> {
+    const batch = options.batch ?? 500;
+    let total = 0;
+    for (let round = 0; round < (options.maxRounds ?? 20); round++) {
+      const now = this.clock.now();
+      const candidates = await this.findEndedSessionTokens(now, batch);
+      if (candidates.length === 0) break;
+      total += await this.revokeUnchangedTokens(candidates, now);
+      if (candidates.length < batch) break;
+    }
+    return total;
+  }
+
+  /** Kandidat sapuan (tanpa kunci): token aktif yang keluarga sesinya sudah berakhir atau tanpa ikatan sesi. */
+  async findEndedSessionTokens(now: Date, limit: number): Promise<EndedSessionToken[]> {
+    const nowIso = now.toISOString();
+    const found = rows<{ id: string; session_id: string | null }>(
+      await this.db.execute(sql`
+        select t.id, t.session_id
+        from ${deviceTokens} t
+        where t.revoked_at is null
+          and (t.session_id is null or not exists (
+            select 1
+            from ${sessions} bound
+            join ${sessions} active
+              on active.family_id = bound.family_id and active.user_id = bound.user_id
+            where bound.id = t.session_id
+              and active.revoked_at is null
+              and active.expires_at > ${nowIso}::timestamptz))
+        order by t.id
+        limit ${limit}`),
+    );
+    return found.map((row) => ({ id: row.id, sessionId: row.session_id }));
+  }
+
+  /**
+   * Mencabut kandidat HANYA bila ikatan sesinya tidak berubah sejak dipilih (`session_id IS NOT DISTINCT FROM` nilai saat
+   * dipilih, diperiksa ulang PostgreSQL pada versi baris terbaru setelah menunggu kunci baris). Pendaftaran ulang
+   * perangkat yang bersamaan (login baru lalu PUT /devices) mengikat token ke sesi lain sehingga tidak ikut dicabut.
+   * Urutan kunci token → pengiriman sama dengan logout dan registerDevice.
+   */
+  async revokeUnchangedTokens(candidates: EndedSessionToken[], now: Date): Promise<number> {
+    if (candidates.length === 0) return 0;
+    const pairs = sql.join(
+      candidates.map((c) => sql`(${c.id}::uuid, ${c.sessionId}::uuid)`),
+      sql`, `,
+    );
+    const nowIso = now.toISOString();
+    return this.db.transaction(async (tx) => {
+      const revoked = rows<{ id: string }>(
+        await tx.execute(sql`
+          update ${deviceTokens} as t
+          set revoked_at = ${nowIso}::timestamptz, updated_at = ${nowIso}::timestamptz
+          from (values ${pairs}) as c(id, session_id)
+          where t.id = c.id
+            and t.revoked_at is null
+            and t.session_id is not distinct from c.session_id
+          returning t.id`),
+      );
+      await cancelPendingDeliveries(
+        tx,
+        revoked.map((row) => row.id),
+        "token_revoked",
+        now,
+      );
+      return revoked.length;
+    });
+  }
+
+  /**
+   * Baris sesi aktif (belum dicabut, belum dirotasi, belum kedaluwarsa) keluarga pemanggil, dikunci FOR NO KEY UPDATE.
+   * Access token
    * pemanggil bisa menunjuk baris lama setelah rotasi refresh (AC F02-3), jadi baris dicari lewat family_id; bila rotasi
    * bersamaan menggantinya saat menunggu kunci, pencarian diulang. Keluarga tanpa baris aktif (logout bersamaan) → 401.
    */
-  private async lockActiveFamilySession(tx: Tx, session: DeviceSessionRef): Promise<string> {
+  private async lockActiveFamilySession(tx: Tx, session: DeviceSessionRef, now: Date): Promise<string> {
     for (let round = 0; round < 3; round++) {
       const [candidate] = await tx
         .select({ id: sessions.id })
@@ -183,6 +272,7 @@ export class DevicesService {
             eq(sessions.userId, session.userId),
             isNull(sessions.revokedAt),
             isNull(sessions.replacedBy),
+            gt(sessions.expiresAt, now),
           ),
         )
         .orderBy(desc(sessions.createdAt), desc(sessions.id))
@@ -191,7 +281,14 @@ export class DevicesService {
       const [locked] = await tx
         .select({ id: sessions.id })
         .from(sessions)
-        .where(and(eq(sessions.id, candidate.id), isNull(sessions.revokedAt), isNull(sessions.replacedBy)))
+        .where(
+          and(
+            eq(sessions.id, candidate.id),
+            isNull(sessions.revokedAt),
+            isNull(sessions.replacedBy),
+            gt(sessions.expiresAt, now),
+          ),
+        )
         .for("no key update");
       if (locked) return locked.id;
     }

@@ -9,6 +9,8 @@
  *   kehilangan token dibatalkan; tidak ada pengiriman pending yang menargetkan token milik akun lain.
  * - AC F13-5: registerDevice bersamaan dengan logout keluarga sesi yang sama → tanpa deadlock; tidak ada token aktif
  *   yang tersisa untuk keluarga yang sudah logout.
+ * - AC F13-5: sapuan token sesi berakhir yang menunggu kunci token yang sedang diikat ulang ke sesi baru tidak
+ *   mencabutnya (predikat ikatan diperiksa ulang pada versi baris terbaru).
  * - AC F13-4: retry pengurus bersamaan untuk pengiriman yang sama → tepat satu dijadwalkan ulang dan satu audit.
  */
 import "reflect-metadata";
@@ -26,11 +28,12 @@ import { withTx } from "../../src/core/db/tx.js";
 import type { Db } from "../../src/core/db/types.js";
 import { NotificationService } from "../../src/core/notifications-kernel/notification.service.js";
 import { NotificationDeliveryService } from "../../src/modules/notifications/delivery.service.js";
+import { DevicesService } from "../../src/modules/notifications/devices.service.js";
 import { createWorkerContext, type WorkerContext } from "../../src/worker.js";
 import { createAdmin, createAlumni, signInAdmin, signInAlumni } from "../support/factories.js";
 import { httpClient } from "../support/http.js";
 import { FakePush, TestClock, testEnv } from "../support/test-app.js";
-import { connectAs, createPgTestDatabase, type PgTestDatabase } from "./support.js";
+import { connectAs, createPgTestDatabase, type PgTestDatabase, withLockWaitGate } from "./support.js";
 
 let tdb: PgTestDatabase;
 let apiConn: ReturnType<typeof connectAs>;
@@ -264,6 +267,68 @@ describe("Token perangkat bersamaan (AC F13-5)", () => {
         .where(and(eq(sessions.userId, alumni.userId), isNull(sessions.revokedAt)));
       expect(live).toEqual([]);
     }
+  });
+});
+
+describe("Sapuan token sesi berakhir (AC F13-5)", () => {
+  it("AC F13-5: sapuan yang menunggu kunci token yang sedang diikat ulang ke sesi baru tidak mencabutnya; token tanpa ikatan sesi dicabut", async () => {
+    const devices = workers[0]!.ctx.app.get(DevicesService);
+    const alumni = await member();
+    const token = `pg-sapu-${uuidv7()}`;
+    expect((await register(alumni.accessToken, token)).statusCode).toBe(204);
+    const [row] = await tdb.db.select().from(deviceTokens).where(eq(deviceTokens.token, token));
+    const [bound] = await tdb.db.select().from(sessions).where(eq(sessions.id, row!.sessionId!));
+    await tdb.db
+      .update(sessions)
+      .set({ expiresAt: new Date(clock.now().getTime() - 1000) })
+      .where(eq(sessions.familyId, bound!.familyId));
+    const candidates = (await devices.findEndedSessionTokens(clock.now(), 1000)).filter(
+      (c) => c.id === row!.id,
+    );
+    expect(candidates).toEqual([{ id: row!.id, sessionId: row!.sessionId }]);
+    // Anggota masuk lagi di perangkat itu (keluarga sesi baru).
+    await signInAlumni({ app }, alumni);
+    const [fresh] = await tdb.db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.userId, alumni.userId),
+          isNull(sessions.revokedAt),
+          dsql`${sessions.familyId} <> ${bound!.familyId}`,
+        ),
+      );
+
+    // Pendaftaran ulang (login baru) memegang kunci baris token; sapuan dimulai dan menunggu, lalu ikatan baru commit.
+    let locked!: () => void;
+    const isLocked = new Promise<void>((resolve) => (locked = resolve));
+    const { result, lockWaitObserved } = await withLockWaitGate(tdb, async (hold) => {
+      const holder = tdb.sql.begin(async (tx) => {
+        await tx`select id from app.device_tokens where id = ${row!.id} for update`;
+        locked();
+        await hold();
+        await tx`update app.device_tokens set session_id = ${fresh!.id} where id = ${row!.id}`;
+      });
+      await isLocked;
+      const [revoked] = await Promise.all([devices.revokeUnchangedTokens(candidates, clock.now()), holder]);
+      return revoked;
+    });
+    expect(lockWaitObserved).toBe(true);
+    expect(result).toBe(0);
+    const [after] = await tdb.db.select().from(deviceTokens).where(eq(deviceTokens.id, row!.id));
+    expect(after).toMatchObject({ revokedAt: null, sessionId: fresh!.id, userId: alumni.userId });
+
+    // Kontrol: token perangkat lain (keluarga sesi lain) yang tidak lagi terikat baris sesi mana pun dicabut sapuan
+    // penuh (PostgreSQL 17, role worker), sedangkan token yang terikat keluarga aktif tetap.
+    const otherDevice = await signInAlumni({ app }, alumni);
+    const orphan = `pg-yatim-${uuidv7()}`;
+    expect((await register(otherDevice.accessToken, orphan)).statusCode).toBe(204);
+    await tdb.db.update(deviceTokens).set({ sessionId: null }).where(eq(deviceTokens.token, orphan));
+    expect(await devices.revokeEndedSessionTokens()).toBeGreaterThanOrEqual(1);
+    const [orphanRow] = await tdb.db.select().from(deviceTokens).where(eq(deviceTokens.token, orphan));
+    expect(orphanRow!.revokedAt).not.toBeNull();
+    const [kept] = await tdb.db.select().from(deviceTokens).where(eq(deviceTokens.id, row!.id));
+    expect(kept!.revokedAt).toBeNull();
   });
 });
 
