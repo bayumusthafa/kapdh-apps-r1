@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
 import { paymentMethods, payments } from "@kapdh/database";
-import { and, asc, count, eq, exists, type SQL, sql } from "drizzle-orm";
+import { and, asc, count, eq, exists, or, type SQL, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
 import type { Clock } from "../../core/adapters/clock.js";
@@ -216,11 +216,18 @@ export class AdminPaymentMethodsService {
     return row;
   }
 
+  /**
+   * Dirujuk payment (kontrak AdminPaymentMethod.in_use): sebagai metode asal yang tertaut (`payment_method_id`) atau
+   * sebagai snapshot rekening tujuan (`method_snapshot.id`, termasuk payment yang tautannya sudah kosong). Selama ada
+   * rujukan, identitas rekening dikunci sehingga tidak ada snapshot yang diam-diam berbeda dari rekening berlaku
+   * (AC F15-3). Metode yang sudah ditinggalkan semua payment (anggota mengganti rekening sebelum bukti, PRD 4.3) tidak
+   * lagi dirujuk snapshot mana pun.
+   */
   private async inUse(db: DbOrTx, methodId: string): Promise<boolean> {
     const [row] = await db
       .select({ id: payments.id })
       .from(payments)
-      .where(eq(payments.paymentMethodId, methodId))
+      .where(referencesMethod(sql`${methodId}::uuid`))
       .limit(1);
     return Boolean(row);
   }
@@ -230,9 +237,17 @@ export class AdminPaymentMethodsService {
       this.db
         .select({ one: sql`1` })
         .from(payments)
-        .where(eq(payments.paymentMethodId, paymentMethods.id)),
+        .where(referencesMethod(paymentMethods.id)),
     )}`.mapWith(Boolean);
   }
+}
+
+/** Payment merujuk metode lewat payment_method_id atau snapshot `method_snapshot.id`. */
+function referencesMethod(methodId: SQL | typeof paymentMethods.id): SQL {
+  return or(
+    eq(payments.paymentMethodId, methodId),
+    sql`(${payments.methodSnapshot} ->> 'id') = (${methodId})::text`,
+  )!;
 }
 
 function normalizeInstructions(value: string | null): string | null {
