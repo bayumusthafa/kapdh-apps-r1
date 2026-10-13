@@ -16,7 +16,10 @@ export const OUTBOX_TOPICS = {
   "audit.export.requested": z.object({ export_id: id, admin_id: id }).strict(),
   /** Event dibatalkan → fanout notifikasi peserta dan pelepasan tiket (F-09, job events.cancelled.fanout). */
   "event.cancelled": z.object({ event_id: id }).strict(),
-  /** Pemberitahuan keamanan ke email admin (undangan, perubahan izin, reset; AC F16-1, F16-4). */
+  /**
+   * Pemberitahuan keamanan ke email admin (undangan, perubahan izin, reset; AC F16-1, F16-4). `email_changed` dikirim ke
+   * alamat LAMA yang dibaca worker dari `before.email` entri audit `audit_id` (payload tidak memuat PII, N-14).
+   */
   "admin.security_notice": z
     .object({
       admin_id: id,
@@ -27,9 +30,18 @@ export const OUTBOX_TOPICS = {
         "role_changed",
         "mfa_reset",
         "password_changed",
+        "email_changed",
       ]),
+      audit_id: id.optional(),
     })
     .strict(),
+  /**
+   * Email undangan/pemulihan admin berisi tautan sekali pakai `/invite/<token>` (F-16, PRD 3.16). Token TIDAK pernah ada
+   * di outbox: worker membuat token baru, menyimpan hash-nya hanya bila undangan masih ronde yang sama
+   * (`invite_expires_at` sama persis; undangan baru selalu menggeser nilainya), lalu mengirim email ke alamat login
+   * yang berlaku. Event usang (undangan sudah diganti, dibatalkan, atau diterima) tidak melakukan apa pun.
+   */
+  "admin.invitation.requested": z.object({ admin_id: id, invite_expires_at: z.iso.datetime() }).strict(),
   /** Super Admin memulai pemulihan sandi alumni → notifikasi keamanan ke kanal terverifikasi (AC F16-4). */
   "member.password_reset_initiated": z.object({ user_id: id, initiated_by_admin_id: id }).strict(),
 } as const;

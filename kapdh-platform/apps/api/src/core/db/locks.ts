@@ -35,6 +35,8 @@ export const ADVISORY_LOCK_NAMESPACES = {
   fileQuota: 47_110_001,
   /** Pasangan pengguna untuk blokir vs kirim direct/undangan (AC F12-1). */
   blockPair: 47_110_002,
+  /** Satu entri terminal per ekspor audit (completed/failed), kunci = id ekspor (kontrak C7 AuditExport, AC F17-4). */
+  auditExport: 47_110_003,
 } as const;
 
 /**
