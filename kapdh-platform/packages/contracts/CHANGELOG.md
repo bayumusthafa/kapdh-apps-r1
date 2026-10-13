@@ -418,6 +418,13 @@ Perubahan hanya pada deskripsi, mencatat perilaku server yang perlu diketahui kl
   dihormati, maksimal 1 jam), paling banyak 6 percobaan, lalu `failed`; selama retry status tetap `pending` dengan
   `error_class` terakhir. `from` harus sebelum `to` (400). Urutan `updated_at_desc` dapat melewatkan/mengulang baris
   yang berubah selama penelusuran.
+  Satu percobaan provider dibatasi 60 detik dan DIBATALKAN saat batas habis (koneksi SMTP ditutup sebelum akhir
+  DATA, permintaan FCM diputus) lalu dicoba ulang; batas waktu saja tidak mencegah kiriman ganda, pembatalan itulah
+  yang mencegahnya. Email memakai Message-ID stabil per pengiriman, push memakai collapse key = id notifikasi.
+- `registerDevice` / `adminRetryNotificationDeliveries`: syarat target push (token belum dicabut dan masih milik
+  penerima) serta preferensi diperiksa ulang untuk setiap pengiriman tepat sebelum provider dipanggil, bukan hanya
+  saat klaim batch; pencabutan yang commit sebelum giliran sebuah pengiriman selalu mencegah pengiriman itu (AC
+  F13-5). Pengiriman yang diterima provider padahal dibatalkan selama percobaan berjalan dicatat `sent` apa adanya.
 - `AdminNotificationDelivery.retryable`: "akun aktif" = users.status bukan `disabled`/`deleted`.
 - `adminRetryNotificationDeliveries` / `adminRetryOutboxEvents`: batas 20 permintaan per menit per admin;
   attempt/attempts tidak direset sehingga pengiriman/event yang sudah mencapai batas mendapat satu percobaan per retry

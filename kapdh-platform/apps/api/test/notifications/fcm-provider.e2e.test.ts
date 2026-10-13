@@ -348,7 +348,12 @@ describe("FcmPushSender terhadap endpoint HTTP tiruan (FCM HTTP v1)", () => {
     await until(() => sends().length === 2, "messages:send diterima server");
     const abortedAt = Date.now();
     controller.abort(new Error("batas waktu percobaan"));
-    expect(await sending).toEqual({ ok: false, errorClass: "network", retryable: true, deactivateToken: false });
+    expect(await sending).toEqual({
+      ok: false,
+      errorClass: "network",
+      retryable: true,
+      deactivateToken: false,
+    });
     expect(Date.now() - abortedAt).toBeLessThan(2_000);
     await until(() => hanging.at(-1)!.closed, "koneksi messages:send diputus");
     // Sinyal yang sudah dibatalkan tidak mengirim permintaan sama sekali.

@@ -571,7 +571,8 @@ describe("Pesan validasi berbahasa Indonesia (ARCHITECTURE §2.9, PRD 5.2)", () 
         label: "kolom asing",
         method: "post",
         path: "/admin/notifications/deliveries/retry",
-        call: () => api().post("/admin/notifications/deliveries/retry", { delivery_ids: [id], ekstra: 1 }, auth()),
+        call: () =>
+          api().post("/admin/notifications/deliveries/retry", { delivery_ids: [id], ekstra: 1 }, auth()),
         field: "_",
         message: "Kolom tidak dikenal: ekstra",
       },
