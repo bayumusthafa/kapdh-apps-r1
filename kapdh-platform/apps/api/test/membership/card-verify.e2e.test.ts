@@ -147,6 +147,41 @@ describe("GET /me/card (F-05)", () => {
     expect(body).toMatchObject({ result: "inactive", member: null, expiring: false });
   });
 
+  it("AC F05-4, PRD 5.4: anggota suspended → avatar_url null pada kartu dan /me (bukan URL yang selalu 404); setelah unsuspend URL dapat dibuka", async () => {
+    const { fixture, token } = await member({ status: "verified" });
+    const avatar = await uploadTestFile(t, token, "avatar");
+    await t.db.update(alumni).set({ avatarFileId: avatar.id }).where(eq(alumni.userId, fixture.userId));
+    const opens = async (url: string) =>
+      (await t.app.inject({ method: "GET", url: url.slice(t.env.API_PUBLIC_URL.length) })).statusCode;
+    expect(await opens((await getCard(t, token)).avatar_url!)).toBe(200);
+
+    await suspend(fixture.userId);
+    const suspendedSession = await signInAlumni(t, fixture);
+    const card = await getCard(t, suspendedSession.accessToken);
+    expect(card).toMatchObject({ status_label: "suspended", avatar_url: null });
+    const meRes = await httpClient(t.app).get("/me", { token: suspendedSession.accessToken });
+    expect(meRes.statusCode).toBe(200);
+    const me = expectOperation("get", "/me", meRes) as {
+      effective_status: string;
+      profile: { avatar_file_id: string | null; avatar_url: string | null };
+    };
+    expect(me.effective_status).toBe("suspended");
+    // Foto tetap tersimpan (bukan dihapus); hanya URL yang tidak diterbitkan selama suspended.
+    expect(me.profile).toMatchObject({ avatar_file_id: avatar.id, avatar_url: null });
+
+    await runAsSystem(() =>
+      t.db.transaction((tx) =>
+        t.app
+          .get(MembershipKernel)
+          .unsuspend(tx, fixture.userId, { reason: "Banding diterima (uji)", actorAdminId: null }),
+      ),
+    );
+    const restored = await signInAlumni(t, fixture);
+    const restoredCard = await getCard(t, restored.accessToken);
+    expect(restoredCard.status_label).toBe("active");
+    expect(await opens(restoredCard.avatar_url!)).toBe(200);
+  });
+
   it("AC F05-5: renewal paid → nomor tetap, expires_at periode baru; token lama tunduk expiry dan status terbaru", async () => {
     const { fixture, token } = await member({ status: "expiring" });
     const old = await getCard(t, token);
@@ -444,7 +479,7 @@ describe("POST /public/kta/verify (F-06)", () => {
     expect(limited.res.statusCode).toBe(429);
     expect(limited.body).toMatchObject({ code: "RATE_LIMITED", retry_after_seconds: expect.any(Number) });
 
-    // Per nomor (hanya token bertanda tangan sah): dua token berbeda untuk nomor yang sama.
+    // Per anggota pemilik token (hanya token bertanda tangan sah): dua token berbeda untuk nomor yang sama.
     t.rateLimits.clear();
     const qrService = t.app.get(QrTokenService);
     const tokenA = qr.token;
@@ -471,6 +506,39 @@ describe("POST /public/kta/verify (F-06)", () => {
     });
     expect(ipLimited.statusCode).toBe(429);
     expectOperation("post", "/public/kta/verify", ipLimited);
+  });
+
+  it("AC F06-4: token sah milik anggota lain yang dikirim dengan nomor korban tidak menghabiskan kuota nomor korban", async () => {
+    t.rateLimits.clear();
+    const victim = await activeQr();
+    const attacker = await activeQr();
+    // Setiap GET /me/card menerbitkan token baru: dua token penyerang agar tidak tertahan kuota per token.
+    const attackerA = attacker.qr.token;
+    t.clock.advance(1000);
+    const attackerB = parseQr((await getCard(t, attacker.token)).qr!.url).token;
+    expect(attackerB).not.toBe(attackerA);
+    for (let i = 0; i < 30; i++) {
+      const { res, body } = await verifyKta(t, victim.qr.memberNumber, i % 2 === 0 ? attackerA : attackerB);
+      expect(res.statusCode).toBe(200);
+      expect(body).toMatchObject({ result: "invalid_token", member: null });
+    }
+    // Pemeriksa sah di lapangan tetap dapat memverifikasi KTA korban.
+    const genuine = await verifyKta(t, victim.qr.memberNumber, victim.qr.token);
+    expect(genuine.res.statusCode).toBe(200);
+    expect(genuine.body.result).toBe("active");
+    // Kuota yang terpakai adalah milik pemilik token (penyerang), bukan nomor di body.
+    const attackerOwn = await verifyKta(t, attacker.qr.memberNumber, attackerA);
+    expect(attackerOwn.res.statusCode).toBe(429);
+    expect(attackerOwn.body).toMatchObject({ code: "RATE_LIMITED", retry_after_seconds: expect.any(Number) });
+
+    // Satu QR korban yang difoto pihak lain: kuota per token (20) habis sebelum kuota anggota (30).
+    t.rateLimits.clear();
+    for (let i = 0; i < 20; i++)
+      expect((await verifyKta(t, victim.qr.memberNumber, victim.qr.token)).res.statusCode).toBe(200);
+    expect((await verifyKta(t, victim.qr.memberNumber, victim.qr.token)).res.statusCode).toBe(429);
+    t.clock.advance(1000);
+    const fresh = parseQr((await getCard(t, victim.token)).qr!.url);
+    expect((await verifyKta(t, fresh.memberNumber, fresh.token)).body.result).toBe("active");
   });
 
   it("AC F06-4, PRD 4.5: tetap dilayani selama maintenance; body di luar skema ditolak 400", async () => {

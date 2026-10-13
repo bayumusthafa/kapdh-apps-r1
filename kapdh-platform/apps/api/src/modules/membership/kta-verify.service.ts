@@ -21,13 +21,16 @@ const MINUTE_MS = 60_000;
 const DAY_MS = 24 * 3600_000;
 /**
  * Batas laju verifikasi (Usulan; nilai final D1). Per IP untuk semua request, per hash token untuk semua request, dan
- * per nomor anggota HANYA untuk token bertanda tangan sah (kontrak verifyKta), sehingga token sampah untuk nomor yang
- * ditebak tidak pernah menghabiskan kuota nomor itu dan pemeriksa sah tidak ikut diblokir (F-06, AC F06-4).
+ * per anggota HANYA untuk token bertanda tangan sah (kontrak verifyKta). Kuota anggota dikunci pada anggota PEMILIK
+ * token (klaim `sub`, nomor yang terikat pada token), bukan pada `member_number` di body: token sampah untuk nomor
+ * yang ditebak, maupun token sah milik anggota lain yang dikirim dengan nomor korban, tidak pernah menghabiskan kuota
+ * nomor korban sehingga pemeriksa sah di lapangan tidak ikut diblokir (F-06, AC F06-4). perToken < perMember: satu QR
+ * yang difoto pihak lain tidak cukup untuk menghabiskan kuota pemiliknya.
  */
 export const KTA_VERIFY_LIMITS = {
   perIp: { limit: 60, windowMs: MINUTE_MS },
   perToken: { limit: 20, windowMs: MINUTE_MS },
-  perNumber: { limit: 30, windowMs: MINUTE_MS },
+  perMember: { limit: 30, windowMs: MINUTE_MS },
 } as const;
 /** Identitas pada hasil `expired` dari token lewat exp hanya bila exp paling lama 30 hari sebelum checked_at (C2). */
 export const EXPIRED_IDENTITY_WINDOW_MS = 30 * DAY_MS;
@@ -82,10 +85,11 @@ export class KtaVerifyService {
     // Langkah 1: tanpa membaca data anggota sehingga keberadaan nomor tidak dapat ditebak (AC F06-3).
     const claims = await this.qr.inspect(input.token);
     if (!claims) return result("invalid_token");
+    // Kuota anggota pemilik token (sub stabil walau nomor dikoreksi, AC F05-6), tidak pernah nomor dari body (AC F06-4).
     await this.limits.consumeOrThrow(
-      `kta-verify-number:${input.member_number}`,
-      KTA_VERIFY_LIMITS.perNumber.limit,
-      KTA_VERIFY_LIMITS.perNumber.windowMs,
+      `kta-verify-member:${claims.userId}`,
+      KTA_VERIFY_LIMITS.perMember.limit,
+      KTA_VERIFY_LIMITS.perMember.windowMs,
       RATE_LIMIT_MESSAGE,
     );
 
