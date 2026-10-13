@@ -18,16 +18,23 @@ import { eventKeys } from "./api";
 
 type Category = components["schemas"]["AdminContentCategory"];
 
+/** Batas kontrak AdminContentCategoryCreateRequest/UpdateRequest (admin-content). */
+const LABEL_MAX = 80;
+const SLUG_MAX = 80;
+const SORT_ORDER_MAX = 32_767;
+/** Ukuran halaman daftar kategori di panel (kontrak Limit maks 100); kategori event jumlahnya kecil. */
+const CATEGORY_PAGE_LIMIT = 100;
+
 const schema = z.object({
   label: z
     .string()
     .trim()
     .min(1, "Nama kategori wajib diisi.")
-    .max(60, "Nama kategori maksimal 60 karakter."),
+    .max(LABEL_MAX, `Nama kategori maksimal ${LABEL_MAX} karakter.`),
   slug: z
     .string()
     .trim()
-    .max(60, "Slug maksimal 60 karakter.")
+    .max(SLUG_MAX, `Slug maksimal ${SLUG_MAX} karakter.`)
     .refine(
       (v) => v === "" || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v),
       "Slug hanya huruf kecil, angka dan tanda hubung.",
@@ -35,7 +42,8 @@ const schema = z.object({
   sort_order: z
     .string()
     .trim()
-    .regex(/^-?\d+$/, "Urutan harus bilangan bulat."),
+    .regex(/^\d+$/, "Urutan harus bilangan bulat 0 atau lebih.")
+    .refine((v) => Number(v) <= SORT_ORDER_MAX, `Urutan maksimal ${SORT_ORDER_MAX.toLocaleString("id-ID")}.`),
 });
 type Values = z.infer<typeof schema>;
 
@@ -65,13 +73,13 @@ function CategoryForm({
         <FormError message={form.formState.errors.root?.server?.message} />
         <FormField<Values, "label"> name="label" label="Nama kategori" required>
           {(field, a11y) => (
-            <Input {...a11y} {...field} maxLength={60} autoComplete="off" disabled={pending} />
+            <Input {...a11y} {...field} maxLength={LABEL_MAX} autoComplete="off" disabled={pending} />
           )}
         </FormField>
         <div className="grid grid-cols-[1fr_7rem] gap-3">
           <FormField<Values, "slug"> name="slug" label="Slug" hint="Kosongkan agar dibuat dari nama.">
             {(field, a11y) => (
-              <Input {...a11y} {...field} maxLength={60} autoComplete="off" disabled={pending} />
+              <Input {...a11y} {...field} maxLength={SLUG_MAX} autoComplete="off" disabled={pending} />
             )}
           </FormField>
           <FormField<Values, "sort_order"> name="sort_order" label="Urutan">
@@ -104,10 +112,14 @@ export function EventCategoriesSheet({ open, onClose }: { open: boolean; onClose
   const [editing, setEditing] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Category | null>(null);
   const list = useApiQuery({
-    queryKey: eventKeys.managedCategories({ limit: 100 }),
+    queryKey: eventKeys.managedCategories({ limit: CATEGORY_PAGE_LIMIT }),
     enabled: open,
     request: ({ signal, headers }) =>
-      api.GET("/admin/content/event-categories", { params: { query: { limit: 100 } }, signal, headers }),
+      api.GET("/admin/content/event-categories", {
+        params: { query: { limit: CATEGORY_PAGE_LIMIT } },
+        signal,
+        headers,
+      }),
   });
   const createForm = useForm<Values>({
     resolver: zodResolver(schema),
@@ -291,6 +303,11 @@ export function EventCategoriesSheet({ open, onClose }: { open: boolean; onClose
               ))}
             </ul>
           )}
+          {list.data && list.data.total > items.length ? (
+            <p className="text-xs text-text-muted">
+              Menampilkan {items.length} dari {list.data.total} kategori, urut sesuai urutan tampil.
+            </p>
+          ) : null}
         </section>
       </Sheet>
       <ConfirmDialog

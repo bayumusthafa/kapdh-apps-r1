@@ -27,7 +27,7 @@ function rowOf(table: HTMLElement, name: string | RegExp): HTMLElement {
 }
 
 describe("tabel Event dan Tiket (guideline p14, F-15; server tiruan)", () => {
-  it("menampilkan kolom guideline p14, kategori, periode daftar dan sisa tiket menurut proyeksi kursi", async () => {
+  it("F-15 (guideline p14): menampilkan kolom, kategori, periode daftar dan sisa tiket menurut proyeksi kursi", async () => {
     const user = userEvent.setup();
     await open(user, "/events", "Event dan Tiket");
     const table = await screen.findByRole("table", { name: "Daftar event" });
@@ -100,7 +100,7 @@ describe("tabel Event dan Tiket (guideline p14, F-15; server tiruan)", () => {
     expect(requests("DELETE", `/admin/events/${MOCK_EVENT_IDS.mancing}`)[0]?.ifMatch).toBe("1");
   });
 
-  it("pencarian (debounce), filter status dan kategori serta urutan dikirim ke server", async () => {
+  it("F-15: pencarian (debounce), filter status dan kategori serta urutan dikirim ke server", async () => {
     const user = userEvent.setup();
     await open(user, "/events", "Event dan Tiket");
     await screen.findByText("Menampilkan 6 dari 6");
@@ -135,7 +135,7 @@ describe("tabel Event dan Tiket (guideline p14, F-15; server tiruan)", () => {
 });
 
 describe("buat event (F-15, kontrak adminCreateEvent)", () => {
-  it("validasi klien, unggah cover, zona waktu event, lalu tersimpan sebagai draf dan membuka detail", async () => {
+  it("F-15, N-10, PRD 2.1: validasi klien, unggah cover, zona waktu event, lalu tersimpan sebagai draf dan membuka detail", async () => {
     const user = userEvent.setup();
     await open(user, "/events/new", "Buat Event Baru");
     await user.click(screen.getByRole("button", { name: "Simpan sebagai draf" }));
@@ -212,7 +212,7 @@ describe("buat event (F-15, kontrak adminCreateEvent)", () => {
 });
 
 describe("detail event (F-09, F-15)", () => {
-  it("ringkasan memakai zona event, jendela check-in bawaan D5, kursi dan statistik pendapatan", async () => {
+  it("F-09, D5: ringkasan memakai zona event, jendela check-in bawaan D5, kursi dan statistik pendapatan", async () => {
     const user = userEvent.setup();
     await open(user, `/events/${MOCK_EVENT_IDS.reuni}`, REUNI);
     expect(screen.getByText("Bawaan D5")).toBeInTheDocument();
@@ -225,7 +225,16 @@ describe("detail event (F-09, F-15)", () => {
     expect(screen.getByRole("tab", { name: /Peserta & Tiket/ })).toBeInTheDocument();
   });
 
-  it("terbitkan draf dengan konfirmasi, If-Match dan Idempotency-Key; status baru tampil", async () => {
+  it("AC F09-6: tautan pemindai dari detail event membuka check-in dengan event tersebut terpilih", async () => {
+    const user = userEvent.setup();
+    await open(user, `/events/${MOCK_EVENT_IDS.reuni}`, REUNI);
+    await user.click(await screen.findByRole("link", { name: "Buka pemindai check-in" }));
+    await screen.findByRole("heading", { level: 1, name: "Check-in Tiket" }, { timeout: 5_000 });
+    expect(await screen.findByRole("radio", { name: new RegExp(REUNI) })).toBeChecked();
+    await waitFor(() => expect(screen.getByLabelText(/^Kode tiket/)).toHaveFocus());
+  });
+
+  it("PRD 4.4, 4.5: terbitkan draf dengan konfirmasi, If-Match dan Idempotency-Key; status baru tampil", async () => {
     const user = userEvent.setup();
     await open(user, `/events/${MOCK_EVENT_IDS.mancing}`, MANCING);
     await user.click(screen.getByRole("button", { name: "Terbitkan" }));
@@ -360,7 +369,7 @@ describe("detail event (F-09, F-15)", () => {
 });
 
 describe("peserta dan tiket (F-09)", () => {
-  it("menampilkan status tiket, penunjuk pembayaran, batas review, check-in beserta petugas, dan pemegang anonim (AC F14-4)", async () => {
+  it("F-09, AC F09-5, AC F14-4: menampilkan status tiket, penunjuk pembayaran, batas review, check-in beserta petugas, dan pemegang anonim", async () => {
     const user = userEvent.setup();
     await open(user, `/events/${MOCK_EVENT_IDS.reuni}?tab=tickets`, REUNI);
     const table = await screen.findByRole("table", { name: "Peserta dan tiket" });
@@ -455,7 +464,7 @@ describe("peserta dan tiket (F-09)", () => {
 });
 
 describe("Manajemen Kategori event (guideline p14, izin events.manage)", () => {
-  it("menambah, menonaktifkan dan menghapus kategori event yang belum dipakai", async () => {
+  it("AC F15-1 (guideline p14): pengurus event menambah, menonaktifkan dan menghapus kategori event yang belum dipakai", async () => {
     mockAuth.setAdmin({ role: "admin", permissions: ["events.manage"] });
     const user = userEvent.setup();
     await open(user, "/events", "Event dan Tiket");
@@ -463,8 +472,25 @@ describe("Manajemen Kategori event (guideline p14, izin events.manage)", () => {
     const sheet = await screen.findByRole("dialog", { name: "Manajemen Kategori Event" });
     await within(sheet).findByRole("heading", { name: /Kategori event \(\d+\)/ });
     await user.type(within(sheet).getByLabelText(/^Nama kategori/), "Bakti Sosial");
+    // Batas kontrak AdminContentCategoryCreateRequest: urutan 0..32767.
+    const order = within(sheet).getByLabelText(/^Urutan/);
+    await user.clear(order);
+    await user.type(order, "-1");
+    await user.click(within(sheet).getByRole("button", { name: "Tambah kategori" }));
+    expect(await within(sheet).findByText("Urutan harus bilangan bulat 0 atau lebih.")).toBeInTheDocument();
+    expect(eventRequests.some((r) => r.method === "POST" && r.path === "/admin/content/event-categories")).toBe(
+      false,
+    );
+    await user.clear(order);
+    await user.type(order, "6");
     await user.click(within(sheet).getByRole("button", { name: "Tambah kategori" }));
     await findToast("success", 'Kategori "Bakti Sosial" ditambahkan.');
+    const created = eventRequests.find(
+      (r) => r.method === "POST" && r.path === "/admin/content/event-categories",
+    )!;
+    // Slug kosong tidak dikirim (dibangkitkan server dari label).
+    expect(created.body).toEqual({ label: "Bakti Sosial", sort_order: 6, active: true });
+    expect(created.idempotencyKey).toBeTruthy();
     const item = (await within(sheet).findByText("Bakti Sosial")).closest("li")!;
     expect(within(item).getByText(/dipakai 0 event/)).toBeInTheDocument();
     await user.click(within(item).getByRole("switch", { name: /Tampil untuk event baru/ }));
@@ -494,7 +520,7 @@ describe("Manajemen Kategori event (guideline p14, izin events.manage)", () => {
 });
 
 describe("keadaan layar detail event (PRD 4.5)", () => {
-  it("event yang tidak ada menampilkan Data tidak ditemukan", async () => {
+  it("PRD 4.5: event yang tidak ada menampilkan Data tidak ditemukan", async () => {
     const user = userEvent.setup();
     renderApp("/events/0199e100-0000-7000-8000-0000000000ff");
     await signIn(user);
@@ -503,7 +529,7 @@ describe("keadaan layar detail event (PRD 4.5)", () => {
     expect(screen.getByText("Event tidak ditemukan.")).toBeInTheDocument();
   });
 
-  it("event tanpa tiket menampilkan keadaan kosong peserta; event selesai tidak dapat diubah", async () => {
+  it("PRD 4.5, AC F15-2: event tanpa tiket menampilkan keadaan kosong peserta; event selesai tidak dapat diubah", async () => {
     const user = userEvent.setup();
     await open(user, `/events/${MOCK_EVENT_IDS.mancing}?tab=tickets`, MANCING);
     expect(await screen.findByText("Belum ada peserta")).toBeInTheDocument();

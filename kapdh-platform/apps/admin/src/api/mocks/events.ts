@@ -1241,7 +1241,7 @@ function slugify(label: string): string {
     .normalize("NFKD")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
+    .slice(0, 80);
 }
 
 function validateCategoryBody(
@@ -1250,18 +1250,25 @@ function validateCategoryBody(
   selfId?: string,
 ): FieldErrors {
   const errors: FieldErrors = {};
+  // Batas kontrak AdminContentCategoryCreateRequest/UpdateRequest (admin-content).
   if (creating || "label" in body) {
     const l = body.label;
     if (typeof l !== "string" || l.trim().length === 0) push(errors, "label", "Nama kategori wajib diisi.");
-    else if (l.trim().length > 60) push(errors, "label", "Nama kategori maksimal 60 karakter.");
+    else if (l.trim().length > 80) push(errors, "label", "Nama kategori maksimal 80 karakter.");
   }
   if ("slug" in body && body.slug !== undefined) {
     const s = body.slug;
-    if (typeof s !== "string" || (s !== "" && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s)))
-      push(errors, "slug", "Slug hanya huruf kecil, angka dan tanda hubung.");
+    if (typeof s !== "string" || s.length > 80 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s))
+      push(errors, "slug", "Slug hanya huruf kecil, angka dan tanda hubung (maksimal 80 karakter).");
   }
-  if ("sort_order" in body && (typeof body.sort_order !== "number" || !Number.isInteger(body.sort_order)))
-    push(errors, "sort_order", "Urutan harus bilangan bulat.");
+  if (
+    "sort_order" in body &&
+    (typeof body.sort_order !== "number" ||
+      !Number.isInteger(body.sort_order) ||
+      body.sort_order < 0 ||
+      body.sort_order > 32_767)
+  )
+    push(errors, "sort_order", "Urutan harus bilangan bulat 0 sampai 32.767.");
   if ("active" in body && typeof body.active !== "boolean") push(errors, "active", "Nilai tidak valid.");
   if (Object.keys(errors).length === 0) {
     const slug =

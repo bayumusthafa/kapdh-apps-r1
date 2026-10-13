@@ -196,7 +196,7 @@ describe("check-in tiket (AC F09-5, F09-6; server tiruan)", () => {
     expect(within(resultCard()).getByText(/informasi refund/)).toBeInTheDocument();
   });
 
-  it("QR yang bukan tiket KAPDH ditolak dengan petunjuk QR tiket vs QR KTA", async () => {
+  it("AC F09-6: QR yang bukan tiket KAPDH ditolak dengan petunjuk QR tiket vs QR KTA", async () => {
     const user = userEvent.setup();
     const input = await openScanner(user);
     await scan(user, input, "https://kapdh.or.id/kta/29.01.02.15#t=abc");
@@ -205,7 +205,7 @@ describe("check-in tiket (AC F09-5, F09-6; server tiruan)", () => {
     expect(within(resultCard()).getByText(/bukan QR KTA/)).toBeInTheDocument();
   });
 
-  it("isian kosong tidak dikirim dan galatnya terbaca di isian", async () => {
+  it("N-11: isian kosong tidak dikirim dan galatnya terbaca di isian", async () => {
     const user = userEvent.setup();
     const input = await openScanner(user);
     await user.type(input, "   {Enter}");
@@ -231,7 +231,39 @@ describe("check-in tiket (AC F09-5, F09-6; server tiruan)", () => {
     expect(screen.getByText("Hadir 2 dari 6 tiket lunas")).toBeInTheDocument();
   });
 
-  it("kamera: hasil decode @zxing/browser dikirim sebagai check-in; QR yang sama berturut-turut diabaikan", async () => {
+  it("PRD 4.3: hasil kamera yang statusnya belum diketahui dipasang di isian; kirim ulang memakai key yang sama", async () => {
+    const user = userEvent.setup();
+    const input = await openScanner(user);
+    await user.click(screen.getByRole("button", { name: "Nyalakan kamera" }));
+    await waitFor(() => expect(zxing.callback).not.toBeNull());
+    mockEvents.failCheckins(1);
+    await act(async () => {
+      zxing.callback!({ getText: () => MOCK_TICKET_QR.paid2 });
+    });
+    await waitFor(() => expect(resultCard()).toHaveAttribute("data-result", "unknown"));
+    expect(input).toHaveValue(MOCK_TICKET_QR.paid2);
+    await user.click(screen.getByRole("button", { name: "Check-in" }));
+    await waitFor(() => expect(resultCard()).toHaveAttribute("data-result", "success"));
+    const posts = checkinPosts();
+    expect(posts).toHaveLength(2);
+    expect(posts[1]!.idempotencyKey).toBe(posts[0]!.idempotencyKey);
+    expect(input).toHaveValue("");
+  });
+
+  it("AC F09-6: event dari tautan (?event=) langsung terpilih; event di luar 24 jam dijelaskan dan dapat diganti", async () => {
+    const user = userEvent.setup();
+    renderApp(`/events/checkin?event=${MOCK_EVENT_IDS.seminar}`);
+    await signIn(user);
+    expect(
+      await screen.findByText(/belum atau tidak lagi tersedia untuk check-in/, {}, { timeout: 5_000 }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Kode tiket/)).toBeNull();
+    await user.click(screen.getByRole("radio", { name: /Kajian Subuh Bersama/ }));
+    expect(await screen.findByLabelText(/^Kode tiket/)).toBeInTheDocument();
+    expect(screen.queryByText(/belum atau tidak lagi tersedia untuk check-in/)).toBeNull();
+  });
+
+  it("AC F09-5: kamera: hasil decode @zxing/browser dikirim sebagai check-in; QR yang sama berturut-turut diabaikan", async () => {
     const user = userEvent.setup();
     await openScanner(user);
     await user.click(screen.getByRole("button", { name: "Nyalakan kamera" }));
@@ -251,7 +283,7 @@ describe("check-in tiket (AC F09-5, F09-6; server tiruan)", () => {
     expect(zxing.stop).toHaveBeenCalled();
   });
 
-  it("kamera ditolak: pesan yang dapat ditindaklanjuti dan input manual tetap tersedia", async () => {
+  it("PRD 4.5: kamera ditolak: pesan yang dapat ditindaklanjuti dan input manual tetap tersedia", async () => {
     const user = userEvent.setup();
     zxing.fail = Object.assign(new Error("denied"), { name: "NotAllowedError" });
     const input = await openScanner(user);
@@ -274,7 +306,7 @@ describe("check-in tiket (AC F09-5, F09-6; server tiruan)", () => {
     await waitFor(() => expect(resultCard()).toHaveAttribute("data-result", "success"));
   });
 
-  it("tidak ada event dalam 24 jam: keadaan kosong dijelaskan", async () => {
+  it("D5: tidak ada event dalam 24 jam: keadaan kosong dijelaskan", async () => {
     mockEvents.cancelElsewhere(MOCK_EVENT_IDS.reuni);
     mockEvents.cancelElsewhere(MOCK_EVENT_IDS.kajian);
     const user = userEvent.setup();
