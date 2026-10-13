@@ -30,31 +30,49 @@ export function scrubEvidenceOf(evidence: StoredEvidence, userId: string): Store
 
 /**
  * Langkah penghapusan akun (F-14, dipanggil job penghapusan akun modul account di transaksinya, juga di worker;
- * fungsi biasa tanpa DI): membersihkan snapshot bukti setiap laporan yang memuat profil atau pesan `userId`.
+ * fungsi biasa tanpa DI): membersihkan setiap laporan yang masih memuat data pribadi `userId`:
+ * - snapshot bukti yang memuat profil atau pesan `userId` (scrubEvidenceOf);
+ * - `description` laporan yang DITULIS `userId` (penjelasan pelapor, atau alasan banding karena pemohon banding adalah
+ *   pelapornya) dikosongkan: teks bebas itu dapat berisi nama, telepon, atau alamat penulisnya (D2: laporan hanya
+ *   dipertahankan dalam bentuk anonim).
+ * Catatan internal pengurus (resolution_note), pesan pengurus kepada anggota (member_message) dan snapshot suspend
+ * yang dibanding ditulis pengurus sebagai catatan keputusan organisasi sehingga tetap disimpan; keterkaitannya ke
+ * identitas hilang karena tampilan moderasi tidak lagi memuat nama/foto akun yang dihapus (parties.loadPeople).
+ *
  * Baris laporan dikunci FOR UPDATE berurutan id lalu diperbarui di transaksi pemanggil; versi laporan tidak naik
  * karena bukan keputusan moderasi (If-Match pengurus tetap berlaku). Idempoten: pemanggilan ulang (retry steps_done,
  * AC F14-2) tidak menemukan apa pun lagi. Mengembalikan jumlah laporan yang dibersihkan.
  */
 export async function anonymizeEvidenceOf(tx: Tx, userId: string, now: Date): Promise<number> {
   const found = await tx
-    .select({ id: reports.id, evidence: reports.evidence, createdAt: reports.createdAt })
+    .select({
+      id: reports.id,
+      evidence: reports.evidence,
+      reporterId: reports.reporterId,
+      createdAt: reports.createdAt,
+    })
     .from(reports)
     .where(
-      // Snapshot profil yang masih berisi identitas, atau pesan yang masih menyebut userId sebagai pengirim.
+      // Snapshot profil yang masih berisi identitas, pesan yang masih menyebut userId sebagai pengirim, atau
+      // deskripsi tulisan userId yang belum dikosongkan.
       sql`((${reports.evidence} -> 'profile' ->> 'user_id') = ${userId}
           and coalesce(
             ${reports.evidence} -> 'profile' ->> 'full_name',
             ${reports.evidence} -> 'profile' ->> 'bio',
             ${reports.evidence} -> 'profile' ->> 'avatar_file_id'
           ) is not null)
-        or (${reports.evidence} -> 'messages') @> jsonb_build_array(jsonb_build_object('sender_user_id', ${userId}::text))`,
+        or (${reports.evidence} -> 'messages') @> jsonb_build_array(jsonb_build_object('sender_user_id', ${userId}::text))
+        or (${reports.reporterId} = ${userId} and ${reports.description} is not null)`,
     )
     .orderBy(asc(reports.id))
     .for("update");
   for (const row of found) {
     // Bukti yang tidak dapat dibaca (data rusak) diganti bukti kosong: lebih aman daripada menahan data pribadi (D2).
     const evidence = scrubEvidenceOf(parseEvidence(row.evidence, row.createdAt), userId);
-    await tx.update(reports).set({ evidence, updatedAt: now }).where(eq(reports.id, row.id));
+    await tx
+      .update(reports)
+      .set({ evidence, ...(row.reporterId === userId ? { description: null } : {}), updatedAt: now })
+      .where(eq(reports.id, row.id));
   }
   return found.length;
 }
