@@ -2,7 +2,7 @@ import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
 import { alumni, events, payments, tickets, users } from "@kapdh/database";
 import { and, asc, eq, gt, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { AuditService } from "../../core/audit/audit.service.js";
-import type { Db } from "../../core/db/types.js";
+import type { Db, Tx } from "../../core/db/types.js";
 import { JobRegistry } from "../../core/jobs/job-registry.js";
 import { DB } from "../../core/tokens.js";
 import { toCents } from "../payments/money.js";
@@ -17,6 +17,9 @@ export const EVENTS_REMINDERS_EVERY_MS = 15 * 60_000;
 
 /** Batas event per putaran job agar satu eksekusi tetap singkat; sisanya diproses putaran berikutnya. */
 const BATCH = 200;
+
+/** Pemegang tiket per transaksi pengingat (kunci event FOR SHARE dipegang singkat). */
+const REMINDER_CHUNK = 500;
 
 /**
  * Job modul events (ARCHITECTURE §4.8), semuanya idempoten karena memakai UPDATE bersyarat dan kunci dedup:
@@ -146,11 +149,17 @@ export class EventsJobsService implements OnModuleInit {
    * Pengingat H-3/H-1 (AC F13-6) untuk pemegang tiket paid yang akunnya aktif dan tidak suspended (PRD 2.2: tiket
    * anggota expired tetap berlaku). Event cancelled/done/draft tidak diingatkan. Kunci dedup per pengguna memuat
    * jenis pengingat dan jadwal mulai saat ini.
+   *
+   * Kandidat dibaca tanpa kunci; setiap potongan pemegang lalu diproses dalam SATU transaksi yang lebih dahulu
+   * mengunci baris event `FOR SHARE` (tingkat 1 urutan kunci global). Pembatalan/perubahan event, pembatalan tiket
+   * dan keputusan pembayaran mengunci event `FOR UPDATE`, sehingga keduanya berurutan: sesudah kunci didapat status,
+   * jadwal dan jenis pengingat dihitung ulang dari baris terkini, dan pemegang dibaca ulang. Pengingat untuk jadwal
+   * usang, event yang baru dibatalkan, atau tiket yang baru dibatalkan tidak pernah ditulis (AC F13-6).
    */
   async sendReminders(now: Date): Promise<number> {
     const horizon = new Date(now.getTime() + 3 * 24 * 3600_000);
     const upcoming = await this.db
-      .select()
+      .select({ id: events.id })
       .from(events)
       .where(
         and(
@@ -162,41 +171,66 @@ export class EventsJobsService implements OnModuleInit {
       .orderBy(asc(events.startsAt), asc(events.id))
       .limit(BATCH);
     let sent = 0;
-    for (const event of upcoming) {
-      const kind = reminderDue(event.startsAt, now);
-      if (!kind) continue;
-      const holders = await this.db
-        .select({ ticketId: tickets.id, userId: tickets.userId })
-        .from(tickets)
-        .innerJoin(users, eq(users.id, tickets.userId))
-        .innerJoin(alumni, eq(alumni.userId, tickets.userId))
-        .where(
-          and(
-            eq(tickets.eventId, event.id),
-            eq(tickets.status, "paid"),
-            eq(users.status, "active"),
-            isNull(alumni.suspendedAt),
-          ),
-        )
-        .orderBy(asc(tickets.id));
-      const when = formatEventDateTime(event.startsAt, event.timezone);
-      const place = event.locationName ? ` di ${event.locationName}` : "";
-      for (const holder of holders) {
-        await this.db.transaction((tx) =>
-          this.ledger.notifyHolder(
-            tx,
-            { id: holder.ticketId, userId: holder.userId, eventId: event.id },
-            {
-              dedupKey: reminderDedupKey(event.id, kind, event.startsAt),
-              title: kind === "h1" ? `Segera dimulai: ${event.title}` : `${event.title} tinggal 3 hari lagi`,
-              body: `Acara dimulai ${when}${place}. Siapkan QR tiket Anda untuk check-in.`,
-            },
-          ),
-        );
-        sent += 1;
+    for (const { id } of upcoming) {
+      let afterTicketId: string | null = null;
+      for (;;) {
+        const chunk = await this.db.transaction((tx) => this.remindChunk(tx, id, now, afterTicketId));
+        sent += chunk.sent;
+        if (chunk.lastTicketId === null) break;
+        afterTicketId = chunk.lastTicketId;
       }
     }
     return sent;
+  }
+
+  /**
+   * Satu potongan pengingat event dengan baris event terkunci FOR SHARE. `lastTicketId` null = tidak ada potongan
+   * berikutnya (event tidak lagi layak diingatkan, atau pemegang sudah habis).
+   */
+  private async remindChunk(
+    tx: Tx,
+    eventId: string,
+    now: Date,
+    afterTicketId: string | null,
+  ): Promise<{ sent: number; lastTicketId: string | null }> {
+    const [event] = await tx.select().from(events).where(eq(events.id, eventId)).for("share");
+    if (!event || (event.status !== "open" && event.status !== "closed"))
+      return { sent: 0, lastTicketId: null };
+    const kind = reminderDue(event.startsAt, now);
+    if (!kind) return { sent: 0, lastTicketId: null };
+    const holders = await tx
+      .select({ ticketId: tickets.id, userId: tickets.userId })
+      .from(tickets)
+      .innerJoin(users, eq(users.id, tickets.userId))
+      .innerJoin(alumni, eq(alumni.userId, tickets.userId))
+      .where(
+        and(
+          eq(tickets.eventId, event.id),
+          eq(tickets.status, "paid"),
+          eq(users.status, "active"),
+          isNull(alumni.suspendedAt),
+          afterTicketId ? gt(tickets.id, afterTicketId) : undefined,
+        ),
+      )
+      .orderBy(asc(tickets.id))
+      .limit(REMINDER_CHUNK);
+    const when = formatEventDateTime(event.startsAt, event.timezone);
+    const place = event.locationName ? ` di ${event.locationName}` : "";
+    for (const holder of holders)
+      await this.ledger.notifyHolder(
+        tx,
+        { id: holder.ticketId, userId: holder.userId, eventId: event.id },
+        {
+          dedupKey: reminderDedupKey(event.id, kind, event.startsAt),
+          title: kind === "h1" ? `Segera dimulai: ${event.title}` : `${event.title} tinggal 3 hari lagi`,
+          body: `Acara dimulai ${when}${place}. Siapkan QR tiket Anda untuk check-in.`,
+        },
+      );
+    const last = holders.at(-1);
+    return {
+      sent: holders.length,
+      lastTicketId: holders.length === REMINDER_CHUNK && last ? last.ticketId : null,
+    };
   }
 
   /**

@@ -233,6 +233,7 @@ describe("AC F09-2: job kedaluwarsa bersaing dengan kiriman bukti sesudah batas 
     );
     expect(observed, "job dan kiriman bukti menunggu kunci event").toBe(true);
     const submitted = results[1]!;
+    expect(submitted!.statusCode, submitted!.body).toBe(409);
     expect(submitted!.json()).toMatchObject({ code: "RESERVATION_EXPIRED" });
     const [event] = await sql<
       { held_quantity: number }[]
@@ -355,5 +356,68 @@ describe("PRD 6.4: urutan kunci event → tiket → payment (PostgreSQL 17)", ()
     const [event] = await sql<{ held_quantity: number; paid_quantity: number }[]>`
       select held_quantity, paid_quantity from app.events where id = ${eventId}`;
     expect(event).toEqual({ held_quantity: 0, paid_quantity: 0 });
+  });
+
+  it("pembatalan event mengunci SEMUA tiket aktif (termasuk hold kedaluwarsa) sebelum payment mana pun: selama menunggu kunci tiket, payment hold kedaluwarsa belum terkunci", async () => {
+    const eventId = await insertEvent({ seats: 5 });
+    const methodId = (await createPaymentMethod(fx)).id;
+    const reserveAs = async () => {
+      const owner = await member();
+      const res = await http().post(
+        `/events/${eventId}/reservations`,
+        { expected_price: "75000.00", payment_method_id: methodId },
+        { token: owner.token },
+      );
+      expect(res.statusCode, res.body).toBe(201);
+      return res.json();
+    };
+    const lapsed = await reserveAs();
+    clock.advance(13 * HOUR);
+    const active = await reserveAs();
+    clock.advance(12 * HOUR); // hold pertama lewat (25 jam), hold kedua masih berjalan (12 jam)
+    const manager = await admin(["events.manage"]);
+    const running: { cancel?: ReturnType<ReturnType<typeof http>["post"]> } = {};
+    let observed = false;
+    let lapsedPaymentFree = false;
+    await sql.begin(async (tx) => {
+      // Penahan memegang tiket hold yang masih berjalan; pembatalan event harus menunggu di tingkat tiket.
+      await tx`select id from app.tickets where id = ${active.id} for update`;
+      running.cancel = http().post(
+        `/admin/events/${eventId}/cancel`,
+        { reason: "Gedung tidak tersedia" },
+        { token: manager.token, headers: { "if-match": "1" } },
+      );
+      observed = await waitForLockWaiters(1);
+      lapsedPaymentFree = await probe`
+        select id from app.payments where id = ${lapsed.payment.id} for update nowait`.then(
+        () => true,
+        (error: { code?: string }) => {
+          if (error.code === "55P03") return false;
+          throw error;
+        },
+      );
+    });
+    expect(observed, "pembatalan event menunggu kunci tiket").toBe(true);
+    expect(lapsedPaymentFree, "payment tidak boleh terkunci sebelum semua tiket terkunci (PRD 6.4)").toBe(true);
+    const res = await running.cancel!;
+    expect(res.statusCode, res.body).toBe(200);
+    expect(res.json()).toMatchObject({ tickets_cancelled: 1, payments_cancelled: 1 });
+    const statuses = await sql<{ id: string; status: string }[]>`
+      select id, status from app.tickets where event_id = ${eventId} order by id`;
+    expect(statuses).toEqual([
+      { id: lapsed.id, status: "expired" },
+      { id: active.id, status: "cancelled" },
+    ]);
+    const payments = await sql<{ id: string; status: string; cancel_reason: string }[]>`
+      select id, status, cancel_reason from app.payments
+      where id = ${lapsed.payment.id} or id = ${active.payment.id} order by id`;
+    expect(payments).toEqual([
+      { id: lapsed.payment.id, status: "cancelled", cancel_reason: "Batas reservasi habis" },
+      { id: active.payment.id, status: "cancelled", cancel_reason: "Event dibatalkan: Gedung tidak tersedia" },
+    ]);
+    const [event] = await sql<{ held_quantity: number; paid_quantity: number }[]>`
+      select held_quantity, paid_quantity from app.events where id = ${eventId}`;
+    expect(event).toEqual({ held_quantity: 0, paid_quantity: 0 });
+    clock.advance(-25 * HOUR);
   });
 });

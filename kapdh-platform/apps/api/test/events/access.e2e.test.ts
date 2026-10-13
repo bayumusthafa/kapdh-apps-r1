@@ -4,7 +4,14 @@ import { accessMismatches, spec } from "../support/contract.js";
 import { httpClient } from "../support/http.js";
 import { routeAccessList } from "../support/routes.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import { adminSession, createEventRow, memberSession } from "./support.js";
+import {
+  adminSession,
+  createEventRow,
+  eventRow,
+  insertTicket,
+  memberSession,
+  ticketRow,
+} from "./support.js";
 
 /**
  * Deklarasi akses modul events (ARCHITECTURE §4.3): setiap operasi kontrak domain `events` dan `admin-events` memiliki
@@ -34,7 +41,7 @@ function contractOperations(): [string, string][] {
 }
 
 describe("ARCHITECTURE §4.3: dekorator controller events = x-kapdh-access kontrak", () => {
-  it("setiap operasi events.yaml dan admin-events.yaml diimplementasikan dengan dekorator yang sama persis", () => {
+  it("ARCHITECTURE §4.3, AC F15-1: setiap operasi events.yaml dan admin-events.yaml diimplementasikan dengan dekorator yang sama persis", () => {
     const operations = contractOperations();
     expect(operations).toHaveLength(22);
     const routes = routeAccessList(t.app).filter((route) =>
@@ -91,7 +98,7 @@ describe("ARCHITECTURE §4.3: dekorator controller events = x-kapdh-access kontr
     },
   );
 
-  it("tanpa token setiap operasi event ditolak 401 UNAUTHENTICATED", async () => {
+  it("AC F15-1, PRD 2.3: tanpa token setiap operasi event ditolak 401 UNAUTHENTICATED", async () => {
     for (const [method, path] of contractOperations()) {
       const url = `/api/v1${path.replace(/\{[^}]+\}/g, uuidv7())}`;
       const res = await t.app.inject({
@@ -130,7 +137,7 @@ describe("Otorisasi negatif (PRD 2.2, 2.3; AC F15-1)", () => {
       expect(res.json().code).toBe("ACCOUNT_SUSPENDED");
   });
 
-  it("PRD 2.3: sesi anggota ditolak di API pengurus; pengurus tanpa izin events.manage/events.checkin 403", async () => {
+  it("AC F15-1, PRD 2.3: sesi anggota ditolak di API pengurus; pengurus tanpa izin events.manage/events.checkin 403", async () => {
     const event = await createEventRow(t);
     const member = await memberSession(t);
     const forMember = await api().get("/admin/events", { token: member.token });
@@ -151,5 +158,93 @@ describe("Otorisasi negatif (PRD 2.2, 2.3; AC F15-1)", () => {
     expect((await api().get("/admin/checkin/events", { token: manager.token })).statusCode).toBe(403);
     // Sesi admin ditolak di API anggota.
     expect((await api().get("/events", { token: manager.token })).statusCode).toBe(403);
+  });
+
+  /** Request mentah ke operasi kontrak dengan path terisi, Idempotency-Key, If-Match dan body kosong. */
+  function callOperation(method: string, path: string, token: string, ids: Record<string, string>) {
+    const url = `/api/v1${path.replace(/\{([^}]+)\}/g, (_, name: string) => ids[name] ?? uuidv7())}`;
+    return t.app.inject({
+      method: method.toUpperCase() as "GET",
+      url,
+      headers: { authorization: `Bearer ${token}`, "idempotency-key": uuidv7(), "if-match": "1" },
+      ...(method === "get" || method === "delete" ? {} : { payload: {} }),
+    });
+  }
+
+  function operationAccess(method: string, path: string) {
+    return (spec.paths[path] as Record<string, Record<string, unknown>>)[method]!["x-kapdh-access"] as {
+      audience: string;
+      permissions?: string[];
+    };
+  }
+
+  it("AC F15-1: setiap operasi pengurus event (baca dan ubah) ditolak 403 untuk pengurus tanpa izin yang disyaratkan kontrak dan untuk sesi anggota; tidak ada perubahan", async () => {
+    const event = await createEventRow(t);
+    const holder = await memberSession(t);
+    const ticket = await insertTicket(t, { eventId: event.id, userId: holder.userId, status: "paid" });
+    const sessions: { name: string; token: string; permissions: string[] }[] = [
+      { name: "anggota", token: (await memberSession(t)).token, permissions: [] },
+      {
+        name: "pengurus payments",
+        token: (await adminSession(t, ["payments.read", "payments.decide"])).token,
+        permissions: ["payments.read", "payments.decide"],
+      },
+      {
+        name: "pengurus events.checkin",
+        token: (await adminSession(t, ["events.checkin"])).token,
+        permissions: ["events.checkin"],
+      },
+      {
+        name: "pengurus events.manage",
+        token: (await adminSession(t, ["events.manage"])).token,
+        permissions: ["events.manage"],
+      },
+    ];
+    const denied: string[] = [];
+    for (const [method, path] of contractOperations()) {
+      const access = operationAccess(method, path);
+      if (access.audience !== "admin") continue;
+      const required = access.permissions ?? [];
+      for (const session of sessions) {
+        const allowed =
+          session.permissions.length > 0 && required.every((p) => session.permissions.includes(p));
+        if (allowed) continue;
+        const res = await callOperation(method, path, session.token, {
+          eventId: event.id,
+          ticketId: ticket.id,
+        });
+        const label = `${session.name}: ${method.toUpperCase()} ${path}`;
+        expect(res.statusCode, `${label} ${res.body}`).toBe(403);
+        expect(res.json().code, label).toBe("FORBIDDEN");
+        denied.push(label);
+      }
+    }
+    // 14 operasi pengurus: anggota 14, pengurus payments 14, events.checkin 12 (operasi events.manage),
+    // events.manage 2 (operasi check-in).
+    expect(denied).toHaveLength(42);
+    expect(await eventRow(t, event.id)).toMatchObject({ status: "open", version: 1, paidQuantity: 1 });
+    expect(await ticketRow(t, ticket.id)).toMatchObject({ status: "paid", checkedInAt: null });
+  });
+
+  it("PRD 2.2: anggota suspended ditolak ACCOUNT_SUSPENDED di setiap operasi anggota event, termasuk tiket miliknya sendiri (getMyTicket, cancelMyTicket); sesi pengurus ditolak 403", async () => {
+    const event = await createEventRow(t, { price: "0.00" });
+    const suspended = await memberSession(t, "suspended");
+    const ticket = await insertTicket(t, { eventId: event.id, userId: suspended.userId, status: "paid" });
+    const manager = await adminSession(t, ["events.manage", "events.checkin"]);
+    const ids = { eventId: event.id, ticketId: ticket.id };
+    let checked = 0;
+    for (const [method, path] of contractOperations()) {
+      if (operationAccess(method, path).audience === "admin") continue;
+      const label = `${method.toUpperCase()} ${path}`;
+      const res = await callOperation(method, path, suspended.token, ids);
+      expect(res.statusCode, `${label} ${res.body}`).toBe(403);
+      expect(res.json().code, label).toBe("ACCOUNT_SUSPENDED");
+      const admin = await callOperation(method, path, manager.token, ids);
+      expect(admin.statusCode, `pengurus ${label}`).toBe(403);
+      checked += 1;
+    }
+    expect(checked).toBe(8);
+    expect(await ticketRow(t, ticket.id)).toMatchObject({ status: "paid", cancelledAt: null });
+    expect(await eventRow(t, event.id)).toMatchObject({ paidQuantity: 1, heldQuantity: 0 });
   });
 });
