@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { components } from "@kapdh/contracts";
 import { membershipLabelFor } from "@kapdh/shared";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 import { api } from "../../api/client";
@@ -13,7 +13,14 @@ import { FormError, FormField } from "../../components/ui/FormField";
 import { Textarea } from "../../components/ui/Input";
 import { formatDateTime } from "../../lib/format";
 import type { MemberNotice } from "./MemberDetailPage";
-import { type MemberDetail, memberFromConflict, memberKeys, storeMember } from "./queries";
+import {
+  isPreconditionFailure,
+  type MemberDetail,
+  memberFromConflict,
+  memberKeys,
+  reloadMember,
+  storeMember,
+} from "./queries";
 
 type ResetResult = components["schemas"]["AdminMemberPasswordResetResult"];
 
@@ -42,14 +49,28 @@ function useConflictHandler(member: MemberDetail, onClose: () => void, onDone: (
   };
 }
 
-/** Precondition gagal (400 tanpa isian, mis. sudah dibatasi admin lain): muat ulang agar tombol sesuai keadaan. */
-function useReloadOnPrecondition(member: MemberDetail) {
+/**
+ * Prasyarat gagal dengan keadaan terkini (mis. anggota mulai menghapus akunnya, sudah dibatasi admin lain): dialog
+ * ditutup, detail/histori/daftar dimuat ulang sehingga tombol mengikuti keadaan terbaru, dan alasannya diumumkan
+ * (PRD 4.5 "tampil status terbaru"). Kedua bentuk galat prasyarat server ditangani (lihat isPreconditionFailure).
+ */
+export function usePreconditionHandler(
+  member: Pick<MemberDetail, "user_id">,
+  onClose: () => void,
+  onDone: (n: MemberNotice) => void,
+) {
   const queryClient = useQueryClient();
-  return (error: ApiError) => {
-    if (error.code === "VALIDATION_ERROR" && error.fieldErrors._)
-      void queryClient.invalidateQueries({ queryKey: memberKeys.detail(member.user_id) });
+  return (error: ApiError): boolean => {
+    if (!isPreconditionFailure(error)) return false;
+    reloadMember(queryClient, member.user_id);
+    onClose();
+    onDone({ tone: "warning", message: `${error.message} ${PRECONDITION_SUFFIX}` });
+    return true;
   };
 }
+
+const PRECONDITION_SUFFIX =
+  "Tindakan tidak dijalankan. Data terbaru sudah dimuat; periksa keadaan akun sebelum mengulang.";
 
 const suspendSchema = z.object({
   reason: z
@@ -87,7 +108,7 @@ export function SuspendDialog({ member, open, onClose, onDone }: DialogProps) {
     if (open) reset({ reason: "", member_message: "" });
   }, [open, reset]);
   const onConflict = useConflictHandler(member, onClose, onDone);
-  const onPrecondition = useReloadOnPrecondition(member);
+  const onPrecondition = usePreconditionHandler(member, onClose, onDone);
 
   const suspend = useApiMutation<MemberDetail, ActionVars<SuspendValues>, SuspendValues>({
     // Satu Idempotency-Key per niat: anggota + versi yang dilihat + isi (PRD 4.3).
@@ -188,7 +209,7 @@ export function UnsuspendDialog({ member, open, onClose, onDone }: DialogProps) 
     if (open) reset({ reason: "", member_message: "" });
   }, [open, reset]);
   const onConflict = useConflictHandler(member, onClose, onDone);
-  const onPrecondition = useReloadOnPrecondition(member);
+  const onPrecondition = usePreconditionHandler(member, onClose, onDone);
 
   const unsuspend = useApiMutation<MemberDetail, ActionVars<UnsuspendValues>, UnsuspendValues>({
     intent: (v) => v,
@@ -265,6 +286,31 @@ const resetSchema = z.object({
 });
 type ResetValues = z.input<typeof resetSchema>;
 
+/** Waktu tunggu cadangan bila 429 tidak membawa retry_after_seconds (server selalu mengirimnya, PRD 5.2). */
+const DEFAULT_RETRY_SECONDS = 60;
+
+/**
+ * Detik tersisa sampai `until` (epoch ms); 0 bila tidak ada atau sudah lewat. Dihitung saat render dari jam
+ * sekarang (tidak pernah basi) dan komponen dirender ulang selama hitung mundur berjalan.
+ */
+function useCountdown(until: number | null): number {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (until === null) return;
+    const timer = window.setInterval(() => setTick((t) => t + 1), 500);
+    return () => window.clearInterval(timer);
+  }, [until]);
+  return until === null ? 0 : Math.max(0, Math.ceil((until - Date.now()) / 1000));
+}
+
+/** "45 detik" atau "12 menit 5 detik". */
+function formatWait(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  if (minutes === 0) return `${rest} detik`;
+  return rest === 0 ? `${minutes} menit` : `${minutes} menit ${rest} detik`;
+}
+
 /**
  * Super Admin memulai pemulihan sandi alumni (F-16, AC F16-4): reautentikasi dulu (X-Reauth-Token), konfirmasi
  * dua langkah, lalu server mencabut seluruh sesi anggota, mengirim notifikasi keamanan dan mengirim kode hanya ke
@@ -276,7 +322,16 @@ export function PasswordResetDialog({ member, open, onClose, onDone }: DialogPro
   useEffect(() => {
     if (open) reset({ reason: "" });
   }, [open, reset]);
-  const onPrecondition = useReloadOnPrecondition(member);
+  const onPrecondition = usePreconditionHandler(member, onClose, onDone);
+  // Batas pengiriman OTP per email (PRD 2.5, 429 RATE_LIMITED → show_countdown, PRD 5.2): tombol mulai nonaktif
+  // sampai waktu tunggu dari server habis. Batas berlaku per email di server, sehingga tetap berlaku bila dialog
+  // ditutup lalu dibuka lagi.
+  const [rateLimit, setRateLimit] = useState<{ until: number; message: string } | null>(null);
+  const remaining = useCountdown(rateLimit?.until ?? null);
+  const limited = rateLimit !== null && remaining > 0;
+  useEffect(() => {
+    if (rateLimit && remaining === 0) setRateLimit(null);
+  }, [rateLimit, remaining]);
 
   const initiate = useApiMutation<ResetResult, { userId: string; reason: string }, ResetValues>({
     requiresReauth: true,
@@ -291,8 +346,18 @@ export function PasswordResetDialog({ member, open, onClose, onDone }: DialogPro
         },
         body: { reason: v.reason, confirm: true },
       }),
-    onError: onPrecondition,
+    onError: (error) => {
+      if (onPrecondition(error)) return;
+      if (error.code === "RATE_LIMITED") {
+        const seconds = Math.max(1, error.retryAfterSeconds ?? DEFAULT_RETRY_SECONDS);
+        setRateLimit({
+          until: Date.now() + seconds * 1000,
+          message: `${error.message} Pemulihan dapat dicoba lagi dalam ${formatWait(seconds)}.`,
+        });
+      }
+    },
     onSuccess: (data) => {
+      setRateLimit(null);
       onClose();
       onDone({
         tone: "success",
@@ -309,8 +374,11 @@ export function PasswordResetDialog({ member, open, onClose, onDone }: DialogPro
     <ConfirmDialog
       open={open}
       onCancel={onClose}
-      onConfirm={() => submit()}
+      onConfirm={() => {
+        if (!limited) void submit();
+      }}
       pending={initiate.isPending}
+      confirmDisabled={limited}
       title={`Mulai pemulihan sandi ${member.full_name}?`}
       description="Hanya Super Admin. Anda akan diminta mengonfirmasi identitas (sandi dan kode autentikator) sebelum dikirim."
       confirmLabel="Mulai pemulihan"
@@ -321,6 +389,17 @@ export function PasswordResetDialog({ member, open, onClose, onDone }: DialogPro
         <li>Kode pemulihan dikirim hanya ke email terverifikasi {member.email}.</li>
         <li>Anggota menerima notifikasi keamanan; pengurus tidak melihat kode maupun sandi.</li>
       </ul>
+      {limited ? (
+        <div className="flex flex-col gap-1 rounded-md bg-warning-bg p-3 text-sm text-warning">
+          {/* Pesan dibacakan sekali; hitung mundur visual tidak diumumkan tiap detik (N-11). */}
+          <p role="alert" className="font-medium">
+            {rateLimit.message}
+          </p>
+          <p className="text-text">
+            Sisa waktu tunggu: <span className="font-mono tabular-nums">{formatWait(remaining)}</span>
+          </p>
+        </div>
+      ) : null}
       <FormProvider {...form}>
         <div className="flex flex-col gap-3">
           <FormError message={form.formState.errors.root?.server?.message} />
