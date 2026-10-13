@@ -16,7 +16,10 @@ export const OUTBOX_TOPICS = {
   "audit.export.requested": z.object({ export_id: id, admin_id: id }).strict(),
   /** Event dibatalkan → fanout notifikasi peserta dan pelepasan tiket (F-09, job events.cancelled.fanout). */
   "event.cancelled": z.object({ event_id: id }).strict(),
-  /** Pemberitahuan keamanan ke email admin (undangan, perubahan izin, reset; AC F16-1, F16-4). */
+  /**
+   * Pemberitahuan keamanan ke email admin (undangan, perubahan izin, reset; AC F16-1, F16-4). `activated` (TOTP
+   * terdaftar dan akun admin aktif) dan `backup_codes_regenerated` ditulis modul admin-auth (kontrak C1 F-02, F-16).
+   */
   "admin.security_notice": z
     .object({
       admin_id: id,
@@ -27,6 +30,8 @@ export const OUTBOX_TOPICS = {
         "role_changed",
         "mfa_reset",
         "password_changed",
+        "activated",
+        "backup_codes_regenerated",
       ]),
     })
     .strict(),

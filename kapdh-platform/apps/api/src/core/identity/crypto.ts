@@ -38,9 +38,18 @@ export function sha256(value: string): string {
 /** Masa berlaku token undangan admin (usulan 72 jam; kontrak admin-admins). */
 export const ADMIN_INVITE_TTL_MS = 72 * 3600_000;
 
-/** Token undangan admin sekali pakai: 256 bit acak, dikirim sebagai tautan `/invite/<token>` web admin. */
+/** Token undangan admin sekali pakai: 256 bit acak, dikirim sebagai tautan {@link adminInviteLink}. */
 export function newAdminInviteToken(): string {
   return randomToken(32);
+}
+
+/**
+ * Tautan undangan admin `${ADMIN_ORIGIN}/invite#t=<token>` (kontrak C1 admin-auth.yaml, kepala berkas): token berada
+ * di fragmen URL yang tidak pernah dikirim browser ke server, proxy, maupun header Referer sehingga tidak tercatat di
+ * log akses (ARCHITECTURE §2 butir 3). Bentuk `/invite/<token>` atau `?token=` dilarang.
+ */
+export function adminInviteLink(adminOrigin: string, token: string): string {
+  return `${adminOrigin.replace(/\/+$/, "")}/invite#t=${token}`;
 }
 
 /**
