@@ -3,12 +3,13 @@ import type { BaseEnv } from "@kapdh/config";
 import { type components, PERMISSION_VALUES, type Permission } from "@kapdh/contracts";
 import { adminPermissions, admins, files, sessions, users } from "@kapdh/database";
 import { type ObjectBody, sha256Hex, type StorageDriver, StorageObjectNotFoundError } from "@kapdh/storage";
-import { and, asc, count, eq, gt, isNotNull, isNull, lt, lte, min, ne } from "drizzle-orm";
+import { and, asc, count, eq, gt, isNotNull, isNull, lt, lte, min, ne, sql } from "drizzle-orm";
 import type { Readable } from "node:stream";
 import type { Logger } from "pino";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../adapters/clock.js";
 import { ADVISORY_LOCK_NAMESPACES, advisoryXactLockFor } from "../db/locks.js";
+import { rows } from "../db/rows.js";
 import { afterCommit, assertCommitAware, withTx } from "../db/tx.js";
 import type { Db, DbOrTx, Tx } from "../db/types.js";
 import { AppException, fieldError, forbidden, notFound, rateLimited } from "../errors/app-exception.js";
@@ -41,6 +42,12 @@ import {
   UPLOAD_QUOTA,
   UPLOAD_QUOTA_WINDOW_MS,
 } from "./purposes.js";
+
+/**
+ * Kunci daftar id berkas di `reports.evidence` (jsonb) yang ditahan selama laporan disimpan (PRD 3.12, D2; kontrak C6).
+ * Ditulis modul moderation saat bukti dicatat; dibaca {@link FilesService.isRetainedAsEvidence}.
+ */
+export const REPORT_EVIDENCE_FILE_IDS_KEY = "file_ids";
 
 /** Batas percobaan unggah (termasuk yang gagal validasi) per pengguna per jam, melindungi CPU dekode gambar. */
 export const UPLOAD_ATTEMPTS_PER_HOUR = 30;
@@ -390,10 +397,21 @@ export class FilesService implements OnModuleInit {
    * Menghapus berkas yang diganti/tidak dipakai lagi: baris langsung `deleted` (tidak lagi dilayani) dan objek dihapus
    * setelah commit. Kegagalan hapus objek dicatat; pembersihan yang wajib terjamin (penghapusan akun) memakai
    * {@link deleteNow}. Wajib tx commit-aware (this.db.transaction dari DB yang diinjeksi, TxRunner, atau withTx).
+   *
+   * Retensi bukti moderasi (PRD 3.12, D2; kontrak C6 createReport "berkas yang dirujuk bukti ditahan"): berkas yang
+   * dirujuk bukti laporan ({@link isRetainedAsEvidence}) TIDAK dihapus saat pesan dihapus atau avatar diganti; berkas
+   * hanya dijadikan privat dan tetap `ready` untuk pengurus moderation.read, lalu false dikembalikan.
    */
   async discard(tx: Tx, fileId: string): Promise<boolean> {
     assertCommitAware(tx, "FilesService.discard");
     const now = this.clock.now();
+    if (await this.isRetainedAsEvidence(tx, fileId)) {
+      await tx
+        .update(files)
+        .set({ visibility: "private", updatedAt: now })
+        .where(and(eq(files.id, fileId), ne(files.status, "deleted"), eq(files.visibility, "public")));
+      return false;
+    }
     const [row] = await tx
       .update(files)
       .set({ status: "deleted", deletedAt: now, updatedAt: now })
@@ -409,6 +427,30 @@ export class FilesService implements OnModuleInit {
       }),
     );
     return true;
+  }
+
+  /**
+   * true bila berkas dirujuk bukti laporan moderasi (`reports.evidence.file_ids`, ditulis modul moderation saat laporan
+   * dibuat) DAN pemiliknya masih ada serta tidak sedang/sudah dihapus. D2: unggahan pengguna yang akunnya dihapus
+   * tetap dihapus (job penghapusan akun), sehingga retensi tidak pernah menahan data pribadi setelah penghapusan.
+   * Dibaca di transaksi pemanggil: modul moderation mengunci baris pesan/profil/room (FOR SHARE) saat mengambil
+   * snapshot, sehingga penghapusan pesan/penggantian avatar yang bersamaan melihat laporan yang sudah commit.
+   */
+  async isRetainedAsEvidence(db: DbOrTx, fileId: string): Promise<boolean> {
+    const [row] = rows<{ retained: number }>(
+      await db.execute(sql`
+        select 1 as retained
+        from app.files f
+        join app.users u on u.id = f.owner_user_id
+        where f.id = ${fileId}
+          and u.status not in ('deletion_pending', 'deleted')
+          and exists (
+            select 1 from app.reports r
+            where (r.evidence -> ${REPORT_EVIDENCE_FILE_IDS_KEY}::text) @> to_jsonb(${fileId}::text)
+          )
+        limit 1`),
+    );
+    return row !== undefined;
   }
 
   /**
