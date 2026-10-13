@@ -15,8 +15,9 @@ import { PasswordInput } from "./PasswordInput";
  * Reautentikasi untuk tindakan sensitif (AC F15-3, F16-1; ARCHITECTURE §4.3): admin memasukkan sandi dan kode
  * TOTP, POST /auth/reauth menerbitkan X-Reauth-Token (<= 10 menit, terikat sesi) yang dipakai untuk mengulang
  * permintaan yang tertunda. Sandi dan kode tidak disimpan; formulir dikosongkan setiap kali dialog ditutup.
- * 401 dari /auth/reauth hanya dilaporkan sebagai "sandi/kode salah" setelah sesi dipastikan masih berlaku; bila
- * sesi sudah berakhir dialog ditutup dan admin dibawa ke halaman masuk (bukan terjebak di pesan yang keliru).
+ * Kredensial salah dijawab server 400 VALIDATION_ERROR per isian (`field_errors.password`/`totp_code`) dan
+ * ditampilkan di isiannya. 401 berarti access token tidak berlaku: sesi diperiksa lebih dulu; bila sesi sudah
+ * berakhir dialog ditutup dan admin dibawa ke halaman masuk (bukan terjebak di pesan yang keliru).
  */
 const schema = z.object({
   password: z.string().min(1, "Sandi wajib diisi.").max(128, "Sandi terlalu panjang."),
@@ -84,10 +85,13 @@ export function ReauthDialog({
         form.setError("root.server", { type: "server", message: "Sandi atau kode autentikator salah." });
         form.setValue("totp_code", "");
       } else if (err.code === "VALIDATION_ERROR" && Object.keys(err.fieldErrors).length > 0) {
+        // Kontrak auth: sandi/kode salah = 400 VALIDATION_ERROR per isian beserta sisa percobaan.
         for (const [field, messages] of Object.entries(err.fieldErrors)) {
           if (field === "password" || field === "totp_code")
             form.setError(field, { type: "server", message: messages.join(" ") });
         }
+        // Kode TOTP hanya berlaku sekali per langkah: kosongkan agar admin memasukkan kode baru.
+        if (err.fieldErrors.totp_code) form.setValue("totp_code", "");
       } else {
         form.setError("root.server", {
           type: "server",

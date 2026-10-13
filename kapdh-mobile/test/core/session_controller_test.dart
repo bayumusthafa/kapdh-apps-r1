@@ -169,11 +169,11 @@ void main() {
       );
       final container = makeContainer(adapter: mock);
 
-      final outcome = await container
+      final result = await container
           .read(sessionProvider.notifier)
           .login(email: ' ahmad@email.com ', password: 'Rahasia#123');
 
-      expect(outcome, LoginOutcome.verifyOtp);
+      expect(result.outcome, LoginOutcome.verifyOtp);
       expect(container.read(sessionProvider).challenge?.challengeId, 'challenge-1');
       expect(await container.read(tokenStoreProvider).read(), isNull);
     });
@@ -185,11 +185,54 @@ void main() {
       });
       final container = makeContainer(adapter: adapter);
 
-      final outcome = await container.read(sessionProvider.notifier).login(email: 'a@b.id', password: 'Rahasia#123');
+      final result = await container.read(sessionProvider.notifier).login(email: 'a@b.id', password: 'Rahasia#123');
 
-      expect(outcome, LoginOutcome.signedIn);
+      expect(result.outcome, LoginOutcome.signedIn);
       expect(container.read(sessionProvider).effectiveStatus, EffectiveStatus.expiring);
       expect((await container.read(tokenStoreProvider).read())?.refreshToken, 'refresh-1');
+    });
+
+    test(
+      'login akun deletion_pending: status penghapusan tanpa sesi dan tanpa memanggil /me (F-14, PRD 2.2)',
+      () async {
+        final adapter = FakeHttpAdapter((options) {
+          if (options.path == '/auth/login') {
+            return FakeResponse.json(200, {
+              'next': 'deletion_pending',
+              'deletion': {
+                'request_number': 'DEL-2026-7K3Q9X',
+                'status': 'processing',
+                'source': 'app',
+                'requested_at': testNow.toIso8601String(),
+                'estimated_completion_at': testNow.add(const Duration(days: 7)).toIso8601String(),
+                'completed_at': null,
+              },
+            });
+          }
+          return FakeResponse.json(500, errorJson('INTERNAL_ERROR', 'Tidak boleh dipanggil.'));
+        });
+        final container = makeContainer(adapter: adapter);
+
+        final result = await container.read(sessionProvider.notifier).login(email: 'a@b.id', password: 'Rahasia#123');
+
+        expect(result.outcome, LoginOutcome.deletionPending);
+        expect(result.deletion?.requestNumber, 'DEL-2026-7K3Q9X');
+        expect(container.read(sessionProvider).hasSession, isFalse);
+        expect(await container.read(tokenStoreProvider).read(), isNull);
+        expect(adapter.requestsTo('/me'), isEmpty);
+      },
+    );
+
+    test('login akun disabled: tanpa sesi (PRD 2.2)', () async {
+      final adapter = FakeHttpAdapter((_) => FakeResponse.json(200, {'next': 'account_disabled'}));
+      final container = makeContainer(adapter: adapter);
+
+      final result = await container.read(sessionProvider.notifier).login(email: 'a@b.id', password: 'Rahasia#123');
+
+      expect(result.outcome, LoginOutcome.accountDisabled);
+      expect(result.deletion, isNull);
+      expect(container.read(sessionProvider).hasSession, isFalse);
+      expect(await container.read(tokenStoreProvider).read(), isNull);
     });
 
     test('logout menghapus token, snapshot, cache KTA dan kunci idempotensi walau server tidak terjangkau', () async {

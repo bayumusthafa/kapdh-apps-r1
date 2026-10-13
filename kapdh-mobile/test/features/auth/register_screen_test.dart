@@ -40,10 +40,6 @@ Future<void> fillForm(WidgetTester tester, {String email = 'ahmad.islam@email.co
 }
 
 void main() {
-  test('versi kebijakan yang disetujui mencatat kedua halaman legal', () {
-    expect(policyVersionString(privacy: '2026-10', terms: '3'), 'kebijakan-privasi@2026-10;ketentuan@3');
-  });
-
   testWidgets('Data Diri tanpa Nomor KTP; pratinjau tahun akademik; kirim membuat challenge OTP (AC F01-1)', (
     tester,
   ) async {
@@ -73,10 +69,66 @@ void main() {
       'cohort': 29,
       'class_in': 1,
       'class_out': 6,
-      'accept_policy_version': 'kebijakan-privasi@2026-10;ketentuan@2026-10',
+      // Nilai kanonis dari server (`consent.policy_version`), dikirim apa adanya (F-01, kontrak C4).
+      'accept_policy_version': testPolicyVersion,
     });
     expect(app.location, '/register/otp');
     expect(app.container.read(sessionProvider).challenge?.challengeId, 'challenge-1');
+  });
+
+  testWidgets('kebijakan diperbarui saat mengisi (409 VERSION_CONFLICT): versi dimuat ulang, setujui kembali', (
+    tester,
+  ) async {
+    var policy = testPolicyVersion;
+    final app = await openRegister(
+      tester,
+      apiRoutes({
+        '/public/pages': (_) => FakeResponse.json(200, publicPageListJson(policyVersion: policy)),
+        '/auth/register': (options) {
+          final sent = (options.data as Map)['accept_policy_version'];
+          if (sent != policy) {
+            return FakeResponse.json(
+              409,
+              errorJson('VERSION_CONFLICT', 'Versi kebijakan sudah berubah.', current: {'policy_version': policy}),
+            );
+          }
+          return FakeResponse.json(201, otpChallengeJson());
+        },
+      }),
+    );
+    await fillForm(tester);
+    policy = 'privacy:3;terms:1';
+    await scrollAndTap(tester, submit);
+    await settle(tester);
+
+    await scrollTo(tester, find.textContaining('baru saja diperbarui'));
+    expect(find.textContaining('Baca ulang lalu setujui kembali'), findsOneWidget);
+    expect(app.location, '/register');
+    // Persetujuan direset: kirim lagi tanpa mencentang ditolak lokal.
+    await scrollAndTap(tester, submit);
+    await settle(tester);
+    expect(app.adapter.requestsTo('/auth/register'), hasLength(1));
+
+    await scrollAndTap(tester, find.byKey(const ValueKey('register-consent')));
+    await settle(tester);
+    await scrollAndTap(tester, submit);
+    await settle(tester);
+    expect(app.adapter.requestsTo('/auth/register').last.data, containsPair('accept_policy_version', policy));
+    expect(app.location, '/register/otp');
+  });
+
+  testWidgets('dokumen legal belum terbit (policy_version null): pendaftaran belum dibuka', (tester) async {
+    final app = await openRegister(
+      tester,
+      apiRoutes({'/public/pages': (_) => FakeResponse.json(200, publicPageListJson(policyVersion: null))}),
+    );
+    await scrollTo(tester, find.text(registrationClosedMessage));
+    expect(find.text(registrationClosedMessage), findsOneWidget);
+    await fillForm(tester);
+    await scrollAndTap(tester, submit);
+    await settle(tester);
+    expect(app.adapter.requestsTo('/auth/register'), isEmpty);
+    expect(find.text(registrationClosedMessage), findsNWidgets(2));
   });
 
   testWidgets('jaringan putus lalu kirim ulang memakai Idempotency-Key yang sama (AC F01-4)', (tester) async {
@@ -136,7 +188,7 @@ void main() {
   });
 
   testWidgets('versi kebijakan gagal dimuat: peringatan dengan coba lagi', (tester) async {
-    await openRegister(tester, apiRoutes({'/public/pages/kebijakan-privasi': (_) => FakeResponse.network()}));
+    await openRegister(tester, apiRoutes({'/public/pages': (_) => FakeResponse.network()}));
     await scrollTo(tester, find.text('Versi kebijakan belum dapat dimuat. Periksa koneksi Anda.'));
     expect(find.text('Versi kebijakan belum dapat dimuat. Periksa koneksi Anda.'), findsOneWidget);
   });

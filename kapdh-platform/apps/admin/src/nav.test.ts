@@ -5,7 +5,7 @@ import { NAV_SECTIONS, navPermissions, visibleNav } from "./nav";
 import { createAppRouter } from "./router";
 
 /** Rute di luar layout admin terautentikasi (tidak memerlukan izin). */
-const PUBLIC_PATHS = ["/login", "/login/mfa", "/login/enroll", "/invite/$token"];
+const PUBLIC_PATHS = ["/login", "/login/mfa", "/login/enroll", "/invite"];
 
 describe("menu admin (AC F15-1)", () => {
   it("admin pembayaran tanpa izin konten hanya melihat Dashboard dan Verifikasi Pembayaran", () => {

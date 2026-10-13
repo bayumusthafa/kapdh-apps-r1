@@ -269,7 +269,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data, error, response } = await api.POST("/admin/auth/login", { body: { email, password } });
         if (!data) return { ok: false, error: ApiError.fromResponse(error, response.status) };
         setLastLogoutReason(null);
-        const enrollmentRequired = data.totp_enrollment_required === true;
+        // Kontrak admin-auth: login selalu false (hanya admin aktif dengan TOTP); true hanya dari penerimaan
+        // undangan. Tetap dihormati agar token pendaftaran tidak pernah dikirim ke /admin/auth/mfa.
+        const enrollmentRequired = data.totp_enrollment_required;
         commit({ status: "mfa", mfaToken: data.mfa_token, enrollmentRequired });
         return { ok: true, next: enrollmentRequired ? "enroll" : "mfa" };
       } catch (e) {

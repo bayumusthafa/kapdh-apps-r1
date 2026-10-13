@@ -5,10 +5,10 @@ import { Button, buttonClass } from "../../components/ui/Button";
 import { UnderConstruction } from "../../components/ui/States";
 
 /**
- * /login/enroll: admin undangan yang belum mendaftarkan TOTP (login mengembalikan totp_enrollment_required, F-16).
- * Layar pendaftaran (QR otpauth, verifikasi kode, backup code) dibangun irisan governance setelah kontrak
- * admin-auth untuk pendaftaran TOTP tersedia. Sampai saat itu admin diarahkan ke sini, bukan ke layar TOTP yang
- * pasti ditolak server.
+ * /login/enroll: pendaftaran TOTP admin undangan (F-16, PRD 8.2 langkah 4-5). Menurut kontrak admin-auth final,
+ * satu-satunya jalan ke sini adalah respons penerimaan undangan (`totp_enrollment_required: true`, token
+ * pendaftaran 30 menit); login tidak pernah membuka pendaftaran. Layar pendaftaran (QR otpauth, verifikasi kode,
+ * backup code) dibangun irisan governance bersama halaman /invite.
  */
 export function EnrollPage() {
   const auth = useAuth();
@@ -46,8 +46,9 @@ export function EnrollPage() {
 }
 
 /**
- * /invite/$token: penerimaan undangan admin (ganti sandi awal lewat token sekali pakai lalu daftar TOTP, F-16).
- * Token tidak pernah dikirim ke mana pun dari layar ini sampai kontrak penerimaan undangan tersedia.
+ * /invite#t=<token>: penerimaan undangan admin (ganti sandi awal lewat token sekali pakai lalu daftar TOTP, F-16).
+ * Token dibaca dari fragmen URL (tidak pernah dari path/query). Layar ini belum membaca maupun mengirim token;
+ * alurnya dibangun irisan governance.
  */
 export function InvitePage() {
   return (
