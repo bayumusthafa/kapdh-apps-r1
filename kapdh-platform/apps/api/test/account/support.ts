@@ -84,7 +84,9 @@ export async function ensureAuditPurgeRole(db: Db): Promise<void> {
     end if;
   end $$`);
   await db.execute(sql`grant usage on schema app to kapdh_audit_purge`);
-  await db.execute(sql`grant select, update, delete on app.audit_logs, app.payment_events to kapdh_audit_purge`);
+  await db.execute(
+    sql`grant select, update, delete on app.audit_logs, app.payment_events to kapdh_audit_purge`,
+  );
 }
 
 /** Header X-Reauth-Token untuk keluarga sesi access token (POST /auth/reauth milik modul auth; F-14). */
@@ -133,7 +135,13 @@ export async function storeFile(
 
 export async function insertEvent(
   t: Pick<TestApp, "db" | "clock">,
-  options: { startsInDays: number; status?: "open" | "closed" | "done"; price?: string; held?: number; paid?: number },
+  options: {
+    startsInDays: number;
+    status?: "open" | "closed" | "done";
+    price?: string;
+    held?: number;
+    paid?: number;
+  },
 ) {
   const now = t.clock.now();
   const startsAt = new Date(now.getTime() + options.startsInDays * DAY);
@@ -156,7 +164,12 @@ export async function insertEvent(
   return id;
 }
 
-const METHOD_SNAPSHOT = { kind: "bank", provider: "Bank Uji", account_number: "7000123456", account_holder: "KAPDH" };
+const METHOD_SNAPSHOT = {
+  kind: "bank",
+  provider: "Bank Uji",
+  account_number: "7000123456",
+  account_holder: "KAPDH",
+};
 
 async function insertPayment(
   t: Pick<TestApp, "db" | "clock">,
@@ -191,7 +204,9 @@ async function insertPayment(
     createdAt: now,
     updatedAt: now,
   });
-  await t.db.insert(paymentEvents).values({ id: uuidv7(), paymentId: id, kind: "created", actorUserId: input.userId, createdAt: now });
+  await t.db
+    .insert(paymentEvents)
+    .values({ id: uuidv7(), paymentId: id, kind: "created", actorUserId: input.userId, createdAt: now });
   if (input.proofFileId)
     await t.db.insert(paymentEvents).values({
       id: uuidv7(),
@@ -208,7 +223,12 @@ async function insertPayment(
 
 async function insertTicket(
   t: Pick<TestApp, "db" | "clock">,
-  input: { eventId: string; userId: string; status: "awaiting_payment" | "awaiting_review" | "paid"; total?: string },
+  input: {
+    eventId: string;
+    userId: string;
+    status: "awaiting_payment" | "awaiting_review" | "paid";
+    total?: string;
+  },
 ) {
   const now = t.clock.now();
   const id = uuidv7();
@@ -247,14 +267,18 @@ async function insertMessage(
 
 async function insertRoom(
   t: Pick<TestApp, "db" | "clock">,
-  input: { kind: "group" | "direct"; name?: string; createdBy: string; members: [string, string][]; avatarFileId?: string },
+  input: {
+    kind: "group" | "direct";
+    name?: string;
+    createdBy: string;
+    members: [string, string][];
+    avatarFileId?: string;
+  },
 ) {
   const now = t.clock.now();
   const id = uuidv7();
   const directKey =
-    input.kind === "direct"
-      ? [input.members[0]![0], input.members[1]![0]].sort().join(":")
-      : null;
+    input.kind === "direct" ? [input.members[0]![0], input.members[1]![0]].sort().join(":") : null;
   await t.db.insert(rooms).values({
     id,
     kind: input.kind,
@@ -401,7 +425,11 @@ export async function createRichMember(t: TestApp): Promise<RichMember> {
     reason: "Peringatan untuk Budi",
     createdAt: now,
   });
-  const renewalNoProof = await insertPayment(t, { userId: member.userId, type: "renewal", status: "pending" });
+  const renewalNoProof = await insertPayment(t, {
+    userId: member.userId,
+    type: "renewal",
+    status: "pending",
+  });
 
   // Event: tiket lunas (event mendatang), hold tanpa bukti, menunggu review (berbukti), tiket event yang sudah selesai.
   const eventPaid = await insertEvent(t, { startsInDays: 10, paid: 1 });
@@ -409,8 +437,16 @@ export async function createRichMember(t: TestApp): Promise<RichMember> {
   const eventWithProof = await insertEvent(t, { startsInDays: 14, held: 1 });
   const eventPast = await insertEvent(t, { startsInDays: -20, status: "done", paid: 1 });
   const ticketPaid = await insertTicket(t, { eventId: eventPaid, userId: member.userId, status: "paid" });
-  const ticketNoProof = await insertTicket(t, { eventId: eventNoProof, userId: member.userId, status: "awaiting_payment" });
-  const ticketWithProof = await insertTicket(t, { eventId: eventWithProof, userId: member.userId, status: "awaiting_review" });
+  const ticketNoProof = await insertTicket(t, {
+    eventId: eventNoProof,
+    userId: member.userId,
+    status: "awaiting_payment",
+  });
+  const ticketWithProof = await insertTicket(t, {
+    eventId: eventWithProof,
+    userId: member.userId,
+    status: "awaiting_review",
+  });
   const ticketPast = await insertTicket(t, { eventId: eventPast, userId: member.userId, status: "paid" });
   const proofTicketPaid = await storeFile(t, member.userId, "payment_proof");
   const proofReview = await storeFile(t, member.userId, "payment_proof");
@@ -660,7 +696,13 @@ export async function createRichMember(t: TestApp): Promise<RichMember> {
             deleted_since_report: false,
           },
         ],
-        room: { room_id: transfer, kind: "group", name: "Angkatan 29", avatar: { file_id: groupAvatar.id }, member_count: 3 },
+        room: {
+          room_id: transfer,
+          kind: "group",
+          name: "Angkatan 29",
+          avatar: { file_id: groupAvatar.id },
+          member_count: 3,
+        },
         profile: null,
         contested_suspension: null,
       },
@@ -927,7 +969,8 @@ export function snapshotStorage(storage: MemoryDriver): Map<string, Buffer> {
 
 export async function restoreStorage(snapshot: Map<string, Buffer>): Promise<MemoryDriver> {
   const storage = new MemoryDriver();
-  for (const [key, body] of snapshot) await storage.put(key, body, { contentType: "application/octet-stream" });
+  for (const [key, body] of snapshot)
+    await storage.put(key, body, { contentType: "application/octet-stream" });
   return storage;
 }
 

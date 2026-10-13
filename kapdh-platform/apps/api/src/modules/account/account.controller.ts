@@ -1,13 +1,7 @@
 import { Body, Controller, Get, HttpCode, Post } from "@nestjs/common";
 import { z } from "zod";
 import type { AuthContext } from "../../core/guards/auth-context.js";
-import {
-  Audience,
-  CurrentAuth,
-  MemberAccess,
-  Public,
-  RequireReauth,
-} from "../../core/guards/decorators.js";
+import { Audience, CurrentAuth, MemberAccess, Public, RequireReauth } from "../../core/guards/decorators.js";
 import { Idempotent } from "../../core/idempotency/idempotent.js";
 import { validate } from "../../core/validation/validate.js";
 import { AccountDeletionService } from "./account-deletion.service.js";
@@ -62,10 +56,7 @@ export class WebDeletionController {
   @HttpCode(202)
   @Public()
   challenge(@Body() body: unknown) {
-    const input = validate(
-      z.object({ email: z.string().trim().email("Email tidak valid").max(254) }),
-      body,
-    );
+    const input = validate(z.object({ email: z.string().trim().email("Email tidak valid").max(254) }), body);
     return this.web.startChallenge(input.email);
   }
 

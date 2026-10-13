@@ -138,7 +138,11 @@ export class DeletionLedgerService {
       if (user.status !== "deletion_pending")
         await tx
           .update(users)
-          .set({ status: "deletion_pending", sessionVersion: sql`${users.sessionVersion} + 1`, updatedAt: now })
+          .set({
+            status: "deletion_pending",
+            sessionVersion: sql`${users.sessionVersion} + 1`,
+            updatedAt: now,
+          })
           .where(eq(users.id, user.id));
       await this.audit.write(tx, {
         action: "account.deletion_reapplied",

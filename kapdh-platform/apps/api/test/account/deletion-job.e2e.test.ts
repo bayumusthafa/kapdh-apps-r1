@@ -1,42 +1,12 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  accountDeletions,
-  admins,
-  alumni,
-  alumniProfessions,
-  auditLogs,
-  blocks,
-  deviceTokens,
-  events,
-  files,
-  idempotencyKeys,
-  membershipEvents,
-  messageReactions,
-  messages,
-  notificationDeliveries,
-  notificationPreferences,
-  notifications,
-  otpCodes,
-  paymentAdjustments,
-  paymentEvents,
-  payments,
-  postLikes,
-  posts,
-  reports,
-  roomMembers,
-  rooms,
-  sessions,
-  tickets,
-  users,
-} from "@kapdh/database";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { accountDeletions, auditLogs, roomMembers, rooms } from "@kapdh/database";
+import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { runAsSystem } from "../../src/core/context/request-context.js";
 import { ledgerObjectKey, readLedgerDirectory } from "../../src/modules/account/deletion-ledger.js";
 import { DeletionLedgerService } from "../../src/modules/account/deletion-ledger.service.js";
-import { FORFEIT_REASON, SYSTEM_MESSAGES } from "../../src/modules/account/deletion-policy.js";
 import {
   ACCOUNT_DELETION_JOB,
   AccountDeletionProcessor,
@@ -44,7 +14,7 @@ import {
   EMAIL_MAX_FAILURES,
 } from "../../src/modules/account/deletion-processor.js";
 import { redactAuditSnapshot, scrubEvidence } from "../../src/modules/account/deletion-redaction.js";
-import { deletedEmailFor, remainingPersonalData } from "../../src/modules/account/deletion-steps.js";
+import { deletedEmailFor } from "../../src/modules/account/deletion-steps.js";
 import {
   createAlumni,
   DEFAULT_PASSWORD,
@@ -54,6 +24,7 @@ import {
 } from "../support/factories.js";
 import { httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
+import { expectFullyDeleted } from "./expect-deleted.js";
 import {
   appFromBackup,
   createRichMember,
@@ -66,7 +37,6 @@ import {
   readLedger,
   requestDeletionViaApp,
   restoreStorage,
-  type RichMember,
   runDeletion,
   snapshotStorage,
   userRow,
@@ -75,6 +45,7 @@ import {
 /**
  * Job `account.deletion` (F-14, AC F14-2..F14-6, D2; ARCHITECTURE §4.8): penghapusan penuh akun dengan data di setiap
  * tabel, injeksi kegagalan sesudah setiap langkah lalu retry, dan penerapan ulang deletion ledger setelah restore.
+ * Pemeriksaan per tabel ada di ./expect-deleted.ts (dipakai juga jalur PostgreSQL 17).
  */
 
 let t: TestApp;
@@ -89,274 +60,6 @@ afterAll(async () => {
 afterEach(() => {
   t.app.get(AccountDeletionProcessor).setStepObserver(null);
 });
-
-async function count<T>(query: Promise<T[]>): Promise<number> {
-  return (await query).length;
-}
-
-/**
- * Pemeriksaan hasil penghapusan per tabel (AC F14-3, F14-4, F14-5) beserta bukti bahwa data pengguna lain dan
- * transaksi tidak ikut berubah atau dihitung ulang (AC F14-2).
- */
-async function expectFullyDeleted(app: TestApp, rich: RichMember, requestNumber: string) {
-  const db = app.db;
-  const userId = rich.member.userId;
-
-  // Kredensial dan profil (AC F14-3).
-  const user = await userRow(db, userId);
-  expect(user).toMatchObject({
-    status: "deleted",
-    email: deletedEmailFor(userId),
-    passwordHash: "!deleted",
-    emailVerifiedAt: null,
-    policyVersion: null,
-    policyAcceptedAt: null,
-    lastLoginAt: null,
-  });
-  expect(await count(db.select().from(alumni).where(eq(alumni.userId, userId)))).toBe(0);
-  expect(await count(db.select().from(alumniProfessions).where(eq(alumniProfessions.alumniUserId, userId)))).toBe(0);
-  expect(await remainingPersonalData(db, userId)).toEqual(
-    Object.fromEntries(Object.keys(await remainingPersonalData(db, userId)).map((key) => [key, 0])),
-  );
-  expect(await count(db.select().from(sessions).where(eq(sessions.userId, userId)))).toBe(0);
-  expect(await count(db.select().from(otpCodes).where(eq(otpCodes.userId, userId)))).toBe(0);
-  expect(await count(db.select().from(idempotencyKeys).where(eq(idempotencyKeys.scope, userId)))).toBe(0);
-  expect(await count(db.select().from(deviceTokens).where(eq(deviceTokens.userId, userId)))).toBe(0);
-  expect(await count(db.select().from(notifications).where(eq(notifications.userId, userId)))).toBe(0);
-  expect(
-    await count(db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, userId))),
-  ).toBe(0);
-  expect(await count(db.select().from(notificationDeliveries))).toBe(
-    await count(
-      db
-        .select()
-        .from(notificationDeliveries)
-        .innerJoin(notifications, eq(notifications.id, notificationDeliveries.notificationId)),
-    ),
-  );
-
-  // Berkas: avatar, unggahan chat, avatar grup, bukti transfer (termasuk versi lama dan bukti yang diunggah pengurus)
-  // dan bukti penyesuaian dihapus dari storage dan barisnya `deleted` tanpa pemilik (AC F14-3, F14-4).
-  const deletedFiles = [
-    rich.files.avatar,
-    rich.files.chatImage,
-    rich.files.groupAvatar,
-    rich.files.proofPaid,
-    rich.files.proofOld,
-    rich.files.proofReview,
-    rich.files.adminProof,
-    rich.files.proofTicket,
-    rich.files.evidence,
-  ];
-  for (const file of deletedFiles) {
-    expect(await app.storage.exists(file.objectKey), file.objectKey).toBe(false);
-    const [row] = await db.select().from(files).where(eq(files.id, file.id));
-    expect(row).toMatchObject({ status: "deleted", ownerUserId: null });
-    expect(row!.deletedAt).not.toBeNull();
-  }
-  expect(await app.storage.exists(rich.files.peerAvatar.objectKey)).toBe(true);
-  const [peerAvatar] = await db.select().from(files).where(eq(files.id, rich.files.peerAvatar.id));
-  expect(peerAvatar).toMatchObject({ status: "ready", ownerUserId: rich.peer.userId });
-
-  // Pembayaran anonim: jumlah, tanggal, status dan referensi tetap; pemilik, catatan transfer dan bukti hilang
-  // (AC F14-4). Payment pending tanpa bukti dibatalkan sistem sekali; payment berbukti tetap pending (PRD 4.4).
-  const paymentRows = await db
-    .select()
-    .from(payments)
-    .where(inArray(payments.id, Object.values(rich.payments)));
-  const byPayment = Object.fromEntries(paymentRows.map((p) => [p.id, p]));
-  for (const payment of paymentRows) {
-    expect(payment).toMatchObject({ userId: null, transferNote: null, proofFileId: null });
-    expect(payment.createdAt).toBeInstanceOf(Date);
-  }
-  expect(byPayment[rich.payments.registration]).toMatchObject({ status: "paid", amount: "60000.00", proofVersion: 1 });
-  expect(byPayment[rich.payments.registration]!.decidedAt).not.toBeNull();
-  expect(byPayment[rich.payments.renewalNoProof]).toMatchObject({ status: "cancelled", cancelReason: FORFEIT_REASON });
-  expect(byPayment[rich.payments.ticketNoProof]).toMatchObject({ status: "cancelled", cancelReason: FORFEIT_REASON });
-  expect(byPayment[rich.payments.ticketWithProof]).toMatchObject({ status: "pending", proofVersion: 1 });
-  expect(byPayment[rich.payments.ticketPaid]).toMatchObject({ status: "paid" });
-  expect(byPayment[rich.payments.ticketPast]).toMatchObject({ status: "paid" });
-  const paymentEventRows = await db
-    .select()
-    .from(paymentEvents)
-    .where(inArray(paymentEvents.paymentId, Object.values(rich.payments)));
-  expect(paymentEventRows.filter((e) => e.actorUserId === userId)).toEqual([]);
-  expect(paymentEventRows.filter((e) => e.reason === "Transfer dari rekening a.n. pemilik")).toEqual([]);
-  // Satu event pembatalan per payment yang dibatalkan, tidak pernah dihitung ulang (AC F14-2).
-  const cancelledEvents = paymentEventRows.filter((e) => e.kind === "cancelled").map((e) => e.paymentId);
-  expect(cancelledEvents.sort()).toEqual([rich.payments.renewalNoProof, rich.payments.ticketNoProof].sort());
-
-  // Penyesuaian: refund pending tidak diselesaikan/dibatalkan job; rekening tujuan dihapus (D2, PRD 4.4).
-  const [refund] = await db.select().from(paymentAdjustments).where(eq(paymentAdjustments.id, rich.adjustments.refund));
-  expect(refund).toMatchObject({ status: "pending", amount: "50000.00", refundDestination: null });
-  const [correction] = await db
-    .select()
-    .from(paymentAdjustments)
-    .where(eq(paymentAdjustments.id, rich.adjustments.correction));
-  expect(correction).toMatchObject({ status: "completed", amount: "10000.00", evidenceFileId: null });
-
-  // Tiket: tiket aktif event mendatang hangus sekali (kursi dilepas sekali), tiket event selesai tetap; semua anonim.
-  const ticketRows = await db.select().from(tickets).where(inArray(tickets.id, Object.values(rich.tickets)));
-  const byTicket = Object.fromEntries(ticketRows.map((x) => [x.id, x]));
-  for (const ticket of ticketRows) expect(ticket.userId).toBeNull();
-  for (const id of [rich.tickets.paid, rich.tickets.noProof, rich.tickets.withProof])
-    expect(byTicket[id]).toMatchObject({ status: "cancelled", cancelledBy: "system", cancelReason: FORFEIT_REASON });
-  expect(byTicket[rich.tickets.past]).toMatchObject({ status: "paid", totalSnapshot: "50000.00" });
-  const eventRows = await db.select().from(events).where(inArray(events.id, Object.values(rich.events)));
-  const byEvent = Object.fromEntries(eventRows.map((e) => [e.id, e]));
-  expect(byEvent[rich.events.paid]).toMatchObject({ heldQuantity: 0, paidQuantity: 0 });
-  expect(byEvent[rich.events.noProof]).toMatchObject({ heldQuantity: 0, paidQuantity: 0 });
-  expect(byEvent[rich.events.withProof]).toMatchObject({ heldQuantity: 0, paidQuantity: 0 });
-  expect(byEvent[rich.events.past]).toMatchObject({ heldQuantity: 0, paidQuantity: 1 });
-  const ticketAudits = await db
-    .select()
-    .from(auditLogs)
-    .where(and(eq(auditLogs.action, "ticket.cancelled"), inArray(auditLogs.entityId, Object.values(rich.tickets))));
-  expect(ticketAudits.map((a) => a.entityId).sort()).toEqual(
-    [rich.tickets.paid, rich.tickets.noProof, rich.tickets.withProof].sort(),
-  );
-
-  // Histori keanggotaan anonim tanpa nomor anggota dan alasan tertulis; koreksi nomor dihapus.
-  const periods = await db
-    .select()
-    .from(membershipEvents)
-    .where(eq(membershipEvents.paymentId, rich.payments.registration));
-  expect(periods).toEqual([expect.objectContaining({ userId: null, kind: "activation", reason: null })]);
-  expect(
-    await count(db.select().from(membershipEvents).where(eq(membershipEvents.reason, "Peringatan untuk Budi"))),
-  ).toBe(0);
-
-  // Komunitas: like dihapus (penghitung dijaga trigger), blokir dua arah dihapus; like rekan tetap.
-  expect(await count(db.select().from(postLikes).where(eq(postLikes.userId, userId)))).toBe(0);
-  expect(await count(db.select().from(postLikes).where(eq(postLikes.userId, rich.peer.userId)))).toBe(1);
-  const [post] = await db.select().from(posts).where(eq(posts.id, rich.postId));
-  expect(post!.likeCount).toBe(1);
-  expect(
-    await count(
-      db
-        .select()
-        .from(blocks)
-        .where(sql`${blocks.blockerId} = ${userId} or ${blocks.blockedId} = ${userId}`),
-    ),
-  ).toBe(0);
-
-  // Chat (AC F14-3, F14-5): pesan pengguna menjadi placeholder tanpa isi dan tanpa pengirim; pesan rekan utuh.
-  const memberMessages = await db
-    .select()
-    .from(messages)
-    .where(inArray(messages.id, [rich.messages.memberText, rich.messages.memberImage]));
-  for (const message of memberMessages) {
-    expect(message).toMatchObject({ senderId: null, body: null, imageFileId: null });
-    expect(message.deletedAt).not.toBeNull();
-  }
-  const peerMessages = await db
-    .select()
-    .from(messages)
-    .where(inArray(messages.id, [rich.messages.peerText, rich.messages.peerDirect]));
-  expect(peerMessages.map((m) => m.body).sort()).toEqual(["Balasan Ahmad", "Pesan direct Ahmad"]);
-  expect(peerMessages.every((m) => m.senderId === rich.peer.userId && m.deletedAt === null)).toBe(true);
-  expect(await count(db.select().from(messageReactions).where(eq(messageReactions.userId, userId)))).toBe(0);
-  expect(
-    await count(db.select().from(messageReactions).where(eq(messageReactions.messageId, rich.messages.memberText))),
-  ).toBe(1);
-
-  const members = async (roomId: string) =>
-    db
-      .select({ userId: roomMembers.userId, role: roomMembers.role, status: roomMembers.status })
-      .from(roomMembers)
-      .where(eq(roomMembers.roomId, roomId))
-      .orderBy(asc(roomMembers.userId));
-  const systemMessages = async (roomId: string) =>
-    (
-      await db
-        .select({ body: messages.body })
-        .from(messages)
-        .where(and(eq(messages.roomId, roomId), eq(messages.kind, "system")))
-    ).map((m) => m.body);
-  // Admin terakhir: dialihkan ke anggota aktif yang memenuhi kebijakan (rekan expired yang bergabung lebih dulu
-  // dilewati), tanpa menunggu respons anggota lain (AC F14-5).
-  expect(await members(rich.rooms.transfer)).toEqual(
-    expect.arrayContaining([
-      { userId: rich.peer.userId, role: "admin", status: "joined" },
-      { userId: rich.expiredPeer.userId, role: "member", status: "joined" },
-    ]),
-  );
-  expect(await systemMessages(rich.rooms.transfer)).toEqual([SYSTEM_MESSAGES.adminTransferred]);
-  // Tidak ada anggota yang memenuhi kebijakan: grup ditutup dan undangan tertunda dibatalkan.
-  const [closedRoom] = await db.select().from(rooms).where(eq(rooms.id, rich.rooms.close));
-  expect(closedRoom!.closedAt).not.toBeNull();
-  expect(closedRoom!.createdBy).toBeNull();
-  expect(await members(rich.rooms.close)).toEqual(
-    expect.arrayContaining([
-      { userId: rich.expiredPeer.userId, role: "member", status: "joined" },
-      { userId: rich.invitee.userId, role: "member", status: "removed" },
-    ]),
-  );
-  expect(await systemMessages(rich.rooms.close)).toEqual([SYSTEM_MESSAGES.groupClosed]);
-  // Grup dengan admin lain: hanya keluar; room direct: keanggotaan pengguna hilang, rekan tetap.
-  expect(await members(rich.rooms.coAdmin)).toEqual([{ userId: rich.peer.userId, role: "admin", status: "joined" }]);
-  expect(await systemMessages(rich.rooms.coAdmin)).toEqual([SYSTEM_MESSAGES.memberDeleted]);
-  expect(await members(rich.rooms.direct)).toEqual([{ userId: rich.peer.userId, role: "member", status: "joined" }]);
-  const [transferRoom] = await db.select().from(rooms).where(eq(rooms.id, rich.rooms.transfer));
-  expect(transferRoom).toMatchObject({ avatarFileId: null, createdBy: null, closedAt: null });
-
-  // Laporan moderasi anonim; bukti dibersihkan dari nama/isi/foto pengguna, data rekan di bukti tetap.
-  const reportRows = await db.select().from(reports).where(inArray(reports.id, Object.values(rich.reports)));
-  const byReport = Object.fromEntries(reportRows.map((r) => [r.id, r]));
-  expect(byReport[rich.reports.byMember]).toMatchObject({
-    reporterId: null,
-    description: null,
-    targetUserId: rich.peer.userId,
-  });
-  expect(byReport[rich.reports.byMember]!.evidence).toMatchObject({ profile: { full_name: "Ahmad Rekan" } });
-  expect(byReport[rich.reports.aboutMemberMessage]).toMatchObject({
-    targetUserId: null,
-    memberMessage: null,
-    reporterId: rich.peer.userId,
-    description: "Spam dari anggota ini",
-  });
-  expect(byReport[rich.reports.aboutMemberMessage]!.evidence).toMatchObject({
-    messages: [{ sender_user_id: null, sender_name: null, body: null, image: { file_id: null }, kind: "image" }],
-  });
-  expect(byReport[rich.reports.contextOnly]!.evidence).toMatchObject({
-    messages: [
-      { sender_user_id: rich.peer.userId, sender_name: "Ahmad Rekan", body: "Balasan Ahmad" },
-      { sender_user_id: null, sender_name: null, body: null },
-    ],
-    room: { avatar: { file_id: null }, name: "Angkatan 29" },
-  });
-
-  // Audit: aktor akun dianonimkan, snapshot hanya nilai non-identitas (F-17, D2).
-  const [memberAudit] = await db.select().from(auditLogs).where(eq(auditLogs.id, rich.auditIds.memberActor));
-  expect(memberAudit).toMatchObject({ actorUserId: null, reason: null, before: {}, after: { show_phone: true, version: 3 } });
-  const [adminAudit] = await db.select().from(auditLogs).where(eq(auditLogs.id, rich.auditIds.adminOnPayment));
-  expect(adminAudit).toMatchObject({
-    actorAdminId: expect.any(String),
-    reason: "Dana sesuai mutasi",
-    after: { status: "paid", amount: "60000.00" },
-  });
-  expect(await count(db.select().from(auditLogs).where(eq(auditLogs.actorUserId, userId)))).toBe(0);
-
-  // Identitas pengurus tertaut tidak ikut terhapus; tautannya diputus (PRD 3.14).
-  const [admin] = await db.select().from(admins).where(eq(admins.id, rich.superAdmin.adminId));
-  expect(admin).toMatchObject({ status: "active", role: "super_admin", linkedAlumniUserId: null });
-  expect((await userRow(db, rich.superAdmin.userId))!.status).toBe("active");
-
-  // Data rekan tidak tersentuh (AC F14-2).
-  const [peerProfile] = await db.select().from(alumni).where(eq(alumni.userId, rich.peer.userId));
-  expect(peerProfile).toMatchObject({ fullName: "Ahmad Rekan", avatarFileId: rich.files.peerAvatar.id });
-  expect((await userRow(db, rich.peer.userId))!.status).toBe("active");
-
-  // Tidak ada teks pribadi tersisa di tabel mana pun (D2, AC F14-3, F14-4).
-  expect(await personalDataHits(db, personalTerms(rich))).toEqual({});
-
-  // Permintaan selesai; salinan kerja ledger hanya id/object key.
-  const [deletion] = await db.select().from(accountDeletions).where(eq(accountDeletions.requestNumber, requestNumber));
-  expect(deletion).toMatchObject({ status: "completed", lastError: null, nextAttemptAt: null });
-  expect(deletion!.completedAt).not.toBeNull();
-  expect([...deletion!.stepsDone].sort()).toEqual([...DELETION_STEPS].sort());
-  return deletion!;
-}
 
 describe("Job account.deletion: penghapusan penuh (AC F14-3, F14-4, F14-5)", () => {
   it("AC F14-3, AC F14-4, AC F14-5, AC F14-6: outbox account.deletion.requested memicu job; seluruh tabel diperiksa, email konfirmasi dan selesai terkirim, ledger eksternal hanya id", async () => {
@@ -383,7 +86,9 @@ describe("Job account.deletion: penghapusan penuh (AC F14-3, F14-4, F14-5)", () 
     // Pemicu topik outbox (ARCHITECTURE §4.8): dispatcher worker menjalankan job sampai selesai.
     await t.jobs.drainOutbox();
     const deletion = await expectFullyDeleted(t, rich, requestNumber);
-    expect(deletion.completedAt!.getTime() - deletion.requestedAt.getTime()).toBeLessThanOrEqual(7 * 24 * 3600_000);
+    expect(deletion.completedAt!.getTime() - deletion.requestedAt.getTime()).toBeLessThanOrEqual(
+      7 * 24 * 3600_000,
+    );
 
     // Email konfirmasi (nomor permintaan) lalu email selesai, dikirim sebelum alamat dihapus (F-14).
     const mail = t.mailer.mail.slice(mailBefore);
@@ -404,7 +109,9 @@ describe("Job account.deletion: penghapusan penuh (AC F14-3, F14-4, F14-5)", () 
       source: "app",
       state: "completed",
     });
-    expect(ledger.object_keys).toEqual(expect.arrayContaining([rich.files.avatar.objectKey, rich.files.proofOld.objectKey]));
+    expect(ledger.object_keys).toEqual(
+      expect.arrayContaining([rich.files.avatar.objectKey, rich.files.proofOld.objectKey]),
+    );
     const raw = JSON.stringify(ledger) + JSON.stringify(deletion.ledger);
     for (const term of personalTerms(rich)) expect(raw).not.toContain(term);
 
@@ -413,10 +120,16 @@ describe("Job account.deletion: penghapusan penuh (AC F14-3, F14-4, F14-5)", () 
       .select()
       .from(auditLogs)
       .where(and(eq(auditLogs.action, "account.deletion_completed"), eq(auditLogs.entityId, id)));
-    expect(done).toMatchObject({ effectiveRole: "system", after: { request_number: requestNumber, status: "completed" } });
+    expect(done).toMatchObject({
+      effectiveRole: "system",
+      after: { request_number: requestNumber, status: "completed" },
+    });
 
     // Akun tidak lagi dapat login; status penghapusan tidak lagi muncul lewat login (akun sudah dihapus).
-    const login = await httpClient(t.app).post("/auth/login", { email: rich.member.email, password: DEFAULT_PASSWORD });
+    const login = await httpClient(t.app).post("/auth/login", {
+      email: rich.member.email,
+      password: DEFAULT_PASSWORD,
+    });
     expect(login.statusCode).toBe(401);
   });
 
@@ -426,10 +139,36 @@ describe("Job account.deletion: penghapusan penuh (AC F14-3, F14-4, F14-5)", () 
     const session = await signInAlumni(t, owner);
     const now = t.clock.now();
     const roomId = uuidv7();
-    await t.db.insert(rooms).values({ id: roomId, kind: "group", name: "Grup Undangan", createdBy: owner.userId, createdAt: now, updatedAt: now });
+    await t.db
+      .insert(rooms)
+      .values({
+        id: roomId,
+        kind: "group",
+        name: "Grup Undangan",
+        createdBy: owner.userId,
+        createdAt: now,
+        updatedAt: now,
+      });
     await t.db.insert(roomMembers).values([
-      { roomId, userId: owner.userId, role: "admin", status: "joined", joinedAt: now, createdAt: now, updatedAt: now },
-      { roomId, userId: invited.userId, role: "member", status: "invited", invitedBy: owner.userId, invitedAt: now, createdAt: now, updatedAt: now },
+      {
+        roomId,
+        userId: owner.userId,
+        role: "admin",
+        status: "joined",
+        joinedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        roomId,
+        userId: invited.userId,
+        role: "member",
+        status: "invited",
+        invitedBy: owner.userId,
+        invitedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      },
     ]);
     const { id } = await requestDeletionViaApp(t, session);
     expect(await runDeletion(t, id)).toMatchObject({ outcome: "completed" });
@@ -463,7 +202,10 @@ describe("Job account.deletion: penghapusan penuh (AC F14-3, F14-4, F14-5)", () 
       .from(accountDeletions)
       .where(eq(accountDeletions.requestNumber, confirmed.json().request_number));
     expect(await runDeletion(t, row!.id)).toMatchObject({ outcome: "completed" });
-    expect(await userRow(t.db, pending.userId)).toMatchObject({ status: "deleted", email: deletedEmailFor(pending.userId) });
+    expect(await userRow(t.db, pending.userId)).toMatchObject({
+      status: "deleted",
+      email: deletedEmailFor(pending.userId),
+    });
     expect(await personalDataHits(t.db, [pending.email, "Calon Terhapus"])).toEqual({});
 
     await publishLegalVersions(t);
@@ -549,7 +291,10 @@ describe("Job account.deletion: kegagalan dan retry (AC F14-2)", () => {
     }
     expect(await runDeletion(t, second.id)).toMatchObject({ outcome: "completed" });
     const done = await expectFullyDeleted(t, other, second.requestNumber);
-    expect(done.ledger).toMatchObject({ skipped: ["notify_requested"], email_failures: { notify_requested: 3 } });
+    expect(done.ledger).toMatchObject({
+      skipped: ["notify_requested"],
+      email_failures: { notify_requested: 3 },
+    });
   });
 
   it("AC F14-2: sapuan 10 menit memproses permintaan pending tanpa pemicu outbox dan mengambil alih klaim yang sewanya habis; eksekusi bersamaan diklaim sekali", async () => {
@@ -558,11 +303,14 @@ describe("Job account.deletion: kegagalan dan retry (AC F14-2)", () => {
     const lost = await createAlumni(t, { status: "verified" });
     const { id } = await requestDeletionViaApp(t, await signInAlumni(t, lost));
     // Worker mati setelah klaim: baris processing dengan sewa yang masih berlaku tidak diambil.
-    await t.db.update(accountDeletions).set({
-      status: "processing",
-      attempts: 1,
-      nextAttemptAt: new Date(t.clock.now().getTime() + 15 * 60_000),
-    }).where(eq(accountDeletions.id, id));
+    await t.db
+      .update(accountDeletions)
+      .set({
+        status: "processing",
+        attempts: 1,
+        nextAttemptAt: new Date(t.clock.now().getTime() + 15 * 60_000),
+      })
+      .where(eq(accountDeletions.id, id));
     expect(await runDeletion(t, id)).toEqual({ outcome: "skipped" });
     t.clock.advance(15 * 60_000);
     await job.runScheduled(ACCOUNT_DELETION_JOB);
@@ -601,7 +349,13 @@ describe("Deletion ledger: penerapan ulang setelah restore (AC F14-6)", () => {
       const entries = readLedgerDirectory(ledgerDir);
       expect(entries.map((e) => [e.request_number, e.state])).toEqual([[requestNumber, "completed"]]);
       const summary = await runAsSystem(() => restored!.app.get(DeletionLedgerService).reapply(entries));
-      expect(summary).toMatchObject({ entries: 1, reapplied: [requestNumber], failed: [], absent: [], alreadyDeleted: [] });
+      expect(summary).toMatchObject({
+        entries: 1,
+        reapplied: [requestNumber],
+        failed: [],
+        absent: [],
+        alreadyDeleted: [],
+      });
       await expectFullyDeleted(restored, rich, requestNumber);
       // Email penghapusan tidak dikirim ulang ke alamat yang dipulihkan.
       expect(restored.mailer.mail).toEqual([]);
@@ -657,7 +411,9 @@ describe("Deletion ledger: penerapan ulang setelah restore (AC F14-6)", () => {
       });
       await expectFullyDeleted(restored, rich, requestNumber);
       // Email konfirmasi sudah terkirim sebelum bencana; email selesai dikirim sekarang.
-      expect(restored.mailer.mail.map((m) => m.subject)).toEqual([`Penghapusan akun KAPDH ${requestNumber} selesai`]);
+      expect(restored.mailer.mail.map((m) => m.subject)).toEqual([
+        `Penghapusan akun KAPDH ${requestNumber} selesai`,
+      ]);
       const [row] = await restored.db.select().from(accountDeletions).where(eq(accountDeletions.id, id));
       expect(row).toMatchObject({ requestNumber, status: "completed" });
       expect(row!.ledger).toMatchObject({ restored: true });
@@ -715,7 +471,12 @@ describe("Redaksi snapshot (D2, AC F14-4)", () => {
       scrubEvidence(
         {
           messages: [
-            { sender_user_id: userId, sender_name: "Budi", body: "isi", image: { file_id: fileId, url: "x" } },
+            {
+              sender_user_id: userId,
+              sender_name: "Budi",
+              body: "isi",
+              image: { file_id: fileId, url: "x" },
+            },
             { sender_user_id: peer, sender_name: "Ahmad", body: "balas", image: null },
           ],
           profile: { full_name: "Budi", bio: "bio" },
