@@ -229,72 +229,78 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(bottom: bottomInset),
-        child: ListView(
-          shrinkWrap: true,
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, 0, KapdhSpace.s5, KapdhSpace.s5),
-          children: [
-            Semantics(
-              header: true,
-              child: Text(
-                widget.target.title,
-                style: const TextStyle(fontSize: KapdhFontSize.h3, fontWeight: FontWeight.w600),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Semantics(
+                header: true,
+                child: Text(
+                  widget.target.title,
+                  style: const TextStyle(fontSize: KapdhFontSize.h3, fontWeight: FontWeight.w600),
+                ),
               ),
-            ),
-            const SizedBox(height: KapdhSpace.s1),
-            Text(
-              widget.target.summary,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: KapdhColors.textMuted),
-            ),
-            const SizedBox(height: KapdhSpace.s3),
-            const Text('Kategori', style: TextStyle(fontWeight: FontWeight.w500)),
-            RadioGroup<ModerationReportInputCategory>(
-              groupValue: _category,
-              onChanged: (value) => setState(() {
-                _category = value;
-                _categoryError = null;
-              }),
-              child: Column(
-                children: [
-                  for (final category in _categories)
-                    RadioListTile<ModerationReportInputCategory>(
-                      value: category,
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(_inputCategoryLabel(category)),
-                      subtitle: _inputCategoryHint(category).isEmpty ? null : Text(_inputCategoryHint(category)),
-                    ),
-                ],
+              const SizedBox(height: KapdhSpace.s1),
+              Text(
+                widget.target.summary,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: KapdhColors.textMuted),
               ),
-            ),
-            if (_categoryError != null)
-              Text(_categoryError!, style: const TextStyle(color: KapdhColors.danger, fontSize: KapdhFontSize.caption)),
-            const SizedBox(height: KapdhSpace.s3),
-            KapdhTextField(
-              label: 'Penjelasan',
-              controller: _description,
-              hint: _category == ModerationReportInputCategory.otherValue ? 'Wajib diisi' : 'Opsional',
-              maxLines: 4,
-              errorText: _descriptionError,
-              inputFormatters: [LengthLimitingTextInputFormatter(reportDescriptionMaxChars)],
-              requiredMark: _category == ModerationReportInputCategory.otherValue,
-            ),
-            const SizedBox(height: KapdhSpace.s3),
-            const InfoBox(
-              icon: Icons.shield_outlined,
-              message:
-                  'Laporan tidak dibuka kepada pihak yang dilaporkan. Pantau statusnya di Akun > Laporan Saya. '
-                  'Dalam keadaan darurat, hubungi pihak berwenang.',
-            ),
-            const SizedBox(height: KapdhSpace.s4),
-            KapdhButton(
-              label: 'Kirim laporan',
-              icon: Icons.flag_outlined,
-              busy: _busy,
-              busyLabel: 'Mengirim laporan',
-              onPressed: _busy ? null : _submit,
-            ),
-          ],
+              const SizedBox(height: KapdhSpace.s3),
+              const Text('Kategori', style: TextStyle(fontWeight: FontWeight.w500)),
+              RadioGroup<ModerationReportInputCategory>(
+                groupValue: _category,
+                onChanged: (value) => setState(() {
+                  _category = value;
+                  _categoryError = null;
+                }),
+                child: Column(
+                  children: [
+                    for (final category in _categories)
+                      RadioListTile<ModerationReportInputCategory>(
+                        value: category,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(_inputCategoryLabel(category)),
+                        subtitle: _inputCategoryHint(category).isEmpty ? null : Text(_inputCategoryHint(category)),
+                      ),
+                  ],
+                ),
+              ),
+              if (_categoryError != null)
+                Text(
+                  _categoryError!,
+                  style: const TextStyle(color: KapdhColors.danger, fontSize: KapdhFontSize.caption),
+                ),
+              const SizedBox(height: KapdhSpace.s3),
+              KapdhTextField(
+                label: 'Penjelasan',
+                controller: _description,
+                hint: _category == ModerationReportInputCategory.otherValue ? 'Wajib diisi' : 'Opsional',
+                maxLines: 4,
+                errorText: _descriptionError,
+                inputFormatters: [LengthLimitingTextInputFormatter(reportDescriptionMaxChars)],
+                requiredMark: _category == ModerationReportInputCategory.otherValue,
+              ),
+              const SizedBox(height: KapdhSpace.s3),
+              const InfoBox(
+                icon: Icons.shield_outlined,
+                message:
+                    'Laporan tidak dibuka kepada pihak yang dilaporkan. Pantau statusnya di Akun > Laporan Saya. '
+                    'Dalam keadaan darurat, hubungi pihak berwenang.',
+              ),
+              const SizedBox(height: KapdhSpace.s4),
+              KapdhButton(
+                label: 'Kirim laporan',
+                icon: Icons.flag_outlined,
+                busy: _busy,
+                busyLabel: 'Mengirim laporan',
+                onPressed: _busy ? null : _submit,
+              ),
+            ],
+          ),
         ),
       ),
     );
