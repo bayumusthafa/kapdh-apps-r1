@@ -31,7 +31,8 @@ Override get testImagesOverride => remoteImageProviderFactoryProvider.overrideWi
 });
 
 /// Menjalankan aplikasi dengan sesi anggota [status] (GET /me) lalu membuka [location] (push di atas rute awal
-/// status agar tombol kembali bekerja seperti dari Beranda).
+/// status agar tombol kembali bekerja seperti dari Beranda). [settled] false: frame dipompa tanpa menunggu tenang
+/// (untuk memeriksa keadaan memuat selagi request ditahan).
 Future<AppHarness> pumpMemberApp(
   WidgetTester tester, {
   Map<String, FakeHandler> routes = const {},
@@ -42,6 +43,7 @@ Future<AppHarness> pumpMemberApp(
   TestClock? clock,
   double textScale = 1,
   Map<String, Object?>? config,
+  bool settled = true,
 }) async {
   requestedImages.clear();
   final app = await pumpApp(
@@ -50,16 +52,22 @@ Future<AppHarness> pumpMemberApp(
     store: store,
     clock: clock,
     textScale: textScale,
+    settle: settled,
     overrides: [testImagesOverride],
     handler: apiRoutes({'/me': (_) => FakeResponse.json(200, meJson(status: status)), ...routes}, config: config),
   );
+  if (!settled) await pumpFrames(tester);
   if (location != null) {
     if (push) {
       unawaited(app.router.push(location));
     } else {
       app.router.go(location);
     }
-    await settle(tester);
+    if (settled) {
+      await settle(tester);
+    } else {
+      await pumpFrames(tester);
+    }
   }
   return app;
 }
@@ -78,4 +86,12 @@ Future<void> scrollUntil(WidgetTester tester, Finder finder, {Finder? scrollable
         find.byWidgetPredicate((widget) => widget is Scrollable && widget.axisDirection == AxisDirection.down).first,
   );
   await settle(tester);
+}
+
+/// Memompa beberapa frame tanpa menunggu tenang (kerangka memuat beranimasi terus sehingga pumpAndSettle tidak
+/// pernah selesai selama request ditahan).
+Future<void> pumpFrames(WidgetTester tester, {int count = 40}) async {
+  for (var i = 0; i < count; i++) {
+    await tester.pump(const Duration(milliseconds: 50));
+  }
 }

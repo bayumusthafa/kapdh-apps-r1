@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_api/kapdh_api.dart';
@@ -237,6 +239,17 @@ void main() {
       expect(app.location, '/home');
       expect(find.text('Masa keanggotaan berakhir'), findsOneWidget);
       expect(find.text('Fitur ini khusus anggota aktif.'), findsNothing);
+    });
+
+    testWidgets('N-03 memuat: kerangka Beranda sampai GET /home selesai', (tester) async {
+      final pending = Completer<FakeResponse>();
+      await pumpMemberApp(tester, settled: false, routes: {'/home': (_) => pending.future});
+      expect(find.bySemanticsLabel('Memuat Beranda'), findsOneWidget);
+      expect(find.text("Assalamu'alaikum,"), findsOneWidget);
+      pending.complete(FakeResponse.json(200, homeJson()));
+      await settle(tester);
+      expect(find.bySemanticsLabel('Memuat Beranda'), findsNothing);
+      expect(find.bySemanticsLabel(RegExp('^Banner 1 dari 1')), findsOneWidget);
     });
 
     testWidgets('N-11 teks 200 % tanpa meluap', (tester) async {
