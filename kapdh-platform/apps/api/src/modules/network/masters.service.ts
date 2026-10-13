@@ -41,17 +41,19 @@ interface MasterSpec {
 const MASTERS: Readonly<Record<MasterKind, MasterSpec>> = {
   professions: {
     table: masterProfessions,
-    usage: sql<number>`(select count(*) from ${alumniProfessions} where ${alumniProfessions.professionId} = ${masterProfessions.id})`.mapWith(
-      Number,
-    ),
+    usage:
+      sql<number>`(select count(*) from ${alumniProfessions} where ${alumniProfessions.professionId} = ${masterProfessions.id})`.mapWith(
+        Number,
+      ),
     entityType: "master_profession",
     labelKey: "master_professions_label_key",
   },
   skills: {
     table: masterSkills as unknown as MasterTable,
-    usage: sql<number>`(select count(*) from ${alumniSkills} where ${alumniSkills.skillId} = ${masterSkills.id})`.mapWith(
-      Number,
-    ),
+    usage:
+      sql<number>`(select count(*) from ${alumniSkills} where ${alumniSkills.skillId} = ${masterSkills.id})`.mapWith(
+        Number,
+      ),
     entityType: "master_skill",
     labelKey: "master_skills_label_key",
   },
@@ -95,7 +97,12 @@ const updateSchema = z
   .refine((body) => Object.keys(body).length > 0, { message: "Kirim minimal satu perubahan.", path: ["_"] });
 
 const listQuerySchema = z.object({
-  q: z.string({ message: "Kata kunci tidak valid" }).trim().min(1, "Kata kunci wajib diisi").max(100).optional(),
+  q: z
+    .string({ message: "Kata kunci tidak valid" })
+    .trim()
+    .min(1, "Kata kunci wajib diisi")
+    .max(100)
+    .optional(),
   active: queryBool().optional(),
   sort: z
     .enum(["manual", "label_asc", "label_desc", "usage_desc"], {
@@ -109,7 +116,12 @@ const positionSchema = z.discriminatedUnion("s", [
   z.object({ s: z.literal("manual"), o: z.number().int(), l: z.string().max(1000), id: uuidValue }),
   z.object({ s: z.literal("label_asc"), l: z.string().max(1000), id: uuidValue }),
   z.object({ s: z.literal("label_desc"), l: z.string().max(1000), id: uuidValue }),
-  z.object({ s: z.literal("usage_desc"), u: z.number().int().min(0), l: z.string().max(1000), id: uuidValue }),
+  z.object({
+    s: z.literal("usage_desc"),
+    u: z.number().int().min(0),
+    l: z.string().max(1000),
+    id: uuidValue,
+  }),
 ]);
 type MasterPosition = z.infer<typeof positionSchema>;
 
@@ -137,7 +149,9 @@ const invalidCursor = () =>
 const duplicateLabel = () =>
   new AppException(409, "VALIDATION_ERROR", "Label sudah ada pada daftar master ini.", {
     fieldErrors: {
-      label: ["Label sudah dipakai (termasuk master nonaktif). Aktifkan kembali master yang lama bila diperlukan."],
+      label: [
+        "Label sudah dipakai (termasuk master nonaktif). Aktifkan kembali master yang lama bila diperlukan.",
+      ],
     },
   });
 
@@ -148,7 +162,9 @@ const masterInUse = (current: AdminMasterItem) =>
     `Master masih dipakai ${current.usage_count} alumni sehingga tidak dapat dihapus. Nonaktifkan agar label lama tetap tampil.`,
     {
       fieldErrors: {
-        _: ["Master yang masih dipakai tidak dapat dihapus; nonaktifkan sebagai gantinya (label historis tetap tampil)."],
+        _: [
+          "Master yang masih dipakai tidak dapat dihapus; nonaktifkan sebagai gantinya (label historis tetap tampil).",
+        ],
       },
       current,
     },
@@ -178,7 +194,8 @@ export class MastersService {
 
     const label = sql<string>`lower(${table.label})`;
     const filters: SQL[] = [];
-    if (params.q !== undefined) filters.push(sql`${label} like lower(${`%${escapeLike(params.q)}%`}) escape '\\'`);
+    if (params.q !== undefined)
+      filters.push(sql`${label} like lower(${`%${escapeLike(params.q)}%`}) escape '\\'`);
     if (params.active !== undefined) filters.push(eq(table.active, params.active));
     const where = filters.length > 0 ? and(...filters) : undefined;
 
@@ -215,7 +232,9 @@ export class MastersService {
           .select({ row: table, usage, sortLabel: label })
           .from(table)
           .where(after ? and(where, keysetAfter(order)) : where)
-          .orderBy(...order.map((key) => (key.direction === "asc" ? sql`${key.expr} asc` : sql`${key.expr} desc`)))
+          .orderBy(
+            ...order.map((key) => (key.direction === "asc" ? sql`${key.expr} asc` : sql`${key.expr} desc`)),
+          )
           .limit(page.limit + 1);
         const [counted] = await tx.select({ total: count() }).from(table).where(where);
         const hasMore = found.length > page.limit;
@@ -283,7 +302,12 @@ export class MastersService {
    * berbeda → 409 VERSION_CONFLICT dengan `current`. Menonaktifkan hanya menghentikan pemilihan baru; label historis
    * pada profil tetap tampil. Audit master.updated dengan before/after.
    */
-  async update(kind: MasterKind, masterId: string, ifMatch: string | undefined, raw: unknown): Promise<AdminMasterItem> {
+  async update(
+    kind: MasterKind,
+    masterId: string,
+    ifMatch: string | undefined,
+    raw: unknown,
+  ): Promise<AdminMasterItem> {
     const { table, entityType, labelKey } = MASTERS[kind];
     const expected = parseIfMatch(ifMatch);
     const body = validate(updateSchema, raw);
@@ -300,7 +324,11 @@ export class MastersService {
           sortOrder: body.sort_order ?? locked.sortOrder,
         };
         // Tidak ada perubahan nyata: kembalikan keadaan sekarang tanpa menaikkan versi maupun audit.
-        if (next.label === locked.label && next.active === locked.active && next.sortOrder === locked.sortOrder)
+        if (
+          next.label === locked.label &&
+          next.active === locked.active &&
+          next.sortOrder === locked.sortOrder
+        )
           return toItem(kind, locked, used);
         const [row] = await tx
           .update(table)

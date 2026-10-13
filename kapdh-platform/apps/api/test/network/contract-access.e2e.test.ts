@@ -54,7 +54,10 @@ describe("Kontrak akses jejaring dan master", () => {
       const matching = routes.filter(
         (route) => route.method === op.method && normalize(route.path) === normalize(op.path),
       );
-      expect(matching.map((route) => route.name.split(".")[0]), op.operationId).toHaveLength(1);
+      expect(
+        matching.map((route) => route.name.split(".")[0]),
+        op.operationId,
+      ).toHaveLength(1);
       expect(CONTROLLERS).toContain(matching[0]!.name.split(".")[0]);
       expect(op.access, `${op.operationId} tanpa x-kapdh-access`).toBeDefined();
     }

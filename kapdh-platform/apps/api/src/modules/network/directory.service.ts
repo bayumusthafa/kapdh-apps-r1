@@ -199,11 +199,12 @@ export class DirectoryService implements OnModuleInit {
         const avatars = await this.avatarUrls(tx, pageRows, auth);
         const items = pageRows.map((row) => this.toCard(row, masters, avatars));
         const last = pageRows[pageRows.length - 1];
-        const position: DirectoryPosition | null = !hasMore || !last
-          ? null
-          : sort === "name_asc"
-            ? { s: "name_asc", n: last.sortName, id: last.userId }
-            : { s: "cohort_desc", c: last.cohort, n: last.sortName, id: last.userId };
+        const position: DirectoryPosition | null =
+          !hasMore || !last
+            ? null
+            : sort === "name_asc"
+              ? { s: "name_asc", n: last.sortName, id: last.userId }
+              : { s: "cohort_desc", c: last.cohort, n: last.sortName, id: last.userId };
         return {
           items,
           total: Number(counted?.total ?? 0),
@@ -268,7 +269,9 @@ export class DirectoryService implements OnModuleInit {
           .where(
             and(
               eq(alumni.userId, userId),
-              isMe ? eq(users.status, "active") : and(directoryVisible(now), notBlockedByOwner(tx, auth.userId)),
+              isMe
+                ? eq(users.status, "active")
+                : and(directoryVisible(now), notBlockedByOwner(tx, auth.userId)),
             ),
           )
           .limit(1);
@@ -279,7 +282,9 @@ export class DirectoryService implements OnModuleInit {
         const isBlockedByMe = isMe ? false : await this.blockedBy(tx, auth.userId, row.userId);
         // can_message: false bila salah satu pihak memblokir atau profil sendiri; alasan tidak dibedakan (AC F12-1).
         const canMessage =
-          !isMe && !isBlockedByMe && !(await this.blockPolicy.isBlockedEitherWay(auth.userId, row.userId, tx));
+          !isMe &&
+          !isBlockedByMe &&
+          !(await this.blockPolicy.isBlockedEitherWay(auth.userId, row.userId, tx));
         const directRoomId = isMe ? null : await this.directRoomId(tx, auth.userId, row.userId);
 
         const profile: NetworkMemberProfile = {
@@ -343,7 +348,10 @@ export class DirectoryService implements OnModuleInit {
         ),
       )
       .where(
-        and(eq(rooms.kind, "direct"), inArray(rooms.directKey, [`${viewerId}:${peerId}`, `${peerId}:${viewerId}`])),
+        and(
+          eq(rooms.kind, "direct"),
+          inArray(rooms.directKey, [`${viewerId}:${peerId}`, `${peerId}:${viewerId}`]),
+        ),
       )
       .limit(1);
     return row?.id ?? null;
