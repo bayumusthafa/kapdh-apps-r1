@@ -18,6 +18,7 @@ export interface BullQueueLike {
   getJobCounts(...types: ("waiting" | "active" | "delayed" | "prioritized" | "paused")[]): Promise<{
     [index: string]: number;
   }>;
+  on(event: "error", listener: (error: Error) => void): unknown;
   close(): Promise<void>;
 }
 
@@ -90,7 +91,9 @@ export class BullMqQueueDriver implements QueueDriver {
     const { connection, prefix } = this.options;
     for (const [name, registration] of this.registrations) {
       const logger = this.options.logger.child({ queue: name, driver: "bullmq" });
-      this.queues.set(name, this.factories.queue(name, { connection, prefix }));
+      const queue = this.factories.queue(name, { connection, prefix });
+      queue.on("error", (error) => logger.error({ error: safeError(error) }, "galat antrean BullMQ"));
+      this.queues.set(name, queue);
       const worker = this.factories.worker(
         name,
         async (job) => {

@@ -1,5 +1,7 @@
 import { ADVISORY_LOCK_KEYS } from "@kapdh/api/worker";
-import type { createDb } from "@kapdh/database";
+import postgres from "postgres";
+
+type Sql = postgres.Sql;
 
 /** Pemilihan leader penjadwal: hanya pemegang kunci yang menjadwalkan job (ARCHITECTURE §4.8, PRD 5.1). */
 export interface LeaderLock {
@@ -13,8 +15,6 @@ export interface LeaderLock {
   /** Menutup koneksi khusus kunci. */
   close(): Promise<void>;
 }
-
-type Sql = ReturnType<typeof createDb>["sql"];
 
 const LOW_32 = 0xffffffffn;
 
@@ -59,4 +59,35 @@ export class PgAdvisoryLeaderLock implements LeaderLock {
   async close(): Promise<void> {
     await this.sql.end({ timeout: 5 });
   }
+}
+
+export interface LeaderConnectionOptions {
+  key?: number | bigint;
+  applicationName?: string;
+}
+
+/**
+ * Koneksi khusus kunci leader dari DATABASE_URL (role kapdh_worker; advisory lock tidak membutuhkan grant tambahan):
+ *   - satu koneksi tanpa batas umur (`max_lifetime: 0`) dan tanpa idle timeout, karena rotasi koneksi pool akan
+ *     melepas kunci sesi dan memicu pergantian leader yang tidak perlu;
+ *   - keepalive TCP sisi server diperpendek agar PostgreSQL cepat melepas kunci milik worker yang hilang dari
+ *     jaringan (instance lain dapat mengambil alih), dan statement_timeout menjaga tick tidak menggantung.
+ * URL koneksi (berisi sandi) tidak pernah dicatat.
+ */
+export function connectLeaderLock(url: string, options: LeaderConnectionOptions = {}): PgAdvisoryLeaderLock {
+  const sql = postgres(url, {
+    max: 1,
+    max_lifetime: 0,
+    idle_timeout: 0,
+    connect_timeout: 10,
+    prepare: false,
+    onnotice: () => {},
+    connection: {
+      application_name: options.applicationName ?? "kapdh-worker-leader",
+      statement_timeout: 5_000,
+      tcp_keepalives_idle: 30,
+      tcp_keepalives_interval: 10,
+    },
+  });
+  return new PgAdvisoryLeaderLock(sql, options.key);
 }
