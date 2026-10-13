@@ -1882,6 +1882,11 @@ export const mockContent = {
     const c = categories.get(id);
     return c ? categoryOut(c) : undefined;
   },
+  /** Kategori berdasarkan jenis dan label (mis. kategori yang baru dibuat lewat UI dalam uji). */
+  categoryByLabel(kind: Kind, label: string): S["AdminContentCategory"] | undefined {
+    const c = [...categories.values()].find((x) => x.kind === kind && x.label === label);
+    return c ? categoryOut(c) : undefined;
+  },
   /** Pengurus lain menyunting berita: versi naik. */
   editPostElsewhere(id: string, patch: Partial<Pick<PostRow, "title" | "body_html" | "excerpt">> = {}): void {
     const p = posts.get(id);

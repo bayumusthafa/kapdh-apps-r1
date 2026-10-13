@@ -1,8 +1,17 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { configure, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { CONTENT_IDS, contentRequests, mockContent } from "../../api/mocks/content";
 import { findToast, renderApp, signIn, type User } from "../../test/utils";
+
+// Suite admin berjalan paralel; potongan kode area dan editor dimuat lazy sehingga butuh waktu tunggu lebih.
+configure({ asyncUtilTimeout: 5000 });
+
+beforeAll(async () => {
+  // Potongan kode area dan editor dimuat lazy; muat lebih dahulu agar waktu transformasi modul saat suite berjalan
+  // paralel tidak dihitung sebagai waktu tunggu UI.
+  await Promise.all([import("./ContentPages"), import("../../components/ui/RichTextEditorImpl")]);
+}, 60_000);
 
 // jsdom tidak mengimplementasikan geometri Range; ProseMirror memakainya untuk menggulir ke kursor.
 const emptyRects = () => Object.assign([], { item: () => null }) as unknown as DOMRectList;
@@ -143,7 +152,9 @@ describe("editor berita (F-08, AC F08-1, F15-4, F15-5; server tiruan)", () => {
 
     mockContent.editPostElsewhere(CONTENT_IDS.postDraft);
     await user.click(screen.getByRole("button", { name: "Simpan draf" }));
-    const notice = (await screen.findByText(/Berita ini sudah diubah pengurus lain/)).closest<HTMLElement>('[role="alert"]')!;
+    const notice = (await screen.findByText(/Berita ini sudah diubah pengurus lain/)).closest<HTMLElement>(
+      '[role="alert"]',
+    )!;
     expect(notice).toHaveTextContent("Berita ini sudah diubah pengurus lain");
     await waitFor(() => expect(notice).toHaveFocus());
     expect(lastRequest("PATCH", CONTENT_IDS.postDraft)).toMatchObject({
