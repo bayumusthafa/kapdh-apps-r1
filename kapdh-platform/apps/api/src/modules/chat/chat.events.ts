@@ -38,7 +38,11 @@ export class ChatEvents {
       member_count: Math.min(input.memberCount, 100),
       actor_user_id: input.actorUserId,
     };
-    if (input.change === "invited" || input.change === "invitation_cancelled" || input.change === "declined") {
+    if (
+      input.change === "invited" ||
+      input.change === "invitation_cancelled" ||
+      input.change === "declined"
+    ) {
       this.realtime.emitToUsers(
         [input.userId, ...inviteAudience],
         "room.member_changed",

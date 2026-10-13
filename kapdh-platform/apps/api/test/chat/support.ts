@@ -101,7 +101,12 @@ export function sendRaw(t: TestApp, from: Member, roomId: string, payload: Recor
 }
 
 /** Seluruh riwayat lewat halaman `before` (urut naik). */
-export async function history(t: TestApp, viewer: Member, roomId: string, query: Record<string, string> = {}) {
+export async function history(
+  t: TestApp,
+  viewer: Member,
+  roomId: string,
+  query: Record<string, string> = {},
+) {
   const res = await api(t).get(`/chat/rooms/${roomId}/messages`, { token: viewer.token, query });
   return { res, body: expectOperation("get", "/chat/rooms/{roomId}/messages", res) as Page };
 }
@@ -112,7 +117,9 @@ export interface Page {
 }
 
 export async function block(t: TestApp, blocker: Member, blocked: Member): Promise<void> {
-  await t.db.insert(blocks).values({ blockerId: blocker.userId, blockedId: blocked.userId, createdAt: t.clock.now() });
+  await t.db
+    .insert(blocks)
+    .values({ blockerId: blocker.userId, blockedId: blocked.userId, createdAt: t.clock.now() });
 }
 
 export function errorCode(res: InjectResponse): string {
@@ -175,7 +182,11 @@ export class TestSocket {
   }
 
   /** Menunggu event yang cocok (sudah diterima atau datang kemudian). */
-  async waitFor(type: string, match: (e: Envelope) => boolean = () => true, timeoutMs = 3000): Promise<Envelope> {
+  async waitFor(
+    type: string,
+    match: (e: Envelope) => boolean = () => true,
+    timeoutMs = 3000,
+  ): Promise<Envelope> {
     const deadline = Date.now() + timeoutMs;
     for (;;) {
       const found = this.events.find((e) => e.type === type && match(e));

@@ -112,7 +112,12 @@ export class ChatPresenter {
 
   /** ChatUserRef: nama dan avatar saja, tanpa kontak (N-09); null bila akun sudah dihapus. */
   async userRef(
-    input: { userId: string | null; accountStatus: string | null; fullName: string | null; avatar: FileRefLite },
+    input: {
+      userId: string | null;
+      accountStatus: string | null;
+      fullName: string | null;
+      avatar: FileRefLite;
+    },
     viewer: ChatViewer | null,
   ): Promise<ChatUserRefDto | null> {
     if (!input.userId || isDeletedAccount(input)) return null;
@@ -294,7 +299,10 @@ export class ChatPresenter {
     let replyTo: ChatMessageDto["reply_to"] = null;
     if (row.reply_to_id) {
       const available =
-        !options.realtime && row.reply_visible === true && row.reply_deleted !== true && row.reply_id !== null;
+        !options.realtime &&
+        row.reply_visible === true &&
+        row.reply_deleted !== true &&
+        row.reply_id !== null;
       replyTo = {
         id: row.reply_to_id,
         available,

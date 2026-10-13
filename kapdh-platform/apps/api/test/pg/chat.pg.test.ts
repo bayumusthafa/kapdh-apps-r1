@@ -78,7 +78,12 @@ interface Reply {
   body: Record<string, unknown>;
 }
 
-async function call(method: "GET" | "POST" | "PUT", url: string, who: Member, payload?: object): Promise<Reply> {
+async function call(
+  method: "GET" | "POST" | "PUT",
+  url: string,
+  who: Member,
+  payload?: object,
+): Promise<Reply> {
   const res = await app.inject({
     method,
     url: `/api/v1${url}`,
@@ -158,7 +163,8 @@ describe("AC F11-1 / PRD 9.2: direct-room race (PostgreSQL 17, role kapdh_app)",
     const [low, high] = [a.userId, b.userId].sort();
     const directKey = `${low}:${high}`;
     const gate = await holdLock(
-      (tx) => tx`select pg_advisory_xact_lock(${ADVISORY_LOCK_NAMESPACES.blockPair}::int4, hashtext(${directKey}))`,
+      (tx) =>
+        tx`select pg_advisory_xact_lock(${ADVISORY_LOCK_NAMESPACES.blockPair}::int4, hashtext(${directKey}))`,
     );
     const callers = [a, b, a, b, a, b];
     const pending = callers.map((from) =>
@@ -201,7 +207,9 @@ describe("AC F11-1 / PRD 9.2: direct-room race (PostgreSQL 17, role kapdh_app)",
       const mine = results.filter((r) => r.key === key).map((r) => r.res);
       expect(mine.map((r) => r.statusCode).sort()).toEqual([200, 200, 200, 201]);
       expect(new Set(mine.map((r) => r.body.id)).size).toBe(1);
-      const [row] = await sql<{ n: number }[]>`select count(*)::int as n from app.rooms where direct_key = ${key}`;
+      const [row] = await sql<
+        { n: number }[]
+      >`select count(*)::int as n from app.rooms where direct_key = ${key}`;
       expect(row!.n).toBe(1);
     }
   });
@@ -215,7 +223,9 @@ describe("AC F11-2: client_message_id duplikat bersamaan (PostgreSQL 17)", () =>
     const clientMessageId = uuidv7();
     const payload = { client_message_id: clientMessageId, kind: "text", body: "Retry bersamaan" };
     const gate = await holdLock((tx) => tx`select id from app.rooms where id = ${roomId} for update`);
-    const pending = Array.from({ length: 6 }, () => call("POST", `/chat/rooms/${roomId}/messages`, a, payload));
+    const pending = Array.from({ length: 6 }, () =>
+      call("POST", `/chat/rooms/${roomId}/messages`, a, payload),
+    );
     expect(await untilLockWaiters(6)).toBe(true);
     await gate.release();
     const results = await Promise.all(pending);
@@ -267,7 +277,8 @@ describe("PRD 3.11: read cursor monoton di bawah pembaruan bersamaan (PostgreSQL
     const newest = ids.at(-1)!;
 
     const gate = await holdLock(
-      (tx) => tx`select 1 from app.room_members where room_id = ${roomId} and user_id = ${b.userId} for update`,
+      (tx) =>
+        tx`select 1 from app.room_members where room_id = ${roomId} and user_id = ${b.userId} for update`,
     );
     // Pembaruan terbaru antre lebih dulu; paket lama (terlambat) antre di belakangnya pada baris yang sama.
     const first = call("PUT", `/chat/rooms/${roomId}/read`, b, { message_id: newest });

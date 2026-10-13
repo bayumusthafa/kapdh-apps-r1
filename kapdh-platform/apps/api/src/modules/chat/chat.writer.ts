@@ -81,7 +81,11 @@ export class ChatWriter {
       .update(roomMembers)
       .set({ status: "removed", updatedAt: now })
       .where(
-        and(eq(roomMembers.roomId, roomId), eq(roomMembers.userId, userId), eq(roomMembers.status, "invited")),
+        and(
+          eq(roomMembers.roomId, roomId),
+          eq(roomMembers.userId, userId),
+          eq(roomMembers.status, "invited"),
+        ),
       )
       .returning({ userId: roomMembers.userId });
     if (!cancelled) return false;

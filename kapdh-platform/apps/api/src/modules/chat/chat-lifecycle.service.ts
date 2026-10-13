@@ -176,7 +176,9 @@ export class ChatLifecycleService {
           result.invitationsCancelled++;
         continue;
       }
-      const outcome = await this.db.transaction((tx) => this.leaveGroupForDeletion(tx, membership.roomId, userId));
+      const outcome = await this.db.transaction((tx) =>
+        this.leaveGroupForDeletion(tx, membership.roomId, userId),
+      );
       if (outcome.left) result.groupsLeft++;
       if (outcome.closed) result.groupsClosed++;
       if (outcome.reassigned) result.adminsReassigned++;
@@ -201,7 +203,9 @@ export class ChatLifecycleService {
     const others = await tx
       .select({ userId: roomMembers.userId, role: roomMembers.role })
       .from(roomMembers)
-      .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.status, "joined"), ne(roomMembers.userId, userId)))
+      .where(
+        and(eq(roomMembers.roomId, roomId), eq(roomMembers.status, "joined"), ne(roomMembers.userId, userId)),
+      )
       .orderBy(asc(roomMembers.joinedAt), asc(roomMembers.userId));
     const now = this.clock.now();
     let reassigned = false;
@@ -214,7 +218,9 @@ export class ChatLifecycleService {
       );
       const successor = others.find((o) => {
         const status = statuses.get(o.userId);
-        return status !== undefined && status.accountStatus === "active" && hasActiveMembership(status.status);
+        return (
+          status !== undefined && status.accountStatus === "active" && hasActiveMembership(status.status)
+        );
       });
       if (successor) {
         await tx
@@ -258,11 +264,13 @@ export class ChatLifecycleService {
           changes: ["closed"],
           name: updated.name,
           avatar_url: avatar
-            ? ((await this.presenter.fileUrl(
-                { id: avatar.id, visibility: avatar.visibility, status: avatar.status },
-                "chat_image",
-                null,
-              ))?.url ?? null)
+            ? ((
+                await this.presenter.fileUrl(
+                  { id: avatar.id, visibility: avatar.visibility, status: avatar.status },
+                  "chat_image",
+                  null,
+                )
+              )?.url ?? null)
             : null,
           closed_at: now.toISOString(),
         });

@@ -106,7 +106,9 @@ describe("AC F11-5 / AC F14-5: akun yang dihapus dilepas dari chat dengan aturan
     expect(placeholder).toMatchObject({ body: null, image: null, reactions: [] });
     expect(placeholder.deleted_at).not.toBeNull();
     expect(seen.find((m) => m.id === fromEarly.id)!.reactions).toEqual([]);
-    expect(seen.some((m) => m.kind === "system" && String(m.body).includes("sekarang admin grup"))).toBe(true);
+    expect(seen.some((m) => m.kind === "system" && String(m.body).includes("sekarang admin grup"))).toBe(
+      true,
+    );
 
     // Grup B: tidak ada anggota aktif untuk menerima kewenangan → ditutup otomatis.
     const [closedB] = await t.db.select().from(rooms).where(eq(rooms.id, groupB));
@@ -140,7 +142,11 @@ describe("Keputusan moderasi remove_message (kontrak admin-moderation, PRD 3.12)
     const image = await uploadTestFile(t, a.token, "chat_image");
     const sent = await sendRaw(t, a, room.id, { kind: "image", image_file_id: image.id, body: "Bukti" });
     const id = (sent.json() as { id: string }).id;
-    await api(t).put(`/chat/rooms/${room.id}/messages/${id}/reactions/${encodeURIComponent("😮")}`, {}, { token: b.token });
+    await api(t).put(
+      `/chat/rooms/${room.id}/messages/${id}/reactions/${encodeURIComponent("😮")}`,
+      {},
+      { token: b.token },
+    );
     await t.db.insert(reports).values({
       id: uuidv7(),
       reporterId: b.userId,
@@ -219,7 +225,9 @@ describe("Runtime worker (ARCHITECTURE §4.1, §4.8)", () => {
         expect(service).toBeInstanceOf(ChatLifecycleService);
         const unknown = uuidv7();
         expect(await service.soleAdminGroupCount(unknown)).toBe(0);
-        expect(await runAsSystem(() => service.detachDeletedAccount(unknown))).toMatchObject({ groupsLeft: 0 });
+        expect(await runAsSystem(() => service.detachDeletedAccount(unknown))).toMatchObject({
+          groupsLeft: 0,
+        });
       } finally {
         await worker.close();
       }
