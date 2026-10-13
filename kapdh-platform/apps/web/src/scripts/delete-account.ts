@@ -205,7 +205,9 @@ export function waitMessage(
   confirmLabel: string = CONFIRM_LABEL_DEFAULT,
 ): string {
   const base = `${WAIT_REASON[step]} Tombol ${actionLabel(step, confirmLabel)} dapat dipakai lagi dalam ${formatDuration(seconds)}.`;
-  return step === "resend" ? `${base} Kode yang sudah dikirim tetap dapat dipakai selama masih berlaku.` : base;
+  return step === "resend"
+    ? `${base} Kode yang sudah dikirim tetap dapat dipakai selama masih berlaku.`
+    : base;
 }
 
 /**
@@ -261,7 +263,10 @@ export function describeFailure(
           "Batas waktu konfirmasi sudah lewat atau status akun berubah. Verifikasi email Anda lagi untuk melihat status terbaru, termasuk nomor permintaan bila penghapusan sudah tercatat.",
         );
       }
-      return view("restart", "Permintaan kode ini sudah tidak berlaku. Masukkan email Anda lagi untuk memulai ulang.");
+      return view(
+        "restart",
+        "Permintaan kode ini sudah tidak berlaku. Masukkan email Anda lagi untuk memulai ulang.",
+      );
     case "reload_latest":
       if (step === "confirm" && error?.code === "VERSION_CONFLICT") {
         if (isDisclosure(error.current)) {

@@ -163,10 +163,14 @@ describe("shell /kta/{nomor} (F-06)", () => {
     expect(pending.map((p) => p.token)).toEqual([TOKEN, NEW_TOKEN]);
     expect(resultKind()).toBe("loading");
     // Token baru selesai lebih dahulu, lalu jawaban token lama (invalid) datang terlambat.
-    pending[1]!.resolve(json(200, { result: "active", checked_at: CHECKED, expiring: false, member: MEMBER }));
+    pending[1]!.resolve(
+      json(200, { result: "active", checked_at: CHECKED, expiring: false, member: MEMBER }),
+    );
     await flush();
     expect(resultKind()).toBe("active");
-    pending[0]!.resolve(json(200, { result: "invalid_token", checked_at: CHECKED, expiring: false, member: null }));
+    pending[0]!.resolve(
+      json(200, { result: "invalid_token", checked_at: CHECKED, expiring: false, member: null }),
+    );
     await first;
     await flush();
     expect(resultKind()).toBe("active");

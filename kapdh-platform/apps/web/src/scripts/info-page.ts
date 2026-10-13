@@ -100,7 +100,10 @@ export function mountInfoPage(options: InfoPageOptions): { load: () => Promise<v
   ) =>
     el(doc, "div", { class: `flex flex-col gap-3 rounded-lg p-5 ${tone}` }, [
       el(doc, "div", { class: "flex flex-col gap-3", attrs: { role: "status", "data-notice-message": "" } }, [
-        el(doc, "p", { class: "flex items-center gap-2 font-semibold" }, [icon(doc, [...iconPaths]), heading]),
+        el(doc, "p", { class: "flex items-center gap-2 font-semibold" }, [
+          icon(doc, [...iconPaths]),
+          heading,
+        ]),
         el(doc, "p", { class: "text-sm text-text", text: body }),
       ]),
       ...extra,

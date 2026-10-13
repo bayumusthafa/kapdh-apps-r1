@@ -120,7 +120,9 @@ describe("F-08: halaman legal/informasi dibaca saat runtime dari GET /public/pag
 
   it("N-11: hitung mundur 429 tidak mengubah wilayah live tiap detik; tombol coba lagi di luar role=status", async () => {
     vi.useFakeTimers();
-    const { page } = mount(() => apiError(429, "RATE_LIMITED", "Terlalu sering", { retry_after_seconds: 30 }));
+    const { page } = mount(() =>
+      apiError(429, "RATE_LIMITED", "Terlalu sering", { retry_after_seconds: 30 }),
+    );
     await page.load();
     const live = root.querySelector<HTMLElement>("[role='status']")!;
     expect(live.textContent).toContain("Terlalu banyak permintaan");
