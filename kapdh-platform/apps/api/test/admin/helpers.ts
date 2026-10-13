@@ -31,12 +31,11 @@ export async function reauthTokenFor(t: TestApp, accessToken: string, level = 2)
   return signed.token;
 }
 
-/** Admin aktif ber-TOTP yang sudah masuk (AC F02-2). */
-export async function adminActor(
-  t: TestApp,
-  options: CreateAdminOptions & { permissions?: Permission[] } = {},
-): Promise<AdminActor> {
-  const admin = await createAdmin(t, { ...options, status: "active" });
+/**
+ * Sesi baru (login sandi + TOTP) untuk admin yang sudah ada, mis. setelah Clock uji dimajukan melewati idle timeout
+ * admin 30 menit (AC F02-5) yang mencabut sesi lama.
+ */
+export async function signInActor(t: TestApp, admin: EnrolledAdminFixture): Promise<AdminActor> {
   const session = await signInAdmin(t, admin);
   const reauth = () => reauthTokenFor(t, session.accessToken);
   return {
@@ -51,6 +50,15 @@ export async function adminActor(
       },
     }),
   };
+}
+
+/** Admin aktif ber-TOTP yang sudah masuk (AC F02-2). */
+export async function adminActor(
+  t: TestApp,
+  options: CreateAdminOptions & { permissions?: Permission[] } = {},
+): Promise<AdminActor> {
+  const admin = await createAdmin(t, { ...options, status: "active" });
+  return signInActor(t, admin);
 }
 
 export const superAdminActor = (t: TestApp, options: CreateAdminOptions = {}) =>
