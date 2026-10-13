@@ -10,6 +10,7 @@ import {
   mockEvents,
 } from "../../api/mocks/events";
 import { renderApp, signIn, type User } from "../../test/utils";
+import { SAME_CODE_ABSENT_MS } from "./QrScanner";
 
 /**
  * Pemindai check-in (AC F09-5, F09-6, D5) di server tiruan; bukti AC sisi server ada di uji API events
@@ -214,24 +215,28 @@ describe("check-in tiket (AC F09-5, F09-6; server tiruan)", () => {
     expect(checkinPosts()).toHaveLength(0);
   });
 
-  it("PRD 4.3: jaringan putus menampilkan status belum diketahui; kirim ulang memakai key yang sama dan tercatat sekali", async () => {
+  it("PRD 4.3: jaringan putus menampilkan status belum diketahui; pindai ulang kode yang sama memakai key yang sama dan tercatat sekali", async () => {
     const user = userEvent.setup();
     const input = await openScanner(user);
     mockEvents.failCheckins(1);
     await scan(user, input, MOCK_TICKET_QR.paid2);
     await waitFor(() => expect(resultCard()).toHaveAttribute("data-result", "unknown"));
     expect(within(resultCard()).getByRole("heading", { name: "Status belum diketahui" })).toBeInTheDocument();
-    // Kode dipertahankan agar petugas cukup menekan Check-in lagi.
-    expect(input).toHaveValue(MOCK_TICKET_QR.paid2);
-    await user.click(screen.getByRole("button", { name: "Check-in" }));
+    // Kode disimpan di antrean tertahan; isian tetap kosong agar pemindai genggam tidak menyambung kode.
+    expect(input).toHaveValue("");
+    expect(screen.getByText(/1 kode belum terkirim karena koneksi bermasalah/)).toBeInTheDocument();
+    // Pemindai genggam memindai ulang kode yang sama: dikirim ulang, bukan "QR tidak dikenal".
+    await scan(user, input, MOCK_TICKET_QR.paid2);
     await waitFor(() => expect(resultCard()).toHaveAttribute("data-result", "success"));
     const posts = checkinPosts();
     expect(posts).toHaveLength(2);
+    expect(posts[1]!.body).toEqual({ event_id: MOCK_EVENT_IDS.reuni, qr_code: MOCK_TICKET_QR.paid2 });
     expect(posts[1]!.idempotencyKey).toBe(posts[0]!.idempotencyKey);
     expect(screen.getByText("Hadir 2 dari 6 tiket lunas")).toBeInTheDocument();
+    expect(screen.queryByText(/kode belum terkirim/)).toBeNull();
   });
 
-  it("PRD 4.3: hasil kamera yang statusnya belum diketahui dipasang di isian; kirim ulang memakai key yang sama", async () => {
+  it("PRD 4.3: hasil kamera yang statusnya belum diketahui dikirim ulang dengan Check-in (isian kosong) memakai key yang sama", async () => {
     const user = userEvent.setup();
     const input = await openScanner(user);
     await user.click(screen.getByRole("button", { name: "Nyalakan kamera" }));
@@ -241,13 +246,16 @@ describe("check-in tiket (AC F09-5, F09-6; server tiruan)", () => {
       zxing.callback!({ getText: () => MOCK_TICKET_QR.paid2 });
     });
     await waitFor(() => expect(resultCard()).toHaveAttribute("data-result", "unknown"));
-    expect(input).toHaveValue(MOCK_TICKET_QR.paid2);
+    expect(screen.getByRole("button", { name: "Kirim ulang sekarang" })).toBeInTheDocument();
+    expect(input).toHaveValue("");
     await user.click(screen.getByRole("button", { name: "Check-in" }));
     await waitFor(() => expect(resultCard()).toHaveAttribute("data-result", "success"));
+    // Isian kosong tidak dianggap galat saat ada kode tertahan.
+    expect(screen.queryByText("Ketik atau pindai kode tiket.")).toBeNull();
     const posts = checkinPosts();
     expect(posts).toHaveLength(2);
     expect(posts[1]!.idempotencyKey).toBe(posts[0]!.idempotencyKey);
-    expect(input).toHaveValue("");
+    expect(screen.queryByRole("button", { name: "Kirim ulang sekarang" })).toBeNull();
   });
 
   it("AC F09-6: event dari tautan (?event=) langsung terpilih; event di luar 24 jam dijelaskan dan dapat diganti", async () => {
@@ -281,6 +289,84 @@ describe("check-in tiket (AC F09-5, F09-6; server tiruan)", () => {
     expect(checkinPosts()).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Matikan kamera" }));
     expect(zxing.stop).toHaveBeenCalled();
+  });
+
+  it("AC F09-5: kamera: QR yang terus ditahan di depan kamera lebih dari beberapa detik tidak dikirim ulang", async () => {
+    const user = userEvent.setup();
+    await openScanner(user);
+    await user.click(screen.getByRole("button", { name: "Nyalakan kamera" }));
+    await waitFor(() => expect(zxing.callback).not.toBeNull());
+    const realNow = Date.now.bind(Date);
+    let offset = 0;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => realNow() + offset);
+    const decode = (text: string) =>
+      act(async () => {
+        zxing.callback!({ getText: () => text });
+      });
+    try {
+      await decode(MOCK_TICKET_QR.paid);
+      await waitFor(() => expect(resultCard()).toHaveAttribute("data-result", "success"));
+      // zxing membaca QR yang sama kira-kira tiap 600 ms selama peserta menahan ponselnya (sekitar 10 detik).
+      for (let i = 0; i < 17; i += 1) {
+        offset += 600;
+        await decode(MOCK_TICKET_QR.paid);
+      }
+      expect(checkinPosts()).toHaveLength(1);
+      // Kartu hijau tidak berubah menjadi "Sudah check-in" palsu atas nama petugas sendiri.
+      expect(resultCard()).toHaveAttribute("data-result", "success");
+      // Ponsel diturunkan lalu ditunjukkan ulang setelah jeda: pemindaian baru yang sah.
+      offset += SAME_CODE_ABSENT_MS + 100;
+      await decode(MOCK_TICKET_QR.paid);
+      await waitFor(() => expect(resultCard()).toHaveAttribute("data-result", "already_checked_in"));
+      expect(checkinPosts()).toHaveLength(2);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it("AC F09-5: pemindai genggam: kode yang dipindai saat pemindaian sebelumnya masih berjalan diantrekan dan dikirim, tidak hilang", async () => {
+    const user = userEvent.setup();
+    const input = await openScanner(user);
+    const release = mockEvents.holdCheckins();
+    await user.type(input, `${MOCK_TICKET_QR.paid}{Enter}`);
+    await waitFor(() => expect(checkinPosts()).toHaveLength(1));
+    // Isian dikosongkan saat kode dikirim sehingga kode berikutnya tidak menyambung ke kode lama.
+    expect(input).toHaveValue("");
+    await user.type(input, `${MOCK_TICKET_QR.paid2}{Enter}`);
+    expect(input).toHaveValue("");
+    expect(await screen.findByText(/1 kode antre; dikirim otomatis/)).toBeInTheDocument();
+    // Kode yang sama dengan yang sedang diproses tidak dikirim dua kali.
+    await user.type(input, `${MOCK_TICKET_QR.paid}{Enter}`);
+    expect(await screen.findByText(/Kode yang sama sedang diproses/)).toBeInTheDocument();
+    expect(checkinPosts()).toHaveLength(1);
+
+    release();
+    await waitFor(() => expect(checkinPosts()).toHaveLength(2));
+    expect(checkinPosts()[1]!.body).toEqual({
+      event_id: MOCK_EVENT_IDS.reuni,
+      qr_code: MOCK_TICKET_QR.paid2,
+    });
+    await waitFor(() => expect(within(resultCard()).getByText("Ahmad Fauzi")).toBeInTheDocument());
+    expect(resultCard()).toHaveAttribute("data-result", "success");
+    expect(screen.getByText("Hadir 3 dari 6 tiket lunas")).toBeInTheDocument();
+    // Hasil pertama yang tergantikan tetap terlihat.
+    const previous = screen.getByRole("region", { name: "Pemindaian sebelumnya" });
+    expect(within(previous).getByText("Siti Rahmawati")).toBeInTheDocument();
+    expect(within(previous).getByText("Check-in berhasil")).toBeInTheDocument();
+    expect(checkinPosts()).toHaveLength(2);
+  });
+
+  it("N-11: dua hasil sama berturut-turut tetap mengubah teks region live (nomor dan jam pemindaian)", async () => {
+    const user = userEvent.setup();
+    const input = await openScanner(user);
+    await scan(user, input, "BUKAN-TIKET-KAPDH");
+    await waitFor(() => expect(resultCard()).toHaveAttribute("data-result", "not_found"));
+    expect(resultCard()).toHaveTextContent(/Pemindaian ke-1, pukul \d{2}\.\d{2}\.\d{2} WIB/);
+    const first = resultCard().textContent;
+    await scan(user, input, "BUKAN-TIKET-KAPDH");
+    await waitFor(() => expect(resultCard()).toHaveTextContent(/Pemindaian ke-2, pukul/));
+    expect(resultCard()).toHaveAttribute("data-result", "not_found");
+    expect(resultCard().textContent).not.toBe(first);
   });
 
   it("PRD 4.5: kamera ditolak: pesan yang dapat ditindaklanjuti dan input manual tetap tersedia", async () => {

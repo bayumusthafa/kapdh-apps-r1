@@ -39,6 +39,7 @@ export function EventCoverField({
   error,
   disabled,
   buttonRef,
+  onUploadingChange,
 }: {
   value: CoverValue | null;
   onChange: (value: CoverValue | null) => void;
@@ -46,6 +47,8 @@ export function EventCoverField({
   disabled?: boolean;
   /** Ref tombol pilih gambar, agar galat server dapat memfokusnya (N-11). */
   buttonRef?: Ref<HTMLButtonElement>;
+  /** Dipanggil saat unggahan mulai/selesai, agar formulir tidak menyimpan sebelum cover terunggah. */
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -53,9 +56,13 @@ export function EventCoverField({
   const [state, setState] = useState<UploadState>({ kind: "idle" });
   const [dragging, setDragging] = useState(false);
   const [broken, setBroken] = useState(false);
+  const onUploadingChangeRef = useRef(onUploadingChange);
+  onUploadingChangeRef.current = onUploadingChange;
+  const uploading = state.kind === "uploading";
 
   useEffect(() => () => abortRef.current?.abort(), []);
   useEffect(() => setBroken(false), [value?.url]);
+  useEffect(() => onUploadingChangeRef.current?.(uploading), [uploading]);
 
   async function handleFile(file: File) {
     const invalid = validateCoverFile(file);

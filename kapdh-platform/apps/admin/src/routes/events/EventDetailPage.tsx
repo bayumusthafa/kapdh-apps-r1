@@ -4,7 +4,7 @@ import { Ban, CalendarClock, CircleCheck, Hourglass, ImageOff, MapPin, Ticket, U
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../auth/session";
 import { Badge, EventStatusBadge } from "../../components/ui/Badge";
-import { buttonClass } from "../../components/ui/Button";
+import { Button, buttonClass } from "../../components/ui/Button";
 import { Card, CardHeader, StatCard } from "../../components/ui/Card";
 import { KeyValueList } from "../../components/ui/DataDisplay";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -34,6 +34,9 @@ export function EventDetailPage() {
   const detail = useEventDetail(eventId);
   const [cancelResult, setCancelResult] = useState<CancelResult | null>(null);
   const headingRef = useRef<HTMLDivElement>(null);
+  /** Baris status di kepala halaman: target fokus stabil setelah simpan atau ubah status (N-11). */
+  const statusRef = useRef<HTMLSpanElement>(null);
+  const [focusStatus, setFocusStatus] = useState(0);
 
   const setTab = (next: EventDetailTab) =>
     void navigate({
@@ -47,8 +50,17 @@ export function EventDetailPage() {
     if (cancelResult) headingRef.current?.focus();
   }, [cancelResult]);
 
+  // Simpan formulir atau terbit/tutup/buka kembali berhasil: tombol pemicunya hilang (tab berganti atau
+  // allowed_actions baru). Fokus pindah ke status event di kepala halaman, bukan jatuh ke <body> (N-11).
+  useEffect(() => {
+    if (focusStatus > 0) statusRef.current?.focus();
+  }, [focusStatus]);
+
   if (detail.isPending) return <PageSkeleton />;
-  if (detail.isError)
+  const e = detail.data;
+  // Galat tampil sehalaman hanya bila belum ada data. Muat ulang yang gagal (data lama masih ada) tidak mengganti
+  // halaman, sehingga formulir ubah yang sedang diisi tidak hilang (PRD 4.5).
+  if (!e)
     return (
       <div className="flex flex-col gap-5">
         <PageHeader
@@ -61,7 +73,6 @@ export function EventDetailPage() {
       </div>
     );
 
-  const e = detail.data;
   const canEdit = e.allowed_actions.includes("edit");
   const activeTab: EventDetailTab = tab === "edit" && !canEdit ? "overview" : tab;
   const tabs = [
@@ -76,13 +87,41 @@ export function EventDetailPage() {
         title={e.title}
         breadcrumbs={[{ label: "Event dan Tiket", to: "/events" }, { label: e.title }]}
         description={
-          <span className="flex flex-wrap items-center gap-2">
+          <span
+            ref={statusRef}
+            tabIndex={-1}
+            data-testid="event-status-line"
+            className="flex flex-wrap items-center gap-2 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <span className="sr-only">Status event: </span>
             <EventStatusBadge status={e.status} />
             <span>{formatSchedule(e.starts_at, e.ends_at, e.timezone)}</span>
           </span>
         }
-        actions={<EventActions event={e} onEdit={() => setTab("edit")} onCancelled={setCancelResult} />}
+        actions={
+          <EventActions
+            event={e}
+            onEdit={() => setTab("edit")}
+            onCancelled={setCancelResult}
+            onStatusChanged={() => setFocusStatus((n) => n + 1)}
+          />
+        }
       />
+
+      {detail.isError ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-3 rounded-lg border border-warning/40 bg-warning-bg p-3 text-sm text-warning"
+        >
+          <p className="flex-[1_1_240px]">
+            Data event terbaru gagal dimuat ({detail.error.message}). Yang tampil adalah data terakhir yang
+            berhasil dimuat.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => void detail.refetch()}>
+            Coba lagi
+          </Button>
+        </div>
+      ) : null}
 
       {cancelResult ? (
         <div ref={headingRef} tabIndex={-1} className="outline-none">
@@ -123,7 +162,10 @@ export function EventDetailPage() {
             key={e.id}
             mode="edit"
             detail={e}
-            onSaved={() => setTab("overview")}
+            onSaved={() => {
+              setTab("overview");
+              setFocusStatus((n) => n + 1);
+            }}
             onCancel={() => setTab("overview")}
           />
         </TabPanel>

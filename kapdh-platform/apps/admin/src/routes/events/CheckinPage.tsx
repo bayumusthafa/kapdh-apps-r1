@@ -1,7 +1,17 @@
 import type { components } from "@kapdh/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { CircleAlert, CircleCheck, CircleX, Keyboard, ScanLine, TriangleAlert, WifiOff } from "lucide-react";
+import { formatInTimeZone } from "date-fns-tz";
+import {
+  CircleAlert,
+  CircleCheck,
+  CircleX,
+  Keyboard,
+  ListOrdered,
+  ScanLine,
+  TriangleAlert,
+  WifiOff,
+} from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api/client";
 import type { ApiError } from "../../api/errors";
@@ -16,7 +26,7 @@ import { Input } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, ErrorState, Loading } from "../../components/ui/States";
 import { cn } from "../../lib/cn";
-import { formatDateTime } from "../../lib/format";
+import { formatDateTime, zoneLabel } from "../../lib/format";
 import { eventKeys } from "./api";
 import { ANONYMOUS_HOLDER, CHECKIN_REJECTION, formatRange, formatSchedule, type ResultTone } from "./labels";
 import { QrScanner } from "./QrScanner";
@@ -30,6 +40,8 @@ type CheckinTicket = components["schemas"]["AdminCheckinTicket"];
 /** Daftar event pemindaian diperbarui berkala (jendela dan hitungan hadir); hanya refetch berkala berlabel latar. */
 export const CHECKIN_EVENTS_POLL_MS = 60_000;
 const QR_MAX = 256;
+/** Jumlah hasil pemindaian yang disimpan di layar (kartu besar + daftar "Pemindaian sebelumnya"). */
+export const SCAN_HISTORY_MAX = 6;
 
 export type ScanOutcome =
   | { kind: "success"; result: CheckinResult }
@@ -37,6 +49,19 @@ export type ScanOutcome =
   | { kind: "not_found"; message: string }
   | { kind: "unknown"; message: string }
   | { kind: "error"; message: string };
+
+/** Satu pemindaian yang dikirim atau menunggu dikirim; event dicatat saat dipindai. */
+interface ScanRequest {
+  eventId: string;
+  qr: string;
+}
+
+/** Hasil satu pemindaian; `seq` dan `at` membuat setiap hasil berbeda walau isinya sama (N-11). */
+export interface ScanEntry {
+  seq: number;
+  at: number;
+  outcome: ScanOutcome;
+}
 
 function isRejectionDetail(value: unknown): value is RejectionDetail {
   return (
@@ -61,7 +86,7 @@ export function outcomeFromError(err: ApiError): ScanOutcome {
     return {
       kind: "unknown",
       message:
-        "Status check-in belum diketahui karena koneksi terputus. Pindai atau kirim ulang kode yang sama; sistem tidak mencatat check-in dua kali.",
+        "Status check-in belum diketahui karena koneksi terputus. Kode disimpan: tekan Check-in atau pindai ulang kode yang sama untuk mengirim ulang; sistem tidak mencatat check-in dua kali.",
     };
   if (err.code === "IDEMPOTENCY_CONFLICT")
     return {
@@ -74,6 +99,37 @@ export function outcomeFromError(err: ApiError): ScanOutcome {
   return { kind: "error", message: first?.join(" ") || err.message };
 }
 
+/** Judul, nada dan nama pemegang suatu hasil, dipakai kartu besar dan daftar pemindaian sebelumnya. */
+function summarize(outcome: ScanOutcome): { tone: ResultTone; title: string; holder: string | null } {
+  switch (outcome.kind) {
+    case "success":
+      return {
+        tone: "success",
+        title: "Check-in berhasil",
+        holder: outcome.result.ticket.holder.full_name ?? ANONYMOUS_HOLDER,
+      };
+    case "rejected": {
+      const copy = CHECKIN_REJECTION[outcome.detail.rejection_reason];
+      return {
+        tone: copy.tone,
+        title: copy.title,
+        holder: outcome.detail.ticket.holder.full_name ?? ANONYMOUS_HOLDER,
+      };
+    }
+    case "not_found":
+      return { tone: "danger", title: "QR tidak dikenal", holder: null };
+    case "unknown":
+      return { tone: "warning", title: "Status belum diketahui", holder: null };
+    case "error":
+      return { tone: "danger", title: "Check-in gagal", holder: null };
+  }
+}
+
+/** "09.41.07 WIB" dalam zona event (PRD 2.1). */
+function scanTime(at: number, timeZone: string): string {
+  return `${formatInTimeZone(new Date(at), timeZone, "HH.mm.ss")} ${zoneLabel(timeZone)}`;
+}
+
 /**
  * Pemindai check-in tiket (AC F09-5, F09-6, D5; izin events.checkin): petugas memilih event yang jendelanya dibuka
  * dalam 24 jam, lalu memindai QR dengan kamera (@zxing/browser) atau mengetik kode (juga untuk pemindai genggam
@@ -81,16 +137,35 @@ export function outcomeFromError(err: ApiError): ScanOutcome {
  * check-in" dengan waktu dan petugas sebelumnya, atau ditolak dengan alasan yang dapat ditindaklanjuti. Setiap
  * pemindaian memakai Idempotency-Key; bila hasil belum diketahui (jaringan putus), kode yang sama dikirim ulang
  * dengan key yang sama sehingga tidak tercatat dua kali (PRD 4.3).
+ *
+ * Satu permintaan berjalan pada satu waktu. Isian dikosongkan saat kode dikirim sehingga pemindai genggam tidak
+ * menyambung kode berikutnya ke kode lama. Kode yang dikirim saat pemindaian sebelumnya masih berjalan masuk
+ * antrean dan dikirim berurutan setelah hasil sebelumnya diketahui; tidak ada kode yang hilang diam-diam. Hasil
+ * yang tergantikan tetap terlihat di daftar "Pemindaian sebelumnya".
  */
 export function CheckinPage() {
   const search = checkinRoute.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [code, setCode] = useState("");
-  const [outcome, setOutcome] = useState<ScanOutcome | null>(null);
-  const [scanSeq, setScanSeq] = useState(0);
+  const [history, setHistory] = useState<ScanEntry[]>([]);
+  const seqRef = useRef(0);
   const [codeError, setCodeError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  /** Permintaan yang sedang berjalan (ref untuk keputusan sinkron, state untuk tampilan). */
+  const inFlightRef = useRef<ScanRequest | null>(null);
+  const [inFlight, setInFlight] = useState<ScanRequest | null>(null);
+  /** Antrean kode yang dipindai saat permintaan lain berjalan, berurutan (FIFO). */
+  const queueRef = useRef<ScanRequest[]>([]);
+  const [queue, setQueueState] = useState<ScanRequest[]>([]);
+  /** Antrean ditahan setelah hasil belum diketahui (koneksi bermasalah) sampai petugas mengirim ulang. */
+  const [queuePaused, setQueuePaused] = useState(false);
+
+  const setQueue = (next: ScanRequest[]) => {
+    queueRef.current = next;
+    setQueueState(next);
+  };
 
   const list = useApiQuery({
     queryKey: eventKeys.checkinEvents,
@@ -103,7 +178,8 @@ export function CheckinPage() {
   const [counts, setCounts] = useState<{ eventId: string; checkedIn: number; paid: number } | null>(null);
 
   const selectEvent = (id: string) => {
-    setOutcome(null);
+    setHistory([]);
+    setNotice(null);
     setCounts(null);
     void navigate({ to: "/events/checkin", search: { event: id }, replace: true });
   };
@@ -113,7 +189,18 @@ export function CheckinPage() {
     if (selected) inputRef.current?.focus();
   }, [selected?.id]);
 
-  const checkin = useApiMutation<CheckinResult, { eventId: string; qr: string }>({
+  function record(outcome: ScanOutcome) {
+    seqRef.current += 1;
+    const entry: ScanEntry = { seq: seqRef.current, at: Date.now(), outcome };
+    setHistory((h) => [entry, ...h].slice(0, SCAN_HISTORY_MAX));
+  }
+
+  function settle() {
+    inFlightRef.current = null;
+    setInFlight(null);
+  }
+
+  const checkin = useApiMutation<CheckinResult, ScanRequest>({
     // Niat = event + isi QR: ulang setelah hasil belum diketahui memakai key yang sama (PRD 4.3).
     intent: (v) => v,
     toastErrors: false,
@@ -123,31 +210,63 @@ export function CheckinPage() {
         body: { event_id: v.eventId, qr_code: v.qr },
       }),
     onSuccess: (result, v) => {
-      setOutcome({ kind: "success", result });
+      record({ kind: "success", result });
       setCounts({
         eventId: v.eventId,
         checkedIn: result.event_checked_in_count,
         paid: result.event_paid_count,
       });
-      setScanSeq((n) => n + 1);
-      setCode("");
+      setQueuePaused(false);
+      settle();
       void refetchInBackground(queryClient, eventKeys.checkinEvents);
       void queryClient.invalidateQueries({ queryKey: eventKeys.detail(v.eventId) });
     },
     onError: (err, v) => {
       const next = outcomeFromError(err);
-      setOutcome(next);
-      setScanSeq((n) => n + 1);
-      // Hasil diketahui: kosongkan untuk pemindaian berikutnya. Belum diketahui: kode (juga hasil kamera) dipasang
-      // di isian agar petugas cukup menekan Check-in untuk mengirim ulang dengan key yang sama (PRD 4.3).
-      setCode(next.kind === "unknown" ? v.qr : "");
+      record(next);
+      if (next.kind === "unknown") {
+        // Hasil belum diketahui (koneksi bermasalah): kode kembali ke depan antrean yang ditahan dan dikirim ulang
+        // dengan key yang sama saat petugas menekan Check-in atau memindai ulang (PRD 4.3). Kode tidak dipasang
+        // di isian agar pemindai genggam tidak menyambung kode berikutnya ke kode ini.
+        setQueue([v, ...queueRef.current.filter((r) => !(r.eventId === v.eventId && r.qr === v.qr))]);
+        setQueuePaused(true);
+      } else setQueuePaused(false);
+      settle();
     },
   });
 
-  function submit(raw: string) {
+  function send(req: ScanRequest) {
+    inFlightRef.current = req;
+    setInFlight(req);
+    checkin.mutate(req);
+  }
+
+  // Antrean dikirim berurutan setelah hasil sebelumnya diketahui.
+  useEffect(() => {
+    if (inFlight || queuePaused || queue.length === 0) return;
+    const [next, ...rest] = queue;
+    setQueue(rest);
+    send(next!);
+  }, [inFlight, queuePaused, queue]);
+
+  /** Lanjutkan antrean yang ditahan: kode di depan dikirim ulang dengan key yang sama (PRD 4.3). */
+  function resumeQueue() {
+    setNotice(null);
+    setQueuePaused(false);
+  }
+
+  /** Kirim kode; `fromField` = kode dari isian (diketik atau pemindai genggam), dikosongkan saat diterima. */
+  function submit(raw: string, fromField: boolean) {
     if (!selected) return;
     const qr = raw.trim();
+    const held = queuePaused && queueRef.current.length > 0;
     if (!qr) {
+      if (fromField && held) {
+        // Isian kosong saat ada kode tertahan: Check-in mengirim ulang kode tersebut.
+        setCodeError(null);
+        resumeQueue();
+        return;
+      }
       setCodeError("Ketik atau pindai kode tiket.");
       inputRef.current?.focus();
       return;
@@ -157,13 +276,33 @@ export function CheckinPage() {
       return;
     }
     setCodeError(null);
-    if (checkin.isPending) return;
-    checkin.mutate({ eventId: selected.id, qr });
+    if (fromField) setCode("");
+    const req: ScanRequest = { eventId: selected.id, qr };
+    const same = (r: ScanRequest | null) => r !== null && r.eventId === req.eventId && r.qr === req.qr;
+    if (same(inFlightRef.current)) {
+      setNotice("Kode yang sama sedang diproses; tidak dikirim dua kali.");
+      return;
+    }
+    if (queueRef.current.some(same)) {
+      // Sudah di antrean: tidak digandakan. Memindai ulang kode yang tertahan berarti mengirimnya ulang.
+      if (held) resumeQueue();
+      else setNotice("Kode yang sama sudah di antrean; tidak dikirim dua kali.");
+      return;
+    }
+    setNotice(null);
+    // Permintaan lain berjalan atau antrean belum habis: kode masuk antrean agar urutan (dan key kode tertahan)
+    // terjaga. Pemindaian baru saat antrean tertahan juga melanjutkan antrean.
+    if (inFlightRef.current || queueRef.current.length > 0) {
+      setQueue([...queueRef.current, req]);
+      if (held) setQueuePaused(false);
+      return;
+    }
+    send(req);
   }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    submit(code);
+    submit(code, true);
   }
 
   const shownCounts =
@@ -172,6 +311,9 @@ export function CheckinPage() {
       : selected
         ? { checkedIn: selected.checked_in_count, paid: selected.paid_count }
         : null;
+  const latest = history[0] ?? null;
+  // Kamera menunggu selama ada permintaan berjalan atau antrean aktif; antrean yang ditahan tidak memblokir kamera.
+  const busy = inFlight !== null || (queue.length > 0 && !queuePaused);
 
   return (
     <div className="flex flex-col gap-5">
@@ -254,14 +396,17 @@ export function CheckinPage() {
                     />
                   )}
                 </Field>
-                <Button
-                  type="submit"
-                  variant="gradient"
-                  loading={checkin.isPending}
-                  loadingText="Memeriksa..."
-                >
+                {/* Tombol tidak memakai keadaan loading: Enter dari pemindai genggam harus tetap terkirim (antrean). */}
+                <Button type="submit" variant="gradient">
                   Check-in
                 </Button>
+                <QueueStatus
+                  inFlight={inFlight !== null}
+                  queued={queue.length}
+                  paused={queuePaused}
+                  notice={notice}
+                  onResume={resumeQueue}
+                />
               </form>
             </Card>
             {/* Hasil tepat di bawah isian kode, dan di samping kamera pada layar lebar. */}
@@ -270,14 +415,51 @@ export function CheckinPage() {
                 Hadir {shownCounts.checkedIn} dari {shownCounts.paid} tiket lunas
               </p>
             ) : null}
-            <ScanResultCard outcome={outcome} seq={scanSeq} event={selected} />
+            <ScanResultCard entry={latest} event={selected} />
+            {history.length > 1 ? <ScanHistory entries={history.slice(1)} event={selected} /> : null}
           </div>
           <Card className="flex min-w-0 flex-[1_1_360px] flex-col gap-3 pb-5">
             <CardHeader title="Pindai dengan kamera" />
             <div className="px-5">
-              <QrScanner paused={checkin.isPending} onDecode={submit} />
+              <QrScanner paused={busy} onDecode={(text) => submit(text, false)} />
             </div>
           </Card>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Status antrean pemindaian yang dibacakan pembaca layar (N-11, PRD 4.5). */
+function QueueStatus({
+  inFlight,
+  queued,
+  paused,
+  notice,
+  onResume,
+}: {
+  inFlight: boolean;
+  queued: number;
+  paused: boolean;
+  notice: string | null;
+  onResume: () => void;
+}) {
+  let text: string | null = null;
+  if (paused && queued > 0)
+    text = `${queued} kode belum terkirim karena koneksi bermasalah. Tekan Check-in dengan isian kosong atau pindai ulang kodenya untuk mengirim ulang.`;
+  else if (queued > 0) text = `${queued} kode antre; dikirim otomatis setelah pemindaian sebelumnya selesai.`;
+  else if (inFlight) text = "Memeriksa kode tiket...";
+  return (
+    <div className="flex flex-col gap-2">
+      <p role="status" aria-live="polite" className="flex items-start gap-1.5 text-sm text-text-muted">
+        {text ? <ListOrdered aria-hidden="true" className="mt-0.5 size-4 shrink-0" /> : null}
+        {[notice, text].filter(Boolean).join(" ")}
+      </p>
+      {paused && queued > 0 && !inFlight ? (
+        <div>
+          <Button variant="outline" size="sm" onClick={onResume}>
+            Kirim ulang sekarang
+          </Button>
         </div>
       ) : null}
     </div>
@@ -328,18 +510,13 @@ function HolderBlock({ ticket }: { ticket: CheckinTicket }) {
 
 /**
  * Kartu hasil pemindaian besar (AC F09-5, F09-6): selalu terpasang sebagai region live agar setiap hasil baru
- * dibacakan; `seq` memastikan hasil yang sama berturut-turut tetap diumumkan ulang.
+ * dibacakan. Nomor dan jam pemindaian ada di dalam teks region, sehingga dua hasil yang sama berturut-turut tetap
+ * mengubah teks dan diumumkan ulang (region live hanya bereaksi pada perubahan teks), dan petugas melihat bahwa
+ * pemindaian kedua sudah diproses.
  */
-export function ScanResultCard({
-  outcome,
-  seq,
-  event,
-}: {
-  outcome: ScanOutcome | null;
-  seq: number;
-  event: CheckinEvent;
-}) {
+export function ScanResultCard({ entry, event }: { entry: ScanEntry | null; event: CheckinEvent }) {
   const sectionRef = useRef<HTMLElement>(null);
+  const seq = entry?.seq ?? 0;
   // Layar sempit (ponsel petugas): kartu hasil dapat berada di luar layar; gulir seperlunya agar setiap hasil
   // baru terlihat tanpa memindahkan fokus dari isian kode (N-11).
   useEffect(() => {
@@ -347,15 +524,15 @@ export function ScanResultCard({
     if (seq === 0 || typeof el?.scrollIntoView !== "function") return;
     el.scrollIntoView({ block: "nearest" });
   }, [seq]);
-  let tone: ResultTone | "neutral" = "neutral";
-  let title = "Siap memindai";
+  const outcome = entry?.outcome ?? null;
+  const summary = outcome ? summarize(outcome) : null;
+  const tone: ResultTone | "neutral" = summary?.tone ?? "neutral";
+  const title = summary?.title ?? "Siap memindai";
   let body: ReactNode = (
     <p className="text-sm text-text-muted">Hasil pemindaian untuk {event.title} tampil di sini.</p>
   );
   if (outcome?.kind === "success") {
     const r = outcome.result;
-    tone = "success";
-    title = "Check-in berhasil";
     body = (
       <>
         <HolderBlock ticket={r.ticket} />
@@ -367,8 +544,6 @@ export function ScanResultCard({
   } else if (outcome?.kind === "rejected") {
     const d = outcome.detail;
     const copy = CHECKIN_REJECTION[d.rejection_reason];
-    tone = copy.tone;
-    title = copy.title;
     const t = d.ticket;
     body = (
       <>
@@ -396,22 +571,14 @@ export function ScanResultCard({
         </p>
       </>
     );
-  } else if (outcome?.kind === "not_found") {
-    tone = "danger";
-    title = "QR tidak dikenal";
-    body = <p className="text-sm">{outcome.message}</p>;
   } else if (outcome?.kind === "unknown") {
-    tone = "warning";
-    title = "Status belum diketahui";
     body = (
       <p className="flex items-start gap-1.5 text-sm">
         <WifiOff aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
         {outcome.message}
       </p>
     );
-  } else if (outcome?.kind === "error") {
-    tone = "danger";
-    title = "Check-in gagal";
+  } else if (outcome) {
     body = <p className="text-sm">{outcome.message}</p>;
   }
   const style = TONE[tone];
@@ -432,6 +599,39 @@ export function ScanResultCard({
         {title}
       </h2>
       <div className="flex flex-col gap-3 text-text">{body}</div>
+      {entry ? (
+        <p className="mt-auto text-xs text-text-muted">
+          Pemindaian ke-{entry.seq}, pukul {scanTime(entry.at, event.timezone)}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/** Hasil yang sudah tergantikan pemindaian berikutnya tetap terlihat (antrean pemindai genggam, PRD 4.5). */
+function ScanHistory({ entries, event }: { entries: ScanEntry[]; event: CheckinEvent }) {
+  return (
+    <section aria-labelledby="pemindaian-sebelumnya" className="flex flex-col gap-2">
+      <h3 id="pemindaian-sebelumnya" className="text-sm font-semibold text-primary">
+        Pemindaian sebelumnya
+      </h3>
+      <ol className="flex flex-col divide-y divide-divider rounded-lg border border-divider bg-surface">
+        {entries.map((entry) => {
+          const s = summarize(entry.outcome);
+          return (
+            <li key={entry.seq} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm">
+              <span className={cn("[&_svg]:size-4", TONE[s.tone].iconCls)} aria-hidden="true">
+                {TONE[s.tone].icon}
+              </span>
+              <span className="font-semibold">{s.title}</span>
+              {s.holder ? <span>{s.holder}</span> : null}
+              <span className="ml-auto text-xs text-text-muted">
+                ke-{entry.seq}, {scanTime(entry.at, event.timezone)}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }
