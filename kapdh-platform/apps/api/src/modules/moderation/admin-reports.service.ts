@@ -639,7 +639,11 @@ export class AdminReportsService {
   }
 
   /** Detail terbaru setelah klaim/keputusan, diaudit sebagai pembacaan bukti (auditedDetail). */
-  private async responseDetail(auth: AuthContext, reportId: string, via: "claim" | "resolve"): Promise<Detail> {
+  private async responseDetail(
+    auth: AuthContext,
+    reportId: string,
+    via: "claim" | "resolve",
+  ): Promise<Detail> {
     const detail = await this.auditedDetail(auth, reportId, via);
     if (!detail) throw notFound("Laporan tidak ditemukan.");
     return detail;

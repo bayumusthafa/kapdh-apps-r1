@@ -88,7 +88,11 @@ export async function addRoomMember(
     invitedBy: options.invitedBy ?? null,
     invitedAt: status === "invited" || options.invitedBy ? now : null,
     joinedAt:
-      options.joinedAt !== undefined ? options.joinedAt : status === "invited" || status === "declined" ? null : now,
+      options.joinedAt !== undefined
+        ? options.joinedAt
+        : status === "invited" || status === "declined"
+          ? null
+          : now,
     leftAt: status === "left" || status === "removed" ? now : null,
     historyVisibleFrom: options.historyVisibleFrom ?? null,
     createdAt: now,

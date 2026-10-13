@@ -236,9 +236,9 @@ describe("POST /reports — pengguna (AC F12-2)", () => {
     const group = await createGroupRoom(t, { adminId: reporter.userId });
     await addRoomMember(t, group, invitee.userId, { status: "invited", invitedBy: reporter.userId });
     // Blokir membatalkan undangan tertunda (invited → removed, joined_at kosong), lalu blokir dibuka lagi.
-    expect((await api().put(`/blocks/${invitee.userId}`, undefined, { token: reporter.token })).statusCode).toBe(
-      200,
-    );
+    expect(
+      (await api().put(`/blocks/${invitee.userId}`, undefined, { token: reporter.token })).statusCode,
+    ).toBe(200);
     expect((await api().delete(`/blocks/${invitee.userId}`, { token: reporter.token })).statusCode).toBe(204);
     const [membership] = await t.db
       .select()
@@ -646,7 +646,12 @@ describe("Retensi berkas bukti (PRD 3.12, D2; core FilesService.discard)", () =>
       reporter: null,
       subject: { user_id: target.userId },
     });
-    expect(await detailOf(appeal)).toMatchObject({ category: "appeal", description: null, reporter: null, subject: null });
+    expect(await detailOf(appeal)).toMatchObject({
+      category: "appeal",
+      description: null,
+      reporter: null,
+      subject: null,
+    });
     // Laporan pihak lain tentang akun yang dihapus: deskripsi penulisnya yang masih ada tetap tampil.
     expect(await detailOf(aboutAuthor)).toMatchObject({
       description: "Orang ini mengancam saya di grup.",
