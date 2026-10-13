@@ -834,6 +834,52 @@ export interface PaymentRequestLog {
 /** Log permintaan ke endpoint pembayaran tiruan, untuk uji (debounce, header latar, Idempotency-Key, If-Match). */
 export const paymentRequests: PaymentRequestLog[] = [];
 
+/** Pencocok permintaan untuk kendali uji: metode HTTP dan path persis (string) atau pola (RegExp). */
+interface RequestMatcher {
+  method: MockRoute["method"];
+  path: string | RegExp;
+}
+
+/** Galat yang disuntikkan uji ke permintaan berikutnya yang cocok (keadaan error/izin ditolak, BUILD_PLAN). */
+interface InjectedFailure extends RequestMatcher {
+  status: number;
+  code: S["ErrorCode"];
+  message: string;
+  remaining: number;
+}
+
+/** Permintaan yang ditahan sampai uji melepasnya (keadaan memuat terlihat, BUILD_PLAN). */
+interface HeldRequest extends RequestMatcher {
+  gate: Promise<void>;
+  release: () => void;
+  used: boolean;
+}
+
+const failures: InjectedFailure[] = [];
+const holds: HeldRequest[] = [];
+
+function matchesRequest(m: RequestMatcher, req: MockRequest): boolean {
+  return m.method === req.method && (typeof m.path === "string" ? m.path === req.path : m.path.test(req.path));
+}
+
+/** Galat suntikan pertama yang cocok (jatahnya dikurangi), atau null. */
+function takeFailure(req: MockRequest): InjectedFailure | null {
+  const index = failures.findIndex((f) => f.remaining > 0 && matchesRequest(f, req));
+  if (index < 0) return null;
+  const failure = failures[index]!;
+  failure.remaining -= 1;
+  if (failure.remaining === 0) failures.splice(index, 1);
+  return failure;
+}
+
+/** Penahan pertama yang belum dipakai dan cocok; satu penahan menahan satu permintaan. */
+function takeHold(req: MockRequest): HeldRequest | null {
+  const hold = holds.find((h) => !h.used && matchesRequest(h, req));
+  if (!hold) return null;
+  hold.used = true;
+  return hold;
+}
+
 function log(req: MockRequest): void {
   paymentRequests.push({
     method: req.method,
@@ -903,6 +949,9 @@ function methodFixtures(): MethodRow[] {
 export function reset(): void {
   paymentRequests.length = 0;
   replays.clear();
+  failures.length = 0;
+  // Permintaan yang masih tertahan dilepas agar tidak menggantung ke uji berikutnya.
+  for (const hold of holds.splice(0)) hold.release();
   adjustmentSeq = 0;
   methodSeq = 0;
   const data = fixtures();
@@ -1054,6 +1103,38 @@ export const mockPayments = {
       new Date().toISOString(),
       OTHER_ADMIN,
     );
+  },
+  /** Pemilik payment tertaut ke akun admin yang sedang masuk (admins.linked_alumni_user_id, PRD 2.3). */
+  linkOwnerToAdmin(paymentId: string): void {
+    const p = payments.get(paymentId);
+    if (p) payments.set(paymentId, { ...p, conflict_of_interest: true });
+  },
+  /**
+   * Permintaan berikutnya yang cocok dijawab galat (bawaan 500 INTERNAL_ERROR) sebanyak `times` kali, untuk uji
+   * keadaan error dan izin ditolak (403 FORBIDDEN) di tengah sesi (BUILD_PLAN "Acceptance evidence").
+   */
+  fail(
+    method: MockRoute["method"],
+    path: string | RegExp,
+    opts: { status?: number; code?: S["ErrorCode"]; message?: string; times?: number } = {},
+  ): void {
+    failures.push({
+      method,
+      path,
+      status: opts.status ?? 500,
+      code: opts.code ?? "INTERNAL_ERROR",
+      message: opts.message ?? "Terjadi kesalahan pada server. Coba lagi.",
+      remaining: opts.times ?? 1,
+    });
+  },
+  /** Tahan permintaan berikutnya yang cocok sampai fungsi hasil dipanggil (keadaan memuat terlihat). */
+  hold(method: MockRoute["method"], path: string | RegExp): () => void {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    holds.push({ method, path, gate, release, used: false });
+    return release;
   },
 };
 
@@ -1260,7 +1341,7 @@ function recordAdjusted(p: Detail, a: Adjustment, at: string): void {
 
 const DECIDE: readonly Permission[] = ["payments.read", "payments.decide"];
 
-export const routes: MockRoute[] = [
+const paymentRoutes: MockRoute[] = [
   {
     method: "GET",
     path: "/admin/payments",
@@ -1856,3 +1937,21 @@ export const routes: MockRoute[] = [
     },
   },
 ];
+
+/**
+ * Rute yang diekspor: setiap handler melewati kendali uji lebih dahulu (permintaan ditahan atau galat
+ * suntikan), lalu penjaga dan logika server tiruan di atas.
+ */
+export const routes: MockRoute[] = paymentRoutes.map((route) => ({
+  ...route,
+  handler: async (req) => {
+    const hold = takeHold(req);
+    if (hold) await hold.gate;
+    const failure = takeFailure(req);
+    if (failure) {
+      log(req);
+      return error(failure.status, failure.code, failure.message);
+    }
+    return route.handler(req);
+  },
+}));

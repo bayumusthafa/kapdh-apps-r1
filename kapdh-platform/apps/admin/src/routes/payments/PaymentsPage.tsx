@@ -37,6 +37,12 @@ const TAB_DESCRIPTION: Partial<Record<PaymentTab, string>> = {
   adjustments: "Refund dan koreksi pembayaran tanpa mengubah status lunas.",
 };
 
+/** Makna hitungan tab untuk pembaca layar (N-11): angka saja tidak bermakna tanpa konteks. */
+const COUNT_LABEL: Partial<Record<PaymentTab, string>> = {
+  verify: "menunggu verifikasi",
+  adjustments: "penyesuaian menunggu proses",
+};
+
 /** Izin per tab; dicek ulang di dalam panel karena izin dapat berubah saat halaman terbuka (AC F16-3). */
 const TAB_ACCESS: Record<PaymentTab, Permission[]> = {
   verify: ["payments.read"],
@@ -67,6 +73,8 @@ export function PaymentsPage() {
         adjustments: summary.data.adjustments_pending_count,
       }
     : {};
+  const countText = (t: PaymentTab, n: number | undefined) =>
+    n === undefined ? undefined : `${n} ${COUNT_LABEL[t] ?? ""}`.trim();
 
   return (
     <>
@@ -80,7 +88,12 @@ export function PaymentsPage() {
               idPrefix="pembayaran"
               value={tab}
               onValueChange={(next) => void navigate({ search: { tab: next }, replace: true })}
-              items={tabs.map((t) => ({ value: t.value, label: t.label, count: counts[t.value] }))}
+              items={tabs.map((t) => ({
+                value: t.value,
+                label: t.label,
+                count: counts[t.value],
+                countLabel: countText(t.value, counts[t.value]),
+              }))}
             />
           ) : null
         }

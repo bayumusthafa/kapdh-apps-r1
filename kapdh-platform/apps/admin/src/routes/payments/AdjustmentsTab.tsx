@@ -97,9 +97,13 @@ export function AdjustmentsTab() {
   const filters = { q, kind, status, destination, due, sort };
   const paging = useCursorPaging(filters, ADJUSTMENT_PAGE_SIZE);
 
+  // Tautan URL (mis. "Buka" di bagian Penyesuaian detail pembayaran) mengganti pilihan; tombol pemicunya ikut
+  // hilang bersama tab asal, jadi panel memindah fokus ke judul detail setelah termuat (N-11, PRD 4.5).
   const linked = search.adjustment;
   useEffect(() => {
-    if (linked) setSelectedId(linked);
+    if (!linked) return;
+    setSelectedId(linked);
+    setFocusRequest((n) => n + 1);
   }, [linked]);
 
   const list = useApiQuery({

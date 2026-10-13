@@ -2,7 +2,7 @@ import type { components } from "@kapdh/contracts";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Ban, CircleCheck, Lock, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api/client";
 import { useApiMutation, useApiQuery } from "../../api/query";
 import { Badge } from "../../components/ui/Badge";
@@ -42,6 +42,16 @@ export function MethodsTab() {
   const [active, setActive] = useState<ActiveFilter>("all");
   const [formState, setFormState] = useState<FormState>(null);
   const [deleting, setDeleting] = useState<Method | null>(null);
+  const addRef = useRef<HTMLButtonElement>(null);
+  /**
+   * Setelah metode dihapus, tombol hapus pemicu dialog ikut hilang saat daftar dimuat ulang sehingga fokus jatuh
+   * ke <body>. Fokus dipindah ke tombol "Tambah metode" yang selalu ada (N-11, PRD 4.5). Efek pasif berjalan
+   * setelah dialog konfirmasi selesai mengembalikan fokusnya ke pemicu.
+   */
+  const [focusAdd, setFocusAdd] = useState(0);
+  useEffect(() => {
+    if (focusAdd > 0) addRef.current?.focus();
+  }, [focusAdd]);
   const paging = useCursorPaging({ active }, METHOD_PAGE_SIZE);
 
   const list = useApiQuery({
@@ -74,12 +84,15 @@ export function MethodsTab() {
       }),
     onSuccess: (_d, m) => {
       setDeleting(null);
+      setFocusAdd((n) => n + 1);
       toast.success(`Metode ${m.provider} dihapus.`);
       void queryClient.invalidateQueries({ queryKey: METHODS_KEY });
     },
     onError: (error) => {
       if (error.reauthCancelled) return;
       setDeleting(null);
+      // Metode sudah dihapus admin lain: barisnya hilang setelah dimuat ulang, fokus tidak dikembalikan ke sana.
+      if (error.code === "NOT_FOUND") setFocusAdd((n) => n + 1);
       // Metode sudah dipakai (400 field_errors._) atau sudah diubah admin lain (409): pesan server, daftar dimuat
       // ulang agar admin melihat keadaan terbaru (AC F15-4).
       toast.error(error.fieldErrors._?.join(" ") ?? error.message);
@@ -170,6 +183,7 @@ export function MethodsTab() {
               )}
             </Field>
             <Button
+              ref={addRef}
               className="ml-auto"
               leftIcon={<Plus aria-hidden="true" className="size-4" />}
               onClick={() => setFormState({ method: null, nextSortOrder })}
