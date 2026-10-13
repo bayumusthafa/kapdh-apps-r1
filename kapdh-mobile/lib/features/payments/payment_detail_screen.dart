@@ -50,6 +50,9 @@ class PaymentDetailScreen extends ConsumerStatefulWidget {
 class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
   PaymentDetail? _payment;
   ApiException? _loadError;
+
+  /// Muat ulang yang diminta pengguna gagal sementara status lama masih tampil (PRD 4.5).
+  ApiException? _refreshError;
   bool _loading = false;
   DateTime? _cardIssuedAt;
   List<PaymentMethod>? _methods;
@@ -106,8 +109,13 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
       unawaited(_loadExtras(payment));
     } on ApiException catch (error) {
       if (!mounted) return;
-      // Muat ulang diam-diam yang gagal tidak menghapus data yang sedang tampil.
-      if (!quiet || _payment == null) setState(() => _loadError = error);
+      if (_payment == null) {
+        setState(() => _loadError = error);
+      } else if (!quiet) {
+        // Data lama tetap tampil, tetapi pengguna yang menarik layar untuk melihat keputusan pengurus diberi tahu
+        // bahwa status terbaru belum termuat (PRD 4.5). Muat ulang latar (realtime, kembali ke aplikasi) tetap diam.
+        setState(() => _refreshError = error);
+      }
     } finally {
       _loading = false;
     }
@@ -142,11 +150,21 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
   }
 
   void _apply(PaymentDetail payment) {
+    // Tahap berubah (mis. pengurus menolak bukti) saat pengguna sedang mengganti bukti: mode ganti ditutup agar status
+    // dan catatan pengurus terbaru terlihat sebelum bukti dikirim. Berkas yang sudah dipilih dan catatan transfer
+    // tetap disimpan untuk unggah ulang (AC F03-3, F04-2; PRD 4.5). Versi bukti yang naik tanpa perubahan tahap tetap
+    // di mode ganti dengan versi terbaru (AC F04-4).
+    final previous = _payment;
+    final changedWhileEditing = _editingProof && previous != null && previous.stage != payment.stage;
     setState(() {
       _payment = payment;
       _loadError = null;
-      if (!_canSendProof(payment)) _editingProof = false;
+      _refreshError = null;
+      if (!_canSendProof(payment) || changedWhileEditing) _editingProof = false;
     });
+    if (changedWhileEditing) {
+      _announce('Status pembayaran berubah menjadi ${paymentBadge(payment).label}. Periksa status terbaru.');
+    }
     // Iuran yang baru diputus atau dibatalkan: status keanggotaan dan penunjuk iuran di /me ikut diperbarui
     // (perutean PRD 2.2, kartu KTA AC F05-1).
     final me = ref.read(sessionProvider).me;
@@ -419,6 +437,29 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
     };
   }
 
+  /// Pemberitahuan muat ulang gagal di puncak daftar (PRD 4.5).
+  List<Widget> _refreshNotice({double spacing = KapdhSpace.s4}) {
+    final error = _refreshError;
+    if (error == null) return const [];
+    return [
+      RefreshFailedNotice(error: error, onRetry: () => unawaited(_load())),
+      SizedBox(height: spacing),
+    ];
+  }
+
+  /// Catatan pengurus atas bukti yang ditolak (prototipe layar 5; AC F03-3, F04-2).
+  Widget _rejectionNote(PaymentDetail payment) {
+    final decided = payment.decidedAt;
+    final reason = payment.rejectionReason?.trim();
+    return SummaryCard(
+      key: const ValueKey('rejection-note'),
+      tone: SummaryCardTone.danger,
+      title: 'Catatan dari pengurus',
+      body: reason == null || reason.isEmpty ? 'Pengurus tidak menuliskan catatan. Hubungi pengurus.' : reason,
+      footnote: decided == null ? null : formatDateTime(decided),
+    );
+  }
+
   String? get _busyLabel => switch (_phase) {
     ProofSubmitPhase.uploading =>
       _progress == null ? 'Mengunggah bukti...' : 'Mengunggah ${(_progress! * 100).round()}%',
@@ -456,6 +497,12 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
                 title: title,
                 onBack: _busy ? null : () => replacing ? setState(() => _editingProof = false) : _back(),
               ),
+              if (_refreshError != null) ...[const SizedBox(height: KapdhSpace.s3), ..._refreshNotice(spacing: 0)],
+              if (payment.stage == PaymentStage.needsFix) ...[
+                // Unggah ulang: catatan pengurus tetap terlihat saat memilih bukti pengganti (AC F03-3).
+                const SizedBox(height: KapdhSpace.s4),
+                _rejectionNote(payment),
+              ],
               if (payment.type == PaymentType.registration && !replacing) ...[
                 const SizedBox(height: KapdhSpace.s4),
                 const RegisterStepper(current: 3, compact: true),
@@ -629,6 +676,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s6, KapdhSpace.s5, KapdhSpace.s4),
         children: [
+          ..._refreshNotice(),
           StatusHero(
             status: paymentBadge(payment),
             title: 'Bukti pembayaran sedang diperiksa',
@@ -649,8 +697,6 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
 
   /// Bukti ditolak dan dapat diperbaiki pada payment yang sama (prototipe layar 5; AC F03-3, F04-2).
   Widget _needsFixView(PaymentDetail payment) {
-    final decided = payment.decidedAt;
-    final reason = payment.rejectionReason?.trim();
     return _greetingScaffold(
       bottomBar: Column(
         mainAxisSize: MainAxisSize.min,
@@ -669,6 +715,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s6, KapdhSpace.s5, KapdhSpace.s4),
         children: [
+          ..._refreshNotice(),
           StatusHero(
             status: paymentBadge(payment),
             icon: Icons.error_outline,
@@ -678,13 +725,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
                 'pengurus.',
           ),
           const SizedBox(height: 18),
-          SummaryCard(
-            key: const ValueKey('rejection-note'),
-            tone: SummaryCardTone.danger,
-            title: 'Catatan dari pengurus',
-            body: reason == null || reason.isEmpty ? 'Pengurus tidak menuliskan catatan. Hubungi pengurus.' : reason,
-            footnote: decided == null ? null : formatDateTime(decided),
-          ),
+          _rejectionNote(payment),
           const SizedBox(height: 18),
           paymentSummaryCard(payment, showMethod: false, showStage: true),
           ..._historySection(payment),
@@ -704,6 +745,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
         child: ListView(
           padding: const EdgeInsets.all(KapdhSpace.s5),
           children: [
+            ..._refreshNotice(),
             StatusHero(status: paymentBadge(payment), title: paymentTitle(payment), message: stageText(payment.stage)),
             const SizedBox(height: KapdhSpace.s4),
             const InfoBox(key: ValueKey('dues-hidden'), message: duesHiddenMessage),
@@ -764,6 +806,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
         child: ListView(
           padding: const EdgeInsets.all(KapdhSpace.s5),
           children: [
+            ..._refreshNotice(),
             StatusHero(status: paymentBadge(payment), icon: icon, title: title, message: message),
             if (payment.stage == PaymentStage.rejectedFinal && reason != null && reason.isNotEmpty) ...[
               const SizedBox(height: KapdhSpace.s4),
