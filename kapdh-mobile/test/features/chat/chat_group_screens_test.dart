@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/features/chat/chat_image_picker.dart';
@@ -230,6 +231,155 @@ void main() {
       expect(invite.headers['Idempotency-Key'], isNotNull);
       expect(find.text('1 undangan terkirim'), findsOneWidget);
       expect(find.text('Nur Hasanah: grup sudah penuh (100 anggota)'), findsOneWidget);
+    });
+
+    testWidgets('PRD 4.5: ubah peran dan hapus foto grup wajib dikonfirmasi; batal tidak mengirim apa pun', (
+      tester,
+    ) async {
+      final server = _group(otherAdmins: 1);
+      server.room = {...server.room, 'avatar_file_id': 'file-3'};
+      final app = await _open(
+        tester,
+        '/chat/room-1/info',
+        server: server,
+        routes: {
+          '/chat/rooms/room-1': (options) => options.method == 'PATCH'
+              ? FakeResponse.json(200, {...server.room, 'avatar_file_id': null, 'version': '2'})
+              : FakeResponse.json(200, server.room),
+          '/chat/rooms/room-1/members/user-2': (_) =>
+              FakeResponse.json(200, memberJson(userId: 'user-2', name: 'Gamerisa Dewi', role: 'admin')),
+          '/chat/rooms/room-1/members/user-1': (_) =>
+              FakeResponse.json(200, memberJson(userId: 'user-1', name: 'Ahmad Islam', isMe: true)),
+        },
+      );
+      List<RequestOptions> patches(String path) =>
+          app.adapter.requestsTo(path).where((r) => r.method == 'PATCH').toList();
+
+      // Jadikan admin -> Batal: tidak ada request.
+      await scrollAndTap(tester, find.byTooltip('Tindakan untuk Gamerisa Dewi'));
+      await settle(tester);
+      await tester.tap(find.text('Jadikan admin'));
+      await settle(tester);
+      expect(find.text('Jadikan Gamerisa Dewi admin?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Batal'));
+      await settle(tester);
+      expect(patches('/chat/rooms/room-1/members/user-2'), isEmpty);
+
+      // Berhenti menjadi admin (diri sendiri): peringatan kehilangan hak admin, lalu dikonfirmasi.
+      await scrollAndTap(tester, find.byTooltip('Tindakan untuk Ahmad Islam'));
+      await settle(tester);
+      await tester.tap(find.text('Jadikan anggota biasa'));
+      await settle(tester);
+      expect(find.text('Berhenti menjadi admin?'), findsOneWidget);
+      expect(find.textContaining('Anda akan kehilangan hak admin'), findsOneWidget);
+      expect(patches('/chat/rooms/room-1/members/user-1'), isEmpty);
+      await tester.tap(find.widgetWithText(TextButton, 'Berhenti jadi admin'));
+      await settle(tester);
+      expect(patches('/chat/rooms/room-1/members/user-1').single.data, {'role': 'member'});
+
+      // Hapus foto grup: konfirmasi dulu.
+      await scrollAndTap(tester, find.text('Hapus foto'));
+      await settle(tester);
+      expect(find.text('Hapus foto grup?'), findsOneWidget);
+      expect(patches('/chat/rooms/room-1'), isEmpty);
+      await tester.tap(
+        find.descendant(of: find.byType(AlertDialog), matching: find.widgetWithText(TextButton, 'Hapus foto')),
+      );
+      await settle(tester);
+      expect(patches('/chat/rooms/room-1').single.data, {'avatar_file_id': null});
+    });
+
+    testWidgets('F-11: pemilih undangan memuat halaman berikut bila hasil di layar semuanya sudah anggota', (
+      tester,
+    ) async {
+      final app = await _open(
+        tester,
+        '/chat/room-1/info',
+        server: _group(),
+        routes: {
+          '/directory': (options) => switch (options.queryParameters['cursor']) {
+            null => FakeResponse.json(
+              200,
+              directoryPageJson(
+                [
+                  directoryMemberJson(userId: 'user-2', name: 'Gamerisa Dewi'),
+                  directoryMemberJson(userId: 'user-3', name: 'Budi Santoso'),
+                ],
+                total: 4,
+                nextCursor: 'c-2',
+              ),
+            ),
+            'c-2' => FakeResponse.json(
+              200,
+              directoryPageJson(
+                [directoryMemberJson(userId: 'user-8', name: 'Zainal Arifin')],
+                total: 4,
+                nextCursor: 'c-3',
+              ),
+            ),
+            _ => FakeResponse.json(
+              200,
+              directoryPageJson([directoryMemberJson(userId: 'user-9', name: 'Nur Hasanah')], total: 4),
+            ),
+          },
+        },
+      );
+      await tester.tap(find.text('Undang'));
+      await settle(tester);
+      expect(find.text('Alumni tidak ditemukan'), findsNothing);
+      expect(find.text('Zainal Arifin'), findsOneWidget);
+      expect(find.text('Nur Hasanah'), findsOneWidget);
+      expect(find.text('Gamerisa Dewi'), findsNothing, reason: 'sudah anggota');
+      expect(app.adapter.requestsTo('/directory').map((r) => r.queryParameters['cursor']).where((c) => c != null), [
+        'c-2',
+        'c-3',
+      ]);
+    });
+
+    testWidgets('PRD 4.5: pemilih undangan - halaman berikut gagal -> "Coba lagi" tanpa request berulang saat gulir', (
+      tester,
+    ) async {
+      var failMore = true;
+      final app = await _open(
+        tester,
+        '/chat/room-1/info',
+        server: _group(),
+        routes: {
+          '/directory': (options) {
+            if (options.queryParameters['cursor'] == 'c-2') {
+              return failMore
+                  ? FakeResponse.network()
+                  : FakeResponse.json(
+                      200,
+                      directoryPageJson([directoryMemberJson(userId: 'user-8', name: 'Zainal Arifin')]),
+                    );
+            }
+            return FakeResponse.json(
+              200,
+              directoryPageJson([
+                for (var i = 0; i < 12; i++) directoryMemberJson(userId: 'a-$i', name: 'Alumni $i'),
+              ], nextCursor: 'c-2'),
+            );
+          },
+        },
+      );
+      int moreRequests() =>
+          app.adapter.requestsTo('/directory').where((r) => r.queryParameters['cursor'] == 'c-2').length;
+      await tester.tap(find.text('Undang'));
+      await settle(tester);
+      expect(moreRequests(), 0, reason: 'hasil cukup; halaman berikut menunggu gulir');
+      for (var i = 0; i < 3; i++) {
+        await tester.drag(find.byType(ListView).last, const Offset(0, -3000));
+        await settle(tester);
+      }
+      expect(moreRequests(), 1);
+      expect(find.widgetWithText(TextButton, 'Coba lagi'), findsOneWidget);
+      failMore = false;
+      await tester.tap(find.widgetWithText(TextButton, 'Coba lagi'));
+      await settle(tester);
+      expect(moreRequests(), 2);
+      await scrollTo(tester, find.text('Zainal Arifin'));
+      expect(find.text('Zainal Arifin'), findsOneWidget);
     });
 
     testWidgets('AC F12-2: laporkan grup', (tester) async {

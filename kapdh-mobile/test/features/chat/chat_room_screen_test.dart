@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/core/realtime/realtime_client.dart';
 import 'package:kapdh_mobile/features/chat/chat_image_picker.dart';
+import 'package:kapdh_mobile/features/chat/chat_message_widgets.dart';
 import 'package:kapdh_mobile/features/chat/chat_realtime.dart';
 import 'package:kapdh_mobile/features/chat/chat_room_screen.dart';
 import 'package:kapdh_mobile/features/chat/outgoing_message.dart';
@@ -425,6 +426,202 @@ void main() {
     testWidgets('teks 200 % tanpa meluap', (tester) async {
       await _openRoom(tester, server: _directRoom(), realtime: FakeChatRealtime(), textScale: 2);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('AC F12-1, N-09: kirim ditolak 403 tanpa event (lawan bicara memblokir) -> izin room dimuat ulang', (
+      tester,
+    ) async {
+      final server = _directRoom();
+      final app = await _openRoom(tester, server: server, realtime: FakeChatRealtime());
+      int roomGets() => app.adapter.requestsTo('/chat/rooms/room-1').where((r) => r.method == 'GET').length;
+      final before = roomGets();
+      // Pihak yang diblokir tidak menerima room.updated (moderation.yaml); hanya penolakan kirim yang memberi tahu.
+      server.room = roomJson(canSend: false, sendRestriction: 'peer_unavailable');
+      server.failures['POST /chat/rooms/room-1/messages'] = () =>
+          FakeResponse.json(403, errorJson('FORBIDDEN', 'Anda tidak memiliki izin untuk tindakan ini.'));
+      await _type(tester, 'Halo?');
+      await tester.tap(find.byTooltip('Kirim'));
+      await settle(tester);
+
+      expect(roomGets(), before + 1, reason: 'detail room dimuat ulang sekali');
+      expect(find.textContaining('Anggota ini tidak dapat menerima pesan saat ini.'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Tulis pesan…'), findsNothing);
+      expect(find.textContaining('blokir'), findsNothing, reason: 'alasan tidak dibedakan (N-09)');
+      expect(find.text('Gagal terkirim'), findsOneWidget);
+      expect(find.textContaining('Ketuk untuk membuang.'), findsOneWidget);
+      // Kirim ulang tidak ditawarkan karena pasti ditolak lagi; pesan hanya dapat dibuang.
+      await tester.tap(find.text('Halo?'));
+      await settle(tester);
+      expect(find.text('Kirim ulang'), findsNothing);
+      await tester.tap(find.text('Buang pesan'));
+      await settle(tester);
+      expect(find.text('Halo?'), findsNothing);
+      expect(_posts(app), hasLength(1), reason: 'tidak ada kirim ulang otomatis untuk penolakan pasti');
+    });
+
+    testWidgets('AC F11-4: kirim ditolak 404 (bukan lagi anggota) -> percakapan tidak tersedia, antrean dibuang', (
+      tester,
+    ) async {
+      final server = _directRoom(
+        room: roomJson(kind: 'group', title: 'Angkatan 29', memberCount: 3),
+      );
+      await _openRoom(tester, server: server, realtime: FakeChatRealtime());
+      server.failures['POST /chat/rooms/room-1/messages'] = () =>
+          FakeResponse.json(404, errorJson('NOT_FOUND', 'Data tidak ditemukan.'));
+      server.failures['GET /chat/rooms/room-1'] = () => FakeResponse.json(404, errorJson('NOT_FOUND', 'Tidak ada.'));
+      await _type(tester, 'Masih di sini?');
+      await tester.tap(find.byTooltip('Kirim'));
+      await settle(tester);
+      expect(find.text('Percakapan tidak tersedia'), findsOneWidget);
+      expect(find.text('Pesan 1'), findsNothing);
+      expect(find.text('Masih di sini?'), findsNothing);
+    });
+
+    testWidgets('N-11: foto pesan dapat dibuka dan dimuat ulang lewat pembaca layar', (tester) async {
+      final semantics = tester.ensureSemantics();
+      final server = _directRoom(messages: 1);
+      server.messages.add(
+        chatMessageJson(
+          id: 'm-img',
+          body: null,
+          kind: 'image',
+          image: {
+            'file_id': 'file-1',
+            // URL bertanda tangan yang sudah kedaluwarsa: gagal dimuat (HTTP uji selalu gagal).
+            'url': 'https://files.test/chat/file-1?sig=lama',
+            'url_expires_at': iso(testNow.subtract(const Duration(minutes: 1))),
+            'mime': 'image/jpeg',
+            'width': 800,
+            'height': 600,
+          },
+          createdAt: at(300),
+        ),
+      );
+      final app = await _openRoom(tester, server: server, realtime: FakeChatRealtime());
+      expect(find.text('Muat ulang foto'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp(r'^Gamerisa Dewi, .*, Foto$')), findsOneWidget);
+      expect(
+        tester.getSemantics(find.byType(ChatImageView)),
+        containsSemantics(label: 'Foto', isImage: true, isButton: true, hasTapAction: true),
+      );
+      expect(
+        tester.getSemantics(find.widgetWithText(TextButton, 'Muat ulang foto')),
+        containsSemantics(label: 'Muat ulang foto', isButton: true, hasTapAction: true),
+      );
+
+      final syncsBefore = app.adapter
+          .requestsTo('/chat/rooms/room-1/messages')
+          .where((r) => r.method == 'GET' && r.queryParameters['after'] != null)
+          .length;
+      await tester.tap(find.widgetWithText(TextButton, 'Muat ulang foto'));
+      await settle(tester);
+      final syncsAfter = app.adapter
+          .requestsTo('/chat/rooms/room-1/messages')
+          .where((r) => r.method == 'GET' && r.queryParameters['after'] != null)
+          .length;
+      expect(syncsAfter, greaterThan(syncsBefore), reason: 'muat ulang foto menyinkron jendela pesan (URL baru)');
+      semantics.dispose();
+    });
+
+    testWidgets('N-11: lembar tindakan pesan orang lain pada teks 200 % dapat digulir sampai Laporkan pesan', (
+      tester,
+    ) async {
+      final server = _directRoom(messages: 1);
+      server.commit(body: 'Dari dia');
+      await _openRoom(tester, server: server, realtime: FakeChatRealtime(), textScale: 2);
+      await tester.longPress(find.text('Dari dia'));
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      await scrollAndTap(tester, find.text('Laporkan pesan'));
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(find.text('Gamerisa Dewi: Dari dia'), findsOneWidget, reason: 'lembar laporan terbuka');
+    });
+
+    testWidgets('N-11: lembar tindakan pesan sendiri pada teks 200 % dapat digulir sampai Hapus pesan', (tester) async {
+      final server = _directRoom(messages: 1);
+      server.commit(senderId: 'user-1', body: 'Punya saya');
+      await _openRoom(tester, server: server, realtime: FakeChatRealtime(), textScale: 2);
+      await tester.longPress(find.text('Punya saya'));
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      await scrollAndTap(tester, find.text('Hapus pesan'));
+      await settle(tester);
+      expect(find.text('Hapus pesan?'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('N-11, AC F11-2: status kirim milik sendiri pada teks 200 % tidak meluap', (tester) async {
+      final server = _directRoom(messages: 0);
+      server
+        ..commit(body: 'Assalamualaikum')
+        ..commit(senderId: 'user-1', body: 'Ok');
+      final app = await _openRoom(tester, server: server, realtime: FakeChatRealtime(), textScale: 2);
+      expect(find.text('Terkirim'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      // Balas lalu gagal kirim: "Gagal terkirim" + kutipan balasan di gelembung keluar.
+      await tester.longPress(find.text('Assalamualaikum'));
+      await settle(tester);
+      await scrollAndTap(tester, find.text('Balas'));
+      await settle(tester);
+      server.failures['POST /chat/rooms/room-1/messages'] = FakeResponse.network;
+      await _type(tester, 'Waalaikumsalam');
+      await tester.tap(find.byTooltip('Kirim'));
+      await settle(tester);
+      expect(find.text('Gagal terkirim'), findsOneWidget);
+      expect(_posts(app), hasLength(1));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('N-11: "Dibaca N" di grup pada teks 200 % tidak meluap', (tester) async {
+      final server = FakeChatServer(
+        room: roomJson(kind: 'group', title: 'Angkatan 29', memberCount: 13),
+      );
+      final mine = server.commit(senderId: 'user-1', body: 'Rapat jam 8');
+      server.members = [
+        memberJson(userId: 'user-1', name: 'Ahmad Islam', isMe: true, lastReadMessageId: mine['id'] as String),
+        for (var i = 0; i < 12; i++)
+          memberJson(userId: 'r-$i', name: 'Anggota $i', lastReadMessageId: mine['id'] as String),
+      ];
+      await _openRoom(tester, server: server, realtime: FakeChatRealtime(), textScale: 2);
+      expect(find.text('Dibaca 12'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('PRD 4.5: riwayat lama gagal dimuat -> gulir tidak mengulang request, hanya "Coba lagi"', (
+      tester,
+    ) async {
+      final server = _directRoom(messages: 40);
+      final app = await _openRoom(tester, server: server, realtime: FakeChatRealtime());
+      final base = server.handler(apiRoutes({'/me': (_) => FakeResponse.json(200, meJson())}));
+      var failOlder = true;
+      app.adapter.handler = (options) {
+        if (failOlder &&
+            options.method == 'GET' &&
+            options.path == '/chat/rooms/room-1/messages' &&
+            options.queryParameters['before'] != null) {
+          return FakeResponse.network();
+        }
+        return base(options);
+      };
+      int olderRequests() => app.adapter
+          .requestsTo('/chat/rooms/room-1/messages')
+          .where((r) => r.method == 'GET' && r.queryParameters['before'] != null)
+          .length;
+
+      for (var i = 0; i < 3; i++) {
+        await tester.fling(find.byType(ListView).last, const Offset(0, 3000), 3000);
+        await settle(tester);
+      }
+      expect(olderRequests(), 1);
+      expect(find.textContaining('Pesan lama belum dapat dimuat.'), findsOneWidget);
+
+      failOlder = false;
+      await tester.tap(find.widgetWithText(TextButton, 'Coba lagi'));
+      await settle(tester);
+      expect(olderRequests(), 2);
+      expect(find.textContaining('Pesan lama belum dapat dimuat.'), findsNothing);
     });
   });
 }
