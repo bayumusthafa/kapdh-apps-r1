@@ -372,7 +372,9 @@ export const routes: MockRoute[] = [
       // Kredensial salah = 400 VALIDATION_ERROR dengan field_errors (kontrak auth: bukan 401).
       // Admin: sandi DAN tepat satu dari totp_code atau backup_code (sekali pakai).
       const backup =
-        typeof req.body?.backup_code === "string" ? normalizeMockBackupCode(String(req.body.backup_code)) : null;
+        typeof req.body?.backup_code === "string"
+          ? normalizeMockBackupCode(String(req.body.backup_code))
+          : null;
       const fieldErrors: Record<string, string[]> = {};
       if (req.body?.password !== password) fieldErrors.password = ["Sandi salah."];
       else if (backup !== null && (!backupCodes.has(backup) || usedBackupCodes.has(backup)))
@@ -411,7 +413,12 @@ export function mockCurrentIdentity(): {
   display_name: string;
   role: AdminRole;
 } {
-  return { admin_id: identity.admin_id, email: identity.email, display_name: profile.display_name, role: profile.role };
+  return {
+    admin_id: identity.admin_id,
+    email: identity.email,
+    display_name: profile.display_name,
+    role: profile.role,
+  };
 }
 
 /** Sandi admin yang sedang masuk cocok (ganti sandi mensyaratkan sandi lama, AC F02-4). */
@@ -426,7 +433,8 @@ export function mockSetPassword(value: string): void {
 
 /** Tandai `count` backup code (selain BACKUP_CODE) sudah terpakai, untuk uji sisa kode sedikit. */
 export function mockConsumeBackupCodes(count: number): void {
-  for (const code of [...backupCodes].filter((c) => c !== BACKUP_CODE).slice(0, count)) usedBackupCodes.add(code);
+  for (const code of [...backupCodes].filter((c) => c !== BACKUP_CODE).slice(0, count))
+    usedBackupCodes.add(code);
 }
 
 /** Ganti seluruh backup code; yang lama tidak berlaku lagi (POST /admin/auth/backup-codes, F-02). */

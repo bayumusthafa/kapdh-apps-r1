@@ -125,7 +125,9 @@ function log(req: MockRequest): void {
 function rateLimited(): Response | null {
   if (!rateLimitNext) return null;
   rateLimitNext = false;
-  return error(429, "RATE_LIMITED", "Terlalu banyak percobaan. Coba lagi nanti.", { retry_after_seconds: 60 });
+  return error(429, "RATE_LIMITED", "Terlalu banyak percobaan. Coba lagi nanti.", {
+    retry_after_seconds: 60,
+  });
 }
 
 function validInvitation(token: unknown): Invitation | null {
@@ -159,11 +161,7 @@ function checkEnrollment(token: unknown): { enrollment: Enrollment } | { respons
     };
   if (enrollment.invitation.activated)
     return {
-      response: error(
-        403,
-        "FORBIDDEN",
-        "Aktivasi sudah selesai. Masuk dengan sandi dan kode autentikator.",
-      ),
+      response: error(403, "FORBIDDEN", "Aktivasi sudah selesai. Masuk dengan sandi dan kode autentikator."),
     };
   return { enrollment };
 }
@@ -239,9 +237,7 @@ export const routes: MockRoute[] = [
       if (!check?.valid)
         return error(400, "VALIDATION_ERROR", "Periksa kembali isian yang ditandai.", {
           field_errors: {
-            password: [
-              "Sandi wajib 8-72 byte dengan huruf besar, huruf kecil, angka, dan simbol (PRD 2.5).",
-            ],
+            password: ["Sandi wajib 8-72 byte dengan huruf besar, huruf kecil, angka, dan simbol (PRD 2.5)."],
           },
         });
       const inv = validInvitation(req.body?.invite_token);

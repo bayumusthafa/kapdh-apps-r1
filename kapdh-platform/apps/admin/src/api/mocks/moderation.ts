@@ -32,12 +32,42 @@ export const MOCK_REPORT_IDS = {
 } as const;
 
 const PEOPLE = {
-  ridwan: { user_id: "0199e000-0000-7000-8000-0000000000c1", full_name: "ridwan", member_number: "06.02.01.4", cohort: 6 },
-  arya: { user_id: "0199e000-0000-7000-8000-0000000000c2", full_name: "Arya Kamandanu", member_number: "10.02.01.3", cohort: 10 },
-  bayu: { user_id: "0199e000-0000-7000-8000-0000000000c3", full_name: "Bayu Musthafa Arief", member_number: "09.02.01.5", cohort: 9 },
-  sari: { user_id: "0199e000-0000-7000-8000-0000000000c5", full_name: "Sari Dewi", member_number: "11.01.02.8", cohort: 11 },
-  dimas: { user_id: "0199e000-0000-7000-8000-0000000000c7", full_name: "Dimas Prasetyo", member_number: "12.02.01.9", cohort: 12 },
-  lina: { user_id: "0199e000-0000-7000-8000-0000000000c8", full_name: "Lina Marlina", member_number: "08.01.02.3", cohort: 8 },
+  ridwan: {
+    user_id: "0199e000-0000-7000-8000-0000000000c1",
+    full_name: "ridwan",
+    member_number: "06.02.01.4",
+    cohort: 6,
+  },
+  arya: {
+    user_id: "0199e000-0000-7000-8000-0000000000c2",
+    full_name: "Arya Kamandanu",
+    member_number: "10.02.01.3",
+    cohort: 10,
+  },
+  bayu: {
+    user_id: "0199e000-0000-7000-8000-0000000000c3",
+    full_name: "Bayu Musthafa Arief",
+    member_number: "09.02.01.5",
+    cohort: 9,
+  },
+  sari: {
+    user_id: "0199e000-0000-7000-8000-0000000000c5",
+    full_name: "Sari Dewi",
+    member_number: "11.01.02.8",
+    cohort: 11,
+  },
+  dimas: {
+    user_id: "0199e000-0000-7000-8000-0000000000c7",
+    full_name: "Dimas Prasetyo",
+    member_number: "12.02.01.9",
+    cohort: 12,
+  },
+  lina: {
+    user_id: "0199e000-0000-7000-8000-0000000000c8",
+    full_name: "Lina Marlina",
+    member_number: "08.01.02.3",
+    cohort: 8,
+  },
 } satisfies Record<string, Party>;
 
 /** Akun alumni tertaut admin tiruan yang sedang masuk (admins.linked_alumni_user_id). */
@@ -176,13 +206,22 @@ function fixtures(): Map<string, Detail> {
       description: "Mengirim pesan menghina berulang kali.",
       target_member: target(PEOPLE.dimas, { effective_status: "expiring", expires_at: iso(10 * 24 * HOUR) }),
       target_history: [
-        { kind: "warn", reason: "Komentar kasar di grup", actor_name: "Ahmad Zulhadi", created_at: iso(-40 * 24 * HOUR) },
+        {
+          kind: "warn",
+          reason: "Komentar kasar di grup",
+          actor_name: "Ahmad Zulhadi",
+          created_at: iso(-40 * 24 * HOUR),
+        },
       ],
       evidence: {
         captured_at: iso(-10 * HOUR),
         messages: [],
         room: null,
-        profile: { full_name: PEOPLE.dimas.full_name, bio: "Pengusaha kuliner.", avatar: image("0199e000-0000-7000-8000-00000000d001") },
+        profile: {
+          full_name: PEOPLE.dimas.full_name,
+          bio: "Pengusaha kuliner.",
+          avatar: image("0199e000-0000-7000-8000-00000000d001"),
+        },
         contested_suspension: null,
       },
       version: "2",
@@ -237,7 +276,12 @@ function fixtures(): Map<string, Detail> {
         suspension_message: "Akun dibatasi karena spam berulang.",
       }),
       target_history: [
-        { kind: "suspend", reason: "Spam berulang di 3 grup", actor_name: "Bayu Musthafa", created_at: iso(-3 * 24 * HOUR) },
+        {
+          kind: "suspend",
+          reason: "Spam berulang di 3 grup",
+          actor_name: "Bayu Musthafa",
+          created_at: iso(-3 * 24 * HOUR),
+        },
       ],
       evidence: {
         captured_at: iso(-20 * HOUR),
@@ -379,7 +423,9 @@ function item(r: Detail): S["AdminModerationReportItem"] {
 }
 
 /** Hitungan bersama untuk antrean, dasbor dan lencana (aturan butir c: visibilitas yang sama). */
-export function moderationCounts(): S["AdminModerationQueueCounts"] & { oldest_open_created_at: string | null } {
+export function moderationCounts(): S["AdminModerationQueueCounts"] & {
+  oldest_open_created_at: string | null;
+} {
   const visible = [...reports.values()].filter(visibleToCaller).map(present).filter(active);
   const oldest = visible.map((r) => r.created_at).sort()[0] ?? null;
   return {
@@ -447,7 +493,14 @@ export const mockModeration = {
         status: "dismissed",
         action: "dismiss",
         resolved_at: at,
-        resolution: { action: "dismiss", note: "Bukan pelanggaran.", member_message: null, message_removed: false, resolved_at: at, resolved_by: by },
+        resolution: {
+          action: "dismiss",
+          note: "Bukan pelanggaran.",
+          member_message: null,
+          message_removed: false,
+          resolved_at: at,
+          resolved_by: by,
+        },
       }),
     );
   },
@@ -481,7 +534,8 @@ export const routes: MockRoute[] = [
           (r) =>
             !q ||
             (r.subject !== null &&
-              (r.subject.full_name.toLowerCase().includes(q) || (r.subject.member_number ?? "").startsWith(q))),
+              (r.subject.full_name.toLowerCase().includes(q) ||
+                (r.subject.member_number ?? "").startsWith(q))),
         )
         .sort((a, b) => {
           if (sort === "newest") return b.created_at.localeCompare(a.created_at);
@@ -513,7 +567,9 @@ export const routes: MockRoute[] = [
           ...r.evidence,
           messages: r.evidence.messages.map((m) => ({ ...m, image: renew(m.image) })),
           room: r.evidence.room ? { ...r.evidence.room, avatar: renew(r.evidence.room.avatar) } : null,
-          profile: r.evidence.profile ? { ...r.evidence.profile, avatar: renew(r.evidence.profile.avatar) } : null,
+          profile: r.evidence.profile
+            ? { ...r.evidence.profile, avatar: renew(r.evidence.profile.avatar) }
+            : null,
         },
       });
     },
@@ -523,7 +579,8 @@ export const routes: MockRoute[] = [
     path: "/admin/reports/{reportId}/claim",
     handler: (req) => {
       log(req);
-      const denied = requirePermission(req, "moderation.read") ?? requirePermission(req, "moderation.resolve");
+      const denied =
+        requirePermission(req, "moderation.read") ?? requirePermission(req, "moderation.resolve");
       if (denied) return denied;
       const replay = idem(req);
       if (replay.response) return replay.response;
@@ -534,7 +591,12 @@ export const routes: MockRoute[] = [
         return error(403, "FORBIDDEN", "Laporan yang Anda buat sendiri tidak dapat Anda tangani.");
       if (req.headers.get("If-Match") !== r.version || !active(r))
         return error(409, "VERSION_CONFLICT", "Laporan sudah berubah. Muat ulang.", { current: present(r) });
-      const next = bump({ ...r, status: "in_review", claimed_by: mockAdminRef(), claimed_at: new Date().toISOString() });
+      const next = bump({
+        ...r,
+        status: "in_review",
+        claimed_by: mockAdminRef(),
+        claimed_at: new Date().toISOString(),
+      });
       reports.set(r.id, next);
       const body = present(next);
       replay.remember(body);
@@ -546,7 +608,8 @@ export const routes: MockRoute[] = [
     path: "/admin/reports/{reportId}/resolve",
     handler: (req) => {
       log(req);
-      const denied = requirePermission(req, "moderation.read") ?? requirePermission(req, "moderation.resolve");
+      const denied =
+        requirePermission(req, "moderation.read") ?? requirePermission(req, "moderation.resolve");
       if (denied) return denied;
       const replay = idem(req);
       if (replay.response) return replay.response;
@@ -561,7 +624,10 @@ export const routes: MockRoute[] = [
       if (note.length < 3 || note.length > 1000) fe.note = ["Catatan 3-1000 karakter wajib diisi."];
       const memberMessage = typeof b.member_message === "string" ? b.member_message.trim() : "";
       const appeal = r.category === "appeal";
-      if ((action === "warn" || action === "suspend" || appeal) && (memberMessage.length < 3 || memberMessage.length > 500))
+      if (
+        (action === "warn" || action === "suspend" || appeal) &&
+        (memberMessage.length < 3 || memberMessage.length > 500)
+      )
         fe.member_message = ["Pesan untuk anggota 3-500 karakter wajib diisi."];
       if ((action === "suspend" || action === "unsuspend") && b.confirm !== true)
         fe.confirm = ["Konfirmasi eksplisit wajib untuk suspend/unsuspend."];
@@ -576,7 +642,8 @@ export const routes: MockRoute[] = [
       if (r.target_type === "room" && !subject && (action === "warn" || action === "suspend")) {
         const sid = b.subject_user_id;
         const sender = r.evidence.messages.find((m) => m.sender_user_id === sid);
-        if (typeof sid !== "string" || !sender) fe.subject_user_id = ["Pilih anggota grup yang dikenai tindakan."];
+        if (typeof sid !== "string" || !sender)
+          fe.subject_user_id = ["Pilih anggota grup yang dikenai tindakan."];
         else
           subject = target(
             Object.values(PEOPLE).find((p) => p.user_id === sid) ?? {
@@ -587,37 +654,60 @@ export const routes: MockRoute[] = [
             },
           );
       }
-      if (!stale && action === "suspend" && subject?.suspended_at) fe.action = ["Anggota sudah dalam status suspend."];
+      if (!stale && action === "suspend" && subject?.suspended_at)
+        fe.action = ["Anggota sudah dalam status suspend."];
       if (!stale && action === "unsuspend" && subject && !subject.suspended_at)
         fe.action = ["Anggota tidak sedang di-suspend."];
       if (Object.keys(fe).length > 0) return bad(fe);
       if (r.conflict_of_interest)
         return error(403, "FORBIDDEN", "Laporan yang Anda buat sendiri tidak dapat Anda tangani.");
       if (req.headers.get("If-Match") !== r.version || !active(r))
-        return error(409, "VERSION_CONFLICT", "Laporan sudah diputus atau diubah pengurus lain.", { current: present(r) });
+        return error(409, "VERSION_CONFLICT", "Laporan sudah diputus atau diubah pengurus lain.", {
+          current: present(r),
+        });
 
       const at = new Date().toISOString();
       const by = mockAdminRef();
       let member = subject;
       if (member && !stale) {
         if (action === "suspend")
-          member = { ...member, effective_status: "suspended", suspended_at: at, suspension_message: memberMessage };
+          member = {
+            ...member,
+            effective_status: "suspended",
+            suspended_at: at,
+            suspension_message: memberMessage,
+          };
         if (action === "unsuspend") {
           // AC F12-5: status dihitung ulang dari expires_at, bukan otomatis verified.
           const expired = member.expires_at !== null && Date.parse(member.expires_at) <= Date.now();
-          member = { ...member, effective_status: expired ? "expired" : "verified", suspended_at: null, suspension_message: null };
+          member = {
+            ...member,
+            effective_status: expired ? "expired" : "verified",
+            suspended_at: null,
+            suspension_message: null,
+          };
         }
       }
       const history =
         member && !stale && action !== "dismiss"
-          ? [{ kind: action, reason: note, actor_name: by.display_name, created_at: at }, ...r.target_history].slice(0, 20)
+          ? [
+              { kind: action, reason: note, actor_name: by.display_name, created_at: at },
+              ...r.target_history,
+            ].slice(0, 20)
           : r.target_history;
       const next = bump({
         ...r,
         status: action === "dismiss" ? "dismissed" : "resolved",
         action,
         resolved_at: at,
-        subject: member ? { user_id: member.user_id, full_name: member.full_name, member_number: member.member_number, cohort: member.cohort } : r.subject,
+        subject: member
+          ? {
+              user_id: member.user_id,
+              full_name: member.full_name,
+              member_number: member.member_number,
+              cohort: member.cohort,
+            }
+          : r.subject,
         target_member: member,
         target_history: history as Detail["target_history"],
         evidence:

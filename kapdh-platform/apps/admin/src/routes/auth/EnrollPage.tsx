@@ -127,7 +127,9 @@ export function EnrollPage() {
   return (
     <AuthLayout title="Daftarkan autentikator" subtitle={subtitle}>
       <Steps current={stage.kind === "codes" ? 3 : 2} />
-      {expiresAt && (stage.kind === "scan" || stage.kind === "starting") ? <Deadline expiresAt={expiresAt} /> : null}
+      {expiresAt && (stage.kind === "scan" || stage.kind === "starting") ? (
+        <Deadline expiresAt={expiresAt} />
+      ) : null}
 
       {stage.kind === "starting" ? <Loading label="Menyiapkan kode QR..." rows={4} /> : null}
 
@@ -288,9 +290,13 @@ function ScanAndConfirm({
       const err = ApiError.fromResponse(res.error, res.response.status);
       form.setValue("code", "");
       if (err.code === "VALIDATION_ERROR" && err.fieldErrors.totp_code) {
-        form.setError("code", { type: "server", message: err.fieldErrors.totp_code.join(" ") }, {
-          shouldFocus: true,
-        });
+        form.setError(
+          "code",
+          { type: "server", message: err.fieldErrors.totp_code.join(" ") },
+          {
+            shouldFocus: true,
+          },
+        );
       } else if (err.status === 401 || err.status === 403) onFailed(err);
       else
         form.setError("root.server", {
@@ -313,15 +319,22 @@ function ScanAndConfirm({
           1. Pindai kode QR
         </h2>
         <p className="text-sm text-text-muted">
-          Buka aplikasi autentikator (mis. Google Authenticator, Microsoft Authenticator, Aegis), pilih tambah akun,
-          lalu pindai kode berikut.
+          Buka aplikasi autentikator (mis. Google Authenticator, Microsoft Authenticator, Aegis), pilih tambah
+          akun, lalu pindai kode berikut.
         </p>
         <div className="flex justify-center">
-          <QrCode value={enrollment.otpauth_uri} label="Kode QR pendaftaran autentikator KAPDH Admin" size={192} />
+          <QrCode
+            value={enrollment.otpauth_uri}
+            label="Kode QR pendaftaran autentikator KAPDH Admin"
+            size={192}
+          />
         </div>
         <div className="flex flex-col gap-2 rounded-md border border-divider p-3">
           <p className="text-xs text-text-muted">Tidak bisa memindai? Masukkan secret ini secara manual:</p>
-          <p className="break-all font-mono text-sm font-semibold tracking-wider" aria-label="Secret autentikator">
+          <p
+            className="break-all font-mono text-sm font-semibold tracking-wider"
+            aria-label="Secret autentikator"
+          >
             {groupSecret(enrollment.secret)}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -351,7 +364,10 @@ function ScanAndConfirm({
               { label: "Penerbit", value: enrollment.issuer },
               { label: "Akun", value: enrollment.account_name },
               { label: "Jenis", value: `Berbasis waktu, ${enrollment.algorithm}` },
-              { label: "Kode", value: `${enrollment.digits} digit setiap ${enrollment.period_seconds} detik` },
+              {
+                label: "Kode",
+                value: `${enrollment.digits} digit setiap ${enrollment.period_seconds} detik`,
+              },
             ]}
           />
         </div>

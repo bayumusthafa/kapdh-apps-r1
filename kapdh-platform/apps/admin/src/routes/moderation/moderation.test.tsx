@@ -17,13 +17,15 @@ async function openReport(user: User, id: string, title: string | RegExp) {
   return openPage(user, `/moderation/${id}`, title);
 }
 
-const resolveCalls = () => moderationRequests.filter((r) => r.method === "POST" && r.path.endsWith("/resolve"));
+const resolveCalls = () =>
+  moderationRequests.filter((r) => r.method === "POST" && r.path.endsWith("/resolve"));
 
 async function decide(user: User, action: RegExp, note: string, memberMessage?: string) {
   const card = await section("Putuskan laporan");
   await user.click(within(card).getByRole("radio", { name: action }));
   await user.type(within(card).getByLabelText(/^Catatan internal/), note);
-  if (memberMessage !== undefined) await user.type(within(card).getByLabelText(/^Pesan untuk/), memberMessage);
+  if (memberMessage !== undefined)
+    await user.type(within(card).getByLabelText(/^Pesan untuk/), memberMessage);
   await user.click(within(card).getByRole("button", { name: "Putuskan laporan" }));
   return card;
 }
@@ -38,7 +40,9 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     expect(within(table).queryByText("Bayu Musthafa Arief")).toBeNull();
     const rows = within(table).getAllByRole("row").slice(1);
     // Urut due_at naik: ancaman (lewat target 6 jam) paling atas.
-    expect(within(rows[0]!).getByRole("link", { name: /Ancaman\/keselamatan terhadap Arya Kamandanu/ })).toBeVisible();
+    expect(
+      within(rows[0]!).getByRole("link", { name: /Ancaman\/keselamatan terhadap Arya Kamandanu/ }),
+    ).toBeVisible();
     expect(within(rows[0]!).getByText("Mendesak")).toBeInTheDocument();
     expect(within(rows[0]!).getByText("Lewat target")).toBeInTheDocument();
     // Antrean tidak memuat identitas pelapor (minimisasi PRD 3.12).
@@ -66,7 +70,11 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     await user.type(screen.getByLabelText("Cari pihak terlapor"), "arya");
     await screen.findByText("Menampilkan 1 dari 1");
     await waitFor(() =>
-      expect(moderationRequests.at(-1)?.query).toMatchObject({ status: "all", priority: "urgent", q: "arya" }),
+      expect(moderationRequests.at(-1)?.query).toMatchObject({
+        status: "all",
+        priority: "urgent",
+        q: "arya",
+      }),
     );
   });
 
@@ -78,7 +86,9 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     const items = within(list).getAllByRole("listitem");
     expect(items).toHaveLength(2);
     expect(within(items[1]!).getByText("Pesan yang dilaporkan")).toBeInTheDocument();
-    expect(within(items[1]!).getByText(/Pesan asli sudah dihapus setelah laporan dibuat/)).toBeInTheDocument();
+    expect(
+      within(items[1]!).getByText(/Pesan asli sudah dihapus setelah laporan dibuat/),
+    ).toBeInTheDocument();
     expect(within(items[0]!).getByText("Konteks")).toBeInTheDocument();
     const target = await section("Pihak terlapor");
     expect(within(target).getByText("Arya Kamandanu (10.02.01.3)")).toBeInTheDocument();
@@ -92,14 +102,18 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     await user.click(within(card).getByRole("radio", { name: /^Peringatkan/ }));
     await user.click(within(card).getByRole("button", { name: "Putuskan laporan" }));
     await waitFor(() =>
-      expect(within(card).getByLabelText(/^Catatan internal/)).toHaveAccessibleDescription(/minimal 3 karakter/),
+      expect(within(card).getByLabelText(/^Catatan internal/)).toHaveAccessibleDescription(
+        /minimal 3 karakter/,
+      ),
     );
     expect(resolveCalls()).toHaveLength(0);
 
     await user.type(within(card).getByLabelText(/^Catatan internal/), "Ancaman kekerasan di grup");
     await user.click(within(card).getByRole("button", { name: "Putuskan laporan" }));
     await waitFor(() =>
-      expect(within(card).getByLabelText(/^Pesan untuk anggota/)).toHaveAccessibleDescription(/minimal 3 karakter/),
+      expect(within(card).getByLabelText(/^Pesan untuk anggota/)).toHaveAccessibleDescription(
+        /minimal 3 karakter/,
+      ),
     );
     await user.type(within(card).getByLabelText(/^Pesan untuk anggota/), "Jangan mengancam anggota lain.");
     await user.click(within(card).getByLabelText(/Jadikan pesan terlapor placeholder/));
@@ -128,7 +142,12 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
   it("AC F12-4: suspend butuh konfirmasi dua langkah dan mengirim confirm: true", async () => {
     const user = userEvent.setup();
     await openReport(user, MOCK_REPORT_IDS.harassment, "Laporan Pelecehan");
-    await decide(user, /^Suspend/, "Pelecehan berulang setelah peringatan", "Akun dibatasi karena pelecehan.");
+    await decide(
+      user,
+      /^Suspend/,
+      "Pelecehan berulang setelah peringatan",
+      "Akun dibatasi karena pelecehan.",
+    );
     const dialog = await screen.findByRole("alertdialog", { name: /Suspend laporan ini/ });
     expect(within(dialog).getByText(/sesi umum anggota dicabut/i)).toBeInTheDocument();
     const confirm = within(dialog).getByRole("button", { name: "Ya, suspend" });
@@ -139,7 +158,11 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     const target = await section("Pihak terlapor");
     await within(target).findByText("Disuspend sejak");
     expect(within(target).getByText("Akun dibatasi karena pelecehan.")).toBeInTheDocument();
-    expect(resolveCalls()[0]?.body).toMatchObject({ action: "suspend", confirm: true, remove_message: false });
+    expect(resolveCalls()[0]?.body).toMatchObject({
+      action: "suspend",
+      confirm: true,
+      remove_message: false,
+    });
     expect(resolveCalls()[0]?.ifMatch).toBe("2");
   });
 
@@ -150,10 +173,11 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     expect(within(evidence).getByText("Masih berlaku")).toBeInTheDocument();
     const card = await section("Putuskan laporan");
     // Banding hanya dapat ditolak atau dikabulkan.
-    expect(within(card).getAllByRole("radio").map((r) => (r as HTMLInputElement).value)).toEqual([
-      "dismiss",
-      "unsuspend",
-    ]);
+    expect(
+      within(card)
+        .getAllByRole("radio")
+        .map((r) => (r as HTMLInputElement).value),
+    ).toEqual(["dismiss", "unsuspend"]);
     await decide(user, /^Kabulkan banding/, "Akun terbukti diretas", "Suspend Anda dicabut.");
     const dialog = await screen.findByRole("alertdialog", { name: /Cabut suspend laporan ini/ });
     expect(within(dialog).getByText(/bukan otomatis terverifikasi/)).toBeInTheDocument();
@@ -185,7 +209,10 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
       ),
     );
     expect(screen.queryByRole("alertdialog")).toBeNull();
-    await user.selectOptions(within(card).getByLabelText(/^Anggota grup yang dikenai tindakan/), "Dimas Prasetyo");
+    await user.selectOptions(
+      within(card).getByLabelText(/^Anggota grup yang dikenai tindakan/),
+      "Dimas Prasetyo",
+    );
     await user.click(within(card).getByRole("button", { name: "Putuskan laporan" }));
     const dialog = await screen.findByRole("alertdialog", { name: /Peringatkan laporan ini/ });
     await user.click(within(dialog).getByRole("button", { name: "Ya, peringatkan" }));
@@ -242,7 +269,9 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     mockAuth.setAdmin({ role: "admin", permissions: ["moderation.read"] });
     const user = userEvent.setup();
     const first = await openReport(user, MOCK_REPORT_IDS.threat, "Laporan Ancaman/keselamatan");
-    expect(await screen.findByText(/Klaim dan keputusan memerlukan izin Menyelesaikan laporan moderasi/)).toBeVisible();
+    expect(
+      await screen.findByText(/Klaim dan keputusan memerlukan izin Menyelesaikan laporan moderasi/),
+    ).toBeVisible();
     expect(screen.queryByRole("region", { name: "Putuskan laporan" })).toBeNull();
     expect(screen.queryByRole("button", { name: /Klaim/ })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Keluar" }));

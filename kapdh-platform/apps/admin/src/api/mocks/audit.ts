@@ -37,7 +37,10 @@ interface ExportState {
   filters: Filter;
   requestedBy: S["AdminActorRef"];
   requestedAt: string;
-  outcome: { kind: "ready"; at: string; rowCount: number; bytes: number; expiresAt: string } | { kind: "failed"; at: string; reason: S["AuditExportFailureReason"] } | null;
+  outcome:
+    | { kind: "ready"; at: string; rowCount: number; bytes: number; expiresAt: string }
+    | { kind: "failed"; at: string; reason: S["AuditExportFailureReason"] }
+    | null;
 }
 
 let entries: Entry[] = [];
@@ -47,8 +50,16 @@ let seq = 0;
 let nextFailure: S["AuditExportFailureReason"] | null = null;
 
 const ADMINS = {
-  bayu: { admin_id: "0199e000-0000-7000-8000-0000000000ad", user_id: "0199e000-0000-7000-8000-0000000001ad", name: "Bayu Musthafa" },
-  ahmad: { admin_id: "0199e000-0000-7000-8000-0000000000b2", user_id: "0199e000-0000-7000-8000-0000000001b2", name: "Ahmad Zulhadi" },
+  bayu: {
+    admin_id: "0199e000-0000-7000-8000-0000000000ad",
+    user_id: "0199e000-0000-7000-8000-0000000001ad",
+    name: "Bayu Musthafa",
+  },
+  ahmad: {
+    admin_id: "0199e000-0000-7000-8000-0000000000b2",
+    user_id: "0199e000-0000-7000-8000-0000000001b2",
+    name: "Ahmad Zulhadi",
+  },
 };
 const ALUMNI = { user_id: "0199e000-0000-7000-8000-0000000000c1", name: "ridwan" };
 
@@ -75,7 +86,11 @@ function fixtures(): Entry[] {
         ? { admin_id: null, user_id: null, display_name: null }
         : actor === "alumni"
           ? { admin_id: null, user_id: ALUMNI.user_id, display_name: ALUMNI.name }
-          : { admin_id: ADMINS[actor].admin_id, user_id: ADMINS[actor].user_id, display_name: ADMINS[actor].name };
+          : {
+              admin_id: ADMINS[actor].admin_id,
+              user_id: ADMINS[actor].user_id,
+              display_name: ADMINS[actor].name,
+            };
     out.push({
       id: `0199e000-0000-7000-8000-a0${hex(n, 10)}`,
       created_at: new Date(base - minutesAgo * 60_000).toISOString(),
@@ -83,7 +98,13 @@ function fixtures(): Entry[] {
       entity_type: entityType,
       entity_id: `0199e000-0000-7000-8000-e0${hex(n, 10)}`,
       effective_role:
-        actor === "system" ? "system" : actor === "alumni" ? "alumni" : actor === "bayu" ? "super_admin" : "admin",
+        actor === "system"
+          ? "system"
+          : actor === "alumni"
+            ? "alumni"
+            : actor === "bayu"
+              ? "super_admin"
+              : "admin",
       actor: a,
       request_id: `req-${hex(n, 6)}`,
       reason: null,
@@ -98,7 +119,12 @@ function fixtures(): Entry[] {
     after: { status: "paid", decided_at: "2026-10-12T09:55:00Z" },
   });
   add(12, "admin.invited", "admin", "bayu", {
-    after: { display_name: "Rina Kartika", email: "rina@kapdh.test", role: "admin", permissions: ["members.read"] },
+    after: {
+      display_name: "Rina Kartika",
+      email: "rina@kapdh.test",
+      role: "admin",
+      permissions: ["members.read"],
+    },
   });
   add(30, "settings.updated", "app_setting", "bayu", {
     entity_id: "maintenance",
@@ -119,7 +145,12 @@ function fixtures(): Entry[] {
   add(90, "account.deletion.requested", "account_deletion", "alumni");
   add(120, "audit.export.completed", "audit_export", "system", { after: { file_id: "f-1", row_count: 12 } });
   for (let i = 0; i < 26; i += 1)
-    add(150 + i * 30, i % 2 === 0 ? "admin.login" : "moderation.report_viewed", i % 2 === 0 ? "admin" : "report", i % 3 === 0 ? "bayu" : "ahmad");
+    add(
+      150 + i * 30,
+      i % 2 === 0 ? "admin.login" : "moderation.report_viewed",
+      i % 2 === 0 ? "admin" : "report",
+      i % 3 === 0 ? "bayu" : "ahmad",
+    );
   return out;
 }
 
@@ -176,14 +207,18 @@ function parseFilter(raw: Record<string, unknown>): { filter: Filter } | { respo
     if (typeof v !== "string" || Number.isNaN(Date.parse(v))) fe[k] = ["Waktu tidak valid."];
     else f[k] = v;
   }
-  if (f.from && f.to && Date.parse(f.to) <= Date.parse(f.from)) fe.to = ["Batas akhir harus setelah batas awal."];
+  if (f.from && f.to && Date.parse(f.to) <= Date.parse(f.from))
+    fe.to = ["Batas akhir harus setelah batas awal."];
   if (Object.keys(fe).length > 0)
-    return { response: error(400, "VALIDATION_ERROR", "Periksa kembali isian yang ditandai.", { field_errors: fe }) };
+    return {
+      response: error(400, "VALIDATION_ERROR", "Periksa kembali isian yang ditandai.", { field_errors: fe }),
+    };
   return { filter: f };
 }
 
 function matches(e: Entry, f: Filter): boolean {
-  if (f.actor_q && !(e.actor.display_name ?? "").toLowerCase().includes(f.actor_q.toLowerCase())) return false;
+  if (f.actor_q && !(e.actor.display_name ?? "").toLowerCase().includes(f.actor_q.toLowerCase()))
+    return false;
   if (f.actor_admin_id && e.actor.admin_id !== f.actor_admin_id) return false;
   if (f.actor_user_id && e.actor.user_id !== f.actor_user_id) return false;
   if (f.effective_role && e.effective_role !== f.effective_role) return false;
@@ -278,9 +313,7 @@ function visible(): ExportState[] {
 
 function guard(req: MockRequest, withExport: boolean): Response | null {
   log(req);
-  return (
-    requirePermission(req, "audit.read") ?? (withExport ? requirePermission(req, "audit.export") : null)
-  );
+  return requirePermission(req, "audit.read") ?? (withExport ? requirePermission(req, "audit.export") : null);
 }
 
 /** Kendali server tiruan untuk uji dan dev:mock. */
@@ -295,7 +328,8 @@ export const mockAudit = {
   },
   /** Berkas ekspor siap dihapus pembersihan otomatis (status menjadi expired). */
   expireExports(): void {
-    for (const x of exports) if (x.outcome?.kind === "ready") x.outcome.expiresAt = new Date(Date.now() - 1).toISOString();
+    for (const x of exports)
+      if (x.outcome?.kind === "ready") x.outcome.expiresAt = new Date(Date.now() - 1).toISOString();
   },
   exportCount(): number {
     return exports.length;
@@ -315,7 +349,9 @@ export const routes: MockRoute[] = [
       const items = entries
         .filter((e) => matches(e, parsed.filter))
         .sort((a, b) =>
-          sort === "created_at_asc" ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at),
+          sort === "created_at_asc"
+            ? a.created_at.localeCompare(b.created_at)
+            : b.created_at.localeCompare(a.created_at),
         )
         .map(listItem);
       return json(200, paginate(items, req.url) satisfies S["AuditEntryPage"]);
@@ -399,7 +435,8 @@ export const routes: MockRoute[] = [
       const x = visible().find((e) => e.id === req.params.exportId);
       if (!x) return error(404, "NOT_FOUND", "Ekspor tidak ditemukan.");
       const current = present(x);
-      if (current.status === "expired") return error(404, "NOT_FOUND", "Berkas ekspor sudah dihapus otomatis.");
+      if (current.status === "expired")
+        return error(404, "NOT_FOUND", "Berkas ekspor sudah dihapus otomatis.");
       if (current.status !== "ready")
         return error(409, "VERSION_CONFLICT", "Ekspor belum siap diunduh.", { current });
       return json(200, {
