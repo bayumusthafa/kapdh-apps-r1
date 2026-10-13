@@ -139,16 +139,14 @@ describe("Job account.deletion: penghapusan penuh (AC F14-3, F14-4, F14-5)", () 
     const session = await signInAlumni(t, owner);
     const now = t.clock.now();
     const roomId = uuidv7();
-    await t.db
-      .insert(rooms)
-      .values({
-        id: roomId,
-        kind: "group",
-        name: "Grup Undangan",
-        createdBy: owner.userId,
-        createdAt: now,
-        updatedAt: now,
-      });
+    await t.db.insert(rooms).values({
+      id: roomId,
+      kind: "group",
+      name: "Grup Undangan",
+      createdBy: owner.userId,
+      createdAt: now,
+      updatedAt: now,
+    });
     await t.db.insert(roomMembers).values([
       {
         roomId,
@@ -359,6 +357,10 @@ describe("Deletion ledger: penerapan ulang setelah restore (AC F14-6)", () => {
       await expectFullyDeleted(restored, rich, requestNumber);
       // Email penghapusan tidak dikirim ulang ke alamat yang dipulihkan.
       expect(restored.mailer.mail).toEqual([]);
+      // Ledger di storage pulihan (berasal dari backup berkas lama) dilengkapi kembali.
+      expect(
+        readLedger(restored.storage, ledgerObjectKey(requestNumber, new Date(entries[0]!.requested_at))),
+      ).toMatchObject({ request_number: requestNumber, state: "completed" });
       const [reapplied] = await restored.db
         .select()
         .from(auditLogs)
@@ -410,6 +412,13 @@ describe("Deletion ledger: penerapan ulang setelah restore (AC F14-6)", () => {
         failed: [],
       });
       await expectFullyDeleted(restored, rich, requestNumber);
+      const lateEntry = entries.find((e) => e.request_number === lateRequest.requestNumber)!;
+      expect(
+        readLedger(
+          restored.storage,
+          ledgerObjectKey(lateEntry.request_number, new Date(lateEntry.requested_at)),
+        ),
+      ).toMatchObject({ state: "completed", user_id: late.userId });
       // Email konfirmasi sudah terkirim sebelum bencana; email selesai dikirim sekarang.
       expect(restored.mailer.mail.map((m) => m.subject)).toEqual([
         `Penghapusan akun KAPDH ${requestNumber} selesai`,
