@@ -1,45 +1,46 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { accessMismatches, type ContractAccess, spec } from "../support/contract.js";
-import { routeAccessList } from "../support/routes.js";
+import { type RouteAccess, routeAccessList } from "../support/routes.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
 
 /**
  * ARCHITECTURE §4.3 / kontrak C3+C7: dekorator akses setiap operasi modul admin sama persis dengan `x-kapdh-access`
- * (audience, permissions, permissions_any, role, reauth, idempotent), dan setiap operasi domain admin-dashboard,
- * admin-admins, admin-audit dan admin-settings diimplementasikan controller modul ini.
+ * (audience, permissions, permissions_any, role, reauth, idempotent), satu uji per controller, dan setiap operasi domain
+ * admin-dashboard, admin-admins, admin-audit dan admin-settings diimplementasikan controller modul ini.
  */
-const CONTROLLERS = [
-  "DashboardController",
-  "AdminsController",
-  "PermissionsController",
-  "AuditController",
-  "SettingsController",
-];
-const TAGS = ["Admin Dashboard", "Admin Admins", "Admin Audit", "Admin Settings"];
+const CONTROLLERS: Record<string, { tag: string; operations: number }> = {
+  DashboardController: { tag: "Admin Dashboard", operations: 2 },
+  AdminsController: { tag: "Admin Admins", operations: 8 },
+  PermissionsController: { tag: "Admin Admins", operations: 1 },
+  AuditController: { tag: "Admin Audit", operations: 6 },
+  SettingsController: { tag: "Admin Settings", operations: 8 },
+};
+const TAGS = [...new Set(Object.values(CONTROLLERS).map((c) => c.tag))];
 
 let t: TestApp;
+let routes: RouteAccess[];
 
 beforeAll(async () => {
   t = await createTestApp();
+  routes = routeAccessList(t.app);
 });
 afterAll(async () => {
   await t.app.close();
 });
 
-function adminRoutes() {
-  return routeAccessList(t.app).filter((route) => CONTROLLERS.includes(route.name.split(".")[0]!));
-}
+const normalize = (p: string) => p.replace(/\{[^}]+\}/g, "{}");
 
 function contractOperations() {
-  const operations: { method: string; path: string; operationId: string; access: ContractAccess | undefined }[] =
+  const operations: { method: string; path: string; operationId: string; tag: string; access?: ContractAccess }[] =
     [];
   for (const [path, item] of Object.entries(spec.paths))
     for (const [method, operation] of Object.entries(item as Record<string, Record<string, unknown>>)) {
-      const tags = (operation.tags as string[] | undefined) ?? [];
-      if (tags.some((tag) => TAGS.includes(tag)))
+      const tag = ((operation.tags as string[] | undefined) ?? []).find((name) => TAGS.includes(name));
+      if (tag)
         operations.push({
           method,
           path,
+          tag,
           operationId: String(operation.operationId),
           access: operation["x-kapdh-access"] as ContractAccess | undefined,
         });
@@ -48,35 +49,45 @@ function contractOperations() {
 }
 
 describe("Akses modul admin cocok dengan kontrak (ARCHITECTURE §4.3)", () => {
-  it("AC F15-1, F16-1, F17-2: dekorator setiap rute modul admin sama dengan x-kapdh-access", () => {
-    const routes = adminRoutes();
-    expect(routes.length).toBeGreaterThan(20);
-    for (const route of routes) expect(route.meta.problems, route.name).toEqual([]);
-    expect(accessMismatches(routes)).toEqual([]);
-  });
+  it.each(Object.entries(CONTROLLERS))(
+    "AC F15-1, F16-1, F17-2: dekorator %s sama dengan x-kapdh-access setiap operasinya",
+    (controller, { tag, operations }) => {
+      const own = routes.filter((route) => route.name.split(".")[0] === controller);
+      expect(own).toHaveLength(operations);
+      for (const route of own) {
+        expect(route.meta.problems, route.name).toEqual([]);
+        const operation = contractOperations().find(
+          (op) => op.method === route.method && normalize(op.path) === normalize(route.path),
+        );
+        expect(operation, `${route.name} tidak ada di kontrak`).toBeDefined();
+        expect(operation!.tag, route.name).toBe(tag);
+        expect(operation!.access, `${operation!.operationId} tanpa x-kapdh-access`).toBeDefined();
+      }
+      expect(accessMismatches(own)).toEqual([]);
+    },
+  );
 
-  it("setiap operasi domain admin-dashboard/admins/audit/settings diimplementasikan dengan x-kapdh-access", () => {
-    const normalize = (p: string) => p.replace(/\{[^}]+\}/g, "{}");
-    const routes = new Set(adminRoutes().map((route) => `${route.method} ${normalize(route.path)}`));
+  it("setiap operasi domain admin-dashboard/admins/audit/settings diimplementasikan modul admin", () => {
+    const implemented = new Set(
+      routes
+        .filter((route) => route.name.split(".")[0]! in CONTROLLERS)
+        .map((route) => `${route.method} ${normalize(route.path)}`),
+    );
     const operations = contractOperations();
     // 2 dasbor + 9 admin/izin + 6 audit + 8 pengaturan.
-    expect(operations.length).toBe(25);
-    for (const operation of operations) {
-      expect(operation.access, `${operation.operationId} tanpa x-kapdh-access`).toBeDefined();
+    expect(operations).toHaveLength(25);
+    for (const operation of operations)
       expect(
-        routes.has(`${operation.method} ${normalize(operation.path)}`),
+        implemented.has(`${operation.method} ${normalize(operation.path)}`),
         `${operation.operationId} (${operation.method.toUpperCase()} ${operation.path}) belum diimplementasikan`,
       ).toBe(true);
-    }
   });
 
-  it("perubahan admin, izin dan pengaturan wajib reautentikasi; pembacaan tidak (AC F15-3, F16-1)", () => {
-    const routes = adminRoutes();
-    for (const route of routes) {
+  it("AC F15-3, F16-1: perubahan admin, izin dan pengaturan wajib reautentikasi; pembacaan dan permintaan ekspor tidak", () => {
+    for (const route of routes.filter((r) => r.name.split(".")[0]! in CONTROLLERS)) {
       const mutating = route.method !== "get";
       const exportRequest = route.path === "/admin/audit/exports";
-      if (mutating && !exportRequest) expect(route.meta.reauth, route.name).toBe(true);
-      if (!mutating) expect(route.meta.reauth, route.name).toBe(false);
+      expect(route.meta.reauth, route.name).toBe(mutating && !exportRequest);
     }
   });
 });
