@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kapdh_api/kapdh_api.dart';
 import 'package:kapdh_mobile/core/cache/kta_cache_store.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/design/design.dart';
+import 'package:kapdh_mobile/features/payments/payment_updates.dart';
 import 'package:kapdh_mobile/features/status/restricted_screen.dart';
 
 import '../../support/app_harness.dart';
@@ -15,7 +17,8 @@ const qrUrl = 'https://kapdh.or.id/kta/29.01.01.7#t=token-uji';
 
 final expiresAt = DateTime.utc(2027, 10, 12, 7);
 
-/// Membuka tab KTA untuk anggota berstatus [status]. [card] menjawab GET /me/card; [beforeStart] untuk mengisi cache.
+/// Membuka tab KTA untuk anggota berstatus [status]. [card] menjawab GET /me/card; [store] berisi cache awal;
+/// [updates] meniru notifikasi realtime.
 Future<AppHarness> openKta(
   WidgetTester tester, {
   String status = 'verified',
@@ -25,12 +28,14 @@ Future<AppHarness> openKta(
   MemorySecureStore? store,
   bool settleAfter = true,
   double textScale = 1,
+  Stream<NotificationCreatedPayload>? updates,
 }) async {
   final app = await pumpApp(
     tester,
     tokens: savedTokens(),
     store: store,
     textScale: textScale,
+    overrides: [realtimeNotificationsProvider.overrideWithValue(updates ?? const Stream.empty())],
     handler: apiRoutes({
       '/me': (_) => FakeResponse.json(200, meJson(status: status, expiresAt: meExpiresAt)),
       '/me/card': (_) => card(),
@@ -112,6 +117,36 @@ void main() {
       await settle(tester);
       expect(app.location, '/payments/pay-1');
       expect(find.text('Bukti pembayaran sedang diperiksa'), findsOneWidget);
+    });
+
+    testWidgets('AC F05-1, PRD 4.1: iuran pendaftaran disetujui (notifikasi realtime): kartu menjadi Aktif dengan QR '
+        'dan nomor yang sama', (tester) async {
+      final updates = StreamController<NotificationCreatedPayload>.broadcast();
+      addTearDown(updates.close);
+      var paid = false;
+      final app = await openKta(
+        tester,
+        status: 'unverified',
+        updates: updates.stream,
+        card: () => FakeResponse.json(
+          200,
+          paid ? memberCardJson(expiresAt: expiresAt) : memberCardJson(status: 'inactive', withQr: false),
+        ),
+        routes: {'/me': (_) => FakeResponse.json(200, meJson(status: paid ? 'verified' : 'unverified'))},
+      );
+      expect(shownCard(tester).qrData, isNull);
+      expect(find.byTooltip('Event, terkunci'), findsOneWidget);
+
+      paid = true;
+      updates.add(notificationOf('membership', title: 'KTA Anda aktif'));
+      await settle(tester);
+
+      expect(app.location, '/kta');
+      expect(shownCard(tester).qrData, qrUrl);
+      expect(shownCard(tester).memberNumber, '29.01.01.7');
+      expect(find.bySemanticsLabel('Status: KTA Aktif'), findsOneWidget);
+      // Status sesi ikut diperbarui sehingga tab Event dan Jejaring terbuka (PRD 2.2).
+      expect(find.byTooltip('Event, terkunci'), findsNothing);
     });
 
     testWidgets('AC F05-1, AC F07-5: KTA Aktif: QR dari qr.url, waktu sinkron, tips kecerahan; Perpanjang nonaktif '

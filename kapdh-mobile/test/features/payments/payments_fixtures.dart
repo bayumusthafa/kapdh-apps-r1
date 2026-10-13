@@ -2,6 +2,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kapdh_api/kapdh_api.dart';
 import 'package:kapdh_mobile/features/payments/proof_file.dart';
 
 import '../../support/fakes.dart';
@@ -291,3 +292,15 @@ List<String> captureClipboard(WidgetTester tester) {
   addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
   return copied;
 }
+
+/// Notifikasi realtime `notification.created` (kontrak events/notification.created.schema.json).
+NotificationCreatedPayload notificationOf(String category, {String title = 'Iuran pendaftaran disetujui'}) =>
+    NotificationCreatedPayload.fromJson({
+      'id': 'notif-1',
+      'category': category,
+      'title': title,
+      'body': null,
+      'deep_link': 'kapdh://app/payments/pay-1',
+      'created_at': iso(testNow),
+      'unread_count': 1,
+    });

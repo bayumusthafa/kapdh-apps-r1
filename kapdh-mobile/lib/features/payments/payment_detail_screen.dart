@@ -17,6 +17,7 @@ import '../../core/ui/external_links.dart';
 import '../../core/ui/support_section.dart';
 import '../../design/design.dart';
 import 'payment_presentation.dart';
+import 'payment_updates.dart';
 import 'payments_repository.dart';
 import 'proof_file.dart';
 import 'proof_submission.dart';
@@ -65,6 +66,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
   final _note = TextEditingController();
   late final ProofSubmitter _submitter;
   late final AppLifecycleListener _lifecycle;
+  StreamSubscription<NotificationCreatedPayload>? _updates;
 
   PaymentsRepository get _repo => ref.read(paymentsRepositoryProvider);
 
@@ -76,11 +78,14 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
     _submitter = ProofSubmitter(ref.read(paymentsRepositoryProvider));
     // Kembali ke aplikasi (mis. setelah transfer di aplikasi bank atau keputusan pengurus): muat status terbaru.
     _lifecycle = AppLifecycleListener(onResume: () => unawaited(_load(quiet: true)));
+    // Keputusan pengurus tiba sebagai notifikasi realtime: status dimuat ulang tanpa menunggu pengguna menarik layar.
+    _updates = ref.read(paymentUpdatesProvider).listen((_) => unawaited(_load(quiet: true)));
     unawaited(_load());
   }
 
   @override
   void dispose() {
+    unawaited(_updates?.cancel());
     _lifecycle.dispose();
     _note.dispose();
     super.dispose();
