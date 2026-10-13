@@ -102,7 +102,6 @@ function renderDescription(doc: Document, root: HTMLElement, view: KtaView, d: K
 export function mountKtaPage(options: KtaPageOptions): { run: () => Promise<void> } {
   const { doc, root, retryButton, apiBase } = options;
   const win = doc.defaultView;
-  let running = false;
   let countdown: ReturnType<typeof setInterval> | null = null;
 
   const stopCountdown = () => {
@@ -143,19 +142,30 @@ export function mountKtaPage(options: KtaPageOptions): { run: () => Promise<void
     setRetry(d.retry, view.kind === "unreachable" ? view.retryAfterSeconds : null);
   };
 
+  /**
+   * Setiap verifikasi diberi nomor urut; hasil verifikasi yang lokasinya sudah diganti (QR yang diperbarui dipindai
+   * saat request lama masih berjalan, hashchange) dibuang agar putusan token lama tidak tampil untuk token baru
+   * (AC F06-3). Klik coba lagi berulang untuk lokasi yang SAMA tidak mengirim request paralel.
+   */
+  let sequence = 0;
+  let inFlightLocation: string | null = null;
+
   const run = async () => {
-    if (running) return;
-    running = true;
+    const { pathname, hash } = options.getLocation();
+    const locationKey = `${pathname}${hash}`;
+    if (inFlightLocation === locationKey) return;
+    const current = ++sequence;
+    inFlightLocation = null;
+    const loc = parseKtaLocation(pathname, hash);
+    if (loc.status === "missing") return show({ kind: "missing" });
+    if (loc.status === "invalid") return show({ kind: "invalid", checkedAt: null, cause: "link" });
+    inFlightLocation = locationKey;
+    show({ kind: "loading" });
     try {
-      const { pathname, hash } = options.getLocation();
-      const loc = parseKtaLocation(pathname, hash);
-      if (loc.status === "missing") return show({ kind: "missing" });
-      if (loc.status === "invalid") return show({ kind: "invalid", checkedAt: null, cause: "link" });
-      show({ kind: "loading" });
       const result = await verifyKta(apiBase, loc.memberNumber, loc.token, options.fetcher);
-      show(toKtaView(result));
+      if (current === sequence) show(toKtaView(result));
     } finally {
-      running = false;
+      if (current === sequence) inFlightLocation = null;
     }
   };
 
