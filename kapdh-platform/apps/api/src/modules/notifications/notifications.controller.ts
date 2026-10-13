@@ -10,6 +10,7 @@ import { queryBool, validate, validateQuery } from "../../core/validation/valida
 import { EMAIL_PREFERENCE_CATEGORIES, PUSH_PREFERENCE_CATEGORIES } from "./channel-policy.js";
 import { InboxService, type MarkReadInput } from "./inbox.service.js";
 import { NotificationPreferencesService } from "./preferences.service.js";
+import { strictBody, uuidList } from "./validation.js";
 
 type InboxNotification = components["schemas"]["InboxNotification"];
 type NotificationPage = components["schemas"]["NotificationPage"];
@@ -22,22 +23,11 @@ const listQuerySchema = z.object({
   category: z.enum(NOTIFICATION_CATEGORIES, { message: "Kategori tidak dikenal" }).optional(),
 });
 
-const markReadSchema = z
-  .object({
-    ids: z
-      .array(z.uuid({ message: "Format id tidak valid" }))
-      .min(1, "Minimal satu id")
-      .max(100, "Maksimal 100 id")
-      .refine(
-        (ids) => new Set(ids.map((id) => id.toLowerCase())).size === ids.length,
-        "Id tidak boleh berulang",
-      )
-      .optional(),
-    all: z.boolean().optional(),
-    up_to: z.iso.datetime({ offset: true, message: "Gunakan format tanggal-waktu ISO 8601" }).optional(),
-  })
-  .strict()
-  .superRefine((value, issue) => {
+const markReadSchema = strictBody({
+  ids: uuidList("Id").optional(),
+  all: z.boolean({ message: "Wajib true atau false" }).optional(),
+  up_to: z.iso.datetime({ offset: true, message: "Gunakan format tanggal-waktu ISO 8601" }).optional(),
+}).superRefine((value, issue) => {
     const hasIds = value.ids !== undefined;
     const all = value.all === true;
     if (hasIds === all)
@@ -53,19 +43,26 @@ const markReadSchema = z
   });
 
 const toggles = <T extends readonly string[]>(categories: T) =>
-  z
-    .object(
-      Object.fromEntries(
-        categories.map((category) => [category, z.boolean({ message: "Wajib true atau false" })]),
-      ) as {
-        [K in T[number]]: z.ZodBoolean;
-      },
-    )
-    .strict();
+  z.strictObject(
+    Object.fromEntries(
+      categories.map((category) => [category, z.boolean({ message: "Wajib true atau false" })]),
+    ) as {
+      [K in T[number]]: z.ZodBoolean;
+    },
+    {
+      error: (issue) =>
+        issue.code === "unrecognized_keys"
+          ? `Kategori tidak dikenal atau wajib (tidak dapat diatur): ${issue.keys.join(", ")}`
+          : issue.code === "invalid_type"
+            ? "Wajib berupa objek saklar per kategori"
+            : undefined,
+    },
+  );
 
-const preferencesSchema = z
-  .object({ push: toggles(PUSH_PREFERENCE_CATEGORIES), email: toggles(EMAIL_PREFERENCE_CATEGORIES) })
-  .strict();
+const preferencesSchema = strictBody({
+  push: toggles(PUSH_PREFERENCE_CATEGORIES),
+  email: toggles(EMAIL_PREFERENCE_CATEGORIES),
+});
 
 /**
  * Kotak masuk dan preferensi notifikasi anggota (F-13; kontrak notifications.yaml). Semua operasi audience mobile,

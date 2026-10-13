@@ -13,7 +13,15 @@ import {
 } from "../support/factories.js";
 import { httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import { deliveryOf, fcmToken, inboxCount, notify, registerDeviceOk, tokenRow } from "./support.js";
+import {
+  deliveryOf,
+  expectIndonesianFieldErrors,
+  fcmToken,
+  inboxCount,
+  notify,
+  registerDeviceOk,
+  tokenRow,
+} from "./support.js";
 
 /**
  * Status pengiriman dan outbox untuk pengurus (F-13, PRD 4.5, 5.1; kontrak admin-notifications.yaml): izin
@@ -201,6 +209,7 @@ describe("GET /admin/notifications/deliveries", () => {
       const res = await api().get("/admin/notifications/deliveries", { ...auth(), query: bad });
       expect(res.statusCode, JSON.stringify(bad)).toBe(400);
       expectOperation("get", "/admin/notifications/deliveries", res);
+      expectIndonesianFieldErrors(res.json(), JSON.stringify(bad));
     }
   });
 });
@@ -359,6 +368,7 @@ describe("POST /admin/notifications/deliveries/retry (AC F13-4)", () => {
       const res = await api().post("/admin/notifications/deliveries/retry", body, auth());
       expect(res.statusCode).toBe(400);
       expectOperation("post", "/admin/notifications/deliveries/retry", res);
+      expectIndonesianFieldErrors(res.json(), JSON.stringify(body).slice(0, 60));
     }
     const limited = await createAdmin(t, { permissions: ["notifications.manage"] });
     const session = await signInAdmin(t, limited);
@@ -497,6 +507,97 @@ describe("Outbox (PRD 5.1, 5.5)", () => {
       const bad = await api().post("/admin/notifications/outbox/retry", body2, auth());
       expect(bad.statusCode).toBe(400);
       expectOperation("post", "/admin/notifications/outbox/retry", bad);
+      expectIndonesianFieldErrors(bad.json(), JSON.stringify(body2));
+    }
+  });
+});
+
+describe("Pesan validasi berbahasa Indonesia (ARCHITECTURE §2.9, PRD 5.2)", () => {
+  it("filter kosong/berulang, body bukan daftar id, id berulang dan kolom asing → field_errors berbahasa Indonesia", async () => {
+    const id = uuidv7();
+    const cases: {
+      label: string;
+      method: "get" | "post";
+      path: string;
+      call: () => ReturnType<ReturnType<typeof api>["get"]>;
+      field: string;
+      message: string;
+    }[] = [
+      {
+        label: "error_class kosong",
+        method: "get",
+        path: "/admin/notifications/deliveries",
+        call: () => api().get("/admin/notifications/deliveries?error_class=", auth()),
+        field: "error_class",
+        message: "Wajib diisi bila dikirim",
+      },
+      {
+        label: "error_class berulang",
+        method: "get",
+        path: "/admin/notifications/deliveries",
+        call: () => api().get("/admin/notifications/deliveries?error_class=a&error_class=b", auth()),
+        field: "error_class",
+        message: "Harus berupa satu nilai teks",
+      },
+      {
+        label: "from berulang",
+        method: "get",
+        path: "/admin/notifications/deliveries",
+        call: () =>
+          api().get(
+            "/admin/notifications/deliveries?from=2026-10-01T00:00:00Z&from=2026-10-02T00:00:00Z",
+            auth(),
+          ),
+        field: "from",
+        message: "Gunakan format tanggal-waktu ISO 8601",
+      },
+      {
+        label: "topic kosong",
+        method: "get",
+        path: "/admin/notifications/outbox",
+        call: () => api().get("/admin/notifications/outbox?topic=", auth()),
+        field: "topic",
+        message: "Wajib diisi bila dikirim",
+      },
+      {
+        label: "delivery_ids bukan daftar",
+        method: "post",
+        path: "/admin/notifications/deliveries/retry",
+        call: () => api().post("/admin/notifications/deliveries/retry", { delivery_ids: id }, auth()),
+        field: "delivery_ids",
+        message: "Harus berupa daftar id",
+      },
+      {
+        label: "kolom asing",
+        method: "post",
+        path: "/admin/notifications/deliveries/retry",
+        call: () => api().post("/admin/notifications/deliveries/retry", { delivery_ids: [id], ekstra: 1 }, auth()),
+        field: "_",
+        message: "Kolom tidak dikenal: ekstra",
+      },
+      {
+        label: "event_ids berulang",
+        method: "post",
+        path: "/admin/notifications/outbox/retry",
+        call: () => api().post("/admin/notifications/outbox/retry", { event_ids: [id, id] }, auth()),
+        field: "event_ids",
+        message: "event_ids tidak boleh berulang",
+      },
+      {
+        label: "body bukan objek",
+        method: "post",
+        path: "/admin/notifications/outbox/retry",
+        call: () => api().post("/admin/notifications/outbox/retry", [id], auth()),
+        field: "_",
+        message: "Body harus berupa objek JSON",
+      },
+    ];
+    for (const c of cases) {
+      const res = await c.call();
+      expect(res.statusCode, c.label).toBe(400);
+      const body = expectOperation(c.method, c.path, res) as { field_errors: Record<string, string[]> };
+      expect(body.field_errors[c.field], c.label).toContain(c.message);
+      expectIndonesianFieldErrors(body, c.label);
     }
   });
 });
