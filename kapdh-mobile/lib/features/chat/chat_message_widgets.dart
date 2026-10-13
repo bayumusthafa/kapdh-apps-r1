@@ -352,45 +352,50 @@ class ChatBubble extends StatelessWidget {
         ),
       ],
     );
-    return Semantics(
-      container: true,
-      label: semanticsLabel,
-      excludeSemantics: true,
-      onLongPressHint: onLongPress == null ? null : 'tindakan pesan',
-      onTapHint: onTap == null ? null : 'pilihan pesan',
-      child: Align(
-        alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: width * 0.78),
-          child: Column(
-            crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onLongPress: onLongPress,
-                onTap: onTap,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(KapdhSpace.s3, KapdhSpace.s2, KapdhSpace.s3, KapdhSpace.s1),
-                  decoration: BoxDecoration(
-                    color: colors.background,
-                    border: colors.border == null ? null : Border.all(color: colors.border!),
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(KapdhRadius.lg),
-                      topRight: const Radius.circular(KapdhRadius.lg),
-                      bottomLeft: Radius.circular(mine ? KapdhRadius.lg : 4),
-                      bottomRight: Radius.circular(mine ? 4 : KapdhRadius.lg),
-                    ),
-                  ),
-                  child: content,
-                ),
-              ),
-              if (reactions.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: ReactionRow(reactions: reactions, onToggle: onToggleReaction),
-                ),
-              ?footer,
-            ],
+    final bubble = GestureDetector(
+      onLongPress: onLongPress,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(KapdhSpace.s3, KapdhSpace.s2, KapdhSpace.s3, KapdhSpace.s1),
+        decoration: BoxDecoration(
+          color: colors.background,
+          border: colors.border == null ? null : Border.all(color: colors.border!),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(KapdhRadius.lg),
+            topRight: const Radius.circular(KapdhRadius.lg),
+            bottomLeft: Radius.circular(mine ? KapdhRadius.lg : 4),
+            bottomRight: Radius.circular(mine ? 4 : KapdhRadius.lg),
           ),
+        ),
+        child: content,
+      ),
+    );
+    return Align(
+      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: width * 0.78),
+        child: Column(
+          crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            // Isi gelembung dibacakan sebagai satu label; reaksi dan keterangan galat tetap dapat dijangkau
+            // pembaca layar sebagai elemen terpisah (N-11).
+            Semantics(
+              container: true,
+              label: semanticsLabel,
+              excludeSemantics: true,
+              onLongPress: onLongPress,
+              onTap: onTap,
+              onLongPressHint: onLongPress == null ? null : 'tindakan pesan',
+              onTapHint: onTap == null ? null : 'pilihan pesan',
+              child: bubble,
+            ),
+            if (reactions.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: ReactionRow(reactions: reactions, onToggle: onToggleReaction),
+              ),
+            ?footer,
+          ],
         ),
       ),
     );

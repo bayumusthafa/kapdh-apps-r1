@@ -427,7 +427,6 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
       time,
       if (deleted) 'Pesan ini telah dihapus' else messagePreviewText(message),
       if (status != null) detail ?? status.label,
-      for (final r in message.reactions) '${r.emoji} ${r.count}',
     ].join(', ');
     return ChatBubble(
       key: ValueKey('msg-${message.id}'),
