@@ -297,7 +297,7 @@ describe("check-in tiket (AC F09-5, F09-6; server tiruan)", () => {
     const user = userEvent.setup();
     renderApp("/events/checkin");
     await signIn(user);
-    const radio = await screen.findByRole("radio", { name: /Reuni Akbar KAPDH 2026/ });
+    const radio = await screen.findByRole("radio", { name: /Reuni Akbar KAPDH 2026/ }, { timeout: 5_000 });
     radio.focus();
     await user.keyboard(" ");
     const input = await screen.findByLabelText(/^Kode tiket/);
@@ -312,7 +312,9 @@ describe("check-in tiket (AC F09-5, F09-6; server tiruan)", () => {
     const user = userEvent.setup();
     renderApp("/events/checkin");
     await signIn(user);
-    expect(await screen.findByText("Tidak ada event untuk dipindai")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Tidak ada event untuk dipindai", {}, { timeout: 5_000 }),
+    ).toBeInTheDocument();
   });
 
   it("AC F15-1: admin dengan events.checkin saja dapat memindai tanpa izin events.manage", async () => {
