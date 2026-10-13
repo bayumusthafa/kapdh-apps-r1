@@ -11,6 +11,8 @@ import {
 import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { RateLimitService } from "../../src/core/rate-limit/rate-limit.service.js";
+import { DIRECTORY_RATE_LIMITS, directoryRateLimitKey } from "../../src/modules/network/directory.service.js";
 import { expectOperation } from "../support/contract.js";
 import {
   type AlumniFixture,
@@ -715,10 +717,22 @@ describe("PRD 5.4: avatar anggota lain", () => {
 });
 
 describe("Batas laju anti-scraping", () => {
-  it("pencarian melewati 60 per menit → 429 RATE_LIMITED dengan retry_after_seconds", async () => {
+  /** Mengisi kuota langsung lewat RateLimitService (kunci yang sama dengan layanan) agar uji tidak membanjiri API. */
+  async function spend(kind: "search" | "profile", windowMs: number, userId: string, hits: number) {
+    const limits = t.app.get(RateLimitService);
+    const rule = DIRECTORY_RATE_LIMITS[kind].find((r) => r.windowMs === windowMs)!;
+    for (let i = 0; i < hits; i++)
+      expect(await limits.consume(directoryRateLimitKey(kind, windowMs, userId), rule.limit, windowMs)).toBe(
+        0,
+      );
+  }
+
+  it("pencarian: permintaan ke-61 dalam semenit → 429 RATE_LIMITED dengan retry_after_seconds", async () => {
     const caller = await viewer();
     const city = uniqueCity();
-    for (let i = 0; i < 60; i++) expect((await search(caller.token, { city })).statusCode).toBe(200);
+    expect((await search(caller.token, { city })).statusCode).toBe(200);
+    await spend("search", 60_000, caller.userId, 58);
+    expect((await search(caller.token, { city })).statusCode).toBe(200);
     const limited = await search(caller.token, { city });
     expect(limited.statusCode).toBe(429);
     expect(expectOperation("get", "/directory", limited)).toMatchObject({
@@ -728,12 +742,25 @@ describe("Batas laju anti-scraping", () => {
     // Pengguna lain tidak terdampak.
     const other = await viewer();
     expect((await search(other.token, { city })).statusCode).toBe(200);
+    // Jendela menit berlalu → boleh lagi.
+    t.clock.advance(61_000);
+    expect((await search(caller.token, { city })).statusCode).toBe(200);
   });
 
-  it("profil melewati 120 per menit → 429 RATE_LIMITED", async () => {
+  it("pencarian: kuota per jam (600) menahan pengumpulan massal walau laju per menit rendah", async () => {
+    const caller = await viewer();
+    await spend("search", 3600_000, caller.userId, 599);
+    expect((await search(caller.token)).statusCode).toBe(200);
+    const limited = await search(caller.token);
+    expect(limited.statusCode).toBe(429);
+    expectOperation("get", "/directory", limited);
+  });
+
+  it("profil: permintaan ke-121 dalam semenit → 429 RATE_LIMITED", async () => {
     const caller = await viewer();
     const target = await member();
-    for (let i = 0; i < 120; i++) expect((await profileOf(caller.token, target.userId)).statusCode).toBe(200);
+    await spend("profile", 60_000, caller.userId, 119);
+    expect((await profileOf(caller.token, target.userId)).statusCode).toBe(200);
     const limited = await profileOf(caller.token, target.userId);
     expect(limited.statusCode).toBe(429);
     expect(expectOperation("get", "/directory/{userId}", limited)).toMatchObject({ code: "RATE_LIMITED" });
