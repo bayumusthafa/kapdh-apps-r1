@@ -17,6 +17,7 @@ import {
   mobileHeaders,
   submitProof,
   uploadProof,
+  type JsonBody,
 } from "./support.js";
 
 /**
@@ -50,7 +51,7 @@ describe("GET /payment-methods dan GET /me/fees (F-03, D4, AC F07-5)", () => {
   it("AC F03-1, D4: kutipan dari pengaturan fees; kelayakan per status efektif (PRD 2.2, AC F07-5)", async () => {
     const unverified = await memberSession(t, "unverified");
     const res = await api().get("/me/fees", { token: unverified.token });
-    const quotes = expectOperation("get", "/me/fees", res) as Record<string, any>;
+    const quotes = expectOperation("get", "/me/fees", res) as JsonBody;
     expect(quotes.registration).toMatchObject({
       total: "60000.00",
       eligible: true,
@@ -114,7 +115,7 @@ describe("POST /me/payments: instruksi iuran (AC F03-1, F03-5)", () => {
       { type: "registration", payment_method_id: method.id, amount: "1.00" },
       { token: member.token },
     );
-    const created = expectOperation("post", "/me/payments", res) as Record<string, any>;
+    const created = expectOperation("post", "/me/payments", res) as JsonBody;
     expect(res.statusCode).toBe(201);
     expect(created).toMatchObject({
       type: "registration",
@@ -122,7 +123,12 @@ describe("POST /me/payments: instruksi iuran (AC F03-1, F03-5)", () => {
       stage: "awaiting_transfer",
       amount: "60000.00",
       proof_version: 0,
-      method: { id: method.id, provider: "BSI Uji", account_number: "7000123456", instructions: "Kode bank 451" },
+      method: {
+        id: method.id,
+        provider: "BSI Uji",
+        account_number: "7000123456",
+        instructions: "Kode bank 451",
+      },
       method_active: true,
       instructions_hidden: false,
       actions: { can_submit_proof: true, can_change_method: true, can_cancel: true },
@@ -150,8 +156,14 @@ describe("POST /me/payments: instruksi iuran (AC F03-1, F03-5)", () => {
     const member = await memberSession(t);
     const key = uuidv7();
     const body = { type: "registration", payment_method_id: (await createPaymentMethod(t)).id };
-    const first = await api().post("/me/payments", body, { token: member.token, headers: { "idempotency-key": key } });
-    const replay = await api().post("/me/payments", body, { token: member.token, headers: { "idempotency-key": key } });
+    const first = await api().post("/me/payments", body, {
+      token: member.token,
+      headers: { "idempotency-key": key },
+    });
+    const replay = await api().post("/me/payments", body, {
+      token: member.token,
+      headers: { "idempotency-key": key },
+    });
     expect(first.statusCode).toBe(201);
     expect(replay.statusCode).toBe(201);
     expect(replay.headers["idempotent-replayed"]).toBe("true");
@@ -197,7 +209,11 @@ describe("POST /me/payments: instruksi iuran (AC F03-1, F03-5)", () => {
     const member = await memberSession(t);
     const inactive = await createPaymentMethod(t, { active: false });
     for (const id of [inactive.id, uuidv7()]) {
-      const res = await api().post("/me/payments", { type: "registration", payment_method_id: id }, { token: member.token });
+      const res = await api().post(
+        "/me/payments",
+        { type: "registration", payment_method_id: id },
+        { token: member.token },
+      );
       expect(res.statusCode).toBe(400);
       expect(res.json().field_errors.payment_method_id).toBeDefined();
     }
@@ -206,7 +222,11 @@ describe("POST /me/payments: instruksi iuran (AC F03-1, F03-5)", () => {
   it("AC F03-5: perubahan biaya setelah payment dibuat tidak mengubah snapshot; payment baru memakai biaya baru", async () => {
     const member = await memberSession(t);
     const instruction = await createInstruction(t, member);
-    await setSetting(t, "fees", { registration_fee: "70000.00", card_fee: "15000.00", renewal_fee: "20000.00" });
+    await setSetting(t, "fees", {
+      registration_fee: "70000.00",
+      card_fee: "15000.00",
+      renewal_fee: "20000.00",
+    });
     try {
       const proof = await submitProof(t, member, instruction.paymentId);
       const admin = await adminSession(t);
@@ -223,7 +243,11 @@ describe("POST /me/payments: instruksi iuran (AC F03-1, F03-5)", () => {
       const detail = (await api().get(`/me/payments/${fresh.paymentId}`, { token: other.token })).json();
       expect(detail.amount).toBe("85000.00");
     } finally {
-      await setSetting(t, "fees", { registration_fee: "50000.00", card_fee: "10000.00", renewal_fee: "10000.00" });
+      await setSetting(t, "fees", {
+        registration_fee: "50000.00",
+        card_fee: "10000.00",
+        renewal_fee: "10000.00",
+      });
     }
   });
 });
@@ -251,9 +275,13 @@ describe("PUT /me/payments/{id}/proof (AC F03-2, F03-3, F03-4)", () => {
       { file_id: secondFile, expected_proof_version: 1 },
       { token: member.token },
     );
-    const body = expectOperation("put", "/me/payments/{paymentId}/proof", second) as Record<string, any>;
+    const body = expectOperation("put", "/me/payments/{paymentId}/proof", second) as JsonBody;
     expect(body).toMatchObject({ proof_version: 2, proof_file_id: secondFile, transfer_note: null });
-    expect(body.events.map((e: { kind: string }) => e.kind)).toEqual(["created", "proof_submitted", "proof_replaced"]);
+    expect(body.events.map((e: { kind: string }) => e.kind)).toEqual([
+      "created",
+      "proof_submitted",
+      "proof_replaced",
+    ]);
     const history = await t.db
       .select()
       .from(paymentEvents)
@@ -277,7 +305,7 @@ describe("PUT /me/payments/{id}/proof (AC F03-2, F03-3, F03-4)", () => {
       { file_id: await uploadProof(t, member.token), expected_proof_version: 0 },
       { token: member.token },
     );
-    const error = expectOperation("put", "/me/payments/{paymentId}/proof", stale) as Record<string, any>;
+    const error = expectOperation("put", "/me/payments/{paymentId}/proof", stale) as JsonBody;
     expect(error).toMatchObject({ code: "PROOF_VERSION_CONFLICT", current: { proof_version: 1 } });
   });
 
@@ -302,7 +330,12 @@ describe("PUT /me/payments/{id}/proof (AC F03-2, F03-3, F03-4)", () => {
     });
     const resubmitted = await submitProof(t, member, instruction.paymentId, 1);
     const detail = (await api().get(`/me/payments/${resubmitted.id}`, { token: member.token })).json();
-    expect(detail).toMatchObject({ id: instruction.paymentId, status: "pending", stage: "awaiting_review", proof_version: 2 });
+    expect(detail).toMatchObject({
+      id: instruction.paymentId,
+      status: "pending",
+      stage: "awaiting_review",
+      proof_version: 2,
+    });
     expect(detail.events.find((e: { kind: string }) => e.kind === "rejected")).toMatchObject({
       actor: "admin",
       reason: "Nominal transfer tidak sesuai",
@@ -423,7 +456,7 @@ describe("PUT /me/payments/{id}/method dan POST /me/payments/{id}/cancel (PRD 4.
       { payment_method_id: next.id },
       { token: member.token, headers: { "if-match": instruction.version } },
     );
-    const body = expectOperation("put", "/me/payments/{paymentId}/method", changed) as Record<string, any>;
+    const body = expectOperation("put", "/me/payments/{paymentId}/method", changed) as JsonBody;
     expect(body).toMatchObject({ method: { id: next.id, provider: "Mandiri Uji" }, amount: "60000.00" });
     expect(body.events.at(-1)).toMatchObject({ kind: "method_changed", actor: "member" });
 
@@ -468,9 +501,17 @@ describe("PUT /me/payments/{id}/method dan POST /me/payments/{id}/cancel (PRD 4.
       { reason: "Salah pilih rekening" },
       { token: member.token, headers: { "if-match": instruction.version } },
     );
-    const body = expectOperation("post", "/me/payments/{paymentId}/cancel", res) as Record<string, any>;
-    expect(body).toMatchObject({ status: "cancelled", stage: "cancelled", cancel_reason: "Salah pilih rekening" });
-    expect(body.events.at(-1)).toMatchObject({ kind: "cancelled", actor: "member", reason: "Salah pilih rekening" });
+    const body = expectOperation("post", "/me/payments/{paymentId}/cancel", res) as JsonBody;
+    expect(body).toMatchObject({
+      status: "cancelled",
+      stage: "cancelled",
+      cancel_reason: "Salah pilih rekening",
+    });
+    expect(body.events.at(-1)).toMatchObject({
+      kind: "cancelled",
+      actor: "member",
+      reason: "Salah pilih rekening",
+    });
     const [audit] = await t.db.select().from(auditLogs).where(eq(auditLogs.entityId, instruction.paymentId));
     expect(audit).toMatchObject({ action: "payment.cancelled", actorUserId: member.userId });
     const fresh = await createInstruction(t, member);
@@ -509,14 +550,20 @@ describe("GET /me/payments dan GET /me/payments/{id} (F-03, F-07)", () => {
     const second = await createInstruction(t, member, "renewal");
     await createInstruction(t, await memberSession(t));
     const page1 = await api().get("/me/payments", { token: member.token, query: { limit: "1" } });
-    const body1 = expectOperation("get", "/me/payments", page1) as { items: { id: string }[]; next_cursor: string };
+    const body1 = expectOperation("get", "/me/payments", page1) as {
+      items: { id: string }[];
+      next_cursor: string;
+    };
     expect(body1.items.map((i) => i.id)).toEqual([second.paymentId]);
     const page2 = await api().get("/me/payments", {
       token: member.token,
       query: { limit: "1", cursor: body1.next_cursor },
     });
     expect(page2.json().items.map((i: { id: string }) => i.id)).toEqual([renewal.paymentId]);
-    const cancelled = await api().get("/me/payments", { token: member.token, query: { status: "cancelled" } });
+    const cancelled = await api().get("/me/payments", {
+      token: member.token,
+      query: { status: "cancelled" },
+    });
     expect(cancelled.json().items.map((i: { id: string }) => i.id)).toEqual([renewal.paymentId]);
     const invalid = await api().get("/me/payments", { token: member.token, query: { status: "lunas" } });
     expect(invalid.statusCode).toBe(400);
@@ -566,7 +613,9 @@ describe("Rencana cadangan D13: instruksi iuran disembunyikan per platform", () 
       );
       expect(created.statusCode).toBe(201);
       const id = created.json().id as string;
-      const hiddenView = (await api().get(`/me/payments/${id}`, { token: member.token, headers: ios })).json();
+      const hiddenView = (
+        await api().get(`/me/payments/${id}`, { token: member.token, headers: ios })
+      ).json();
       expect(hiddenView).toMatchObject({
         instructions_hidden: true,
         actions: { can_submit_proof: false, can_change_method: false, can_cancel: true },
@@ -576,7 +625,9 @@ describe("Rencana cadangan D13: instruksi iuran disembunyikan per platform", () 
         { file_id: await uploadProof(t, member.token), expected_proof_version: 0 },
         { token: member.token, headers: ios },
       );
-      expect(expectOperation("put", "/me/payments/{paymentId}/proof", proof)).toMatchObject({ code: "FORBIDDEN" });
+      expect(expectOperation("put", "/me/payments/{paymentId}/proof", proof)).toMatchObject({
+        code: "FORBIDDEN",
+      });
       const plain = (await api().get(`/me/payments/${id}`, { token: member.token })).json();
       expect(plain.instructions_hidden).toBe(false);
     } finally {
@@ -613,10 +664,17 @@ describe("PUT /me/payments/{id}/adjustments/{adjustmentId}/refund-destination (D
     });
     const url = `/me/payments/${instruction.paymentId}/adjustments/${adjustment.id}/refund-destination`;
     const destination = { provider: " BCA ", account_number: "9988776655", account_holder: "Penerima Uji" };
-    const res = await api().put(url, destination, { token: member.token, headers: { "if-match": adjustment.version } });
-    const body = expectOperation("put", "/me/payments/{paymentId}/adjustments/{adjustmentId}/refund-destination", res);
+    const res = await api().put(url, destination, {
+      token: member.token,
+      headers: { "if-match": adjustment.version },
+    });
+    const body = expectOperation(
+      "put",
+      "/me/payments/{paymentId}/adjustments/{adjustmentId}/refund-destination",
+      res,
+    );
     expect(JSON.stringify(body)).not.toContain("9988776655");
-    expect((body as Record<string, any>).adjustments[0]).toMatchObject({
+    expect((body as JsonBody).adjustments[0]).toMatchObject({
       has_refund_destination: true,
       destination_required: false,
     });
@@ -624,10 +682,16 @@ describe("PUT /me/payments/{id}/adjustments/{adjustmentId}/refund-destination (D
     expect(audits.map((a) => a.action)).toContain("payment.refund_destination_set");
     expect(JSON.stringify(audits)).not.toContain("9988776655");
 
-    const stale = await api().put(url, destination, { token: member.token, headers: { "if-match": adjustment.version } });
+    const stale = await api().put(url, destination, {
+      token: member.token,
+      headers: { "if-match": adjustment.version },
+    });
     expect(stale.json()).toMatchObject({ code: "VERSION_CONFLICT" });
     const intruder = await memberSession(t);
-    const foreign = await api().put(url, destination, { token: intruder.token, headers: { "if-match": "2" } });
+    const foreign = await api().put(url, destination, {
+      token: intruder.token,
+      headers: { "if-match": "2" },
+    });
     expect(foreign.statusCode).toBe(404);
     const blank = await api().put(
       url,

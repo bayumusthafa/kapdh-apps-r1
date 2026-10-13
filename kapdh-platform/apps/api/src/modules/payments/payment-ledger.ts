@@ -337,7 +337,11 @@ export class PaymentLedger {
    * Penolakan (AC F04-2, F09-4): alasan wajib (sudah divalidasi), rejected, histori, handler jenis (tiket: batal dan
    * hold dilepas), audit, notifikasi. Iuran dapat diperbaiki pemilik pada payment yang sama (AC F03-3).
    */
-  async reject(tx: Tx, locked: PaymentRow, input: { adminId: string; reason: string; at: Date }): Promise<PaymentRow> {
+  async reject(
+    tx: Tx,
+    locked: PaymentRow,
+    input: { adminId: string; reason: string; at: Date },
+  ): Promise<PaymentRow> {
     const [rejected] = await tx
       .update(payments)
       .set({
@@ -473,7 +477,10 @@ export class PaymentLedger {
         `Total refund melebihi nominal pembayaran. Sisa yang dapat direfund ${fromCents(remaining > 0n ? remaining : 0n)}.`,
       );
     }
-    const amount = input.createdByAdminId === null ? fromCents(requested < remaining ? requested : remaining) : input.amount;
+    const amount =
+      input.createdByAdminId === null
+        ? fromCents(requested < remaining ? requested : remaining)
+        : input.amount;
     const [row] = await tx
       .insert(paymentAdjustments)
       .values({

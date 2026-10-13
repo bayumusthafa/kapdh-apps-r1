@@ -136,7 +136,11 @@ export class AdminPaymentMethodsService {
   }
 
   /** Penggantian penuh (AC F15-3, F15-4): identitas rekening metode in_use tidak dapat diubah (400 per field). */
-  async update(methodId: string, expectedVersion: number, input: PaymentMethodInput): Promise<AdminPaymentMethod> {
+  async update(
+    methodId: string,
+    expectedVersion: number,
+    input: PaymentMethodInput,
+  ): Promise<AdminPaymentMethod> {
     await this.db.transaction(async (tx) => {
       const current = await this.lockMethod(tx, methodId);
       if (current.version !== expectedVersion) throw versionConflict(await this.get(methodId, tx));
@@ -223,7 +227,10 @@ export class AdminPaymentMethodsService {
 
   private inUseSql(): SQL<boolean> {
     return sql<boolean>`${exists(
-      this.db.select({ one: sql`1` }).from(payments).where(eq(payments.paymentMethodId, paymentMethods.id)),
+      this.db
+        .select({ one: sql`1` })
+        .from(payments)
+        .where(eq(payments.paymentMethodId, paymentMethods.id)),
     )}`.mapWith(Boolean);
   }
 }

@@ -17,6 +17,7 @@ import {
   type MemberFixture,
   memberSession,
   reviewablePayment,
+  type JsonBody,
 } from "./support.js";
 
 /**
@@ -48,7 +49,8 @@ async function paidPayment(): Promise<{ member: MemberFixture; admin: AdminSessi
   return { member, admin, paymentId: payment.paymentId };
 }
 
-const evidence = async (admin: AdminSession) => (await uploadTestFile(t, admin.token, "adjustment_evidence")).id;
+const evidence = async (admin: AdminSession) =>
+  (await uploadTestFile(t, admin.token, "adjustment_evidence")).id;
 
 describe("POST /admin/payments/{id}/adjustments (D6, PRD 4.3)", () => {
   it("D6: refund atas payment paid, tenggat 7 hari kerja, notifikasi permintaan rekening; total tidak melebihi nominal", async () => {
@@ -58,7 +60,7 @@ describe("POST /admin/payments/{id}/adjustments (D6, PRD 4.3)", () => {
       { kind: "refund", amount: "40000.00", reason: "Kelebihan transfer" },
       { token: admin.token },
     );
-    const body = expectOperation("post", "/admin/payments/{paymentId}/adjustments", res) as Record<string, any>;
+    const body = expectOperation("post", "/admin/payments/{paymentId}/adjustments", res) as JsonBody;
     expect(res.statusCode).toBe(201);
     expect(body).toMatchObject({
       payment_id: paymentId,
@@ -139,7 +141,11 @@ describe("Siklus refund: rekening tujuan, selesai, batal (D2, D6, PRD 10.2)", ()
       kind: "refund",
       amount: "60000.00",
       reason: "Event batal, refund penuh",
-      refund_destination: { provider: "BRI", account_number: "5566778899", account_holder: "Penerima Refund" },
+      refund_destination: {
+        provider: "BRI",
+        account_number: "5566778899",
+        account_holder: "Penerima Refund",
+      },
     };
     const created = await api().post(`/admin/payments/${paymentId}/adjustments`, payload, {
       token: admin.token,
@@ -157,7 +163,11 @@ describe("Siklus refund: rekening tujuan, selesai, batal (D2, D6, PRD 10.2)", ()
       headers: { "idempotency-key": key },
     });
     expect(replay.headers["idempotent-replayed"]).toBe("true");
-    expect(replay.json()).toMatchObject({ id: created.json().id, refund_destination: null, has_refund_destination: true });
+    expect(replay.json()).toMatchObject({
+      id: created.json().id,
+      refund_destination: null,
+      has_refund_destination: true,
+    });
 
     const id = created.json().id as string;
     const reader = await adminSession(t, ["payments.read"]);
@@ -181,18 +191,19 @@ describe("Siklus refund: rekening tujuan, selesai, batal (D2, D6, PRD 10.2)", ()
       { evidence_file_id: uuidv7() },
       { token: admin.token, headers: { "if-match": "1" } },
     );
-    expect(expectOperation("post", "/admin/payment-adjustments/{adjustmentId}/complete", badEvidence)).toMatchObject(
-      { code: "FILE_INVALID" },
-    );
+    expect(
+      expectOperation("post", "/admin/payment-adjustments/{adjustmentId}/complete", badEvidence),
+    ).toMatchObject({ code: "FILE_INVALID" });
     const done = await api().post(
       `/admin/payment-adjustments/${id}/complete`,
       { evidence_file_id: await evidence(admin) },
       { token: admin.token, headers: { "if-match": "1" } },
     );
-    const completed = expectOperation("post", "/admin/payment-adjustments/{adjustmentId}/complete", done) as Record<
-      string,
-      any
-    >;
+    const completed = expectOperation(
+      "post",
+      "/admin/payment-adjustments/{adjustmentId}/complete",
+      done,
+    ) as JsonBody;
     expect(completed).toMatchObject({
       status: "completed",
       has_refund_destination: false,
@@ -204,7 +215,9 @@ describe("Siklus refund: rekening tujuan, selesai, batal (D2, D6, PRD 10.2)", ()
     const ownerView = (await api().get(`/me/payments/${paymentId}`, { token: member.token })).json();
     expect(ownerView.events.at(-1)).toMatchObject({ kind: "adjusted", actor: "admin", reason: null });
     expect(ownerView.adjustments[0]).toMatchObject({ status: "completed", has_refund_destination: false });
-    const evidenceAccess = await api().get(`/files/${completed.evidence_file_id}/access`, { token: reader.token });
+    const evidenceAccess = await api().get(`/files/${completed.evidence_file_id}/access`, {
+      token: reader.token,
+    });
     expect(evidenceAccess.statusCode).toBe(200);
     expect(
       (await api().get(`/files/${completed.evidence_file_id}/access`, { token: member.token })).statusCode,
@@ -284,11 +297,23 @@ describe("Siklus refund: rekening tujuan, selesai, batal (D2, D6, PRD 10.2)", ()
       },
       { token: admin.token, headers: { "if-match": created.version } },
     );
-    const body = expectOperation("patch", "/admin/payment-adjustments/{adjustmentId}", patched) as Record<string, any>;
-    expect(body).toMatchObject({ amount: "15000.00", reason: "Refund dikoreksi", has_refund_destination: true });
-    const stale = await api().patch(url, { reason: "Usang" }, { token: admin.token, headers: { "if-match": created.version } });
+    const body = expectOperation("patch", "/admin/payment-adjustments/{adjustmentId}", patched) as JsonBody;
+    expect(body).toMatchObject({
+      amount: "15000.00",
+      reason: "Refund dikoreksi",
+      has_refund_destination: true,
+    });
+    const stale = await api().patch(
+      url,
+      { reason: "Usang" },
+      { token: admin.token, headers: { "if-match": created.version } },
+    );
     expect(stale.json()).toMatchObject({ code: "VERSION_CONFLICT" });
-    const over = await api().patch(url, { amount: "60000.01" }, { token: admin.token, headers: { "if-match": body.version } });
+    const over = await api().patch(
+      url,
+      { amount: "60000.01" },
+      { token: admin.token, headers: { "if-match": body.version } },
+    );
     expect(over.statusCode).toBe(400);
     const cleared = await api().patch(
       url,
@@ -363,14 +388,22 @@ describe("GET /admin/payment-adjustments (D6)", () => {
       ).json();
       const admin = await adminSession(t, ["payments.read"]);
       const list = await api().get("/admin/payment-adjustments", { token: admin.token });
-      const page = expectOperation("get", "/admin/payment-adjustments", list) as { items: any[]; total: number };
+      const page = expectOperation("get", "/admin/payment-adjustments", list) as {
+        items: JsonBody[];
+        total: number;
+      };
       expect(page.items.map((i) => i.id)).toEqual([a.id, b.id, c.id]);
       expect(page.total).toBe(3);
       const withDestination = (
-        await api().get("/admin/payment-adjustments", { token: admin.token, query: { has_refund_destination: "false", kind: "refund" } })
+        await api().get("/admin/payment-adjustments", {
+          token: admin.token,
+          query: { has_refund_destination: "false", kind: "refund" },
+        })
       ).json();
       expect(withDestination.items.map((i: { id: string }) => i.id)).toEqual([a.id]);
-      const paged = (await api().get("/admin/payment-adjustments", { token: admin.token, query: { limit: "2" } })).json();
+      const paged = (
+        await api().get("/admin/payment-adjustments", { token: admin.token, query: { limit: "2" } })
+      ).json();
       const rest = (
         await api().get("/admin/payment-adjustments", {
           token: admin.token,
@@ -388,7 +421,10 @@ describe("GET /admin/payment-adjustments (D6)", () => {
       const summary = (await api().get("/admin/payments/summary", { token: fresh.token })).json();
       expect(summary).toMatchObject({ adjustments_pending_count: 3, adjustments_overdue_count: 2 });
       const recent = (
-        await api().get("/admin/payment-adjustments", { token: fresh.token, query: { sort: "created_at_desc" } })
+        await api().get("/admin/payment-adjustments", {
+          token: fresh.token,
+          query: { sort: "created_at_desc" },
+        })
       ).json();
       expect(recent.items.map((i: { id: string }) => i.id)).toEqual([c.id, b.id, a.id]);
     } finally {
