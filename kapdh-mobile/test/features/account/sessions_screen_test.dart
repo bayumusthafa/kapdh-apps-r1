@@ -51,10 +51,7 @@ void main() {
     expect(find.text('iOS · versi 1.1.0'), findsOneWidget);
     expect(find.text('Terakhir aktif 2 jam lalu'), findsOneWidget);
     // Urutan: perangkat ini lebih dulu walau server mengurutkan menurut created_at.
-    expect(
-      tester.getTopLeft(find.text('Samsung A54')).dy,
-      lessThan(tester.getTopLeft(find.text('iPhone 13')).dy),
-    );
+    expect(tester.getTopLeft(find.text('Samsung A54')).dy, lessThan(tester.getTopLeft(find.text('iPhone 13')).dy));
   });
 
   testWidgets('F-02: cabut perangkat lain setelah konfirmasi (DELETE /auth/sessions/{id})', (tester) async {
@@ -147,6 +144,7 @@ void main() {
     await scrollAndTap(tester, find.text('Muat perangkat lain'));
     await settle(tester);
     expect(find.text('Tablet Lama'), findsOneWidget);
+    expect(app.adapter.requests.where((r) => r.queryParameters['cursor'] == 'c-2'), hasLength(1));
   });
 
   testWidgets('PRD 4.5: galat memuat daftar dengan coba lagi', (tester) async {

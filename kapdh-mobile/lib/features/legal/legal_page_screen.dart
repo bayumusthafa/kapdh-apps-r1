@@ -13,6 +13,16 @@ import '../../core/ui/support_section.dart';
 import '../../design/design.dart';
 import '../account/widgets/scroll_column.dart';
 
+/// Tautan isi halaman yang boleh dibuka di aplikasi luar: hanya `https` dengan host dan `mailto`. Skema lain
+/// (javascript:, intent:, file:, http:, tautan relatif) ditolak (N-09).
+Uri? legalExternalLink(String url) {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null) return null;
+  if (uri.scheme == 'https' && uri.host.isNotEmpty) return uri;
+  if (uri.scheme == 'mailto' && uri.path.isNotEmpty) return uri;
+  return null;
+}
+
 /// Halaman legal dan informasi versi tayang (GET /public/pages/{slug}; F-08, PRD 3.8). Terbuka untuk semua status,
 /// sebelum login dan dari portal status (PRD 2.2: legal selalu boleh). HTML sudah disanitasi server; tautan hanya
 /// dibuka di aplikasi luar bila https atau email, sehingga isi halaman tidak dapat mengarahkan aplikasi ke skema
@@ -66,10 +76,9 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
   }
 
   Future<bool> _openLink(String url) async {
-    final uri = Uri.tryParse(url);
-    final allowed = uri != null && (uri.scheme == 'https' || uri.scheme == 'mailto');
+    final uri = legalExternalLink(url);
     final messenger = ScaffoldMessenger.maybeOf(context);
-    final opened = allowed && await ref.read(externalLinkLauncherProvider)(uri);
+    final opened = uri != null && await ref.read(externalLinkLauncherProvider)(uri);
     if (!opened) {
       messenger?.showSnackBar(const SnackBar(content: Text('Tautan ini tidak dapat dibuka.')));
     }
