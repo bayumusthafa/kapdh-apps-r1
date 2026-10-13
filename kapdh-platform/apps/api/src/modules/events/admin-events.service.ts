@@ -255,6 +255,10 @@ function scheduleErrors(values: EventValues): Record<string, string[]> {
     values.checkinClosesAt.getTime() <= values.checkinOpensAt.getTime()
   )
     add("checkin_closes_at", "Tutup check-in harus sesudah buka check-in.");
+  else if (values.checkinClosesAt && values.checkinClosesAt.getTime() > values.endsAt.getTime())
+    // D5: jendela lain boleh dibuka lebih awal atau ditutup lebih cepat, tetapi tidak melewati akhir acara karena
+    // job events.lifecycle menandai event `done` saat acara selesai dan check-in event done selalu too_late.
+    add("checkin_closes_at", "Tutup check-in paling lambat saat acara selesai.");
   return errors;
 }
 
@@ -685,8 +689,9 @@ export class AdminEventsService {
   }
 
   /**
-   * POST /admin/events/{eventId}/cancel (AC F09-7, D6): satu transaksi mengunci event, tiket aktif (urut id), lalu
-   * payment-nya. Hold kedaluwarsa → expired; awaiting_payment → cancelled (admin) + payment dibatalkan;
+   * POST /admin/events/{eventId}/cancel (AC F09-7, D6): satu transaksi mengunci event, SEMUA tiket aktif (satu
+   * SELECT urut id, termasuk hold kedaluwarsa), lalu payment-nya urut id payment (PRD 6.4; tidak pernah mengunci
+   * tiket sesudah payment). Hold kedaluwarsa → expired; awaiting_payment → cancelled (admin) + payment dibatalkan;
    * awaiting_review → cancelled (system) dan payment tetap di antrean; paid → cancelled (system), QR tidak berlaku,
    * refund penuh sistem untuk total > 0. Penghitung kursi menjadi 0; outbox `event.cancelled` untuk fanout notifikasi.
    */
@@ -710,21 +715,35 @@ export class AdminEventsService {
           );
         const now = this.views.now();
         const reason = input.reason;
-        await this.ledger.expireLapsedHolds(tx, eventId, now);
-        const active = await this.ledger.lockEventTickets(tx, eventId, ACTIVE_TICKET_STATUSES);
+        // Urutan kunci global (aturan tag Events): SEMUA tiket aktif event (termasuk hold kedaluwarsa) dikunci dalam
+        // satu SELECT urut id SEBELUM payment mana pun disentuh; payment lalu disentuh urut id payment.
+        const locked = await this.ledger.lockEventTickets(tx, eventId, ACTIVE_TICKET_STATUSES);
+        const paymentsByTicket = await this.views.paymentsForTickets(
+          tx,
+          locked.map((ticket) => ticket.id),
+        );
+        // Tiket tanpa payment (gratis) lebih dahulu; sisanya urut id payment (uuid heksadesimal kecil = urutan byte).
+        const orderKey = (ticket: TicketRow) => paymentsByTicket.get(ticket.id)?.id ?? "";
+        const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+        const ordered = [...locked].sort(
+          (a, b) => compare(orderKey(a), orderKey(b)) || compare(a.id, b.id),
+        );
         let ticketsCancelled = 0;
         let paymentsCancelled = 0;
         let paymentsInReview = 0;
         let refundsCreated = 0;
         let refundCents = 0n;
-        for (const ticket of active) {
+        for (const ticket of ordered) {
+          // Hold kedaluwarsa dilepas sebagai expired (AC F09-2), bukan dibatalkan.
+          if (holdLapsed(ticket, now) && (await this.ledger.expireTicket(tx, ticket, now))) continue;
           const by = ticket.status === "awaiting_payment" ? "admin" : "system";
           const cancelled = await this.ledger.cancelTicket(tx, ticket, { by, reason, at: now });
           if (!cancelled) continue;
           ticketsCancelled += 1;
           if (ticket.status === "paid") {
             if (toCents(ticket.totalSnapshot) === 0n) continue;
-            const payment = (await this.views.paymentsForTickets(tx, [ticket.id])).get(ticket.id);
+            // Status payment stabil: setiap perubahannya memerlukan kunci event yang dipegang transaksi ini.
+            const payment = paymentsByTicket.get(ticket.id);
             if (!payment || payment.status !== "paid") continue;
             const refund = await this.paymentsKernel.recordSystemRefund(tx, {
               paymentId: payment.id,
@@ -1075,6 +1094,12 @@ export class AdminEventsService {
    * Refund diskresioner pengurus atas tiket paid (PRD 2.2 "refund diputuskan pengurus per kasus"): payment_adjustment
    * refund pending sebesar sisa yang belum direfund (maks. total tiket), tenggat 7 hari kerja (D6), dicatat atas nama
    * pengurus pemutus lewat primitif buku besar modul payments (cap nominal, audit, notifikasi rekening tujuan).
+   *
+   * Pengecualian batas modul yang disadari (ARCHITECTURE §3.3/§4.6): PaymentsKernel belum memiliki refund beratribusi
+   * pengurus (`recordSystemRefund` selalu created_by null, sedangkan PRD 2.3 mewajibkan keputusan uang tercatat atas
+   * nama pengurus pemutusnya). Sampai pemilik payments menambah `PaymentsKernel.recordAdminRefund` (permintaan
+   * terbuka slice api-events), jalur ini memakai PaymentLedger secara langsung dengan kunci payment sebagai tingkat
+   * terakhir urutan kunci global; tidak ada tabel payments yang ditulis tanpa primitif modul payments.
    */
   private async adminRefund(
     tx: Tx,

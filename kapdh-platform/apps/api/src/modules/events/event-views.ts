@@ -428,7 +428,7 @@ export class EventViews implements OnModuleInit {
       refunds: refunds.map((row) => this.refundInfo(row)),
       can_cancel: memberCanCancel(ticket, event, now),
       refund_eligible: memberRefundEligible(ticket, event, now, setting.self_cancel_days),
-      full_refund_until: iso(fullRefundUntil(event.startsAt, ticket.totalSnapshot, setting.self_cancel_days)),
+      full_refund_until: iso(fullRefundUntil(event, ticket.totalSnapshot, setting.self_cancel_days)),
       version: String(ticket.version),
     };
   }

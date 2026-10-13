@@ -244,6 +244,15 @@ dicatat sebagai garis dasar gerbang N-13.
   menyebut nilai `cancelled_by` per jalur: tiket paid dan awaiting_review yang dibatalkan oleh pembatalan event
   bercatatan `system` (akibat event, bukan keputusan per tiket; persetujuan dana sesudahnya memicu refund penuh D6),
   hold awaiting_payment `admin`, penolakan pembayaran tiket `system`. Tidak ada field atau operasi yang berubah.
+- Koreksi deskripsi (slice api-events, hanya teks): bukti tiket sesudah hold lewat ditolak **409**
+  RESERVATION_EXPIRED dengan `current` = PaymentDetail (tag Events, `createEventReservation`, `TicketPaymentInfo`),
+  sama dengan `submitPaymentProof` (C3) dan implementasi; teks lama menyebut 410. Klien yang memetakan kode galat
+  tidak berubah.
+- `adminCreateEvent`/`adminUpdateEvent` (slice api-events): override `checkin_closes_at` wajib `<= ends_at` (400
+  VALIDATION_ERROR `field_errors.checkin_closes_at`; dijelaskan pada operasi dan `AdminEventCreateRequest`). Event
+  menjadi `done` saat acara selesai dan check-in event done selalu `too_late`, sehingga jendela yang melewati akhir
+  acara tidak pernah dapat dihormati. Jendela efektif yang ditampilkan (`effective_checkin_closes_at`,
+  `TicketDetail.checkin_closes_at`, daftar pemindaian) juga dibatasi `ends_at`. Tidak ada field atau operasi baru.
 
 ### Komunitas (C6: F-10, F-11, F-12)
 

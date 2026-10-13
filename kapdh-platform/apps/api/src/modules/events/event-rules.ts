@@ -3,7 +3,7 @@ import type { events, tickets } from "@kapdh/database";
 import type { EffectiveStatus } from "../../core/membership/effective-status.js";
 import type { SettingValue } from "../../core/settings/keys.js";
 import { toCents } from "../payments/money.js";
-import { REFUND_DUE_BUSINESS_DAYS, selfCancelFullRefundUntil } from "../payments/payment-rules.js";
+import { REFUND_DUE_BUSINESS_DAYS } from "../payments/payment-rules.js";
 
 /**
  * Aturan murni domain event dan tiket (F-09, PRD 3.9, 4.4, D5, D6; kontrak C5 events.yaml dan admin-events.yaml).
@@ -24,6 +24,7 @@ export type AdminEventAction = Schemas["AdminEventAction"];
 export type CheckinRejectionReason = Schemas["AdminCheckinRejectionReason"];
 
 const HOUR_MS = 3600_000;
+const DAY_MS = 24 * HOUR_MS;
 
 /** Status tiket yang menahan atau mengonsumsi kursi (indeks unik parsial tickets_user_id_event_id_active_key). */
 export const ACTIVE_TICKET_STATUSES = ["awaiting_payment", "awaiting_review", "paid"] as const;
@@ -141,14 +142,23 @@ export interface CheckinWindow {
   closesAt: Date;
 }
 
-/** Jendela check-in efektif: override event, atau 2 jam sebelum mulai sampai selesai (D5, PRD 3.9). */
+/**
+ * Jendela check-in efektif: override event, atau 2 jam sebelum mulai sampai selesai (D5, PRD 3.9). Penutupan tidak
+ * pernah melewati `ends_at`: pengurus tidak dapat menyimpan override sesudah akhir acara (adminCreateEvent/
+ * adminUpdateEvent), dan karena event menjadi `done` saat acara selesai (check-in done selalu too_late) batas
+ * dipotong di `ends_at` agar jendela yang ditampilkan ke anggota dan petugas selalu sama dengan yang ditegakkan.
+ */
 export function checkinWindow(
   event: Pick<EventRow, "checkinOpensAt" | "checkinClosesAt" | "startsAt" | "endsAt">,
   checkinBeforeHours: number,
 ): CheckinWindow {
+  const closesAt =
+    event.checkinClosesAt && event.checkinClosesAt.getTime() < event.endsAt.getTime()
+      ? event.checkinClosesAt
+      : event.endsAt;
   return {
     opensAt: event.checkinOpensAt ?? new Date(event.startsAt.getTime() - checkinBeforeHours * HOUR_MS),
-    closesAt: event.checkinClosesAt ?? event.endsAt,
+    closesAt,
   };
 }
 
@@ -242,10 +252,64 @@ export function checkinRejectionMessage(
 
 // ------------------------------------------------------------------------------------ pembatalan dan refund D6
 
-/** Batas refund penuh pembatalan mandiri (H-`self_cancel_days`); null untuk event/tiket gratis (D6). */
-export function fullRefundUntil(startsAt: Date, amount: string, selfCancelDays: number): Date | null {
+const wallClockFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/** Jam dinding suatu instan dalam zona IANA, dinyatakan sebagai milidetik "UTC semu" (tanpa DST). */
+function wallClockMs(instant: number, timezone: string): number {
+  let formatter = wallClockFormatters.get(timezone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+    });
+    wallClockFormatters.set(timezone, formatter);
+  }
+  const parts = formatter.formatToParts(new Date(instant));
+  const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((p) => p.type === type)?.value);
+  const millis = ((instant % 1000) + 1000) % 1000;
+  return (
+    Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"), part("second")) +
+    millis
+  );
+}
+
+/**
+ * Instan untuk jam dinding `wall` (UTC semu) dalam zona IANA. Jam yang ambigu saat jam dimundurkan memakai instan
+ * paling awal; jam yang tidak ada saat jam dimajukan digeser maju sepanjang celah (sama dengan perilaku kalender umum).
+ */
+function zonedWallClockToInstant(wall: number, timezone: string): Date {
+  const offsetBefore = wallClockMs(wall - DAY_MS, timezone) - (wall - DAY_MS);
+  const offsetAfter = wallClockMs(wall + DAY_MS, timezone) - (wall + DAY_MS);
+  const exact = [wall - offsetBefore, wall - offsetAfter]
+    .filter((instant) => wallClockMs(instant, timezone) === wall)
+    .sort((a, b) => a - b);
+  return new Date(exact[0] ?? wall - offsetBefore);
+}
+
+/**
+ * H-N dalam zona waktu event (D6, kontrak cancelMyTicket "N hari kalender dalam zona waktu event"): jam dinding yang
+ * sama dengan `startsAt`, N hari kalender lebih awal. Untuk zona tanpa DST (WIB/WITA/WIT) hasilnya tepat N x 24 jam;
+ * untuk zona ber-DST batasnya mengikuti jam dinding acara, bukan selisih jam tetap.
+ */
+export function calendarDaysBefore(startsAt: Date, days: number, timezone: string): Date {
+  const wall = wallClockMs(startsAt.getTime(), timezone);
+  return zonedWallClockToInstant(wall - days * DAY_MS, timezone);
+}
+
+/** Batas refund penuh pembatalan mandiri (H-`self_cancel_days` dalam zona waktu event); null untuk gratis (D6). */
+export function fullRefundUntil(
+  event: Pick<EventRow, "startsAt" | "timezone">,
+  amount: string,
+  selfCancelDays: number,
+): Date | null {
   if (toCents(amount) <= 0n) return null;
-  return selfCancelFullRefundUntil(startsAt, selfCancelDays);
+  return calendarDaysBefore(event.startsAt, selfCancelDays, event.timezone);
 }
 
 /**
@@ -266,12 +330,12 @@ export function memberCanCancel(
 /** Pembatalan mandiri SEKARANG menghasilkan refund penuh (paid, total > 0, sebelum H-3; D6). */
 export function memberRefundEligible(
   ticket: Pick<TicketRow, "status" | "holdExpiresAt" | "checkedInAt" | "totalSnapshot">,
-  event: Pick<EventRow, "status" | "startsAt">,
+  event: Pick<EventRow, "status" | "startsAt" | "timezone">,
   now: Date,
   selfCancelDays: number,
 ): boolean {
   if (!memberCanCancel(ticket, event, now) || ticket.status !== "paid") return false;
-  const until = fullRefundUntil(event.startsAt, ticket.totalSnapshot, selfCancelDays);
+  const until = fullRefundUntil(event, ticket.totalSnapshot, selfCancelDays);
   return until !== null && now.getTime() < until.getTime();
 }
 
@@ -330,7 +394,7 @@ export function cancellationPolicy(
   event: Pick<EventRow, "startsAt" | "timezone" | "price">,
   setting: Pick<EventsSetting, "self_cancel_days">,
 ): Schemas["EventCancellationPolicy"] {
-  const until = fullRefundUntil(event.startsAt, event.price, setting.self_cancel_days);
+  const until = fullRefundUntil(event, event.price, setting.self_cancel_days);
   const start = formatEventDateTime(event.startsAt, event.timezone);
   const summary =
     until === null
@@ -396,8 +460,6 @@ export function allowedActions(
 // ---------------------------------------------------------------------------------------------- pengingat F13-6
 
 export type ReminderKind = "h3" | "h1";
-
-const DAY_MS = 24 * HOUR_MS;
 
 /**
  * Jendela pengingat event (AC F13-6): H-1 bila acara dimulai dalam <= 1 hari, H-3 bila <= 3 hari (dan belum masuk

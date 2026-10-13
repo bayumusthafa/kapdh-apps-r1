@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   allowedActions,
+  calendarDaysBefore,
   cancellationPolicy,
   checkinRejection,
   checkinRejectionCode,
   checkinWindow,
   formatEventDateTime,
+  fullRefundUntil,
   holdExpiresAt,
   isValidTimezone,
   memberCanCancel,
@@ -101,6 +103,13 @@ describe("Check-in (AC F09-5, F09-6, D5)", () => {
     });
   });
 
+  it("D5, AC F09-6: override yang ditutup sesudah acara selesai dipotong di ends_at (event done selalu too_late)", () => {
+    const late = checkinWindow({ ...event, checkinOpensAt: at(-2 * HOUR), checkinClosesAt: at(8 * HOUR) }, 2);
+    expect(late).toEqual({ opensAt: at(-2 * HOUR), closesAt: at(5 * HOUR) });
+    expect(checkinRejection({ ...base, window: late, now: at(5 * HOUR + 1) })).toBe("too_late");
+    expect(checkinRejection({ ...base, window: late, now: at(5 * HOUR) })).toBeNull();
+  });
+
   it("AC F09-6: urutan alasan penolakan sesuai kontrak dan kode galatnya", () => {
     expect(checkinRejection(base)).toBeNull();
     expect(checkinRejection({ ...base, requestedEventId: "e2" })).toBe("other_event");
@@ -140,7 +149,7 @@ describe("Check-in (AC F09-5, F09-6, D5)", () => {
 });
 
 describe("Pembatalan dan refund D6", () => {
-  const event = { status: "open" as const, startsAt: at(10 * DAY) };
+  const event = { status: "open" as const, startsAt: at(10 * DAY), timezone: "Asia/Jakarta" };
   const paid = { status: "paid" as const, holdExpiresAt: null, checkedInAt: null, totalSnapshot: "75000.00" };
 
   it("D6: refund penuh sampai sebelum H-3; sesudahnya batal tanpa refund; gratis tanpa refund; awaiting_review tidak dapat dibatalkan", () => {
@@ -167,6 +176,31 @@ describe("Pembatalan dan refund D6", () => {
     );
     expect(isValidTimezone("Asia/Jayapura")).toBe(true);
     expect(isValidTimezone("Mars/Olympus")).toBe(false);
+  });
+
+  it("D6: H-3 = jam dinding yang sama 3 hari kalender sebelumnya dalam zona waktu event (termasuk zona ber-DST)", () => {
+    // Zona Indonesia tanpa DST: tepat 72 jam.
+    expect(calendarDaysBefore(new Date("2026-10-15T02:00:00Z"), 3, "Asia/Jayapura")).toEqual(
+      new Date("2026-10-12T02:00:00Z"),
+    );
+    // Europe/London: acara 27 Okt 09.00 GMT; 24 Okt masih BST sehingga H-3 09.00 lokal = 08.00Z (bukan 72 jam).
+    const london = { status: "open" as const, startsAt: new Date("2026-10-27T09:00:00Z"), timezone: "Europe/London" };
+    expect(fullRefundUntil(london, "75000.00", 3)).toEqual(new Date("2026-10-24T08:00:00Z"));
+    expect(fullRefundUntil(london, "0.00", 3)).toBeNull();
+    expect(cancellationPolicy({ ...london, price: "75000.00" }, { self_cancel_days: 3 }).summary).toMatch(
+      /^Batalkan sampai 24 Okt 2026 09\.00 Europe\/London \(H-3\)/,
+    );
+    const paid = { status: "paid" as const, holdExpiresAt: null, checkedInAt: null, totalSnapshot: "75000.00" };
+    expect(memberRefundEligible(paid, london, new Date("2026-10-24T07:59:59Z"), 3)).toBe(true);
+    expect(memberRefundEligible(paid, london, new Date("2026-10-24T08:00:00Z"), 3)).toBe(false);
+    // Jam dinding yang tidak ada (jam dimajukan 29 Mar 01.00 GMT) digeser maju sepanjang celah.
+    expect(calendarDaysBefore(new Date("2026-04-01T00:30:00Z"), 3, "Europe/London")).toEqual(
+      new Date("2026-03-29T01:30:00Z"),
+    );
+    // Jam dinding ambigu (jam dimundurkan 25 Okt 01.00 UTC) memakai instan paling awal.
+    expect(calendarDaysBefore(new Date("2026-10-28T01:30:00Z"), 3, "Europe/London")).toEqual(
+      new Date("2026-10-25T00:30:00Z"),
+    );
   });
 });
 

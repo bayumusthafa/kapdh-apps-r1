@@ -71,7 +71,8 @@ export class CheckinService {
     const nowSql = sql`${now.toISOString()}::timestamptz`;
     const horizonSql = sql`${new Date(now.getTime() + CHECKIN_LOOKAHEAD_MS).toISOString()}::timestamptz`;
     const opensSql = sql`coalesce(${events.checkinOpensAt}, ${events.startsAt} - make_interval(hours => ${setting.checkin_before_hours}::int))`;
-    const closesSql = sql`coalesce(${events.checkinClosesAt}, ${events.endsAt})`;
+    // Sama dengan checkinWindow: override tidak pernah melewati ends_at (D5).
+    const closesSql = sql`least(coalesce(${events.checkinClosesAt}, ${events.endsAt}), ${events.endsAt})`;
     const rows = await this.db
       .select()
       .from(events)
