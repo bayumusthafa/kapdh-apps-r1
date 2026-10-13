@@ -218,7 +218,9 @@ class PagedFooter extends StatelessWidget {
       );
     }
     if (state.hasMore) {
-      return Center(child: TextButton(onPressed: onLoadMore, child: const Text('Muat lebih banyak')));
+      return Center(
+        child: TextButton(onPressed: onLoadMore, child: const Text('Muat lebih banyak')),
+      );
     }
     return const SizedBox(height: KapdhSpace.s2);
   }

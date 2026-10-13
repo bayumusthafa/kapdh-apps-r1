@@ -57,7 +57,10 @@ class FakeChatServer {
       if (index < 0) return FakeResponse.json(400, errorJson('VALIDATION_ERROR', 'Jangkar tidak sah'));
       final newer = list.sublist(index + 1);
       final page = newer.take(limit).toList();
-      return FakeResponse.json(200, pageJson(page, nextCursor: newer.length > limit ? page.last['id'] as String : null));
+      return FakeResponse.json(
+        200,
+        pageJson(page, nextCursor: newer.length > limit ? page.last['id'] as String : null),
+      );
     }
     final end = before == null ? list.length : list.indexWhere((m) => m['id'] == before);
     final start = end - limit < 0 ? 0 : end - limit;
@@ -106,13 +109,7 @@ class FakeChatServer {
       final index = messages.indexWhere((m) => m['id'] == id);
       if (index < 0) return FakeResponse.json(404, errorJson('NOT_FOUND', 'Tidak ditemukan'));
       final m = messages[index];
-      messages[index] = {
-        ...m,
-        'body': null,
-        'image': null,
-        'reactions': const <Object?>[],
-        'deleted_at': iso(at(900)),
-      };
+      messages[index] = {...m, 'body': null, 'image': null, 'reactions': const <Object?>[], 'deleted_at': iso(at(900))};
       return FakeResponse.json(200, messages[index]);
     }
     if (path.contains('/reactions/')) {

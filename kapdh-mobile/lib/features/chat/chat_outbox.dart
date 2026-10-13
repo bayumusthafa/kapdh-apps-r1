@@ -136,8 +136,7 @@ class ChatOutbox extends Notifier<Map<String, List<OutgoingMessage>>> {
   /// [includeHeld]) pesan yang ditahan karena keanggotaan setelah keanggotaan aktif kembali (PRD 4.5).
   void resume(String roomId, {bool includeHeld = false}) {
     final candidates = forRoom(roomId).where(
-      (e) =>
-          (e.status == OutgoingStatus.failed && e.autoRetry) || (includeHeld && e.status == OutgoingStatus.held),
+      (e) => (e.status == OutgoingStatus.failed && e.autoRetry) || (includeHeld && e.status == OutgoingStatus.held),
     );
     for (final entry in [...candidates]..sort((a, b) => a.createdAt.compareTo(b.createdAt))) {
       retry(roomId, entry.clientMessageId);

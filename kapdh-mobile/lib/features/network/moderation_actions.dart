@@ -54,7 +54,12 @@ void _snack(WidgetRef ref, String message) {
 }
 
 /// Konfirmasi lalu blokir [userId] (AC F12-1). True bila blokir aktif.
-Future<bool> blockWithConfirmation(BuildContext context, WidgetRef ref, {required String userId, required String name}) async {
+Future<bool> blockWithConfirmation(
+  BuildContext context,
+  WidgetRef ref, {
+  required String userId,
+  required String name,
+}) async {
   if (!await confirmBlock(context, name)) return false;
   try {
     await ref.read(moderationRepositoryProvider).block(userId);

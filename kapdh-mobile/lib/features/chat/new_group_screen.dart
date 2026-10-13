@@ -31,9 +31,8 @@ String inviteSkipLabel(ChatInviteSkipReason reason) => switch (reason) {
 };
 
 /// Ringkasan undangan yang dilewati (nama dari pilihan pengguna bila ada).
-String inviteSkipSummary(List<ChatInviteSkip> skipped, Map<String, String> names) => [
-  for (final skip in skipped) '${names[skip.userId] ?? 'Alumni'}: ${inviteSkipLabel(skip.reason)}',
-].join('\n');
+String inviteSkipSummary(List<ChatInviteSkip> skipped, Map<String, String> names) =>
+    [for (final skip in skipped) '${names[skip.userId] ?? 'Alumni'}: ${inviteSkipLabel(skip.reason)}'].join('\n');
 
 /// Grup Baru (F-11, PRD 3.11): nama, foto opsional dan calon anggota. Pembuat menjadi admin; calon anggota menerima
 /// undangan dan harus menerimanya sendiri (tidak dipaksa masuk).
@@ -226,7 +225,8 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
                       deleteButtonTooltipMessage: 'Hapus ${member.fullName}',
                       onDeleted: _busy
                           ? null
-                          : () => setState(() => _invitees = _invitees.where((m) => m.userId != member.userId).toList()),
+                          : () =>
+                                setState(() => _invitees = _invitees.where((m) => m.userId != member.userId).toList()),
                     ),
                 ],
               ),

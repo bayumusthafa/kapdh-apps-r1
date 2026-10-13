@@ -82,7 +82,8 @@ String reportTargetText(ModerationReport report) {
   final name = report.targetName ?? 'Akun tidak tersedia';
   final room = report.roomName;
   return switch (report.targetType) {
-    ModerationTargetType.user => report.category == ModerationReportCategory.appeal ? 'Banding pembatasan akun' : 'Pengguna: $name',
+    ModerationTargetType.user =>
+      report.category == ModerationReportCategory.appeal ? 'Banding pembatasan akun' : 'Pengguna: $name',
     ModerationTargetType.message => room == null ? 'Pesan dari $name' : 'Pesan dari $name di grup $room',
     ModerationTargetType.room => 'Grup: ${room ?? 'tidak tersedia'}',
     ModerationTargetType.unknown => name,
@@ -212,8 +213,7 @@ class _ReportDetailSheet extends ConsumerWidget {
             : ErrorState(title: 'Terjadi kesalahan', message: '$error'),
         data: (report) {
           final outcome = reportOutcomeText(report);
-          final open =
-              report.status == ModerationReportStatus.open || report.status == ModerationReportStatus.inReview;
+          final open = report.status == ModerationReportStatus.open || report.status == ModerationReportStatus.inReview;
           return ListView(
             shrinkWrap: true,
             padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, 0, KapdhSpace.s5, KapdhSpace.s6),

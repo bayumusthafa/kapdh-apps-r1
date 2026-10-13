@@ -180,11 +180,18 @@ class _ProfileViewState extends ConsumerState<_ProfileView> {
         title: 'Angkatan',
         child: Text('${cohortTag(p.cohortCode)} · Lulus ${p.graduationYear}', style: _valueStyle),
       ),
-      if (education.isNotEmpty) _Section(title: 'Lulusan Terakhir', child: Text(education, style: _valueStyle)),
+      if (education.isNotEmpty)
+        _Section(
+          title: 'Lulusan Terakhir',
+          child: Text(education, style: _valueStyle),
+        ),
       if (p.profession != null)
         _Section(
           title: 'Profesi',
-          child: Align(alignment: Alignment.centerLeft, child: TagChip(label: p.profession!.label)),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: TagChip(label: p.profession!.label),
+          ),
         ),
       if (p.skills.isNotEmpty)
         _Section(
@@ -208,7 +215,10 @@ class _ProfileViewState extends ConsumerState<_ProfileView> {
           ),
         ),
       if (p.bio != null && p.bio!.trim().isNotEmpty)
-        _Section(title: 'Tentang', child: Text(p.bio!, style: _valueStyle.copyWith(height: 1.5))),
+        _Section(
+          title: 'Tentang',
+          child: Text(p.bio!, style: _valueStyle.copyWith(height: 1.5)),
+        ),
       if (socialEntries.isNotEmpty)
         _Section(
           title: 'Social Media',
@@ -394,7 +404,10 @@ class _Section extends StatelessWidget {
       children: [
         Semantics(
           header: true,
-          child: Text(title, style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600)),
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
+          ),
         ),
         const SizedBox(height: KapdhSpace.s2),
         child,
@@ -419,7 +432,10 @@ class _IconLine extends StatelessWidget {
           Icon(icon, size: 16, color: KapdhColors.textMuted),
           const SizedBox(width: KapdhSpace.s1),
           Flexible(
-            child: Text(text, style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted)),
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+            ),
           ),
         ],
       ),
@@ -450,7 +466,9 @@ class _SocialLink extends StatelessWidget {
             children: [
               Icon(network.icon, size: 18, color: KapdhColors.textMuted),
               const SizedBox(width: KapdhSpace.s2),
-              Flexible(child: Text(value, style: _valueStyle, overflow: TextOverflow.ellipsis)),
+              Flexible(
+                child: Text(value, style: _valueStyle, overflow: TextOverflow.ellipsis),
+              ),
             ],
           ),
         ),

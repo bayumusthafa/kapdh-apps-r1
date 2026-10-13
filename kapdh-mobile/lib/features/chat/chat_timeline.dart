@@ -144,7 +144,10 @@ class ChatTimeline {
   ChatTimeline replaceReactions(String messageId, List<ChatReaction> reactions) {
     final index = indexOf(messageId);
     if (index < 0) return this;
-    return _copy(messages: [...messages]..[index] = _withReactions(messages[index], reactions), olderCursor: olderCursor);
+    return _copy(
+      messages: [...messages]..[index] = _withReactions(messages[index], reactions),
+      olderCursor: olderCursor,
+    );
   }
 
   /// Event `reaction.updated`: `counts` adalah ringkasan terbaru semua emoji; `reacted_by_me` dihitung klien dari

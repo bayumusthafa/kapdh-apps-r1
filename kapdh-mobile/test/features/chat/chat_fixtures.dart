@@ -237,11 +237,8 @@ Map<String, Object?> messageCreated(Map<String, Object?> message, {String? event
   eventId: eventId,
 );
 
-Map<String, Object?> messageDeleted(String messageId, {String roomId = 'room-1'}) => envelope(
-  'message.deleted',
-  messageId,
-  {'room_id': roomId, 'message_id': messageId, 'deleted_at': iso(at(500))},
-);
+Map<String, Object?> messageDeleted(String messageId, {String roomId = 'room-1'}) =>
+    envelope('message.deleted', messageId, {'room_id': roomId, 'message_id': messageId, 'deleted_at': iso(at(500))});
 
 Map<String, Object?> readUpdated(String userId, String messageId, {String roomId = 'room-1'}) => envelope(
   'read.updated',
@@ -252,11 +249,11 @@ Map<String, Object?> readUpdated(String userId, String messageId, {String roomId
 Map<String, Object?> typingEvent(String userId, {String roomId = 'room-1', int ttl = 5}) =>
     envelope('typing', roomId, {'room_id': roomId, 'user_id': userId, 'ttl_seconds': ttl});
 
-Map<String, Object?> presenceEvent(String userId, {bool online = true, int ttl = 60}) => envelope(
-  'presence',
-  userId,
-  {'user_id': userId, 'status': online ? 'online' : 'offline', 'ttl_seconds': online ? ttl : 0},
-);
+Map<String, Object?> presenceEvent(String userId, {bool online = true, int ttl = 60}) => envelope('presence', userId, {
+  'user_id': userId,
+  'status': online ? 'online' : 'offline',
+  'ttl_seconds': online ? ttl : 0,
+});
 
 Map<String, Object?> memberChanged(
   String userId,

@@ -116,7 +116,9 @@ void main() {
       expect(_query(app.adapter.requestsTo('/directory').last).containsKey('cohort'), isFalse);
     });
 
-    testWidgets('AC F10-1: halaman berikut memakai next_cursor dan item ganda tidak ditampilkan dua kali', (tester) async {
+    testWidgets('AC F10-1: halaman berikut memakai next_cursor dan item ganda tidak ditampilkan dua kali', (
+      tester,
+    ) async {
       final page1 = [for (var i = 1; i <= 8; i++) directoryMemberJson(userId: 'u-$i', name: 'Alumni $i')];
       final page2 = [
         directoryMemberJson(userId: 'u-8', name: 'Alumni 8'),
@@ -154,7 +156,9 @@ void main() {
       expect(_query(app.adapter.requestsTo('/directory').last).containsKey('q'), isFalse);
     });
 
-    testWidgets('AC F10-3: server menolak (403 MEMBERSHIP_REQUIRED) -> akses belum tersedia tanpa data', (tester) async {
+    testWidgets('AC F10-3: server menolak (403 MEMBERSHIP_REQUIRED) -> akses belum tersedia tanpa data', (
+      tester,
+    ) async {
       await _openNetwork(
         tester,
         routes: {
@@ -215,20 +219,17 @@ void main() {
           '/chat/rooms': (options) => FakeResponse.json(
             200,
             options.queryParameters['kind'] == 'group'
-                ? roomPageJson(
-                    [
-                      roomSummaryJson(
-                        id: 'g-1',
-                        kind: 'group',
-                        title: 'Angkatan 29',
-                        memberCount: 12,
-                        muted: true,
-                        lastMessage: previewJson(id: 'gm-1', preview: 'Rapat malam ini'),
-                        lastMessageAt: testNow,
-                      ),
-                    ],
-                    pendingInvitations: 2,
-                  )
+                ? roomPageJson([
+                    roomSummaryJson(
+                      id: 'g-1',
+                      kind: 'group',
+                      title: 'Angkatan 29',
+                      memberCount: 12,
+                      muted: true,
+                      lastMessage: previewJson(id: 'gm-1', preview: 'Rapat malam ini'),
+                      lastMessageAt: testNow,
+                    ),
+                  ], pendingInvitations: 2)
                 : roomPageJson([
                     roomSummaryJson(
                       id: 'room-1',
@@ -256,7 +257,14 @@ void main() {
       // Pesan baru di room-2 dari lawan bicara: naik ke atas dan unread 1.
       realtime.emit(
         messageCreated(
-          chatMessageJson(id: 'm-3', roomId: 'room-2', senderId: 'user-3', senderName: 'Budi', body: 'Halo', createdAt: at(30)),
+          chatMessageJson(
+            id: 'm-3',
+            roomId: 'room-2',
+            senderId: 'user-3',
+            senderName: 'Budi',
+            body: 'Halo',
+            createdAt: at(30),
+          ),
         ),
       );
       await settle(tester);
@@ -282,10 +290,7 @@ void main() {
     });
 
     testWidgets('kosong: arahan memulai percakapan dari profil', (tester) async {
-      await _openNetwork(
-        tester,
-        routes: {'/directory': (_) => FakeResponse.json(200, directoryPageJson(_members))},
-      );
+      await _openNetwork(tester, routes: {'/directory': (_) => FakeResponse.json(200, directoryPageJson(_members))});
       await tester.tap(find.text('Pesan'));
       await settle(tester);
       expect(find.text('Belum ada percakapan'), findsOneWidget);

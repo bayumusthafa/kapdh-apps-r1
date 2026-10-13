@@ -67,27 +67,30 @@ void main() {
       expect(_state(h).timeline.syncAnchor, 'm-105');
     });
 
-    test('AC F11-3: setelah reconnect, pesan yang tidak sempat menerima event disinkron lewat after=<jangkar>', () async {
-      final h = await _open();
-      // Koneksi putus; tiga pesan commit, hanya satu yang sempat tiba lewat event.
-      h.realtime.state.value = RealtimeConnectionState.disconnected;
-      final missed1 = h.server.commit();
-      final viaEvent = h.server.commit();
-      final missed2 = h.server.commit();
-      h.realtime.emit(messageCreated(viaEvent));
-      await settleAsync(ticks: 2);
-      expect(_ids(h).contains(missed1['id']), isFalse);
+    test(
+      'AC F11-3: setelah reconnect, pesan yang tidak sempat menerima event disinkron lewat after=<jangkar>',
+      () async {
+        final h = await _open();
+        // Koneksi putus; tiga pesan commit, hanya satu yang sempat tiba lewat event.
+        h.realtime.state.value = RealtimeConnectionState.disconnected;
+        final missed1 = h.server.commit();
+        final viaEvent = h.server.commit();
+        final missed2 = h.server.commit();
+        h.realtime.emit(messageCreated(viaEvent));
+        await settleAsync(ticks: 2);
+        expect(_ids(h).contains(missed1['id']), isFalse);
 
-      adapterOf(h.container).requests.clear();
-      h.realtime.reconnect();
-      await settleAsync();
+        adapterOf(h.container).requests.clear();
+        h.realtime.reconnect();
+        await settleAsync();
 
-      expect(_ids(h).sublist(5), [missed1['id'], viaEvent['id'], missed2['id']]);
-      expect(_state(h).timeline.syncAnchor, missed2['id']);
-      final queries = adapterOf(h.container).requestsTo('/chat/rooms/room-1/messages').map((r) => r.queryParameters);
-      expect(queries.first['after'], 'm-105');
-      expect(_state(h).syncing, isFalse);
-    });
+        expect(_ids(h).sublist(5), [missed1['id'], viaEvent['id'], missed2['id']]);
+        expect(_state(h).timeline.syncAnchor, missed2['id']);
+        final queries = adapterOf(h.container).requestsTo('/chat/rooms/room-1/messages').map((r) => r.queryParameters);
+        expect(queries.first['after'], 'm-105');
+        expect(_state(h).syncing, isFalse);
+      },
+    );
 
     test('AC F11-3: sinkron memuat ulang jendela sehingga penghapusan saat offline diterapkan', () async {
       final h = await _open();
@@ -150,28 +153,34 @@ void main() {
       expect(_controller(h).sendText('Tetap simpan'), isNull);
       await settleAsync();
       expect(_outbox(h).single.status, OutgoingStatus.held);
-      expect(adapterOf(h.container).requestsTo('/chat/rooms/room-1/messages').where((r) => r.method == 'POST'), isEmpty);
-    });
-
-    test('PRD 4.5: 403 MEMBERSHIP_REQUIRED saat kirim menahan pesan; /me aktif kembali mengirim dengan id sama', () async {
-      final h = await _open(clientIds: ['c-hold']);
-      h.server.failures['POST /chat/rooms/room-1/messages'] = () =>
-          FakeResponse.json(403, errorJson('MEMBERSHIP_REQUIRED', 'Masa keanggotaan berakhir.'));
-      _controller(h).sendText('Pesan penting');
-      await settleAsync();
-      expect(_outbox(h).single.status, OutgoingStatus.held);
-      expect(_state(h).membershipLapsed, isTrue);
-
-      // Perpanjangan disetujui: /me baru dengan masa berlaku di masa depan.
-      h.server.failures.clear();
-      (h.container.read(sessionProvider.notifier) as TestSession).set(
-        activeSession(status: 'verified', expiresAt: testNow.add(const Duration(days: 365))),
+      expect(
+        adapterOf(h.container).requestsTo('/chat/rooms/room-1/messages').where((r) => r.method == 'POST'),
+        isEmpty,
       );
-      await settleAsync();
-      expect(_state(h).membershipLapsed, isFalse);
-      expect(_outbox(h), isEmpty);
-      expect(h.server.messages.where((m) => m['client_message_id'] == 'c-hold'), hasLength(1));
     });
+
+    test(
+      'PRD 4.5: 403 MEMBERSHIP_REQUIRED saat kirim menahan pesan; /me aktif kembali mengirim dengan id sama',
+      () async {
+        final h = await _open(clientIds: ['c-hold']);
+        h.server.failures['POST /chat/rooms/room-1/messages'] = () =>
+            FakeResponse.json(403, errorJson('MEMBERSHIP_REQUIRED', 'Masa keanggotaan berakhir.'));
+        _controller(h).sendText('Pesan penting');
+        await settleAsync();
+        expect(_outbox(h).single.status, OutgoingStatus.held);
+        expect(_state(h).membershipLapsed, isTrue);
+
+        // Perpanjangan disetujui: /me baru dengan masa berlaku di masa depan.
+        h.server.failures.clear();
+        (h.container.read(sessionProvider.notifier) as TestSession).set(
+          activeSession(status: 'verified', expiresAt: testNow.add(const Duration(days: 365))),
+        );
+        await settleAsync();
+        expect(_state(h).membershipLapsed, isFalse);
+        expect(_outbox(h), isEmpty);
+        expect(h.server.messages.where((m) => m['client_message_id'] == 'c-hold'), hasLength(1));
+      },
+    );
 
     test('AC F11-4: dikeluarkan dari grup -> percakapan tidak tersedia dan antrean lokal dibuang', () async {
       final h = await _open(clientIds: ['c-x']);
