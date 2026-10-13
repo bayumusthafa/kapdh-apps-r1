@@ -6,7 +6,13 @@ import { z } from "zod";
 import { AuditService } from "../../core/audit/audit.service.js";
 import { ctx } from "../../core/context/request-context.js";
 import type { Db, DbOrTx, Tx } from "../../core/db/types.js";
-import { AppException, fieldError, forbidden, notFound, versionConflict } from "../../core/errors/app-exception.js";
+import {
+  AppException,
+  fieldError,
+  forbidden,
+  notFound,
+  versionConflict,
+} from "../../core/errors/app-exception.js";
 import { FilesService } from "../../core/files/files.service.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
 import { assertMemberAccess } from "../../core/membership/access.js";
@@ -97,11 +103,7 @@ export const cancelPaymentSchema = z.object({
 });
 
 const nonBlank = (max: number, label: string) =>
-  z
-    .string()
-    .trim()
-    .min(1, `${label} wajib diisi`)
-    .max(max, `${label} maksimal ${max} karakter`);
+  z.string().trim().min(1, `${label} wajib diisi`).max(max, `${label} maksimal ${max} karakter`);
 
 export const refundDestinationSchema = z.object({
   provider: nonBlank(80, "Nama bank atau e-wallet"),
@@ -321,7 +323,8 @@ export class MemberPaymentsService {
       if (locked.version !== expectedVersion) throw versionConflict(await current());
       if (locked.type === "ticket") {
         const ticket = await this.ticketOf(tx, locked.ticketId);
-        if (!ticket || reservationLapsed(ticket, this.ledger.now())) throw reservationExpired(await current());
+        if (!ticket || reservationLapsed(ticket, this.ledger.now()))
+          throw reservationExpired(await current());
       }
       const method = await this.ledger.lockMethod(tx, input.payment_method_id, { requireActive: true });
       if (method.id === locked.paymentMethodId) return;
@@ -401,7 +404,8 @@ export class MemberPaymentsService {
       });
       return "submitted";
     });
-    if (outcome === "expired") throw reservationExpired(await this.views.memberDetail(this.db, paymentId, viewer));
+    if (outcome === "expired")
+      throw reservationExpired(await this.views.memberDetail(this.db, paymentId, viewer));
     return this.views.memberDetail(this.db, paymentId, viewer);
   }
 
@@ -527,4 +531,3 @@ export class MemberPaymentsService {
     }
   }
 }
-

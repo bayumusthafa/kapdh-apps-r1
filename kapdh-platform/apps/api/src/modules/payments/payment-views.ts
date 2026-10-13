@@ -18,7 +18,11 @@ import { alias } from "drizzle-orm/pg-core";
 import type { Clock } from "../../core/adapters/clock.js";
 import type { DbOrTx } from "../../core/db/types.js";
 import { notFound } from "../../core/errors/app-exception.js";
-import { type AccountStatus, effectiveStatus, type EffectiveStatus } from "../../core/membership/effective-status.js";
+import {
+  type AccountStatus,
+  effectiveStatus,
+  type EffectiveStatus,
+} from "../../core/membership/effective-status.js";
 import { SettingsService } from "../../core/settings/settings.service.js";
 import { CLOCK } from "../../core/tokens.js";
 import { money } from "./money.js";
@@ -69,8 +73,13 @@ export interface AdminViewer {
 const iso = (value: Date | null | undefined): string | null => (value ? value.toISOString() : null);
 
 /** Konflik kepentingan (PRD 2.3): payment milik akun alumni yang tertaut ke identitas admin pemanggil. */
-export function conflictOfInterest(viewer: Pick<AdminViewer, "linkedAlumniUserId">, ownerUserId: string | null) {
-  return viewer.linkedAlumniUserId !== null && ownerUserId !== null && viewer.linkedAlumniUserId === ownerUserId;
+export function conflictOfInterest(
+  viewer: Pick<AdminViewer, "linkedAlumniUserId">,
+  ownerUserId: string | null,
+) {
+  return (
+    viewer.linkedAlumniUserId !== null && ownerUserId !== null && viewer.linkedAlumniUserId === ownerUserId
+  );
 }
 
 /**
@@ -246,7 +255,9 @@ export class PaymentViews {
         status: adjustment.status,
         has_refund_destination: adjustment.refundDestination !== null,
         destination_required:
-          adjustment.kind === "refund" && adjustment.status === "pending" && adjustment.refundDestination === null,
+          adjustment.kind === "refund" &&
+          adjustment.status === "pending" &&
+          adjustment.refundDestination === null,
         due_at: iso(adjustment.dueAt),
         completed_at: iso(adjustment.completedAt),
         cancelled_at: iso(adjustment.cancelledAt),
@@ -294,7 +305,10 @@ export class PaymentViews {
   }
 
   /** Bukti aktif yang diunggah pengurus (D13): pemiliknya bukan pemilik payment, tidak pernah dibuka ke anggota. */
-  private async adminProofIds(db: DbOrTx, rows: Pick<PaymentRow, "proofFileId" | "userId">[]): Promise<Set<string>> {
+  private async adminProofIds(
+    db: DbOrTx,
+    rows: Pick<PaymentRow, "proofFileId" | "userId">[],
+  ): Promise<Set<string>> {
     const ids = rows.map((row) => row.proofFileId).filter((id): id is string => id !== null);
     if (ids.length === 0) return new Set();
     const found = await db
@@ -566,7 +580,11 @@ export class PaymentViews {
 
 /** Penyesuaian pending yang melewati tenggat (D6). */
 export function adjustmentOverdue(adjustment: Pick<AdjustmentRow, "status" | "dueAt">, now: Date): boolean {
-  return adjustment.status === "pending" && adjustment.dueAt !== null && adjustment.dueAt.getTime() <= now.getTime();
+  return (
+    adjustment.status === "pending" &&
+    adjustment.dueAt !== null &&
+    adjustment.dueAt.getTime() <= now.getTime()
+  );
 }
 
 /** Payment tiket yang reservasinya habis (dipakai layanan anggota, AC F09-2). */

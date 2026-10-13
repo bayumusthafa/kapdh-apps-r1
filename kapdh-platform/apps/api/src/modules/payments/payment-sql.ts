@@ -94,7 +94,9 @@ export async function paymentQueueSummary(
   const [adjustments] = await db
     .select({
       pending: count(),
-      overdue: counted(sql`${paymentAdjustments.dueAt} is not null and ${paymentAdjustments.dueAt} <= ${tsParam(now)}`),
+      overdue: counted(
+        sql`${paymentAdjustments.dueAt} is not null and ${paymentAdjustments.dueAt} <= ${tsParam(now)}`,
+      ),
     })
     .from(paymentAdjustments)
     .where(eq(paymentAdjustments.status, "pending"));

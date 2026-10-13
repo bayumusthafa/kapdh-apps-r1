@@ -157,7 +157,10 @@ describe("AC F04-3 / PRD 9.2: dua pengurus menyetujui payment yang sama bersamaa
     expect(observed, "kedua keputusan benar-benar menunggu kunci").toBe(true);
     expect(results.map((r) => r.statusCode).sort()).toEqual([200, 409]);
     const loser = results.find((r) => r.statusCode === 409)!.json();
-    expect(loser).toMatchObject({ code: "PAYMENT_STATE_CONFLICT", current: { id: payment.id, status: "paid" } });
+    expect(loser).toMatchObject({
+      code: "PAYMENT_STATE_CONFLICT",
+      current: { id: payment.id, status: "paid" },
+    });
     expect(
       await count(sql<{ n: number }[]>`
         select count(*)::int as n from app.membership_events where payment_id = ${payment.id}`),
@@ -248,7 +251,11 @@ describe("PRD 3.3 / AC F03-1: instruksi iuran bersamaan (PostgreSQL 17)", () => 
       3,
       () =>
         Array.from({ length: 5 }, () =>
-          http().post("/me/payments", { type: "registration", payment_method_id: methodId }, { token: owner.token }),
+          http().post(
+            "/me/payments",
+            { type: "registration", payment_method_id: methodId },
+            { token: owner.token },
+          ),
         ),
     );
     expect(observed).toBe(true);
@@ -287,7 +294,9 @@ describe("AC F04-5 / PRD 9.2: persetujuan idempoten saat diulang bersamaan (Post
         headers: { "idempotency-key": key },
       });
     const concurrent = await Promise.all(Array.from({ length: 4 }, send));
-    const executed = concurrent.filter((r) => r.statusCode === 200 && r.headers["idempotent-replayed"] !== "true");
+    const executed = concurrent.filter(
+      (r) => r.statusCode === 200 && r.headers["idempotent-replayed"] !== "true",
+    );
     expect(executed).toHaveLength(1);
     for (const res of concurrent.filter((r) => r !== executed[0]))
       expect(

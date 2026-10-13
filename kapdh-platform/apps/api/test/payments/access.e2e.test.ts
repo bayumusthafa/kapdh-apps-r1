@@ -38,7 +38,9 @@ describe("ARCHITECTURE §4.3: dekorator controller payments = x-kapdh-access kon
     expect(operations).toHaveLength(26);
     const routes = routeAccessList(t.app);
     const paymentRoutes = routes.filter((route) =>
-      operations.some(([method, path]) => method === route.method && normalize(path) === normalize(route.path)),
+      operations.some(
+        ([method, path]) => method === route.method && normalize(path) === normalize(route.path),
+      ),
     );
     for (const [method, path] of operations)
       expect(

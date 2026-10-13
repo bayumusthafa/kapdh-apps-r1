@@ -88,7 +88,9 @@ export class PaymentsKernel implements OnModuleInit {
     assertCommitAware(tx, "PaymentsKernel.createPayment");
     if (input.type !== "ticket") throw new Error("PaymentsKernel.createPayment hanya untuk payment tiket");
     if (!MONEY_INPUT_PATTERN.test(input.amount) || toCents(input.amount) <= 0n)
-      throw new Error("Nominal payment tiket wajib Money > 0 (event gratis tidak memiliki payment, AC F09-3)");
+      throw new Error(
+        "Nominal payment tiket wajib Money > 0 (event gratis tidak memiliki payment, AC F09-3)",
+      );
     if (input.lines.length === 0) throw new Error("Payment tiket wajib memiliki minimal satu baris");
     const lines: LineSnapshot[] = input.lines.map((line) => ({
       code: line.code,

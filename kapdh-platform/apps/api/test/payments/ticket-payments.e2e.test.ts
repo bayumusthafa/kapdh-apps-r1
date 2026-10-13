@@ -4,10 +4,7 @@ import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { rows } from "../../src/core/db/rows.js";
 import { AppException } from "../../src/core/errors/app-exception.js";
-import {
-  addBusinessDaysJakarta,
-  addBusinessDaysSql,
-} from "../../src/modules/payments/business-days.js";
+import { addBusinessDaysJakarta, addBusinessDaysSql } from "../../src/modules/payments/business-days.js";
 import { refundDueAt } from "../../src/modules/payments/payment-rules.js";
 import { PaymentsKernel } from "../../src/modules/payments/payments.kernel.js";
 import { expectOperation } from "../support/contract.js";
@@ -27,6 +24,7 @@ import {
   systemActor,
   ticketFixture,
   uploadProof,
+  type JsonBody,
 } from "./support.js";
 
 /**
@@ -70,7 +68,7 @@ describe("PaymentsKernel.createPayment dan bukti tiket (F-09, D5)", () => {
       paymentMethodId: fixture.methodId,
     });
     const res = await api().get(`/me/payments/${fixture.paymentId}`, { token: member.token });
-    const body = expectOperation("get", "/me/payments/{paymentId}", res) as Record<string, any>;
+    const body = expectOperation("get", "/me/payments/{paymentId}", res) as JsonBody;
     expect(body).toMatchObject({
       stage: "awaiting_transfer",
       lines: [{ code: "ticket", label: "Tiket event", amount: "75000.00" }],
@@ -112,11 +110,16 @@ describe("PaymentsKernel.createPayment dan bukti tiket (F-09, D5)", () => {
       { file_id: await uploadProof(t, member.token), expected_proof_version: 0 },
       { token: member.token },
     );
-    const detail = expectOperation("put", "/me/payments/{paymentId}/proof", proof) as Record<string, any>;
+    const detail = expectOperation("put", "/me/payments/{paymentId}/proof", proof) as JsonBody;
     expect(detail).toMatchObject({ stage: "awaiting_review", ticket: { ticket_status: "awaiting_review" } });
     expect((await eventRow(fixture.eventId)).heldQuantity).toBe(1);
     const admin = await adminSession(t);
-    const queue = (await api().get("/admin/payments", { token: admin.token, query: { type: "ticket", event_id: fixture.eventId } })).json();
+    const queue = (
+      await api().get("/admin/payments", {
+        token: admin.token,
+        query: { type: "ticket", event_id: fixture.eventId },
+      })
+    ).json();
     expect(queue.items[0]).toMatchObject({
       id: fixture.paymentId,
       event_title: "Reuni Akbar Uji",
@@ -259,7 +262,7 @@ describe("PaymentsKernel.createPayment dan bukti tiket (F-09, D5)", () => {
       expected_version: proof.version,
       funds_verified: true,
     });
-    const body = expectOperation("post", "/admin/payments/{paymentId}/decision", approved) as Record<string, any>;
+    const body = expectOperation("post", "/admin/payments/{paymentId}/decision", approved) as JsonBody;
     expect(body).toMatchObject({ status: "paid", ticket: { ticket_status: "cancelled" } });
     expect(body.adjustments).toEqual([
       expect.objectContaining({
@@ -341,20 +344,38 @@ describe("PaymentsKernel lintas modul (events, account, dasbor)", () => {
     const dueAt = addBusinessDaysJakarta(t.clock.now(), 7);
     const first = await inContext(systemActor(), () =>
       t.db.transaction((tx) =>
-        kernel.recordSystemRefund(tx, { paymentId: paid.id, amount: paid.amount, dueAt, reason: "Event dibatalkan" }),
+        kernel.recordSystemRefund(tx, {
+          paymentId: paid.id,
+          amount: paid.amount,
+          dueAt,
+          reason: "Event dibatalkan",
+        }),
       ),
     );
-    expect(first).toMatchObject({ kind: "refund", amount: "10000.00", createdByAdminId: null, status: "pending" });
+    expect(first).toMatchObject({
+      kind: "refund",
+      amount: "10000.00",
+      createdByAdminId: null,
+      status: "pending",
+    });
     const second = await inContext(systemActor(), () =>
       t.db.transaction((tx) =>
-        kernel.recordSystemRefund(tx, { paymentId: paid.id, amount: paid.amount, dueAt, reason: "Event dibatalkan" }),
+        kernel.recordSystemRefund(tx, {
+          paymentId: paid.id,
+          amount: paid.amount,
+          dueAt,
+          reason: "Event dibatalkan",
+        }),
       ),
     );
     expect(second).toBeNull();
     expect(
       await t.db.select().from(paymentAdjustments).where(eq(paymentAdjustments.paymentId, paid.id)),
     ).toHaveLength(1);
-    const pending = await createMembershipPayment(t, { userId: (await memberSession(t)).userId, status: "pending" });
+    const pending = await createMembershipPayment(t, {
+      userId: (await memberSession(t)).userId,
+      status: "pending",
+    });
     await expect(
       inContext(systemActor(), () =>
         t.db.transaction((tx) =>
@@ -375,9 +396,10 @@ describe("PaymentsKernel lintas modul (events, account, dasbor)", () => {
       { token: proofed.token },
     );
     const cancelled = await inContext(systemActor(), () =>
-      t.db.transaction(async (tx) =>
-        (await kernel.cancelUnprovenDues(tx, member.userId, "Akun dihapus")) +
-        (await kernel.cancelUnprovenDues(tx, proofed.userId, "Akun dihapus")),
+      t.db.transaction(
+        async (tx) =>
+          (await kernel.cancelUnprovenDues(tx, member.userId, "Akun dihapus")) +
+          (await kernel.cancelUnprovenDues(tx, proofed.userId, "Akun dihapus")),
       ),
     );
     expect(cancelled).toBe(1);
@@ -403,16 +425,24 @@ describe("Hari kerja Senin-Jumat Asia/Jakarta (kontrak C3/C7)", () => {
     for (const at of instants)
       for (const days of [0, 1, 2, 5, 7, 10]) {
         const [row] = rows<{ due: string | Date }>(
-          await t.db.execute(sql`select ${addBusinessDaysSql(sql`${at.toISOString()}::timestamptz`, days)} as due`),
+          await t.db.execute(
+            sql`select ${addBusinessDaysSql(sql`${at.toISOString()}::timestamptz`, days)} as due`,
+          ),
         );
         expect(new Date(row!.due).toISOString(), `${at.toISOString()} + ${days}`).toBe(
           addBusinessDaysJakarta(at, days).toISOString(),
         );
       }
     // Jumat 09.00 WIB + 1 = Senin; Sabtu + 1 = Senin; Jumat + 7 = Selasa dua pekan kemudian.
-    expect(addBusinessDaysJakarta(new Date("2026-10-16T02:00:00Z"), 1).toISOString()).toBe("2026-10-19T02:00:00.000Z");
-    expect(addBusinessDaysJakarta(new Date("2026-10-17T02:00:00Z"), 1).toISOString()).toBe("2026-10-19T02:00:00.000Z");
-    expect(addBusinessDaysJakarta(new Date("2026-10-16T02:00:00Z"), 7).toISOString()).toBe("2026-10-27T02:00:00.000Z");
+    expect(addBusinessDaysJakarta(new Date("2026-10-16T02:00:00Z"), 1).toISOString()).toBe(
+      "2026-10-19T02:00:00.000Z",
+    );
+    expect(addBusinessDaysJakarta(new Date("2026-10-17T02:00:00Z"), 1).toISOString()).toBe(
+      "2026-10-19T02:00:00.000Z",
+    );
+    expect(addBusinessDaysJakarta(new Date("2026-10-16T02:00:00Z"), 7).toISOString()).toBe(
+      "2026-10-27T02:00:00.000Z",
+    );
   });
 });
 

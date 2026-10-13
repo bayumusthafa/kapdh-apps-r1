@@ -12,6 +12,7 @@ import {
   createPaymentsApp,
   memberSession,
   reauthToken,
+  type JsonBody,
 } from "./support.js";
 
 /**
@@ -55,7 +56,7 @@ describe("Metode bayar pengurus (F-15, AC F15-3, F15-4)", () => {
       token: admin.token,
       headers: headers(),
     });
-    const created = expectOperation("post", "/admin/payment-methods", res) as Record<string, any>;
+    const created = expectOperation("post", "/admin/payment-methods", res) as JsonBody;
     expect(res.statusCode).toBe(201);
     expect(created).toMatchObject({ provider: "BSI", in_use: false, version: "1", active: true });
     const [audit] = await t.db.select().from(auditLogs).where(eq(auditLogs.entityId, created.id));
@@ -63,7 +64,9 @@ describe("Metode bayar pengurus (F-15, AC F15-3, F15-4)", () => {
     expect(JSON.stringify(audit!.after)).not.toContain("7123456789");
 
     const detail = await api().get(`/admin/payment-methods/${created.id}`, { token: admin.token });
-    expect(expectOperation("get", "/admin/payment-methods/{methodId}", detail)).toMatchObject({ id: created.id });
+    expect(expectOperation("get", "/admin/payment-methods/{methodId}", detail)).toMatchObject({
+      id: created.id,
+    });
     await api().post("/admin/payment-methods", input({ provider: "Alfa", sort_order: 0 }), {
       token: admin.token,
       headers: headers(),
@@ -73,11 +76,14 @@ describe("Metode bayar pengurus (F-15, AC F15-3, F15-4)", () => {
       headers: headers(),
     });
     const page = await api().get("/admin/payment-methods", { token: admin.token, query: { limit: "2" } });
-    const body = expectOperation("get", "/admin/payment-methods", page) as Record<string, any>;
+    const body = expectOperation("get", "/admin/payment-methods", page) as JsonBody;
     expect(body.items.map((i: { provider: string }) => i.provider)).toEqual(["Alfa", "BSI"]);
     expect(body.total).toBe(3);
     const rest = (
-      await api().get("/admin/payment-methods", { token: admin.token, query: { limit: "2", cursor: body.next_cursor } })
+      await api().get("/admin/payment-methods", {
+        token: admin.token,
+        query: { limit: "2", cursor: body.next_cursor },
+      })
     ).json();
     expect(rest.items.map((i: { provider: string }) => i.provider)).toEqual(["Gopay"]);
     const inactive = (
@@ -95,7 +101,10 @@ describe("Metode bayar pengurus (F-15, AC F15-3, F15-4)", () => {
 
   it("AC F15-4: If-Match usang menghasilkan 409 VERSION_CONFLICT dengan current; berhasil menaikkan versi dan diaudit", async () => {
     const created = (
-      await api().post("/admin/payment-methods", input({ provider: "Mandiri" }), { token: admin.token, headers: headers() })
+      await api().post("/admin/payment-methods", input({ provider: "Mandiri" }), {
+        token: admin.token,
+        headers: headers(),
+      })
     ).json();
     const updated = await api().put(
       `/admin/payment-methods/${created.id}`,
@@ -156,7 +165,10 @@ describe("Metode bayar pengurus (F-15, AC F15-3, F15-4)", () => {
       field_errors: { _: expect.any(Array) },
     });
     const owner = (await api().get(`/me/payments/${instruction.paymentId}`, { token: member.token })).json();
-    expect(owner).toMatchObject({ method: { id: created.id, instructions: "Kode bank 451" }, method_active: false });
+    expect(owner).toMatchObject({
+      method: { id: created.id, instructions: "Kode bank 451" },
+      method_active: false,
+    });
     const list = (await api().get("/payment-methods", { token: member.token })).json();
     expect(list.items.map((i: { id: string }) => i.id)).not.toContain(created.id);
   });
@@ -192,6 +204,8 @@ describe("Metode bayar pengurus (F-15, AC F15-3, F15-4)", () => {
     ])
       expect(res.statusCode).toBe(403);
     const member = await memberSession(t);
-    expect((await api().get("/admin/payment-methods", { token: member.token })).statusCode).toBeOneOf([401, 403]);
+    expect((await api().get("/admin/payment-methods", { token: member.token })).statusCode).toBeOneOf([
+      401, 403,
+    ]);
   });
 });
