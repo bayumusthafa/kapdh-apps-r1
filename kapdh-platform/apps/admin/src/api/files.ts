@@ -60,7 +60,10 @@ const ACCESS_EXPIRED_MARGIN_MS = 5_000;
 type FileAccess = components["schemas"]["FileAccess"];
 
 function expiresAtMs(access: FileAccess | undefined): number {
-  const ms = access ? Date.parse(access.expires_at) : Number.NaN;
+  if (!access) return 0;
+  // Berkas publik memakai URL tetap tanpa kedaluwarsa (expires_at null, kontrak FileAccess).
+  if (access.expires_at === null) return Number.POSITIVE_INFINITY;
+  const ms = Date.parse(access.expires_at);
   return Number.isFinite(ms) ? ms : 0;
 }
 

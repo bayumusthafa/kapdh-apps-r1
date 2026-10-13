@@ -408,7 +408,10 @@ describe("kontrol formulir", () => {
     expect(within(list).getAllByRole("option")).toHaveLength(2);
     expect(input).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText(/2 hasil tersedia/)).toBeInTheDocument();
-    expect(calls).toEqual(["siti"]);
+    // Debounce 10 ms dapat terlewati di antara ketikan saat mesin uji sibuk (turbo paralel), sehingga kueri antara
+    // seperti "sit" boleh terkirim; yang dijamin: kueri terakhir "siti" dan SETIAP kueri lama dibatalkan (abort).
+    expect(calls.at(-1)).toBe("siti");
+    expect(aborted).toEqual(calls.slice(0, -1));
     await user.keyboard("{ArrowDown}");
     expect(input.getAttribute("aria-activedescendant")).toMatch(/opt-1$/);
     await user.keyboard("{Enter}");

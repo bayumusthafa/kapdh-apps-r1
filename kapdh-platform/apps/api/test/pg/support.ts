@@ -99,30 +99,61 @@ export function barrier(parties: number): () => Promise<void> {
 
 export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+/** Batas tunggu bawaan sampai backend lain terlihat menunggu lock. */
+export const LOCK_WAIT_TIMEOUT_MS = 10_000;
+
 /**
- * Bukti konkurensi nyata: selama `work` berjalan, hitung jumlah maksimum backend database ini yang sedang menunggu
- * lock (row/transaction/advisory). Nilai > 0 berarti transaksi benar-benar saling menunggu, bukan berurutan.
+ * Bukti konkurensi DETERMINISTIK (PRD 9.2, ARCHITECTURE §9.2): transaksi yang lebih dulu memegang kunci menahan
+ * commit lewat `hold()` sampai probe pada koneksi TERSENDIRI melihat backend lain database ini menunggu lock
+ * (`pg_stat_activity.wait_event_type = 'Lock'`: baris, transaksi, atau advisory), atau sampai batas waktu. Jendela
+ * pengamatan tidak lagi bergantung pada `sleep` (probe lama sesekali gagal di mesin yang sibuk), dan koneksi probe
+ * tidak bersaing dengan pool uji yang penuh oleh transaksi peserta.
+ *
+ *   const { result, lockWaitObserved } = await withLockWaitGate(tdb, (hold) =>
+ *     Promise.allSettled([0, 1].map(() => sql.begin(async (tx) => { await tx`...`; await hold(); }))),
+ *   );
+ *   expect(lockWaitObserved).toBe(true);
+ *
+ * `lockWaitObserved` false berarti tidak ada transaksi yang pernah menunggu dalam batas waktu (transaksi berjalan
+ * berurutan; regresi penguncian).
  */
-export async function withLockWaitProbe<T>(
-  sql: Sql,
-  work: Promise<T>,
-): Promise<{ result: T; maxWaiting: number }> {
-  let done = false;
-  let maxWaiting = 0;
-  const probe = (async () => {
-    while (!done) {
-      const [row] = await sql<{ n: number }[]>`
-        select count(*)::int as n from pg_stat_activity
-        where datname = current_database() and wait_event_type = 'Lock'`;
-      maxWaiting = Math.max(maxWaiting, row?.n ?? 0);
-      await sleep(10);
+export async function withLockWaitGate<T>(
+  database: Pick<PgTestDatabase, "url">,
+  work: (hold: () => Promise<void>) => Promise<T>,
+  options: { timeoutMs?: number } = {},
+): Promise<{ result: T; lockWaitObserved: boolean }> {
+  const probe = createDb(database.url, { max: 1, applicationName: "kapdh-pg-test-lock-probe" }).sql;
+  let settle!: (seen: boolean) => void;
+  const observed = new Promise<boolean>((resolve) => (settle = resolve));
+  let stopped = false;
+  const watcher = (async () => {
+    const deadline = Date.now() + (options.timeoutMs ?? LOCK_WAIT_TIMEOUT_MS);
+    try {
+      while (!stopped && Date.now() < deadline) {
+        const [row] = await probe<{ n: number }[]>`
+          select count(*)::int as n from pg_stat_activity
+          where datname = current_database() and wait_event_type = 'Lock'`;
+        if ((row?.n ?? 0) > 0) {
+          settle(true);
+          return;
+        }
+        await sleep(5);
+      }
+    } catch {
+      // Probe gagal = tidak ada bukti menunggu; hasil false membuat uji gagal dengan jelas.
     }
+    settle(false);
   })();
   try {
-    return { result: await work, maxWaiting };
+    const result = await work(async () => {
+      await observed;
+    });
+    return { result, lockWaitObserved: await observed };
   } finally {
-    done = true;
-    await probe;
+    stopped = true;
+    settle(false);
+    await watcher;
+    await probe.end({ timeout: 5 });
   }
 }
 
@@ -153,6 +184,20 @@ export async function insertUser(
     values (${userId}, ${opts.email ?? `u-${userId}@contoh.test`}, 'hash-uji', ${opts.status ?? "active"},
             ${opts.kind ?? "alumni"})`;
   return userId;
+}
+
+/** Versi persetujuan registrasi uji (sama dengan test/support/factories.ts TEST_CONSENT_VERSION; F-01). */
+export const PG_CONSENT_VERSION = "privacy:1;terms:1";
+
+/** Menerbitkan versi legal 1 di app_settings `legal` sehingga POST /auth/register terbuka (F-01, PRD 8.2). */
+export async function publishLegalVersions(sql: Sql): Promise<string> {
+  const value = { privacy_version: "1", terms_version: "1", community_version: "1" };
+  await sql`
+    insert into app.app_settings (key, value, version, updated_at)
+    values ('legal', ${JSON.stringify(value)}::jsonb, 1, now())
+    on conflict (key) do update set value = excluded.value, version = app.app_settings.version + 1,
+                                    updated_at = excluded.updated_at`;
+  return PG_CONSENT_VERSION;
 }
 
 export async function insertAdmin(

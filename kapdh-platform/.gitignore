@@ -14,3 +14,5 @@ packages/contracts/dart/kapdh_api/lib/src/
 # Paket Dart: cache alat dan lockfile pustaka (lockfile hanya di-commit oleh aplikasi).
 .dart_tool/
 packages/contracts/dart/kapdh_api/pubspec.lock
+# Berkas unggahan lokal development (STORAGE_LOCAL_ROOT=./.data/files); bukan bagian repo.
+.data/

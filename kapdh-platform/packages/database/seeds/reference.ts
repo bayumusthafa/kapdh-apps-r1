@@ -41,6 +41,8 @@ export const REFERENCE_SETTINGS: Record<AppSettingKey, Record<string, unknown>> 
   support: { email: "bantuan@kapdh.or.id", whatsapp: null },
   // Mencerminkan pages.published_version halaman legal yang sudah diterbitkan; null selama masih draf (F-01).
   legal: { privacy_version: null, terms_version: null, community_version: null },
+  // D13 rencana cadangan iOS: platform yang menyembunyikan instruksi bayar iuran; kosong = semua platform tampil.
+  payment_instructions: { dues_hidden_platforms: [] },
 };
 
 /** USULAN daftar awal profesi; wajib ditinjau pengurus. Disisipkan nonaktif. */

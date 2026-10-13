@@ -8,7 +8,22 @@ import { MOCK_PROOF_FILE_ID, MOCK_PROOF_FILE_ID_V2 } from "./payments";
  */
 const IMAGE_MAX = 5 * 1024 * 1024;
 const PDF_MAX = 10 * 1024 * 1024;
-const PURPOSES: S["FilePurpose"][] = ["avatar", "payment_proof", "chat_image", "cover"];
+/** Purpose POST /files yang boleh diunggah sesi admin (kontrak files.yaml): bukti penyesuaian dan bukti D13. */
+const PURPOSES: S["FileUploadPurpose"][] = ["adjustment_evidence", "payment_proof"];
+
+function fileRef(id: string, purpose: S["FilePurpose"], mime: string, bytes: number): S["FileRef"] {
+  return {
+    id,
+    purpose,
+    mime,
+    bytes,
+    width: null,
+    height: null,
+    visibility: "private",
+    public_url: null,
+    created_at: new Date().toISOString(),
+  };
+}
 
 interface StoredFile {
   ref: S["FileRef"];
@@ -27,11 +42,11 @@ export function reset(): void {
   files.clear();
   seq = 0;
   files.set(MOCK_PROOF_FILE_ID, {
-    ref: { id: MOCK_PROOF_FILE_ID, purpose: "payment_proof", mime: "image/svg+xml", bytes: 2048 },
+    ref: fileRef(MOCK_PROOF_FILE_ID, "payment_proof", "image/svg+xml", 2048),
     dataUrl: placeholderSvg("Bukti transfer versi 1"),
   });
   files.set(MOCK_PROOF_FILE_ID_V2, {
-    ref: { id: MOCK_PROOF_FILE_ID_V2, purpose: "payment_proof", mime: "image/svg+xml", bytes: 2048 },
+    ref: fileRef(MOCK_PROOF_FILE_ID_V2, "payment_proof", "image/svg+xml", 2048),
     dataUrl: placeholderSvg("Bukti transfer versi 2"),
   });
 }
@@ -53,7 +68,7 @@ export const routes: MockRoute[] = [
       const form = await readMultipart(req.raw);
       const purpose = form?.purpose;
       const file = form?.file;
-      if (typeof purpose !== "string" || !PURPOSES.includes(purpose as S["FilePurpose"]))
+      if (typeof purpose !== "string" || !PURPOSES.includes(purpose as S["FileUploadPurpose"]))
         return error(400, "VALIDATION_ERROR", "Purpose berkas tidak dikenal.", {
           field_errors: { purpose: ["Purpose tidak dikenal."] },
         });
@@ -69,12 +84,7 @@ export const routes: MockRoute[] = [
         return error(413, "FILE_INVALID", isPdf ? "PDF maksimal 10 MB." : "Gambar maksimal 5 MB.");
       seq += 1;
       const id = `0199e000-0000-7000-8000-${String(seq).padStart(12, "0")}`;
-      const ref: S["FileRef"] = {
-        id,
-        purpose: purpose as S["FilePurpose"],
-        mime: file.type,
-        bytes: file.size,
-      };
+      const ref = fileRef(id, purpose as S["FilePurpose"], file.type, file.size);
       files.set(id, { ref, dataUrl: isImage ? toDataUrl(file) : placeholderSvg("Dokumen PDF") });
       return json(201, ref);
     },
@@ -90,6 +100,7 @@ export const routes: MockRoute[] = [
       return json(200, {
         url: f.dataUrl,
         expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
+        mime: f.ref.mime,
       } satisfies S["FileAccess"]);
     },
   },
