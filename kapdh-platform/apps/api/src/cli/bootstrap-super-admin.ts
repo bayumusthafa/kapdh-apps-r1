@@ -2,6 +2,7 @@ import { admins, mfaTotp, sessions, users } from "@kapdh/database";
 import bcrypt from "bcryptjs";
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
+import { z } from "zod";
 import { writeAudit } from "../core/audit/write-audit.js";
 import { ADVISORY_LOCK_KEYS, advisoryXactLock } from "../core/db/locks.js";
 import type { DbOrTx } from "../core/db/types.js";
@@ -42,6 +43,27 @@ export class BootstrapRefusedError extends Error {
   }
 }
 
+/** Email bootstrap divalidasi dengan aturan yang sama dengan login admin (AdminLoginRequest: format email, maks. 254). */
+const bootstrapEmailSchema = z.string().email().max(254);
+
+/**
+ * PRD 8.2 langkah 3: menolak bila sudah ada Super Admin yang dapat login (role super_admin, admins.status `active`,
+ * users.status `active`; definisi penjaga `admins_last_super_admin_chk`). Snapshot statement baru (READ COMMITTED)
+ * sehingga aktivasi yang commit selama bootstrap menunggu kunci ikut terlihat.
+ */
+async function refuseIfUsableSuperAdmin(tx: DbOrTx): Promise<void> {
+  const usable = await tx
+    .select({ id: admins.id })
+    .from(admins)
+    .innerJoin(users, eq(users.id, admins.userId))
+    .where(and(eq(admins.role, "super_admin"), eq(admins.status, "active"), eq(users.status, "active")))
+    .limit(1);
+  if (usable.length > 0)
+    throw new BootstrapRefusedError(
+      "Super Admin aktif sudah ada. Tambahkan admin lain dari web admin (menu Admin).",
+    );
+}
+
 /**
  * Bootstrap Super Admin pertama (PRD 8.2 langkah 3, F-16). Dijalankan sekali di server lewat CLI
  * (`src/cli/bootstrap-admin.ts`), bukan endpoint: tidak ada rute HTTP yang memanggil fungsi ini. Menolak berjalan bila
@@ -65,8 +87,7 @@ export async function bootstrapSuperAdmin(
 ): Promise<BootstrapSuperAdminResult> {
   const email = normalizeEmail(input.email);
   const displayName = input.displayName.trim();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)
-    throw new BootstrapRefusedError("Email tidak valid.");
+  if (!bootstrapEmailSchema.safeParse(email).success) throw new BootstrapRefusedError("Email tidak valid.");
   if (displayName.length < 2 || displayName.length > 120)
     throw new BootstrapRefusedError("Nama tampilan wajib 2 sampai 120 karakter.");
 
@@ -79,16 +100,7 @@ export async function bootstrapSuperAdmin(
   return db.transaction(async (tx) => {
     // Semua eksekusi bootstrap berurutan di bawah kunci ini (cek "sudah ada" lalu tulis tanpa celah balapan).
     await advisoryXactLock(tx, ADVISORY_LOCK_KEYS.bootstrapSuperAdmin);
-    const usable = await tx
-      .select({ id: admins.id })
-      .from(admins)
-      .innerJoin(users, eq(users.id, admins.userId))
-      .where(and(eq(admins.role, "super_admin"), eq(admins.status, "active"), eq(users.status, "active")))
-      .limit(1);
-    if (usable.length > 0)
-      throw new BootstrapRefusedError(
-        "Super Admin aktif sudah ada. Tambahkan admin lain dari web admin (menu Admin).",
-      );
+    await refuseIfUsableSuperAdmin(tx);
 
     const [existing] = await tx
       .select({
@@ -108,8 +120,36 @@ export async function bootstrapSuperAdmin(
         throw new BootstrapRefusedError("Email sudah dipakai identitas admin lain.");
       if (existing.userStatus !== "active")
         throw new BootstrapRefusedError("Akun admin untuk email ini tidak aktif; gunakan email lain.");
-      // Urutan admins lalu users (penjaga Super Admin terakhir, migrasi 0002).
-      await tx
+      // ARCHITECTURE §2 butir 11: baca di atas tanpa kunci hanya menemukan kandidat. Baris dikunci dengan urutan
+      // identitas admin (admins → users → mfa_totp; penjaga Super Admin terakhir migrasi 0002) lalu keadaan diperiksa
+      // ULANG di bawah kunci. Aktivasi /totp/confirm yang memegang kunci admins dan commit selagi CLI menunggu terlihat
+      // di sini (READ COMMITTED): Super Admin yang baru aktif tidak pernah direset menjadi tanpa TOTP dan sandi acak.
+      const [lockedAdmin] = await tx
+        .select({ userId: admins.userId, role: admins.role, status: admins.status })
+        .from(admins)
+        .where(eq(admins.id, existing.adminId))
+        .for("update");
+      const [lockedUser] = await tx
+        .select({ status: users.status, kind: users.kind })
+        .from(users)
+        .where(eq(users.id, existing.userId))
+        .for("update");
+      if (
+        !lockedAdmin ||
+        lockedAdmin.userId !== existing.userId ||
+        lockedAdmin.role !== "super_admin" ||
+        lockedAdmin.status !== "invited"
+      ) {
+        await refuseIfUsableSuperAdmin(tx);
+        throw new BootstrapRefusedError(
+          "Status akun admin untuk email ini berubah saat bootstrap berjalan; tidak ada yang diubah. Jalankan ulang.",
+        );
+      }
+      if (!lockedUser || lockedUser.status !== "active" || lockedUser.kind !== "admin")
+        throw new BootstrapRefusedError("Akun admin untuk email ini tidak aktif; gunakan email lain.");
+      // Super Admin lain yang aktif sejak pemeriksaan pertama (commit selagi CLI menunggu kunci) → tetap menolak.
+      await refuseIfUsableSuperAdmin(tx);
+      const reinvited = await tx
         .update(admins)
         .set({
           inviteTokenHash,
@@ -117,7 +157,13 @@ export async function bootstrapSuperAdmin(
           updatedAt: input.now,
           version: sql`${admins.version} + 1`,
         })
-        .where(and(eq(admins.id, existing.adminId), eq(admins.status, "invited")));
+        .where(and(eq(admins.id, existing.adminId), eq(admins.status, "invited")))
+        .returning({ id: admins.id });
+      // Pertahanan berlapis: predikat status harus tetap cocok di bawah kunci; bila tidak, tidak ada yang diubah.
+      if (reinvited.length === 0)
+        throw new BootstrapRefusedError(
+          "Status akun admin untuk email ini berubah saat bootstrap berjalan; tidak ada yang diubah. Jalankan ulang.",
+        );
       await tx
         .update(users)
         .set({

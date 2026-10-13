@@ -6,22 +6,31 @@
  *   - mfa_token yang sama dipakai bersamaan dengan kode berbeda → tepat satu sesi, kode lain tidak dikonsumsi;
  *   - kode TOTP yang sama bersamaan → tepat satu sesi (last_used_step, anti replay);
  *   - penerimaan undangan dan konfirmasi TOTP bersamaan → tepat satu pemenang;
- *   - bootstrap CLI bersamaan untuk email yang sama → satu Super Admin (advisory lock).
+ *   - bootstrap CLI bersamaan untuk email yang sama → satu Super Admin (advisory lock);
+ *   - login MFA bersamaan dengan reset MFA (urutan kunci admins → users → mfa_totp) → menunggu, bukan deadlock;
+ *   - bootstrap ulang bersamaan dengan aktivasi /totp/confirm → menolak, Super Admin yang baru aktif utuh.
  */
 import "reflect-metadata";
 import { admins, auditLogs, mfaTotp, sessions, users } from "@kapdh/database";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
+import bcrypt from "bcryptjs";
 import { and, eq, isNull } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../src/bootstrap.js";
 import { runBootstrapAdminCommand } from "../../src/cli/bootstrap-admin-command.js";
 import { MemoryMailer } from "../../src/core/adapters/mailer.js";
 import type { Db } from "../../src/core/db/types.js";
-import { backupCodeHash, newBackupCode, totp } from "../../src/core/identity/crypto.js";
+import {
+  backupCodeHash,
+  encryptSecret,
+  newBackupCode,
+  newTotpSecret,
+  totp,
+} from "../../src/core/identity/crypto.js";
 import { MemoryRateLimitStore } from "../../src/core/rate-limit/store.js";
 import { createAdmin, type EnrolledAdminFixture } from "../support/factories.js";
 import { FakePush, TestClock, testEnv } from "../support/test-app.js";
-import { connectAs, createPgTestDatabase, type PgTestDatabase } from "./support.js";
+import { connectAs, createPgTestDatabase, type PgTestDatabase, withLockWaitGate } from "./support.js";
 
 let tdb: PgTestDatabase;
 let api: ReturnType<typeof connectAs>;
@@ -92,6 +101,18 @@ async function liveSessions(userId: string) {
     .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
 }
 
+/** Menjalankan perintah bootstrap CLI (PRD 8.2) terhadap database lain; kode keluar dan seluruh keluaran. */
+function runBootstrapCli(db: Db, email = "pemilik@kapdh.test"): Promise<{ code: number; out: string }> {
+  const out: string[] = [];
+  return runBootstrapAdminCommand(["--email", email, "--name", "Bayu Musthafa"], {
+    db,
+    env: { ADMIN_ORIGIN: testEnv.ADMIN_ORIGIN, BCRYPT_COST: 4 },
+    now: clock.now(),
+    stdout: { write: (text: string) => out.push(text) },
+    stderr: { write: (text: string) => out.push(text) },
+  }).then((code) => ({ code, out: out.join("") }));
+}
+
 async function loginAudits(adminId: string) {
   return owner.db
     .select()
@@ -143,6 +164,42 @@ describe("F-02 (PG 17): backup code dan mfa_token sekali pakai di bawah konkuren
     const [row] = await owner.db.select().from(mfaTotp).where(eq(mfaTotp.userId, admin.userId));
     expect(row!.lastUsedStep).toBe(Math.floor(clock.now().getTime() / 30_000));
     expect(await liveSessions(admin.userId)).toHaveLength(1);
+  });
+
+  it("ARCHITECTURE §2 butir 11 AC F02-2: login MFA bersamaan dengan reset MFA (admins → users → mfa_totp) → menunggu lalu 401, bukan deadlock 500", async () => {
+    limits.clear();
+    const admin = await createAdmin(owner, { role: "admin" });
+    const [token] = await mfaTokens(admin, 1);
+    const code = totp(admin.totpSecret, clock.now());
+    const { result, lockWaitObserved } = await withLockWaitGate(tdb, async (hold) => {
+      let signalLocked!: () => void;
+      const locked = new Promise<void>((resolve) => (signalLocked = resolve));
+      // Transaksi reset MFA seperti C7 (urutan kunci identitas admin): admins → users → mfa_totp.
+      const reset = tdb.sql
+        .begin(async (tx) => {
+          await tx`select id from app.admins where id = ${admin.adminId} for update`;
+          await tx`update app.users set session_version = session_version + 1 where id = ${admin.userId}`;
+          signalLocked();
+          // Ditahan sampai login MFA terlihat menunggu kunci, baru mfa_totp disentuh.
+          await hold();
+          await tx`delete from app.mfa_totp where user_id = ${admin.userId}`;
+        })
+        .then(
+          () => null,
+          (error: unknown) => error,
+        );
+      await locked;
+      const login = post("/admin/auth/mfa", { mfa_token: token, totp_code: code });
+      const [resetError, response] = await Promise.all([reset, login]);
+      return { resetError, response };
+    });
+    expect(lockWaitObserved, "login MFA benar-benar menunggu kunci transaksi reset").toBe(true);
+    expect(result.resetError).toBeNull();
+    // Setelah reset commit: autentikator sudah dihapus → mfa_token tidak lagi sah (401), tanpa sesi.
+    expect(result.response.statusCode, result.response.body).toBe(401);
+    expect(result.response.json().code).toBe("UNAUTHENTICATED");
+    expect(await liveSessions(admin.userId)).toHaveLength(0);
+    expect(await loginAudits(admin.adminId)).toHaveLength(0);
   });
 });
 
@@ -197,16 +254,7 @@ describe("F-16 / PRD 8.2 (PG 17): undangan, aktivasi dan bootstrap bersamaan", (
     const fresh = await createPgTestDatabase("admin_bootstrap", 2);
     const cli = connectAs(fresh, "kapdh_app", 4);
     try {
-      const run = () => {
-        const out: string[] = [];
-        return runBootstrapAdminCommand(["--email", "pemilik@kapdh.test", "--name", "Bayu Musthafa"], {
-          db: cli.db as unknown as Db,
-          env: { ADMIN_ORIGIN: testEnv.ADMIN_ORIGIN, BCRYPT_COST: 4 },
-          now: clock.now(),
-          stdout: { write: (text: string) => out.push(text) },
-          stderr: { write: (text: string) => out.push(text) },
-        }).then((code) => ({ code, out: out.join("") }));
-      };
+      const run = () => runBootstrapCli(cli.db as unknown as Db);
       const results = await Promise.all([run(), run()]);
       expect(
         results.map((r) => r.code),
@@ -227,6 +275,77 @@ describe("F-16 / PRD 8.2 (PG 17): undangan, aktivasi dan bootstrap bersamaan", (
       expect(refused.code).toBe(1);
       expect(refused.out).toContain("Super Admin aktif sudah ada");
       expect(refused.out).not.toContain("/invite#t=");
+    } finally {
+      await cli.sql.end({ timeout: 5 });
+      await fresh.drop();
+    }
+  });
+
+  it("PRD 8.2 ARCHITECTURE §2 butir 11: bootstrap ulang bersamaan dengan aktivasi /totp/confirm → menolak; Super Admin yang baru aktif tetap utuh", async () => {
+    const fresh = await createPgTestDatabase("admin_bootstrap_race", 4);
+    const cli = connectAs(fresh, "kapdh_app", 4);
+    try {
+      const first = await runBootstrapCli(cli.db as unknown as Db);
+      expect(first.code, first.out).toBe(0);
+      const [account] = await fresh.db.select().from(users).where(eq(users.email, "pemilik@kapdh.test"));
+      const [invitedRow] = await fresh.db.select().from(admins).where(eq(admins.userId, account!.id));
+      const adminId = invitedRow!.id;
+      // Undangan sudah diterima (token dikonsumsi, sandi pilihan pemilik), seperti adminAcceptInvitation.
+      const chosenHash = await bcrypt.hash("Pengurus#2026", 4);
+      await fresh.db
+        .update(admins)
+        .set({ inviteTokenHash: null, inviteExpiresAt: null })
+        .where(eq(admins.id, adminId));
+      await fresh.db.update(users).set({ passwordHash: chosenHash }).where(eq(users.id, account!.id));
+      const [userBefore] = await fresh.db.select().from(users).where(eq(users.id, account!.id));
+      const secretEncrypted = encryptSecret(newTotpSecret(), testEnv.TOTP_ENC_KEY);
+
+      const { result: rerun, lockWaitObserved } = await withLockWaitGate(fresh, async (hold) => {
+        let signalLocked!: () => void;
+        const locked = new Promise<void>((resolve) => (signalLocked = resolve));
+        // /totp/confirm: baris admins dikunci (lockEnrollment), aktivasi commit setelah CLI terlihat menunggu.
+        const confirm = fresh.db.transaction(async (tx) => {
+          await tx.select({ id: admins.id }).from(admins).where(eq(admins.id, adminId)).for("update");
+          signalLocked();
+          await hold();
+          const now = clock.now();
+          await tx.insert(mfaTotp).values({
+            userId: account!.id,
+            secretEncrypted,
+            verifiedAt: now,
+            lastUsedStep: null,
+            backupCodeHashes: [],
+            createdAt: now,
+            updatedAt: now,
+          });
+          await tx.update(admins).set({ status: "active", activatedAt: now }).where(eq(admins.id, adminId));
+        });
+        await locked;
+        const cliRun = runBootstrapCli(cli.db as unknown as Db);
+        await confirm;
+        return cliRun;
+      });
+      expect(lockWaitObserved, "CLI benar-benar menunggu kunci baris admins").toBe(true);
+      expect(rerun.code, rerun.out).toBe(1);
+      expect(rerun.out).toContain("Super Admin aktif sudah ada");
+      expect(rerun.out).not.toContain("/invite#t=");
+
+      // Tidak ada yang direset: Super Admin aktif, TOTP terverifikasi, sandi pilihan pemilik, tanpa undangan baru.
+      const [adminAfter] = await fresh.db.select().from(admins).where(eq(admins.id, adminId));
+      expect(adminAfter).toMatchObject({ status: "active", inviteTokenHash: null });
+      const totpAfter = await fresh.db.select().from(mfaTotp).where(eq(mfaTotp.userId, account!.id));
+      expect(totpAfter).toHaveLength(1);
+      expect(totpAfter[0]!.verifiedAt).not.toBeNull();
+      const [userAfter] = await fresh.db.select().from(users).where(eq(users.id, account!.id));
+      expect(userAfter!.passwordHash).toBe(chosenHash);
+      expect(userAfter!.sessionVersion).toBe(userBefore!.sessionVersion);
+      const audits = await fresh.db.select().from(auditLogs).where(eq(auditLogs.entityId, adminId));
+      expect(audits.map((a) => a.action)).toEqual(["admin.bootstrap"]);
+
+      // Bootstrap berikutnya tetap menolak (Super Admin aktif yang dapat login ada).
+      const third = await runBootstrapCli(cli.db as unknown as Db);
+      expect(third.code).toBe(1);
+      expect(third.out).toContain("Super Admin aktif sudah ada");
     } finally {
       await cli.sql.end({ timeout: 5 });
       await fresh.drop();

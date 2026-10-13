@@ -12,9 +12,10 @@ import { fieldError, forbidden, unauthenticated } from "../../core/errors/app-ex
 import type { AuthContext } from "../../core/guards/auth-context.js";
 import { PasswordVerifier } from "../../core/identity/password-verifier.js";
 import { OutboxService } from "../../core/outbox/outbox.service.js";
+import { RateLimitService } from "../../core/rate-limit/rate-limit.service.js";
 import { RealtimeService } from "../../core/realtime/realtime.service.js";
 import { CLOCK, DB, ENV } from "../../core/tokens.js";
-import { newBackupCodeSet } from "./admin-auth.shared.js";
+import { auditAuthFailure, newBackupCodeSet } from "./admin-auth.shared.js";
 
 type AdminBackupCodes = components["schemas"]["AdminBackupCodes"];
 
@@ -33,6 +34,7 @@ export class AdminCredentialsService {
     private readonly audit: AuditService,
     private readonly outbox: OutboxService,
     private readonly realtime: RealtimeService,
+    private readonly limits: RateLimitService,
   ) {}
 
   /**
@@ -92,8 +94,17 @@ export class AdminCredentialsService {
       await attempt.cancel().catch(() => undefined);
       throw error;
     }
-    // Sandi lama salah: jatah tetap tercatat sebagai kegagalan login (kontrak adminChangePassword).
-    if (!matches) throw fieldError("current_password", "Sandi saat ini salah.");
+    // Sandi lama salah: jatah tetap tercatat sebagai kegagalan login (kontrak adminChangePassword) dan kegagalan
+    // pertama dalam jendela diaudit `admin.auth_failed` tahap change_password (F-17; aktor admin pemanggil).
+    if (!matches) {
+      if (auth.adminId)
+        await auditAuthFailure(
+          { db: this.db, audit: this.audit, limits: this.limits },
+          auth.adminId,
+          "change_password",
+        );
+      throw fieldError("current_password", "Sandi saat ini salah.");
+    }
     await attempt.succeeded();
     if (await this.passwords.comparePassword(newPassword, user.passwordHash))
       throw fieldError("new_password", "Sandi baru harus berbeda dari sandi saat ini.");
