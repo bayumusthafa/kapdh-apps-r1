@@ -241,10 +241,9 @@ export function describeKta(view: KtaView): KtaDescription {
         ...base,
         tone: "info",
         title: "Tidak dapat memverifikasi",
-        detail:
-          view.rateLimited
-            ? "Terlalu banyak pemeriksaan dalam waktu singkat. Tunggu sebentar lalu coba lagi. Ini bukan berarti anggota tidak terdaftar."
-            : "Server KAPDH tidak dapat dihubungi. Periksa koneksi lalu coba lagi. Ini bukan berarti anggota tidak terdaftar.",
+        detail: view.rateLimited
+          ? "Terlalu banyak pemeriksaan dalam waktu singkat. Tunggu sebentar lalu coba lagi. Ini bukan berarti anggota tidak terdaftar."
+          : "Server KAPDH tidak dapat dihubungi. Periksa koneksi lalu coba lagi. Ini bukan berarti anggota tidak terdaftar.",
         retry: true,
       };
   }

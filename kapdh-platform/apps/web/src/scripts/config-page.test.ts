@@ -198,11 +198,19 @@ describe("PRD 4.5: keadaan gagal dan maintenance punya pesan, retry dan kanal du
     const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
     const base = read("../layouts/Base.astro");
     const banner = base.slice(base.indexOf("data-maintenance hidden"), base.indexOf("<main"));
-    for (const hook of ["data-maintenance-text", "data-support-email", "data-support-whatsapp", "data-config-retry"]) {
+    for (const hook of [
+      "data-maintenance-text",
+      "data-support-email",
+      "data-support-whatsapp",
+      "data-config-retry",
+    ]) {
       expect(banner).toContain(hook);
     }
     const kontak = read("../pages/kontak.astro");
-    const errorBlock = kontak.slice(kontak.indexOf("data-support-error"), kontak.indexOf("data-support-whatsapp"));
+    const errorBlock = kontak.slice(
+      kontak.indexOf("data-support-error"),
+      kontak.indexOf("data-support-whatsapp"),
+    );
     expect(errorBlock).toContain("Kontak terbaru belum dapat dimuat");
     expect(errorBlock).toContain("data-config-retry");
   });

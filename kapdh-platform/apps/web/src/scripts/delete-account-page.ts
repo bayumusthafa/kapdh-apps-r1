@@ -53,7 +53,11 @@ type Step = "email" | "code" | "confirm" | "done" | "status" | "disabled";
 const STEP_LABELS = ["Email", "Verifikasi", "Konfirmasi", "Selesai"] as const;
 const STEP_INDEX: Partial<Record<Step, number>> = { email: 0, code: 1, confirm: 2, done: 3 };
 /** Tindakan tombol utama setiap langkah (kunci jeda 429). */
-const PRIMARY_ACTION: Partial<Record<Step, FlowStep>> = { email: "challenge", code: "verify", confirm: "confirm" };
+const PRIMARY_ACTION: Partial<Record<Step, FlowStep>> = {
+  email: "challenge",
+  code: "verify",
+  confirm: "confirm",
+};
 const FLOW_ACTIONS: readonly FlowStep[] = ["challenge", "resend", "verify", "confirm"];
 
 const PENDING_AUTO_MESSAGE =

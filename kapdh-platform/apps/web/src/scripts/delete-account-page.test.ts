@@ -802,7 +802,10 @@ describe("konfirmasi: 409 IDEMPOTENCY_CONFLICT dan label tombol", () => {
     setup({
       ...HAPPY,
       "POST /public/deletion/verify": () => json(200, { ...VERIFIED_DELETABLE, registration_pending: true }),
-      "POST /public/deletion/confirm": [networkError, () => apiError(409, "IDEMPOTENCY_CONFLICT", "Kunci bentrok")],
+      "POST /public/deletion/confirm": [
+        networkError,
+        () => apiError(409, "IDEMPOTENCY_CONFLICT", "Kunci bentrok"),
+      ],
     });
     await settle();
     await submitEmail();
