@@ -7,7 +7,12 @@ import { sessions } from "@kapdh/database";
 import { eq } from "drizzle-orm";
 import { decodeJwt } from "jose";
 import { TokenService } from "../../src/core/identity/token.service.js";
-import { type CreateAdminOptions, createAdmin, type EnrolledAdminFixture, signInAdmin } from "../support/factories.js";
+import {
+  type CreateAdminOptions,
+  createAdmin,
+  type EnrolledAdminFixture,
+  signInAdmin,
+} from "../support/factories.js";
 import type { TestApp } from "../support/test-app.js";
 
 export interface AdminActor {

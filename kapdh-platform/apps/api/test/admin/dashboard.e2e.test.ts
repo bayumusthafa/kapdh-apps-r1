@@ -61,9 +61,19 @@ async function member(options: CreateAlumniOptions = {}): Promise<AlumniFixture>
   return fixture;
 }
 
-const snapshot = { kind: "bank", provider: "Bank Uji", account_number: "7000123456", account_holder: "KAPDH (uji)" };
+const snapshot = {
+  kind: "bank",
+  provider: "Bank Uji",
+  account_number: "7000123456",
+  account_holder: "KAPDH (uji)",
+};
 
-async function payment(values: Partial<typeof payments.$inferInsert> & { userId: string; type: "registration" | "renewal" | "ticket" }) {
+async function payment(
+  values: Partial<typeof payments.$inferInsert> & {
+    userId: string;
+    type: "registration" | "renewal" | "ticket";
+  },
+) {
   const id = uuidv7();
   await t.db.insert(payments).values({
     id,
@@ -96,7 +106,13 @@ async function event(values: Partial<typeof events.$inferInsert> & { title: stri
   return id;
 }
 
-async function ticket(values: Partial<typeof tickets.$inferInsert> & { eventId: string; userId: string; status: "awaiting_review" | "paid" }) {
+async function ticket(
+  values: Partial<typeof tickets.$inferInsert> & {
+    eventId: string;
+    userId: string;
+    status: "awaiting_review" | "paid";
+  },
+) {
   const id = uuidv7();
   await t.db.insert(tickets).values({
     id,
@@ -134,7 +150,12 @@ async function seed(): Promise<void> {
   await createAdmin(t, { linkedAlumniUserId: linkedActiveAdmin.userId });
 
   // Event: E1 mulai 1 jam lagi (check-in sudah dibuka), E2 draf, E3 closed 10 hari lagi, E4 selesai, E5 40 hari lagi.
-  ids.e1 = await event({ title: "Mancing Bareng Alumni", startsAt: at(HOUR), heldQuantity: 1, paidQuantity: 1 });
+  ids.e1 = await event({
+    title: "Mancing Bareng Alumni",
+    startsAt: at(HOUR),
+    heldQuantity: 1,
+    paidQuantity: 1,
+  });
   await event({ title: "Draf Rahasia", startsAt: at(5 * DAY), status: "draft" });
   ids.e3 = await event({ title: "Reuni Akbar", startsAt: at(10 * DAY), status: "closed", seatsTotal: 5 });
   ids.e4 = await event({
@@ -152,8 +173,18 @@ async function seed(): Promise<void> {
     checkedInAt: at(-10 * 60_000),
   });
 
-  ids.p1 = await payment({ userId: p1Owner.userId, type: "registration", proofVersion: 1, submittedAt: at(-2 * DAY) });
-  ids.p2 = await payment({ userId: p2Owner.userId, type: "renewal", proofVersion: 1, submittedAt: at(-HOUR) });
+  ids.p1 = await payment({
+    userId: p1Owner.userId,
+    type: "registration",
+    proofVersion: 1,
+    submittedAt: at(-2 * DAY),
+  });
+  ids.p2 = await payment({
+    userId: p2Owner.userId,
+    type: "renewal",
+    proofVersion: 1,
+    submittedAt: at(-HOUR),
+  });
   ids.p3 = await payment({
     userId: p3Owner.userId,
     type: "ticket",
@@ -189,7 +220,14 @@ async function seed(): Promise<void> {
   });
   await t.db.insert(paymentAdjustments).values([
     { id: uuidv7(), paymentId: ids.p5, kind: "refund", amount: "60000.00", reason: "Uji", dueAt: at(-HOUR) },
-    { id: uuidv7(), paymentId: ids.p6, kind: "correction", amount: "1000.00", reason: "Uji", dueAt: at(5 * DAY) },
+    {
+      id: uuidv7(),
+      paymentId: ids.p6,
+      kind: "correction",
+      amount: "1000.00",
+      reason: "Uji",
+      dueAt: at(5 * DAY),
+    },
     {
       id: uuidv7(),
       paymentId: ids.p7,
@@ -217,7 +255,13 @@ async function seed(): Promise<void> {
   ids.r2 = uuidv7();
   await t.db.insert(reports).values([
     report({}),
-    report({ id: ids.r2, priority: "urgent", category: "violence_threat", dueAt: at(-HOUR), createdAt: at(-2 * DAY) }),
+    report({
+      id: ids.r2,
+      priority: "urgent",
+      category: "violence_threat",
+      dueAt: at(-HOUR),
+      createdAt: at(-2 * DAY),
+    }),
     report({ status: "in_review", claimedAt: at(-HOUR) }),
     report({ status: "resolved", action: "warn", resolutionNote: "Diperingatkan", resolvedAt: at(-HOUR) }),
     report({ targetUserId: linkedForModerator.userId, createdAt: at(-30 * 60_000) }),
@@ -230,13 +274,21 @@ async function seed(): Promise<void> {
     { id: otherRoom, kind: "group", name: "Grup Lain", createdBy: p5Owner.userId },
   ]);
   await t.db.insert(roomMembers).values([
-    { roomId: joinedRoom, userId: linkedForModerator.userId, role: "admin", status: "joined", joinedAt: at(-DAY) },
+    {
+      roomId: joinedRoom,
+      userId: linkedForModerator.userId,
+      role: "admin",
+      status: "joined",
+      joinedAt: at(-DAY),
+    },
     { roomId: otherRoom, userId: p5Owner.userId, role: "admin", status: "joined", joinedAt: at(-DAY) },
   ]);
-  await t.db.insert(reports).values([
-    report({ targetType: "room", targetUserId: null, roomId: joinedRoom }),
-    report({ targetType: "room", targetUserId: null, roomId: otherRoom }),
-  ]);
+  await t.db
+    .insert(reports)
+    .values([
+      report({ targetType: "room", targetUserId: null, roomId: joinedRoom }),
+      report({ targetType: "room", targetUserId: null, roomId: otherRoom }),
+    ]);
 
   // Pengiriman notifikasi: D1 email gagal (dapat ditindak), D2 push gagal token dicabut, D3 email gagal 8 hari lalu,
   // D4 push gagal token aktif milik penerima (dapat ditindak), D5 email gagal tetapi preferensi email dimatikan.
@@ -267,9 +319,23 @@ async function seed(): Promise<void> {
   const n3 = await notification("event", at(-DAY));
   await t.db.insert(notificationDeliveries).values([
     { id: uuidv7(), notificationId: n1, channel: "email", status: "failed", createdAt: at(-DAY) },
-    { id: uuidv7(), notificationId: n1, channel: "push", deviceTokenId: revoked, status: "failed", createdAt: at(-DAY) },
+    {
+      id: uuidv7(),
+      notificationId: n1,
+      channel: "push",
+      deviceTokenId: revoked,
+      status: "failed",
+      createdAt: at(-DAY),
+    },
     { id: uuidv7(), notificationId: n2, channel: "email", status: "failed", createdAt: at(-8 * DAY) },
-    { id: uuidv7(), notificationId: n1, channel: "push", deviceTokenId: live, status: "failed", createdAt: at(-DAY) },
+    {
+      id: uuidv7(),
+      notificationId: n1,
+      channel: "push",
+      deviceTokenId: live,
+      status: "failed",
+      createdAt: at(-DAY),
+    },
     { id: uuidv7(), notificationId: n3, channel: "email", status: "failed", createdAt: at(-DAY) },
   ]);
   await t.db.insert(outboxEvents).values([
@@ -304,7 +370,10 @@ async function dashboard(actor: AdminActor) {
 }
 
 async function badges(actor: AdminActor) {
-  const res = await api.get("/admin/dashboard/badges", { token: actor.token, headers: { "x-background-request": "1" } });
+  const res = await api.get("/admin/dashboard/badges", {
+    token: actor.token,
+    headers: { "x-background-request": "1" },
+  });
   expect(res.statusCode, res.body).toBe(200);
   return expectOperation("get", "/admin/dashboard/badges", res) as Record<string, number>;
 }
@@ -410,10 +479,15 @@ describe("Isi bagian dasbor (F-15, PRD 3.15, guideline hlm. 12)", () => {
     });
     expect(body.members.latest_members.length).toBeLessThanOrEqual(10);
     const listed = new Map(body.members.latest_members.map((m: { user_id: string }) => [m.user_id, m]));
-    expect(listed.get(linkedActiveAdmin.userId)).toMatchObject({ linked_admin: true, effective_status: "verified" });
+    expect(listed.get(linkedActiveAdmin.userId)).toMatchObject({
+      linked_admin: true,
+      effective_status: "verified",
+    });
     expect(listed.get(linkedForModerator.userId)).toMatchObject({ linked_admin: false });
     // Akun nonaktif, dihapus, deletion_pending dan pending_otp tidak tampil.
-    const hidden = members.filter((m) => m.accountStatus !== "active" || m.status === "pending_otp").map((m) => m.userId);
+    const hidden = members
+      .filter((m) => m.accountStatus !== "active" || m.status === "pending_otp")
+      .map((m) => m.userId);
     for (const id of hidden) expect(listed.has(id)).toBe(false);
   });
 
@@ -437,7 +511,11 @@ describe("Isi bagian dasbor (F-15, PRD 3.15, guideline hlm. 12)", () => {
       timezone: "Asia/Jakarta",
     });
     expect(body.upcoming_events.map((e: { event_id: string }) => e.event_id)).toEqual([ids.e1, ids.e3]);
-    expect(body.upcoming_events[0]).toMatchObject({ checked_in_count: 1, sold_count: 1, location_name: "Aula Pesantren" });
+    expect(body.upcoming_events[0]).toMatchObject({
+      checked_in_count: 1,
+      sold_count: 1,
+      location_name: "Aula Pesantren",
+    });
   });
 
   it("F-12: laporan terbuka/mendesak/lewat target; laporan terhadap alumni tertaut pemanggil tidak dihitung (C6 butir c)", async () => {
@@ -479,17 +557,25 @@ describe("AC F02-5: polling dasbor dengan X-Background-Request tidak memperpanja
     const actor = await adminActor(t, { permissions: ["payments.read"] });
     const sid = String(decodeJwt(actor.token).sid);
     const activity = async () =>
-      (await t.db.select({ at: sessions.lastActivityAt }).from(sessions).where(eq(sessions.id, sid)))[0]!.at.getTime();
+      (
+        await t.db.select({ at: sessions.lastActivityAt }).from(sessions).where(eq(sessions.id, sid))
+      )[0]!.at.getTime();
     const before = await activity();
     t.clock.advance(60_000);
-    const background = await api.get("/admin/dashboard", { token: actor.token, headers: { "x-background-request": "1" } });
+    const background = await api.get("/admin/dashboard", {
+      token: actor.token,
+      headers: { "x-background-request": "1" },
+    });
     expect(background.statusCode).toBe(200);
     expect(await activity()).toBe(before);
     await api.get("/admin/dashboard", { token: actor.token });
     expect(await activity()).toBe(t.clock.now().getTime());
     // Hanya polling latar selama 31 menit: sesi berakhir (idle 30 menit).
     t.clock.advance(31 * 60_000);
-    const expired = await api.get("/admin/dashboard", { token: actor.token, headers: { "x-background-request": "1" } });
+    const expired = await api.get("/admin/dashboard", {
+      token: actor.token,
+      headers: { "x-background-request": "1" },
+    });
     expect(expired.statusCode).toBe(401);
     const again = await signInActor(t, actor.admin);
     expect((await api.get("/admin/dashboard", { token: again.token })).statusCode).toBe(200);

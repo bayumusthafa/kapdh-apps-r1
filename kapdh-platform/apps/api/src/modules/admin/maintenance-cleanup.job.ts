@@ -97,7 +97,9 @@ export class MaintenanceCleanupJob implements OnModuleInit {
     };
     ctx?.logger.info(result, "pembersihan harian selesai");
     if (auditExportFailures > 0)
-      throw new Error(`${auditExportFailures} berkas ekspor audit gagal dihapus; diulang pada jadwal berikut`);
+      throw new Error(
+        `${auditExportFailures} berkas ekspor audit gagal dihapus; diulang pada jadwal berikut`,
+      );
     return result;
   }
 }

@@ -95,9 +95,10 @@ export async function paymentQueueSummary(
       reviewRegistration: typed(awaitingReviewSql, "registration"),
       reviewRenewal: typed(awaitingReviewSql, "renewal"),
       reviewTicket: typed(awaitingReviewSql, "ticket"),
-      oldestSubmittedAt: sql<Date | null>`min(${payments.submittedAt}) filter (where ${awaitingReviewSql})`.mapWith(
-        payments.submittedAt,
-      ),
+      oldestSubmittedAt:
+        sql<Date | null>`min(${payments.submittedAt}) filter (where ${awaitingReviewSql})`.mapWith(
+          payments.submittedAt,
+        ),
       overdue: countWhere(overdue),
       overdueRegistration: typed(overdue, "registration"),
       overdueRenewal: typed(overdue, "renewal"),

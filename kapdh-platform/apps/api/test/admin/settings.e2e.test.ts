@@ -2,12 +2,7 @@ import { auditLogs, payments } from "@kapdh/database";
 import { and, desc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { expectOperation, expectSchema } from "../support/contract.js";
-import {
-  createAlumni,
-  createMembershipPayment,
-  setSetting,
-  signInAlumni,
-} from "../support/factories.js";
+import { createAlumni, createMembershipPayment, setSetting, signInAlumni } from "../support/factories.js";
 import { httpClient, type HttpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
 import { type AdminActor, adminActor } from "./helpers.js";
@@ -108,7 +103,12 @@ describe("PUT /admin/settings/fees (AC F15-3, F03-5, F15-4)", () => {
     const { token, headers } = await manager.sensitive(current);
     const res = await api.put(
       "/admin/settings/fees",
-      { registration_fee: "75000.00", card_fee: "15000.00", renewal_fee: "20000.00", reason: "Rapat pengurus 10/2026" },
+      {
+        registration_fee: "75000.00",
+        card_fee: "15000.00",
+        renewal_fee: "20000.00",
+        reason: "Rapat pengurus 10/2026",
+      },
       { token, headers },
     );
     const body = expectOperation("put", "/admin/settings/fees", res) as Record<string, unknown>;
@@ -181,7 +181,9 @@ describe("PUT /admin/settings/fees (AC F15-3, F03-5, F15-4)", () => {
       { token: manager.token, headers: { "if-match": current } },
     );
     expect(noReauth.statusCode).toBe(403);
-    expect(expectOperation("put", "/admin/settings/fees", noReauth)).toMatchObject({ code: "REAUTH_REQUIRED" });
+    expect(expectOperation("put", "/admin/settings/fees", noReauth)).toMatchObject({
+      code: "REAUTH_REQUIRED",
+    });
 
     const noIfMatch = await api.put(
       "/admin/settings/fees",
@@ -241,7 +243,10 @@ describe("PUT /admin/settings/min-app-version (AC F15-3, PRD 4.5, 8.4)", () => {
   });
 
   it("AC F15-3: setelah tautan toko diisi, versi dinaikkan, diaudit, dan tampil di /public/config", async () => {
-    await setSetting(t, "store_links", { android: "https://play.google.com/store/apps/details?id=id.kapdh", ios: null });
+    await setSetting(t, "store_links", {
+      android: "https://play.google.com/store/apps/details?id=id.kapdh",
+      ios: null,
+    });
     const current = await version("min_app_version");
     const res = await api.put(
       "/admin/settings/min-app-version",
@@ -271,16 +276,19 @@ describe("PUT /admin/settings/min-app-version (AC F15-3, PRD 4.5, 8.4)", () => {
     expect(lowered.statusCode).toBe(200);
   });
 
-  it.each([["1.2"], ["01.2.0"], ["1.2.0-beta"], ["v1.2.0"]])("versi %j bukan semver MAJOR.MINOR.PATCH: 400", async (value) => {
-    const current = await version("min_app_version");
-    const res = await api.put(
-      "/admin/settings/min-app-version",
-      { android: value, ios: "1.0.0" },
-      await manager.sensitive(current),
-    );
-    expect(res.statusCode).toBe(400);
-    expect(res.json()).toMatchObject({ field_errors: { android: expect.any(Array) } });
-  });
+  it.each([["1.2"], ["01.2.0"], ["1.2.0-beta"], ["v1.2.0"]])(
+    "versi %j bukan semver MAJOR.MINOR.PATCH: 400",
+    async (value) => {
+      const current = await version("min_app_version");
+      const res = await api.put(
+        "/admin/settings/min-app-version",
+        { android: value, ios: "1.0.0" },
+        await manager.sensitive(current),
+      );
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({ field_errors: { android: expect.any(Array) } });
+    },
+  );
 });
 
 describe("PUT /admin/settings/maintenance (PRD 4.5, 8.4)", () => {
@@ -334,7 +342,9 @@ describe("PUT /admin/settings/maintenance (PRD 4.5, 8.4)", () => {
       await manager.sensitive(Number(current) + 1),
     );
     expect(off.statusCode).toBe(200);
-    expect((await api.post("/auth/login", { email: member.email, password: member.password })).statusCode).toBe(200);
+    expect(
+      (await api.post("/auth/login", { email: member.email, password: member.password })).statusCode,
+    ).toBe(200);
   });
 });
 
