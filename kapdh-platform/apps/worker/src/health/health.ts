@@ -166,6 +166,13 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   }
 }
 
+/**
+ * Batas loop macet. Longgar (minimal 2 menit) karena 503 memicu restart container: pool yang sesaat penuh oleh job
+ * panjang tidak boleh dianggap mati, tetapi poll/tick yang menggantung (DB/Redis hilang) tetap terdeteksi.
+ */
+export const dispatcherStallMs = (pollIntervalMs: number) => Math.max(10 * pollIntervalMs, 120_000);
+export const schedulerStallMs = (tickMs: number) => Math.max(60 * tickMs, 120_000);
+
 /** Loop dianggap macet bila tidak ada iterasi selama batas ini (setelah masa tenggang start). */
 function loopStale(last: Date | null, now: Date, startedAt: Date, staleMs: number): boolean {
   const reference = last ?? startedAt;
@@ -218,11 +225,11 @@ export async function buildHealthReport(input: HealthInputs): Promise<HealthRepo
   if (!queueOk) issues.push("queue_unreachable");
   const dispatcherStale =
     input.dispatcher.running &&
-    loopStale(input.dispatcher.lastLoopAt, now, input.startedAt, Math.max(5 * input.pollIntervalMs, 30_000));
+    loopStale(input.dispatcher.lastLoopAt, now, input.startedAt, dispatcherStallMs(input.pollIntervalMs));
   if (dispatcherStale) issues.push("dispatcher_stalled");
   const schedulerStale =
     input.scheduler.running &&
-    loopStale(input.scheduler.lastLeaderCheckAt, now, input.startedAt, Math.max(30 * input.tickMs, 30_000));
+    loopStale(input.scheduler.lastLeaderCheckAt, now, input.startedAt, schedulerStallMs(input.tickMs));
   if (schedulerStale) issues.push("scheduler_stalled");
   if (!outbox && databaseOk) issues.push("outbox_stats_unavailable");
 
