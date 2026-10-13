@@ -53,12 +53,7 @@ describe("cancelMyTicket (D6)", () => {
   it("D6: tiket paid berbayar dibatalkan sebelum H-3 → refund penuh pending tenggat 7 hari kerja; payment tetap paid; kursi dilepas; QR tidak berlaku", async () => {
     const event = await createEventRow(t, { startsInMs: 10 * DAY });
     const member = await memberSession(t);
-    const ticket = await paidTicket(
-      t,
-      member,
-      event,
-      await adminSession(t, ["payments.read", "payments.decide"]),
-    );
+    const ticket = await paidTicket(t, member, event, treasurer);
     expect(ticket).toMatchObject({ status: "paid", refund_eligible: true, can_cancel: true });
     const res = await cancel(member, ticket, true, { reason: "Berhalangan hadir" });
     const body = expectOperation("post", "/me/tickets/{ticketId}/cancel", res) as JsonBody;
