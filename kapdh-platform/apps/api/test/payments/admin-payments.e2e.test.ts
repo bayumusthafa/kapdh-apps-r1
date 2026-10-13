@@ -140,6 +140,8 @@ describe("POST /admin/payments/{id}/decision (AC F04-1 sampai F04-5)", () => {
     const first = await adminSession(t);
     const second = await adminSession(t);
     expect((await decide(t, first, payment.paymentId, approveBody(payment))).statusCode).toBe(200);
+    // `current` dibentuk di dalam transaksi keputusan tanpa cache pengaturan (dibaca lewat transaksi yang sama).
+    t.settings.invalidate();
     const late = await decide(t, second, payment.paymentId, {
       decision: "reject",
       expected_proof_version: 1,

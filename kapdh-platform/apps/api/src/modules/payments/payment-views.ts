@@ -23,6 +23,7 @@ import {
   effectiveStatus,
   type EffectiveStatus,
 } from "../../core/membership/effective-status.js";
+import type { SettingKey, SettingValue } from "../../core/settings/keys.js";
 import { SettingsService } from "../../core/settings/settings.service.js";
 import { CLOCK } from "../../core/tokens.js";
 import { money } from "./money.js";
@@ -39,8 +40,6 @@ import {
   paymentStage,
   readLineSnapshot,
   readMethodSnapshot,
-  reservationLapsed,
-  reviewDueAt,
   type ReviewRules,
   reviewRulesOf,
   type TicketRow,
@@ -165,8 +164,18 @@ export class PaymentViews {
     return this.clock.now();
   }
 
-  async reviewRules(): Promise<ReviewRules> {
-    return reviewRulesOf(await this.settings.get("events"));
+  async reviewRules(db?: DbOrTx): Promise<ReviewRules> {
+    return reviewRulesOf(await this.setting(db, "events"));
+  }
+
+  /**
+   * Nilai pengaturan. Di dalam transaksi (mis. `current` pada 409) dibaca lewat transaksi itu sendiri, bukan cache
+   * atau koneksi lain: satu transaksi tidak pernah menunggu koneksi kedua (PGlite berkoneksi tunggal, dan pool
+   * production tidak terkuras oleh request yang memegang transaksi).
+   */
+  private async setting<K extends SettingKey>(db: DbOrTx | undefined, key: K): Promise<SettingValue<K>> {
+    const inTransaction = db !== undefined && typeof (db as { rollback?: unknown }).rollback === "function";
+    return inTransaction ? (await this.settings.getEntry(key, { tx: db })).value : this.settings.get(key);
   }
 
   // ===================================================================================================== anggota
@@ -182,7 +191,7 @@ export class PaymentViews {
   async memberPayments(db: DbOrTx, rows: PaymentRow[], viewer: MemberViewer): Promise<PaymentDto[]> {
     if (rows.length === 0) return [];
     const now = this.now();
-    const hiddenSetting = await this.settings.get("payment_instructions");
+    const hiddenSetting = await this.setting(db, "payment_instructions");
     const ticketMap = await this.ticketsFor(db, rows);
     const periodMap = await this.periodsFor(db, rows);
     const adminProofs = await this.adminProofIds(db, rows);
@@ -237,7 +246,7 @@ export class PaymentViews {
       .from(paymentAdjustments)
       .where(eq(paymentAdjustments.paymentId, row.id))
       .orderBy(asc(paymentAdjustments.createdAt), asc(paymentAdjustments.id));
-    const hiddenSetting = await this.settings.get("payment_instructions");
+    const hiddenSetting = await this.setting(db, "payment_instructions");
     return {
       ...base!,
       events: history.map((event) => ({
@@ -381,7 +390,7 @@ export class PaymentViews {
 
   /** AdminPaymentDetail untuk keputusan (AC F04-4): bukti aktif, histori lengkap, penyesuaian, konflik kepentingan. */
   async adminDetail(db: DbOrTx, paymentId: string, viewer: AdminViewer): Promise<AdminPaymentDetailDto> {
-    const rules = await this.reviewRules();
+    const rules = await this.reviewRules(db);
     const [row] = await this.adminRowsQuery(db, rules).where(eq(payments.id, paymentId)).limit(1);
     if (!row) throw notFound("Pembayaran tidak ditemukan.");
     const now = this.now();
@@ -416,7 +425,7 @@ export class PaymentViews {
     const adjustments = await this.adminAdjustments(db, eq(paymentAdjustments.paymentId, payment.id), viewer);
     const coi = conflictOfInterest(viewer, payment.userId);
     const decide = viewer.permissions.has("payments.decide") && !coi;
-    const selfCancelDays = (await this.settings.get("events")).self_cancel_days;
+    const selfCancelDays = (await this.setting(db, "events")).self_cancel_days;
     const ticket = payment.type === "ticket" ? row.ticket : null;
     const event = payment.type === "ticket" ? row.event : null;
     return {
@@ -468,11 +477,6 @@ export class PaymentViews {
         can_adjust: decide && payment.status === "paid",
       },
     };
-  }
-
-  /** Batas review satu payment (dipakai uji dan ringkasan) dengan rumus JS yang sama dengan SQL. */
-  reviewDueAtOf(payment: PaymentRow, event: EventRow | null, rules: ReviewRules): Date | null {
-    return reviewDueAt(payment, event, rules);
   }
 
   // ============================================================================================== penyesuaian
@@ -585,11 +589,6 @@ export function adjustmentOverdue(adjustment: Pick<AdjustmentRow, "status" | "du
     adjustment.dueAt !== null &&
     adjustment.dueAt.getTime() <= now.getTime()
   );
-}
-
-/** Payment tiket yang reservasinya habis (dipakai layanan anggota, AC F09-2). */
-export function ticketLapsed(ticket: TicketRow | null, now: Date): boolean {
-  return ticket !== null && reservationLapsed(ticket, now);
 }
 
 export type AdminRow = Awaited<ReturnType<ReturnType<PaymentViews["adminRowsQuery"]>["execute"]>>[number];
