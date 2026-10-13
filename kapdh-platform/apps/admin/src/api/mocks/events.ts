@@ -397,7 +397,9 @@ function ticketView(t: TicketRec, now = nowMs()): Ticket {
     cancelled_by: t.cancelled_by,
     cancel_reason: t.cancel_reason,
     payment,
-    refunds: [...t.refunds].sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id)),
+    refunds: [...t.refunds].sort(
+      (a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id),
+    ),
     review_overdue:
       payment !== null &&
       payment.status === "pending" &&
@@ -453,7 +455,14 @@ function placeholderCover(label: string, color: string): string {
 function seedCover(id: string, label: string, color: string): string {
   covers.set(id, {
     attached: true,
-    media: { file_id: id, url: placeholderCover(label, color), mime: "image/png", bytes: 48_213, width: 640, height: 360 },
+    media: {
+      file_id: id,
+      url: placeholderCover(label, color),
+      mime: "image/png",
+      bytes: 48_213,
+      width: 640,
+      height: 360,
+    },
   });
   return id;
 }
@@ -467,7 +476,12 @@ interface TicketSeed {
   hold?: number | null;
   checkedIn?: { at: number; by: Actor };
   cancelled?: { at: number; by: S["TicketCancelledBy"]; reason: string };
-  payment?: { status: S["TicketPaymentStatus"]; submitted?: number | null; decided?: number | null; due?: number };
+  payment?: {
+    status: S["TicketPaymentStatus"];
+    submitted?: number | null;
+    decided?: number | null;
+    due?: number;
+  };
   createdAt: number;
 }
 
@@ -525,8 +539,8 @@ export function reset(): void {
   failCheckins = 0;
   seq = 0;
   const t0 = nowMs();
-  // Jam bulat agar data contoh mudah dibaca di dev:mock.
-  const now = Math.floor(t0 / HOUR) * HOUR;
+  // Menit bulat agar data contoh mudah dibaca di dev:mock; hold dan jendela tetap relatif terhadap waktu nyata.
+  const now = Math.floor(t0 / 60_000) * 60_000;
   const created = iso(now - 60 * DAY);
 
   const cats: [keyof typeof CATEGORY_IDS, string, number, boolean][] = [
@@ -575,7 +589,7 @@ export function reset(): void {
     starts_at: iso(now + HOUR),
     ends_at: iso(now + 6 * HOUR),
     registration_opens_at: iso(now - 30 * DAY),
-    registration_closes_at: iso(now + 30 * 60_000),
+    registration_closes_at: iso(now + HOUR),
     status: "open",
     price: "60000.00",
     seats_total: 1000,
@@ -619,7 +633,7 @@ export function reset(): void {
       qr: MOCK_TICKET_QR.awaitingPayment,
       status: "awaiting_payment",
       holder: holder("0199e100-0000-7000-8000-00000000a105", "Hasan Basri", "32.01.01.40", 32),
-      hold: now + 20 * 60_000,
+      hold: now + 50 * 60_000,
       payment: { status: "pending" },
       createdAt: now - 2 * HOUR,
     },
@@ -819,6 +833,33 @@ export const mockEvents = {
   failCheckins(times = 1) {
     failCheckins = times;
   },
+  /** Pengurus lain membatalkan event (semua tiket aktif cancelled), mis. saat petugas sedang memindai (AC F09-7). */
+  cancelElsewhere(eventId: string, reason = "Dibatalkan pengurus lain.") {
+    const e = events.get(eventId);
+    if (!e) throw new Error(`Event ${eventId} tidak ada`);
+    const now = nowMs();
+    for (const t of ticketsOf(e.id))
+      if (t.status === "awaiting_payment" || t.status === "awaiting_review" || t.status === "paid") {
+        t.status = "cancelled";
+        t.cancelled_at = iso(now);
+        t.cancelled_by = "admin";
+        t.cancel_reason = reason;
+        t.version += 1;
+      }
+    Object.assign(e, {
+      status: "cancelled",
+      cancelled_at: iso(now),
+      cancel_reason: reason,
+      version: e.version + 1,
+      updated_at: iso(now),
+    });
+  },
+  /** Ubah jendela check-in khusus event (ms epoch), untuk uji too_early/too_late (D5). */
+  setCheckinWindow(eventId: string, opensMs: number, closesMs: number) {
+    const e = events.get(eventId);
+    if (!e) throw new Error(`Event ${eventId} tidak ada`);
+    Object.assign(e, { checkin_opens_at: iso(opensMs), checkin_closes_at: iso(closesMs) });
+  },
   event(eventId: string): Detail | null {
     const e = events.get(eventId);
     return e ? detail(e) : null;
@@ -963,10 +1004,18 @@ function validateEvent(
   const co = merged.checkin_opens_at;
   const cc = merged.checkin_closes_at;
   if ((co === null) !== (cc === null))
-    push(errors, co === null ? "checkin_opens_at" : "checkin_closes_at", "Isi keduanya atau kosongkan keduanya.");
+    push(
+      errors,
+      co === null ? "checkin_opens_at" : "checkin_closes_at",
+      "Isi keduanya atau kosongkan keduanya.",
+    );
   else if (co !== null && cc !== null && !(t(cc) > t(co)))
     push(errors, "checkin_closes_at", "Tutup check-in harus setelah buka check-in.");
-  if (merged.location_url !== null && changed.has("location_url") && !/^https:\/\/\S+$/.test(merged.location_url))
+  if (
+    merged.location_url !== null &&
+    changed.has("location_url") &&
+    !/^https:\/\/\S+$/.test(merged.location_url)
+  )
     push(errors, "location_url", "Tautan lokasi harus diawali https://.");
   if (changed.has("timezone") && !validTimeZone(merged.timezone))
     push(errors, "timezone", "Zona waktu tidak dikenal.");
@@ -975,12 +1024,16 @@ function validateEvent(
     if (!c || !c.active) push(errors, "category_id", "Pilih kategori event yang aktif.");
   }
   if (merged.cover_file_id !== null && merged.cover_file_id !== existingCover) {
-    if (!covers.has(merged.cover_file_id)) push(errors, "cover_file_id", "Gambar cover tidak ditemukan. Unggah ulang.");
+    if (!covers.has(merged.cover_file_id))
+      push(errors, "cover_file_id", "Gambar cover tidak ditemukan. Unggah ulang.");
   }
   return errors;
 }
 
-function readFields(body: Record<string, unknown>, base: EventFields): { merged: EventFields; changed: Set<EditableKey> } {
+function readFields(
+  body: Record<string, unknown>,
+  base: EventFields,
+): { merged: EventFields; changed: Set<EditableKey> } {
   const merged: EventFields = { ...base };
   const changed = new Set<EditableKey>();
   for (const k of EDITABLE_KEYS) {
@@ -1024,9 +1077,14 @@ async function idempotent(req: MockRequest, scope: string, run: () => Response):
 }
 
 function versionConflict(current: unknown): Response {
-  return error(409, "VERSION_CONFLICT", "Data sudah diubah orang lain. Muat ulang untuk melihat versi terbaru.", {
-    current,
-  });
+  return error(
+    409,
+    "VERSION_CONFLICT",
+    "Data sudah diubah orang lain. Muat ulang untuk melihat versi terbaru.",
+    {
+      current,
+    },
+  );
 }
 
 function ifMatchMismatch(req: MockRequest, version: number): boolean {
@@ -1043,7 +1101,9 @@ function missingIfMatch(req: MockRequest): Response | null {
 function findEvent(req: MockRequest): EventRec | Response {
   const id = req.params.eventId ?? "";
   if (!UUID_RE.test(id))
-    return error(400, "VALIDATION_ERROR", "Id event tidak valid.", { field_errors: { eventId: ["Tidak valid."] } });
+    return error(400, "VALIDATION_ERROR", "Id event tidak valid.", {
+      field_errors: { eventId: ["Tidak valid."] },
+    });
   const e = events.get(id);
   return e ?? error(404, "NOT_FOUND", "Event tidak ditemukan.");
 }
@@ -1054,7 +1114,8 @@ function releaseExpiredHolds(e: EventRec, now: number): void {
     if (projectedStatus(t, now) !== "expired" || t.status !== "awaiting_payment") continue;
     t.status = "expired";
     t.version += 1;
-    if (t.payment && t.payment.status === "pending") t.payment = { ...t.payment, status: "cancelled", review_due_at: null };
+    if (t.payment && t.payment.status === "pending")
+      t.payment = { ...t.payment, status: "cancelled", review_due_at: null };
   }
 }
 
@@ -1084,9 +1145,15 @@ const REJECTION: Record<RejectionReason, { code: S["ErrorCode"]; message: (t: Ti
     code: "VALIDATION_ERROR",
     message: (t) => `Tiket ini untuk event lain: ${events.get(t.event_id)?.title ?? "-"}.`,
   },
-  event_cancelled: { code: "VALIDATION_ERROR", message: () => "Event dibatalkan; seluruh QR tiket tidak berlaku." },
+  event_cancelled: {
+    code: "VALIDATION_ERROR",
+    message: () => "Event dibatalkan; seluruh QR tiket tidak berlaku.",
+  },
   ticket_cancelled: { code: "VALIDATION_ERROR", message: () => "Tiket sudah dibatalkan." },
-  ticket_expired: { code: "RESERVATION_EXPIRED", message: () => "Tiket kedaluwarsa; reservasi tidak dibayar." },
+  ticket_expired: {
+    code: "RESERVATION_EXPIRED",
+    message: () => "Tiket kedaluwarsa; reservasi tidak dibayar.",
+  },
   ticket_awaiting_payment: {
     code: "PAYMENT_STATE_CONFLICT",
     message: () => "Tiket belum dibayar.",
@@ -1150,10 +1217,18 @@ const TICKET_SORTS: S["AdminEventTicketSort"][] = [
   "checked_in_at_desc",
 ];
 const EVENT_STATUSES: EventStatus[] = ["draft", "open", "closed", "done", "cancelled"];
-const TICKET_STATUSES: TicketStatus[] = ["awaiting_payment", "awaiting_review", "paid", "expired", "cancelled"];
+const TICKET_STATUSES: TicketStatus[] = [
+  "awaiting_payment",
+  "awaiting_review",
+  "paid",
+  "expired",
+  "cancelled",
+];
 
 function queryError(field: string): Response {
-  return error(400, "VALIDATION_ERROR", "Parameter tidak valid.", { field_errors: { [field]: ["Tidak valid."] } });
+  return error(400, "VALIDATION_ERROR", "Parameter tidak valid.", {
+    field_errors: { [field]: ["Tidak valid."] },
+  });
 }
 
 function cmp(a: string, b: string): number {
@@ -1169,7 +1244,11 @@ function slugify(label: string): string {
     .slice(0, 60);
 }
 
-function validateCategoryBody(body: Record<string, unknown>, creating: boolean, selfId?: string): FieldErrors {
+function validateCategoryBody(
+  body: Record<string, unknown>,
+  creating: boolean,
+  selfId?: string,
+): FieldErrors {
   const errors: FieldErrors = {};
   if (creating || "label" in body) {
     const l = body.label;
@@ -1276,7 +1355,9 @@ export const routes: MockRoute[] = [
       const body = req.body ?? {};
       const errors = validateCategoryBody(body, false, c.id);
       if (Object.keys(errors).length > 0)
-        return errors.slug?.some((m) => m.includes("dipakai")) ? validationError(errors, 409) : validationError(errors);
+        return errors.slug?.some((m) => m.includes("dipakai"))
+          ? validationError(errors, 409)
+          : validationError(errors);
       if (typeof body.label === "string") c.label = body.label.trim();
       if (typeof body.slug === "string" && body.slug !== "") c.slug = body.slug;
       if (typeof body.sort_order === "number") c.sort_order = body.sort_order;
@@ -1318,7 +1399,9 @@ export const routes: MockRoute[] = [
       const form = await readMultipart(req.raw);
       const file = form?.file;
       if (!file || typeof file === "string")
-        return error(400, "VALIDATION_ERROR", "Berkas wajib dipilih.", { field_errors: { file: ["Wajib."] } });
+        return error(400, "VALIDATION_ERROR", "Berkas wajib dipilih.", {
+          field_errors: { file: ["Wajib."] },
+        });
       const f: MockFile = file;
       if (f.type !== "image/jpeg" && f.type !== "image/png")
         return error(415, "FILE_INVALID", "Tipe berkas tidak diterima.");
@@ -1359,7 +1442,9 @@ export const routes: MockRoute[] = [
       if (!EVENT_SORTS.includes(sort)) return queryError("sort");
       const now = nowMs();
       const items = [...events.values()]
-        .filter((e) => !q || e.title.toLowerCase().includes(q) || (e.location_name ?? "").toLowerCase().includes(q))
+        .filter(
+          (e) => !q || e.title.toLowerCase().includes(q) || (e.location_name ?? "").toLowerCase().includes(q),
+        )
         .filter((e) => status === null || e.status === status)
         .filter((e) => categoryId === null || e.category_id === categoryId)
         .filter((e) => from === null || Date.parse(e.starts_at) >= Date.parse(from))
@@ -1490,7 +1575,8 @@ export const routes: MockRoute[] = [
           );
       }
       if (changed.size === 0) return json(200, detail(e, now));
-      if (merged.cover_file_id && changed.has("cover_file_id")) covers.get(merged.cover_file_id)!.attached = true;
+      if (merged.cover_file_id && changed.has("cover_file_id"))
+        covers.get(merged.cover_file_id)!.attached = true;
       Object.assign(e, merged, { version: e.version + 1, updated_at: iso(now) });
       return json(200, detail(e, now));
     },
@@ -1507,10 +1593,15 @@ export const routes: MockRoute[] = [
       const missing = missingIfMatch(req);
       if (missing) return missing;
       if (ticketsOf(e.id).length > 0)
-        return error(409, "VALIDATION_ERROR", "Event sudah memiliki tiket sehingga tidak dapat dihapus. Batalkan event.", {
-          field_errors: { _: ["Event sudah memiliki tiket. Gunakan pembatalan event."] },
-          current: detail(e),
-        });
+        return error(
+          409,
+          "VALIDATION_ERROR",
+          "Event sudah memiliki tiket sehingga tidak dapat dihapus. Batalkan event.",
+          {
+            field_errors: { _: ["Event sudah memiliki tiket. Gunakan pembatalan event."] },
+            current: detail(e),
+          },
+        );
       if (ifMatchMismatch(req, e.version)) return versionConflict(detail(e));
       events.delete(e.id);
       return noContent();
@@ -1581,7 +1672,9 @@ export const routes: MockRoute[] = [
         let refunds = 0;
         let refundTotal = 0n;
         const active = ticketsOf(e.id)
-          .filter((t) => t.status === "awaiting_payment" || t.status === "awaiting_review" || t.status === "paid")
+          .filter(
+            (t) => t.status === "awaiting_payment" || t.status === "awaiting_review" || t.status === "paid",
+          )
           .sort((a, b) => cmp(a.id, b.id));
         for (const t of active) {
           const before = t.status;
@@ -1686,7 +1779,8 @@ export const routes: MockRoute[] = [
       const q = (p.get("q") ?? "").trim().toLowerCase();
       const sort = (p.get("sort") ?? "created_at_desc") as S["AdminEventTicketSort"];
       if (status !== null && !TICKET_STATUSES.includes(status as TicketStatus)) return queryError("status");
-      if (checkedIn !== null && checkedIn !== "true" && checkedIn !== "false") return queryError("checked_in");
+      if (checkedIn !== null && checkedIn !== "true" && checkedIn !== "false")
+        return queryError("checked_in");
       if (!TICKET_SORTS.includes(sort)) return queryError("sort");
       const now = nowMs();
       const items = ticketsOf(e.id)
@@ -1738,22 +1832,33 @@ export const routes: MockRoute[] = [
           if (!mockHasPermission("payments.decide"))
             return error(403, "FORBIDDEN", "Refund memerlukan izin memutus pembayaran (payments.decide).");
           if (t.holder.user_id === MOCK_LINKED_ALUMNI_ID)
-            return error(403, "FORBIDDEN", "Refund untuk tiket akun alumni Anda sendiri harus diputus pengurus lain.");
+            return error(
+              403,
+              "FORBIDDEN",
+              "Refund untuk tiket akun alumni Anda sendiri harus diputus pengurus lain.",
+            );
         }
         const missing = missingIfMatch(req);
         if (missing) return missing;
         const status = projectedStatus(t, now);
         if (status === "awaiting_review")
-          return error(409, "PAYMENT_STATE_CONFLICT", "Bukti pembayaran sedang ditinjau. Putuskan pembayarannya lebih dahulu.", {
-            current: ticketView(t, now),
-          });
+          return error(
+            409,
+            "PAYMENT_STATE_CONFLICT",
+            "Bukti pembayaran sedang ditinjau. Putuskan pembayarannya lebih dahulu.",
+            {
+              current: ticketView(t, now),
+            },
+          );
         if (ifMatchMismatch(req, t.version)) return versionConflict(ticketView(t, now));
         if (
           e.status === "cancelled" ||
           t.checked_in_at !== null ||
           (status !== "awaiting_payment" && status !== "paid")
         )
-          return error(409, "VERSION_CONFLICT", "Tiket tidak lagi dapat dibatalkan.", { current: ticketView(t, now) });
+          return error(409, "VERSION_CONFLICT", "Tiket tidak lagi dapat dibatalkan.", {
+            current: ticketView(t, now),
+          });
         if (body.refund === true && (status !== "paid" || cents(t.total) === 0n))
           return validationError({ refund: ["Refund hanya untuk tiket berbayar yang sudah lunas."] });
         t.status = "cancelled";
@@ -1829,7 +1934,8 @@ export const routes: MockRoute[] = [
         const qr = body.qr_code;
         const errors: FieldErrors = {};
         if (typeof eventId !== "string" || !UUID_RE.test(eventId)) push(errors, "event_id", "Pilih event.");
-        if (typeof qr !== "string" || qr.length < 1 || qr.length > 256) push(errors, "qr_code", "Kode tiket tidak valid.");
+        if (typeof qr !== "string" || qr.length < 1 || qr.length > 256)
+          push(errors, "qr_code", "Kode tiket tidak valid.");
         if (Object.keys(errors).length > 0) return validationError(errors);
         if (!events.has(eventId as string)) return error(404, "NOT_FOUND", "Event tidak ditemukan.");
         const t = [...tickets.values()].find((x) => x.qr_code === qr);

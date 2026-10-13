@@ -12,13 +12,7 @@ import { Field } from "../../components/ui/FormField";
 import { Textarea } from "../../components/ui/Input";
 import { useToast } from "../../components/ui/Toast";
 import { formatRupiah } from "../../lib/format";
-import {
-  type AdminEventDetail,
-  currentEventDetail,
-  eventKeys,
-  storeEventDetail,
-  useEventStats,
-} from "./api";
+import { type AdminEventDetail, currentEventDetail, eventKeys, storeEventDetail, useEventStats } from "./api";
 
 type CancelResult = components["schemas"]["AdminEventCancelResult"];
 type TargetStatus = "open" | "closed";
@@ -100,7 +94,10 @@ export function EventActions({
     else void queryClient.invalidateQueries({ queryKey: eventKeys.detail(event.id) });
   };
 
-  const setStatus = useApiMutation<AdminEventDetail, { target: TargetStatus; version: string; success: string }>({
+  const setStatus = useApiMutation<
+    AdminEventDetail,
+    { target: TargetStatus; version: string; success: string }
+  >({
     intent: (v) => ({ target: v.target, version: v.version }),
     toastErrors: false,
     request: (v, ctx) =>
@@ -149,7 +146,12 @@ export function EventActions({
     <>
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Aksi event">
         {allowed.has("edit") ? (
-          <Button variant="outline" size="sm" leftIcon={<Pencil aria-hidden="true" className="size-4" />} onClick={onEdit}>
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<Pencil aria-hidden="true" className="size-4" />}
+            onClick={onEdit}
+          >
             Ubah
           </Button>
         ) : null}
@@ -224,8 +226,8 @@ export function EventActions({
         acknowledgement="Saya memahami event ini dihapus dan tidak dapat dikembalikan."
       >
         <p className="text-sm">
-          Event ini belum pernah memiliki tiket sehingga dapat dihapus. Event yang sudah memiliki tiket hanya dapat
-          dibatalkan (AC F15-2).
+          Event ini belum pernah memiliki tiket sehingga dapat dihapus. Event yang sudah memiliki tiket hanya
+          dapat dibatalkan (AC F15-2).
         </p>
       </ConfirmDialog>
     </>
@@ -321,13 +323,16 @@ function CancelEventDialog({
           <li>Pemesanan dan check-in ditutup; QR seluruh tiket tidak berlaku lagi.</li>
           <li>
             Pemegang tiket aktif diberi notifikasi beserta alasan di bawah
-            {s ? ` (${s.paid_count} lunas, ${s.awaiting_review_count + s.awaiting_payment_count} masih ditahan)` : ""}.
+            {s
+              ? ` (${s.paid_count} lunas, ${s.awaiting_review_count + s.awaiting_payment_count} masih ditahan)`
+              : ""}
+            .
           </li>
           {paidEvent ? (
             <>
               <li>
-                Setiap tiket lunas mendapat refund penuh ({formatRupiah(event.price)}) yang dicatat untuk diproses
-                manual oleh bendahara paling lambat 7 hari kerja (D6).
+                Setiap tiket lunas mendapat refund penuh ({formatRupiah(event.price)}) yang dicatat untuk
+                diproses manual oleh bendahara paling lambat 7 hari kerja (D6).
               </li>
               <li>
                 Reservasi tanpa bukti dibatalkan. Pembayaran yang buktinya sedang ditinjau tetap di antrean
@@ -369,7 +374,10 @@ function CancelEventDialog({
 /** Ringkasan dampak pembatalan event (AdminEventCancelResult) yang diumumkan setelah berhasil. */
 export function CancelResultNotice({ result }: { result: CancelResult }) {
   return (
-    <div role="status" className="flex flex-col gap-1 rounded-lg border border-success/30 bg-success-bg p-4 text-sm">
+    <div
+      role="status"
+      className="flex flex-col gap-1 rounded-lg border border-success/30 bg-success-bg p-4 text-sm"
+    >
       <p className="flex items-center gap-2 font-semibold text-success">
         <CircleCheck aria-hidden="true" className="size-4" />
         Event dibatalkan. Notifikasi peserta dijadwalkan.
@@ -378,8 +386,8 @@ export function CancelResultNotice({ result }: { result: CancelResult }) {
         <li>{result.tickets_cancelled} tiket aktif dibatalkan.</li>
         <li>{result.payments_cancelled} pembayaran tanpa bukti dibatalkan.</li>
         <li>
-          {result.payments_in_review} pembayaran berbukti tetap di antrean verifikasi (persetujuan membuat refund
-          otomatis).
+          {result.payments_in_review} pembayaran berbukti tetap di antrean verifikasi (persetujuan membuat
+          refund otomatis).
         </li>
         <li>
           {result.refunds_created} refund senilai {formatRupiah(result.refund_total)} dicatat untuk bendahara.

@@ -1,5 +1,5 @@
 import { ImageOff, Upload } from "lucide-react";
-import { type DragEvent, useEffect, useId, useRef, useState } from "react";
+import { type DragEvent, type Ref, useEffect, useId, useRef, useState } from "react";
 import { toApiError } from "../../api/errors";
 import { IMAGE_MAX_BYTES } from "../../api/files";
 import { Button } from "../../components/ui/Button";
@@ -8,7 +8,8 @@ import { cn } from "../../lib/cn";
 import { uploadEventCover } from "./api";
 
 const TYPES = ["image/jpeg", "image/png"];
-export const COVER_RULES = "JPG/PNG maksimal 5 MB. Gambar tampil publik di aplikasi; jangan memuat data pribadi.";
+export const COVER_RULES =
+  "JPG/PNG maksimal 5 MB. Gambar tampil publik di aplikasi; jangan memuat data pribadi.";
 
 /** Pesan galat bila berkas jelas ditolak server (N-10); null bila layak dikirim. */
 export function validateCoverFile(file: File): string | null {
@@ -18,7 +19,8 @@ export function validateCoverFile(file: File): string | null {
   return null;
 }
 
-type UploadState = { kind: "idle" } | { kind: "uploading"; name: string } | { kind: "error"; message: string };
+type UploadState =
+  { kind: "idle" } | { kind: "uploading"; name: string } | { kind: "error"; message: string };
 
 export interface CoverValue {
   fileId: string;
@@ -36,11 +38,14 @@ export function EventCoverField({
   onChange,
   error,
   disabled,
+  buttonRef,
 }: {
   value: CoverValue | null;
   onChange: (value: CoverValue | null) => void;
   error?: string | null;
   disabled?: boolean;
+  /** Ref tombol pilih gambar, agar galat server dapat memfokusnya (N-11). */
+  buttonRef?: Ref<HTMLButtonElement>;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -66,7 +71,11 @@ export function EventCoverField({
       const media = await uploadEventCover(file, controller.signal);
       if (controller.signal.aborted) return;
       setState({ kind: "idle" });
-      onChange({ fileId: media.file_id, url: media.url, caption: `${file.name} | ${formatBytes(media.bytes)}` });
+      onChange({
+        fileId: media.file_id,
+        url: media.url,
+        caption: `${file.name} | ${formatBytes(media.bytes)}`,
+      });
     } catch (e) {
       if (controller.signal.aborted) return;
       const err = toApiError(e);
@@ -129,11 +138,14 @@ export function EventCoverField({
                 Pratinjau tidak tersedia
               </span>
             )}
-            {value.caption ? <figcaption className="text-xs text-text-muted">{value.caption}</figcaption> : null}
+            {value.caption ? (
+              <figcaption className="text-xs text-text-muted">{value.caption}</figcaption>
+            ) : null}
           </figure>
         ) : null}
         <div className="flex flex-wrap items-center gap-3">
           <Button
+            ref={buttonRef}
             variant="outline"
             size="sm"
             aria-label={`${state.kind === "uploading" ? "Mengunggah" : value ? "Ganti gambar" : "Pilih gambar"}: ${label}`}
@@ -172,7 +184,11 @@ export function EventCoverField({
         />
       </div>
       <span role="status" aria-live="polite" className="sr-only">
-        {state.kind === "uploading" ? `Mengunggah ${state.name}...` : value ? "Gambar cover siap disimpan." : null}
+        {state.kind === "uploading"
+          ? `Mengunggah ${state.name}...`
+          : value
+            ? "Gambar cover siap disimpan."
+            : null}
       </span>
       {shownError ? (
         <p id={errId} role="alert" className="text-xs font-medium text-danger">

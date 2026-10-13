@@ -35,7 +35,11 @@ export function EventDetailPage() {
   const headingRef = useRef<HTMLDivElement>(null);
 
   const setTab = (next: EventDetailTab) =>
-    void navigate({ to: "/events/$eventId", params: { eventId }, search: next === "overview" ? {} : { tab: next } });
+    void navigate({
+      to: "/events/$eventId",
+      params: { eventId },
+      search: next === "overview" ? {} : { tab: next },
+    });
 
   // Pembatalan berhasil: dialog tertutup dan tombol pemicunya hilang; fokus ke ringkasan hasil (N-11).
   useEffect(() => {
@@ -89,13 +93,20 @@ export function EventDetailPage() {
           <Ban aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           <p>
             <strong>Event dibatalkan</strong>
-            {e.cancelled_at ? ` pada ${formatDateTime(e.cancelled_at)}` : ""}. Alasan: {e.cancel_reason ?? "-"}. QR
-            seluruh tiket tidak berlaku; refund peserta berbayar diproses bendahara.
+            {e.cancelled_at ? ` pada ${formatDateTime(e.cancelled_at)}` : ""}. Alasan:{" "}
+            {e.cancel_reason ?? "-"}. QR seluruh tiket tidak berlaku; refund peserta berbayar diproses
+            bendahara.
           </p>
         </div>
       ) : null}
 
-      <Tabs label="Bagian detail event" items={tabs} value={activeTab} onValueChange={setTab} idPrefix={TAB_PREFIX} />
+      <Tabs
+        label="Bagian detail event"
+        items={tabs}
+        value={activeTab}
+        onValueChange={setTab}
+        idPrefix={TAB_PREFIX}
+      />
 
       {activeTab === "overview" ? (
         <TabPanel idPrefix={TAB_PREFIX} value="overview" className="flex flex-col gap-5 outline-none">
@@ -131,11 +142,19 @@ function EventOverview({ event: e }: { event: AdminEventDetail }) {
         <StatCard
           label="Sisa tiket"
           value={e.status === "cancelled" ? "-" : e.seats_available.toLocaleString("id-ID")}
-          hint={e.status === "cancelled" ? "Event dibatalkan" : `Kuota minimal ${e.min_seats_total} (AC F15-2)`}
+          hint={
+            e.status === "cancelled" ? "Event dibatalkan" : `Kuota minimal ${e.min_seats_total} (AC F15-2)`
+          }
           icon={<Users />}
           tone={e.seats_available === 0 && e.status !== "cancelled" ? "danger" : "primary"}
         />
-        <StatCard label="Ditahan" value={e.held_quantity} hint="Menunggu bayar atau verifikasi" icon={<Hourglass />} tone="warning" />
+        <StatCard
+          label="Ditahan"
+          value={e.held_quantity}
+          hint="Menunggu bayar atau verifikasi"
+          icon={<Hourglass />}
+          tone="warning"
+        />
         <StatCard label="Terbayar" value={e.paid_quantity} icon={<CircleCheck />} tone="info" />
         <StatCard
           label="Hadir"
@@ -192,7 +211,9 @@ function EventOverview({ event: e }: { event: AdminEventDetail }) {
                         <MapPin aria-hidden="true" className="size-4 text-primary" />
                         {e.location_name ?? "-"}
                       </span>
-                      {e.location_address ? <span className="text-text-muted">{e.location_address}</span> : null}
+                      {e.location_address ? (
+                        <span className="text-text-muted">{e.location_address}</span>
+                      ) : null}
                       {e.location_url ? (
                         <a
                           href={e.location_url}
@@ -228,7 +249,12 @@ function EventOverview({ event: e }: { event: AdminEventDetail }) {
             {stats.isPending ? (
               <Loading label="Memuat statistik event..." rows={4} />
             ) : stats.isError ? (
-              <ErrorState error={stats.error} onRetry={() => void stats.refetch()} compact title="Statistik gagal dimuat" />
+              <ErrorState
+                error={stats.error}
+                onRetry={() => void stats.refetch()}
+                compact
+                title="Statistik gagal dimuat"
+              />
             ) : (
               <KeyValueList
                 items={[

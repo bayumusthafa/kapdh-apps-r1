@@ -64,7 +64,10 @@ export function outcomeFromError(err: ApiError): ScanOutcome {
         "Status check-in belum diketahui karena koneksi terputus. Pindai atau kirim ulang kode yang sama; sistem tidak mencatat check-in dua kali.",
     };
   if (err.code === "IDEMPOTENCY_CONFLICT")
-    return { kind: "unknown", message: "Permintaan bertabrakan dengan pemindaian sebelumnya. Pindai ulang kode tiket." };
+    return {
+      kind: "unknown",
+      message: "Permintaan bertabrakan dengan pemindaian sebelumnya. Pindai ulang kode tiket.",
+    };
   if (err.code === "FORBIDDEN")
     return { kind: "error", message: "Akun Anda tidak lagi memiliki izin check-in (events.checkin)." };
   const first = Object.values(err.fieldErrors)[0];
@@ -121,7 +124,11 @@ export function CheckinPage() {
       }),
     onSuccess: (result, v) => {
       setOutcome({ kind: "success", result });
-      setCounts({ eventId: v.eventId, checkedIn: result.event_checked_in_count, paid: result.event_paid_count });
+      setCounts({
+        eventId: v.eventId,
+        checkedIn: result.event_checked_in_count,
+        paid: result.event_paid_count,
+      });
       setScanSeq((n) => n + 1);
       setCode("");
       void refetchInBackground(queryClient, eventKeys.checkinEvents);
@@ -220,7 +227,12 @@ export function CheckinPage() {
                 title="Ketik kode tiket"
                 description="Juga untuk pemindai genggam: arahkan pemindai lalu tekan Enter."
               />
-              <form noValidate onSubmit={onSubmit} className="flex flex-col gap-3 px-5" aria-label="Check-in manual">
+              <form
+                noValidate
+                onSubmit={onSubmit}
+                className="flex flex-col gap-3 px-5"
+                aria-label="Check-in manual"
+              >
                 <Field label="Kode tiket" error={codeError} required>
                   {(a11y) => (
                     <Input
@@ -239,19 +251,17 @@ export function CheckinPage() {
                     />
                   )}
                 </Field>
-                <Button type="submit" variant="gradient" loading={checkin.isPending} loadingText="Memeriksa...">
+                <Button
+                  type="submit"
+                  variant="gradient"
+                  loading={checkin.isPending}
+                  loadingText="Memeriksa..."
+                >
                   Check-in
                 </Button>
               </form>
             </Card>
-            <Card className="flex flex-col gap-3 pb-5">
-              <CardHeader title="Pindai dengan kamera" />
-              <div className="px-5">
-                <QrScanner paused={checkin.isPending} onDecode={submit} />
-              </div>
-            </Card>
-          </div>
-          <div className="flex min-w-0 flex-[1_1_360px] flex-col gap-3">
+            {/* Hasil tepat di bawah isian kode, dan di samping kamera pada layar lebar. */}
             {shownCounts ? (
               <p className="text-sm font-semibold text-primary" aria-live="polite">
                 Hadir {shownCounts.checkedIn} dari {shownCounts.paid} tiket lunas
@@ -259,6 +269,12 @@ export function CheckinPage() {
             ) : null}
             <ScanResultCard outcome={outcome} seq={scanSeq} event={selected} />
           </div>
+          <Card className="flex min-w-0 flex-[1_1_360px] flex-col gap-3 pb-5">
+            <CardHeader title="Pindai dengan kamera" />
+            <div className="px-5">
+              <QrScanner paused={checkin.isPending} onDecode={submit} />
+            </div>
+          </Card>
         </div>
       ) : null}
     </div>
@@ -277,8 +293,8 @@ function CheckinEventInfo({ event: e }: { event: CheckinEvent }) {
           {e.checkin_open ? "Check-in dibuka" : "Check-in belum dibuka"}
         </Badge>
         <span>
-          Jendela {formatRange(e.checkin_opens_at, e.checkin_closes_at, e.timezone)} | hadir {e.checked_in_count} dari{" "}
-          {e.paid_count}
+          Jendela {formatRange(e.checkin_opens_at, e.checkin_closes_at, e.timezone)} | hadir{" "}
+          {e.checked_in_count} dari {e.paid_count}
         </span>
       </span>
     </span>
@@ -348,7 +364,8 @@ export function ScanResultCard({
         <HolderBlock ticket={t} />
         {d.rejection_reason === "already_checked_in" && t.checked_in_at ? (
           <p className="text-base font-semibold">
-            Sebelumnya check-in {formatDateTime(t.checked_in_at)} oleh {t.checked_in_by?.display_name ?? "petugas"}.
+            Sebelumnya check-in {formatDateTime(t.checked_in_at)} oleh{" "}
+            {t.checked_in_by?.display_name ?? "petugas"}.
           </p>
         ) : null}
         {d.rejection_reason === "other_event" ? (

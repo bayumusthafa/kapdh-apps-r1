@@ -91,7 +91,7 @@ export function EventListPage() {
       {
         id: "title",
         header: "Nama Event",
-        meta: { rowHeader: true, cellClassName: "min-w-48" },
+        meta: { rowHeader: true, cellClassName: "min-w-40" },
         cell: ({ row }) => {
           const e = row.original;
           return (
@@ -149,13 +149,13 @@ export function EventListPage() {
       {
         id: "registration_opens_at",
         header: "Buka Daftar",
-        meta: { cellClassName: "whitespace-nowrap" },
+        meta: { cellClassName: "min-w-20" },
         cell: ({ row }) => formatTableDate(row.original.registration_opens_at, row.original.timezone),
       },
       {
         id: "registration_closes_at",
         header: "Tutup Daftar",
-        meta: { cellClassName: "whitespace-nowrap" },
+        meta: { cellClassName: "min-w-20" },
         cell: ({ row }) => formatTableDate(row.original.registration_closes_at, row.original.timezone),
       },
       {
@@ -176,8 +176,9 @@ export function EventListPage() {
               <Badge tone={e.seats_available === 0 ? "danger" : "success"}>
                 {e.seats_available === 0 ? "Habis" : e.seats_available.toLocaleString("id-ID")}
               </Badge>
-              <span className="whitespace-nowrap text-xs text-text-muted">
-                Ditahan {e.held_quantity} | Terbayar {e.paid_quantity}
+              <span className="flex flex-col items-end whitespace-nowrap text-xs text-text-muted">
+                <span>Ditahan {e.held_quantity}</span>
+                <span>Terbayar {e.paid_quantity}</span>
               </span>
             </span>
           );
@@ -228,7 +229,7 @@ export function EventListPage() {
         onRetry={() => void list.refetch()}
         isFetching={list.isFetching && list.isPlaceholderData}
         total={list.data?.total}
-        minWidth={960}
+        minWidth={900}
         pagination={{
           pageIndex: paging.pageIndex,
           pageSize: EVENT_PAGE_SIZE,
@@ -289,7 +290,11 @@ export function EventListPage() {
                 : {
                     label: `Ubah ${e.title}`,
                     onClick: () =>
-                      void navigate({ to: "/events/$eventId", params: { eventId: e.id }, search: { tab: "edit" } }),
+                      void navigate({
+                        to: "/events/$eventId",
+                        params: { eventId: e.id },
+                        search: { tab: "edit" },
+                      }),
                   }
             }
             remove={{
@@ -336,8 +341,8 @@ export function EventListPage() {
         acknowledgement="Saya memahami event ini dihapus dan tidak dapat dikembalikan."
       >
         <p className="text-sm">
-          Hapus hanya untuk event yang belum pernah memiliki tiket. Event yang sudah memiliki tiket harus dibatalkan
-          agar peserta diberi notifikasi dan refund tercatat (AC F15-2).
+          Hapus hanya untuk event yang belum pernah memiliki tiket. Event yang sudah memiliki tiket harus
+          dibatalkan agar peserta diberi notifikasi dan refund tercatat (AC F15-2).
         </p>
       </ConfirmDialog>
     </div>
