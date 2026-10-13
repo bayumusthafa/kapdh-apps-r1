@@ -97,6 +97,20 @@ Aturan yang perlu diketahui implementasi dan klien:
 | `POST /public/deletion/confirm`                     | **[memutus]** Body kini `{deletion_token, confirm, acknowledged_disclosure_version}`; OTP diverifikasi lebih dulu di `POST /public/deletion/verify` yang juga menampilkan status dan pengungkapan. `apps/web/src/pages/delete-account.astro` masih mengirim bentuk lama dan wajib diperbarui oleh agen public-web. Idempotency-Key, 409 dan 410 dideklarasikan.                                                                                         |
 | `AccountDeletion`                                   | **[memutus]** `status` menambah `failed` (selaras DB); field wajib baru `source` (app/web), `estimated_completion_at` (kini wajib) dan `completed_at` (nullable); `request_number` berpola `DEL-YYYY-XXXX`.                                                                                                                                                                                                                                             |
 
+### Fase C api-admin-auth (`admin-auth.yaml`; F-02, F-16, PRD 8.2)
+
+Implementasi API seluruh operasi admin-auth. Perubahan kontrak aditif (tidak memutus klien):
+
+| Operasi / skema                                         | Perubahan                                                                                                                                                                                                                        |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AdminProfile`                                          | `email`, `has_linked_alumni` dan `backup_codes_remaining` kini wajib (server selalu mengirimnya sejak implementasi ini; opsional -> wajib pada respons tidak memutus klien di kabel, N-13).                                      |
+| `POST /admin/auth/mfa`                                  | Deskripsi: `mfa_token` sekali pakai. Setelah kode benar menghasilkan sesi, `jti` token dikonsumsi; pemakaian ulang token yang sama ditolak 401 dan kode yang dikirim tidak dikonsumsi. Kode salah tetap tidak mengonsumsi token. |
+| `POST /admin/auth/invitations/accept`                   | Deskripsi: secret TOTP dari pendaftaran sebelumnya yang tidak selesai dibuang saat undangan diterima, sehingga /totp/confirm hanya menerima secret yang dibuat dengan token pendaftaran baru.                                    |
+| `POST /admin/auth/mfa`, `/totp/confirm`, `/totp/enroll` | Deskripsi audit: kegagalan kode ke-5 yang mengunci tahap kode diaudit sekali (`admin.mfa_locked`, tanpa kode); /totp/enroll mengaudit `admin.mfa_enrollment_started` tanpa secret.                                               |
+
+CLI bootstrap Super Admin (PRD 8.2 langkah 3) kini mencetak satu tautan `${ADMIN_ORIGIN}/invite#t=<token>` (sebelumnya
+`/invite/<token>`, dilarang kontrak C1).
+
 ### C3 Finance: payments, admin-payments, admin-settings (F-03, F-04, F-07, F-15, D4, D6, D13)
 
 Kontrak keuangan dilengkapi sesuai PRD 3.3, 3.4, 3.9, 4.3 dan ARCHITECTURE §3.3. Belum ada controller API untuk
