@@ -236,13 +236,17 @@ describe("Health worker (PRD 5.5: DB, umur job/outbox tertua, tick penjadwal)", 
     expect(neverOk).toMatchObject({ status: "error", issues: ["dispatcher_failing"] });
     // Kegagalan singkat (di bawah batas) belum memicu restart.
     const transient = await buildHealthReport(
-      inputs(clock, { dispatcher: dispatcherStatus(clock, { lastPollOkAt: ago(30_000), consecutiveFailures: 15 }) }),
+      inputs(clock, {
+        dispatcher: dispatcherStatus(clock, { lastPollOkAt: ago(30_000), consecutiveFailures: 15 }),
+      }),
     );
     expect(transient.status).toBe("ok");
 
     // Penjadwal: pemeriksaan kunci leader terus gagal walau loop berputar.
     const leaderFailing = await buildHealthReport(
-      inputs(clock, { scheduler: schedulerStatus(clock, { lastLeaderCheckOkAt: ago(120_001), role: "standby" }) }),
+      inputs(clock, {
+        scheduler: schedulerStatus(clock, { lastLeaderCheckOkAt: ago(120_001), role: "standby" }),
+      }),
     );
     expect(leaderFailing).toMatchObject({ status: "error", issues: ["scheduler_failing"] });
     // Leader: setiap enqueue job terjadwal gagal sejak 2 menit lalu.

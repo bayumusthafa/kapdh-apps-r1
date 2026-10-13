@@ -157,9 +157,15 @@ describe("Antrean BullMQ dengan Redis yang putus (PRD 5.1, 5.5)", () => {
     expect((result as PromiseRejectedResult).reason).toBeInstanceOf(QueueUnavailableError);
     expect(ms).toBeLessThan(2_000);
     for (const id of ids)
-      expect(await outboxRow(tdb.db, id)).toMatchObject({ status: "pending", lockedUntil: null, attempts: 0 });
+      expect(await outboxRow(tdb.db, id)).toMatchObject({
+        status: "pending",
+        lockedUntil: null,
+        attempts: 0,
+      });
     expect(dispatcher.status().totals).toMatchObject({ claimed: 2, released: 2 });
-    expect(logs.lines.find((line) => line.msg === "antrean menolak klaim outbox; klaim dilepas")).toMatchObject({
+    expect(
+      logs.lines.find((line) => line.msg === "antrean menolak klaim outbox; klaim dilepas"),
+    ).toMatchObject({
       level: "warn",
       unqueued: 2,
       released: 2,

@@ -190,9 +190,7 @@ export class JobRunner {
     const jobId = `outbox:${claim.id}`;
     // Token baru selalu lebih besar dari token klaim (juga saat jam tidak bergerak), sehingga satu klaim hanya dapat
     // dimulai sekali.
-    const token = new Date(
-      Math.max(this.clock.now().getTime() + lockMs, claim.lockedUntil.getTime() + 1),
-    );
+    const token = new Date(Math.max(this.clock.now().getTime() + lockMs, claim.lockedUntil.getTime() + 1));
     const [event] = await this.db
       .update(outboxEvents)
       .set({ lockedUntil: token })
