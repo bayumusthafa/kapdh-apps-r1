@@ -14,7 +14,7 @@
 const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 const BIDI_CONTROLS = /[‪-‮⁦-⁩]/;
 const DANGEROUS_LINK =
-  /(?:^|[\s<("'[])(?:javascript|vbscript):\S|data:\s*(?:text\/html|text\/javascript|application\/(?:x-)?javascript)/i;
+  /(?:^|[\s<("'[=])(?:javascript|vbscript):\S|data:\s*(?:text\/html|text\/javascript|application\/(?:x-)?javascript)/i;
 
 export const HARMFUL_CONTENT_MESSAGE =
   "Pesan memuat karakter kendali atau tautan berbahaya yang tidak diizinkan. Hapus bagian itu lalu kirim ulang.";
