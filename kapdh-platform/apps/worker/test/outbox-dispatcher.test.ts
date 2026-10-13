@@ -189,6 +189,64 @@ describe("Dispatcher outbox (PRD 5.1, ARCHITECTURE §4.8)", () => {
     await h.queue.close(1_000);
   });
 
+  it("PRD 5.1: klaim yang menunggu di antrean melewati lease lalu mulai diproses → lease diambil alih atomik; klaim ulang dispatcher lain tidak terjadi selama handler berjalan (tidak ada notifikasi ganda)", async () => {
+    const h = await harness({ leaseMs: 60_000 });
+    const id = await insertOutboxEvent(tdb.db, h.clock);
+    const [waiting] = await h.jobs.claimOutbox({ limit: 10, lockMs: 60_000 });
+    // Job antrean menunggu melewati lease (mis. semua worker mati > lease, Redis menyimpan job yang menunggu).
+    h.clock.advance(60_001);
+    h.fake.hold();
+    const processing = h.jobs.processOutboxClaim(waiting!, { lockMs: 60_000 });
+    await eventually(() => h.fake.calls.length === 1);
+    // Dispatcher lain mem-poll saat handler masih berjalan: lease sudah diambil alih, tidak ada klaim ulang.
+    expect(await h.jobs.claimOutbox({ limit: 10, lockMs: 60_000 })).toEqual([]);
+    expect((await outboxRow(tdb.db, id)).lockedUntil!.getTime()).toBe(h.clock.now().getTime() + 60_000);
+    h.fake.release();
+    expect(await processing).toBe("dispatched");
+    expect(h.fake.calls).toHaveLength(1);
+    expect(await outboxRow(tdb.db, id)).toMatchObject({ status: "dispatched", attempts: 1, lockedUntil: null });
+    await h.queue.close(1_000);
+  });
+
+  it("PRD 5.1: klaim lama yang mulai diproses SETELAH event diklaim ulang → lost, handlernya tidak pernah berjalan", async () => {
+    const h = await harness({ leaseMs: 60_000 });
+    const id = await insertOutboxEvent(tdb.db, h.clock);
+    const [stale] = await h.jobs.claimOutbox({ limit: 10, lockMs: 60_000 });
+    h.clock.advance(60_001);
+    const [fresh] = await h.jobs.claimOutbox({ limit: 10, lockMs: 60_000 });
+    expect(fresh).toMatchObject({ id, attempts: 2 });
+    h.fake.hold();
+    const running = h.jobs.processOutboxClaim(fresh!, { lockMs: 60_000 });
+    await eventually(() => h.fake.calls.length === 1);
+    // Job lama (antrean) baru mulai saat klaim baru sedang berjalan: ditolak sebelum handler.
+    expect(await h.jobs.processOutboxClaim(stale!, { lockMs: 60_000 })).toBe("lost");
+    expect(h.fake.calls).toHaveLength(1);
+    h.fake.release();
+    expect(await running).toBe("dispatched");
+    expect(h.fake.calls).toHaveLength(1);
+    expect(await outboxRow(tdb.db, id)).toMatchObject({ status: "dispatched", attempts: 2 });
+    await h.queue.close(1_000);
+  });
+
+  it("PRD 5.1: klaim yang sama diproses dua kali (job antrean diulang/stalled saat handler pertama masih berjalan) → proses kedua lost", async () => {
+    const h = await harness({ leaseMs: 60_000 });
+    const id = await insertOutboxEvent(tdb.db, h.clock);
+    const [claim] = await h.jobs.claimOutbox({ limit: 10, lockMs: 60_000 });
+    h.fake.hold();
+    // Jam tidak bergerak: token pengambilalihan tetap berbeda dari token klaim, sehingga klaim hanya dapat dimulai sekali.
+    const first = h.jobs.processOutboxClaim(claim!, { lockMs: 60_000 });
+    await eventually(() => h.fake.calls.length === 1);
+    expect(await h.jobs.processOutboxClaim(claim!, { lockMs: 60_000 })).toBe("lost");
+    h.fake.release();
+    expect(await first).toBe("dispatched");
+    expect(h.fake.calls).toHaveLength(1);
+    expect(await outboxRow(tdb.db, id)).toMatchObject({ status: "dispatched", attempts: 1 });
+    // Setelah selesai, klaim itu juga tidak dapat dilepas maupun diproses lagi.
+    expect(await h.jobs.releaseOutboxClaim(claim!)).toBe(false);
+    expect(await h.jobs.processOutboxClaim(claim!, { lockMs: 60_000 })).toBe("lost");
+    await h.queue.close(1_000);
+  });
+
   it("PRD 5.1: lease diperpanjang (heartbeat) selama handler panjang berjalan sehingga dispatcher lain tidak mengklaimnya", async () => {
     const h = await harness({ leaseMs: 1_500 });
     const id = await insertOutboxEvent(tdb.db, h.clock);
