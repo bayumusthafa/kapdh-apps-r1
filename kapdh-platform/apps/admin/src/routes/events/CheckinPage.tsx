@@ -134,12 +134,13 @@ export function CheckinPage() {
       void refetchInBackground(queryClient, eventKeys.checkinEvents);
       void queryClient.invalidateQueries({ queryKey: eventKeys.detail(v.eventId) });
     },
-    onError: (err) => {
+    onError: (err, v) => {
       const next = outcomeFromError(err);
       setOutcome(next);
       setScanSeq((n) => n + 1);
-      // Hasil diketahui: kosongkan untuk pemindaian berikutnya. Belum diketahui: biarkan kode untuk dikirim ulang.
-      if (next.kind !== "unknown") setCode("");
+      // Hasil diketahui: kosongkan untuk pemindaian berikutnya. Belum diketahui: kode (juga hasil kamera) dipasang
+      // di isian agar petugas cukup menekan Check-in untuk mengirim ulang dengan key yang sama (PRD 4.3).
+      setCode(next.kind === "unknown" ? v.qr : "");
     },
   });
 
@@ -200,7 +201,9 @@ export function CheckinPage() {
             <>
               {search.event && !selected ? (
                 <p role="alert" className="mb-3 rounded-md bg-warning-bg p-3 text-sm text-warning">
-                  Event yang dipilih sebelumnya tidak lagi tersedia untuk check-in. Pilih event lain.
+                  Event yang dipilih belum atau tidak lagi tersedia untuk check-in: pemindai hanya memuat event
+                  yang jendela check-in-nya dibuka paling lambat 24 jam lagi dan belum berakhir (D5). Pilih event
+                  di bawah.
                 </p>
               ) : null}
               <RadioGroup<string>
