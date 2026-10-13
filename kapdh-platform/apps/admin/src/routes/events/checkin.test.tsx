@@ -2,7 +2,13 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockAuth } from "../../api/mocks";
-import { eventRequests, MOCK_EVENT_IDS, MOCK_TICKET_IDS, MOCK_TICKET_QR, mockEvents } from "../../api/mocks/events";
+import {
+  eventRequests,
+  MOCK_EVENT_IDS,
+  MOCK_TICKET_IDS,
+  MOCK_TICKET_QR,
+  mockEvents,
+} from "../../api/mocks/events";
 import { renderApp, signIn, type User } from "../../test/utils";
 
 /**
@@ -111,22 +117,55 @@ describe("check-in tiket (AC F09-5, F09-6; server tiruan)", () => {
   });
 
   it.each([
-    ["QR event lain", MOCK_TICKET_QR.seminar, "other_event", "Tiket event lain", /^Tiket untuk: Seminar AI untuk Alumni/],
-    ["menunggu verifikasi", MOCK_TICKET_QR.review, "ticket_awaiting_review", "Pembayaran belum diverifikasi", /Verifikasi Pembayaran/],
-    ["menunggu pembayaran", MOCK_TICKET_QR.awaitingPayment, "ticket_awaiting_payment", "Belum dibayar", /tiket lunas/],
-    ["hold kedaluwarsa (proyeksi baca)", MOCK_TICKET_QR.holdExpired, "ticket_expired", "Tiket kedaluwarsa", /mendaftar ulang/],
+    [
+      "QR event lain",
+      MOCK_TICKET_QR.seminar,
+      "other_event",
+      "Tiket event lain",
+      /^Tiket untuk: Seminar AI untuk Alumni/,
+    ],
+    [
+      "menunggu verifikasi",
+      MOCK_TICKET_QR.review,
+      "ticket_awaiting_review",
+      "Pembayaran belum diverifikasi",
+      /Verifikasi Pembayaran/,
+    ],
+    [
+      "menunggu pembayaran",
+      MOCK_TICKET_QR.awaitingPayment,
+      "ticket_awaiting_payment",
+      "Belum dibayar",
+      /tiket lunas/,
+    ],
+    [
+      "hold kedaluwarsa (proyeksi baca)",
+      MOCK_TICKET_QR.holdExpired,
+      "ticket_expired",
+      "Tiket kedaluwarsa",
+      /mendaftar ulang/,
+    ],
     ["tiket dibatalkan", MOCK_TICKET_QR.cancelled, "ticket_cancelled", "Tiket dibatalkan", /tidak berlaku/],
-    ["pemegang disuspend", MOCK_TICKET_QR.ineligible, "holder_ineligible", "Pemegang tidak memenuhi syarat", /dibatasi/],
-  ])("AC F09-6: %s ditolak dengan alasan yang dapat ditindaklanjuti", async (_label, code, reason, title, action) => {
-    const user = userEvent.setup();
-    const input = await openScanner(user);
-    await scan(user, input, code);
-    await waitFor(() => expect(resultCard()).toHaveAttribute("data-result", reason));
-    expect(within(resultCard()).getByRole("heading", { name: title })).toBeInTheDocument();
-    expect(within(resultCard()).getByText(action)).toBeInTheDocument();
-    // Hitungan hadir tidak berubah karena penolakan.
-    expect(screen.getByText("Hadir 1 dari 6 tiket lunas")).toBeInTheDocument();
-  });
+    [
+      "pemegang disuspend",
+      MOCK_TICKET_QR.ineligible,
+      "holder_ineligible",
+      "Pemegang tidak memenuhi syarat",
+      /dibatasi/,
+    ],
+  ])(
+    "AC F09-6: %s ditolak dengan alasan yang dapat ditindaklanjuti",
+    async (_label, code, reason, title, action) => {
+      const user = userEvent.setup();
+      const input = await openScanner(user);
+      await scan(user, input, code);
+      await waitFor(() => expect(resultCard()).toHaveAttribute("data-result", reason));
+      expect(within(resultCard()).getByRole("heading", { name: title })).toBeInTheDocument();
+      expect(within(resultCard()).getByText(action)).toBeInTheDocument();
+      // Hitungan hadir tidak berubah karena penolakan.
+      expect(screen.getByText("Hadir 1 dari 6 tiket lunas")).toBeInTheDocument();
+    },
+  );
 
   it("AC F09-6: di luar jendela check-in (terlalu awal) menampilkan jendela efektif D5", async () => {
     const user = userEvent.setup();

@@ -7,7 +7,6 @@ import { FormProvider, useForm, type UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { api } from "../../api/client";
 import { useApiMutation, useApiQuery } from "../../api/query";
-import { Badge } from "../../components/ui/Badge";
 import { Button, IconButton } from "../../components/ui/Button";
 import { Switch } from "../../components/ui/Choice";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
@@ -276,11 +275,11 @@ export function EventCategoriesSheet({ open, onClose }: { open: boolean; onClose
                         </div>
                       </div>
                       <Switch
-                        label={
-                          <span className="flex items-center gap-2">
-                            Tampil untuk event baru
-                            {c.active ? null : <Badge tone="neutral">Nonaktif</Badge>}
-                          </span>
+                        label="Tampil untuk event baru"
+                        description={
+                          c.active
+                            ? undefined
+                            : "Nonaktif: tidak dapat dipilih untuk event baru, tetap tampil pada event lama."
                         }
                         checked={c.active}
                         disabled={update.isPending}

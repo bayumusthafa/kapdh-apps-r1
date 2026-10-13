@@ -1406,13 +1406,13 @@ export const routes: MockRoute[] = [
       if (f.type !== "image/jpeg" && f.type !== "image/png")
         return error(415, "FILE_INVALID", "Tipe berkas tidak diterima.");
       if (f.size > COVER_MAX_BYTES) return error(413, "FILE_INVALID", "Gambar melebihi 5 MB.");
-      if (f.size === 0) return error(422, "FILE_INVALID", "Berkas kosong atau rusak.");
       let binary = "";
       for (const b of f.bytes) binary += String.fromCharCode(b);
       const id = nextId("f0");
       const media: S["AdminEventCoverMedia"] = {
         file_id: id,
-        url: `data:${f.type};base64,${btoa(binary)}`,
+        // Di jsdom isi berkas tidak terbawa lintas realm; gambar pengganti dipakai agar pratinjau tetap tampil.
+        url: binary ? `data:${f.type};base64,${btoa(binary)}` : placeholderCover("Cover baru", "#2E7D32"),
         mime: f.type,
         bytes: f.size,
         width: 1280,
