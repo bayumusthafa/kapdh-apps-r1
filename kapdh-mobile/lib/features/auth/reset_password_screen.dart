@@ -25,6 +25,8 @@ import 'otp_challenge.dart';
 /// - `reset_token` berlaku 10 menit (PasswordResetGrant.expires_at, dinilai dengan jam server).
 /// - Respons hilang lalu pengulangan 410: sandi baru mungkin sudah tersimpan, sehingga pengguna diarahkan masuk
 ///   dengan sandi baru sebelum disarankan mengulang lupa sandi (kontrak C1, PRD 4.5).
+/// - Meninggalkan layar (tombol kembali judul atau sistem) selama izin masih berlaku meminta konfirmasi dulu, karena
+///   kode yang sudah dipakai tidak dapat dipakai lagi (PRD 4.5, 2.5).
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key});
 
@@ -141,23 +143,72 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     ref.read(sessionProvider.notifier).clearFlow();
   }
 
-  Widget _scaffold(Widget body) => BrandSheetScaffold(
-    body: Form(
-      key: _form,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AuthSheetTitle(
-              title: 'Lupa Password',
-              onBack: _outcome == _ResetOutcome.saved ? () => _signIn(_savedNotice) : _restart,
-            ),
-            const SizedBox(height: KapdhSpace.s4),
-            const RecoveryStepper(current: 2),
-            const SizedBox(height: KapdhSpace.s6),
-            body,
-          ],
+  /// Izin membuat password baru masih dapat dipakai: kodenya sudah dikonsumsi, sehingga meninggalkan layar berarti
+  /// meminta kode baru (dihitung ke batas 5 kirim per jam, PRD 2.5).
+  bool get _grantUsable =>
+      _outcome == _ResetOutcome.editing && ref.read(sessionProvider).resetToken != null && _remaining() != Duration.zero;
+
+  /// Tombol kembali di judul dan tombol kembali sistem (PopScope) berperilaku sama.
+  void _onBack() {
+    if (_busy) return;
+    if (_outcome == _ResetOutcome.saved) {
+      _signIn(_savedNotice);
+    } else if (_grantUsable) {
+      unawaited(_confirmLeave());
+    } else {
+      _restart();
+    }
+  }
+
+  /// Konfirmasi sebelum membuang izin sekali pakai (PRD 4.5: konfirmasi untuk tindakan yang tidak dapat dibatalkan).
+  Future<void> _confirmLeave() async {
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Batalkan password baru?'),
+        content: const Text(
+          'Kode pemulihan sudah dipakai dan tidak dapat dipakai lagi. Bila keluar sekarang, Anda perlu meminta kode '
+          'baru untuk membuat password baru.',
+        ),
+        actions: [
+          TextButton(
+            key: const ValueKey('reset-leave-stay'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Lanjutkan mengisi'),
+          ),
+          TextButton(
+            key: const ValueKey('reset-leave-confirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Ya, batalkan'),
+          ),
+        ],
+      ),
+    );
+    if (leave == true && mounted) _restart();
+  }
+
+  // Rute /forgot/reset bersarang di /forgot: tombol kembali sistem tidak boleh diam-diam kembali ke langkah email dan
+  // meninggalkan reset_token, jadi seluruh pop ditangani [_onBack].
+  Widget _scaffold(Widget body) => PopScope(
+    canPop: false,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop) _onBack();
+    },
+    child: BrandSheetScaffold(
+      body: Form(
+        key: _form,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AuthSheetTitle(title: 'Lupa Password', onBack: _onBack),
+              const SizedBox(height: KapdhSpace.s4),
+              const RecoveryStepper(current: 2),
+              const SizedBox(height: KapdhSpace.s6),
+              body,
+            ],
+          ),
         ),
       ),
     ),
@@ -174,7 +225,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     switch (_outcome) {
       case _ResetOutcome.saved:
         return _scaffold(
-          _ResultPanel(
+          AuthResultPanel(
             icon: Icons.check_circle,
             iconColor: KapdhColors.success,
             title: 'Password berhasil diganti',
@@ -188,7 +239,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         );
       case _ResetOutcome.maybeSaved:
         return _scaffold(
-          _ResultPanel(
+          AuthResultPanel(
             icon: Icons.help_outline,
             iconColor: KapdhColors.warning,
             title: 'Password baru mungkin sudah tersimpan',
@@ -217,7 +268,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         );
       case _ResetOutcome.tokenGone:
         return _scaffold(
-          _ResultPanel(
+          AuthResultPanel(
             icon: Icons.timer_off_outlined,
             iconColor: KapdhColors.danger,
             title: 'Sesi pemulihan berakhir',
@@ -329,57 +380,6 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           onPressed: timedOut ? null : _submit,
         ),
       ],
-    );
-  }
-}
-
-/// Hasil akhir alur pemulihan: ikon berlabel, judul, pesan dan tindakan (status tidak dibedakan warna saja, PRD 4.5).
-class _ResultPanel extends StatelessWidget {
-  const _ResultPanel({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.message,
-    required this.actions,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String message;
-  final List<Widget> actions;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      liveRegion: true,
-      container: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Icon(icon, size: 64, color: iconColor),
-          const SizedBox(height: KapdhSpace.s4),
-          Semantics(
-            header: true,
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w600),
-            ),
-          ),
-          const SizedBox(height: KapdhSpace.s2),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
-          ),
-          const SizedBox(height: KapdhSpace.s6),
-          for (final (index, action) in actions.indexed) ...[
-            if (index > 0) const SizedBox(height: KapdhSpace.s2),
-            action,
-          ],
-        ],
-      ),
     );
   }
 }

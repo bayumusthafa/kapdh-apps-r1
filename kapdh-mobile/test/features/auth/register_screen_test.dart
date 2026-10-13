@@ -288,7 +288,15 @@ void main() {
     testWidgets('F-01: tautan baca membuka halaman legal dan versi yang disetujui ditampilkan', (tester) async {
       final app = await openRegister(tester, apiRoutes({}));
       await scrollTo(tester, find.byKey(const ValueKey('register-read-privacy')));
+      // Sebelum dicentang: hanya versi yang berlaku, belum "disetujui".
+      expect(find.text('Versi berlaku: Kebijakan Privasi versi 2 · Ketentuan versi 1'), findsOneWidget);
+      expect(find.textContaining('Versi yang disetujui'), findsNothing);
+      await scrollAndTap(tester, find.byKey(const ValueKey('register-consent')));
+      await settle(tester);
       expect(find.text('Versi yang disetujui: Kebijakan Privasi versi 2 · Ketentuan versi 1'), findsOneWidget);
+      await scrollAndTap(tester, find.byKey(const ValueKey('register-consent')));
+      await settle(tester);
+      expect(find.text('Versi berlaku: Kebijakan Privasi versi 2 · Ketentuan versi 1'), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('register-read-privacy')));
       await settle(tester);
@@ -335,7 +343,7 @@ void main() {
       expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('register-consent'))).value, isFalse);
       await scrollTo(tester, find.text(policyChangedMessage));
       expect(find.text(policyChangedMessage), findsOneWidget);
-      expect(find.text('Versi yang disetujui: Kebijakan Privasi versi 3 · Ketentuan versi 1'), findsOneWidget);
+      expect(find.text('Versi berlaku: Kebijakan Privasi versi 3 · Ketentuan versi 1'), findsOneWidget);
 
       await scrollAndTap(tester, submit);
       await settle(tester);
@@ -343,6 +351,7 @@ void main() {
 
       await scrollAndTap(tester, find.byKey(const ValueKey('register-consent')));
       await settle(tester);
+      expect(find.text('Versi yang disetujui: Kebijakan Privasi versi 3 · Ketentuan versi 1'), findsOneWidget);
       await scrollAndTap(tester, submit);
       await settle(tester);
       expect(
@@ -351,7 +360,7 @@ void main() {
       );
     });
 
-    testWidgets('centang nonaktif selama versi persetujuan belum dimuat', (tester) async {
+    testWidgets('F-01: centang nonaktif selama versi persetujuan belum dimuat', (tester) async {
       await openRegister(tester, apiRoutes({'/public/pages': (_) => FakeResponse.network()}));
       await scrollTo(tester, find.byKey(const ValueKey('register-consent')));
       expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('register-consent'))).onChanged, isNull);

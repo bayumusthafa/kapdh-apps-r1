@@ -27,9 +27,11 @@ export 'otp_challenge.dart' show attemptsLeftFrom, otpMaxAttempts, otpResendCool
 /// melanjutkan ke Biaya KTA (rute status unverified).
 ///
 /// - "Salah email? Ubah alamat email" mengoreksi email akun pending_otp lewat POST /auth/email-correction; kode
-///   `email_change` dikirim ke email baru (PRD 2.2).
-/// - Hasil verifikasi yang tidak diketahui (respons hilang) lalu 410 pada pengulangan: klien memanggil POST
-///   /auth/login dengan kredensial di memori, bukan meminta kode baru (kontrak C1 verifyOtp, AC F01-4).
+///   `email_change` dikirim ke email baru (PRD 2.2). Request dijalankan layar ini, sehingga hasilnya tidak hilang
+///   walau lembar koreksi tertutup selama request berjalan.
+/// - Hasil verifikasi atau koreksi email yang tidak diketahui (respons hilang) lalu 410 pada request berikutnya:
+///   klien memanggil POST /auth/login dengan kredensial di memori (email baru dari koreksi lebih dulu), bukan
+///   meminta kode baru (kontrak C1 verifyOtp, AC F01-4, PRD 4.5).
 /// - Dibuka dengan `?challenge=<id>` (challenge dipulihkan): keadaan dibaca lewat POST /auth/otp/status yang
 ///   hanya-baca, tanpa mengirim kode baru.
 class OtpScreen extends ConsumerStatefulWidget {
@@ -47,6 +49,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   bool _resending = false;
   bool _recovering = false;
 
+  /// Koreksi email sedang dikirim (lembar boleh sudah tertutup); verifikasi dan kirim ulang menunggu hasilnya karena
+  /// koreksi yang berhasil membatalkan challenge yang sedang tampil.
+  bool _correcting = false;
+
   /// Galat yang menyangkut kode (salah, kedaluwarsa); kotak menjadi merah.
   String? _codeError;
 
@@ -58,6 +64,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
   /// Percobaan verifikasi terakhir berakhir tanpa jawaban pasti (kontrak C1): kode mungkin sudah dikonsumsi.
   bool _verifyOutcomeUnknown = false;
+
+  /// Koreksi email yang jawabannya hilang (terbaru di akhir). Server mungkin sudah mengganti email akun dan
+  /// membatalkan challenge yang tampil, sehingga 410 berikutnya diperiksa lewat login dengan email baru itu dan sandi
+  /// yang baru diketik (hanya memori, kontrak C1 correctPendingEmail, PRD 4.5).
+  final List<ActivationCredentials> _unknownCorrections = [];
 
   /// Status akun hanya dapat diperiksa dengan masuk ulang (kredensial tidak ada di memori atau ditolak).
   bool _needsSignIn = false;
@@ -97,6 +108,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
   DateTime _deviceNow() => ref.read(serverClockProvider).deviceNow();
 
+  /// Ada request (verifikasi atau koreksi email) yang hasilnya belum diketahui.
+  bool get _outcomeUnknown => _verifyOutcomeUnknown || _unknownCorrections.isNotEmpty;
+
   /// Membaca challenge dari tautan tanpa mengirim kode baru (POST /auth/otp/status, kontrak C1).
   Future<void> _loadLink(String challengeId) async {
     setState(() {
@@ -126,9 +140,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     return until != null && until.isAfter(_deviceNow());
   }
 
+  bool get _busy => _verifying || _recovering || _correcting;
+
   Future<void> _verify() async {
     final challenge = ref.read(sessionProvider).challenge;
-    if (challenge == null || _verifying || _recovering || _code.text.length != 6) return;
+    if (challenge == null || _busy || _code.text.length != 6) return;
     if (_tracker.codeExpired(challenge) || _verifyBlocked || _tracker.dead) return;
     FocusScope.of(context).unfocus();
     setState(() {
@@ -142,14 +158,15 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
           .read(authRepositoryProvider)
           .verifyOtp(challengeId: challenge.challengeId, code: _code.text);
       _verifyOutcomeUnknown = false;
+      _unknownCorrections.clear();
       // Kontrak C1: `session` wajib pada respons verifikasi aktivasi.
       ref.read(registrationDraftProvider.notifier).clear();
       await ref.read(sessionProvider.notifier).establishSession(response.session);
     } on ApiException catch (error) {
       if (!mounted) return;
-      if (error.code == ErrorCode.otpExpired && _verifyOutcomeUnknown) {
+      if (error.code == ErrorCode.otpExpired && _outcomeUnknown) {
         setState(() => _verifying = false);
-        await _recoverAfterUnknownOutcome();
+        await _recoverAndReport();
         return;
       }
       setState(() => _applyVerifyError(error));
@@ -186,12 +203,27 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     }
   }
 
-  /// Pemulihan hasil verifikasi yang tidak diketahui (kontrak C1 verifyOtp): login dengan kredensial di memori.
-  /// `next: home` = aktivasi sudah berhasil dan sesi baru terbit; `next: verify_otp` = akun belum aktif dan challenge
-  /// aktivasi terkini dipakai untuk melanjutkan. Tanpa kredensial di memori, pengguna diminta masuk.
-  Future<void> _recoverAfterUnknownOutcome() async {
-    final credentials = ref.read(activationCredentialsProvider);
-    if (credentials == null) {
+  /// Kredensial untuk memeriksa status akun: email baru dari koreksi yang jawabannya hilang (terbaru lebih dulu),
+  /// lalu email akun dari langkah Data Diri/login. Email yang sama hanya dicoba sekali.
+  List<ActivationCredentials> _recoveryCandidates() {
+    final seen = <String>{};
+    return [
+      ..._unknownCorrections.reversed,
+      ?ref.read(activationCredentialsProvider),
+    ].where((candidate) => seen.add(candidate.email.toLowerCase())).toList();
+  }
+
+  /// Pemulihan hasil yang tidak diketahui (kontrak C1 verifyOtp; koreksi email PRD 2.2): login dengan kredensial di
+  /// memori. `next: home` = aktivasi sudah berhasil dan sesi baru terbit; `next: verify_otp` = akun belum aktif dan
+  /// challenge aktivasi terkini (termasuk `email_change` dari koreksi yang jawabannya hilang) dipakai untuk
+  /// melanjutkan. 401 untuk satu email berarti email itu bukan email akun, sehingga kandidat berikutnya dicoba. Tanpa
+  /// kredensial yang cocok, pengguna diminta masuk sendiri.
+  ///
+  /// Mengembalikan galat sementara (jaringan, server) bila pemeriksaan sendiri belum berhasil; keadaan dipertahankan
+  /// sehingga ketukan berikutnya mengulang pemeriksaan. Null bila pemeriksaan selesai.
+  Future<ApiException?> _recoverAfterUnknownOutcome() async {
+    final candidates = _recoveryCandidates();
+    if (candidates.isEmpty) {
       setState(() {
         _tracker.dead = true;
         _needsSignIn = true;
@@ -201,7 +233,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
             'Verifikasi sebelumnya mungkin sudah berhasil. Masuk dengan email dan password Anda untuk memeriksa '
             'status akun.';
       });
-      return;
+      return null;
     }
     setState(() {
       _recovering = true;
@@ -210,49 +242,91 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       _notice = null;
     });
     try {
-      final result = await ref
-          .read(sessionProvider.notifier)
-          .login(email: credentials.email, password: credentials.password);
-      if (!mounted) return;
-      switch (result.outcome) {
-        case LoginOutcome.signedIn:
-          // Aktivasi sudah berhasil; router melanjutkan ke Biaya KTA.
-          ref.read(registrationDraftProvider.notifier).clear();
-        case LoginOutcome.verifyOtp:
-          // SessionController menyimpan challenge aktivasi terkini dari respons login; layar menyelaraskan diri.
+      ApiException? rejected;
+      for (final candidate in candidates) {
+        final LoginResult result;
+        try {
+          result = await ref
+              .read(sessionProvider.notifier)
+              .login(email: candidate.email, password: candidate.password);
+        } on ApiException catch (error) {
+          if (!mounted) return null;
+          if (error.code == ErrorCode.unauthenticated) {
+            rejected = error;
+            continue;
+          }
+          if (isUnknownOutcome(error)) return error;
+          // Jawaban pasti lain (mis. cooldown login 429): pengguna melanjutkan dari layar masuk.
           setState(() {
-            _verifyOutcomeUnknown = false;
-            _code.clear();
-            _notice = 'Akun belum aktif. Masukkan kode terbaru yang dikirim ke email Anda.';
+            _tracker.dead = true;
+            _needsSignIn = true;
+            _error = error.message;
           });
-        case LoginOutcome.deletionPending || LoginOutcome.accountDisabled:
-          ref
-              .read(loginNoticeProvider.notifier)
-              .show(const LoginNotice(message: 'Status akun berubah. Masuk kembali untuk melihat statusnya.'));
-          ref.read(authEmailHintProvider.notifier).set(credentials.email);
-          context.go(AppRoutes.login);
-          ref.read(sessionProvider.notifier).clearFlow();
-      }
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        if (isUnknownOutcome(error)) {
-          // Pemeriksaan sendiri belum berhasil; ketukan Verifikasi berikutnya mengulang pemeriksaan.
-          _error = error.message;
-        } else {
-          _tracker.dead = true;
-          _needsSignIn = true;
-          _error = error.message;
+          return null;
         }
+        if (!mounted) return null;
+        _applyRecoveredLogin(result, candidate);
+        return null;
+      }
+      // Tidak satu pun kredensial di memori cocok lagi dengan akun.
+      setState(() {
+        _unknownCorrections.clear();
+        _tracker.dead = true;
+        _needsSignIn = true;
+        _error = rejected?.message;
       });
+      return null;
     } finally {
       if (mounted) setState(() => _recovering = false);
     }
   }
 
+  /// [_recoverAfterUnknownOutcome] dari tombol layar ini: galat sementara ditampilkan di bawah kotak.
+  Future<void> _recoverAndReport() async {
+    final pending = await _recoverAfterUnknownOutcome();
+    if (pending != null && mounted) setState(() => _error = pending.message);
+  }
+
+  void _applyRecoveredLogin(LoginResult result, ActivationCredentials account) {
+    final corrected = _unknownCorrections.contains(account);
+    _unknownCorrections.clear();
+    _verifyOutcomeUnknown = false;
+    switch (result.outcome) {
+      case LoginOutcome.signedIn:
+        // Aktivasi sudah berhasil; router melanjutkan ke Biaya KTA.
+        ref.read(registrationDraftProvider.notifier).clear();
+      case LoginOutcome.verifyOtp:
+        // SessionController menyimpan challenge aktivasi terkini dari respons login; layar menyelaraskan diri.
+        _rememberAccountEmail(account);
+        setState(() {
+          _code.clear();
+          _notice = corrected
+              ? 'Email sudah diubah ke ${account.email}. Masukkan kode yang dikirim ke email tersebut.'
+              : 'Akun belum aktif. Masukkan kode terbaru yang dikirim ke email Anda.';
+        });
+      case LoginOutcome.deletionPending || LoginOutcome.accountDisabled:
+        ref
+            .read(loginNoticeProvider.notifier)
+            .show(const LoginNotice(message: 'Status akun berubah. Masuk kembali untuk melihat statusnya.'));
+        ref.read(authEmailHintProvider.notifier).set(account.email);
+        context.go(AppRoutes.login);
+        ref.read(sessionProvider.notifier).clearFlow();
+    }
+  }
+
+  /// Email akun yang berlaku sekarang: kredensial pemulihan (memori), isian login dan draf pendaftaran.
+  void _rememberAccountEmail(ActivationCredentials account) {
+    ref.read(activationCredentialsProvider.notifier).remember(email: account.email, password: account.password);
+    ref.read(authEmailHintProvider.notifier).set(account.email);
+    final draft = ref.read(registrationDraftProvider);
+    if (draft != null && draft.email != account.email) {
+      ref.read(registrationDraftProvider.notifier).save(draft.copyWith(email: account.email));
+    }
+  }
+
   Future<void> _resend() async {
     final challenge = ref.read(sessionProvider).challenge;
-    if (challenge == null || _resending || _tracker.resendWait(challenge) > Duration.zero) return;
+    if (challenge == null || _resending || _busy || _tracker.resendWait(challenge) > Duration.zero) return;
     setState(() {
       _resending = true;
       _codeError = null;
@@ -269,15 +343,13 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
           ..clearRateLimit();
         _code.clear();
       });
-      ScaffoldMessenger.maybeOf(
-        context,
-      )?.showSnackBar(SnackBar(content: Text('Kode baru dikirim ke ${next.emailMasked}.')));
+      _showSnack('Kode baru dikirim ke ${next.emailMasked}.');
     } on ApiException catch (error) {
       if (!mounted) return;
-      if (error.code == ErrorCode.otpExpired && _verifyOutcomeUnknown) {
-        // Akun mungkin sudah aktif oleh verifikasi yang jawabannya hilang (kontrak C1).
+      if (error.code == ErrorCode.otpExpired && _outcomeUnknown) {
+        // Akun mungkin sudah aktif, atau emailnya sudah diganti, oleh request yang jawabannya hilang (kontrak C1).
         setState(() => _resending = false);
-        await _recoverAfterUnknownOutcome();
+        await _recoverAndReport();
         return;
       }
       setState(() {
@@ -300,43 +372,85 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     }
   }
 
-  Future<void> _correctEmail(OtpChallenge current) async {
+  Future<void> _openEmailCorrection() async {
     final credentials = ref.read(activationCredentialsProvider);
     final draft = ref.read(registrationDraftProvider);
-    final result = await showEmailCorrectionSheet(
+    await showEmailCorrectionSheet(
       context,
-      challengeId: current.challengeId,
+      onSubmit: _submitCorrection,
       currentEmail: credentials?.email ?? draft?.email,
     );
-    if (!mounted || result == null) return;
-    switch (result) {
-      case EmailCorrected(:final challenge, :final newEmail, :final password):
-        ref.read(sessionProvider.notifier).setChallenge(challenge);
-        ref.read(activationCredentialsProvider.notifier).remember(email: newEmail, password: password);
+  }
+
+  /// Mengirim koreksi email untuk challenge aktivasi yang tampil (POST /auth/email-correction, PRD 2.2). Dipanggil
+  /// lembar koreksi, tetapi hasilnya diterapkan di sini walau lembar sudah tertutup. Null bila alur koreksi selesai
+  /// (lembar ditutup); selain itu tanggapan yang ditampilkan lembar.
+  Future<EmailCorrectionFeedback?> _submitCorrection({required String newEmail, required String password}) async {
+    final challenge = ref.read(sessionProvider).challenge;
+    if (!mounted || challenge == null || !isActivationPurpose(challenge.purpose) || _busy) return null;
+    setState(() {
+      _correcting = true;
+      _codeError = null;
+      _error = null;
+      _notice = null;
+    });
+    try {
+      final next = await ref
+          .read(authFlowRepositoryProvider)
+          .correctEmail(challengeId: challenge.challengeId, password: password, newEmail: newEmail);
+      if (!mounted) return null;
+      _unknownCorrections.clear();
+      _verifyOutcomeUnknown = false;
+      ref.read(sessionProvider.notifier).setChallenge(next);
+      // Sandi sudah dibuktikan benar oleh server; hanya memori untuk pemulihan hasil verifikasi (kontrak C1).
+      _rememberAccountEmail(ActivationCredentials(email: newEmail, password: password));
+      setState(() {
+        _tracker
+          ..sync(next)
+          ..clearRateLimit();
+        _code.clear();
+      });
+      _showSnack('Email diubah. Kode baru dikirim ke ${next.emailMasked}.');
+      return null;
+    } on ApiException catch (error) {
+      if (!mounted) return null;
+      if (isUnknownOutcome(error)) {
+        final attempt = ActivationCredentials(email: newEmail, password: password);
+        _unknownCorrections
+          ..remove(attempt)
+          ..add(attempt);
+        // Bila koreksi ternyata berlaku, login berikutnya memakai email baru ini.
         ref.read(authEmailHintProvider.notifier).set(newEmail);
-        if (draft != null) ref.read(registrationDraftProvider.notifier).save(draft.copyWith(email: newEmail));
-        setState(() {
-          _tracker
-            ..sync(challenge)
-            ..clearRateLimit();
-          _verifyOutcomeUnknown = false;
-          _code.clear();
-          _codeError = null;
-          _error = null;
-          _notice = null;
-        });
-        ScaffoldMessenger.maybeOf(
-          context,
-        )?.showSnackBar(SnackBar(content: Text('Email diubah. Kode baru dikirim ke ${challenge.emailMasked}.')));
-      case EmailCorrectionChallengeGone(:final message):
+        return EmailCorrectionFeedback(
+          message: error.isNetwork
+              ? 'Koneksi terputus sebelum hasil diterima; email mungkin sudah diubah. Periksa koneksi lalu ketuk '
+                    'Kirim lagi untuk memeriksa.'
+              : 'Hasil perubahan email belum diketahui. Ketuk Kirim lagi untuk memeriksa.',
+        );
+      }
+      if (error.code == ErrorCode.otpExpired) {
+        if (_outcomeUnknown) {
+          setState(() => _correcting = false);
+          final pending = await _recoverAfterUnknownOutcome();
+          return pending == null ? null : EmailCorrectionFeedback(message: pending.message);
+        }
+        // Challenge tidak dikenal/sudah dipakai atau akun tidak lagi pending_otp: alur dimulai ulang.
         setState(() {
           _tracker
             ..expired = true
             ..dead = true;
-          _codeError = message;
+          _codeError = error.message;
         });
+        return null;
+      }
+      return EmailCorrectionFeedback.fromError(error);
+    } finally {
+      if (mounted) setState(() => _correcting = false);
     }
   }
+
+  void _showSnack(String message) =>
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(message)));
 
   void _back() {
     final draft = ref.read(registrationDraftProvider);
@@ -424,7 +538,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final draft = ref.watch(registrationDraftProvider);
     final wait = _tracker.resendWait(challenge);
     final expired = _tracker.codeExpired(challenge);
-    final busy = _verifying || _recovering;
+    final busy = _busy;
     final canVerify = !expired && !busy && !_tracker.dead && !_verifyBlocked && _code.text.length == 6;
     // Email lengkap yang diketik pengguna sendiri boleh ditampilkan (kontrak C1 OtpChallenge.email_masked).
     final email = credentials?.email ?? challenge.emailMasked;
@@ -434,7 +548,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         key: const ValueKey('otp-submit'),
         label: 'Verifikasi',
         busyLabel: _recovering ? 'Memeriksa status akun...' : 'Memeriksa...',
-        busy: busy,
+        busy: _verifying || _recovering,
         onPressed: canVerify ? _verify : null,
       ),
       body: Column(
@@ -496,7 +610,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               child: KapdhLinkButton(
                 key: const ValueKey('otp-change-email'),
                 label: 'Salah email? Ubah alamat email',
-                onPressed: busy ? null : () => _correctEmail(challenge),
+                onPressed: busy ? null : _openEmailCorrection,
               ),
             ),
           ],

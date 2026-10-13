@@ -58,13 +58,26 @@ void main() {
       expect(go(const SessionState.anonymous(), pending!), '/forgot/otp?challenge=$linkId');
     });
 
-    test('AC F16-4: pengguna yang sedang masuk tidak dibawa ke layar OTP pemulihan', () {
-      expect(go(authed('verified'), '/forgot/otp?challenge=$linkId'), '/home');
+    test('AC F16-4: tautan reset saat masih masuk tidak dibuang; layar pemulihan menawarkan keluar', () {
+      // Reset pengurus mencabut seluruh sesi: tautan dibuka (layar menjelaskan dan menawarkan keluar).
+      expect(go(authed('verified'), '/forgot/otp?challenge=$linkId'), isNull);
+      expect(go(authed('suspended'), '/forgot/otp?challenge=$linkId'), isNull);
       final pending = go(authed('verified'), '/forgot/otp?challenge=$linkId', gate: GateStatus.checking);
-      expect(go(authed('verified'), pending!), '/home');
+      expect(go(authed('verified'), pending!), '/forgot/otp?challenge=$linkId');
+      // Tanpa challenge sah, atau tautan aktivasi: tetap ke rute awal status.
+      expect(go(authed('verified'), '/forgot/otp'), '/home');
+      expect(go(authed('verified'), '/forgot/otp?challenge=bukan-uuid'), '/home');
+      expect(go(authed('verified'), '/register/otp?challenge=$linkId'), '/home');
+      expect(go(authed('verified'), '/forgot/reset'), '/home');
     });
 
-    test('rute auth tanpa challenge tetap tidak boleh menjadi tujuan tertunda', () {
+    test('AC F16-4: tautan reset saat maintenance dan masih masuk ditunda lalu dipulihkan', () {
+      final pending = go(authed('verified'), '/forgot/otp?challenge=$linkId', gate: GateStatus.maintenance);
+      expect(pending, startsWith('/maintenance?from='));
+      expect(go(authed('verified'), pending!), '/forgot/otp?challenge=$linkId');
+    });
+
+    test('AC F13-3: rute auth tanpa challenge tetap tidak boleh menjadi tujuan tertunda', () {
       final pending = go(const SessionState.unknown(), '/forgot/reset', gate: GateStatus.checking);
       expect(pending, '/splash');
     });
@@ -83,7 +96,7 @@ void main() {
       );
     });
 
-    test('isActivationPurpose hanya signup dan email_change', () {
+    test('PRD 2.2: isActivationPurpose hanya signup dan email_change', () {
       expect(isActivationPurpose(OtpPurpose.signup), isTrue);
       expect(isActivationPurpose(OtpPurpose.emailChange), isTrue);
       expect(isActivationPurpose(OtpPurpose.passwordReset), isFalse);
@@ -190,14 +203,14 @@ void main() {
       expect(tracker.resendWait(challenge), Duration.zero);
     });
 
-    test('kode dari tautan dengan percobaan habis (attempts_left 0) dianggap tidak berlaku', () {
+    test('AC F01-3: kode dari tautan dengan percobaan habis (attempts_left 0) dianggap tidak berlaku', () {
       final challenge = challengeOf(attemptsLeft: 0);
       tracker.sync(challenge);
       expect(tracker.codeExpired(challenge), isTrue);
     });
   });
 
-  test('provider jam server dipakai bersama layar OTP', () {
+  test('PRD 2.1: provider jam server dipakai bersama layar OTP', () {
     final container = makeContainer();
     addTearDown(container.dispose);
     expect(identical(container.read(serverClockProvider), container.read(serverClockProvider)), isTrue);

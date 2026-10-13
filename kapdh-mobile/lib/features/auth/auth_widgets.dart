@@ -101,3 +101,56 @@ class PasswordRules extends StatelessWidget {
 
 /// Validasi email lokal sebelum dikirim; server tetap menormalkan dan memvalidasi (PRD 3.1).
 bool looksLikeEmail(String value) => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim());
+
+/// Hasil atau keadaan akhir alur auth: ikon berlabel, judul, pesan dan tindakan (status tidak dibedakan warna saja,
+/// PRD 4.5). Dipakai layar Password Baru dan layar tautan pemulihan.
+class AuthResultPanel extends StatelessWidget {
+  const AuthResultPanel({
+    super.key,
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.message,
+    required this.actions,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String message;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      container: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Icon(icon, size: 64, color: iconColor),
+          const SizedBox(height: KapdhSpace.s4),
+          Semantics(
+            header: true,
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: KapdhSpace.s2),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
+          ),
+          const SizedBox(height: KapdhSpace.s6),
+          for (final (index, action) in actions.indexed) ...[
+            if (index > 0) const SizedBox(height: KapdhSpace.s2),
+            action,
+          ],
+        ],
+      ),
+    );
+  }
+}

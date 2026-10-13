@@ -131,7 +131,7 @@ void main() {
     expect(find.text('Status Pembayaran'), findsWidgets);
   });
 
-  testWidgets('guideline hal. 5: pita hijau bermotif dengan logo, "Datang kembali !!!" emas, toggle password', (
+  testWidgets('F-02, guideline hal. 5: pita hijau bermotif dengan logo, "Datang kembali !!!" emas, toggle password', (
     tester,
   ) async {
     await pumpApp(tester, handler: apiRoutes({}));
