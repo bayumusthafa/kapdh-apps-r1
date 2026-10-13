@@ -1,6 +1,6 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { accountDeletions, auditLogs, roomMembers, rooms } from "@kapdh/database";
+import { accountDeletions, alumni, auditLogs, roomMembers, rooms } from "@kapdh/database";
 import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -133,6 +133,16 @@ describe("Job account.deletion: penghapusan penuh (AC F14-3, F14-4, F14-5)", () 
       password: DEFAULT_PASSWORD,
     });
     expect(login.statusCode).toBe(401);
+
+    // Nomor urut anggota (N) tidak pernah dipakai ulang setelah profil dihapus (sequence, PRD 3.5).
+    const next = await createAlumni(t, { status: "verified" });
+    expect(next.memberSeq!).toBeGreaterThan(rich.member.memberSeq!);
+    expect(
+      await t.db
+        .select({ id: alumni.userId })
+        .from(alumni)
+        .where(eq(alumni.memberSeq, rich.member.memberSeq!)),
+    ).toEqual([]);
   });
 
   it("AC F14-5, PRD 3.14: identitas Super Admin tertaut tetap aktif; penghapusan tidak menunggu respons anggota grup lain", async () => {
