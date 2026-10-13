@@ -1,4 +1,13 @@
-import { auditLogs, events, paymentAdjustments, paymentEvents, payments, tickets } from "@kapdh/database";
+import {
+  auditLogs,
+  events,
+  notifications,
+  outboxEvents,
+  paymentAdjustments,
+  paymentEvents,
+  payments,
+  tickets,
+} from "@kapdh/database";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -221,7 +230,7 @@ describe("PaymentsKernel.createPayment dan bukti tiket (F-09, D5)", () => {
     });
   });
 
-  it("AC F09-7, D6: payment berbukti yang tiketnya batal karena event dibatalkan → refund_on_approve; approve membuat refund sistem", async () => {
+  it("AC F09-7, D6, F13-1: payment berbukti yang tiketnya batal karena event dibatalkan → refund_on_approve; approve membuat refund sistem dengan satu notifikasi keputusan", async () => {
     const member = await memberSession(t, "verified");
     const fixture = await ticketFixture(t, member);
     const proof = (
@@ -256,6 +265,10 @@ describe("PaymentsKernel.createPayment dan bukti tiket (F-09, D5)", () => {
     });
     // Tenggat dihitung dari pembatalan tiket, bukan dari waktu persetujuan.
     t.clock.advance(10 * 60_000);
+    const inboxBefore = await t.db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, member.userId));
     const approved = await decide(t, admin, fixture.paymentId, {
       decision: "approve",
       expected_proof_version: 1,
@@ -276,6 +289,21 @@ describe("PaymentsKernel.createPayment dan bukti tiket (F-09, D5)", () => {
     expect((await ticketRow(fixture.ticketId)).qrCode).toBeNull();
     const owner = (await api().get(`/me/payments/${fixture.paymentId}`, { token: member.token })).json();
     expect(owner.adjustments[0]).toMatchObject({ destination_required: true });
+    // AC F13-1: satu keputusan = satu notification_id; permintaan rekening tujuan refund ada di notifikasi itu.
+    const inboxAfter = await t.db.select().from(notifications).where(eq(notifications.userId, member.userId));
+    const created = inboxAfter.filter((row) => !inboxBefore.some((old) => old.id === row.id));
+    expect(created).toHaveLength(1);
+    expect(created[0]).toMatchObject({
+      category: "payment",
+      title: "Dana tiket diterima, refund sedang diproses bendahara",
+      data: { route: `/payments/${fixture.paymentId}`, payment_id: fixture.paymentId },
+    });
+    expect(created[0]!.body).toContain("rekening tujuan refund");
+    const outbox = await t.db
+      .select()
+      .from(outboxEvents)
+      .where(eq(outboxEvents.dedupKey, `notification.created:${created[0]!.id}`));
+    expect(outbox).toHaveLength(1);
   });
 
   it("PRD 4.3: anggota tidak membatalkan payment tiket (409); pengurus membatalkan payment tanpa bukti → tiket batal dan hold dilepas", async () => {

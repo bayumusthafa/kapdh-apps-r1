@@ -35,6 +35,7 @@ import { duesEligibility } from "./member-payments.service.js";
 import { PaymentLedger, paymentStateConflict, proofVersionConflict } from "./payment-ledger.js";
 import type { PaymentRow } from "./payment-rules.js";
 import {
+  cursorTimestamp,
   escapeLike,
   nullableKeysetAfter,
   nullableOrderBy,
@@ -122,7 +123,13 @@ export const adminListQuery = z.object({
   sort: z.enum(PAYMENT_SORTS).optional(),
 });
 
-const cursorSchema = z.object({ s: z.enum(PAYMENT_SORTS), k: z.string().nullable(), id: z.uuid() });
+/**
+ * Cursor keyset antrean: kunci waktu kanonik (cursor dimanipulasi → 400, bukan 500); `created_at` tidak pernah null
+ * sehingga cursor `created_at_desc` wajib berkunci waktu.
+ */
+const cursorSchema = z
+  .object({ s: z.enum(PAYMENT_SORTS), k: cursorTimestamp.nullable(), id: z.uuid() })
+  .refine((cursor) => cursor.s !== "created_at_desc" || cursor.k !== null);
 
 const FILE_INVALID_MESSAGE =
   "Berkas bukti verifikasi tidak dapat dipakai. Unggah ulang tangkapan mutasi (JPG/PNG atau PDF) dari akun Anda.";

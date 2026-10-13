@@ -505,13 +505,25 @@ export class PaymentViews {
       .$dynamic();
   }
 
-  /** AdminPaymentAdjustment dari hasil {@link adjustmentRowsQuery}. */
-  adminAdjustment(row: AdjustmentQueryRow, viewer: AdminViewer, now: Date): AdminPaymentAdjustmentDto {
+  /**
+   * AdminPaymentAdjustment dari hasil {@link adjustmentRowsQuery}. `listing` true untuk baris daftar
+   * (adminListPaymentAdjustments): rekening tujuan refund TIDAK PERNAH dikirim di daftar, hanya penanda
+   * `has_refund_destination` (kontrak C3, D2, ARCHITECTURE §2.3 minimisasi data); isinya hanya pada detail satu
+   * penyesuaian, AdminPaymentDetail.adjustments dan respons tulis penyesuaian.
+   */
+  adminAdjustment(
+    row: AdjustmentQueryRow,
+    viewer: AdminViewer,
+    now: Date,
+    options: { listing?: boolean } = {},
+  ): AdminPaymentAdjustmentDto {
     const adjustment = row.adjustment;
     const payment = row.payment;
     const coi = conflictOfInterest(viewer, payment.userId);
-    // Rekening tujuan refund hanya untuk pemutus tanpa konflik kepentingan selama refund pending (D2).
+    // Rekening tujuan refund hanya untuk pemutus tanpa konflik kepentingan selama refund pending (D2), dan tidak
+    // pernah pada daftar.
     const showDestination =
+      options.listing !== true &&
       viewer.permissions.has("payments.decide") &&
       !coi &&
       adjustment.kind === "refund" &&

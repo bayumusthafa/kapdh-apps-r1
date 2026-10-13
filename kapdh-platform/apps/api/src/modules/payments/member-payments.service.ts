@@ -34,9 +34,16 @@ import {
   reservationLapsed,
   type TicketRow,
 } from "./payment-rules.js";
+import { cursorTimestamp } from "./payment-sql.js";
 import { type MemberViewer, type PaymentDetailDto, PaymentViews } from "./payment-views.js";
 
 type Schemas = components["schemas"];
+
+/** Cursor riwayat anggota: waktu kanonik (cursor dimanipulasi → 400 field `cursor`, bukan 500). */
+const memberCursorSchema = z.object({
+  created_at: cursorTimestamp.transform((value) => new Date(value)),
+  id: z.uuid(),
+});
 
 /** Kelayakan iuran dari data canonical (PRD 2.2, AC F07-5; kontrak FeeQuote). */
 export interface DuesEligibility {
@@ -202,9 +209,7 @@ export class MemberPaymentsService {
   async list(auth: AuthContext, query: unknown): Promise<Schemas["PaymentPage"]> {
     const page = parsePageQuery(query);
     const filters = validateQuery(listMyPaymentsQuery, query);
-    const after = page.cursor
-      ? decodeCursor(page.cursor, z.object({ created_at: z.coerce.date(), id: z.uuid() }))
-      : null;
+    const after = page.cursor ? decodeCursor(page.cursor, memberCursorSchema) : null;
     const rows = await this.db
       .select()
       .from(payments)

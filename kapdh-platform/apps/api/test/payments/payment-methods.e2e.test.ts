@@ -1,4 +1,4 @@
-import { auditLogs, paymentMethods } from "@kapdh/database";
+import { auditLogs, paymentMethods, payments } from "@kapdh/database";
 import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -173,7 +173,7 @@ describe("Metode bayar pengurus (F-15, AC F15-3, F15-4)", () => {
     expect(list.items.map((i: { id: string }) => i.id)).not.toContain(created.id);
   });
 
-  it("AC F15-3: in_use mengikuti rujukan payment saat ini; metode yang ditinggalkan semua payment tidak mengubah snapshot mana pun", async () => {
+  it("AC F15-3: in_use = pernah dirujuk payment; metode yang ditinggalkan saat ganti rekening tetap in_use, identitasnya terkunci dan tidak dapat dihapus", async () => {
     const original = (
       await api().post("/admin/payment-methods", input({ provider: "BTN" }), {
         token: admin.token,
@@ -203,16 +203,35 @@ describe("Metode bayar pengurus (F-15, AC F15-3, F15-4)", () => {
       headers: headers({ "if-match": current.version }),
     });
     expect(deleteCurrent.statusCode).toBe(400);
+    // Metode asal sudah ditinggalkan payment (ganti rekening sebelum bukti, PRD 4.3), tetapi PERNAH dirujuk.
     const left = (await api().get(`/admin/payment-methods/${original.id}`, { token: admin.token })).json();
-    expect(left.in_use).toBe(false);
-    const fixed = await api().put(
+    expect(left.in_use).toBe(true);
+    const listed = (await api().get("/admin/payment-methods", { token: admin.token })).json();
+    expect(listed.items.find((i: { id: string }) => i.id === original.id)).toMatchObject({ in_use: true });
+    const identity = await api().put(
       `/admin/payment-methods/${original.id}`,
       input({ provider: "BTN", account_number: "8000111222" }),
       { token: admin.token, headers: headers({ "if-match": left.version }) },
     );
-    expect(fixed.statusCode).toBe(200);
+    expect(identity.statusCode).toBe(400);
+    expect(Object.keys(identity.json().field_errors)).toEqual(["account_number"]);
+    const deleteLeft = await api().delete(`/admin/payment-methods/${original.id}`, {
+      token: admin.token,
+      headers: headers({ "if-match": left.version }),
+    });
+    expect(deleteLeft.statusCode).toBe(400);
+    const deactivated = await api().put(
+      `/admin/payment-methods/${original.id}`,
+      input({ provider: "BTN", active: false }),
+      { token: admin.token, headers: headers({ "if-match": left.version }) },
+    );
+    expect(deactivated.json()).toMatchObject({ active: false, in_use: true, account_number: "7123456789" });
+    // Rujukan lama tersimpan di snapshot payment (bukan field kontrak; tidak pernah dikirim ke klien).
+    const [row] = await t.db.select().from(payments).where(eq(payments.id, instruction.paymentId));
+    expect(row!.methodSnapshot).toMatchObject({ id: replacement.id, previous_method_ids: [original.id] });
     const owner = (await api().get(`/me/payments/${instruction.paymentId}`, { token: member.token })).json();
     expect(owner.method).toMatchObject({ id: replacement.id, provider: "BJB", account_number: "7123456789" });
+    expect(owner.method).not.toHaveProperty("previous_method_ids");
   });
 
   it("F-15: metode yang belum pernah dipakai dapat dihapus (204); If-Match usang 409; tidak ada → 404", async () => {
