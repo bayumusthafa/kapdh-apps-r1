@@ -202,7 +202,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               label: blocked > Duration.zero ? 'Coba lagi dalam ${formatCountdown(blocked)}' : 'Simpan password',
               busyLabel: 'Menyimpan...',
               busy: _busy,
-              onPressed: _canSubmit ? _submit : null,
+              // Tetap dapat diketuk agar isian yang belum memenuhi aturan ditandai (PRD 4.5); kirim hanya bila valid.
+              onPressed: _busy || blocked > Duration.zero ? null : _submit,
             ),
             const SizedBox(height: KapdhSpace.s3),
             Center(
