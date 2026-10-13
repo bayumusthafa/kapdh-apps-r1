@@ -11,16 +11,38 @@ import '../config/push_config.dart';
 /// tidak memuat isi chat, bukti bayar atau kontak (F-13); rute selalu diperiksa redirect sebelum objek dibuka.
 @immutable
 class PushMessage {
-  const PushMessage({this.title, this.body, this.route});
+  const PushMessage({this.title, this.body, this.route, this.notificationId});
 
   factory PushMessage.fromData({String? title, String? body, Map<String, Object?> data = const {}}) {
     final route = data['route'] ?? data['deep_link'];
-    return PushMessage(title: title, body: body, route: route is String ? route : null);
+    final id = data['notification_id'];
+    return PushMessage(
+      title: title,
+      body: body,
+      route: route is String ? route : null,
+      notificationId: id is String && _notificationIdPattern.hasMatch(id) ? id : null,
+    );
   }
+
+  /// Id notifikasi kotak masuk berbentuk UUID (payload data FCM `notification_id`, kontrak C7).
+  static final RegExp _notificationIdPattern = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  );
 
   final String? title;
   final String? body;
   final String? route;
+
+  /// `notification_id` dari payload data FCM; null untuk pesan lama atau payload tanpa id.
+  final String? notificationId;
+
+  /// Lokasi yang dibuka saat pesan diketuk (AC F13-3): bila ada [notificationId], gerbang `/notifications/<id>`
+  /// (rute aplikasi ARCHITECTURE §8.4) yang memeriksa ulang notifikasi ke server sebelum membuka tujuan dari
+  /// `deep_link` resmi; selain itu [route] apa adanya (tetap diperiksa redirect).
+  String? get openRoute {
+    final id = notificationId;
+    return id != null ? '/notifications/$id' : route;
+  }
 }
 
 enum PushPermission { granted, provisional, denied, notDetermined }
@@ -177,7 +199,7 @@ class FirebasePushPlatform implements PushPlatform {
       id: _nextLocalId++,
       title: message.title,
       body: message.body,
-      payload: message.route,
+      payload: message.openRoute,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           channelId,
