@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { configure, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { mockAuth } from "../../api/mocks";
@@ -10,17 +10,16 @@ import { findToast, renderApp, signIn, type User } from "../../test/utils";
  * mock bukan bukti AC sisi server (PRD 7.3).
  */
 
-/** Potongan kode area dimuat lazy; saat suite berjalan paralel pemuatan pertama dapat melebihi 1 detik. */
-const LAZY_ROUTE_TIMEOUT_MS = 5_000;
+/**
+ * Potongan kode area dimuat lazy dan server tiruan menjawab lewat debounce/refetch; saat seluruh suite berjalan
+ * paralel di mesin build, 1 detik bawaan Testing Library tidak selalu cukup.
+ */
+configure({ asyncUtilTimeout: 5_000 });
 
 async function openMasters(user: User, path = "/members/masters") {
   renderApp(path);
   await signIn(user);
-  await screen.findByRole(
-    "heading",
-    { level: 1, name: "Manajemen Skill & Profesi" },
-    { timeout: LAZY_ROUTE_TIMEOUT_MS },
-  );
+  await screen.findByRole("heading", { level: 1, name: "Manajemen Skill & Profesi" });
 }
 
 function row(name: string): HTMLElement {
@@ -35,11 +34,7 @@ describe("master profesi dan keahlian (F-10, AC F10-4; server tiruan)", () => {
     const user = userEvent.setup();
     const { router } = renderApp("/members/masters");
     await signIn(user);
-    await screen.findByRole(
-      "heading",
-      { level: 1, name: "Manajemen Skill & Profesi" },
-      { timeout: LAZY_ROUTE_TIMEOUT_MS },
-    );
+    await screen.findByRole("heading", { level: 1, name: "Manajemen Skill & Profesi" });
     expect(await screen.findByRole("table", { name: "Daftar profesi" })).toBeInTheDocument();
     expect(screen.getByText("Menampilkan 11 dari 11")).toBeInTheDocument();
     const guru = row("Guru");
