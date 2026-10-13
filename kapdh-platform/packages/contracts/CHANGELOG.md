@@ -260,6 +260,32 @@ dicatat sebagai garis dasar gerbang N-13.
   unggah gambar konten. Tabel admin banner, halaman dan kategori menerima `sort`.
 - Semua operasi konten membawa ekstensi `x-kapdh-access` (audience, member_access, permissions, idempotent).
 
+### Konten: implementasi API (modul api-content, Tahap C)
+
+Tidak ada operasi, field, atau skema yang diubah atau dihapus; hanya deskripsi yang dipertegas sesuai perilaku
+server (aditif, tidak memutus):
+
+- `Post.body_html` / `PublicPage.body_html`: tautan `https:` selalu dianggap tautan luar dan, selain
+  `target="_blank" rel="noopener noreferrer nofollow" data-external="true"`, juga membawa
+  `class="kapdh-external-link"`; `mailto:` dipertahankan tanpa penanda luar; skema lain kehilangan tautannya
+  (teks tetap). `img` hanya gambar konten publik KAPDH (`/api/v1/files/public/<uuid>`) dengan `alt` wajib.
+- `GET /public/pages` dan `GET /public/pages/{slug}`: batas 120 permintaan per menit per IP (bersama), respons
+  dapat di-cache publik 60 detik.
+- `adminCreatePost` / `adminUpdatePost`: cover baru wajib diunggah pengurus pemanggil dan belum dipakai objek lain;
+  gambar di `body_html` wajib gambar konten KAPDH yang ada (400 `field_errors.body_html`).
+- `adminCreateBanner` / `adminUpdateBanner`: gambar wajib diunggah pengurus pemanggil; URL target tanpa
+  kredensial; gambar yang dilepas dibuang bila tidak dirujuk konten lain. `AdminBannerTarget.route` null bila
+  tujuan tidak tersedia (sama dengan `HomeBannerTarget.route`).
+- `adminDeletePost`: cover yang tidak dirujuk konten lain dibuang segera (berkas `deleted`, objek dihapus setelah
+  commit), bukan menunggu job berkas.
+- `body_html` pada `AdminPostCreateRequest`, `AdminPostUpdateRequest`, `AdminInfoPageCreateRequest` dan
+  `AdminInfoPageUpdateRequest`: hasil sanitasi juga maksimal 200.000 karakter (400 `field_errors.body_html`),
+  sehingga teks tayang halaman legal selalu tercatat utuh di audit `page.published` (F-01).
+- `GET /public/pages` dan `GET /public/pages/{slug}`: hanya respons 200 yang membawa
+  `Cache-Control: public, max-age=60`; respons galat (400, 404, 429) membawa `Cache-Control: no-store`.
+- `HomeEvent.seats_available` (dan `registration_state`): mengikuti proyeksi baca kursi aturan tag Events
+  (hold kedaluwarsa yang belum dilepas dianggap lepas), sama dengan respons daftar/detail event.
+
 ### C5 Events (`events.yaml`, `admin-events.yaml`; F-09, F-15, PRD 3.9, 4.4, D5, D6)
 
 - **[memutus]** `EventSummary` (dipakai `Home.upcoming_events` pada `GET /home`) menjadi kartu event lengkap

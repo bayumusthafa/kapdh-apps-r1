@@ -1,7 +1,7 @@
 import { auditLogs } from "@kapdh/database";
 import { v7 as uuidv7 } from "uuid";
 import type { DbOrTx } from "../db/types.js";
-import { sanitizeAuditValue } from "./sanitize.js";
+import { type AuditLimits, sanitizeAuditValue } from "./sanitize.js";
 
 /** Peran efektif aktor pada audit (CHECK audit_logs_effective_role_chk). */
 export type AuditRole = "alumni" | "admin" | "super_admin" | "system" | "anonymous";
@@ -21,6 +21,8 @@ export interface AuditRecord {
   after?: unknown;
   /** Waktu dari Clock aplikasi; bawaan DB now() hanya cadangan (ARCHITECTURE §2.6). */
   createdAt?: Date;
+  /** Batas penyaring before/after; bawaan AUDIT_LIMITS (AUDIT_DOCUMENT_LIMITS hanya untuk teks dokumen utuh). */
+  limits?: AuditLimits;
 }
 
 /**
@@ -40,8 +42,8 @@ export async function writeAudit(tx: DbOrTx, record: AuditRecord): Promise<strin
     entityId: record.entityId ?? null,
     requestId: record.requestId,
     reason: record.reason ?? null,
-    before: sanitizeAuditValue(record.before),
-    after: sanitizeAuditValue(record.after),
+    before: sanitizeAuditValue(record.before, record.limits),
+    after: sanitizeAuditValue(record.after, record.limits),
     ...(record.createdAt ? { createdAt: record.createdAt } : {}),
   });
   return id;
