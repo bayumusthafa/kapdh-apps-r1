@@ -306,6 +306,7 @@ class _Quota extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
+      container: true,
       label: 'Kuota peserta: $available kursi tersedia dari $total',
       excludeSemantics: true,
       child: Row(
