@@ -2,9 +2,10 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { LogOut, UserRound } from "lucide-react";
 import { ADMIN_ROLE_LABEL } from "../../lib/labels";
 import { cn } from "../../lib/cn";
-import { ACCOUNT_LINK, visibleNav } from "../../nav";
+import { ACCOUNT_LINK, NAV_BADGE_LABEL, type NavBadge, visibleNav } from "../../nav";
 import { useAuth } from "../../auth/session";
 import { Avatar } from "../ui/DataDisplay";
+import { useNavBadges } from "./useNavBadges";
 import { usePendingPaymentsCount } from "./usePendingPayments";
 
 /** Logo dan nama aplikasi di atas menu (prototipe screen_8). */
@@ -43,7 +44,13 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const auth = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const pending = usePendingPaymentsCount();
+  const badges = useNavBadges();
   const profile = auth.profile;
+  const badgeCount: Record<NavBadge, number | undefined> = {
+    pending_payments: pending.data,
+    reports_open: badges.data?.reports_open,
+    failed_jobs: badges.data?.failed_jobs,
+  };
   if (!profile) return null;
   const sections = visibleNav(profile.permissions);
 
@@ -58,7 +65,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               .filter((l) => isActivePath(pathname, l.to))
               .sort((a, b) => b.to.length - a.to.length)[0];
             const sectionActive = activeLink !== undefined;
-            const count = section.badge === "pending_payments" ? pending.data : undefined;
+            const count = section.badge ? badgeCount[section.badge] : undefined;
             const showSub = section.links.length > 1;
             return (
               <li key={section.id}>
@@ -76,7 +83,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                   {count !== undefined && count > 0 ? (
                     <span className="rounded-pill bg-accent px-2 py-0.5 text-[11px] font-bold text-on-accent">
                       {count > 99 ? "99+" : count}
-                      <span className="sr-only"> pembayaran menunggu</span>
+                      <span className="sr-only"> {NAV_BADGE_LABEL[section.badge!]}</span>
                     </span>
                   ) : null}
                 </Link>
