@@ -64,7 +64,7 @@ export class ChatRealtimeHandlers implements OnModuleInit {
     if (!isUuid(raw)) return;
     const roomId = raw.toLowerCase();
     if (!CHAT_ACTIVE_STATUSES.has(client.effectiveStatus)) {
-      this.revokeInactive(client);
+      await this.revokeInactive(client);
       return;
     }
     const verdict = await this.typingVerdict(client.userId, roomId);
@@ -110,7 +110,7 @@ export class ChatRealtimeHandlers implements OnModuleInit {
 
   async onPresencePing(client: RealtimeClient): Promise<void> {
     if (!CHAT_ACTIVE_STATUSES.has(client.effectiveStatus)) {
-      this.revokeInactive(client);
+      await this.revokeInactive(client);
       return;
     }
     if (!this.throttle(this.presenceAt, client.userId, PRESENCE_THROTTLE_MS)) return;
@@ -127,17 +127,17 @@ export class ChatRealtimeHandlers implements OnModuleInit {
    * Pengguna tidak lagi aktif (expired/suspended) saat emit: semua langganan room socket-nya dicabut (lintas instance)
    * dan disiarkan offline (ttl 0) ke anggota room yang sama (AC F11-6, events/presence.schema.json).
    */
-  private revokeInactive(client: RealtimeClient): void {
+  private async revokeInactive(client: RealtimeClient): Promise<void> {
     this.realtime.syncRoomSubscriptions(client.userId, client.effectiveStatus);
     if (!this.throttle(this.presenceAt, `offline:${client.userId}`, PRESENCE_THROTTLE_MS)) return;
-    void this.presenceAudience(client.userId).then((recipients) => {
-      if (recipients.length > 0)
-        this.realtime.emitToUsers(recipients, "presence", client.userId, {
-          user_id: client.userId,
-          status: "offline",
-          ttl_seconds: 0,
-        });
-    });
+    // Ditunggu (bukan promise lepas) sehingga galat kueri sampai ke penangan event klien gateway yang mencatatnya.
+    const recipients = await this.presenceAudience(client.userId);
+    if (recipients.length > 0)
+      this.realtime.emitToUsers(recipients, "presence", client.userId, {
+        user_id: client.userId,
+        status: "offline",
+        ttl_seconds: 0,
+      });
   }
 
   /** Anggota aktif (verified/expiring, tidak suspended) yang berbagi room joined, tanpa pasangan yang saling memblokir. */
@@ -204,7 +204,8 @@ export class ChatRealtimeHandlers implements OnModuleInit {
   /** avatar anggota lain: berkas avatar terkini pemiliknya dan penampil berbagi room dengannya (joined/diundang). */
   async canViewMemberAvatar(request: FileAccessRequest): Promise<boolean> {
     const owner = request.file.ownerUserId;
-    if (!owner || owner === request.viewer.userId || !ChatRealtimeHandlers.activeMember(request)) return false;
+    if (!owner || owner === request.viewer.userId || !ChatRealtimeHandlers.activeMember(request))
+      return false;
     const [row] = rows<{ ok: boolean }>(
       await request.db.execute(sql`
         select true as ok from app.alumni a

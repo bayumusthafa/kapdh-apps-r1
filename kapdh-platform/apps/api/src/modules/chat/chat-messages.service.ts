@@ -1,6 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
-import { messageReactions, messages, notificationPreferences, notifications, roomMembers } from "@kapdh/database";
+import {
+  messageReactions,
+  messages,
+  notificationPreferences,
+  notifications,
+  roomMembers,
+} from "@kapdh/database";
 import { and, count, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
@@ -133,7 +139,10 @@ export class ChatMessagesService {
     const limit = input.limit ?? 30;
     const anchorId = input.before ?? input.after;
     if (anchorId && !(await isMessageVisible(this.db, roomId, anchorId, auth.userId)))
-      throw fieldError(input.before ? "before" : "after", "Jangkar bukan pesan yang terlihat di percakapan ini.");
+      throw fieldError(
+        input.before ? "before" : "after",
+        "Jangkar bukan pesan yang terlihat di percakapan ini.",
+      );
     const direction = input.after ? "after" : input.before ? "before" : "latest";
     const found = await messageRows(this.db, {
       roomId,
@@ -167,7 +176,8 @@ export class ChatMessagesService {
       if (input.image_file_id !== undefined)
         throw fieldError("image_file_id", "Lampiran gambar hanya untuk pesan bergambar.");
     } else {
-      if (input.image_file_id === undefined) throw fieldError("image_file_id", "Pilih gambar yang akan dikirim.");
+      if (input.image_file_id === undefined)
+        throw fieldError("image_file_id", "Pilih gambar yang akan dikirim.");
       if (text !== null && text.trim().length === 0)
         throw fieldError("body", "Keterangan gambar tidak boleh hanya spasi.");
     }
@@ -190,7 +200,12 @@ export class ChatMessagesService {
     const input = await this.validateSend(body);
     const previous = await this.findByClientId(this.db, auth.userId, input.client_message_id);
     if (previous) return { status: 200, message: await this.replay(auth, roomId, previous, input) };
-    await this.limits.consumeOrThrow(`chat-send:${auth.userId}`, SEND_LIMIT, SEND_WINDOW_MS, MSG.sendRateLimited);
+    await this.limits.consumeOrThrow(
+      `chat-send:${auth.userId}`,
+      SEND_LIMIT,
+      SEND_WINDOW_MS,
+      MSG.sendRateLimited,
+    );
     try {
       return await this.db.transaction(async (tx) => {
         // Kunci pertama transaksi: baris room (aturan urutan commit C6, AC F11-3).
@@ -199,7 +214,8 @@ export class ChatMessagesService {
         await this.requireJoined(tx, roomId, auth.userId);
         // Duplikat yang commit selagi menunggu kunci room (permintaan ulang paralel di room yang sama).
         const raced = await this.findByClientId(tx, auth.userId, input.client_message_id);
-        if (raced) return { status: 200 as const, message: await this.replay(auth, roomId, raced, input, tx) };
+        if (raced)
+          return { status: 200 as const, message: await this.replay(auth, roomId, raced, input, tx) };
         await this.assertCanSend(tx, room, auth.userId);
         const now = this.clock.now();
         const imageFileId =
@@ -399,7 +415,8 @@ export class ChatMessagesService {
         userId: recipient.userId,
         category: "chat",
         title: "Pesan baru",
-        body: room.kind === "group" ? `Ada pesan baru di grup "${room.name}".` : `Ada pesan baru dari ${sender}.`,
+        body:
+          room.kind === "group" ? `Ada pesan baru di grup "${room.name}".` : `Ada pesan baru dari ${sender}.`,
         route: `/chat/${room.id}`,
         data: { room_id: room.id },
         dedupKey: dedupOf(recipient),
@@ -485,7 +502,14 @@ export class ChatMessagesService {
         .values({ messageId, userId: auth.userId, emoji, createdAt: this.clock.now() })
         .onConflictDoNothing()
         .returning({ emoji: messageReactions.emoji });
-      return this.reactionsResult(tx, roomId, messageId, auth.userId, emoji, inserted.length > 0 ? "added" : null);
+      return this.reactionsResult(
+        tx,
+        roomId,
+        messageId,
+        auth.userId,
+        emoji,
+        inserted.length > 0 ? "added" : null,
+      );
     });
   }
 
@@ -509,7 +533,14 @@ export class ChatMessagesService {
           ),
         )
         .returning({ emoji: messageReactions.emoji });
-      return this.reactionsResult(tx, roomId, messageId, auth.userId, emoji, removed.length > 0 ? "removed" : null);
+      return this.reactionsResult(
+        tx,
+        roomId,
+        messageId,
+        auth.userId,
+        emoji,
+        removed.length > 0 ? "removed" : null,
+      );
     });
   }
 

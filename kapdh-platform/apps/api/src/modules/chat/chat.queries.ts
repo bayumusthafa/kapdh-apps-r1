@@ -109,7 +109,9 @@ export async function joinedAdminIds(db: DbOrTx, roomId: string): Promise<string
  * beririsan tidak pernah saling menunggu terbalik (tanpa deadlock, juga saat hashtext bertabrakan).
  */
 export async function lockPairs(tx: Tx, userId: string, others: readonly string[]): Promise<void> {
-  const keys = [...new Set(others.filter((other) => other !== userId).map((other) => directKeyFor(userId, other)))];
+  const keys = [
+    ...new Set(others.filter((other) => other !== userId).map((other) => directKeyFor(userId, other))),
+  ];
   if (keys.length === 0) return;
   const hashes = rows<{ h: number }>(
     await tx.execute(sql`

@@ -79,9 +79,9 @@ describe("AC F11-1: room direct kanonik", () => {
     });
     // Room direct tanpa pesan tidak muncul di daftar (kontrak listChatRooms).
     const list = await api(t).get("/chat/rooms", { token: a.token });
-    expect((expectOperation("get", "/chat/rooms", list) as { items: Room[] }).items.map((r) => r.id)).not.toContain(
-      room.id,
-    );
+    expect(
+      (expectOperation("get", "/chat/rooms", list) as { items: Room[] }).items.map((r) => r.id),
+    ).not.toContain(room.id);
   });
 
   it("AC F11-1 negatif: diri sendiri 400; lawan bicara nonaktif, tidak ada, atau tersembunyi dari direktori tanpa grup bersama 404", async () => {
@@ -126,7 +126,11 @@ describe("AC F12-1: blokir dua arah pada room direct", () => {
     const opened = await api(t).post("/chat/direct", { user_id: b.userId }, { token: a.token });
     expect([opened.statusCode, errorCode(opened)]).toEqual([403, "FORBIDDEN"]);
     const viaA = await getRoom(a.token, room.id);
-    expect(viaA.room).toMatchObject({ can_send: false, send_restriction: "blocked", peer: { available: true } });
+    expect(viaA.room).toMatchObject({
+      can_send: false,
+      send_restriction: "blocked",
+      peer: { available: true },
+    });
 
     // Pihak yang diblokir tidak mengetahui blokir: peer_unavailable, sama dengan akun nonaktif (N-09).
     const reopened = await api(t).post("/chat/direct", { user_id: a.userId }, { token: b.token });
@@ -201,7 +205,9 @@ describe("AC F12-1: blokir dua arah pada room direct", () => {
       expect(await lifecycle.onBlockCreated(tx, later.userId, admin.userId)).toBe(1);
     });
     const invitations = await api(t).get("/chat/invitations", { token: later.token });
-    expect((expectOperation("get", "/chat/invitations", invitations) as { items: unknown[] }).items).toEqual([]);
+    expect((expectOperation("get", "/chat/invitations", invitations) as { items: unknown[] }).items).toEqual(
+      [],
+    );
     const accept = await api(t).post(`/chat/invitations/${body.room.id}/accept`, {}, { token: later.token });
     expect(accept.statusCode).toBe(404);
   });
@@ -234,7 +240,9 @@ describe("Grup: undangan wajib diterima, kapasitas, admin (PRD 3.11)", () => {
       skipped: [],
     });
     // Belum menerima: bukan anggota (tidak dipaksa masuk), riwayat tertutup.
-    expect((await api(t).get(`/chat/rooms/${roomId}/messages`, { token: newcomer.token })).statusCode).toBe(404);
+    expect((await api(t).get(`/chat/rooms/${roomId}/messages`, { token: newcomer.token })).statusCode).toBe(
+      404,
+    );
     const pending = await api(t).get("/chat/invitations", { token: newcomer.token });
     const pendingBody = expectOperation("get", "/chat/invitations", pending) as {
       items: { room_id: string; invited_by: { user_id: string } | null; member_count: number }[];
@@ -262,9 +270,9 @@ describe("Grup: undangan wajib diterima, kapasitas, admin (PRD 3.11)", () => {
       query: { status: "invited" },
     });
     expect(
-      (expectOperation("get", "/chat/rooms/{roomId}/members", asAdmin) as { items: { user_id: string }[] }).items.map(
-        (m) => m.user_id,
-      ),
+      (
+        expectOperation("get", "/chat/rooms/{roomId}/members", asAdmin) as { items: { user_id: string }[] }
+      ).items.map((m) => m.user_id),
     ).toEqual([newcomer.userId]);
 
     const accepted = await api(t).post(`/chat/invitations/${roomId}/accept`, {}, { token: newcomer.token });
@@ -307,9 +315,9 @@ describe("Grup: undangan wajib diterima, kapasitas, admin (PRD 3.11)", () => {
     const declined = await api(t).post(`/chat/invitations/${roomId}/decline`, {}, { token: invitee.token });
     expect(declined.statusCode).toBe(204);
     expectOperation("post", "/chat/invitations/{roomId}/decline", declined);
-    expect((await api(t).post(`/chat/invitations/${roomId}/decline`, {}, { token: invitee.token })).statusCode).toBe(
-      204,
-    );
+    expect(
+      (await api(t).post(`/chat/invitations/${roomId}/decline`, {}, { token: invitee.token })).statusCode,
+    ).toBe(204);
     const reinvite = await api(t).post(
       `/chat/rooms/${roomId}/invitations`,
       { user_ids: [invitee.userId] },
@@ -317,9 +325,9 @@ describe("Grup: undangan wajib diterima, kapasitas, admin (PRD 3.11)", () => {
     );
     expect((reinvite.json() as { invited_user_ids: string[] }).invited_user_ids).toEqual([invitee.userId]);
     const stranger = await member(t);
-    expect((await api(t).post(`/chat/invitations/${roomId}/decline`, {}, { token: stranger.token })).statusCode).toBe(
-      404,
-    );
+    expect(
+      (await api(t).post(`/chat/invitations/${roomId}/decline`, {}, { token: stranger.token })).statusCode,
+    ).toBe(404);
   });
 
   it("PRD 3.11 (D5): kapasitas grup menghitung undangan tertunda dan alasan dilewati tidak membedakan penyebab", async () => {
@@ -330,12 +338,17 @@ describe("Grup: undangan wajib diterima, kapasitas, admin (PRD 3.11)", () => {
       const expired = await member(t, "expired");
       const created = await api(t).post(
         "/chat/rooms",
-        { name: "Grup Kecil", invitee_user_ids: [m1.userId, expired.userId, admin.userId, m2.userId, m3.userId] },
+        {
+          name: "Grup Kecil",
+          invitee_user_ids: [m1.userId, expired.userId, admin.userId, m2.userId, m3.userId],
+        },
         { token: admin.token },
       );
-      const outcome = (expectOperation("post", "/chat/rooms", created) as {
-        invitations: { invited_user_ids: string[]; skipped: { user_id: string; reason: string }[] };
-      }).invitations;
+      const outcome = (
+        expectOperation("post", "/chat/rooms", created) as {
+          invitations: { invited_user_ids: string[]; skipped: { user_id: string; reason: string }[] };
+        }
+      ).invitations;
       expect(outcome.invited_user_ids).toEqual([m1.userId, m2.userId]);
       expect(outcome.skipped).toEqual([
         { user_id: expired.userId, reason: "not_invitable" },
@@ -375,9 +388,9 @@ describe("Grup: undangan wajib diterima, kapasitas, admin (PRD 3.11)", () => {
 
     const withoutSuccessor = await api(t).post(`/chat/rooms/${roomId}/leave`, {}, { token: admin.token });
     expect([withoutSuccessor.statusCode, errorCode(withoutSuccessor)]).toEqual([400, "VALIDATION_ERROR"]);
-    expect((withoutSuccessor.json() as { field_errors: Record<string, string[]> }).field_errors).toHaveProperty(
-      "successor_user_id",
-    );
+    expect(
+      (withoutSuccessor.json() as { field_errors: Record<string, string[]> }).field_errors,
+    ).toHaveProperty("successor_user_id");
     const demoteSelf = await api(t).patch(
       `/chat/rooms/${roomId}/members/${admin.userId}`,
       { role: "member" },
@@ -460,9 +473,15 @@ describe("Grup: undangan wajib diterima, kapasitas, admin (PRD 3.11)", () => {
     const m1 = await member(t);
     const invitee = await member(t);
     const roomId = await groupWith(t, admin, [m1]);
-    await api(t).post(`/chat/rooms/${roomId}/invitations`, { user_ids: [invitee.userId] }, { token: admin.token });
+    await api(t).post(
+      `/chat/rooms/${roomId}/invitations`,
+      { user_ids: [invitee.userId] },
+      { token: admin.token },
+    );
 
-    const byMember = await api(t).delete(`/chat/rooms/${roomId}/members/${invitee.userId}`, { token: m1.token });
+    const byMember = await api(t).delete(`/chat/rooms/${roomId}/members/${invitee.userId}`, {
+      token: m1.token,
+    });
     expect(byMember.statusCode).toBe(403);
     const self = await api(t).delete(`/chat/rooms/${roomId}/members/${admin.userId}`, { token: admin.token });
     expect(self.statusCode).toBe(400);
@@ -477,14 +496,16 @@ describe("Grup: undangan wajib diterima, kapasitas, admin (PRD 3.11)", () => {
       .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.userId, m1.userId)));
     expect(row!.status).toBe("removed");
 
-    const cancelled = await api(t).delete(`/chat/rooms/${roomId}/members/${invitee.userId}`, { token: admin.token });
+    const cancelled = await api(t).delete(`/chat/rooms/${roomId}/members/${invitee.userId}`, {
+      token: admin.token,
+    });
     expect(cancelled.statusCode).toBe(204);
-    expect((await api(t).post(`/chat/invitations/${roomId}/accept`, {}, { token: invitee.token })).statusCode).toBe(
-      404,
-    );
-    expect((await api(t).delete(`/chat/rooms/${roomId}/members/${m1.userId}`, { token: admin.token })).statusCode).toBe(
-      404,
-    );
+    expect(
+      (await api(t).post(`/chat/invitations/${roomId}/accept`, {}, { token: invitee.token })).statusCode,
+    ).toBe(404);
+    expect(
+      (await api(t).delete(`/chat/rooms/${roomId}/members/${m1.userId}`, { token: admin.token })).statusCode,
+    ).toBe(404);
   });
 });
 
@@ -557,7 +578,9 @@ describe("Info grup: ubah nama/avatar dengan If-Match, mute", () => {
     const muted = await api(t).put(`/chat/rooms/${room.id}/mute`, { muted: true }, { token: b.token });
     expect(muted.statusCode).toBe(204);
     expectOperation("put", "/chat/rooms/{roomId}/mute", muted);
-    expect((await api(t).put(`/chat/rooms/${room.id}/mute`, { muted: true }, { token: b.token })).statusCode).toBe(204);
+    expect(
+      (await api(t).put(`/chat/rooms/${room.id}/mute`, { muted: true }, { token: b.token })).statusCode,
+    ).toBe(204);
     expect((await getRoom(b.token, room.id)).room.muted).toBe(true);
     await sendText(t, a, room.id, "Pesan saat dibisukan");
     const pushes = await t.db
@@ -583,7 +606,11 @@ describe("Daftar room (tab Pesan / Pesan Grup)", () => {
     const groupId = await groupWith(t, peers[0]!, [me]);
     await sendText(t, peers[0]!, groupId, "Info grup");
     // Undangan tertunda lain untuk lencana.
-    await api(t).post("/chat/rooms", { name: "Undangan", invitee_user_ids: [me.userId] }, { token: peers[1]!.token });
+    await api(t).post(
+      "/chat/rooms",
+      { name: "Undangan", invitee_user_ids: [me.userId] },
+      { token: peers[1]!.token },
+    );
 
     const all = await api(t).get("/chat/rooms", { token: me.token });
     const page = expectOperation("get", "/chat/rooms", all) as {
@@ -607,7 +634,10 @@ describe("Daftar room (tab Pesan / Pesan Grup)", () => {
         token: me.token,
         query: { limit: "2", ...(cursor ? { cursor } : {}) },
       });
-      const body = expectOperation("get", "/chat/rooms", res) as { items: Room[]; next_cursor: string | null };
+      const body = expectOperation("get", "/chat/rooms", res) as {
+        items: Room[];
+        next_cursor: string | null;
+      };
       seen.push(...body.items.map((r) => r.id));
       cursor = body.next_cursor;
     } while (cursor);

@@ -157,7 +157,11 @@ export class ChatRoomsService {
   }
 
   /** Room + keanggotaan joined penampil, dengan kunci baris room (kunci pertama transaksi) bila `tx` diberikan. */
-  private async joinedLocked(tx: Tx, roomId: string, userId: string): Promise<{ room: RoomRow; me: MemberRow }> {
+  private async joinedLocked(
+    tx: Tx,
+    roomId: string,
+    userId: string,
+  ): Promise<{ room: RoomRow; me: MemberRow }> {
     const room = await lockRoom(tx, roomId);
     const me = room ? await findMembership(tx, roomId, userId) : undefined;
     if (!room || !me || me.status !== "joined") throw notFound(MSG.roomNotFound);
@@ -167,7 +171,8 @@ export class ChatRoomsService {
   /** Pengelolaan grup: hanya room group (direct → 400), grup aktif dan pemanggil admin (selain itu 403). */
   private assertGroupAdmin(room: RoomRow, me: MemberRow): void {
     if (room.kind !== "group") throw fieldError("_", MSG.directRoomOnlyGroup);
-    if (room.closedAt || me.role !== "admin") throw forbidden(room.closedAt ? MSG.roomClosed : MSG.notGroupAdmin);
+    if (room.closedAt || me.role !== "admin")
+      throw forbidden(room.closedAt ? MSG.roomClosed : MSG.notGroupAdmin);
   }
 
   // ---------------------------------------------------------------------------------------------- daftar room
@@ -186,7 +191,9 @@ export class ChatRoomsService {
     const hasMore = found.length > page.limit;
     const pageRows = hasMore ? found.slice(0, page.limit) : found;
     const last = pageRows[pageRows.length - 1];
-    const items: ChatRoomSummaryDto[] = await Promise.all(pageRows.map((row) => this.presenter.summary(row, auth)));
+    const items: ChatRoomSummaryDto[] = await Promise.all(
+      pageRows.map((row) => this.presenter.summary(row, auth)),
+    );
     return {
       items,
       next_cursor: hasMore && last ? encodeCursor({ us: last.activity_us, id: last.id }) : null,
@@ -390,11 +397,13 @@ export class ChatRoomsService {
         changes,
         name: updated.name,
         avatar_url: avatar
-          ? ((await this.presenter.fileUrl(
-              { id: avatar.id, visibility: avatar.visibility, status: avatar.status },
-              "chat_image",
-              null,
-            ))?.url ?? null)
+          ? ((
+              await this.presenter.fileUrl(
+                { id: avatar.id, visibility: avatar.visibility, status: avatar.status },
+                "chat_image",
+                null,
+              )
+            )?.url ?? null)
           : null,
         closed_at: updated.closedAt?.toISOString() ?? null,
       });
@@ -404,7 +413,10 @@ export class ChatRoomsService {
 
   // --------------------------------------------------------------------------------------------------- anggota
 
-  private async memberDtos(rowsFound: readonly MemberListRow[], viewer: ChatViewer): Promise<ChatRoomMember[]> {
+  private async memberDtos(
+    rowsFound: readonly MemberListRow[],
+    viewer: ChatViewer,
+  ): Promise<ChatRoomMember[]> {
     return Promise.all(
       rowsFound.map(async (row) => {
         const deleted = isDeletedAccount({ accountStatus: row.account_status, fullName: row.full_name });
@@ -520,7 +532,10 @@ export class ChatRoomsService {
         this.events.leave(targetId, roomId);
         return;
       }
-      if (target?.status === "invited" && (await this.writer.cancelInvitation(tx, roomId, targetId, auth.userId)))
+      if (
+        target?.status === "invited" &&
+        (await this.writer.cancelInvitation(tx, roomId, targetId, auth.userId))
+      )
         return;
       throw notFound(MSG.memberNotFound);
     });
@@ -575,7 +590,9 @@ export class ChatRoomsService {
       ).map((row) => [row.userId, row]),
     );
     const facts = await alumniFacts(tx, candidates);
-    const lockable = candidates.filter((id) => !["joined", "invited"].includes(existing.get(id)?.status ?? ""));
+    const lockable = candidates.filter(
+      (id) => !["joined", "invited"].includes(existing.get(id)?.status ?? ""),
+    );
     await lockPairs(tx, inviterId, lockable);
     const blocked = await blockedAmong(tx, inviterId, lockable);
     let seats = await seatCount(tx, room.id);
@@ -882,7 +899,8 @@ export class ChatRoomsService {
     if (!updated) throw notFound(MSG.roomNotFound);
     const room = await findRoom(this.db, roomId);
     if (!room) throw notFound(MSG.roomNotFound);
-    const avatar = room.kind === "group" && room.avatarFileId ? await this.files.findReady(room.avatarFileId) : null;
+    const avatar =
+      room.kind === "group" && room.avatarFileId ? await this.files.findReady(room.avatarFileId) : null;
     // Perangkat lain pemanggil menyesuaikan preferensi (kanal user saja; field per pengguna dimuat ulang lewat HTTP).
     this.events.roomUpdated(
       {
@@ -891,11 +909,13 @@ export class ChatRoomsService {
         changes: ["muted"],
         name: room.kind === "group" ? room.name : null,
         avatar_url: avatar
-          ? ((await this.presenter.fileUrl(
-              { id: avatar.id, visibility: avatar.visibility, status: avatar.status },
-              "chat_image",
-              null,
-            ))?.url ?? null)
+          ? ((
+              await this.presenter.fileUrl(
+                { id: avatar.id, visibility: avatar.visibility, status: avatar.status },
+                "chat_image",
+                null,
+              )
+            )?.url ?? null)
           : null,
         closed_at: room.closedAt?.toISOString() ?? null,
       },
