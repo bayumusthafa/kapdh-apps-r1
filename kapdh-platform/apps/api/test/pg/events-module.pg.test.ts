@@ -398,7 +398,9 @@ describe("PRD 6.4: urutan kunci event → tiket → payment (PostgreSQL 17)", ()
       );
     });
     expect(observed, "pembatalan event menunggu kunci tiket").toBe(true);
-    expect(lapsedPaymentFree, "payment tidak boleh terkunci sebelum semua tiket terkunci (PRD 6.4)").toBe(true);
+    expect(lapsedPaymentFree, "payment tidak boleh terkunci sebelum semua tiket terkunci (PRD 6.4)").toBe(
+      true,
+    );
     const res = await running.cancel!;
     expect(res.statusCode, res.body).toBe(200);
     expect(res.json()).toMatchObject({ tickets_cancelled: 1, payments_cancelled: 1 });
@@ -413,7 +415,11 @@ describe("PRD 6.4: urutan kunci event → tiket → payment (PostgreSQL 17)", ()
       where id = ${lapsed.payment.id} or id = ${active.payment.id} order by id`;
     expect(payments).toEqual([
       { id: lapsed.payment.id, status: "cancelled", cancel_reason: "Batas reservasi habis" },
-      { id: active.payment.id, status: "cancelled", cancel_reason: "Event dibatalkan: Gedung tidak tersedia" },
+      {
+        id: active.payment.id,
+        status: "cancelled",
+        cancel_reason: "Event dibatalkan: Gedung tidak tersedia",
+      },
     ]);
     const [event] = await sql<{ held_quantity: number; paid_quantity: number }[]>`
       select held_quantity, paid_quantity from app.events where id = ${eventId}`;

@@ -725,9 +725,7 @@ export class AdminEventsService {
         // Tiket tanpa payment (gratis) lebih dahulu; sisanya urut id payment (uuid heksadesimal kecil = urutan byte).
         const orderKey = (ticket: TicketRow) => paymentsByTicket.get(ticket.id)?.id ?? "";
         const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-        const ordered = [...locked].sort(
-          (a, b) => compare(orderKey(a), orderKey(b)) || compare(a.id, b.id),
-        );
+        const ordered = [...locked].sort((a, b) => compare(orderKey(a), orderKey(b)) || compare(a.id, b.id));
         let ticketsCancelled = 0;
         let paymentsCancelled = 0;
         let paymentsInReview = 0;
