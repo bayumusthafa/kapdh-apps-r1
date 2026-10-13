@@ -2,7 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { ApiEnv } from "@kapdh/config";
 import { type components, PERMISSION_VALUES } from "@kapdh/contracts";
 import { admins, auditLogs, mfaTotp, sessions, users } from "@kapdh/database";
-import { and, desc, eq, lt, min, sql } from "drizzle-orm";
+import { and, desc, eq, lt, min, ne, sql } from "drizzle-orm";
 import type { Clock } from "../../core/adapters/clock.js";
 import { AuditService } from "../../core/audit/audit.service.js";
 import { tryCtx } from "../../core/context/request-context.js";
@@ -10,12 +10,15 @@ import type { Db } from "../../core/db/types.js";
 import { AppException, unauthenticated } from "../../core/errors/app-exception.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
 import { backupCodeHash, decryptSecret, matchTotpStep } from "../../core/identity/crypto.js";
-import { LOGIN_WINDOW_MS, PasswordVerifier } from "../../core/identity/password-verifier.js";
+import { normalizeEmail } from "../../core/identity/email.js";
+import { LOGIN_WINDOW_MS, PasswordVerifier, type UserRow } from "../../core/identity/password-verifier.js";
 import { type IssuedSession, SessionIssuer } from "../../core/identity/session-issuer.js";
 import { MFA_TTL_SECONDS, TokenService } from "../../core/identity/token.service.js";
 import { RateLimitService } from "../../core/rate-limit/rate-limit.service.js";
 import { CLOCK, DB, ENV } from "../../core/tokens.js";
 import {
+  type AdminAuthFailureStage,
+  auditAuthFailure,
   auditMfaLockout,
   MFA_FAILS_LIMIT,
   MFA_WINDOW_MS,
@@ -52,6 +55,33 @@ export class AdminAuthService {
     private readonly audit: AuditService,
   ) {}
 
+  /**
+   * Audit `admin.auth_failed` tahap sandi (F-17) bila email milik identitas admin (users.kind admin, belum terhapus).
+   * Email yang tidak dikenal tidak diaudit: tidak ada entitas admin, dan email acak tidak boleh menjadi jalan
+   * membanjiri log append-only. Kueri yang sama dijalankan untuk setiap 401 sehingga waktu respons tidak membedakan
+   * email terdaftar (anti enumerasi, PRD 2.5).
+   */
+  private async auditPasswordFailure(emailRaw: string): Promise<void> {
+    const [row] = await this.db
+      .select({ adminId: admins.id })
+      .from(users)
+      .innerJoin(admins, eq(admins.userId, users.id))
+      .where(
+        and(eq(users.email, normalizeEmail(emailRaw)), eq(users.kind, "admin"), ne(users.status, "deleted")),
+      )
+      .limit(1);
+    if (row) await this.auditFailure(row.adminId, "password");
+  }
+
+  private auditFailure(adminId: string, stage: AdminAuthFailureStage): Promise<void> {
+    return auditAuthFailure({ db: this.db, audit: this.audit, limits: this.limits }, adminId, stage);
+  }
+
+  /** mfa_token yang `jti`-nya sudah dikonsumsi oleh sesi yang terbentuk (kontrak adminVerifyMfa: sekali pakai). */
+  private async mfaTokenSpent(tokenId: string): Promise<boolean> {
+    return (await this.limits.peek(mfaTokenKey(tokenId), 1, MFA_TOKEN_TTL_MS)) > 0;
+  }
+
   /** Admin `active` dengan TOTP terverifikasi (AC F02-2, F-16): satu-satunya yang boleh tahap sandi admin. */
   private async adminCanLogin(userId: string): Promise<boolean> {
     const [row] = await this.db
@@ -68,14 +98,23 @@ export class AdminAuthService {
    * mfa_token (5 menit, hanya untuk POST /admin/auth/mfa). Admin `invited`/`disabled` atau tanpa TOTP terverifikasi
    * mendapat 401 yang sama dengan sandi salah dan dicatat ke batas kegagalan yang sama, sehingga sandi bocor tidak
    * cukup untuk mendaftarkan autentikator penyerang; pendaftaran TOTP hanya lewat token penerimaan undangan (F-16).
+   * Kegagalan untuk email milik identitas admin diaudit `admin.auth_failed` (tahap password, dibatasi per jendela).
    */
   async adminLogin(emailRaw: string, password: string): Promise<AdminLoginResponse> {
-    const user = await this.passwords.verify(
-      emailRaw,
-      password,
-      "admin",
-      async (account) => account.status === "active" && (await this.adminCanLogin(account.id)),
-    );
+    let user: UserRow;
+    try {
+      user = await this.passwords.verify(
+        emailRaw,
+        password,
+        "admin",
+        async (account) => account.status === "active" && (await this.adminCanLogin(account.id)),
+      );
+    } catch (error) {
+      // F-17: kegagalan tahap sandi untuk identitas admin yang ada diaudit (dibatasi per jendela); 429 tidak menilai
+      // sandi sehingga tidak diaudit ulang.
+      if (error instanceof AppException && error.status === 401) await this.auditPasswordFailure(emailRaw);
+      throw error;
+    }
     const mfa = await this.tokens.signMfa(user.id);
     return {
       mfa_token: mfa.token,
@@ -94,9 +133,16 @@ export class AdminAuthService {
    * atau 401 (mfa_token tidak sah/sudah dipakai, admin/akun tidak lagi aktif, TOTP tidak terverifikasi) mengembalikan
    * jatah; 429 setelah 5 kegagalan dalam 15 menit.
    *
-   * mfa_token SEKALI PAKAI: setelah kode benar, `jti` token dikonsumsi di dalam transaksi yang sama (masih memegang
-   * kunci baris mfa_totp) sebelum sesi dibuat. Token yang sama dengan kode baru (langkah TOTP berikutnya atau backup
-   * code lain) ditolak 401 dan transaksinya dibatalkan, sehingga kode/backup code yang sempat dinilai tidak terbuang.
+   * mfa_token SEKALI PAKAI: token yang `jti`-nya sudah dikonsumsi ditolak 401 SEBELUM jatah kegagalan dicadangkan dan
+   * sebelum kode apa pun dinilai, sehingga pemegang token bekas (tanpa sandi) tidak dapat menghabiskan jatah 5 kode
+   * per 15 menit milik admin (PRD 2.5: batas tidak boleh membuat akun dikunci pihak lain), dan pengulangan permintaan
+   * yang responsnya hilang diarahkan kembali ke login (401), bukan "Kode salah". Setelah kode benar, `jti` dikonsumsi
+   * atomik di dalam transaksi (seluruh kunci sudah dipegang) sebelum sesi dibuat; pemakaian bersamaan yang kalah
+   * ditolak 401 dan transaksinya dibatalkan, sehingga kode/backup code yang sempat dinilai tidak terbuang. Kode salah
+   * yang dinilai bersamaan dengan pemenang juga menjadi 401 dan jatahnya dikembalikan.
+   *
+   * Kunci baris mengikuti urutan identitas admin (admins → users → mfa_totp, lihat admin-auth.shared.ts) sehingga
+   * login yang berjalan bersamaan dengan reset MFA/pemulihan C7 atau undangan ulang CLI menunggu, bukan deadlock.
    */
   async adminVerifyMfa(
     mfaToken: string,
@@ -106,6 +152,7 @@ export class AdminAuthService {
     const unauth = unauthenticated("Sesi masuk tidak berlaku lagi. Masuk kembali.");
     const claims = await this.tokens.verifyMfaClaims(mfaToken);
     if (!claims) throw unauth;
+    if (await this.mfaTokenSpent(claims.tokenId)) throw unauth;
     const userId = claims.userId;
     const ip = tryCtx()?.ip ?? null;
     const slot = await this.limits.reserveOrThrow(
@@ -117,9 +164,12 @@ export class AdminAuthService {
     const now = this.clock.now();
     try {
       const issued = await this.db.transaction(async (tx) => {
+        // Urutan kunci admins → users → mfa_totp. admins FOR SHARE: status admin tetap sampai commit (reset C7
+        // menunggu); users FOR NO KEY UPDATE: last_login_at diperbarui di transaksi ini; mfa_totp FOR UPDATE:
+        // percobaan kode bersamaan berurutan.
+        const [admin] = await tx.select().from(admins).where(eq(admins.userId, userId)).for("share");
+        const [user] = await tx.select().from(users).where(eq(users.id, userId)).for("no key update");
         const [totpRow] = await tx.select().from(mfaTotp).where(eq(mfaTotp.userId, userId)).for("update");
-        const user = await tx.query.users.findFirst({ where: eq(users.id, userId) });
-        const admin = await tx.query.admins.findFirst({ where: eq(admins.userId, userId) });
         // Keadaan token/admin tidak sah → 401 (kembali ke login), bukan galat kode.
         if (
           !totpRow?.verifiedAt ||
@@ -202,9 +252,16 @@ export class AdminAuthService {
         await slot.release();
         throw e;
       }
+      // mfa_token dikonsumsi permintaan lain yang menang selagi kode ini dinilai: token tidak sah lagi (401), bukan
+      // kegagalan kode; jatah dikembalikan.
+      if (await this.mfaTokenSpent(claims.tokenId)) {
+        await slot.release();
+        throw unauth;
+      }
       // Kegagalan kode juga dihitung ke batas login per IP (D1) tanpa menggerbang tahap ini.
       if (ip) await this.limits.hit(`login-ip:${ip}`, LOGIN_WINDOW_MS);
-      // Kegagalan ke-5 mengunci tahap kode: satu audit per penguncian (F-17).
+      // F-17: kegagalan kode pertama dalam jendela diaudit; kegagalan ke-5 mengunci tahap kode (satu audit/penguncian).
+      await this.auditFailure(e.adminId, "mfa");
       if (slot.count === MFA_FAILS_LIMIT) await auditMfaLockout(this.db, this.audit, e.adminId, "login");
       // Galat formulir: tetap di layar MFA dengan sisa percobaan (kontrak adminVerifyMfa); mfa_token tetap berlaku.
       throw wrongCodeError(e.field, slot.count);

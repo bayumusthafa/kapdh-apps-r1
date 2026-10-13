@@ -61,8 +61,11 @@ paths:
 
         Galat: 401 UNAUTHENTICATED "Email atau sandi salah" untuk kredensial salah, akun tidak dikenal, admin
         `disabled`, admin `invited`, atau admin tanpa TOTP terverifikasi (tidak dibedakan); 429 RATE_LIMITED
-        setelah 10 kegagalan dalam 15 menit per email atau ambang per IP (PRD 2.5). Admin yang lupa sandi meminta
-        undangan ulang ke Super Admin (F-16).
+        setelah 10 kegagalan dalam 15 menit per email atau ambang per IP (PRD 2.5); 400 VALIDATION_ERROR untuk
+        masukan yang melanggar AdminLoginRequest (format email, sandi lebih dari 128 karakter) tanpa menyentuh batas
+        kegagalan. Admin yang lupa sandi meminta undangan ulang ke Super Admin (F-16). Kegagalan untuk email milik
+        identitas admin diaudit `admin.auth_failed` (`after.stage` password) paling banyak sekali per admin per
+        15 menit, tanpa sandi atau email yang dicoba (F-17); email yang tidak dikenal tidak diaudit.
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -95,8 +98,10 @@ paths:
         cookie `kapdh_admin_rt` (tidak pernah di localStorage, PRD 5.2).
 
         mfa_token SEKALI PAKAI: setelah kode benar menghasilkan sesi, `jti` token dikonsumsi dalam transaksi yang
-        sama; token yang sama (dengan kode TOTP langkah berikutnya atau backup code lain) ditolak 401 dan kode yang
-        dikirim tidak dikonsumsi. Kode salah tidak mengonsumsi token.
+        sama; token yang sama dengan kode apa pun (kode yang sama saat mengulang permintaan yang responsnya hilang,
+        kode TOTP langkah berikutnya, backup code lain, atau kode salah) ditolak 401 SEBELUM kode dinilai, sehingga
+        kode yang dikirim tidak dikonsumsi dan percobaan itu tidak dihitung ke batas 5 kode per admin (pemegang
+        token bekas tidak dapat mengunci admin, PRD 2.5). Kode salah tidak mengonsumsi token.
 
         Kode salah adalah galat formulir, sama dengan /totp/confirm dan POST /auth/reauth: 400 VALIDATION_ERROR
         dengan `field_errors.totp_code` atau `field_errors.backup_code` berisi sisa percobaan (mis. "Kode salah.
@@ -105,7 +110,8 @@ paths:
         admin tidak lagi `active`, atau TOTP tidak terverifikasi; UI kembali ke /login.
         Galat lain: 400 VALIDATION_ERROR bila tidak ada kode atau keduanya dikirim; 429 RATE_LIMITED setelah 5
         kegagalan dalam 15 menit per admin (juga dihitung ke ambang per IP). Kegagalan ke-5 yang mengunci tahap
-        kode ditulis sekali sebagai audit `admin.mfa_locked` (tanpa kode).
+        kode ditulis sekali sebagai audit `admin.mfa_locked` (tanpa kode); kode salah pertama dalam jendela 15 menit
+        diaudit `admin.auth_failed` (`after.stage` mfa, tanpa kode; F-17).
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -292,7 +298,8 @@ paths:
         Galat: 400 VALIDATION_ERROR `field_errors.totp_code` kode salah atau pendaftaran belum dimulai; 401
         UNAUTHENTICATED mfa_token tidak berlaku atau admin tidak lagi dalam pendaftaran; 403 FORBIDDEN aktivasi
         sudah selesai (termasuk pengulangan setelah respons hilang dan konfirmasi bersamaan yang kalah); 429
-        RATE_LIMITED setelah 5 kode salah dalam 15 menit (penguncian diaudit sekali sebagai `admin.mfa_locked`).
+        RATE_LIMITED setelah 5 kode salah dalam 15 menit (penguncian diaudit sekali sebagai `admin.mfa_locked`;
+        kode salah pertama dalam jendela diaudit `admin.auth_failed` dengan `after.stage` enrollment).
         /totp/enroll menulis audit `admin.mfa_enrollment_started` tanpa secret.
       security: []
       x-kapdh-access: { audience: public }
@@ -402,7 +409,8 @@ paths:
         dicabut (sesi saat ini tetap), audit `admin.password_changed` ditulis tanpa nilai sandi, dan email
         pemberitahuan keamanan dijadwalkan lewat outbox (`admin.security_notice`). Socket sesi lain diputus setelah
         commit. Sandi lama salah -> 400 VALIDATION_ERROR `field_errors.current_password` (bukan 401) dan dihitung
-        ke batas kegagalan login (429 setelah ambang).
+        ke batas kegagalan login (429 setelah ambang); kegagalan pertama dalam jendela 15 menit diaudit
+        `admin.auth_failed` (`after.stage` change_password, tanpa nilai sandi; F-17).
       x-kapdh-access: { audience: admin }
       requestBody:
         required: true

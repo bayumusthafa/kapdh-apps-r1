@@ -6,8 +6,58 @@ import { AppException } from "../../core/errors/app-exception.js";
 import { ADMIN_IDLE_MS } from "../../core/guards/auth.guard.js";
 import { backupCodeHash, newBackupCode } from "../../core/identity/crypto.js";
 import type { IssuedSession } from "../../core/identity/session-issuer.js";
+import type { RateLimitService } from "../../core/rate-limit/rate-limit.service.js";
 
 type AdminSession = components["schemas"]["AdminSession"];
+
+/*
+ * URUTAN KUNCI identitas admin (ARCHITECTURE §2 butir 11; penjaga Super Admin terakhir migrasi 0002 "ubah baris admins
+ * lebih dahulu"): setiap transaksi modul admin-auth, CLI bootstrap, dan alur lain yang menyentuh identitas admin yang
+ * sama (reset MFA/pemulihan/undangan ulang C7, reauth admin modul auth) WAJIB mengunci baris dengan urutan
+ *   1. app.admins (FOR SHARE bila hanya membaca keadaan, FOR UPDATE bila mengubahnya),
+ *   2. app.users (FOR NO KEY UPDATE / FOR UPDATE),
+ *   3. app.mfa_totp (FOR UPDATE),
+ * dan tidak pernah mengunci tingkat yang lebih awal setelah tingkat yang lebih akhir. Urutan berbeda (mis. mfa_totp lalu
+ * users) bertemu transaksi reset MFA C7 (admins → users → mfa_totp) sebagai deadlock 40P01 → 500 INTERNAL_ERROR.
+ */
+
+/** Tahap autentikasi admin yang kegagalannya diaudit (`admin.auth_failed`, F-17). */
+export type AdminAuthFailureStage = "password" | "mfa" | "enrollment" | "change_password";
+
+/** Jendela pembatas audit kegagalan: paling banyak satu baris per admin per tahap per 15 menit (PRD 2.5, F-17). */
+export const AUTH_FAILURE_AUDIT_WINDOW_MS = 15 * 60_000;
+
+/**
+ * Audit kegagalan autentikasi admin (F-17; slice api-admin-auth "audit setiap peristiwa autentikasi admin"): sandi
+ * salah di tahap sandi atau ganti sandi, kode MFA salah saat login, kode salah saat konfirmasi pendaftaran TOTP.
+ * Kegagalan pertama dalam jendela 15 menit per admin per tahap ditulis sebagai `admin.auth_failed` (append-only,
+ * tanpa sandi, kode, token, atau email yang dicoba); kegagalan berikutnya dalam jendela yang sama hanya dihitung
+ * rate limit sehingga percobaan massal tidak dapat membanjiri log audit. Penguncian kode MFA tetap diaudit terpisah
+ * (`admin.mfa_locked`). Pembatas memakai store rate limit bersama (Redis di production) sehingga berlaku lintas
+ * instance. Transaksi tersendiri karena transaksi percobaan sudah dibatalkan (atau tidak ada).
+ */
+export async function auditAuthFailure(
+  deps: { db: Db; audit: AuditService; limits: RateLimitService },
+  adminId: string,
+  stage: AdminAuthFailureStage,
+): Promise<void> {
+  const key = `admin-auth-fail-audit:${stage}:${adminId}`;
+  if ((await deps.limits.consume(key, 1, AUTH_FAILURE_AUDIT_WINDOW_MS)) > 0) return;
+  try {
+    await deps.db.transaction(async (tx) => {
+      await deps.audit.write(tx, {
+        action: "admin.auth_failed",
+        entityType: "admin",
+        entityId: adminId,
+        after: { stage, window_minutes: AUTH_FAILURE_AUDIT_WINDOW_MS / 60_000 },
+      });
+    });
+  } catch (error) {
+    // Audit tidak tertulis: pembatas dilepas agar kegagalan berikutnya mencoba menulis lagi.
+    await deps.limits.reset(key).catch(() => undefined);
+    throw error;
+  }
+}
 
 /**
  * Audit penguncian kode MFA admin (F-17; F-02): ditulis sekali ketika kegagalan ke-5 dalam jendela 15 menit membuat
