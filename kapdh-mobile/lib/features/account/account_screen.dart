@@ -13,10 +13,18 @@ import '../../core/api/api_providers.dart';
 import '../../core/app_gate/app_gate.dart';
 import '../../core/format/formatters.dart';
 import '../../core/session/session_controller.dart';
+import '../../core/session/session_state.dart';
 import '../../design/design.dart';
 import '../notifications/notification_unread_count.dart';
 import 'widgets/account_section.dart';
 import 'widgets/profile_avatar.dart';
+
+/// Menu yang diizinkan status akun tetapi ditahan mode baca maintenance karena tujuannya hanya mutasi (ganti
+/// password, hapus akun; PRD 4.5). Penjelasannya pemeliharaan, bukan status keanggotaan (PRD 2.2).
+bool pausedByMaintenance(GateStatus gate, SessionState session, String location) =>
+    gate == GateStatus.maintenance &&
+    !isLocationAllowed(RedirectState(gate: gate, session: session), location) &&
+    isLocationAllowed(RedirectState(gate: GateStatus.ok, session: session), location);
 
 /// Tab Akun (PRD 4.6 "Flutter akun": inbox, preferensi, profil, sesi, legal, hapus akun; F-02, F-10, F-13, F-14).
 ///
@@ -48,18 +56,79 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   }
 
   void _open(String location, {required String label, required IconData icon}) {
-    final redirectState = RedirectState(gate: ref.read(appGateProvider).status, session: ref.read(sessionProvider));
-    if (!isLocationAllowed(redirectState, location)) {
-      unawaited(
-        showLockedTabSheet(
-          context,
-          tab: ShellTab(label: label, icon: icon, selectedIcon: icon, location: location),
-          status: ref.read(sessionProvider).effectiveStatus,
-        ),
-      );
+    final gate = ref.read(appGateProvider);
+    final session = ref.read(sessionProvider);
+    if (isLocationAllowed(RedirectState(gate: gate.status, session: session), location)) {
+      unawaited(context.push(location));
       return;
     }
-    unawaited(context.push(location));
+    if (pausedByMaintenance(gate.status, session, location)) {
+      unawaited(_showMaintenanceSheet(location, label: label, gate: gate));
+      return;
+    }
+    unawaited(
+      showLockedTabSheet(
+        context,
+        tab: ShellTab(label: label, icon: icon, selectedIcon: icon, location: location),
+        status: session.effectiveStatus,
+      ),
+    );
+  }
+
+  /// Menu yang status akunnya boleh dibuka tetapi ditahan mode baca maintenance (PRD 4.5): penjelasannya rentang
+  /// estimasi, coba lagi dan kanal dukungan (layar maintenance), bukan penjelasan status keanggotaan.
+  Future<void> _showMaintenanceSheet(String location, {required String label, required AppGateState gate}) {
+    final router = GoRouter.of(context);
+    final until = gate.maintenanceUntil;
+    return showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      // Tinggi mengikuti isi dan dapat digulir saat teks diperbesar (N-11).
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, 0, KapdhSpace.s5, KapdhSpace.s5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              StatusHero(
+                status: const StatusBadgeStyle(
+                  label: 'Pemeliharaan',
+                  icon: Icons.build_outlined,
+                  foreground: KapdhColors.warning,
+                  background: KapdhColors.warningBg,
+                ),
+                icon: Icons.build_outlined,
+                title: '$label ditunda sementara',
+                message:
+                    '${gate.maintenanceMessage ?? 'Layanan sedang dalam pemeliharaan.'} Perubahan data belum dapat '
+                    'disimpan sampai pemeliharaan selesai; data Anda aman.',
+              ),
+              const SizedBox(height: KapdhSpace.s4),
+              InfoBox(
+                icon: Icons.schedule,
+                message: until != null
+                    ? 'Perkiraan selesai: ${formatDateTime(until)}. Waktu dapat berubah.'
+                    : 'Perkiraan waktu selesai belum tersedia. Silakan coba lagi beberapa saat lagi.',
+              ),
+              const SizedBox(height: KapdhSpace.s5),
+              KapdhButton(
+                key: const ValueKey('account-maintenance-details'),
+                label: 'Coba lagi dan hubungi bantuan',
+                onPressed: () {
+                  Navigator.of(sheetContext).pop();
+                  // Layar maintenance memeriksa ulang status layanan dan melanjutkan ke menu ini setelah selesai.
+                  router.go(Uri(path: AppRoutes.maintenance, queryParameters: {'from': location}).toString());
+                },
+              ),
+              const SizedBox(height: KapdhSpace.s2),
+              TextButton(onPressed: () => Navigator.of(sheetContext).pop(), child: const Text('Tutup')),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -71,6 +140,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     final info = ref.watch(appInfoProvider);
     final redirectState = RedirectState(gate: gate, session: session);
     bool locked(String location) => !isLocationAllowed(redirectState, location);
+    bool paused(String location) => pausedByMaintenance(gate, session, location);
 
     AccountMenuTile tile(String location, String label, IconData icon, {String? subtitle, String? badge}) =>
         AccountMenuTile(
@@ -80,6 +150,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           subtitle: subtitle,
           badge: badge,
           locked: locked(location),
+          paused: paused(location),
           onTap: () => _open(location, label: label, icon: icon),
         );
 
@@ -180,6 +251,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                         label: 'Hapus akun',
                         subtitle: 'Hapus akun dan data pribadi Anda',
                         danger: true,
+                        paused: paused(AppRoutes.accountDelete),
                         onTap: () => _open(AppRoutes.accountDelete, label: 'Hapus akun', icon: Icons.delete),
                       ),
                     ],

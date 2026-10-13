@@ -81,7 +81,8 @@ final expectedAllowed = <String, Set<RouteGroup>>{
     RouteGroup.accountCommunity,
   },
   'expired': {...memberBase, RouteGroup.renewal, RouteGroup.tickets},
-  'suspended': {RouteGroup.restricted, RouteGroup.accountDelete, RouteGroup.legal},
+  // Kotak masuk resmi: kontrak C7 member_access `any` (AC F13-2).
+  'suspended': {RouteGroup.restricted, RouteGroup.accountDelete, RouteGroup.notifications, RouteGroup.legal},
   'disabled': {RouteGroup.deletionStatus, RouteGroup.legal},
   'deletion_pending': {RouteGroup.deletionStatus, RouteGroup.legal},
 };
@@ -169,12 +170,16 @@ void main() {
       expect(go(unverified, '/network/members/user-2'), '/onboarding/fees');
     });
 
-    test('suspended hanya portal pembatasan, legal dan hapus akun', () {
+    test('suspended hanya portal pembatasan, legal, hapus akun dan kotak masuk resmi (AC F13-2)', () {
       final suspended = authed('suspended');
       expect(go(suspended, '/kta'), '/restricted');
       expect(go(suspended, '/payments/new/renewal'), '/restricted');
       expect(go(suspended, '/account/delete'), isNull);
       expect(go(suspended, '/legal/ketentuan-komunitas'), isNull);
+      expect(go(suspended, '/notifications'), isNull);
+      // Pengaturan akun lain dan tujuan deep link notifikasi tetap ditolak.
+      expect(go(suspended, '/account/notifications'), '/restricted');
+      expect(go(suspended, '/network/members/user-2'), '/restricted');
     });
 
     test('status baru yang belum dikenal aplikasi diarahkan ke wajib update', () {
@@ -363,7 +368,8 @@ void main() {
       expect(routeGroupOf(path), RouteGroup.notifications);
       expect(go(const SessionState.anonymous(), path), '/login?from=${Uri.encodeComponent(path)}');
       expect(go(authed('unverified'), path), isNull);
-      expect(go(authed('suspended'), path), '/restricted');
+      // Suspended tetap membuka kotak masuk (kontrak C7); tujuan deep link-nya diperiksa lagi saat dibuka.
+      expect(go(authed('suspended'), path), isNull);
       expect(go(authed('verified'), '/login?from=${Uri.encodeComponent(path)}'), path);
     });
   });

@@ -108,6 +108,48 @@ void main() {
     expect(app.location, '/account');
   });
 
+  testWidgets('PRD 4.5: saat pemeliharaan, menu khusus perubahan dijelaskan sebagai pemeliharaan, bukan status akun', (
+    tester,
+  ) async {
+    final app = await pumpApp(
+      tester,
+      tokens: savedTokens(),
+      handler: apiRoutes(
+        {
+          '/me': (_) => FakeResponse.json(200, meFullJson(status: 'unverified')),
+          '/notifications/unread-count': (_) => FakeResponse.json(200, {'unread_count': 0}),
+        },
+        config: publicConfigJson(maintenance: true, maintenanceUntil: DateTime.utc(2026, 10, 14, 9)),
+      ),
+    );
+    app.router.go('/account');
+    await settle(tester);
+    expect(app.location, '/account');
+
+    // Ganti password dan hapus akun diizinkan status unverified, hanya ditahan mode baca.
+    expect(find.bySemanticsLabel('Ganti password, Ditunda selama pemeliharaan'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Hapus akun, Ditunda selama pemeliharaan'),
+      findsOneWidget,
+    );
+    // Menu yang memang ditolak status tetap dijelaskan lewat status.
+    expect(find.bySemanticsLabel('Anggota diblokir, terkunci'), findsOneWidget);
+
+    await scrollAndTap(tester, find.byKey(const ValueKey('account-menu-/account/password')));
+    await settle(tester);
+    expect(find.text('Ganti password ditunda sementara'), findsOneWidget);
+    expect(find.textContaining('Perkiraan selesai: 14 Okt 2026'), findsOneWidget);
+    expect(find.textContaining('Selesaikan iuran'), findsNothing);
+    expect(find.text('Bayar iuran'), findsNothing);
+    expect(app.location, '/account');
+
+    // Layar pemeliharaan: coba lagi, kanal dukungan, dan tujuan menu dilanjutkan setelah selesai.
+    await tester.tap(find.byKey(const ValueKey('account-maintenance-details')));
+    await settle(tester);
+    expect(app.location, '/maintenance?from=%2Faccount%2Fpassword');
+    expect(find.text('Layanan sedang dalam pemeliharaan'), findsOneWidget);
+  });
+
   testWidgets('F-14: menu Hapus akun membuka alur penghapusan', (tester) async {
     final app = await openAccount(
       tester,

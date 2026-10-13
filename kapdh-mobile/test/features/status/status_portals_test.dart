@@ -4,6 +4,7 @@ import 'package:kapdh_api/kapdh_api.dart';
 import 'package:kapdh_mobile/core/api/api_providers.dart';
 import 'package:kapdh_mobile/core/session/session_controller.dart';
 import 'package:kapdh_mobile/core/session/session_state.dart';
+import 'package:kapdh_mobile/design/design.dart';
 import 'package:kapdh_mobile/features/status/deletion_portal.dart';
 import 'package:kapdh_mobile/features/status/deletion_status_screen.dart';
 import 'package:kapdh_mobile/features/status/restricted_screen.dart';
@@ -58,11 +59,48 @@ void main() {
     testWidgets('tanpa alasan: arahan menghubungi pengurus; KTA dan fitur lain tidak dapat dibuka', (tester) async {
       final app = await openRestricted(tester, reason: null);
       expect(find.textContaining('Hubungi pengurus untuk mengetahui alasan'), findsOneWidget);
-      for (final path in ['/kta', '/home', '/notifications', '/payments']) {
+      for (final path in ['/kta', '/home', '/payments', '/account', '/network']) {
         app.router.go(path);
         await settle(tester);
         expect(app.location, '/restricted', reason: path);
       }
+    });
+
+    testWidgets('AC F13-2: kotak masuk resmi terbuka dari portal; tujuan deep link tetap diperiksa status', (
+      tester,
+    ) async {
+      final app = await openRestricted(
+        tester,
+        extra: {
+          '/notifications/unread-count': (_) => FakeResponse.json(200, {'unread_count': 2}),
+          '/notifications': (_) => FakeResponse.json(
+            200,
+            notificationPageJson([
+              inboxJson(notificationId1, category: 'security', title: 'Password akun diganti', deepLink: null),
+              inboxJson(notificationId2),
+            ]),
+          ),
+          '/notifications/read': (_) => FakeResponse.json(200, {'updated_count': 1, 'unread_count': 1}),
+        },
+      );
+      expect(
+        find.bySemanticsLabel('Notifikasi, Pemberitahuan pengurus dan keamanan akun, 2 belum dibaca'),
+        findsOneWidget,
+      );
+      await scrollAndTap(tester, find.byKey(const ValueKey('restricted-notifications')));
+      await settle(tester);
+      expect(app.location, '/notifications');
+      expect(find.text('Password akun diganti'), findsOneWidget);
+
+      // Tujuan pembayaran tidak tersedia bagi anggota suspended: redirect mengganti lokasi dengan portal, tanpa
+      // menumpuk halaman di atas kotak masuk.
+      await tester.tap(find.byKey(const ValueKey('notification-$notificationId2')));
+      await settle(tester);
+      expectLastBody(app.adapter, '/notifications/read', {
+        'ids': [notificationId2],
+      });
+      expect(app.location, '/restricted');
+      expect(app.router.canPop(), isFalse);
     });
 
     testWidgets('PRD 3.12: banding dikirim dari portal pembatasan dan statusnya tampil', (tester) async {
@@ -305,6 +343,53 @@ void main() {
       );
       await requestAndEnterCode(tester, code: '000000');
       expect(find.text('Kode salah. Sisa percobaan 3.'), findsOneWidget);
+      // Penghitung mengikuti jawaban server, bukan angka challenge awal (PRD 2.5).
+      expect(find.text('Sisa percobaan 3 dari 5'), findsOneWidget);
+      expect(find.text('Sisa percobaan 5 dari 5'), findsNothing);
+    });
+
+    testWidgets('PRD 2.5: kode salah tanpa angka dari server mengurangi sisa percobaan satu', (tester) async {
+      await openPortal(
+        tester,
+        login: pending(),
+        extra: {
+          '/public/deletion/verify': (_) => FakeResponse.json(400, errorJson('VALIDATION_ERROR', 'Kode salah.')),
+        },
+      );
+      await requestAndEnterCode(tester, code: '000000');
+      expect(find.text('Kode salah.'), findsOneWidget);
+      expect(find.text('Sisa percobaan 4 dari 5'), findsOneWidget);
+    });
+
+    testWidgets('PRD 2.5: percobaan habis menonaktifkan kode dan meminta kode baru', (tester) async {
+      final app = await openPortal(
+        tester,
+        login: pending(),
+        extra: {
+          '/public/deletion/verify': (_) => FakeResponse.json(
+            400,
+            errorJson(
+              'VALIDATION_ERROR',
+              'Kode salah.',
+              fieldErrors: {
+                'code': ['Kode salah. Sisa percobaan 0.'],
+              },
+            ),
+          ),
+        },
+      );
+      await requestAndEnterCode(tester, code: '000000');
+      expect(find.text('Kode tidak berlaku lagi. Kirim ulang kode untuk mendapatkan kode baru.'), findsOneWidget);
+      expect(find.textContaining('Sisa percobaan 0 dari'), findsNothing);
+      // Kotak kode dan tombol periksa nonaktif, walau kode lengkap: tidak ada percobaan keenam ke server.
+      expect(tester.widget<TextField>(find.byKey(const ValueKey('otp-input'))).enabled, isFalse);
+      tester.widget<TextField>(find.byKey(const ValueKey('otp-input'))).controller!.text = '111111';
+      await settle(tester);
+      final verify = tester.widget<KapdhButton>(find.byKey(const ValueKey('deletion-check-verify')));
+      expect(verify.onPressed, isNull);
+      expect(countRequests(app.adapter, '/public/deletion/verify', method: 'POST'), 1);
+      // Kirim ulang tetap tersedia setelah jeda kirim ulang (challenge baru, PRD 2.5).
+      expect(find.byKey(const ValueKey('deletion-check-resend')), findsOneWidget);
     });
 
     testWidgets('410 OTP_EXPIRED: kode tidak berlaku dan penjelasan bila penghapusan sudah selesai', (tester) async {

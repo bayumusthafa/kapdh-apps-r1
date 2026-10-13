@@ -237,6 +237,142 @@ void main() {
     expect(bodyOf(requests.last), {'city': 'Dumai'});
   });
 
+  testWidgets('AC F15-4 PRD 4.5: "Pakai isian saya" hanya menerapkan field yang diubah; perubahan perangkat lain '
+      'tidak tertimpa', (tester) async {
+    var calls = 0;
+    final app = await openProfile(
+      tester,
+      extra: {
+        '/masters/professions': (_) => FakeResponse.json(200, {
+          'items': [masterJson('p-1', 'Guru'), masterJson('p-2', 'Dokter')],
+        }),
+      },
+      patch: (options) {
+        calls++;
+        if (calls == 1) {
+          // Perangkat lain mengubah kota, Instagram dan keahlian.
+          return FakeResponse.json(
+            409,
+            errorJson(
+              'VERSION_CONFLICT',
+              'Data sudah diubah orang lain.',
+              current: meFullJson(
+                version: '4',
+                city: 'Bangkinang',
+                instagram: 'ahmad.baru',
+                skills: [masterJson('s-9', 'Public speaking')],
+              ),
+            ),
+          );
+        }
+        return FakeResponse.json(200, meFullJson(version: '5', city: 'Bangkinang', bio: 'Bio baru saya'));
+      },
+    );
+    // Pengguna hanya mengubah bio dan profesi.
+    await enter(tester, 'bio', 'Bio baru saya');
+    await scrollAndTap(tester, find.byKey(const ValueKey('profile-profession')));
+    await settle(tester);
+    await tester.tap(find.text('Guru'));
+    await settle(tester);
+    await save(tester);
+    expect(find.text('Profil diubah di perangkat lain'), findsOneWidget);
+    await tester.tap(find.text('Pakai isian saya'));
+    await settle(tester);
+
+    // Formulir kini berbasis versi terbaru: kota, Instagram dan keahlian dari perangkat lain; bio dan profesi tetap
+    // isian sendiri.
+    expect(find.text('Bangkinang'), findsOneWidget);
+    expect(find.text('ahmad.baru'), findsOneWidget);
+    expect(find.text('Public speaking'), findsOneWidget);
+    expect(find.text('Bio baru saya'), findsOneWidget);
+    expect(find.text('Guru'), findsOneWidget);
+
+    await save(tester);
+    final requests = patches(app);
+    expect(requests, hasLength(2));
+    expect(headerOf(requests.last, 'If-Match'), '4');
+    expect(bodyOf(requests.last), {'bio': 'Bio baru saya', 'profession_id': 'p-1'});
+  });
+
+  testWidgets('PRD 4.5: konflik tanpa versi terbaru dan GET /me gagal menampilkan galat dengan coba lagi; isian utuh', (
+    tester,
+  ) async {
+    var conflicted = false;
+    var failLatest = true;
+    var patchCalls = 0;
+    final app = await openProfile(
+      tester,
+      extra: {
+        '/me': (_) {
+          if (!conflicted) return FakeResponse.json(200, meFullJson());
+          if (failLatest) {
+            failLatest = false;
+            return FakeResponse.network();
+          }
+          return FakeResponse.json(200, meFullJson(version: '4', bio: 'Bio dari perangkat lain'));
+        },
+      },
+      patch: (_) {
+        patchCalls++;
+        if (patchCalls == 1) {
+          conflicted = true;
+          // 409 tanpa `current`: klien memuat versi terbaru sendiri.
+          return FakeResponse.json(409, errorJson('VERSION_CONFLICT', 'Data sudah diubah orang lain.'));
+        }
+        return FakeResponse.json(200, meFullJson(version: '5', city: 'Dumai'));
+      },
+    );
+    await enter(tester, 'city', 'Dumai');
+    await save(tester);
+    // Galat memuat versi terbaru tidak lolos sebagai galat tak tertangani; isian tetap dan "Coba lagi" tersedia.
+    expect(tester.takeException(), isNull);
+    expect(find.text('Profil diubah di perangkat lain'), findsNothing);
+    expect(find.text('Dumai'), findsOneWidget);
+    expect(find.widgetWithText(SnackBarAction, 'Coba lagi'), findsOneWidget);
+    expect(app.location, '/account/profile');
+
+    await tester.tap(find.widgetWithText(SnackBarAction, 'Coba lagi'));
+    await settle(tester);
+    expect(find.text('Profil diubah di perangkat lain'), findsOneWidget);
+    await tester.tap(find.text('Pakai isian saya'));
+    await settle(tester);
+    expect(find.text('Bio dari perangkat lain'), findsOneWidget);
+    await save(tester);
+    final requests = patches(app);
+    expect(requests, hasLength(2));
+    expect(headerOf(requests.last, 'If-Match'), '4');
+    expect(bodyOf(requests.last), {'city': 'Dumai'});
+  });
+
+  testWidgets('PRD 4.5: panah kembali app bar pada formulir yang berubah menanyakan "Buang perubahan?"', (tester) async {
+    final app = await openProfile(tester);
+    await enter(tester, 'city', 'Dumai');
+    await tester.tap(find.byTooltip('Kembali'));
+    await settle(tester);
+    expect(find.text('Buang perubahan?'), findsOneWidget);
+    expect(app.location, '/account/profile');
+
+    await tester.tap(find.text('Lanjut mengubah'));
+    await settle(tester);
+    expect(app.location, '/account/profile');
+    expect(find.text('Dumai'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Kembali'));
+    await settle(tester);
+    await tester.tap(find.text('Buang'));
+    await settle(tester);
+    expect(app.location, '/account');
+    expect(patches(app), isEmpty);
+
+    // Formulir tanpa perubahan langsung kembali tanpa dialog.
+    app.router.push('/account/profile');
+    await settle(tester);
+    await tester.tap(find.byTooltip('Kembali'));
+    await settle(tester);
+    expect(find.text('Buang perubahan?'), findsNothing);
+    expect(app.location, '/account');
+  });
+
   testWidgets('N-10: foto profil diunggah sebagai purpose avatar lalu dilampirkan lewat avatar_file_id', (
     tester,
   ) async {

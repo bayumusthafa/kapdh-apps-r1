@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import '../../core/api/api_providers.dart';
 import '../../core/api/error_presenter.dart';
 import '../../core/format/formatters.dart';
 import '../../design/design.dart';
+import '../auth/otp_screen.dart' show attemptsLeftFrom, otpMaxAttempts;
 import 'deletion_portal.dart';
 import 'status_repository.dart';
 
@@ -30,6 +32,10 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
   late final TextEditingController _email = TextEditingController(text: widget.initialEmail ?? '');
   final _code = TextEditingController();
   OtpChallenge? _challenge;
+
+  /// Sisa percobaan challenge aktif (PRD 2.5: 5 percobaan): awal dari challenge, lalu dari jawaban server setelah
+  /// kode salah (`field_errors.code` "Sisa percobaan N"). Nol berarti kode tidak berlaku lagi dan perlu kode baru.
+  int _attemptsLeft = otpMaxAttempts;
   bool _busy = false;
   String? _emailError;
   String? _codeError;
@@ -81,6 +87,7 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
       if (!mounted) return;
       setState(() {
         _challenge = challenge;
+        _attemptsLeft = challenge.attemptsLeft;
         _code.clear();
         _codeError = null;
       });
@@ -107,6 +114,7 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
       if (!mounted) return;
       setState(() {
         _challenge = next;
+        _attemptsLeft = next.attemptsLeft;
         _code.clear();
         _codeError = null;
         _expiredNote = null;
@@ -130,7 +138,7 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
   Future<void> _verify() async {
     final challenge = _challenge;
     final code = _code.text;
-    if (challenge == null || code.length != 6 || _busy) return;
+    if (challenge == null || code.length != 6 || _busy || _attemptsLeft <= 0) return;
     setState(() {
       _busy = true;
       _codeError = null;
@@ -148,9 +156,18 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
       if (!mounted) return;
       switch (error.code) {
         case ErrorCode.validationError:
-          setState(() => _codeError = error.fieldErrors['code']?.join(' ') ?? error.message);
+          // Kode salah: sisa percobaan dari server (kontrak verifyWebDeletion), atau berkurang satu bila pesan
+          // server tidak memuatnya. Kotak dikosongkan agar kode berikutnya diketik dari awal.
+          final left = attemptsLeftFrom(error) ?? math.max(0, _attemptsLeft - 1);
+          setState(() {
+            _attemptsLeft = left;
+            _code.clear();
+            _codeError = error.fieldErrors['code']?.join(' ') ?? error.message;
+          });
         case ErrorCode.otpExpired:
           setState(() {
+            _attemptsLeft = 0;
+            _code.clear();
             _codeError = 'Kode tidak berlaku lagi.';
             _expiredNote =
                 'Minta kode baru. Bila permintaan penghapusan sudah selesai, akun tidak lagi terdaftar dan Anda sudah '
@@ -167,6 +184,7 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
   @override
   Widget build(BuildContext context) {
     final challenge = _challenge;
+    final exhausted = _attemptsLeft <= 0;
     return Container(
       padding: const EdgeInsets.all(KapdhSpace.s4),
       decoration: BoxDecoration(
@@ -223,16 +241,26 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
             const SizedBox(height: KapdhSpace.s3),
             OtpBoxes(
               controller: _code,
-              enabled: !_busy,
+              enabled: !_busy && !exhausted,
               autofocus: true,
               errorText: _codeError,
               onChanged: (_) => setState(() => _codeError = null),
               onCompleted: (_) => _verify(),
             ),
             const SizedBox(height: KapdhSpace.s2),
-            Text(
-              'Sisa percobaan ${challenge.attemptsLeft} dari ${challenge.maxAttempts ?? 5}',
-              style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+            // Diumumkan pembaca layar saat berubah (sisa percobaan setelah kode salah, percobaan habis; N-11).
+            Semantics(
+              liveRegion: true,
+              container: true,
+              child: Text(
+                exhausted
+                    ? 'Kode tidak berlaku lagi. Kirim ulang kode untuk mendapatkan kode baru.'
+                    : 'Sisa percobaan $_attemptsLeft dari ${challenge.maxAttempts ?? otpMaxAttempts}',
+                style: TextStyle(
+                  fontSize: KapdhFontSize.caption,
+                  color: exhausted ? KapdhColors.danger : KapdhColors.textMuted,
+                ),
+              ),
             ),
             if (_expiredNote case final note?) ...[
               const SizedBox(height: KapdhSpace.s2),
@@ -244,7 +272,7 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
               label: 'Periksa status',
               busyLabel: 'Memeriksa...',
               busy: _busy,
-              onPressed: _code.text.length == 6 ? _verify : null,
+              onPressed: _code.text.length == 6 && !exhausted ? _verify : null,
             ),
             Wrap(
               alignment: WrapAlignment.spaceBetween,

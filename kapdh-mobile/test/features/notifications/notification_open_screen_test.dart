@@ -106,21 +106,68 @@ void main() {
     expect(app.location, '/notifications');
   });
 
-  testWidgets('AC F13-3: status berubah (suspended) — tujuan dialihkan ke portal pembatasan', (tester) async {
+  testWidgets('AC F13-3: status berubah (suspended) — notifikasi diperiksa server, tujuan dialihkan ke portal', (
+    tester,
+  ) async {
     final app = await pumpApp(
       tester,
       tokens: savedTokens(),
       handler: apiRoutes({
         '/me': (_) => FakeResponse.json(200, meFullJson(status: 'suspended')),
         '/reports': (_) => FakeResponse.json(200, {'items': <Object?>[], 'next_cursor': null}),
+        '/notifications/unread-count': (_) => FakeResponse.json(200, {'unread_count': 1}),
         '/notifications/$notificationId1': (_) => FakeResponse.json(200, inboxJson(notificationId1)),
+        '/notifications/read': (_) => FakeResponse.json(200, {'updated_count': 1, 'unread_count': 0}),
       }),
     );
     app.router.go('/notifications/$notificationId1');
     await settle(tester);
-    // Anggota suspended hanya memiliki portal pembatasan (PRD 2.2): gerbang notifikasi pun tidak dibuka.
+    // Kotak masuk resmi tetap milik anggota suspended (kontrak C7 member_access any, AC F13-2): gerbang memeriksa
+    // notifikasi ke server, tetapi tujuan pembayaran ditolak matriks status sehingga yang terbuka portal pembatasan.
+    expect(countRequests(app.adapter, '/notifications/$notificationId1'), 1);
+    expectLastBody(app.adapter, '/notifications/read', {
+      'ids': [notificationId1],
+    });
     expect(app.location, '/restricted');
-    expect(app.adapter.requests.where((r) => r.path == '/notifications/$notificationId1'), isEmpty);
+    expect(app.adapter.requests.where((r) => r.path.startsWith('/payments')), isEmpty);
+  });
+
+  testWidgets('AC F13-2: notifikasi keamanan untuk anggota suspended terbuka di kotak masuk', (tester) async {
+    final app = await pumpApp(
+      tester,
+      tokens: savedTokens(),
+      handler: apiRoutes({
+        '/me': (_) => FakeResponse.json(200, meFullJson(status: 'suspended')),
+        '/reports': (_) => FakeResponse.json(200, {'items': <Object?>[], 'next_cursor': null}),
+        '/notifications/unread-count': (_) => FakeResponse.json(200, {'unread_count': 0}),
+        '/notifications/$notificationId2': (_) => FakeResponse.json(
+          200,
+          inboxJson(
+            notificationId2,
+            category: 'security',
+            title: 'Login baru di perangkat lain',
+            deepLink: null,
+            readAt: testNow,
+          ),
+        ),
+        '/notifications': (_) => FakeResponse.json(
+          200,
+          notificationPageJson([
+            inboxJson(
+              notificationId2,
+              category: 'security',
+              title: 'Login baru di perangkat lain',
+              deepLink: null,
+              readAt: testNow,
+            ),
+          ]),
+        ),
+      }),
+    );
+    app.router.go('/notifications/$notificationId2');
+    await settle(tester);
+    expect(app.location, '/notifications');
+    expect(find.text('Login baru di perangkat lain'), findsOneWidget);
   });
 
   testWidgets('galat jaringan saat memeriksa notifikasi menawarkan coba lagi', (tester) async {
