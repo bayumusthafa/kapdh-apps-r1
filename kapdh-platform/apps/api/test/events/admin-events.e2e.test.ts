@@ -2,6 +2,7 @@ import { auditLogs, files, notifications, outboxEvents, paymentAdjustments, paym
 import { and, eq, like } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { runAsSystem } from "../../src/core/context/request-context.js";
 import { EventsJobsService } from "../../src/modules/events/events-jobs.service.js";
 import { expectOperation } from "../support/contract.js";
 import { multipartBody, testJpeg } from "../support/files.js";
@@ -382,7 +383,7 @@ describe("Pembatalan event (AC F09-7, D6)", () => {
     const [outbox] = await t.db.select().from(outboxEvents).where(eq(outboxEvents.dedupKey, `event.cancelled:${event.id}`));
     expect(outbox).toBeDefined();
     await t.jobs.drainOutbox();
-    await t.app.get(EventsJobsService).fanoutCancellation(event.id);
+    await runAsSystem(() => t.app.get(EventsJobsService).fanoutCancellation(event.id));
     const notes = await t.db
       .select()
       .from(notifications)

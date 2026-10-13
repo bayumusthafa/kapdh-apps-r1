@@ -1,6 +1,6 @@
 import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
 import { alumni, events, payments, tickets, users } from "@kapdh/database";
-import { and, asc, eq, gt, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { AuditService } from "../../core/audit/audit.service.js";
 import type { Db } from "../../core/db/types.js";
 import { JobRegistry } from "../../core/jobs/job-registry.js";
@@ -221,7 +221,10 @@ export class EventsJobsService implements OnModuleInit {
           eq(tickets.eventId, eventId),
           eq(tickets.status, "cancelled"),
           isNotNull(tickets.userId),
-          gte(tickets.cancelledAt, event.cancelledAt),
+          // Tiket yang dibatalkan transaksi pembatalan event: waktu dan alasan sama dengan event, bukan batal mandiri.
+          eq(tickets.cancelledAt, event.cancelledAt),
+          inArray(tickets.cancelledBy, ["admin", "system"]),
+          event.cancelReason ? eq(tickets.cancelReason, event.cancelReason) : undefined,
         ),
       )
       .orderBy(asc(tickets.id));
