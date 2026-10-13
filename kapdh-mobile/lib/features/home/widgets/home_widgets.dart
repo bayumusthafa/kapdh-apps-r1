@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../app/theme/kapdh_tokens.dart';
 import '../../../design/design.dart';
 
-/// Kepala Beranda (prototipe layar 4, 5; guideline hal. 7): logo, "Assalamu'alaikum," dan nama anggota, serta
-/// pintasan notifikasi dengan jumlah belum dibaca (PRD 3.8 akses cepat notifikasi).
-class HomeHeader extends StatelessWidget {
+/// Kepala Beranda (prototipe layar 4, 5; guideline hal. 7): pita hijau bergradasi dengan logo, "Assalamu'alaikum,"
+/// dan nama anggota, serta pintasan notifikasi dengan jumlah belum dibaca (PRD 3.8 akses cepat notifikasi).
+/// Berupa app bar agar pita global Offline/Pemeliharaan tampil tepat di bawahnya seperti layar lain (prototipe 7).
+class HomeHeader extends StatelessWidget implements PreferredSizeWidget {
   const HomeHeader({super.key, required this.name, this.unreadCount, required this.onNotifications});
+
+  /// Tinggi kepala tanpa inset status bar.
+  static const double height = 76;
 
   final String name;
 
@@ -15,13 +20,25 @@ class HomeHeader extends StatelessWidget {
   final VoidCallback onNotifications;
 
   @override
+  Size get preferredSize => const Size.fromHeight(height);
+
+  @override
   Widget build(BuildContext context) {
     final count = unreadCount ?? 0;
     final tooltip = count > 0 ? 'Notifikasi, $count belum dibaca' : 'Notifikasi';
-    return BrandHeader(
-      pattern: false,
-      padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s2, KapdhSpace.s5),
-      child: Row(
+    return AppBar(
+      toolbarHeight: height,
+      automaticallyImplyLeading: false,
+      backgroundColor: Colors.transparent,
+      foregroundColor: KapdhColors.textOnDark,
+      systemOverlayStyle: SystemUiOverlayStyle.light,
+      centerTitle: false,
+      titleSpacing: KapdhSpace.s5,
+      flexibleSpace: const DecoratedBox(
+        decoration: BoxDecoration(gradient: KapdhExtraColors.bandGradient),
+        child: SizedBox.expand(),
+      ),
+      title: Row(
         children: [
           Image.asset('assets/logo-kapdh.png', width: 44, height: 44, semanticLabel: 'Logo KAPDH'),
           const SizedBox(width: KapdhSpace.s3),
@@ -29,15 +46,20 @@ class HomeHeader extends StatelessWidget {
             child: Semantics(
               header: true,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     "Assalamu'alaikum,",
-                    style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.green100),
+                    style: TextStyle(
+                      fontSize: KapdhFontSize.caption,
+                      fontWeight: FontWeight.w400,
+                      color: KapdhColors.green100,
+                    ),
                   ),
                   Text(
                     name,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: KapdhFontSize.bodyLg,
@@ -49,20 +71,23 @@ class HomeHeader extends StatelessWidget {
               ),
             ),
           ),
-          IconButton(
-            key: const ValueKey('home-notifications'),
-            tooltip: tooltip,
-            onPressed: onNotifications,
-            icon: Badge(
-              isLabelVisible: count > 0,
-              backgroundColor: KapdhColors.accent,
-              textColor: KapdhColors.onAccent,
-              label: Text(count > 99 ? '99+' : '$count'),
-              child: const Icon(Icons.notifications_outlined, color: KapdhColors.textOnDark),
-            ),
-          ),
         ],
       ),
+      actions: [
+        IconButton(
+          key: const ValueKey('home-notifications'),
+          tooltip: tooltip,
+          onPressed: onNotifications,
+          icon: Badge(
+            isLabelVisible: count > 0,
+            backgroundColor: KapdhColors.accent,
+            textColor: KapdhColors.onAccent,
+            label: Text(count > 99 ? '99+' : '$count'),
+            child: const Icon(Icons.notifications_outlined, color: KapdhColors.textOnDark),
+          ),
+        ),
+        const SizedBox(width: KapdhSpace.s2),
+      ],
     );
   }
 }
