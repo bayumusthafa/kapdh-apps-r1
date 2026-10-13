@@ -53,6 +53,9 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
   String? _nameError;
   bool _busy = false;
 
+  /// Grup sudah dibuat: formulir terkunci agar ketukan ulang tidak membuat grup kedua.
+  bool _created = false;
+
   @override
   void dispose() {
     _name.dispose();
@@ -99,7 +102,7 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
 
   Future<void> _create() async {
     setState(() => _nameError = null);
-    if (_busy || !(_formKey.currentState?.validate() ?? false)) return;
+    if (_busy || _created || !(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _busy = true);
     final repo = ref.read(chatRepositoryProvider);
     try {
@@ -116,6 +119,10 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
         ),
       );
       if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _created = true;
+      });
       ref.read(chatListRefreshProvider.notifier).request();
       final skipped = created.invitations.skipped;
       if (skipped.isNotEmpty) {
@@ -166,7 +173,16 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
                   onTap: _busy ? null : _pickAvatar,
                   child: avatar == null
                       ? const AlumniAvatar(name: 'Grup', size: 88, icon: Icons.add_a_photo_outlined)
-                      : ClipOval(child: Image.memory(avatar.bytes, width: 88, height: 88, fit: BoxFit.cover)),
+                      : ClipOval(
+                          child: Image.memory(
+                            avatar.bytes,
+                            width: 88,
+                            height: 88,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) =>
+                                const AlumniAvatar(name: 'Grup', size: 88, icon: Icons.broken_image_outlined),
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -226,7 +242,7 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
               icon: Icons.group_add,
               busy: _busy,
               busyLabel: 'Membuat grup',
-              onPressed: _busy ? null : _create,
+              onPressed: _busy || _created ? null : _create,
             ),
           ],
         ),

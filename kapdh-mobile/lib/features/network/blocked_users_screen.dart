@@ -74,33 +74,42 @@ class BlockedUsersScreen extends ConsumerWidget {
               ),
               child: Padding(
                 padding: const EdgeInsets.all(KapdhSpace.s3),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    AlumniAvatar(name: member.fullName, url: member.avatarUrl, size: 44),
-                    const SizedBox(width: KapdhSpace.s3),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(member.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          Text(
-                            'Diblokir sejak ${formatDate(member.blockedAt)}',
-                            style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                    Row(
+                      children: [
+                        AlumniAvatar(name: member.fullName, url: member.avatarUrl, size: 44),
+                        const SizedBox(width: KapdhSpace.s3),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(member.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              Text(
+                                'Diblokir sejak ${formatDate(member.blockedAt)}',
+                                style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    TextButton(
-                      onPressed: () async {
-                        final done = await unblockWithConfirmation(
-                          context,
-                          ref,
-                          userId: member.userId,
-                          name: member.fullName,
-                        );
-                        if (done) controller.removeWhere((m) => m.userId == member.userId);
-                      },
-                      child: const Text('Buka blokir'),
+                    // Tombol di baris sendiri agar tidak meluap saat teks diperbesar 200 % (N-11).
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () async {
+                          final done = await unblockWithConfirmation(
+                            context,
+                            ref,
+                            userId: member.userId,
+                            name: member.fullName,
+                          );
+                          if (done) controller.removeWhere((m) => m.userId == member.userId);
+                        },
+                        child: const Text('Buka blokir'),
+                      ),
                     ),
                   ],
                 ),

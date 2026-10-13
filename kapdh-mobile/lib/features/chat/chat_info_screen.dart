@@ -77,28 +77,11 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
   }
 
   Future<void> _rename(ChatRoom room) async {
-    final controller = TextEditingController(text: room.name ?? room.title);
     final name = await showDialog<String>(
       context: context,
       useRootNavigator: true,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Ubah nama grup'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          inputFormatters: [LengthLimitingTextInputFormatter(maxGroupNameChars)],
-          decoration: const InputDecoration(hintText: 'Nama grup'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Batal')),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text.trim()),
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
+      builder: (_) => _RenameGroupDialog(initial: room.name ?? room.title),
     );
-    controller.dispose();
     if (name == null || !mounted) return;
     if (name.isEmpty) {
       _snack('Nama grup wajib diisi.');
@@ -470,7 +453,12 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
       fallbackLocation: AppRoutes.chat(widget.roomId),
       body: RefreshIndicator(
         onRefresh: _controller.load,
-        child: ListView(padding: const EdgeInsets.all(KapdhSpace.s5), children: children),
+        // Grup maksimal 100 anggota: seluruh baris dibangun sekaligus agar dapat dijangkau pembaca layar.
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(KapdhSpace.s5),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+        ),
       ),
     );
   }
@@ -499,6 +487,43 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
               onSelected: (action) => _memberAction(member, action),
               itemBuilder: (_) => actions,
             ),
+    );
+  }
+}
+
+/// Dialog ubah nama grup; pengendali teks dimiliki dialog sehingga dibuang setelah animasi tutup selesai.
+class _RenameGroupDialog extends StatefulWidget {
+  const _RenameGroupDialog({required this.initial});
+
+  final String initial;
+
+  @override
+  State<_RenameGroupDialog> createState() => _RenameGroupDialogState();
+}
+
+class _RenameGroupDialogState extends State<_RenameGroupDialog> {
+  late final TextEditingController _name = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Ubah nama grup'),
+      content: TextField(
+        controller: _name,
+        autofocus: true,
+        inputFormatters: [LengthLimitingTextInputFormatter(maxGroupNameChars)],
+        decoration: const InputDecoration(hintText: 'Nama grup'),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal')),
+        TextButton(onPressed: () => Navigator.of(context).pop(_name.text.trim()), child: const Text('Simpan')),
+      ],
     );
   }
 }
