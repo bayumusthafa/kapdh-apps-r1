@@ -33,7 +33,7 @@ export type NavBadge = "pending_payments" | "reports_open" | "failed_jobs";
 /** Teks pembaca layar di belakang angka lencana (status tidak hanya lewat warna/angka, N-11). */
 export const NAV_BADGE_LABEL: Record<NavBadge, string> = {
   pending_payments: "pembayaran menunggu",
-  reports_open: "laporan terbuka",
+  reports_open: "laporan aktif",
   failed_jobs: "job gagal",
 };
 
@@ -43,7 +43,7 @@ export interface NavSection {
   icon: LucideIcon;
   links: NavLinkItem[];
   /**
-   * Penanda angka emas: pembayaran menunggu (prototipe screen_8), laporan moderasi terbuka dan job gagal yang dapat
+   * Penanda angka emas: pembayaran menunggu (prototipe screen_8), laporan moderasi aktif (open + in_review) dan job gagal yang dapat
    * ditindak (GET /admin/dashboard/badges, F-15).
    */
   badge?: NavBadge;
