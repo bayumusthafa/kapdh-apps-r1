@@ -45,7 +45,10 @@ const HOUR = 3600_000;
 
 type Status = "verified" | "expiring" | "expired" | "suspended" | "unverified";
 
-async function member(status: Status = "verified", options: { fullName?: string; showInDirectory?: boolean } = {}) {
+async function member(
+  status: Status = "verified",
+  options: { fullName?: string; showInDirectory?: boolean } = {},
+) {
   const fixture = await createAlumni(t, {
     status,
     fullName: options.fullName ?? `Anggota ${status}`,
@@ -95,7 +98,11 @@ describe("POST /reports — pengguna (AC F12-2)", () => {
     expect(Object.keys(created)).not.toContain("evidence");
 
     // Dipantau pelapor.
-    const mine = expectOperation("get", "/reports", await api().get("/reports", { token: reporter.token })) as {
+    const mine = expectOperation(
+      "get",
+      "/reports",
+      await api().get("/reports", { token: reporter.token }),
+    ) as {
       items: { id: string }[];
     };
     expect(mine.items.map((i) => i.id)).toContain(created.id);
@@ -103,7 +110,11 @@ describe("POST /reports — pengguna (AC F12-2)", () => {
     expect(expectOperation("get", "/reports/{reportId}", detail)).toMatchObject({ id: created.id });
 
     // Tidak dibuka kepada terlapor: tidak ada di daftarnya, detail 404 seperti laporan yang tidak ada (N-09).
-    const theirs = expectOperation("get", "/reports", await api().get("/reports", { token: target.token })) as {
+    const theirs = expectOperation(
+      "get",
+      "/reports",
+      await api().get("/reports", { token: target.token }),
+    ) as {
       items: unknown[];
     };
     expect(theirs.items).toEqual([]);
@@ -113,7 +124,9 @@ describe("POST /reports — pengguna (AC F12-2)", () => {
     expect((await api().get(`/reports/${uuidv7()}`, { token: reporter.token })).statusCode).toBe(404);
     expect((await api().get("/reports/bukan-uuid", { token: reporter.token })).statusCode).toBe(404);
     // Terlapor tidak menerima notifikasi apa pun tentang laporan.
-    expect(await t.db.select().from(notifications).where(eq(notifications.userId, target.userId))).toEqual([]);
+    expect(await t.db.select().from(notifications).where(eq(notifications.userId, target.userId))).toEqual(
+      [],
+    );
 
     // Bukti profil publik minimum + audit tanpa deskripsi pelapor.
     const row = await reportRow(created.id!);
@@ -139,7 +152,10 @@ describe("POST /reports — pengguna (AC F12-2)", () => {
       category: "spam",
     });
     expect(duplicate.statusCode).toBe(200);
-    expect(expectOperation("post", "/reports", duplicate)).toMatchObject({ id: created.id, category: "harassment" });
+    expect(expectOperation("post", "/reports", duplicate)).toMatchObject({
+      id: created.id,
+      category: "harassment",
+    });
   });
 
   it("AC F12-2: violence_threat menjadi urgent dengan target 24 jam", async () => {
@@ -150,7 +166,11 @@ describe("POST /reports — pengguna (AC F12-2)", () => {
       target_user_id: target.userId,
       category: "violence_threat",
     });
-    const body = expectOperation("post", "/reports", res) as { priority: string; created_at: string; due_at: string };
+    const body = expectOperation("post", "/reports", res) as {
+      priority: string;
+      created_at: string;
+      due_at: string;
+    };
     expect(body.priority).toBe("urgent");
     expect(new Date(body.due_at).getTime() - new Date(body.created_at).getTime()).toBe(24 * HOUR);
   });
@@ -166,7 +186,12 @@ describe("POST /reports — pengguna (AC F12-2)", () => {
     expect(replay.statusCode).toBe(201);
     expect(replay.headers["idempotent-replayed"]).toBe("true");
     expect(replay.json().id).toBe(first.json().id);
-    const conflict = await postReport(t.app, reporter.token, { ...body, category: "spam" }, { "idempotency-key": key });
+    const conflict = await postReport(
+      t.app,
+      reporter.token,
+      { ...body, category: "spam" },
+      { "idempotency-key": key },
+    );
     expect(conflict.statusCode).toBe(409);
     expect(conflict.json().code).toBe("IDEMPOTENCY_CONFLICT");
   });
@@ -177,15 +202,19 @@ describe("POST /reports — pengguna (AC F12-2)", () => {
     const expired = await member("expired");
     const notFoundBody = { target_type: "user", category: "spam" };
 
-    const hidden = await postReport(t.app, reporter.token, { ...notFoundBody, target_user_id: hiddenProfile.userId });
+    const hidden = await postReport(t.app, reporter.token, {
+      ...notFoundBody,
+      target_user_id: hiddenProfile.userId,
+    });
     expect(hidden.statusCode).toBe(404);
     expectOperation("post", "/reports", hidden);
     expect(
-      (await postReport(t.app, reporter.token, { ...notFoundBody, target_user_id: expired.userId })).statusCode,
+      (await postReport(t.app, reporter.token, { ...notFoundBody, target_user_id: expired.userId }))
+        .statusCode,
     ).toBe(404);
-    expect((await postReport(t.app, reporter.token, { ...notFoundBody, target_user_id: uuidv7() })).statusCode).toBe(
-      404,
-    );
+    expect(
+      (await postReport(t.app, reporter.token, { ...notFoundBody, target_user_id: uuidv7() })).statusCode,
+    ).toBe(404);
     const admin = await createAdmin(t);
     expect(
       (await postReport(t.app, reporter.token, { ...notFoundBody, target_user_id: admin.userId })).statusCode,
@@ -219,7 +248,11 @@ describe("POST /reports — pesan dan grup (PRD 3.12 bukti terminimalkan)", () =
     });
     expect(res.statusCode, res.body).toBe(201);
     const body = expectOperation("post", "/reports", res) as Record<string, unknown>;
-    expect(body).toMatchObject({ target_type: "message", target_name: "Pengirim Uji", room_name: "Alumni 29" });
+    expect(body).toMatchObject({
+      target_type: "message",
+      target_name: "Pengirim Uji",
+      room_name: "Alumni 29",
+    });
 
     const row = await reportRow(body.id as string);
     expect(row).toMatchObject({ targetUserId: sender.userId, targetMessageId: reported, roomId: group });
@@ -277,8 +310,13 @@ describe("POST /reports — pesan dan grup (PRD 3.12 bukti terminimalkan)", () =
     const leaver = await member();
     await addRoomMember(t, group, leaver.userId, { status: "left" });
     expect(
-      (await postReport(t.app, leaver.token, { target_type: "message", category: "spam", message_id: visible }))
-        .statusCode,
+      (
+        await postReport(t.app, leaver.token, {
+          target_type: "message",
+          category: "spam",
+          message_id: visible,
+        })
+      ).statusCode,
     ).toBe(404);
 
     await reportOk(t.app, reporter.token, { target_type: "message", category: "spam", message_id: visible });
@@ -288,11 +326,19 @@ describe("POST /reports — pesan dan grup (PRD 3.12 bukti terminimalkan)", () =
     const reporter = await member();
     const owner = await member();
     const avatar = await uploadTestFile(t, owner.token, "chat_image");
-    const group = await createGroupRoom(t, { name: "Grup Dilaporkan", adminId: owner.userId, avatarFileId: avatar.id });
+    const group = await createGroupRoom(t, {
+      name: "Grup Dilaporkan",
+      adminId: owner.userId,
+      avatarFileId: avatar.id,
+    });
     await addRoomMember(t, group, reporter.userId);
     await addRoomMember(t, group, (await member()).userId, { status: "invited", invitedBy: owner.userId });
 
-    const res = await postReport(t.app, reporter.token, { target_type: "room", room_id: group, category: "hate" });
+    const res = await postReport(t.app, reporter.token, {
+      target_type: "room",
+      room_id: group,
+      category: "hate",
+    });
     expect(res.statusCode, res.body).toBe(201);
     expect(expectOperation("post", "/reports", res)).toMatchObject({
       target_type: "room",
@@ -303,16 +349,27 @@ describe("POST /reports — pesan dan grup (PRD 3.12 bukti terminimalkan)", () =
     expect(row.targetUserId).toBeNull();
     expect(row.evidence).toMatchObject({
       file_ids: [avatar.id],
-      room: { room_id: group, kind: "group", name: "Grup Dilaporkan", avatar_file_id: avatar.id, member_count: 2 },
+      room: {
+        room_id: group,
+        kind: "group",
+        name: "Grup Dilaporkan",
+        avatar_file_id: avatar.id,
+        member_count: 2,
+      },
     });
 
     const direct = await createDirectRoom(t, reporter.userId, owner.userId);
-    const directRes = await postReport(t.app, reporter.token, { target_type: "room", room_id: direct, category: "hate" });
+    const directRes = await postReport(t.app, reporter.token, {
+      target_type: "room",
+      room_id: direct,
+      category: "hate",
+    });
     expect(directRes.statusCode).toBe(400);
     expect(directRes.json().field_errors).toHaveProperty("room_id");
     const outsider = await member();
     expect(
-      (await postReport(t.app, outsider.token, { target_type: "room", room_id: group, category: "hate" })).statusCode,
+      (await postReport(t.app, outsider.token, { target_type: "room", room_id: group, category: "hate" }))
+        .statusCode,
     ).toBe(404);
   });
 });
@@ -323,10 +380,19 @@ describe("POST /reports — validasi, laju dan otorisasi", () => {
     const target = await member();
     const cases: [Record<string, unknown>, string][] = [
       [{ target_type: "user", category: "spam" }, "target_user_id"],
-      [{ target_type: "user", target_user_id: target.userId, message_id: uuidv7(), category: "spam" }, "message_id"],
+      [
+        { target_type: "user", target_user_id: target.userId, message_id: uuidv7(), category: "spam" },
+        "message_id",
+      ],
       [{ target_type: "message", message_id: uuidv7(), room_id: uuidv7(), category: "spam" }, "room_id"],
-      [{ target_type: "room", room_id: uuidv7(), context_message_ids: [uuidv7()], category: "spam" }, "context_message_ids"],
-      [{ target_type: "user", target_user_id: target.userId, category: "other", description: "  singkat  " }, "description"],
+      [
+        { target_type: "room", room_id: uuidv7(), context_message_ids: [uuidv7()], category: "spam" },
+        "context_message_ids",
+      ],
+      [
+        { target_type: "user", target_user_id: target.userId, category: "other", description: "  singkat  " },
+        "description",
+      ],
       [{ target_type: "user", target_user_id: target.userId, category: "appeal" }, "category"],
       [{ target_type: "user", target_user_id: "bukan-uuid", category: "spam" }, "target_user_id"],
       [{ target_type: "user", target_user_id: reporter.userId, category: "spam" }, "target_user_id"],
@@ -350,7 +416,8 @@ describe("POST /reports — validasi, laju dan otorisasi", () => {
     const reporter = await member();
     const target = await member();
     const body = { target_type: "user", target_user_id: target.userId, category: "spam" };
-    for (let i = 0; i < 10; i++) expect((await postReport(t.app, reporter.token, body)).statusCode).toBeLessThan(300);
+    for (let i = 0; i < 10; i++)
+      expect((await postReport(t.app, reporter.token, body)).statusCode).toBeLessThan(300);
     const limited = await postReport(t.app, reporter.token, body);
     expect(limited.statusCode).toBe(429);
     expectOperation("post", "/reports", limited);
@@ -377,9 +444,9 @@ describe("POST /reports — validasi, laju dan otorisasi", () => {
     const adminToken = (await signInAdmin(t, admin)).accessToken;
     expect((await api().get("/reports", { token: adminToken })).statusCode).toBe(403);
     expect((await postReport(t.app, adminToken, body)).statusCode).toBe(403);
-    expect((await api().post("/appeals", { description: "x".repeat(20) }, { token: adminToken })).statusCode).toBe(
-      403,
-    );
+    expect(
+      (await api().post("/appeals", { description: "x".repeat(20) }, { token: adminToken })).statusCode,
+    ).toBe(403);
     expect((await api().get("/reports")).statusCode).toBe(401);
     expect((await api().post("/appeals", { description: "x".repeat(20) })).statusCode).toBe(401);
   });
@@ -401,7 +468,11 @@ describe("Retensi berkas bukti (PRD 3.12, D2; core FilesService.discard)", () =>
     await t.db.update(files).set({ visibility: "public" }).where(eq(files.id, avatar.id));
 
     await reportOk(t.app, reporter.token, { target_type: "message", message_id: message, category: "scam" });
-    await reportOk(t.app, reporter.token, { target_type: "user", target_user_id: sender.userId, category: "scam" });
+    await reportOk(t.app, reporter.token, {
+      target_type: "user",
+      target_user_id: sender.userId,
+      category: "scam",
+    });
 
     const fileRow = async (id: string) => (await t.db.select().from(files).where(eq(files.id, id)))[0]!;
     // Pengirim menghapus pesan / mengganti avatar: modul pemilik memanggil discard → berkas bukti ditahan.
@@ -440,7 +511,11 @@ describe("POST /appeals (PRD 3.12 mekanisme banding)", () => {
     });
     expect(appeal.due_at).toBe(addBusinessDaysJakarta(new Date(appeal.created_at!), 2).toISOString());
     const row = await reportRow(appeal.id!);
-    expect(row).toMatchObject({ reporterId: appellant.userId, targetUserId: appellant.userId, category: "appeal" });
+    expect(row).toMatchObject({
+      reporterId: appellant.userId,
+      targetUserId: appellant.userId,
+      category: "appeal",
+    });
     const [profile] = await t.db.select().from(alumni).where(eq(alumni.userId, appellant.userId));
     expect(row.evidence).toMatchObject({
       contested_suspension: {
@@ -449,24 +524,42 @@ describe("POST /appeals (PRD 3.12 mekanisme banding)", () => {
       },
     });
 
-    const again = await api().post("/appeals", { description: "Mohon ditinjau kembali segera." }, { token: appellant.token });
+    const again = await api().post(
+      "/appeals",
+      { description: "Mohon ditinjau kembali segera." },
+      { token: appellant.token },
+    );
     expect(again.statusCode).toBe(200);
     expect(expectOperation("post", "/appeals", again)).toMatchObject({ id: appeal.id });
-    const mine = (await api().get("/reports", { token: appellant.token })).json() as { items: { id: string }[] };
+    const mine = (await api().get("/reports", { token: appellant.token })).json() as {
+      items: { id: string }[];
+    };
     expect(mine.items.map((i) => i.id)).toEqual([appeal.id]);
   });
 
   it("hanya suspend yang sedang berlaku (selain itu 403); validasi alasan minimal 10 karakter bukan spasi", async () => {
     const active = await member();
-    const forbidden = await api().post("/appeals", { description: "Saya ingin banding peringatan." }, { token: active.token });
+    const forbidden = await api().post(
+      "/appeals",
+      { description: "Saya ingin banding peringatan." },
+      { token: active.token },
+    );
     expect(forbidden.statusCode).toBe(403);
     expectOperation("post", "/appeals", forbidden);
     expect(forbidden.json().code).toBe("FORBIDDEN");
     const expired = await member("expired");
-    expect((await api().post("/appeals", { description: "Saya keberatan sekali." }, { token: expired.token })).statusCode).toBe(403);
+    expect(
+      (await api().post("/appeals", { description: "Saya keberatan sekali." }, { token: expired.token }))
+        .statusCode,
+    ).toBe(403);
 
     const suspended = await member("suspended");
-    for (const body of [{}, { description: "terlalu" }, { description: "a b c d e f g h i" }, { description: "x".repeat(2001) }]) {
+    for (const body of [
+      {},
+      { description: "terlalu" },
+      { description: "a b c d e f g h i" },
+      { description: "x".repeat(2001) },
+    ]) {
       const res = await api().post("/appeals", body, { token: suspended.token });
       expect(res.statusCode, JSON.stringify(body)).toBe(400);
       expectOperation("post", "/appeals", res);
@@ -476,9 +569,15 @@ describe("POST /appeals (PRD 3.12 mekanisme banding)", () => {
   it("unsuspend dari menu anggota (MembershipKernel) menutup banding aktif sebagai dikabulkan; satu notifikasi", async () => {
     const appellant = await member("suspended");
     const appealId = (
-      await api().post("/appeals", { description: "Mohon cabut pembatasan saya." }, { token: appellant.token })
+      await api().post(
+        "/appeals",
+        { description: "Mohon cabut pembatasan saya." },
+        { token: appellant.token },
+      )
     ).json().id as string;
-    const admin = await createAdmin(t, { permissions: ["members.read", "moderation.read", "moderation.resolve"] });
+    const admin = await createAdmin(t, {
+      permissions: ["members.read", "moderation.read", "moderation.resolve"],
+    });
     const outcome = await inTx((tx) =>
       kernel.unsuspend(tx, appellant.userId, { reason: "Klarifikasi diterima", actorAdminId: admin.adminId }),
     );
@@ -510,8 +609,9 @@ describe("POST /appeals (PRD 3.12 mekanisme banding)", () => {
 
   it("jaring pengaman: banding usang ditutup sebagai dikabulkan lalu banding baru dibuat untuk suspend yang berlaku", async () => {
     const appellant = await member("suspended");
-    const first = (await api().post("/appeals", { description: "Banding pertama saya." }, { token: appellant.token })).json()
-      .id as string;
+    const first = (
+      await api().post("/appeals", { description: "Banding pertama saya." }, { token: appellant.token })
+    ).json().id as string;
     // Pencabutan lewat jalur yang (keliru) tidak menutup banding, lalu disuspend lagi.
     await t.db
       .update(alumni)
@@ -526,10 +626,18 @@ describe("POST /appeals (PRD 3.12 mekanisme banding)", () => {
       }),
     );
     const session = await signInAlumni(t, appellant);
-    const res = await api().post("/appeals", { description: "Banding atas pembatasan baru." }, { token: session.accessToken });
+    const res = await api().post(
+      "/appeals",
+      { description: "Banding atas pembatasan baru." },
+      { token: session.accessToken },
+    );
     expect(res.statusCode, res.body).toBe(201);
     expect(res.json().id).not.toBe(first);
-    expect(await reportRow(first)).toMatchObject({ status: "resolved", action: "unsuspend", resolvedByAdminId: null });
+    expect(await reportRow(first)).toMatchObject({
+      status: "resolved",
+      action: "unsuspend",
+      resolvedByAdminId: null,
+    });
     const old = (await api().get(`/reports/${first}`, { token: session.accessToken })).json();
     expect(old).toMatchObject({ outcome: "action_taken" });
   });

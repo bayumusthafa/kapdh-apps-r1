@@ -84,7 +84,9 @@ export class ModerationVisibility {
       .select({
         open: sql<number>`count(*) filter (where ${reports.status} = 'open')`.mapWith(Number),
         inReview: sql<number>`count(*) filter (where ${reports.status} = 'in_review')`.mapWith(Number),
-        overdue: sql<number>`count(*) filter (where ${reports.dueAt} <= ${nowIso}::timestamptz)`.mapWith(Number),
+        overdue: sql<number>`count(*) filter (where ${reports.dueAt} <= ${nowIso}::timestamptz)`.mapWith(
+          Number,
+        ),
         urgent: sql<number>`count(*) filter (where ${reports.priority} = 'urgent')`.mapWith(Number),
       })
       .from(reports)

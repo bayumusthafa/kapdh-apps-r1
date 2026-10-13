@@ -1,5 +1,14 @@
 import type { Permission } from "@kapdh/contracts";
-import { alumni, auditLogs, membershipEvents, messages, notifications, reports, sessions, users } from "@kapdh/database";
+import {
+  alumni,
+  auditLogs,
+  membershipEvents,
+  messages,
+  notifications,
+  reports,
+  sessions,
+  users,
+} from "@kapdh/database";
 import { and, eq, isNull } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -54,7 +63,9 @@ async function member(fullName: string, status: Status = "verified") {
   return { ...fixture, token: session.accessToken };
 }
 
-async function moderator(options: { permissions?: Permission[]; linkedAlumniUserId?: string; name?: string } = {}) {
+async function moderator(
+  options: { permissions?: Permission[]; linkedAlumniUserId?: string; name?: string } = {},
+) {
   const admin = await createAdmin(t, {
     permissions: options.permissions ?? MODERATOR,
     linkedAlumniUserId: options.linkedAlumniUserId ?? null,
@@ -109,7 +120,10 @@ describe("GET /admin/reports/{reportId}: bukti terminimalkan, akses diaudit (PRD
     await addRoomMember(t, group, sender.userId);
     const image = await uploadTestFile(t, sender.token, "chat_image");
     const context = await createMessage(t, group, sender.userId, { body: "Isi konteks rahasia" });
-    const reported = await createMessage(t, group, sender.userId, { imageFileId: image.id, body: "keterangan" });
+    const reported = await createMessage(t, group, sender.userId, {
+      imageFileId: image.id,
+      body: "keterangan",
+    });
     const id = await reportOk(t.app, reporter.token, {
       target_type: "message",
       message_id: reported,
@@ -145,9 +159,15 @@ describe("GET /admin/reports/{reportId}: bukti terminimalkan, akses diaudit (PRD
       image: null,
       deleted_since_report: false,
     });
-    const evidenceImage = body.evidence.messages[1]!.image as { file_id: string; url: string; url_expires_at: string };
+    const evidenceImage = body.evidence.messages[1]!.image as {
+      file_id: string;
+      url: string;
+      url_expires_at: string;
+    };
     expect(evidenceImage.file_id).toBe(image.id);
-    expect(new Date(evidenceImage.url_expires_at).getTime() - t.clock.now().getTime()).toBeLessThanOrEqual(600_000);
+    expect(new Date(evidenceImage.url_expires_at).getTime() - t.clock.now().getTime()).toBeLessThanOrEqual(
+      600_000,
+    );
     // URL bertanda tangan dapat dibuka sesi admin ber-izin moderation.read (kebijakan akses berkas bukti).
     const content = await t.app.inject({ method: "GET", url: new URL(evidenceImage.url).pathname });
     expect(content.statusCode).toBe(200);
@@ -159,12 +179,12 @@ describe("GET /admin/reports/{reportId}: bukti terminimalkan, akses diaudit (PRD
     expect(JSON.stringify(viewed!.after)).not.toContain("tidak pantas");
 
     // Pesan kemudian dihapus pengirim: snapshot tetap utuh, ditandai deleted_since_report.
-    await t.db
-      .update(messages)
-      .set({ deletedAt: t.clock.now(), body: null })
-      .where(eq(messages.id, context));
+    await t.db.update(messages).set({ deletedAt: t.clock.now(), body: null }).where(eq(messages.id, context));
     const again = await detail(admin.token, id);
-    expect(again.evidence.messages[0]).toMatchObject({ body: "Isi konteks rahasia", deleted_since_report: true });
+    expect(again.evidence.messages[0]).toMatchObject({
+      body: "Isi konteks rahasia",
+      deleted_since_report: true,
+    });
     expect(await auditsOf(id, "moderation.report_viewed")).toHaveLength(2);
 
     // D2: akun pengirim dihapus → identitas anonim di bukti, subjek dan target_member null, gambar tidak dilayani.
@@ -183,19 +203,35 @@ describe("GET /admin/reports/{reportId}: bukti terminimalkan, akses diaudit (PRD
     const reporter = await member("Pelapor Profil");
     const target = await member("Pemilik Avatar");
     const avatar = await uploadTestFile(t, target.token, "avatar");
-    await t.db.update(alumni).set({ avatarFileId: avatar.id, bio: "Bio publik" }).where(eq(alumni.userId, target.userId));
+    await t.db
+      .update(alumni)
+      .set({ avatarFileId: avatar.id, bio: "Bio publik" })
+      .where(eq(alumni.userId, target.userId));
     const id = await userReport(reporter.token, target.userId);
     const body = await detail(admin.token, id);
     expect(body.evidence.profile).toMatchObject({ full_name: "Pemilik Avatar", bio: "Bio publik" });
     expect((body.evidence.profile!.avatar as { file_id: string; url: string }).file_id).toBe(avatar.id);
 
     const groupAvatar = await uploadTestFile(t, reporter.token, "chat_image");
-    const group = await createGroupRoom(t, { name: "Grup Avatar", adminId: target.userId, avatarFileId: groupAvatar.id });
+    const group = await createGroupRoom(t, {
+      name: "Grup Avatar",
+      adminId: target.userId,
+      avatarFileId: groupAvatar.id,
+    });
     await addRoomMember(t, group, reporter.userId);
-    const roomReport = await reportOk(t.app, reporter.token, { target_type: "room", room_id: group, category: "hate" });
+    const roomReport = await reportOk(t.app, reporter.token, {
+      target_type: "room",
+      room_id: group,
+      category: "hate",
+    });
     const roomBody = await detail(admin.token, roomReport);
     expect(roomBody).toMatchObject({ subject: null, target_member: null, room_name: "Grup Avatar" });
-    expect(roomBody.evidence.room).toMatchObject({ room_id: group, kind: "group", name: "Grup Avatar", member_count: 2 });
+    expect(roomBody.evidence.room).toMatchObject({
+      room_id: group,
+      kind: "group",
+      name: "Grup Avatar",
+      member_count: 2,
+    });
     expect((roomBody.evidence.room!.avatar as { file_id: string }).file_id).toBe(groupAvatar.id);
 
     const noRead = await moderator({ permissions: ["members.read", "moderation.resolve"] });
@@ -216,7 +252,10 @@ describe("POST /admin/reports/{reportId}/claim", () => {
     const target = await member("Terlapor Klaim");
     const id = await userReport(reporter.token, target.userId);
     const claim = (token: string, version: string, headers: Record<string, string> = {}) =>
-      api().post(`/admin/reports/${id}/claim`, undefined, { token, headers: { "if-match": version, ...headers } });
+      api().post(`/admin/reports/${id}/claim`, undefined, {
+        token,
+        headers: { "if-match": version, ...headers },
+      });
 
     const claimed = await claim(first.token, "1");
     expect(claimed.statusCode, claimed.body).toBe(200);
@@ -241,7 +280,9 @@ describe("POST /admin/reports/{reportId}/claim", () => {
     expect(conflict.code).toBe("VERSION_CONFLICT");
     expect(conflict.current).toMatchObject({ id, version: "2", claimed_by: { admin_id: first.adminId } });
     // Bukti di `current` juga tercatat sebagai pembacaan.
-    expect((await auditsOf(id, "moderation.report_viewed")).map((a) => a.actorAdminId)).toContain(second.adminId);
+    expect((await auditsOf(id, "moderation.report_viewed")).map((a) => a.actorAdminId)).toContain(
+      second.adminId,
+    );
 
     const takeover = await claim(second.token, "2");
     expect(takeover.statusCode).toBe(200);
@@ -270,7 +311,10 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     const reporter = await member("Pelapor Dismiss");
     const target = await member("Terlapor Dismiss");
     const id = await userReport(reporter.token, target.userId);
-    const decided = await resolveOk(admin.token, id, { action: "dismiss", note: "Percakapan wajar, tidak melanggar." });
+    const decided = await resolveOk(admin.token, id, {
+      action: "dismiss",
+      note: "Percakapan wajar, tidak melanggar.",
+    });
     expect(decided).toMatchObject({
       status: "dismissed",
       action: "dismiss",
@@ -282,7 +326,9 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
         resolved_by: { admin_id: admin.adminId },
       },
     });
-    expect(await t.db.select().from(membershipEvents).where(eq(membershipEvents.userId, target.userId))).toEqual([]);
+    expect(
+      await t.db.select().from(membershipEvents).where(eq(membershipEvents.userId, target.userId)),
+    ).toEqual([]);
     const [notice] = await inboxOf(reporter.userId);
     expect(notice).toMatchObject({ category: "account", title: "Laporan Anda selesai ditinjau" });
     expect(notice!.data).toEqual({ route: "/account/reports" });
@@ -291,7 +337,11 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     expect(view).toMatchObject({ status: "dismissed", outcome: "no_action", decision_message: null });
 
     // Keputusan kedua dengan versi lama kalah: 409 dengan detail terbaru.
-    const late = await resolveReport(t.app, admin.token, id, "1", { action: "warn", note: "x".repeat(5), member_message: "Mohon sopan." });
+    const late = await resolveReport(t.app, admin.token, id, "1", {
+      action: "warn",
+      note: "x".repeat(5),
+      member_message: "Mohon sopan.",
+    });
     expect(late.statusCode).toBe(409);
     expect(expectOperation("post", "/admin/reports/{reportId}/resolve", late)).toMatchObject({
       code: "VERSION_CONFLICT",
@@ -314,25 +364,41 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     expect(decided).toMatchObject({
       status: "resolved",
       action: "warn",
-      target_history: [{ kind: "warn", reason: "Kata kasar berulang di chat.", actor_name: "Moderator Warn" }],
+      target_history: [
+        { kind: "warn", reason: "Kata kasar berulang di chat.", actor_name: "Moderator Warn" },
+      ],
       resolution: { action: "warn", member_message: "Mohon menjaga bahasa sesuai ketentuan komunitas." },
     });
     const [after] = await t.db.select().from(alumni).where(eq(alumni.userId, target.userId));
     expect(after!.startsAt).toEqual(before!.startsAt);
     expect(after!.expiresAt).toEqual(before!.expiresAt);
     expect(after!.suspendedAt).toBeNull();
-    const [event] = await t.db.select().from(membershipEvents).where(eq(membershipEvents.userId, target.userId));
-    expect(event).toMatchObject({ kind: "warn", actorAdminId: admin.adminId, reason: "Kata kasar berulang di chat." });
+    const [event] = await t.db
+      .select()
+      .from(membershipEvents)
+      .where(eq(membershipEvents.userId, target.userId));
+    expect(event).toMatchObject({
+      kind: "warn",
+      actorAdminId: admin.adminId,
+      reason: "Kata kasar berulang di chat.",
+    });
     expect(event!.afterExpiresAt).toBeNull();
 
     const [audit] = await auditsOf(id, "moderation.report_resolved");
     expect(audit).toMatchObject({ actorAdminId: admin.adminId, reason: "Kata kasar berulang di chat." });
-    expect(audit!.after).toMatchObject({ action: "warn", membership_event_id: event!.id, subject_user_id: target.userId });
+    expect(audit!.after).toMatchObject({
+      action: "warn",
+      membership_event_id: event!.id,
+      subject_user_id: target.userId,
+    });
     expect((audit!.after as { evidence_captured_at: string }).evidence_captured_at).toBeTruthy();
     expect(await auditsOf(target.userId, "member.warned")).toHaveLength(1);
 
     const warning = (await inboxOf(target.userId)).find((n) => n.title === "Peringatan dari pengurus");
-    expect(warning).toMatchObject({ category: "account", body: "Mohon menjaga bahasa sesuai ketentuan komunitas." });
+    expect(warning).toMatchObject({
+      category: "account",
+      body: "Mohon menjaga bahasa sesuai ketentuan komunitas.",
+    });
     // Pesan aman tidak menyebut pelapor maupun alasan internal.
     expect(warning!.body).not.toContain("Pelapor");
     expect(warning!.body).not.toContain("Kata kasar");
@@ -362,12 +428,22 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     expect(decided).toMatchObject({
       status: "resolved",
       action: "suspend",
-      target_member: { effective_status: "suspended", suspension_message: "Akun Anda dibatasi karena laporan penipuan." },
+      target_member: {
+        effective_status: "suspended",
+        suspension_message: "Akun Anda dibatasi karena laporan penipuan.",
+      },
     });
     // Sesi umum dicabut: token lama ditolak, socket diputus (session.revoked).
     expect((await api().get("/me", { token: target.token })).statusCode).toBe(401);
-    expect(await t.db.select().from(sessions).where(and(eq(sessions.userId, target.userId), isNull(sessions.revokedAt)))).toEqual([]);
-    const revoked = emits.find((e) => e.event === "session.revoked" && e.channels.includes(`user:${target.userId}`));
+    expect(
+      await t.db
+        .select()
+        .from(sessions)
+        .where(and(eq(sessions.userId, target.userId), isNull(sessions.revokedAt))),
+    ).toEqual([]);
+    const revoked = emits.find(
+      (e) => e.event === "session.revoked" && e.channels.includes(`user:${target.userId}`),
+    );
     expect(revoked).toBeDefined();
     expectRealtimeEnvelope(revoked!.data);
     expect(revoked!.data.payload).toMatchObject({ reason: "account_suspended", all_sessions: true });
@@ -381,8 +457,13 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     // Direktori menyembunyikan profil: anggota tanpa room bersama tidak lagi dapat menjangkaunya.
     const stranger = await member("Anggota Asing");
     expect(
-      (await postReport(t.app, stranger.token, { target_type: "user", target_user_id: target.userId, category: "spam" }))
-        .statusCode,
+      (
+        await postReport(t.app, stranger.token, {
+          target_type: "user",
+          target_user_id: target.userId,
+          category: "spam",
+        })
+      ).statusCode,
     ).toBe(404);
     const [audit] = await auditsOf(target.userId, "member.suspended");
     expect(audit).toMatchObject({ actorAdminId: admin.adminId, reason: "Penipuan transfer terbukti." });
@@ -407,7 +488,11 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     const reporter = await member("Pelapor Unsuspend");
     const subject = await member("Anggota Dibatasi", "suspended");
     const appeal = (
-      await api().post("/appeals", { description: "Saya mohon pembatasan dicabut." }, { token: subject.token })
+      await api().post(
+        "/appeals",
+        { description: "Saya mohon pembatasan dicabut." },
+        { token: subject.token },
+      )
     ).json().id as string;
     // Laporan biasa terhadap anggota yang dibatasi (pernah satu room) lalu diputus unsuspend; masa aktif sudah habis.
     const group = await createGroupRoom(t, { adminId: reporter.userId });
@@ -420,7 +505,10 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     });
     await t.db
       .update(alumni)
-      .set({ expiresAt: new Date(t.clock.now().getTime() - DAY), startsAt: new Date(t.clock.now().getTime() - 400 * DAY) })
+      .set({
+        expiresAt: new Date(t.clock.now().getTime() - DAY),
+        startsAt: new Date(t.clock.now().getTime() - 400 * DAY),
+      })
       .where(eq(alumni.userId, subject.userId));
 
     const decided = await resolveOk(admin.token, report, {
@@ -436,7 +524,11 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     expect((await kernel.effectiveStatusFor(subject.userId))?.status).toBe("expired");
     // Banding aktif pemohon ditutup sebagai dikabulkan dalam transaksi yang sama; satu notifikasi.
     const [appealRow] = await t.db.select().from(reports).where(eq(reports.id, appeal));
-    expect(appealRow).toMatchObject({ status: "resolved", action: "unsuspend", resolvedByAdminId: admin.adminId });
+    expect(appealRow).toMatchObject({
+      status: "resolved",
+      action: "unsuspend",
+      resolvedByAdminId: admin.adminId,
+    });
     expect(appealRow!.resolutionNote).toContain(report);
     const granted = (await inboxOf(subject.userId)).filter((n) => n.title === "Banding dikabulkan");
     expect(granted).toHaveLength(1);
@@ -482,14 +574,24 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     });
     expect(dismissed).toMatchObject({ status: "dismissed" });
     const [notice] = (await inboxOf(rejected.userId)).filter((n) => n.title === "Banding ditolak");
-    expect(notice).toMatchObject({ body: "Banding Anda belum dapat dikabulkan.", data: { route: "/account/reports" } });
+    expect(notice).toMatchObject({
+      body: "Banding Anda belum dapat dikabulkan.",
+      data: { route: "/account/reports" },
+    });
     const view = (await api().get(`/reports/${rejectedAppeal}`, { token: rejected.token })).json();
-    expect(view).toMatchObject({ outcome: "no_action", decision_message: "Banding Anda belum dapat dikabulkan." });
+    expect(view).toMatchObject({
+      outcome: "no_action",
+      decision_message: "Banding Anda belum dapat dikabulkan.",
+    });
     expect((await kernel.effectiveStatusFor(rejected.userId))?.status).toBe("suspended");
 
     const grantedMember = await member("Pemohon Dikabulkan", "suspended");
     const grantedAppeal = (
-      await api().post("/appeals", { description: "Mohon dicabut, sudah klarifikasi." }, { token: grantedMember.token })
+      await api().post(
+        "/appeals",
+        { description: "Mohon dicabut, sudah klarifikasi." },
+        { token: grantedMember.token },
+      )
     ).json().id as string;
     const granted = await resolveOk(admin.token, grantedAppeal, {
       action: "unsuspend",
@@ -497,10 +599,18 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
       member_message: "Banding diterima, terima kasih atas klarifikasinya.",
       confirm: true,
     });
-    expect(granted).toMatchObject({ status: "resolved", action: "unsuspend", target_member: { effective_status: "verified" } });
+    expect(granted).toMatchObject({
+      status: "resolved",
+      action: "unsuspend",
+      target_member: { effective_status: "verified" },
+    });
     const inbox = await inboxOf(grantedMember.userId);
     expect(inbox.filter((n) => n.title === "Banding dikabulkan")).toHaveLength(1);
-    const view2 = (await api().get(`/reports/${grantedAppeal}`, { token: (await signInAlumni(t, grantedMember)).accessToken })).json();
+    const view2 = (
+      await api().get(`/reports/${grantedAppeal}`, {
+        token: (await signInAlumni(t, grantedMember)).accessToken,
+      })
+    ).json();
     expect(view2).toMatchObject({
       outcome: "action_taken",
       decision_message: "Banding diterima, terima kasih atas klarifikasinya.",
@@ -510,10 +620,14 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
   it("banding usang (suspend sudah dicabut lewat jalur lain): dismiss 400; unsuspend menutup tanpa mengubah keanggotaan", async () => {
     const admin = await moderator();
     const appellant = await member("Pemohon Usang", "suspended");
-    const appeal = (await api().post("/appeals", { description: "Banding atas suspend lama." }, { token: appellant.token })).json()
-      .id as string;
+    const appeal = (
+      await api().post("/appeals", { description: "Banding atas suspend lama." }, { token: appellant.token })
+    ).json().id as string;
     // Jalur pencabutan yang keliru tidak menutup banding (jaring pengaman kontrak).
-    await t.db.update(alumni).set({ suspendedAt: null, suspensionReason: null, suspensionMessage: null }).where(eq(alumni.userId, appellant.userId));
+    await t.db
+      .update(alumni)
+      .set({ suspendedAt: null, suspensionReason: null, suspensionMessage: null })
+      .where(eq(alumni.userId, appellant.userId));
     const stale = await detail(admin.token, appeal);
     expect(stale.evidence.contested_suspension).toMatchObject({ in_force: false });
 
@@ -524,7 +638,10 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     });
     expect(dismiss.statusCode).toBe(400);
     expect(dismiss.json().field_errors).toHaveProperty("action");
-    const eventsBefore = await t.db.select().from(membershipEvents).where(eq(membershipEvents.userId, appellant.userId));
+    const eventsBefore = await t.db
+      .select()
+      .from(membershipEvents)
+      .where(eq(membershipEvents.userId, appellant.userId));
     const closed = await resolveOk(admin.token, appeal, {
       action: "unsuspend",
       note: "Suspend sudah dicabut sebelumnya.",
@@ -532,9 +649,9 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
       confirm: true,
     });
     expect(closed).toMatchObject({ status: "resolved", action: "unsuspend" });
-    expect(await t.db.select().from(membershipEvents).where(eq(membershipEvents.userId, appellant.userId))).toEqual(
-      eventsBefore,
-    );
+    expect(
+      await t.db.select().from(membershipEvents).where(eq(membershipEvents.userId, appellant.userId)),
+    ).toEqual(eventsBefore);
     const [audit] = await auditsOf(appeal, "moderation.report_resolved");
     expect(audit!.after).toMatchObject({ stale_appeal: true, membership_unchanged: true });
     expect((await inboxOf(appellant.userId)).filter((n) => n.title === "Banding dikabulkan")).toHaveLength(1);
@@ -547,7 +664,11 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     const group = await createGroupRoom(t, { adminId: reporter.userId });
     await addRoomMember(t, group, sender.userId);
     const message = await createMessage(t, group, sender.userId, { body: "Isi kasar yang dilaporkan" });
-    const id = await reportOk(t.app, reporter.token, { target_type: "message", message_id: message, category: "harassment" });
+    const id = await reportOk(t.app, reporter.token, {
+      target_type: "message",
+      message_id: message,
+      category: "harassment",
+    });
 
     const decided = await resolveOk(admin.token, id, {
       action: "warn",
@@ -556,7 +677,10 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
       remove_message: true,
     });
     expect(decided.resolution).toMatchObject({ message_removed: true });
-    expect(decided.evidence.messages[0]).toMatchObject({ body: "Isi kasar yang dilaporkan", deleted_since_report: true });
+    expect(decided.evidence.messages[0]).toMatchObject({
+      body: "Isi kasar yang dilaporkan",
+      deleted_since_report: true,
+    });
     const [row] = await t.db.select().from(messages).where(eq(messages.id, message));
     expect(row).toMatchObject({ body: null, imageFileId: null });
     expect(row!.deletedAt).not.toBeNull();
@@ -574,18 +698,32 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     const admin = await moderator();
     const group = await createGroupRoom(t, { adminId: culprit.userId });
     await addRoomMember(t, group, reporter.userId);
-    const id = await reportOk(t.app, reporter.token, { target_type: "room", room_id: group, category: "spam" });
+    const id = await reportOk(t.app, reporter.token, {
+      target_type: "room",
+      room_id: group,
+      category: "spam",
+    });
     const send = (token: string, body: Record<string, unknown>) => resolveReport(t.app, token, id, "1", body);
     const warn = { action: "warn", note: "Spam promosi.", member_message: "Hentikan promosi di grup." };
 
     expect((await send(admin.token, warn)).json().field_errors).toHaveProperty("subject_user_id");
     expect((await send(admin.token, { ...warn, subject_user_id: outsider.userId })).statusCode).toBe(400);
-    expect((await send(linkedAdmin.token, { ...warn, subject_user_id: outsider.userId })).statusCode).toBe(403);
-    expect((await send(admin.token, { action: "dismiss", note: "Tutup.", subject_user_id: culprit.userId })).statusCode).toBe(400);
+    expect((await send(linkedAdmin.token, { ...warn, subject_user_id: outsider.userId })).statusCode).toBe(
+      403,
+    );
+    expect(
+      (await send(admin.token, { action: "dismiss", note: "Tutup.", subject_user_id: culprit.userId }))
+        .statusCode,
+    ).toBe(400);
     const decided = await send(admin.token, { ...warn, subject_user_id: culprit.userId });
     expect(decided.statusCode, decided.body).toBe(200);
-    expect(decided.json()).toMatchObject({ subject: { user_id: culprit.userId }, target_member: { user_id: culprit.userId } });
-    expect((await t.db.select().from(reports).where(eq(reports.id, id)))[0]!.targetUserId).toBe(culprit.userId);
+    expect(decided.json()).toMatchObject({
+      subject: { user_id: culprit.userId },
+      target_member: { user_id: culprit.userId },
+    });
+    expect((await t.db.select().from(reports).where(eq(reports.id, id)))[0]!.targetUserId).toBe(
+      culprit.userId,
+    );
     // Pelapor tetap tidak melihat siapa yang dikenai tindakan (target_name null untuk laporan grup).
     expect((await api().get(`/reports/${id}`, { token: reporter.token })).json()).toMatchObject({
       target_name: null,
@@ -604,7 +742,10 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
       [{ action: "hapus", note: "Alasan." }, "action"],
       [{ action: "warn", note: "Alasan cukup." }, "member_message"],
       [{ action: "suspend", note: "Alasan cukup.", confirm: true }, "member_message"],
-      [{ action: "warn", note: "Alasan cukup.", member_message: "Pesan.", subject_user_id: target.userId }, "subject_user_id"],
+      [
+        { action: "warn", note: "Alasan cukup.", member_message: "Pesan.", subject_user_id: target.userId },
+        "subject_user_id",
+      ],
       [{ action: "dismiss", note: "Alasan cukup.", remove_message: true }, "remove_message"],
       [{ action: "dismiss", note: "x".repeat(1001) }, "note"],
     ];
@@ -614,25 +755,57 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
       expectOperation("post", "/admin/reports/{reportId}/resolve", res);
       expect(res.json().field_errors, JSON.stringify(body)).toHaveProperty(field);
     }
-    const noIfMatch = await api().post(`/admin/reports/${id}/resolve`, { action: "dismiss", note: "Tutup." }, { token: admin.token });
+    const noIfMatch = await api().post(
+      `/admin/reports/${id}/resolve`,
+      { action: "dismiss", note: "Tutup." },
+      { token: admin.token },
+    );
     expect(noIfMatch.statusCode).toBe(400);
     const readOnly = await moderator({ permissions: ["moderation.read"] });
-    expect((await resolveReport(t.app, readOnly.token, id, "1", { action: "dismiss", note: "Tutup." })).statusCode).toBe(403);
-    expect((await resolveReport(t.app, reporter.token, id, "1", { action: "dismiss", note: "Tutup." })).statusCode).toBe(403);
-    expect((await resolveReport(t.app, admin.token, uuidv7(), "1", { action: "dismiss", note: "Tutup." })).statusCode).toBe(404);
+    expect(
+      (await resolveReport(t.app, readOnly.token, id, "1", { action: "dismiss", note: "Tutup." })).statusCode,
+    ).toBe(403);
+    expect(
+      (await resolveReport(t.app, reporter.token, id, "1", { action: "dismiss", note: "Tutup." })).statusCode,
+    ).toBe(403);
+    expect(
+      (await resolveReport(t.app, admin.token, uuidv7(), "1", { action: "dismiss", note: "Tutup." }))
+        .statusCode,
+    ).toBe(404);
 
     // Akun terlapor dihapus: hanya dismiss.
     await t.db.update(users).set({ status: "deleted" }).where(eq(users.id, target.userId));
-    const gone = await resolveReport(t.app, admin.token, id, "1", { action: "warn", note: "Alasan.", member_message: "Pesan." });
+    const gone = await resolveReport(t.app, admin.token, id, "1", {
+      action: "warn",
+      note: "Alasan.",
+      member_message: "Pesan.",
+    });
     expect(gone.statusCode).toBe(400);
-    const closed = await resolveReport(t.app, admin.token, id, "1", { action: "dismiss", note: "Akun sudah dihapus." });
+    const closed = await resolveReport(t.app, admin.token, id, "1", {
+      action: "dismiss",
+      note: "Akun sudah dihapus.",
+    });
     expect(closed.statusCode, closed.body).toBe(200);
 
     // Idempotency-Key: keputusan yang diulang mengembalikan hasil pertama.
     const another = await userReport(reporter.token, (await member("Terlapor Idem")).userId);
     const key = uuidv7();
-    const once = await resolveReport(t.app, admin.token, another, "1", { action: "dismiss", note: "Tutup." }, { "idempotency-key": key });
-    const replay = await resolveReport(t.app, admin.token, another, "1", { action: "dismiss", note: "Tutup." }, { "idempotency-key": key });
+    const once = await resolveReport(
+      t.app,
+      admin.token,
+      another,
+      "1",
+      { action: "dismiss", note: "Tutup." },
+      { "idempotency-key": key },
+    );
+    const replay = await resolveReport(
+      t.app,
+      admin.token,
+      another,
+      "1",
+      { action: "dismiss", note: "Tutup." },
+      { "idempotency-key": key },
+    );
     expect(once.statusCode).toBe(200);
     expect(replay.statusCode).toBe(200);
     expect(replay.headers["idempotent-replayed"]).toBe("true");

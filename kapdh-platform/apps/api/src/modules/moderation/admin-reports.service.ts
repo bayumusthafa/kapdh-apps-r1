@@ -1,7 +1,22 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
 import { admins, alumni, membershipEvents, messages, reports, roomMembers, users } from "@kapdh/database";
-import { and, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, lte, ne, or, type SQL, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  ne,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
@@ -309,9 +324,7 @@ export class AdminReportsService {
    * butir a: tidak dapat dibedakan dari laporan yang tidak ada).
    */
   async buildDetail(auth: AuthContext, reportId: string, db: DbOrTx = this.db): Promise<Detail | null> {
-    const [row] = await this.queueQuery(db)
-      .where(eq(reports.id, reportId))
-      .limit(1);
+    const [row] = await this.queueQuery(db).where(eq(reports.id, reportId)).limit(1);
     if (!row) return null;
     if (await this.visibility.isReportedParty(row, auth.linkedAlumniUserId, db)) return null;
     const [full] = await db
@@ -343,7 +356,10 @@ export class AdminReportsService {
     ]);
     const target = row.targetUserId ? people.get(row.targetUserId) : undefined;
     const [history, openAgainst] = row.targetUserId
-      ? await Promise.all([this.history(db, row.targetUserId), this.openAgainst(db, row.targetUserId, row.id)])
+      ? await Promise.all([
+          this.history(db, row.targetUserId),
+          this.openAgainst(db, row.targetUserId, row.id),
+        ])
       : [[], 0];
     const decided = row.status === "resolved" || row.status === "dismissed";
     return {
@@ -366,8 +382,7 @@ export class AdminReportsService {
               resolved_by: full.resolvedByAdminId ? (adminRefs.get(full.resolvedByAdminId) ?? null) : null,
             }
           : null,
-      conflict_of_interest:
-        auth.linkedAlumniUserId !== null && full.reporterId === auth.linkedAlumniUserId,
+      conflict_of_interest: auth.linkedAlumniUserId !== null && full.reporterId === auth.linkedAlumniUserId,
       version: String(full.version),
     };
   }
@@ -638,10 +653,15 @@ export class AdminReportsService {
           subject.accountStatus !== "deleted" &&
           subject.suspendedAt?.toISOString() !== contestedAt;
         if (
-          (input.action === "warn" || input.action === "suspend" || (input.action === "unsuspend" && !staleAppeal)) &&
+          (input.action === "warn" ||
+            input.action === "suspend" ||
+            (input.action === "unsuspend" && !staleAppeal)) &&
           (!subject || subject.accountStatus === "deleted")
         )
-          throw fieldError("action", "Akun pihak terlapor sudah dihapus; laporan hanya dapat ditutup dengan dismiss.");
+          throw fieldError(
+            "action",
+            "Akun pihak terlapor sudah dihapus; laporan hanya dapat ditutup dengan dismiss.",
+          );
         let membershipEventId: string | null = null;
         let closedAppealIds: string[] = [];
         let membershipUnchanged = input.action === "dismiss";
@@ -656,7 +676,10 @@ export class AdminReportsService {
             break;
           case "warn": {
             if (!subject || subject.accountStatus !== "active")
-              throw fieldError("action", "Akun pihak terlapor tidak aktif sehingga tidak dapat diberi peringatan.");
+              throw fieldError(
+                "action",
+                "Akun pihak terlapor tidak aktif sehingga tidak dapat diberi peringatan.",
+              );
             membershipEventId = await this.warn(tx, subjectId!, subject, input, row.id, adminId, now);
             break;
           }
@@ -786,7 +809,9 @@ export class AdminReportsService {
     if (input.subjectUserId === null)
       throw fieldError("subject_user_id", "Pilih anggota grup yang dikenai tindakan.");
     if (auth.linkedAlumniUserId && input.subjectUserId === auth.linkedAlumniUserId)
-      throw forbidden("Anda tidak dapat memutus perkara yang menyangkut akun Anda sendiri (konflik kepentingan).");
+      throw forbidden(
+        "Anda tidak dapat memutus perkara yang menyangkut akun Anda sendiri (konflik kepentingan).",
+      );
     const [member] = report.roomId
       ? await this.db
           .select({ status: roomMembers.status })
@@ -939,11 +964,7 @@ export class AdminReportsService {
   }
 
   private async accountAlive(tx: Tx, userId: string): Promise<boolean> {
-    const [user] = await tx
-      .select({ status: users.status })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+    const [user] = await tx.select({ status: users.status }).from(users).where(eq(users.id, userId)).limit(1);
     return user !== undefined && user.status !== "deleted";
   }
 }
