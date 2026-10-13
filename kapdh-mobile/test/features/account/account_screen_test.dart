@@ -114,13 +114,10 @@ void main() {
     final app = await pumpApp(
       tester,
       tokens: savedTokens(),
-      handler: apiRoutes(
-        {
-          '/me': (_) => FakeResponse.json(200, meFullJson(status: 'unverified')),
-          '/notifications/unread-count': (_) => FakeResponse.json(200, {'unread_count': 0}),
-        },
-        config: publicConfigJson(maintenance: true, maintenanceUntil: DateTime.utc(2026, 10, 14, 9)),
-      ),
+      handler: apiRoutes({
+        '/me': (_) => FakeResponse.json(200, meFullJson(status: 'unverified')),
+        '/notifications/unread-count': (_) => FakeResponse.json(200, {'unread_count': 0}),
+      }, config: publicConfigJson(maintenance: true, maintenanceUntil: DateTime.utc(2026, 10, 14, 9))),
     );
     app.router.go('/account');
     await settle(tester);
@@ -128,10 +125,7 @@ void main() {
 
     // Ganti password dan hapus akun diizinkan status unverified, hanya ditahan mode baca.
     expect(find.bySemanticsLabel('Ganti password, Ditunda selama pemeliharaan'), findsOneWidget);
-    expect(
-      find.bySemanticsLabel('Hapus akun, Ditunda selama pemeliharaan'),
-      findsOneWidget,
-    );
+    expect(find.bySemanticsLabel('Hapus akun, Ditunda selama pemeliharaan'), findsOneWidget);
     // Menu yang memang ditolak status tetap dijelaskan lewat status.
     expect(find.bySemanticsLabel('Anggota diblokir, terkunci'), findsOneWidget);
 

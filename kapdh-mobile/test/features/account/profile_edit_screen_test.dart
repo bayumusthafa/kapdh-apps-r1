@@ -344,7 +344,9 @@ void main() {
     expect(bodyOf(requests.last), {'city': 'Dumai'});
   });
 
-  testWidgets('PRD 4.5: panah kembali app bar pada formulir yang berubah menanyakan "Buang perubahan?"', (tester) async {
+  testWidgets('PRD 4.5: panah kembali app bar pada formulir yang berubah menanyakan "Buang perubahan?"', (
+    tester,
+  ) async {
     final app = await openProfile(tester);
     await enter(tester, 'city', 'Dumai');
     await tester.tap(find.byTooltip('Kembali'));
