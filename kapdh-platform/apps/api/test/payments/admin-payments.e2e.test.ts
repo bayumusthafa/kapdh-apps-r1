@@ -1,8 +1,11 @@
 import { alumni, auditLogs, membershipEvents, notifications, outboxEvents, payments } from "@kapdh/database";
 import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { JobRegistry, type TopicHandler } from "../../src/core/jobs/job-registry.js";
+import { outboxBackoffMs } from "../../src/core/jobs/job-runner.js";
 import { addCalendarMonthsJakarta } from "../../src/core/membership/period.js";
+import { encodeCursor } from "../../src/core/pagination/cursor.js";
 import { expectOperation } from "../support/contract.js";
 import { createPaymentMethod } from "../support/factories.js";
 import { httpClient } from "../support/http.js";
@@ -193,36 +196,103 @@ describe("POST /admin/payments/{id}/decision (AC F04-1 sampai F04-5)", () => {
     expect(fresh.statusCode).toBe(200);
   });
 
-  it("AC F04-5: pengiriman email/push gagal tidak membatalkan keputusan; inbox tersedia; ulang tidak memperpanjang dua kali", async () => {
+  it("AC F04-5: push/email sedang gagal → keputusan tetap committed, inbox tersedia, worker mengulang pengiriman tanpa memperpanjang dua kali", async () => {
     const member = await memberSession(t);
     const payment = await reviewablePayment(t, member);
     const admin = await adminSession(t);
-    const key = uuidv7();
-    const first = await decide(t, admin, payment.paymentId, approveBody(payment), { "idempotency-key": key });
-    expect(first.statusCode).toBe(200);
-    // Worker gagal mengirim (tanpa handler/penyedia gagal) dan mengulang; keputusan tetap committed.
-    for (let round = 0; round < 3; round++) {
+    // Kanal push perangkat anggota sedang gagal (FCM 503 unavailable, retryable) untuk dua percobaan pertama.
+    const deviceToken = `fcm-uji-${member.userId}`;
+    const unavailable = {
+      ok: false,
+      errorClass: "unavailable",
+      retryable: true,
+      deactivateToken: false,
+    } as const;
+    t.push.failNext(deviceToken, unavailable);
+    t.push.failNext(deviceToken, unavailable);
+    // Pengantar notifikasi uji untuk topik notification.created: mengirim lewat FakePush dan melempar galat
+    // sementara bila kanal gagal, sehingga worker outbox mengulang dengan backoff (ARCHITECTURE §4.8). Topik lain
+    // tetap memakai handler terdaftar.
+    const registry = t.app.get(JobRegistry);
+    const registered = registry.handlerFor.bind(registry);
+    const delivery: TopicHandler = {
+      topic: "notification.created",
+      handle: async (event) => {
+        const { notification_id, user_id } = event.payload as { notification_id: string; user_id: string };
+        if (user_id !== member.userId) return;
+        const [row] = await t.db.select().from(notifications).where(eq(notifications.id, notification_id));
+        const result = await t.push.send({
+          token: deviceToken,
+          platform: "android",
+          title: row!.title,
+          body: row!.body ?? "",
+          data: { route: `/payments/${payment.paymentId}` },
+        });
+        if (!result.ok) throw Object.assign(new Error("push gagal"), { code: "FCM_UNAVAILABLE" });
+      },
+    };
+    const spy = vi
+      .spyOn(registry, "handlerFor")
+      .mockImplementation((topic) => (topic === "notification.created" ? delivery : registered(topic)));
+    try {
+      const key = uuidv7();
+      const first = await decide(t, admin, payment.paymentId, approveBody(payment), {
+        "idempotency-key": key,
+      });
+      expect(first.statusCode).toBe(200);
+      const inbox = await t.db.select().from(notifications).where(eq(notifications.userId, member.userId));
+      expect(inbox).toHaveLength(1);
+      const outboxRow = async () =>
+        (
+          await t.db
+            .select()
+            .from(outboxEvents)
+            .where(eq(outboxEvents.dedupKey, `notification.created:${inbox[0]!.id}`))
+        )[0]!;
+      expect(await outboxRow()).toMatchObject({
+        topic: "notification.created",
+        status: "pending",
+        attempts: 0,
+      });
+      const [profile] = await t.db.select().from(alumni).where(eq(alumni.userId, member.userId));
+
+      // Percobaan 1 dan 2 gagal: keputusan tetap committed, inbox tetap satu, event dijadwalkan ulang.
+      for (const attempt of [1, 2]) {
+        await t.jobs.dispatchOutbox();
+        const failed = await outboxRow();
+        expect(failed).toMatchObject({ status: "failed", attempts: attempt });
+        expect(failed.nextAttemptAt.getTime()).toBe(t.clock.now().getTime() + outboxBackoffMs(attempt));
+        const [row] = await t.db.select().from(payments).where(eq(payments.id, payment.paymentId));
+        expect(row!.status).toBe("paid");
+        t.clock.advance(outboxBackoffMs(attempt));
+      }
+      // Percobaan 3 berhasil; ulangan tidak menggandakan inbox (AC F13-1) maupun periode keanggotaan.
       await t.jobs.dispatchOutbox();
-      t.clock.advance(2 * 60_000);
+      expect(await outboxRow()).toMatchObject({ status: "dispatched", attempts: 3 });
+      expect(t.push.to(deviceToken)).toHaveLength(3);
+      expect(t.push.to(deviceToken)[2]).toMatchObject({ title: "Iuran pendaftaran disetujui" });
+      expect(
+        await t.db.select().from(notifications).where(eq(notifications.userId, member.userId)),
+      ).toHaveLength(1);
+
+      const replay = await decide(t, admin, payment.paymentId, approveBody(payment), {
+        "idempotency-key": key,
+      });
+      expect(replay.statusCode).toBe(200);
+      expect(replay.headers["idempotent-replayed"]).toBe("true");
+      const retry = await decide(t, admin, payment.paymentId, approveBody(payment));
+      expect(retry.json().code).toBe("PAYMENT_STATE_CONFLICT");
+      expect(
+        await t.db.select().from(membershipEvents).where(eq(membershipEvents.paymentId, payment.paymentId)),
+      ).toHaveLength(1);
+      const [after] = await t.db.select().from(alumni).where(eq(alumni.userId, member.userId));
+      expect(after!.expiresAt).toEqual(profile!.expiresAt);
+      expect(
+        await t.db.select().from(notifications).where(eq(notifications.userId, member.userId)),
+      ).toHaveLength(1);
+    } finally {
+      spy.mockRestore();
     }
-    const [row] = await t.db.select().from(payments).where(eq(payments.id, payment.paymentId));
-    expect(row!.status).toBe("paid");
-    expect(
-      await t.db.select().from(notifications).where(eq(notifications.userId, member.userId)),
-    ).toHaveLength(1);
-    const [profile] = await t.db.select().from(alumni).where(eq(alumni.userId, member.userId));
-    const replay = await decide(t, admin, payment.paymentId, approveBody(payment), {
-      "idempotency-key": key,
-    });
-    expect(replay.statusCode).toBe(200);
-    expect(replay.headers["idempotent-replayed"]).toBe("true");
-    const retry = await decide(t, admin, payment.paymentId, approveBody(payment));
-    expect(retry.json().code).toBe("PAYMENT_STATE_CONFLICT");
-    expect(
-      await t.db.select().from(membershipEvents).where(eq(membershipEvents.paymentId, payment.paymentId)),
-    ).toHaveLength(1);
-    const [after] = await t.db.select().from(alumni).where(eq(alumni.userId, member.userId));
-    expect(after!.expiresAt).toEqual(profile!.expiresAt);
   });
 
   it("AC F07-1, F07-2: renewal disetujui → expiring diperpanjang dari expires_at lama, expired dari approved_at", async () => {
@@ -439,6 +509,57 @@ describe("GET /admin/payments dan /summary (F-04, F-15)", () => {
       (await api().get(`/files/${proofEvents[0].proof_file_id}/access`, { token: otherMember.token }))
         .statusCode,
     ).toBe(404);
+  });
+
+  it("PRD 7.3: cursor yang dimanipulasi di antrean, penyesuaian, metode dan riwayat anggota → 400 VALIDATION_ERROR field cursor (bukan 500)", async () => {
+    const payer = await adminSession(t, ["payments.read"]);
+    const settings = await adminSession(t, ["settings.manage"]);
+    const member = await memberSession(t);
+    const id = uuidv7();
+    const cases: { url: string; token: string; cursor: Record<string, unknown> }[] = [
+      { url: "/admin/payments", token: payer.token, cursor: { s: "submitted_at_asc", k: "not-a-date", id } },
+      {
+        url: "/admin/payments",
+        token: payer.token,
+        cursor: { s: "submitted_at_asc", k: "2026-02-31T00:00:00.000Z", id },
+      },
+      { url: "/admin/payments", token: payer.token, cursor: { s: "created_at_desc", k: null, id } },
+      { url: "/admin/payment-adjustments", token: payer.token, cursor: { s: "created_at_desc", k: "x", id } },
+      {
+        url: "/admin/payment-adjustments",
+        token: payer.token,
+        cursor: { s: "due_at_asc", k: "0000-01-01T00:00:00.000Z", id },
+      },
+      {
+        url: "/admin/payment-methods",
+        token: settings.token,
+        cursor: { sort_order: 1e12, provider: "BSI", id },
+      },
+      { url: "/me/payments", token: member.token, cursor: { created_at: 1e15, id } },
+      { url: "/me/payments", token: member.token, cursor: { created_at: "+275760-09-13T00:00:00.000Z", id } },
+    ];
+    for (const item of cases) {
+      const query: Record<string, string> = { cursor: encodeCursor(item.cursor) };
+      if (item.url === "/admin/payments" && item.cursor.s === "created_at_desc")
+        query.sort = "created_at_desc";
+      if (item.url === "/admin/payment-adjustments") query.sort = String(item.cursor.s);
+      const res = await api().get(item.url, { token: item.token, query });
+      expect(res.statusCode, `${item.url} ${JSON.stringify(item.cursor)}`).toBe(400);
+      expect(res.json()).toMatchObject({
+        code: "VALIDATION_ERROR",
+        field_errors: { cursor: expect.any(Array) },
+      });
+    }
+    // Cursor sah dari halaman sebelumnya tetap diterima.
+    await reviewablePayment(t, member);
+    await reviewablePayment(t, await memberSession(t));
+    const first = (await api().get("/admin/payments", { token: payer.token, query: { limit: "1" } })).json();
+    expect(first.next_cursor).toEqual(expect.any(String));
+    const next = await api().get("/admin/payments", {
+      token: payer.token,
+      query: { limit: "1", cursor: first.next_cursor },
+    });
+    expect(next.statusCode).toBe(200);
   });
 });
 
