@@ -2,7 +2,7 @@ import { alumni, roomMembers, rooms, sessions, users } from "@kapdh/database";
 import { eq, sql } from "drizzle-orm";
 import { io, type Socket } from "socket.io-client";
 import { v7 as uuidv7 } from "uuid";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { runAsSystem } from "../../src/core/context/request-context.js";
 import { withTx } from "../../src/core/db/tx.js";
 import { MembershipKernel } from "../../src/core/membership/membership.kernel.js";
@@ -38,9 +38,16 @@ beforeAll(async () => {
   baseUrl = await t.app.getUrl();
   realtime = t.app.get(RealtimeService);
   gateway = t.app.get(RealtimeGateway);
-  // Modul chat mendaftarkan handler event klien; di sini handler penguji.
-  realtime.registerClientEvent("typing", (client: RealtimeClient, data) => {
-    typingCalls.push({ userId: client.userId, status: client.effectiveStatus, data });
+  // Modul chat (F-11) sudah mendaftarkan handler `typing`; uji gateway ini membungkusnya untuk mencatat pemanggilan
+  // yang diteruskan gateway, lalu tetap menjalankan handler modul.
+  const lookup = realtime.clientHandler.bind(realtime);
+  vi.spyOn(realtime, "clientHandler").mockImplementation((event: string) => {
+    const handler = lookup(event);
+    if (event !== "typing") return handler;
+    return async (client: RealtimeClient, data: unknown) => {
+      typingCalls.push({ userId: client.userId, status: client.effectiveStatus, data });
+      await handler?.(client, data);
+    };
   });
 });
 afterAll(async () => {

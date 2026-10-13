@@ -367,6 +367,16 @@ Aturan perilaku yang mengikat implementasi (dicatat di sini karena tidak terliha
   `AdminModerationContestedSuspension.in_force`.
 - Bukti laporan grup kini memuat avatar grup saat laporan dibuat: field wajib baru `AdminModerationEvidenceRoom.avatar`
   (`AdminModerationEvidenceImage` | null). Berkas yang dirujuk bukti ditahan selama laporan disimpan (retensi D2).
+- Chat (slice api-chat, hanya deskripsi; bentuk tidak berubah): URL berkas privat pada event realtime kini terikat
+  sesi penerima seperti respons HTTP. `message.created` yang memuat URL privat (gambar, avatar privat pengirim) dan
+  `room.updated` dengan avatar grup privat dikirim per keluarga sesi penerima (`session:<id>`, satu salinan per
+  perangkat, penerima sama dengan `room:<id>`), sehingga URL yang sudah diterima anggota yang keluar/dikeluarkan
+  ditolak saat dibuka (PRD 5.4, AC F11-4). Klien tidak perlu berubah: nama event dan payload sama.
+- Chat: notifikasi kotak masuk "Pesan baru" (satu per episode belum dibaca) tetap ditulis untuk anggota aktif yang
+  mute room atau mematikan push chat; hanya push yang tidak dijadwalkan (AC F13-2, `setChatRoomMute`,
+  `sendChatMessage`).
+- Chat: `ChatMessage.body` pesan sistem dirangkai server saat dibaca dengan nama terkini; akun yang sudah dihapus
+  tampil "Seorang anggota" sehingga namanya tidak tersisa di riwayat grup (AC F14-3, D2).
 
 Perubahan bentuk (belum ada controller maupun klien rilis untuk operasi komunitas):
 
