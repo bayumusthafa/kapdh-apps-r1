@@ -1,0 +1,43 @@
+---
+/**
+ * Tombol Google Play / App Store. Tautan TIDAK ditanam saat build: config-page.ts mengisinya dari
+ * GET /public/config (`store_links`, diatur pengurus) dan menampilkan "Segera tersedia" bila belum ada.
+ */
+interface Props {
+  tone?: "dark" | "light";
+}
+const { tone = "light" } = Astro.props;
+const buttonClass =
+  tone === "dark"
+    ? "store-button flex min-h-14 items-center gap-3 rounded-md border border-white/25 bg-green-950 px-4 py-2 text-white no-underline hover:border-accent"
+    : "store-button flex min-h-14 items-center gap-3 rounded-md bg-green-950 px-4 py-2 text-white no-underline hover:bg-green-900";
+const noteClass = tone === "dark" ? "text-sm text-green-100" : "text-sm text-text-muted";
+---
+
+<div class="flex flex-col gap-3">
+  <div class="flex flex-col gap-3 sm:flex-row">
+    <a data-store="android" role="link" aria-disabled="true" target="_blank" rel="noopener noreferrer" class={buttonClass}>
+      <svg viewBox="0 0 24 24" class="size-7 shrink-0 text-accent" fill="currentColor" aria-hidden="true">
+        <path d="M6 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 6 3.5Z"></path>
+      </svg>
+      <span class="flex flex-col text-left leading-tight">
+        <span class="text-xs text-green-100" data-store-status>Memuat tautan…</span>
+        <span class="text-base font-semibold">Google Play</span>
+      </span>
+    </a>
+    <a data-store="ios" role="link" aria-disabled="true" target="_blank" rel="noopener noreferrer" class={buttonClass}>
+      <svg viewBox="0 0 24 24" class="size-7 shrink-0 text-accent" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="6" y="2" width="12" height="20" rx="2.5"></rect>
+        <path d="M11 18h2"></path>
+      </svg>
+      <span class="flex flex-col text-left leading-tight">
+        <span class="text-xs text-green-100" data-store-status>Memuat tautan…</span>
+        <span class="text-base font-semibold">App Store</span>
+      </span>
+    </a>
+  </div>
+  <p data-store-note hidden class={noteClass}>
+    Tautan toko belum dapat dimuat.
+    <button type="button" data-config-retry class="btn-link min-h-11 text-inherit">Coba lagi</button>
+  </p>
+</div>
