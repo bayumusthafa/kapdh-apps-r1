@@ -96,6 +96,29 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
     // Payload dari server memang tidak memuat bagian lain (bukan sekadar disembunyikan UI).
     const body = (await api.GET("/admin/dashboard")).data!;
     expect(Object.keys(body).sort()).toEqual(["generated_at", "payments"]);
+    // Lencana laporan/job tidak diminta tanpa izinnya.
+    expect(dashboardRequests.some((r) => r.path === "/admin/dashboard/badges")).toBe(false);
+  });
+
+  it("lencana menu Moderasi dan Notifikasi sama dengan hitungan antrean masing-masing", async () => {
+    const user = userEvent.setup();
+    await openPage(user, "/", "Dashboard");
+    const nav = screen.getByRole("navigation", { name: "Menu admin" });
+    const mod = moderationCounts();
+    const jobs = notificationJobCounts();
+    const reports = mod.open + mod.in_review;
+    const failed = jobs.failed_delivery_count + jobs.dead_outbox_count;
+    // Nama tautan = label grup + angka lencana + teks pembaca layar.
+    const badgeLink = (label: string, count: number, what: string) => (_: string, el: Element | null) =>
+      el?.tagName === "A" &&
+      (el.textContent ?? "").replace(/\s+/g, "") === `${label}${count}${what}`.replace(/\s+/g, "");
+    expect(
+      await within(nav).findByRole("link", { name: badgeLink("Moderasi", reports, "laporan terbuka") }),
+    ).toBeVisible();
+    expect(
+      within(nav).getByRole("link", { name: badgeLink("Notifikasi", failed, "job gagal") }),
+    ).toBeVisible();
+    expect(dashboardRequests.find((r) => r.path === "/admin/dashboard/badges")?.background).toBe(false);
   });
 
   it("admin dengan izin check-in saja melihat event mendatang dan tautan check-in tanpa tautan kelola event", async () => {
