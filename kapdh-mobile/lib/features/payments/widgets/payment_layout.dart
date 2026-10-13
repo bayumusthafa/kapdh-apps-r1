@@ -43,6 +43,32 @@ class SheetTitleRow extends StatelessWidget {
   }
 }
 
+/// Pita status global Offline/Pemeliharaan ([AppBannerScope]) untuk layar berlembar yang tidak memakai
+/// [AppScaffold] (Biaya KTA, instruksi bayar, menunggu, ditolak). Sesuai handoff fondasi mobile, layar seperti ini
+/// menampilkan pitanya sendiri; pita berada di puncak lembar dan tidak ikut bergulir (PRD 4.5).
+class SheetStatusBanner extends StatelessWidget {
+  const SheetStatusBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final banner = AppBannerScope.of(context);
+    if (banner == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s3, KapdhSpace.s5, 0),
+      child: ClipRRect(borderRadius: BorderRadius.circular(KapdhRadius.md), child: banner),
+    );
+  }
+}
+
+/// Isi lembar: [SheetStatusBanner] tetap di atas, [content] (biasanya daftar bergulir) mengisi sisa tinggi.
+Widget withSheetBanner(Widget content) => Column(
+  crossAxisAlignment: CrossAxisAlignment.stretch,
+  children: [
+    const SheetStatusBanner(),
+    Expanded(child: content),
+  ],
+);
+
 /// Pita sapaan hijau (prototipe layar 4, 5): logo, "Assalamu'alaikum," dan nama anggota. Tombol kembali hanya bila
 /// layar dibuka dari layar lain (mis. riwayat pembayaran); dari alur pendaftaran tujuan berikutnya "Ke Beranda".
 class GreetingBand extends StatelessWidget {
