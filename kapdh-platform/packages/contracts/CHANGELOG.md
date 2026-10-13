@@ -212,6 +212,14 @@ Keputusan perilaku yang perlu diikuti modul payments dan events:
   otomatis; penyelesaian keuangan dicatat sebagai penyesuaian (PRD 4.4).
 - Refund (kind `refund`) dibuat pengurus atau sistem mengirim notifikasi kategori payment ke pemilik untuk meminta
   rekening tujuan; pembatalan refund juga diberitahukan dengan teks baku.
+- Perjelasan deskripsi tanpa perubahan bentuk (implementasi api-payments): refund sistem yang lahir dari
+  `adminDecidePayment` approve tidak mengirim notifikasi kedua; permintaan rekening tujuan menjadi isi notifikasi
+  keputusan (satu notification_id per keputusan, AC F13-1). Replay `adminCreatePaymentAdjustment` dengan
+  Idempotency-Key yang sama mengembalikan `refund_destination` null (`has_refund_destination` tetap true) karena
+  rekening tujuan tidak pernah disalin ke penyimpanan idempotensi (D2, ARCHITECTURE §2.3).
+  `AdminPaymentMethod.in_use` true juga untuk metode yang ditinggalkan saat pemilik mengganti rekening tujuan
+  sebelum bukti, dan tidak pernah kembali false. `adminListPaymentAdjustments` tidak pernah memuat isi
+  `refund_destination` (selalu null; penandanya `has_refund_destination`).
 
 ### Konten: `content.yaml`, `admin-content.yaml` (penulis kontrak C4; F-08, F-15)
 
