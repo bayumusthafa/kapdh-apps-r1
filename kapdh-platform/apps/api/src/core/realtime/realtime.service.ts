@@ -66,8 +66,8 @@ export type RoomResolver = (userId: string) => Promise<string[]>;
 export const CHAT_ACTIVE_STATUSES: ReadonlySet<EffectiveStatus> = new Set(["verified", "expiring"]);
 
 /**
- * Layanan realtime (ARCHITECTURE §4.2, §4.9): emitToUser, emitToRoom, joinRoom, leaveRoom (revokeRoomSubscription),
- * disconnectUser, disconnectSession. SEMUA metode aman dipanggil di dalam transaksi withTx: pemanggilan di dalam
+ * Layanan realtime (ARCHITECTURE §4.2, §4.9): emitToUser, emitToSession, emitToRoom, joinRoom, leaveRoom
+ * (revokeRoomSubscription), disconnectUser, disconnectSession. SEMUA metode aman dipanggil di dalam transaksi withTx: pemanggilan di dalam
  * transaksi otomatis ditunda sampai commit (afterCommit) dan dibuang bila rollback, sehingga event tidak pernah
  * mendahului data (PRD 5.2). Di luar transaksi dijalankan segera. Galat transport hanya dicatat (data sudah commit).
  *
@@ -116,6 +116,19 @@ export class RealtimeService {
   ): void {
     if (userIds.length === 0) return;
     this.emitTo([...new Set(userIds)].map(userChannel), type, entityId, payload, []);
+  }
+
+  /**
+   * Ke semua socket SATU keluarga sesi (kanal session:<familyId>), untuk payload yang khusus bagi sesi itu, mis. URL
+   * berkas privat yang terikat sesi penerima (modul chat; PRD 5.4 "TTL tidak menggantikan otorisasi").
+   */
+  emitToSession<T extends RealtimeEventType>(
+    familyId: string,
+    type: T,
+    entityId: string,
+    payload: RealtimePayloads[T],
+  ): void {
+    this.emitTo([sessionChannel(familyId)], type, entityId, payload, []);
   }
 
   /** Ke semua socket anggota room; `exceptUserId` dikecualikan (mis. `typing` tidak kembali ke pengirim). */

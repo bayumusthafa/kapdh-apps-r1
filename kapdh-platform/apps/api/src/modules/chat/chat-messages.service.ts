@@ -249,9 +249,8 @@ export class ChatMessagesService {
         await this.scheduleNotifications(tx, room, auth.userId, now);
         const found = await messageRows(tx, { roomId, viewerId: auth.userId, ids: [id] });
         const [message] = await this.presenter.messages(tx, found, auth);
-        const [broadcast] = await this.presenter.messages(tx, found, null, { realtime: true });
-        // Setelah commit: message.created ke kanal room (hanya socket anggota aktif yang berlangganan) dan status baca.
-        this.events.messageCreated(roomId, ChatPresenter.asRealtime(broadcast!));
+        // Setelah commit: message.created ke anggota aktif room (URL berkas terikat sesi penerima) dan status baca.
+        this.events.messageCreated(roomId, id);
         this.events.readUpdated({
           room_id: roomId,
           user_id: auth.userId,
