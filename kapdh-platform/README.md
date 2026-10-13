@@ -39,8 +39,11 @@ pnpm --filter @kapdh/api build
 pnpm --filter @kapdh/api admin:bootstrap --email bayu@kapdh.or.id --name "Bayu Musthafa"
 ```
 
-Perintah mencetak **sekali** sandi awal, secret TOTP (dan URI `otpauth://` untuk dipindai), serta 8 backup code.
-Simpan di password manager. Perintah menolak berjalan bila Super Admin aktif sudah ada.
+Perintah (PRD 8.2 langkah 3; tidak ada jalur HTTP) membuat Super Admin berstatus `invited` dengan sandi awal acak
+yang tidak dapat dipakai, lalu mencetak **satu** tautan undangan `${ADMIN_ORIGIN}/invite#t=<token>` (72 jam, sekali
+pakai). Buka tautan itu, ganti sandi awal, daftarkan TOTP di aplikasi autentikator, lalu simpan 10 backup code yang
+tampil sekali; akun aktif setelah kode pertama dikonfirmasi. Perintah menolak berjalan bila Super Admin aktif yang
+dapat login sudah ada; menjalankan ulang untuk email yang sama sebelum aktivasi menerbitkan tautan baru.
 
 ### Environment baru (irisan Auth)
 
