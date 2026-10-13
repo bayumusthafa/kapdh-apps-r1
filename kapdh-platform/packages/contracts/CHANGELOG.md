@@ -146,6 +146,13 @@ CLI bootstrap Super Admin (PRD 8.2 langkah 3) kini mencetak satu tautan `${ADMIN
 users dan memeriksa ulang keadaannya: bila Super Admin itu baru saja aktif (aktivasi /totp/confirm commit selagi CLI
 menunggu), CLI menolak tanpa mengubah apa pun. Validasi email CLI sama dengan `AdminLoginRequest`.
 
+### Fase C api-account (`account.yaml`; F-14)
+
+- Hanya deskripsi, tanpa perubahan skema: `requestAccountDeletion`, `AccountDeletionRefundPolicy.payment_pending` dan
+  `AccountDeletionPaymentWarning` diselaraskan dengan C3 (admin-payments, payments). Job penghapusan hanya
+  membatalkan payment `pending` TANPA bukti; payment `pending` berbukti tetap diputus pengurus dalam bentuk anonim
+  (berkas bukti dan `transfer_note` dihapus).
+
 ### C3 Finance: payments, admin-payments, admin-settings (F-03, F-04, F-07, F-15, D4, D6, D13)
 
 Kontrak keuangan dilengkapi sesuai PRD 3.3, 3.4, 3.9, 4.3 dan ARCHITECTURE §3.3. Belum ada controller API untuk

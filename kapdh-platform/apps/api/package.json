@@ -19,7 +19,8 @@
     "lint": "eslint src test",
     "test": "vitest run",
     "test:pg": "vitest run --config vitest.pg.config.ts",
-    "admin:bootstrap": "node dist/cli/bootstrap-admin.js"
+    "admin:bootstrap": "node dist/cli/bootstrap-admin.js",
+    "account:ledger-reapply": "node dist/modules/account/ledger-reapply.cli.js"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.3",
