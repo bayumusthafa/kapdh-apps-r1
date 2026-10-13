@@ -535,7 +535,7 @@ describe("Info grup: ubah nama/avatar dengan If-Match, mute", () => {
     expect(oldFile!.status).toBe("deleted");
     const harmful = await api(t).patch(
       `/chat/rooms/${roomId}`,
-      { name: "Grup ‮evil" },
+      { name: "Grup \u202Eevil" },
       { token: admin.token, headers: { "if-match": String(Number(updated.version) + 1) } },
     );
     expect(harmful.statusCode).toBe(400);

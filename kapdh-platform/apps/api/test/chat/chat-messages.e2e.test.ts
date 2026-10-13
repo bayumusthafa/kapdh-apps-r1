@@ -100,7 +100,7 @@ describe("AC F11-2: kirim pesan, ack sesudah commit, client_message_id idempoten
       [{ kind: "text" }, "body"],
       [{ kind: "text", body: "x".repeat(4001) }, "body"],
       [{ kind: "text", body: "Klik <a href=javascript:alert(1)>" }, "body"],
-      [{ kind: "text", body: "nama‮fdp.exe" }, "body"],
+      [{ kind: "text", body: "nama\u202Efdp.exe" }, "body"],
       [{ kind: "image" }, "image_file_id"],
       [{ kind: "image", image_file_id: uuidv7() }, "image_file_id"],
       [{ kind: "text", body: "teks", image_file_id: uuidv7() }, "image_file_id"],
@@ -131,7 +131,7 @@ describe("AC F11-2: kirim pesan, ack sesudah commit, client_message_id idempoten
       "Emoji 👍🏽 dan 🇮🇩",
     ])
       expect(harmfulContentReason(ok), ok).toBeNull();
-    for (const bad of ["javascript:alert(1)", "data:text/html;base64,AAAA", "a\u0000b", "x‮y"])
+    for (const bad of ["javascript:alert(1)", "data:text/html;base64,AAAA", "a\u0000b", "x\u202Ey"])
       expect(harmfulContentReason(bad), bad).not.toBeNull();
   });
 

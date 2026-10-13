@@ -11,7 +11,7 @@ import {
   hasActiveMembership,
 } from "../../core/membership/effective-status.js";
 import { CLOCK } from "../../core/tokens.js";
-import { DELETED_ACCOUNT_NAME, PREVIEW_CHARS } from "./chat.constants.js";
+import { DELETED_ACCOUNT_NAME, PREVIEW_CHARS, REALTIME_FILE_URL_TTL_SECONDS } from "./chat.constants.js";
 import {
   type MessageRow,
   reactionCounts,
@@ -70,8 +70,8 @@ export function isActiveMember(facts: UserFacts, now: Date): boolean {
 /**
  * Pemetaan baris kueri chat ke skema kontrak (domains/chat.yaml, events/realtime-chat-*.schema.json). URL berkas:
  * - respons HTTP: URL bertanda tangan terikat sesi penampil (dibuka ulang hanya bila kebijakan akses masih lolos);
- * - siaran realtime room: URL terikat berkas tanpa penerima tertentu (kanal room:<id> sudah dibatasi anggota aktif,
- *   kontrak "URL bertanda tangan maksimal 10 menit dan terikat berkas").
+ * - siaran realtime room: URL terikat berkas tanpa penerima tertentu dengan TTL pendek (kanal room:<id> sudah dibatasi
+ *   anggota aktif, kontrak "URL bertanda tangan maksimal 10 menit dan terikat berkas").
  * Isi pesan tidak pernah dilog (ARCHITECTURE §2 butir 3).
  */
 @Injectable()
@@ -87,7 +87,12 @@ export class ChatPresenter {
       : null;
   }
 
-  /** URL berkas (publik tetap, privat bertanda tangan <= 10 menit) atau null bila berkas tidak siap. */
+  /**
+   * URL berkas (publik tetap, privat bertanda tangan) atau null bila berkas tidak siap. Dengan penampil: terikat sesi
+   * penampil, TTL bawaan (<= 10 menit) dan otorisasi diulang saat dibuka. Tanpa penampil (siaran realtime ke kanal
+   * room): TTL pendek {@link REALTIME_FILE_URL_TTL_SECONDS} karena URL tidak terikat sesi (PRD 5.4: TTL tidak
+   * menggantikan otorisasi); klien memuat URL terikat sesi lewat riwayat HTTP atau GET /files/{id}/access.
+   */
   async fileUrl(
     file: FileRefLite,
     purpose: "avatar" | "chat_image",
@@ -97,6 +102,7 @@ export class ChatPresenter {
     return this.files.signedUrl(
       { id: file.id, purpose, visibility: file.visibility },
       ChatPresenter.subject(viewer),
+      viewer ? {} : { ttlSeconds: REALTIME_FILE_URL_TTL_SECONDS },
     );
   }
 
