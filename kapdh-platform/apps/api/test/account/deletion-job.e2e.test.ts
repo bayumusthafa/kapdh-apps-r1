@@ -85,6 +85,7 @@ describe("Job account.deletion: penghapusan penuh (AC F14-3, F14-4, F14-5)", () 
         "payment_events",
         "payments",
         "reports",
+        "tickets",
         "users",
       ]),
     );
@@ -242,10 +243,10 @@ describe("Job account.deletion: penghapusan penuh (AC F14-3, F14-4, F14-5)", () 
     const own = await createTestApp();
     try {
       await ensureAuditPurgeRole(own.db);
-      const captured: { channels: string[]; event: string; data: unknown }[] = [];
+      const captured: { channels: string[]; event: string; data: unknown; except: string[] }[] = [];
       own.app.get(RealtimeService).useTransport({
         kind: "none",
-        emit: (channels, event, data) => captured.push({ channels, event, data }),
+        emit: (channels, event, data, except) => captured.push({ channels, event, data, except }),
         join: () => undefined,
         leave: () => undefined,
         disconnect: () => undefined,
@@ -259,6 +260,23 @@ describe("Job account.deletion: penghapusan penuh (AC F14-3, F14-4, F14-5)", () 
       const types = new Set(captured.map((c) => c.event));
       for (const type of ["message.created", "message.deleted", "room.member_changed", "room.updated"])
         expect(types, type).toContain(type);
+      // AC F14-5: pengalihan admin (role_changed) sampai ke room dan ke user:<pengganti>, tepat sekali per socket.
+      const roleChanged = captured.filter(
+        (c) =>
+          c.event === "room.member_changed" &&
+          (c.data as { payload: { change: string } }).payload.change === "role_changed",
+      );
+      expect(roleChanged.map(({ channels, except }) => ({ channels, except }))).toEqual([
+        { channels: [`room:${rich.rooms.transfer}`], except: [`user:${rich.peer.userId}`] },
+        { channels: [`user:${rich.peer.userId}`], except: [] },
+      ]);
+      for (const { data } of roleChanged)
+        expect((data as { payload: unknown }).payload).toMatchObject({
+          room_id: rich.rooms.transfer,
+          user_id: rich.peer.userId,
+          role: "admin",
+          actor_user_id: null,
+        });
       const serialized = JSON.stringify(captured);
       for (const term of personalTerms(rich)) expect(serialized).not.toContain(term);
     } finally {
@@ -620,6 +638,42 @@ describe("Redaksi snapshot (D2, AC F14-4)", () => {
       at: "2026-10-13T02:00:00.000Z",
       lines: [{ amount: "50000.00" }],
       request_number: "DEL-2026-ABCD1234",
+    });
+  });
+
+  it("AC F14-4: angka identitas (angkatan, kelas, nomor urut) pada snapshot koreksi identitas dibuang; hitungan, versi dan nominal tetap", () => {
+    const userId = uuidv7();
+    // Snapshot member.identity_corrected / member.number_corrected dari MembershipKernel (core).
+    expect(
+      redactAuditSnapshot(
+        { cohort: 12, class_in: 1, class_out: 6, gender: "male", member_number: "12.1.L.5", member_seq: 5 },
+        userId,
+      ),
+    ).toEqual({});
+    expect(
+      redactAuditSnapshot(
+        {
+          version: 4,
+          proof_version: 2,
+          member_count: 3,
+          held_quantity: 1,
+          self_cancel_days: 3,
+          attempts: 2,
+          birth_year: 1990,
+          amount: 50000,
+          flags: [1, 2],
+        },
+        userId,
+      ),
+    ).toEqual({
+      version: 4,
+      proof_version: 2,
+      member_count: 3,
+      held_quantity: 1,
+      self_cancel_days: 3,
+      attempts: 2,
+      amount: 50000,
+      flags: [],
     });
   });
 

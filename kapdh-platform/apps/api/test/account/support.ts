@@ -221,6 +221,23 @@ async function insertPayment(
   return id;
 }
 
+/** Pembatalan payment pending oleh pemiliknya: status, alasan dan histori `cancelled` beraktor pemilik. */
+async function cancelPaymentAsOwner(
+  t: Pick<TestApp, "db" | "clock">,
+  paymentId: string,
+  userId: string,
+  reason: string,
+) {
+  const now = t.clock.now();
+  await t.db
+    .update(payments)
+    .set({ status: "cancelled", cancelledAt: now, cancelReason: reason, updatedAt: now })
+    .where(eq(payments.id, paymentId));
+  await t.db
+    .insert(paymentEvents)
+    .values({ id: uuidv7(), paymentId, kind: "cancelled", actorUserId: userId, reason, createdAt: now });
+}
+
 async function insertTicket(
   t: Pick<TestApp, "db" | "clock">,
   input: {
@@ -335,15 +352,18 @@ export interface RichMember {
     ticketNoProof: string;
     ticketWithProof: string;
     ticketPast: string;
+    /** Dibatalkan pemiliknya dengan alasan tertulis (payment_events cancelled beraktor anggota). */
+    ownerCancelled: string;
+    ticketSelfCancelled: string;
   };
-  events: { paid: string; noProof: string; withProof: string; past: string };
-  tickets: { paid: string; noProof: string; withProof: string; past: string };
+  events: { paid: string; noProof: string; withProof: string; past: string; selfCancelled: string };
+  tickets: { paid: string; noProof: string; withProof: string; past: string; selfCancelled: string };
   adjustments: { refund: string; correction: string };
   rooms: { transfer: string; close: string; coAdmin: string; direct: string };
   messages: { memberText: string; memberImage: string; peerText: string; peerDirect: string };
   postId: string;
   reports: { byMember: string; aboutMemberMessage: string; contextOnly: string };
-  auditIds: { memberActor: string; adminOnPayment: string };
+  auditIds: { memberActor: string; adminOnPayment: string; identityCorrection: string };
 }
 
 /**
@@ -436,6 +456,13 @@ export async function createRichMember(
     reason: "Peringatan untuk Budi",
     createdAt: now,
   });
+  // Instruksi perpanjangan yang dibatalkan pemiliknya dengan alasan tertulis (kontrak payments cancelMyPayment).
+  const ownerCancelled = await insertPayment(t, {
+    userId: member.userId,
+    type: "renewal",
+    status: "pending",
+  });
+  await cancelPaymentAsOwner(t, ownerCancelled, member.userId, "Salah nominal, Budi ulang");
   const renewalNoProof = await insertPayment(t, {
     userId: member.userId,
     type: "renewal",
@@ -490,6 +517,31 @@ export async function createRichMember(
     ticketId: ticketPast,
     proofFileId: adminProof.id,
   });
+  // Tiket yang dibatalkan peserta sendiri dengan alasan tertulis (kontrak events cancelMyTicket, cancelled_by self);
+  // payment pending-nya ikut dibatalkan dengan aktor peserta.
+  const eventSelfCancelled = await insertEvent(t, { startsInDays: 16 });
+  const ticketSelfCancelled = await insertTicket(t, {
+    eventId: eventSelfCancelled,
+    userId: member.userId,
+    status: "awaiting_payment",
+  });
+  const ticketSelfCancelledPayment = await insertPayment(t, {
+    userId: member.userId,
+    type: "ticket",
+    status: "pending",
+    ticketId: ticketSelfCancelled,
+  });
+  await t.db
+    .update(tickets)
+    .set({
+      status: "cancelled",
+      cancelledAt: now,
+      cancelledBy: "self",
+      cancelReason: "Batal karena Budi sakit",
+      updatedAt: now,
+    })
+    .where(eq(tickets.id, ticketSelfCancelled));
+  await cancelPaymentAsOwner(t, ticketSelfCancelledPayment, member.userId, "Batal karena Budi sakit");
 
   // Penyesuaian: refund pending dengan rekening tujuan, koreksi selesai dengan bukti pengurus.
   const evidence = await storeFile(t, payer.userId, "adjustment_evidence");
@@ -760,7 +812,23 @@ export async function createRichMember(
   // Audit: aktor anggota (data pribadi di after) dan keputusan pengurus atas payment anggota.
   const memberActor = uuidv7();
   const adminOnPayment = uuidv7();
+  const identityCorrection = uuidv7();
   await t.db.insert(auditLogs).values([
+    {
+      // Snapshot koreksi identitas oleh pengurus (MembershipKernel.correctIdentity): angkatan/kelas/nomor anggota.
+      id: identityCorrection,
+      actorUserId: payer.userId,
+      actorAdminId: payer.adminId,
+      effectiveRole: "admin",
+      action: "member.number_corrected",
+      entityType: "alumni",
+      entityId: member.userId,
+      requestId: "req-uji-koreksi",
+      reason: "Koreksi kelas Budi",
+      before: { cohort: 29, class_in: 2, class_out: 6, gender: "male", member_number: "29.02.01.1" },
+      after: { cohort: 29, class_in: 1, class_out: 6, gender: "male", member_number: member.memberNumber },
+      createdAt: now,
+    },
     {
       id: memberActor,
       actorUserId: member.userId,
@@ -841,15 +909,29 @@ export async function createRichMember(
       ticketNoProof: ticketNoProofPayment,
       ticketWithProof: ticketWithProofPayment,
       ticketPast: ticketPastPayment,
+      ownerCancelled,
+      ticketSelfCancelled: ticketSelfCancelledPayment,
     },
-    events: { paid: eventPaid, noProof: eventNoProof, withProof: eventWithProof, past: eventPast },
-    tickets: { paid: ticketPaid, noProof: ticketNoProof, withProof: ticketWithProof, past: ticketPast },
+    events: {
+      paid: eventPaid,
+      noProof: eventNoProof,
+      withProof: eventWithProof,
+      past: eventPast,
+      selfCancelled: eventSelfCancelled,
+    },
+    tickets: {
+      paid: ticketPaid,
+      noProof: ticketNoProof,
+      withProof: ticketWithProof,
+      past: ticketPast,
+      selfCancelled: ticketSelfCancelled,
+    },
     adjustments: { refund, correction },
     rooms: { transfer, close, coAdmin, direct },
     messages: { memberText, memberImage, peerText, peerDirect },
     postId,
     reports: { byMember, aboutMemberMessage, contextOnly },
-    auditIds: { memberActor, adminOnPayment },
+    auditIds: { memberActor, adminOnPayment, identityCorrection },
   };
 }
 
@@ -880,6 +962,8 @@ export function personalTerms(rich: RichMember): string[] {
     "Foto dari Budi",
     "Halo Budi",
     "1234567890",
+    "Budi sakit",
+    "Budi ulang",
   ];
 }
 

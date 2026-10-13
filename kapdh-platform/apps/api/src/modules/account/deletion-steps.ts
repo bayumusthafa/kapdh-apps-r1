@@ -663,15 +663,24 @@ export class DeletionSteps {
           deleted_at: null,
         },
       } as RealtimePayloads["message.created"]);
-      if (successor)
-        this.realtime.emitToRoom(roomId, "room.member_changed", roomId, {
+      if (successor) {
+        // Kontrak events/README (room.member_changed): role_changed ke room:<room_id> DAN user:<user_id> pengguna
+        // terdampak, sehingga semua socket pengganti (termasuk yang tidak berlangganan room) menerima promosinya;
+        // socket pengganti dikecualikan dari siaran room agar setiap socket menerimanya tepat sekali.
+        const roleChanged = {
           room_id: roomId,
           user_id: successor,
           change: "role_changed",
           role: "admin",
           member_count: memberCount,
           actor_user_id: null,
-        } as RealtimePayloads["room.member_changed"]);
+        } as RealtimePayloads["room.member_changed"];
+        this.realtime.emitToRoom(roomId, "room.member_changed", roomId, roleChanged, {
+          exceptUserId: successor,
+        });
+        this.realtime.emitToUser(successor, "room.member_changed", roomId, roleChanged);
+      }
+      // `left` untuk akun yang dihapus cukup ke room: seluruh socket akun itu sudah diputus dan sesinya dicabut.
       this.realtime.emitToRoom(roomId, "room.member_changed", roomId, {
         room_id: roomId,
         user_id: userId,
@@ -1016,6 +1025,10 @@ export class DeletionSteps {
   /**
    * Snapshot keuangan dianonimkan (AC F14-4): payments kehilangan pemilik, catatan transfer dan rujukan bukti; tiket
    * kehilangan pemilik; rekening tujuan refund dihapus (D2; paling lambat langkah akhir job, kontrak account.yaml).
+   * Teks bebas yang ditulis anggota sendiri juga dihapus: alasan pembatalan tiket oleh peserta (`cancelled_by` self,
+   * kontrak events TicketCancelRequest.reason) dan alasan pembatalan payment oleh pemiliknya (kontrak payments
+   * CancelPaymentRequest.reason; pemilik dikenali dari payment_events `cancelled` dengan aktor akun ini, sebelum
+   * aktor itu dianonimkan langkah audit). Alasan sistem dan pengurus tetap sebagai catatan bisnis.
    * Jumlah, tanggal, status dan referensi transaksi tetap. Refund pending TIDAK diselesaikan/dibatalkan job
    * (PRD 4.4). Histori keanggotaan disimpan anonim; koreksi nomor (snapshot nomor anggota) dihapus.
    * Urutan kunci: users -> tickets -> payments -> payment_adjustments.
@@ -1026,11 +1039,39 @@ export class DeletionSteps {
     await this.tx(ctx, async (tx) => {
       const now = this.now();
       await this.requests.lockUser(tx, userId);
-      if (inv.ticket_ids.length > 0)
+      if (inv.ticket_ids.length > 0) {
+        await tx
+          .update(tickets)
+          .set({ cancelReason: null, version: sql`${tickets.version} + 1`, updatedAt: now })
+          .where(
+            and(
+              inArray(tickets.id, inv.ticket_ids),
+              eq(tickets.cancelledBy, "self"),
+              isNotNull(tickets.cancelReason),
+            ),
+          );
         await tx
           .update(tickets)
           .set({ userId: null, version: sql`${tickets.version} + 1`, updatedAt: now })
           .where(and(inArray(tickets.id, inv.ticket_ids), isNotNull(tickets.userId)));
+      }
+      if (inv.payment_ids.length > 0)
+        await tx
+          .update(payments)
+          .set({ cancelReason: null, version: sql`${payments.version} + 1`, updatedAt: now })
+          .where(
+            and(
+              inArray(payments.id, inv.payment_ids),
+              isNotNull(payments.cancelReason),
+              inArray(
+                payments.id,
+                tx
+                  .select({ id: paymentEvents.paymentId })
+                  .from(paymentEvents)
+                  .where(and(eq(paymentEvents.kind, "cancelled"), eq(paymentEvents.actorUserId, userId))),
+              ),
+            ),
+          );
       if (inv.payment_ids.length > 0)
         await tx
           .update(payments)
