@@ -222,8 +222,7 @@ function appendClean(source: Node, parent: Node, doc: Document, ctx: CleanContex
   const tag = RENAME[name] ?? name;
   if (!KEEP.has(tag)) {
     // Tag tidak dikenal (div, span, section, font, ...): bungkus dibuang, isi dipertahankan.
-    for (const child of Array.from(element.childNodes))
-      appendClean(child, parent, doc, ctx, depth + 1);
+    for (const child of Array.from(element.childNodes)) appendClean(child, parent, doc, ctx, depth + 1);
     return;
   }
   const target = doc.createElement(tag);
@@ -268,7 +267,7 @@ export function sanitizeRichHtml(html: string, doc: Document, siteOrigin: string
   const ctx: CleanContext = { siteOrigin, ids: new Set() };
   for (const child of Array.from(inert.body.childNodes)) appendClean(child, fragment, doc, ctx, 0);
   // Jangkar tanpa tujuan di isi ini (id dibuang server, ganda, atau tidak sah) dibuka menjadi teks biasa.
-  for (const anchor of Array.from(fragment.querySelectorAll<HTMLAnchorElement>("a[href^=\"#\"]"))) {
+  for (const anchor of Array.from(fragment.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'))) {
     const id = anchor.getAttribute("href")!.slice(1 + ANCHOR_PREFIX.length);
     if (!ctx.ids.has(id)) anchor.replaceWith(...Array.from(anchor.childNodes));
   }

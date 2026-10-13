@@ -182,7 +182,10 @@ describe("pemetaan galat setiap langkah", () => {
     expect(describeFailure("verify", http(400, null)).action).toBe("retry");
     expect(describeFailure("challenge", http(400, null)).action).toBe("retry");
     // 429 tanpa body (limit_req nginx) tetap jeda.
-    expect(describeFailure("verify", http(429, null, 15))).toMatchObject({ action: "wait", retryAfterSeconds: 15 });
+    expect(describeFailure("verify", http(429, null, 15))).toMatchObject({
+      action: "wait",
+      retryAfterSeconds: 15,
+    });
   });
 
   it("F-14: pesan konfirmasi menyebut tombol yang benar-benar tampil (pembatalan pendaftaran pending_otp)", () => {
