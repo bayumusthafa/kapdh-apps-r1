@@ -22,8 +22,12 @@ export interface TransactionalMail {
  */
 export interface Mailer {
   sendOtp(to: string, code: string, purpose: OtpPurpose): Promise<void>;
-  /** Email transaksional {@link TransactionalMail}; melempar bila gagal sehingga job pemanggil mengulang. */
-  sendTransactional(mail: TransactionalMail): Promise<void>;
+  /**
+   * Email transaksional {@link TransactionalMail}; melempar bila gagal sehingga job pemanggil mengulang. Opsional
+   * (penambahan fase C, F-14) agar implementasi Mailer lain tetap sah; SmtpMailer, DevLogMailer dan MemoryMailer
+   * mengimplementasikannya, dan pemanggil memperlakukan ketiadaannya sebagai galat konfigurasi.
+   */
+  sendTransactional?(mail: TransactionalMail): Promise<void>;
 }
 
 const SUBJECT: Record<OtpPurpose, string> = {

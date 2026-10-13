@@ -40,7 +40,7 @@ import { revokeDeviceTokens } from "../../core/notifications-kernel/device-token
 import { RealtimeService } from "../../core/realtime/realtime.service.js";
 import { CLOCK, DB, MAILER, STORAGE } from "../../core/tokens.js";
 import { forfeitableTicketWhere } from "./deletion-disclosure.service.js";
-import { writeLedgerEntry, type LedgerEntry } from "./deletion-ledger.js";
+import { type LedgerEntry, writeLedgerEntryMonotonic } from "./deletion-ledger.js";
 import {
   completedMail,
   DELETION_LEASE_MS,
@@ -137,6 +137,14 @@ export class DeletionStepError extends Error {
   override name = "DeletionStepError";
 }
 
+/**
+ * Eksekusi ini tidak lagi memegang klaim permintaan (sewa habis lalu diklaim worker lain, atau permintaan sudah
+ * selesai/gagal). Eksekusi berhenti tanpa menulis apa pun lagi (AC F14-2, F14-6).
+ */
+export class DeletionClaimLostError extends DeletionStepError {
+  override name = "DeletionClaimLostError";
+}
+
 @Injectable()
 export class DeletionSteps {
   constructor(
@@ -159,40 +167,81 @@ export class DeletionSteps {
     return this.storage;
   }
 
-  // ------------------------------------------------------------------ pencatatan langkah
+  // ------------------------------------------------------------------ klaim (fencing) dan pencatatan langkah
 
   /**
-   * Menandai langkah selesai (idempoten) dan menyimpan salinan kerja ledger dalam transaksi `tx`. Sewa klaim
-   * `processing` diperpanjang sekaligus sehingga permintaan yang sedang dikerjakan tidak diklaim ulang sapuan
-   * (AC F14-2).
+   * Predikat kepemilikan klaim: `attempts` hasil klaim adalah token fencing. Klaim ulang oleh worker lain (setelah
+   * sewa habis) menaikkan `attempts`, sehingga semua tulisan eksekusi lama ke baris permintaan tidak lagi cocok.
+   */
+  private owned(ctx: StepContext): SQL {
+    return and(
+      eq(accountDeletions.id, ctx.deletion.id),
+      eq(accountDeletions.status, "processing"),
+      eq(accountDeletions.attempts, ctx.deletion.attempts),
+    )!;
+  }
+
+  /**
+   * Memastikan eksekusi ini masih memegang klaim dan memperpanjang sewanya (detak jantung). Di dalam transaksi
+   * langkah dipanggil PALING AWAL: baris account_deletions terkunci sampai commit sehingga klaim tidak dapat direbut
+   * selama transaksi berjalan, dan urutan kunci job selalu account_deletions -> users -> events -> tickets -> payments
+   * (atau rooms). Di luar transaksi dipanggil tepat sebelum efek eksternal (email, ledger eksternal). Klaim hilang →
+   * {@link DeletionClaimLostError}; transaksi langkah dibatalkan seluruhnya.
+   */
+  async fence(db: DbOrTx, ctx: StepContext): Promise<void> {
+    const now = this.now();
+    const renewed = await db
+      .update(accountDeletions)
+      .set({ nextAttemptAt: new Date(now.getTime() + DELETION_LEASE_MS), updatedAt: now })
+      .where(this.owned(ctx))
+      .returning({ id: accountDeletions.id });
+    if (renewed.length === 0)
+      throw new DeletionClaimLostError("Klaim permintaan penghapusan sudah tidak dipegang");
+  }
+
+  /** Transaksi langkah: dibuka dengan {@link fence} sehingga eksekusi tanpa klaim tidak menulis apa pun. */
+  private tx<T>(ctx: StepContext, fn: (tx: Tx) => Promise<T>): Promise<T> {
+    return this.db.transaction(async (tx) => {
+      await this.fence(tx, ctx);
+      return fn(tx);
+    });
+  }
+
+  /**
+   * Menandai langkah selesai (idempoten) dan menyimpan salinan kerja ledger dalam transaksi `tx`, hanya bila klaim
+   * masih dipegang eksekusi ini; sewa `processing` diperpanjang sekaligus (AC F14-2).
    */
   async markDone(tx: Tx, ctx: StepContext, step: DeletionStep): Promise<void> {
     const marker = JSON.stringify([step]);
     const now = this.now();
-    const lease = new Date(now.getTime() + DELETION_LEASE_MS).toISOString();
-    await tx
+    const marked = await tx
       .update(accountDeletions)
       .set({
         stepsDone: sql`case when ${accountDeletions.stepsDone} @> ${marker}::jsonb then ${accountDeletions.stepsDone}
                        else ${accountDeletions.stepsDone} || ${marker}::jsonb end`,
         ledger: ctx.ledger as unknown as Record<string, unknown>,
-        nextAttemptAt: sql`case when ${accountDeletions.status} = 'processing' then ${lease}::timestamptz
-                          else ${accountDeletions.nextAttemptAt} end`,
+        nextAttemptAt: new Date(now.getTime() + DELETION_LEASE_MS),
         updatedAt: now,
       })
-      .where(eq(accountDeletions.id, ctx.deletion.id));
+      .where(this.owned(ctx))
+      .returning({ id: accountDeletions.id });
+    if (marked.length === 0)
+      throw new DeletionClaimLostError("Klaim permintaan penghapusan sudah tidak dipegang");
     ctx.done.add(step);
   }
 
   async saveLedger(db: DbOrTx, ctx: StepContext): Promise<void> {
-    await db
+    const saved = await db
       .update(accountDeletions)
       .set({ ledger: ctx.ledger as unknown as Record<string, unknown>, updatedAt: this.now() })
-      .where(eq(accountDeletions.id, ctx.deletion.id));
+      .where(this.owned(ctx))
+      .returning({ id: accountDeletions.id });
+    if (saved.length === 0)
+      throw new DeletionClaimLostError("Klaim permintaan penghapusan sudah tidak dipegang");
   }
 
   private finish(ctx: StepContext, step: DeletionStep) {
-    return this.db.transaction((tx) => this.markDone(tx, ctx, step));
+    return this.tx(ctx, (tx) => this.markDone(tx, ctx, step));
   }
 
   // ------------------------------------------------------------------ ledger eksternal dan email
@@ -213,13 +262,21 @@ export class DeletionSteps {
     };
   }
 
+  /**
+   * Entri ledger eksternal ditulis hanya oleh pemegang klaim (fencing tepat sebelum menulis) dan secara monoton
+   * ({@link writeLedgerEntryMonotonic}): entri `completed` tidak pernah diturunkan dan object key tidak pernah hilang.
+   */
   async ledgerOpen(ctx: StepContext): Promise<void> {
-    await writeLedgerEntry(this.requireStorage(), this.ledgerEntry(ctx, "requested", null));
+    const storage = this.requireStorage();
+    await this.fence(this.db, ctx);
+    await writeLedgerEntryMonotonic(storage, this.ledgerEntry(ctx, "requested", null));
     await this.finish(ctx, "ledger_open");
   }
 
   async ledgerFinal(ctx: StepContext): Promise<void> {
-    await writeLedgerEntry(this.requireStorage(), this.ledgerEntry(ctx, "completed", this.now()));
+    const storage = this.requireStorage();
+    await this.fence(this.db, ctx);
+    await writeLedgerEntryMonotonic(storage, this.ledgerEntry(ctx, "completed", this.now()));
     await this.finish(ctx, "ledger_final");
   }
 
@@ -231,10 +288,24 @@ export class DeletionSteps {
     return user && user.status === "deletion_pending" ? user.email : null;
   }
 
+  /**
+   * Email dikirim hanya oleh pemegang klaim: klaim diperiksa dan sewanya diperpanjang 15 menit tepat sebelum
+   * pengiriman, sehingga eksekusi yang klaimnya sudah direbut tidak pernah memulai pengiriman (alamat tidak dipakai
+   * lagi setelah akun selesai dihapus, D2). Pengiriman yang sudah berjalan tidak dapat ditarik (paling banyak satu
+   * email ganda, tidak pernah sesudah email selesai).
+   */
+  private async sendMail(ctx: StepContext, mail: { to: string; subject: string; text: string }) {
+    const send = this.mailer.sendTransactional?.bind(this.mailer);
+    if (!send)
+      throw new DeletionStepError("Mailer tidak mendukung email transaksional untuk job penghapusan akun");
+    await this.fence(this.db, ctx);
+    await send(mail);
+  }
+
   async notifyRequested(ctx: StepContext): Promise<void> {
     const email = await this.accountEmail(ctx.userId);
     if (email)
-      await this.mailer.sendTransactional({
+      await this.sendMail(ctx, {
         to: email,
         ...requestedMail(ctx.deletion.requestNumber, ctx.deletion.deadlineAt),
       });
@@ -243,8 +314,7 @@ export class DeletionSteps {
 
   async notifyCompleted(ctx: StepContext): Promise<void> {
     const email = await this.accountEmail(ctx.userId);
-    if (email)
-      await this.mailer.sendTransactional({ to: email, ...completedMail(ctx.deletion.requestNumber) });
+    if (email) await this.sendMail(ctx, { to: email, ...completedMail(ctx.deletion.requestNumber) });
     await this.finish(ctx, "notify_completed");
   }
 
@@ -252,7 +322,7 @@ export class DeletionSteps {
 
   async inventory(ctx: StepContext): Promise<void> {
     const userId = ctx.userId;
-    await this.db.transaction(async (tx) => {
+    await this.tx(ctx, async (tx) => {
       const paymentRows = await tx
         .select({ id: payments.id })
         .from(payments)
@@ -298,7 +368,7 @@ export class DeletionSteps {
   async revokeAccess(ctx: StepContext): Promise<void> {
     const userId = ctx.userId;
     const now = this.now();
-    await this.db.transaction(async (tx) => {
+    await this.tx(ctx, async (tx) => {
       const unlinked = await tx
         .update(admins)
         .set({ linkedAlumniUserId: null, version: sql`${admins.version} + 1`, updatedAt: now })
@@ -344,9 +414,9 @@ export class DeletionSteps {
       .where(forfeitableTicketWhere(userId, startedAt))
       .orderBy(asc(tickets.eventId), asc(tickets.id));
     const eventIds = [...new Set(candidates.map((row) => row.eventId))].sort();
-    for (const eventId of eventIds) await this.forfeitTicketsOfEvent(userId, eventId);
+    for (const eventId of eventIds) await this.forfeitTicketsOfEvent(ctx, eventId);
 
-    await this.db.transaction(async (tx) => {
+    await this.tx(ctx, async (tx) => {
       await this.requests.lockUser(tx, userId);
       const due = await tx
         .select()
@@ -366,8 +436,9 @@ export class DeletionSteps {
     });
   }
 
-  private async forfeitTicketsOfEvent(userId: string, eventId: string): Promise<void> {
-    await this.db.transaction(async (tx) => {
+  private async forfeitTicketsOfEvent(ctx: StepContext, eventId: string): Promise<void> {
+    const userId = ctx.userId;
+    await this.tx(ctx, async (tx) => {
       const now = this.now();
       await this.requests.lockUser(tx, userId);
       const [event] = await tx.select().from(events).where(eq(events.id, eventId)).for("update");
@@ -490,8 +561,8 @@ export class DeletionSteps {
       .from(roomMembers)
       .where(eq(roomMembers.userId, userId))
       .orderBy(asc(roomMembers.roomId));
-    for (const { roomId } of memberships) await this.leaveRoom(userId, roomId);
-    await this.db.transaction(async (tx) => {
+    for (const { roomId } of memberships) await this.leaveRoom(ctx, roomId);
+    await this.tx(ctx, async (tx) => {
       const now = this.now();
       await tx
         .update(roomMembers)
@@ -503,13 +574,16 @@ export class DeletionSteps {
   }
 
   /**
-   * Satu room per transaksi; baris rooms dikunci PERTAMA (aturan C6) karena pesan sistem ditulis. Admin joined
-   * terakhir grup: peran admin dialihkan ke anggota joined paling lama yang aktif (akun active, tidak suspended,
-   * keanggotaan verified/expiring), atau grup ditutup (undangan tertunda dibatalkan) bila tidak ada. Tidak menunggu
-   * respons anggota lain (AC F14-5). Keanggotaan akun dihapus.
+   * Satu room per transaksi; baris rooms dikunci PERTAMA di antara tabel chat (aturan C6) karena pesan sistem ditulis.
+   * Satu-satunya kunci sebelumnya adalah baris fencing account_deletions milik job ini, yang tidak pernah disentuh
+   * transaksi chat sehingga tidak dapat membentuk siklus kunci. Admin joined terakhir grup: peran admin dialihkan ke
+   * anggota joined paling lama yang aktif (akun active, tidak suspended, keanggotaan verified/expiring), atau grup
+   * ditutup (undangan tertunda dibatalkan) bila tidak ada. Tidak menunggu respons anggota lain (AC F14-5).
+   * Keanggotaan akun dihapus.
    */
-  private async leaveRoom(userId: string, roomId: string): Promise<void> {
-    await this.db.transaction(async (tx) => {
+  private async leaveRoom(ctx: StepContext, roomId: string): Promise<void> {
+    const userId = ctx.userId;
+    await this.tx(ctx, async (tx) => {
       const [room] = await tx.select().from(rooms).where(eq(rooms.id, roomId)).for("update");
       if (!room) return;
       const [member] = await tx
@@ -712,7 +786,7 @@ export class DeletionSteps {
    */
   async chatMessages(ctx: StepContext): Promise<void> {
     const userId = ctx.userId;
-    await this.db.transaction(async (tx) => {
+    await this.tx(ctx, async (tx) => {
       const now = this.now();
       const newlyDeleted = await tx
         .update(messages)
@@ -766,7 +840,7 @@ export class DeletionSteps {
    */
   async community(ctx: StepContext): Promise<void> {
     const userId = ctx.userId;
-    await this.db.transaction(async (tx) => {
+    await this.tx(ctx, async (tx) => {
       const now = this.now();
       await tx.delete(postLikes).where(eq(postLikes.userId, userId));
       await tx.delete(blocks).where(or(eq(blocks.blockerId, userId), eq(blocks.blockedId, userId)));
@@ -813,7 +887,7 @@ export class DeletionSteps {
 
   async notifications(ctx: StepContext): Promise<void> {
     const userId = ctx.userId;
-    await this.db.transaction(async (tx) => {
+    await this.tx(ctx, async (tx) => {
       // notification_deliveries ikut terhapus (FK CASCADE dari notifications dan device_tokens).
       await tx.delete(notifications).where(eq(notifications.userId, userId));
       await tx.delete(notificationPreferences).where(eq(notificationPreferences.userId, userId));
@@ -895,7 +969,7 @@ export class DeletionSteps {
       ctx.ledger.object_keys,
       keyed.map((row) => row.objectKey),
     );
-    await this.db.transaction(async (tx) => {
+    await this.tx(ctx, async (tx) => {
       const now = this.now();
       if (ids.length > 0) {
         await tx
@@ -919,7 +993,7 @@ export class DeletionSteps {
       await this.saveLedger(tx, ctx);
     });
     for (const id of ids)
-      await this.db.transaction(async (tx) => {
+      await this.tx(ctx, async (tx) => {
         const [file] = await tx.select().from(files).where(eq(files.id, id)).for("update");
         if (!file) return;
         await storage.delete(file.objectKey);
@@ -949,7 +1023,7 @@ export class DeletionSteps {
   async finance(ctx: StepContext): Promise<void> {
     const userId = ctx.userId;
     const inv = this.inv(ctx);
-    await this.db.transaction(async (tx) => {
+    await this.tx(ctx, async (tx) => {
       const now = this.now();
       await this.requests.lockUser(tx, userId);
       if (inv.ticket_ids.length > 0)
@@ -1014,7 +1088,7 @@ export class DeletionSteps {
       [userId, ...inv.payment_ids, ...inv.ticket_ids, ...inv.adjustment_ids, ...inv.report_ids],
       ctx.ledger.file_ids ?? [],
     );
-    await this.db.transaction(async (tx) => {
+    await this.tx(ctx, async (tx) => {
       const [role] = rows<{ present: boolean }>(
         await tx.execute(
           sql`select exists (select 1 from pg_roles where rolname = 'kapdh_audit_purge') as present`,
@@ -1062,7 +1136,7 @@ export class DeletionSteps {
 
   /** Profil alumni dihapus (alumni_professions/alumni_skills ikut CASCADE). N tidak didaur ulang (sequence). */
   async profile(ctx: StepContext): Promise<void> {
-    await this.db.transaction(async (tx) => {
+    await this.tx(ctx, async (tx) => {
       await this.requests.lockUser(tx, ctx.userId);
       await tx.delete(alumni).where(eq(alumni.userId, ctx.userId));
       await this.markDone(tx, ctx, "profile");
@@ -1076,7 +1150,7 @@ export class DeletionSteps {
    * not_found. Penjaga Super Admin terakhir dipetakan ke 409 bila pernah tersentuh (PRD 3.14).
    */
   async credentials(ctx: StepContext): Promise<void> {
-    await this.db.transaction(async (tx) => {
+    await this.tx(ctx, async (tx) => {
       const now = this.now();
       const user = await this.requests.lockUser(tx, ctx.userId);
       if (user && user.status !== "deleted") {
