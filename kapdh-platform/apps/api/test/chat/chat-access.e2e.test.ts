@@ -87,7 +87,7 @@ function call(
 }
 
 describe("Kontrak akses chat (ARCHITECTURE §4.3, kontrak chat.yaml x-kapdh-access)", () => {
-  it("setiap operasi chat.yaml diimplementasikan tepat satu rute ChatController", () => {
+  it("AC F11-4 / ARCHITECTURE §4.3: setiap operasi chat.yaml diimplementasikan tepat satu rute ChatController", () => {
     const contractOps = Object.entries(spec.paths)
       .filter(([path]) => path.startsWith("/chat/"))
       .flatMap(([path, item]) =>
@@ -101,7 +101,7 @@ describe("Kontrak akses chat (ARCHITECTURE §4.3, kontrak chat.yaml x-kapdh-acce
     expect(routes.map((r) => `${r.method} ${r.path}`).sort()).toEqual(contractOps);
   });
 
-  it("dekorator ChatController cocok dengan x-kapdh-access setiap operasi (audience mobile, member_access active, idempotent)", () => {
+  it("AC F11-6 / ARCHITECTURE §4.3: dekorator ChatController cocok dengan x-kapdh-access setiap operasi (audience mobile, member_access active, idempotent)", () => {
     const routes = routeAccessList(t.app).filter((route) => route.name.startsWith("ChatController."));
     expect(routes).toHaveLength(OPERATIONS.length);
     expect(accessMismatches(routes)).toEqual([]);

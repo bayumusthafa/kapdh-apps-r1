@@ -510,7 +510,7 @@ describe("Grup: undangan wajib diterima, kapasitas, admin (PRD 3.11)", () => {
 });
 
 describe("Info grup: ubah nama/avatar dengan If-Match, mute", () => {
-  it("PATCH room: If-Match wajib, versi lama 409 dengan current, hanya admin, room direct 400", async () => {
+  it("PRD 3.11: PATCH room: If-Match wajib, versi lama 409 dengan current, hanya admin, room direct 400", async () => {
     const admin = await member(t);
     const m1 = await member(t);
     const roomId = await groupWith(t, admin, [m1]);
@@ -571,7 +571,7 @@ describe("Info grup: ubah nama/avatar dengan If-Match, mute", () => {
     expect(directPatch.statusCode).toBe(400);
   });
 
-  it("mute hanya menahan push; idempoten; bukan anggota 404", async () => {
+  it("PRD 3.11: mute hanya menahan push; idempoten; bukan anggota 404", async () => {
     const a = await member(t);
     const b = await member(t);
     const room = await openDirect(t, a, b);
@@ -594,7 +594,7 @@ describe("Info grup: ubah nama/avatar dengan If-Match, mute", () => {
 });
 
 describe("Daftar room (tab Pesan / Pesan Grup)", () => {
-  it("urut aktivitas terakhir, saring jenis, unread dibatasi, lencana undangan dan room belum dibaca, paging keyset tanpa duplikasi", async () => {
+  it("PRD 3.11: daftar room urut aktivitas terakhir, saring jenis, unread dibatasi, lencana undangan dan room belum dibaca, paging keyset tanpa duplikasi", async () => {
     const me = await member(t);
     const peers = [await member(t), await member(t), await member(t)];
     const directRooms = [];

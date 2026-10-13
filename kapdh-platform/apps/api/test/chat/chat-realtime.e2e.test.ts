@@ -116,7 +116,7 @@ describe("N-02 / AC F11-2: penyampaian message.created sesudah commit", () => {
     expect(content.statusCode).toBe(200);
   });
 
-  it("read.updated, reaction.updated dan message.deleted sampai ke anggota room", async () => {
+  it("N-02: read.updated, reaction.updated dan message.deleted sampai ke anggota room", async () => {
     const a = await member(t);
     const b = await member(t);
     const room = await openDirect(t, a, b);

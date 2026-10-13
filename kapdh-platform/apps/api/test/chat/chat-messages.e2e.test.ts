@@ -103,7 +103,7 @@ describe("AC F11-2: kirim pesan, ack sesudah commit, client_message_id idempoten
     expect(other.statusCode).toBe(201);
   });
 
-  it("validasi pesan: kosong/spasi, > 4.000 karakter, konten berbahaya, gambar tanpa berkas, teks dengan lampiran, balasan dari room lain", async () => {
+  it("AC F11-2 negatif (D5 v3.2): validasi pesan: kosong/spasi, > 4.000 karakter, konten berbahaya, gambar tanpa berkas, teks dengan lampiran, balasan dari room lain", async () => {
     const [a, b, roomId] = await pair();
     const [c, , otherRoom] = await pair();
     const elsewhere = await sendText(t, b, roomId, "Pesan di room ini");
@@ -139,7 +139,7 @@ describe("AC F11-2: kirim pesan, ack sesudah commit, client_message_id idempoten
     expect(reply.reply_to).toMatchObject({ id: elsewhere.id, available: true, preview: "Pesan di room ini" });
   });
 
-  it("filter dasar konten berbahaya (PRD 3.12) tidak menolak teks wajar", () => {
+  it("PRD 3.12: filter dasar konten berbahaya tidak menolak teks wajar", () => {
     for (const ok of [
       "Saya belajar javascript: dasar variabel",
       "Link https://kapdh.or.id/acara",
@@ -284,7 +284,7 @@ describe("AC F11-3: riwayat keyset (created_at, id) dan sinkron setelah reconnec
 });
 
 describe("Hapus pesan sendiri (placeholder) dan bukti laporan", () => {
-  it("hapus pesan sendiri menjadi placeholder idempoten; pesan orang lain/sistem 403; reaksi dan gambar ikut dikosongkan", async () => {
+  it("PRD 3.11 (AC F14-3 pola placeholder): hapus pesan sendiri menjadi placeholder idempoten; pesan orang lain/sistem 403; reaksi dan gambar ikut dikosongkan", async () => {
     const [a, b, roomId] = await pair();
     const image = await uploadTestFile(t, a.token, "chat_image");
     const sent = await sendRaw(t, a, roomId, { kind: "image", image_file_id: image.id, body: "Keterangan" });
@@ -347,7 +347,7 @@ describe("Hapus pesan sendiri (placeholder) dan bukti laporan", () => {
 });
 
 describe("Reaksi emoji (PRD 6.4)", () => {
-  it("tambah/hapus idempoten dengan ringkasan; maksimal 10 emoji per pengguna; pesan terhapus/sistem 400; emoji tidak sah 400", async () => {
+  it("PRD 3.11: reaksi tambah/hapus idempoten dengan ringkasan; maksimal 10 emoji per pengguna; pesan terhapus/sistem 400; emoji tidak sah 400", async () => {
     const [a, b, roomId] = await pair();
     const msg = await sendText(t, a, roomId, "Beri reaksi");
     const add = await api(t).put(reactionPath(roomId, msg.id, "👍"), {}, { token: b.token });
@@ -447,7 +447,7 @@ describe("AC F11-4: ID pesan dari room lain tidak memberi akses (UUID bukan izin
 });
 
 describe("Read cursor monoton (PRD 3.11)", () => {
-  it("read cursor maju, paket terlambat tidak memundurkan, unread dihitung dari anggota lain", async () => {
+  it("PRD 3.11: read cursor maju, paket terlambat tidak memundurkan, unread dihitung dari anggota lain", async () => {
     const [a, b, roomId] = await pair();
     const m1 = await sendText(t, a, roomId, "satu");
     const m2 = await sendText(t, a, roomId, "dua");
@@ -482,7 +482,7 @@ describe("Read cursor monoton (PRD 3.11)", () => {
 });
 
 describe("Push chat tanpa isi pesan (PRD 3.13, kontrak sendChatMessage)", () => {
-  it("push hanya untuk anggota aktif, tidak mute, preferensi chat menyala; satu notifikasi per episode belum dibaca, tanpa isi pesan", async () => {
+  it("AC F11-6 / PRD 3.13: push hanya untuk anggota aktif, tidak mute, preferensi chat menyala; satu notifikasi per episode belum dibaca, tanpa isi pesan", async () => {
     const admin = await member(t);
     const active = await member(t);
     const optedOut = await member(t);
