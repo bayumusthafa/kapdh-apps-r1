@@ -125,6 +125,16 @@ export function AdjustmentsTab() {
       }),
   });
 
+  // Rekening tujuan hanya ada pada refund: filter rekening menyiratkan jenis refund, dan koreksi mengosongkannya.
+  function changeKind(next: AdjustmentKind | "all") {
+    setKind(next);
+    if (next === "correction") setDestination("all");
+  }
+  function changeDestination(next: DestinationFilter) {
+    setDestination(next);
+    if (next !== "all") setKind("refund");
+  }
+
   function select(id: string) {
     setSelectedId(id);
     void navigate({ search: (prev) => ({ ...prev, adjustment: id }), replace: true });
@@ -207,7 +217,7 @@ export function AdjustmentsTab() {
           className="flex-[1_1_220px]"
         />
         <Field label="Jenis" className="flex-[0_1_160px]">
-          {(a11y) => <Select {...a11y} size="sm" options={KIND_OPTIONS} value={kind} onValueChange={setKind} />}
+          {(a11y) => <Select {...a11y} size="sm" options={KIND_OPTIONS} value={kind} onValueChange={changeKind} />}
         </Field>
         <Field label="Status" className="flex-[0_1_180px]">
           {(a11y) => (
@@ -221,7 +231,7 @@ export function AdjustmentsTab() {
               size="sm"
               options={DESTINATION_OPTIONS}
               value={destination}
-              onValueChange={setDestination}
+              onValueChange={changeDestination}
             />
           )}
         </Field>
