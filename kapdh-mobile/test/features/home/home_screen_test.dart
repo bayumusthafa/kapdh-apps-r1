@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 import 'package:kapdh_mobile/core/api/api_providers.dart';
+import 'package:kapdh_mobile/core/session/session_controller.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/design/design.dart';
 import 'package:kapdh_mobile/features/home/home_repository.dart';
@@ -257,6 +258,87 @@ void main() {
       expect(tester.takeException(), isNull);
       await scrollUntil(tester, find.text('Halal Bihalal Alumni 2026'));
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('Cache Beranda adalah data akun privat (PRD 5.2, AC F08-4)', () {
+    testWidgets('PRD 5.2 logout saat Beranda terbuka menghapus cache Beranda (nomor anggota, jumlah notifikasi)', (
+      tester,
+    ) async {
+      final app = await pumpMemberApp(
+        tester,
+        routes: {'/home': (_) => FakeResponse.json(200, homeJson()), '/auth/logout': (_) => FakeResponse.json(204)},
+      );
+      final store = app.container.read(secureStoreProvider);
+      expect(await store.read(HomeCacheStore.storageKey), contains('29.01.01.7'));
+
+      unawaited(app.container.read(sessionProvider.notifier).logout());
+      await settle(tester);
+      expect(app.container.read(sessionProvider).hasSession, isFalse);
+      expect(app.location, startsWith('/login'));
+      expect(await store.read(HomeCacheStore.storageKey), isNull);
+    });
+
+    testWidgets('PRD 5.2 logout anggota expired (Beranda tanpa GET /home) tetap menghapus cache Beranda lama', (
+      tester,
+    ) async {
+      final store = MemorySecureStore();
+      await HomeCacheStore(store).save('user-1', Home.fromJson(homeJson()));
+      final app = await pumpMemberApp(
+        tester,
+        status: 'expired',
+        store: store,
+        location: '/home',
+        push: false,
+        routes: {'/auth/logout': (_) => FakeResponse.json(204)},
+      );
+      expect(app.adapter.requestsTo('/home'), isEmpty);
+      expect(await store.read(HomeCacheStore.storageKey), isNotNull);
+
+      unawaited(app.container.read(sessionProvider.notifier).logout());
+      await settle(tester);
+      expect(app.location, startsWith('/login'));
+      expect(await store.read(HomeCacheStore.storageKey), isNull);
+    });
+
+    testWidgets(
+      'PRD 5.2 sesi dicabut server (refresh ditolak) menghapus cache Beranda walau Beranda tidak sedang terbuka',
+      (tester) async {
+        final store = MemorySecureStore();
+        await HomeCacheStore(store).save('user-1', Home.fromJson(homeJson()));
+        var revoked = false;
+        final app = await pumpMemberApp(
+          tester,
+          store: store,
+          location: '/tickets',
+          push: false,
+          routes: {
+            '/me': (_) => revoked
+                ? FakeResponse.json(401, errorJson('UNAUTHENTICATED', 'Sesi berakhir.'))
+                : FakeResponse.json(200, meJson()),
+            '/auth/refresh': (_) => FakeResponse.json(401, errorJson('UNAUTHENTICATED', 'Sesi berakhir.')),
+            '/me/tickets': (_) => FakeResponse.json(200, {'items': <Object?>[], 'next_cursor': null}),
+          },
+        );
+        expect(app.location, '/tickets');
+        revoked = true;
+        unawaited(app.container.read(sessionProvider.notifier).refreshQuietly());
+        await settle(tester);
+        expect(app.container.read(sessionProvider).hasSession, isFalse);
+        expect(await store.read(HomeCacheStore.storageKey), isNull);
+      },
+    );
+
+    test('PRD 5.2 respons GET /home yang tiba sesudah cache dihapus tidak menulis ulang cache', () async {
+      final store = MemorySecureStore();
+      final cache = HomeCacheStore(store);
+      final home = Home.fromJson(homeJson());
+      final before = cache.epoch;
+      await cache.clear();
+      await cache.save('user-1', home, ifEpoch: before);
+      expect(await store.read(HomeCacheStore.storageKey), isNull);
+      await cache.save('user-1', home, ifEpoch: cache.epoch);
+      expect(await cache.read('user-1'), isNotNull);
     });
   });
 

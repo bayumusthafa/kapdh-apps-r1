@@ -65,7 +65,7 @@ void main() {
       expect(app.location, '/events');
     });
 
-    testWidgets('PRD 2.2 anggota expired tetap melihat tiket lunas dan QR-nya; tanpa ajakan pesan event baru', (
+    testWidgets('PRD 2.2 anggota expired tetap melihat tiket lunas, QR-nya dan detail event yang dipesan', (
       tester,
     ) async {
       final app = await pumpMemberApp(
@@ -77,6 +77,10 @@ void main() {
               ? FakeResponse.json(200, ticketPageJson([]))
               : FakeResponse.json(200, ticketPageJson([ticketSummaryJson()])),
           '/me/tickets/ticket-1': (_) => FakeResponse.json(200, ticketDetailJson()),
+          '/events/event-1': (_) => FakeResponse.json(
+            200,
+            eventDetailJson(canReserve: false, blockedReason: 'membership_required', myTicket: ticketSummaryJson()),
+          ),
         },
       );
       expect(app.location, '/tickets');
@@ -85,8 +89,12 @@ void main() {
       await settle(tester);
       expect(app.location, '/tickets/ticket-1');
       expect(find.byKey(const ValueKey('ticket-qr')), findsOneWidget);
-      // Tab Event hanya untuk anggota aktif: detail event tidak ditawarkan dari tiket.
-      expect(find.byKey(const ValueKey('ticket-open-event')), findsNothing);
+      // Detail event yang pernah dipesan tetap dapat dibuka (kontrak C5 getEvent `nonsuspended`), tanpa daftar baru.
+      await scrollTo(tester, find.byKey(const ValueKey('ticket-open-event')));
+      await tester.tap(find.byKey(const ValueKey('ticket-open-event')));
+      await settle(tester);
+      expect(app.location, '/events/event-1');
+      expect(find.byKey(const ValueKey('event-reserve')), findsNothing);
     });
 
     testWidgets('PRD 2.2 tiket expired tanpa tiket: pesan kosong tanpa ajakan mendaftar', (tester) async {
@@ -211,6 +219,90 @@ void main() {
       await tester.tap(find.widgetWithText(TextButton, 'Coba lagi'));
       await settle(tester);
       expect(find.byKey(const ValueKey('refresh-failed')), findsNothing);
+    });
+
+    testWidgets('AC F09-2 batas hold lewat sebelum status terbaru: tidak menawarkan bayar/batal, jangan transfer', (
+      tester,
+    ) async {
+      var online = true;
+      var expired = false;
+      final app = await pumpMemberApp(
+        tester,
+        location: '/tickets/ticket-1',
+        routes: {
+          '/me/tickets/ticket-1': (_) => !online
+              ? FakeResponse.network()
+              : FakeResponse.json(
+                  200,
+                  ticketDetailJson(
+                    status: expired ? 'expired' : 'awaiting_payment',
+                    holdExpiresAt: testNow.add(const Duration(seconds: 30)),
+                  ),
+                ),
+        },
+      );
+      expect(find.byKey(const ValueKey('ticket-pay')), findsOneWidget);
+      await scrollUntil(tester, find.byKey(const ValueKey('ticket-cancel')));
+      online = false;
+      app.clock.advance(const Duration(minutes: 1));
+      await tester.pump(const Duration(seconds: 1));
+      await settle(tester);
+
+      // Server belum terjangkau: status lama tetap awaiting_payment, tetapi bayar dan batal tidak lagi ditawarkan.
+      expect(find.byKey(const ValueKey('ticket-pay')), findsNothing);
+      expect(find.byKey(const ValueKey('ticket-cancel')), findsNothing);
+      expect(find.byKey(const ValueKey('ticket-cancel-policy')), findsNothing);
+      await scrollUntil(tester, find.byKey(const ValueKey('ticket-hold-passed')), delta: -200);
+      expect(find.text('Status reservasi belum terbaru'), findsOneWidget);
+      expect(find.textContaining('Jangan transfer untuk reservasi ini sebelum statusnya diperbarui.'), findsOneWidget);
+
+      online = true;
+      expired = true;
+      await tester.tap(find.byKey(const ValueKey('ticket-hold-reload')));
+      await settle(tester);
+      expect(find.text('Reservasi berakhir'), findsOneWidget);
+      expect(find.byKey(const ValueKey('ticket-hold-passed')), findsNothing);
+      expect(find.byKey(const ValueKey('ticket-pay')), findsNothing);
+    });
+
+    testWidgets('PRD 2.2 detail tiket ditolak ACCOUNT_SUSPENDED: /me dimuat ulang lalu ke portal pembatasan', (
+      tester,
+    ) async {
+      var status = 'verified';
+      final app = await pumpMemberApp(
+        tester,
+        location: '/tickets/ticket-1',
+        routes: {
+          '/me': (_) => FakeResponse.json(200, meJson(status: status)),
+          '/me/tickets/ticket-1': (_) {
+            status = 'suspended';
+            return FakeResponse.json(403, errorJson('ACCOUNT_SUSPENDED', 'Akun Anda sedang dibatasi.'));
+          },
+        },
+      );
+      expect(app.adapter.requestsTo('/me').length, greaterThanOrEqualTo(2));
+      expect(app.location, '/restricted');
+    });
+
+    testWidgets('PRD 2.2 daftar tiket ditolak MEMBERSHIP_REQUIRED: /me dimuat ulang, status baru diikuti', (
+      tester,
+    ) async {
+      var status = 'verified';
+      final app = await pumpMemberApp(
+        tester,
+        location: '/tickets',
+        push: false,
+        routes: {
+          '/me': (_) => FakeResponse.json(200, meJson(status: status)),
+          '/me/tickets': (_) {
+            status = 'unverified';
+            return FakeResponse.json(403, errorJson('MEMBERSHIP_REQUIRED', 'Fitur ini memerlukan KTA aktif.'));
+          },
+        },
+      );
+      expect(app.adapter.requestsTo('/me').length, greaterThanOrEqualTo(2));
+      // Tiket Saya tidak termasuk rute anggota unverified (matriks PRD 2.2): diarahkan ke rute awal statusnya.
+      expect(app.location, '/onboarding/fees');
     });
 
     testWidgets('PRD 4.3 bukti sedang ditinjau: kursi ditahan, QR belum terbit, tidak dapat dibatalkan sendiri', (
