@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import {
+  failureAction,
   fieldMessage,
   isApiError,
   newIdempotencyKey,
   parseRetryAfter,
   readApiBase,
   requestJson,
+  type ApiFailure,
 } from "./api";
 import { API, apiError, fakeFetch, json, networkError, text } from "./testing";
 
@@ -87,6 +89,26 @@ describe("requestJson", () => {
     });
   });
 
+  it("PRD 4.3: retry_after_seconds di body dibaca untuk 409 IDEMPOTENCY_CONFLICT 'masih diproses'; header tanpa body hanya untuk 429", async () => {
+    const f = fakeFetch({
+      "POST /a": () =>
+        apiError(409, "IDEMPOTENCY_CONFLICT", "Permintaan yang sama masih diproses.", {
+          retry_after_seconds: 2,
+        }),
+      "POST /b": () => new Response("conflict", { status: 409, headers: { "retry-after": "30" } }),
+    });
+    expect(await requestJson(API, "/a", { method: "POST", fetcher: f.fetcher })).toMatchObject({
+      status: 409,
+      retryAfterSeconds: 2,
+      error: { code: "IDEMPOTENCY_CONFLICT" },
+    });
+    expect(await requestJson(API, "/b", { method: "POST", fetcher: f.fetcher })).toMatchObject({
+      status: 409,
+      retryAfterSeconds: null,
+      error: null,
+    });
+  });
+
   it("timeout membatalkan request dan menjadi network", async () => {
     vi.useFakeTimers();
     try {
@@ -112,6 +134,42 @@ describe("parseRetryAfter", () => {
     expect(parseRetryAfter("Tue, 13 Oct 2026 00:01:00 GMT", now)).toBe(60);
     expect(parseRetryAfter("besok")).toBeNull();
     expect(parseRetryAfter(null)).toBeNull();
+  });
+});
+
+describe("failureAction: katalog galat tunggal @kapdh/shared (PRD 5.2)", () => {
+  const http = (status: number, code: string | null): ApiFailure => ({
+    ok: false,
+    kind: "http",
+    status,
+    // Kode di luar enum kontrak (mis. kontrak lebih baru) dicoba lewat cast: server dapat mengirimnya.
+    error: code ? ({ code, message: "m", request_id: "r" } as ApiFailure["error"]) : null,
+    retryAfterSeconds: null,
+  });
+
+  it("perilaku mengikuti kode kontrak, bukan status saja", () => {
+    expect(failureAction(http(400, "VALIDATION_ERROR"))).toBe("show_field_errors");
+    expect(failureAction(http(404, "NOT_FOUND"))).toBe("show_not_found");
+    expect(failureAction(http(410, "OTP_EXPIRED"))).toBe("offer_new_otp");
+    expect(failureAction(http(409, "IDEMPOTENCY_CONFLICT"))).toBe("reload_latest");
+    expect(failureAction(http(429, "RATE_LIMITED"))).toBe("show_countdown");
+    expect(failureAction(http(503, "MAINTENANCE"))).toBe("show_maintenance");
+    // Kode yang belum dikenal versi klien ini jatuh ke coba lagi.
+    expect(failureAction(http(400, "KODE_BARU"))).toBe("show_retry");
+  });
+
+  it("AC F06-4: body bukan Error kontrak (HTML/teks dari proxy, WAF, router) tidak pernah menjadi jawaban bisnis", () => {
+    expect(failureAction(http(400, null))).toBe("show_retry");
+    expect(failureAction(http(404, null))).toBe("show_retry");
+    expect(failureAction(http(410, null))).toBe("show_retry");
+    // 429 tanpa body (limit_req nginx) tetap pembatasan laju.
+    expect(failureAction(http(429, null))).toBe("show_countdown");
+    expect(
+      failureAction({ ok: false, kind: "network", status: 0, error: null, retryAfterSeconds: null }),
+    ).toBe("show_offline");
+    expect(
+      failureAction({ ok: false, kind: "invalid", status: 200, error: null, retryAfterSeconds: null }),
+    ).toBe("show_retry");
   });
 });
 
