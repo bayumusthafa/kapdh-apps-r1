@@ -24,7 +24,10 @@ export function pageSummary({
 }): string | null {
   if (loading) return pageIndex > 0 ? `Memuat halaman ${pageIndex + 1}...` : "Memuat data...";
   if (total === undefined) return null;
-  if (shown === 0) return pageIndex > 0 ? `Halaman ${pageIndex + 1} kosong; total ${total} ${noun}` : `Menampilkan 0 dari ${total}`;
+  if (shown === 0)
+    return pageIndex > 0
+      ? `Halaman ${pageIndex + 1} kosong; total ${total} ${noun}`
+      : `Menampilkan 0 dari ${total}`;
   if (pageIndex === 0) return `Menampilkan ${shown} dari ${total}`;
   const from = pageIndex * pageSize + 1;
   return `Menampilkan ${from}–${from + shown - 1} dari ${total}`;

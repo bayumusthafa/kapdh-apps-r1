@@ -212,8 +212,8 @@ function MasterTable({ kind }: { kind: MasterKind }) {
   return (
     <>
       <p role="note" className="rounded-md bg-info-bg p-3 text-sm text-info">
-        {names.plural} yang sudah dipakai alumni tidak dapat dihapus. Nonaktifkan agar tidak dapat dipilih lagi;
-        profil yang sudah memakainya tetap menampilkan labelnya (AC F10-4).
+        {names.plural} yang sudah dipakai alumni tidak dapat dihapus. Nonaktifkan agar tidak dapat dipilih
+        lagi; profil yang sudah memakainya tetap menampilkan labelnya (AC F10-4).
       </p>
       <DataTable<MasterItem>
         caption={`Daftar ${names.singular}`}
@@ -244,7 +244,13 @@ function MasterTable({ kind }: { kind: MasterKind }) {
             />
             <Field label="Status" className="flex-[0_1_170px]">
               {(a11y) => (
-                <Select {...a11y} size="sm" options={ACTIVE_OPTIONS} value={active} onValueChange={setActive} />
+                <Select
+                  {...a11y}
+                  size="sm"
+                  options={ACTIVE_OPTIONS}
+                  value={active}
+                  onValueChange={setActive}
+                />
               )}
             </Field>
             <Field label="Urutkan" className="flex-[0_1_200px]">
@@ -276,9 +282,7 @@ function MasterTable({ kind }: { kind: MasterKind }) {
               size="sm"
               loading={toggle.isPending && toggle.variables?.item.id === item.id}
               onClick={() =>
-                item.active
-                  ? setPending({ type: "deactivate", item })
-                  : toggle.mutate({ item, active: true })
+                item.active ? setPending({ type: "deactivate", item }) : toggle.mutate({ item, active: true })
               }
               aria-label={item.active ? `Nonaktifkan ${item.label}` : `Aktifkan ${item.label}`}
             >
@@ -289,7 +293,9 @@ function MasterTable({ kind }: { kind: MasterKind }) {
         emptyState={
           <EmptyState
             compact
-            title={q || active !== "all" ? `Tidak ada ${names.singular} yang cocok` : `Belum ada ${names.singular}`}
+            title={
+              q || active !== "all" ? `Tidak ada ${names.singular} yang cocok` : `Belum ada ${names.singular}`
+            }
             description={
               q || active !== "all"
                 ? "Ubah kata kunci atau filter status."
@@ -518,12 +524,22 @@ function MasterForm({
           name="label"
           label="Label"
           required
-          hint={base && usage > 0 ? `Mengganti label berlaku untuk ${usage} alumni yang memakainya.` : "Unik tanpa membedakan huruf besar/kecil."}
+          hint={
+            base && usage > 0
+              ? `Mengganti label berlaku untuk ${usage} alumni yang memakainya.`
+              : "Unik tanpa membedakan huruf besar/kecil."
+          }
         >
           {(field, a11y) => <Input {...field} {...a11y} maxLength={100} autoComplete="off" />}
         </FormField>
-        <FormField<MasterValues, "sort_order"> name="sort_order" label="Urutan tampil" hint="Angka kecil tampil lebih dulu.">
-          {(field, a11y) => <Input {...field} {...a11y} type="number" inputMode="numeric" min={-32768} max={32767} />}
+        <FormField<MasterValues, "sort_order">
+          name="sort_order"
+          label="Urutan tampil"
+          hint="Angka kecil tampil lebih dulu."
+        >
+          {(field, a11y) => (
+            <Input {...field} {...a11y} type="number" inputMode="numeric" min={-32768} max={32767} />
+          )}
         </FormField>
         <Switch
           label="Dapat dipilih alumni"

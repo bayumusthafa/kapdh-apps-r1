@@ -118,7 +118,9 @@ export function MembershipHistory({ userId }: { userId: string }) {
             compact
             title={paging.pageIndex > 0 ? "Halaman ini sudah kosong" : "Belum ada histori"}
             description={
-              kind === "all" ? "Histori muncul setelah iuran disetujui atau ada tindakan pengurus." : "Tidak ada histori jenis ini."
+              kind === "all"
+                ? "Histori muncul setelah iuran disetujui atau ada tindakan pengurus."
+                : "Tidak ada histori jenis ini."
             }
           />
         ) : (

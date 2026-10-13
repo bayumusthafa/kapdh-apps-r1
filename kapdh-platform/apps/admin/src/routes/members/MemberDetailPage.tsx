@@ -82,10 +82,7 @@ function MemberDetailView() {
   const closed = m ? m.account_status === "deletion_pending" || m.account_status === "deleted" : false;
   const canEdit = auth.can("members.read") && auth.can("members.manage") && !selfLinked && !closed;
   const canModerate =
-    auth.can("members.read") &&
-    auth.can("moderation.read") &&
-    auth.can("moderation.resolve") &&
-    !selfLinked;
+    auth.can("members.read") && auth.can("moderation.read") && auth.can("moderation.resolve") && !selfLinked;
   const canSuspend = canModerate && m !== undefined && m.suspension === null && !closed;
   const canUnsuspend = canModerate && m !== undefined && m.suspension !== null;
   // Pemulihan sandi hanya Super Admin (x-kapdh-access role super_admin) untuk akun aktif (AC F16-4).
@@ -217,9 +214,11 @@ function MemberDetailView() {
               <span className="text-text">
                 Nomor anggota:{" "}
                 <span className="font-mono">{notice.numberChange.before ?? "Belum bernomor"}</span> →{" "}
-                <span className="font-mono font-semibold">{notice.numberChange.after ?? "Belum bernomor"}</span>{" "}
-                (nomor urut tetap). QR lama perlu diperbarui; anggota cukup membuka KTA di aplikasi untuk memuat QR
-                baru.
+                <span className="font-mono font-semibold">
+                  {notice.numberChange.after ?? "Belum bernomor"}
+                </span>{" "}
+                (nomor urut tetap). QR lama perlu diperbarui; anggota cukup membuka KTA di aplikasi untuk
+                memuat QR baru.
               </span>
             ) : null}
           </>
@@ -228,14 +227,14 @@ function MemberDetailView() {
 
       {selfLinked ? (
         <p role="note" className="rounded-md bg-warning-bg p-3 text-sm text-warning">
-          Akun alumni ini tertaut ke akun admin Anda. Perubahan data, pembatasan dan pemulihan sandi untuk akun
-          ini harus dilakukan pengurus lain (konflik kepentingan, PRD 2.3).
+          Akun alumni ini tertaut ke akun admin Anda. Perubahan data, pembatasan dan pemulihan sandi untuk
+          akun ini harus dilakukan pengurus lain (konflik kepentingan, PRD 2.3).
         </p>
       ) : null}
       {closed ? (
         <p role="note" className="rounded-md bg-neutral-bg p-3 text-sm text-text">
-          Akun ini sedang dalam proses penghapusan atas permintaan anggota (F-14) sehingga tidak dapat diubah atau
-          dibatasi.
+          Akun ini sedang dalam proses penghapusan atas permintaan anggota (F-14) sehingga tidak dapat diubah
+          atau dibatasi.
         </p>
       ) : null}
 
@@ -349,8 +348,7 @@ function ProfileCard({ member: m }: { member: MemberDetail }) {
           { label: "Profesi", value: m.profession ? <MasterLabel item={m.profession} /> : "-" },
           {
             label: "Pendidikan terakhir",
-            value:
-              [m.last_education_institution, m.last_education_city].filter(Boolean).join(", ") || "-",
+            value: [m.last_education_institution, m.last_education_city].filter(Boolean).join(", ") || "-",
           },
           {
             label: "Keahlian",
@@ -377,7 +375,11 @@ function ProfileCard({ member: m }: { member: MemberDetail }) {
   );
 }
 
-const SOCIAL: { key: "social_instagram" | "social_x" | "social_facebook" | "social_linkedin"; label: string; base: string }[] = [
+const SOCIAL: {
+  key: "social_instagram" | "social_x" | "social_facebook" | "social_linkedin";
+  label: string;
+  base: string;
+}[] = [
   { key: "social_instagram", label: "Instagram", base: "https://www.instagram.com/" },
   { key: "social_x", label: "X", base: "https://x.com/" },
   { key: "social_facebook", label: "Facebook", base: "https://www.facebook.com/" },
@@ -396,7 +398,9 @@ export function socialHref(base: string, value: string): string | null {
       return null;
     }
   }
-  return /^@?[A-Za-z0-9._-]{1,100}$/.test(value) ? `${base}${encodeURIComponent(value.replace(/^@/, ""))}` : null;
+  return /^@?[A-Za-z0-9._-]{1,100}$/.test(value)
+    ? `${base}${encodeURIComponent(value.replace(/^@/, ""))}`
+    : null;
 }
 
 function Visibility({ shown }: { shown: boolean }) {
@@ -493,8 +497,8 @@ function MembershipCard({ member: m }: { member: MemberDetail }) {
       />
       {m.suspension ? (
         <p className="text-xs text-text-muted">
-          Tanggal masa aktif tidak berubah selama pembatasan; status dihitung ulang saat pembatasan dicabut (PRD
-          4.2).
+          Tanggal masa aktif tidak berubah selama pembatasan; status dihitung ulang saat pembatasan dicabut
+          (PRD 4.2).
         </p>
       ) : null}
       <div className="flex flex-col gap-2">
@@ -546,7 +550,10 @@ function MembershipCard({ member: m }: { member: MemberDetail }) {
 function SuspensionCard({ suspension }: { suspension: S["AdminMemberSuspension"] }) {
   return (
     <Card aria-labelledby="pembatasan-anggota" className="flex flex-col gap-3 border-danger/40 p-5">
-      <h2 id="pembatasan-anggota" className="flex items-center gap-2 font-heading text-h3 font-semibold text-danger">
+      <h2
+        id="pembatasan-anggota"
+        className="flex items-center gap-2 font-heading text-h3 font-semibold text-danger"
+      >
         <ShieldOff aria-hidden="true" className="size-5" />
         Akun dibatasi
       </h2>
@@ -554,7 +561,10 @@ function SuspensionCard({ suspension }: { suspension: S["AdminMemberSuspension"]
         className="sm:grid-cols-1"
         items={[
           { label: "Sejak", value: formatDateTime(suspension.suspended_at) },
-          { label: "Oleh", value: suspension.suspended_by?.display_name ?? "Sistem atau admin yang sudah dihapus" },
+          {
+            label: "Oleh",
+            value: suspension.suspended_by?.display_name ?? "Sistem atau admin yang sudah dihapus",
+          },
           { label: "Pesan untuk anggota", value: suspension.member_message ?? "-" },
           {
             label: "Alasan internal",
@@ -634,7 +644,9 @@ function PaymentsCard({ payments }: { payments: S["AdminMemberPaymentSummary"][]
         </ul>
       )}
       {payments !== null ? (
-        <p className="text-xs text-text-muted">Bukti transfer hanya dapat dibuka di menu Verifikasi Pembayaran.</p>
+        <p className="text-xs text-text-muted">
+          Bukti transfer hanya dapat dibuka di menu Verifikasi Pembayaran.
+        </p>
       ) : null}
     </Section>
   );
@@ -684,7 +696,9 @@ function ModerationCard({ moderation }: { moderation: S["AdminMemberModerationSu
       }
     >
       {moderation === null ? (
-        <PermissionNote>Ringkasan moderasi hanya untuk admin dengan izin membaca laporan (moderation.read).</PermissionNote>
+        <PermissionNote>
+          Ringkasan moderasi hanya untuk admin dengan izin membaca laporan (moderation.read).
+        </PermissionNote>
       ) : (
         <KeyValueList
           items={[

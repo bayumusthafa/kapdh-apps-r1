@@ -777,7 +777,9 @@ function summaryOf(m: MemberState): Summary {
 
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "")).toUpperCase();
+  return (
+    (parts[0]?.[0] ?? "") + (parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "")
+  ).toUpperCase();
 }
 
 /** Detail lengkap yang disaring per izin pemanggil (kontrak adminGetMember, PRD 2.3, AC F15-1). */
@@ -907,12 +909,16 @@ export const mockMembers = {
 /* ------------------------------------------------------------------------------------------------------------ */
 
 const PHONE = /^\+?[0-9][0-9 -]{5,22}$/;
-const SOCIAL_HANDLE = /^(?:@?[A-Za-z0-9._-]{1,100}|https:\/\/[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:[/?#][^\s<>"'`]*)?)$/;
+const SOCIAL_HANDLE =
+  /^(?:@?[A-Za-z0-9._-]{1,100}|https:\/\/[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:[/?#][^\s<>"'`]*)?)$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type FieldErrors = Record<string, string[]>;
 
-function validationError(fieldErrors: FieldErrors, message = "Periksa kembali isian yang ditandai."): Response {
+function validationError(
+  fieldErrors: FieldErrors,
+  message = "Periksa kembali isian yang ditandai.",
+): Response {
   return error(400, "VALIDATION_ERROR", message, { field_errors: fieldErrors });
 }
 
@@ -1030,7 +1036,9 @@ function validateUpdate(body: Record<string, unknown>, m: MemberState): FieldErr
           break;
         }
         if (!master.active && !m.skill_ids.includes(id as string)) {
-          errors.skill_ids = [`Keahlian "${master.label}" sudah nonaktif dan tidak dapat dipilih (AC F10-4).`];
+          errors.skill_ids = [
+            `Keahlian "${master.label}" sudah nonaktif dan tidak dapat dipilih (AC F10-4).`,
+          ];
           break;
         }
       }
@@ -1072,7 +1080,10 @@ function requireAll(req: MockRequest, permissions: Permission[]): Response | nul
 }
 
 /** Putar ulang hasil pertama untuk Idempotency-Key yang sama (payload berbeda -> 409 IDEMPOTENCY_CONFLICT). */
-function replayOf(req: MockRequest, scope: string): { key: string | null; payload: string; hit: Response | null } {
+function replayOf(
+  req: MockRequest,
+  scope: string,
+): { key: string | null; payload: string; hit: Response | null } {
   const key = req.headers.get("Idempotency-Key");
   const payload = JSON.stringify([scope, req.params, req.body]);
   const replay = key ? replays.get(key) : undefined;
@@ -1608,7 +1619,8 @@ export const routes: MockRoute[] = [
         return error(409, "VERSION_CONFLICT", "Master sudah diubah admin lain. Muat ulang data terbaru.", {
           current: presentMaster(master),
         });
-      if (typeof body.label === "string" && sameLabel(kind, body.label, master.id)) return duplicateLabel(kind);
+      if (typeof body.label === "string" && sameLabel(kind, body.label, master.id))
+        return duplicateLabel(kind);
       if (typeof body.label === "string") master.label = body.label.trim();
       if (typeof body.active === "boolean") master.active = body.active;
       if (typeof body.sort_order === "number") master.sort_order = body.sort_order;

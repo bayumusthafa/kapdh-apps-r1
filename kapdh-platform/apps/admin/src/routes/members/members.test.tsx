@@ -56,7 +56,10 @@ describe("daftar anggota (F-15, guideline hal. 16; server tiruan)", () => {
     await screen.findByText("Menampilkan 24 dari 33");
     await user.click(screen.getByRole("button", { name: "Filter" }));
     const panel = screen.getByRole("group", { name: "Filter anggota" });
-    await user.selectOptions(within(panel).getByRole("combobox", { name: "Status keanggotaan" }), "suspended");
+    await user.selectOptions(
+      within(panel).getByRole("combobox", { name: "Status keanggotaan" }),
+      "suspended",
+    );
     expect(await screen.findByText("2 alumni sesuai pencarian dan filter")).toBeInTheDocument();
     expect(card("Rizky Pratama")).toBeInTheDocument();
     expect(card("Dewi Lestari")).toBeInTheDocument();
@@ -79,7 +82,9 @@ describe("daftar anggota (F-15, guideline hal. 16; server tiruan)", () => {
     const profession = within(panel).getByRole("combobox", { name: "Profesi" });
     await waitFor(() => expect(profession).toBeEnabled());
     // Master nonaktif tetap dapat dipakai sebagai filter (kontrak adminListMembers).
-    expect(within(profession).getByRole("option", { name: "Petani/Peternak/Nelayan (nonaktif)" })).toBeInTheDocument();
+    expect(
+      within(profession).getByRole("option", { name: "Petani/Peternak/Nelayan (nonaktif)" }),
+    ).toBeInTheDocument();
     await user.selectOptions(profession, "Petani/Peternak/Nelayan (nonaktif)");
     expect(await screen.findByText("1 alumni sesuai pencarian dan filter")).toBeInTheDocument();
     expect(card("Hasan Basri")).toBeInTheDocument();
@@ -161,19 +166,20 @@ describe("detail anggota (F-15, F-10; server tiruan)", () => {
       "href",
       "https://www.instagram.com/ahmad.zulhadi",
     );
-    expect(within(contact).getByRole("link", { name: /^LinkedIn https:\/\/www\.linkedin\.com/ })).toHaveAttribute(
-      "href",
-      "https://www.linkedin.com/in/ahmad-zulhadi",
-    );
+    expect(
+      within(contact).getByRole("link", { name: /^LinkedIn https:\/\/www\.linkedin\.com/ }),
+    ).toHaveAttribute("href", "https://www.linkedin.com/in/ahmad-zulhadi");
     const membership = screen.getByRole("region", { name: "Keanggotaan" });
-    expect(within(membership).getByRole("table", { name: "Periode keanggotaan" })).toHaveTextContent("Aktivasi");
+    expect(within(membership).getByRole("table", { name: "Periode keanggotaan" })).toHaveTextContent(
+      "Aktivasi",
+    );
     const payments = screen.getByRole("region", { name: "Pembayaran terbaru" });
     expect(within(payments).getByText("Pendaftaran Rp60.000")).toBeInTheDocument();
     expect(within(payments).getByText("Disetujui")).toBeInTheDocument();
     // Pembukaan detail adalah GET biasa (server mencatat audit member.viewed).
-    expect(memberRequests.some((r) => r.method === "GET" && r.path === `/admin/members/${MOCK_MEMBER.ahmad}`)).toBe(
-      true,
-    );
+    expect(
+      memberRequests.some((r) => r.method === "GET" && r.path === `/admin/members/${MOCK_MEMBER.ahmad}`),
+    ).toBe(true);
   });
 
   it("AC F10-4: profesi dan keahlian master nonaktif tampil sebagai label historis", async () => {
@@ -231,7 +237,9 @@ describe("detail anggota (F-15, F-10; server tiruan)", () => {
   it("PRD 2.3: akun alumni yang tertaut ke admin sendiri tidak dapat diubah, dibatasi atau di-reset", async () => {
     const user = userEvent.setup();
     await open(user, `/members/${MOCK_MEMBER.bayu}`, "Bayu Musthafa Arief");
-    expect(screen.getAllByRole("note").some((n) => n.textContent?.includes("tertaut ke akun admin Anda"))).toBe(true);
+    expect(
+      screen.getAllByRole("note").some((n) => n.textContent?.includes("tertaut ke akun admin Anda")),
+    ).toBe(true);
     for (const name of ["Ubah data", "Batasi akun", "Reset sandi"])
       expect(screen.queryByRole("button", { name })).toBeNull();
     expect(screen.getByRole("region", { name: "Akun admin tertaut" })).toHaveTextContent("Akun Anda");
@@ -336,7 +344,9 @@ describe("ubah data dan koreksi identitas (AC F05-6, F15-4)", () => {
     let dialog = await openEdit(user, MOCK_MEMBER.hasan, "Hasan Basri");
     const profession = within(dialog).getByRole("combobox", { name: "Profesi" });
     await waitFor(() =>
-      expect(within(profession).getByRole("option", { name: "Petani/Peternak/Nelayan (nonaktif)" })).toBeInTheDocument(),
+      expect(
+        within(profession).getByRole("option", { name: "Petani/Peternak/Nelayan (nonaktif)" }),
+      ).toBeInTheDocument(),
     );
     expect(profession).toHaveDisplayValue("Petani/Peternak/Nelayan (nonaktif)");
     // Master nonaktif lain tidak dapat dipilih baru.
@@ -346,10 +356,14 @@ describe("ubah data dan koreksi identitas (AC F05-6, F15-4)", () => {
     expect(screen.queryByRole("dialog", { name: "Ubah data anggota" })).toBeNull();
 
     await user.click(
-      within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("link", { name: "Manajemen Users" }),
+      within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("link", {
+        name: "Manajemen Users",
+      }),
     );
     await screen.findByText("Menampilkan 24 dari 33");
-    await user.click(within(card("Siti Rahmawati")).getByRole("button", { name: "Ubah data Siti Rahmawati" }));
+    await user.click(
+      within(card("Siti Rahmawati")).getByRole("button", { name: "Ubah data Siti Rahmawati" }),
+    );
     dialog = await screen.findByRole("dialog", { name: "Ubah data anggota" });
     expect(await within(dialog).findByRole("checkbox", { name: "Kuliner (nonaktif)" })).toBeChecked();
   });
@@ -399,10 +413,16 @@ describe("batasi dan cabut pembatasan (PRD 4.2, AC F12-3..F12-5)", () => {
     expect(confirm).toBeDisabled();
     expect(within(dialog).getByRole("button", { name: "Batal" })).toHaveFocus();
     await confirmWithAck(dialog, user, "Batasi akun");
-    expect(within(dialog).getByRole("textbox", { name: /Alasan internal/ })).toHaveAttribute("aria-invalid", "true");
+    expect(within(dialog).getByRole("textbox", { name: /Alasan internal/ })).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
     expect(memberRequests.some((r) => r.path.endsWith("/suspend"))).toBe(false);
 
-    await user.type(within(dialog).getByRole("textbox", { name: /Alasan internal/ }), "Penipuan di grup alumni");
+    await user.type(
+      within(dialog).getByRole("textbox", { name: /Alasan internal/ }),
+      "Penipuan di grup alumni",
+    );
     await user.type(
       within(dialog).getByRole("textbox", { name: /Pesan untuk anggota/ }),
       "Akun Anda dibatasi karena melanggar pedoman.",
@@ -422,7 +442,9 @@ describe("batasi dan cabut pembatasan (PRD 4.2, AC F12-3..F12-5)", () => {
     // Tanggal periode tidak berubah (PRD 4.2); tombol berganti menjadi Cabut pembatasan.
     expect(mockMembers.raw(MOCK_MEMBER.umar)?.expires_at).toBe("2027-03-02T03:00:00.000Z");
     expect(await screen.findByRole("button", { name: "Cabut pembatasan" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Akun dibatasi" })).toHaveTextContent("Penipuan di grup alumni");
+    expect(screen.getByRole("region", { name: "Akun dibatasi" })).toHaveTextContent(
+      "Penipuan di grup alumni",
+    );
   });
 
   it("AC F12-5: cabut pembatasan anggota yang masa aktifnya habis menjadi KTA Kedaluwarsa, bukan otomatis aktif", async () => {
@@ -430,7 +452,10 @@ describe("batasi dan cabut pembatasan (PRD 4.2, AC F12-3..F12-5)", () => {
     await open(user, `/members/${MOCK_MEMBER.dewi}`, "Dewi Lestari");
     await user.click(screen.getByRole("button", { name: "Cabut pembatasan" }));
     const dialog = await screen.findByRole("alertdialog", { name: /Cabut pembatasan Dewi Lestari/ });
-    await user.type(within(dialog).getByRole("textbox", { name: /Alasan pencabutan/ }), "Masa pembatasan selesai");
+    await user.type(
+      within(dialog).getByRole("textbox", { name: /Alasan pencabutan/ }),
+      "Masa pembatasan selesai",
+    );
     await user.click(within(dialog).getByRole("button", { name: "Cabut pembatasan" }));
     expect(await screen.findByText(/Status keanggotaan sekarang: KTA Kedaluwarsa/)).toBeInTheDocument();
     const request = memberRequests.find((r) => r.path.endsWith("/unsuspend"));
@@ -447,7 +472,10 @@ describe("batasi dan cabut pembatasan (PRD 4.2, AC F12-3..F12-5)", () => {
     await user.click(screen.getByRole("button", { name: "Cabut pembatasan" }));
     const dialog = await screen.findByRole("alertdialog", { name: /Cabut pembatasan Rizky Pratama/ });
     await user.type(within(dialog).getByRole("textbox", { name: /Alasan pencabutan/ }), "Banding dikabulkan");
-    await user.type(within(dialog).getByRole("textbox", { name: /Pesan untuk anggota/ }), "Silakan kembali aktif.");
+    await user.type(
+      within(dialog).getByRole("textbox", { name: /Pesan untuk anggota/ }),
+      "Silakan kembali aktif.",
+    );
     await user.click(within(dialog).getByRole("button", { name: "Cabut pembatasan" }));
     expect(await screen.findByText(/Status keanggotaan sekarang: KTA Aktif/)).toBeInTheDocument();
     expect(memberRequests.find((r) => r.path.endsWith("/unsuspend"))?.body).toMatchObject({
@@ -490,7 +518,10 @@ describe("pemulihan sandi alumni oleh Super Admin (F-16, AC F16-4)", () => {
     await user.click(screen.getByRole("button", { name: "Reset sandi" }));
     const dialog = await screen.findByRole("alertdialog", { name: /Mulai pemulihan sandi Umar Faruq/ });
     expect(dialog).toHaveTextContent("umar.faruq@alumni.test");
-    await user.type(within(dialog).getByRole("textbox", { name: /Alasan/ }), "Permintaan anggota via kanal bantuan");
+    await user.type(
+      within(dialog).getByRole("textbox", { name: /Alasan/ }),
+      "Permintaan anggota via kanal bantuan",
+    );
     await confirmWithAck(dialog, user, "Mulai pemulihan");
 
     // Reautentikasi wajib sebelum permintaan dikirim (X-Reauth-Token, ARCHITECTURE §4.3).
