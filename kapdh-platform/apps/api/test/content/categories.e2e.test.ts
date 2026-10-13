@@ -49,7 +49,9 @@ describe("F-08: GET /categories untuk tab berita/event", () => {
     const res = await api().get("/categories", { token: member.token, query: { kind: "post" } });
     const body = expectOperation("get", "/categories", res) as { items: { id: string }[] };
     expect(body.items.map((c) => c.id)).toEqual([first.id, a.id, b.id]);
-    const all = (await api().get("/categories", { token: member.token })).json() as { items: { id: string }[] };
+    const all = (await api().get("/categories", { token: member.token })).json() as {
+      items: { id: string }[];
+    };
     expect(all.items.map((c) => c.id)).toContain(event.id);
     const bad = await api().get("/categories", { token: member.token, query: { kind: "lain" } });
     expect(bad.statusCode).toBe(400);
@@ -67,7 +69,14 @@ describe("F-15: kategori berita (content.manage)", () => {
     );
     expect(res.statusCode, res.body).toBe(201);
     const created = expectOperation("post", "/admin/content/post-categories", res) as AdminCategory;
-    expect(created).toMatchObject({ kind: "post", label, active: true, sort_order: 0, usage_count: 0, version: "1" });
+    expect(created).toMatchObject({
+      kind: "post",
+      label,
+      active: true,
+      sort_order: 0,
+      usage_count: 0,
+      version: "1",
+    });
     const again = (
       await api().post("/admin/content/post-categories", { label }, { token: content.token })
     ).json() as AdminCategory;
@@ -85,7 +94,10 @@ describe("F-15: kategori berita (content.manage)", () => {
       { token: content.token },
     );
     expect(taken.statusCode).toBe(409);
-    expect(taken.json()).toMatchObject({ code: "VALIDATION_ERROR", field_errors: { slug: expect.any(Array) } });
+    expect(taken.json()).toMatchObject({
+      code: "VALIDATION_ERROR",
+      field_errors: { slug: expect.any(Array) },
+    });
     const [audit] = await t.db
       .select()
       .from(auditLogs)
@@ -118,7 +130,9 @@ describe("F-15: kategori berita (content.manage)", () => {
     expect(stale.json()).toMatchObject({ code: "VERSION_CONFLICT", current: { label: "Pengumuman Resmi" } });
 
     const eventCategory = await insertCategory(t, { kind: "event" });
-    const crossGet = await api().get(`/admin/content/post-categories/${eventCategory.id}`, { token: content.token });
+    const crossGet = await api().get(`/admin/content/post-categories/${eventCategory.id}`, {
+      token: content.token,
+    });
     expect(crossGet.statusCode).toBe(404);
     expectOperation("get", "/admin/content/post-categories/{categoryId}", crossGet);
     const crossPatch = await api().patch(
@@ -131,7 +145,11 @@ describe("F-15: kategori berita (content.manage)", () => {
 
   it("PRD 4.5: kategori terpakai tidak dapat dihapus (409, sarankan nonaktifkan); tidak terpakai 204", async () => {
     const used = (
-      await api().post("/admin/content/post-categories", { label: unique("Dipakai") }, { token: content.token })
+      await api().post(
+        "/admin/content/post-categories",
+        { label: unique("Dipakai") },
+        { token: content.token },
+      )
     ).json() as AdminCategory;
     await insertPost(t, { status: "archived", categoryId: used.id });
     const detail = await api().get(`/admin/content/post-categories/${used.id}`, { token: content.token });
@@ -185,7 +203,11 @@ describe("F-15: kategori berita (content.manage)", () => {
     expect((await list({ q: marker, active: "false" })).items.map((c) => c.id)).toEqual([made[1]!.id]);
     const byUsage = await list({ q: marker, sort: "usage_desc" });
     expect(byUsage.items.map((c) => c.usage_count)).toEqual([2, 1, 0]);
-    expect((await list({ q: marker })).items.map((c) => c.id)).toEqual([made[2]!.id, made[1]!.id, made[0]!.id]);
+    expect((await list({ q: marker })).items.map((c) => c.id)).toEqual([
+      made[2]!.id,
+      made[1]!.id,
+      made[0]!.id,
+    ]);
     for (const sort of ["sort_order_asc", "label_asc", "usage_desc", "updated_at_desc"]) {
       const seen: string[] = [];
       let cursor: string | null = null;
@@ -211,7 +233,9 @@ describe("F-15: kategori event (events.manage, guideline p14)", () => {
     expect(created.kind).toBe("event");
     await insertEvent(t, { status: "cancelled", categoryId: created.id });
     await insertEvent(t, { status: "draft", categoryId: created.id });
-    const detail = await api().get(`/admin/content/event-categories/${created.id}`, { token: eventsAdmin.token });
+    const detail = await api().get(`/admin/content/event-categories/${created.id}`, {
+      token: eventsAdmin.token,
+    });
     expect(expectOperation("get", "/admin/content/event-categories/{categoryId}", detail)).toMatchObject({
       usage_count: 2,
     });

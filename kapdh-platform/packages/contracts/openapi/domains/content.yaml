@@ -221,7 +221,9 @@ paths:
         dokumen legal (privacy, terms, community) lebih dahulu, lalu halaman lain menurut judul.
 
         Dipakai situs publik, layar legal aplikasi, dan layar registrasi sebelum aktivasi (PRD 2.2: pending_otp dan
-        unverified tetap dapat membaca legal). Tanpa autentikasi; dibatasi rate limit per IP.
+        unverified tetap dapat membaca legal). Tanpa autentikasi; dibatasi rate limit per IP (120 permintaan
+        per menit per IP, bersama GET /public/pages/{slug}; 429 dengan `retry_after_seconds`). Respons dapat
+        di-cache publik paling lama 60 detik.
 
         `consent` memuat versi persetujuan registrasi (F-01): `policy_version` adalah string gabungan kanonis
         versi tayang kebijakan privasi DAN ketentuan layanan (`privacy:<v>;terms:<v>`) yang dikirim klien apa
@@ -255,7 +257,8 @@ paths:
 
         Slug baku: `kebijakan-privasi`, `ketentuan`, `ketentuan-komunitas`, `bantuan`, `tentang`. Halaman yang
         belum pernah terbit atau slug yang tidak ada menghasilkan 404 NOT_FOUND; slug melebihi panjang maksimum
-        -> 400 VALIDATION_ERROR. Tanpa autentikasi; dibatasi rate limit per IP.
+        -> 400 VALIDATION_ERROR. Tanpa autentikasi; dibatasi rate limit per IP (120 permintaan per menit per IP,
+        bersama GET /public/pages). Respons dapat di-cache publik paling lama 60 detik.
       security: []
       x-kapdh-access: { audience: public }
       parameters:
@@ -477,6 +480,12 @@ components:
                 atau URL javascript:. `img` hanya dari host berkas KAPDH. Tautan luar memakai
                 `target="_blank" rel="noopener noreferrer nofollow"` dan `data-external="true"` sehingga klien
                 menampilkan indikasi tautan luar yang jelas.
+
+                Rincian implementasi (aditif): `a` hanya `https:` (selalu dianggap tautan luar dan juga diberi
+                `class="kapdh-external-link"`) atau `mailto:` (tanpa penanda luar); tautan dengan skema lain
+                kehilangan tautannya tetapi teksnya tetap. `img` hanya `src` berbentuk
+                `<API_PUBLIC_URL>/api/v1/files/public/<uuid>` (gambar konten publik) dengan `alt` wajib (N-11);
+                atribut lain tidak pernah dikirim.
             updated_at: { type: string, format: date-time, description: Terakhir diperbarui pengurus. }
 
     PostPage:
@@ -588,7 +597,9 @@ components:
         title: { type: string, examples: [Kebijakan Privasi] }
         body_html:
           type: string
-          description: HTML tersanitasi server; tautan luar bertanda `data-external="true"` (PRD 3.8).
+          description: |
+            HTML tersanitasi server dengan aturan yang sama dengan `Post.body_html`; tautan luar bertanda
+            `data-external="true"` dan `class="kapdh-external-link"` (PRD 3.8).
         version:
           type: string
           description: |

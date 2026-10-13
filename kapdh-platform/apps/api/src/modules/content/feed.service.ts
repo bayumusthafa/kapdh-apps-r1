@@ -141,7 +141,10 @@ export class FeedService {
           .values({ postId: post.id, userId, createdAt: now })
           .onConflictDoNothing({ target: [postLikes.postId, postLikes.userId] });
       else await tx.delete(postLikes).where(and(eq(postLikes.postId, post.id), eq(postLikes.userId, userId)));
-      const [current] = await tx.select({ likeCount: posts.likeCount }).from(posts).where(eq(posts.id, post.id));
+      const [current] = await tx
+        .select({ likeCount: posts.likeCount })
+        .from(posts)
+        .where(eq(posts.id, post.id));
       return { liked, like_count: current!.likeCount };
     });
   }

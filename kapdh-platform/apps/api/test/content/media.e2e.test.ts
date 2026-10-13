@@ -43,7 +43,12 @@ describe("N-10: unggah gambar konten", () => {
       expect(media).toMatchObject({ purpose, width: 120, height: 60, mime: "image/jpeg" });
       expect(media.url).toBe(`${t.env.API_PUBLIC_URL}/api/v1/files/public/${media.file_id}`);
       const [row] = await t.db.select().from(files).where(eq(files.id, media.file_id));
-      expect(row).toMatchObject({ visibility: "public", status: "ready", ownerUserId: admin.userId, attachedAt: null });
+      expect(row).toMatchObject({
+        visibility: "public",
+        status: "ready",
+        ownerUserId: admin.userId,
+        attachedAt: null,
+      });
       const served = await t.app.inject({ method: "GET", url: `/api/v1/files/public/${media.file_id}` });
       expect(served.statusCode).toBe(200);
       const metadata = await sharp(served.rawPayload).metadata();
@@ -84,14 +89,19 @@ describe("N-10: unggah gambar konten", () => {
     expect(noFile.statusCode).toBe(400);
     expect(noFile.json().field_errors.file).toBeDefined();
 
-    const json = await httpClient(t.app).post("/admin/content/media", { purpose: "post_cover" }, { token: admin.token });
+    const json = await httpClient(t.app).post(
+      "/admin/content/media",
+      { purpose: "post_cover" },
+      { token: admin.token },
+    );
     expect(json.statusCode).toBe(415);
     expectOperation("post", "/admin/content/media", json);
   });
 
   it("N-10: maksimal 10 unggahan berhasil per purpose per admin per 24 jam -> 429", async () => {
     const admin = await adminSession(t, ["content.manage"]);
-    for (let i = 0; i < 10; i++) expect((await postContentMedia(t, admin.token, "banner_image")).statusCode).toBe(201);
+    for (let i = 0; i < 10; i++)
+      expect((await postContentMedia(t, admin.token, "banner_image")).statusCode).toBe(201);
     const limited = await postContentMedia(t, admin.token, "banner_image");
     expect(limited.statusCode).toBe(429);
     expect(limited.json().code).toBe("RATE_LIMITED");

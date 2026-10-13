@@ -128,7 +128,12 @@ export class CategoriesService {
    * Kategori yang boleh DIPILIH BARU pada berita/event: ada, jenisnya sesuai, dan aktif (kategori nonaktif hanya
    * boleh dipertahankan). Selain itu 400 pada `field`. Baris dikunci FOR KEY SHARE agar tidak terhapus sebelum commit.
    */
-  async assertSelectable(tx: Tx, categoryId: string, kind: ContentCategoryKind, field: string): Promise<void> {
+  async assertSelectable(
+    tx: Tx,
+    categoryId: string,
+    kind: ContentCategoryKind,
+    field: string,
+  ): Promise<void> {
     const [row] = await tx
       .select({ active: categories.active })
       .from(categories)
@@ -284,7 +289,11 @@ export class CategoriesService {
     return row;
   }
 
-  private async load(db: DbOrTx, kind: ContentCategoryKind, id: string): Promise<AdminContentCategory | null> {
+  private async load(
+    db: DbOrTx,
+    kind: ContentCategoryKind,
+    id: string,
+  ): Promise<AdminContentCategory | null> {
     const [row] = await db
       .select({ category: categories, usage: usageCount(kind) })
       .from(categories)

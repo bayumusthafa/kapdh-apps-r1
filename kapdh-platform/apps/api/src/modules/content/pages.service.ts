@@ -108,7 +108,9 @@ const SLUG_TAKEN = "Slug sudah dipakai halaman lain.";
 
 function hasUnpublishedChanges(row: PageRow): boolean {
   return (
-    row.publishedVersion === null || row.title !== row.publishedTitle || row.bodyHtml !== row.publishedBodyHtml
+    row.publishedVersion === null ||
+    row.title !== row.publishedTitle ||
+    row.bodyHtml !== row.publishedBodyHtml
   );
 }
 
@@ -228,7 +230,12 @@ export class PagesService {
   }
 
   /** Simpan draf; salinan tayang dan versi legal tidak berubah sampai diterbitkan (AC F15-4, PRD 6.2). */
-  async update(auth: AuthContext, id: string, expectedVersion: number, input: PageUpdateInput): Promise<AdminInfoPage> {
+  async update(
+    auth: AuthContext,
+    id: string,
+    expectedVersion: number,
+    input: PageUpdateInput,
+  ): Promise<AdminInfoPage> {
     const body = input.body_html === undefined ? null : this.media.sanitize(input.body_html);
     if (body && !body.hasContent) throw fieldError("body_html", EMPTY_BODY);
     try {
@@ -255,7 +262,11 @@ export class PagesService {
           entityType: "page",
           entityId: id,
           before: { slug: row.slug, title: row.title },
-          after: { slug: changes.slug ?? row.slug, title: changes.title ?? row.title, body_changed: body !== null },
+          after: {
+            slug: changes.slug ?? row.slug,
+            title: changes.title ?? row.title,
+            body_changed: body !== null,
+          },
         });
         return (await this.load(tx, id))!;
       });
@@ -292,7 +303,12 @@ export class PagesService {
    *    lebih dulu sehingga penerbitan privasi dan ketentuan bersamaan berurutan, bukan saling menolak);
    * 3. audit `page.published` berisi versi beserta teks tayang utuh.
    */
-  async publish(auth: AuthContext, id: string, expectedVersion: number, changeNote: string | null): Promise<AdminInfoPage> {
+  async publish(
+    auth: AuthContext,
+    id: string,
+    expectedVersion: number,
+    changeNote: string | null,
+  ): Promise<AdminInfoPage> {
     return this.db.transaction(async (tx) => {
       const now = this.clock.now();
       const [published] = await tx
@@ -326,7 +342,8 @@ export class PagesService {
       }
       const previousVersion = published.publishedVersion! - 1;
       const legalDocument = legalDocumentOf(published.slug);
-      if (legalDocument) await this.mirrorLegalVersion(tx, legalDocument, published.publishedVersion!, changeNote);
+      if (legalDocument)
+        await this.mirrorLegalVersion(tx, legalDocument, published.publishedVersion!, changeNote);
       await this.audit.write(tx, {
         action: "page.published",
         entityType: "page",

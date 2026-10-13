@@ -20,7 +20,14 @@ import { JobRunner } from "../../src/core/jobs/job-runner.js";
 import { createAdmin, createAlumni, signInAdmin, signInAlumni } from "../support/factories.js";
 import { httpClient } from "../support/http.js";
 import { FakePush, TestClock, testEnv } from "../support/test-app.js";
-import { barrier, connectAs, createPgTestDatabase, id, type PgTestDatabase, withLockWaitGate } from "./support.js";
+import {
+  barrier,
+  connectAs,
+  createPgTestDatabase,
+  id,
+  type PgTestDatabase,
+  withLockWaitGate,
+} from "./support.js";
 
 let tdb: PgTestDatabase;
 let api: ReturnType<typeof connectAs>;
@@ -55,7 +62,10 @@ afterAll(async () => {
   await tdb.drop();
 });
 
-async function insertPost(opts: { publishedAt: Date; status?: string }): Promise<{ id: string; slug: string }> {
+async function insertPost(opts: {
+  publishedAt: Date;
+  status?: string;
+}): Promise<{ id: string; slug: string }> {
   const postId = id();
   const slug = `berita-${postId.slice(-12)}`;
   await tdb.sql`
@@ -90,7 +100,9 @@ describe("AC F08-3: like bersamaan pada PostgreSQL 17", () => {
   it("AC F08-3: 12 anggota like bersamaan + anggota yang sama 6x bersamaan -> like_count = jumlah baris = 13", async () => {
     const post = await insertPost({ publishedAt: new Date(clock.now().getTime() - 60_000) });
     const members = await Promise.all(
-      Array.from({ length: 12 }, async () => signInAlumni({ app }, await createAlumni(owner, { status: "verified" }))),
+      Array.from({ length: 12 }, async () =>
+        signInAlumni({ app }, await createAlumni(owner, { status: "verified" })),
+      ),
     );
     const repeat = await signInAlumni({ app }, await createAlumni(owner, { status: "expiring" }));
     const client = httpClient(app);
@@ -112,10 +124,13 @@ describe("AC F08-3: like bersamaan pada PostgreSQL 17", () => {
   it("AC F08-3: like dan unlike bercampur bersamaan -> penghitung tetap sama dengan jumlah like", async () => {
     const post = await insertPost({ publishedAt: new Date(clock.now().getTime() - 60_000) });
     const members = await Promise.all(
-      Array.from({ length: 8 }, async () => signInAlumni({ app }, await createAlumni(owner, { status: "verified" }))),
+      Array.from({ length: 8 }, async () =>
+        signInAlumni({ app }, await createAlumni(owner, { status: "verified" })),
+      ),
     );
     const client = httpClient(app);
-    for (const m of members.slice(0, 4)) await client.put(`/posts/${post.slug}/like`, {}, { token: m.accessToken });
+    for (const m of members.slice(0, 4))
+      await client.put(`/posts/${post.slug}/like`, {}, { token: m.accessToken });
     const gate = barrier(members.length * 2);
     await Promise.all(
       members.flatMap((m, i) => [
@@ -177,10 +192,14 @@ describe("AC F15-5: job content.announce bersamaan pada PostgreSQL 17", () => {
         })(),
         (async () => {
           await gate();
-          return httpClient(app).post(`/admin/content/posts/${post.id}/archive`, {}, {
-            token: session.accessToken,
-            headers: { "if-match": "1" },
-          });
+          return httpClient(app).post(
+            `/admin/content/posts/${post.id}/archive`,
+            {},
+            {
+              token: session.accessToken,
+              headers: { "if-match": "1" },
+            },
+          );
         })(),
       ]);
       const [row] = await tdb.sql<{ status: string; announced: boolean; notified: number }[]>`
@@ -218,10 +237,14 @@ describe("F-01: penerbitan dokumen legal bersamaan pada PostgreSQL 17", () => {
     const results = await Promise.all(
       rows.map(async ({ id: pageId }) => {
         await gate();
-        return httpClient(app).post(`/admin/content/pages/${pageId}/publish`, {}, {
-          token: session.accessToken,
-          headers: { "if-match": "1" },
-        });
+        return httpClient(app).post(
+          `/admin/content/pages/${pageId}/publish`,
+          {},
+          {
+            token: session.accessToken,
+            headers: { "if-match": "1" },
+          },
+        );
       }),
     );
     for (const res of results) expect(res.statusCode, res.body).toBe(200);

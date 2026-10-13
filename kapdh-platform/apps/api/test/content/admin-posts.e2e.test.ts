@@ -58,7 +58,11 @@ async function createPost(body: Record<string, unknown> = {}): Promise<AdminPost
   return expectOperation("post", "/admin/content/posts", res) as AdminPost;
 }
 
-async function action(post: AdminPost, name: "publish" | "unschedule" | "archive" | "restore", body: unknown = {}) {
+async function action(
+  post: AdminPost,
+  name: "publish" | "unschedule" | "archive" | "restore",
+  body: unknown = {},
+) {
   const res = await api().post(`/admin/content/posts/${post.id}/${name}`, body, {
     token: admin.token,
     headers: { "if-match": post.version },
@@ -117,7 +121,10 @@ describe("F-08: membuat berita draft (PRD 3.8 sanitasi server)", () => {
       { token: admin.token },
     );
     expect(taken.statusCode).toBe(409);
-    expect(taken.json()).toMatchObject({ code: "VALIDATION_ERROR", field_errors: { slug: expect.any(Array) } });
+    expect(taken.json()).toMatchObject({
+      code: "VALIDATION_ERROR",
+      field_errors: { slug: expect.any(Array) },
+    });
     expectOperation("post", "/admin/content/posts", taken);
 
     const invalid = await api().post(
@@ -183,7 +190,10 @@ describe("F-08: membuat berita draft (PRD 3.8 sanitasi server)", () => {
     expect(file!.attachedAt).not.toBeNull();
     const missing = await api().post(
       "/admin/content/posts",
-      { title: "K", body_html: `<img src="${t.env.API_PUBLIC_URL}/api/v1/files/public/${uuidv7()}" alt="x">` },
+      {
+        title: "K",
+        body_html: `<img src="${t.env.API_PUBLIC_URL}/api/v1/files/public/${uuidv7()}" alt="x">`,
+      },
       { token: admin.token },
     );
     expect(missing.statusCode).toBe(400);
@@ -235,10 +245,17 @@ describe("AC F15-4: perubahan berita memakai If-Match", () => {
       { token: admin.token, headers: { "if-match": post.version } },
     );
     expect(stale.statusCode).toBe(409);
-    expect(stale.json()).toMatchObject({ code: "VERSION_CONFLICT", current: { id: post.id, title: "Judul baru", version: "2" } });
+    expect(stale.json()).toMatchObject({
+      code: "VERSION_CONFLICT",
+      current: { id: post.id, title: "Judul baru", version: "2" },
+    });
     expectOperation("patch", "/admin/content/posts/{postId}", stale);
 
-    const missing = await api().patch(`/admin/content/posts/${post.id}`, { title: "x" }, { token: admin.token });
+    const missing = await api().patch(
+      `/admin/content/posts/${post.id}`,
+      { title: "x" },
+      { token: admin.token },
+    );
     expect(missing.statusCode).toBe(400);
     expect(missing.json().field_errors["If-Match"]).toBeDefined();
     const badId = await api().get("/admin/content/posts/bukan-uuid", { token: admin.token });
@@ -293,13 +310,19 @@ describe("AC F15-4: perubahan berita memakai If-Match", () => {
 describe("AC F08-1, F15-5: siklus terbit berita", () => {
   it("AC F08-1: terbit sekarang, jadwal masa depan, jadwal ulang; waktu lampau ditolak 400", async () => {
     const draft = await createPost();
-    const past = await action(draft, "publish", { published_at: new Date(t.clock.now().getTime() - 60_000).toISOString() });
+    const past = await action(draft, "publish", {
+      published_at: new Date(t.clock.now().getTime() - 60_000).toISOString(),
+    });
     expect(past.statusCode).toBe(400);
     expect(past.json().field_errors.published_at).toBeDefined();
 
     const at = new Date(t.clock.now().getTime() + 3600_000);
     const scheduled = (await action(draft, "publish", { published_at: at.toISOString() })).json();
-    expect(scheduled).toMatchObject({ state: "scheduled", published_at: at.toISOString(), slug_locked: false });
+    expect(scheduled).toMatchObject({
+      state: "scheduled",
+      published_at: at.toISOString(),
+      slug_locked: false,
+    });
     expect((await lastAudit(draft.id))!.action).toBe("post.scheduled");
 
     const later = new Date(at.getTime() + 3600_000);
@@ -307,7 +330,11 @@ describe("AC F08-1, F15-5: siklus terbit berita", () => {
     expect(rescheduled).toMatchObject({ state: "scheduled", published_at: later.toISOString() });
 
     const now = (await action(rescheduled, "publish", { published_at: null })).json();
-    expect(now).toMatchObject({ state: "published", published_at: t.clock.now().toISOString(), slug_locked: true });
+    expect(now).toMatchObject({
+      state: "published",
+      published_at: t.clock.now().toISOString(),
+      slug_locked: true,
+    });
     expect((await lastAudit(draft.id))!.action).toBe("post.published");
 
     const again = await action(now, "publish", {});
@@ -332,7 +359,9 @@ describe("AC F08-1, F15-5: siklus terbit berita", () => {
   it("AC F15-5: jadwal yang lewat tanpa tindakan menjadikan berita tampil; batal jadwal setelah itu ditolak", async () => {
     const draft = await createPost();
     const scheduled = (
-      await action(draft, "publish", { published_at: new Date(t.clock.now().getTime() + 60_000).toISOString() })
+      await action(draft, "publish", {
+        published_at: new Date(t.clock.now().getTime() + 60_000).toISOString(),
+      })
     ).json();
     t.clock.advance(61_000);
     const res = await action(scheduled, "unschedule");
@@ -367,7 +396,10 @@ describe("AC F08-1, F15-5: siklus terbit berita", () => {
       published_at: new Date(t.clock.now().getTime() + 3600_000).toISOString(),
     });
     expect(future.statusCode).toBe(409);
-    expect(future.json()).toMatchObject({ code: "VALIDATION_ERROR", field_errors: { published_at: expect.any(Array) } });
+    expect(future.json()).toMatchObject({
+      code: "VALIDATION_ERROR",
+      field_errors: { published_at: expect.any(Array) },
+    });
     const republished = (await action(restored, "publish", {})).json();
     expect(republished).toMatchObject({ state: "published", published_at: firstPublishedAt });
     // Arsip tidak pernah dihidupkan kembali oleh job: hanya publish eksplisit yang menerbitkan.

@@ -95,14 +95,23 @@ function sortSpec(sort: AdminPostSort): SortSpec {
   const idDesc = { expr: sql`${posts.id}`, type: "uuid", direction: "desc" } as const;
   switch (sort) {
     case "updated_at_desc":
-      return { name: sort, keys: [{ expr: sql`${posts.updatedAt}`, type: "timestamptz", direction: "desc" }, idDesc] };
+      return {
+        name: sort,
+        keys: [{ expr: sql`${posts.updatedAt}`, type: "timestamptz", direction: "desc" }, idDesc],
+      };
     case "published_at_desc":
       return {
         name: sort,
-        keys: [{ expr: sql`coalesce(${posts.publishedAt}, ${EPOCH})`, type: "timestamptz", direction: "desc" }, idDesc],
+        keys: [
+          { expr: sql`coalesce(${posts.publishedAt}, ${EPOCH})`, type: "timestamptz", direction: "desc" },
+          idDesc,
+        ],
       };
     case "created_at_desc":
-      return { name: sort, keys: [{ expr: sql`${posts.createdAt}`, type: "timestamptz", direction: "desc" }, idDesc] };
+      return {
+        name: sort,
+        keys: [{ expr: sql`${posts.createdAt}`, type: "timestamptz", direction: "desc" }, idDesc],
+      };
     case "title_asc":
       return {
         name: sort,
@@ -166,7 +175,9 @@ export class PostsService {
     const filter = and(
       stateFilter(query.state, now),
       query.categoryId ? eq(posts.categoryId, query.categoryId) : undefined,
-      query.q ? or(ilike(posts.title, containsPattern(query.q)), ilike(posts.slug, containsPattern(query.q))) : undefined,
+      query.q
+        ? or(ilike(posts.title, containsPattern(query.q)), ilike(posts.slug, containsPattern(query.q)))
+        : undefined,
     );
     const after = query.cursor ? sortAfter(spec, decodeSortCursor(query.cursor, spec)) : undefined;
     const rows = await this.db
@@ -248,7 +259,12 @@ export class PostsService {
    * Ubah isi berita (AC F15-4). Slug hanya selama belum pernah tampil (slug_locked); status/published_at tidak
    * berubah di sini. Cover lama yang tidak dirujuk lagi dibuang.
    */
-  async update(auth: AuthContext, id: string, expectedVersion: number, input: PostUpdateInput): Promise<AdminPost> {
+  async update(
+    auth: AuthContext,
+    id: string,
+    expectedVersion: number,
+    input: PostUpdateInput,
+  ): Promise<AdminPost> {
     const body = input.body_html === undefined ? null : this.media.sanitize(input.body_html);
     if (body && !body.hasContent) throw fieldError("body_html", EMPTY_BODY);
     try {
@@ -396,7 +412,8 @@ export class PostsService {
       const row = await this.lockCurrent(tx, id, expectedVersion, now);
       const state = postState(row.status, row.publishedAt, now);
       if (state === "archived") throw versionConflict(await this.load(tx, id, now));
-      const publishedAt = row.publishedAt && row.publishedAt.getTime() > now.getTime() ? null : row.publishedAt;
+      const publishedAt =
+        row.publishedAt && row.publishedAt.getTime() > now.getTime() ? null : row.publishedAt;
       await tx
         .update(posts)
         .set({ status: "archived", publishedAt, version: row.version + 1, updatedAt: now })

@@ -46,7 +46,10 @@ describe("AC F08-1: feed hanya menampilkan berita published yang sudah waktunya 
     const visible = await insertPost(t, { publishedAt: new Date(now.getTime() - 60_000) });
     const draft = await insertPost(t, { status: "draft" });
     const scheduled = await insertPost(t, { publishedAt: new Date(now.getTime() + 3600_000) });
-    const archived = await insertPost(t, { status: "archived", publishedAt: new Date(now.getTime() - 7200_000) });
+    const archived = await insertPost(t, {
+      status: "archived",
+      publishedAt: new Date(now.getTime() - 7200_000),
+    });
 
     const ids = (await allFeed(member.token)).map((item) => item.id);
     expect(ids).toContain(visible.id);
@@ -81,9 +84,7 @@ describe("AC F08-1: feed hanya menampilkan berita published yang sudah waktunya 
     const base = t.clock.now().getTime() - 24 * 3600_000;
     const created = [];
     for (let i = 0; i < 5; i++)
-      created.push(
-        await insertPost(t, { publishedAt: new Date(base + i * 1000), categoryId: category.id }),
-      );
+      created.push(await insertPost(t, { publishedAt: new Date(base + i * 1000), categoryId: category.id }));
     const filtered = await allFeed(member.token, { category: category.slug });
     expect(filtered.map((i) => i.id)).toEqual(created.map((p) => p.id).reverse());
     expect(filtered[0]!.category).toEqual({ id: category.id, slug: category.slug, label: "Pengumuman" });

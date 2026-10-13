@@ -52,7 +52,8 @@ function domainOperations(file: string): DomainOperation[] {
       .map(([method, operation]) => ({
         method,
         path,
-        access: (operation as Record<string, unknown>)["x-kapdh-access"] as Record<string, unknown> | undefined,
+        access: (operation as Record<string, unknown>)["x-kapdh-access"] as
+          Record<string, unknown> | undefined,
       })),
   );
 }

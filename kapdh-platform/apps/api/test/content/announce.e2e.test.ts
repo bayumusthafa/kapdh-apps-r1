@@ -65,7 +65,8 @@ describe("AC F15-5: pengumuman berita terjadwal tepat sekali", () => {
     await announce();
     const inbox = await newsFor(post.id);
     const userIds = inbox.map((n) => n.userId);
-    for (const member of Object.values(recipients)) expect(userIds.filter((id) => id === member.userId)).toHaveLength(1);
+    for (const member of Object.values(recipients))
+      expect(userIds.filter((id) => id === member.userId)).toHaveLength(1);
     for (const member of excluded) expect(userIds).not.toContain(member.userId);
     expect(userIds).not.toContain(admin.userId);
     expect(inbox.find((n) => n.userId === recipients.verified.userId)).toMatchObject({
@@ -132,15 +133,23 @@ describe("AC F15-5: pengumuman berita terjadwal tepat sekali", () => {
     };
     const toArchive = await make("Akan diarsipkan");
     const toUnschedule = await make("Akan dibatalkan");
-    const archived = await api.post(`/admin/content/posts/${toArchive.id}/archive`, {}, {
-      token: admin.token,
-      headers: { "if-match": toArchive.version },
-    });
+    const archived = await api.post(
+      `/admin/content/posts/${toArchive.id}/archive`,
+      {},
+      {
+        token: admin.token,
+        headers: { "if-match": toArchive.version },
+      },
+    );
     expect(archived.json().state).toBe("archived");
-    const unscheduled = await api.post(`/admin/content/posts/${toUnschedule.id}/unschedule`, {}, {
-      token: admin.token,
-      headers: { "if-match": toUnschedule.version },
-    });
+    const unscheduled = await api.post(
+      `/admin/content/posts/${toUnschedule.id}/unschedule`,
+      {},
+      {
+        token: admin.token,
+        headers: { "if-match": toUnschedule.version },
+      },
+    );
     expect(unscheduled.json().state).toBe("draft");
 
     t.clock.advance(180_000);
@@ -158,20 +167,32 @@ describe("AC F15-5: pengumuman berita terjadwal tepat sekali", () => {
     const member = await createAlumni(t, { status: "verified" });
     const admin = await adminSession(t, ["content.manage"]);
     const api = httpClient(t.app);
-    const created = await api.post("/admin/content/posts", { title: "Sekali", body_html: "<p>x</p>" }, { token: admin.token });
+    const created = await api.post(
+      "/admin/content/posts",
+      { title: "Sekali", body_html: "<p>x</p>" },
+      { token: admin.token },
+    );
     let post = (
-      await api.post(`/admin/content/posts/${created.json().id}/publish`, {}, {
-        token: admin.token,
-        headers: { "if-match": created.json().version },
-      })
+      await api.post(
+        `/admin/content/posts/${created.json().id}/publish`,
+        {},
+        {
+          token: admin.token,
+          headers: { "if-match": created.json().version },
+        },
+      )
     ).json();
     await announce();
     expect((await newsFor(post.id)).filter((n) => n.userId === member.userId)).toHaveLength(1);
     for (const step of ["archive", "restore", "publish"] as const) {
-      const res = await api.post(`/admin/content/posts/${post.id}/${step}`, {}, {
-        token: admin.token,
-        headers: { "if-match": post.version },
-      });
+      const res = await api.post(
+        `/admin/content/posts/${post.id}/${step}`,
+        {},
+        {
+          token: admin.token,
+          headers: { "if-match": post.version },
+        },
+      );
       expect(res.statusCode, `${step}: ${res.body}`).toBe(200);
       post = res.json();
     }

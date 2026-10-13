@@ -41,7 +41,13 @@ export async function adminSession(
 
 export async function insertCategory(
   t: TestApp,
-  options: { kind?: "post" | "event"; label?: string; slug?: string; active?: boolean; sortOrder?: number } = {},
+  options: {
+    kind?: "post" | "event";
+    label?: string;
+    slug?: string;
+    active?: boolean;
+    sortOrder?: number;
+  } = {},
 ) {
   const now = t.clock.now();
   const slug = options.slug ?? unique("kategori");
