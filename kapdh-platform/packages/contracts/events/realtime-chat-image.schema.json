@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kapdh.or.id/contracts/events/realtime-chat-image.schema.json",
   "title": "RealtimeChatImage",
-  "description": "Gambar pesan chat. URL bertanda tangan maksimal 10 menit dan terikat berkas (PRD 5.4); hanya dikirim ke anggota room yang berhak (AC F11-4). Bentuk JSON sama dengan ChatImage pada kontrak HTTP.",
+  "description": "Gambar pesan chat. URL bertanda tangan maksimal 10 menit, terikat berkas dan sesi penerima (PRD 5.4); hanya dikirim ke anggota room yang berhak dan otorisasi diulang saat dibuka, sehingga anggota yang keluar/dikeluarkan ditolak (AC F11-4). Bentuk JSON sama dengan ChatImage pada kontrak HTTP.",
   "type": "object",
   "required": ["file_id", "url", "url_expires_at", "mime", "width", "height"],
   "additionalProperties": false,
