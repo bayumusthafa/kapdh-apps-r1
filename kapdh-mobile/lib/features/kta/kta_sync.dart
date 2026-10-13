@@ -106,8 +106,13 @@ class KtaSync {
         return KtaUnavailable(error: error, reason: reason);
       case KtaCacheHit(:final card, :final syncedAt, :final qrUsable):
         if (!offlineDisplayAllowed(card, _clock())) {
+          // Kartu yang tidak boleh tampil offline tidak disimpan lebih lama (AC F05-3). Kartu kedaluwarsa diberi
+          // alasan sendiri agar pengguna diarahkan memeriksa status/perpanjangan, bukan sekadar sinkron ulang.
           await _cache.clear();
-          return KtaUnavailable(error: error, reason: KtaCacheMissReason.stale);
+          final reason = card.statusLabel == MemberCardStatus.expired
+              ? KtaCacheMissReason.membershipExpired
+              : KtaCacheMissReason.stale;
+          return KtaUnavailable(error: error, reason: reason);
         }
         return KtaOffline(card: card, syncedAt: syncedAt, qrUsable: qrUsable, error: error);
     }
