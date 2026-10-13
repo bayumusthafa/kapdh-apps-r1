@@ -64,7 +64,7 @@ const SORT_OPTIONS = [
 
 /** Penanda rekening tujuan refund pending (nilainya sendiri tidak pernah ada di daftar, D2). */
 function DestinationBadge({ a }: { a: Adjustment }) {
-  if (a.kind !== "refund" || a.status !== "pending") return <span className="text-text-muted">-</span>;
+  if (a.kind !== "refund" || a.status !== "pending") return null;
   return a.has_refund_destination ? (
     <Badge tone="success" icon={<CircleCheck />}>
       Siap ditransfer
@@ -190,25 +190,26 @@ export function AdjustmentsTab() {
         ),
       },
       {
-        id: "kind",
-        header: "Jenis",
-        cell: ({ row }) => ADJUSTMENT_KIND_LABEL[row.original.kind],
-      },
-      {
-        id: "amount",
-        header: "Nominal",
-        meta: { align: "right", cellClassName: "whitespace-nowrap" },
-        cell: ({ row }) => formatRupiah(row.original.amount),
-      },
-      {
-        id: "destination",
-        header: "Rekening tujuan",
-        cell: ({ row }) => <DestinationBadge a={row.original} />,
+        id: "adjustment",
+        header: "Penyesuaian",
+        meta: { cellClassName: "whitespace-nowrap" },
+        cell: ({ row }) => (
+          <span className="flex flex-col">
+            <span>{ADJUSTMENT_KIND_LABEL[row.original.kind]}</span>
+            <span className="font-semibold">{formatRupiah(row.original.amount)}</span>
+          </span>
+        ),
       },
       {
         id: "status",
         header: "Status",
-        cell: ({ row }) => <AdjustmentStatusBadge status={row.original.status} />,
+        // Status dan kesiapan rekening tujuan (refund pending) berupa teks berikon, bukan warna saja (PRD 4.5).
+        cell: ({ row }) => (
+          <span className="flex flex-col items-start gap-1">
+            <AdjustmentStatusBadge status={row.original.status} />
+            <DestinationBadge a={row.original} />
+          </span>
+        ),
       },
     ],
     [selectedId],
@@ -222,19 +223,19 @@ export function AdjustmentsTab() {
           value={q}
           onValueChange={setQ}
           placeholder="Nama atau nomor KTA"
-          className="flex-[1_1_220px]"
+          className="flex-[2_1_240px]"
         />
-        <Field label="Jenis" className="flex-[0_1_160px]">
+        <Field label="Jenis" className="flex-[1_0_170px]">
           {(a11y) => (
             <Select {...a11y} size="sm" options={KIND_OPTIONS} value={kind} onValueChange={changeKind} />
           )}
         </Field>
-        <Field label="Status" className="flex-[0_1_180px]">
+        <Field label="Status" className="flex-[1_0_190px]">
           {(a11y) => (
             <Select {...a11y} size="sm" options={STATUS_OPTIONS} value={status} onValueChange={setStatus} />
           )}
         </Field>
-        <Field label="Rekening tujuan" className="flex-[0_1_190px]">
+        <Field label="Rekening tujuan" className="flex-[1_0_190px]">
           {(a11y) => (
             <Select
               {...a11y}
@@ -245,10 +246,10 @@ export function AdjustmentsTab() {
             />
           )}
         </Field>
-        <Field label="Tenggat" className="flex-[0_1_170px]">
+        <Field label="Tenggat" className="flex-[1_0_180px]">
           {(a11y) => <Select {...a11y} size="sm" options={DUE_OPTIONS} value={due} onValueChange={setDue} />}
         </Field>
-        <Field label="Urutan" className="flex-[0_1_180px]">
+        <Field label="Urutan" className="flex-[0_0_200px]">
           {(a11y) => (
             <Select {...a11y} size="sm" options={SORT_OPTIONS} value={sort} onValueChange={setSort} />
           )}
@@ -269,7 +270,7 @@ export function AdjustmentsTab() {
             total={list.data?.total}
             activeRowId={selectedId}
             rowClassName={(a) => (a.overdue ? "bg-danger-bg/40" : undefined)}
-            minWidth={760}
+            minWidth={620}
             pagination={{
               pageIndex: paging.pageIndex,
               pageSize: ADJUSTMENT_PAGE_SIZE,
