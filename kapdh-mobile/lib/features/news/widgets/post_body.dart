@@ -82,6 +82,7 @@ class _ExternalAnchor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
+      container: true,
       link: true,
       label: '$text, tautan luar',
       excludeSemantics: true,
