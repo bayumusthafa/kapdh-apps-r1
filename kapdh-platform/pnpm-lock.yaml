@@ -317,9 +317,6 @@ importers:
       '@kapdh/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@kapdh/database':
-        specifier: workspace:*
-        version: link:../../packages/database
       bullmq:
         specifier: 5.81.5
         version: 5.81.5
@@ -332,13 +329,22 @@ importers:
       pino:
         specifier: 10.4.0
         version: 10.4.0
+      postgres:
+        specifier: 3.4.9
+        version: 3.4.9
     devDependencies:
       '@electric-sql/pglite':
         specifier: 0.5.8
         version: 0.5.8
+      '@kapdh/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
+      embedded-postgres:
+        specifier: 17.6.0-beta.15
+        version: 17.6.0-beta.15
       typescript:
         specifier: 5.9.3
         version: 5.9.3
