@@ -28,12 +28,18 @@ export const DISCLOSURE_TEXT_VERSION = 1;
 
 /** Data yang dihapus atau menjadi placeholder tanpa isi (AC F14-3, D2). */
 export const DELETED_DATA: readonly DataItem[] = [
-  { category: "credentials", description: "Email login dan sandi dihapus; akun tidak dapat dipakai masuk lagi." },
+  {
+    category: "credentials",
+    description: "Email login dan sandi dihapus; akun tidak dapat dipakai masuk lagi.",
+  },
   {
     category: "profile",
     description: "Profil alumni (nama, angkatan, kelas, kota, pendidikan, profesi, keahlian, bio) dihapus.",
   },
-  { category: "contacts", description: "Nomor telepon, tautan media sosial, dan pengaturan privasinya dihapus." },
+  {
+    category: "contacts",
+    description: "Nomor telepon, tautan media sosial, dan pengaturan privasinya dihapus.",
+  },
   { category: "avatar", description: "Foto profil dihapus dari penyimpanan." },
   {
     category: "private_uploads",
@@ -49,7 +55,10 @@ export const DELETED_DATA: readonly DataItem[] = [
       "Isi pesan chat yang Anda kirim menjadi placeholder tanpa isi; reaksi, like berita, dan daftar blokir dihapus.",
   },
   { category: "device_tokens", description: "Token notifikasi perangkat dicabut lalu dihapus." },
-  { category: "sessions", description: "Semua sesi login dicabut seketika dan catatan perangkatnya dihapus." },
+  {
+    category: "sessions",
+    description: "Semua sesi login dicabut seketika dan catatan perangkatnya dihapus.",
+  },
   { category: "notifications", description: "Kotak masuk notifikasi dan riwayat pengirimannya dihapus." },
   { category: "preferences", description: "Preferensi notifikasi dan pengaturan akun dihapus." },
 ];

@@ -29,7 +29,12 @@ export const ledgerEntrySchema = z
     requested_at: z.iso.datetime({ offset: true }),
     state: z.enum(["requested", "completed"]),
     completed_at: z.union([z.iso.datetime({ offset: true }), z.null()]),
-    object_keys: z.array(z.string().regex(/^[a-z0-9][a-z0-9._-]*(\/[a-z0-9][a-z0-9._-]*)*$/).max(512)),
+    object_keys: z.array(
+      z
+        .string()
+        .regex(/^[a-z0-9][a-z0-9._-]*(\/[a-z0-9][a-z0-9._-]*)*$/)
+        .max(512),
+    ),
     written_at: z.iso.datetime({ offset: true }),
   })
   .strict();
@@ -83,7 +88,8 @@ export function mergeLedgerEntries(entries: LedgerEntry[]): LedgerEntry[] {
   const byId = new Map<string, LedgerEntry>();
   for (const entry of entries) {
     const current = byId.get(entry.deletion_id);
-    if (!current || (current.state === "requested" && entry.state === "completed")) byId.set(entry.deletion_id, entry);
+    if (!current || (current.state === "requested" && entry.state === "completed"))
+      byId.set(entry.deletion_id, entry);
   }
   return [...byId.values()].sort(
     (a, b) => a.requested_at.localeCompare(b.requested_at) || a.deletion_id.localeCompare(b.deletion_id),

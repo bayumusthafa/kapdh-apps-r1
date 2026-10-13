@@ -16,7 +16,13 @@ import { WebDeletionService } from "./web-deletion.service.js";
 @Module({
   imports: [AccountJobsModule],
   controllers: [AccountDeletionController, WebDeletionController],
-  providers: [AccountDeletionService, DeletionDisclosureService, WebDeletionService, WebDeletionDecoys, OtpQuota],
+  providers: [
+    AccountDeletionService,
+    DeletionDisclosureService,
+    WebDeletionService,
+    WebDeletionDecoys,
+    OtpQuota,
+  ],
   exports: [WebDeletionDecoys],
 })
 export class AccountModule {}

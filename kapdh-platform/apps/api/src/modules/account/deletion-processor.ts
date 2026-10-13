@@ -41,7 +41,10 @@ export type DeletionRunResult =
  * sesudah setiap langkah (PRD 6.5 "injection failure sesudah setiap langkah kritis", AC F14-2): pengamat yang melempar
  * membuat eksekusi gagal persis seperti galat langkah berikutnya.
  */
-export type DeletionStepObserver = (event: { deletionId: string; step: DeletionStep }) => void | Promise<void>;
+export type DeletionStepObserver = (event: {
+  deletionId: string;
+  step: DeletionStep;
+}) => void | Promise<void>;
 
 function normalizeLedger(raw: unknown): WorkingLedger {
   const value = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Partial<WorkingLedger>) : {};
@@ -123,7 +126,10 @@ export class AccountDeletionProcessor implements OnModuleInit {
    * Menjalankan satu permintaan bila dapat diklaim. `force` (penerapan ulang ledger setelah restore) mengabaikan
    * jadwal backoff tetapi tidak merebut permintaan yang sedang diproses worker lain (sewa belum habis).
    */
-  async run(deletionId: string, options: { force?: boolean; logger?: Logger } = {}): Promise<DeletionRunResult> {
+  async run(
+    deletionId: string,
+    options: { force?: boolean; logger?: Logger } = {},
+  ): Promise<DeletionRunResult> {
     const logger = options.logger ?? this.logger;
     const claimed = await this.claim(deletionId, options.force === true);
     if (!claimed) return { outcome: "skipped" };
@@ -269,7 +275,10 @@ export class AccountDeletionProcessor implements OnModuleInit {
     const now = this.clock.now();
     const safe = safeError(error);
     // last_error aman (AC F14-2): langkah + tipe + kode/constraint, tanpa pesan yang dapat memuat data pribadi.
-    const lastError = [step, safe.type, safe.error_code, safe.constraint].filter(Boolean).join(":").slice(0, 200);
+    const lastError = [step, safe.type, safe.error_code, safe.constraint]
+      .filter(Boolean)
+      .join(":")
+      .slice(0, 200);
     await this.db
       .update(accountDeletions)
       .set({

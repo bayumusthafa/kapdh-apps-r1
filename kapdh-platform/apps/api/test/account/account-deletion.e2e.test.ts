@@ -15,10 +15,19 @@ import {
 import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { AccountDeletionController, WebDeletionController } from "../../src/modules/account/account.controller.js";
+import {
+  AccountDeletionController,
+  WebDeletionController,
+} from "../../src/modules/account/account.controller.js";
 import { DeletionRequestService } from "../../src/modules/account/deletion-request.service.js";
 import { accessMismatches, expectOperation } from "../support/contract.js";
-import { createAdmin, createAlumni, signInAdmin, signInAlumni } from "../support/factories.js";
+import {
+  type AlumniFixtureStatus,
+  createAdmin,
+  createAlumni,
+  signInAdmin,
+  signInAlumni,
+} from "../support/factories.js";
 import { httpClient } from "../support/http.js";
 import { routeAccessList } from "../support/routes.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
@@ -40,7 +49,7 @@ afterAll(async () => {
   await t.app.close();
 });
 
-async function signedIn(status: Parameters<typeof createAlumni>[1]["status"] = "verified") {
+async function signedIn(status: AlumniFixtureStatus = "verified") {
   const member = await createAlumni(t, { status });
   const session = await signInAlumni(t, member);
   return { member, session };
@@ -64,7 +73,9 @@ async function disclosureOf(token: string) {
 describe("Dekorator akses vs kontrak (x-kapdh-access)", () => {
   it("setiap operasi domain account memakai dekorator yang sama persis dengan kontrak", () => {
     const routes = routeAccessList(t.app).filter((route) =>
-      [AccountDeletionController.name, WebDeletionController.name].some((name) => route.name.startsWith(`${name}.`)),
+      [AccountDeletionController.name, WebDeletionController.name].some((name) =>
+        route.name.startsWith(`${name}.`),
+      ),
     );
     expect(routes.map((r) => `${r.method} ${r.path}`).sort()).toEqual([
       "get /me/deletion/disclosure",
@@ -92,7 +103,14 @@ describe("GET /me/deletion/disclosure (N-15, D2, PRD 3.9, 4.4)", () => {
       linked_admin_identity: false,
     });
     expect(disclosure.deleted_data.map((d) => d.category)).toEqual(
-      expect.arrayContaining(["credentials", "profile", "contacts", "avatar", "payment_proofs", "chat_content"]),
+      expect.arrayContaining([
+        "credentials",
+        "profile",
+        "contacts",
+        "avatar",
+        "payment_proofs",
+        "chat_content",
+      ]),
     );
     expect(disclosure.retained_data.map((d) => d.category).sort()).toEqual(
       ["audit_logs", "membership_history", "moderation_reports", "payments", "tickets"].sort(),
@@ -167,7 +185,9 @@ describe("GET /me/deletion/disclosure (N-15, D2, PRD 3.9, 4.4)", () => {
       updatedAt: now,
     });
     const roomId = uuidv7();
-    await t.db.insert(rooms).values({ id: roomId, kind: "group", name: "Grup Budi", createdAt: now, updatedAt: now });
+    await t.db
+      .insert(rooms)
+      .values({ id: roomId, kind: "group", name: "Grup Budi", createdAt: now, updatedAt: now });
     await t.db.insert(roomMembers).values({
       roomId,
       userId: member.userId,
@@ -182,11 +202,22 @@ describe("GET /me/deletion/disclosure (N-15, D2, PRD 3.9, 4.4)", () => {
     expect(disclosure.linked_admin_identity).toBe(true);
     expect(disclosure.sole_admin_group_count).toBe(1);
     const byTicket = Object.fromEntries(disclosure.active_tickets.map((x) => [x.ticket_id, x]));
-    expect(byTicket[earlyTicket]).toMatchObject({ status: "paid", refund_policy: "full_refund", event_cancelled: false });
+    expect(byTicket[earlyTicket]).toMatchObject({
+      status: "paid",
+      refund_policy: "full_refund",
+      event_cancelled: false,
+    });
     expect(byTicket[lateTicket]).toMatchObject({ status: "paid", refund_policy: "no_refund" });
-    expect(byTicket[heldTicket]).toMatchObject({ status: "awaiting_payment", refund_policy: "payment_pending" });
+    expect(byTicket[heldTicket]).toMatchObject({
+      status: "awaiting_payment",
+      refund_policy: "payment_pending",
+    });
     expect(disclosure.pending_refunds).toEqual([
-      expect.objectContaining({ adjustment_id: refundId, payment_id: paidPayment, destination_provided: true }),
+      expect.objectContaining({
+        adjustment_id: refundId,
+        payment_id: paidPayment,
+        destination_provided: true,
+      }),
     ]);
     expect(JSON.stringify(disclosure.pending_refunds)).not.toContain("123");
     expect(disclosure.open_payments).toEqual([
@@ -194,10 +225,7 @@ describe("GET /me/deletion/disclosure (N-15, D2, PRD 3.9, 4.4)", () => {
     ]);
 
     // Tiket event yang dibatalkan pengurus: refund penuh (D6); anggota suspended: case_by_case.
-    await t.db
-      .update(events)
-      .set({ status: "cancelled", cancelledAt: now })
-      .where(eq(events.id, late));
+    await t.db.update(events).set({ status: "cancelled", cancelledAt: now }).where(eq(events.id, late));
     const cancelled = await disclosureOf(session.accessToken);
     expect(cancelled.active_tickets.find((x) => x.ticket_id === lateTicket)).toMatchObject({
       refund_policy: "full_refund",
@@ -243,7 +271,9 @@ describe("POST /me/deletion (AC F14-1)", () => {
     const body = expectOperation("post", "/me/deletion", res) as Record<string, string>;
     expect(body).toMatchObject({ status: "pending", source: "app", completed_at: null });
     expect(body.request_number).toMatch(/^DEL-2026-[0-9A-Z]{8}$/);
-    expect(new Date(body.estimated_completion_at).getTime() - new Date(body.requested_at).getTime()).toBe(7 * DAY);
+    expect(new Date(body.estimated_completion_at!).getTime() - new Date(body.requested_at!).getTime()).toBe(
+      7 * DAY,
+    );
 
     const [user] = await t.db.select().from(users).where(eq(users.id, member.userId));
     expect(user!.status).toBe("deletion_pending");
@@ -389,7 +419,10 @@ describe("POST /me/deletion (AC F14-1)", () => {
         token: session.accessToken,
         headers: await reauthHeader(t, session.accessToken),
       }),
-      api.post("/me/deletion", body, { token: other.accessToken, headers: await reauthHeader(t, other.accessToken) }),
+      api.post("/me/deletion", body, {
+        token: other.accessToken,
+        headers: await reauthHeader(t, other.accessToken),
+      }),
     ]);
     const accepted = [a, b].filter((r) => r.statusCode === 202);
     expect(accepted.length).toBeGreaterThanOrEqual(1);
@@ -456,12 +489,14 @@ describe("PRD 3.14, AC F16-2: Super Admin terakhir", () => {
       });
       const [still] = await own.db.select().from(users).where(eq(users.id, last.userId));
       expect(still!.status).toBe("active");
-      expect(await own.db.select().from(accountDeletions).where(eq(accountDeletions.userId, last.userId))).toEqual(
-        [],
-      );
+      expect(
+        await own.db.select().from(accountDeletions).where(eq(accountDeletions.userId, last.userId)),
+      ).toEqual([]);
 
       const session = await signInAlumni(own, alumniAccount);
-      const disclosure = await httpClient(own.app).get("/me/deletion/disclosure", { token: session.accessToken });
+      const disclosure = await httpClient(own.app).get("/me/deletion/disclosure", {
+        token: session.accessToken,
+      });
       expect(disclosure.json().linked_admin_identity).toBe(true);
       const res = await httpClient(own.app).post(
         "/me/deletion",

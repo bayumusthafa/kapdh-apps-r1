@@ -89,11 +89,19 @@ describe("POST /public/deletion/challenge (F-14, PRD 2.5 non-enumerasi)", () => 
     for (const email of [member.email, unknown, admin.email, deleted.email])
       results.push(await startChallenge(email));
     for (const result of results) {
-      expect(Object.keys(result).sort()).toEqual(
-        ["attempts_left", "challenge_id", "email_masked", "expires_at", "max_attempts", "purpose", "resend_available_at"],
-      );
+      expect(Object.keys(result).sort()).toEqual([
+        "attempts_left",
+        "challenge_id",
+        "email_masked",
+        "expires_at",
+        "max_attempts",
+        "purpose",
+        "resend_available_at",
+      ]);
       expect(result).toMatchObject({ purpose: "deletion", attempts_left: 5, max_attempts: 5 });
-      expect(result.challenge_id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      expect(result.challenge_id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      );
       expect(new Date(result.expires_at).getTime()).toBe(now + 10 * MINUTE);
       expect(new Date(result.resend_available_at).getTime()).toBe(now + MINUTE);
       expect(result.email_masked).toMatch(/\*\*\*@/);
@@ -122,7 +130,10 @@ describe("POST /public/deletion/challenge (F-14, PRD 2.5 non-enumerasi)", () => 
 
   it("F-14: challenge deletion baru menggantikan challenge deletion lama tetapi tidak menyentuh challenge aktivasi; email tidak valid → 400", async () => {
     const pending = await createAlumni(t, { status: "pending_otp" });
-    const login = await httpClient(t.app).post("/auth/login", { email: pending.email, password: pending.password });
+    const login = await httpClient(t.app).post("/auth/login", {
+      email: pending.email,
+      password: pending.password,
+    });
     expect(login.json().next).toBe("verify_otp");
     const activationId = login.json().challenge.challenge_id as string;
     const first = await startChallenge(pending.email);
@@ -211,12 +222,17 @@ describe("POST /public/deletion/verify (F-14, PRD 2.2 challenge terbatas)", () =
     expect((await verify(started.challenge_id, code)).statusCode).toBe(410);
     expect((await verify(uuidv7(), "123456")).statusCode).toBe(410);
     const pending = await createAlumni(t, { status: "pending_otp" });
-    const login = await httpClient(t.app).post("/auth/login", { email: pending.email, password: pending.password });
+    const login = await httpClient(t.app).post("/auth/login", {
+      email: pending.email,
+      password: pending.password,
+    });
     const signup = login.json().challenge.challenge_id as string;
     expect((await verify(signup, t.mailer.last(pending.email)!)).statusCode).toBe(410);
     const malformed = await verify(started.challenge_id, "12ab");
     expect(malformed.statusCode).toBe(400);
-    expect(expectOperation("post", "/public/deletion/verify", malformed)).toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(expectOperation("post", "/public/deletion/verify", malformed)).toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
   });
 
   it("PRD 2.2: akun deletion_pending → deletable false + status permintaan; akun disabled → account_disabled; tanpa token", async () => {
@@ -263,7 +279,10 @@ describe("POST /public/deletion/confirm (AC F14-1, F-14)", () => {
     const sessionRows = await t.db.select().from(sessions).where(eq(sessions.userId, member.userId));
     expect(sessionRows.length).toBeGreaterThan(0);
     expect(sessionRows.every((s) => s.revokedAt !== null)).toBe(true);
-    const [deletion] = await t.db.select().from(accountDeletions).where(eq(accountDeletions.userId, member.userId));
+    const [deletion] = await t.db
+      .select()
+      .from(accountDeletions)
+      .where(eq(accountDeletions.userId, member.userId));
     expect(deletion).toMatchObject({ source: "web", status: "pending", requestNumber: body.request_number });
     const [audit] = await t.db
       .select()
@@ -304,9 +323,9 @@ describe("POST /public/deletion/confirm (AC F14-1, F-14)", () => {
     const replay = await confirm(payload, headers);
     expect(replay.statusCode).toBe(202);
     expect(replay.json()).toEqual(first.json());
-    expect(await t.db.select().from(accountDeletions).where(eq(accountDeletions.userId, member.userId))).toHaveLength(
-      1,
-    );
+    expect(
+      await t.db.select().from(accountDeletions).where(eq(accountDeletions.userId, member.userId)),
+    ).toHaveLength(1);
   });
 
   it("F-14: anggota suspended mendapat jalur deletion-only (deletable true) dan dapat mengonfirmasi", async () => {
@@ -325,7 +344,8 @@ describe("POST /public/deletion/confirm (AC F14-1, F-14)", () => {
     const member = await createAlumni(t, { status: "verified" });
     const result = await verified(member.email);
     const now = t.clock.now();
-    await t.db.execute(sql`insert into app.payments (id, user_id, type, status, amount, lines_snapshot, method_snapshot,
+    await t.db
+      .execute(sql`insert into app.payments (id, user_id, type, status, amount, lines_snapshot, method_snapshot,
       settings_version, proof_version, created_at, updated_at)
       values (${uuidv7()}, ${member.userId}, 'renewal', 'pending', '10000.00', '[]'::jsonb, '{}'::jsonb, 1, 0,
               ${now.toISOString()}::timestamptz, ${now.toISOString()}::timestamptz)`);
@@ -349,7 +369,10 @@ describe("POST /public/deletion/confirm (AC F14-1, F-14)", () => {
       code: string;
       current: { version: string; open_payments: unknown[] };
     };
-    expect(conflict).toMatchObject({ code: "VERSION_CONFLICT", current: { open_payments: [expect.anything()] } });
+    expect(conflict).toMatchObject({
+      code: "VERSION_CONFLICT",
+      current: { open_payments: [expect.anything()] },
+    });
     const ok = await confirm({
       deletion_token: result.deletion_token,
       confirm: true,
@@ -373,7 +396,11 @@ describe("POST /public/deletion/confirm (AC F14-1, F-14)", () => {
       .update(users)
       .set({ sessionVersion: sql`${users.sessionVersion} + 1` })
       .where(eq(users.id, member.userId));
-    const bumped = await confirm({ deletion_token: result.deletion_token, confirm: true, acknowledged_disclosure_version: version });
+    const bumped = await confirm({
+      deletion_token: result.deletion_token,
+      confirm: true,
+      acknowledged_disclosure_version: version,
+    });
     expect(bumped.statusCode).toBe(410);
     const fresh = await verified(member.email);
     t.clock.advance(10 * MINUTE + 1000);
@@ -394,7 +421,10 @@ describe("POST /public/deletion/confirm (AC F14-1, F-14)", () => {
 
   it("F-14, D2: pendaftaran pending_otp dibatalkan lewat web; kode aktivasi yang sudah terkirim tidak lagi dapat mengaktifkan akun", async () => {
     const pending = await createAlumni(t, { status: "pending_otp" });
-    const login = await httpClient(t.app).post("/auth/login", { email: pending.email, password: pending.password });
+    const login = await httpClient(t.app).post("/auth/login", {
+      email: pending.email,
+      password: pending.password,
+    });
     const activation = login.json().challenge.challenge_id as string;
     const activationCode = t.mailer.last(pending.email)!;
     const result = await verified(pending.email);

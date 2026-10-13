@@ -290,7 +290,12 @@ export class DeletionDisclosureService {
             x.event_cancelled,
             x.self_cancel_deadline_at,
           ]),
-          r: content.pending_refunds.map((x) => [x.adjustment_id, x.amount, x.due_at, x.destination_provided]),
+          r: content.pending_refunds.map((x) => [
+            x.adjustment_id,
+            x.amount,
+            x.due_at,
+            x.destination_provided,
+          ]),
           o: content.open_payments.map((x) => [x.payment_id, x.type, x.amount, x.proof_submitted]),
           g: content.sole_admin_group_count,
           l: content.linked_admin_identity,

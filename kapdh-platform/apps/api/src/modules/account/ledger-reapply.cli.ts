@@ -33,14 +33,18 @@ async function main(): Promise<number> {
   const env = loadWorkerEnv();
   const dir =
     arg("dir") ??
-    (env.STORAGE_DRIVER === "local" ? resolve(process.cwd(), env.STORAGE_LOCAL_ROOT, LEDGER_PREFIX) : undefined);
+    (env.STORAGE_DRIVER === "local"
+      ? resolve(process.cwd(), env.STORAGE_LOCAL_ROOT, LEDGER_PREFIX)
+      : undefined);
   if (!dir) throw new CliRefusedError("Pakai: --dir <folder salinan ledger/account-deletions terbaru>");
   const entries = readLedgerDirectory(dir);
   const runtime = createWorkerDeps(env);
   const worker = await createWorkerContext(runtime.deps);
   try {
     const jobId = `ledger-reapply:${uuidv7()}`;
-    const summary = await runAsSystem(() => worker.app.get(DeletionLedgerService).reapply(entries), { jobId });
+    const summary = await runAsSystem(() => worker.app.get(DeletionLedgerService).reapply(entries), {
+      jobId,
+    });
     process.stdout.write(
       [
         `Entri ledger         : ${summary.entries}`,

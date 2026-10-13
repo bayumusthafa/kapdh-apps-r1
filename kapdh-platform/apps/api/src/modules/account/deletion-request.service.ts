@@ -78,7 +78,10 @@ export class DeletionRequestService {
       .select()
       .from(accountDeletions)
       .where(
-        and(eq(accountDeletions.userId, userId), inArray(accountDeletions.status, [...OPEN_DELETION_STATUSES])),
+        and(
+          eq(accountDeletions.userId, userId),
+          inArray(accountDeletions.status, [...OPEN_DELETION_STATUSES]),
+        ),
       )
       .orderBy(desc(accountDeletions.requestedAt))
       .limit(1);

@@ -267,8 +267,7 @@ export class WebDeletionService {
       // Akun selesai dihapus sesudah challenge dibuat: diperlakukan seperti challenge yang tidak berlaku.
       throw otpExpired();
     });
-    if (!outcome.deletable)
-      return { ...outcome, deletion_token: null, deletion_token_expires_at: null };
+    if (!outcome.deletable) return { ...outcome, deletion_token: null, deletion_token_expires_at: null };
     const signed = await this.tokens.signOneTime("web_deletion", {
       userId: outcome.user.id,
       challengeId: challenge.id,
