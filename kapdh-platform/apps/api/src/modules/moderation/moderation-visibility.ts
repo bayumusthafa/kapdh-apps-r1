@@ -1,12 +1,13 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
 import { reports, roomMembers } from "@kapdh/database";
-import { and, eq, inArray, isNull, ne, or, type SQL, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, min, ne, or, type SQL, sql } from "drizzle-orm";
 import type { Clock } from "../../core/adapters/clock.js";
 import type { Db, DbOrTx } from "../../core/db/types.js";
 import { CLOCK, DB } from "../../core/tokens.js";
 
 type QueueCounts = components["schemas"]["AdminModerationQueueCounts"];
+type DashboardModeration = components["schemas"]["DashboardModeration"];
 
 /** Status laporan aktif (antrean kerja): open + in_review. */
 export const ACTIVE_REPORT_STATUSES = ["open", "in_review"] as const;
@@ -28,9 +29,9 @@ export interface ReportPartyRef {
  * super_admin tidak dikecualikan dari aturan ini.
  *
  * SATU sumber bersama untuk semua hitungan laporan yang dikirim ke pengurus (butir c): antrean (`items`, `total`,
- * `counts`, `q`), DashboardModeration dan AdminNavBadges.reports_open (modul admin), serta
- * AdminMemberDetail.moderation (modul membership) wajib memakai {@link condition} / {@link counts} agar angkanya selalu
- * sama dan tidak membocorkan adanya laporan tersembunyi terhadap pemanggil.
+ * `counts`, `q`), DashboardModeration dan AdminNavBadges.reports_open ({@link dashboardSummary}), serta
+ * AdminMemberDetail.moderation ({@link memberReportCounts}) wajib memakai fungsi kelas ini (atau {@link condition})
+ * agar angkanya selalu sama dan tidak membocorkan adanya laporan tersembunyi terhadap pemanggil.
  */
 @Injectable()
 export class ModerationVisibility {
@@ -79,6 +80,54 @@ export class ModerationVisibility {
    * terpengaruh filter: open, in_review, overdue (aktif dan waktu server >= due_at), urgent (aktif berprioritas urgent).
    */
   async counts(linkedAlumniUserId: string | null, now: Date = this.clock.now()): Promise<QueueCounts> {
+    const row = await this.aggregate(linkedAlumniUserId, now);
+    return { open: row.open, in_review: row.inReview, overdue: row.overdue, urgent: row.urgent };
+  }
+
+  /**
+   * DashboardModeration (admin-dashboard.yaml) dari agregat yang SAMA dengan {@link counts} (aturan domain butir c):
+   * open_count = open + in_review (juga nilai AdminNavBadges.reports_open), urgent_count, overdue_count, dan
+   * oldest_open_created_at laporan aktif yang terlihat bagi pemanggil.
+   */
+  async dashboardSummary(
+    linkedAlumniUserId: string | null,
+    now: Date = this.clock.now(),
+  ): Promise<DashboardModeration> {
+    const row = await this.aggregate(linkedAlumniUserId, now);
+    return {
+      open_count: row.open + row.inReview,
+      urgent_count: row.urgent,
+      overdue_count: row.overdue,
+      oldest_open_created_at: row.oldest?.toISOString() ?? null,
+    };
+  }
+
+  /**
+   * Hitungan laporan terhadap satu anggota untuk AdminMemberDetail.moderation (admin-members.yaml) dengan aturan
+   * visibilitas yang sama: saat pemanggil membuka akun alumni tertautnya sendiri, laporan terhadap dirinya tidak
+   * terhitung (butir c). Banding (kategori appeal) bukan laporan terhadap anggota sehingga tidak dihitung.
+   */
+  async memberReportCounts(
+    memberUserId: string,
+    linkedAlumniUserId: string | null,
+  ): Promise<{ open_report_count: number; total_report_count: number }> {
+    const [row] = await this.db
+      .select({
+        open: sql<number>`count(*) filter (where ${reports.status} in ('open', 'in_review'))`.mapWith(Number),
+        total: count(),
+      })
+      .from(reports)
+      .where(
+        and(
+          eq(reports.targetUserId, memberUserId),
+          ne(reports.category, "appeal"),
+          this.condition(linkedAlumniUserId),
+        ),
+      );
+    return { open_report_count: row?.open ?? 0, total_report_count: Number(row?.total ?? 0) };
+  }
+
+  private async aggregate(linkedAlumniUserId: string | null, now: Date) {
     const nowIso = now.toISOString();
     const [row] = await this.db
       .select({
@@ -88,14 +137,16 @@ export class ModerationVisibility {
           Number,
         ),
         urgent: sql<number>`count(*) filter (where ${reports.priority} = 'urgent')`.mapWith(Number),
+        oldest: min(reports.createdAt),
       })
       .from(reports)
       .where(and(inArray(reports.status, [...ACTIVE_REPORT_STATUSES]), this.condition(linkedAlumniUserId)));
     return {
       open: row?.open ?? 0,
-      in_review: row?.inReview ?? 0,
+      inReview: row?.inReview ?? 0,
       overdue: row?.overdue ?? 0,
       urgent: row?.urgent ?? 0,
+      oldest: row?.oldest ?? null,
     };
   }
 }

@@ -89,7 +89,7 @@ async function contended<T>(lockSql: (tx: PgTestDatabase["sql"]) => Promise<unkn
 }
 
 describe("Moderasi bersamaan (PostgreSQL 17)", () => {
-  it("keputusan ganda: satu suspend menang, lainnya 409 VERSION_CONFLICT dengan detail terbaru", async () => {
+  it("AC F12-3: keputusan ganda: satu suspend menang, lainnya 409 VERSION_CONFLICT dengan detail terbaru", async () => {
     const reporter = await member();
     const target = await member();
     const admins = [await moderator(), await moderator()];
@@ -166,7 +166,7 @@ describe("Moderasi bersamaan (PostgreSQL 17)", () => {
     expect(appeals).toHaveLength(1);
   });
 
-  it("laporan paralel atas target yang sama → satu laporan aktif", async () => {
+  it("AC F12-2: laporan paralel atas target yang sama → satu laporan aktif", async () => {
     const reporter = await member();
     const target = await member();
     const { result, lockWaitObserved } = await contended(
@@ -188,7 +188,7 @@ describe("Moderasi bersamaan (PostgreSQL 17)", () => {
     expect(rows).toHaveLength(1);
   });
 
-  it("unsuspend menu anggota bersamaan dengan keputusan banding: satu pencabutan, banding ditutup sekali, tanpa deadlock", async () => {
+  it("AC F12-5: unsuspend menu anggota bersamaan dengan keputusan banding: satu pencabutan, banding ditutup sekali, tanpa deadlock", async () => {
     for (let round = 0; round < 3; round++) {
       const appellant = await member("suspended");
       const admin = await moderator();
