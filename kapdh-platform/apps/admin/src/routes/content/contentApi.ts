@@ -16,7 +16,6 @@ export type AdminBanner = S["AdminBanner"];
 export type AdminInfoPage = S["AdminInfoPage"];
 export type AdminInfoPageSummary = S["AdminInfoPageSummary"];
 export type AdminContentCategory = S["AdminContentCategory"];
-export type ContentCategoryKind = S["ContentCategoryKind"];
 export type ContentImage = S["ContentImage"];
 export type BannerTargetType = S["BannerTargetType"];
 
@@ -34,10 +33,12 @@ export const contentKeys = {
   pages: ["admin-content", "pages"] as const,
   pageList: (filters: unknown) => ["admin-content", "pages", "list", filters] as const,
   page: (pageId: string) => ["admin-content", "pages", "detail", pageId] as const,
-  categories: (kind: ContentCategoryKind) => ["admin-content", "categories", kind] as const,
-  categoryList: (kind: ContentCategoryKind, filters: unknown) =>
-    ["admin-content", "categories", kind, "list", filters] as const,
-  categoryOptions: (kind: ContentCategoryKind) => ["admin-content", "categories", kind, "options"] as const,
+  /**
+   * Kategori berita (content.manage). Kategori event dikelola halaman Event & Tiket (guideline p14) lewat
+   * /admin/content/event-categories dengan izin events.manage, bukan dari area ini.
+   */
+  categoryList: (filters: unknown) => ["admin-content", "categories", "post", "list", filters] as const,
+  categoryOptions: ["admin-content", "categories", "post", "options"] as const,
 };
 
 /** Header If-Match (versi yang dilihat admin, AC F15-4) dan Idempotency-Key per niat (PRD 4.3). */
@@ -62,6 +63,30 @@ export function conflictCurrent<T extends { id: string; version: string }>(
 }
 
 /**
+ * Penyebab konflik untuk pemberitahuan yang jujur (PRD 4.5, AC F15-4, F15-5):
+ * - `edited`: VERSION_CONFLICT dan versi server berbeda dari yang dilihat admin (diubah pengurus lain);
+ * - `state_changed`: VERSION_CONFLICT dengan versi yang sama, yaitu keadaan turunan server berubah tanpa ada yang
+ *   menyunting (mis. jadwal terbit tiba sehingga berita sudah tampil dan jadwalnya tidak dapat dibatalkan);
+ * - `unconfirmed`: galat reload_latest lain (mis. IDEMPOTENCY_CONFLICT); tidak boleh disebut "diubah pengurus lain".
+ */
+export type ConflictCause = "edited" | "state_changed" | "unconfirmed";
+
+export interface ConflictState<T> {
+  cause: ConflictCause;
+  /** Objek terbaru dari `current` (hanya VERSION_CONFLICT); null bila server tidak mengirimnya. */
+  latest: T | null;
+}
+
+export function conflictState<T extends { id: string; version: string }>(
+  error: ApiError,
+  base: Pick<T, "id" | "version">,
+): ConflictState<T> {
+  if (error.code !== "VERSION_CONFLICT") return { cause: "unconfirmed", latest: null };
+  const latest = conflictCurrent<T>(error, base.id);
+  return { cause: latest && latest.version === base.version ? "state_changed" : "edited", latest };
+}
+
+/**
  * Pesan galat yang paling jelas untuk toast: galat formulir umum (`_`, mis. "kategori masih dipakai", "tidak ada
  * perubahan") atau galat field pertama, lalu pesan server.
  */
@@ -77,15 +102,19 @@ export function invalidateContent(queryClient: QueryClient): Promise<void> {
   return queryClient.invalidateQueries({ queryKey: contentKeys.all });
 }
 
-/** Pilihan kategori untuk formulir dan filter (maks 100; jumlah kategori kecil). */
-export function fetchCategoryOptions(
-  kind: ContentCategoryKind,
-  { signal, headers }: { signal: AbortSignal; headers: Record<string, string> },
-) {
-  const query = { sort: "sort_order_asc" as const, limit: 100 };
-  return kind === "post"
-    ? api.GET("/admin/content/post-categories", { params: { query }, signal, headers })
-    : api.GET("/admin/content/event-categories", { params: { query }, signal, headers });
+/** Pilihan kategori berita untuk formulir dan filter (maks 100; jumlah kategori kecil). */
+export function fetchPostCategoryOptions({
+  signal,
+  headers,
+}: {
+  signal: AbortSignal;
+  headers: Record<string, string>;
+}) {
+  return api.GET("/admin/content/post-categories", {
+    params: { query: { sort: "sort_order_asc", limit: 100 } },
+    signal,
+    headers,
+  });
 }
 
 /** POST /admin/content/media multipart (N-10): cover berita atau gambar banner. */

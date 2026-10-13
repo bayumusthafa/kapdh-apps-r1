@@ -10,7 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Badge, type BadgeTone } from "../../components/ui/Badge";
-import type { AdminPostState, BannerTargetType, ContentCategoryKind, S } from "./contentApi";
+import type { AdminPostState, BannerTargetType, S } from "./contentApi";
 
 /** Label + ikon + warna; status tidak pernah dibedakan dengan warna saja (PRD 4.5, ARCHITECTURE §2.10). */
 interface StateStyle {
@@ -77,11 +77,3 @@ export const LEGAL_DOCUMENT_LABEL: Record<S["PageLegalDocument"], string> = {
   terms: "Ketentuan layanan",
   community: "Ketentuan komunitas",
 };
-
-export const CATEGORY_KIND_LABEL: Record<ContentCategoryKind, string> = {
-  post: "Kategori Berita",
-  event: "Kategori Event",
-};
-
-/** Kata benda pemakai kategori, untuk "Dipakai 3 berita". */
-export const CATEGORY_USAGE_NOUN: Record<ContentCategoryKind, string> = { post: "berita", event: "event" };

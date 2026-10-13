@@ -7,7 +7,14 @@ import { Field } from "../../components/ui/FormField";
 import { Input } from "../../components/ui/Input";
 import { formatDate } from "../../lib/format";
 import type { BannerTargetType, S } from "./contentApi";
-import { BANNER_TARGET_LABEL, POST_STATE } from "./labels";
+import { BANNER_TARGET_LABEL, POST_STATE, TargetUnavailableBadge } from "./labels";
+
+/** Alasan tujuan tersimpan tidak dapat dibuka anggota, per jenis tujuan (AC F08-2). */
+const UNAVAILABLE_REASON: Partial<Record<BannerTargetType, string>> = {
+  post: "Berita tujuan belum terbit, sudah diarsipkan atau sudah dihapus.",
+  event: "Event tujuan masih draf, dibatalkan, sudah selesai atau sudah dihapus.",
+  page: "Halaman tujuan belum pernah terbit atau sudah dihapus.",
+};
 
 const EVENT_STATUS_LABEL: Record<S["EventStatus"], string> = {
   draft: "Draf",
@@ -92,12 +99,15 @@ export function BannerTargetField({
   typeError,
   valueError,
   disabled,
+  unavailable,
 }: {
   target: BannerTargetValue;
   onChange: (next: BannerTargetValue) => void;
   typeError?: string | null;
   valueError?: string | null;
   disabled?: boolean;
+  /** Tujuan tersimpan tidak lagi dapat dibuka anggota (AdminBannerTarget.available = false). */
+  unavailable?: boolean;
 }) {
   const auth = useAuth();
   const selected: ComboboxOption | null =
@@ -208,6 +218,17 @@ export function BannerTargetField({
             />
           )}
         </Field>
+      ) : null}
+      {unavailable ? (
+        <div className="flex flex-col gap-1.5 rounded-md border border-warning/40 bg-warning-bg px-3 py-2 text-sm">
+          <div>
+            <TargetUnavailableBadge />
+          </div>
+          <p className="text-text">
+            Tujuan saat ini tidak dapat dibuka anggota.{" "}
+            {UNAVAILABLE_REASON[target.type] ?? ""} Pilih tujuan lain atau nonaktifkan banner.
+          </p>
+        </div>
       ) : null}
     </div>
   );

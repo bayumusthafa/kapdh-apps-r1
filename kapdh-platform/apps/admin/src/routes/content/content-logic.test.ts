@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { components } from "@kapdh/contracts";
 import { bannerChanges, type BannerFormValues } from "./BannerFormDialog";
-import { conflictCurrent, errorText, slugFromTitle } from "./contentApi";
+import { conflictHeadline } from "./ConflictNotice";
+import { conflictCurrent, conflictState, errorText, slugFromTitle } from "./contentApi";
 import { sanitizeContentHtml } from "./HtmlPreview";
 import { pageChanges, publishExplanation } from "./PagesTab";
 import { postChanges, toPostForm } from "./PostEditorPage";
@@ -205,13 +206,10 @@ describe("teks status dan konfirmasi", () => {
 });
 
 describe("bantuan area konten", () => {
-  it("parameter URL tab/jenis/halaman yang tidak dikenal diabaikan", () => {
-    expect(parseContentSearch({ tab: "pages", page: PAGE.id, kind: "event" })).toEqual({
-      tab: "pages",
-      page: PAGE.id,
-      kind: "event",
-    });
-    expect(parseContentSearch({ tab: "x", page: "../etc", kind: "chat" })).toEqual({});
+  it("parameter URL tab/halaman yang tidak dikenal diabaikan; kategori event tidak lagi dikelola dari /content", () => {
+    expect(parseContentSearch({ tab: "pages", page: PAGE.id })).toEqual({ tab: "pages", page: PAGE.id });
+    expect(parseContentSearch({ tab: "categories", kind: "event" })).toEqual({ tab: "categories" });
+    expect(parseContentSearch({ tab: "x", page: "../etc" })).toEqual({});
   });
 
   it("slug saran dari judul", () => {
@@ -239,5 +237,45 @@ describe("bantuan area konten", () => {
     });
     expect(errorText(inUse)).toBe("Kategori masih dipakai 2 berita.");
     expect(errorText(conflict)).toBe("Berubah");
+  });
+
+  it("AC F15-4/F15-5: penyebab konflik dibedakan — diubah pengurus lain, status berubah sendiri, atau tabrakan permintaan", () => {
+    const edited = new ApiError({
+      code: "VERSION_CONFLICT",
+      status: 409,
+      message: "Berubah",
+      current: { ...POST, version: "4" },
+    });
+    expect(conflictState<S["AdminPost"]>(edited, POST)).toEqual({
+      cause: "edited",
+      latest: { ...POST, version: "4" },
+    });
+    // Jadwal tiba: keadaan turunan berubah tanpa versi naik; bukan "diubah pengurus lain".
+    const due = new ApiError({ code: "VERSION_CONFLICT", status: 409, message: "x", current: POST });
+    expect(conflictState<S["AdminPost"]>(due, { id: POST.id, version: "3" })).toEqual({
+      cause: "state_changed",
+      latest: POST,
+    });
+    // VERSION_CONFLICT tanpa `current` yang cocok tetap konflik versi, tanpa data terbaru.
+    expect(conflictState(new ApiError({ code: "VERSION_CONFLICT", status: 409, message: "x" }), POST)).toEqual({
+      cause: "edited",
+      latest: null,
+    });
+    expect(
+      conflictState(new ApiError({ code: "IDEMPOTENCY_CONFLICT", status: 409, message: "x", current: POST }), POST),
+    ).toEqual({ cause: "unconfirmed", latest: null });
+  });
+
+  it("AC F15-4: kalimat pemberitahuan konflik mengikuti penyebab dan tidak menuduh pengurus lain tanpa dasar", () => {
+    expect(conflictHeadline("edited", "Berita ini", "2026-08-03T02:00:00Z")).toBe(
+      "Berita ini sudah diubah pengurus lain pada 3 Agt 2026, 09.00 WIB.",
+    );
+    expect(conflictHeadline("edited", "Halaman ini", null, "Nur Hidayah")).toBe(
+      "Halaman ini sudah diubah pengurus lain oleh Nur Hidayah.",
+    );
+    expect(conflictHeadline("state_changed", "Berita ini", "2026-08-03T02:00:00Z", "Nur Hidayah")).toBe(
+      "Status berita ini sudah berubah sejak halaman ini dimuat.",
+    );
+    expect(conflictHeadline("unconfirmed", "Banner ini")).toBe("Permintaan untuk banner ini tidak dijalankan.");
   });
 });

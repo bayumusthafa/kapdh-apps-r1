@@ -14,8 +14,8 @@ beforeAll(async () => {
   await Promise.all([import("./ContentPages"), import("../../components/ui/RichTextEditorImpl")]);
 }, 60_000);
 
-async function openCategories(user: User, kind?: "post" | "event") {
-  const utils = renderApp(`/content?tab=categories${kind ? `&kind=${kind}` : ""}`);
+async function openCategories(user: User, extraQuery?: string) {
+  const utils = renderApp(`/content?tab=categories${extraQuery ? `&${extraQuery}` : ""}`);
   await signIn(user);
   await screen.findByRole("heading", { level: 1, name: "Manajemen Konten" }, { timeout: 8000 });
   return utils;
@@ -127,31 +127,32 @@ describe("tab Kategori (guideline p13/p14, F-15; server tiruan)", () => {
     expect(within(dialog).getByRole("switch", { name: "Aktif" })).toHaveAttribute("aria-checked", "true");
   });
 
-  it("guideline p14: kategori event memakai endpoint event-categories; Super Admin dapat berpindah jenis", async () => {
+  it("guideline p14: kategori event dikelola di halaman Event dan Tiket, bukan dari tab Kategori konten", async () => {
     const user = userEvent.setup();
-    const { router } = await openCategories(user);
-    await screen.findByRole("table", { name: "Kategori Berita" });
-    await user.click(screen.getByRole("tab", { name: "Kategori Event" }));
-    const table = await screen.findByRole("table", { name: "Kategori Event" });
-    expect(router.state.location.search).toMatchObject({ tab: "categories", kind: "event" });
-    expect(within(rowOf(table, /Reuni/)).getByText("1 event")).toBeInTheDocument();
-    expect(contentRequests.some((r) => r.path === "/admin/content/event-categories")).toBe(true);
-    await user.click(within(rowOf(table, /^Tour/)).getByRole("button", { name: "Hapus kategori Tour" }));
-    const confirm = await screen.findByRole("alertdialog", { name: /Hapus kategori\?/ });
-    await user.click(within(confirm).getByRole("checkbox"));
-    await user.click(within(confirm).getByRole("button", { name: "Hapus kategori" }));
-    await findToast("success", 'Kategori "Tour" dihapus.');
-    expect(contentRequests.find((r) => r.method === "DELETE")?.path).toBe(
-      `/admin/content/event-categories/${CONTENT_IDS.categoryTour}`,
-    );
-  });
-
-  it("AC F15-1: admin konten tanpa events.manage hanya melihat kategori berita", async () => {
-    mockAuth.setAdmin({ role: "admin", permissions: ["content.manage"] });
-    const user = userEvent.setup();
-    await openCategories(user, "event");
+    // Parameter lama ?kind=event diabaikan; tab Kategori hanya memuat kategori berita.
+    const { router } = await openCategories(user, "kind=event");
     expect(await screen.findByRole("table", { name: "Kategori Berita" })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Kategori Event" })).toBeNull();
     expect(contentRequests.some((r) => r.path.startsWith("/admin/content/event-categories"))).toBe(false);
+    await user.click(screen.getByRole("link", { name: "Event dan Tiket" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/events"));
+  });
+
+  it("AC F15-1: admin konten tanpa events.manage tidak diarahkan ke kategori event", async () => {
+    mockAuth.setAdmin({ role: "admin", permissions: ["content.manage"] });
+    const user = userEvent.setup();
+    await openCategories(user);
+    expect(await screen.findByRole("table", { name: "Kategori Berita" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Event dan Tiket" })).toBeNull();
+    expect(screen.queryByText(/Kategori event dikelola/)).toBeNull();
+  });
+
+  it("AC F15-1: admin event tanpa content.manage tidak dapat membuka tab Kategori konten", async () => {
+    mockAuth.setAdmin({ role: "admin", permissions: ["events.manage"] });
+    const user = userEvent.setup();
+    renderApp("/content?tab=categories");
+    await signIn(user);
+    expect(await screen.findByRole("heading", { level: 1, name: "Akses ditolak" }, { timeout: 8000 })).toBeInTheDocument();
+    expect(contentRequests).toHaveLength(0);
   });
 });
