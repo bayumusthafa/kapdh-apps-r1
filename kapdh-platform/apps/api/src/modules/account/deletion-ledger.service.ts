@@ -7,7 +7,14 @@ import { AuditService } from "../../core/audit/audit.service.js";
 import type { Db } from "../../core/db/types.js";
 import { CLOCK, DB, ROOT_LOGGER, STORAGE } from "../../core/tokens.js";
 import type { Clock } from "../../core/adapters/clock.js";
-import { type LedgerEntry, mergeLedgerEntries } from "./deletion-ledger.js";
+import { safeError } from "../../core/logging/safe-error.js";
+import {
+  type LedgerEntry,
+  ledgerObjectKey,
+  mergeLedgerEntries,
+  readLedgerObject,
+  writeLedgerEntry,
+} from "./deletion-ledger.js";
 import { AccountDeletionProcessor } from "./deletion-processor.js";
 import { DeletionRequestService } from "./deletion-request.service.js";
 import { type DeletionStep, remainingPersonalData } from "./deletion-steps.js";
@@ -35,6 +42,7 @@ function preDoneSteps(entry: LedgerEntry): DeletionStep[] {
 /**
  * Penerapan ulang deletion ledger eksternal setelah restore backup (AC F14-6, PRD 5.5, D2), dijalankan SEBELUM layanan
  * dibuka (CLI ledger-reapply). Per entri:
+ * 0. entri ditulis kembali ke ledger di storage pulihan bila belum ada atau kurang lengkap;
  * 1. objek storage yang tercatat di entri dihapus lagi (berkas dari backup berkas yang lebih tua);
  * 2. bila akun di database pulihan belum `deleted`: akun kembali deletion_pending (sesi lama tidak berlaku), baris
  *    permintaan dipulihkan dengan id/nomor yang sama (atau dibuat), lalu job penghapusan dijalankan sampai selesai
@@ -67,34 +75,64 @@ export class DeletionLedgerService {
       objectsDeleted: 0,
     };
     for (const entry of merged) {
-      for (const key of entry.object_keys) {
-        await this.storage.delete(key);
-        summary.objectsDeleted++;
-      }
-      const [user] = await this.db
-        .select({ id: users.id, status: users.status })
-        .from(users)
-        .where(eq(users.id, entry.user_id));
-      if (!user) {
-        summary.absent.push(entry.request_number);
-        continue;
-      }
-      if (user.status === "deleted") {
-        summary.alreadyDeleted.push(entry.request_number);
-        continue;
-      }
-      const deletionId = await this.restoreRequest(entry);
-      const result = await this.processor.run(deletionId, { force: true });
-      const residual = Object.values(await remainingPersonalData(this.db, entry.user_id)).some((n) => n > 0);
-      if (result.outcome !== "completed" || residual) {
+      try {
+        await this.reapplyEntry(this.storage, entry, summary);
+      } catch (error) {
+        // Galat satu entri tidak menghentikan entri lain, tetapi CLI keluar 1 sehingga layanan tidak dibuka.
         summary.failed.push(entry.request_number);
         this.logger.error(
-          { request_number: entry.request_number, outcome: result.outcome, residual },
+          { request_number: entry.request_number, error: safeError(error) },
           "penerapan ulang deletion ledger gagal; jangan buka layanan sebelum diselesaikan (AC F14-6)",
         );
-      } else summary.reapplied.push(entry.request_number);
+      }
     }
     return summary;
+  }
+
+  private async reapplyEntry(
+    storage: StorageDriver,
+    entry: LedgerEntry,
+    summary: ReapplySummary,
+  ): Promise<void> {
+    // Ledger di storage pulihan berasal dari backup berkas lama: entri yang lebih baru ditulis kembali agar ledger
+    // tetap lengkap untuk restore berikutnya.
+    await this.restoreLedgerObject(storage, entry);
+    for (const key of entry.object_keys) {
+      await storage.delete(key);
+      summary.objectsDeleted++;
+    }
+    const [user] = await this.db
+      .select({ id: users.id, status: users.status })
+      .from(users)
+      .where(eq(users.id, entry.user_id));
+    if (!user) {
+      summary.absent.push(entry.request_number);
+      return;
+    }
+    if (user.status === "deleted") {
+      summary.alreadyDeleted.push(entry.request_number);
+      return;
+    }
+    const deletionId = await this.restoreRequest(entry);
+    const result = await this.processor.run(deletionId, { force: true });
+    const residual = Object.values(await remainingPersonalData(this.db, entry.user_id)).some((n) => n > 0);
+    if (result.outcome !== "completed" || residual) {
+      summary.failed.push(entry.request_number);
+      this.logger.error(
+        { request_number: entry.request_number, outcome: result.outcome, residual },
+        "penerapan ulang deletion ledger gagal; jangan buka layanan sebelum diselesaikan (AC F14-6)",
+      );
+    } else summary.reapplied.push(entry.request_number);
+  }
+
+  /** Menulis entri ke storage bila belum ada atau yang tersimpan kurang lengkap (requested < completed). */
+  private async restoreLedgerObject(storage: StorageDriver, entry: LedgerEntry): Promise<void> {
+    const key = ledgerObjectKey(entry.request_number, new Date(entry.requested_at));
+    const stored = (await storage.exists(key))
+      ? await readLedgerObject(storage, key).catch(() => null)
+      : null;
+    if (!stored || (stored.state === "requested" && entry.state === "completed"))
+      await writeLedgerEntry(storage, entry);
   }
 
   /** Mengembalikan akun ke deletion_pending dan menyiapkan baris permintaan yang sama dengan entri ledger. */

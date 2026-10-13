@@ -10,13 +10,18 @@
  * Jalur PGlite (superuser) memakai role kapdh_audit_purge buatan uji dengan grant yang sama (test/account/support.ts).
  */
 import "reflect-metadata";
+import { execFile } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { WorkerEnv } from "@kapdh/config";
 import { accountDeletions, auditLogs, paymentEvents } from "@kapdh/database";
 import { MemoryDriver } from "@kapdh/storage";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 import { createApp } from "../../src/bootstrap.js";
 import { MemoryMailer } from "../../src/core/adapters/mailer.js";
 import { runAsSystem } from "../../src/core/context/request-context.js";
@@ -189,4 +194,108 @@ describe("F-14 pada PostgreSQL 17 dengan role production", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]!.requestNumber).toBe(accepted[0]);
   });
+});
+
+// CLI hasil `pnpm build` (alur verifikasi menjalankan build sebelum test:pg); dilewati bila dist belum ada.
+const cliPath = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "dist",
+  "modules",
+  "account",
+  "ledger-reapply.cli.js",
+);
+
+describe("CLI ledger-reapply (AC F14-6, runbook restore)", () => {
+  it.skipIf(!existsSync(cliPath))(
+    "AC F14-6: CLI sebagai kapdh_worker menerapkan ulang entri ledger ke database pulihan, menghapus ulang objek berkas, keluar 0; ledger rusak → keluar 1 tanpa data pribadi di keluaran",
+    async () => {
+      const lane = inject("kapdhPg")!;
+      const workerUrl = `postgres://kapdh_worker:${lane.rolePassword}@${lane.host}:${lane.port}/${tdb.name}`;
+      const member = await createAlumni(fixtures, { status: "verified" });
+      const root = mkdtempSync(join(tmpdir(), "kapdh-files-"));
+      const ledgerDir = mkdtempSync(join(tmpdir(), "kapdh-ledger-"));
+      try {
+        // Objek berkas yang muncul kembali dari backup berkas lama.
+        const objectKey = `avatar/2026/10/${uuidv7()}`;
+        mkdirSync(join(root, "avatar", "2026", "10"), { recursive: true });
+        writeFileSync(join(root, ...objectKey.split("/")), "isi lama");
+        const requestedAt = new Date("2026-10-10T03:00:00Z");
+        const requestNumber = "DEL-2026-CL1R3APP";
+        const entry = {
+          v: 1,
+          kind: "kapdh.account_deletion",
+          deletion_id: uuidv7(),
+          request_number: requestNumber,
+          user_id: member.userId,
+          source: "web",
+          requested_at: requestedAt.toISOString(),
+          state: "completed",
+          completed_at: "2026-10-11T03:00:00.000Z",
+          object_keys: [objectKey],
+          written_at: "2026-10-11T03:00:00.000Z",
+        };
+        mkdirSync(join(ledgerDir, "2026", "10"), { recursive: true });
+        writeFileSync(
+          join(ledgerDir, "2026", "10", `${requestNumber.toLowerCase()}.json`),
+          JSON.stringify(entry),
+        );
+        const env = {
+          PATH: process.env.PATH,
+          SYSTEMROOT: process.env.SYSTEMROOT,
+          NODE_ENV: "test",
+          LOG_LEVEL: "silent",
+          DATABASE_URL: workerUrl,
+          FILE_URL_SECRET: testEnv.FILE_URL_SECRET,
+          STORAGE_DRIVER: "local",
+          STORAGE_LOCAL_ROOT: root,
+        };
+        const run = (dir: string) =>
+          new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
+            execFile(
+              process.execPath,
+              [cliPath, "--dir", dir],
+              { env, cwd: root, timeout: 120_000 },
+              (error, stdout, stderr) =>
+                resolve({ code: error ? ((error as { code?: number }).code ?? 1) : 0, stdout, stderr }),
+            );
+          });
+
+        const ok = await run(ledgerDir);
+        expect(ok.code, ok.stderr).toBe(0);
+        expect(ok.stdout).toContain(`Diterapkan ulang     : 1 ${requestNumber}`);
+        expect(ok.stdout).toContain("Gagal                : 0");
+        expect(ok.stdout).not.toContain(member.email);
+        expect(existsSync(join(root, ...objectKey.split("/")))).toBe(false);
+        const [user] = await tdb.sql<{ status: string; email: string }[]>`
+          select status, email from app.users where id = ${member.userId}`;
+        expect(user).toMatchObject({
+          status: "deleted",
+          email: `deleted-${member.userId}@akun-terhapus.invalid`,
+        });
+        const [row] = await tdb.db
+          .select()
+          .from(accountDeletions)
+          .where(eq(accountDeletions.requestNumber, requestNumber));
+        expect(row).toMatchObject({ id: entry.deletion_id, status: "completed", source: "web" });
+        // Ledger baru dari job pada storage pulihan.
+        expect(
+          existsSync(
+            join(root, "ledger", "account-deletions", "2026", "10", `${requestNumber.toLowerCase()}.json`),
+          ),
+        ).toBe(true);
+
+        writeFileSync(join(ledgerDir, "rusak.json"), "{bukan json");
+        const broken = await run(ledgerDir);
+        expect(broken.code).toBe(1);
+        expect(broken.stderr).toContain("Gagal:");
+        expect(broken.stderr).not.toContain("bukan json");
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+        rmSync(ledgerDir, { recursive: true, force: true });
+      }
+    },
+    180_000,
+  );
 });
