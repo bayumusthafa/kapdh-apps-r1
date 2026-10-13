@@ -174,6 +174,65 @@ describe("tab Banner (F-08, AC F08-2, F15-4; server tiruan)", () => {
     expect(order).toHaveValue("0");
   });
 
+  it("AC F08-2: dialog ubah banner menjelaskan tujuan tersimpan yang tidak tersedia, juga berita yang sudah dihapus", async () => {
+    mockContent.deletePost(CONTENT_IDS.postDonasi);
+    const user = userEvent.setup();
+    const table = await openBanners(user);
+
+    await user.click(within(table).getByRole("button", { name: "Ubah banner Beasiswa 2025" }));
+    let dialog = await screen.findByRole("dialog", { name: "Ubah banner" });
+    expect(within(dialog).getByRole("combobox", { name: /^Berita tujuan/ })).toHaveValue(
+      "Pendaftaran beasiswa 2025",
+    );
+    expect(within(dialog).getByText("Tujuan tidak tersedia")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/Berita tujuan belum terbit, sudah diarsipkan atau sudah dihapus\./),
+    ).toHaveTextContent(/Pilih tujuan lain atau nonaktifkan banner\./);
+    await user.click(within(dialog).getByRole("button", { name: "Batal" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Ubah banner" })).toBeNull());
+
+    // Berita tujuan sudah dihapus: pemilih tidak menampilkan ID mentah sebagai pilihan yang sah.
+    await user.click(within(table).getByRole("button", { name: "Ubah banner Donasi korban bencana" }));
+    dialog = await screen.findByRole("dialog", { name: "Ubah banner" });
+    const picker = within(dialog).getByRole("combobox", { name: /^Berita tujuan/ });
+    expect(picker).toHaveValue("(tujuan tidak ditemukan)");
+    expect(within(dialog).queryByDisplayValue(CONTENT_IDS.postDonasi)).toBeNull();
+    expect(within(dialog).getByText("Tujuan tidak tersedia")).toBeInTheDocument();
+
+    // Memilih tujuan lain menghilangkan peringatan.
+    await user.clear(picker);
+    await user.type(picker, "Halal");
+    await user.click(await screen.findByRole("option", { name: /Halal bi Halal/ }));
+    expect(within(dialog).queryByText("Tujuan tidak tersedia")).toBeNull();
+  });
+
+  it("PRD 4.5: simpan banner ditahan selama gambar baru diunggah; gambar baru ikut tersimpan", async () => {
+    const user = userEvent.setup();
+    const table = await openBanners(user);
+    await user.click(within(table).getByRole("button", { name: "Ubah banner Donasi korban bencana" }));
+    const dialog = await screen.findByRole("dialog", { name: "Ubah banner" });
+    const order = within(dialog).getByRole("textbox", { name: /^Urutan tampil/ });
+    await user.clear(order);
+    await user.type(order, "3");
+
+    const release = mockContent.holdUploads();
+    await user.upload(within(dialog).getByTestId("content-image-input-banner_image"), pngFile("baru.png"));
+    const save = within(dialog).getByRole("button", { name: "Simpan perubahan" });
+    await waitFor(() => expect(save).toBeDisabled());
+    expect(save).toHaveAccessibleDescription("Tunggu unggahan gambar selesai sebelum menyimpan.");
+    await user.type(order, "{Enter}");
+    expect(contentRequests.some((r) => r.method === "PATCH")).toBe(false);
+
+    release();
+    await waitFor(() => expect(save).toBeEnabled());
+    await user.click(save);
+    await findToast("success", 'Banner "Donasi korban bencana" diperbarui.');
+    expect(contentRequests.find((r) => r.method === "PATCH")?.body).toEqual({
+      image_file_id: expect.stringMatching(/^0199e100-0000-7000-9000-/),
+      sort_order: 3,
+    });
+  });
+
   it("tanpa izin events.manage: tujuan event diisi ID event yang divalidasi", async () => {
     mockAuth.setAdmin({ role: "admin", permissions: ["content.manage"] });
     const user = userEvent.setup();

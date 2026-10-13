@@ -6,7 +6,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 import { api } from "../../api/client";
-import { toApiError } from "../../api/errors";
+import { type ApiError, toApiError } from "../../api/errors";
 import { unwrap, useApiMutation, useApiQuery } from "../../api/query";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
@@ -28,7 +28,8 @@ import {
   type AdminInfoPage,
   type AdminInfoPageSummary,
   CONTENT_PAGE_SIZE,
-  conflictCurrent,
+  type ConflictState,
+  conflictState,
   contentKeys,
   errorText,
   invalidateContent,
@@ -384,7 +385,7 @@ function PageEditor({ initial, onClose }: { initial: AdminInfoPage; onClose: () 
   const queryClient = useQueryClient();
   const toast = useToast();
   const [base, setBase] = useState(initial);
-  const [conflict, setConflict] = useState<{ latest: AdminInfoPage | null } | null>(null);
+  const [conflict, setConflict] = useState<ConflictState<AdminInfoPage> | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [changeNote, setChangeNote] = useState("");
   const form = useForm<PageFormValues>({
@@ -416,8 +417,8 @@ function PageEditor({ initial, onClose }: { initial: AdminInfoPage; onClose: () 
     void invalidateContent(queryClient);
   }
 
-  function handleConflict(error: Parameters<typeof conflictCurrent>[0]) {
-    setConflict({ latest: conflictCurrent<AdminInfoPage>(error, base.id) });
+  function handleConflict(error: ApiError) {
+    setConflict(conflictState<AdminInfoPage>(error, base));
   }
 
   async function reloadLatest() {
@@ -509,8 +510,19 @@ function PageEditor({ initial, onClose }: { initial: AdminInfoPage; onClose: () 
       {conflict ? (
         <ConflictNotice
           subject="Halaman ini"
+          cause={conflict.cause}
           updatedAt={conflict.latest?.updated_at}
           updatedBy={conflict.latest?.updated_by?.display_name}
+          latestStatus={
+            conflict.latest ? (
+              <Badge tone={conflict.latest.published_version ? "success" : "neutral"}>
+                {conflict.latest.published_version
+                  ? `Versi tayang ${conflict.latest.published_version}`
+                  : "Belum pernah terbit"}
+                {conflict.latest.has_unpublished_changes ? "; draf belum diterbitkan" : ""}
+              </Badge>
+            ) : null
+          }
           onReload={() => void reloadLatest()}
         />
       ) : null}

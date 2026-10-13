@@ -113,7 +113,7 @@ describe("tab Berita (F-08, F-15, guideline p13; server tiruan)", () => {
     await screen.findByRole("table", { name: "Daftar berita" });
     await user.click(screen.getByRole("button", { name: "Manajemen Kategori" }));
     expect(await screen.findByRole("table", { name: "Kategori Berita" })).toBeInTheDocument();
-    expect(router.state.location.search).toMatchObject({ tab: "categories", kind: "post" });
+    expect(router.state.location.search).toEqual({ tab: "categories" });
     expect(screen.getByRole("tab", { name: "Kategori" })).toHaveAttribute("aria-selected", "true");
 
     await user.click(screen.getByRole("tab", { name: "Berita" }));

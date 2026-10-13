@@ -5,16 +5,10 @@ import { appRoute, guard } from "../__root";
 export const CONTENT_TABS = ["posts", "banners", "pages", "categories"] as const;
 export type ContentTab = (typeof CONTENT_TABS)[number];
 
-/** Jenis kategori pada tab Kategori: berita (content.manage) atau event (events.manage, guideline p14). */
-export const CATEGORY_KINDS = ["post", "event"] as const;
-export type CategoryKindParam = (typeof CATEGORY_KINDS)[number];
-
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface ContentSearch {
   tab?: ContentTab;
-  /** Tab Kategori: jenis kategori yang dikelola. */
-  kind?: CategoryKindParam;
   /** Tab Halaman: halaman yang sedang disunting (tautan langsung ke editor halaman). */
   page?: string;
 }
@@ -22,7 +16,6 @@ export interface ContentSearch {
 export function parseContentSearch(search: Record<string, unknown>): ContentSearch {
   const out: ContentSearch = {};
   if (CONTENT_TABS.includes(search.tab as ContentTab)) out.tab = search.tab as ContentTab;
-  if (CATEGORY_KINDS.includes(search.kind as CategoryKindParam)) out.kind = search.kind as CategoryKindParam;
   if (typeof search.page === "string" && UUID.test(search.page)) out.page = search.page;
   return out;
 }
