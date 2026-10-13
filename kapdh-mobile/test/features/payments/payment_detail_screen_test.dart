@@ -19,6 +19,7 @@ Future<AppHarness> openPayment(
   FakeProofPicker? picker,
   double textScale = 1,
   bool tall = true,
+  bool settleAfter = true,
 }) async {
   final app = await pumpApp(
     tester,
@@ -35,7 +36,13 @@ Future<AppHarness> openPayment(
   );
   if (tall) await useTallScreen(tester);
   app.router.go('/payments/pay-1');
-  await settle(tester);
+  if (settleAfter) {
+    await settle(tester);
+  } else {
+    // Kerangka pemuatan beranimasi sehingga tidak pernah "tenang"; cukup beberapa frame.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+  }
   return app;
 }
 
@@ -278,7 +285,7 @@ void main() {
       expect(find.byType(UploadTile), findsNothing);
     });
 
-    testWidgets('tiket: batas kirim bukti; RESERVATION_EXPIRED menampilkan reservasi berakhir dan status terbaru', (
+    testWidgets('PRD 4.5: tiket: batas kirim bukti; RESERVATION_EXPIRED menampilkan reservasi berakhir dan status terbaru', (
       tester,
     ) async {
       final hold = testNow.add(const Duration(hours: 5));
@@ -379,7 +386,7 @@ void main() {
       expect(find.textContaining('Bukti ke-2 akan diganti'), findsOneWidget);
     });
 
-    testWidgets('ACCOUNT_SUSPENDED saat kirim bukti: status dimuat ulang dan diarahkan ke portal pembatasan (PRD 2.2)', (
+    testWidgets('PRD 2.2: ACCOUNT_SUSPENDED saat kirim bukti: status dimuat ulang dan diarahkan ke portal pembatasan (PRD 2.2)', (
       tester,
     ) async {
       var status = 'unverified';
@@ -444,13 +451,13 @@ void main() {
 
       final put = app.adapter.requestsTo('/me/payments/pay-1/proof').single;
       expect(bodyOf(put)['expected_proof_version'], 1);
-      // Payment yang sama kembali menunggu verifikasi, alasan lama tetap tercatat (AC F03-3).
-      expect(app.adapter.requestsTo('/me/payments'), isEmpty);
+      // Payment yang sama kembali menunggu verifikasi tanpa instruksi baru, alasan lama tetap tercatat (AC F03-3).
+      expect(app.adapter.requestsTo('/me/payments').where((r) => r.method == 'POST'), isEmpty);
       expect(find.bySemanticsLabel('Status: Menunggu Verifikasi'), findsOneWidget);
       expect(find.textContaining('Alasan: $reason'), findsOneWidget);
     });
 
-    testWidgets('Hubungi pengurus membuka email bantuan tanpa data pribadi di subjek', (tester) async {
+    testWidgets('PRD 4.5: Hubungi pengurus membuka email bantuan tanpa data pribadi di subjek', (tester) async {
       final app = await openPayment(tester, {'/me/payments/pay-1': (_) => FakeResponse.json(200, needsFixJson())});
 
       await tester.tap(find.text('Hubungi pengurus'));
@@ -539,11 +546,11 @@ void main() {
       expect(find.text('Pembayaran tiket diterima'), findsOneWidget);
       expect(find.text('Pengembalian dana'), findsOneWidget);
       expect(find.text('Belum ada'), findsOneWidget);
-      Finder field(String label) =>
-          find.descendant(of: find.widgetWithText(KapdhTextField, label), matching: find.byType(TextField));
-      await tester.enterText(field('Bank atau e-wallet'), 'BRI');
-      await tester.enterText(field('Nomor rekening'), '0123456789012');
-      await tester.enterText(field('Nama pemilik rekening'), 'Ahmad Islam');
+      Finder field(String key) => find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(TextField));
+      expect(find.bySemanticsLabel('Bank atau e-wallet, wajib'), findsOneWidget);
+      await tester.enterText(field('refund-provider'), 'BRI');
+      await tester.enterText(field('refund-account-number'), '0123456789012');
+      await tester.enterText(field('refund-account-holder'), 'Ahmad Islam');
       await tester.tap(find.text('Kirim rekening tujuan'));
       await settle(tester);
 
@@ -556,12 +563,9 @@ void main() {
   });
 
   group('Keadaan layar', () {
-    testWidgets('memuat: kerangka pemuatan dengan judul layar', (tester) async {
+    testWidgets('PRD 4.5: memuat: kerangka pemuatan dengan judul layar', (tester) async {
       final pending = Completer<FakeResponse>();
-      await openPayment(tester, {'/me/payments/pay-1': (_) => pending.future}).timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => throw StateError('tidak boleh menunggu respons'),
-      );
+      await openPayment(tester, {'/me/payments/pay-1': (_) => pending.future}, settleAfter: false);
       expect(find.bySemanticsLabel('Memuat status pembayaran'), findsOneWidget);
       expect(find.text('Status Pembayaran'), findsOneWidget);
       pending.complete(FakeResponse.json(200, awaitingTransferJson()));
@@ -578,7 +582,7 @@ void main() {
       expect(find.text('Coba lagi'), findsNothing);
     });
 
-    testWidgets('offline saat membuka: Tidak ada koneksi, lalu coba lagi memuat status', (tester) async {
+    testWidgets('PRD 4.5: offline saat membuka: Tidak ada koneksi, lalu coba lagi memuat status', (tester) async {
       var online = false;
       await openPayment(tester, {
         '/me/payments/pay-1': (_) => online ? FakeResponse.json(200, awaitingReviewJson()) : FakeResponse.network(),
@@ -590,7 +594,7 @@ void main() {
       expect(find.bySemanticsLabel('Status: Menunggu Verifikasi'), findsOneWidget);
     });
 
-    testWidgets('N-11: teks 200 % pada instruksi bayar dan layar menunggu tanpa meluap', (tester) async {
+    testWidgets('N-11: teks 200 % pada instruksi bayar tanpa meluap', (tester) async {
       await openPayment(
         tester,
         {'/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingTransferJson())},
