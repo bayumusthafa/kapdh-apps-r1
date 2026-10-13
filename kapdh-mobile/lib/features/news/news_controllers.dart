@@ -130,11 +130,15 @@ class PostDetailController extends Notifier<PostDetailState> {
     final current = state;
     if (current.post == null || current.likeBusy) return null;
     state = PostDetailState(post: current.post, loading: false, like: current.like, likeBusy: true);
+    // Diambil sebelum await: penyiar like global tetap dipakai walau detail ini sudah ditutup selama request, agar
+    // feed dan Beranda tetap memakai keadaan akhir dari server (AC F08-3).
+    final repository = ref.read(newsRepositoryProvider);
+    final likeEvents = ref.read(postLikeEventProvider.notifier);
     try {
-      final like = await ref.read(newsRepositoryProvider).setLiked(slug, liked: !current.liked);
+      final like = await repository.setLiked(slug, liked: !current.liked);
+      likeEvents.publish(slug, like);
       if (!ref.mounted) return null;
       state = PostDetailState(post: state.post, loading: false, like: like);
-      ref.read(postLikeEventProvider.notifier).publish(slug, like);
       return null;
     } on ApiException catch (error) {
       if (!ref.mounted) return error;
