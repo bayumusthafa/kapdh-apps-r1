@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/design/design.dart';
 
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
+import '../home/content_fixtures.dart';
 import '../home/feature_harness.dart';
 import 'event_fixtures.dart';
 
@@ -248,7 +250,9 @@ void main() {
       expect(app.location, '/events');
     });
 
-    testWidgets('AC F09-1 alasan server: belum dibuka, kuota penuh dan sudah punya tiket (tombol buka tiket)', (tester) async {
+    testWidgets('AC F09-1 alasan server: belum dibuka, kuota penuh dan sudah punya tiket (tombol buka tiket)', (
+      tester,
+    ) async {
       var detail = eventDetailJson(
         registrationState: 'not_yet_open',
         canReserve: false,
@@ -598,7 +602,9 @@ void main() {
       expect(find.text('Pendaftaran Anda sudah tercatat. Tiket Anda dibuka.'), findsOneWidget);
     });
 
-    testWidgets('PRD 4.5 metode bayar ditolak server (400): pesan di bawah pilihan metode, pilih ulang', (tester) async {
+    testWidgets('PRD 4.5 metode bayar ditolak server (400): pesan di bawah pilihan metode, pilih ulang', (
+      tester,
+    ) async {
       await pumpMemberApp(
         tester,
         location: '/events/event-1',
@@ -628,7 +634,9 @@ void main() {
       expect(_button(tester, 'reservation-submit').onPressed, isNull);
     });
 
-    testWidgets('PRD 4.5 pendaftaran ditutup saat mengirim (409 RESERVATION_EXPIRED): alasan dari server', (tester) async {
+    testWidgets('PRD 4.5 pendaftaran ditutup saat mengirim (409 RESERVATION_EXPIRED): alasan dari server', (
+      tester,
+    ) async {
       await pumpMemberApp(
         tester,
         location: '/events/event-1',
@@ -671,4 +679,324 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+
+  group('Reservasi saat layar ditinggalkan (PRD 4.3, 4.5)', () {
+    Map<String, FakeHandler> paidRoutes(Completer<FakeResponse> pending) => _detailRoutes(
+      eventDetailJson(),
+      extra: {
+        '/events/event-1/reservations': (_) => pending.future,
+        '/home': (_) => FakeResponse.json(200, homeJson()),
+        '/me/tickets': (_) => FakeResponse.json(200, ticketPageJson([])),
+      },
+    );
+
+    FakeResponse paidHold() => FakeResponse.json(
+      201,
+      ticketDetailJson(status: 'awaiting_payment', holdExpiresAt: testNow.add(const Duration(hours: 24))),
+    );
+
+    Future<void> submitPaid(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('event-reserve')));
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('method-method-bsi')));
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('reservation-submit')));
+      await pumpFrames(tester, count: 5);
+    }
+
+    testWidgets('PRD 4.3 reservasi berbayar terkirim: konfirmasi tidak dapat ditinggalkan, hasil tetap ke pembayaran', (
+      tester,
+    ) async {
+      final pending = Completer<FakeResponse>();
+      final app = await pumpMemberApp(tester, location: '/events/event-1', routes: paidRoutes(pending));
+      await submitPaid(tester);
+      expect(_button(tester, 'reservation-submit').busy, isTrue);
+      // Tombol kembali disembunyikan dan tombol/gestur kembali sistem ditahan selama request berjalan.
+      expect(find.byTooltip('Kembali'), findsNothing);
+      await _systemBack(tester);
+      await pumpFrames(tester, count: 10);
+      expect(find.text('Konfirmasi Pendaftaran'), findsOneWidget);
+
+      pending.complete(paidHold());
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(app.location, '/payments/payment-9');
+      expect(find.textContaining('Kursi Anda ditahan sampai 13 Okt 2026, 14.00 WIB'), findsOneWidget);
+    });
+
+    testWidgets(
+      'PRD 4.5 konfirmasi dilepas router saat respons tiba: tanpa galat, hold diumumkan dengan tombol Bayar',
+      (tester) async {
+        final pending = Completer<FakeResponse>();
+        final app = await pumpMemberApp(tester, location: '/events/event-1', routes: paidRoutes(pending));
+        await submitPaid(tester);
+        // Mis. anggota mengetuk notifikasi: router mengganti seluruh tumpukan selagi reservasi berjalan.
+        app.router.go('/home');
+        await settle(tester);
+        expect(app.location, '/home');
+
+        pending.complete(paidHold());
+        await settle(tester);
+        expect(tester.takeException(), isNull);
+        expect(app.location, '/home');
+        expect(find.textContaining('Kursi Anda ditahan sampai 13 Okt 2026, 14.00 WIB'), findsOneWidget);
+        await tester.tap(find.widgetWithText(SnackBarAction, 'Bayar'));
+        await settle(tester);
+        expect(app.location, '/payments/payment-9');
+      },
+    );
+
+    testWidgets('PRD 4.5 layar lain terbuka di atas konfirmasi saat respons tiba: detail event tidak ikut tertutup', (
+      tester,
+    ) async {
+      final pending = Completer<FakeResponse>();
+      final app = await pumpMemberApp(tester, location: '/events/event-1', routes: paidRoutes(pending));
+      await submitPaid(tester);
+      unawaited(app.router.push('/tickets'));
+      await settle(tester);
+      expect(app.location, '/tickets');
+
+      pending.complete(paidHold());
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      // Layar yang sedang dilihat tidak dipindahkan; hasil diumumkan.
+      expect(app.location, '/tickets');
+      expect(find.widgetWithText(SnackBarAction, 'Bayar'), findsOneWidget);
+      // Konfirmasi yang usang dilepas; kembali tiba di detail event, bukan Beranda.
+      await tester.tap(find.byTooltip('Kembali'));
+      await settle(tester);
+      expect(app.location, '/events/event-1');
+      expect(find.text('Konfirmasi Pendaftaran'), findsNothing);
+      expect(find.text('Detail Event'), findsOneWidget);
+    });
+
+    testWidgets(
+      'PRD 4.5 event gratis: detail ditinggalkan selagi mendaftar, tiket terbit diumumkan dengan Lihat tiket',
+      (tester) async {
+        final pending = Completer<FakeResponse>();
+        final app = await pumpMemberApp(
+          tester,
+          location: '/events/event-1',
+          routes: _detailRoutes(
+            eventDetailJson(price: '0.00'),
+            extra: {
+              '/events/event-1/reservations': (_) => pending.future,
+              '/home': (_) => FakeResponse.json(200, homeJson()),
+              '/me/tickets/ticket-1': (_) =>
+                  FakeResponse.json(200, ticketDetailJson(total: '0.00', qrCode: 'qr-gratis')),
+            },
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('event-reserve')));
+        await settle(tester);
+        await tester.tap(find.text('Daftar'));
+        await pumpFrames(tester, count: 5);
+        await tester.tap(find.byTooltip('Kembali'));
+        await settle(tester);
+        expect(app.location, '/home');
+
+        pending.complete(FakeResponse.json(201, ticketDetailJson(total: '0.00', qrCode: 'qr-gratis')));
+        await settle(tester);
+        expect(tester.takeException(), isNull);
+        expect(app.location, '/home');
+        expect(find.text('Pendaftaran berhasil. Tiket Anda sudah terbit.'), findsOneWidget);
+        await tester.tap(find.widgetWithText(SnackBarAction, 'Lihat tiket'));
+        await settle(tester);
+        expect(app.location, '/tickets/ticket-1');
+        expect(find.byKey(const ValueKey('ticket-qr')), findsOneWidget);
+      },
+    );
+  });
+
+  group('Akses status (PRD 2.2, kontrak C5)', () {
+    testWidgets(
+      'PRD 2.2 anggota expired membuka detail event yang pernah dipesan dari tiketnya; tanpa peserta/daftar',
+      (tester) async {
+        final app = await pumpMemberApp(
+          tester,
+          status: 'expired',
+          location: '/tickets/ticket-1',
+          routes: {
+            '/me/tickets/ticket-1': (_) => FakeResponse.json(200, ticketDetailJson()),
+            '/events/event-1': (_) => FakeResponse.json(
+              200,
+              eventDetailJson(canReserve: false, blockedReason: 'membership_required', myTicket: ticketSummaryJson()),
+            ),
+          },
+        );
+        await scrollTo(tester, find.byKey(const ValueKey('ticket-open-event')));
+        await tester.tap(find.byKey(const ValueKey('ticket-open-event')));
+        await settle(tester);
+        expect(app.location, '/events/event-1');
+        expect(find.text('Detail Event'), findsOneWidget);
+        expect(find.text('20/36'), findsOneWidget);
+        // Peserta hanya untuk anggota aktif; tiket lunas tetap dapat dibuka.
+        expect(app.adapter.requestsTo('/events/event-1/participants'), isEmpty);
+        expect(find.byKey(const ValueKey('event-reserve')), findsNothing);
+        await tester.tap(find.byKey(const ValueKey('event-open-ticket')));
+        await settle(tester);
+        expect(app.location, '/tickets/ticket-1');
+      },
+    );
+
+    testWidgets(
+      'AC F09-7 anggota expired membuka deep link event dibatalkan: detail terbuka, bukan halaman perpanjang',
+      (tester) async {
+        final app = await pumpMemberApp(
+          tester,
+          status: 'expired',
+          routes: {
+            '/events/event-1': (_) => FakeResponse.json(
+              200,
+              eventDetailJson(
+                status: 'cancelled',
+                registrationState: 'cancelled',
+                canReserve: false,
+                blockedReason: 'membership_required',
+                cancelReason: 'Cuaca buruk',
+                myTicket: ticketSummaryJson(status: 'cancelled', eventStatus: 'cancelled'),
+              ),
+            ),
+          },
+        );
+        app.router.go('/events/event-1');
+        await settle(tester);
+        expect(app.location, '/events/event-1');
+        expect(find.text('Event dibatalkan'), findsOneWidget);
+        expect(find.textContaining('Alasan: Cuaca buruk.'), findsOneWidget);
+
+        // Kembali: daftar event tetap khusus anggota aktif (matriks rute), jadi anggota tiba di rute awal statusnya
+        // tanpa request daftar event.
+        await tester.tap(find.byTooltip('Kembali'));
+        await settle(tester);
+        expect(app.location, '/renewal');
+        expect(app.adapter.requestsTo('/events'), isEmpty);
+      },
+    );
+
+    testWidgets('PRD 2.2 anggota expired tanpa tiket di event itu (403 MEMBERSHIP_REQUIRED): ajakan perpanjang', (
+      tester,
+    ) async {
+      final app = await pumpMemberApp(
+        tester,
+        status: 'expired',
+        location: '/events/event-9',
+        routes: {
+          '/events/event-9': (_) =>
+              FakeResponse.json(403, errorJson('MEMBERSHIP_REQUIRED', 'Fitur ini khusus anggota aktif.')),
+        },
+      );
+      expect(app.location, '/events/event-9');
+      expect(find.text('Event khusus anggota aktif'), findsOneWidget);
+      expect(find.textContaining('Tiket yang sudah lunas tetap dapat dibuka di Tiket Saya.'), findsOneWidget);
+      expect(find.byType(ErrorState), findsNothing);
+      // Status diperiksa ulang ke server (ErrorUiAction.refreshStatus).
+      expect(app.adapter.requestsTo('/me').length, greaterThanOrEqualTo(2));
+      await tester.tap(find.widgetWithText(KapdhButton, 'Perpanjang KTA'));
+      await settle(tester);
+      expect(app.location, '/renewal');
+    });
+
+    testWidgets(
+      'PRD 2.2 anggota expired dengan tiket berakhir (membership_required): ajakan perpanjang, bukan daftar',
+      (tester) async {
+        final app = await pumpMemberApp(
+          tester,
+          status: 'expired',
+          location: '/events/event-1',
+          routes: {
+            '/events/event-1': (_) => FakeResponse.json(
+              200,
+              eventDetailJson(
+                canReserve: false,
+                blockedReason: 'membership_required',
+                myTicket: ticketSummaryJson(status: 'expired'),
+              ),
+            ),
+          },
+        );
+        expect(find.byKey(const ValueKey('event-reserve')), findsNothing);
+        expect(find.byKey(const ValueKey('event-open-ticket')), findsNothing);
+        expect(find.text('Perpanjang KTA untuk mendaftar event baru.'), findsOneWidget);
+        await tester.tap(find.widgetWithText(KapdhButton, 'Perpanjang KTA'));
+        await settle(tester);
+        expect(app.location, '/renewal');
+      },
+    );
+
+    testWidgets('PRD 2.2 daftar event ditolak server (403 MEMBERSHIP_REQUIRED): /me dimuat ulang lalu dialihkan', (
+      tester,
+    ) async {
+      var status = 'verified';
+      final app = await pumpMemberApp(
+        tester,
+        location: '/events',
+        push: false,
+        routes: {
+          '/me': (_) => FakeResponse.json(200, meJson(status: status)),
+          '/home': (_) => FakeResponse.json(200, homeJson()),
+          '/event-categories': (_) => FakeResponse.json(200, {'items': <Object?>[]}),
+          '/events': (_) {
+            status = 'expired';
+            return FakeResponse.json(403, errorJson('MEMBERSHIP_REQUIRED', 'Fitur ini khusus anggota aktif.'));
+          },
+        },
+      );
+      expect(app.adapter.requestsTo('/me').length, greaterThanOrEqualTo(2));
+      expect(app.location, '/renewal');
+    });
+
+    testWidgets('PRD 2.2 detail event ditolak ACCOUNT_SUSPENDED: /me dimuat ulang lalu ke portal pembatasan', (
+      tester,
+    ) async {
+      var status = 'verified';
+      final app = await pumpMemberApp(
+        tester,
+        location: '/events/event-1',
+        routes: {
+          '/me': (_) => FakeResponse.json(200, meJson(status: status)),
+          '/events/event-1': (_) {
+            status = 'suspended';
+            return FakeResponse.json(403, errorJson('ACCOUNT_SUSPENDED', 'Akun Anda sedang dibatasi.'));
+          },
+        },
+      );
+      expect(app.adapter.requestsTo('/me').length, greaterThanOrEqualTo(2));
+      expect(app.location, '/restricted');
+    });
+
+    testWidgets('PRD 2.2 tab Event terkunci untuk anggota expired mengarahkan ke Tiket Saya, bukan menu Akun', (
+      tester,
+    ) async {
+      final app = await pumpMemberApp(
+        tester,
+        status: 'expired',
+        location: '/home',
+        push: false,
+        routes: {'/me/tickets': (_) => FakeResponse.json(200, ticketPageJson([]))},
+      );
+      final nav = find.byType(NavigationBar);
+      await tester.tap(find.descendant(of: nav, matching: find.text('Jejaring')));
+      await settle(tester);
+      expect(find.text('Jejaring terkunci'), findsOneWidget);
+      expect(find.byKey(const ValueKey('locked-tab-tickets')), findsNothing);
+      await tester.tap(find.text('Tutup'));
+      await settle(tester);
+
+      await tester.tap(find.descendant(of: nav, matching: find.text('Event')));
+      await settle(tester);
+      expect(find.text('Event terkunci'), findsOneWidget);
+      expect(find.textContaining('Tiket yang sudah lunas tetap dapat dibuka di Tiket Saya.'), findsOneWidget);
+      expect(find.textContaining('menu Akun'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('locked-tab-tickets')));
+      await settle(tester);
+      expect(app.location, '/tickets');
+    });
+  });
+}
+
+/// Tombol/gestur kembali sistem Android (pesan `popRoute` platform).
+Future<void> _systemBack(WidgetTester tester) async {
+  final message = const JSONMethodCodec().encodeMethodCall(const MethodCall('popRoute'));
+  await tester.binding.defaultBinaryMessenger.handlePlatformMessage('flutter/navigation', message, (_) {});
 }
