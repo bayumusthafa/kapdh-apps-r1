@@ -209,9 +209,7 @@ class _CategoryTabs extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s3),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: active ? KapdhColors.primary : Colors.transparent, width: 2),
-              ),
+              border: Border(bottom: BorderSide(color: active ? KapdhColors.primary : Colors.transparent, width: 2)),
             ),
             child: Text(
               label,
@@ -228,12 +226,7 @@ class _CategoryTabs extends ConsumerWidget {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          tab('Semua', null),
-          for (final category in categories) tab(category.label, category.id),
-        ],
-      ),
+      child: Row(children: [tab('Semua', null), for (final category in categories) tab(category.label, category.id)]),
     );
   }
 }

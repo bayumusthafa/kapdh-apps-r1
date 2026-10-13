@@ -172,7 +172,10 @@ class PagedListView<T> extends StatelessWidget {
     final error = state.error;
     if (!state.loaded && state.loading) {
       return ListView(
-        children: [?header, LoadingSkeleton(showCard: false, lines: 6, semanticsLabel: loadingSemantics)],
+        children: [
+          ?header,
+          LoadingSkeleton(showCard: false, lines: 6, semanticsLabel: loadingSemantics),
+        ],
       );
     }
     if (!state.loaded && error != null) {
@@ -263,7 +266,9 @@ class PagedListView<T> extends StatelessWidget {
       // Cadangan bila daftar terlalu pendek untuk memicu gulir (mis. teks diperbesar).
       return Padding(
         padding: const EdgeInsets.only(top: KapdhSpace.s2),
-        child: Center(child: TextButton(onPressed: onLoadMore, child: const Text('Muat lebih banyak'))),
+        child: Center(
+          child: TextButton(onPressed: onLoadMore, child: const Text('Muat lebih banyak')),
+        ),
       );
     }
     return null;

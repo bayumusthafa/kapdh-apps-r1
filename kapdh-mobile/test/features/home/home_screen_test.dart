@@ -193,7 +193,9 @@ void main() {
 
     testWidgets('AC F08-4 cache milik akun lain tidak pernah ditampilkan dan dihapus', (tester) async {
       final store = MemorySecureStore();
-      await HomeCacheStore(store).save('user-lain', Home.fromJson(homeJson(posts: [postSummaryJson(title: 'Rahasia')])));
+      await HomeCacheStore(
+        store,
+      ).save('user-lain', Home.fromJson(homeJson(posts: [postSummaryJson(title: 'Rahasia')])));
       await pumpMemberApp(tester, store: store, routes: {'/home': (_) => FakeResponse.network()});
       expect(find.text('Rahasia'), findsNothing);
       expect(find.text('Tidak ada koneksi'), findsOneWidget);
@@ -246,7 +248,9 @@ void main() {
   });
 
   group('Beranda status lain (PRD 2.2)', () {
-    testWidgets('unverified: tanpa GET /home; ajakan menyelesaikan iuran dan akses cepat yang diizinkan', (tester) async {
+    testWidgets('unverified: tanpa GET /home; ajakan menyelesaikan iuran dan akses cepat yang diizinkan', (
+      tester,
+    ) async {
       final app = await pumpMemberApp(tester, status: 'unverified', location: '/home', push: false);
       expect(app.location, '/home');
       expect(app.adapter.requestsTo('/home'), isEmpty);
@@ -265,7 +269,9 @@ void main() {
         status: 'expired',
         location: '/home',
         push: false,
-        routes: {'/me/tickets': (_) => FakeResponse.json(200, {'items': <Object?>[], 'next_cursor': null})},
+        routes: {
+          '/me/tickets': (_) => FakeResponse.json(200, {'items': <Object?>[], 'next_cursor': null}),
+        },
       );
       expect(app.adapter.requestsTo('/home'), isEmpty);
       expect(find.text('Masa keanggotaan berakhir'), findsOneWidget);

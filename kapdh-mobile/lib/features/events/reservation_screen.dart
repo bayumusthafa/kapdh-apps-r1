@@ -42,7 +42,10 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
     final event = ref.watch(eventDetailControllerProvider(widget.eventId)).event;
     final maintenance = ref.watch(appGateProvider.select((gate) => gate.status == GateStatus.maintenance));
     if (event == null) {
-      return const AppScaffold(title: 'Konfirmasi Pendaftaran', body: LoadingSkeleton(semanticsLabel: 'Memuat event'));
+      return const AppScaffold(
+        title: 'Konfirmasi Pendaftaran',
+        body: LoadingSkeleton(semanticsLabel: 'Memuat event'),
+      );
     }
     _initialPrice ??= event.price;
     final priceChanged = event.price != _initialPrice;
@@ -72,7 +75,8 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
             InfoBox(
               tone: InfoBoxTone.warning,
               title: 'Harga tiket berubah',
-              message: 'Pengurus mengubah harga menjadi $price. Periksa kembali sebelum melanjutkan; Anda belum terdaftar.',
+              message:
+                  'Pengurus mengubah harga menjadi $price. Periksa kembali sebelum melanjutkan; Anda belum terdaftar.',
             ),
           ],
           const SizedBox(height: KapdhSpace.s4),
@@ -139,7 +143,11 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
                 'Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.',
           ),
           const SizedBox(height: KapdhSpace.s3),
-          InfoBox(icon: Icons.policy_outlined, title: 'Pembatalan dan refund', message: event.cancellationPolicy.summary),
+          InfoBox(
+            icon: Icons.policy_outlined,
+            title: 'Pembatalan dan refund',
+            message: event.cancellationPolicy.summary,
+          ),
           if (event.isFree) ...[
             const SizedBox(height: KapdhSpace.s3),
             const InfoBox(
@@ -151,8 +159,7 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
             const SizedBox(height: KapdhSpace.s3),
             InfoBox(
               tone: InfoBoxTone.danger,
-              message:
-                  'Pendaftaran tidak dapat dilanjutkan: ${registrationStateStyle(event.registrationState).label}.',
+              message: 'Pendaftaran tidak dapat dilanjutkan: ${registrationStateStyle(event.registrationState).label}.',
             ),
           ],
           if (maintenance) ...[
@@ -251,7 +258,10 @@ class _ValueBox extends StatelessWidget {
         border: Border.all(color: KapdhColors.divider),
         borderRadius: BorderRadius.circular(KapdhRadius.md),
       ),
-      child: Text(text, style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600)),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -284,7 +294,10 @@ class _EventSummaryCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(event.title, style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600)),
+                Text(
+                  event.title,
+                  style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: KapdhSpace.s1),
                 IconLine(
                   icon: Icons.calendar_today_outlined,

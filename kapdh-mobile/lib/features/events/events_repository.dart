@@ -84,11 +84,10 @@ class EventsRepository {
       expectedRefundEligible: expectedRefundEligible,
       reason: trimmed == null || trimmed.isEmpty ? const Optional.absent() : Optional(trimmed),
     );
-    return _idempotency.run(
-      'ticket.cancel.${ticket.id}',
-      {...body.toJson(), 'if_match': ticket.version},
-      (key) => _events.cancelMyTicket(ticket.id, body, ifMatch: ticket.version, idempotencyKey: key),
-    );
+    return _idempotency.run('ticket.cancel.${ticket.id}', {
+      ...body.toJson(),
+      'if_match': ticket.version,
+    }, (key) => _events.cancelMyTicket(ticket.id, body, ifMatch: ticket.version, idempotencyKey: key));
   }
 }
 

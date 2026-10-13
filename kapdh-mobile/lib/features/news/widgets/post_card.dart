@@ -60,14 +60,19 @@ class PostCard extends StatelessWidget {
                 const SizedBox(height: KapdhSpace.s2),
                 Row(
                   children: [
-                    Expanded(child: IconLine(icon: Icons.calendar_today_outlined, text: date)),
+                    Expanded(
+                      child: IconLine(icon: Icons.calendar_today_outlined, text: date),
+                    ),
                     Icon(
                       post.likedByMe ? Icons.favorite : Icons.favorite_border,
                       size: 14,
                       color: post.likedByMe ? KapdhColors.danger : KapdhColors.textMuted,
                     ),
                     const SizedBox(width: KapdhSpace.s1),
-                    Text(likes, style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted)),
+                    Text(
+                      likes,
+                      style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                    ),
                   ],
                 ),
               ],

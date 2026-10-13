@@ -152,8 +152,7 @@ class TicketCard extends StatelessWidget {
                   runSpacing: KapdhSpace.s1,
                   children: [
                     StatusBadge(style),
-                    if (eventCancelled)
-                      StatusBadge(StatusStyles.event(EventBadgeStatus.cancelled)),
+                    if (eventCancelled) StatusBadge(StatusStyles.event(EventBadgeStatus.cancelled)),
                   ],
                 ),
                 if (holdText != null) ...[
