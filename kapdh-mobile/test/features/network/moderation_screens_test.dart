@@ -198,6 +198,62 @@ void main() {
       expect(find.text('Belum ada laporan'), findsOneWidget);
     });
 
+    testWidgets('AC F12-2, PRD 2.2: anggota expired tetap membuka Laporan Saya (riwayat sendiri, member_access any)', (
+      tester,
+    ) async {
+      final app = await pumpApp(
+        tester,
+        tokens: savedTokens(),
+        handler: apiRoutes({
+          '/me': (_) => FakeResponse.json(200, meJson(status: 'expired')),
+          '/reports': (_) => FakeResponse.json(200, pageJson([reportJson(id: 'r-1')])),
+        }),
+        overrides: [chatRealtimeProvider.overrideWithValue(FakeChatRealtime())],
+      );
+      // Tautan notifikasi hasil moderasi (kategori account, C6) dibuka langsung.
+      app.router.go('/account/reports');
+      await settle(tester);
+      expect(app.location, '/account/reports');
+      expect(find.byType(MyReportsScreen), findsOneWidget);
+      expect(app.adapter.requestsTo('/reports'), hasLength(1));
+    });
+
+    testWidgets('PRD 3.12: anggota suspended melihat hasil banding dari tautan notifikasi /account/reports', (
+      tester,
+    ) async {
+      final app = await pumpApp(
+        tester,
+        tokens: savedTokens(),
+        handler: apiRoutes({
+          '/me': (_) => FakeResponse.json(200, meJson(status: 'suspended')),
+          '/reports': (_) => FakeResponse.json(
+            200,
+            pageJson([
+              reportJson(
+                id: 'a-1',
+                category: 'appeal',
+                targetName: 'Ahmad Islam',
+                status: 'dismissed',
+                outcome: 'no_action',
+              ),
+            ]),
+          ),
+        }),
+        overrides: [chatRealtimeProvider.overrideWithValue(FakeChatRealtime())],
+      );
+      expect(app.location, '/restricted');
+      app.router.push('/account/reports');
+      await settle(tester);
+      expect(find.byType(MyReportsScreen), findsOneWidget);
+      expect(find.text('Banding pembatasan akun'), findsOneWidget);
+      expect(find.text('Banding ditolak.'), findsOneWidget);
+      // Daftar blokir tetap hanya untuk anggota aktif.
+      app.router.go('/account/blocked');
+      await settle(tester);
+      expect(app.location, '/restricted');
+      expect(find.byType(BlockedUsersScreen), findsNothing);
+    });
+
     testWidgets('teks 200 % tanpa meluap', (tester) async {
       await _open(
         tester,

@@ -154,6 +154,22 @@ void main() {
       await tester.tap(find.text('Atur ulang filter'));
       await settle(tester);
       expect(_query(app.adapter.requestsTo('/directory').last).containsKey('q'), isFalse);
+      // Kotak pencarian ikut kosong sehingga tidak menampilkan kata kunci yang sudah tidak berlaku.
+      expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, isEmpty);
+      expect(find.byTooltip('Hapus pencarian'), findsNothing);
+    });
+
+    testWidgets('F-10: kata kunci 1 huruf tidak dikosongkan saat filter lain berubah', (tester) async {
+      await _openNetwork(tester, routes: {'/directory': (_) => FakeResponse.json(200, directoryPageJson(const []))});
+      await tester.enterText(find.byType(TextField).first, 'Za');
+      await tester.pump(directorySearchDebounce);
+      await settle(tester);
+      // Menghapus satu huruf: kata kunci tidak berlaku lagi (< 2 huruf) tetapi teks pengguna tetap.
+      await tester.enterText(find.byType(TextField).first, 'Z');
+      await tester.pump(directorySearchDebounce);
+      await settle(tester);
+      expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, 'Z');
+      expect(find.text('Ketik minimal 2 huruf untuk mencari nama.'), findsOneWidget);
     });
 
     testWidgets('AC F10-3: server menolak (403 MEMBERSHIP_REQUIRED) -> akses belum tersedia tanpa data', (
@@ -287,6 +303,214 @@ void main() {
       await tester.tap(find.text('Angkatan 29'));
       await settle(tester);
       expect(app.location, '/chat/g-1');
+    });
+
+    testWidgets('N-02, N-04: pesan grup tidak memuat ulang tab Pesan; rentetan pesan room baru digabung', (
+      tester,
+    ) async {
+      final realtime = FakeChatRealtime();
+      final app = await _openNetwork(
+        tester,
+        realtime: realtime,
+        routes: {
+          '/directory': (_) => FakeResponse.json(200, directoryPageJson(_members)),
+          '/chat/rooms': (options) => FakeResponse.json(
+            200,
+            options.queryParameters['kind'] == 'group'
+                ? roomPageJson([
+                    roomSummaryJson(
+                      id: 'g-1',
+                      kind: 'group',
+                      title: 'Angkatan 29',
+                      memberCount: 12,
+                      lastMessage: previewJson(id: 'gm-1', preview: 'Rapat malam ini'),
+                      lastMessageAt: testNow,
+                    ),
+                  ])
+                : roomPageJson([
+                    roomSummaryJson(
+                      id: 'room-1',
+                      lastMessage: previewJson(id: 'm-1', preview: 'Assalamualaikum'),
+                      lastMessageAt: testNow,
+                    ),
+                  ]),
+          ),
+        },
+      );
+      int fetches(String kind) =>
+          app.adapter.requestsTo('/chat/rooms').where((r) => r.queryParameters['kind'] == kind).length;
+      final directBefore = fetches('direct');
+      final groupBefore = fetches('group');
+      expect(directBefore, greaterThanOrEqualTo(1));
+      expect(groupBefore, greaterThanOrEqualTo(1));
+
+      // Lima pesan di grup yang sudah ada di tab Pesan Grup: diperbarui di tempat, tab Pesan tidak dimuat ulang.
+      for (var i = 0; i < 5; i++) {
+        realtime.emit(
+          messageCreated(
+            chatMessageJson(
+              id: 'gm-${10 + i}',
+              roomId: 'g-1',
+              senderId: 'user-3',
+              senderName: 'Budi Santoso',
+              body: 'Pesan grup $i',
+              createdAt: at(40 + i),
+            ),
+          ),
+        );
+      }
+      await settle(tester);
+      expect(fetches('direct'), directBefore, reason: 'pesan grup tidak memuat ulang daftar direct');
+      expect(fetches('group'), groupBefore, reason: 'room grup yang sudah dimuat diperbarui tanpa request');
+      await tester.tap(find.text('Pesan Grup'));
+      await settle(tester);
+      expect(find.text('Budi Santoso: Pesan grup 4'), findsOneWidget);
+
+      // Room baru yang belum dikenal kedua daftar: rentetan 5 pesan digabung (paling banyak 2 request per daftar).
+      for (var i = 0; i < 5; i++) {
+        realtime.emit(
+          messageCreated(
+            chatMessageJson(
+              id: 'nm-$i',
+              roomId: 'room-9',
+              senderId: 'user-9',
+              senderName: 'Rahmat Hidayat',
+              body: 'Halo $i',
+              createdAt: at(60 + i),
+            ),
+          ),
+        );
+      }
+      await settle(tester);
+      expect(fetches('direct') - directBefore, inInclusiveRange(1, 2));
+      expect(fetches('group') - groupBefore, inInclusiveRange(1, 2));
+    });
+
+    testWidgets('PRD 4.5: halaman room berikut gagal -> gulir tidak mengulang request, hanya "Coba lagi"', (
+      tester,
+    ) async {
+      var failMore = true;
+      final app = await _openNetwork(
+        tester,
+        routes: {
+          '/directory': (_) => FakeResponse.json(200, directoryPageJson(_members)),
+          '/chat/rooms': (options) {
+            if (options.queryParameters['kind'] != 'direct') return FakeResponse.json(200, roomPageJson(const []));
+            if (options.queryParameters['cursor'] == 'c-2') {
+              return failMore
+                  ? FakeResponse.network()
+                  : FakeResponse.json(200, roomPageJson([roomSummaryJson(id: 'room-99', title: 'Terakhir Sekali')]));
+            }
+            return FakeResponse.json(
+              200,
+              roomPageJson([
+                for (var i = 0; i < 15; i++)
+                  roomSummaryJson(
+                    id: 'room-$i',
+                    title: 'Alumni Chat $i',
+                    peer: peerJson(userId: 'peer-$i', name: 'Alumni Chat $i'),
+                    lastMessage: previewJson(id: 'pm-$i', preview: 'Halo $i'),
+                    lastMessageAt: testNow.subtract(Duration(minutes: i)),
+                  ),
+              ], nextCursor: 'c-2'),
+            );
+          },
+        },
+      );
+      int moreRequests() =>
+          app.adapter.requestsTo('/chat/rooms').where((r) => r.queryParameters['cursor'] == 'c-2').length;
+      await tester.tap(find.text('Pesan'));
+      await settle(tester);
+      for (var i = 0; i < 3; i++) {
+        await tester.drag(find.byType(ListView).last, const Offset(0, -1500));
+        await settle(tester);
+      }
+      expect(moreRequests(), 1);
+      expect(find.widgetWithText(TextButton, 'Coba lagi'), findsOneWidget);
+
+      failMore = false;
+      await tester.tap(find.widgetWithText(TextButton, 'Coba lagi'));
+      await settle(tester);
+      expect(moreRequests(), 2);
+      await scrollTo(tester, find.text('Terakhir Sekali'));
+      expect(find.text('Terakhir Sekali'), findsOneWidget);
+    });
+
+    testWidgets('F-11: lencana tab Jejaring (unread + undangan) tampil sebelum Jejaring dibuka dan mengikuti event', (
+      tester,
+    ) async {
+      final realtime = FakeChatRealtime();
+      var unread = 2;
+      final app = await pumpApp(
+        tester,
+        tokens: savedTokens(),
+        handler: apiRoutes({
+          ...networkBaseRoutes(),
+          '/chat/rooms': (_) =>
+              FakeResponse.json(200, roomPageJson(const [], pendingInvitations: 1, unreadRooms: unread)),
+        }),
+        overrides: [chatRealtimeProvider.overrideWithValue(realtime)],
+      );
+      app.router.go('/home');
+      await settle(tester);
+      Finder badge(String label) => find.descendant(of: find.byType(NavigationBar), matching: find.text(label));
+      int kindlessFetches() =>
+          app.adapter.requestsTo('/chat/rooms').where((r) => r.queryParameters['kind'] == null).length;
+      expect(badge('3'), findsOneWidget);
+      expect(find.byTooltip('Jejaring, 2 percakapan belum dibaca, 1 undangan grup'), findsOneWidget);
+      expect(kindlessFetches(), 1, reason: 'satu halaman kecil, bukan daftar penuh');
+      expect('${app.adapter.requestsTo('/chat/rooms').single.queryParameters['limit']}', '1');
+
+      // Pesan dari anggota lain: jumlah dimuat ulang.
+      unread = 3;
+      realtime.emit(
+        messageCreated(chatMessageJson(id: 'x-1', roomId: 'room-5', senderId: 'user-5', createdAt: at(10))),
+      );
+      await settle(tester);
+      expect(badge('4'), findsOneWidget);
+      expect(kindlessFetches(), 2);
+
+      // Pesan sendiri tidak mengubah jumlah belum dibaca: tanpa request.
+      realtime.emit(
+        messageCreated(
+          chatMessageJson(
+            id: 'x-2',
+            roomId: 'room-5',
+            senderId: 'user-1',
+            senderName: 'Ahmad Islam',
+            createdAt: at(11),
+          ),
+        ),
+      );
+      await settle(tester);
+      expect(kindlessFetches(), 2);
+
+      // Setelah Jejaring dibuka, daftar room yang memperbarui lencana (tanpa request lencana terpisah).
+      app.router.go('/network');
+      await settle(tester);
+      realtime.emit(
+        messageCreated(chatMessageJson(id: 'x-3', roomId: 'room-6', senderId: 'user-6', createdAt: at(12))),
+      );
+      await settle(tester);
+      expect(kindlessFetches(), 2);
+    });
+
+    testWidgets('PRD 2.2: anggota expired tidak memuat lencana chat', (tester) async {
+      final app = await pumpApp(
+        tester,
+        tokens: savedTokens(),
+        handler: apiRoutes({
+          ...networkBaseRoutes(),
+          '/me': (_) => FakeResponse.json(200, meJson(status: 'expired')),
+          '/chat/rooms': (_) => FakeResponse.json(200, roomPageJson(const [], pendingInvitations: 1, unreadRooms: 2)),
+        }),
+        overrides: [chatRealtimeProvider.overrideWithValue(FakeChatRealtime())],
+      );
+      app.router.go('/home');
+      await settle(tester);
+      expect(app.location, '/home');
+      expect(app.adapter.requestsTo('/chat/rooms'), isEmpty);
+      expect(find.byTooltip('Jejaring, terkunci'), findsOneWidget);
     });
 
     testWidgets('kosong: arahan memulai percakapan dari profil', (tester) async {
