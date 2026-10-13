@@ -49,9 +49,7 @@ class HomeController extends Notifier<HomeState> {
         home: Home(
           banners: home.banners,
           upcomingEvents: home.upcomingEvents,
-          posts: [
-            for (final post in home.posts) post.slug == event.slug ? postWithLike(post, event.state) : post,
-          ],
+          posts: [for (final post in home.posts) post.slug == event.slug ? postWithLike(post, event.state) : post],
           quickAccess: home.quickAccess,
           generatedAt: home.generatedAt,
         ),

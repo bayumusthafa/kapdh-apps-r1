@@ -89,9 +89,9 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   /// metode bayar dan total, lalu ke layar pembayaran bersama (guideline hal. 8 "Detail Tiket").
   Future<void> _reserve(EventDetail event) async {
     if (!event.isFree) {
-      final done = await Navigator.of(context).push<ReservationDone>(
-        MaterialPageRoute<ReservationDone>(builder: (_) => ReservationScreen(eventId: event.id)),
-      );
+      final done = await Navigator.of(
+        context,
+      ).push<ReservationDone>(MaterialPageRoute<ReservationDone>(builder: (_) => ReservationScreen(eventId: event.id)));
       if (done != null && mounted) openReservationResult(context, ref, done);
       return;
     }
@@ -146,7 +146,8 @@ class _EventContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final zone = event.timezone;
-    final cancelled = event.registrationState == EventRegistrationState.cancelled || event.status == EventStatus.cancelled;
+    final cancelled =
+        event.registrationState == EventRegistrationState.cancelled || event.status == EventStatus.cancelled;
     final myTicket = event.myTicket;
     final description = event.description;
     return ListView(
@@ -219,7 +220,8 @@ class _EventContent extends ConsumerWidget {
             _Quota(available: event.seatsAvailable, total: event.seatsTotal),
             IconLine(
               icon: Icons.payments_outlined,
-              text: 'Harga tiket: ${formatEventPrice(event.price, isFree: event.isFree)} (satu tiket untuk Anda sendiri)',
+              text:
+                  'Harga tiket: ${formatEventPrice(event.price, isFree: event.isFree)} (satu tiket untuk Anda sendiri)',
               color: KapdhColors.text,
               size: 13,
             ),
@@ -241,16 +243,9 @@ class _EventContent extends ConsumerWidget {
             ),
           ],
         ),
-        if (myTicket != null) ...[
-          const SizedBox(height: KapdhSpace.s4),
-          _MyTicketCard(ticket: myTicket),
-        ],
+        if (myTicket != null) ...[const SizedBox(height: KapdhSpace.s4), _MyTicketCard(ticket: myTicket)],
         const SizedBox(height: KapdhSpace.s4),
-        InfoBox(
-          icon: Icons.policy_outlined,
-          title: 'Pembatalan dan refund',
-          message: event.cancellationPolicy.summary,
-        ),
+        InfoBox(icon: Icons.policy_outlined, title: 'Pembatalan dan refund', message: event.cancellationPolicy.summary),
         if (!event.isFree && event.canReserve) ...[
           const SizedBox(height: KapdhSpace.s3),
           InfoBox(
@@ -286,10 +281,7 @@ class _InfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0) const SizedBox(height: KapdhSpace.s3),
-            children[i],
-          ],
+          for (var i = 0; i < children.length; i++) ...[if (i > 0) const SizedBox(height: KapdhSpace.s3), children[i]],
         ],
       ),
     );
@@ -316,11 +308,18 @@ class _Quota extends StatelessWidget {
           Text(
             '$available/$total',
             key: const ValueKey('event-quota'),
-            style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w700, color: KapdhColors.primary),
+            style: const TextStyle(
+              fontSize: KapdhFontSize.body,
+              fontWeight: FontWeight.w700,
+              color: KapdhColors.primary,
+            ),
           ),
           const SizedBox(width: KapdhSpace.s1),
           const Expanded(
-            child: Text('Kuota Peserta', style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted)),
+            child: Text(
+              'Kuota Peserta',
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+            ),
           ),
         ],
       ),
@@ -566,12 +565,7 @@ class _ActionBar extends StatelessWidget {
           null,
         ),
         EventReservationBlockReason.cancelled => ('Event Dibatalkan', null, null, null),
-        _ => (
-          registrationStateStyle(event.registrationState).label,
-          null,
-          null,
-          null,
-        ),
+        _ => (registrationStateStyle(event.registrationState).label, null, null, null),
       };
       button = route == null
           ? KapdhButton(key: const ValueKey('event-reserve-disabled'), label: label, onPressed: null)

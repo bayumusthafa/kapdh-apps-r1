@@ -175,10 +175,7 @@ class _BannerTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (external) ...[
-                      const SizedBox(width: KapdhSpace.s2),
-                      const _ExternalPill(),
-                    ],
+                    if (external) ...[const SizedBox(width: KapdhSpace.s2), const _ExternalPill()],
                   ],
                 ),
               ),

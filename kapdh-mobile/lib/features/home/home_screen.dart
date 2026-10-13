@@ -50,10 +50,7 @@ class HomeScreen extends ConsumerWidget {
         children: [
           ?banner,
           Expanded(
-            child: SafeArea(
-              top: false,
-              child: active ? const _ActiveHome() : _GatedHome(status: status),
-            ),
+            child: SafeArea(top: false, child: active ? const _ActiveHome() : _GatedHome(status: status)),
           ),
         ],
       ),
@@ -133,10 +130,7 @@ class _ActiveHome extends ConsumerWidget {
               onAction: () => unawaited(controller.refresh()),
             )
           else ...[
-            HomeSectionTitle(
-              title: 'Event Mendatang',
-              onAction: () => context.go(AppRoutes.events),
-            ),
+            HomeSectionTitle(title: 'Event Mendatang', onAction: () => context.go(AppRoutes.events)),
             const SizedBox(height: KapdhSpace.s2),
             if (home.upcomingEvents.isEmpty)
               const SectionEmpty(
@@ -149,10 +143,7 @@ class _ActiveHome extends ConsumerWidget {
                 const SizedBox(height: KapdhSpace.s3),
               ],
             const SizedBox(height: KapdhSpace.s4),
-            HomeSectionTitle(
-              title: 'Berita Terbaru',
-              onAction: () => unawaited(context.push(AppRoutes.news)),
-            ),
+            HomeSectionTitle(title: 'Berita Terbaru', onAction: () => unawaited(context.push(AppRoutes.news))),
             const SizedBox(height: KapdhSpace.s2),
             if (home.posts.isEmpty)
               const SectionEmpty(
@@ -292,12 +283,7 @@ class _GatedHome extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s6, KapdhSpace.s5, KapdhSpace.s8),
       children: [
-        StatusHero(
-          status: StatusStyles.membership(current),
-          icon: Icons.lock_outline,
-          title: title,
-          message: message,
-        ),
+        StatusHero(status: StatusStyles.membership(current), icon: Icons.lock_outline, title: title, message: message),
         if (actionLabel != null && actionRoute != null) ...[
           const SizedBox(height: KapdhSpace.s5),
           KapdhButton(label: actionLabel, onPressed: () => context.go(actionRoute)),

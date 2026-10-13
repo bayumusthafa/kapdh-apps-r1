@@ -17,10 +17,8 @@ class HomeCacheStore {
 
   final SecureStore _store;
 
-  Future<void> save(String userId, Home home) => _store.write(
-    storageKey,
-    jsonEncode(<String, Object?>{'user_id': userId, 'home': home.toJson()}),
-  );
+  Future<void> save(String userId, Home home) =>
+      _store.write(storageKey, jsonEncode(<String, Object?>{'user_id': userId, 'home': home.toJson()}));
 
   /// Beranda tersimpan milik [userId]; null bila tidak ada, milik akun lain, atau rusak.
   Future<Home?> read(String userId) async {

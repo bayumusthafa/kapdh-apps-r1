@@ -46,8 +46,9 @@ final newsCategoriesProvider = FutureProvider.autoDispose<List<ContentCategory>>
 );
 
 /// Feed berita per slug kategori (null = semua).
-final postsControllerProvider = NotifierProvider.autoDispose
-    .family<PostsController, PagedState<PostSummary>, String?>(PostsController.new);
+final postsControllerProvider = NotifierProvider.autoDispose.family<PostsController, PagedState<PostSummary>, String?>(
+  PostsController.new,
+);
 
 class PostsController extends PagedController<PostSummary> {
   PostsController(this.categorySlug);
@@ -91,8 +92,9 @@ class PostDetailState {
   int get likeCount => like?.likeCount ?? post?.likeCount ?? 0;
 }
 
-final postDetailControllerProvider = NotifierProvider.autoDispose
-    .family<PostDetailController, PostDetailState, String>(PostDetailController.new);
+final postDetailControllerProvider = NotifierProvider.autoDispose.family<PostDetailController, PostDetailState, String>(
+  PostDetailController.new,
+);
 
 class PostDetailController extends Notifier<PostDetailState> {
   PostDetailController(this.slug);

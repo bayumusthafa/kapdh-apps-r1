@@ -65,13 +65,7 @@ Map<String, Object?> bannerJson({
   'id': id,
   'title': title,
   'image_url': 'https://files.kapdh.or.id/banners/$id.jpg',
-  'target': {
-    'type': type,
-    'available': available,
-    'route': route,
-    'url': url,
-    'external': type == 'url',
-  },
+  'target': {'type': type, 'available': available, 'route': route, 'url': url, 'external': type == 'url'},
 };
 
 Map<String, Object?> homeEventJson({
