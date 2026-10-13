@@ -2,7 +2,7 @@
  * Room direct, grup, anggota dan undangan (F-11, F-12; AC F11-1, F11-4, F11-5, F12-1; PRD 3.11, 3.12; kontrak
  * domains/chat.yaml). PGlite: urutan dan keunikan; balapan nyata ada di test/pg/chat.pg.test.ts.
  */
-import { blocks, files, messages, notifications, roomMembers, rooms } from "@kapdh/database";
+import { blocks, files, messages, notifications, outboxEvents, roomMembers, rooms } from "@kapdh/database";
 import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -20,8 +20,10 @@ import {
   history,
   member,
   openDirect,
+  openFileUrl,
   sendRaw,
   sendText,
+  setAvatar,
 } from "./support.js";
 
 let t: TestApp;
@@ -507,6 +509,45 @@ describe("Grup: undangan wajib diterima, kapasitas, admin (PRD 3.11)", () => {
       (await api(t).delete(`/chat/rooms/${roomId}/members/${m1.userId}`, { token: admin.token })).statusCode,
     ).toBe(404);
   });
+
+  it("PRD 3.11 (N-09): admin grup dapat membuka avatar calon anggota pada daftar undangan walau calon anggota tersembunyi dari direktori; anggota biasa tidak", async () => {
+    const admin = await member(t);
+    const regular = await member(t);
+    const invitee = await member(t, "verified", { showInDirectory: false });
+    const roomId = await groupWith(t, admin, [regular]);
+    const avatarId = await setAvatar(t, invitee);
+    const invited = await api(t).post(
+      `/chat/rooms/${roomId}/invitations`,
+      { user_ids: [invitee.userId] },
+      { token: admin.token },
+    );
+    expect(invited.statusCode, invited.body).toBe(200);
+
+    const listed = await api(t).get(`/chat/rooms/${roomId}/members`, {
+      token: admin.token,
+      query: { status: "invited" },
+    });
+    const page = expectOperation("get", "/chat/rooms/{roomId}/members", listed) as {
+      items: { user_id: string; status: string; avatar_url: string | null }[];
+    };
+    const item = page.items.find((i) => i.user_id === invitee.userId)!;
+    expect(item.status).toBe("invited");
+    expect(item.avatar_url).not.toBeNull();
+    // Setiap avatar_url yang diterbitkan dapat dibuka (bukan gambar rusak di daftar undangan).
+    for (const listedItem of page.items)
+      if (listedItem.avatar_url) expect(await openFileUrl(t, listedItem.avatar_url)).toBe(200);
+    expect((await api(t).get(`/files/${avatarId}/access`, { token: admin.token })).statusCode).toBe(200);
+    // Anggota biasa tidak melihat undangan tertunda (N-09), sehingga tidak dapat membuka avatar calon anggota.
+    expect((await api(t).get(`/files/${avatarId}/access`, { token: regular.token })).statusCode).toBe(404);
+
+    // Undangan dibatalkan: admin tidak lagi berbagi room dengan calon anggota; URL yang beredar ikut mati.
+    const cancelled = await api(t).delete(`/chat/rooms/${roomId}/members/${invitee.userId}`, {
+      token: admin.token,
+    });
+    expect(cancelled.statusCode).toBe(204);
+    expect(await openFileUrl(t, item.avatar_url!)).toBe(404);
+    expect((await api(t).get(`/files/${avatarId}/access`, { token: admin.token })).statusCode).toBe(404);
+  });
 });
 
 describe("Info grup: ubah nama/avatar dengan If-Match, mute", () => {
@@ -571,7 +612,7 @@ describe("Info grup: ubah nama/avatar dengan If-Match, mute", () => {
     expect(directPatch.statusCode).toBe(400);
   });
 
-  it("PRD 3.11: mute hanya menahan push; idempoten; bukan anggota 404", async () => {
+  it("PRD 3.11: mute hanya menahan push (pesan, unread dan inbox tetap tersedia); idempoten; bukan anggota 404", async () => {
     const a = await member(t);
     const b = await member(t);
     const room = await openDirect(t, a, b);
@@ -583,10 +624,15 @@ describe("Info grup: ubah nama/avatar dengan If-Match, mute", () => {
     ).toBe(204);
     expect((await getRoom(b.token, room.id)).room.muted).toBe(true);
     await sendText(t, a, room.id, "Pesan saat dibisukan");
-    const pushes = await t.db
+    expect((await getRoom(b.token, room.id)).room.unread_count).toBe(1);
+    const inbox = await t.db
       .select()
       .from(notifications)
       .where(and(eq(notifications.userId, b.userId), eq(notifications.category, "chat")));
+    expect(inbox).toHaveLength(1);
+    const pushes = (
+      await t.db.select().from(outboxEvents).where(eq(outboxEvents.topic, "notification.created"))
+    ).filter((e) => (e.payload as { notification_id: string }).notification_id === inbox[0]!.id);
     expect(pushes).toEqual([]);
     const invalid = await api(t).put(`/chat/rooms/${room.id}/mute`, { muted: "ya" }, { token: b.token });
     expect(invalid.statusCode).toBe(400);

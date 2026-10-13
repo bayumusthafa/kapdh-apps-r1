@@ -34,9 +34,10 @@ const THROTTLE_MAP_LIMIT = 10_000;
  *   pasangan yang saling memblokir; pengguna yang tidak lagi aktif tidak disiarkan, langganan room-nya dicabut, dan
  *   disiarkan offline (ttl 0). Presence/typing tidak pernah disimpan di database (sementara).
  * - kebijakan akses berkas (PRD 5.4, AC F11-4): `chat_image` hanya untuk anggota joined aktif yang dapat melihat pesan
- *   bergambar itu (history_visible_from) atau avatar grupnya (termasuk calon anggota yang diundang); `avatar` anggota
- *   lain hanya untuk anggota aktif yang berbagi room dengannya (nama dan avatar tampil di chat walau disembunyikan dari
- *   direktori, kontrak listChatRoomMembers).
+ *   bergambar itu (history_visible_from) atau avatar grupnya (termasuk calon anggota yang diundang), menggantikan
+ *   kebijakan bawaan "pemilik" (pengunggah yang sudah keluar tidak lagi berhak); `avatar` anggota lain hanya untuk
+ *   anggota aktif yang berbagi room dengannya, termasuk admin grup terhadap calon anggota yang diundangnya (nama dan
+ *   avatar tampil di chat walau disembunyikan dari direktori, kontrak listChatRoomMembers).
  */
 @Injectable()
 export class ChatRealtimeHandlers implements OnModuleInit {
@@ -53,7 +54,11 @@ export class ChatRealtimeHandlers implements OnModuleInit {
   onModuleInit(): void {
     this.realtime.registerClientEvent("typing", (client, data) => this.onTyping(client, data));
     this.realtime.registerClientEvent("presence.ping", (client) => this.onPresencePing(client));
-    this.files.registerAccessPolicy("chat_image", (request) => this.canViewChatImage(request));
+    // chat_image milik modul chat: aturan anggota room menggantikan kebijakan bawaan "pemilik" core, sehingga pengunggah
+    // yang keluar/dikeluarkan tidak lagi dapat membuka gambar atau avatar grupnya (AC F11-4).
+    this.files.registerAccessPolicy("chat_image", (request) => this.canViewChatImage(request), {
+      replaceDefaults: true,
+    });
     this.files.registerAccessPolicy("avatar", (request) => this.canViewMemberAvatar(request));
   }
 
@@ -181,9 +186,16 @@ export class ChatRealtimeHandlers implements OnModuleInit {
     return request.viewer.audience === "mobile" && status !== null && CHAT_ACTIVE_STATUSES.has(status);
   }
 
-  /** chat_image: gambar pesan yang terlihat bagi anggota joined, atau avatar grup bagi anggota/calon anggota. */
+  /**
+   * chat_image (satu-satunya kebijakan purpose ini, AC F11-4), hanya untuk anggota berstatus aktif:
+   * - unggahan sendiri yang belum dipakai pesan/grup (pratinjau sebelum dikirim);
+   * - gambar pesan yang terlihat bagi anggota joined (history_visible_from), termasuk pengirimnya selama masih joined;
+   * - avatar grup bagi anggota joined atau calon anggota grup terbuka.
+   */
   async canViewChatImage(request: FileAccessRequest): Promise<boolean> {
     if (!ChatRealtimeHandlers.activeMember(request)) return false;
+    if (request.file.attachedAt === null)
+      return request.file.ownerUserId !== null && request.file.ownerUserId === request.viewer.userId;
     const [row] = rows<{ ok: boolean }>(
       await request.db.execute(sql`
         select true as ok from app.messages m
@@ -201,7 +213,14 @@ export class ChatRealtimeHandlers implements OnModuleInit {
     return row?.ok === true;
   }
 
-  /** avatar anggota lain: berkas avatar terkini pemiliknya dan penampil berbagi room dengannya (joined/diundang). */
+  /**
+   * avatar anggota lain: berkas avatar terkini pemiliknya, dan penampil berbagi room dengannya, yaitu salah satu dari:
+   * - pemilik pernah bergabung (joined_at terisi: pengirim pesan lama, anggota, lawan bicara) dan penampil joined di room
+   *   itu, atau calon anggota grup terbuka yang melihat pengundang/anggotanya;
+   * - pemilik calon anggota (invited) grup terbuka dan penampil admin grup joined: daftar undangan tertunda
+   *   listChatRoomMembers?status=invited hanya untuk admin grup dan menampilkan nama + avatar walau calon anggota
+   *   tersembunyi dari direktori (kontrak listChatRoomMembers, N-09).
+   */
   async canViewMemberAvatar(request: FileAccessRequest): Promise<boolean> {
     const owner = request.file.ownerUserId;
     if (!owner || owner === request.viewer.userId || !ChatRealtimeHandlers.activeMember(request))
@@ -209,11 +228,15 @@ export class ChatRealtimeHandlers implements OnModuleInit {
     const [row] = rows<{ ok: boolean }>(
       await request.db.execute(sql`
         select true as ok from app.alumni a
-        join app.room_members om on om.user_id = a.user_id and om.joined_at is not null
+        join app.room_members om on om.user_id = a.user_id
         join app.rooms r on r.id = om.room_id
         join app.room_members vm on vm.room_id = om.room_id and vm.user_id = ${request.viewer.userId}::uuid
         where a.user_id = ${owner}::uuid and a.avatar_file_id = ${request.file.id}::uuid
-          and (vm.status = 'joined' or (vm.status = 'invited' and r.kind = 'group' and r.closed_at is null))
+          and (
+            (om.joined_at is not null
+              and (vm.status = 'joined' or (vm.status = 'invited' and r.kind = 'group' and r.closed_at is null)))
+            or (om.status = 'invited' and r.kind = 'group' and r.closed_at is null
+              and vm.status = 'joined' and vm.role = 'admin'))
         limit 1`),
     );
     return row?.ok === true;

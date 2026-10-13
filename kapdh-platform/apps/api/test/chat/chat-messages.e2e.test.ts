@@ -9,6 +9,7 @@ import {
   messages,
   notificationPreferences,
   notifications,
+  outboxEvents,
   reports,
 } from "@kapdh/database";
 import { and, eq } from "drizzle-orm";
@@ -481,13 +482,14 @@ describe("Read cursor monoton (PRD 3.11)", () => {
   });
 });
 
-describe("Push chat tanpa isi pesan (PRD 3.13, kontrak sendChatMessage)", () => {
-  it("AC F11-6 / PRD 3.13: push hanya untuk anggota aktif, tidak mute, preferensi chat menyala; satu notifikasi per episode belum dibaca, tanpa isi pesan", async () => {
+describe("Notifikasi chat tanpa isi pesan (PRD 3.13, kontrak sendChatMessage/setChatRoomMute)", () => {
+  it("AC F13-2 / AC F11-6: inbox ditulis untuk setiap anggota aktif (juga yang mute atau mematikan push chat); push hanya untuk yang tidak mute dan preferensinya menyala; satu notifikasi per episode belum dibaca, tanpa isi pesan", async () => {
     const admin = await member(t);
     const active = await member(t);
     const optedOut = await member(t);
+    const muter = await member(t);
     const lapsing = await member(t);
-    const roomId = await groupWith(t, admin, [active, optedOut, lapsing], "Grup Push");
+    const roomId = await groupWith(t, admin, [active, optedOut, muter, lapsing], "Grup Push");
     await t.db.insert(notificationPreferences).values({
       userId: optedOut.userId,
       category: "chat",
@@ -495,28 +497,42 @@ describe("Push chat tanpa isi pesan (PRD 3.13, kontrak sendChatMessage)", () => 
       enabled: false,
       updatedAt: t.clock.now(),
     });
+    const muted = await api(t).put(`/chat/rooms/${roomId}/mute`, { muted: true }, { token: muter.token });
+    expect(muted.statusCode).toBe(204);
     await t.db
       .update(alumni)
       .set({ expiresAt: new Date(t.clock.now().getTime() - 1000) })
       .where(eq(alumni.userId, lapsing.userId));
-    const chatInbox = (userId: string) =>
-      t.db
-        .select()
-        .from(notifications)
-        .where(and(eq(notifications.userId, userId), eq(notifications.category, "chat")));
-    const before = (await chatInbox(active.userId)).length;
+    const chatInbox = async (userId: string) =>
+      (
+        await t.db
+          .select()
+          .from(notifications)
+          .where(and(eq(notifications.userId, userId), eq(notifications.category, "chat")))
+      ).filter((n) => n.title === "Pesan baru");
+    const scheduledPush = async (notificationId: string) =>
+      (await t.db.select().from(outboxEvents).where(eq(outboxEvents.topic, "notification.created"))).filter(
+        (e) => (e.payload as { notification_id: string }).notification_id === notificationId,
+      ).length;
 
     await sendText(t, admin, roomId, "Isi rahasia pertama");
     await sendText(t, admin, roomId, "Isi rahasia kedua");
-    const forActive = (await chatInbox(active.userId)).slice(before);
+    const forActive = await chatInbox(active.userId);
     expect(forActive).toHaveLength(1);
     expect(forActive[0]).toMatchObject({ title: "Pesan baru" });
     expect(forActive[0]!.data).toMatchObject({ route: `/chat/${roomId}` });
     expect(JSON.stringify(forActive[0])).not.toContain("rahasia");
-    const optedOutInbox = (await chatInbox(optedOut.userId)).filter((n) => n.title === "Pesan baru");
-    expect(optedOutInbox).toEqual([]);
-    expect((await chatInbox(lapsing.userId)).filter((n) => n.title === "Pesan baru")).toEqual([]);
-    expect((await chatInbox(admin.userId)).filter((n) => n.title === "Pesan baru")).toEqual([]);
+    expect(await scheduledPush(forActive[0]!.id)).toBe(1);
+    // Push chat dimatikan atau room di-mute: kotak masuk tetap riwayat resmi, push tidak dijadwalkan.
+    for (const holder of [optedOut, muter]) {
+      const inbox = await chatInbox(holder.userId);
+      expect(inbox, holder.status).toHaveLength(1);
+      expect(JSON.stringify(inbox[0])).not.toContain("rahasia");
+      expect(await scheduledPush(inbox[0]!.id)).toBe(0);
+    }
+    // Anggota yang tidak aktif (deep link chat menjawab 403) dan pengirim tidak menerima notifikasi pesan.
+    expect(await chatInbox(lapsing.userId)).toEqual([]);
+    expect(await chatInbox(admin.userId)).toEqual([]);
 
     // Setelah membaca, pesan berikutnya membuka episode baru.
     const page = await history(t, active, roomId);
@@ -526,6 +542,7 @@ describe("Push chat tanpa isi pesan (PRD 3.13, kontrak sendChatMessage)", () => 
       { token: active.token },
     );
     await sendText(t, admin, roomId, "Pesan ketiga");
-    expect((await chatInbox(active.userId)).slice(before)).toHaveLength(2);
+    expect(await chatInbox(active.userId)).toHaveLength(2);
+    expect(await chatInbox(muter.userId)).toHaveLength(1);
   });
 });
