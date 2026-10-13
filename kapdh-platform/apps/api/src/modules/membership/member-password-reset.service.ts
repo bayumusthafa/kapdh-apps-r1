@@ -115,7 +115,8 @@ export class MemberPasswordResetService {
         .set({ sessionVersion: sql`${users.sessionVersion} + 1`, updatedAt: now })
         .where(eq(users.id, userId));
 
-      const dedupKey = passwordResetDedupKey(challengeId);
+      // Kunci dedup memakai id inisiasi tersendiri: challenge_id tidak ikut tersimpan di notifikasi/outbox.
+      const dedupKey = passwordResetDedupKey(uuidv7());
       // Pemberitahuan keamanan (kategori wajib) ditulis sebelum token push dicabut; push ke perangkat lama tidak
       // dikirim lagi, inbox dan email pemberitahuan tetap (kanal terverifikasi).
       await this.notifications.notify(tx, {
