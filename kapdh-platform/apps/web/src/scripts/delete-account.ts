@@ -199,7 +199,11 @@ const WAIT_REASON: Record<FlowStep, string> = {
  * Pesan 429 statis (diumumkan sekali oleh role=alert, N-11): alasan, tombol yang tertahan dan lama jeda. Hitung
  * mundur per detik tampil di luar wilayah live. Batas kirim ulang tidak membatalkan kode yang sudah terkirim.
  */
-function waitMessage(step: FlowStep, seconds: number, confirmLabel: string): string {
+export function waitMessage(
+  step: FlowStep,
+  seconds: number,
+  confirmLabel: string = CONFIRM_LABEL_DEFAULT,
+): string {
   const base = `${WAIT_REASON[step]} Tombol ${actionLabel(step, confirmLabel)} dapat dipakai lagi dalam ${formatDuration(seconds)}.`;
   return step === "resend" ? `${base} Kode yang sudah dikirim tetap dapat dipakai selama masih berlaku.` : base;
 }

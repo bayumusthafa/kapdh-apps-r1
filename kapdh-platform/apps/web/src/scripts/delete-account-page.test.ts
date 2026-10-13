@@ -72,6 +72,14 @@ const q = <T extends Element = HTMLElement>(sel: string) => root.querySelector<T
 const step = () => q("[data-step]")?.getAttribute("data-step");
 const alertText = () => (q("[data-del-alert]")!.hidden ? "" : (q("[data-del-alert]")!.textContent ?? ""));
 const primary = () => q<HTMLButtonElement>("[data-step] button[type=submit]")!;
+/** Hitung mundur jeda tombol utama (di luar wilayah live). */
+const waitText = () => {
+  const w = q("[data-step] [data-wait]");
+  return !w || w.hidden ? "" : (w.textContent ?? "");
+};
+const resendButton = () => q<HTMLButtonElement>("[data-resend]")!;
+const buttonByText = (text: string) =>
+  Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.includes(text))!;
 
 async function submitEmail(email = "ahmad@email.com") {
   q<HTMLInputElement>("#del-email")!.value = email;
@@ -363,10 +371,16 @@ describe("galat jaringan, 429 dan respons non-JSON", () => {
     await settle();
     await submitEmail();
     expect(step()).toBe("email");
-    expect(alertText()).toContain("Coba lagi dalam 0:30");
+    expect(alertText()).toBe(
+      "Terlalu banyak permintaan kode verifikasi. Tombol Kirim kode verifikasi dapat dipakai lagi dalam 30 detik.",
+    );
+    expect(waitText()).toBe("Coba lagi dalam 0:30.");
     expect(primary().disabled).toBe(true);
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(waitText()).toBe("Coba lagi dalam 0:20.");
+    await vi.advanceTimersByTimeAsync(20_000);
     expect(primary().disabled).toBe(false);
+    expect(waitText()).toBe("");
     expect(alertText()).toBe("Silakan coba lagi sekarang.");
     await submitEmail();
     expect(step()).toBe("code");
@@ -383,10 +397,12 @@ describe("galat jaringan, 429 dan respons non-JSON", () => {
     });
     await settle();
     await submitEmail();
-    expect(alertText()).toContain("Coba lagi dalam 0:45");
+    expect(alertText()).toContain("dalam 45 detik");
+    expect(waitText()).toBe("Coba lagi dalam 0:45.");
     await vi.advanceTimersByTimeAsync(45_000);
     await submitEmail();
-    expect(alertText()).toContain("Coba lagi dalam 1:00");
+    expect(alertText()).toContain("dalam 1 menit");
+    expect(waitText()).toBe("Coba lagi dalam 1:00.");
   });
 
   it("502 HTML dari proxy dan jaringan putus: pesan aman, input email tetap tersimpan", async () => {
@@ -553,5 +569,290 @@ describe("konfirmasi: idempotensi, konflik versi, token kedaluwarsa", () => {
     await confirmChecked();
     expect(step()).toBe("confirm");
     expect(alertText()).toContain("Layanan sedang pemeliharaan.");
+  });
+});
+
+describe("jeda 429 per tindakan (PRD 2.5: batas kirim OTP dan batas verifikasi terpisah)", () => {
+  const rateLimited =
+    (seconds: number): Handler =>
+    () =>
+      apiError(429, "RATE_LIMITED", "Terlalu sering", { retry_after_seconds: seconds });
+
+  it("PRD 2.5: 429 kirim ulang hanya menahan Kirim ulang; Verifikasi tetap dapat dipakai dengan kode yang sudah terkirim", async () => {
+    const { f } = setup({ ...HAPPY, "POST /auth/otp/resend": rateLimited(3000) });
+    await settle();
+    await submitEmail();
+    await vi.advanceTimersByTimeAsync(61_000);
+    resendButton().click();
+    await settle();
+    expect(f.callsTo("POST /auth/otp/resend")).toHaveLength(1);
+    expect(alertText()).toBe(
+      "Batas pengiriman kode tercapai. Tombol Kirim ulang kode dapat dipakai lagi dalam 50 menit. Kode yang sudah dikirim tetap dapat dipakai selama masih berlaku.",
+    );
+    expect(resendButton().disabled).toBe(true);
+    expect(resendButton().textContent).toBe("Kirim ulang dalam 50:00");
+    expect(primary().disabled).toBe(false);
+    expect(waitText()).toBe("");
+    // Dua menit kemudian kode yang sudah terkirim (berlaku 10 menit) masih dapat diverifikasi.
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(primary().disabled).toBe(false);
+    expect(resendButton().textContent).toBe("Kirim ulang dalam 48:00");
+    await submitCode("123456");
+    expect(f.callsTo("POST /public/deletion/verify")).toHaveLength(1);
+    expect(step()).toBe("confirm");
+  });
+
+  it("PRD 2.5: 429 verifikasi (batas per IP) menahan Verifikasi saja; Kirim ulang tetap mengikuti cooldown 60 detik", async () => {
+    const renewed = { ...CHALLENGE, challenge_id: "0192f6a0-1111-7000-8000-000000000002" };
+    const { f } = setup({
+      ...HAPPY,
+      "POST /public/deletion/verify": rateLimited(600),
+      "POST /auth/otp/resend": () => json(200, renewed),
+    });
+    await settle();
+    await submitEmail();
+    await submitCode("123456");
+    expect(step()).toBe("code");
+    expect(alertText()).toBe(
+      "Terlalu banyak percobaan verifikasi kode. Tombol Verifikasi dapat dipakai lagi dalam 10 menit.",
+    );
+    expect(primary().disabled).toBe(true);
+    expect(waitText()).toBe("Coba lagi dalam 10:00.");
+    // Kode tetap terisi (bukan ditolak server).
+    expect(q<HTMLInputElement>("[data-otp-index='5']")!.value).toBe("6");
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(resendButton().disabled).toBe(false);
+    expect(resendButton().textContent).toBe("Kirim ulang kode");
+    resendButton().click();
+    await settle();
+    expect(f.callsTo("POST /auth/otp/resend")).toHaveLength(1);
+    // Verifikasi masih tertahan jeda server walau kode baru terkirim.
+    expect(primary().disabled).toBe(true);
+    expect(waitText()).toBe("Coba lagi dalam 9:00.");
+    primary().click();
+    await settle();
+    expect(f.callsTo("POST /public/deletion/verify")).toHaveLength(1);
+  });
+
+  it("N-11: selama hitung mundur role=alert tidak ditulis ulang setiap detik; hitung mundur di luar wilayah live", async () => {
+    setup({ ...HAPPY, "POST /public/deletion/challenge": rateLimited(30) });
+    await settle();
+    await submitEmail();
+    const alert = q("[data-del-alert]")!;
+    expect(alert.getAttribute("role")).toBe("alert");
+    const announced = alert.textContent;
+    const records: MutationRecord[] = [];
+    const observer = new MutationObserver((r) => records.push(...r));
+    observer.observe(alert, { subtree: true, childList: true, characterData: true });
+    await vi.advanceTimersByTimeAsync(5_000);
+    records.push(...observer.takeRecords());
+    expect(records).toHaveLength(0);
+    expect(alert.textContent).toBe(announced);
+    const wait = q("[data-step] [data-wait]")!;
+    expect(wait.getAttribute("aria-live")).toBe("off");
+    expect(
+      wait.closest("[role='alert'], [role='status'], [aria-live='polite'], [aria-live='assertive']"),
+    ).toBeNull();
+    expect(waitText()).toBe("Coba lagi dalam 0:25.");
+    // Satu pengumuman saat jeda berakhir.
+    await vi.advanceTimersByTimeAsync(25_000);
+    records.push(...observer.takeRecords());
+    observer.disconnect();
+    expect(alertText()).toBe("Silakan coba lagi sekarang.");
+    expect(records.length).toBeGreaterThan(0);
+    expect(records.length).toBeLessThanOrEqual(2);
+  });
+
+  it("PRD 4.5: setelah 429 kirim ulang, Ubah alamat email membuka langkah email dengan tombol aktif tanpa teks di alert tersembunyi", async () => {
+    const { f } = setup({ ...HAPPY, "POST /auth/otp/resend": rateLimited(600) });
+    await settle();
+    await submitEmail();
+    await vi.advanceTimersByTimeAsync(61_000);
+    resendButton().click();
+    await settle();
+    buttonByText("Ubah alamat email").click();
+    await settle();
+    expect(step()).toBe("email");
+    expect(primary().disabled).toBe(false);
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect(q("[data-del-alert]")!.hidden).toBe(true);
+    expect(q("[data-del-alert]")!.textContent).toBe("");
+    expect(waitText()).toBe("");
+    await submitEmail("lain@email.com");
+    expect(f.callsTo("POST /public/deletion/challenge")).toHaveLength(2);
+    expect(step()).toBe("code");
+  });
+
+  it("PRD 4.5: jeda verifikasi yang masih berjalan saat kembali ke langkah kode dijelaskan lagi (alert + hitung mundur)", async () => {
+    setup({ ...HAPPY, "POST /public/deletion/verify": rateLimited(600) });
+    await settle();
+    await submitEmail();
+    await submitCode();
+    buttonByText("Ubah alamat email").click();
+    await settle();
+    expect(step()).toBe("email");
+    expect(primary().disabled).toBe(false);
+    await vi.advanceTimersByTimeAsync(120_000);
+    await submitEmail("lain@email.com");
+    expect(step()).toBe("code");
+    expect(primary().disabled).toBe(true);
+    expect(alertText()).toBe(
+      "Terlalu banyak percobaan verifikasi kode. Tombol Verifikasi dapat dipakai lagi dalam 8 menit.",
+    );
+    expect(waitText()).toBe("Coba lagi dalam 8:00.");
+  });
+});
+
+describe("konfirmasi: 409 IDEMPOTENCY_CONFLICT dan label tombol", () => {
+  const KEY_1 = "0192f6a0-0000-4000-8000-000000000001";
+  const stillProcessing: Handler = () =>
+    apiError(409, "IDEMPOTENCY_CONFLICT", "Permintaan yang sama masih diproses. Coba lagi sebentar.", {
+      retry_after_seconds: 2,
+    });
+
+  it("AC F14-1/PRD 4.3: 409 'masih diproses' setelah jaringan putus mempertahankan key, mengulang otomatis, lalu nomor permintaan tampil", async () => {
+    const { f } = setup({
+      ...HAPPY,
+      "POST /public/deletion/confirm": [
+        networkError,
+        stillProcessing,
+        // Server: key pertama memutar ulang respons 202; key lain menemukan akun sudah deletion_pending (410).
+        (call) =>
+          call.headers["idempotency-key"] === KEY_1
+            ? json(202, DELETION)
+            : apiError(410, "OTP_EXPIRED", "Token tidak berlaku"),
+      ],
+    });
+    await settle();
+    await submitEmail();
+    await submitCode();
+    await confirmChecked();
+    expect(alertText()).toContain("tidak akan dibuat dua kali");
+    primary().click();
+    await settle();
+    expect(step()).toBe("confirm");
+    expect(alertText()).toContain("masih diproses server");
+    expect(primary().disabled).toBe(true);
+    expect(waitText()).toBe("Memeriksa hasil permintaan lagi dalam 0:02.");
+    await vi.advanceTimersByTimeAsync(2_000);
+    await settle();
+    const keys = f.callsTo("POST /public/deletion/confirm").map((c) => c.headers["idempotency-key"]);
+    expect(keys).toEqual([KEY_1, KEY_1, KEY_1]);
+    expect(step()).toBe("done");
+    expect(q("[data-fact='Nomor permintaan']")!.textContent).toBe("DEL-2026-7K3Q9X");
+  });
+
+  it("PRD 4.3: pengulangan otomatis dibatasi 3 kali; setelahnya tombol dipakai lagi dengan key yang sama", async () => {
+    const { f } = setup({
+      ...HAPPY,
+      "POST /public/deletion/confirm": [
+        ...Array.from({ length: 4 }, () => stillProcessing),
+        () => json(202, DELETION),
+      ],
+    });
+    await settle();
+    await submitEmail();
+    await submitCode();
+    await confirmChecked();
+    for (let i = 0; i < 3; i += 1) {
+      await vi.advanceTimersByTimeAsync(2_000);
+      await settle();
+    }
+    const calls = () => f.callsTo("POST /public/deletion/confirm");
+    expect(calls()).toHaveLength(4);
+    expect(alertText()).toContain("Tekan Hapus akun saya lagi sebentar lagi");
+    await vi.advanceTimersByTimeAsync(10_000);
+    await settle();
+    expect(calls()).toHaveLength(4);
+    expect(primary().disabled).toBe(false);
+    primary().click();
+    await settle();
+    expect(calls()).toHaveLength(5);
+    expect(new Set(calls().map((c) => c.headers["idempotency-key"]))).toEqual(new Set([KEY_1]));
+    expect(step()).toBe("done");
+  });
+
+  it("PRD 4.3: 409 IDEMPOTENCY_CONFLICT tanpa jeda (key dipakai payload lain): key baru dipakai saat menekan lagi", async () => {
+    const { f } = setup({
+      ...HAPPY,
+      "POST /public/deletion/confirm": [
+        () =>
+          apiError(
+            409,
+            "IDEMPOTENCY_CONFLICT",
+            "Kunci permintaan ini sudah dipakai untuk data yang berbeda.",
+          ),
+        () => json(202, DELETION),
+      ],
+    });
+    await settle();
+    await submitEmail();
+    await submitCode();
+    await confirmChecked();
+    expect(alertText()).toContain("Tekan Hapus akun saya sekali lagi");
+    expect(primary().disabled).toBe(false);
+    primary().click();
+    await settle();
+    const keys = f.callsTo("POST /public/deletion/confirm").map((c) => c.headers["idempotency-key"]);
+    expect(keys[1]).not.toBe(keys[0]);
+    expect(step()).toBe("done");
+  });
+
+  it("F-14: pendaftaran pending_otp: pesan galat konfirmasi menyebut tombol 'Batalkan pendaftaran dan hapus data'", async () => {
+    setup({
+      ...HAPPY,
+      "POST /public/deletion/verify": () => json(200, { ...VERIFIED_DELETABLE, registration_pending: true }),
+      "POST /public/deletion/confirm": [networkError, () => apiError(409, "IDEMPOTENCY_CONFLICT", "Kunci bentrok")],
+    });
+    await settle();
+    await submitEmail();
+    await submitCode();
+    await confirmChecked();
+    expect(alertText()).toContain("Tekan Batalkan pendaftaran dan hapus data lagi");
+    expect(alertText()).not.toContain("Hapus akun saya");
+    primary().click();
+    await settle();
+    expect(alertText()).toContain("Tekan Batalkan pendaftaran dan hapus data sekali lagi");
+    expect(alertText()).not.toContain("Hapus akun saya");
+  });
+
+  it("Batal setelah konfirmasi yang hasilnya tidak diketahui tidak menjanjikan akun tidak berubah", async () => {
+    setup({ ...HAPPY, "POST /public/deletion/confirm": networkError });
+    await settle();
+    await submitEmail();
+    await submitCode();
+    await confirmChecked();
+    buttonByText("Batal").click();
+    await settle();
+    expect(step()).toBe("email");
+    const notice = q("[data-del-notice]")!.textContent!;
+    expect(notice).not.toContain("Akun Anda tidak berubah");
+    expect(notice).toContain("mungkin sudah tercatat");
+  });
+
+  it("429 pada konfirmasi menahan tombol konfirmasi saja, dengan key yang sama saat dicoba lagi", async () => {
+    const { f } = setup({
+      ...HAPPY,
+      "POST /public/deletion/confirm": [
+        () => apiError(429, "RATE_LIMITED", "x", { retry_after_seconds: 20 }),
+        () => json(202, DELETION),
+      ],
+    });
+    await settle();
+    await submitEmail();
+    await submitCode();
+    await confirmChecked();
+    expect(alertText()).toBe(
+      "Terlalu banyak percobaan konfirmasi. Tombol Hapus akun saya dapat dipakai lagi dalam 20 detik.",
+    );
+    expect(primary().disabled).toBe(true);
+    expect(waitText()).toBe("Coba lagi dalam 0:20.");
+    expect(buttonByText("Batal").disabled).toBe(false);
+    await vi.advanceTimersByTimeAsync(20_000);
+    primary().click();
+    await settle();
+    const keys = f.callsTo("POST /public/deletion/confirm").map((c) => c.headers["idempotency-key"]);
+    expect(keys).toEqual([KEY_1, KEY_1]);
+    expect(step()).toBe("done");
   });
 });
