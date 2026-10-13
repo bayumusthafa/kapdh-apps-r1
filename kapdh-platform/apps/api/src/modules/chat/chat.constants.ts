@@ -39,13 +39,6 @@ export const PRESENCE_THROTTLE_MS = 25_000;
 /** Batas penerima siaran presence per ping (anggota room yang sama). */
 export const PRESENCE_MAX_RECIPIENTS = 2_000;
 
-/**
- * Masa berlaku URL berkas privat pada siaran realtime (gambar pesan, avatar pengirim/grup). URL siaran tidak terikat
- * sesi penerima (satu payload untuk seluruh kanal room), sehingga dibuat singkat: cukup untuk ditampilkan segera
- * (N-02), sesudahnya klien memakai URL terikat sesi dari riwayat HTTP (PRD 5.4, AC F11-4).
- */
-export const REALTIME_FILE_URL_TTL_SECONDS = 120;
-
 /** Penghapusan akun: jumlah maksimal event message.deleted yang disiarkan (sisanya lewat muat ulang jendela, C6 butir 7). */
 export const DELETION_EVENT_CAP = 500;
 

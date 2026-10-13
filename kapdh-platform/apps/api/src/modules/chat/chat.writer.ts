@@ -9,31 +9,29 @@ import { FilesService } from "../../core/files/files.service.js";
 import { CLOCK } from "../../core/tokens.js";
 import { DELETED_ACCOUNT_NAME } from "./chat.constants.js";
 import { ChatEvents } from "./chat.events.js";
-import { ChatPresenter } from "./chat.presenter.js";
 import {
   alumniFacts,
   insertMessageLocked,
   joinedAdminIds,
   joinedCount,
-  messageRows,
   referencedByReportEvidence,
 } from "./chat.queries.js";
+import { encodeSystemEvent, type SystemEvent } from "./chat.system-messages.js";
 
 /**
  * Penulis bersama modul chat (dipakai layanan HTTP chat dan ChatLifecycleService untuk moderasi/penghapusan akun):
  * pesan sistem dengan aturan urutan commit C6, pembatalan undangan, dan pelepasan berkas. Semua efek realtime
- * ditunda sampai commit oleh RealtimeService.
+ * ditunda sampai commit (ChatEvents/RealtimeService).
  */
 @Injectable()
 export class ChatWriter {
   constructor(
     @Inject(CLOCK) private readonly clock: Clock,
-    private readonly presenter: ChatPresenter,
     private readonly events: ChatEvents,
     private readonly files: FilesService,
   ) {}
 
-  /** Nama tampilan anggota untuk teks pesan sistem ("Akun dihapus" bila tidak ada). */
+  /** Nama tampilan anggota untuk teks notifikasi ("Akun dihapus" bila tidak ada). */
   async displayName(db: DbOrTx, userId: string): Promise<string> {
     const facts = (await alumniFacts(db, [userId])).get(userId);
     return facts && facts.account_status !== "deleted" ? facts.full_name : DELETED_ACCOUNT_NAME;
@@ -41,9 +39,11 @@ export class ChatWriter {
 
   /**
    * Pesan sistem (mis. anggota bergabung/keluar). Pemanggil WAJIB sudah mengunci baris room sebagai kunci pertama
-   * transaksi (aturan C6). message.created dikirim ke kanal room setelah commit. Mengembalikan id pesan.
+   * transaksi (aturan C6). Body menyimpan peristiwa terstruktur tanpa nama orang; teksnya dirangkai saat dibaca dengan
+   * nama terkini, sehingga nama akun yang dihapus tidak tersisa (AC F14-3, chat.system-messages.ts). message.created
+   * dikirim setelah commit. Mengembalikan id pesan.
    */
-  async systemMessage(tx: Tx, roomId: string, body: string): Promise<string> {
+  async systemMessage(tx: Tx, roomId: string, event: SystemEvent): Promise<string> {
     const id = uuidv7();
     await insertMessageLocked(tx, {
       id,
@@ -51,18 +51,11 @@ export class ChatWriter {
       senderId: null,
       clientMessageId: null,
       kind: "system",
-      body,
+      body: encodeSystemEvent(event),
       now: this.clock.now(),
     });
-    await this.broadcastCreated(tx, roomId, id);
+    this.events.messageCreated(roomId, id);
     return id;
-  }
-
-  /** Menyiarkan message.created untuk pesan yang baru disisipkan (bentuk RealtimeChatMessage, URL tanpa penerima). */
-  async broadcastCreated(tx: DbOrTx, roomId: string, messageId: string): Promise<void> {
-    const found = await messageRows(tx, { roomId, viewerId: null, ids: [messageId] });
-    const [dto] = await this.presenter.messages(tx, found, null, { realtime: true });
-    if (dto) this.events.messageCreated(roomId, ChatPresenter.asRealtime(dto));
   }
 
   /**

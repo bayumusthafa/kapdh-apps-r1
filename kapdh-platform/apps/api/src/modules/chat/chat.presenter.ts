@@ -11,14 +11,16 @@ import {
   hasActiveMembership,
 } from "../../core/membership/effective-status.js";
 import { CLOCK } from "../../core/tokens.js";
-import { DELETED_ACCOUNT_NAME, PREVIEW_CHARS, REALTIME_FILE_URL_TTL_SECONDS } from "./chat.constants.js";
+import { DELETED_ACCOUNT_NAME, PREVIEW_CHARS } from "./chat.constants.js";
 import {
+  displayNames,
   type MessageRow,
   reactionCounts,
   type ReactionCountRow,
   type RoomSummaryRow,
   toDate,
 } from "./chat.queries.js";
+import { decodeSystemEvent, type NameLookup, systemEventUserIds, systemText } from "./chat.system-messages.js";
 import { previewOf } from "./content-filter.js";
 
 export type ChatRoomSummaryDto = components["schemas"]["ChatRoomSummary"];
@@ -29,7 +31,10 @@ export type ChatPeerDto = components["schemas"]["ChatPeer"];
 export type ChatReactionDto = components["schemas"]["ChatReaction"];
 export type ChatSendRestriction = components["schemas"]["ChatSendRestriction"];
 
-/** Penampil HTTP: URL berkas privat diikat ke sesi penampil (PRD 5.4: TTL tidak menggantikan otorisasi). */
+/**
+ * Penerima URL berkas privat: sesi penampil HTTP (AuthContext) atau keluarga sesi penerima event realtime. URL selalu
+ * terikat sesi ini sehingga otorisasi diulang saat dibuka (PRD 5.4: TTL tidak menggantikan otorisasi).
+ */
 export type ChatViewer = Pick<AuthContext, "userId" | "sessionId" | "sessionVersion">;
 
 /** Rujukan berkas minimum untuk URL: null bila tidak ada atau belum/tidak lagi `ready`. */
@@ -67,12 +72,17 @@ export function isActiveMember(facts: UserFacts, now: Date): boolean {
   );
 }
 
+/** Berkas siap yang hanya boleh dibuka lewat URL bertanda tangan terikat sesi (bukan publik). */
+export function isPrivateReady(file: FileRefLite): boolean {
+  return file.id !== null && file.status === "ready" && file.visibility !== "public";
+}
+
 /**
- * Pemetaan baris kueri chat ke skema kontrak (domains/chat.yaml, events/realtime-chat-*.schema.json). URL berkas:
- * - respons HTTP: URL bertanda tangan terikat sesi penampil (dibuka ulang hanya bila kebijakan akses masih lolos);
- * - siaran realtime room: URL terikat berkas tanpa penerima tertentu dengan TTL pendek (kanal room:<id> sudah dibatasi
- *   anggota aktif, kontrak "URL bertanda tangan maksimal 10 menit dan terikat berkas").
- * Isi pesan tidak pernah dilog (ARCHITECTURE §2 butir 3).
+ * Pemetaan baris kueri chat ke skema kontrak (domains/chat.yaml, events/realtime-chat-*.schema.json). URL berkas privat
+ * SELALU terikat sesi penerimanya (respons HTTP: sesi penampil; event realtime: keluarga sesi penerima, lihat
+ * ChatFanout), sehingga membuka URL mengulang kebijakan akses (anggota yang keluar/dikeluarkan langsung ditolak, PRD 5.4,
+ * AC F11-4). Tanpa penerima hanya URL berkas publik yang diterbitkan. Teks pesan sistem dirangkai dari peristiwa
+ * terstruktur dengan nama terkini (chat.system-messages.ts). Isi pesan tidak pernah dilog (ARCHITECTURE §2 butir 3).
  */
 @Injectable()
 export class ChatPresenter {
@@ -81,17 +91,14 @@ export class ChatPresenter {
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
-  static subject(viewer: ChatViewer | null): FileTokenSubject | null {
-    return viewer
-      ? { userId: viewer.userId, sessionId: viewer.sessionId, sessionVersion: viewer.sessionVersion }
-      : null;
+  static subject(viewer: ChatViewer): FileTokenSubject {
+    return { userId: viewer.userId, sessionId: viewer.sessionId, sessionVersion: viewer.sessionVersion };
   }
 
   /**
-   * URL berkas (publik tetap, privat bertanda tangan) atau null bila berkas tidak siap. Dengan penampil: terikat sesi
-   * penampil, TTL bawaan (<= 10 menit) dan otorisasi diulang saat dibuka. Tanpa penampil (siaran realtime ke kanal
-   * room): TTL pendek {@link REALTIME_FILE_URL_TTL_SECONDS} karena URL tidak terikat sesi (PRD 5.4: TTL tidak
-   * menggantikan otorisasi); klien memuat URL terikat sesi lewat riwayat HTTP atau GET /files/{id}/access.
+   * URL berkas: publik → URL tetap; privat → URL bertanda tangan terikat sesi `viewer` (TTL bawaan <= 10 menit,
+   * otorisasi diulang saat dibuka). null bila berkas tidak siap, atau privat tanpa penerima (URL privat tanpa sesi tidak
+   * pernah diterbitkan, PRD 5.4).
    */
   async fileUrl(
     file: FileRefLite,
@@ -99,10 +106,10 @@ export class ChatPresenter {
     viewer: ChatViewer | null,
   ): Promise<{ url: string; expiresAt: Date | null } | null> {
     if (!file.id || file.status !== "ready" || !file.visibility) return null;
+    if (file.visibility !== "public" && !viewer) return null;
     return this.files.signedUrl(
       { id: file.id, purpose, visibility: file.visibility },
-      ChatPresenter.subject(viewer),
-      viewer ? {} : { ttlSeconds: REALTIME_FILE_URL_TTL_SECONDS },
+      viewer ? ChatPresenter.subject(viewer) : null,
     );
   }
 
@@ -128,6 +135,28 @@ export class ChatPresenter {
     };
   }
 
+  // ------------------------------------------------------------------------------------------------ pesan sistem
+
+  /** Nama terkini untuk semua pengguna yang disebut body pesan sistem (satu kueri). */
+  async nameLookup(db: DbOrTx, bodies: readonly (string | null)[]): Promise<NameLookup> {
+    const ids = new Set<string>();
+    for (const body of bodies) {
+      const event = decodeSystemEvent(body);
+      if (event) for (const id of systemEventUserIds(event)) ids.add(id);
+    }
+    const names = await displayNames(db, [...ids]);
+    return (userId) => names.get(userId) ?? null;
+  }
+
+  /**
+   * Teks tampilan body pesan sistem (urutan sama dengan masukan). Untuk modul lain yang membaca messages.body mentah,
+   * mis. snapshot bukti moderasi atas pesan konteks berjenis system (kontrak AdminModerationEvidenceMessage).
+   */
+  async renderSystemBodies(db: DbOrTx, bodies: readonly (string | null)[]): Promise<(string | null)[]> {
+    const nameOf = await this.nameLookup(db, bodies);
+    return bodies.map((body) => systemText(body, nameOf));
+  }
+
   // ----------------------------------------------------------------------------------------------------- room
 
   private peerFacts(row: RoomSummaryRow): UserFacts {
@@ -147,7 +176,24 @@ export class ChatPresenter {
     return null;
   }
 
-  async summary(row: RoomSummaryRow, viewer: ChatViewer | null): Promise<ChatRoomSummaryDto> {
+  /** ChatRoomSummary untuk beberapa baris sekaligus (nama pesan sistem terakhir dimuat dengan satu kueri). */
+  async summaries(
+    db: DbOrTx,
+    found: readonly RoomSummaryRow[],
+    viewer: ChatViewer,
+  ): Promise<ChatRoomSummaryDto[]> {
+    const nameOf = await this.nameLookup(
+      db,
+      found.map((row) => (row.lm_kind === "system" ? row.lm_body : null)),
+    );
+    return Promise.all(found.map((row) => this.summary(row, viewer, nameOf)));
+  }
+
+  private async summary(
+    row: RoomSummaryRow,
+    viewer: ChatViewer,
+    nameOf: NameLookup,
+  ): Promise<ChatRoomSummaryDto> {
     const now = this.clock.now();
     const facts = this.peerFacts(row);
     const peerDeleted = row.kind === "direct" && isDeletedAccount(facts);
@@ -184,6 +230,7 @@ export class ChatPresenter {
         available: !row.peer_blocks && isActiveMember(facts, now),
       };
     }
+    const lastText = row.lm_kind === "system" ? systemText(row.lm_body, nameOf) : row.lm_body;
     return {
       id: row.id,
       kind: row.kind,
@@ -204,7 +251,7 @@ export class ChatPresenter {
               isDeletedAccount({ accountStatus: row.lm_sender_status, fullName: row.lm_sender_name })
                 ? null
                 : row.lm_sender_name,
-            preview: row.lm_deleted ? null : previewOf(row.lm_body, PREVIEW_CHARS),
+            preview: row.lm_deleted ? null : previewOf(lastText, PREVIEW_CHARS),
             has_image: !row.lm_deleted && row.lm_has_image === true,
             deleted: row.lm_deleted === true,
             created_at: row.lm_created_at!,
@@ -214,11 +261,11 @@ export class ChatPresenter {
     };
   }
 
-  async room(row: RoomSummaryRow, viewer: ChatViewer | null): Promise<ChatRoomDto> {
-    const summary = await this.summary(row, viewer);
+  async room(db: DbOrTx, row: RoomSummaryRow, viewer: ChatViewer): Promise<ChatRoomDto> {
+    const [summary] = await this.summaries(db, [row], viewer);
     const restriction = this.sendRestriction(row);
     return {
-      ...summary,
+      ...summary!,
       name: row.kind === "group" ? row.name : null,
       avatar_file_id: row.kind === "group" ? row.avatar_file_id : null,
       can_send: restriction === null,
@@ -235,15 +282,32 @@ export class ChatPresenter {
 
   // ----------------------------------------------------------------------------------------------------- pesan
 
+  /** true bila bentuk siaran pesan memuat URL berkas privat (gambar pesan atau avatar privat pengirim). */
+  static hasPrivateFiles(row: MessageRow): boolean {
+    const image =
+      row.deleted_at === null &&
+      row.image_file_id !== null &&
+      isPrivateReady({ id: row.image_file_id, visibility: row.image_visibility, status: row.image_status });
+    const avatar =
+      row.kind !== "system" &&
+      isPrivateReady({
+        id: row.sender_avatar_file_id,
+        visibility: row.sender_avatar_visibility,
+        status: row.sender_avatar_status,
+      });
+    return image || avatar;
+  }
+
   /**
-   * ChatMessage untuk respons HTTP (viewer = sesi penampil) atau RealtimeChatMessage untuk siaran room
-   * (`realtime: true`: viewer null, reaksi kosong, rujukan balasan tanpa pratinjau sesuai realtime-chat-reply).
+   * ChatMessage untuk respons HTTP (viewer = sesi penampil) atau RealtimeChatMessage untuk event (`realtime: true`:
+   * reaksi kosong, rujukan balasan tanpa pratinjau sesuai realtime-chat-reply; viewer = keluarga sesi penerima, atau
+   * null bila pesan tanpa berkas privat). `names` dapat diberikan agar penyiaran per sesi tidak mengulang kueri nama.
    */
   async messages(
     db: DbOrTx,
     found: readonly MessageRow[],
     viewer: ChatViewer | null,
-    options: { realtime?: boolean } = {},
+    options: { realtime?: boolean; names?: NameLookup } = {},
   ): Promise<ChatMessageDto[]> {
     const reactions = options.realtime
       ? new Map<string, ReactionCountRow[]>()
@@ -252,13 +316,25 @@ export class ChatPresenter {
           found.filter((m) => !m.deleted_at).map((m) => m.id),
           viewer?.userId ?? null,
         );
-    return Promise.all(found.map((row) => this.message(row, reactions.get(row.id) ?? [], viewer, options)));
+    const nameOf = options.names ?? (await this.nameLookup(db, ChatPresenter.systemBodies(found)));
+    return Promise.all(
+      found.map((row) => this.message(row, reactions.get(row.id) ?? [], viewer, nameOf, options)),
+    );
+  }
+
+  /** Body pesan sistem (pesan itu sendiri dan pesan yang dibalas) yang perlu nama terkini. */
+  static systemBodies(found: readonly MessageRow[]): (string | null)[] {
+    return found.flatMap((row) => [
+      row.kind === "system" ? row.body : null,
+      row.reply_kind === "system" ? row.reply_body : null,
+    ]);
   }
 
   private async message(
     row: MessageRow,
     reactions: readonly ReactionCountRow[],
     viewer: ChatViewer | null,
+    nameOf: NameLookup,
     options: { realtime?: boolean },
   ): Promise<ChatMessageDto> {
     const deleted = row.deleted_at !== null;
@@ -303,6 +379,7 @@ export class ChatPresenter {
         row.reply_visible === true &&
         row.reply_deleted !== true &&
         row.reply_id !== null;
+      const replyText = row.reply_kind === "system" ? systemText(row.reply_body, nameOf) : row.reply_body;
       replyTo = {
         id: row.reply_to_id,
         available,
@@ -312,7 +389,7 @@ export class ChatPresenter {
           !isDeletedAccount({ accountStatus: row.reply_sender_status, fullName: row.reply_sender_name })
             ? row.reply_sender_name
             : null,
-        preview: available ? previewOf(row.reply_body, PREVIEW_CHARS) : null,
+        preview: available ? previewOf(replyText, PREVIEW_CHARS) : null,
         has_image: available && row.reply_has_image === true,
       };
     }
@@ -322,7 +399,7 @@ export class ChatPresenter {
       client_message_id: row.kind === "system" ? null : row.client_message_id,
       kind: row.kind,
       sender,
-      body: deleted ? null : row.body,
+      body: deleted ? null : row.kind === "system" ? systemText(row.body, nameOf) : row.body,
       image,
       reply_to: replyTo,
       reactions: deleted

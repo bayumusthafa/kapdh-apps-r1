@@ -4,7 +4,16 @@
  * runtime worker (job penghapusan akun berjalan di worker, ARCHITECTURE §4.1, §4.8).
  */
 import type { WorkerEnv } from "@kapdh/config";
-import { alumni, files, messageReactions, messages, reports, roomMembers, rooms } from "@kapdh/database";
+import {
+  alumni,
+  files,
+  messageReactions,
+  messages,
+  reports,
+  roomMembers,
+  rooms,
+  users,
+} from "@kapdh/database";
 import { MemoryDriver } from "@kapdh/storage";
 import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
@@ -14,6 +23,7 @@ import { runAsSystem } from "../../src/core/context/request-context.js";
 import { withTx } from "../../src/core/db/tx.js";
 import { createRootLogger } from "../../src/core/logging/logger.js";
 import { ChatLifecycleModule } from "../../src/modules/chat/chat-lifecycle.module.js";
+import { ChatPresenter } from "../../src/modules/chat/chat.presenter.js";
 import { ChatLifecycleService } from "../../src/modules/chat/chat-lifecycle.service.js";
 import { createWorkerContext } from "../../src/worker.js";
 import { expectOperation } from "../support/contract.js";
@@ -131,6 +141,75 @@ describe("AC F11-5 / AC F14-5: akun yang dihapus dilepas dari chat dengan aturan
       messagesPlaceholdered: 0,
     });
     expect(await lifecycle.soleAdminGroupCount(leaving.userId)).toBe(0);
+  });
+});
+
+describe("AC F14-3: nama akun yang dihapus tidak tersisa di pesan sistem grup", () => {
+  it("AC F14-3: pesan sistem menyimpan id pengguna tanpa nama; setelah akun dihapus seluruh riwayat dan daftar room menampilkan 'Seorang anggota'", async () => {
+    const secretName = "Nama Rahasia Dihapus";
+    const otherName = "Anggota Lain Uji";
+    const admin = await member(t);
+    const secret = await member(t, "verified", { fullName: secretName });
+    const other = await member(t, "verified", { fullName: otherName });
+    const groupId = await groupWith(t, admin, [secret, other], "Grup Jejak Nama");
+    const promoted = await api(t).patch(
+      `/chat/rooms/${groupId}/members/${secret.userId}`,
+      { role: "admin" },
+      { token: admin.token },
+    );
+    expect(promoted.statusCode, promoted.body).toBe(200);
+    const room = await api(t).get(`/chat/rooms/${groupId}`, { token: secret.token });
+    const renamed = await api(t).patch(
+      `/chat/rooms/${groupId}`,
+      { name: "Grup Baru" },
+      { token: secret.token, headers: { "if-match": (room.json() as { version: string }).version } },
+    );
+    expect(renamed.statusCode, renamed.body).toBe(200);
+    const removed = await api(t).delete(`/chat/rooms/${groupId}/members/${other.userId}`, {
+      token: secret.token,
+    });
+    expect(removed.statusCode).toBe(204);
+    const systemTexts = async () =>
+      (await history(t, admin, groupId)).body.items.filter((m) => m.kind === "system").map((m) => m.body);
+    const storedBodies = async () =>
+      (await t.db.select({ body: messages.body }).from(messages).where(eq(messages.roomId, groupId))).map(
+        (m) => m.body ?? "",
+      );
+
+    // Selama akun ada: nama terkini tampil, tetapi tidak pernah tersimpan di body pesan.
+    expect(await systemTexts()).toEqual(
+      expect.arrayContaining([
+        `${secretName} bergabung ke grup.`,
+        `${secretName} sekarang admin grup.`,
+        `${secretName} mengubah nama grup menjadi "Grup Baru".`,
+        `${otherName} dikeluarkan dari grup oleh ${secretName}.`,
+      ]),
+    );
+    expect((await storedBodies()).filter((body) => body.includes(secretName))).toEqual([]);
+
+    // Job penghapusan akun (F-14): lepas dari chat, lalu akun berstatus deleted.
+    await runAsSystem(() => lifecycle.detachDeletedAccount(secret.userId));
+    await t.db.update(users).set({ status: "deleted" }).where(eq(users.id, secret.userId));
+
+    const page = await history(t, admin, groupId);
+    expect(JSON.stringify(page.body)).not.toContain(secretName);
+    expect(await systemTexts()).toEqual(
+      expect.arrayContaining([
+        "Seorang anggota bergabung ke grup.",
+        "Seorang anggota sekarang admin grup.",
+        'Seorang anggota mengubah nama grup menjadi "Grup Baru".',
+        `${otherName} dikeluarkan dari grup oleh seorang anggota.`,
+        "Seorang anggota keluar dari grup karena akunnya dihapus.",
+      ]),
+    );
+    const rooms$ = await api(t).get("/chat/rooms", { token: admin.token });
+    expect(rooms$.statusCode).toBe(200);
+    expect(JSON.stringify(expectOperation("get", "/chat/rooms", rooms$))).not.toContain(secretName);
+    expect((await storedBodies()).filter((body) => body.includes(secretName))).toEqual([]);
+    // Konsumen body mentah lain (mis. snapshot bukti moderasi) memakai renderer yang sama.
+    const rendered = await t.app.get(ChatPresenter).renderSystemBodies(t.db, await storedBodies());
+    expect(rendered.join("\n")).not.toContain(secretName);
+    expect(rendered).toContain("Seorang anggota bergabung ke grup.");
   });
 });
 
