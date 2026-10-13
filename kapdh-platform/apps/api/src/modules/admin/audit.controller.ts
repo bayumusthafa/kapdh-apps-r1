@@ -50,7 +50,10 @@ export class AuditController {
   @Get("exports")
   @HttpCode(200)
   @RequirePermission("audit.read", "audit.export")
-  listExports(@CurrentAuth() auth: AuthContext, @Query() query: unknown): Promise<Schemas["AuditExportPage"]> {
+  listExports(
+    @CurrentAuth() auth: AuthContext,
+    @Query() query: unknown,
+  ): Promise<Schemas["AuditExportPage"]> {
     return this.exports.list(auth, query);
   }
 

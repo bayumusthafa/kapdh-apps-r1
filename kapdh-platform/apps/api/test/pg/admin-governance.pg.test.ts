@@ -75,7 +75,10 @@ async function superAdmin(): Promise<Actor> {
 }
 
 async function headers(actor: Actor, targetAdminId: string): Promise<Record<string, string>> {
-  const [row] = await tdb.db.select({ version: admins.version }).from(admins).where(eq(admins.id, targetAdminId));
+  const [row] = await tdb.db
+    .select({ version: admins.version })
+    .from(admins)
+    .where(eq(admins.id, targetAdminId));
   const reauth = await app
     .get(TokenService)
     .signReauth({ userId: actor.admin.userId, familyId: actor.familyId, level: 2 });
@@ -94,18 +97,32 @@ async function request(actor: Actor, target: Actor, move: Move) {
   const base = `/api/v1/admin/admins/${target.admin.adminId}`;
   switch (move) {
     case "demote":
-      return { h, run: () => app.inject({ method: "PATCH", url: base, headers: h, payload: { role: "admin", permissions: [] } }) };
+      return {
+        h,
+        run: () =>
+          app.inject({ method: "PATCH", url: base, headers: h, payload: { role: "admin", permissions: [] } }),
+      };
     case "disable":
       return {
         h,
         run: () =>
-          app.inject({ method: "PATCH", url: base, headers: h, payload: { status: "disabled", reason: "Uji balapan" } }),
+          app.inject({
+            method: "PATCH",
+            url: base,
+            headers: h,
+            payload: { status: "disabled", reason: "Uji balapan" },
+          }),
       };
     case "recover":
       return {
         h,
         run: () =>
-          app.inject({ method: "POST", url: `${base}/recovery`, headers: h, payload: { reason: "Uji balapan pemulihan" } }),
+          app.inject({
+            method: "POST",
+            url: `${base}/recovery`,
+            headers: h,
+            payload: { reason: "Uji balapan pemulihan" },
+          }),
       };
   }
 }
@@ -133,7 +150,10 @@ const SUPER_ADMIN_GUARD_LOCK = 4711000518;
  * trigger, yang lain menunggu kunci penjaga atau baris target yang sama), lalu melepasnya sehingga keduanya bersaing pada
  * penjaga transaksi yang sama.
  */
-async function raceOnGuard<T>(fire: () => Promise<T>, waiters: number): Promise<{ result: T; waiting: number }> {
+async function raceOnGuard<T>(
+  fire: () => Promise<T>,
+  waiters: number,
+): Promise<{ result: T; waiting: number }> {
   const holder = createDb(tdb.url, { max: 1, applicationName: "kapdh-pg-test-guard-holder" }).sql;
   try {
     await holder`select pg_advisory_lock(${SUPER_ADMIN_GUARD_LOCK})`;
@@ -168,52 +188,73 @@ describe("AC F16-2: dua Super Admin terakhir saling menurunkan lewat API secara 
     ["demote", "disable"],
     ["recover", "demote"],
     ["disable", "recover"],
-  ])("AC F16-2: %s vs %s: tepat satu berhasil, yang lain 409 dengan current, satu Super Admin tersisa", async (m1, m2) => {
-    for (let round = 0; round < 3; round++) {
-      const a = await superAdmin();
-      const b = await superAdmin();
-      await onlyKeep([a.admin.adminId, b.admin.adminId]);
-      expect((await usableSuperAdmins()).sort()).toEqual([a.admin.adminId, b.admin.adminId].sort());
+  ])(
+    "AC F16-2: %s vs %s: tepat satu berhasil, yang lain 409 dengan current, satu Super Admin tersisa",
+    async (m1, m2) => {
+      for (let round = 0; round < 3; round++) {
+        const a = await superAdmin();
+        const b = await superAdmin();
+        await onlyKeep([a.admin.adminId, b.admin.adminId]);
+        expect((await usableSuperAdmins()).sort()).toEqual([a.admin.adminId, b.admin.adminId].sort());
 
-      const first = await request(a, b, m1);
-      const second = await request(b, a, m2);
-      const { result: responses, waiting } = await raceOnGuard(() => Promise.all([first.run(), second.run()]), 2);
-      // Kedua transaksi API menunggu penjaga yang sama secara bersamaan (bukan berurutan).
-      expect(waiting).toBe(2);
-      const statuses = responses.map((r) => r.statusCode).sort();
-      expect(statuses, responses.map((r) => r.body).join("\n")).toEqual([200, 409]);
-      const loserIndex = responses.findIndex((r) => r.statusCode === 409);
-      const loser = responses[loserIndex]!;
-      const body = loser.json() as { code: string; field_errors: Record<string, string[]>; current: { id: string } };
-      expect(body.code).toBe("VALIDATION_ERROR");
-      expect(Object.keys(body.field_errors).some((k) => k === "role" || k === "status")).toBe(true);
-      const loserTarget = loserIndex === 0 ? b : a;
-      expect(body.current.id).toBe(loserTarget.admin.adminId);
+        const first = await request(a, b, m1);
+        const second = await request(b, a, m2);
+        const { result: responses, waiting } = await raceOnGuard(
+          () => Promise.all([first.run(), second.run()]),
+          2,
+        );
+        // Kedua transaksi API menunggu penjaga yang sama secara bersamaan (bukan berurutan).
+        expect(waiting).toBe(2);
+        const statuses = responses.map((r) => r.statusCode).sort();
+        expect(statuses, responses.map((r) => r.body).join("\n")).toEqual([200, 409]);
+        const loserIndex = responses.findIndex((r) => r.statusCode === 409);
+        const loser = responses[loserIndex]!;
+        const body = loser.json() as {
+          code: string;
+          field_errors: Record<string, string[]>;
+          current: { id: string };
+        };
+        expect(body.code).toBe("VALIDATION_ERROR");
+        expect(Object.keys(body.field_errors).some((k) => k === "role" || k === "status")).toBe(true);
+        const loserTarget = loserIndex === 0 ? b : a;
+        expect(body.current.id).toBe(loserTarget.admin.adminId);
 
-      const remaining = await usableSuperAdmins();
-      expect(remaining).toHaveLength(1);
-      // Pemenang menulis tepat satu audit; transaksi yang batal tidak meninggalkan audit (AC F17-1).
-      const moves = [m1, m2];
-      const targets = [b, a];
-      for (const [index, target] of targets.entries()) {
-        const rows = await tdb.db
-          .select({ id: auditLogs.id })
-          .from(auditLogs)
-          .where(and(eq(auditLogs.entityId, target.admin.adminId), eq(auditLogs.action, AUDIT_ACTION[moves[index]!])));
-        expect(rows, `audit ${moves[index]} -> ${index}`).toHaveLength(index === loserIndex ? 0 : 1);
+        const remaining = await usableSuperAdmins();
+        expect(remaining).toHaveLength(1);
+        // Pemenang menulis tepat satu audit; transaksi yang batal tidak meninggalkan audit (AC F17-1).
+        const moves = [m1, m2];
+        const targets = [b, a];
+        for (const [index, target] of targets.entries()) {
+          const rows = await tdb.db
+            .select({ id: auditLogs.id })
+            .from(auditLogs)
+            .where(
+              and(
+                eq(auditLogs.entityId, target.admin.adminId),
+                eq(auditLogs.action, AUDIT_ACTION[moves[index]!]),
+              ),
+            );
+          expect(rows, `audit ${moves[index]} -> ${index}`).toHaveLength(index === loserIndex ? 0 : 1);
+        }
+        // Target yang kalah tidak berubah (versi sama).
+        const [untouched] = await tdb.db
+          .select()
+          .from(admins)
+          .where(eq(admins.id, loserTarget.admin.adminId));
+        expect(untouched).toMatchObject({ role: "super_admin", status: "active" });
       }
-      // Target yang kalah tidak berubah (versi sama).
-      const [untouched] = await tdb.db.select().from(admins).where(eq(admins.id, loserTarget.admin.adminId));
-      expect(untouched).toMatchObject({ role: "super_admin", status: "active" });
-    }
-  });
+    },
+  );
 
   it("AC F16-2: hanya satu Super Admin aktif; dua request bersamaan menurunkan/menonaktifkan dirinya sendiri: keduanya 409", async () => {
     const solo = await superAdmin();
     await onlyKeep([solo.admin.adminId]);
     const demote = await request(solo, solo, "demote");
     const disable = await request(solo, solo, "disable");
-    const { result: responses, waiting } = await raceOnGuard(() => Promise.all([demote.run(), disable.run()]), 2);
+    const { result: responses, waiting } = await raceOnGuard(
+      () => Promise.all([demote.run(), disable.run()]),
+      2,
+    );
     expect(waiting).toBe(2);
     expect(responses.map((r) => r.statusCode)).toEqual([409, 409]);
     for (const res of responses) expect(res.json()).toMatchObject({ code: "VALIDATION_ERROR" });
@@ -314,7 +355,9 @@ describe("AC F17-4 (kontrak C7 AuditExport): job ekspor ganda bersamaan menulis 
       expect(exportFiles).toHaveLength(1);
       expect(exportFiles[0]!.id).toBe((completed[0]!.after as { file_id: string }).file_id);
       // Tidak ada objek storage yatim dari eksekusi yang kalah.
-      expect(storage.keys().filter((key) => key.includes("audit_export"))).toEqual([exportFiles[0]!.objectKey]);
+      expect(storage.keys().filter((key) => key.includes("audit_export"))).toEqual([
+        exportFiles[0]!.objectKey,
+      ]);
     } finally {
       await holder.end({ timeout: 5 });
       await worker.close();

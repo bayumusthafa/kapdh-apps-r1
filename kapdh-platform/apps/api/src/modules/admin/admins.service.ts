@@ -14,7 +14,23 @@ import {
   users,
 } from "@kapdh/database";
 import bcrypt from "bcryptjs";
-import { and, asc, count, desc, eq, gt, ilike, inArray, isNull, like, ne, notInArray, or, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  ilike,
+  inArray,
+  isNull,
+  like,
+  ne,
+  notInArray,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../../core/adapters/clock.js";
@@ -221,7 +237,11 @@ export class AdminsService {
         .select({ n: count() })
         .from(sessions)
         .where(
-          and(eq(sessions.userId, row.userId), isNull(sessions.revokedAt), gt(sessions.expiresAt, this.clock.now())),
+          and(
+            eq(sessions.userId, row.userId),
+            isNull(sessions.revokedAt),
+            gt(sessions.expiresAt, this.clock.now()),
+          ),
         ),
     ]);
     return {
@@ -297,11 +317,7 @@ export class AdminsService {
         .where(and(where, keyset))
         .orderBy(...order)
         .limit(page.limit + 1),
-      this.db
-        .select({ n: count() })
-        .from(admins)
-        .innerJoin(users, eq(users.id, admins.userId))
-        .where(where),
+      this.db.select({ n: count() }).from(admins).innerJoin(users, eq(users.id, admins.userId)).where(where),
       this.db
         .select({
           total: count(),
@@ -381,9 +397,10 @@ export class AdminsService {
           avatarId: files.id,
           avatarPurpose: files.purpose,
           avatarVisibility: files.visibility,
-          alreadyAdmin: sql<boolean>`exists (select 1 from ${admins} where ${admins.linkedAlumniUserId} = ${alumni.userId})`.mapWith(
-            Boolean,
-          ),
+          alreadyAdmin:
+            sql<boolean>`exists (select 1 from ${admins} where ${admins.linkedAlumniUserId} = ${alumni.userId})`.mapWith(
+              Boolean,
+            ),
         })
         .from(alumni)
         .innerJoin(users, eq(users.id, alumni.userId))
@@ -403,11 +420,7 @@ export class AdminsService {
         )
         .orderBy(desc(users.createdAt), desc(users.id))
         .limit(page.limit + 1),
-      this.db
-        .select({ n: count() })
-        .from(alumni)
-        .innerJoin(users, eq(users.id, alumni.userId))
-        .where(where),
+      this.db.select({ n: count() }).from(alumni).innerJoin(users, eq(users.id, alumni.userId)).where(where),
     ]);
     const pageRows = rows.slice(0, page.limit);
     const items: AdminCandidate[] = await Promise.all(
@@ -580,7 +593,10 @@ export class AdminsService {
           if (!account || account.kind !== "alumni")
             throw fieldError("alumni_user_id", "Alumni tidak ditemukan.");
           if (account.status !== "active")
-            throw fieldError("alumni_user_id", "Akun alumni tidak aktif atau sedang dalam proses penghapusan.");
+            throw fieldError(
+              "alumni_user_id",
+              "Akun alumni tidak aktif atau sedang dalam proses penghapusan.",
+            );
           const [profile] = await tx
             .select({ fullName: alumni.fullName, suspendedAt: alumni.suspendedAt })
             .from(alumni)
@@ -588,7 +604,10 @@ export class AdminsService {
             .for("share");
           if (!profile) throw fieldError("alumni_user_id", "Alumni tidak ditemukan.");
           if (profile.suspendedAt)
-            throw fieldError("alumni_user_id", "Alumni sedang dibatasi pengurus dan tidak dapat dijadikan admin.");
+            throw fieldError(
+              "alumni_user_id",
+              "Alumni sedang dibatasi pengurus dan tidak dapat dijadikan admin.",
+            );
           const [linked] = await tx
             .select({ id: admins.id })
             .from(admins)
@@ -785,10 +804,15 @@ export class AdminsService {
         }
 
         if (emailChanged) {
-          await tx.update(users).set({ email: newEmail!, updatedAt: now }).where(eq(users.id, current.userId));
+          await tx
+            .update(users)
+            .set({ email: newEmail!, updatedAt: now })
+            .where(eq(users.id, current.userId));
           if (reissue) {
             // Token lama tidak berlaku; pendaftaran TOTP yang sedang berjalan dibatalkan (kontrak adminUpdateAdmin).
-            await tx.delete(mfaTotp).where(and(eq(mfaTotp.userId, current.userId), isNull(mfaTotp.verifiedAt)));
+            await tx
+              .delete(mfaTotp)
+              .where(and(eq(mfaTotp.userId, current.userId), isNull(mfaTotp.verifiedAt)));
             await this.revokeSessions(tx, current.userId, now);
           }
         }
@@ -909,7 +933,8 @@ export class AdminsService {
       if (!current) throw notFound("Admin tidak ditemukan.");
       if (current.version !== expectedVersion)
         throw versionConflict(await this.findDetail(tx, adminId, auth));
-      const resendable = current.status === "invited" || (current.status === "disabled" && !current.activatedAt);
+      const resendable =
+        current.status === "invited" || (current.status === "disabled" && !current.activatedAt);
       if (!resendable)
         throw conflict(
           "_",
@@ -973,7 +998,10 @@ export class AdminsService {
         const current = await this.lockAdmin(tx, adminId);
         if (!current) throw notFound("Admin tidak ditemukan.");
         if (current.id === auth.adminId)
-          throw conflict("_", "Super Admin tidak dapat memulihkan dirinya sendiri; gunakan ganti sandi atau backup code.");
+          throw conflict(
+            "_",
+            "Super Admin tidak dapat memulihkan dirinya sendiri; gunakan ganti sandi atau backup code.",
+          );
         if (current.status === "invited" || !current.activatedAt)
           throw conflict("_", "Admin belum pernah aktif atau sedang diundang; gunakan kirim ulang undangan.");
         if (current.version !== expectedVersion)

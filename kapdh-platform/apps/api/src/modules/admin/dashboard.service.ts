@@ -195,9 +195,10 @@ export class DashboardService {
           expiresAt: alumni.expiresAt,
           suspendedAt: alumni.suspendedAt,
           registeredAt: users.createdAt,
-          linkedAdmin: sql<boolean>`exists (select 1 from ${admins} where ${admins.linkedAlumniUserId} = ${alumni.userId} and ${admins.status} = 'active')`.mapWith(
-            Boolean,
-          ),
+          linkedAdmin:
+            sql<boolean>`exists (select 1 from ${admins} where ${admins.linkedAlumniUserId} = ${alumni.userId} and ${admins.status} = 'active')`.mapWith(
+              Boolean,
+            ),
         })
         .from(alumni)
         .innerJoin(users, eq(users.id, alumni.userId))
@@ -349,9 +350,10 @@ export class DashboardService {
         .select({
           failed: countWhere(sql`${outboxEvents.status} = 'failed'`),
           dead: countWhere(sql`${outboxEvents.status} = 'dead'`),
-          oldestPending: sql<Date | null>`min(${outboxEvents.createdAt}) filter (where ${outboxEvents.status} = 'pending')`.mapWith(
-            outboxEvents.createdAt,
-          ),
+          oldestPending:
+            sql<Date | null>`min(${outboxEvents.createdAt}) filter (where ${outboxEvents.status} = 'pending')`.mapWith(
+              outboxEvents.createdAt,
+            ),
         })
         .from(outboxEvents)
         .where(inArray(outboxEvents.status, ["pending", "failed", "dead"])),

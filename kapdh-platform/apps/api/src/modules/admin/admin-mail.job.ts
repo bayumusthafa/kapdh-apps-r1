@@ -102,7 +102,9 @@ export class AdminMailJob implements OnModuleInit {
       const [entry] = await this.db
         .select({ before: auditLogs.before })
         .from(auditLogs)
-        .where(and(eq(auditLogs.id, auditId), eq(auditLogs.entityType, "admin"), eq(auditLogs.entityId, adminId)))
+        .where(
+          and(eq(auditLogs.id, auditId), eq(auditLogs.entityType, "admin"), eq(auditLogs.entityId, adminId)),
+        )
         .limit(1);
       const previous = (entry?.before as { email?: unknown } | null | undefined)?.email;
       if (typeof previous !== "string" || previous === admin.email) {
