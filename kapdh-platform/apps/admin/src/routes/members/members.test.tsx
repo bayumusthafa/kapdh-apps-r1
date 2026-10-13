@@ -1,10 +1,15 @@
 import { PERMISSION_VALUES } from "@kapdh/contracts";
 import { configure, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { api } from "../../api/client";
+import { ApiError } from "../../api/errors";
 import { MOCK_CREDENTIALS, mockAuth } from "../../api/mocks";
 import { MOCK_MEMBER, memberRequests, mockMembers, skillId } from "../../api/mocks/members";
-import { findToast, renderApp, signIn, type User } from "../../test/utils";
+import { findToast, renderApp, signIn, signInViaApi, toasts, type User } from "../../test/utils";
+import { latestCohort } from "./labels";
+import { forgetMembersSearch } from "./listMemory";
+import { isPreconditionFailure } from "./queries";
 
 /**
  * Manajemen Users di web admin (F-15, F-16, AC F05-6, F10-4, F12-3..F12-5, F15-1, F15-4, F16-4) terhadap server
@@ -17,6 +22,9 @@ import { findToast, renderApp, signIn, type User } from "../../test/utils";
  * paralel di mesin build, 1 detik bawaan Testing Library tidak selalu cukup.
  */
 configure({ asyncUtilTimeout: 5_000 });
+
+// Setiap kasus mulai dari daftar tanpa pencarian/filter yang diingat kasus sebelumnya.
+beforeEach(() => forgetMembersSearch());
 
 async function open(user: User, path: string, heading: string | RegExp) {
   renderApp(path);
@@ -158,6 +166,94 @@ describe("daftar anggota (F-15, guideline hal. 16; server tiruan)", () => {
     expect(within(dialog).getByRole("textbox", { name: /Nama lengkap/ })).toHaveValue("Umar Faruq");
     expect(screen.getByRole("heading", { level: 1, name: "Umar Faruq" })).toBeInTheDocument();
   });
+
+  it("F-15: kembali dari detail dan halaman master lewat breadcrumb mempertahankan pencarian dan filter daftar", async () => {
+    const user = userEvent.setup();
+    const { router } = renderApp("/members?status=suspended&cohort=22");
+    await signIn(user);
+    await screen.findByRole("heading", { level: 1, name: "Manajemen Users" });
+    expect(await screen.findByText("1 alumni sesuai pencarian dan filter")).toBeInTheDocument();
+    const crumbs = () => within(screen.getByRole("navigation", { name: "Breadcrumb" }));
+
+    await user.click(
+      within(card("Rizky Pratama")).getByRole("link", { name: "Informasi Pengguna Rizky Pratama" }),
+    );
+    await screen.findByRole("heading", { level: 1, name: "Rizky Pratama" });
+    await user.click(crumbs().getByRole("link", { name: "Manajemen Users" }));
+    expect(await screen.findByText("1 alumni sesuai pencarian dan filter")).toBeInTheDocument();
+    expect(router.state.location.search).toEqual({ status: "suspended", cohort: 22 });
+    expect(listRequests().at(-1)?.query).toMatchObject({ effective_status: "suspended", cohort: "22" });
+
+    await user.click(screen.getByRole("link", { name: /Manajemen Skill & Profesi/ }));
+    await screen.findByRole("heading", { level: 1, name: "Manajemen Skill & Profesi" });
+    await user.click(crumbs().getByRole("link", { name: "Manajemen Users" }));
+    expect(await screen.findByText("1 alumni sesuai pencarian dan filter")).toBeInTheDocument();
+    expect(router.state.location.search).toEqual({ status: "suspended", cohort: 22 });
+  });
+
+  it("PRD 2.3, F-14: ikon ubah tidak tampil untuk akun yang sedang dihapus; pada akun tertaut admin sendiri alasannya diumumkan", async () => {
+    const user = userEvent.setup();
+    const { router } = renderApp("/members?q=Yusuf");
+    await signIn(user);
+    await screen.findByRole("heading", { level: 1, name: "Manajemen Users" });
+    const yusuf = await screen.findByRole("article", { name: "Yusuf Hamdani" });
+    expect(within(yusuf).queryByRole("button", { name: /Ubah data/ })).toBeNull();
+    expect(within(yusuf).getByRole("link", { name: "Informasi Pengguna Yusuf Hamdani" })).toBeInTheDocument();
+
+    const search = screen.getByRole("searchbox", { name: "Cari alumni" });
+    await user.clear(search);
+    await user.type(search, "Bayu");
+    await waitFor(() => expect(router.state.location.search).toEqual({ q: "Bayu" }));
+    const bayu = await screen.findByRole("article", { name: "Bayu Musthafa Arief" });
+    // Ringkasan daftar tidak memuat id admin tertaut; konflik kepentingan diperiksa di detail.
+    await user.click(within(bayu).getByRole("button", { name: "Ubah data Bayu Musthafa Arief" }));
+    await screen.findByRole("heading", { level: 1, name: "Bayu Musthafa Arief" });
+    const notice = await screen.findByText(
+      /Formulir ubah data tidak dibuka: akun alumni ini tertaut ke akun admin Anda/,
+    );
+    const region = notice.closest("[role=status]") as HTMLElement;
+    await waitFor(() => expect(region).toHaveFocus());
+    expect(screen.queryByRole("dialog", { name: "Ubah data anggota" })).toBeNull();
+    expect(router.state.location.search).toEqual({});
+
+    await user.click(
+      within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("link", {
+        name: "Manajemen Users",
+      }),
+    );
+    await screen.findByRole("article", { name: "Bayu Musthafa Arief" });
+    expect(router.state.location.search).toEqual({ q: "Bayu" });
+  });
+
+  it("PRD 3.5: angkatan terbaru mengikuti tahun berjalan WIB seperti server, pada filter dan formulir ubah", async () => {
+    // Rumus server (MembershipKernel.latestCohort): tahun Jakarta - 1996; angkatan 30 lulus 2026.
+    expect(latestCohort(new Date("2026-10-12T11:00:00Z"))).toBe(30);
+    expect(latestCohort(new Date("2026-12-31T16:30:00Z"))).toBe(30); // 31 Des 2026 23.30 WIB
+    expect(latestCohort(new Date("2026-12-31T17:30:00Z"))).toBe(31); // 1 Jan 2027 00.30 WIB
+    const max = latestCohort();
+
+    const user = userEvent.setup();
+    await open(user, "/members", "Manajemen Users");
+    await screen.findByText("Menampilkan 24 dari 33");
+    await user.click(screen.getByRole("button", { name: "Filter" }));
+    const cohort = within(screen.getByRole("group", { name: "Filter anggota" })).getByRole("combobox", {
+      name: "Angkatan",
+    });
+    expect(within(cohort).getByRole("option", { name: `Angkatan ${max}` })).toBeInTheDocument();
+    expect(within(cohort).queryByRole("option", { name: `Angkatan ${max + 1}` })).toBeNull();
+
+    await user.click(within(card("Umar Faruq")).getByRole("button", { name: "Ubah data Umar Faruq" }));
+    const dialog = await screen.findByRole("dialog", { name: "Ubah data anggota" });
+    const input = within(dialog).getByRole("spinbutton", { name: /Angkatan/ });
+    await user.clear(input);
+    await user.type(input, String(max + 1));
+    await user.type(within(dialog).getByRole("textbox", { name: /Alasan perubahan/ }), "Koreksi angkatan");
+    await user.click(within(dialog).getByRole("button", { name: "Simpan perubahan" }));
+    await waitFor(() => expect(input).toHaveAttribute("aria-invalid", "true"));
+    expect(input).toHaveAccessibleDescription(new RegExp(`Angkatan berupa angka 1 sampai ${max}\\.`));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(memberRequests.some((r) => r.method === "PATCH")).toBe(false);
+  });
 });
 
 describe("keadaan layar anggota (PRD 4.5)", () => {
@@ -187,6 +283,41 @@ describe("keadaan layar anggota (PRD 4.5)", () => {
     expect(await screen.findByText("Data gagal dimuat")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Coba lagi" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Umar Faruq" })).toBeInTheDocument();
+  });
+
+  it("PRD 4.5: refetch latar detail gagal → halaman dan formulir yang sedang diisi dipertahankan, galat sebaris dengan coba lagi", async () => {
+    const user = userEvent.setup();
+    const dialog = await openEdit(user, MOCK_MEMBER.ahmad, "Ahmad Zulhadi");
+    const reason = within(dialog).getByRole("textbox", { name: /Alasan perubahan/ });
+    await user.type(reason, "Draf alasan perubahan");
+    mockMembers.fail("GET", /^\/admin\/members\/[^/]+$/, 503, 1);
+    // Kembali online memicu refetch latar (useApiQuery); refetch ini gagal.
+    window.dispatchEvent(new Event("online"));
+    expect(await screen.findByText(/Data anggota terbaru gagal dimuat/)).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Ubah data anggota" })).toBe(dialog);
+    expect(reason).toHaveValue("Draf alasan perubahan");
+    expect(screen.getByRole("heading", { level: 1, name: "Ahmad Zulhadi" })).toBeInTheDocument();
+    expect(screen.queryByText("Data gagal dimuat")).toBeNull();
+
+    await user.click(within(dialog).getByRole("button", { name: "Batal" }));
+    await user.click(screen.getByRole("button", { name: "Coba lagi" }));
+    await waitFor(() => expect(screen.queryByText(/Data anggota terbaru gagal dimuat/)).toBeNull());
+    expect(screen.getByRole("region", { name: "Profil alumni" })).toHaveTextContent("Dumai");
+  });
+
+  it("PRD 4.5: refetch latar daftar gagal → kartu tetap tampil dengan galat sebaris dan coba lagi", async () => {
+    const user = userEvent.setup();
+    await open(user, "/members", "Manajemen Users");
+    await screen.findByText("Menampilkan 24 dari 33");
+    mockMembers.fail("GET", /^\/admin\/members$/, 503, 1);
+    window.dispatchEvent(new Event("online"));
+    expect(await screen.findByText(/Daftar alumni terbaru gagal dimuat/)).toBeInTheDocument();
+    expect(card("Ahmad Zulhadi")).toBeInTheDocument();
+    expect(screen.getByText("Menampilkan 24 dari 33")).toBeInTheDocument();
+    expect(screen.queryByText("Data gagal dimuat")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Coba lagi" }));
+    await waitFor(() => expect(screen.queryByText(/Daftar alumni terbaru gagal dimuat/)).toBeNull());
+    expect(card("Ahmad Zulhadi")).toBeInTheDocument();
   });
 });
 
@@ -289,7 +420,7 @@ describe("detail anggota (F-15, F-10; server tiruan)", () => {
       expect(screen.queryByRole("button", { name })).toBeNull();
   });
 
-  it("anggota yang tidak ada menampilkan Data tidak ditemukan", async () => {
+  it("PRD 4.5: anggota yang tidak ada menampilkan Data tidak ditemukan", async () => {
     const user = userEvent.setup();
     renderApp("/members/0199e000-0000-7000-8000-ffffffffffff");
     await signIn(user);
@@ -432,6 +563,32 @@ describe("ubah data dan koreksi identitas (AC F05-6, F15-4)", () => {
     expect(await screen.findByText("Data Ahmad Zulhadi disimpan.")).toBeInTheDocument();
     expect(patches().map((p) => p.ifMatch)).toEqual(["1", "2"]);
   });
+
+  it("PRD 4.5, F-14: anggota mulai menghapus akun saat formulir ubah terbuka → 400 galat akar; formulir ditutup, data terbaru dimuat dan diumumkan", async () => {
+    const user = userEvent.setup();
+    const dialog = await openEdit(user, MOCK_MEMBER.ahmad, "Ahmad Zulhadi");
+    const city = within(dialog).getByRole("textbox", { name: /Kota domisili/ });
+    await user.clear(city);
+    await user.type(city, "Pekanbaru");
+    await user.type(within(dialog).getByRole("textbox", { name: /Alasan perubahan/ }), "Pindah domisili");
+    // users.status berubah tanpa menaikkan alumni.version: If-Match tetap cocok, server menolak prasyarat.
+    mockMembers.requestDeletion(MOCK_MEMBER.ahmad);
+    await user.click(within(dialog).getByRole("button", { name: "Simpan perubahan" }));
+
+    const notice = await screen.findByText(
+      /Akun sedang dalam proses penghapusan dan tidak dapat diubah\. Tindakan tidak dijalankan/,
+    );
+    await waitFor(() => expect(notice.closest("[role=status]")).toHaveFocus());
+    expect(screen.queryByRole("dialog", { name: "Ubah data anggota" })).toBeNull();
+    expect(
+      await screen.findByText(/sedang dalam proses penghapusan atas permintaan anggota/),
+    ).toBeInTheDocument();
+    for (const name of ["Ubah data", "Batasi akun", "Reset sandi"])
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    expect(patches()).toHaveLength(1);
+    expect(patches()[0]?.ifMatch).toBe("1");
+    expect(mockMembers.raw(MOCK_MEMBER.ahmad)?.city).toBe("Dumai");
+  });
 });
 
 async function confirmWithAck(dialog: HTMLElement, user: User, label: string) {
@@ -538,6 +695,82 @@ describe("batasi dan cabut pembatasan (PRD 4.2, AC F12-3..F12-5)", () => {
     expect(screen.getByRole("region", { name: "Profil alumni" })).toHaveTextContent("Kampar");
   });
 
+  it("PRD 4.5, AC F12-3: anggota mulai menghapus akun sebelum batasi disimpan → prasyarat 400 bentuk server; dialog ditutup, data terbaru dimuat dan diumumkan", async () => {
+    const user = userEvent.setup();
+    await open(user, `/members/${MOCK_MEMBER.umar}`, "Umar Faruq");
+    const detailGets = () =>
+      memberRequests.filter((r) => r.method === "GET" && r.path === `/admin/members/${MOCK_MEMBER.umar}`)
+        .length;
+    // users.status berubah tanpa menaikkan alumni.version: If-Match tetap cocok.
+    mockMembers.requestDeletion(MOCK_MEMBER.umar);
+    const before = detailGets();
+    await user.click(screen.getByRole("button", { name: "Batasi akun" }));
+    const dialog = await screen.findByRole("alertdialog", { name: /Batasi akun Umar Faruq/ });
+    await user.type(within(dialog).getByRole("textbox", { name: /Alasan internal/ }), "Penipuan");
+    await user.type(within(dialog).getByRole("textbox", { name: /Pesan untuk anggota/ }), "Akun dibatasi.");
+    await confirmWithAck(dialog, user, "Batasi akun");
+
+    const notice = await screen.findByText(
+      /Akun sedang dalam proses penghapusan dan tidak dapat dibatasi\. Tindakan tidak dijalankan/,
+    );
+    await waitFor(() => expect(notice.closest("[role=status]")).toHaveFocus());
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    await waitFor(() => expect(detailGets()).toBeGreaterThan(before));
+    expect(
+      await screen.findByText(/sedang dalam proses penghapusan atas permintaan anggota/),
+    ).toBeInTheDocument();
+    for (const name of ["Ubah data", "Batasi akun", "Reset sandi"])
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    expect(memberRequests.find((r) => r.path.endsWith("/suspend"))?.ifMatch).toBe("1");
+    expect(mockMembers.raw(MOCK_MEMBER.umar)?.suspension).toBeNull();
+  });
+
+  it("PRD 4.5: server tiruan menjawab prasyarat suspend/unsuspend dengan bentuk MembershipKernel; galat isian bukan prasyarat", async () => {
+    await signInViaApi();
+    const header = (version: string) => ({ "If-Match": version, "Idempotency-Key": crypto.randomUUID() });
+    const notSuspended = await api.POST("/admin/members/{userId}/unsuspend", {
+      params: { path: { userId: MOCK_MEMBER.umar }, header: header("1") },
+      body: { reason: "Uji prasyarat", confirm: true },
+    });
+    expect(notSuspended.response.status).toBe(400);
+    expect(notSuspended.error).toMatchObject({
+      code: "VALIDATION_ERROR",
+      message: "Anggota tidak sedang dibatasi.",
+      current: { suspended_at: null, account_status: "active", version: "1" },
+    });
+    expect(notSuspended.error).not.toHaveProperty("field_errors");
+    expect(isPreconditionFailure(ApiError.fromResponse(notSuspended.error, 400))).toBe(true);
+
+    const alreadySuspended = await api.POST("/admin/members/{userId}/suspend", {
+      params: { path: { userId: MOCK_MEMBER.rizky }, header: header("1") },
+      body: { reason: "Uji prasyarat", member_message: "Pesan uji.", confirm: true },
+    });
+    expect(alreadySuspended.response.status).toBe(400);
+    expect(alreadySuspended.error).toMatchObject({
+      message: "Anggota sudah dalam status dibatasi.",
+      current: { account_status: "active", version: "1" },
+    });
+    expect(isPreconditionFailure(ApiError.fromResponse(alreadySuspended.error, 400))).toBe(true);
+
+    const invalid = await api.POST("/admin/members/{userId}/suspend", {
+      params: { path: { userId: MOCK_MEMBER.umar }, header: header("1") },
+      body: { reason: " ", member_message: "Pesan uji.", confirm: true },
+    });
+    expect(invalid.response.status).toBe(400);
+    expect(isPreconditionFailure(ApiError.fromResponse(invalid.error, 400))).toBe(false);
+    // Galat akar `_` (ubah data akun yang sedang dihapus) juga prasyarat; konflik versi bukan.
+    const root = new ApiError({
+      code: "VALIDATION_ERROR",
+      status: 400,
+      message: "x",
+      fieldErrors: { _: ["x"] },
+    });
+    expect(isPreconditionFailure(root)).toBe(true);
+    expect(isPreconditionFailure(new ApiError({ code: "VERSION_CONFLICT", status: 409, message: "x" }))).toBe(
+      false,
+    );
+  });
+
   it("PRD 2.3: tanpa moderation.resolve tombol batasi tidak tampil walau dapat mengubah data", async () => {
     mockAuth.setAdmin({ role: "admin", permissions: ["members.read", "members.manage", "moderation.read"] });
     const user = userEvent.setup();
@@ -590,4 +823,71 @@ describe("pemulihan sandi alumni oleh Super Admin (F-16, AC F16-4)", () => {
     await open(user, `/members/${MOCK_MEMBER.fatimah}`, "Fatimah Zahra");
     expect(screen.queryByRole("button", { name: "Reset sandi" })).toBeNull();
   });
+
+  it("AC F16-4, PRD 4.5: akun mulai dihapus sebelum pemulihan dikirim → 400 galat akar; dialog ditutup, data terbaru dimuat dan tombol reset hilang", async () => {
+    const user = userEvent.setup();
+    await open(user, `/members/${MOCK_MEMBER.umar}`, "Umar Faruq");
+    await user.click(screen.getByRole("button", { name: "Reset sandi" }));
+    const dialog = await screen.findByRole("alertdialog", { name: /Mulai pemulihan sandi Umar Faruq/ });
+    await user.type(within(dialog).getByRole("textbox", { name: /Alasan/ }), "Permintaan anggota");
+    mockMembers.requestDeletion(MOCK_MEMBER.umar);
+    await confirmWithAck(dialog, user, "Mulai pemulihan");
+    await reauthenticate(user);
+
+    const notice = await screen.findByText(
+      /Pemulihan sandi hanya untuk akun aktif yang emailnya sudah terverifikasi\. Tindakan tidak dijalankan/,
+    );
+    await waitFor(() => expect(notice.closest("[role=status]")).toHaveFocus());
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Reset sandi" })).toBeNull());
+    expect(
+      await screen.findByText(/sedang dalam proses penghapusan atas permintaan anggota/),
+    ).toBeInTheDocument();
+    // Tidak ada sesi yang dicabut.
+    expect(mockMembers.raw(MOCK_MEMBER.umar)?.sessions).toBe(2);
+  });
+
+  it("PRD 2.5, AC F16-4: batas OTP email anggota (429 RATE_LIMITED) → hitung mundur, tombol mulai nonaktif sampai waktu tunggu habis", async () => {
+    const user = userEvent.setup();
+    await open(user, `/members/${MOCK_MEMBER.umar}`, "Umar Faruq");
+    await user.click(screen.getByRole("button", { name: "Reset sandi" }));
+    const dialog = await screen.findByRole("alertdialog", { name: /Mulai pemulihan sandi Umar Faruq/ });
+    await user.type(within(dialog).getByRole("textbox", { name: /Alasan/ }), "Permintaan anggota");
+    await confirmWithAck(dialog, user, "Mulai pemulihan");
+    // Lima kode sudah dikirim ke email anggota dalam satu jam terakhir (mis. lewat Lupa sandi mandiri).
+    mockMembers.exhaustOtpSends(MOCK_MEMBER.umar, 4);
+    await reauthenticate(user);
+
+    const message = await within(dialog).findByText(/Terlalu banyak permintaan kode untuk akun ini/);
+    expect(message).toHaveAttribute("role", "alert");
+    expect(message).toHaveTextContent(/Pemulihan dapat dicoba lagi dalam \d detik\./);
+    expect(within(dialog).getByText(/Sisa waktu tunggu/)).toBeInTheDocument();
+    const start = within(dialog).getByRole("button", { name: "Mulai pemulihan" });
+    expect(start).toHaveAttribute("aria-disabled", "true");
+    const resets = () => memberRequests.filter((r) => r.path.endsWith("/password-reset")).length;
+    expect(resets()).toBe(1);
+    // Selama hitung mundur klik tidak meminta reautentikasi maupun mengirim permintaan baru.
+    await user.click(start);
+    expect(screen.queryByRole("dialog", { name: "Konfirmasi identitas" })).toBeNull();
+    expect(resets()).toBe(1);
+    expect(mockMembers.raw(MOCK_MEMBER.umar)?.sessions).toBe(2);
+
+    // Waktu tunggu habis: tombol aktif lagi dan pemulihan berhasil dengan Idempotency-Key niat yang sama.
+    await waitFor(() => expect(start).not.toHaveAttribute("aria-disabled"), { timeout: 8_000 });
+    expect(within(dialog).queryByText(/Sisa waktu tunggu/)).toBeNull();
+    await user.click(start);
+    await reauthenticate(user);
+    expect(await screen.findByText(/Pemulihan sandi Umar Faruq dimulai/)).toBeInTheDocument();
+    const sent = memberRequests.filter((r) => r.path.endsWith("/password-reset"));
+    expect(sent).toHaveLength(2);
+    expect(sent[1]?.idempotencyKey).toBe(sent[0]?.idempotencyKey);
+    expect(mockMembers.raw(MOCK_MEMBER.umar)?.sessions).toBe(0);
+  });
 });
+
+async function reauthenticate(user: User) {
+  const reauth = await screen.findByRole("dialog", { name: "Konfirmasi identitas" });
+  await user.type(within(reauth).getByLabelText(/^Sandi/), MOCK_CREDENTIALS.password);
+  await user.type(within(reauth).getByLabelText(/^Kode autentikator/), MOCK_CREDENTIALS.totp);
+  await user.click(within(reauth).getByRole("button", { name: "Konfirmasi" }));
+}
