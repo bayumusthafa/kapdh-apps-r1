@@ -524,9 +524,11 @@ describe("Retensi berkas bukti (PRD 3.12, D2; core FilesService.discard)", () =>
     // Begitu akun berstatus deleted, tampilan bukti sudah anonim walaupun snapshot belum dibersihkan job.
     await t.db.update(users).set({ status: "deleted" }).where(eq(users.id, sender.userId));
     const view = await api().get(`/admin/reports/${messageReport}`, { token: adminToken });
-    const shown = (expectOperation("get", "/admin/reports/{reportId}", view) as {
-      evidence: { messages: { message_id: string }[] };
-    }).evidence.messages;
+    const shown = (
+      expectOperation("get", "/admin/reports/{reportId}", view) as {
+        evidence: { messages: { message_id: string }[] };
+      }
+    ).evidence.messages;
     expect(shown.find((m) => m.message_id === reported)).toMatchObject({
       sender_user_id: null,
       sender_name: null,
