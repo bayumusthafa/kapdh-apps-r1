@@ -74,9 +74,9 @@ describe("Jadwal backoff pengiriman (AC F13-4, R5)", () => {
       }, 1_000),
     ).toBe("ok");
     expect(finished?.aborted).toBe(false);
-    await expect(
-      withProviderTimeout(() => Promise.reject(new Error("galat asli")), 1_000),
-    ).rejects.toThrow("galat asli");
+    await expect(withProviderTimeout(() => Promise.reject(new Error("galat asli")), 1_000)).rejects.toThrow(
+      "galat asli",
+    );
   });
 });
 

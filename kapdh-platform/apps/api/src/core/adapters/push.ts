@@ -270,7 +270,10 @@ export class FcmPushSender implements PushSender {
     if (signal?.aborted) onAbort();
     else signal?.addEventListener("abort", onAbort, { once: true });
     try {
-      const res = await untilAborted(this.fetchImpl(url, { ...init, signal: controller.signal }), controller.signal);
+      const res = await untilAborted(
+        this.fetchImpl(url, { ...init, signal: controller.signal }),
+        controller.signal,
+      );
       const body = await untilAborted(
         res.json().catch(() => ({})),
         controller.signal,
@@ -286,7 +289,12 @@ export class FcmPushSender implements PushSender {
 
   async send(message: PushMessage, options: PushSendOptions = {}): Promise<PushResult> {
     const { signal } = options;
-    const networkFailure = { ok: false, errorClass: "network", retryable: true, deactivateToken: false } as const;
+    const networkFailure = {
+      ok: false,
+      errorClass: "network",
+      retryable: true,
+      deactivateToken: false,
+    } as const;
     if (signal?.aborted) return networkFailure;
     let accessToken: string;
     try {

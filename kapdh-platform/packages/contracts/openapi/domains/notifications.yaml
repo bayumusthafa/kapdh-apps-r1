@@ -206,8 +206,14 @@ paths:
 
         Sebagai pertahanan berlapis, worker hanya mengirim push bila pada saat klaim pengiriman (statement yang
         sama) device_tokens.revoked_at IS NULL DAN device_tokens.user_id = notifications.user_id; selain itu
-        pengiriman dibatalkan tanpa dikirim. Predikat yang sama dipakai retry admin, jadi `token_reassigned`
-        selalu berarti token kini milik AKUN lain.
+        pengiriman dibatalkan tanpa dikirim. Predikat yang sama diperiksa ulang untuk SETIAP pengiriman tepat
+        sebelum provider dipanggil (transaksi pendek: token dikunci FOR SHARE, lalu baris pengiriman FOR UPDATE
+        dengan syarat masih `pending` dan attempt klaim yang sama), sehingga logout, unregister, perpindahan token
+        atau preferensi yang commit setelah klaim tetapi sebelum giliran sebuah pengiriman selalu mencegah
+        pengiriman itu. Yang dapat lolos hanya percobaan yang SUDAH berjalan di provider saat pencabutan commit
+        (paling lama batas waktu satu percobaan, 60 detik); bila provider menerimanya, riwayat mencatatnya `sent`
+        apa adanya. Predikat yang sama dipakai retry admin, jadi `token_reassigned` selalu berarti token kini
+        milik AKUN lain.
 
         Pencabutan berbasis keluarga (AC F13-5): logout, logout-all, pencabutan sesi (DELETE
         /auth/sessions/{sessionId}), reuse refresh token yang mencabut keluarga, dan penghapusan akun mencabut

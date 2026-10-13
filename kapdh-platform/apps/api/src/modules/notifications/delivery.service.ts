@@ -188,7 +188,14 @@ export class NotificationDeliveryService implements OnModuleInit {
 
   /** `notifications.retry`: putaran klaim sampai tidak ada lagi yang jatuh tempo (dibatasi per eksekusi). */
   async retryDue(logger: Logger = this.rootLogger): Promise<DeliveryRunSummary> {
-    const total: DeliveryRunSummary = { claimed: 0, sent: 0, retried: 0, failed: 0, cancelled: 0, skipped: 0 };
+    const total: DeliveryRunSummary = {
+      claimed: 0,
+      sent: 0,
+      retried: 0,
+      failed: 0,
+      cancelled: 0,
+      skipped: 0,
+    };
     for (let round = 0; round < RETRY_MAX_ROUNDS; round++) {
       const { summary, examined } = await this.runDue({ limit: RETRY_BATCH, logger });
       for (const key of Object.keys(total) as (keyof DeliveryRunSummary)[]) total[key] += summary[key];
@@ -285,9 +292,11 @@ export class NotificationDeliveryService implements OnModuleInit {
   }
 
   /** {@link sendDue} beserta jumlah baris yang diperiksa klaim (diklaim + dibatalkan saat klaim) untuk putaran retry. */
-  private async runDue(
-    options: { notificationId?: string; limit?: number; logger?: Logger },
-  ): Promise<{ summary: DeliveryRunSummary; examined: number }> {
+  private async runDue(options: {
+    notificationId?: string;
+    limit?: number;
+    logger?: Logger;
+  }): Promise<{ summary: DeliveryRunSummary; examined: number }> {
     const logger = options.logger ?? this.rootLogger;
     const { claimed, cancelled } = await this.claim(options.notificationId ?? null, options.limit ?? 50);
     const summary: DeliveryRunSummary = {
@@ -514,7 +523,10 @@ export class NotificationDeliveryService implements OnModuleInit {
       try {
         const message = this.pushMessage(delivery);
         return classifyPushResult(
-          await withProviderTimeout((signal) => this.push.send(message, { signal }), DELIVERY_SEND_TIMEOUT_MS),
+          await withProviderTimeout(
+            (signal) => this.push.send(message, { signal }),
+            DELIVERY_SEND_TIMEOUT_MS,
+          ),
         );
       } catch {
         return { kind: "retry", errorClass: "NETWORK" };
@@ -618,7 +630,8 @@ export class NotificationDeliveryService implements OnModuleInit {
           .set(changes)
           .where(owned(status))
           .returning({ id: notificationDeliveries.id });
-      let outcome: "recorded" | "sent_after_cancel" | "lost" = (await update("pending")).length > 0 ? "recorded" : "lost";
+      let outcome: "recorded" | "sent_after_cancel" | "lost" =
+        (await update("pending")).length > 0 ? "recorded" : "lost";
       // Dibatalkan selama percobaan yang sama sudah berjalan, tetapi provider menerimanya: catat apa adanya (sent).
       if (outcome === "lost" && decision.status === "sent" && (await update("cancelled")).length > 0)
         outcome = "sent_after_cancel";

@@ -88,7 +88,11 @@ describe("PUT /devices (registerDevice)", () => {
       expect(expectOperation("put", "/devices", res)).toMatchObject({ code: "VALIDATION_ERROR" });
       expectIndonesianFieldErrors(res.json(), JSON.stringify(body).slice(0, 60));
     }
-    const unregister = await api().post("/devices/unregister", { token: fcmToken(), extra: 1 }, { token: m.accessToken });
+    const unregister = await api().post(
+      "/devices/unregister",
+      { token: fcmToken(), extra: 1 },
+      { token: m.accessToken },
+    );
     expect(unregister.statusCode).toBe(400);
     expect((unregister.json() as { field_errors: Record<string, string[]> }).field_errors._).toContain(
       "Kolom tidak dikenal: extra",
