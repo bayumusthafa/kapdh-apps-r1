@@ -98,7 +98,7 @@ void main() {
       expect(app.adapter.requestsTo('/posts'), hasLength(2));
     });
 
-    testWidgets('galat server: keadaan galat dengan coba lagi yang memulihkan', (tester) async {
+    testWidgets('AC F08-4 galat server: keadaan galat dengan coba lagi yang memulihkan', (tester) async {
       var fail = true;
       await pumpMemberApp(
         tester,

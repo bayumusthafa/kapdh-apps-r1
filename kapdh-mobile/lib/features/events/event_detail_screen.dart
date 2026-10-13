@@ -46,21 +46,30 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     final status = ref.watch(sessionProvider.select((session) => session.effectiveStatus));
     final maintenance = ref.watch(appGateProvider.select((gate) => gate.status == GateStatus.maintenance));
 
+    // Anggota expired membuka detail event yang pernah ia pesan (tiket lunas tetap berlaku, PRD 2.2); daftar event
+    // tetap khusus anggota aktif, jadi jalan keluarnya Tiket Saya.
+    final active = isActiveMember(status);
     Widget body;
     if (event == null && state.loading) {
       body = ListView(children: const [LoadingSkeleton(lines: 8, semanticsLabel: 'Memuat event')]);
     } else if (event == null && error != null) {
-      body = error.code == ErrorCode.notFound
-          ? EmptyState(
-              icon: Icons.event_busy_outlined,
-              title: 'Event tidak tersedia',
-              message: 'Event ini belum diterbitkan atau sudah dihapus pengurus.',
-              actionLabel: 'Lihat event lain',
-              onAction: () => context.go(AppRoutes.events),
-            )
-          : ErrorState.fromException(error, onRetry: () => unawaited(ref.read(provider.notifier).reload()));
+      if (error.code == ErrorCode.notFound) {
+        body = EmptyState(
+          icon: Icons.event_busy_outlined,
+          title: 'Event tidak tersedia',
+          message: 'Event ini belum diterbitkan atau sudah dihapus pengurus.',
+          actionLabel: active ? 'Lihat event lain' : 'Lihat tiket saya',
+          onAction: () => context.go(active ? AppRoutes.events : AppRoutes.tickets),
+        );
+      } else if (error.code == ErrorCode.membershipRequired && !active) {
+        // 403 MEMBERSHIP_REQUIRED untuk anggota nonaktif yang tidak punya tiket di event ini (kontrak C5 getEvent):
+        // dijelaskan dengan ajakan sesuai status, bukan galat umum.
+        body = MemberOnlyNotice(feature: 'Event', status: status);
+      } else {
+        body = ErrorState.fromException(error, onRetry: () => unawaited(ref.read(provider.notifier).reload()));
+      }
     } else {
-      final showParticipants = isActiveMember(status);
+      final showParticipants = active;
       body = RefreshIndicator(
         onRefresh: () => Future.wait<Object?>([
           ref.read(provider.notifier).reload(),
@@ -76,7 +85,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     }
     return AppScaffold(
       title: 'Detail Event',
-      fallbackLocation: AppRoutes.events,
+      fallbackLocation: active ? AppRoutes.events : AppRoutes.tickets,
       body: body,
       bottomNavigationBar: event == null
           ? null
@@ -93,11 +102,19 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   /// Event gratis: konfirmasi lalu tiket langsung paid (AC F09-3). Event berbayar: layar konfirmasi dengan harga,
   /// metode bayar dan total, lalu ke layar pembayaran bersama (guideline hal. 8 "Detail Tiket").
   Future<void> _reserve(EventDetail event) async {
+    if (_busy) return;
+    final scope = ReservationScope.of(context);
     if (!event.isFree) {
       final done = await Navigator.of(
         context,
       ).push<ReservationDone>(MaterialPageRoute<ReservationDone>(builder: (_) => ReservationScreen(eventId: event.id)));
-      if (done != null && mounted) openReservationResult(context, ref, done);
+      if (done == null) return;
+      // Detail ini sudah dilepas atau tertutup layar lain: hasil diumumkan tanpa memindahkan layar teratas.
+      if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) {
+        announceReservationResult(scope, done);
+        return;
+      }
+      openReservationResult(scope, done);
       return;
     }
     final confirmed = await showDialog<bool>(
@@ -119,22 +136,35 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   }
 
   Future<void> _submitFree(EventDetail event) async {
+    if (_busy) return;
+    // Diambil sebelum await: hasil tetap ditangani walau layar ini sudah ditinggalkan saat respons tiba.
+    final scope = ReservationScope.of(context);
     setState(() => _busy = true);
-    final outcome = await submitReservation(context, ref, event: event);
-    if (!mounted) return;
+    final outcome = await submitReservation(scope, event: event);
+    if (!mounted) {
+      announceDetachedOutcome(scope, outcome);
+      return;
+    }
     setState(() => _busy = false);
+    final current = ModalRoute.of(context)?.isCurrent ?? false;
     switch (outcome) {
       case final ReservationDone done:
-        openReservationResult(context, ref, done);
+        if (current) {
+          openReservationResult(scope, done);
+        } else {
+          // Layar lain sudah dibuka di atas detail ini: jangan memindahkan layar yang sedang dilihat anggota.
+          announceReservationResult(scope, done);
+        }
       case ReservationPriceChanged(event: final latest):
         // Harga berubah (mis. menjadi berbayar): tidak ada hold; anggota melihat harga baru lalu mendaftar lagi.
-        showAppSnackBar(
-          ref,
+        scope.snack(
           'Harga tiket berubah menjadi ${formatEventPrice(latest.price, isFree: latest.isFree)}. Periksa kembali '
           'sebelum mendaftar.',
         );
       case ReservationNetworkFailed():
-        showReservationRetry(ref, () => unawaited(_submitFree(event)));
+        showReservationRetry(scope, () {
+          if (mounted) unawaited(_submitFree(event));
+        });
       case ReservationInvalidMethod():
       case ReservationStopped():
         break;
