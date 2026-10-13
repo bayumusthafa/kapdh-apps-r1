@@ -9,7 +9,7 @@ import {
   verifyKta,
   type KtaVerification,
 } from "./kta-verify";
-import { API, apiError, fakeFetch, json, networkError, text } from "./testing";
+import { API, apiError, fakeFetch, json, networkError, response, text } from "./testing";
 
 const TOKEN = "eyJhbGciOiJIUzI1NiIsImtpZCI6IjEifQ.eyJzdWIiOiJ4In0.c2lnbmF0dXJl";
 const MEMBER = {
@@ -149,9 +149,44 @@ describe("AC F06-1..F06-4: keadaan hasil verifikasi", () => {
     expect(d.checked).toContain("Diperiksa");
     // 400 VALIDATION_ERROR dari server (token/nomor tidak sah) juga bukan Aktif.
     const bad = describeKta(
-      toKtaView({ ok: false, kind: "http", status: 400, error: null, retryAfterSeconds: null }),
+      toKtaView({
+        ok: false,
+        kind: "http",
+        status: 400,
+        error: { code: "VALIDATION_ERROR", message: "Token tidak sah", request_id: "r" },
+        retryAfterSeconds: null,
+      }),
     );
     expect(bad.title).toBe("QR tidak valid atau perlu diperbarui");
+    expect(bad.retry).toBe(false);
+  });
+
+  it("AC F06-3/F06-4 (PRD 5.2): 400 tanpa body Error kontrak (HTML dari WAF/proxy) bukan putusan; tetap coba lagi", async () => {
+    const handlers: Array<() => Response> = [
+      () => text(400, "<html><h1>400 Bad Request</h1>nginx</html>"),
+      () => text(400, "Request blocked", "text/plain"),
+      // JSON tetapi bukan bentuk Error kontrak (tanpa code/message).
+      () => json(400, { error: "bad request" }),
+      // Kode galat lain pada 400 tidak dianggap "QR tidak valid".
+      () => apiError(400, "INTERNAL_ERROR", "x"),
+    ];
+    for (const handler of handlers) {
+      const f = fakeFetch({ "POST /public/kta/verify": handler });
+      const view = toKtaView(await verifyKta(API, "25.01.01.7", TOKEN, f.fetcher));
+      expect(view).toEqual({ kind: "unreachable", rateLimited: false, retryAfterSeconds: null });
+      const d = describeKta(view);
+      expect(d.title).toBe("Tidak dapat memverifikasi");
+      expect(d.retry).toBe(true);
+    }
+    const f = fakeFetch({
+      "POST /public/kta/verify": () =>
+        apiError(400, "VALIDATION_ERROR", "Token tidak sah", { field_errors: { token: ["Tidak sah"] } }),
+    });
+    expect(toKtaView(await verifyKta(API, "25.01.01.7", TOKEN, f.fetcher))).toEqual({
+      kind: "invalid",
+      checkedAt: null,
+      cause: "token",
+    });
   });
 
   it("AC F06-3: respons yang mengaku active tanpa identitas tidak dipercaya", () => {
@@ -186,8 +221,29 @@ describe("AC F06-1..F06-4: keadaan hasil verifikasi", () => {
         apiError(429, "RATE_LIMITED", "Terlalu sering", { retry_after_seconds: 30 }),
     });
     const view = toKtaView(await verifyKta(API, "25.01.01.7", TOKEN, f.fetcher));
-    expect(view).toEqual({ kind: "unreachable", retryAfterSeconds: 30 });
+    expect(view).toEqual({ kind: "unreachable", rateLimited: true, retryAfterSeconds: 30 });
+    expect(describeKta(view).detail).toContain("Terlalu banyak pemeriksaan");
     expect(describeKta(view).detail).toContain("bukan berarti anggota tidak terdaftar");
+    // 429 tanpa body (limit_req nginx) tetap pembatasan laju dengan header Retry-After.
+    const proxy = fakeFetch({
+      "POST /public/kta/verify": () =>
+        response(429, "Too Many Requests", { "content-type": "text/plain", "retry-after": "12" }),
+    });
+    expect(toKtaView(await verifyKta(API, "25.01.01.7", TOKEN, proxy.fetcher))).toEqual({
+      kind: "unreachable",
+      rateLimited: true,
+      retryAfterSeconds: 12,
+    });
+    // 503 dengan retry_after_seconds bukan pembatasan laju: pesan jaringan, tanpa hitung mundur.
+    const busy = fakeFetch({
+      "POST /public/kta/verify": () =>
+        apiError(503, "MAINTENANCE", "Pemeliharaan", { retry_after_seconds: 120 }),
+    });
+    expect(toKtaView(await verifyKta(API, "25.01.01.7", TOKEN, busy.fetcher))).toEqual({
+      kind: "unreachable",
+      rateLimited: false,
+      retryAfterSeconds: null,
+    });
   });
 
   it("loading tidak menawarkan coba lagi", () => {

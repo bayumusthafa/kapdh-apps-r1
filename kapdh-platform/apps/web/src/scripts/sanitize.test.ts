@@ -27,12 +27,46 @@ describe("F-08: sanitasi HTML halaman legal (defense in depth)", () => {
     expect(out.innerHTML).toBe("<p>a</p><p>b</p>");
   });
 
-  it("tidak pernah menyalin atribut event, style, class, id atau data-*", () => {
+  it("tidak pernah menyalin atribut event, style, class atau data-*; id hanya dengan awalan isi-", () => {
     const out = render(
-      '<p onclick="alert(1)" style="color:red" class="x" id="y" data-foo="1">teks</p><img src="https://cdn.kapdh.or.id/a.png" onerror="alert(1)" alt="a">',
+      '<p onclick="alert(1)" style="color:red" class="x" id="y" data-foo="1">teks</p><img src="https://cdn.kapdh.or.id/a.png" onerror="alert(1)" alt="a" id="gambar">',
     );
-    expect(out.innerHTML).not.toMatch(/onclick|onerror|style=|class=|id=|data-foo/);
+    expect(out.innerHTML).not.toMatch(/onclick|onerror|style=|class=|data-foo/);
     expect(out.querySelector("p")!.textContent).toBe("teks");
+    expect(out.querySelector("p")!.id).toBe("isi-y");
+    // Gambar bukan tujuan jangkar: id tidak disalin.
+    expect(out.querySelector("img")!.hasAttribute("id")).toBe(false);
+    expect(out.querySelector("#y")).toBeNull();
+  });
+
+  it("F-08: daftar isi dalam halaman (href=#x) menunjuk id berawalan isi- dan tidak bentrok dengan id halaman", () => {
+    const out = render(
+      [
+        '<ol><li><a href="#pengumpulan">Pengumpulan data</a></li><li><a href="#konten">Konten</a></li>',
+        '<li><a href="#tidak-ada">Bagian yang tidak ada</a></li><li><a href="#ganda">Ganda</a></li></ol>',
+        '<h2 id="pengumpulan">Pengumpulan data</h2><p>isi</p>',
+        '<h3 id="konten">Konten</h3>',
+        '<h3 id="ganda">Pertama</h3><h3 id="ganda">Kedua</h3>',
+        '<p id="1-angka">id diawali angka</p><p id="ada spasi">spasi</p><p id="x&quot;onmouseover=&quot;y">kutip</p>',
+        '<a href="javascript:alert(1)" id="bahaya">teks</a>',
+      ].join(""),
+    );
+    const toc = Array.from(out.querySelectorAll("ol a"));
+    expect(toc.map((a) => a.getAttribute("href"))).toEqual(["#isi-pengumpulan", "#isi-konten", "#isi-ganda"]);
+    // Setiap tautan jangkar yang tersisa punya tujuan di isi tersanitasi.
+    for (const a of toc) expect(out.querySelector(a.getAttribute("href")!)).not.toBeNull();
+    expect(out.querySelector("#isi-pengumpulan")!.tagName).toBe("H2");
+    // id halaman (mis. #konten untuk "Lewati ke konten") tidak pernah tertimpa isi pengurus.
+    expect(out.querySelector("#konten")).toBeNull();
+    // id ganda hanya pada kemunculan pertama.
+    expect(out.querySelectorAll("[id='isi-ganda']")).toHaveLength(1);
+    expect(out.querySelector("#isi-ganda")!.textContent).toBe("Pertama");
+    // Tautan tanpa tujuan dibuka menjadi teks biasa (tidak ada tautan mati).
+    expect(out.querySelector("ol li:nth-child(3)")!.innerHTML).toBe("Bagian yang tidak ada");
+    // id yang tidak sah tidak disalin; elemen yang dibuka (tautan berbahaya) tidak membawa id.
+    const ids = Array.from(out.querySelectorAll("[id]")).map((e) => e.id);
+    expect(ids).toEqual(["isi-pengumpulan", "isi-konten", "isi-ganda"]);
+    expect(out.innerHTML).not.toContain("onmouseover");
   });
 
   it("menolak tautan javascript:, data:, vbscript: (isi tetap tampil sebagai teks)", () => {
@@ -62,7 +96,7 @@ describe("F-08: sanitasi HTML halaman legal (defense in depth)", () => {
 
   it("tautan internal, relatif, mailto, tel dan jangkar tidak diberi tanda luar", () => {
     const out = render(
-      '<a href="/kontak">k</a><a href="https://kapdh.or.id/bantuan">b</a><a href="mailto:bantuan@kapdh.or.id">m</a><a href="tel:+62811">t</a><a href="#bagian-2">j</a>',
+      '<a href="/kontak">k</a><a href="https://kapdh.or.id/bantuan">b</a><a href="mailto:bantuan@kapdh.or.id">m</a><a href="tel:+62811">t</a><a href="#bagian-2">j</a><h2 id="bagian-2">Bagian 2</h2>',
     );
     const anchors = Array.from(out.querySelectorAll("a"));
     expect(anchors.map((a) => a.getAttribute("href"))).toEqual([
@@ -70,7 +104,7 @@ describe("F-08: sanitasi HTML halaman legal (defense in depth)", () => {
       "https://kapdh.or.id/bantuan",
       "mailto:bantuan@kapdh.or.id",
       "tel:+62811",
-      "#bagian-2",
+      "#isi-bagian-2",
     ]);
     expect(anchors.every((a) => !a.hasAttribute("target"))).toBe(true);
   });
