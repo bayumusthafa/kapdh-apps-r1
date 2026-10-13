@@ -72,8 +72,12 @@ export class AuthGuard implements CanActivate {
     if (token.length > 4096) throw unauthenticated();
     const claims = await this.sessions.verifyToken(token);
     if (!claims) {
-      // Token tahap sandi admin dipakai di endpoint admin: wajib TOTP (AC F02-2).
-      if (required === "admin" && (await this.tokens.verifyMfa(token)))
+      // Token tahap sandi atau token pendaftaran TOTP admin dipakai di endpoint admin: wajib TOTP (AC F02-2; kontrak
+      // C1: kedua token ditolak 403 MFA_REQUIRED di API admin).
+      if (
+        required === "admin" &&
+        ((await this.tokens.verifyMfa(token)) || (await this.tokens.verifyAdminEnroll(token)))
+      )
         throw new AppException(403, "MFA_REQUIRED", "Masukkan kode autentikator untuk melanjutkan.");
       throw unauthenticated();
     }

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { ApiEnv } from "@kapdh/config";
 import { type JWTPayload, jwtVerify, SignJWT } from "jose";
+import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../adapters/clock.js";
 import type { SessionAudience } from "../guards/auth-context.js";
 import { CLOCK, ENV } from "../tokens.js";
@@ -12,12 +13,18 @@ const AUD = {
   mobile: "kapdh-mobile",
   admin: "kapdh-admin",
   mfa: "kapdh-admin-mfa",
+  enroll: "kapdh-admin-enroll",
   reauth: "kapdh-reauth",
   password_reset: "kapdh-password-reset",
   web_deletion: "kapdh-web-deletion",
 } as const;
 export const ACCESS_TTL_SECONDS = 15 * 60; // N-08
 export const MFA_TTL_SECONDS = 5 * 60;
+/**
+ * Token pendaftaran TOTP admin dari penerimaan undangan (kontrak C1 admin-auth.yaml, F-16, PRD 8.2): 30 menit sejak
+ * penerimaan, tidak diperpanjang dan tidak dapat diterbitkan ulang.
+ */
+export const ADMIN_ENROLL_TTL_SECONDS = 30 * 60;
 /** Token reautentikasi berlaku maksimal 10 menit (ARCHITECTURE §4.3, AC F15-3, F16-1). */
 export const REAUTH_TTL_SECONDS = 10 * 60;
 /** Token sekali pakai turunan OTP berumur maksimal 10 menit (kontrak C1 auth.yaml, account.yaml). */
@@ -48,6 +55,25 @@ export interface ReauthClaims {
   expiresAt: Date;
 }
 
+/** Klaim token tahap sandi admin (aud kapdh-admin-mfa, AC F02-2). */
+export interface MfaClaims {
+  userId: string;
+  /** Id unik token (`jti`): token dikonsumsi sekali setelah sesi admin berhasil dibuat (kontrak adminVerifyMfa). */
+  tokenId: string;
+  expiresAt: Date;
+}
+
+/** Klaim token pendaftaran TOTP admin (aud kapdh-admin-enroll, kontrak C1 adminAcceptInvitation). */
+export interface AdminEnrollClaims {
+  userId: string;
+  /** Identitas admin (`adm`). */
+  adminId: string;
+  /** Pengikat HMAC password_hash yang disimpan saat penerimaan undangan (`bnd`). */
+  binding: string;
+  issuedAt: Date;
+  expiresAt: Date;
+}
+
 export interface OneTimeClaims {
   userId: string;
   /** Challenge OTP yang sudah dikonsumsi (klaim `cid`). */
@@ -59,7 +85,8 @@ export interface OneTimeClaims {
 }
 
 /**
- * JWT HS256 (jose) untuk access token 15 menit (N-08), token tahap sandi admin (AC F02-2), token reautentikasi
+ * JWT HS256 (jose) untuk access token 15 menit (N-08), token tahap sandi admin (AC F02-2), token pendaftaran TOTP
+ * admin (aud kapdh-admin-enroll, 30 menit, F-16), token reautentikasi
  * (aud kapdh-reauth, terikat KELUARGA sesi, 10 menit) dan token sekali pakai turunan OTP (aud kapdh-password-reset /
  * kapdh-web-deletion, 10 menit). Audience berbeda mencegah satu jenis token dipakai sebagai jenis lain. Milik core
  * (ARCHITECTURE §4.2) karena AuthGuard dan gateway realtime memverifikasi token setiap request; hanya tersedia di
@@ -140,13 +167,60 @@ export class TokenService {
     };
   }
 
-  /** Token tahap sandi admin: hanya bisa dipakai di POST /admin/auth/mfa (AC F02-2). */
+  /**
+   * Token tahap sandi admin: hanya bisa dipakai di POST /admin/auth/mfa (AC F02-2). Membawa `jti` acak sehingga modul
+   * admin-auth dapat mengonsumsinya sekali setelah sesi dibuat (kontrak adminVerifyMfa).
+   */
   signMfa(userId: string): Promise<{ token: string; expiresAt: Date }> {
-    return this.sign({}, userId, AUD.mfa, MFA_TTL_SECONDS);
+    return this.sign({ jti: uuidv7() }, userId, AUD.mfa, MFA_TTL_SECONDS);
+  }
+
+  /** Klaim token tahap sandi admin, atau null bila rusak/kedaluwarsa/audience lain/tanpa `jti`. */
+  async verifyMfaClaims(token: string): Promise<MfaClaims | null> {
+    const payload = await this.verify(token, AUD.mfa, MFA_TTL_SECONDS);
+    if (!payload || typeof payload.jti !== "string" || typeof payload.exp !== "number") return null;
+    return { userId: payload.sub!, tokenId: payload.jti, expiresAt: new Date(payload.exp * 1000) };
   }
 
   async verifyMfa(token: string): Promise<string | null> {
-    return (await this.verify(token, AUD.mfa))?.sub ?? null;
+    return (await this.verifyMfaClaims(token))?.userId ?? null;
+  }
+
+  /**
+   * Token pendaftaran TOTP admin (kontrak C1 adminAcceptInvitation): audience `kapdh-admin-enroll`, 30 menit, `sub`
+   * akun, `adm` admin, `bnd` HMAC password_hash baru. Satu-satunya kredensial POST /admin/auth/totp/enroll dan
+   * /confirm; ditolak di /admin/auth/mfa (audience lain) dan 403 MFA_REQUIRED di API admin (AuthGuard).
+   */
+  signAdminEnroll(input: {
+    userId: string;
+    adminId: string;
+    binding: string;
+  }): Promise<{ token: string; expiresAt: Date }> {
+    return this.sign(
+      { adm: input.adminId, bnd: input.binding },
+      input.userId,
+      AUD.enroll,
+      ADMIN_ENROLL_TTL_SECONDS,
+    );
+  }
+
+  async verifyAdminEnroll(token: string): Promise<AdminEnrollClaims | null> {
+    const payload = await this.verify(token, AUD.enroll, ADMIN_ENROLL_TTL_SECONDS);
+    if (
+      !payload ||
+      typeof payload.adm !== "string" ||
+      typeof payload.bnd !== "string" ||
+      typeof payload.iat !== "number" ||
+      typeof payload.exp !== "number"
+    )
+      return null;
+    return {
+      userId: payload.sub!,
+      adminId: payload.adm,
+      binding: payload.bnd,
+      issuedAt: new Date(payload.iat * 1000),
+      expiresAt: new Date(payload.exp * 1000),
+    };
   }
 
   /**
