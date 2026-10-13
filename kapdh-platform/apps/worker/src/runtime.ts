@@ -11,7 +11,12 @@ import { Redis } from "ioredis";
 import type { AddressInfo } from "node:net";
 import type { Logger } from "pino";
 import postgres from "postgres";
-import { buildHealthReport, createDbHealthProbes, type HealthProbes, type HealthReport } from "./health/health.js";
+import {
+  buildHealthReport,
+  createDbHealthProbes,
+  type HealthProbes,
+  type HealthReport,
+} from "./health/health.js";
 import { HealthServer } from "./health/health-server.js";
 import { OutboxDispatcher, type OutboxJobs } from "./outbox/dispatcher.js";
 import { BullMqQueueDriver } from "./queue/bullmq-driver.js";
@@ -113,7 +118,10 @@ export class WorkerService {
       );
       return address;
     } catch (error) {
-      logger.error({ error: safeError(error) }, "worker gagal start; menghentikan komponen yang sudah berjalan");
+      logger.error(
+        { error: safeError(error) },
+        "worker gagal start; menghentikan komponen yang sudah berjalan",
+      );
       await this.stop("start_failed");
       throw error;
     }
@@ -151,7 +159,10 @@ export class WorkerService {
   private async shutdown(reason: string): Promise<ShutdownResult> {
     const { settings, logger, queue, resources } = this.parts;
     this.state = "stopping";
-    logger.info({ reason, timeout_ms: settings.shutdownTimeoutMs }, "worker berhenti: tidak menerima pekerjaan baru");
+    logger.info(
+      { reason, timeout_ms: settings.shutdownTimeoutMs },
+      "worker berhenti: tidak menerima pekerjaan baru",
+    );
     await Promise.all([this.dispatcher.stop(), this.scheduler.stop()]);
     let graceful = false;
     try {
@@ -190,7 +201,8 @@ export function createQueueDriver(
   settings: Pick<WorkerSettings, "queuePrefix">,
   logger: Logger,
 ): { driver: QueueDriver; resource: NamedResource | null } {
-  if (!env.REDIS_URL) return { driver: new InlineQueueDriver(logger.child({ driver: "inline" })), resource: null };
+  if (!env.REDIS_URL)
+    return { driver: new InlineQueueDriver(logger.child({ driver: "inline" })), resource: null };
   const connection = new Redis(env.REDIS_URL, {
     connectionName: "kapdh-worker-bullmq",
     maxRetriesPerRequest: null,

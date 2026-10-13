@@ -1,4 +1,10 @@
-import { type Clock, type OutboxClaim, type OutboxClaimRef, type OutboxOutcome, safeError } from "@kapdh/api/worker";
+import {
+  type Clock,
+  type OutboxClaim,
+  type OutboxClaimRef,
+  type OutboxOutcome,
+  safeError,
+} from "@kapdh/api/worker";
 import type { Logger } from "pino";
 import { type QueueDriver, queueJobId } from "../queue/queue-driver.js";
 
@@ -66,7 +72,9 @@ export class OutboxDispatcher {
     this.deps.queue.register<OutboxJobData>(
       "outbox",
       async (data) => {
-        const outcome = await this.deps.jobs.processOutboxClaim(toClaimRef(data), { lockMs: this.options.leaseMs });
+        const outcome = await this.deps.jobs.processOutboxClaim(toClaimRef(data), {
+          lockMs: this.options.leaseMs,
+        });
         this.state.totals[outcome]++;
       },
       {

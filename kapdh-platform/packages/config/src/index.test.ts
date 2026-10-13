@@ -154,7 +154,9 @@ describe("loadWorkerEnv", () => {
       WORKER_SHUTDOWN_TIMEOUT_MS: 25000,
     });
     expect(() => loadWorkerEnv({ ...base, WORKER_HEALTH_PORT: "70000" })).toThrow(/WORKER_HEALTH_PORT/);
-    expect(() => loadWorkerEnv({ ...base, OUTBOX_POLL_INTERVAL_MS: "10" })).toThrow(/OUTBOX_POLL_INTERVAL_MS/);
+    expect(() => loadWorkerEnv({ ...base, OUTBOX_POLL_INTERVAL_MS: "10" })).toThrow(
+      /OUTBOX_POLL_INTERVAL_MS/,
+    );
     // Secret API yang ikut di environment proses tidak pernah masuk WorkerEnv (least privilege, PRD 5.1).
     const leaked = loadWorkerEnv({ ...base, ...api }) as Record<string, unknown>;
     for (const key of ["JWT_ACCESS_SECRET", "OTP_HMAC_SECRET", "QR_SIGNING_KEYS", "TOTP_ENC_KEY"])
