@@ -109,6 +109,7 @@ function ReportDetail({ reportId }: { reportId: string }) {
       queryClient.setQueryData(reportDetailKey(reportId), current);
     else void detail.refetch();
     void queryClient.invalidateQueries({ queryKey: [...REPORTS_KEY, "list"] });
+    void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
     notify("warning", "Laporan ini sudah diubah atau diputus pengurus lain. Data terbaru dimuat ulang.");
   };
 
@@ -507,6 +508,7 @@ function ClaimCard({
     onSuccess: (data) => {
       queryClient.setQueryData(reportDetailKey(r.id), data);
       void queryClient.invalidateQueries({ queryKey: [...REPORTS_KEY, "list"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
       notify("success", "Laporan diklaim; Anda tercatat sebagai peninjau.");
     },
     onReloadLatest: onConflict,
@@ -651,6 +653,7 @@ function ResolveCard({
       setConfirming(false);
       queryClient.setQueryData(reportDetailKey(r.id), data);
       void queryClient.invalidateQueries({ queryKey: [...REPORTS_KEY, "list"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
       notify(
         "success",
         `Laporan diputus: ${ACTION_LABEL[data.resolution?.action ?? (form.getValues("action") as Action)]}.`,
