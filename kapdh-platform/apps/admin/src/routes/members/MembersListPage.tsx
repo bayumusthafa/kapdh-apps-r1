@@ -519,9 +519,10 @@ function MemberCard({ member: m, canEdit }: { member: Summary; canEdit: boolean 
           <Link
             to="/members/$userId"
             params={{ userId: m.user_id }}
+            aria-label={`Informasi Pengguna ${m.full_name}`}
             className={buttonClass({ variant: "outline", size: "sm", className: "min-w-0 flex-1" })}
           >
-            Informasi Pengguna<span className="sr-only"> {m.full_name}</span>
+            Informasi Pengguna
           </Link>
         </div>
       </article>
