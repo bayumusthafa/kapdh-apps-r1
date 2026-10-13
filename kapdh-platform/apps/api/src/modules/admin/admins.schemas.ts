@@ -57,11 +57,16 @@ export const CandidateQuerySchema = z.object({
   q: z.string().trim().min(1, "Minimal 1 karakter").max(100, "Maksimal 100 karakter").optional(),
 });
 
-/** Cursor daftar admin: posisi urutan aktif (`v` nama/waktu, null untuk last_login_at kosong) + id. */
-export const AdminCursorSchema = z.object({
-  sort: z.enum(["display_name_asc", "created_at_desc", "last_login_at_desc"]),
-  v: z.union([z.string().max(200), z.null()]),
-  id: z.uuid(),
-});
+/**
+ * Cursor daftar admin: posisi urutan aktif + id. `v` divalidasi per urutan sehingga cursor rusak/dimanipulasi menjadi
+ * 400 VALIDATION_ERROR (decodeCursor), bukan 500: nama (teks) untuk display_name_asc, waktu ISO untuk created_at_desc,
+ * dan waktu ISO atau null (belum pernah login) untuk last_login_at_desc.
+ */
+const isoInstant = z.iso.datetime({ offset: true });
+export const AdminCursorSchema = z.discriminatedUnion("sort", [
+  z.object({ sort: z.literal("display_name_asc"), v: z.string().max(200), id: z.uuid() }),
+  z.object({ sort: z.literal("created_at_desc"), v: isoInstant, id: z.uuid() }),
+  z.object({ sort: z.literal("last_login_at_desc"), v: z.union([isoInstant, z.null()]), id: z.uuid() }),
+]);
 
 export const CandidateCursorSchema = z.object({ created_at: z.coerce.date(), id: z.uuid() });

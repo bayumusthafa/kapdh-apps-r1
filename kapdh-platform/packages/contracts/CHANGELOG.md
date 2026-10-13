@@ -414,9 +414,29 @@ baru (AC F03-5). Nilai konfigurasi server yang kontrak C7 serahkan ke implementa
 | Batas pembuatan ekspor                           | 10 per admin per jam (429 RATE_LIMITED)                                       |
 | Jendela `DashboardJobs.failed_delivery_since`    | 7 hari                                                                        |
 
-Email undangan/pemulihan admin berisi tautan `${ADMIN_ORIGIN}/invite/<token>`; token dibuat worker saat email
-dikirim (topik outbox internal `admin.invitation.requested`) sehingga token tidak pernah ada di respons, outbox, audit,
-maupun log; hanya hash yang disimpan. Pemberitahuan keamanan admin memakai topik `admin.security_notice`.
+Email undangan/pemulihan admin berisi tautan `${ADMIN_ORIGIN}/invite#t=<token>` (token di fragmen URL sesuai kepala
+`admin-auth.yaml`; bentuk `/invite/<token>` tidak pernah dikirim); token dibuat worker saat email dikirim (topik outbox
+internal `admin.invitation.requested`) sehingga token tidak pernah ada di respons, outbox, audit, maupun log; hanya
+hash yang disimpan. Pemberitahuan keamanan admin memakai topik `admin.security_notice`.
+
+Catatan perilaku untuk integrasi (tanpa perubahan bentuk kontrak):
+
+- Setiap URL berkas `audit_export` yang diterbitkan diaudit `audit.export.downloaded` (PRD 3.17), baik lewat
+  `adminGetAuditExportAccess` maupun `getFileAccess` (GET /files/{fileId}/access), melalui kait core baru
+  `FilesService.registerAccessHook(purpose, hook)` yang dijalankan setelah kebijakan akses lolos dan sebelum URL dibuat;
+  berkas `audit_export` tanpa entri `audit.export.completed` tidak pernah diberi URL (404).
+- Dua undangan bersamaan untuk alumni yang sama diserialkan pada baris akun alumni (`FOR NO KEY UPDATE`), sehingga
+  pihak yang kalah selalu menerima 409 pada `alumni_user_id`, juga saat email login memakai email alumni bawaan.
+- Perubahan peran/izin admin tidak mengirim event realtime `session.revoked` (C6: "sesi ini dicabut"), karena sesi
+  tidak dicabut; izin dibaca ulang dari database setiap request dan `permissions_version` naik (AC F16-3). Gateway
+  realtime hanya menerima audience mobile. Penonaktifan dan pemulihan tetap mencabut semua sesi.
+- Rumus hitungan antrean yang dipakai dasbor dan lencana diekspor dari `apps/api/src/modules/admin/queue-rules.ts`
+  (`paymentQueueSummary`, `reviewDueAtSql`, `reportsVisibleTo`, `reportQueueSummary`,
+  `retryableFailedDeliveryCount`) dan `business-days.ts` (`addBusinessDaysSql`/`addBusinessDaysJakarta`). Hari kerja
+  Senin sampai Jumat Asia/Jakarta, jam lokal dipertahankan, titik awal Sabtu/Minggu diperlakukan seperti Jumat jam
+  yang sama (Jumat 15.00 + 1 = Senin 15.00; Sabtu 10.00 + 1 = Senin 10.00). Kontrak C7/C6 mewajibkan satu rumus
+  bersama: `GET /admin/payments/summary`, filter `overdue` `adminListPayments`, dan `AdminModerationQueueCounts`
+  wajib memakai fungsi yang sama (atau fungsi ini dipindah ke lokasi bersama saat integrasi).
 
 ### core-api: Files (`files.yaml`; PRD 2.5, 5.4, N-10)
 

@@ -36,8 +36,9 @@ export const OUTBOX_TOPICS = {
     })
     .strict(),
   /**
-   * Email undangan/pemulihan admin berisi tautan sekali pakai `/invite/<token>` (F-16, PRD 3.16). Token TIDAK pernah ada
-   * di outbox: worker membuat token baru, menyimpan hash-nya hanya bila undangan masih ronde yang sama
+   * Email undangan/pemulihan admin berisi tautan sekali pakai `${ADMIN_ORIGIN}/invite#t=<token>` (token di fragmen,
+   * kontrak admin-auth C1; F-16, PRD 3.16). Token TIDAK pernah ada di outbox: worker membuat token baru, menyimpan
+   * hash-nya hanya bila undangan masih ronde yang sama
    * (`invite_expires_at` sama persis; undangan baru selalu menggeser nilainya), lalu mengirim email ke alamat login
    * yang berlaku. Event usang (undangan sudah diganti, dibatalkan, atau diterima) tidak melakukan apa pun.
    */

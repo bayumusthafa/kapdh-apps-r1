@@ -20,8 +20,12 @@ export interface MailMessage {
  */
 export interface Mailer {
   sendOtp(to: string, code: string, purpose: OtpPurpose): Promise<void>;
-  /** Email transaksional dari handler outbox (undangan admin, pemberitahuan keamanan, F-16). */
-  send(message: MailMessage): Promise<void>;
+  /**
+   * Email transaksional dari handler outbox (undangan admin, pemberitahuan keamanan, F-16). Opsional agar implementasi
+   * Mailer lain (pengganti uji modul) tetap kompatibel; SmtpMailer, DevLogMailer dan MemoryMailer mengisinya, dan
+   * handler yang membutuhkannya gagal jelas (event outbox diulang lalu `dead`) bila tidak tersedia.
+   */
+  send?(message: MailMessage): Promise<void>;
 }
 
 const SUBJECT: Record<OtpPurpose, string> = {

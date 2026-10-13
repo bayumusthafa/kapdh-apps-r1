@@ -2,8 +2,12 @@ import { admins, deviceTokens, idempotencyKeys, otpCodes, sessions } from "@kapd
 import { eq, inArray } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { Mailer } from "../../src/core/adapters/mailer.js";
 import { runAsSystem } from "../../src/core/context/request-context.js";
+import { adminInviteTokenHash } from "../../src/core/identity/crypto.js";
+import { JobRegistry } from "../../src/core/jobs/job-registry.js";
 import { OutboxService } from "../../src/core/outbox/outbox.service.js";
+import { adminInvitationLink } from "../../src/modules/admin/admin-mail.js";
 import { AdminMailJob } from "../../src/modules/admin/admin-mail.job.js";
 import {
   MAINTENANCE_CLEANUP_EVERY_MS,
@@ -162,6 +166,64 @@ describe("Handler outbox email pengurus (F-16, ARCHITECTURE §4.7)", () => {
     expect(t.mailer.messages.length).toBe(before);
     const [after] = await t.db.select().from(admins).where(eq(admins.id, invited.adminId));
     expect(after!.inviteTokenHash).toBe(invitedRow!.inviteTokenHash);
+  });
+
+  it("AC F16-1: tautan email undangan berbentuk ${ADMIN_ORIGIN}/invite#t=<token> (token di fragmen, kontrak admin-auth C1), cocok dengan hash tersimpan", async () => {
+    const job = t.app.get(AdminMailJob);
+    const invited = await createAdmin(t, { status: "invited", displayName: "Calon Pengurus" });
+    const [row] = await t.db.select().from(admins).where(eq(admins.id, invited.adminId));
+    await runAsSystem(() =>
+      job.invitation(
+        {
+          id: uuidv7(),
+          topic: "admin.invitation.requested",
+          dedupKey: "uji-tautan",
+          attempts: 1,
+          requestId: null,
+          payload: { admin_id: invited.adminId, invite_expires_at: row!.inviteExpiresAt!.toISOString() },
+        },
+        jobCtx,
+      ),
+    );
+    const message = t.mailer.lastMessage(invited.email);
+    expect(message?.subject).toBe("Undangan pengurus KAPDH Apps");
+    // Token tidak pernah di path atau query (tercatat di log akses proxy, ARCHITECTURE §2 butir 3).
+    expect(message!.text).not.toMatch(/\/invite\/|\/invite\?|token=/);
+    const match = /(?:^|\n)(\S+)#t=([A-Za-z0-9_-]+)(?:\n|$)/.exec(message!.text);
+    expect(match, message!.text).not.toBeNull();
+    expect(match![1]).toBe(`${t.env.ADMIN_ORIGIN}/invite`);
+    const [after] = await t.db.select().from(admins).where(eq(admins.id, invited.adminId));
+    expect(after!.inviteTokenHash).toBe(adminInviteTokenHash(match![2]!));
+  });
+
+  it("F-16: Mailer tanpa jalur transaksional (send opsional) membuat handler gagal jelas agar outbox mengulang, bukan membuang email", async () => {
+    const admin = await createAdmin(t, { displayName: "Penerima Tanpa Send" });
+    const legacyMailer: Mailer = { sendOtp: async () => undefined };
+    const job = new AdminMailJob(t.db, t.env, t.clock, legacyMailer, t.app.get(JobRegistry));
+    await expect(
+      runAsSystem(() =>
+        job.securityNotice(
+          {
+            id: uuidv7(),
+            topic: "admin.security_notice",
+            dedupKey: "uji-tanpa-send",
+            attempts: 1,
+            requestId: null,
+            payload: { admin_id: admin.adminId, kind: "password_changed" },
+          },
+          jobCtx,
+        ),
+      ),
+    ).rejects.toThrow(/Mailer\.send/);
+  });
+
+  it("AC F16-1: adminInvitationLink selalu memakai fragmen #t= walau ADMIN_ORIGIN berakhiran garis miring", () => {
+    expect(adminInvitationLink("https://admin.kapdh.or.id/", "abc_DEF-123")).toBe(
+      "https://admin.kapdh.or.id/invite#t=abc_DEF-123",
+    );
+    expect(adminInvitationLink("https://admin.kapdh.or.id", "abc")).toBe(
+      "https://admin.kapdh.or.id/invite#t=abc",
+    );
   });
 
   it("F-16: pemberitahuan keamanan ke email login admin; admin yang sudah dihapus dilewati tanpa galat", async () => {

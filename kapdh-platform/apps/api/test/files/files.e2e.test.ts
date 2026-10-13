@@ -2,7 +2,9 @@ import type { Permission } from "@kapdh/contracts";
 import { adminPermissions, admins, alumni, files } from "@kapdh/database";
 import { eq } from "drizzle-orm";
 import sharp from "sharp";
+import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { writeAudit } from "../../src/core/audit/write-audit.js";
 import { withTx } from "../../src/core/db/tx.js";
 import { FilePolicies } from "../../src/core/files/access-policy.js";
 import { FILE_URL_MAX_TTL_SECONDS } from "../../src/core/files/file-token.js";
@@ -629,6 +631,16 @@ describe("FilesService.attach dan job files.cleanup-temp (PRD 2.5, ARCHITECTURE 
       mime: "text/csv",
       body: Buffer.from("waktu,aksi\n"),
       expiresAt: new Date(t.clock.now().getTime() + 3600_000),
+    });
+    // Berkas audit_export hanya dilayani bila tercatat pada entri `audit.export.completed` (ditulis worker dalam
+    // transaksi yang sama dengan INSERT files; kontrak C7). Setiap akses lalu diaudit oleh kait akses modul admin.
+    await writeAudit(t.db, {
+      effectiveRole: "system",
+      action: "audit.export.completed",
+      entityType: "audit_export",
+      entityId: uuidv7(),
+      requestId: `uji-${row.id}`,
+      after: { file_id: row.id, row_count: 0 },
     });
     const api = httpClient(t.app);
     const access = await api.get(`/files/${row.id}/access`, { token: requester.token });

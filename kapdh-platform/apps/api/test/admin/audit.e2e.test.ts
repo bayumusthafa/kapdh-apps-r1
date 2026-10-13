@@ -1,5 +1,5 @@
 import { auditLogs, files, outboxEvents } from "@kapdh/database";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { writeAudit } from "../../src/core/audit/write-audit.js";
@@ -122,6 +122,15 @@ function parseCsv(text: string): string[][] {
 async function download(url: string) {
   const path = new URL(url).pathname;
   return t.app.inject({ method: "GET", url: path });
+}
+
+/** Entri audit `audit.export.downloaded` satu ekspor, urut waktu tulis (PRD 3.17). */
+async function downloadedEntries(exportId: string) {
+  return t.db
+    .select()
+    .from(auditLogs)
+    .where(and(eq(auditLogs.action, "audit.export.downloaded"), eq(auditLogs.entityId, exportId)))
+    .orderBy(asc(auditLogs.createdAt), asc(auditLogs.id));
 }
 
 describe("GET /admin/audit/entries (AC F17-2, F17-4)", () => {
@@ -316,11 +325,14 @@ describe("Ekspor audit CSV asinkron (AC F17-2, F17-3, F17-4)", () => {
     expect(access.headers["cache-control"]).toBe("no-store");
     expect(grant.file_name).toBe(readyBody.file_name);
     expect(Date.parse(grant.expires_at) - t.clock.now().getTime()).toBeLessThanOrEqual(10 * 60_000);
-    const [downloaded] = await t.db
-      .select()
-      .from(auditLogs)
-      .where(and(eq(auditLogs.action, "audit.export.downloaded"), eq(auditLogs.entityId, exp.id)));
-    expect(downloaded).toMatchObject({ actorAdminId: exporter.admin.adminId });
+    // Tepat satu entri per akses (kait akses FilesService tidak menggandakan audit jalur adminGetAuditExportAccess).
+    const downloaded = await downloadedEntries(exp.id);
+    expect(downloaded).toHaveLength(1);
+    expect(downloaded[0]).toMatchObject({
+      actorAdminId: exporter.admin.adminId,
+      entityType: "audit_export",
+      after: { file_id: fileId },
+    });
 
     const content = await download(grant.url);
     expect(content.statusCode).toBe(200);
@@ -417,6 +429,8 @@ describe("Ekspor audit CSV asinkron (AC F17-2, F17-3, F17-4)", () => {
       const res = await api.get(`/files/${fileId}/access`, { token: actor.token });
       expect(res.statusCode).toBe(404);
     }
+    // Akses yang ditolak tidak meninggalkan entri unduhan.
+    expect(await downloadedEntries(id)).toHaveLength(0);
     expect((await api.get(`/files/${fileId}/access`, { token: exporter.token })).statusCode).toBe(200);
 
     // Super Admin melihat semua ekspor beserta peminta dan dapat mengunduh.
@@ -426,6 +440,65 @@ describe("Ekspor audit CSV asinkron (AC F17-2, F17-3, F17-4)", () => {
     );
     expect(item).toMatchObject({ status: "ready", requested_by: { admin_id: exporter.admin.adminId } });
     expect((await api.get(`${EXPORTS}/${id}/access`, { token: root.token })).statusCode).toBe(200);
+
+    // PRD 3.17: SETIAP akses berkas ekspor diaudit, termasuk lewat jalur berkas umum GET /files/{fileId}/access.
+    const entries = await downloadedEntries(id);
+    expect(entries.map((e) => e.actorAdminId)).toEqual([exporter.admin.adminId, root.admin.adminId]);
+    for (const entry of entries) expect(entry.after).toEqual({ file_id: fileId });
+  });
+
+  it("AC F17-2 (PRD 3.17): unduhan lewat GET /files/{fileId}/access selalu diaudit audit.export.downloaded; berkas tanpa entri completed tidak dilayani", async () => {
+    const s = await seed(1);
+    const id = (await createExport(exporter, { entity_type: s.tag })).json().id as string;
+    await t.jobs.drainOutbox();
+    const [completed] = await t.db
+      .select()
+      .from(auditLogs)
+      .where(and(eq(auditLogs.action, "audit.export.completed"), eq(auditLogs.entityId, id)));
+    const fileId = (completed!.after as { file_id: string }).file_id;
+
+    for (let i = 1; i <= 2; i++) {
+      const res = await api.get(`/files/${fileId}/access`, { token: exporter.token });
+      expect(res.statusCode).toBe(200);
+      const body = expectOperation("get", "/files/{fileId}/access", res) as { url: string };
+      expect((await download(body.url)).statusCode).toBe(200);
+      const entries = await downloadedEntries(id);
+      expect(entries).toHaveLength(i);
+      expect(entries[i - 1]).toMatchObject({
+        actorAdminId: exporter.admin.adminId,
+        actorUserId: exporter.admin.userId,
+        effectiveRole: "admin",
+        entityType: "audit_export",
+        after: { file_id: fileId },
+      });
+    }
+
+    // Berkas audit_export yang tidak tercatat sebagai hasil ekspor (tanpa entri completed) tidak pernah diberi URL,
+    // sehingga tidak ada unduhan yang lolos tanpa jejak audit.
+    const [orphan] = await t.db
+      .insert(files)
+      .values({
+        id: uuidv7(),
+        ownerUserId: exporter.admin.userId,
+        purpose: "audit_export",
+        visibility: "private",
+        status: "ready",
+        storageDriver: "local",
+        mime: "text/csv",
+        bytes: 3,
+        sha256: "0".repeat(64),
+        objectKey: `audit_export/${uuidv7()}.csv`,
+        attachedAt: t.clock.now(),
+        expiresAt: new Date(t.clock.now().getTime() + 3600_000),
+      })
+      .returning({ id: files.id });
+    const res = await api.get(`/files/${orphan!.id}/access`, { token: exporter.token });
+    expect(res.statusCode).toBe(404);
+    const stray = await t.db
+      .select()
+      .from(auditLogs)
+      .where(and(eq(auditLogs.action, "audit.export.downloaded"), eq(auditLogs.entityType, "audit_export")));
+    expect(stray.some((e) => (e.after as { file_id?: string } | null)?.file_id === orphan!.id)).toBe(false);
   });
 
   it("AC F17-2: URL unduh yang sudah diterbitkan mati saat audit.export peminta dicabut", async () => {
