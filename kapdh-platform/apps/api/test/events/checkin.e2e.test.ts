@@ -263,4 +263,73 @@ describe("Penolakan check-in yang dapat ditindaklanjuti (AC F09-6)", () => {
     const later = (await api().get("/admin/checkin/events", { token: gate.token })).json();
     expect(later.items.some((e: { id: string }) => e.id === far.id)).toBe(false);
   });
+
+  it("D5, AC F09-6: override check-in yang ditutup sesudah acara selesai ditolak saat dibuat/diubah; baris lama dipotong di ends_at sehingga jendela yang ditampilkan sama dengan yang ditegakkan", async () => {
+    const manager = await adminSession(t, ["events.manage"]);
+    const now = t.clock.now().getTime();
+    const startsAt = now + 10 * DAY;
+    const body = {
+      title: "Kajian Malam Uji",
+      starts_at: new Date(startsAt).toISOString(),
+      ends_at: new Date(startsAt + 2 * HOUR).toISOString(),
+      registration_opens_at: new Date(now + HOUR).toISOString(),
+      registration_closes_at: new Date(now + 9 * DAY).toISOString(),
+      checkin_opens_at: new Date(startsAt - HOUR).toISOString(),
+      price: "0.00",
+      seats_total: 20,
+    };
+    const tooLate = await api().post(
+      "/admin/events",
+      { ...body, checkin_closes_at: new Date(startsAt + 4 * HOUR).toISOString() },
+      { token: manager.token },
+    );
+    const error = expectOperation("post", "/admin/events", tooLate) as JsonBody;
+    expect(error.code).toBe("VALIDATION_ERROR");
+    expect(Object.keys(error.field_errors)).toEqual(["checkin_closes_at"]);
+    // Tepat saat acara selesai masih boleh; memajukan ends_at sebelum tutup check-in tersimpan ditolak.
+    const exact = await api().post(
+      "/admin/events",
+      { ...body, checkin_closes_at: body.ends_at },
+      { token: manager.token },
+    );
+    expect(exact.statusCode, exact.body).toBe(201);
+    const created = exact.json();
+    const shorten = await api().patch(
+      `/admin/events/${created.id}`,
+      { ends_at: new Date(startsAt + HOUR).toISOString() },
+      { token: manager.token, headers: { "if-match": String(created.version) } },
+    );
+    expect(shorten.statusCode, shorten.body).toBe(400);
+    expect(Object.keys(shorten.json().field_errors)).toEqual(["checkin_closes_at"]);
+
+    // Baris lama dengan override sesudah ends_at: jendela efektif berhenti di ends_at di semua tampilan.
+    const legacy = await liveEvent({
+      checkinOpensAt: new Date(now - HOUR),
+      checkinClosesAt: new Date(now + 7 * HOUR), // acara selesai now + 5 jam
+    });
+    const ends = legacy.endsAt.toISOString();
+    const detail = (await api().get(`/admin/events/${legacy.id}`, { token: manager.token })).json();
+    expect(detail).toMatchObject({ effective_checkin_closes_at: ends });
+    const holder = await memberSession(t);
+    const ticket = await reserve(t, holder, legacy);
+    expect(ticket.checkin_closes_at).toBe(ends);
+    const gate = await officer();
+    const listed = (await api().get("/admin/checkin/events", { token: gate.token })).json();
+    expect(listed.items.find((e: { id: string }) => e.id === legacy.id)).toMatchObject({
+      checkin_closes_at: ends,
+    });
+    // Sesudah acara selesai, baik sebelum maupun sesudah events.lifecycle menandai done: too_late dengan jendela
+    // yang sama dengan yang ditampilkan, dan event tidak lagi ada di daftar pemindaian.
+    const shift = 5 * HOUR + 10 * 60_000;
+    t.clock.advance(shift);
+    const lateGate = await officer();
+    const beforeJob = (await scan(lateGate, legacy.id, ticket.qr_code)).json();
+    expect(beforeJob.current).toMatchObject({ rejection_reason: "too_late", checkin_closes_at: ends });
+    const list = (await api().get("/admin/checkin/events", { token: lateGate.token })).json();
+    expect(list.items.some((e: { id: string }) => e.id === legacy.id)).toBe(false);
+    await t.jobs.runScheduled("events.lifecycle");
+    const afterJob = (await scan(lateGate, legacy.id, ticket.qr_code)).json();
+    expect(afterJob.current).toMatchObject({ rejection_reason: "too_late", checkin_closes_at: ends });
+    t.clock.advance(-shift);
+  });
 });

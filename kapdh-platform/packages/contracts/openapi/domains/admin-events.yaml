@@ -142,7 +142,9 @@ paths:
         Event selalu dibuat `draft` dan baru terlihat anggota setelah diterbitkan (POST .../status `open`).
         Validasi server: judul 1..200 karakter setelah trim; `ends_at > starts_at`;
         `registration_opens_at < registration_closes_at <= ends_at`; `checkin_opens_at`/`checkin_closes_at` keduanya
-        kosong (bawaan D5: 2 jam sebelum mulai sampai selesai) atau keduanya terisi dengan closes > opens;
+        kosong (bawaan D5: 2 jam sebelum mulai sampai selesai) atau keduanya terisi dengan closes > opens dan
+        `checkin_closes_at <= ends_at` (jendela lain boleh dibuka lebih awal atau ditutup lebih cepat, tetapi tidak
+        melewati akhir acara karena event menjadi `done` saat acara selesai; `field_errors.checkin_closes_at`);
         `location_url` https; `timezone` IANA valid (bawaan Asia/Jakarta); `category_id` kategori event aktif;
         `cover_file_id` berkas purpose `event_cover` berstatus ready hasil POST /admin/event-covers yang diunggah
         pemanggil dan belum dihapus (berkas publik; saat event disimpan `attached_at` diisi agar tidak dibersihkan
@@ -816,7 +818,10 @@ components:
           type: [string, "null"]
           format: date-time
           description: Override jendela check-in; isi bersama checkin_closes_at atau kosongkan keduanya (D5).
-        checkin_closes_at: { type: [string, "null"], format: date-time }
+        checkin_closes_at:
+          type: [string, "null"]
+          format: date-time
+          description: Wajib > checkin_opens_at dan <= ends_at (D5).
         price: { $ref: "#/components/schemas/Money" }
         seats_total: { type: integer, minimum: 1, maximum: 100000 }
 

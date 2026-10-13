@@ -56,7 +56,8 @@ tags:
       - Bukti dikirim lewat PUT /me/payments/{paymentId}/proof memakai `payment.id` dari tiket. Bukti sebelum
         `hold_expires_at` memindahkan tiket ke awaiting_review dan kursi tetap ditahan sampai keputusan.
       - Tiket expired atau hold sudah lewat (termasuk payment yang sudah dibatalkan sistem karena hold habis):
-        410 RESERVATION_EXPIRED. Tiket cancelled atau payment tiket rejected: 409 PAYMENT_STATE_CONFLICT dengan
+        409 RESERVATION_EXPIRED dengan `current` = PaymentDetail (status HTTP sama dengan submitPaymentProof dan
+        createEventReservation). Tiket cancelled atau payment tiket rejected: 409 PAYMENT_STATE_CONFLICT dengan
         `current` = PaymentDetail (AC F09-2, F09-4).
       - Keputusan pengurus: approve membuat tiket paid, held menjadi paid dan QR diterbitkan (AC F04-1); reject
         bersifat final, tiket cancelled dan hold dilepas (AC F09-4).
@@ -252,7 +253,7 @@ paths:
         `payment.id`. Klien lalu mengunggah bukti (POST /files purpose payment_proof, kemudian
         PUT /me/payments/{paymentId}/proof) sebelum `hold_expires_at`; bukti tepat waktu memindahkan tiket ke
         awaiting_review dan kursi tetap ditahan sampai keputusan. Bukti sesudah hold lewat ditolak submitPaymentProof
-        dengan 410 RESERVATION_EXPIRED (AC F09-2; aturan lengkap payment tiket di tag Events). Keputusan pengurus di
+        dengan 409 RESERVATION_EXPIRED (AC F09-2; aturan lengkap payment tiket di tag Events). Keputusan pengurus di
         antrean pembayaran: approve -> tiket paid, held menjadi paid, QR diterbitkan (AC F04-1); reject -> payment
         rejected final, tiket cancelled dan hold dilepas (AC F09-4).
         Hasil event gratis: tiket langsung `paid` dengan total 0.00, QR diterbitkan, paid_quantity +1, tanpa
@@ -722,7 +723,7 @@ components:
       description: |
         Penunjuk payment tiket (`type=ticket`). Unggah/ganti bukti lewat PUT /me/payments/{id}/proof
         (submitPaymentProof) sebelum `hold_expires_at`. Penolakan mengikuti submitPaymentProof: hold sudah lewat
-        atau tiket expired -> 410 RESERVATION_EXPIRED (AC F09-2); tiket cancelled atau payment rejected -> 409
+        atau tiket expired -> 409 RESERVATION_EXPIRED (AC F09-2); tiket cancelled atau payment rejected -> 409
         PAYMENT_STATE_CONFLICT (AC F09-4). Detail dan histori lewat GET /me/payments/{id}.
       required:
         - id

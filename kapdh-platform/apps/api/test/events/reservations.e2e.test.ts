@@ -270,9 +270,14 @@ describe("Hold kedaluwarsa (AC F09-2)", () => {
       .where(and(eq(auditLogs.entityId, ticket.id), eq(auditLogs.action, "ticket.expired")));
     expect(audits).toHaveLength(1);
     expect(audits[0]!.effectiveRole).toBe("system");
-    // Bukti sesudah batas ditolak (kontrak C3: RESERVATION_EXPIRED).
+    // Bukti sesudah batas ditolak 409 RESERVATION_EXPIRED dengan current = PaymentDetail (kontrak C3
+    // submitPaymentProof; events.yaml tag Events dan TicketPaymentInfo memakai status HTTP yang sama).
     const late = await submitProof(t, member, ticket.payment.id);
-    expect(late.json().code).toBe("RESERVATION_EXPIRED");
+    expect(late.statusCode, late.body).toBe(409);
+    expect(late.json()).toMatchObject({
+      code: "RESERVATION_EXPIRED",
+      current: { id: ticket.payment.id, status: "cancelled" },
+    });
   });
 
   it("AC F09-2: request berikutnya (reservasi anggota lain) melepas hold kedaluwarsa secara fisik lalu memakai kursinya", async () => {

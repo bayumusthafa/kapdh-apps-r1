@@ -212,6 +212,81 @@ describe("events.reminders (AC F13-6)", () => {
     await t.jobs.runScheduled("events.reminders");
     expect(await remindersFor(other.userId, cancelledEvent.id)).toHaveLength(0);
   });
+
+  it("AC F13-6: pembatalan dan perubahan jadwal yang commit di tengah putaran job tidak menghasilkan pengingat usang", async () => {
+    const cancelled = await createEventRow(t, {
+      price: "0.00",
+      startsInMs: HOUR,
+      registrationClosesBeforeStartMs: 30 * 60_000,
+    });
+    const moved = await createEventRow(t, {
+      price: "0.00",
+      startsInMs: 2 * HOUR,
+      registrationClosesBeforeStartMs: 30 * 60_000,
+    });
+    const a = await memberSession(t);
+    await reserve(t, a, cancelled);
+    const b = await memberSession(t);
+    await reserve(t, b, moved);
+    const manager = await adminSession(t, ["events.manage"]);
+    const later = new Date(moved.startsAt.getTime() + 7 * DAY);
+    // Kandidat event dibaca job lebih dahulu; transaksi pertama job menjalankan pembatalan dan perubahan jadwal oleh
+    // pengurus (keduanya commit) sebelum pengingat ditulis, mensimulasikan perubahan yang terjadi di tengah putaran.
+    // Basis data aplikasi dibekukan; job diberi pembungkus yang hanya menyela transaksi pertamanya.
+    const holder = service as unknown as { db: object };
+    const realDb = holder.db as { transaction: (...args: unknown[]) => Promise<unknown> };
+    let intercepted = 0;
+    const restore = () => {
+      holder.db = realDb;
+    };
+    const hook = async (...args: unknown[]) => {
+      restore();
+      intercepted += 1;
+      const cancel = await api().post(
+        `/admin/events/${cancelled.id}/cancel`,
+        { reason: "Lokasi tidak dapat dipakai" },
+        { token: manager.token, headers: { "if-match": "1" } },
+      );
+      expect(cancel.statusCode, cancel.body).toBe(200);
+      const patch = await api().patch(
+        `/admin/events/${moved.id}`,
+        {
+          starts_at: later.toISOString(),
+          ends_at: new Date(later.getTime() + 4 * HOUR).toISOString(),
+          registration_closes_at: new Date(later.getTime() - HOUR).toISOString(),
+        },
+        { token: manager.token, headers: { "if-match": "1" } },
+      );
+      expect(patch.statusCode, patch.body).toBe(200);
+      return realDb.transaction(...args);
+    };
+    holder.db = new Proxy(
+      {},
+      {
+        get: (_target, prop) => {
+          if (prop === "transaction") return hook;
+          const value: unknown = Reflect.get(realDb, prop, realDb);
+          return typeof value === "function" ? value.bind(realDb) : value;
+        },
+      },
+    );
+    try {
+      await runAsSystem(() => service.sendReminders(t.clock.now()));
+    } finally {
+      restore();
+    }
+    expect(intercepted).toBe(1);
+    expect(await remindersFor(a.userId, cancelled.id)).toHaveLength(0);
+    expect(await remindersFor(b.userId, moved.id)).toHaveLength(0);
+    // Jadwal baru tetap mendapat pengingatnya sendiri saat waktunya tiba.
+    t.clock.advance(7 * DAY);
+    await t.jobs.runScheduled("events.reminders");
+    const fresh = await remindersFor(b.userId, moved.id);
+    expect(fresh.map((n) => n.dedupKey)).toEqual([
+      `u:${b.userId}:${reminderDedupKey(moved.id, "h1", later)}`,
+    ]);
+    t.clock.advance(-7 * DAY);
+  });
 });
 
 describe("events.cancelled.fanout (AC F09-7)", () => {
