@@ -18,8 +18,12 @@ import { createRootLogger, NestPinoLogger } from "./core/logging/logger.js";
 
 export type { JobContext, OutboxEvent, ScheduledJob, TopicHandler } from "./core/jobs/job-registry.js";
 export { JobRegistry } from "./core/jobs/job-registry.js";
-export { JobRunner } from "./core/jobs/job-runner.js";
+export type { DispatchResult, OutboxClaim, OutboxClaimRef, OutboxOutcome } from "./core/jobs/job-runner.js";
+export { JobRunner, OUTBOX_LOCK_MS, OUTBOX_MAX_ATTEMPTS, outboxBackoffMs } from "./core/jobs/job-runner.js";
 export { safeError } from "./core/logging/safe-error.js";
+export type { Clock } from "./core/adapters/clock.js";
+export type { Db } from "./core/db/types.js";
+export { ADVISORY_LOCK_KEYS } from "./core/db/locks.js";
 export { createRootLogger };
 
 /** Dependensi worker: sama dengan API tetapi env WorkerEnv (tanpa secret JWT/OTP/TOTP/QR). */

@@ -14,6 +14,11 @@ export const ADVISORY_LOCK_KEYS = {
   lastSuperAdmin: 4711000518,
   /** Bootstrap Super Admin pertama (PRD 8.2 langkah 3). */
   bootstrapSuperAdmin: 4711000519,
+  /**
+   * Leader penjadwal apps/worker: kunci advisory SESI (`pg_try_advisory_lock`) pada koneksi khusus, sehingga hanya satu
+   * instance worker yang menjalankan job terjadwal (ARCHITECTURE §4.8, PRD 5.1).
+   */
+  workerSchedulerLeader: 4711000520,
 } as const;
 
 /**
