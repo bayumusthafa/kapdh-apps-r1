@@ -1,8 +1,17 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { configure, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { CONTENT_IDS, contentRequests, mockContent } from "../../api/mocks/content";
 import { findToast, renderApp, signIn, type User } from "../../test/utils";
+
+// Suite admin berjalan paralel; potongan kode area dan editor dimuat lazy sehingga butuh waktu tunggu lebih.
+configure({ asyncUtilTimeout: 5000 });
+
+beforeAll(async () => {
+  // Potongan kode area dan editor dimuat lazy; muat lebih dahulu agar waktu transformasi modul saat suite berjalan
+  // paralel tidak dihitung sebagai waktu tunggu UI.
+  await Promise.all([import("./ContentPages"), import("../../components/ui/RichTextEditorImpl")]);
+}, 60_000);
 
 /** Server tiruan src/api/mocks/content.ts; bukti mock bukan bukti AC (PRD 7.3). */
 async function openContent(user: User, path = "/content") {
@@ -63,7 +72,9 @@ describe("tab Berita (F-08, F-15, guideline p13; server tiruan)", () => {
     await openContent(user);
     const table = await screen.findByRole("table", { name: "Daftar berita" });
     // Berita yang tampil harus diarsipkan dahulu (kontrak adminDeletePost).
-    expect(within(table).getByRole("button", { name: /Hapus Donasi korban bencana \(arsipkan dahulu/ })).toBeDisabled();
+    expect(
+      within(table).getByRole("button", { name: /Hapus Donasi korban bencana \(arsipkan dahulu/ }),
+    ).toBeDisabled();
 
     await user.click(within(table).getByRole("button", { name: "Hapus Rapat pengurus Oktober" }));
     const dialog = await screen.findByRole("alertdialog", { name: /Hapus berita\?/ });
@@ -91,7 +102,9 @@ describe("tab Berita (F-08, F-15, guideline p13; server tiruan)", () => {
     await user.click(within(dialog).getByRole("button", { name: "Hapus berita" }));
     await findToast("error", "Data sudah diubah pengurus lain");
     expect(mockContent.post(CONTENT_IDS.postDraft)).toBeDefined();
-    expect(await within(table).findByRole("rowheader", { name: /Judul diubah pengurus lain/ })).toBeInTheDocument();
+    expect(
+      await within(table).findByRole("rowheader", { name: /Judul diubah pengurus lain/ }),
+    ).toBeInTheDocument();
   });
 
   it("tombol Manajemen Kategori membuka tab Kategori berita; Buat Konten Baru membuka editor", async () => {
