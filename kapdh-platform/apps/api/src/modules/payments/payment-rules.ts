@@ -246,9 +246,31 @@ export function selfCancelFullRefundUntil(startsAt: Date, selfCancelDays: number
 }
 
 /**
+ * Aturan D6 (PRD 3.9) untuk tiket yang sudah cancelled: refund penuh bila event dibatalkan pengurus (tiket dibatalkan
+ * oleh pembatalan event, bukan sebelumnya oleh pengurus) atau peserta membatalkan sendiri sampai H-`selfCancelDays`
+ * (pengaturan `events.self_cancel_days`, bawaan 3). Pembatalan oleh pengurus, suspend atau penghapusan akun diputuskan
+ * per kasus (false). Dipakai pratinjau `refund_on_approve` dan sebaiknya juga oleh handler tiket modul events agar
+ * keduanya selalu sama.
+ */
+export function fullRefundForCancelledTicket(input: {
+  ownerPresent: boolean;
+  ticket: Pick<TicketRow, "status" | "cancelledBy" | "cancelledAt"> | null;
+  event: Pick<EventRow, "status" | "startsAt" | "cancelledAt"> | null;
+  selfCancelDays: number;
+}): boolean {
+  const { ticket, event } = input;
+  if (!input.ownerPresent || !ticket || !event || ticket.status !== "cancelled" || !ticket.cancelledAt) return false;
+  if (ticket.cancelledBy === "self")
+    return (
+      ticket.cancelledAt.getTime() <= selfCancelFullRefundUntil(event.startsAt, input.selfCancelDays).getTime()
+    );
+  if (event.status !== "cancelled" || ticket.cancelledBy === "admin") return false;
+  return !event.cancelledAt || ticket.cancelledAt.getTime() >= event.cancelledAt.getTime();
+}
+
+/**
  * Pratinjau `refund_on_approve` (kontrak AdminPaymentDetail): payment tiket pending berbukti yang tiketnya sudah
- * cancelled karena event dibatalkan pengurus atau peserta membatalkan sendiri sampai H-3 (D6). Pembatalan oleh
- * pengurus, suspend atau penghapusan akun diputuskan per kasus (false). Aturan ini harus sama dengan handler tiket.
+ * cancelled dengan sebab yang mewajibkan refund penuh D6 ({@link fullRefundForCancelledTicket}).
  */
 export function fullRefundOnApprove(input: {
   payment: Pick<PaymentRow, "type" | "status" | "proofVersion" | "userId">;
@@ -256,15 +278,9 @@ export function fullRefundOnApprove(input: {
   event: Pick<EventRow, "status" | "startsAt" | "cancelledAt"> | null;
   selfCancelDays: number;
 }): boolean {
-  const { payment, ticket, event } = input;
+  const { payment } = input;
   if (payment.type !== "ticket" || payment.status !== "pending" || payment.proofVersion < 1) return false;
-  if (!payment.userId || !ticket || !event || ticket.status !== "cancelled" || !ticket.cancelledAt) return false;
-  if (ticket.cancelledBy === "self")
-    return (
-      ticket.cancelledAt.getTime() <= selfCancelFullRefundUntil(event.startsAt, input.selfCancelDays).getTime()
-    );
-  if (event.status !== "cancelled" || ticket.cancelledBy === "admin") return false;
-  return !event.cancelledAt || ticket.cancelledAt.getTime() >= event.cancelledAt.getTime();
+  return fullRefundForCancelledTicket({ ...input, ownerPresent: payment.userId !== null });
 }
 
 /** Status event payment tiket untuk kontrak (draft tidak pernah memiliki tiket). */
