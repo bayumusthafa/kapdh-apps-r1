@@ -58,6 +58,12 @@ interface ExportRequest {
  */
 @Injectable()
 export class AuditExportJob implements OnModuleInit {
+  /**
+   * Batas baris per ekspor (konfigurasi server, kontrak C7). Bawaan AUDIT_EXPORT_ROW_LIMIT; uji menurunkannya untuk
+   * membuktikan `row_limit_exceeded` tanpa membuat puluhan ribu entri.
+   */
+  rowLimit = AUDIT_EXPORT_ROW_LIMIT;
+
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -144,6 +150,7 @@ export class AuditExportJob implements OnModuleInit {
   private async run(request: ExportRequest): Promise<void> {
     if (!request.filters) throw new ExportStop("processing_failed");
     const filters = request.filters;
+    const rowLimit = this.rowLimit;
     const stored: { objectKey: string | null } = { objectKey: null };
     try {
       await this.db.transaction(async (tx) => {
@@ -155,7 +162,7 @@ export class AuditExportJob implements OnModuleInit {
         const cutoff = this.clock.now();
         const where = and(auditFilterSql(filters), lte(auditLogs.createdAt, cutoff));
         const [total] = await tx.select({ n: count() }).from(auditLogs).where(where);
-        if (Number(total?.n ?? 0) > AUDIT_EXPORT_ROW_LIMIT) throw new ExportStop("row_limit_exceeded");
+        if (Number(total?.n ?? 0) > rowLimit) throw new ExportStop("row_limit_exceeded");
 
         let rowCount = 0;
         const generate = async function* (): AsyncGenerator<Buffer> {
@@ -169,7 +176,7 @@ export class AuditExportJob implements OnModuleInit {
             if (rows.length === 0) return;
             const chunk = rows.map((row) => auditCsvRow(row)).join("");
             rowCount += rows.length;
-            if (rowCount > AUDIT_EXPORT_ROW_LIMIT) throw new ExportStop("row_limit_exceeded");
+            if (rowCount > rowLimit) throw new ExportStop("row_limit_exceeded");
             yield Buffer.from(chunk, "utf8");
             const last = rows[rows.length - 1]!;
             after = { created_at: last.createdAt, id: last.id };
