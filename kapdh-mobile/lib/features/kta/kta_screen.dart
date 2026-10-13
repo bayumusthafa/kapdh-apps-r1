@@ -12,6 +12,7 @@ import '../../core/format/formatters.dart';
 import '../../core/session/session_controller.dart';
 import '../../core/session/session_state.dart';
 import '../../design/design.dart';
+import '../payments/payment_updates.dart';
 import 'kta_presentation.dart';
 import 'kta_sync.dart';
 
@@ -34,17 +35,22 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
   KtaView _view = const KtaLoading();
   bool _syncing = false;
   late final AppLifecycleListener _lifecycle;
+  StreamSubscription<NotificationCreatedPayload>? _updates;
 
   @override
   void initState() {
     super.initState();
     // Kembali ke aplikasi: QR diterbitkan ulang dan status kartu diperbarui (AC F05-4, F05-5).
     _lifecycle = AppLifecycleListener(onResume: () => unawaited(_sync()));
+    // Iuran disetujui atau keanggotaan berubah (notifikasi realtime): kartu menjadi Aktif tanpa menunggu pengguna
+    // menyinkronkan (PRD 4.1, AC F05-1).
+    _updates = ref.read(paymentUpdatesProvider).listen((_) => unawaited(_sync()));
     unawaited(_sync());
   }
 
   @override
   void dispose() {
+    unawaited(_updates?.cancel());
     _lifecycle.dispose();
     super.dispose();
   }
