@@ -66,7 +66,12 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           ref.read(provider.notifier).reload(),
           if (showParticipants) ref.read(participantsControllerProvider(widget.eventId).notifier).refresh(),
         ]),
-        child: _EventContent(event: event!, showParticipants: showParticipants),
+        child: _EventContent(
+          event: event!,
+          showParticipants: showParticipants,
+          refreshError: error,
+          onRetry: () => unawaited(ref.read(provider.notifier).reload()),
+        ),
       );
     }
     return AppScaffold(
@@ -138,10 +143,14 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
 }
 
 class _EventContent extends ConsumerWidget {
-  const _EventContent({required this.event, required this.showParticipants});
+  const _EventContent({required this.event, required this.showParticipants, required this.onRetry, this.refreshError});
 
   final EventDetail event;
   final bool showParticipants;
+
+  /// Galat muat ulang terakhir; detail yang tampil adalah keadaan terakhir yang berhasil dimuat.
+  final ApiException? refreshError;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -155,6 +164,7 @@ class _EventContent extends ConsumerWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s8),
       children: [
+        RefreshFailedNotice(error: refreshError, onRetry: onRetry),
         AspectRatio(
           aspectRatio: 16 / 9,
           child: RemoteImage(

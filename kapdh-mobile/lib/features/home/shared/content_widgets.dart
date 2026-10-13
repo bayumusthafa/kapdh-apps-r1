@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:kapdh_api/kapdh_api.dart';
 
 import '../../../app/theme/kapdh_tokens.dart';
+import '../../../design/design.dart';
 
 /// Chip kategori hijau muda (guideline hal. 8 "Reuni", "Workshop").
 class CategoryChip extends StatelessWidget {
@@ -126,6 +128,38 @@ class HomeSectionTitle extends StatelessWidget {
             child: Text(actionLabel),
           ),
       ],
+    );
+  }
+}
+
+/// Muat ulang gagal sementara data terakhir tetap tampil (PRD 4.5, N-03): penyebab (offline atau pesan server) dan
+/// coba lagi, sehingga anggota tahu status di bawahnya mungkin belum terbaru. Dipasang di posisi tetap (kosong bila
+/// [error] null) agar indeks anak daftar tidak bergeser dan state anak lain (mis. hitung mundur hold) tetap.
+class RefreshFailedNotice extends StatelessWidget {
+  const RefreshFailedNotice({super.key, required this.error, required this.onRetry});
+
+  final ApiException? error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final failure = error;
+    if (failure == null) return const SizedBox.shrink();
+    final offline = failure.isNetwork;
+    final cause = offline ? 'Periksa koneksi internet Anda.' : failure.message;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: KapdhSpace.s3),
+      child: Semantics(
+        liveRegion: true,
+        child: InfoBox(
+          key: const ValueKey('refresh-failed'),
+          tone: InfoBoxTone.warning,
+          icon: offline ? Icons.cloud_off : Icons.sync_problem,
+          title: 'Belum dapat diperbarui',
+          message: '$cause Data di bawah adalah keadaan terakhir yang dimuat.',
+          trailing: TextButton(onPressed: onRetry, child: const Text('Coba lagi')),
+        ),
+      ),
     );
   }
 }
