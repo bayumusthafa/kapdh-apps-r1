@@ -452,9 +452,16 @@ paths:
 
         Refund otomatis juga dibuat sistem (created_by null) saat event dibatalkan atau peserta membatalkan sampai
         H-3 atas tiket paid, dan saat payment tiket yang tiketnya sudah dibatalkan dengan alasan yang sama disetujui
-        (F-09, D6); notifikasi permintaan rekening yang sama dikirim. Audit dicatat dalam transaksi yang sama tanpa
+        (F-09, D6); notifikasi permintaan rekening yang sama dikirim. Untuk refund yang lahir dari persetujuan
+        payment, permintaan rekening itu menjadi isi notifikasi keputusan sendiri (satu notification_id per
+        keputusan, AC F13-1), bukan notifikasi kedua. Audit dicatat dalam transaksi yang sama tanpa
         rekening tujuan (ARCHITECTURE §2 butir 3). Kunci: baris payment (FOR UPDATE) lebih dahulu agar pemeriksaan
         total refund berurutan dengan PATCH nominal dan penyesuaian lain atas payment yang sama.
+
+        Pengulangan dengan Idempotency-Key dan payload sama mengembalikan hasil pertama dengan satu pengecualian:
+        `refund_destination` bernilai null pada respons ulangan (`has_refund_destination` tetap true), karena
+        rekening tujuan refund tidak pernah disalin ke penyimpanan idempotensi (D2, ARCHITECTURE §2.3). Pemutus
+        membacanya lewat GET /admin/payment-adjustments/{adjustmentId}.
       x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide], idempotent: true }
       parameters:
         - $ref: "#/components/parameters/PaymentId"
@@ -1446,8 +1453,10 @@ components:
             in_use:
               type: boolean
               description: |
-                Pernah dirujuk payment. Metode seperti ini hanya dapat dinonaktifkan (tidak dihapus), dan identitas
-                rekeningnya (kind, provider, account_number, account_holder) tidak dapat diubah.
+                Pernah dirujuk payment, termasuk metode yang kemudian ditinggalkan karena pemilik mengganti rekening
+                tujuan sebelum bukti (PRD 4.3); nilai true tidak pernah kembali false. Metode seperti ini hanya dapat
+                dinonaktifkan (tidak dihapus), dan identitas rekeningnya (kind, provider, account_number,
+                account_holder) tidak dapat diubah.
             version: { type: string }
             created_at: { type: string, format: date-time }
             updated_at: { type: string, format: date-time }
