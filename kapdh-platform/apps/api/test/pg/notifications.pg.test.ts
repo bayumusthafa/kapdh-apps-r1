@@ -20,13 +20,15 @@ import { MemoryDriver } from "@kapdh/storage";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { and, eq, inArray, isNull, sql as dsql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/bootstrap.js";
 import { MemoryMailer } from "../../src/core/adapters/mailer.js";
+import type { PushMessage, PushResult } from "../../src/core/adapters/push.js";
 import { runAsSystem } from "../../src/core/context/request-context.js";
 import { withTx } from "../../src/core/db/tx.js";
 import type { Db } from "../../src/core/db/types.js";
 import { NotificationService } from "../../src/core/notifications-kernel/notification.service.js";
+import { DELIVERY_LEASE_MS } from "../../src/modules/notifications/delivery-policy.js";
 import { NotificationDeliveryService } from "../../src/modules/notifications/delivery.service.js";
 import { DevicesService } from "../../src/modules/notifications/devices.service.js";
 import { createWorkerContext, type WorkerContext } from "../../src/worker.js";
@@ -381,5 +383,125 @@ describe("Retry pengurus bersamaan (AC F13-4, F17-1)", () => {
       .from(auditLogs)
       .where(and(eq(auditLogs.action, "notification.delivery.retried"), eq(auditLogs.entityId, failed!.id)));
     expect(audits).toHaveLength(1);
+  });
+});
+
+describe("Batch klaim yang dikirim bergiliran (AC F13-5, AC F13-1, PRD 5.1)", () => {
+  type Send = (message: PushMessage) => Promise<PushResult>;
+  const deferred = () => {
+    let resolve!: () => void;
+    const promise = new Promise<void>((r) => (resolve = r));
+    return { promise, resolve };
+  };
+  async function until(condition: () => boolean, label: string) {
+    const deadline = Date.now() + 15_000;
+    while (!condition() && Date.now() < deadline) await new Promise((r) => setTimeout(r, 5));
+    expect(condition(), label).toBe(true);
+  }
+  async function scheduled(userId: string, count: number) {
+    const ids: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const created = await notify(userId);
+      await workers[1]!.service.schedule(created.id);
+      ids.push(created.id);
+    }
+    return ids;
+  }
+  const pushRows = (ids: string[]) =>
+    tdb.db.select().from(notificationDeliveries).where(inArray(notificationDeliveries.notificationId, ids));
+
+  it("AC F13-5: logout (API, kapdh_app) saat worker mengirim batch → tidak ada push yang dimulai setelah logout commit", async () => {
+    // Sisa pengiriman jatuh tempo dari uji lain dikirim lebih dulu agar batch ini milik uji ini.
+    await workers[1]!.service.retryDue();
+    const alumni = await member();
+    const token = `pg-batch-${uuidv7()}`;
+    expect((await register(alumni.accessToken, token)).statusCode).toBe(204);
+    const ids = await scheduled(alumni.userId, 10);
+    const original = workers[0]!.push.send.bind(workers[0]!.push) as Send;
+    const gate = deferred();
+    const firstStarted = deferred();
+    let loggedOut = false;
+    const startedAfterLogout: string[] = [];
+    const spy = vi.spyOn(workers[0]!.push, "send").mockImplementation(async (message) => {
+      if (message.token === token) {
+        if (loggedOut) startedAfterLogout.push(message.data.notification_id!);
+        firstStarted.resolve();
+        await gate.promise;
+      }
+      return original(message);
+    });
+    try {
+      const run = workers[0]!.service.retryDue();
+      await firstStarted.promise;
+      const logout = await api().post("/auth/logout", {}, { token: alumni.accessToken });
+      expect(logout.statusCode).toBe(204);
+      loggedOut = true;
+      gate.resolve();
+      await run;
+    } finally {
+      spy.mockRestore();
+    }
+    expect(startedAfterLogout).toEqual([]);
+    const pushed = workers[0]!.push.to(token).map((m) => m.data.notification_id!);
+    expect(pushed.length).toBeLessThanOrEqual(4);
+    for (const row of await pushRows(ids))
+      if (pushed.includes(row.notificationId)) expect(row.status).toBe("sent");
+      else expect(row).toMatchObject({ status: "cancelled", errorClass: "token_revoked", sentAt: null });
+  });
+
+  it("AC F13-1: provider lambat, lease klaim habis selama batch → worker kedua mengambil sisanya; setiap push tepat sekali", async () => {
+    await workers[1]!.service.retryDue();
+    const alumni = await member();
+    const token = `pg-lambat-${uuidv7()}`;
+    expect((await register(alumni.accessToken, token)).statusCode).toBe(204);
+    const ids = await scheduled(alumni.userId, 32);
+    const claimedAt = clock.now().getTime();
+    const SLOW_ROUNDS = Math.ceil(DELIVERY_LEASE_MS / 59_000);
+    const original = workers[0]!.push.send.bind(workers[0]!.push) as Send;
+    let phase: "lambat" | "tahan" | "lewat" = "lambat";
+    let round = deferred();
+    let inRound = 0;
+    let slowSends = 0;
+    let held = 0;
+    const gate = deferred();
+    const spy = vi.spyOn(workers[0]!.push, "send").mockImplementation(async (message) => {
+      if (message.token === token && phase === "lambat") {
+        // Empat kiriman paralel per putaran, masing-masing 59 detik (di bawah batas waktu percobaan 60 detik).
+        const current = round;
+        slowSends++;
+        if (++inRound === 4) {
+          inRound = 0;
+          round = deferred();
+          clock.advance(59_000);
+          if (slowSends === SLOW_ROUNDS * 4) phase = "tahan";
+          current.resolve();
+        }
+        await current.promise;
+      } else if (message.token === token && phase === "tahan") {
+        held++;
+        await gate.promise;
+      }
+      return original(message);
+    });
+    try {
+      const first = workers[0]!.service.retryDue();
+      await until(() => held === 4, "empat percobaan sedang berjalan di provider");
+      expect(clock.now().getTime() - claimedAt).toBeGreaterThan(DELIVERY_LEASE_MS);
+      phase = "lewat";
+      await workers[1]!.service.retryDue();
+      gate.resolve();
+      await first;
+    } finally {
+      spy.mockRestore();
+    }
+    const pushed = [...workers[0]!.push.to(token), ...workers[1]!.push.to(token)].map(
+      (m) => m.data.notification_id!,
+    );
+    expect(pushed).toHaveLength(32);
+    expect(new Set(pushed).size).toBe(32);
+    expect(workers[1]!.push.to(token)).toHaveLength(4);
+    const rows = await pushRows(ids);
+    expect(rows.every((row) => row.status === "sent")).toBe(true);
+    expect(rows.filter((row) => row.attempt === 2)).toHaveLength(4);
   });
 });
