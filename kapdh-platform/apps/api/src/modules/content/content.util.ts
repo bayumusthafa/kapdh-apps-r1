@@ -1,7 +1,28 @@
 import type { components } from "@kapdh/contracts";
 import { type SQL, and, or, sql } from "drizzle-orm";
 import { z } from "zod";
+import { isRetryableTransactionError } from "../../core/db/errors.js";
 import { decodeCursor, encodeCursor } from "../../core/pagination/cursor.js";
+
+/** Percobaan maksimum transaksi tulis konten yang dibatalkan PostgreSQL karena deadlock/serialisasi. */
+export const CONTENT_TX_ATTEMPTS = 3;
+
+/**
+ * Menjalankan ulang SELURUH transaksi tulis konten bila PostgreSQL membatalkannya dengan 40P01 (deadlock) atau
+ * 40001 (serialisasi), maksimal {@link CONTENT_TX_ATTEMPTS} kali (ARCHITECTURE §2: konkurensi; PRD 5.2:
+ * INTERNAL_ERROR hanya untuk kegagalan nyata). Aman karena transaksi yang batal tidak meninggalkan perubahan maupun
+ * efek afterCommit, dan setiap percobaan memeriksa ulang If-Match pada baris terkunci (409 bila sudah berubah).
+ * Galat lain diteruskan apa adanya.
+ */
+export async function retryContentTransaction<T>(run: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await run();
+    } catch (error) {
+      if (!isRetryableTransactionError(error) || attempt >= CONTENT_TX_ATTEMPTS) throw error;
+    }
+  }
+}
 
 export type ContentCategoryRef = components["schemas"]["ContentCategoryRef"];
 export type PageLegalDocument = components["schemas"]["PageLegalDocument"];
@@ -13,6 +34,12 @@ export const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 export const POST_SLUG_MAX = 160;
 export const PAGE_SLUG_MAX = 120;
 export const CATEGORY_SLUG_MAX = 80;
+/**
+ * Panjang maksimum `body_html` berita/halaman (kontrak: masukan <= 200.000 karakter). Batas yang sama berlaku untuk
+ * HASIL sanitasi, karena atribut tautan luar dan escape karakter dapat memperpanjang isi; dengan begitu teks tayang
+ * halaman legal selalu muat utuh di audit `page.published` (F-01, F-17).
+ */
+export const CONTENT_BODY_HTML_MAX = 200_000;
 
 /**
  * Halaman baku dari seed referensi (PRD 8.2 langkah 4): tidak dapat dihapus, slug terkunci. Tiga dokumen legal

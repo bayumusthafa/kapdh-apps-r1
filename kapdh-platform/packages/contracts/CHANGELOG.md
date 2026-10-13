@@ -221,6 +221,13 @@ server (aditif, tidak memutus):
   tujuan tidak tersedia (sama dengan `HomeBannerTarget.route`).
 - `adminDeletePost`: cover yang tidak dirujuk konten lain dibuang segera (berkas `deleted`, objek dihapus setelah
   commit), bukan menunggu job berkas.
+- `body_html` pada `AdminPostCreateRequest`, `AdminPostUpdateRequest`, `AdminInfoPageCreateRequest` dan
+  `AdminInfoPageUpdateRequest`: hasil sanitasi juga maksimal 200.000 karakter (400 `field_errors.body_html`),
+  sehingga teks tayang halaman legal selalu tercatat utuh di audit `page.published` (F-01).
+- `GET /public/pages` dan `GET /public/pages/{slug}`: hanya respons 200 yang membawa
+  `Cache-Control: public, max-age=60`; respons galat (400, 404, 429) membawa `Cache-Control: no-store`.
+- `HomeEvent.seats_available` (dan `registration_state`): mengikuti proyeksi baca kursi aturan tag Events
+  (hold kedaluwarsa yang belum dilepas dianggap lepas), sama dengan respons daftar/detail event.
 
 ### C5 Events (`events.yaml`, `admin-events.yaml`; F-09, F-15, PRD 3.9, 4.4, D5, D6)
 

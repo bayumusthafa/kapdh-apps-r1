@@ -1131,7 +1131,10 @@ components:
           type: string
           minLength: 1
           maxLength: 200000
-          description: HTML dari editor; disanitasi server sebelum disimpan (PRD 3.8). Kosong setelah sanitasi ditolak.
+          description: |
+            HTML dari editor; disanitasi server sebelum disimpan (PRD 3.8). Kosong setelah sanitasi ditolak. Hasil
+            sanitasi juga maksimal 200.000 karakter (atribut tautan luar dan escape `&`/`<` menambah panjang);
+            lebih dari itu -> 400 `field_errors.body_html`.
         cover_file_id:
           type: [string, "null"]
           format: uuid
@@ -1153,7 +1156,11 @@ components:
           pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
           description: Hanya bila `slug_locked = false`.
         excerpt: { type: [string, "null"], maxLength: 300 }
-        body_html: { type: string, minLength: 1, maxLength: 200000 }
+        body_html:
+          type: string
+          minLength: 1
+          maxLength: 200000
+          description: Aturan sama dengan AdminPostCreateRequest.body_html (hasil sanitasi maksimal 200.000 karakter).
         cover_file_id: { type: [string, "null"], format: uuid }
         category_id:
           type: [string, "null"]
@@ -1378,7 +1385,12 @@ components:
         slug: { type: string, minLength: 1, maxLength: 120, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" }
         title: { type: string, minLength: 1, maxLength: 200 }
         body_html:
-          { type: string, minLength: 1, maxLength: 200000, description: Disanitasi server (PRD 3.8). }
+          type: string
+          minLength: 1
+          maxLength: 200000
+          description: |
+            Disanitasi server (PRD 3.8). Hasil sanitasi juga maksimal 200.000 karakter agar teks tayang selalu
+            tercatat utuh di audit `page.published` (F-01); lebih dari itu -> 400 `field_errors.body_html`.
 
     AdminInfoPageUpdateRequest:
       type: object
@@ -1391,7 +1403,11 @@ components:
           pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
           description: Hanya bila `slug_locked = false`.
         title: { type: string, minLength: 1, maxLength: 200 }
-        body_html: { type: string, minLength: 1, maxLength: 200000 }
+        body_html:
+          type: string
+          minLength: 1
+          maxLength: 200000
+          description: Aturan sama dengan AdminInfoPageCreateRequest.body_html (hasil sanitasi maksimal 200.000 karakter).
 
     AdminInfoPagePublishRequest:
       type: object

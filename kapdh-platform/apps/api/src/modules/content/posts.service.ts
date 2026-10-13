@@ -5,7 +5,7 @@ import { and, count, eq, gt, ilike, lte, or, type SQL, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../../core/adapters/clock.js";
 import { AuditService } from "../../core/audit/audit.service.js";
-import { isRetryableTransactionError, isUniqueViolation } from "../../core/db/errors.js";
+import { isUniqueViolation } from "../../core/db/errors.js";
 import type { Db, DbOrTx, Tx } from "../../core/db/types.js";
 import { AppException, fieldError, notFound, versionConflict } from "../../core/errors/app-exception.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
@@ -23,6 +23,7 @@ import {
   postSlugLocked,
   postState,
   randomSlugSuffix,
+  retryContentTransaction,
   slugify,
   type SortSpec,
   sortAfter,
@@ -201,52 +202,55 @@ export class PostsService {
   /** Berita baru selalu draft; slug kosong dibangkitkan dari judul dan dibuat unik (kontrak adminCreatePost). */
   async create(auth: AuthContext, input: PostCreateInput): Promise<AdminPost> {
     const title = input.title.trim();
-    const body = this.media.sanitize(input.body_html);
-    if (!body.hasContent) throw fieldError("body_html", EMPTY_BODY);
+    const body = this.media.sanitizeBody(input.body_html, EMPTY_BODY);
     const base = slugify(title, POST_SLUG_MAX) || "berita";
     for (let attempt = 0; ; attempt++) {
       try {
-        return await this.db.transaction(async (tx) => {
-          const now = this.clock.now();
-          const slug =
-            input.slug ??
-            (attempt === 0
-              ? await this.freeSlug(tx, base)
-              : `${base.slice(0, POST_SLUG_MAX - 5).replace(/-+$/g, "")}-${randomSlugSuffix()}`);
-          if (input.category_id)
-            await this.categoriesService.assertSelectable(tx, input.category_id, "post", "category_id");
-          if (input.cover_file_id)
-            await this.media.attachNew(tx, input.cover_file_id, auth.userId, "post_cover", "cover_file_id");
-          await this.media.attachBodyImages(tx, body.imageFileIds, "body_html");
-          const id = uuidv7();
-          await tx.insert(posts).values({
-            id,
-            slug,
-            title,
-            excerpt: excerptOf(input.excerpt),
-            bodyHtml: body.html,
-            coverFileId: input.cover_file_id ?? null,
-            categoryId: input.category_id ?? null,
-            status: "draft",
-            authorAdminId: auth.adminId,
-            version: 1,
-            createdAt: now,
-            updatedAt: now,
-          });
-          await this.audit.write(tx, {
-            action: "post.created",
-            entityType: "post",
-            entityId: id,
-            after: {
+        return await retryContentTransaction(() =>
+          this.db.transaction(async (tx) => {
+            const now = this.clock.now();
+            // Semua berkas yang disentuh (cover baru + gambar body) dikunci urut id sebelum dilampirkan.
+            await this.media.lockFiles(tx, [input.cover_file_id, ...body.imageFileIds]);
+            const slug =
+              input.slug ??
+              (attempt === 0
+                ? await this.freeSlug(tx, base)
+                : `${base.slice(0, POST_SLUG_MAX - 5).replace(/-+$/g, "")}-${randomSlugSuffix()}`);
+            if (input.category_id)
+              await this.categoriesService.assertSelectable(tx, input.category_id, "post", "category_id");
+            if (input.cover_file_id)
+              await this.media.attachNew(tx, input.cover_file_id, auth.userId, "post_cover", "cover_file_id");
+            await this.media.attachBodyImages(tx, body.imageFileIds, "body_html");
+            const id = uuidv7();
+            await tx.insert(posts).values({
+              id,
               slug,
               title,
-              category_id: input.category_id ?? null,
-              cover_file_id: input.cover_file_id ?? null,
-              state: "draft",
-            },
-          });
-          return (await this.load(tx, id, now))!;
-        });
+              excerpt: excerptOf(input.excerpt),
+              bodyHtml: body.html,
+              coverFileId: input.cover_file_id ?? null,
+              categoryId: input.category_id ?? null,
+              status: "draft",
+              authorAdminId: auth.adminId,
+              version: 1,
+              createdAt: now,
+              updatedAt: now,
+            });
+            await this.audit.write(tx, {
+              action: "post.created",
+              entityType: "post",
+              entityId: id,
+              after: {
+                slug,
+                title,
+                category_id: input.category_id ?? null,
+                cover_file_id: input.cover_file_id ?? null,
+                state: "draft",
+              },
+            });
+            return (await this.load(tx, id, now))!;
+          }),
+        );
       } catch (error) {
         if (!isUniqueViolation(error, "posts_slug_key")) throw error;
         if (input.slug !== undefined) throw conflictField("slug", SLUG_TAKEN);
@@ -265,62 +269,70 @@ export class PostsService {
     expectedVersion: number,
     input: PostUpdateInput,
   ): Promise<AdminPost> {
-    const body = input.body_html === undefined ? null : this.media.sanitize(input.body_html);
-    if (body && !body.hasContent) throw fieldError("body_html", EMPTY_BODY);
+    const body = input.body_html === undefined ? null : this.media.sanitizeBody(input.body_html, EMPTY_BODY);
     try {
-      return await this.db.transaction(async (tx) => {
-        const now = this.clock.now();
-        const row = await this.lockCurrent(tx, id, expectedVersion, now);
-        const changes: Partial<typeof posts.$inferInsert> = {};
-        if (input.title !== undefined) changes.title = input.title.trim();
-        if (input.slug !== undefined && input.slug !== row.slug) {
-          if (postSlugLocked(row.publishedAt, now))
-            throw fieldError("slug", "Slug berita yang pernah tampil ke anggota tidak dapat diubah.");
-          changes.slug = input.slug;
-        }
-        if (input.excerpt !== undefined) changes.excerpt = excerptOf(input.excerpt);
-        if (body) {
-          await this.media.attachBodyImages(tx, body.imageFileIds, "body_html");
-          changes.bodyHtml = body.html;
-        }
-        let releasedCover: string | null = null;
-        if (input.cover_file_id !== undefined && input.cover_file_id !== row.coverFileId) {
-          if (input.cover_file_id)
-            await this.media.attachNew(tx, input.cover_file_id, auth.userId, "post_cover", "cover_file_id");
-          changes.coverFileId = input.cover_file_id;
-          releasedCover = row.coverFileId;
-        }
-        if (input.category_id !== undefined && input.category_id !== row.categoryId) {
-          if (input.category_id)
-            await this.categoriesService.assertSelectable(tx, input.category_id, "post", "category_id");
-          changes.categoryId = input.category_id;
-        }
-        await tx
-          .update(posts)
-          .set({ ...changes, version: row.version + 1, updatedAt: now })
-          .where(and(eq(posts.id, id), eq(posts.version, expectedVersion)));
-        await this.media.discardIfUnreferenced(tx, releasedCover);
-        await this.audit.write(tx, {
-          action: "post.updated",
-          entityType: "post",
-          entityId: id,
-          before: {
-            slug: row.slug,
-            title: row.title,
-            category_id: row.categoryId,
-            cover_file_id: row.coverFileId,
-          },
-          after: {
-            slug: changes.slug ?? row.slug,
-            title: changes.title ?? row.title,
-            category_id: changes.categoryId === undefined ? row.categoryId : changes.categoryId,
-            cover_file_id: changes.coverFileId === undefined ? row.coverFileId : changes.coverFileId,
-            body_changed: body !== null,
-            excerpt_changed: input.excerpt !== undefined,
-          },
-        });
-        return (await this.load(tx, id, now))!;
-      });
+      return await retryContentTransaction(() =>
+        this.db.transaction(async (tx) => {
+          const now = this.clock.now();
+          const row = await this.lockCurrent(tx, id, expectedVersion, now);
+          const coverChanges = input.cover_file_id !== undefined && input.cover_file_id !== row.coverFileId;
+          // Semua berkas yang disentuh (cover baru, cover lama yang dilepas, gambar body) dikunci urut id sesudah
+          // baris berita dan sebelum dilampirkan/dibuang (urutan kunci ContentMediaService).
+          await this.media.lockFiles(tx, [
+            ...(coverChanges ? [input.cover_file_id, row.coverFileId] : []),
+            ...(body?.imageFileIds ?? []),
+          ]);
+          const changes: Partial<typeof posts.$inferInsert> = {};
+          if (input.title !== undefined) changes.title = input.title.trim();
+          if (input.slug !== undefined && input.slug !== row.slug) {
+            if (postSlugLocked(row.publishedAt, now))
+              throw fieldError("slug", "Slug berita yang pernah tampil ke anggota tidak dapat diubah.");
+            changes.slug = input.slug;
+          }
+          if (input.excerpt !== undefined) changes.excerpt = excerptOf(input.excerpt);
+          if (body) {
+            await this.media.attachBodyImages(tx, body.imageFileIds, "body_html");
+            changes.bodyHtml = body.html;
+          }
+          let releasedCover: string | null = null;
+          if (coverChanges) {
+            if (input.cover_file_id)
+              await this.media.attachNew(tx, input.cover_file_id, auth.userId, "post_cover", "cover_file_id");
+            changes.coverFileId = input.cover_file_id;
+            releasedCover = row.coverFileId;
+          }
+          if (input.category_id !== undefined && input.category_id !== row.categoryId) {
+            if (input.category_id)
+              await this.categoriesService.assertSelectable(tx, input.category_id, "post", "category_id");
+            changes.categoryId = input.category_id;
+          }
+          await tx
+            .update(posts)
+            .set({ ...changes, version: row.version + 1, updatedAt: now })
+            .where(and(eq(posts.id, id), eq(posts.version, expectedVersion)));
+          await this.media.discardIfUnreferenced(tx, releasedCover);
+          await this.audit.write(tx, {
+            action: "post.updated",
+            entityType: "post",
+            entityId: id,
+            before: {
+              slug: row.slug,
+              title: row.title,
+              category_id: row.categoryId,
+              cover_file_id: row.coverFileId,
+            },
+            after: {
+              slug: changes.slug ?? row.slug,
+              title: changes.title ?? row.title,
+              category_id: changes.categoryId === undefined ? row.categoryId : changes.categoryId,
+              cover_file_id: changes.coverFileId === undefined ? row.coverFileId : changes.coverFileId,
+              body_changed: body !== null,
+              excerpt_changed: input.excerpt !== undefined,
+            },
+          });
+          return (await this.load(tx, id, now))!;
+        }),
+      );
     } catch (error) {
       if (isUniqueViolation(error, "posts_slug_key")) throw conflictField("slug", SLUG_TAKEN);
       throw error;
@@ -456,27 +468,22 @@ export class PostsService {
    * post_likes dapat bertabrakan urutan kunci dengan penghapusan akun bersamaan (40P01): diulang utuh.
    */
   async remove(id: string, expectedVersion: number): Promise<void> {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        await this.db.transaction(async (tx) => {
-          const now = this.clock.now();
-          const row = await this.lockCurrent(tx, id, expectedVersion, now);
-          const state = postState(row.status, row.publishedAt, now);
-          if (state !== "draft" && state !== "archived") throw versionConflict(await this.load(tx, id, now));
-          await tx.delete(posts).where(and(eq(posts.id, id), eq(posts.version, expectedVersion)));
-          await this.media.discardIfUnreferenced(tx, row.coverFileId);
-          await this.audit.write(tx, {
-            action: "post.deleted",
-            entityType: "post",
-            entityId: id,
-            before: { slug: row.slug, title: row.title, state, like_count: row.likeCount },
-          });
+    await retryContentTransaction(() =>
+      this.db.transaction(async (tx) => {
+        const now = this.clock.now();
+        const row = await this.lockCurrent(tx, id, expectedVersion, now);
+        const state = postState(row.status, row.publishedAt, now);
+        if (state !== "draft" && state !== "archived") throw versionConflict(await this.load(tx, id, now));
+        await tx.delete(posts).where(and(eq(posts.id, id), eq(posts.version, expectedVersion)));
+        await this.media.discardIfUnreferenced(tx, row.coverFileId);
+        await this.audit.write(tx, {
+          action: "post.deleted",
+          entityType: "post",
+          entityId: id,
+          before: { slug: row.slug, title: row.title, state, like_count: row.likeCount },
         });
-        return;
-      } catch (error) {
-        if (!isRetryableTransactionError(error) || attempt >= 2) throw error;
-      }
-    }
+      }),
+    );
   }
 
   /** Mengunci baris berita (FOR UPDATE) dan memeriksa If-Match; 404 bila tidak ada, 409 dengan `current`. */

@@ -1,7 +1,11 @@
 import { appSettings, auditLogs } from "@kapdh/database";
 import { and, asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { PUBLIC_PAGES_LIMIT } from "../../src/modules/content/public-pages.controller.js";
+import {
+  PUBLIC_PAGES_CACHE_CONTROL,
+  PUBLIC_PAGES_LIMIT,
+  PUBLIC_PAGES_WINDOW_MS,
+} from "../../src/modules/content/public-pages.controller.js";
 import { expectOperation } from "../support/contract.js";
 import { httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
@@ -327,13 +331,108 @@ describe("F-08: halaman informasi buatan pengurus", () => {
   });
 });
 
-describe("PRD 3.8: halaman publik dibatasi rate limit per IP", () => {
-  it("PRD 2.5: melewati batas per IP -> 429 RATE_LIMITED dengan retry_after_seconds", async () => {
+describe("F-01, PRD 3.8: batas isi hasil sanitasi menjaga teks tayang utuh di audit", () => {
+  it("F-01: isi yang melebar setelah sanitasi melebihi 200.000 karakter -> 400 body_html (buat dan simpan draf)", async () => {
+    // Masukan sah (<= 200.000) tetapi setiap tautan https mendapat target/rel/data-external/class sehingga hasil
+    // sanitasi jauh melebihi kapasitas audit; dahulu halaman tetap terbit dengan audit page.published terpotong.
+    const link = '<a href="https://contoh.id/x">a</a>';
+    const dense = `<p>${link.repeat(Math.floor(199_000 / link.length))}</p>`;
+    expect(dense.length).toBeLessThanOrEqual(200_000);
+    const refused = await api().post(
+      "/admin/content/pages",
+      { slug: unique("padat"), title: "Tautan Padat", body_html: dense },
+      { token: admin.token },
+    );
+    expect(refused.statusCode).toBe(400);
+    expect(refused.json()).toMatchObject({
+      code: "VALIDATION_ERROR",
+      field_errors: { body_html: expect.any(Array) },
+    });
+    expectOperation("post", "/admin/content/pages", refused);
+
+    const page = (
+      await api().post(
+        "/admin/content/pages",
+        { slug: unique("padat"), title: "Tautan Padat", body_html: "<p>x</p>" },
+        { token: admin.token },
+      )
+    ).json() as AdminInfoPage;
+    const ampersands = await saveDraft(page, { body_html: `<p>${"&".repeat(40_100)}</p>` });
+    expect(ampersands.statusCode).toBe(400);
+    expect(ampersands.json().field_errors.body_html).toBeDefined();
+    const current = (
+      await api().get(`/admin/content/pages/${page.id}`, { token: admin.token })
+    ).json() as AdminInfoPage;
+    expect(current).toMatchObject({ body_html: "<p>x</p>", version: page.version });
+  });
+
+  it("F-01: isi terbesar yang sah (hasil sanitasi hampir 200.000 karakter) terbit dengan audit page.published utuh", async () => {
+    // 39.990 '&' menjadi '&amp;' (5x): hasil sanitasi 199.957 karakter, masih di bawah batas.
+    const created = await api().post(
+      "/admin/content/pages",
+      { slug: unique("terbesar"), title: "Naskah Terbesar", body_html: `<p>${"&".repeat(39_990)}</p>` },
+      { token: admin.token },
+    );
+    expect(created.statusCode, created.body).toBe(201);
+    const page = created.json() as AdminInfoPage;
+    expect(page.body_html).toHaveLength(199_957);
+    const published = await publish(page, "Naskah panjang");
+    expect(published.statusCode, published.body).toBe(200);
+    const [audit] = await t.db
+      .select()
+      .from(auditLogs)
+      .where(and(eq(auditLogs.entityId, page.id), eq(auditLogs.action, "page.published")));
+    const after = audit!.after as { body_html: string; title: string; _truncated?: boolean };
+    expect(after._truncated).toBeUndefined();
+    expect(after.title).toBe("Naskah Terbesar");
+    expect(after.body_html).toBe(page.body_html);
+    expect((published.json() as AdminInfoPage).published!.body_html).toBe(after.body_html);
+  });
+});
+
+describe("PRD 3.8: halaman publik dibatasi rate limit per IP dan hanya 200 yang boleh di-cache", () => {
+  it("PRD 3.8: 200 membawa cache publik 60 detik; 404 (belum terbit) dan 400 membawa no-store", async () => {
+    t.clock.advance(PUBLIC_PAGES_WINDOW_MS + 1);
+    const list = await api().get("/public/pages");
+    expect(list.statusCode).toBe(200);
+    expect(list.headers["cache-control"]).toBe(PUBLIC_PAGES_CACHE_CONTROL);
+    const page = await api().get("/public/pages/kebijakan-privasi");
+    expect(page.statusCode).toBe(200);
+    expect(page.headers["cache-control"]).toBe("public, max-age=60");
+
+    // Halaman yang baru akan terbit: 404 tidak boleh tertahan cache sampai 60 detik.
+    const slug = unique("segera");
+    const draft = (
+      await api().post(
+        "/admin/content/pages",
+        { slug, title: "Segera Terbit", body_html: "<p>Isi.</p>" },
+        { token: admin.token },
+      )
+    ).json() as AdminInfoPage;
+    const missing = await api().get(`/public/pages/${slug}`);
+    expect(missing.statusCode).toBe(404);
+    expect(missing.headers["cache-control"]).toBe("no-store");
+    expect((await publish(draft)).statusCode).toBe(200);
+    const live = await api().get(`/public/pages/${slug}`);
+    expect(live.statusCode).toBe(200);
+    expect(live.headers["cache-control"]).toBe("public, max-age=60");
+
+    const invalid = await api().get(`/public/pages/${"a".repeat(121)}`);
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.headers["cache-control"]).toBe("no-store");
+  });
+
+  it("PRD 2.5: melewati batas per IP -> 429 RATE_LIMITED dengan retry_after_seconds dan no-store", async () => {
+    t.clock.advance(PUBLIC_PAGES_WINDOW_MS + 1);
     for (let i = 0; i < PUBLIC_PAGES_LIMIT; i++)
       expect((await api().get("/public/pages/kebijakan-privasi")).statusCode).toBe(200);
     const limited = await api().get("/public/pages");
     expect(limited.statusCode).toBe(429);
     expect(limited.json().retry_after_seconds).toBeGreaterThan(0);
+    expect(limited.headers["cache-control"]).toBe("no-store");
     expectOperation("get", "/public/pages", limited);
+    const limitedPage = await api().get("/public/pages/kebijakan-privasi");
+    expect(limitedPage.statusCode).toBe(429);
+    expect(limitedPage.headers["cache-control"]).toBe("no-store");
   });
 });
