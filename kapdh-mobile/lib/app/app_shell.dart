@@ -6,6 +6,7 @@ import 'package:kapdh_api/kapdh_api.dart';
 import '../core/app_gate/app_gate.dart';
 import '../core/session/session_controller.dart';
 import '../design/design.dart';
+import '../features/chat/chat_list_controller.dart';
 import 'redirect.dart';
 import 'routes.dart';
 import 'theme/kapdh_tokens.dart';
@@ -44,6 +45,19 @@ class AppShell extends ConsumerWidget {
     final gate = ref.watch(appGateProvider).status;
     final redirectState = RedirectState(gate: gate, session: session);
     final locked = [for (final tab in tabs) !isLocationAllowed(redirectState, tab.location)];
+    // Lencana tab Jejaring: room berpesan belum dibaca + undangan grup tertunda (chat.yaml ChatRoomPage, F-11).
+    final chatBadge = ref.watch(chatBadgeCountsProvider);
+    int badgeOf(int index) => tabs[index].location == AppRoutes.network && !locked[index] ? chatBadge.total : 0;
+    String tooltipOf(int index) {
+      final tab = tabs[index];
+      if (locked[index]) return '${tab.label}, terkunci';
+      if (badgeOf(index) == 0) return tab.label;
+      return [
+        tab.label,
+        if (chatBadge.unreadRooms > 0) '${chatBadge.unreadRooms} percakapan belum dibaca',
+        if (chatBadge.pendingInvitations > 0) '${chatBadge.pendingInvitations} undangan grup',
+      ].join(', ');
+    }
 
     return Scaffold(
       body: navigationShell,
@@ -64,10 +78,10 @@ class AppShell extends ConsumerWidget {
           destinations: [
             for (var i = 0; i < tabs.length; i++)
               NavigationDestination(
-                tooltip: locked[i] ? '${tabs[i].label}, terkunci' : tabs[i].label,
+                tooltip: tooltipOf(i),
                 label: tabs[i].label,
-                icon: _TabIcon(icon: tabs[i].icon, locked: locked[i]),
-                selectedIcon: _TabIcon(icon: tabs[i].selectedIcon, locked: locked[i]),
+                icon: _TabIcon(icon: tabs[i].icon, locked: locked[i], count: badgeOf(i)),
+                selectedIcon: _TabIcon(icon: tabs[i].selectedIcon, locked: locked[i], count: badgeOf(i)),
               ),
           ],
         ),
@@ -77,13 +91,19 @@ class AppShell extends ConsumerWidget {
 }
 
 class _TabIcon extends StatelessWidget {
-  const _TabIcon({required this.icon, required this.locked});
+  const _TabIcon({required this.icon, required this.locked, this.count = 0});
 
   final IconData icon;
   final bool locked;
 
+  /// Angka lencana (0 = tanpa lencana); dibacakan lewat tooltip tujuan navigasi.
+  final int count;
+
   @override
   Widget build(BuildContext context) {
+    if (!locked && count > 0) {
+      return Badge(backgroundColor: KapdhColors.primary, label: Text(count > 99 ? '99+' : '$count'), child: Icon(icon));
+    }
     if (!locked) return Icon(icon);
     return Badge(
       backgroundColor: KapdhColors.neutral,

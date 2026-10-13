@@ -40,7 +40,7 @@ const representative = <String, RouteGroup>{
   '/account/sessions': RouteGroup.account,
   '/account/password': RouteGroup.account,
   '/account/blocked': RouteGroup.accountCommunity,
-  '/account/reports': RouteGroup.accountCommunity,
+  '/account/reports': RouteGroup.accountReports,
   '/account/delete': RouteGroup.accountDelete,
   '/restricted': RouteGroup.restricted,
   '/deletion-status': RouteGroup.deletionStatus,
@@ -54,6 +54,7 @@ const memberBase = {
   RouteGroup.payments,
   RouteGroup.notifications,
   RouteGroup.account,
+  RouteGroup.accountReports,
   RouteGroup.accountDelete,
   RouteGroup.legal,
 };
@@ -81,7 +82,7 @@ final expectedAllowed = <String, Set<RouteGroup>>{
     RouteGroup.accountCommunity,
   },
   'expired': {...memberBase, RouteGroup.renewal, RouteGroup.tickets},
-  'suspended': {RouteGroup.restricted, RouteGroup.accountDelete, RouteGroup.legal},
+  'suspended': {RouteGroup.restricted, RouteGroup.accountReports, RouteGroup.accountDelete, RouteGroup.legal},
   'disabled': {RouteGroup.deletionStatus, RouteGroup.legal},
   'deletion_pending': {RouteGroup.deletionStatus, RouteGroup.legal},
 };
@@ -160,6 +161,9 @@ void main() {
       expect(go(expired, '/events'), '/renewal');
       expect(go(expired, '/network'), '/renewal');
       expect(go(expired, '/chat/room-1'), '/renewal');
+      // Riwayat laporan sendiri tetap terbuka (member_access any); daftar blokir hanya anggota aktif.
+      expect(go(expired, '/account/reports'), isNull);
+      expect(go(expired, '/account/blocked'), '/renewal');
     });
 
     test('unverified tidak membuka KTA aktif lewat rute komunitas, tetapi melihat KTA berlabel Tidak Aktif', () {
@@ -169,9 +173,12 @@ void main() {
       expect(go(unverified, '/network/members/user-2'), '/onboarding/fees');
     });
 
-    test('suspended hanya portal pembatasan, legal dan hapus akun', () {
+    test('suspended hanya portal pembatasan, legal, laporan/banding sendiri dan hapus akun', () {
       final suspended = authed('suspended');
       expect(go(suspended, '/kta'), '/restricted');
+      // moderation.yaml listMyReports/getMyReport member_access any: hasil banding tampil di Laporan Saya.
+      expect(go(suspended, '/account/reports'), isNull);
+      expect(go(suspended, '/account/blocked'), '/restricted');
       expect(go(suspended, '/payments/new/renewal'), '/restricted');
       expect(go(suspended, '/account/delete'), isNull);
       expect(go(suspended, '/legal/ketentuan-komunitas'), isNull);

@@ -208,12 +208,22 @@ class ChatRoomController extends Notifier<ChatRoomViewState> {
       _lapsedByServer = false;
       _refreshMembership();
     });
-    // Pesan yang ditahan server karena keanggotaan berarti status lokal sudah usang.
-    ref.listen(chatOutboxProvider.select((s) => s[roomId]), (_, next) {
-      if (next != null && next.any((m) => m.status == OutgoingStatus.held) && !state.membershipLapsed) {
+    ref.listen(chatOutboxProvider.select((s) => s[roomId]), (previous, next) {
+      if (next == null || !ref.mounted) return;
+      // Pesan yang ditahan server karena keanggotaan berarti status lokal sudah usang.
+      if (next.any((m) => m.status == OutgoingStatus.held) && !state.membershipLapsed) {
         _lapsedByServer = true;
         state = state.copyWith(membershipLapsed: true);
       }
+      // Kirim ditolak 403/404: izin kirim room berubah tanpa event untuk perangkat ini (pihak yang diblokir tidak
+      // menerima room.updated, moderation.yaml). Muat ulang detail room agar komposer diganti keterangan yang
+      // sesuai (blokir, lawan bicara tidak tersedia, grup ditutup), atau layar "tidak tersedia" bila room 404
+      // (AC F12-1, F11-4, N-09).
+      final before = {for (final m in previous ?? const <OutgoingMessage>[]) m.clientMessageId: m};
+      final newlyRejected = next.any(
+        (m) => m.rejectedByRoomAccess && !(before[m.clientMessageId]?.rejectedByRoomAccess ?? false),
+      );
+      if (newlyRejected) unawaited(refreshRoom());
     });
     ref.onDispose(() {
       unawaited(events.cancel());
@@ -268,6 +278,8 @@ class ChatRoomController extends Notifier<ChatRoomViewState> {
   }
 
   Future<Map<String, ChatRoomMember>> _loadMembers(ChatRoom room) async {
+    // Jenis room dicatat agar daftar room tidak memuat ulang untuk pesan room jenis lain (N-04).
+    ref.read(chatRoomKindRegistryProvider).remember(room.id, room.kind);
     if (room.kind != ChatRoomKind.group) return const {};
     final page = await _repo.listMembers(roomId);
     return {for (final member in page.items) member.userId: member};

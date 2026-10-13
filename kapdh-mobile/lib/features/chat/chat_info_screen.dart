@@ -107,6 +107,20 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
     }
   }
 
+  /// Penghapusan foto grup dikonfirmasi dulu (PRD 4.5).
+  Future<void> _removePhoto() async {
+    if (!await _confirm(
+      'Hapus foto grup?',
+      'Foto grup dihapus untuk semua anggota dan diganti ikon grup.',
+      'Hapus foto',
+    )) {
+      return;
+    }
+    if (await _run(() => _controller.updateGroup(const ChatRoomUpdate(avatarFileId: Optional(null))))) {
+      _snack('Foto grup dihapus.');
+    }
+  }
+
   Future<void> _invite(ChatInfoState state) async {
     final room = state.room!;
     final exclude = {...state.joined.map((m) => m.userId), ...state.invited.map((m) => m.userId)};
@@ -145,13 +159,32 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
     switch (action) {
       case _MemberAction.profile:
         await context.push(AppRoutes.member(member.userId));
+      // Perubahan izin wajib dikonfirmasi (PRD 4.5).
       case _MemberAction.promote:
+        if (!await _confirm(
+          'Jadikan ${member.fullName} admin?',
+          '${member.fullName} dapat mengubah nama dan foto grup, mengundang, mengeluarkan anggota dan mengatur admin.',
+          'Jadikan admin',
+        )) {
+          return;
+        }
         if (await _run(() => _controller.setRole(member.userId, ChatMemberRole.admin))) {
           _snack('${member.fullName} sekarang admin grup.');
         }
       case _MemberAction.demote:
+        final self = member.isMe;
+        if (!await _confirm(
+          self ? 'Berhenti menjadi admin?' : 'Jadikan ${member.fullName} anggota biasa?',
+          self
+              ? 'Anda akan kehilangan hak admin: tidak dapat lagi mengubah grup, mengundang, mengeluarkan anggota atau '
+                    'mengatur admin. Hak ini hanya dapat dikembalikan oleh admin lain.'
+              : '${member.fullName} tidak lagi dapat mengubah grup, mengundang, mengeluarkan anggota atau mengatur admin.',
+          self ? 'Berhenti jadi admin' : 'Jadikan anggota biasa',
+        )) {
+          return;
+        }
         if (await _run(() => _controller.setRole(member.userId, ChatMemberRole.member))) {
-          _snack('${member.fullName} sekarang anggota biasa.');
+          _snack(self ? 'Anda sekarang anggota biasa.' : '${member.fullName} sekarang anggota biasa.');
         }
       case _MemberAction.remove:
         if (!await _confirm(
@@ -346,9 +379,7 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
             ),
             if (room.avatarFileId != null)
               TextButton.icon(
-                onPressed: _busy
-                    ? null
-                    : () => _run(() => _controller.updateGroup(const ChatRoomUpdate(avatarFileId: Optional(null)))),
+                onPressed: _busy ? null : _removePhoto,
                 icon: const Icon(Icons.hide_image_outlined),
                 label: const Text('Hapus foto'),
               ),

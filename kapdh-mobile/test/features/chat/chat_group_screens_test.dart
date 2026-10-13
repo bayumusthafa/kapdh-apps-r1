@@ -165,6 +165,11 @@ void main() {
       await settle(tester);
       await tester.tap(find.text('Jadikan admin'));
       await settle(tester);
+      // PRD 4.5: perubahan izin dikonfirmasi dulu.
+      expect(find.text('Jadikan Gamerisa Dewi admin?'), findsOneWidget);
+      expect(app.adapter.requestsTo('/chat/rooms/room-1/members/user-2'), isEmpty);
+      await tester.tap(find.widgetWithText(TextButton, 'Jadikan admin'));
+      await settle(tester);
       expect(app.adapter.requestsTo('/chat/rooms/room-1/members/user-2').single.data, {'role': 'admin'});
 
       await scrollAndTap(tester, find.byTooltip('Tindakan untuk Budi Santoso'));
