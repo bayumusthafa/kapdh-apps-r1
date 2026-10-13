@@ -4,14 +4,7 @@ import { accessMismatches, spec } from "../support/contract.js";
 import { httpClient } from "../support/http.js";
 import { routeAccessList } from "../support/routes.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import {
-  adminSession,
-  createEventRow,
-  eventRow,
-  insertTicket,
-  memberSession,
-  ticketRow,
-} from "./support.js";
+import { adminSession, createEventRow, eventRow, insertTicket, memberSession, ticketRow } from "./support.js";
 
 /**
  * Deklarasi akses modul events (ARCHITECTURE §4.3): setiap operasi kontrak domain `events` dan `admin-events` memiliki

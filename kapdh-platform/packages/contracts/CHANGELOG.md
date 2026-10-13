@@ -253,6 +253,9 @@ dicatat sebagai garis dasar gerbang N-13.
   menjadi `done` saat acara selesai dan check-in event done selalu `too_late`, sehingga jendela yang melewati akhir
   acara tidak pernah dapat dihormati. Jendela efektif yang ditampilkan (`effective_checkin_closes_at`,
   `TicketDetail.checkin_closes_at`, daftar pemindaian) juga dibatasi `ends_at`. Tidak ada field atau operasi baru.
+- Deskripsi tag Events (slice api-events, hanya teks): penerapan urutan kunci global kini menyebut job pengingat
+  H-3/H-1 (kunci event `FOR SHARE`, baca ulang status/jadwal/pemegang) dan `adminCancelEvent` mengunci semua tiket
+  aktif termasuk hold kedaluwarsa dalam satu langkah sebelum payment (urut id payment).
 
 ### Komunitas (C6: F-10, F-11, F-12)
 
