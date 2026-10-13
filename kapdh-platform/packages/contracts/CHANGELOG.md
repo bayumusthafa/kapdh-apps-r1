@@ -331,6 +331,21 @@ linkedAlumniUserId)` (`open_report_count`/`total_report_count` untuk `AdminMembe
   (`modules/moderation/evidence-anonymize.ts`, fungsi biasa yang aman dipakai worker) agar snapshot bukti laporan
   kehilangan nama, bio, foto dan isi chat akun itu; laporan tetap ada dalam bentuk anonim. Tampilan bukti pengurus
   sudah menyembunyikan identitas, foto dan isi chat akun berstatus deleted sebelum langkah itu berjalan.
+  Langkah yang sama juga mengosongkan `reports.description` yang DITULIS akun itu (penjelasan pelapor dan alasan
+  banding); `AdminModerationReportDetail.description` sudah null untuk penulis berstatus deleted (deskripsi field
+  diperjelas, bentuk tidak berubah). Catatan pengurus (`resolution_note`, `member_message`, snapshot suspend yang
+  dibanding) tetap disimpan sebagai catatan keputusan organisasi.
+- Audit pembacaan bukti (PRD 3.12, AC F17-1): setiap respons yang memuat bukti, yaitu `adminGetReport`,
+  `adminClaimReport` (termasuk klaim ulang idempoten oleh pengurus yang sama), `adminResolveReport` dan `current`
+  pada 409, menulis `moderation.report_viewed` (`after.via` = detail | claim | resolve | conflict, rujukan id pesan
+  dan id berkas gambar yang URL-nya diterbitkan, tanpa isi maupun URL) sebelum respons dikirim. Aturan domain dan
+  deskripsi `adminClaimReport` diperjelas (dokumentasi saja).
+- "Pernah berada di room yang sama" (`createReport` target user) dan "anggota atau mantan anggota grup"
+  (`AdminModerationResolveRequest.subject_user_id`) mensyaratkan pernah bergabung (`room_members.joined_at` terisi);
+  undangan yang dibatalkan sebelum diterima (invited → removed karena blokir atau dibatalkan admin grup) tidak
+  dihitung. Deskripsi kedua field diperjelas (dokumentasi saja).
+- Penutupan otomatis banding usang di `createAppeal` diaudit dengan aktor system (`effective_role` system,
+  `after.closed_by` system), bukan pemohon yang memicu permintaan (AC F12-3, F17-1).
 - Ketergantungan skema database di bawah sudah tersedia lewat migrasi `0006_final_contract_delta`.
 
 ### Event realtime
