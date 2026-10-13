@@ -2,7 +2,11 @@
  * Fixture uji modul account (F-14): akun alumni dengan data lengkap di setiap tabel yang disentuh penghapusan akun,
  * sehingga uji dapat membuktikan AC F14-3/F14-4/F14-5 dengan memeriksa tabel satu per satu. Data sintetis (.test).
  */
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import {
+  accountDeletions,
   alumniProfessions,
   alumni,
   auditLogs,
@@ -27,16 +31,31 @@ import {
   reports,
   roomMembers,
   rooms,
+  schema,
   sessions,
   tickets,
   users,
 } from "@kapdh/database";
+import { MemoryDriver } from "@kapdh/storage";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { eq, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/pglite";
 import { decodeJwt } from "jose";
 import { v7 as uuidv7 } from "uuid";
+import { expect } from "vitest";
+import { createApp } from "../../src/bootstrap.js";
+import { MemoryMailer } from "../../src/core/adapters/mailer.js";
+import { runAsSystem } from "../../src/core/context/request-context.js";
+import { rows } from "../../src/core/db/rows.js";
+import { commitAwareDb } from "../../src/core/db/tx.js";
 import type { Db } from "../../src/core/db/types.js";
 import { TokenService } from "../../src/core/identity/token.service.js";
+import { JobRunner } from "../../src/core/jobs/job-runner.js";
+import { MemoryRateLimitStore } from "../../src/core/rate-limit/store.js";
+import { SettingsService } from "../../src/core/settings/settings.service.js";
+import { LEDGER_PREFIX } from "../../src/modules/account/deletion-ledger.js";
+import { AccountDeletionProcessor } from "../../src/modules/account/deletion-processor.js";
+import { DELETION_STEPS } from "../../src/modules/account/deletion-steps.js";
 import {
   type AlumniFixture,
   type AlumniSession,
@@ -45,7 +64,10 @@ import {
   type EnrolledAdminFixture,
   signInAlumni,
 } from "../support/factories.js";
-import type { TestApp } from "../support/test-app.js";
+import { FakePush, TestClock } from "../support/fakes.js";
+import { httpClient } from "../support/http.js";
+import { pgliteFromTemplate } from "../support/pglite-template.js";
+import { testEnv, type TestApp } from "../support/test-app.js";
 
 const HOUR = 3600_000;
 const DAY = 24 * HOUR;
@@ -783,3 +805,150 @@ export async function userRow(db: Db, userId: string) {
   const [row] = await db.select().from(users).where(eq(users.id, userId));
   return row;
 }
+
+/** Teks pribadi milik anggota pada fixture {@link createRichMember} yang tidak boleh tersisa di tabel mana pun (D2). */
+export function personalTerms(rich: RichMember): string[] {
+  return [
+    rich.member.email,
+    "Budi Penghapus",
+    "081234567890",
+    "0811111111",
+    "budi.penghapus",
+    "Bio pribadi Budi",
+    "Transfer a.n. Budi",
+    "Sudah transfer, Budi",
+    "Transfer dari rekening a.n. pemilik",
+    "Koreksi kelas Budi",
+    "Peringatan untuk Budi",
+    "Ganti nomor Budi",
+    "Saya Budi",
+    "Pesan untuk Budi",
+    "Pesan pribadi dari Budi",
+    "Foto dari Budi",
+    "Halo Budi",
+    "1234567890",
+  ];
+}
+
+/**
+ * Pemeriksaan SETIAP tabel skema app (AC F14-3, F14-4, D2): jumlah baris per tabel yang representasi JSON-nya masih
+ * memuat salah satu `terms`. Hasil kosong berarti tidak ada data pribadi yang tersisa.
+ */
+export async function personalDataHits(db: Db, terms: string[]): Promise<Record<string, number>> {
+  const tables = rows<{ table_name: string }>(
+    await db.execute(
+      sql`select table_name from information_schema.tables where table_schema = 'app' and table_type = 'BASE TABLE' order by 1`,
+    ),
+  );
+  expect(tables.length).toBeGreaterThanOrEqual(37);
+  const hits: Record<string, number> = {};
+  const condition = sql.join(
+    terms.map((term) => sql`strpos(lower(row_to_json(t)::text), ${term.toLowerCase()}) > 0`),
+    sql` or `,
+  );
+  for (const { table_name: table } of tables) {
+    const [row] = rows<{ n: number }>(
+      await db.execute(sql`select count(*)::int as n from app.${sql.identifier(table)} t where ${condition}`),
+    );
+    if ((row?.n ?? 0) > 0) hits[table] = row!.n;
+  }
+  return hits;
+}
+
+/** Menjalankan job penghapusan satu permintaan dalam konteks sistem seperti worker (ARCHITECTURE §4.8). */
+export function runDeletion(t: Pick<TestApp, "app">, deletionId: string, options: { force?: boolean } = {}) {
+  return runAsSystem(() => t.app.get(AccountDeletionProcessor).run(deletionId, options), {
+    jobId: `account.deletion:${uuidv7()}`,
+  });
+}
+
+/** POST /me/deletion lengkap (pengungkapan -> reautentikasi -> konfirmasi); mengembalikan baris permintaan. */
+export async function requestDeletionViaApp(
+  t: Pick<TestApp, "app" | "db">,
+  session: AlumniSession,
+): Promise<{ id: string; requestNumber: string }> {
+  const api = httpClient(t.app);
+  const disclosure = await api.get("/me/deletion/disclosure", { token: session.accessToken });
+  expect(disclosure.statusCode, disclosure.body).toBe(200);
+  const res = await api.post(
+    "/me/deletion",
+    { confirm: true, acknowledged_disclosure_version: disclosure.json().version },
+    { token: session.accessToken, headers: await reauthHeader(t, session.accessToken) },
+  );
+  expect(res.statusCode, res.body).toBe(202);
+  const requestNumber = res.json().request_number as string;
+  const [row] = await t.db
+    .select({ id: accountDeletions.id })
+    .from(accountDeletions)
+    .where(eq(accountDeletions.requestNumber, requestNumber));
+  return { id: row!.id, requestNumber };
+}
+
+/**
+ * Aplikasi API dari "backup" database (dump data directory PGlite) dan salinan storage berkas, untuk menguji restore
+ * (AC F14-6). Sama dengan createTestApp tetapi memuat data directory yang diberikan.
+ */
+export async function appFromBackup(backup: Blob, storage: MemoryDriver, clock: TestClock): Promise<TestApp> {
+  const pg = await pgliteFromTemplate(backup);
+  const db = commitAwareDb(drizzle(pg, { schema }) as unknown as Db);
+  const mailer = new MemoryMailer();
+  const push = new FakePush();
+  const rateLimits = new MemoryRateLimitStore();
+  const app = await createApp(
+    { env: testEnv, db, mailer, clock, push, storage, redis: null },
+    { logger: false, rateLimitStore: rateLimits },
+  );
+  await app.init();
+  await app.getHttpAdapter().getInstance().ready();
+  const closeApp = app.close.bind(app);
+  app.close = async () => {
+    await closeApp();
+    await pg.close();
+  };
+  return {
+    app,
+    db,
+    mailer,
+    clock,
+    push,
+    storage,
+    jobs: app.get(JobRunner),
+    settings: app.get(SettingsService),
+    rateLimits,
+    pg,
+    env: testEnv,
+  };
+}
+
+/** Salinan isi storage (backup berkas) pada satu titik waktu. */
+export function snapshotStorage(storage: MemoryDriver): Map<string, Buffer> {
+  return new Map(storage.keys().map((key) => [key, storage.contents(key)!]));
+}
+
+export async function restoreStorage(snapshot: Map<string, Buffer>): Promise<MemoryDriver> {
+  const storage = new MemoryDriver();
+  for (const [key, body] of snapshot) await storage.put(key, body, { contentType: "application/octet-stream" });
+  return storage;
+}
+
+/** Menyalin objek ledger eksternal ke folder disk seperti salinan ledger terbaru pada manifest backup (PRD 5.5). */
+export function exportLedger(storage: MemoryDriver): string {
+  const dir = mkdtempSync(join(tmpdir(), "kapdh-ledger-"));
+  for (const key of storage.keys().filter((k) => k.startsWith(`${LEDGER_PREFIX}/`))) {
+    const target = join(dir, ...key.slice(LEDGER_PREFIX.length + 1).split("/"));
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, storage.contents(key)!);
+  }
+  return dir;
+}
+
+export function readLedger(storage: MemoryDriver, key: string): Record<string, unknown> {
+  return JSON.parse(storage.contents(key)!.toString("utf8")) as Record<string, unknown>;
+}
+
+export async function deletionRow(db: Db, id: string) {
+  const [row] = await db.select().from(accountDeletions).where(eq(accountDeletions.id, id));
+  return row!;
+}
+
+export { DELETION_STEPS };
