@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/features/chat/chat_realtime.dart';
 import 'package:kapdh_mobile/features/network/member_profile_screen.dart';
@@ -83,6 +84,37 @@ void main() {
         SocialNetwork.linkedin.linkFor('https://www.linkedin.com/in/ahmad'),
         Uri.parse('https://www.linkedin.com/in/ahmad'),
       );
+    });
+
+    testWidgets('F-10, N-11: ketuk nomor telpon membuka panggilan; tekan lama menyalin', (tester) async {
+      final semantics = tester.ensureSemantics();
+      final app = await _openProfile(
+        tester,
+        routes: {'/directory/user-2': (_) => FakeResponse.json(200, profileJson(phone: '+62 87 873 465 3623'))},
+      );
+      await scrollTo(tester, find.text('+62 87 873 465 3623'));
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('Telepon +62 87 873 465 3623')),
+        containsSemantics(isLink: true, hasTapAction: true, hasLongPressAction: true),
+      );
+      expect(tester.getSize(find.bySemanticsLabel('Telepon +62 87 873 465 3623')).height, greaterThanOrEqualTo(48));
+
+      await tester.tap(find.text('+62 87 873 465 3623'));
+      await settle(tester);
+      expect(app.launched, [Uri.parse('tel:+62878734653623')]);
+
+      final copied = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') copied.add((call.arguments as Map)['text'] as String);
+        return null;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      await tester.longPress(find.text('+62 87 873 465 3623'));
+      await settle(tester);
+      expect(copied, ['+62 87 873 465 3623']);
+      expect(find.text('Nomor telpon disalin.'), findsOneWidget);
+      expect(app.launched, hasLength(1));
+      semantics.dispose();
     });
 
     testWidgets('AC F11-1: Kirim Pesan tanpa room membuat/mengambil room direct kanonik lalu membukanya', (

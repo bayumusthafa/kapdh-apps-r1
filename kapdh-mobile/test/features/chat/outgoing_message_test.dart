@@ -53,6 +53,24 @@ void main() {
       expect(failed.failureMessage, 'Tidak dapat mengirim');
     });
 
+    test('AC F12-1, F11-4: 403/404 menandai penolakan akses room; kode tidak terbawa ke percobaan berikutnya', () {
+      final forbidden = _draft().started().failedWith(apiError(403, 'FORBIDDEN', 'Tidak dapat mengirim'));
+      expect(forbidden.failureCode, ErrorCode.forbidden);
+      expect(forbidden.rejectedByRoomAccess, isTrue);
+      final gone = _draft().started().failedWith(apiError(404, 'NOT_FOUND', 'Tidak ada'));
+      expect(gone.rejectedByRoomAccess, isTrue);
+      final invalid = _draft().started().failedWith(apiError(400, 'VALIDATION_ERROR', 'Isi'));
+      expect(invalid.rejectedByRoomAccess, isFalse);
+      // Kirim ulang membersihkan kode; galat jaringan berikutnya tidak mewarisi FORBIDDEN.
+      final retried = forbidden.started();
+      expect(retried.failureCode, isNull);
+      final offline = retried.failedWith(networkError());
+      expect(offline.failureCode, isNull);
+      expect(offline.rejectedByRoomAccess, isFalse);
+      expect(forbidden.failedWith(networkError()).failureCode, isNull);
+      expect(_draft().heldLocally('Ditahan').failureCode, isNull);
+    });
+
     test('PRD 4.5: keanggotaan berakhir menahan pesan (held) tanpa membuangnya', () {
       final held = _draft().started().failedWith(apiError(403, 'MEMBERSHIP_REQUIRED', 'Perpanjang KTA'));
       expect(held.status, OutgoingStatus.held);
