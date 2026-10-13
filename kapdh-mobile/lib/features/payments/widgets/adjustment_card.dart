@@ -120,6 +120,7 @@ class _AdjustmentCardState extends State<AdjustmentCard> {
           ),
           const SizedBox(height: KapdhSpace.s3),
           KapdhTextField(
+            key: const ValueKey('refund-provider'),
             label: 'Bank atau e-wallet',
             controller: _provider,
             requiredMark: true,
@@ -130,6 +131,7 @@ class _AdjustmentCardState extends State<AdjustmentCard> {
           ),
           const SizedBox(height: KapdhSpace.s3),
           KapdhTextField(
+            key: const ValueKey('refund-account-number'),
             label: 'Nomor rekening',
             controller: _number,
             requiredMark: true,
@@ -141,6 +143,7 @@ class _AdjustmentCardState extends State<AdjustmentCard> {
           ),
           const SizedBox(height: KapdhSpace.s3),
           KapdhTextField(
+            key: const ValueKey('refund-account-holder'),
             label: 'Nama pemilik rekening',
             controller: _holder,
             requiredMark: true,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -151,6 +152,12 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  void _announce(String message) {
+    final view = View.maybeOf(context);
+    if (view == null) return;
+    unawaited(SemanticsService.sendAnnouncement(view, message, Directionality.of(context)));
+  }
+
   Future<void> _present(ApiException error, {VoidCallback? onRetry}) =>
       ref.read(errorPresenterProvider).present(error, onRetry: onRetry, onReload: () => unawaited(_load()));
 
@@ -276,7 +283,9 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
         });
         _apply(payment);
         unawaited(ref.read(sessionProvider.notifier).refreshQuietly());
-        _snack('Bukti pembayaran terkirim. Pengurus akan memeriksanya.');
+        // Layar berganti ke "Menunggu Verifikasi" sebagai tanda berhasil. Snackbar tidak dipakai karena akan menutup
+        // tombol "Ganti bukti"/"Ke Beranda" di bawah; pembaca layar tetap mendapat pengumuman (N-11).
+        _announce('Bukti pembayaran terkirim. Pengurus akan memeriksanya.');
         // Alur pendaftaran: layar menunggu adalah tujuan akhir (prototipe layar 4 "Ke Beranda"), bukan kembali ke
         // Biaya KTA.
         final router = GoRouter.of(context);
