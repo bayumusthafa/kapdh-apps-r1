@@ -441,10 +441,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
   List<Widget> _refreshNotice({double spacing = KapdhSpace.s4}) {
     final error = _refreshError;
     if (error == null) return const [];
-    return [
-      RefreshFailedNotice(error: error, onRetry: () => unawaited(_load())),
-      SizedBox(height: spacing),
-    ];
+    return [RefreshFailedNotice(error: error, onRetry: () => unawaited(_load())), SizedBox(height: spacing)];
   }
 
   /// Catatan pengurus atas bukti yang ditolak (prototipe layar 5; AC F03-3, F04-2).

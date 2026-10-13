@@ -1,5 +1,3 @@
-
-
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
@@ -16,7 +14,6 @@ import '../../support/fakes.dart';
 import 'kta_fakes.dart';
 
 class _FakeManager extends Mock implements BaseCacheManager {}
-
 
 void main() {
   group('KtaAvatarCache (PRD 5.2, AC F05-3)', () {
@@ -85,7 +82,10 @@ void main() {
     test('KtaCacheStore.clear ikut mengosongkan data turunan kartu (foto KTA)', () async {
       var cleared = 0;
       final kta = KtaCacheStore(store, onClear: () async => cleared++);
-      await kta.save(userId: 'user-1', card: cardOf(expiresAt: DateTime.utc(2027, 10, 12, 7)));
+      await kta.save(
+        userId: 'user-1',
+        card: cardOf(expiresAt: DateTime.utc(2027, 10, 12, 7)),
+      );
       await kta.clear();
       expect(cleared, 1);
       expect(store.values.containsKey(KtaCacheStore.storageKey), isFalse);

@@ -147,50 +147,53 @@ void main() {
     expect(store.values[IdempotencyStore.storageKey] ?? '', isNot(contains('payment.create.registration')));
   });
 
-  testWidgets('PRD 4.3, 4.5, AC F03-4: payment terbuka ditemukan saat Memeriksa status: key pembuatan dilepas, sehingga '
-      'instruksi baru setelah pembatalan memakai key baru (bukan replay instruksi batal)', (tester) async {
-    var posted = false;
-    var cancelled = false;
-    String? firstKey;
-    final store = MemorySecureStore();
-    final app = await openNew(store: store, tester, {
-      '/me/payments': (options) {
-        final key = idempotencyKeyOf(options);
-        if (!posted) {
-          // Permintaan pertama sampai di server (pay-1 dibuat) tetapi responsnya hilang.
-          posted = true;
-          firstKey = key;
-          return FakeResponse.network();
-        }
-        // Server menyimpan respons per key selama 24 jam: key lama me-replay pay-1 yang kini dibatalkan.
-        if (key == firstKey) {
-          return FakeResponse.json(200, paymentJson(status: 'cancelled', stage: 'cancelled', cancelledAt: testNow));
-        }
-        return FakeResponse.json(201, paymentJson(id: 'pay-2'));
-      },
-      '/me/fees': (_) => FakeResponse.json(
-        200,
-        feesJson(
-          registration: feeQuoteJson(type: 'registration', openPaymentId: posted && !cancelled ? 'pay-1' : null),
+  testWidgets(
+    'PRD 4.3, 4.5, AC F03-4: payment terbuka ditemukan saat Memeriksa status: key pembuatan dilepas, sehingga '
+    'instruksi baru setelah pembatalan memakai key baru (bukan replay instruksi batal)',
+    (tester) async {
+      var posted = false;
+      var cancelled = false;
+      String? firstKey;
+      final store = MemorySecureStore();
+      final app = await openNew(store: store, tester, {
+        '/me/payments': (options) {
+          final key = idempotencyKeyOf(options);
+          if (!posted) {
+            // Permintaan pertama sampai di server (pay-1 dibuat) tetapi responsnya hilang.
+            posted = true;
+            firstKey = key;
+            return FakeResponse.network();
+          }
+          // Server menyimpan respons per key selama 24 jam: key lama me-replay pay-1 yang kini dibatalkan.
+          if (key == firstKey) {
+            return FakeResponse.json(200, paymentJson(status: 'cancelled', stage: 'cancelled', cancelledAt: testNow));
+          }
+          return FakeResponse.json(201, paymentJson(id: 'pay-2'));
+        },
+        '/me/fees': (_) => FakeResponse.json(
+          200,
+          feesJson(
+            registration: feeQuoteJson(type: 'registration', openPaymentId: posted && !cancelled ? 'pay-1' : null),
+          ),
         ),
-      ),
-      '/me/payments/pay-2': (_) => FakeResponse.json(200, paymentJson(id: 'pay-2')),
-    });
+        '/me/payments/pay-2': (_) => FakeResponse.json(200, paymentJson(id: 'pay-2')),
+      });
 
-    expect(app.location, '/payments/pay-1');
-    // Hasil sudah diketahui lewat GET /me/fees: key tidak tertinggal di secure storage.
-    expect(store.values[IdempotencyStore.storageKey] ?? '', isNot(contains('payment.create.registration')));
+      expect(app.location, '/payments/pay-1');
+      // Hasil sudah diketahui lewat GET /me/fees: key tidak tertinggal di secure storage.
+      expect(store.values[IdempotencyStore.storageKey] ?? '', isNot(contains('payment.create.registration')));
 
-    // pay-1 dibatalkan (oleh anggota atau pengurus), lalu anggota membuat instruksi baru.
-    cancelled = true;
-    app.router.go('/payments/new/registration');
-    await settle(tester);
+      // pay-1 dibatalkan (oleh anggota atau pengurus), lalu anggota membuat instruksi baru.
+      cancelled = true;
+      app.router.go('/payments/new/registration');
+      await settle(tester);
 
-    final keys = createKeys(app);
-    expect(keys, hasLength(2));
-    expect(keys.last, isNot(firstKey));
-    expect(app.location, '/payments/pay-2');
-  });
+      final keys = createKeys(app);
+      expect(keys, hasLength(2));
+      expect(keys.last, isNot(firstKey));
+      expect(app.location, '/payments/pay-2');
+    },
+  );
 
   testWidgets('PRD 4.3: respons replay berupa instruksi yang sudah dibatalkan: diulang sekali dengan key baru dan '
       'instruksi yang berlaku dibuka', (tester) async {

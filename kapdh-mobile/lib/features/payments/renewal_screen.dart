@@ -87,7 +87,10 @@ class _RenewalScreenState extends ConsumerState<RenewalScreen> {
           ? (error != null
                 ? ErrorState.fromException(error, onRetry: () => unawaited(_load()))
                 : const LoadingSkeleton(semanticsLabel: 'Memuat masa keanggotaan'))
-          : RefreshIndicator(onRefresh: _load, child: _content(membership, fees, refreshError: error)),
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: _content(membership, fees, refreshError: error),
+            ),
     );
   }
 
