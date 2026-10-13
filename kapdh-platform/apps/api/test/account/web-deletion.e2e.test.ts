@@ -1,8 +1,16 @@
+import type { ExecutionContext } from "@nestjs/common";
 import { accountDeletions, auditLogs, otpCodes, outboxEvents, sessions, users } from "@kapdh/database";
 import { and, eq, sql } from "drizzle-orm";
 import { decodeJwt } from "jose";
+import { lastValueFrom, throwError } from "rxjs";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { AppException } from "../../src/core/errors/app-exception.js";
+import {
+  DECOY_OTP_ROUTES,
+  DeletionDecoyOtpInterceptor,
+} from "../../src/modules/account/deletion-decoy-otp.interceptor.js";
+import { otpExpired } from "../../src/modules/account/otp-policy.js";
 import { WebDeletionDecoys } from "../../src/modules/account/web-deletion-decoys.js";
 import { expectOperation } from "../support/contract.js";
 import { createAdmin, createAlumni, signInAlumni } from "../support/factories.js";
@@ -477,5 +485,130 @@ describe("Challenge pengganti: delegasi kirim ulang/status untuk modul auth (PRD
     await expect(decoys.statusIfDecoy(first.challenge_id)).rejects.toMatchObject({ status: 410 });
     expect((await verify(first.challenge_id, "123456")).statusCode).toBe(410);
     expect((await verify(resent.challenge_id, "123456")).statusCode).toBe(400);
+  });
+});
+
+/** Ringkasan respons galat/sukses yang boleh dibandingkan antara email terdaftar dan tidak terdaftar. */
+function outcomeOf(res: { statusCode: number; json: () => unknown }) {
+  const body = res.json() as Record<string, unknown>;
+  if (res.statusCode >= 400)
+    return {
+      status: res.statusCode,
+      code: body.code,
+      message: body.message,
+      field_errors: body.field_errors ?? null,
+      retry_after_seconds: body.retry_after_seconds ?? null,
+    };
+  const now = t.clock.now().getTime();
+  return {
+    status: res.statusCode,
+    keys: Object.keys(body).sort(),
+    purpose: body.purpose,
+    attempts_left: body.attempts_left,
+    max_attempts: body.max_attempts,
+    expires_in: new Date(String(body.expires_at)).getTime() - now,
+    resend_in: new Date(String(body.resend_available_at)).getTime() - now,
+  };
+}
+
+describe("Non-enumerasi lintas challenge dan kirim ulang (PRD 2.5)", () => {
+  it("PRD 2.5: challenge kedua untuk email yang sama menggantikan challenge pertama dengan cara yang sama untuk email terdaftar dan tidak terdaftar (verify dan kirim ulang id lama identik)", async () => {
+    // Jendela kuota per jam yang bersih untuk uji ini (kuota per IP dipakai bersama seluruh berkas uji).
+    t.clock.advance(60 * MINUTE);
+    const member = await createAlumni(t, { status: "verified" });
+    const unknown = `tidak-ada-${uuidv7()}@kapdh.test`;
+    const transcript = async (email: string) => {
+      const first = await startChallenge(email);
+      const second = await startChallenge(email);
+      const api = httpClient(t.app);
+      const code = t.mailer.last(email);
+      return [
+        outcomeOf(await verify(first.challenge_id, "000000")),
+        outcomeOf(await api.post("/auth/otp/resend", { challenge_id: first.challenge_id })),
+        outcomeOf(await verify(second.challenge_id, wrongCode(code))),
+      ];
+    };
+    const registered = await transcript(member.email);
+    const unregistered = await transcript(unknown);
+    expect(unregistered).toEqual(registered);
+    expect(registered.map((x) => x.status)).toEqual([410, 410, 400]);
+    expect(registered[0]).toMatchObject({ code: "OTP_EXPIRED" });
+    expect(registered[1]).toMatchObject({
+      code: "OTP_EXPIRED",
+      message: "Kode ini sudah diganti kode yang lebih baru.",
+    });
+    expect(registered[2]).toMatchObject({ field_errors: { code: ["Kode salah. Sisa percobaan 4."] } });
+  });
+
+  it("PRD 2.5: POST /auth/otp/resend untuk challenge penghapusan web identik bagi email terdaftar dan tidak terdaftar (cooldown 429, 200 dengan challenge baru, 410 untuk id lama); hanya akun nyata menerima kode", async () => {
+    t.clock.advance(60 * MINUTE);
+    const member = await createAlumni(t, { status: "verified" });
+    const unknown = `tidak-ada-${uuidv7()}@kapdh.test`;
+    const decoys = t.app.get(WebDeletionDecoys);
+    const transcript = async (email: string) => {
+      const api = httpClient(t.app);
+      const resend = (challengeId: string) => api.post("/auth/otp/resend", { challenge_id: challengeId });
+      const first = await startChallenge(email);
+      const sentBefore = t.mailer.sent.length;
+      const out = [outcomeOf(await resend(first.challenge_id))];
+      t.clock.advance(MINUTE + 1000);
+      const resent = await resend(first.challenge_id);
+      expect(resent.statusCode, resent.body).toBe(200);
+      const next = expectOperation("post", "/auth/otp/resend", resent) as Challenge;
+      expect(next.challenge_id).not.toBe(first.challenge_id);
+      expect(next.email_masked).toBe(first.email_masked);
+      out.push(outcomeOf(resent));
+      out.push(outcomeOf(await resend(first.challenge_id)));
+      out.push(outcomeOf(await resend(next.challenge_id)));
+      out.push(outcomeOf(await verify(first.challenge_id, "000000")));
+      out.push(outcomeOf(await verify(next.challenge_id, wrongCode(t.mailer.last(email)))));
+      return { out, next, sent: t.mailer.sent.slice(sentBefore) };
+    };
+    const registered = await transcript(member.email);
+    const unregistered = await transcript(unknown);
+    expect(unregistered.out).toEqual(registered.out);
+    expect(registered.out.map((x) => x.status)).toEqual([429, 200, 410, 429, 410, 400]);
+    expect(registered.out[0]).toMatchObject({ code: "RATE_LIMITED", retry_after_seconds: 60 });
+    expect(registered.out[1]).toMatchObject({ purpose: "deletion", attempts_left: 5, resend_in: 60_000 });
+    // Kode baru hanya dikirim ke akun nyata; decoy baru tetap dikenali sebagai decoy.
+    expect(registered.sent).toEqual([expect.objectContaining({ to: member.email, purpose: "deletion" })]);
+    expect(unregistered.sent).toEqual([]);
+    expect(decoys.isDecoy(unregistered.next.challenge_id)).toBe(true);
+    expect(decoys.isDecoy(registered.next.challenge_id)).toBe(false);
+  });
+
+  it("PRD 2.5: interceptor hanya menggantikan jawaban 410 modul auth untuk id decoy pada rute resend/status; galat lain dan id lain diteruskan apa adanya", async () => {
+    t.clock.advance(60 * MINUTE);
+    const decoy = await startChallenge(`tidak-ada-${uuidv7()}@kapdh.test`);
+    const subject = new DeletionDecoyOtpInterceptor(t.app.get(WebDeletionDecoys));
+    const context = (url: string, body: unknown) =>
+      ({
+        getType: () => "http",
+        switchToHttp: () => ({ getRequest: () => ({ method: "POST", routeOptions: { url }, body }) }),
+      }) as unknown as ExecutionContext;
+    const failing = (error: unknown) => ({ handle: () => throwError(() => error) });
+    const run = (url: string, body: unknown, error: unknown) =>
+      lastValueFrom(subject.intercept(context(url, body), failing(error)));
+
+    // POST /auth/otp/status (getOtpChallengeStatus) untuk decoy: keadaan decoy, tanpa mengganti kode.
+    expect(await run("/api/v1/auth/otp/status", { challenge_id: decoy.challenge_id }, otpExpired())).toEqual(
+      decoy,
+    );
+    expect(DECOY_OTP_ROUTES).toEqual({
+      "POST /api/v1/auth/otp/resend": "resend",
+      "POST /api/v1/auth/otp/status": "status",
+    });
+    // Galat selain 410 (mis. batas laju modul auth) tidak disentuh.
+    const limited = new AppException(429, "RATE_LIMITED", "Terlalu banyak permintaan.");
+    await expect(run("/api/v1/auth/otp/status", { challenge_id: decoy.challenge_id }, limited)).rejects.toBe(
+      limited,
+    );
+    // Id bukan decoy dan rute lain: jawaban modul auth diteruskan.
+    const original = otpExpired();
+    await expect(run("/api/v1/auth/otp/resend", { challenge_id: uuidv7() }, original)).rejects.toBe(original);
+    await expect(run("/api/v1/auth/otp/verify", { challenge_id: decoy.challenge_id }, original)).rejects.toBe(
+      original,
+    );
+    await expect(run("/api/v1/auth/otp/resend", "bukan-objek", original)).rejects.toBe(original);
   });
 });
