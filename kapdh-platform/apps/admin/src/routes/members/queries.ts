@@ -20,6 +20,7 @@ export const masterKeys = {
   all: ["admin-masters"] as const,
   options: (kind: MasterKind) => ["admin-masters", kind, "options"] as const,
   list: (kind: MasterKind, filters: unknown) => ["admin-masters", kind, "list", filters] as const,
+  details: (kind: MasterKind) => ["admin-master", kind] as const,
   detail: (kind: MasterKind, id: string) => ["admin-master", kind, id] as const,
 };
 
@@ -39,6 +40,28 @@ export function storeMember(queryClient: QueryClient, detail: MemberDetail): voi
   queryClient.setQueryData(memberKeys.detail(detail.user_id), detail);
   void queryClient.invalidateQueries({ queryKey: memberKeys.all });
   void queryClient.invalidateQueries({ queryKey: memberKeys.events(detail.user_id) });
+}
+
+/** Muat ulang detail (beserta histori, kunci berawalan sama) dan daftar anggota dari server. */
+export function reloadMember(queryClient: QueryClient, userId: string): void {
+  void queryClient.invalidateQueries({ queryKey: memberKeys.detail(userId) });
+  void queryClient.invalidateQueries({ queryKey: memberKeys.all });
+}
+
+/**
+ * Prasyarat tindakan anggota tidak terpenuhi dengan keadaan terkini (kontrak admin-members: "400 bila dilanggar
+ * dengan versi terkini", PRD 4.5 "tampil status terbaru"): 400 VALIDATION_ERROR tanpa galat per isian. Server
+ * mengirim salah satu bentuk: `current` {suspended_at, account_status, version} tanpa field_errors (prasyarat
+ * MembershipKernel: sudah/tidak sedang dibatasi, akun sedang dihapus) atau galat akar `field_errors._` (mis. ubah
+ * data akun yang sedang dihapus, pemulihan sandi akun yang tidak aktif). Galat per isian (alasan, pesan) bukan
+ * prasyarat: tetap ditampilkan pada isiannya.
+ */
+export function isPreconditionFailure(error: ApiError): boolean {
+  return (
+    error.code === "VALIDATION_ERROR" &&
+    error.status === 400 &&
+    Object.keys(error.fieldErrors).every((field) => field === "_")
+  );
 }
 
 export function useMemberDetail(userId: string) {

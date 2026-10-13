@@ -15,7 +15,7 @@ import {
 import { Button, buttonClass } from "../../components/ui/Button";
 import { Card, CardHeader } from "../../components/ui/Card";
 import { Avatar, KeyValueList } from "../../components/ui/DataDisplay";
-import { PageHeader } from "../../components/ui/PageHeader";
+import { type Breadcrumb, PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState, ForbiddenState, Loading, NotFoundState } from "../../components/ui/States";
 import { cn } from "../../lib/cn";
 import { formatDate, formatDateTime, formatRupiah } from "../../lib/format";
@@ -28,10 +28,12 @@ import {
   PERIOD_KIND_LABEL,
   REASON_REDACTED_TEXT,
 } from "./labels";
+import { lastMembersSearch } from "./listMemory";
 import { PasswordResetDialog, SuspendDialog, UnsuspendDialog } from "./MemberActionDialogs";
 import { MemberEditDialog } from "./MemberEditDialog";
 import { MembershipHistory } from "./MembershipHistory";
 import { type MemberDetail, useMemberDetail } from "./queries";
+import { RefreshFailedBanner } from "./RefreshFailedBanner";
 
 type S = components["schemas"];
 
@@ -45,7 +47,13 @@ export interface MemberNotice {
 
 type ActionDialog = "edit" | "suspend" | "unsuspend" | "reset" | null;
 
-const BREADCRUMBS = [{ label: "Manajemen Users", to: "/members" as const }, { label: "Informasi Pengguna" }];
+/** Breadcrumb kembali ke daftar dengan pencarian/filter terakhir yang dipakai (F-15, guideline hal. 16). */
+function breadcrumbs(): Breadcrumb[] {
+  return [
+    { label: "Manajemen Users", to: "/members", search: { ...lastMembersSearch() } },
+    { label: "Informasi Pengguna" },
+  ];
+}
 
 /**
  * Informasi Pengguna (F-15, guideline hal. 16): profil, kontak administratif terlepas dari flag privasi (F-10),
@@ -58,7 +66,7 @@ export function MemberDetailPage() {
   if (!auth.can("members.read"))
     return (
       <>
-        <PageHeader title="Informasi Pengguna" breadcrumbs={BREADCRUMBS} />
+        <PageHeader title="Informasi Pengguna" breadcrumbs={breadcrumbs()} />
         <Card>
           <ForbiddenState description="Detail anggota memerlukan izin melihat data anggota (members.read)." />
         </Card>
@@ -89,18 +97,27 @@ function MemberDetailView() {
   const isSuperAdmin = auth.profile?.role === "super_admin";
   const canReset = isSuperAdmin && !selfLinked && m?.account_status === "active";
 
-  // Ikon ubah pada kartu daftar membuka formulir langsung (?edit=1); parameter dihapus agar muat ulang tidak
-  // membuka formulir lagi.
-  const editRequested = search.edit === true;
-  useEffect(() => {
-    if (!editRequested || !m) return;
-    if (canEdit) setDialog("edit");
-    void navigate({ search: {}, replace: true });
-  }, [editRequested, m, canEdit, navigate]);
-
   function announce(next: MemberNotice) {
     setNotice((n) => ({ ...next, seq: (n?.seq ?? 0) + 1 }));
   }
+
+  // Ikon ubah pada kartu daftar membuka formulir langsung (?edit=1); parameter dihapus agar muat ulang tidak
+  // membuka formulir lagi. Bila formulir tidak boleh dibuka, alasannya diumumkan (PRD 2.3, F-14, PRD 4.5).
+  const editRequested = search.edit === true;
+  const editBlockedReason = !auth.can("members.manage")
+    ? "Formulir ubah data tidak dibuka: Anda tidak memiliki izin mengubah data anggota (members.manage)."
+    : selfLinked
+      ? "Formulir ubah data tidak dibuka: akun alumni ini tertaut ke akun admin Anda, sehingga perubahannya harus dilakukan pengurus lain (konflik kepentingan, PRD 2.3)."
+      : closed
+        ? "Formulir ubah data tidak dibuka: akun ini sedang dalam proses penghapusan atas permintaan anggota (F-14)."
+        : null;
+  useEffect(() => {
+    if (!editRequested || !m) return;
+    if (canEdit) setDialog("edit");
+    else if (editBlockedReason)
+      setNotice((n) => ({ tone: "warning", message: editBlockedReason, seq: (n?.seq ?? 0) + 1 }));
+    void navigate({ search: {}, replace: true });
+  }, [editRequested, m, canEdit, editBlockedReason, navigate]);
 
   // Setelah tindakan selesai, tombol pemicu dapat hilang (mis. Batasi → Cabut pembatasan): fokus dipindah ke
   // pesan hasil agar pengguna keyboard/pembaca layar tidak kehilangan posisi (N-11).
@@ -112,22 +129,28 @@ function MemberDetailView() {
   if (detail.isPending)
     return (
       <>
-        <PageHeader title="Informasi Pengguna" breadcrumbs={BREADCRUMBS} />
+        <PageHeader title="Informasi Pengguna" breadcrumbs={breadcrumbs()} />
         <Card>
           <Loading label="Memuat detail anggota..." rows={8} />
         </Card>
       </>
     );
-  if (detail.isError)
+  // Galat satu halaman penuh hanya bila belum ada data; refetch latar yang gagal tidak membuang halaman maupun
+  // formulir yang sedang diisi (PRD 4.5).
+  if (detail.data === undefined)
     return (
       <>
-        <PageHeader title="Informasi Pengguna" breadcrumbs={BREADCRUMBS} />
+        <PageHeader title="Informasi Pengguna" breadcrumbs={breadcrumbs()} />
         <Card>
-          {detail.error.code === "NOT_FOUND" ? (
+          {detail.error?.code === "NOT_FOUND" ? (
             <NotFoundState
               description="Anggota tidak ditemukan atau akunnya sudah dihapus."
               action={
-                <Link to="/members" className={buttonClass({ variant: "outline", size: "sm" })}>
+                <Link
+                  to="/members"
+                  search={lastMembersSearch()}
+                  className={buttonClass({ variant: "outline", size: "sm" })}
+                >
                   Kembali ke daftar alumni
                 </Link>
               }
@@ -145,7 +168,7 @@ function MemberDetailView() {
       <PageHeader
         title={member.full_name}
         description={[member.member_number ?? "Belum bernomor", member.cohort_code].join(" | ")}
-        breadcrumbs={BREADCRUMBS}
+        breadcrumbs={breadcrumbs()}
         actions={
           <>
             {canEdit ? (
@@ -224,6 +247,15 @@ function MemberDetailView() {
           </>
         ) : null}
       </div>
+
+      {detail.isError ? (
+        <RefreshFailedBanner
+          error={detail.error}
+          subject="Data anggota"
+          retrying={detail.isFetching}
+          onRetry={() => void detail.refetch()}
+        />
+      ) : null}
 
       {selfLinked ? (
         <p role="note" className="rounded-md bg-warning-bg p-3 text-sm text-warning">

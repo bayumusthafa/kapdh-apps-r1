@@ -1,5 +1,7 @@
 import { EFFECTIVE_STATUS_VALUES, type components } from "@kapdh/contracts";
 import { membershipLabelFor } from "@kapdh/shared";
+import { formatInTimeZone } from "date-fns-tz";
+import { DEFAULT_TIME_ZONE } from "../../lib/format";
 
 type S = components["schemas"];
 
@@ -74,10 +76,15 @@ export const MASTER_KIND_LABEL: Record<S["MasterKind"], { singular: string; plur
 /** Teks pengganti alasan suspend yang disembunyikan server (`reason_redacted`, PRD 2.3, AC F15-1). */
 export const REASON_REDACTED_TEXT = "Alasan hanya untuk pemegang izin moderasi";
 
+/** Angkatan N lulus tahun 1996 + N (PRD 3.5). */
+export const COHORT_BASE_YEAR = 1996;
+
 /**
- * Angkatan terbesar pada pilihan filter: angkatan N lulus tahun 1996 + N (PRD 3.5), ditambah satu angkatan yang
- * belum lulus tahun ini; maksimal 99 (kontrak). Hanya pilihan tampilan; server memvalidasi filter.
+ * Angkatan terbaru menurut tahun berjalan WIB (Asia/Jakarta): angkatan 30 lulus 2026 (PRD 3.5). Rumus sama dengan
+ * server (MembershipKernel.latestCohort: tahun Jakarta - 1996), yang menolak angkatan lebih besar saat koreksi
+ * identitas dan pendaftaran. Dipakai untuk pilihan filter dan pra-validasi formulir; server tetap sumber kebenaran.
  */
 export function latestCohort(now: Date = new Date()): number {
-  return Math.min(99, Math.max(1, now.getFullYear() - 1996 + 1));
+  const year = Number(formatInTimeZone(now, DEFAULT_TIME_ZONE, "yyyy"));
+  return Math.min(99, Math.max(1, year - COHORT_BASE_YEAR));
 }
