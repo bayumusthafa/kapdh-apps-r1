@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/app/theme/kapdh_tokens.dart';
+import 'package:kapdh_mobile/core/app_gate/app_gate.dart';
 import 'package:kapdh_mobile/core/session/session_controller.dart';
+import 'package:kapdh_mobile/core/storage/secure_store.dart';
+import 'package:kapdh_mobile/features/auth/auth_flow.dart';
 import 'package:kapdh_mobile/features/auth/register_screen.dart';
 
 import '../../support/app_harness.dart';
@@ -215,5 +218,143 @@ void main() {
     expect(tester.takeException(), isNull);
     await scrollTo(tester, submit);
     expect(tester.takeException(), isNull);
+  });
+
+  group('Idempotency-Key per payload (PRD 4.3, AC F01-4)', () {
+    testWidgets('AC F01-4: payload berubah membuat key baru; payload sama memakai key yang sama', (tester) async {
+      final app = await openRegister(tester, apiRoutes({'/auth/register': (_) => FakeResponse.network()}));
+      await fillForm(tester);
+      await scrollAndTap(tester, submit);
+      await settle(tester);
+      await scrollAndTap(tester, submit);
+      await settle(tester);
+
+      await scrollTo(tester, fieldOf('register-email'));
+      await tester.enterText(fieldOf('register-email'), 'ahmad.lain@email.com');
+      // Field yang fokus menggulir dirinya kembali ke layar; lepaskan fokus sebelum mengetuk tombol.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+      await scrollAndTap(tester, submit);
+      await settle(tester);
+
+      final keys = app.adapter.requestsTo('/auth/register').map((r) => r.headers['Idempotency-Key']).toList();
+      expect(keys, hasLength(3));
+      expect(keys[0], keys[1], reason: 'payload sama setelah jaringan putus');
+      expect(
+        keys[2],
+        isNot(keys[0]),
+        reason: 'payload berbeda tidak boleh memakai key lama (409 IDEMPOTENCY_CONFLICT)',
+      );
+    });
+
+    testWidgets('AC F01-4: key tersimpan di secure storage dan dipakai lagi setelah aplikasi dimulai ulang', (
+      tester,
+    ) async {
+      final store = MemorySecureStore();
+      final first = await pumpApp(
+        tester,
+        store: store,
+        handler: apiRoutes({'/auth/register': (_) => FakeResponse.network()}),
+      );
+      first.router.go('/register');
+      await settle(tester);
+      await fillForm(tester);
+      await scrollAndTap(tester, submit);
+      await settle(tester);
+      final firstKey = first.adapter.requestsTo('/auth/register').single.headers['Idempotency-Key'];
+
+      // Aplikasi ditutup lalu dibuka lagi dengan penyimpanan perangkat yang sama.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      final second = await pumpApp(
+        tester,
+        store: store,
+        handler: apiRoutes({'/auth/register': (_) => FakeResponse.json(201, otpChallengeJson())}),
+      );
+      second.router.go('/register');
+      await settle(tester);
+      await fillForm(tester);
+      await scrollAndTap(tester, submit);
+      await settle(tester);
+      expect(second.adapter.requestsTo('/auth/register').single.headers['Idempotency-Key'], firstKey);
+      expect(second.location, '/register/otp');
+      // Hasil pasti: key dilepas, dan sandi tidak pernah ditulis ke penyimpanan perangkat.
+      expect(store.values.values.any((v) => v.contains('Rahasia#123')), isFalse);
+      expect(second.container.read(activationCredentialsProvider)?.email, 'ahmad.islam@email.com');
+    });
+  });
+
+  group('persetujuan legal (F-01, N-15)', () {
+    testWidgets('F-01: tautan baca membuka halaman legal dan versi yang disetujui ditampilkan', (tester) async {
+      final app = await openRegister(tester, apiRoutes({}));
+      await scrollTo(tester, find.byKey(const ValueKey('register-read-privacy')));
+      expect(find.text('Versi yang disetujui: Kebijakan Privasi versi 2 · Ketentuan versi 1'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('register-read-privacy')));
+      await settle(tester);
+      expect(app.location, '/legal/kebijakan-privasi');
+      app.router.pop();
+      await settle(tester);
+
+      await scrollAndTap(tester, find.byKey(const ValueKey('register-read-terms')));
+      await settle(tester);
+      expect(app.location, '/legal/ketentuan');
+      app.router.pop();
+      await settle(tester);
+      expect(app.location, '/register');
+    });
+
+    testWidgets('F-01: versi terbit di /public/config berubah: persetujuan dimuat ulang dan centang dilepas', (
+      tester,
+    ) async {
+      var privacy = '2';
+      final app = await openRegister(
+        tester,
+        apiRoutes({
+          '/public/config': (_) => FakeResponse.json(200, {
+            ...publicConfigJson(),
+            'legal': {'privacy_version': privacy, 'terms_version': '1', 'community_version': '1'},
+          }),
+          '/public/pages': (_) => FakeResponse.json(200, {
+            ...publicPageListJson(policyVersion: 'privacy:$privacy;terms:1'),
+            'consent': {'policy_version': 'privacy:$privacy;terms:1', 'privacy_version': privacy, 'terms_version': '1'},
+          }),
+          '/auth/register': (_) => FakeResponse.json(201, otpChallengeJson()),
+        }),
+      );
+      await fillForm(tester);
+      expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('register-consent'))).value, isTrue);
+
+      // Pengurus menerbitkan Kebijakan Privasi versi 3; gerbang aplikasi membaca ulang /public/config.
+      privacy = '3';
+      final checking = app.container.read(appGateProvider.notifier).check();
+      await settle(tester);
+      await checking;
+      await settle(tester);
+
+      expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('register-consent'))).value, isFalse);
+      await scrollTo(tester, find.text(policyChangedMessage));
+      expect(find.text(policyChangedMessage), findsOneWidget);
+      expect(find.text('Versi yang disetujui: Kebijakan Privasi versi 3 · Ketentuan versi 1'), findsOneWidget);
+
+      await scrollAndTap(tester, submit);
+      await settle(tester);
+      expect(app.adapter.requestsTo('/auth/register'), isEmpty, reason: 'versi baru belum disetujui');
+
+      await scrollAndTap(tester, find.byKey(const ValueKey('register-consent')));
+      await settle(tester);
+      await scrollAndTap(tester, submit);
+      await settle(tester);
+      expect(
+        app.adapter.requestsTo('/auth/register').single.data,
+        containsPair('accept_policy_version', 'privacy:3;terms:1'),
+      );
+    });
+
+    testWidgets('centang nonaktif selama versi persetujuan belum dimuat', (tester) async {
+      await openRegister(tester, apiRoutes({'/public/pages': (_) => FakeResponse.network()}));
+      await scrollTo(tester, find.byKey(const ValueKey('register-consent')));
+      expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('register-consent'))).onChanged, isNull);
+    });
   });
 }
