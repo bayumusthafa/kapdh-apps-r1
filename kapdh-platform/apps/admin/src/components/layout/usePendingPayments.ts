@@ -6,20 +6,20 @@ import { useAuth } from "../../auth/session";
 export const PENDING_POLL_MS = 60_000;
 
 /**
- * Jumlah pembayaran berstatus pending (total dari GET /admin/payments?status=pending&limit=1). Polling memakai
- * X-Background-Request hanya pada refetch berkala sehingga tidak memperpanjang idle server (AC F02-5).
- * Hanya berjalan bila admin memiliki payments.read (AC F15-1).
+ * Jumlah pembayaran yang siap diputus (`awaiting_review_count` dari GET /admin/payments/summary): sumber tunggal
+ * pill emas menu dan sama dengan total pilihan "Menunggu" di antrean (kontrak C3/C7; instruksi tanpa bukti tidak
+ * dihitung). Polling memakai X-Background-Request hanya pada refetch berkala sehingga tidak memperpanjang idle
+ * server (AC F02-5). Hanya berjalan bila admin memiliki payments.read (AC F15-1).
  */
 export function usePendingPaymentsCount() {
   const auth = useAuth();
   const enabled = auth.can("payments.read");
   return useApiQuery({
-    queryKey: ["admin-payments", "pending-count"],
+    queryKey: ["admin-payments", "summary"],
     enabled,
     pollMs: PENDING_POLL_MS,
     staleTime: 30_000,
-    request: ({ signal, headers }) =>
-      api.GET("/admin/payments", { params: { query: { status: "pending", limit: 1 } }, signal, headers }),
-    select: (page) => page.total,
+    request: ({ signal, headers }) => api.GET("/admin/payments/summary", { signal, headers }),
+    select: (summary) => summary.awaiting_review_count,
   });
 }

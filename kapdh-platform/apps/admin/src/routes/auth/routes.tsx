@@ -51,9 +51,14 @@ export const enrollRoute = createRoute({
   component: lazyRouteComponent(() => import("./PendingAuthPages"), "EnrollPage"),
 });
 
+/**
+ * Tautan undangan admin `${ADMIN_ORIGIN}/invite#t=<token>` (kontrak admin-auth C1): token berada di fragmen URL
+ * yang tidak pernah dikirim browser ke server/proxy, sehingga tidak tercatat di log akses (ARCHITECTURE §2 butir
+ * 3). Bentuk `/invite/<token>` (token di path) dilarang.
+ */
 export const inviteRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/invite/$token",
+  path: "/invite",
   component: lazyRouteComponent(() => import("./PendingAuthPages"), "InvitePage"),
 });
 

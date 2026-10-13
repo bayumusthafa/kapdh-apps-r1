@@ -4,7 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { api } from "../../api/client";
 import { useApiQuery } from "../../api/query";
-import { Badge, PaymentStatusBadge } from "../../components/ui/Badge";
+import { Badge, PaymentStageBadge } from "../../components/ui/Badge";
 import { DataTable, useCursorPaging } from "../../components/ui/DataTable";
 import { Field } from "../../components/ui/FormField";
 import { Select } from "../../components/ui/Input";
@@ -12,7 +12,7 @@ import { SearchInput } from "../../components/ui/SearchInput";
 import { EmptyState } from "../../components/ui/States";
 import { formatRelativeAge, formatRupiah, formatShortDateTime } from "../../lib/format";
 import { useNow } from "../../lib/hooks";
-import { PAYMENT_TYPE_LABEL } from "../../lib/labels";
+import { DELETED_ACCOUNT_LABEL, PAYMENT_TYPE_LABEL } from "../../lib/labels";
 import { PaymentDecisionPanel } from "./PaymentDecisionPanel";
 
 type Item = components["schemas"]["AdminPaymentItem"];
@@ -31,13 +31,26 @@ const TYPE_OPTIONS = [
   { value: "ticket", label: "Tiket event" },
 ] as const;
 
+/**
+ * Pilihan Status prototipe screen_8 dan filter kontrak adminListPayments: "Menunggu" = `stage=awaiting_review`
+ * (pending berbukti yang siap diputus; total sama dengan pill menu), bukan `status=pending` yang ikut memuat
+ * instruksi tanpa bukti. "Semua" = tanpa status dan tanpa stage.
+ */
+type StatusFilter = "awaiting_review" | Exclude<PaymentStatus, "pending"> | "all";
+
 const STATUS_OPTIONS = [
-  { value: "pending", label: "Menunggu" },
+  { value: "awaiting_review", label: "Menunggu" },
   { value: "paid", label: "Disetujui" },
   { value: "rejected", label: "Ditolak" },
   { value: "cancelled", label: "Dibatalkan" },
   { value: "all", label: "Semua" },
-] as const;
+] as const satisfies readonly { value: StatusFilter; label: string }[];
+
+function statusQuery(filter: StatusFilter): { stage?: "awaiting_review"; status?: PaymentStatus } {
+  if (filter === "awaiting_review") return { stage: "awaiting_review" };
+  if (filter === "all") return {};
+  return { status: filter };
+}
 
 export function paymentTypeText(item: Pick<Item, "type" | "event_title">): string {
   return item.type === "ticket" && item.event_title
@@ -46,14 +59,36 @@ export function paymentTypeText(item: Pick<Item, "type" | "event_title">): strin
 }
 
 /**
+ * Teks penanda lewat batas review (`overdue` dari server): iuran +1 hari kerja (prototipe screen_8); tiket paling
+ * lambat pembukaan check-in event (PRD 4.4, D5), sehingga tidak selalu "1 hari kerja".
+ */
+export function overdueText(item: Pick<Item, "type">): string {
+  return item.type === "ticket" ? "Lewat batas review" : "Lewat 1 hari kerja";
+}
+
+/**
+ * Penanda tiket/event yang sudah dibatalkan sebelum keputusan (`event_cancelled`, `ticket_status`), agar pemutus
+ * tahu sebelum membuka detail (kontrak adminListPayments, PRD 4.4). Null bila tidak ada.
+ */
+export function ticketMarker(item: Pick<Item, "event_cancelled" | "ticket_status" | "stage">): string | null {
+  if (item.event_cancelled) return "Event dibatalkan";
+  // Tiket ditolak ikut cancelled (AC F09-4); penanda hanya untuk pembatalan di luar keputusan pembayaran.
+  if (item.stage === "rejected_final") return null;
+  if (item.ticket_status === "cancelled") return "Tiket dibatalkan";
+  if (item.ticket_status === "expired") return "Tiket kedaluwarsa";
+  return null;
+}
+
+/**
  * Antrean verifikasi pembayaran (F-04, prototipe screen_8): cari (debounce), filter jenis & status, paging kursor
- * server, usia antrean, penanda lewat 1 hari kerja, dan panel keputusan di samping (menyusun ke bawah di layar
- * sempit). Antrean diurutkan server berdasarkan waktu kirim bukti, terlama dulu (PRD 3.4).
+ * server, usia antrean, penanda lewat batas review, dan panel keputusan di samping (menyusun ke bawah di layar
+ * sempit). Antrean diurutkan server berdasarkan waktu kirim bukti, terlama dulu (PRD 3.4). Pemilik yang akunnya
+ * sudah dihapus tampil sebagai "Akun dihapus" (AC F14-4).
  */
 export function VerificationTab() {
   const [q, setQ] = useState("");
   const [type, setType] = useState<PaymentType | "all">("all");
-  const [status, setStatus] = useState<PaymentStatus | "all">("pending");
+  const [status, setStatus] = useState<StatusFilter>("awaiting_review");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   /** Naik setiap admin memilih baris; panel memindah fokus ke judul detail setelah detail termuat. */
   const [focusRequest, setFocusRequest] = useState(0);
@@ -69,7 +104,7 @@ export function VerificationTab() {
       api.GET("/admin/payments", {
         params: {
           query: {
-            ...(status !== "all" ? { status } : {}),
+            ...statusQuery(status),
             ...(type !== "all" ? { type } : {}),
             ...(q ? { q } : {}),
             ...(paging.cursor ? { cursor: paging.cursor } : {}),
@@ -88,7 +123,7 @@ export function VerificationTab() {
     setFocusRequest((n) => n + 1);
   }
 
-  const showAge = status === "pending";
+  const showAge = status === "awaiting_review";
   const columns = useMemo<ColumnDef<Item>[]>(
     () => [
       {
@@ -112,16 +147,28 @@ export function VerificationTab() {
               className="flex min-h-11 flex-col items-start justify-center text-left"
             >
               <span className="font-semibold text-primary underline-offset-2 hover:underline">
-                {p.member.full_name}
+                {p.member?.full_name ?? DELETED_ACCOUNT_LABEL}
               </span>
               <span className="text-xs font-normal text-text-muted">
-                {p.member.member_number ?? "Belum bernomor"}
+                {p.member ? (p.member.member_number ?? "Belum bernomor") : "Data pemilik sudah dihapus"}
               </span>
             </button>
           );
         },
       },
-      { id: "type", header: "Jenis", cell: ({ row }) => paymentTypeText(row.original) },
+      {
+        id: "type",
+        header: "Jenis",
+        cell: ({ row }) => {
+          const marker = ticketMarker(row.original);
+          return (
+            <span className="flex flex-col items-start gap-1">
+              {paymentTypeText(row.original)}
+              {marker ? <Badge tone="warning">{marker}</Badge> : null}
+            </span>
+          );
+        },
+      },
       {
         id: "amount",
         header: "Nominal",
@@ -134,7 +181,7 @@ export function VerificationTab() {
             header: "Usia antrean",
             cell: ({ row }) =>
               row.original.overdue ? (
-                <Badge tone="warning">Lewat 1 hari kerja</Badge>
+                <Badge tone="warning">{overdueText(row.original)}</Badge>
               ) : (
                 formatRelativeAge(row.original.submitted_at, now)
               ),
@@ -144,10 +191,10 @@ export function VerificationTab() {
             header: "Status",
             cell: ({ row }) => (
               <span className="flex flex-wrap items-center gap-1.5">
-                <PaymentStatusBadge status={row.original.status} />
+                <PaymentStageBadge stage={row.original.stage} />
                 {/* Penanda lewat SLA juga berupa teks, tidak hanya warna latar baris (PRD 4.5). */}
-                {row.original.overdue && row.original.status === "pending" ? (
-                  <Badge tone="warning">Lewat 1 hari kerja</Badge>
+                {row.original.overdue && row.original.stage === "awaiting_review" ? (
+                  <Badge tone="warning">{overdueText(row.original)}</Badge>
                 ) : null}
               </span>
             ),
@@ -195,7 +242,9 @@ export function VerificationTab() {
             isFetching={list.isFetching && list.isPlaceholderData}
             total={list.data?.total}
             activeRowId={selectedId}
-            rowClassName={(p) => (p.overdue && p.status === "pending" ? "bg-warning-bg/50" : undefined)}
+            rowClassName={(p) =>
+              p.overdue && p.stage === "awaiting_review" ? "bg-warning-bg/50" : undefined
+            }
             minWidth={620}
             pagination={{
               pageIndex: paging.pageIndex,

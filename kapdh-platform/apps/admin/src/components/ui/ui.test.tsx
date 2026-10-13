@@ -19,6 +19,7 @@ import {
   IconButton,
   MembershipStatusBadge,
   MoneyField,
+  PaymentStageBadge,
   PaymentStatusBadge,
   PermissionGate,
   RadioGroup,
@@ -75,12 +76,14 @@ describe("Badge status (PRD 4.5: tidak hanya warna)", () => {
     render(
       <>
         <PaymentStatusBadge status="pending" />
+        <PaymentStageBadge stage="needs_fix" />
         <MembershipStatusBadge status="expired" />
         <MembershipStatusBadge status="verified" />
         <Badge tone="gold">Baru</Badge>
       </>,
     );
     expect(screen.getByText("Menunggu")).toBeInTheDocument();
+    expect(screen.getByText("Perlu perbaikan")).toBeInTheDocument();
     expect(screen.getByText("KTA Kedaluwarsa").closest("span")).toHaveClass("badge-expired");
     expect(screen.getByText("KTA Aktif")).toBeInTheDocument();
   });

@@ -77,22 +77,60 @@ Future<AppHarness> pumpApp(
   return AppHarness._(container, adapter, testClock, launched);
 }
 
-/// Penangan HTTP umum: konfigurasi publik normal dan halaman legal terbit; sisanya dari [routes].
+/// Versi persetujuan registrasi bawaan uji (`LegalConsentVersions.policy_version`, kontrak C4).
+const testPolicyVersion = 'privacy:2;terms:1';
+
+/// Penangan HTTP umum: konfigurasi publik normal dan halaman legal terbit (GET /public/pages beserta `consent`,
+/// GET /public/pages/{slug}); sisanya dari [routes].
 FakeHandler apiRoutes(Map<String, FakeHandler> routes, {Map<String, Object?>? config}) => (options) {
   final handler = routes[options.path];
   if (handler != null) return handler(options);
   if (options.path == '/public/config') return FakeResponse.json(200, config ?? publicConfigJson());
+  if (options.path == '/public/pages') return FakeResponse.json(200, publicPageListJson());
   if (options.path.startsWith('/public/pages/')) {
     final slug = options.path.substring('/public/pages/'.length);
     return FakeResponse.json(200, {
       'slug': slug,
       'title': slug,
       'body_html': '<p>$slug</p>',
-      'version': '2026-10',
+      'version': '1',
       'published_at': testNow.toIso8601String(),
+      'legal_document': switch (slug) {
+        'kebijakan-privasi' => 'privacy',
+        'ketentuan' => 'terms',
+        'ketentuan-komunitas' => 'community',
+        _ => null,
+      },
     });
   }
   return FakeResponse.json(404, errorJson('NOT_FOUND', 'Tidak ditemukan (uji): ${options.path}'));
+};
+
+/// `PublicPageList` (GET /public/pages): halaman legal terbit dan `consent`. [policyVersion] null = salah satu
+/// dokumen legal belum terbit sehingga pendaftaran belum dibuka.
+Map<String, Object?> publicPageListJson({String? policyVersion = testPolicyVersion}) => {
+  'items': [
+    {
+      'slug': 'kebijakan-privasi',
+      'title': 'Kebijakan Privasi',
+      'version': '2',
+      'published_at': testNow.toIso8601String(),
+      'legal_document': 'privacy',
+    },
+    if (policyVersion != null)
+      {
+        'slug': 'ketentuan',
+        'title': 'Ketentuan Layanan',
+        'version': '1',
+        'published_at': testNow.toIso8601String(),
+        'legal_document': 'terms',
+      },
+  ],
+  'consent': {
+    'policy_version': policyVersion,
+    'privacy_version': '2',
+    'terms_version': policyVersion == null ? null : '1',
+  },
 };
 
 /// Menunggu animasi, request HTTP palsu dan timer nol-durasi selesai (pumpAndSettle saja dapat menyisakan timer dio

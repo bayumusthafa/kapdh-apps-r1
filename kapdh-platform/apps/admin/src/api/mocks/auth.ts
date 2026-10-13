@@ -2,12 +2,19 @@ import { PERMISSION_VALUES, type AdminRole, type Permission } from "@kapdh/contr
 import { error, json, type MockRequest, type MockRoute, noContent, type S } from "./http";
 
 /**
- * Tiruan auth admin: login dua tahap (F-02, AC F02-2), refresh lewat cookie HttpOnly, logout yang membutuhkan
- * access token berlaku (meniru server), /admin/me, dan reautentikasi (ARCHITECTURE §4.3). Pesan galat disamakan
- * dengan server (apps/api/src/auth/auth.service.ts).
+ * Tiruan auth admin mengikuti kontrak admin-auth final (C1): login dua tahap (F-02, AC F02-2), refresh lewat
+ * cookie HttpOnly, logout yang membutuhkan access token berlaku (meniru server), /admin/me, dan reautentikasi
+ * (ARCHITECTURE §4.3).
+ * - POST /admin/auth/login hanya untuk admin `active` dengan TOTP terverifikasi dan selalu
+ *   `totp_enrollment_required: false`; admin `invited` ditolak 401 yang sama dengan sandi salah (F-16).
+ * - Kode TOTP/backup salah di /admin/auth/mfa dan kredensial salah di /auth/reauth adalah 400 VALIDATION_ERROR
+ *   dengan `field_errors` dan sisa percobaan; 401 hanya untuk token/sesi yang tidak berlaku; 5 kegagalan -> 429.
  */
 const ADMIN_EMAIL = "admin@kapdh.test";
-/** Admin undangan yang belum mendaftarkan TOTP (F-16): login mengembalikan totp_enrollment_required. */
+/**
+ * Admin undangan yang belum menyelesaikan aktivasi (F-16): login menolaknya 401 seperti sandi salah. Pendaftaran
+ * TOTP hanya lewat token pendaftaran dari penerimaan undangan (/invite#t=<token>), tidak pernah dari login.
+ */
 const INVITED_EMAIL = "baru@kapdh.test";
 const PASSWORD = "Kapdh#2026";
 const TOTP = "123456";
@@ -23,6 +30,11 @@ export const MOCK_CREDENTIALS = {
 
 const ACCESS_TTL_MS = 15 * 60_000;
 const REAUTH_TTL_MS = 10 * 60_000;
+/** mfa_token tahap sandi berumur 5 menit (audience kapdh-admin-mfa). */
+const MFA_TOKEN_TTL_MS = 5 * 60_000;
+/** Batas kegagalan kode per admin/sesi dalam 15 menit sebelum 429 RATE_LIMITED (kontrak admin-auth, auth). */
+const MAX_CODE_FAILURES = 5;
+const ADMIN_ID = "0199e000-0000-7000-8000-0000000000ad";
 
 interface ProfileState {
   role: AdminRole;
@@ -65,7 +77,10 @@ if (persist) {
     setSessionActive(false);
   }
 }
-let pendingMfaToken: string | null = null;
+let pendingMfaToken: { token: string; expiresAt: number } | null = null;
+/** Kegagalan kode berturut-turut (MFA dan reautentikasi dihitung terpisah). */
+let mfaFailures = 0;
+let reauthFailures = 0;
 let tokenSeq = 0;
 /** Kegagalan buatan POST /auth/refresh (uji): jaringan putus atau status HTTP tertentu, `remaining` kali. */
 let refreshFailure: { mode: "network" | number; remaining: number } | null = null;
@@ -88,6 +103,8 @@ export function reset(): void {
   profile = { ...DEFAULT_PROFILE };
   setSessionActive(false);
   pendingMfaToken = null;
+  mfaFailures = 0;
+  reauthFailures = 0;
   refreshFailure = null;
   logoutHold = null;
   validAccess.clear();
@@ -127,6 +144,31 @@ export function requirePermission(req: MockRequest, permission: Permission): Res
   if (!effectivePermissions().includes(permission))
     return error(403, "FORBIDDEN", "Anda tidak memiliki izin untuk tindakan ini.");
   return null;
+}
+
+/**
+ * Izin efektif admin tiruan yang sedang masuk, untuk field yang dihitung server per pemanggil (mis.
+ * `AdminPaymentDetail.actions`, PRD 2.3).
+ */
+export function mockHasPermission(permission: Permission): boolean {
+  return effectivePermissions().includes(permission);
+}
+
+/** Identitas admin tiruan yang sedang masuk sebagai pelaku (decided_by, actor_admin, updated_by; F-17). */
+export function mockAdminRef(): { admin_id: string; display_name: string } {
+  return { admin_id: ADMIN_ID, display_name: profile.display_name };
+}
+
+/** Respons 429 setelah batas kegagalan kode terlampaui (PRD 2.5). */
+function tooManyFailures(): Response {
+  return error(429, "RATE_LIMITED", "Terlalu banyak percobaan. Coba lagi nanti.", {
+    retry_after_seconds: 900,
+  });
+}
+
+/** Pesan galat isian kode salah beserta sisa percobaan, seperti server. */
+function wrongCode(label: string, failures: number): string {
+  return `${label} salah. Sisa percobaan ${Math.max(0, MAX_CODE_FAILURES - failures)}.`;
 }
 
 /** 403 REAUTH_REQUIRED bila header X-Reauth-Token tidak ada/kedaluwarsa (AC F15-3, F16-1). */
@@ -190,30 +232,54 @@ export const routes: MockRoute[] = [
     path: "/admin/auth/login",
     handler: ({ body }) => {
       const email = String(body?.email ?? "").toLowerCase();
-      if ((email === ADMIN_EMAIL || email === INVITED_EMAIL) && body?.password === PASSWORD) {
+      // Hanya admin aktif dengan TOTP terverifikasi; admin undangan ditolak sama dengan sandi salah (F-16).
+      if (email === ADMIN_EMAIL && body?.password === PASSWORD) {
         tokenSeq += 1;
-        pendingMfaToken = `mock-mfa-${tokenSeq}`;
+        pendingMfaToken = { token: `mock-mfa-${tokenSeq}`, expiresAt: Date.now() + MFA_TOKEN_TTL_MS };
+        mfaFailures = 0;
         const res: S["AdminLoginResponse"] = {
-          mfa_token: pendingMfaToken,
-          mfa_expires_at: new Date(Date.now() + 300_000).toISOString(),
-          ...(email === INVITED_EMAIL ? { totp_enrollment_required: true } : {}),
+          mfa_token: pendingMfaToken.token,
+          mfa_expires_at: new Date(pendingMfaToken.expiresAt).toISOString(),
+          totp_enrollment_required: false,
         };
         return json(200, res);
       }
-      return error(401, "UNAUTHENTICATED", "Email atau password salah.");
+      return error(401, "UNAUTHENTICATED", "Email atau sandi salah.");
     },
   },
   {
     method: "POST",
     path: "/admin/auth/mfa",
     handler: ({ body }) => {
-      const tokenOk = pendingMfaToken !== null && body?.mfa_token === pendingMfaToken;
-      const backup = String(body?.backup_code ?? "").toUpperCase();
-      const codeOk = body?.totp_code === TOTP || (backup === BACKUP_CODE && !usedBackupCodes.has(backup));
-      if (!tokenOk || !codeOk)
-        return error(401, "UNAUTHENTICATED", "Kode autentikator salah atau sesi masuk kedaluwarsa.");
+      const tokenOk =
+        pendingMfaToken !== null &&
+        body?.mfa_token === pendingMfaToken.token &&
+        pendingMfaToken.expiresAt > Date.now();
+      // 401 hanya untuk mfa_token yang tidak sah/kedaluwarsa: UI kembali ke halaman masuk.
+      if (!tokenOk)
+        return error(401, "UNAUTHENTICATED", "Sesi masuk kedaluwarsa. Mulai lagi dari halaman masuk.");
+      const hasTotp = typeof body?.totp_code === "string";
+      const hasBackup = typeof body?.backup_code === "string";
+      if (hasTotp === hasBackup)
+        return error(400, "VALIDATION_ERROR", "Isi tepat satu: kode autentikator atau backup code.", {
+          field_errors: { totp_code: ["Isi kode autentikator atau backup code."] },
+        });
+      if (mfaFailures >= MAX_CODE_FAILURES) return tooManyFailures();
+      const backup = hasBackup ? String(body?.backup_code).toUpperCase() : "";
+      const codeOk = hasTotp
+        ? body?.totp_code === TOTP
+        : backup === BACKUP_CODE && !usedBackupCodes.has(backup);
+      if (!codeOk) {
+        // Kode salah adalah galat formulir (400), bukan 401: mfa_token tetap berlaku (kontrak C1).
+        mfaFailures += 1;
+        const field = hasTotp ? "totp_code" : "backup_code";
+        return error(400, "VALIDATION_ERROR", "Kode salah.", {
+          field_errors: { [field]: [wrongCode(hasTotp ? "Kode autentikator" : "Backup code", mfaFailures)] },
+        });
+      }
       if (backup) usedBackupCodes.add(backup);
       pendingMfaToken = null;
+      mfaFailures = 0;
       setSessionActive(true);
       return json(200, issueAccess());
     },
@@ -258,12 +324,17 @@ export const routes: MockRoute[] = [
       record(req);
       const unauth = requireAdmin(req);
       if (unauth) return unauth;
+      // email, has_linked_alumni dan backup_codes_remaining selalu dikirim server (deskripsi AdminProfile).
       const me: S["AdminProfile"] = {
-        admin_id: "0199e000-0000-7000-8000-0000000000ad",
+        admin_id: ADMIN_ID,
         display_name: profile.display_name,
+        email: ADMIN_EMAIL,
         role: profile.role,
         permissions: effectivePermissions(),
         permissions_version: profile.permissions_version,
+        has_linked_alumni: true,
+        backup_codes_remaining: 10 - usedBackupCodes.size,
+        previous_login_at: null,
       };
       return json(200, me);
     },
@@ -275,8 +346,27 @@ export const routes: MockRoute[] = [
       record(req);
       const unauth = requireAdmin(req);
       if (unauth) return unauth;
-      if (req.body?.password !== PASSWORD || req.body?.totp_code !== TOTP)
-        return error(401, "UNAUTHENTICATED", "Sandi atau kode autentikator salah.");
+      if (reauthFailures >= MAX_CODE_FAILURES) return tooManyFailures();
+      // Kredensial salah = 400 VALIDATION_ERROR dengan field_errors (kontrak auth: bukan 401).
+      // Admin: sandi DAN tepat satu dari totp_code atau backup_code (sekali pakai).
+      const backup =
+        typeof req.body?.backup_code === "string" ? String(req.body.backup_code).toUpperCase() : null;
+      const fieldErrors: Record<string, string[]> = {};
+      if (req.body?.password !== PASSWORD) fieldErrors.password = ["Sandi salah."];
+      else if (backup !== null && (backup !== BACKUP_CODE || usedBackupCodes.has(backup)))
+        fieldErrors.backup_code = ["Backup code salah."];
+      else if (backup === null && req.body?.totp_code !== TOTP)
+        fieldErrors.totp_code = ["Kode autentikator salah."];
+      if (Object.keys(fieldErrors).length > 0) {
+        reauthFailures += 1;
+        const remaining = `Sisa percobaan ${Math.max(0, MAX_CODE_FAILURES - reauthFailures)}.`;
+        for (const messages of Object.values(fieldErrors)) messages.push(remaining);
+        return error(400, "VALIDATION_ERROR", "Sandi atau kode autentikator salah.", {
+          field_errors: fieldErrors,
+        });
+      }
+      reauthFailures = 0;
+      if (backup !== null) usedBackupCodes.add(backup);
       tokenSeq += 1;
       const token = `mock-reauth-${tokenSeq}`;
       const expiresAt = Date.now() + REAUTH_TTL_MS;
