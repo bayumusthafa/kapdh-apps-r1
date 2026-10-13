@@ -97,6 +97,25 @@ Aturan yang perlu diketahui implementasi dan klien:
 | `POST /public/deletion/confirm`                     | **[memutus]** Body kini `{deletion_token, confirm, acknowledged_disclosure_version}`; OTP diverifikasi lebih dulu di `POST /public/deletion/verify` yang juga menampilkan status dan pengungkapan. `apps/web/src/pages/delete-account.astro` masih mengirim bentuk lama dan wajib diperbarui oleh agen public-web. Idempotency-Key, 409 dan 410 dideklarasikan.                                                                                         |
 | `AccountDeletion`                                   | **[memutus]** `status` menambah `failed` (selaras DB); field wajib baru `source` (app/web), `estimated_completion_at` (kini wajib) dan `completed_at` (nullable); `request_number` berpola `DEL-YYYY-XXXX`.                                                                                                                                                                                                                                             |
 
+### Fase C api-auth (`auth.yaml`; F-01, F-02, PRD 2.5)
+
+Semua operasi `auth.yaml` kini diimplementasikan modul `apps/api/src/modules/auth`. Perubahan kontrak hanya
+aditif (deskripsi dan header respons); tidak ada operasi, field atau enum yang berubah.
+
+| Operasi                                     | Perubahan (aditif)                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /auth/refresh`                        | Semantik pemakaian ganda BERSAMAAN didokumentasikan: tepat satu rotasi berhasil, permintaan lain 401 dan seluruh keluarga sesi dicabut sebagai pemakaian ulang (audit `session.refresh_reuse_detected`, socket `refresh_reuse_detected`), sama dengan pemakaian ulang berurutan (AC F02-3). Sebelumnya implementasi menolak 401 tanpa mencabut keluarga. |
+| `POST /auth/password/forgot`                | Permintaan ulang dalam cooldown 60 detik mengembalikan challenge aktif yang sama tanpa email baru dan tanpa memakai batas kirim (percobaan habis → 429 sampai cooldown lewat); berlaku sama untuk challenge pengganti. Email kode tidak ditunggu sebelum respons (waktu respons tidak bergantung pada SMTP, non-enumerasi PRD 2.5).                      |
+| `POST /auth/otp/resend`, `/auth/otp/status` | Challenge (nyata maupun pengganti) yang dibuat lebih dari 24 jam lalu diperlakukan tidak dikenal (410), sehingga umur challenge tidak membedakan keduanya.                                                                                                                                                                                               |
+| `POST /auth/logout-all`                     | Header `Set-Cookie` (hanya admin, menghapus `kapdh_admin_rt`) dideklarasikan; notifikasi `security` untuk alumni dan audit didokumentasikan.                                                                                                                                                                                                             |
+| `DELETE /auth/sessions/{sessionId}`         | Header `Set-Cookie` (admin yang mencabut sesinya sendiri) dideklarasikan; sesi kedaluwarsa juga 404; `sessionId` bukan UUID → 400.                                                                                                                                                                                                                       |
+| `GET /auth/sessions`                        | Sumber nilai per keluarga didokumentasikan (`created_at` baris tertua yang tersimpan, perangkat/platform/versi/kedaluwarsa dari baris aktif terbaru, `last_seen_at` aktivitas terakhir keluarga).                                                                                                                                                        |
+
+Ketergantungan skema (pemilik skema/integrator): migrasi baru `0007_auth_otp_decoys` menambah tabel
+`app.otp_decoys` (challenge pengganti non-enumerasi: `email_key` HMAC, `email_masked`, percobaan, cooldown, tanpa
+email mentah atau kode). Modul account (hapus akun web, tujuan `deletion`) dan admin-members (AC F16-4) memakai
+`OtpChallengeService` yang diekspor `AuthModule` agar status, kirim ulang dan percobaan konsisten.
+
 ### C3 Finance: payments, admin-payments, admin-settings (F-03, F-04, F-07, F-15, D4, D6, D13)
 
 Kontrak keuangan dilengkapi sesuai PRD 3.3, 3.4, 3.9, 4.3 dan ARCHITECTURE §3.3. Belum ada controller API untuk
