@@ -16,6 +16,7 @@ import {
 import { FilesService } from "../../core/files/files.service.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
 import { assertMemberAccess } from "../../core/membership/access.js";
+import { formatDateWib } from "../../core/membership/format.js";
 import { MembershipKernel } from "../../core/membership/membership.kernel.js";
 import { renewalOpensAt } from "../../core/membership/period.js";
 import { decodeCursor, keysetAfter, pageOf, parsePageQuery } from "../../core/pagination/cursor.js";
@@ -278,7 +279,7 @@ export class MemberPaymentsService {
           );
         throw fieldError(
           "type",
-          `Jendela perpanjangan dibuka mulai ${eligibility.renewalOpensAt!.toISOString()} (30 hari sebelum masa aktif habis).`,
+          `Jendela perpanjangan dibuka mulai ${formatDateWib(eligibility.renewalOpensAt!)} (30 hari sebelum masa aktif habis).`,
         );
       }
       const snapshot = await this.ledger.duesSnapshot(tx, input.type);
