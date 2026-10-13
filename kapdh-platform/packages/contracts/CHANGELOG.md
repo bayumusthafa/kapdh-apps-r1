@@ -325,7 +325,7 @@ Status implementasi (slice api-moderation, tanpa perubahan bentuk kontrak):
 - Hitungan laporan untuk dasbor/lencana menu/AdminMemberDetail tersedia lewat `ModerationVisibility` yang diekspor
   `ModerationModule`: `counts(linkedAlumniUserId)` (= `AdminModerationQueueCounts`), `dashboardSummary(linkedAlumniUserId)`
   (= `DashboardModeration`; `open_count` juga nilai `AdminNavBadges.reports_open`), `memberReportCounts(memberUserId,
-  linkedAlumniUserId)` (`open_report_count`/`total_report_count` untuk `AdminMemberDetail.moderation`, tanpa banding)
+linkedAlumniUserId)` (`open_report_count`/`total_report_count` untuk `AdminMemberDetail.moderation`, tanpa banding)
   dan `condition(linkedAlumniUserId)` untuk kueri lain.
 - Penghapusan akun (F-14, D2, AC F14-3): job penghapusan modul account memanggil `anonymizeEvidenceOf(tx, userId, now)`
   (`modules/moderation/evidence-anonymize.ts`, fungsi biasa yang aman dipakai worker) agar snapshot bukti laporan
