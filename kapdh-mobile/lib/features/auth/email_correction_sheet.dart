@@ -8,51 +8,59 @@ import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/format/formatters.dart';
 import '../../design/design.dart';
-import 'auth_flow_repository.dart';
 import 'auth_widgets.dart';
 
-/// Hasil lembar koreksi email.
-sealed class EmailCorrectionResult {
-  const EmailCorrectionResult();
+/// Tanggapan atas satu pengiriman koreksi email yang ditampilkan lembar: galat per field (400/409), batas kirim
+/// (429) atau pesan umum (mis. jawaban hilang). Null dari [EmailCorrectionSubmit] berarti alur koreksi selesai
+/// (berhasil, dipulihkan, atau challenge tidak berlaku) dan lembar ditutup.
+@immutable
+class EmailCorrectionFeedback {
+  const EmailCorrectionFeedback({this.message, this.fieldErrors = const {}, this.retryAfter});
+
+  /// Galat pasti dari server untuk request koreksi ini.
+  factory EmailCorrectionFeedback.fromError(ApiException error) {
+    final general = error.fieldErrors['_']?.join(' ');
+    return EmailCorrectionFeedback(
+      message: error.fieldErrors.isEmpty ? error.message : general,
+      fieldErrors: error.fieldErrors,
+      retryAfter: error.code == ErrorCode.rateLimited ? error.retryAfter : null,
+    );
+  }
+
+  /// Pesan umum di bawah formulir.
+  final String? message;
+  final Map<String, List<String>> fieldErrors;
+
+  /// RATE_LIMITED: tombol kirim terkunci selama ini (retry_after_seconds).
+  final Duration? retryAfter;
 }
 
-/// Email dikoreksi; challenge `email_change` baru sudah dikirim ke [newEmail]. [password] sudah dibuktikan benar oleh
-/// server dan hanya dipakai untuk pemulihan hasil verifikasi yang tidak diketahui (memori, kontrak C1).
-final class EmailCorrected extends EmailCorrectionResult {
-  const EmailCorrected({required this.challenge, required this.newEmail, required this.password});
+/// Mengirim koreksi email untuk challenge milik layar OTP dan menerapkan hasilnya di layar itu.
+typedef EmailCorrectionSubmit =
+    Future<EmailCorrectionFeedback?> Function({required String newEmail, required String password});
 
-  final OtpChallenge challenge;
-  final String newEmail;
-  final String password;
-}
-
-/// Challenge tidak dikenal/sudah dipakai atau akun tidak lagi pending_otp (410 OTP_EXPIRED): alur dimulai ulang.
-final class EmailCorrectionChallengeGone extends EmailCorrectionResult {
-  const EmailCorrectionChallengeGone(this.message);
-
-  final String message;
-}
-
-/// Membuka lembar "Ubah alamat email" untuk challenge aktivasi [challengeId] (prototipe layar 1, PRD 2.2).
-Future<EmailCorrectionResult?> showEmailCorrectionSheet(
+/// Membuka lembar "Ubah alamat email" (prototipe layar 1, PRD 2.2). Request dijalankan [onSubmit] milik layar OTP,
+/// bukan lembar, sehingga hasilnya tetap diterapkan walau lembar sempat tertutup (diseret) selama request berjalan;
+/// selama mengirim, tombol kembali dan ketukan di luar lembar diabaikan (PRD 4.5).
+Future<void> showEmailCorrectionSheet(
   BuildContext context, {
-  required String challengeId,
+  required EmailCorrectionSubmit onSubmit,
   String? currentEmail,
-}) => showModalBottomSheet<EmailCorrectionResult>(
+}) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
-  builder: (_) => EmailCorrectionSheet(challengeId: challengeId, currentEmail: currentEmail),
+  builder: (_) => EmailCorrectionSheet(onSubmit: onSubmit, currentEmail: currentEmail),
 );
 
-/// Koreksi email akun pending_otp melalui alur terverifikasi (PRD 2.2 "koreksi email melalui alur terverifikasi",
-/// kontrak C1 correctPendingEmail). Kepemilikan dibuktikan challenge aktivasi milik layar OTP dan password akun;
-/// kode baru dikirim ke email baru dan email lama tidak dapat lagi mengaktifkan akun. Akun baru aktif setelah kode
-/// dari email baru diverifikasi (AC F01-2).
+/// Formulir koreksi email akun pending_otp melalui alur terverifikasi (PRD 2.2 "koreksi email melalui alur
+/// terverifikasi", kontrak C1 correctPendingEmail). Kepemilikan dibuktikan challenge aktivasi milik layar OTP dan
+/// password akun; kode baru dikirim ke email baru dan email lama tidak dapat lagi mengaktifkan akun. Akun baru aktif
+/// setelah kode dari email baru diverifikasi (AC F01-2).
 class EmailCorrectionSheet extends ConsumerStatefulWidget {
-  const EmailCorrectionSheet({super.key, required this.challengeId, this.currentEmail});
+  const EmailCorrectionSheet({super.key, required this.onSubmit, this.currentEmail});
 
-  final String challengeId;
+  final EmailCorrectionSubmit onSubmit;
 
   /// Email yang diketik pengguna sebelumnya (bila diketahui) untuk menolak koreksi ke email yang sama.
   final String? currentEmail;
@@ -117,27 +125,19 @@ class _EmailCorrectionSheetState extends ConsumerState<EmailCorrectionSheet> {
       _busy = true;
       _error = null;
     });
-    final newEmail = _email.text.trim();
-    final password = _password.text;
     try {
-      final challenge = await ref
-          .read(authFlowRepositoryProvider)
-          .correctEmail(challengeId: widget.challengeId, password: password, newEmail: newEmail);
+      final feedback = await widget.onSubmit(newEmail: _email.text.trim(), password: _password.text);
       if (!mounted) return;
-      Navigator.of(context).pop(EmailCorrected(challenge: challenge, newEmail: newEmail, password: password));
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      if (error.code == ErrorCode.otpExpired) {
-        Navigator.of(context).pop(EmailCorrectionChallengeGone(error.message));
+      if (feedback == null) {
+        Navigator.of(context).pop();
         return;
       }
       setState(() {
-        _fieldErrors = error.fieldErrors;
-        final general = error.fieldErrors['_']?.join(' ');
-        _error = error.fieldErrors.isEmpty ? error.message : general;
-        final wait = error.retryAfter;
-        if (error.code == ErrorCode.rateLimited && wait != null) _block(wait);
-        if (error.fieldErrors.containsKey('password')) _password.clear();
+        _fieldErrors = feedback.fieldErrors;
+        _error = feedback.message;
+        final wait = feedback.retryAfter;
+        if (wait != null) _block(wait);
+        if (feedback.fieldErrors.containsKey('password')) _password.clear();
       });
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -150,81 +150,87 @@ class _EmailCorrectionSheetState extends ConsumerState<EmailCorrectionSheet> {
   Widget build(BuildContext context) {
     final blocked = _blockedFor;
     final inset = MediaQuery.viewInsetsOf(context).bottom;
-    return Padding(
-      padding: EdgeInsets.only(bottom: inset),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, 0, KapdhSpace.s5, KapdhSpace.s6),
-        child: Form(
-          key: _form,
-          child: AutofillGroup(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Semantics(
-                  header: true,
-                  child: const Text(
-                    'Ubah alamat email',
-                    style: TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const SizedBox(height: KapdhSpace.s2),
-                const Text(
-                  'Akun Anda belum terverifikasi. Masukkan email yang benar dan password akun Anda. Kode verifikasi '
-                  'baru dikirim ke email baru, dan email lama tidak dapat lagi dipakai untuk aktivasi.',
-                  style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
-                ),
-                const SizedBox(height: KapdhSpace.s5),
-                KapdhTextField(
-                  key: const ValueKey('correction-email'),
-                  label: 'Email baru',
-                  controller: _email,
-                  hint: 'Masukkan email yang benar',
-                  prefixIcon: Icons.mail_outline,
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                  autofillHints: const [AutofillHints.email],
-                  errorText: _fieldError('new_email'),
-                  validator: _validateEmail,
-                ),
-                const SizedBox(height: KapdhSpace.s4),
-                KapdhTextField(
-                  key: const ValueKey('correction-password'),
-                  label: 'Password',
-                  controller: _password,
-                  hint: 'Password akun Anda',
-                  helperText: 'Password yang Anda buat saat mendaftar',
-                  obscurable: true,
-                  textInputAction: TextInputAction.done,
-                  autofillHints: const [AutofillHints.password],
-                  errorText: _fieldError('password'),
-                  validator: (v) => (v ?? '').isEmpty ? 'Masukkan password akun' : null,
-                  onSubmitted: (_) => _submit(),
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: KapdhSpace.s3),
+    // Selama koreksi dikirim, kembali/ketukan di luar lembar tidak menutupnya: pengguna melihat hasilnya di sini.
+    return PopScope(
+      canPop: !_busy,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: inset),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, 0, KapdhSpace.s5, KapdhSpace.s6),
+          child: Form(
+            key: _form,
+            child: AutofillGroup(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                   Semantics(
-                    liveRegion: true,
-                    child: InfoBox(tone: InfoBoxTone.danger, message: _error!),
+                    header: true,
+                    child: const Text(
+                      'Ubah alamat email',
+                      style: TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(height: KapdhSpace.s2),
+                  const Text(
+                    'Akun Anda belum terverifikasi. Masukkan email yang benar dan password akun Anda. Kode '
+                    'verifikasi baru dikirim ke email baru, dan email lama tidak dapat lagi dipakai untuk aktivasi.',
+                    style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
+                  ),
+                  const SizedBox(height: KapdhSpace.s5),
+                  KapdhTextField(
+                    key: const ValueKey('correction-email'),
+                    label: 'Email baru',
+                    controller: _email,
+                    hint: 'Masukkan email yang benar',
+                    prefixIcon: Icons.mail_outline,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.email],
+                    enabled: !_busy,
+                    errorText: _fieldError('new_email'),
+                    validator: _validateEmail,
+                  ),
+                  const SizedBox(height: KapdhSpace.s4),
+                  KapdhTextField(
+                    key: const ValueKey('correction-password'),
+                    label: 'Password',
+                    controller: _password,
+                    hint: 'Password akun Anda',
+                    helperText: 'Password yang Anda buat saat mendaftar',
+                    obscurable: true,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.password],
+                    enabled: !_busy,
+                    errorText: _fieldError('password'),
+                    validator: (v) => (v ?? '').isEmpty ? 'Masukkan password akun' : null,
+                    onSubmitted: (_) => _submit(),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: KapdhSpace.s3),
+                    Semantics(
+                      liveRegion: true,
+                      child: InfoBox(tone: InfoBoxTone.danger, message: _error!),
+                    ),
+                  ],
+                  const SizedBox(height: KapdhSpace.s5),
+                  KapdhButton(
+                    key: const ValueKey('correction-submit'),
+                    label: blocked > Duration.zero
+                        ? 'Coba lagi dalam ${formatCountdown(blocked)}'
+                        : 'Kirim kode ke email baru',
+                    busyLabel: 'Mengirim...',
+                    busy: _busy,
+                    onPressed: blocked > Duration.zero ? null : _submit,
+                  ),
+                  const SizedBox(height: KapdhSpace.s2),
+                  KapdhButton.outlined(
+                    key: const ValueKey('correction-cancel'),
+                    label: 'Batal',
+                    onPressed: _busy ? null : () => Navigator.of(context).pop(),
                   ),
                 ],
-                const SizedBox(height: KapdhSpace.s5),
-                KapdhButton(
-                  key: const ValueKey('correction-submit'),
-                  label: blocked > Duration.zero
-                      ? 'Coba lagi dalam ${formatCountdown(blocked)}'
-                      : 'Kirim kode ke email baru',
-                  busyLabel: 'Mengirim...',
-                  busy: _busy,
-                  onPressed: blocked > Duration.zero ? null : _submit,
-                ),
-                const SizedBox(height: KapdhSpace.s2),
-                KapdhButton.outlined(
-                  key: const ValueKey('correction-cancel'),
-                  label: 'Batal',
-                  onPressed: _busy ? null : () => Navigator.of(context).pop(),
-                ),
-              ],
+              ),
             ),
           ),
         ),

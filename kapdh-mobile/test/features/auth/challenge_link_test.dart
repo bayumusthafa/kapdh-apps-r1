@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_api/kapdh_api.dart';
@@ -182,23 +184,179 @@ void main() {
       expect(app.adapter.requestsTo('/auth/otp/status'), isEmpty);
     });
 
-    testWidgets('AC F16-4: pengguna yang sedang masuk tidak dibawa ke layar pemulihan', (tester) async {
+    testWidgets('AC F16-4: tautan pengurus saat kode pemulihan lain di memori: status tautan diutamakan', (
+      tester,
+    ) async {
+      final status = <Completer<FakeResponse>>[];
+      final app = await pumpApp(
+        tester,
+        handler: apiRoutes({
+          '/auth/otp/status': (_) {
+            final next = Completer<FakeResponse>();
+            status.add(next);
+            return next.future;
+          },
+          '/auth/password/forgot/verify': (_) => FakeResponse.json(200, {
+            'reset_token': 'reset-token-rahasia',
+            'expires_at': testNow.add(const Duration(minutes: 10)).toIso8601String(),
+          }),
+        }),
+        // Anggota sudah meminta kode sendiri sebelum pengurus mereset; challenge itu dibatalkan server.
+        beforeStart: (container) async => container
+            .read(sessionProvider.notifier)
+            .setChallenge(OtpChallenge.fromJson(otpChallengeJson(id: 'challenge-old', purpose: 'password_reset'))),
+      );
+      app.router.go('/forgot/otp?challenge=$linkId');
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+
+      // Memuat: challenge lama tidak dapat dipakai.
+      expect(status, hasLength(1));
+      expect(find.byType(LoadingSkeleton), findsOneWidget);
+      expect(otpInput, findsNothing);
+
+      // Gagal: galat dengan coba lagi, bukan challenge lama.
+      status.single.complete(FakeResponse.network());
+      await settle(tester);
+      expect(find.text('Coba lagi'), findsOneWidget);
+      expect(find.text('Masukkan kode pemulihan'), findsNothing);
+      expect(otpInput, findsNothing);
+
+      await tester.tap(find.text('Coba lagi'));
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      status.last.complete(FakeResponse.json(200, adminResetChallenge()));
+      await settle(tester);
+      expect(app.container.read(sessionProvider).challenge?.challengeId, linkId);
+      expect(find.text('Masukkan kode pemulihan'), findsOneWidget);
+
+      await tester.enterText(otpInput, '482913');
+      await settle(tester);
+      expect(
+        app.adapter.requestsTo('/auth/password/forgot/verify').single.data,
+        containsPair('challenge_id', linkId),
+        reason: 'kode dari email pengurus dikirim untuk challenge tautan',
+      );
+    });
+
+    testWidgets('AC F16-4: tautan tidak berlaku (410) walau kode pemulihan lain masih di memori', (tester) async {
+      final app = await pumpApp(
+        tester,
+        handler: apiRoutes({
+          '/auth/otp/status': (_) => FakeResponse.json(410, errorJson('OTP_EXPIRED', 'Challenge tidak berlaku.')),
+        }),
+        beforeStart: (container) async => container
+            .read(sessionProvider.notifier)
+            .setChallenge(OtpChallenge.fromJson(otpChallengeJson(id: 'challenge-old', purpose: 'password_reset'))),
+      );
+      app.router.go('/forgot/otp?challenge=$linkId');
+      await settle(tester);
+      expect(find.text('Tautan pemulihan tidak berlaku'), findsOneWidget);
+      expect(otpInput, findsNothing);
+      await tester.tap(find.text('Minta kode baru'));
+      await settle(tester);
+      expect(app.location, '/forgot');
+      expect(app.container.read(sessionProvider).challenge, isNull);
+    });
+  });
+
+  group('tautan pemulihan saat anggota masih masuk (AC F16-4: reset pengurus mencabut seluruh sesi)', () {
+    FakeHandler signedInRoutes() => apiRoutes({
+      '/me': (_) => FakeResponse.json(200, meJson()),
+      '/auth/logout': (_) => FakeResponse.json(204),
+      '/auth/otp/status': (_) => FakeResponse.json(200, adminResetChallenge()),
+    });
+
+    testWidgets('AC F16-4: tautan tidak dibuang; keluar dari perangkat ini lalu tautan yang sama dilanjutkan', (
+      tester,
+    ) async {
+      final app = await pumpApp(tester, tokens: savedTokens(), handler: signedInRoutes());
+      expect(app.location, '/home');
+      app.router.go('/forgot/otp?challenge=$linkId');
+      await settle(tester);
+
+      expect(app.location, '/forgot/otp?challenge=$linkId');
+      expect(find.text('Tautan pemulihan password'), findsOneWidget);
+      expect(find.byKey(const ValueKey('forgot-link-signout')), findsOneWidget);
+      expect(app.adapter.requestsTo('/auth/otp/status'), isEmpty, reason: 'challenge tidak dibaca selama ada sesi');
+      expect(otpInput, findsNothing);
+
+      await scrollAndTap(tester, find.byKey(const ValueKey('forgot-link-signout')));
+      await settle(tester);
+
+      expect(app.adapter.requestsTo('/auth/logout'), hasLength(1));
+      expect(app.container.read(sessionProvider).hasSession, isFalse);
+      expect(app.location, '/forgot/otp?challenge=$linkId');
+      expect(app.adapter.requestsTo('/auth/otp/status').single.data, {'challenge_id': linkId});
+      expect(app.container.read(sessionProvider).challenge?.challengeId, linkId);
+      expect(find.text('Masukkan kode pemulihan'), findsOneWidget);
+    });
+
+    testWidgets('AC F16-4: sesi dicabut server saat pemberitahuan tampil: tautan langsung dilanjutkan', (
+      tester,
+    ) async {
+      var revoked = false;
       final app = await pumpApp(
         tester,
         tokens: savedTokens(),
-        handler: apiRoutes({
-          '/me': (_) => FakeResponse.json(200, meJson()),
-          '/auth/otp/status': (_) => FakeResponse.json(200, adminResetChallenge()),
-        }),
+        handler: (options) {
+          if (revoked && (options.path == '/me' || options.path == '/auth/refresh')) {
+            return FakeResponse.json(401, errorJson('UNAUTHENTICATED', 'Sesi berakhir. Silakan masuk kembali.'));
+          }
+          return signedInRoutes()(options);
+        },
       );
       app.router.go('/forgot/otp?challenge=$linkId');
+      await settle(tester);
+      expect(find.text('Tautan pemulihan password'), findsOneWidget);
+
+      // Reset pengurus mencabut sesi: /me 401 lalu refresh ditolak, sesi menjadi anonim tanpa tindakan pengguna.
+      revoked = true;
+      unawaited(app.container.read(sessionProvider.notifier).refreshQuietly());
+      await settle(tester);
+      expect(app.adapter.requestsTo('/auth/refresh'), isNotEmpty);
+      expect(app.container.read(sessionProvider).hasSession, isFalse);
+      expect(app.adapter.requestsTo('/auth/logout'), isEmpty);
+      expect(app.location, '/forgot/otp?challenge=$linkId');
+      expect(find.text('Masukkan kode pemulihan'), findsOneWidget);
+    });
+
+    testWidgets('AC F16-4: kembali ke beranda tanpa keluar', (tester) async {
+      final app = await pumpApp(tester, tokens: savedTokens(), handler: signedInRoutes());
+      app.router.go('/forgot/otp?challenge=$linkId');
+      await settle(tester);
+      await scrollAndTap(tester, find.byKey(const ValueKey('forgot-link-home')));
+      await settle(tester);
+      expect(app.location, '/home');
+      expect(app.container.read(sessionProvider).hasSession, isTrue);
+      expect(app.adapter.requestsTo('/auth/logout'), isEmpty);
+      expect(app.adapter.requestsTo('/auth/otp/status'), isEmpty);
+    });
+
+    testWidgets('AC F16-4: aplikasi dibuka dari tautan saat sesi tersimpan: pemberitahuan, bukan beranda', (
+      tester,
+    ) async {
+      tester.binding.platformDispatcher.defaultRouteNameTestValue = '/forgot/otp?challenge=$linkId';
+      addTearDown(tester.binding.platformDispatcher.clearDefaultRouteNameTestValue);
+      final app = await pumpApp(tester, tokens: savedTokens(), handler: signedInRoutes());
+      expect(app.location, '/forgot/otp?challenge=$linkId');
+      expect(find.byKey(const ValueKey('forgot-link-signout')), findsOneWidget);
+    });
+
+    testWidgets('AC F16-4: tautan aktivasi /register/otp?challenge= saat masuk tetap ke beranda', (tester) async {
+      final app = await pumpApp(tester, tokens: savedTokens(), handler: signedInRoutes());
+      app.router.go('/register/otp?challenge=$linkId');
       await settle(tester);
       expect(app.location, '/home');
       expect(app.adapter.requestsTo('/auth/otp/status'), isEmpty);
     });
   });
 
-  testWidgets('kontrak C1: layar OTP pendaftaran dari ?challenge= membaca status challenge aktivasi', (tester) async {
+  testWidgets('AC F01-2, kontrak C1: layar OTP pendaftaran dari ?challenge= membaca status challenge aktivasi', (
+    tester,
+  ) async {
     final app = await coldStart(
       tester,
       '/register/otp?challenge=$linkId',
@@ -215,7 +373,7 @@ void main() {
     expect(app.location, '/onboarding/fees');
   });
 
-  testWidgets('kontrak C1: challenge aktivasi dari tautan yang sudah tidak berlaku menawarkan masuk', (tester) async {
+  testWidgets('AC F01-3, kontrak C1: challenge aktivasi dari tautan yang tidak berlaku menawarkan masuk', (tester) async {
     final app = await coldStart(
       tester,
       '/register/otp?challenge=$linkId',
