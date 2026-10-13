@@ -32,13 +32,16 @@ class _HoldCountdownState extends ConsumerState<HoldCountdown> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    _start();
   }
 
   @override
   void didUpdateWidget(HoldCountdown oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.expiresAt != widget.expiresAt) _notified = false;
+    if (oldWidget.expiresAt != widget.expiresAt) {
+      _notified = false;
+      _start();
+    }
   }
 
   @override
@@ -47,14 +50,23 @@ class _HoldCountdownState extends ConsumerState<HoldCountdown> {
     super.dispose();
   }
 
+  void _start() {
+    _timer ??= Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+  }
+
   Duration _remaining() => widget.expiresAt.difference(ref.read(serverClockProvider).now());
 
   void _tick() {
     if (!mounted) return;
     final remaining = _remaining();
-    if (remaining <= Duration.zero && !_notified) {
-      _notified = true;
-      widget.onExpired();
+    if (remaining <= Duration.zero) {
+      // Batas lewat: tampilan statis, detak berhenti; status akhir datang dari server lewat [onExpired].
+      _timer?.cancel();
+      _timer = null;
+      if (!_notified) {
+        _notified = true;
+        widget.onExpired();
+      }
     }
     setState(() {});
   }

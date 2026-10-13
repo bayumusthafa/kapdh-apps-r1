@@ -196,6 +196,31 @@ void main() {
       expect(find.byKey(const ValueKey('event-reserve')), findsOneWidget);
     });
 
+    testWidgets('PRD 4.5 muat ulang gagal: detail terakhir tetap tampil dengan penjelasan dan coba lagi', (
+      tester,
+    ) async {
+      var online = true;
+      await pumpMemberApp(
+        tester,
+        location: '/events/event-1',
+        routes: _detailRoutes(
+          eventDetailJson(),
+          extra: {
+            '/events/event-1': (_) => online ? FakeResponse.json(200, eventDetailJson()) : FakeResponse.network(),
+          },
+        ),
+      );
+      online = false;
+      await tester.drag(find.byKey(const ValueKey('event-detail')), const Offset(0, 400));
+      await settle(tester);
+      expect(find.byKey(const ValueKey('refresh-failed')), findsOneWidget);
+      expect(find.text('Camping Alumni KAPDH'), findsOneWidget);
+      online = true;
+      await tester.tap(find.widgetWithText(TextButton, 'Coba lagi'));
+      await settle(tester);
+      expect(find.byKey(const ValueKey('refresh-failed')), findsNothing);
+    });
+
     testWidgets('PRD 3.8 tautan peta lokasi ditandai tautan luar dan dikonfirmasi', (tester) async {
       final app = await pumpMemberApp(tester, location: '/events/event-1', routes: _detailRoutes(eventDetailJson()));
       await scrollUntil(tester, find.text('Buka peta lokasi (tautan luar)'));

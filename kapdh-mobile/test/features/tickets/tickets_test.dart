@@ -178,6 +178,41 @@ void main() {
       expect(find.byKey(const ValueKey('ticket-qr')), findsNothing);
     });
 
+    testWidgets('AC F09-2 hold habis saat offline: batas tampil lewat, status dimuat ulang sekali (tidak berulang)', (
+      tester,
+    ) async {
+      var online = true;
+      final app = await pumpMemberApp(
+        tester,
+        location: '/tickets/ticket-1',
+        routes: {
+          '/me/tickets/ticket-1': (_) => online
+              ? FakeResponse.json(
+                  200,
+                  ticketDetailJson(status: 'awaiting_payment', holdExpiresAt: testNow.add(const Duration(seconds: 30))),
+                )
+              : FakeResponse.network(),
+        },
+      );
+      online = false;
+      app.clock.advance(const Duration(minutes: 1));
+      await tester.pump(const Duration(seconds: 1));
+      await settle(tester);
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      expect(app.adapter.requestsTo('/me/tickets/ticket-1'), hasLength(2));
+      expect(find.text('Batas waktu pembayaran lewat'), findsOneWidget);
+      expect(find.byKey(const ValueKey('hold-countdown')), findsNothing);
+      // Status terakhir tetap tampil dengan penjelasan bahwa belum terbaru, dan coba lagi memulihkan.
+      expect(find.byKey(const ValueKey('refresh-failed')), findsOneWidget);
+      expect(find.textContaining('Periksa koneksi internet Anda.'), findsOneWidget);
+      online = true;
+      await tester.tap(find.widgetWithText(TextButton, 'Coba lagi'));
+      await settle(tester);
+      expect(find.byKey(const ValueKey('refresh-failed')), findsNothing);
+    });
+
     testWidgets('PRD 4.3 bukti sedang ditinjau: kursi ditahan, QR belum terbit, tidak dapat dibatalkan sendiri', (
       tester,
     ) async {
