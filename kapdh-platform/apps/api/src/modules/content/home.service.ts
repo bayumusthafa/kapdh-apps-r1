@@ -1,10 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
-import { alumni, categories, events, files } from "@kapdh/database";
+import { categories, events, files } from "@kapdh/database";
 import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import type { Clock } from "../../core/adapters/clock.js";
 import type { Db } from "../../core/db/types.js";
+import { notFound } from "../../core/errors/app-exception.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
+import { MembershipKernel } from "../../core/membership/membership.kernel.js";
 import { NotificationService } from "../../core/notifications-kernel/notification.service.js";
 import { CLOCK, DB } from "../../core/tokens.js";
 import { BannersService } from "./banners.service.js";
@@ -44,30 +46,29 @@ export class HomeService {
     private readonly feed: FeedService,
     private readonly notifications: NotificationService,
     private readonly media: ContentMediaService,
+    private readonly membership: MembershipKernel,
   ) {}
 
   async home(auth: AuthContext): Promise<Home> {
     const now = this.clock.now();
-    const [banners, upcoming, posts, profile, unread] = await Promise.all([
+    const [banners, upcoming, posts, member, unread] = await Promise.all([
       this.bannersService.home(now),
       this.upcomingEvents(now),
       this.feed.latest(auth.userId, HOME_POST_LIMIT),
-      this.db
-        .select({ memberNumber: alumni.memberNumber, expiresAt: alumni.expiresAt })
-        .from(alumni)
-        .where(eq(alumni.userId, auth.userId))
-        .then((rows) => rows[0]),
+      this.membership.effectiveStatusFor(auth.userId, { now }),
       this.notifications.unreadCount(auth.userId),
     ]);
+    if (!member) throw notFound("Profil anggota tidak ditemukan.");
     return {
       banners,
       upcoming_events: upcoming,
       posts,
       quick_access: {
         unread_notification_count: unread,
-        effective_status: auth.effectiveStatus ?? "verified",
-        member_number: profile?.memberNumber ?? null,
-        expires_at: iso(profile?.expiresAt ?? null),
+        // Status yang dievaluasi AuthGuard pada request ini (PRD 2.2); cadangan dari kernel pada waktu yang sama.
+        effective_status: auth.effectiveStatus ?? member.status,
+        member_number: member.memberNumber,
+        expires_at: iso(member.expiresAt),
       },
       generated_at: iso(now),
     };
