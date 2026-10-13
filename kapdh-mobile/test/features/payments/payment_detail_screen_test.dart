@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_api/kapdh_api.dart';
+import 'package:kapdh_mobile/core/api/idempotency_store.dart';
+import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/design/design.dart';
 import 'package:kapdh_mobile/features/payments/payment_presentation.dart';
 import 'package:kapdh_mobile/features/payments/payment_updates.dart';
@@ -23,10 +25,12 @@ Future<AppHarness> openPayment(
   bool tall = true,
   bool settleAfter = true,
   Stream<NotificationCreatedPayload>? updates,
+  MemorySecureStore? store,
 }) async {
   final app = await pumpApp(
     tester,
     tokens: savedTokens(),
+    store: store,
     textScale: textScale,
     overrides: [
       proofPickerProvider.overrideWithValue(picker ?? FakeProofPicker()),
@@ -240,8 +244,14 @@ void main() {
       expect(tester.widget<UploadTile>(find.byKey(const ValueKey('proof-upload-tile'))).onPick, isNotNull);
     });
 
-    testWidgets('PRD 4.5: batalkan instruksi dengan konfirmasi, If-Match dan Idempotency-Key', (tester) async {
-      final app = await openPayment(tester, {
+    testWidgets('PRD 4.5: batalkan instruksi dengan konfirmasi, If-Match dan Idempotency-Key; PRD 4.3: key pembuatan '
+        'instruksi yang tertinggal ikut dilepas', (tester) async {
+      final store = MemorySecureStore();
+      // Key pembuatan instruksi tertinggal dari permintaan yang terputus (retensi 24 jam).
+      await IdempotencyStore(
+        store,
+      ).keyFor('payment.create.registration', {'type': 'registration', 'payment_method_id': 'method-1'});
+      final app = await openPayment(store: store, tester, {
         '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingTransferJson()),
         '/me/payments/pay-1/cancel': (_) => FakeResponse.json(
           200,
@@ -273,6 +283,8 @@ void main() {
       expect(find.text('Instruksi pembayaran dibatalkan'), findsOneWidget);
       expect(find.bySemanticsLabel('Status: Dibatalkan'), findsOneWidget);
       expect(find.text('Buat instruksi baru'), findsOneWidget);
+      // Instruksi baru tidak boleh me-replay respons instruksi yang baru dibatalkan.
+      expect(store.values[IdempotencyStore.storageKey] ?? '', isNot(contains('payment.create.registration')));
     });
 
     testWidgets('D13: bukti sedang diperiksa dari platform tersembunyi: status tetap tampil tanpa Ganti bukti', (

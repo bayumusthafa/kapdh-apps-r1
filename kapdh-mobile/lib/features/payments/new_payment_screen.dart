@@ -73,7 +73,7 @@ class _NewPaymentScreenState extends ConsumerState<NewPaymentScreen> {
       final quote = type == MembershipPaymentType.registration ? fees.registration : fees.renewal;
       _quote = quote;
       final open = quote.openPaymentId;
-      if (open != null) return _open(open);
+      if (open != null) return _openResolved(type, open);
       if (fees.instructionsHidden) return _set(_Step.blocked, block: _Block.hidden);
       if (!quote.eligible) return _set(_Step.blocked, block: _Block.ineligible);
       methods = await _repo.listMethods();
@@ -120,13 +120,26 @@ class _NewPaymentScreenState extends ConsumerState<NewPaymentScreen> {
       final fees = await _repo.getFees();
       final quote = type == MembershipPaymentType.registration ? fees.registration : fees.renewal;
       final open = quote.openPaymentId;
-      if (open != null) return _open(open);
+      if (open != null) return _openResolved(type, open);
     } on ApiException catch (error) {
       if (isOutcomeUnknown(error)) return _set(_Step.unknown, error: error);
       return _set(_Step.failed, error: error);
     }
     // Belum ada payment: ulangi dengan Idempotency-Key yang sama (payload sama).
     await _create(type, methodId, checked: true);
+  }
+
+  /// Payment terbuka ditemukan lewat GET /me/fees: hasil pembuatan instruksi sudah diketahui, jadi key yang mungkin
+  /// tertinggal dari permintaan terputus dilepas sebelum layar instruksi dibuka. Tanpa ini key lama (retensi 24 jam)
+  /// akan me-replay instruksi yang sama setelah instruksi itu dibatalkan (PRD 4.3, 4.5; AC F03-4).
+  Future<void> _openResolved(MembershipPaymentType type, String paymentId) async {
+    try {
+      await _repo.resolveCreate(type);
+    } on Object catch (error) {
+      // Penyimpanan aman gagal: instruksi tetap dibuka; replay instruksi batal ditangani createInstruction.
+      debugPrint('pembayaran: key pembuatan instruksi gagal dilepas (${error.runtimeType})');
+    }
+    _open(paymentId);
   }
 
   void _open(String paymentId) {

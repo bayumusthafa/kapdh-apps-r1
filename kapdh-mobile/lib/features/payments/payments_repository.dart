@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
@@ -54,14 +55,32 @@ class PaymentsRepository {
 
   /// Membuat instruksi iuran; nominal dihitung server (AC F03-1). Payment nonterminal yang sudah ada dikembalikan
   /// server apa adanya (200), sehingga pengulangan tidak pernah membuat payment kedua.
-  Future<PaymentDetail> createInstruction(MembershipPaymentType type, String paymentMethodId) {
+  ///
+  /// Server menyimpan respons per Idempotency-Key selama 24 jam. Bila respons yang kembali adalah instruksi yang
+  /// sudah dibatalkan (key lama yang tertinggal, mis. dari permintaan yang terputus lalu dibatalkan), key itu sudah
+  /// dilepas oleh [IdempotencyStore.run] dan permintaan diulang SEKALI dengan key baru agar anggota mendapat
+  /// instruksi yang berlaku, bukan instruksi batal yang sama berulang-ulang (PRD 4.3, 4.5; AC F03-1, F03-4).
+  Future<PaymentDetail> createInstruction(MembershipPaymentType type, String paymentMethodId) async {
     final body = CreatePaymentRequest(type: type, paymentMethodId: paymentMethodId);
-    return _idempotency.run(
+    Future<PaymentDetail> attempt() => _idempotency.run(
       createIntent(type),
       body.toJson(),
       (key) => _payments.createPaymentInstruction(body, idempotencyKey: key),
     );
+    final payment = await attempt();
+    if (!_isClosedInstruction(payment)) return payment;
+    return attempt();
   }
+
+  /// Hasil pembuatan instruksi [type] sudah diketahui tanpa respons POST (Memeriksa status menemukan payment
+  /// terbuka): key yang tersimpan dilepas agar instruksi berikutnya memakai key baru (PRD 4.3 "disimpan sampai
+  /// hasilnya diketahui").
+  Future<void> resolveCreate(MembershipPaymentType type) => _idempotency.complete(createIntent(type));
+
+  /// Instruksi yang tidak dapat dibayar lagi (dibatalkan atau ditolak final): tidak pernah dikembalikan server untuk
+  /// permintaan baru, hanya untuk replay key lama.
+  static bool _isClosedInstruction(PaymentDetail payment) =>
+      payment.stage == PaymentStage.cancelled || payment.stage == PaymentStage.rejectedFinal;
 
   /// Mengganti rekening tujuan sebelum bukti pertama (If-Match `version`, PRD 4.3).
   Future<PaymentDetail> changeMethod(PaymentDetail payment, String paymentMethodId) => _payments.changeMyPaymentMethod(
@@ -89,14 +108,30 @@ class PaymentsRepository {
     (key) => _payments.submitPaymentProof(paymentId, body, idempotencyKey: key),
   );
 
-  /// Membatalkan instruksi iuran yang belum berbukti (`actions.can_cancel`).
-  Future<PaymentDetail> cancel(PaymentDetail payment, {String? reason}) {
+  /// Membatalkan instruksi iuran yang belum berbukti (`actions.can_cancel`). Setelah batal, key pembuatan instruksi
+  /// jenis yang sama yang mungkin masih tersimpan dilepas: instruksi baru harus memakai key baru, bukan me-replay
+  /// respons instruksi yang baru dibatalkan (PRD 4.3).
+  Future<PaymentDetail> cancel(PaymentDetail payment, {String? reason}) async {
     final trimmed = reason?.trim();
     final body = CancelPaymentRequest(reason: trimmed == null || trimmed.isEmpty ? null : trimmed);
-    return _idempotency.run(cancelIntent(payment.id), {
+    final result = await _idempotency.run(cancelIntent(payment.id), {
       ...body.toJson(),
       'version': payment.version,
     }, (key) => _payments.cancelMyPayment(payment.id, body, ifMatch: payment.version, idempotencyKey: key));
+    final type = switch (payment.type) {
+      PaymentType.registration => MembershipPaymentType.registration,
+      PaymentType.renewal => MembershipPaymentType.renewal,
+      _ => null,
+    };
+    if (type != null) {
+      try {
+        await resolveCreate(type);
+      } on Object catch (error) {
+        // Pembatalan sudah tercatat server; replay instruksi batal tetap ditangani [createInstruction].
+        debugPrint('pembayaran: key pembuatan instruksi gagal dilepas (${error.runtimeType})');
+      }
+    }
+    return result;
   }
 
   /// Rekening tujuan refund (D6). Nilai rekening tidak pernah dicatat atau disimpan klien (ARCHITECTURE §2 butir 3).
