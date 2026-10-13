@@ -113,7 +113,7 @@ Future<ReservationOutcome> submitReservation(
       default:
         break;
     }
-    if (error.isNetwork && context.mounted) return _checkAfterNetworkFailure(context, ref, event);
+    if (error.isNetwork && context.mounted) return _checkAfterNetworkFailure(ref, event);
     unawaited(ref.read(errorPresenterProvider).present(error, onReload: () => unawaited(detail.reload())));
     return const ReservationStopped();
   }
@@ -122,7 +122,7 @@ Future<ReservationOutcome> submitReservation(
 /// PRD 4.5 "Jaringan putus saat bayar/reserve": periksa hasil lewat detail event lebih dahulu. Bila tiket aktif
 /// sudah ada, permintaan pertama ternyata diproses server dan tiket itu dibuka; selain itu anggota dapat mengirim
 /// ulang dengan Idempotency-Key yang sama (disimpan IdempotencyStore sampai hasilnya diketahui).
-Future<ReservationOutcome> _checkAfterNetworkFailure(BuildContext context, WidgetRef ref, EventDetail event) async {
+Future<ReservationOutcome> _checkAfterNetworkFailure(WidgetRef ref, EventDetail event) async {
   showAppSnackBar(ref, 'Koneksi terputus. Memeriksa status pendaftaran Anda…');
   final repository = ref.read(eventsRepositoryProvider);
   final latest = await ref.read(eventDetailControllerProvider(event.id).notifier).reload();

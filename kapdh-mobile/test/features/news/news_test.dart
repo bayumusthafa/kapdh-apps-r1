@@ -118,6 +118,30 @@ void main() {
       expect(find.text('Halal Bihalal Alumni 2026'), findsOneWidget);
     });
 
+    testWidgets('N-03 memuat: kerangka daftar dan detail berita selagi request berjalan', (tester) async {
+      final list = Completer<FakeResponse>();
+      final detail = Completer<FakeResponse>();
+      await pumpMemberApp(
+        tester,
+        settled: false,
+        location: '/news',
+        routes: {
+          '/categories': (_) => FakeResponse.json(200, {'items': <Object?>[]}),
+          '/posts': (_) => list.future,
+          '/posts/halal-bihalal-2026': (_) => detail.future,
+        },
+      );
+      expect(find.bySemanticsLabel('Memuat berita'), findsOneWidget);
+      list.complete(FakeResponse.json(200, postPageJson([postSummaryJson(withCover: false)])));
+      await settle(tester);
+      await tester.tap(find.text('Halal Bihalal Alumni 2026'));
+      await pumpFrames(tester, count: 10);
+      expect(find.bySemanticsLabel('Memuat berita'), findsOneWidget);
+      detail.complete(FakeResponse.json(200, postJson()));
+      await settle(tester);
+      expect(find.byKey(const ValueKey('post-detail')), findsOneWidget);
+    });
+
     testWidgets('PRD 2.2 unverified: Berita khusus anggota aktif tanpa request /posts', (tester) async {
       final app = await pumpMemberApp(tester, status: 'unverified', location: '/news');
       expect(app.location, '/news');
