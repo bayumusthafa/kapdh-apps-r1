@@ -232,7 +232,7 @@ void main() {
       expect(app.launched, [Uri.parse('https://maps.example.com/cibubur')]);
     });
 
-    testWidgets('event tidak ditemukan (404): pesan dan kembali ke daftar event', (tester) async {
+    testWidgets('AC F13-3 event tidak ditemukan (404): pesan dan kembali ke daftar event', (tester) async {
       final app = await pumpMemberApp(
         tester,
         location: '/events/event-x',
@@ -248,7 +248,7 @@ void main() {
       expect(app.location, '/events');
     });
 
-    testWidgets('alasan server: belum dibuka, kuota penuh dan sudah punya tiket (tombol buka tiket)', (tester) async {
+    testWidgets('AC F09-1 alasan server: belum dibuka, kuota penuh dan sudah punya tiket (tombol buka tiket)', (tester) async {
       var detail = eventDetailJson(
         registrationState: 'not_yet_open',
         canReserve: false,
@@ -598,7 +598,7 @@ void main() {
       expect(find.text('Pendaftaran Anda sudah tercatat. Tiket Anda dibuka.'), findsOneWidget);
     });
 
-    testWidgets('metode bayar ditolak server (400): pesan di bawah pilihan metode, pilih ulang', (tester) async {
+    testWidgets('PRD 4.5 metode bayar ditolak server (400): pesan di bawah pilihan metode, pilih ulang', (tester) async {
       await pumpMemberApp(
         tester,
         location: '/events/event-1',
@@ -628,7 +628,7 @@ void main() {
       expect(_button(tester, 'reservation-submit').onPressed, isNull);
     });
 
-    testWidgets('pendaftaran ditutup saat mengirim (409 RESERVATION_EXPIRED): alasan dari server', (tester) async {
+    testWidgets('PRD 4.5 pendaftaran ditutup saat mengirim (409 RESERVATION_EXPIRED): alasan dari server', (tester) async {
       await pumpMemberApp(
         tester,
         location: '/events/event-1',

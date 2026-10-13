@@ -339,7 +339,7 @@ void main() {
       expect(find.byKey(const ValueKey('ticket-qr')), findsOneWidget);
     });
 
-    testWidgets('tiket tidak ditemukan atau milik akun lain (404)', (tester) async {
+    testWidgets('AC F13-3 tiket tidak ditemukan atau milik akun lain (404)', (tester) async {
       final app = await pumpMemberApp(
         tester,
         location: '/tickets/ticket-x',

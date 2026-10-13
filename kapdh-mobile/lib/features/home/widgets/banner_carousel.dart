@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
 import '../../../app/theme/kapdh_tokens.dart';
-import '../../../core/ui/external_links.dart';
 import '../shared/links.dart';
 import '../shared/remote_image.dart';
 
@@ -25,9 +24,7 @@ Future<void> openBannerTarget(BuildContext context, WidgetRef ref, HomeBannerTar
         showAppSnackBar(ref, unavailableTargetMessage);
         return;
       }
-      if (!await confirmExternalLink(context, uri)) return;
-      final launched = await ref.read(externalLinkLauncherProvider)(uri);
-      if (!launched) showAppSnackBar(ref, 'Tidak ada aplikasi yang dapat membuka tautan ini.');
+      await confirmAndLaunchExternal(context, ref, uri);
     case BannerTargetType.post:
     case BannerTargetType.event:
     case BannerTargetType.page:

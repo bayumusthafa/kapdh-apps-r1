@@ -49,11 +49,27 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
     }
     _initialPrice ??= event.price;
     final priceChanged = event.price != _initialPrice;
-    final methods = ref.watch(paymentMethodsProvider);
     final price = formatEventPrice(event.price, isFree: event.isFree);
     final canSubmit = event.canReserve && !event.isFree && _methodId != null && !_busy && !maintenance;
+    // Selama reservasi terkirim layar tidak dapat ditinggalkan (tombol kembali disembunyikan, gestur kembali
+    // ditahan): hasilnya (hold dan pembayaran, PRD 4.3/4.5) selalu diteruskan ke layar pembayaran atau tiket.
+    return PopScope(
+      canPop: !_busy,
+      child: _scaffold(event, maintenance: maintenance, priceChanged: priceChanged, price: price, canSubmit: canSubmit),
+    );
+  }
+
+  Widget _scaffold(
+    EventDetail event, {
+    required bool maintenance,
+    required bool priceChanged,
+    required String price,
+    required bool canSubmit,
+  }) {
+    final methods = ref.watch(paymentMethodsProvider);
     return AppScaffold(
       title: 'Konfirmasi Pendaftaran',
+      showBack: !_busy,
       body: ListView(
         padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s6),
         children: [
@@ -202,17 +218,34 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
   }
 
   Future<void> _submit(EventDetail event) async {
+    if (_busy) return;
+    // Diambil sebelum await: hasil tetap ditangani walau layar ini sudah dilepas saat respons tiba.
+    final scope = ReservationScope.of(context);
     setState(() {
       _busy = true;
       _methodError = null;
     });
-    final outcome = await submitReservation(context, ref, event: event, paymentMethodId: _methodId);
-    if (!mounted) return;
+    final outcome = await submitReservation(scope, event: event, paymentMethodId: _methodId);
+    if (!mounted) {
+      announceDetachedOutcome(scope, outcome);
+      return;
+    }
     setState(() => _busy = false);
+    // Hanya layar yang masih paling atas yang boleh menutup dirinya dengan hasil; bila sedang ditutup atau tertutup
+    // layar lain, Navigator.pop akan menutup layar yang salah (mis. detail event).
+    final route = ModalRoute.of(context);
+    final current = route?.isCurrent ?? false;
     switch (outcome) {
       case final ReservationDone done:
-        // Layar detail event yang membuka layar ini meneruskan ke pembayaran atau detail tiket.
-        Navigator.of(context).pop(done);
+        if (current) {
+          // Layar detail event yang membuka layar ini meneruskan ke pembayaran atau detail tiket.
+          Navigator.of(context).pop(done);
+          return;
+        }
+        announceReservationResult(scope, done);
+        // Konfirmasi yang masih tersimpan di tumpukan sudah usang (tiket tercatat): dilepas tanpa memengaruhi layar
+        // teratas.
+        if (route != null && route.isActive) Navigator.of(context).removeRoute(route);
       case ReservationPriceChanged():
         // Detail event sudah diganti `current`; build berikutnya menandai harga baru untuk dikonfirmasi ulang.
         break;
@@ -222,7 +255,7 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
           _methodError = message;
         });
       case ReservationNetworkFailed():
-        showReservationRetry(ref, () {
+        showReservationRetry(scope, () {
           if (mounted) unawaited(_submit(event));
         });
       case ReservationStopped():

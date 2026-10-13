@@ -62,9 +62,11 @@ class NewsDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _toggleLike(WidgetRef ref, PostDetailController controller) async {
+    // Dibaca sebelum await: WidgetRef tidak boleh dipakai lagi bila layar ditutup selama request (AC F08-3).
+    final presenter = ref.read(errorPresenterProvider);
     final error = await controller.toggleLike();
     if (error != null) {
-      await ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(controller.toggleLike()));
+      await presenter.present(error, onRetry: () => unawaited(controller.toggleLike()));
     }
   }
 }

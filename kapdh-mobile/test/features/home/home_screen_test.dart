@@ -261,7 +261,7 @@ void main() {
   });
 
   group('Beranda status lain (PRD 2.2)', () {
-    testWidgets('unverified: tanpa GET /home; ajakan menyelesaikan iuran dan akses cepat yang diizinkan', (
+    testWidgets('PRD 2.2 unverified: tanpa GET /home; ajakan menyelesaikan iuran dan akses cepat yang diizinkan', (
       tester,
     ) async {
       final app = await pumpMemberApp(tester, status: 'unverified', location: '/home', push: false);
@@ -274,7 +274,7 @@ void main() {
       expect(app.location, '/onboarding/fees');
     });
 
-    testWidgets('expired: ajakan perpanjang dan Tiket Saya tetap dapat dibuka (tiket lunas tetap berlaku)', (
+    testWidgets('PRD 2.2 expired: ajakan perpanjang dan Tiket Saya tetap dapat dibuka (tiket lunas tetap berlaku)', (
       tester,
     ) async {
       final app = await pumpMemberApp(
