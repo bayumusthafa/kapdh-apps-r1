@@ -12,11 +12,14 @@ import '../../core/format/formatters.dart';
 import '../../core/session/session_controller.dart';
 import '../../core/ui/support_section.dart';
 import '../../design/design.dart';
+import 'auth_flow.dart';
 
-/// Login alumni (F-02, AC F02-1; guideline hal. 5). Setelah token terbit, router mengarahkan sesuai effective_status
-/// (atau ke tujuan tertunda `?from=`); akun pending_otp diarahkan ke OTP dengan challenge baru. Akun yang sedang
-/// dihapus atau dinonaktifkan tidak mendapat sesi (kontrak C1, PRD 2.2): statusnya ditampilkan di layar ini
-/// beserta kontak pengurus.
+/// Login alumni (F-02, AC F02-1; guideline hal. 5: pita hijau bermotif dengan logo, "Selamat" putih dan
+/// "Datang kembali !!!" emas, tombol tampil/sembunyikan password, tautan Lupa Password). Setelah token terbit, router
+/// mengarahkan sesuai effective_status (atau ke tujuan tertunda `?from=`); akun pending_otp diarahkan ke OTP dengan
+/// challenge aktivasi dari server. Akun yang sedang dihapus atau dinonaktifkan tidak mendapat sesi (kontrak C1,
+/// PRD 2.2): statusnya ditampilkan di layar ini beserta kontak pengurus. Cooldown kegagalan login tidak menutup
+/// Lupa Password (PRD 2.5).
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -25,10 +28,25 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _email = TextEditingController();
+  late final TextEditingController _email = TextEditingController(text: ref.read(authEmailHintProvider));
   final _password = TextEditingController();
   bool _busy = false;
   String? _error;
+
+  /// Pemberitahuan sekali tampil setelah alur pemulihan (mis. password baru tersimpan).
+  LoginNotice? _notice;
+
+  @override
+  void initState() {
+    super.initState();
+    _notice = ref.read(loginNoticeProvider);
+    if (_notice != null) {
+      // Dikonsumsi sekali; provider tidak boleh diubah selama pohon widget sedang dibangun.
+      Future.microtask(() {
+        if (mounted) ref.read(loginNoticeProvider.notifier).clear();
+      });
+    }
+  }
 
   /// Akun tanpa sesi (deletion_pending/disabled) dari login terakhir; null bila tidak ada.
   LoginResult? _restricted;
@@ -72,14 +90,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _busy = true;
       _error = null;
+      _notice = null;
       _restricted = null;
       _fieldErrors = const {};
     });
+    final email = _email.text;
+    final password = _password.text;
     try {
-      final result = await ref.read(sessionProvider.notifier).login(email: _email.text, password: _password.text);
+      final result = await ref.read(sessionProvider.notifier).login(email: email, password: password);
       if (!mounted) return;
       switch (result.outcome) {
         case LoginOutcome.verifyOtp:
+          // Hanya di memori, untuk pemulihan hasil verifikasi OTP yang tidak diketahui (kontrak C1 verifyOtp).
+          ref.read(activationCredentialsProvider.notifier).remember(email: email, password: password);
+          ref.read(authEmailHintProvider.notifier).set(email);
           context.go(AppRoutes.registerOtp);
         case LoginOutcome.deletionPending || LoginOutcome.accountDisabled:
           setState(() {
@@ -181,13 +205,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               Align(
                 alignment: Alignment.centerRight,
-                child: KapdhLinkButton(label: 'Lupa Password', onPressed: () => context.go(AppRoutes.forgot)),
+                child: _ForgotPasswordLink(
+                  onPressed: () {
+                    ref.read(authEmailHintProvider.notifier).set(_email.text);
+                    context.go(AppRoutes.forgot);
+                  },
+                ),
               ),
+              if (_notice case final notice?) ...[
+                const SizedBox(height: KapdhSpace.s2),
+                Semantics(
+                  liveRegion: true,
+                  child: InfoBox(
+                    key: const ValueKey('login-notice'),
+                    tone: notice.success ? InfoBoxTone.info : InfoBoxTone.warning,
+                    icon: notice.success ? Icons.check_circle_outline : null,
+                    title: notice.title,
+                    message: notice.message,
+                  ),
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: KapdhSpace.s2),
                 Semantics(
                   liveRegion: true,
                   child: InfoBox(tone: InfoBoxTone.danger, message: _error!),
+                ),
+              ],
+              if (blocked > Duration.zero) ...[
+                const SizedBox(height: KapdhSpace.s2),
+                // PRD 2.5: cooldown kegagalan login tidak menutup jalur pemulihan.
+                const Text(
+                  'Sambil menunggu, Anda tetap dapat memulihkan akun lewat Lupa Password.',
+                  style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
                 ),
               ],
               if (_restricted case final restricted?) ...[
@@ -228,6 +278,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Tautan "Lupa Password" bergaris bawah di kanan bawah field password (guideline hal. 5), target sentuh 48 px.
+class _ForgotPasswordLink extends StatelessWidget {
+  const _ForgotPasswordLink({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      key: const ValueKey('login-forgot'),
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: KapdhColors.primary,
+        padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s1),
+        minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
+        textStyle: const TextStyle(
+          fontSize: KapdhFontSize.caption,
+          fontWeight: FontWeight.w600,
+          decoration: TextDecoration.underline,
+          decorationColor: KapdhColors.primary,
+        ),
+      ),
+      child: const Text('Lupa Password'),
     );
   }
 }
