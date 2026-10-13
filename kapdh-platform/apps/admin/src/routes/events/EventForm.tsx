@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, Save, TriangleAlert } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { Controller, FormProvider, useController, useForm } from "react-hook-form";
 import { api } from "../../api/client";
 import { useApiMutation } from "../../api/query";
 import { Button } from "../../components/ui/Button";
@@ -13,12 +13,7 @@ import { FormError, FormField } from "../../components/ui/FormField";
 import { Input, Select, Textarea } from "../../components/ui/Input";
 import { useToast } from "../../components/ui/Toast";
 import { formatDateTime, formatRupiah, zoneLabel } from "../../lib/format";
-import {
-  type AdminEventDetail,
-  currentEventDetail,
-  storeEventDetail,
-  useEventCategories,
-} from "./api";
+import { type AdminEventDetail, currentEventDetail, storeEventDetail, useEventCategories } from "./api";
 import {
   changesNotifyHolders,
   DATE_FIELDS,
@@ -38,7 +33,15 @@ import {
 import { type CoverValue, EventCoverField } from "./EventCoverField";
 import { timezoneOptions } from "./labels";
 
-function Section({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <Card className="flex flex-col gap-4 pb-5">
       <CardHeader title={title} description={description} />
@@ -210,7 +213,12 @@ export function EventForm({
 
   return (
     <FormProvider {...form}>
-      <form noValidate onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-5" aria-label={mode === "create" ? "Formulir event baru" : "Formulir ubah event"}>
+      <form
+        noValidate
+        onSubmit={(e) => void onSubmit(e)}
+        className="flex flex-col gap-5"
+        aria-label={mode === "create" ? "Formulir event baru" : "Formulir ubah event"}
+      >
         {stale ? (
           <div
             ref={staleRef}
@@ -220,11 +228,12 @@ export function EventForm({
           >
             <p className="flex items-start gap-2 font-semibold">
               <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-              Event ini sudah diubah di tempat lain (versi {stale.version}, {formatDateTime(stale.updated_at)}).
+              Event ini sudah diubah di tempat lain (versi {stale.version}, {formatDateTime(stale.updated_at)}
+              ).
             </p>
             <p className="text-text">
-              Perubahan Anda belum disimpan dan tidak akan menimpa versi terbaru. Muat versi terbaru, lalu ulangi
-              perubahan yang masih diperlukan.
+              Perubahan Anda belum disimpan dan tidak akan menimpa versi terbaru. Muat versi terbaru, lalu
+              ulangi perubahan yang masih diperlukan.
             </p>
             <div>
               <Button
@@ -240,7 +249,10 @@ export function EventForm({
         ) : null}
         <FormError message={rootError} />
 
-        <Section title="Informasi Event" description="Nama, kategori, deskripsi dan gambar yang tampil di aplikasi.">
+        <Section
+          title="Informasi Event"
+          description="Nama, kategori, deskripsi dan gambar yang tampil di aplikasi."
+        >
           <FormField<EventFormValues, "title"> name="title" label="Nama event" required>
             {(field, a11y) => (
               <Input {...a11y} {...field} maxLength={TITLE_MAX} autoComplete="off" disabled={pending} />
@@ -274,28 +286,29 @@ export function EventForm({
             hint="Teks polos; tampil pada detail event di aplikasi."
           >
             {(field, a11y) => (
-              <Textarea {...a11y} {...field} rows={5} maxLength={DESCRIPTION_MAX} showCount disabled={pending} />
-            )}
-          </FormField>
-          <FormField<EventFormValues, "cover_file_id"> name="cover_file_id" label="Gambar cover">
-            {(field, _a11y, state) => (
-              <EventCoverField
-                value={cover}
-                error={state.error?.message}
+              <Textarea
+                {...a11y}
+                {...field}
+                rows={5}
+                maxLength={DESCRIPTION_MAX}
+                showCount
                 disabled={pending}
-                onChange={(next) => {
-                  setCover(next);
-                  field.onChange(next?.fileId ?? null);
-                }}
               />
             )}
           </FormField>
+          <CoverFormField cover={cover} disabled={pending} onCoverChange={setCover} />
         </Section>
 
         <Section title="Lokasi" description="Ditampilkan kepada peserta beserta tautan peta.">
           <FormField<EventFormValues, "location_name"> name="location_name" label="Nama lokasi">
             {(field, a11y) => (
-              <Input {...a11y} {...field} maxLength={LOCATION_NAME_MAX} placeholder="Contoh: Aula Pondok Darel Hikmah" disabled={pending} />
+              <Input
+                {...a11y}
+                {...field}
+                maxLength={LOCATION_NAME_MAX}
+                placeholder="Contoh: Aula Pondok Darel Hikmah"
+                disabled={pending}
+              />
             )}
           </FormField>
           <FormField<EventFormValues, "location_address"> name="location_address" label="Alamat">
@@ -309,7 +322,15 @@ export function EventForm({
             hint="Harus diawali https://, misalnya tautan Google Maps."
           >
             {(field, a11y) => (
-              <Input {...a11y} {...field} type="url" inputMode="url" maxLength={LOCATION_URL_MAX} placeholder="https://" disabled={pending} />
+              <Input
+                {...a11y}
+                {...field}
+                type="url"
+                inputMode="url"
+                maxLength={LOCATION_URL_MAX}
+                placeholder="https://"
+                disabled={pending}
+              />
             )}
           </FormField>
         </Section>
@@ -343,8 +364,20 @@ export function EventForm({
           description={`Anggota hanya dapat memesan di antara buka dan tutup daftar (${zone}). Tutup daftar paling lambat saat event selesai.`}
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <DateFormField name="registration_opens_at" label="Buka daftar" timezone={timezone} disabled={pending} required />
-            <DateFormField name="registration_closes_at" label="Tutup daftar" timezone={timezone} disabled={pending} required />
+            <DateFormField
+              name="registration_opens_at"
+              label="Buka daftar"
+              timezone={timezone}
+              disabled={pending}
+              required
+            />
+            <DateFormField
+              name="registration_closes_at"
+              label="Tutup daftar"
+              timezone={timezone}
+              disabled={pending}
+              required
+            />
           </div>
         </Section>
 
@@ -352,8 +385,10 @@ export function EventForm({
           title="Check-in"
           description="Bawaan: dibuka 2 jam sebelum event mulai sampai event selesai (D5)."
         >
-          <FormField<EventFormValues, "custom_checkin"> name="custom_checkin" label="Jendela check-in khusus" labelHidden>
-            {(field) => (
+          <Controller<EventFormValues, "custom_checkin">
+            name="custom_checkin"
+            control={form.control}
+            render={({ field }) => (
               <Switch
                 label="Atur jendela check-in sendiri"
                 description="Matikan untuk memakai jendela bawaan D5."
@@ -370,11 +405,23 @@ export function EventForm({
                 disabled={pending}
               />
             )}
-          </FormField>
+          />
           {customCheckin ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <DateFormField name="checkin_opens_at" label="Buka check-in" timezone={timezone} disabled={pending} required />
-              <DateFormField name="checkin_closes_at" label="Tutup check-in" timezone={timezone} disabled={pending} required />
+              <DateFormField
+                name="checkin_opens_at"
+                label="Buka check-in"
+                timezone={timezone}
+                disabled={pending}
+                required
+              />
+              <DateFormField
+                name="checkin_closes_at"
+                label="Tutup check-in"
+                timezone={timezone}
+                disabled={pending}
+                required
+              />
             </div>
           ) : null}
         </Section>
@@ -443,6 +490,31 @@ export function EventForm({
         </div>
       </form>
     </FormProvider>
+  );
+}
+
+/** Isian cover terikat react-hook-form; galat server `field_errors.cover_file_id` tampil dan memfokus tombol pilih. */
+function CoverFormField({
+  cover,
+  disabled,
+  onCoverChange,
+}: {
+  cover: CoverValue | null;
+  disabled?: boolean;
+  onCoverChange: (value: CoverValue | null) => void;
+}) {
+  const { field, fieldState } = useController<EventFormValues, "cover_file_id">({ name: "cover_file_id" });
+  return (
+    <EventCoverField
+      value={cover}
+      error={fieldState.error?.message}
+      disabled={disabled}
+      buttonRef={field.ref}
+      onChange={(next) => {
+        onCoverChange(next);
+        field.onChange(next?.fileId ?? null);
+      }}
+    />
   );
 }
 

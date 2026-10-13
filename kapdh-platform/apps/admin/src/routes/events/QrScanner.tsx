@@ -8,10 +8,7 @@ import { Field } from "../../components/ui/FormField";
 export const DUPLICATE_SCAN_WINDOW_MS = 3_000;
 
 type ScannerState =
-  | { kind: "idle" }
-  | { kind: "starting" }
-  | { kind: "scanning" }
-  | { kind: "error"; message: string };
+  { kind: "idle" } | { kind: "starting" } | { kind: "scanning" } | { kind: "error"; message: string };
 
 interface ScannerControls {
   stop: () => void;
@@ -63,37 +60,43 @@ export function QrScanner({
     setState({ kind: "idle" });
   }, []);
 
-  useEffect(() => () => {
-    runRef.current += 1;
-    controlsRef.current?.stop();
-    controlsRef.current = null;
-  }, []);
-
-  const start = useCallback(
-    async (preferredDevice?: string) => {
+  useEffect(
+    () => () => {
+      runRef.current += 1;
       controlsRef.current?.stop();
       controlsRef.current = null;
-      const run = ++runRef.current;
-      if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-        setState({
-          kind: "error",
-          message: "Peramban ini tidak mendukung kamera atau halaman tidak dibuka lewat HTTPS. Ketik kode tiket.",
-        });
-        return;
-      }
-      setState({ kind: "starting" });
-      try {
-        const { BrowserQRCodeReader } = await import("@zxing/browser");
-        if (run !== runRef.current) return;
-        const reader = new BrowserQRCodeReader(undefined, {
-          delayBetweenScanAttempts: 150,
-          delayBetweenScanSuccess: 600,
-        });
-        const constraints: MediaStreamConstraints = {
-          audio: false,
-          video: preferredDevice ? { deviceId: { exact: preferredDevice } } : { facingMode: "environment" },
-        };
-        const controls = await reader.decodeFromConstraints(constraints, videoRef.current ?? undefined, (result) => {
+    },
+    [],
+  );
+
+  const start = useCallback(async (preferredDevice?: string) => {
+    controlsRef.current?.stop();
+    controlsRef.current = null;
+    const run = ++runRef.current;
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setState({
+        kind: "error",
+        message:
+          "Peramban ini tidak mendukung kamera atau halaman tidak dibuka lewat HTTPS. Ketik kode tiket.",
+      });
+      return;
+    }
+    setState({ kind: "starting" });
+    try {
+      const { BrowserQRCodeReader } = await import("@zxing/browser");
+      if (run !== runRef.current) return;
+      const reader = new BrowserQRCodeReader(undefined, {
+        delayBetweenScanAttempts: 150,
+        delayBetweenScanSuccess: 600,
+      });
+      const constraints: MediaStreamConstraints = {
+        audio: false,
+        video: preferredDevice ? { deviceId: { exact: preferredDevice } } : { facingMode: "environment" },
+      };
+      const controls = await reader.decodeFromConstraints(
+        constraints,
+        videoRef.current ?? undefined,
+        (result) => {
           if (!result || pausedRef.current) return;
           const text = result.getText();
           const now = Date.now();
@@ -101,24 +104,23 @@ export function QrScanner({
           if (last && last.text === text && now - last.at < DUPLICATE_SCAN_WINDOW_MS) return;
           lastRef.current = { text, at: now };
           onDecodeRef.current(text);
-        });
-        if (run !== runRef.current) {
-          controls.stop();
-          return;
-        }
-        controlsRef.current = controls;
-        setState({ kind: "scanning" });
-        // Label perangkat baru tersedia setelah izin kamera diberikan.
-        const list = await BrowserQRCodeReader.listVideoInputDevices().catch(() => []);
-        if (run !== runRef.current) return;
-        setDevices(list.map((d, i) => ({ value: d.deviceId, label: d.label || `Kamera ${i + 1}` })));
-      } catch (e) {
-        if (run !== runRef.current) return;
-        setState({ kind: "error", message: cameraErrorMessage(e) });
+        },
+      );
+      if (run !== runRef.current) {
+        controls.stop();
+        return;
       }
-    },
-    [],
-  );
+      controlsRef.current = controls;
+      setState({ kind: "scanning" });
+      // Label perangkat baru tersedia setelah izin kamera diberikan.
+      const list = await BrowserQRCodeReader.listVideoInputDevices().catch(() => []);
+      if (run !== runRef.current) return;
+      setDevices(list.map((d, i) => ({ value: d.deviceId, label: d.label || `Kamera ${i + 1}` })));
+    } catch (e) {
+      if (run !== runRef.current) return;
+      setState({ kind: "error", message: cameraErrorMessage(e) });
+    }
+  }, []);
 
   const active = state.kind === "scanning" || state.kind === "starting";
   return (
@@ -145,7 +147,12 @@ export function QrScanner({
       </div>
       <div className="flex flex-wrap items-end gap-3">
         {active ? (
-          <Button variant="outline" size="sm" leftIcon={<CameraOff aria-hidden="true" className="size-4" />} onClick={stop}>
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<CameraOff aria-hidden="true" className="size-4" />}
+            onClick={stop}
+          >
             Matikan kamera
           </Button>
         ) : (

@@ -150,7 +150,13 @@ export function currentEventDetail(current: unknown): AdminEventDetail | null {
 
 /** Tiket dari `current` galat pembatalan tiket (VERSION_CONFLICT, PAYMENT_STATE_CONFLICT). */
 export function currentTicket(current: unknown): AdminEventTicket | null {
-  if (current && typeof current === "object" && "id" in current && "holder" in current && "can_refund" in current)
+  if (
+    current &&
+    typeof current === "object" &&
+    "id" in current &&
+    "holder" in current &&
+    "can_refund" in current
+  )
     return current as AdminEventTicket;
   return null;
 }
