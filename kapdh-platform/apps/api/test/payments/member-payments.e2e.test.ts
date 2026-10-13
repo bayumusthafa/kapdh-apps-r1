@@ -460,6 +460,8 @@ describe("PUT /me/payments/{id}/method dan POST /me/payments/{id}/cancel (PRD 4.
     expect(body).toMatchObject({ method: { id: next.id, provider: "Mandiri Uji" }, amount: "60000.00" });
     expect(body.events.at(-1)).toMatchObject({ kind: "method_changed", actor: "member" });
 
+    // `current` dibentuk di dalam transaksi: pengaturan dibaca lewat transaksi itu, bukan cache/koneksi lain.
+    t.settings.invalidate();
     const stale = await api().put(
       `/me/payments/${instruction.paymentId}/method`,
       { payment_method_id: instruction.methodId },
