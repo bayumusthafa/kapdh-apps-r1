@@ -4,12 +4,23 @@
  */
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { FilesService } from "../../src/core/files/files.service.js";
 import { accessMismatches, expectOperation, type HttpMethod, spec } from "../support/contract.js";
 import { createAdmin, signInAdmin } from "../support/factories.js";
 import { uploadTestFile } from "../support/files.js";
 import { routeAccessList } from "../support/routes.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import { api, errorCode, groupWith, type Member, member, openDirect, sendText } from "./support.js";
+import {
+  api,
+  errorCode,
+  groupWith,
+  type Member,
+  member,
+  openDirect,
+  openFileUrl,
+  sendRaw,
+  sendText,
+} from "./support.js";
 
 let t: TestApp;
 
@@ -234,5 +245,73 @@ describe("AC F11-4: keanggotaan room diperiksa pada setiap baca, kirim, unggah d
     const admin = await createAdmin(t, { permissions: ["members.read"] });
     const adminToken = (await signInAdmin(t, admin)).accessToken;
     expect((await api(t).get(`/files/${image.id}/access`, { token: adminToken })).statusCode).toBe(404);
+  });
+
+  it("AC F11-4: pengunggah gambar pesan atau avatar grup yang sudah keluar room tidak lagi dapat membukanya; unggahan sendiri yang belum terpakai tetap dapat dibuka", async () => {
+    const a = await member(t);
+    const b = await member(t);
+    const c = await member(t);
+    const avatar = await uploadTestFile(t, a.token, "chat_image");
+    const created = await api(t).post(
+      "/chat/rooms",
+      { name: "Grup Foto", avatar_file_id: avatar.id, invitee_user_ids: [b.userId, c.userId] },
+      { token: a.token },
+    );
+    expect(created.statusCode, created.body).toBe(201);
+    const roomId = (created.json() as { room: { id: string } }).room.id;
+    for (const m of [b, c])
+      expect(
+        (await api(t).post(`/chat/invitations/${roomId}/accept`, {}, { token: m.token })).statusCode,
+      ).toBe(200);
+
+    // Unggahan yang belum dipakai: hanya pengunggahnya (pratinjau sebelum dikirim).
+    const pending = await uploadTestFile(t, b.token, "chat_image");
+    expect((await api(t).get(`/files/${pending.id}/access`, { token: b.token })).statusCode).toBe(200);
+    expect((await api(t).get(`/files/${pending.id}/access`, { token: c.token })).statusCode).toBe(404);
+    const sent = await sendRaw(t, b, roomId, { kind: "image", image_file_id: pending.id });
+    expect(sent.statusCode, sent.body).toBe(201);
+    const grant = await api(t).get(`/files/${pending.id}/access`, { token: b.token });
+    expect(grant.statusCode).toBe(200);
+    const circulating = (grant.json() as { url: string }).url;
+
+    // Pengirim keluar: gambarnya sendiri ikut tertutup, termasuk URL yang sudah beredar (PRD 5.4).
+    expect((await api(t).post(`/chat/rooms/${roomId}/leave`, {}, { token: b.token })).statusCode).toBe(204);
+    expect((await api(t).get(`/files/${pending.id}/access`, { token: b.token })).statusCode).toBe(404);
+    expect(await openFileUrl(t, circulating)).toBe(404);
+    expect((await api(t).get(`/files/${pending.id}/access`, { token: c.token })).statusCode).toBe(200);
+
+    // Pengunggah avatar grup (admin) keluar setelah menunjuk pengganti: avatar grup tidak lagi dapat dibukanya.
+    expect((await api(t).get(`/files/${avatar.id}/access`, { token: a.token })).statusCode).toBe(200);
+    const leave = await api(t).post(
+      `/chat/rooms/${roomId}/leave`,
+      { successor_user_id: c.userId },
+      { token: a.token },
+    );
+    expect(leave.statusCode, leave.body).toBe(204);
+    expect((await api(t).get(`/files/${avatar.id}/access`, { token: a.token })).statusCode).toBe(404);
+    expect((await api(t).get(`/files/${avatar.id}/access`, { token: c.token })).statusCode).toBe(200);
+  });
+
+  it("AC F11-4: kebijakan chat_image tambahan dari modul lain (mis. bukti laporan untuk moderator) tetap berlaku di samping aturan anggota room", async () => {
+    const a = await member(t);
+    const b = await member(t);
+    const room = await openDirect(t, a, b);
+    const image = await uploadTestFile(t, a.token, "chat_image");
+    expect(
+      (await sendRaw(t, a, room.id, { kind: "image", image_file_id: image.id, body: "Bukti" })).statusCode,
+    ).toBe(201);
+    const moderator = await createAdmin(t, { permissions: ["moderation.read"] });
+    const moderatorToken = (await signInAdmin(t, moderator)).accessToken;
+    expect((await api(t).get(`/files/${image.id}/access`, { token: moderatorToken })).statusCode).toBe(404);
+    // Pola modul moderation: berkas yang dirujuk bukti laporan untuk pengurus moderation.read.
+    t.app
+      .get(FilesService)
+      .registerAccessPolicy(
+        "chat_image",
+        ({ file, viewer }) =>
+          viewer.audience === "admin" && viewer.permissions.has("moderation.read") && file.id === image.id,
+      );
+    expect((await api(t).get(`/files/${image.id}/access`, { token: moderatorToken })).statusCode).toBe(200);
+    expect((await api(t).get(`/files/${image.id}/access`, { token: b.token })).statusCode).toBe(200);
   });
 });
