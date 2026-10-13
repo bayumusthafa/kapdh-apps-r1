@@ -287,7 +287,19 @@ export class DashboardService {
   }
 
   private async upcomingEvents(now: Date): Promise<DashboardUpcomingEvent[]> {
-    const checkedIn = this.ticketCounts("checkin_counts", isNotNull(tickets.checkedInAt));
+    const window = and(
+      inArray(events.status, ["open", "closed"]),
+      gte(events.startsAt, now),
+      lt(events.startsAt, new Date(now.getTime() + UPCOMING_MS)),
+    );
+    // Hanya tiket event dalam jendela 30 hari yang dihitung, sehingga biaya kueri tidak tumbuh dengan riwayat check-in.
+    const checkedIn = this.ticketCounts(
+      "checkin_counts",
+      and(
+        isNotNull(tickets.checkedInAt),
+        inArray(tickets.eventId, this.db.select({ id: events.id }).from(events).where(window)),
+      )!,
+    );
     const rows = await this.db
       .select({
         id: events.id,
@@ -304,13 +316,7 @@ export class DashboardService {
       })
       .from(events)
       .leftJoin(checkedIn, eq(checkedIn.eventId, events.id))
-      .where(
-        and(
-          inArray(events.status, ["open", "closed"]),
-          gte(events.startsAt, now),
-          lt(events.startsAt, new Date(now.getTime() + UPCOMING_MS)),
-        ),
-      )
+      .where(window)
       .orderBy(asc(events.startsAt), asc(events.id))
       .limit(SNIPPET);
     return rows.map((row) => ({
