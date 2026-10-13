@@ -257,12 +257,17 @@ describe("bantuan area konten", () => {
       latest: POST,
     });
     // VERSION_CONFLICT tanpa `current` yang cocok tetap konflik versi, tanpa data terbaru.
-    expect(conflictState(new ApiError({ code: "VERSION_CONFLICT", status: 409, message: "x" }), POST)).toEqual({
+    expect(
+      conflictState(new ApiError({ code: "VERSION_CONFLICT", status: 409, message: "x" }), POST),
+    ).toEqual({
       cause: "edited",
       latest: null,
     });
     expect(
-      conflictState(new ApiError({ code: "IDEMPOTENCY_CONFLICT", status: 409, message: "x", current: POST }), POST),
+      conflictState(
+        new ApiError({ code: "IDEMPOTENCY_CONFLICT", status: 409, message: "x", current: POST }),
+        POST,
+      ),
     ).toEqual({ cause: "unconfirmed", latest: null });
   });
 
@@ -276,6 +281,8 @@ describe("bantuan area konten", () => {
     expect(conflictHeadline("state_changed", "Berita ini", "2026-08-03T02:00:00Z", "Nur Hidayah")).toBe(
       "Status berita ini sudah berubah sejak halaman ini dimuat.",
     );
-    expect(conflictHeadline("unconfirmed", "Banner ini")).toBe("Permintaan untuk banner ini tidak dijalankan.");
+    expect(conflictHeadline("unconfirmed", "Banner ini")).toBe(
+      "Permintaan untuk banner ini tidak dijalankan.",
+    );
   });
 });
