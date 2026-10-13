@@ -252,15 +252,24 @@ String? readOnlyLanding(RedirectState state, Uri location) {
 bool isLocationAllowed(RedirectState state, String location) => resolveRedirect(state, Uri.parse(location)) == null;
 
 String? _anonymous(SessionState session, Uri location, RouteGroup group) {
+  // Tautan challenge OTP yang ditunda selama splash (tautan email dibuka saat aplikasi belum berjalan, AC F16-4)
+  // langsung dilanjutkan ke layar OTP-nya, bukan ke login.
+  if (group == RouteGroup.splash) {
+    final link = _fromParam(location);
+    if (link != null && _isChallengeLink(link)) return _locationString(link);
+  }
   switch (group) {
     case RouteGroup.login:
     case RouteGroup.register:
     case RouteGroup.forgot:
       return null;
     case RouteGroup.registerOtp:
-      return session.challenge?.purpose == OtpPurpose.signup ? null : AppRoutes.login;
+      // signup dan email_change berbagi satu slot aktivasi (kontrak C1); `?challenge=` dibaca lewat /auth/otp/status.
+      return _isActivation(session.challenge?.purpose) || _isChallengeLink(location) ? null : AppRoutes.login;
     case RouteGroup.forgotOtp:
-      return session.challenge?.purpose == OtpPurpose.passwordReset ? null : AppRoutes.forgot;
+      return session.challenge?.purpose == OtpPurpose.passwordReset || _isChallengeLink(location)
+          ? null
+          : AppRoutes.forgot;
     case RouteGroup.forgotReset:
       return session.resetToken != null ? null : AppRoutes.forgot;
     case RouteGroup.splash:
@@ -278,6 +287,7 @@ String _landing(RedirectState state, Uri? from) {
     case SessionPhase.unknown:
       return _withFrom(AppRoutes.splash, from);
     case SessionPhase.anonymous:
+      if (from != null && _isChallengeLink(from)) return _locationString(from);
       return _withFrom(AppRoutes.login, from);
     case SessionPhase.authenticated:
     case SessionPhase.offlineLastKnown:
@@ -289,6 +299,7 @@ String _landing(RedirectState state, Uri? from) {
 /// Lokasi yang ditunda saat dialihkan dari [location]: layar sistem/auth meneruskan `from` miliknya sendiri; rute
 /// lain menjadi tujuan yang ditunda.
 Uri? _pending(Uri location, RouteGroup group) {
+  if (_isChallengeLink(location)) return _sanitize(location);
   if (_systemGroups.contains(group) || _authGroups.contains(group)) return _fromParam(location);
   if (group == RouteGroup.unknown) return null;
   return _sanitize(location);
@@ -301,9 +312,21 @@ Uri? _sanitize(Uri? candidate) {
   if (candidate == null) return null;
   final normalized = DeepLinks.normalize(candidate);
   if (normalized == null) return null;
+  if (_isChallengeLink(normalized)) return normalized;
   final group = routeGroupOf(normalized.path);
   if (_systemGroups.contains(group) || _authGroups.contains(group) || group == RouteGroup.unknown) return null;
   return normalized;
+}
+
+/// Challenge aktivasi (kontrak C1: signup dan email_change berbagi satu slot aktivasi).
+bool _isActivation(OtpPurpose? purpose) => purpose == OtpPurpose.signup || purpose == OtpPurpose.emailChange;
+
+/// Layar OTP yang dibuka dari tautan berisi challenge_id (`/forgot/otp?challenge=<uuid>`, AC F16-4, atau
+/// `/register/otp?challenge=<uuid>` saat challenge dipulihkan). Layar membaca keadaannya lewat POST /auth/otp/status
+/// tanpa mengirim kode baru; satu-satunya rute auth yang boleh menjadi tujuan tertunda.
+bool _isChallengeLink(Uri location) {
+  final group = routeGroupOf(location.path);
+  return (group == RouteGroup.registerOtp || group == RouteGroup.forgotOtp) && DeepLinks.challengeId(location) != null;
 }
 
 String _withFrom(String path, Uri? from) =>

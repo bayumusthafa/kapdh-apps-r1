@@ -4,6 +4,8 @@ import 'package:kapdh_api/kapdh_api.dart';
 import 'package:kapdh_mobile/core/api/api_providers.dart';
 import 'package:kapdh_mobile/core/session/session_controller.dart';
 import 'package:kapdh_mobile/design/design.dart';
+import 'package:kapdh_mobile/features/auth/auth_flow.dart';
+import 'package:kapdh_mobile/features/auth/email_correction_sheet.dart';
 import 'package:kapdh_mobile/features/auth/otp_screen.dart';
 import 'package:kapdh_mobile/features/auth/registration_draft.dart';
 
@@ -14,12 +16,14 @@ Finder get otpInput => find.byKey(const ValueKey('otp-input'));
 Finder get verifyButton => find.byKey(const ValueKey('otp-submit'));
 Finder get resendButton => find.byKey(const ValueKey('otp-resend'));
 
-/// Membuka layar OTP dengan challenge signup yang sedang berjalan.
+/// Membuka layar OTP dengan challenge signup yang sedang berjalan. [withCredentials]: email dan sandi dari langkah
+/// Data Diri masih di memori (kontrak C1 verifyOtp).
 Future<AppHarness> openOtp(
   WidgetTester tester,
   FakeHandler handler, {
   double textScale = 1,
   bool withDraft = true,
+  bool withCredentials = false,
   TestClock? clock,
   DateTime? serverTime,
 }) async {
@@ -36,6 +40,11 @@ Future<AppHarness> openOtp(
         container.read(registrationDraftProvider.notifier)
           ..save(const RegistrationDraft(fullName: 'Ahmad Islam', email: 'ahmad.islam@email.com'))
           ..markSubmitted();
+      }
+      if (withCredentials) {
+        container
+            .read(activationCredentialsProvider.notifier)
+            .remember(email: 'ahmad.islam@email.com', password: 'Rahasia#123');
       }
     },
   );
@@ -281,5 +290,321 @@ void main() {
     expect(tester.getSize(verifyButton).height, greaterThanOrEqualTo(52));
     await scrollTo(tester, resendButton);
     expect(tester.takeException(), isNull);
+  });
+
+  group('Salah email? Ubah alamat email (PRD 2.2, kontrak C1 correctPendingEmail)', () {
+    Finder sheetField(String key) =>
+        find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(TextFormField));
+
+    Future<void> openSheet(WidgetTester tester) async {
+      await scrollAndTap(tester, find.byKey(const ValueKey('otp-change-email')));
+      await settle(tester);
+      expect(find.byType(EmailCorrectionSheet), findsOneWidget);
+    }
+
+    Future<void> submitCorrection(WidgetTester tester, {String email = 'ahmad.benar@email.com'}) async {
+      await tester.enterText(sheetField('correction-email'), email);
+      await tester.enterText(sheetField('correction-password'), 'Rahasia#123');
+      await scrollAndTap(tester, find.byKey(const ValueKey('correction-submit')));
+      await settle(tester);
+    }
+
+    testWidgets('F-01: email dikoreksi lewat challenge + sandi; kode email_change dikirim ke email baru', (
+      tester,
+    ) async {
+      final app = await openOtp(
+        tester,
+        apiRoutes({
+          '/auth/email-correction': (_) => FakeResponse.json(
+            200,
+            otpChallengeJson(id: 'challenge-2', purpose: 'email_change', emailMasked: 'ah***@email.com'),
+          ),
+        }),
+        withCredentials: true,
+      );
+      await openSheet(tester);
+      expect(find.text('Ubah alamat email'), findsOneWidget);
+      await submitCorrection(tester);
+
+      expect(app.adapter.requestsTo('/auth/email-correction').single.data, {
+        'challenge_id': 'challenge-1',
+        'password': 'Rahasia#123',
+        'new_email': 'ahmad.benar@email.com',
+      });
+      expect(find.byType(EmailCorrectionSheet), findsNothing);
+      expect(app.location, '/register/otp', reason: 'challenge email_change tetap di layar OTP aktivasi');
+      final challenge = app.container.read(sessionProvider).challenge!;
+      expect(challenge.challengeId, 'challenge-2');
+      expect(challenge.purpose, OtpPurpose.emailChange);
+      expect(find.textContaining('Kode 6 digit sudah dikirim ke email baru ahmad.benar@email.com'), findsOneWidget);
+      expect(find.text('Email diubah. Kode baru dikirim ke ah***@email.com.'), findsOneWidget);
+      expect(find.text('Sisa percobaan: 5 dari 5'), findsOneWidget);
+      expect(app.container.read(registrationDraftProvider)?.email, 'ahmad.benar@email.com');
+      expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.benar@email.com');
+    });
+
+    testWidgets('F-01: kode dari email baru mengaktifkan akun (AC F01-2)', (tester) async {
+      final app = await openOtp(
+        tester,
+        apiRoutes({
+          '/auth/email-correction': (_) =>
+              FakeResponse.json(200, otpChallengeJson(id: 'challenge-2', purpose: 'email_change')),
+          '/auth/otp/verify': (_) => FakeResponse.json(200, {'session': tokenPairJson()}),
+          '/me': (_) => FakeResponse.json(200, meJson(status: 'unverified')),
+        }),
+      );
+      await openSheet(tester);
+      await submitCorrection(tester);
+      await tester.enterText(otpInput, '482913');
+      await settle(tester);
+      expect(app.adapter.requestsTo('/auth/otp/verify').single.data, containsPair('challenge_id', 'challenge-2'));
+      expect(app.location, '/onboarding/fees');
+    });
+
+    testWidgets('sandi salah dan email baru terdaftar tampil di field lembar', (tester) async {
+      var calls = 0;
+      await openOtp(
+        tester,
+        apiRoutes({
+          '/auth/email-correction': (_) => ++calls == 1
+              ? FakeResponse.json(
+                  400,
+                  errorJson(
+                    'VALIDATION_ERROR',
+                    'Periksa isian.',
+                    fieldErrors: {
+                      'password': ['Password salah'],
+                    },
+                  ),
+                )
+              : FakeResponse.json(
+                  409,
+                  errorJson(
+                    'VALIDATION_ERROR',
+                    'Email sudah terdaftar.',
+                    fieldErrors: {
+                      'new_email': ['Email sudah terdaftar'],
+                    },
+                  ),
+                ),
+        }),
+      );
+      await openSheet(tester);
+      await submitCorrection(tester);
+      expect(find.text('Password salah'), findsOneWidget);
+      expect(
+        tester
+            .widget<TextField>(
+              find.descendant(of: find.byKey(const ValueKey('correction-password')), matching: find.byType(TextField)),
+            )
+            .controller!
+            .text,
+        isEmpty,
+      );
+      await submitCorrection(tester);
+      expect(find.text('Email sudah terdaftar'), findsOneWidget);
+      expect(find.byType(EmailCorrectionSheet), findsOneWidget);
+    });
+
+    testWidgets('email baru sama dengan email sebelumnya ditolak lokal', (tester) async {
+      final app = await openOtp(tester, apiRoutes({}));
+      await openSheet(tester);
+      await submitCorrection(tester, email: 'Ahmad.Islam@email.com');
+      expect(find.text('Email baru sama dengan email sebelumnya'), findsOneWidget);
+      expect(app.adapter.requestsTo('/auth/email-correction'), isEmpty);
+    });
+
+    testWidgets('batas kirim (429) mengunci tombol lembar dengan hitung mundur', (tester) async {
+      await openOtp(
+        tester,
+        apiRoutes({
+          '/auth/email-correction': (_) =>
+              FakeResponse.json(429, errorJson('RATE_LIMITED', 'Terlalu banyak percobaan.', retryAfterSeconds: 120)),
+        }),
+      );
+      await openSheet(tester);
+      await submitCorrection(tester);
+      expect(find.text('Terlalu banyak percobaan.'), findsOneWidget);
+      expect(find.text('Coba lagi dalam 2:00'), findsOneWidget);
+    });
+
+    testWidgets('challenge tidak berlaku lagi (410): lembar ditutup, tawaran mulai ulang pendaftaran', (tester) async {
+      final app = await openOtp(
+        tester,
+        apiRoutes({
+          '/auth/email-correction': (_) =>
+              FakeResponse.json(410, errorJson('OTP_EXPIRED', 'Kode tidak berlaku lagi. Mulai ulang.')),
+        }),
+      );
+      await openSheet(tester);
+      await submitCorrection(tester);
+      expect(find.byType(EmailCorrectionSheet), findsNothing);
+      await scrollAndTap(tester, find.text('Mulai ulang pendaftaran'));
+      await settle(tester);
+      expect(app.location, '/register');
+    });
+
+    testWidgets('batal menutup lembar tanpa request', (tester) async {
+      final app = await openOtp(tester, apiRoutes({}));
+      await openSheet(tester);
+      await tester.tap(find.byKey(const ValueKey('correction-cancel')));
+      await settle(tester);
+      expect(find.byType(EmailCorrectionSheet), findsNothing);
+      expect(app.adapter.requestsTo('/auth/email-correction'), isEmpty);
+    });
+
+    testWidgets('N-11: lembar koreksi pada teks 200 % tanpa meluap', (tester) async {
+      await openOtp(tester, apiRoutes({}), textScale: 2);
+      await openSheet(tester);
+      expect(tester.takeException(), isNull);
+      await scrollTo(tester, find.byKey(const ValueKey('correction-submit')));
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('hasil verifikasi tidak diketahui (kontrak C1 verifyOtp, AC F01-4)', () {
+    FakeHandler lostThenGone({required Map<String, Object?> loginBody}) {
+      var verifies = 0;
+      return apiRoutes({
+        '/auth/otp/verify': (_) => ++verifies == 1
+            ? FakeResponse.network()
+            : FakeResponse.json(410, errorJson('OTP_EXPIRED', 'Kode tidak berlaku lagi.')),
+        '/auth/login': (_) => FakeResponse.json(200, loginBody),
+        '/me': (_) => FakeResponse.json(200, meJson(status: 'unverified')),
+      });
+    }
+
+    testWidgets('AC F01-4: respons hilang lalu 410: login dengan kredensial di memori, akun sudah aktif', (
+      tester,
+    ) async {
+      final app = await openOtp(
+        tester,
+        lostThenGone(loginBody: {'next': 'home', 'session': tokenPairJson()}),
+        withCredentials: true,
+      );
+      await tester.enterText(otpInput, '482913');
+      await settle(tester);
+      expect(find.textContaining('Koneksi terputus sebelum hasil verifikasi diterima'), findsOneWidget);
+      expect(tester.widget<TextField>(otpInput).controller!.text, '482913');
+
+      await scrollAndTap(tester, verifyButton);
+      await settle(tester);
+
+      expect(app.adapter.requestsTo('/auth/otp/resend'), isEmpty, reason: 'tidak langsung meminta kode baru');
+      expect(app.adapter.requestsTo('/auth/login').single.data, {
+        'email': 'ahmad.islam@email.com',
+        'password': 'Rahasia#123',
+        'device_name': 'Aplikasi KAPDH Android',
+      });
+      expect(app.location, '/onboarding/fees');
+      expect(app.container.read(sessionProvider).effectiveStatus, EffectiveStatus.unverified);
+      expect(app.container.read(activationCredentialsProvider), isNull, reason: 'sandi dilepas dari memori');
+    });
+
+    testWidgets('AC F01-4: login pemulihan menjawab verify_otp: challenge aktivasi terkini dipakai', (tester) async {
+      final app = await openOtp(
+        tester,
+        lostThenGone(
+          loginBody: {
+            'next': 'verify_otp',
+            'challenge': otpChallengeJson(id: 'challenge-9', purpose: 'email_change', attemptsLeft: 4),
+          },
+        ),
+        withCredentials: true,
+      );
+      await tester.enterText(otpInput, '482913');
+      await settle(tester);
+      await scrollAndTap(tester, verifyButton);
+      await settle(tester);
+      expect(app.location, '/register/otp');
+      expect(app.container.read(sessionProvider).challenge?.challengeId, 'challenge-9');
+      expect(find.text('Akun belum aktif. Masukkan kode terbaru yang dikirim ke email Anda.'), findsOneWidget);
+      expect(find.text('Sisa percobaan: 4 dari 5'), findsOneWidget);
+      expect(tester.widget<TextField>(otpInput).controller!.text, isEmpty);
+    });
+
+    testWidgets('AC F01-4: tanpa kredensial di memori: diminta masuk untuk memeriksa status', (tester) async {
+      final app = await openOtp(tester, lostThenGone(loginBody: {'next': 'home', 'session': tokenPairJson()}));
+      await tester.enterText(otpInput, '482913');
+      await settle(tester);
+      await scrollAndTap(tester, verifyButton);
+      await settle(tester);
+      expect(app.adapter.requestsTo('/auth/login'), isEmpty);
+      expect(find.textContaining('Verifikasi sebelumnya mungkin sudah berhasil'), findsOneWidget);
+      await scrollAndTap(tester, find.text('Masuk untuk memeriksa status'));
+      await settle(tester);
+      expect(app.location, '/login');
+      expect(find.text('ahmad.islam@email.com'), findsNothing, reason: 'tanpa kredensial, email tidak diketahui');
+    });
+
+    testWidgets('AC F01-4: kirim ulang 410 setelah hasil tidak diketahui juga memeriksa lewat login', (tester) async {
+      final app = await openOtp(
+        tester,
+        apiRoutes({
+          '/auth/otp/verify': (_) => FakeResponse.network(),
+          '/auth/otp/resend': (_) => FakeResponse.json(410, errorJson('OTP_EXPIRED', 'Tidak berlaku.')),
+          '/auth/login': (_) => FakeResponse.json(200, {'next': 'home', 'session': tokenPairJson()}),
+          '/me': (_) => FakeResponse.json(200, meJson(status: 'unverified')),
+        }),
+        withCredentials: true,
+      );
+      await tester.enterText(otpInput, '482913');
+      await settle(tester);
+      app.clock.advance(const Duration(seconds: 43));
+      await tester.pump(const Duration(seconds: 1));
+      await scrollAndTap(tester, resendButton);
+      await settle(tester);
+      expect(app.adapter.requestsTo('/auth/login'), hasLength(1));
+      expect(app.location, '/onboarding/fees');
+    });
+
+    testWidgets('jawaban pasti (kode salah) setelah putus koneksi: tidak memicu login', (tester) async {
+      var verifies = 0;
+      final app = await openOtp(
+        tester,
+        apiRoutes({
+          '/auth/otp/verify': (_) => ++verifies == 1
+              ? FakeResponse.network()
+              : FakeResponse.json(
+                  400,
+                  errorJson(
+                    'VALIDATION_ERROR',
+                    'Kode salah. Sisa percobaan 4.',
+                    fieldErrors: {
+                      'code': ['Kode salah. Sisa percobaan 4.'],
+                    },
+                  ),
+                ),
+        }),
+        withCredentials: true,
+      );
+      await tester.enterText(otpInput, '482913');
+      await settle(tester);
+      await scrollAndTap(tester, verifyButton);
+      await settle(tester);
+      expect(find.text('Sisa percobaan: 4 dari 5'), findsOneWidget);
+      expect(app.adapter.requestsTo('/auth/login'), isEmpty);
+    });
+
+    testWidgets('server 502 dianggap hasil tidak diketahui', (tester) async {
+      var verifies = 0;
+      final app = await openOtp(
+        tester,
+        apiRoutes({
+          '/auth/otp/verify': (_) => ++verifies == 1
+              ? FakeResponse.json(502, errorJson('INTERNAL_ERROR', 'Gateway bermasalah.'))
+              : FakeResponse.json(410, errorJson('OTP_EXPIRED', 'Tidak berlaku.')),
+          '/auth/login': (_) => FakeResponse.json(200, {'next': 'home', 'session': tokenPairJson()}),
+          '/me': (_) => FakeResponse.json(200, meJson(status: 'unverified')),
+        }),
+        withCredentials: true,
+      );
+      await tester.enterText(otpInput, '482913');
+      await settle(tester);
+      expect(find.textContaining('Hasil verifikasi belum diketahui'), findsOneWidget);
+      await scrollAndTap(tester, verifyButton);
+      await settle(tester);
+      expect(app.location, '/onboarding/fees');
+    });
   });
 }
