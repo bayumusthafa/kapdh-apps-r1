@@ -6,14 +6,14 @@ export const moderationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/moderation",
   beforeLoad: guard("/moderation"),
-  component: lazyRouteComponent(() => import("./ModerationPages"), "ModerationPage"),
+  component: lazyRouteComponent(() => import("./ModerationListPage"), "ModerationPage"),
 });
 
 export const reportRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/moderation/$reportId",
   beforeLoad: guard("/moderation/$reportId"),
-  component: lazyRouteComponent(() => import("./ModerationPages"), "ReportDetailPage"),
+  component: lazyRouteComponent(() => import("./ReportDetailPage"), "ReportDetailPage"),
 });
 
 export const moderationRoutes = [moderationRoute, reportRoute] as const;
