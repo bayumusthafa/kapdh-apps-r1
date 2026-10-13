@@ -149,7 +149,7 @@ function DashboardContent({ dashboard: d }: { dashboard: Dashboard }) {
           <h2 id="dasbor-tindakan" className="font-heading text-h3 font-semibold text-primary">
             Perlu tindakan
           </h2>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {d.payments ? <PaymentsQueue payments={d.payments} now={generatedAt} /> : null}
             {d.moderation ? <ModerationQueue moderation={d.moderation} now={generatedAt} /> : null}
             {d.jobs ? <JobsQueue jobs={d.jobs} now={generatedAt} /> : null}
@@ -159,7 +159,7 @@ function DashboardContent({ dashboard: d }: { dashboard: Dashboard }) {
       ) : null}
 
       {d.members || d.events ? (
-        <div className="grid gap-5 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           {d.members ? <MembersTable members={d.members.latest_members} /> : null}
           {d.events ? <TicketSalesTable sales={d.events.ticket_sales} /> : null}
         </div>
@@ -195,7 +195,7 @@ function QueueCard({
   footer?: ReactNode;
 }) {
   return (
-    <Card aria-labelledby={id} className="flex flex-col gap-3 pb-4">
+    <Card aria-labelledby={id} className="flex min-w-0 flex-col gap-3 pb-4">
       <CardHeader
         titleId={id}
         title={
@@ -372,7 +372,7 @@ function UpcomingEvents({ events }: { events: UpcomingEvent[] }) {
   const auth = useAuth();
   const canManage = auth.can("events.manage");
   return (
-    <Card aria-labelledby="antrean-event" className="flex flex-col gap-3 pb-4">
+    <Card aria-labelledby="antrean-event" className="flex min-w-0 flex-col gap-3 pb-4">
       <CardHeader
         titleId="antrean-event"
         title={
@@ -457,7 +457,7 @@ function MembersTable({ members }: { members: Member[] }) {
     [],
   );
   return (
-    <Card aria-labelledby="dasbor-pengguna" className="flex flex-col gap-3 pb-4">
+    <Card aria-labelledby="dasbor-pengguna" className="flex min-w-0 flex-col gap-3 pb-4">
       <CardHeader
         titleId="dasbor-pengguna"
         title="Pengguna"
@@ -533,7 +533,7 @@ function TicketSalesTable({ sales }: { sales: TicketSales[] }) {
     [],
   );
   return (
-    <Card aria-labelledby="dasbor-tiket" className="flex flex-col gap-3 pb-4">
+    <Card aria-labelledby="dasbor-tiket" className="flex min-w-0 flex-col gap-3 pb-4">
       <CardHeader
         titleId="dasbor-tiket"
         title="Penjualan Tiket"
@@ -655,7 +655,7 @@ function TransactionsCard({ snapshot }: { snapshot: Transaction[] }) {
     [],
   );
   return (
-    <Card aria-labelledby="dasbor-transaksi" className="flex flex-col gap-3 pb-4">
+    <Card aria-labelledby="dasbor-transaksi" className="flex min-w-0 flex-col gap-3 pb-4">
       <CardHeader
         titleId="dasbor-transaksi"
         title="Riwayat Transaksi"
