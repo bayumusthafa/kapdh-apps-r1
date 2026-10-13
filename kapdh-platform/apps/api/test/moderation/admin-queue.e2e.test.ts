@@ -8,7 +8,14 @@ import { createAdmin, createAlumni, signInAdmin, signInAlumni } from "../support
 import { httpClient } from "../support/http.js";
 import { routeAccessList } from "../support/routes.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import { addRoomMember, createGroupRoom, recordRealtime, reportOk, reportVersion, resolveReport } from "./fixtures.js";
+import {
+  addRoomMember,
+  createGroupRoom,
+  recordRealtime,
+  reportOk,
+  reportVersion,
+  resolveReport,
+} from "./fixtures.js";
 
 /**
  * Antrean moderasi pengurus (F-12, F-15; kontrak admin-moderation.yaml adminListReports) dengan SLA v3.2, filter,
@@ -36,7 +43,9 @@ async function member(fullName: string) {
   return { ...fixture, token: session.accessToken };
 }
 
-async function moderator(options: { permissions?: Permission[]; linkedAlumniUserId?: string; role?: "super_admin" } = {}) {
+async function moderator(
+  options: { permissions?: Permission[]; linkedAlumniUserId?: string; role?: "super_admin" } = {},
+) {
   const admin = await createAdmin(t, {
     permissions: options.permissions ?? MODERATOR,
     linkedAlumniUserId: options.linkedAlumniUserId ?? null,
@@ -61,7 +70,9 @@ async function queue(token: string, query: Record<string, string> = {}): Promise
 describe("x-kapdh-access modul moderation (ARCHITECTURE §4.3)", () => {
   it("dekorator setiap operasi moderation.yaml dan admin-moderation.yaml sama dengan kontrak", () => {
     const controllers = ["BlocksController", "ReportsController", "AdminReportsController"];
-    const routes = routeAccessList(t.app).filter((route) => controllers.some((c) => route.name.startsWith(`${c}.`)));
+    const routes = routeAccessList(t.app).filter((route) =>
+      controllers.some((c) => route.name.startsWith(`${c}.`)),
+    );
     const operations = Object.entries(spec.paths).flatMap(([path, item]) =>
       Object.entries(item as Record<string, { tags?: string[]; operationId?: string }>)
         .filter(([, op]) => op.tags?.includes("Moderation") || op.tags?.includes("Admin Moderation"))
@@ -101,7 +112,11 @@ describe("GET /admin/reports (PRD 3.12 target penanganan, F-15)", () => {
     const t2 = await member("Dimas Anggara");
     const t3 = await member("Eko Prasetyo");
 
-    const r1 = await reportOk(t.app, reporter.token, { target_type: "user", target_user_id: t1.userId, category: "spam" });
+    const r1 = await reportOk(t.app, reporter.token, {
+      target_type: "user",
+      target_user_id: t1.userId,
+      category: "spam",
+    });
     t.clock.advance(60_000);
     const r2 = await reportOk(t.app, reporter.token, {
       target_type: "user",
@@ -149,7 +164,9 @@ describe("GET /admin/reports (PRD 3.12 target penanganan, F-15)", () => {
     expect((await queue(admin.token, { sort: "newest" })).items.map((i) => i.id)).toEqual([r3, r2, r1]);
     expect((await queue(admin.token, { sort: "oldest" })).items.map((i) => i.id)).toEqual([r1, r2, r3]);
     expect((await queue(admin.token, { q: "bunga" })).items.map((i) => i.id)).toEqual([r1]);
-    expect((await queue(admin.token, { q: t3.memberNumber!.slice(0, -1) })).items.map((i) => i.id)).toContain(r3);
+    expect((await queue(admin.token, { q: t3.memberNumber!.slice(0, -1) })).items.map((i) => i.id)).toContain(
+      r3,
+    );
     expect((await queue(admin.token, { q: "%" })).total).toBe(0);
 
     const page1 = await queue(admin.token, { limit: "2" });
@@ -164,14 +181,24 @@ describe("GET /admin/reports (PRD 3.12 target penanganan, F-15)", () => {
     });
     expect(mismatched.statusCode).toBe(400);
     expectOperation("get", "/admin/reports", mismatched);
-    for (const query of [{ status: "x" }, { priority: "tinggi" }, { overdue: "ya" }, { limit: "0" }, { sort: "due_at" }]) {
+    const invalid: Record<string, string>[] = [
+      { status: "x" },
+      { priority: "tinggi" },
+      { overdue: "ya" },
+      { limit: "0" },
+      { sort: "due_at" },
+    ];
+    for (const query of invalid) {
       const bad = await api().get("/admin/reports", { token: admin.token, query });
       expect(bad.statusCode, JSON.stringify(query)).toBe(400);
     }
 
     // Laporan yang diputus keluar dari antrean bawaan, tampil di status dismissed/all.
     const version = await reportVersion(t.app, admin.token, r1);
-    const dismissed = await resolveReport(t.app, admin.token, r1, version, { action: "dismiss", note: "Bukan spam." });
+    const dismissed = await resolveReport(t.app, admin.token, r1, version, {
+      action: "dismiss",
+      note: "Bukan spam.",
+    });
     expect(dismissed.statusCode, dismissed.body).toBe(200);
     expect((await queue(admin.token)).items.map((i) => i.id)).toEqual([r2, r3]);
     expect((await queue(admin.token, { status: "dismissed" })).items.map((i) => i.id)).toEqual([r1]);
@@ -196,7 +223,11 @@ describe("GET /admin/reports (PRD 3.12 target penanganan, F-15)", () => {
     const group = await createGroupRoom(t, { name: "Grup Konflik", adminId: reporter.userId });
     await addRoomMember(t, group, linkedMember.userId);
     await addRoomMember(t, group, other.userId);
-    const groupReport = await reportOk(t.app, reporter.token, { target_type: "room", room_id: group, category: "spam" });
+    const groupReport = await reportOk(t.app, reporter.token, {
+      target_type: "room",
+      room_id: group,
+      category: "spam",
+    });
 
     const neutralView = await queue(neutral.token, { status: "all" });
     expect(neutralView.items.map((i) => i.id)).toEqual(expect.arrayContaining([againstLinked, groupReport]));
@@ -213,7 +244,9 @@ describe("GET /admin/reports (PRD 3.12 target penanganan, F-15)", () => {
     expect(await visibility.counts(null)).toEqual(neutralCounts);
     expect((await queue(linked.token, { q: "Pengurus Sebagai" })).total).toBe(0);
     // super_admin tidak dikecualikan dari aturan ini.
-    expect((await queue(linkedSuper.token, { status: "all" })).items.map((i) => i.id)).not.toContain(groupReport);
+    expect((await queue(linkedSuper.token, { status: "all" })).items.map((i) => i.id)).not.toContain(
+      groupReport,
+    );
 
     for (const id of [againstLinked, groupReport]) {
       const detail = await api().get(`/admin/reports/${id}`, { token: linked.token });
@@ -224,7 +257,10 @@ describe("GET /admin/reports (PRD 3.12 target penanganan, F-15)", () => {
         headers: { "if-match": "1" },
       });
       expect(claim.statusCode).toBe(404);
-      const resolve = await resolveReport(t.app, linked.token, id, "1", { action: "dismiss", note: "Ditutup." });
+      const resolve = await resolveReport(t.app, linked.token, id, "1", {
+        action: "dismiss",
+        note: "Ditutup.",
+      });
       expect(resolve.statusCode).toBe(404);
     }
     // 404 konflik kepentingan tanpa audit pembacaan bukti.
@@ -244,24 +280,35 @@ describe("GET /admin/reports (PRD 3.12 target penanganan, F-15)", () => {
     });
     expect(warned.statusCode, warned.body).toBe(200);
     expect((await queue(linked.token, { status: "all" })).items.map((i) => i.id)).toContain(groupReport);
-    expect((await queue(linkedSuper.token, { status: "all" })).items.map((i) => i.id)).not.toContain(groupReport);
+    expect((await queue(linkedSuper.token, { status: "all" })).items.map((i) => i.id)).not.toContain(
+      groupReport,
+    );
   });
 
   it("pengurus yang tertaut ke pelapor: laporan terlihat dengan conflict_of_interest, klaim/keputusan 403", async () => {
     const reporter = await member("Pelapor Pengurus");
     const target = await member("Terlapor Biasa");
     const linkedToReporter = await moderator({ linkedAlumniUserId: reporter.userId });
-    const id = await reportOk(t.app, reporter.token, { target_type: "user", target_user_id: target.userId, category: "scam" });
+    const id = await reportOk(t.app, reporter.token, {
+      target_type: "user",
+      target_user_id: target.userId,
+      category: "scam",
+    });
     expect((await queue(linkedToReporter.token)).items.map((i) => i.id)).toContain(id);
     const detail = await api().get(`/admin/reports/${id}`, { token: linkedToReporter.token });
-    expect(expectOperation("get", "/admin/reports/{reportId}", detail)).toMatchObject({ conflict_of_interest: true });
+    expect(expectOperation("get", "/admin/reports/{reportId}", detail)).toMatchObject({
+      conflict_of_interest: true,
+    });
     const claim = await api().post(`/admin/reports/${id}/claim`, undefined, {
       token: linkedToReporter.token,
       headers: { "if-match": "1" },
     });
     expect(claim.statusCode).toBe(403);
     expectOperation("post", "/admin/reports/{reportId}/claim", claim);
-    const resolve = await resolveReport(t.app, linkedToReporter.token, id, "1", { action: "dismiss", note: "Tutup." });
+    const resolve = await resolveReport(t.app, linkedToReporter.token, id, "1", {
+      action: "dismiss",
+      note: "Tutup.",
+    });
     expect(resolve.statusCode).toBe(403);
   });
 

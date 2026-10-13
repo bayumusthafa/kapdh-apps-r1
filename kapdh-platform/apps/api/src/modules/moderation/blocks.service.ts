@@ -98,8 +98,7 @@ export class BlocksService {
    * direct keduanya bila ada. Pihak yang diblokir tidak diberi tahu.
    */
   async block(auth: AuthContext, targetUserId: string): Promise<BlockedMember> {
-    if (targetUserId === auth.userId)
-      throw fieldError("userId", "Anda tidak dapat memblokir akun sendiri.");
+    if (targetUserId === auth.userId) throw fieldError("userId", "Anda tidak dapat memblokir akun sendiri.");
     const row = await this.withRetry((tx) => this.blockInTx(tx, auth.userId, targetUserId));
     return {
       user_id: targetUserId,
