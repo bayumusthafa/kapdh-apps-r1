@@ -402,6 +402,35 @@ describe("AC F10-1: pencarian nama, angkatan, kelas, kota dan filter master", ()
     }
   });
 
+  it("AC F10-1, PRD 5.2: karakter kontrol (NUL) pada q/city dan cursor palsu → 400 VALIDATION_ERROR, bukan 500", async () => {
+    const caller = await viewer();
+    const forged = (position: Json) =>
+      Buffer.from(JSON.stringify({ v: 1, p: position }), "utf8").toString("base64url");
+    const cases: [Record<string, string>, string][] = [
+      [{ q: "ab\u0000cd" }, "q"],
+      [{ q: "Ahmad\u0007Fauzi" }, "q"],
+      [{ city: "ab\u0000" }, "city"],
+      [{ city: "Kota\u001bUji" }, "city"],
+      [{ cursor: forged({ s: "name_asc", n: "a\u0000b", id: uuidv7() }) }, "cursor"],
+      [
+        { sort: "cohort_desc", cursor: forged({ s: "cohort_desc", c: 5, n: "x\u0000", id: uuidv7() }) },
+        "cursor",
+      ],
+    ];
+    for (const [query, field] of cases) {
+      const res = await search(caller.token, query);
+      expect(res.statusCode, JSON.stringify(query)).toBe(400);
+      const body = expectOperation("get", "/directory", res) as Json;
+      expect(body.code).toBe("VALIDATION_ERROR");
+      expect(Object.keys(body.field_errors as Json), JSON.stringify(query)).toContain(field);
+    }
+    // Cursor sah hasil server tetap diterima (nama tanpa karakter kontrol).
+    const ok = await searchOk(caller.token, {
+      cursor: forged({ s: "name_asc", n: "ahmad", id: uuidv7() }),
+    });
+    expect(ok.items).toEqual(expect.any(Array));
+  });
+
   it("AC F10-1: cursor dari urutan lain ditolak (tidak pernah dipakai pada urutan berbeda)", async () => {
     const city = uniqueCity();
     const caller = await viewer();

@@ -39,6 +39,23 @@ export function escapeLike(value: string): string {
 }
 
 /**
+ * true bila teks memuat karakter kontrol Unicode (kategori Cc). Input pencarian bebas (q, city) yang memuatnya ditolak
+ * 400 VALIDATION_ERROR (PRD 5.2) dan tidak pernah diteruskan ke SQL: NUL bahkan ditolak PostgreSQL pada tipe text
+ * (SQLSTATE 22021) sehingga tanpa pemeriksaan ini permintaan biasa berakhir 500.
+ */
+export function hasControlChar(value: string): boolean {
+  return /\p{Cc}/u.test(value);
+}
+
+/**
+ * true bila teks memuat NUL. Dipakai untuk isi cursor: nama/label tersimpan tidak mungkin memuat NUL (PostgreSQL
+ * menolaknya), sehingga cursor ber-NUL pasti dimanipulasi dan menjadi 400 field `cursor`, bukan 500 dari database.
+ */
+export function hasNul(value: string): boolean {
+  return value.includes("\u0000");
+}
+
+/**
  * Anggota TAMPIL di direktori (PRD 3.10, 2.2; AC F10-1, F12-4): akun users.status=active, tidak suspended, masa aktif
  * belum habis (verified atau expiring: expires_at > now), dan pemilik mengizinkan tampil (show_in_directory).
  * Dipakai untuk daftar, profil anggota lain, dan kebijakan baca avatar sehingga ketiganya tidak pernah berbeda.
