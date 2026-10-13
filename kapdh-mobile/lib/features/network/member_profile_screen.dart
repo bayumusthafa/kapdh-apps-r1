@@ -45,7 +45,8 @@ enum SocialNetwork {
       return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty ? uri : null;
     }
     final handle = trimmed.startsWith('@') ? trimmed.substring(1) : trimmed;
-    if (handle.isEmpty || handle.contains(RegExp(r'[\s/?#]'))) return null;
+    // Hanya nama pengguna sederhana; nilai lain (mis. skema berbahaya) tidak dijadikan tautan.
+    if (!RegExp(r'^[A-Za-z0-9._-]{1,100}$').hasMatch(handle)) return null;
     return Uri.parse('$baseUrl${Uri.encodeComponent(handle)}');
   }
 }

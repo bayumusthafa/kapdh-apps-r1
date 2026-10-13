@@ -135,89 +135,95 @@ class _DirectoryFilterSheetState extends ConsumerState<DirectoryFilterSheet> {
         padding: EdgeInsets.only(bottom: bottomInset),
         child: Form(
           key: _formKey,
-          child: ListView(
-            shrinkWrap: true,
+          child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, 0, KapdhSpace.s5, KapdhSpace.s5),
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Semantics(
-                      header: true,
-                      child: const Text(
-                        'Filter Alumni',
-                        style: TextStyle(fontSize: KapdhFontSize.h3, fontWeight: FontWeight.w600),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Semantics(
+                        header: true,
+                        child: const Text(
+                          'Filter Alumni',
+                          style: TextStyle(fontSize: KapdhFontSize.h3, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
-                  ),
-                  TextButton(onPressed: _reset, child: const Text('Atur ulang')),
-                ],
-              ),
-              const SizedBox(height: KapdhSpace.s3),
-              KapdhTextField(
-                label: 'Angkatan',
-                controller: _cohort,
-                hint: 'Contoh: 29',
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(2)],
-                validator: _validateCohort,
-              ),
-              const SizedBox(height: KapdhSpace.s4),
-              KapdhDropdownField<int>(
-                label: 'Kelas',
-                value: _classLevel ?? 0,
-                items: [
-                  const DropdownMenuItem<int>(value: 0, child: Text('Semua')),
-                  for (var level = 1; level <= 6; level++)
-                    DropdownMenuItem<int>(value: level, child: Text(classLabel(level))),
-                ],
-                onChanged: (value) => setState(() => _classLevel = value == null || value == 0 ? null : value),
-              ),
-              const SizedBox(height: KapdhSpace.s4),
-              KapdhTextField(
-                label: 'Kota',
-                controller: _city,
-                hint: 'Contoh: Pekanbaru',
-                textCapitalization: TextCapitalization.words,
-                inputFormatters: [LengthLimitingTextInputFormatter(80)],
-              ),
-              const SizedBox(height: KapdhSpace.s4),
-              _masterField(
-                label: 'Profesi',
-                kind: MasterKind.professions,
-                selected: _profession,
-                onChanged: (value) => setState(() => _profession = value),
-              ),
-              const SizedBox(height: KapdhSpace.s4),
-              _masterField(
-                label: 'Keahlian',
-                kind: MasterKind.skills,
-                selected: _skill,
-                onChanged: (value) => setState(() => _skill = value),
-              ),
-              const SizedBox(height: KapdhSpace.s4),
-              const Text('Urutkan', style: TextStyle(fontSize: KapdhFontSize.label, fontWeight: FontWeight.w500)),
-              RadioGroup<DirectorySort>(
-                groupValue: _sort,
-                onChanged: (value) => setState(() => _sort = value ?? DirectorySort.nameAsc),
-                child: const Column(
-                  children: [
-                    RadioListTile<DirectorySort>(
-                      value: DirectorySort.nameAsc,
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('Nama A–Z'),
-                    ),
-                    RadioListTile<DirectorySort>(
-                      value: DirectorySort.cohortDesc,
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('Angkatan terbaru'),
-                    ),
+                    TextButton(onPressed: _reset, child: const Text('Atur ulang')),
                   ],
                 ),
-              ),
-              const SizedBox(height: KapdhSpace.s4),
-              KapdhButton(label: 'Terapkan', icon: Icons.check, onPressed: _apply),
-            ],
+                const SizedBox(height: KapdhSpace.s3),
+                KapdhTextField(
+                  label: 'Angkatan',
+                  controller: _cohort,
+                  hint: 'Contoh: 29',
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(2)],
+                  validator: _validateCohort,
+                ),
+                const SizedBox(height: KapdhSpace.s4),
+                KapdhDropdownField<int>(
+                  label: 'Kelas',
+                  value: _classLevel ?? 0,
+                  items: [
+                    const DropdownMenuItem<int>(value: 0, child: Text('Semua')),
+                    for (var level = 1; level <= 6; level++)
+                      DropdownMenuItem<int>(value: level, child: Text(classLabel(level))),
+                  ],
+                  onChanged: (value) => setState(() => _classLevel = value == null || value == 0 ? null : value),
+                ),
+                const SizedBox(height: KapdhSpace.s4),
+                KapdhTextField(
+                  label: 'Kota',
+                  controller: _city,
+                  hint: 'Contoh: Pekanbaru',
+                  textCapitalization: TextCapitalization.words,
+                  inputFormatters: [LengthLimitingTextInputFormatter(80)],
+                ),
+                const SizedBox(height: KapdhSpace.s4),
+                _masterField(
+                  label: 'Profesi',
+                  kind: MasterKind.professions,
+                  selected: _profession,
+                  onChanged: (value) => setState(() => _profession = value),
+                ),
+                const SizedBox(height: KapdhSpace.s4),
+                _masterField(
+                  label: 'Keahlian',
+                  kind: MasterKind.skills,
+                  selected: _skill,
+                  onChanged: (value) => setState(() => _skill = value),
+                ),
+                const SizedBox(height: KapdhSpace.s4),
+                const Text(
+                  'Urutkan',
+                  style: TextStyle(fontSize: KapdhFontSize.label, fontWeight: FontWeight.w500),
+                ),
+                RadioGroup<DirectorySort>(
+                  groupValue: _sort,
+                  onChanged: (value) => setState(() => _sort = value ?? DirectorySort.nameAsc),
+                  child: const Column(
+                    children: [
+                      RadioListTile<DirectorySort>(
+                        value: DirectorySort.nameAsc,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('Nama A–Z'),
+                      ),
+                      RadioListTile<DirectorySort>(
+                        value: DirectorySort.cohortDesc,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('Angkatan terbaru'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: KapdhSpace.s4),
+                KapdhButton(label: 'Terapkan', icon: Icons.check, onPressed: _apply),
+              ],
+            ),
           ),
         ),
       ),
