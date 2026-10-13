@@ -20,7 +20,7 @@ export interface PushMessage {
 /**
  * Kelas galat FCM (ARCHITECTURE §4.8 `notifications.deliver`): `unregistered`/`sender_mismatch` (dan
  * `invalid_argument` untuk token tidak sah) menonaktifkan token, `quota_exceeded`/`unavailable`/`internal`/`network`
- * dicoba ulang, sisanya permanen untuk pesan ini.
+ * (dan `auth_error` karena token akses OAuth kedaluwarsa/gagal ditukar) dicoba ulang, sisanya permanen untuk pesan ini.
  */
 export type PushErrorClass =
   | "unregistered"
@@ -92,11 +92,15 @@ export function classifyFcmError(
     case "INTERNAL":
       return fail("internal", true);
     case "THIRD_PARTY_AUTH_ERROR":
+      // Kredensial APNs/pihak ketiga salah: perlu perbaikan konfigurasi oleh operator.
       return fail("auth_error", false);
   }
   if (httpStatus === 404) return fail("unregistered", false, true);
   if (httpStatus === 429) return fail("quota_exceeded", true);
-  if (httpStatus === 401 || httpStatus === 403) return fail("auth_error", false);
+  // 401 UNAUTHENTICATED: token akses OAuth ditolak (kedaluwarsa/dicabut). Pengirim membuang token cache sehingga
+  // percobaan berikutnya menukar token baru; dicoba ulang dengan backoff, bukan langsung gagal (F-13).
+  if (httpStatus === 401) return fail("auth_error", true);
+  if (httpStatus === 403) return fail("auth_error", false);
   if (httpStatus >= 500) return fail("unavailable", true);
   return fail("invalid_argument", false, options.invalidToken === true);
 }

@@ -61,6 +61,7 @@ describe("Klasifikasi galat FCM (AC F13-4, R5)", () => {
     ["internal", true, false, "INTERNAL", "retry", false],
     ["network", true, false, "NETWORK", "retry", false],
     ["auth_error", false, false, "AUTH_ERROR", "failed", false],
+    ["auth_error", true, false, "AUTH_ERROR", "retry", false],
   ] as const)(
     "AC F13-4: %s (retryable=%s, nonaktifkan=%s) → %s / %s",
     (errorClass, retryable, deactivateToken, expectedClass, kind, revoke) => {

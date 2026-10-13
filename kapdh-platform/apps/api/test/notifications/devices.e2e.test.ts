@@ -2,6 +2,7 @@ import { deviceTokens, sessions } from "@kapdh/database";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { deliveryBackoffMs } from "../../src/modules/notifications/delivery-policy.js";
+import { DevicesService } from "../../src/modules/notifications/devices.service.js";
 import { expectOperation } from "../support/contract.js";
 import { createAdmin, createAlumni, signInAdmin, signInAlumni } from "../support/factories.js";
 import { httpClient } from "../support/http.js";
@@ -217,6 +218,77 @@ describe("AC F13-5: keluar atau berganti akun", () => {
     expect((await tokenRow(t, phone))!.revokedAt).toBeNull();
     expect((await api().post("/auth/logout-all", {}, { token: m.accessToken })).statusCode).toBe(204);
     expect((await tokenRow(t, phone))!.revokedAt).not.toBeNull();
+  });
+
+  it("AC F13-5: sesi berakhir tanpa logout (kedaluwarsa) → job notifications.device-sweep mencabut tokennya dan membatalkan push pending; keluarga sesi aktif tidak tersentuh", async () => {
+    expect(t.jobs.registry.scheduledJob("notifications.device-sweep")?.everyMs).toBe(3_600_000);
+    const m = await member();
+    const phone = fcmToken("ponsel-lama");
+    const tablet = fcmToken("tablet-aktif");
+    const orphan = fcmToken("tanpa-sesi");
+    await registerDeviceOk(t, m.accessToken, phone);
+    const second = await signInAlumni(t, m);
+    await registerDeviceOk(t, second.accessToken, tablet);
+    const third = await signInAlumni(t, m);
+    await registerDeviceOk(t, third.accessToken, orphan);
+    // Baris sesi lama dibersihkan sehingga token tidak lagi terikat keluarga mana pun (FK ON DELETE SET NULL).
+    await t.db.update(deviceTokens).set({ sessionId: null }).where(eq(deviceTokens.token, orphan));
+    holdNextPush(phone);
+    const waiting = await notify(t, m.userId, { category: "event", route: "/events" });
+    await t.jobs.drainOutbox();
+    expect(
+      (await deliveriesOf(t, waiting.id)).filter((r) => r.channel === "push").map((r) => r.status),
+    ).toEqual(expect.arrayContaining(["pending", "sent"]));
+
+    // Refresh token keluarga ponsel kedaluwarsa (60 hari tanpa membuka aplikasi), tanpa logout.
+    const phoneRow = await tokenRow(t, phone);
+    const [phoneSession] = await t.db.select().from(sessions).where(eq(sessions.id, phoneRow!.sessionId!));
+    await t.db
+      .update(sessions)
+      .set({ expiresAt: new Date(t.clock.now().getTime() - 1000) })
+      .where(eq(sessions.familyId, phoneSession!.familyId));
+    // Sebelum sapuan pun sesi yang berakhir tidak dapat mendaftarkan token lagi.
+    expect((await registerDevice(t, m.accessToken, phone)).statusCode).toBe(401);
+
+    await t.jobs.runScheduled("notifications.device-sweep");
+    expect((await tokenRow(t, phone))!.revokedAt).toEqual(t.clock.now());
+    expect((await tokenRow(t, orphan))!.revokedAt).toEqual(t.clock.now());
+    expect((await tokenRow(t, tablet))!.revokedAt).toBeNull();
+    const phonePush = (await deliveriesOf(t, waiting.id)).find((r) => r.deviceTokenId === phoneRow!.id);
+    expect(phonePush).toMatchObject({ status: "cancelled", errorClass: "token_revoked" });
+
+    // Notifikasi berikutnya hanya ke perangkat dengan sesi aktif; sapuan ulang tidak mengubah apa pun.
+    const next = await notify(t, m.userId, { category: "event", route: "/events" });
+    await t.jobs.drainOutbox();
+    const tabletRow = await tokenRow(t, tablet);
+    expect(
+      (await deliveriesOf(t, next.id)).filter((r) => r.channel === "push").map((r) => r.deviceTokenId),
+    ).toEqual([tabletRow!.id]);
+    expect(await t.app.get(DevicesService).revokeEndedSessionTokens()).toBe(0);
+  });
+
+  it("AC F13-5: sapuan tidak mencabut token yang didaftarkan ulang ke sesi baru setelah dipilih sebagai kandidat", async () => {
+    const devices = t.app.get(DevicesService);
+    const m = await member();
+    const token = fcmToken("login-ulang");
+    await registerDeviceOk(t, m.accessToken, token);
+    const row = await tokenRow(t, token);
+    const [session] = await t.db.select().from(sessions).where(eq(sessions.id, row!.sessionId!));
+    await t.db
+      .update(sessions)
+      .set({ expiresAt: new Date(t.clock.now().getTime() - 1000) })
+      .where(eq(sessions.familyId, session!.familyId));
+    const candidates = (await devices.findEndedSessionTokens(t.clock.now(), 1000)).filter(
+      (c) => c.id === row!.id,
+    );
+    expect(candidates).toEqual([{ id: row!.id, sessionId: row!.sessionId }]);
+
+    // Bersamaan: anggota masuk lagi dan aplikasi mendaftarkan token yang sama ke keluarga sesi baru.
+    const relogin = await signInAlumni(t, m);
+    await registerDeviceOk(t, relogin.accessToken, token);
+    expect(await devices.revokeUnchangedTokens(candidates, t.clock.now())).toBe(0);
+    expect(await tokenRow(t, token)).toMatchObject({ revokedAt: null, userId: m.userId });
+    expect((await tokenRow(t, token))!.sessionId).not.toBe(row!.sessionId);
   });
 });
 
