@@ -12,7 +12,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../../core/adapters/clock.js";
 import { AuditService } from "../../core/audit/audit.service.js";
-import { ctx } from "../../core/context/request-context.js";
+import { ctx, SYSTEM_ACTOR } from "../../core/context/request-context.js";
 import type { DbOrTx, Tx } from "../../core/db/types.js";
 import { AppException, fieldError, notFound } from "../../core/errors/app-exception.js";
 import { formatDateWib } from "../../core/membership/format.js";
@@ -393,7 +393,14 @@ export class PaymentLedger {
   async cancel(
     tx: Tx,
     locked: PaymentRow,
-    input: { reason: string; at: Date; callHandler: boolean; auditAction?: string },
+    input: {
+      reason: string;
+      at: Date;
+      callHandler: boolean;
+      auditAction?: string;
+      /** true: aktor histori dan audit = system (mis. hold tiket habis), walau dipicu request anggota. */
+      system?: boolean;
+    },
   ): Promise<PaymentRow> {
     const [cancelled] = await tx
       .update(payments)
@@ -414,12 +421,19 @@ export class PaymentLedger {
       )
       .returning();
     if (!cancelled) throw new Error("Payment terkunci berubah di tengah transaksi");
-    await this.insertEvent(tx, { paymentId: cancelled.id, kind: "cancelled", at: input.at, reason: input.reason });
+    await this.insertEvent(tx, {
+      paymentId: cancelled.id,
+      kind: "cancelled",
+      at: input.at,
+      reason: input.reason,
+      actor: input.system ? { actorUserId: null, actorAdminId: null } : undefined,
+    });
     if (input.callHandler) await this.registry.handlerFor(cancelled.type).onCancelled?.(tx, cancelled);
     await this.audit.write(tx, {
       action: input.auditAction ?? "payment.cancelled",
       entityType: "payment",
       entityId: cancelled.id,
+      ...(input.system ? { actor: SYSTEM_ACTOR } : {}),
       reason: input.reason,
       before: { status: locked.status, version: locked.version },
       after: { status: cancelled.status, version: cancelled.version, cancelled_at: input.at },

@@ -113,12 +113,18 @@ export class PaymentsKernel implements OnModuleInit {
   /**
    * Membatalkan payment tiket yang belum berbukti saat tiketnya berakhir (hold habis, batal mandiri, pengurus
    * membatalkan tiket, event dibatalkan, akun dihapus): status cancelled, `cancelled_at`, `cancel_reason`, histori
-   * `cancelled` dengan aktor dari konteks (job = system) dan audit, tepat sekali (UPDATE bersyarat). Payment pending
+   * `cancelled` dengan aktor dari konteks (job = system; `{system: true}` memaksa aktor system, mis. hold habis yang
+   * dikedaluwarsakan request kirim bukti anggota) dan audit, tepat sekali (UPDATE bersyarat). Payment pending
    * berbukti dibiarkan (`kept_with_proof`) karena dana mungkin sudah ditransfer dan wajib diputus pengurus (kontrak
    * C3/C5). Handler tiket TIDAK dipanggil (pembatalan berasal dari domain tiket) dan tidak ada notifikasi payment;
    * modul events memberi tahu peserta. Pemanggil memegang kunci event lalu tiket.
    */
-  async cancelForTicket(tx: Tx, ticketId: string, reason: string): Promise<CancelForTicketResult> {
+  async cancelForTicket(
+    tx: Tx,
+    ticketId: string,
+    reason: string,
+    options: { system?: boolean } = {},
+  ): Promise<CancelForTicketResult> {
     assertCommitAware(tx, "PaymentsKernel.cancelForTicket");
     if (reason.trim().length === 0) throw new Error("Alasan pembatalan payment wajib diisi");
     const [locked] = await tx.select().from(payments).where(eq(payments.ticketId, ticketId)).for("update");
@@ -129,6 +135,7 @@ export class PaymentsKernel implements OnModuleInit {
       reason: reason.trim(),
       at: this.ledger.now(),
       callHandler: false,
+      system: options.system,
     });
     return { outcome: "cancelled", payment };
   }

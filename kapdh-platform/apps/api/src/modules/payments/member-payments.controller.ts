@@ -15,7 +15,7 @@ import {
   refundDestinationSchema,
   submitProofSchema,
 } from "./member-payments.service.js";
-import { PUBLIC_METHOD_PATHS } from "./payment-views.js";
+import { PUBLIC_PAYMENT_PATHS } from "./payment-views.js";
 
 type Schemas = components["schemas"];
 
@@ -62,7 +62,7 @@ export class MemberPaymentsController {
   @HttpCode(201)
   @Audience("mobile")
   @MemberAccess("nonsuspended")
-  @Idempotent({ publicResponsePaths: PUBLIC_METHOD_PATHS })
+  @Idempotent({ publicResponsePaths: PUBLIC_PAYMENT_PATHS })
   async create(
     @CurrentAuth() auth: AuthContext,
     @Body() body: unknown,
@@ -102,7 +102,7 @@ export class MemberPaymentsController {
   @HttpCode(200)
   @Audience("mobile")
   @MemberAccess("nonsuspended")
-  @Idempotent({ publicResponsePaths: PUBLIC_METHOD_PATHS })
+  @Idempotent({ publicResponsePaths: PUBLIC_PAYMENT_PATHS })
   submitProof(
     @CurrentAuth() auth: AuthContext,
     @Param("paymentId", UuidParam) paymentId: string,
@@ -115,7 +115,7 @@ export class MemberPaymentsController {
   @HttpCode(200)
   @Audience("mobile")
   @MemberAccess("nonsuspended")
-  @Idempotent({ publicResponsePaths: PUBLIC_METHOD_PATHS })
+  @Idempotent({ publicResponsePaths: PUBLIC_PAYMENT_PATHS })
   cancel(
     @CurrentAuth() auth: AuthContext,
     @Param("paymentId", UuidParam) paymentId: string,

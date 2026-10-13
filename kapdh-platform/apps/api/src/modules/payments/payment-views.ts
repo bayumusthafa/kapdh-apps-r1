@@ -591,5 +591,8 @@ export function redactRefundDestinations(body: unknown): unknown {
   );
 }
 
-/** Path rekening ORGANISASI (bukan rahasia) pada respons pembayaran untuk @Idempotent (D13). */
-export const PUBLIC_METHOD_PATHS = ["method.account_number"] as const;
+/**
+ * Path respons pembayaran yang namanya cocok daftar kunci sensitif audit tetapi BUKAN rahasia, untuk @Idempotent:
+ * rekening ORGANISASI tujuan transfer (D13) dan kode baris iuran (PaymentLineCode, mis. registration_fee).
+ */
+export const PUBLIC_PAYMENT_PATHS = ["method.account_number", "lines.*.code"] as const;
