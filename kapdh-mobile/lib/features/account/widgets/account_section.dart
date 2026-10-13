@@ -72,6 +72,7 @@ class AccountMenuTile extends StatelessWidget {
     this.badge,
     this.danger = false,
     this.locked = false,
+    this.paused = false,
   });
 
   final IconData icon;
@@ -84,12 +85,23 @@ class AccountMenuTile extends StatelessWidget {
 
   /// Belum tersedia untuk status akun saat ini; tetap terlihat dengan gembok dan penjelasan saat diketuk.
   final bool locked;
+
+  /// Ditahan mode baca maintenance (PRD 4.5), bukan karena status akun: keterangan dan ikon pemeliharaan
+  /// menggantikan gembok.
+  final bool paused;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final color = danger ? KapdhColors.danger : KapdhColors.primary;
-    final semantics = [label, ?subtitle, if (badge != null) '$badge belum dibaca', if (locked) 'terkunci'].join(', ');
+    final subtitle = paused ? 'Ditunda selama pemeliharaan' : this.subtitle;
+    final muted = locked || paused;
+    final semantics = [
+      label,
+      ?subtitle,
+      if (badge != null) '$badge belum dibaca',
+      if (locked && !paused) 'terkunci',
+    ].join(', ');
     return Semantics(
       button: true,
       label: semantics,
@@ -102,7 +114,7 @@ class AccountMenuTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s3),
             child: Row(
               children: [
-                Icon(icon, size: 22, color: locked ? KapdhColors.textMuted : color),
+                Icon(icon, size: 22, color: muted ? KapdhColors.textMuted : color),
                 const SizedBox(width: KapdhSpace.s3),
                 Expanded(
                   child: Column(
@@ -119,7 +131,7 @@ class AccountMenuTile extends StatelessWidget {
                       ),
                       if (subtitle != null)
                         Text(
-                          subtitle!,
+                          subtitle,
                           style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
                         ),
                     ],
@@ -143,7 +155,15 @@ class AccountMenuTile extends StatelessWidget {
                     ),
                   ),
                 const SizedBox(width: KapdhSpace.s2),
-                Icon(locked ? Icons.lock_outline : Icons.chevron_right, size: 20, color: KapdhColors.textMuted),
+                Icon(
+                  paused
+                      ? Icons.build_outlined
+                      : locked
+                      ? Icons.lock_outline
+                      : Icons.chevron_right,
+                  size: 20,
+                  color: KapdhColors.textMuted,
+                ),
               ],
             ),
           ),

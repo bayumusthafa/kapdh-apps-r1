@@ -4,11 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/redirect.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/api/error_presenter.dart';
+import '../../core/app_gate/app_gate.dart';
 import '../../core/format/formatters.dart';
+import '../../core/session/session_controller.dart';
 import '../../design/design.dart';
 import 'notification_presentation.dart';
 import 'notification_unread_count.dart';
@@ -172,7 +175,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       }
       return;
     }
-    openNotificationTarget(context, target);
+    // Tujuan yang tidak diizinkan status saat ini (mis. anggota suspended, AC F13-3) dibuka dengan `go`, sehingga
+    // redirect mengganti lokasi dengan rute awal status alih-alih menumpuknya di atas kotak masuk.
+    final allowed = isLocationAllowed(
+      RedirectState(gate: ref.read(appGateProvider).status, session: ref.read(sessionProvider)),
+      target.hasQuery ? '${target.path}?${target.query}' : target.path,
+    );
+    openNotificationTarget(context, target, replace: !allowed);
   }
 
   Future<void> _markAll() async {

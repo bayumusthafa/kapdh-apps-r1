@@ -83,11 +83,34 @@ void main() {
     expect(find.bySemanticsLabel('Huruf besar, belum terpenuhi'), findsOneWidget);
     expect(find.bySemanticsLabel('Simbol, belum terpenuhi'), findsOneWidget);
     expect(app.adapter.requests.where((r) => r.path == '/auth/password/change'), isEmpty);
+  });
 
-    await tester.enterText(input('new'), 'Lama#2026');
-    await tester.enterText(input('confirm'), 'Lama#2026');
-    await tester.pump();
-    expect(find.text('Password baru harus berbeda dari password saat ini'), findsOneWidget);
+  testWidgets('AC F02-4 PRD 2.1: kebijakan di luar PRD 2.5 milik server; klien tidak menambah aturan sendiri', (
+    tester,
+  ) async {
+    final app = await openPassword(
+      tester,
+      change: (_) => FakeResponse.json(
+        400,
+        errorJson(
+          'VALIDATION_ERROR',
+          'Periksa kembali isian yang ditandai.',
+          fieldErrors: {
+            'new_password': ['Password baru ditolak kebijakan server.'],
+          },
+        ),
+      ),
+    );
+    // Password baru sama dengan password saat ini memenuhi PRD 2.5: klien tetap mengirim, server yang memutuskan.
+    await fill(tester, current: 'Lama#2026', next: 'Lama#2026');
+    expect(find.text('Password baru harus berbeda dari password saat ini'), findsNothing);
+    await submit(tester);
+    expectLastBody(app.adapter, '/auth/password/change', {
+      'current_password': 'Lama#2026',
+      'new_password': 'Lama#2026',
+    });
+    expect(find.text('Password baru ditolak kebijakan server.'), findsOneWidget);
+    expect(app.location, '/account/password');
   });
 
   testWidgets('PRD 2.5: batas kegagalan (429) menampilkan hitung mundur pada tombol', (tester) async {

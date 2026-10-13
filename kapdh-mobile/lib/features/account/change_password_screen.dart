@@ -58,16 +58,13 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     return _confirm.text == _next.text ? null : 'Password baru tidak sama';
   }
 
-  String? get _sameProblem => _next.text.isNotEmpty && _next.text == _current.text
-      ? 'Password baru harus berbeda dari password saat ini'
-      : null;
-
+  /// Hanya aturan PRD 2.5 dan konfirmasi yang diperiksa di perangkat; kebijakan lain milik server (PRD 2.1) dan
+  /// ditampilkan dari `field_errors.new_password`.
   bool get _canSubmit =>
       !_busy &&
       _current.text.isNotEmpty &&
       checkPassword(_next.text).valid &&
       _confirm.text == _next.text &&
-      _sameProblem == null &&
       _blockedFor == Duration.zero;
 
   Future<void> _submit() async {
@@ -170,7 +167,6 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               trailingTextColor: counter.problem ? KapdhColors.danger : KapdhColors.textMuted,
               errorText:
                   _fieldError('new_password') ??
-                  _sameProblem ??
                   (_submitted && !check.valid ? 'Belum memenuhi aturan password' : null),
               onChanged: (_) => setState(() {}),
             ),

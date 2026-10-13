@@ -135,8 +135,10 @@ const Map<EffectiveStatus, Set<RouteGroup>> _allowed = {
   // Riwayat sendiri, kartu kedaluwarsa, perpanjangan, pengaturan akun, hapus akun; tiket yang sudah paid sebelum
   // kedaluwarsa tetap dapat dilihat dan dipakai. Ditolak: pemesanan baru, direktori, chat.
   EffectiveStatus.expired: {..._memberBase, RouteGroup.renewal, RouteGroup.tickets},
-  // Portal pembatasan, bantuan (legal) dan penghapusan setelah verifikasi identitas.
-  EffectiveStatus.suspended: {RouteGroup.restricted, RouteGroup.accountDelete},
+  // Portal pembatasan, bantuan (legal), penghapusan setelah verifikasi identitas, dan kotak masuk resmi: kontrak C7
+  // memberi semua operasi notifikasi member_access `any` agar anggota suspended tetap dapat membaca notifikasi
+  // keamanan dan pengurus (AC F13-2). Tujuan deep link notifikasi tetap melewati matriks ini.
+  EffectiveStatus.suspended: {RouteGroup.restricted, RouteGroup.accountDelete, RouteGroup.notifications},
   // Pemeriksaan status penghapusan/pemulihan dengan challenge terbatas.
   EffectiveStatus.disabled: {RouteGroup.deletionStatus},
   EffectiveStatus.deletionPending: {RouteGroup.deletionStatus},
