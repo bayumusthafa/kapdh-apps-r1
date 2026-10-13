@@ -7,6 +7,7 @@ import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
 import type { Clock } from "../../core/adapters/clock.js";
 import { AuditService } from "../../core/audit/audit.service.js";
+import { SYSTEM_ACTOR } from "../../core/context/request-context.js";
 import type { Db, Tx } from "../../core/db/types.js";
 import { AppException, fieldError, forbidden, notFound } from "../../core/errors/app-exception.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
@@ -17,6 +18,7 @@ import { dueAtFor, priorityFor } from "./due-at.js";
 import { buildEvidence, parseEvidence, type StoredEvidence, type StoredEvidenceMessage } from "./evidence.js";
 import { toMemberReport } from "./member-report.js";
 import { ACTIVE_REPORT_STATUSES } from "./moderation-visibility.js";
+import { everJoinedRoom } from "./room-membership.js";
 
 type ModerationReport = components["schemas"]["ModerationReport"];
 type ModerationReportPage = components["schemas"]["ModerationReportPage"];
@@ -26,9 +28,6 @@ type InputCategory = components["schemas"]["ModerationReportInputCategory"];
 export const REPORT_RATE = { limit: 10, windowMs: 3600_000 } as const;
 /** Laju banding per pemohon (kontrak createAppeal 429; banding baru boleh setelah ditolak). */
 export const APPEAL_RATE = { limit: 5, windowMs: 24 * 3600_000 } as const;
-
-/** Keanggotaan room yang menandakan "pernah berada di room yang sama" (kontrak createReport target user). */
-const EVER_IN_ROOM = ["joined", "left", "removed"] as const;
 
 export type CreateReportInput =
   | {
@@ -231,7 +230,8 @@ export class ReportsService {
 
   /**
    * Target pengguna: akun alumni lain yang terlihat di direktori bagi pelapor (verified/expiring, tidak suspended,
-   * show_in_directory) ATAU pernah berada di room yang sama dengan pelapor; selain itu 404. Blokir dari pihak mana pun
+   * show_in_directory) ATAU pernah berada di room yang sama dengan pelapor (keduanya pernah bergabung; undangan yang
+   * dibatalkan sebelum diterima tidak dihitung, everJoinedRoom); selain itu 404. Blokir dari pihak mana pun
    * tidak memengaruhi hasil sehingga laporan tidak mengungkap blokir (N-09). Bukti: profil publik minimum.
    */
   private async userTarget(tx: Tx, reporterId: string, targetUserId: string, now: Date) {
@@ -294,8 +294,8 @@ export class ReportsService {
       .where(
         and(
           eq(roomMembers.userId, a),
-          inArray(roomMembers.status, [...EVER_IN_ROOM]),
-          inArray(other.status, [...EVER_IN_ROOM]),
+          everJoinedRoom(roomMembers.status, roomMembers.joinedAt),
+          everJoinedRoom(other.status, other.joinedAt),
         ),
       )
       .limit(1);
@@ -568,7 +568,8 @@ export class ReportsService {
    * Jaring pengaman banding usang (kontrak createAppeal): suspend yang dibanding sudah dicabut lewat jalur yang tidak
    * menutup bandingnya, lalu pemohon disuspend lagi. Banding lama ditutup sebagai dikabulkan oleh sistem (outcome
    * action_taken) tanpa perubahan keanggotaan; tidak ada notifikasi tambahan karena pemohon sedang mengajukan banding
-   * baru atas suspend yang berlaku.
+   * baru atas suspend yang berlaku. Audit keputusan memakai aktor SYSTEM (AC F12-3, F17-1: aktor keputusan dicatat
+   * dengan benar): penutupan ini bukan keputusan pemohon, walaupun dipicu permintaannya (request_id tetap dari request).
    */
   private async closeStaleAppeal(
     tx: Tx,
@@ -596,6 +597,7 @@ export class ReportsService {
       entityType: "report",
       entityId: appeal.id,
       reason: note,
+      actor: SYSTEM_ACTOR,
       before: { status: appeal.status, version: appeal.version },
       after: {
         status: "resolved",
@@ -604,6 +606,8 @@ export class ReportsService {
         version: closed.version,
         stale_appeal: true,
         membership_unchanged: true,
+        closed_by: "system",
+        trigger: "appeal_created",
       },
     });
   }

@@ -305,6 +305,70 @@ describe("POST /admin/reports/{reportId}/claim", () => {
     expect(afterDecision.statusCode).toBe(409);
     expect(afterDecision.json().current).toMatchObject({ status: "dismissed" });
   });
+
+  it("AC F17-1: setiap respons klaim (termasuk klaim ulang idempoten) dan keputusan yang memuat bukti tercatat sebagai pembacaan bukti", async () => {
+    const admin = await moderator({ name: "Moderator Audit Klaim" });
+    const reporter = await member("Pelapor Audit Klaim");
+    const sender = await member("Pengirim Audit Klaim");
+    const group = await createGroupRoom(t, { adminId: reporter.userId });
+    await addRoomMember(t, group, sender.userId);
+    const image = await uploadTestFile(t, sender.token, "chat_image");
+    const message = await createMessage(t, group, sender.userId, {
+      imageFileId: image.id,
+      body: "ISI RAHASIA BUKTI",
+    });
+    const id = await reportOk(t.app, reporter.token, {
+      target_type: "message",
+      message_id: message,
+      category: "harassment",
+    });
+    const viewed = () => auditsOf(id, "moderation.report_viewed");
+    const claim = () =>
+      api().post(`/admin/reports/${id}/claim`, undefined, {
+        token: admin.token,
+        headers: { "if-match": "1" },
+      });
+
+    const first = await claim();
+    expect(first.statusCode, first.body).toBe(200);
+    expect(await viewed()).toHaveLength(1);
+    const urls: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const again = await claim();
+      expect(again.statusCode, again.body).toBe(200);
+      const shown = (expectOperation("post", "/admin/reports/{reportId}/claim", again) as Detail).evidence
+        .messages[0]!;
+      // Klaim ulang membuka isi bukti dan URL gambar bertanda tangan baru → wajib tercatat setiap kali.
+      expect(shown).toMatchObject({ body: "ISI RAHASIA BUKTI" });
+      urls.push((shown.image as { url: string }).url);
+    }
+    expect(await auditsOf(id, "moderation.report_claimed")).toHaveLength(1);
+    const afterClaims = await viewed();
+    expect(afterClaims).toHaveLength(4);
+    for (const row of afterClaims) {
+      expect(row).toMatchObject({ actorAdminId: admin.adminId, entityType: "report" });
+      expect(row.after).toMatchObject({
+        via: "claim",
+        status: "in_review",
+        evidence_message_ids: [message],
+        evidence_image_file_ids: [image.id],
+      });
+      // Isi bukti dan URL bertanda tangan tidak disalin ke audit.
+      expect(JSON.stringify(row.after)).not.toContain("RAHASIA");
+      for (const url of urls) expect(JSON.stringify(row.after)).not.toContain(url);
+    }
+
+    // Respons keputusan juga memuat bukti → satu pembacaan via resolve.
+    const decided = await resolveReport(t.app, admin.token, id, "2", {
+      action: "dismiss",
+      note: "Tidak terbukti.",
+    });
+    expect(decided.statusCode, decided.body).toBe(200);
+    const viaResolve = (await viewed()).filter((row) => (row.after as { via: string }).via === "resolve");
+    expect(viaResolve).toHaveLength(1);
+    expect(viaResolve[0]).toMatchObject({ actorAdminId: admin.adminId });
+    expect(viaResolve[0]!.after).toMatchObject({ status: "dismissed", version: "3" });
+  });
 });
 
 describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
@@ -407,7 +471,7 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     expect((await api().get("/me", { token: target.token })).json().effective_status).toBe("expiring");
   });
 
-  it("AC F12-4: suspend (konfirmasi wajib) mencabut sesi dan akses komunitas, menyembunyikan dari direktori, KTA tidak aktif", async () => {
+  it("AC F12-4: suspend (konfirmasi wajib) mencabut semua sesi dan akses komunitas; effective_status suspended; profil tidak lagi terjangkau anggota tanpa room bersama", async () => {
     const admin = await moderator();
     const reporter = await member("Pelapor Suspend");
     const target = await member("Terlapor Suspend");
@@ -450,13 +514,15 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     expectRealtimeEnvelope(revoked!.data);
     expect(revoked!.data.payload).toMatchObject({ reason: "account_suspended", all_sessions: true });
 
-    // Akses komunitas ditolak walau login ulang (portal pembatasan), KTA/verifikasi publik membaca status suspended.
+    // Akses komunitas ditolak walau login ulang (portal pembatasan). effective_status suspended adalah sumber yang wajib
+    // dibaca GET /directory dan verifyKta publik (ARCHITECTURE §3.1/§3.5); bukti end-to-end kedua endpoint itu milik
+    // slice api-network dan api-membership (bukan modul ini).
     const relogin = await signInAlumni(t, target);
     const community = await api().get("/blocks", { token: relogin.accessToken });
     expect(community.statusCode).toBe(403);
     expect(community.json().code).toBe("ACCOUNT_SUSPENDED");
     expect((await kernel.effectiveStatusFor(target.userId))?.status).toBe("suspended");
-    // Direktori menyembunyikan profil: anggota tanpa room bersama tidak lagi dapat menjangkaunya.
+    // Aturan keterjangkauan modul ini (setara direktori): anggota tanpa room bersama tidak lagi dapat melaporkannya.
     const stranger = await member("Anggota Asing");
     expect(
       (
@@ -696,10 +762,17 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     const reporter = await member("Pelapor Grup");
     const culprit = await member("Pelaku Grup");
     const outsider = await member("Bukan Anggota");
+    const cancelledInvitee = await member("Undangan Dibatalkan");
     const linkedAdmin = await moderator({ linkedAlumniUserId: outsider.userId });
     const admin = await moderator();
     const group = await createGroupRoom(t, { adminId: culprit.userId });
     await addRoomMember(t, group, reporter.userId);
+    // Undangan yang dibatalkan sebelum diterima (invited → removed, joined_at kosong): tidak pernah menjadi anggota.
+    await addRoomMember(t, group, cancelledInvitee.userId, {
+      status: "removed",
+      invitedBy: culprit.userId,
+      joinedAt: null,
+    });
     const id = await reportOk(t.app, reporter.token, {
       target_type: "room",
       room_id: group,
@@ -710,6 +783,12 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
 
     expect((await send(admin.token, warn)).json().field_errors).toHaveProperty("subject_user_id");
     expect((await send(admin.token, { ...warn, subject_user_id: outsider.userId })).statusCode).toBe(400);
+    const neverJoined = await send(admin.token, { ...warn, subject_user_id: cancelledInvitee.userId });
+    expect(neverJoined.statusCode, neverJoined.body).toBe(400);
+    expect(neverJoined.json().field_errors).toHaveProperty("subject_user_id");
+    expect(
+      await t.db.select().from(membershipEvents).where(eq(membershipEvents.userId, cancelledInvitee.userId)),
+    ).toEqual([]);
     expect((await send(linkedAdmin.token, { ...warn, subject_user_id: outsider.userId })).statusCode).toBe(
       403,
     );

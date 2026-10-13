@@ -35,6 +35,7 @@ import { CLOCK, DB } from "../../core/tokens.js";
 import { parseEvidence, type StoredEvidence } from "./evidence.js";
 import { ACTIVE_REPORT_STATUSES, ModerationVisibility } from "./moderation-visibility.js";
 import { loadAdminRefs, loadPeople, type PersonRow, toParty, toTargetMember } from "./parties.js";
+import { everJoinedRoom } from "./room-membership.js";
 
 type Detail = components["schemas"]["AdminModerationReportDetail"];
 type Item = components["schemas"]["AdminModerationReportItem"];
@@ -72,8 +73,6 @@ export interface ResolveInput {
 
 /** Riwayat moderasi pihak terlapor yang ditampilkan (kontrak target_history maksimal 20). */
 const HISTORY_LIMIT = 20;
-/** Keanggotaan grup yang menandakan "anggota atau mantan anggota" untuk subject_user_id. */
-const MEMBER_OR_FORMER = ["joined", "left", "removed"] as const;
 /** Rute aturan komunitas untuk notifikasi peringatan (ARCHITECTURE §8.4 /legal/:slug; seed halaman legal). */
 const COMMUNITY_RULES_ROUTE = "/legal/ketentuan-komunitas";
 /** Rute riwayat laporan/banding anggota (kontrak C6 handoff: hasil moderasi dan banding → /account/reports). */
@@ -115,6 +114,16 @@ const cursorSchema = z.object({
 });
 
 const isActive = (status: string) => (ACTIVE_REPORT_STATUSES as readonly string[]).includes(status);
+
+/** Berkas bukti yang URL bertanda tangannya diterbitkan dalam respons (hanya rujukan id untuk audit, tanpa URL). */
+function evidenceImageIds(evidence: Evidence): string[] {
+  const images = [
+    ...evidence.messages.map((message) => message.image),
+    evidence.room?.avatar ?? null,
+    evidence.profile?.avatar ?? null,
+  ];
+  return images.flatMap((image) => (image?.url && image.file_id ? [image.file_id] : []));
+}
 
 /**
  * Moderasi oleh pengurus (F-12, F-15; PRD 3.12, 4.5; kontrak admin-moderation.yaml): antrean dengan SLA dan konflik
@@ -298,22 +307,42 @@ export class AdminReportsService {
    * membatalkan respons (AC F17-1). Isi bukti tidak disalin ke audit.
    */
   async get(auth: AuthContext, reportId: string): Promise<Detail> {
-    const detail = await this.buildDetail(auth, reportId);
+    const detail = await this.auditedDetail(auth, reportId, "detail");
     if (!detail) throw notFound("Laporan tidak ditemukan.");
-    await this.db.transaction((tx) => this.auditViewed(tx, detail));
     return detail;
   }
 
-  private async auditViewed(tx: Tx, detail: Detail): Promise<void> {
+  /**
+   * Detail berbukti untuk SETIAP respons yang memuatnya (PRD 3.12 "akses bukti dibatasi dan diaudit"; aturan domain
+   * admin-moderation "setiap pembacaan bukti, klaim dan keputusan dicatat di audit"; AC F17-1): GET detail, klaim
+   * (termasuk klaim ulang idempoten oleh pengurus yang sama), keputusan, dan `current` pada 409. Setiap respons
+   * berisi bukti dan URL gambar bertanda tangan baru = satu baris `moderation.report_viewed`, ditulis SEBELUM respons
+   * dikirim; kegagalan audit membatalkan respons. Null bila laporan tidak ada atau pemanggil tertaut ke pihak
+   * terlapor (tanpa audit karena tidak ada bukti yang dibuka).
+   */
+  private async auditedDetail(
+    auth: AuthContext,
+    reportId: string,
+    via: "detail" | "claim" | "resolve" | "conflict",
+  ): Promise<Detail | null> {
+    const detail = await this.buildDetail(auth, reportId);
+    if (!detail) return null;
+    await this.db.transaction((tx) => this.auditViewed(tx, detail, via));
+    return detail;
+  }
+
+  private async auditViewed(tx: Tx, detail: Detail, via: string): Promise<void> {
     await this.audit.write(tx, {
       action: "moderation.report_viewed",
       entityType: "report",
       entityId: detail.id,
       after: {
+        via,
         status: detail.status,
         version: detail.version,
         evidence_captured_at: detail.evidence.captured_at,
         evidence_message_ids: detail.evidence.messages.map((message) => message.message_id),
+        evidence_image_file_ids: evidenceImageIds(detail.evidence),
         conflict_of_interest: detail.conflict_of_interest,
       },
     });
@@ -355,6 +384,9 @@ export class AdminReportsService {
       stored.contested_suspension?.suspended_by_admin_id,
     ]);
     const target = row.targetUserId ? people.get(row.targetUserId) : undefined;
+    // D2 / AC F14-3: penulis deskripsi (pelapor, atau pemohon banding) yang akunnya sudah dihapus → teks bebasnya tidak
+    // ditampilkan, juga sebelum job penghapusan membersihkan kolomnya lewat anonymizeEvidenceOf.
+    const author = full.reporterId ? people.get(full.reporterId) : undefined;
     const [history, openAgainst] = row.targetUserId
       ? await Promise.all([
           this.history(db, row.targetUserId),
@@ -364,8 +396,8 @@ export class AdminReportsService {
     const decided = row.status === "resolved" || row.status === "dismissed";
     return {
       ...this.toItem(row, now),
-      description: full.description,
-      reporter: toParty(full.reporterId ? people.get(full.reporterId) : undefined),
+      description: author ? full.description : null,
+      reporter: toParty(author),
       target_member: toTargetMember(target, now),
       room_id: row.roomId,
       evidence: await this.toEvidence(db, stored, people, adminRefs, target, auth),
@@ -529,9 +561,8 @@ export class AdminReportsService {
 
   /** 409 VERSION_CONFLICT dengan detail terbaru; bukti yang dikirim dalam `current` juga diaudit. */
   private async conflict(auth: AuthContext, reportId: string): Promise<never> {
-    const current = await this.buildDetail(auth, reportId);
+    const current = await this.auditedDetail(auth, reportId, "conflict");
     if (!current) throw notFound("Laporan tidak ditemukan.");
-    await this.db.transaction((tx) => this.auditViewed(tx, current));
     throw versionConflict(
       current,
       "Laporan sudah diubah atau diputus pengurus lain. Muat ulang untuk melihat keadaan terbaru.",
@@ -552,8 +583,9 @@ export class AdminReportsService {
 
   /**
    * POST /admin/reports/{reportId}/claim: open → in_review dengan claimed_by/claimed_at (UPDATE bersyarat versi).
-   * Klaim ulang oleh pengurus yang sama idempoten; ambil alih klaim pengurus lain bila If-Match sama dengan versi yang
-   * dibaca. Versi berbeda atau laporan sudah diputus → 409 dengan detail terbaru.
+   * Klaim ulang oleh pengurus yang sama idempoten (tanpa audit klaim baru); ambil alih klaim pengurus lain bila
+   * If-Match sama dengan versi yang dibaca. Versi berbeda atau laporan sudah diputus → 409 dengan detail terbaru.
+   * Respons selalu berisi bukti sehingga SETIAP klaim, termasuk klaim ulang, juga dicatat sebagai pembacaan bukti.
    */
   async claim(auth: AuthContext, reportId: string, expectedVersion: number): Promise<Detail> {
     const adminId = auth.adminId!;
@@ -603,7 +635,14 @@ export class AdminReportsService {
       if (error instanceof StaleReportError) return this.conflict(auth, reportId);
       throw error;
     }
-    return (await this.buildDetail(auth, reportId))!;
+    return this.responseDetail(auth, reportId, "claim");
+  }
+
+  /** Detail terbaru setelah klaim/keputusan, diaudit sebagai pembacaan bukti (auditedDetail). */
+  private async responseDetail(auth: AuthContext, reportId: string, via: "claim" | "resolve"): Promise<Detail> {
+    const detail = await this.auditedDetail(auth, reportId, via);
+    if (!detail) throw notFound("Laporan tidak ditemukan.");
+    return detail;
   }
 
   // -------------------------------------------------------------------------------------------------- keputusan
@@ -774,7 +813,7 @@ export class AdminReportsService {
       if (error instanceof StaleReportError) return this.conflict(auth, reportId);
       throw error;
     }
-    return (await this.buildDetail(auth, reportId))!;
+    return this.responseDetail(auth, reportId, "resolve");
   }
 
   /**
@@ -825,7 +864,7 @@ export class AdminReportsService {
             and(
               eq(roomMembers.roomId, report.roomId),
               eq(roomMembers.userId, input.subjectUserId),
-              inArray(roomMembers.status, [...MEMBER_OR_FORMER]),
+              everJoinedRoom(roomMembers.status, roomMembers.joinedAt),
             ),
           )
           .limit(1)
