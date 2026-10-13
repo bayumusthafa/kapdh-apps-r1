@@ -13,7 +13,13 @@ import { FormError, FormField } from "../../components/ui/FormField";
 import { Input, Select, Textarea } from "../../components/ui/Input";
 import { useToast } from "../../components/ui/Toast";
 import { formatDateTime, formatRupiah, zoneLabel } from "../../lib/format";
-import { type AdminEventDetail, currentEventDetail, storeEventDetail, useEventCategories } from "./api";
+import {
+  type AdminEventDetail,
+  currentEventDetail,
+  eventKeys,
+  storeEventDetail,
+  useEventCategories,
+} from "./api";
 import {
   changesNotifyHolders,
   DATE_FIELDS,
@@ -95,16 +101,24 @@ export function EventForm({
   const timezone = form.watch("timezone");
   const customCheckin = form.watch("custom_checkin");
 
+  // isDirty dibaca saat render: formState react-hook-form adalah Proxy yang hanya menghitung state yang dibaca.
+  const { isDirty } = form.formState;
+  const dirtyRef = useRef(isDirty);
+  dirtyRef.current = isDirty;
+  /** Simpan terakhir ditolak VERSION_CONFLICT: versi baru dari `current` selalu ditawarkan, tidak dipasang diam-diam. */
+  const conflictRef = useRef(false);
+
   // Versi baru dari server (konflik, aksi status di halaman yang sama, atau muat ulang).
   const latestVersion = detail?.version;
   useEffect(() => {
     if (mode !== "edit" || !detail || !base || detail.version === base.version) return;
-    if (!form.formState.isDirty) {
+    if (!dirtyRef.current && !conflictRef.current) {
       setBase(detail);
       setCover(coverFromDetail(detail));
       form.reset(formFromDetail(detail));
       setStale(null);
     } else setStale(detail);
+    conflictRef.current = false;
     // Hanya bereaksi pada versi baru; detail lain (penghitung kursi) tidak mengubah dasar formulir.
   }, [latestVersion]);
 
@@ -149,7 +163,10 @@ export function EventForm({
       }),
     onReloadLatest: (err) => {
       const latest = currentEventDetail(err.current);
-      if (latest) storeEventDetail(queryClient, latest);
+      if (latest) {
+        conflictRef.current = true;
+        storeEventDetail(queryClient, latest);
+      } else void queryClient.invalidateQueries({ queryKey: eventKeys.detail(base!.id) });
     },
     onError: (err) => {
       // AC F15-2: kuota di bawah held+paid -> 409 VALIDATION_ERROR dengan `current`; batas terbaru ditampilkan.
