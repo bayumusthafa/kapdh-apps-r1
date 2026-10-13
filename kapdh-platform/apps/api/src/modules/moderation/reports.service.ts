@@ -153,7 +153,10 @@ export class ReportsService {
    */
   async create(auth: AuthContext, input: CreateReportInput): Promise<ReportResult> {
     if (input.targetType === "user" && input.targetUserId === auth.userId)
-      throw fieldError("target_user_id", "Akun sendiri tidak dapat dilaporkan. Gunakan banding bila dibatasi.");
+      throw fieldError(
+        "target_user_id",
+        "Akun sendiri tidak dapat dilaporkan. Gunakan banding bila dibatasi.",
+      );
     await this.rateLimits.consumeOrThrow(
       `moderation-report:${auth.userId}`,
       REPORT_RATE.limit,
@@ -161,11 +164,7 @@ export class ReportsService {
       "Terlalu banyak laporan dalam waktu singkat. Coba lagi nanti.",
     );
     return this.db.transaction(async (tx) => {
-      await tx
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.id, auth.userId))
-        .for("no key update");
+      await tx.select({ id: users.id }).from(users).where(eq(users.id, auth.userId)).for("no key update");
       const now = this.clock.now();
       const target =
         input.targetType === "user"
@@ -241,7 +240,12 @@ export class ReportsService {
       .from(users)
       .where(eq(users.id, targetUserId))
       .limit(1);
-    if (!account || account.kind !== "alumni" || account.status === "pending_otp" || account.status === "deleted")
+    if (
+      !account ||
+      account.kind !== "alumni" ||
+      account.status === "pending_otp" ||
+      account.status === "deleted"
+    )
       throw notFound("Anggota tidak ditemukan.");
     // Baris alumni terkunci FOR SHARE: penggantian avatar bersamaan menunggu laporan ini commit (retensi bukti).
     const [row] = await tx
@@ -335,8 +339,7 @@ export class ReportsService {
       !membership!.historyVisibleFrom || createdAt.getTime() >= membership!.historyVisibleFrom.getTime();
     if (!membership || !visible(message.createdAt) || message.deletedAt)
       throw notFound("Pesan tidak ditemukan.");
-    if (message.kind === "system")
-      throw fieldError("message_id", "Pesan sistem tidak dapat dilaporkan.");
+    if (message.kind === "system") throw fieldError("message_id", "Pesan sistem tidak dapat dilaporkan.");
     if (message.senderId === reporterId)
       throw fieldError("message_id", "Pesan sendiri tidak dapat dilaporkan.");
     if (!message.senderId) throw notFound("Pesan tidak ditemukan.");
@@ -418,7 +421,10 @@ export class ReportsService {
       : [];
     if (!room || !membership) throw notFound("Grup tidak ditemukan.");
     if (room.kind !== "group")
-      throw fieldError("room_id", "Percakapan langsung tidak dapat dilaporkan sebagai grup. Laporkan pengguna atau pesannya.");
+      throw fieldError(
+        "room_id",
+        "Percakapan langsung tidak dapat dilaporkan sebagai grup. Laporkan pengguna atau pesannya.",
+      );
     const [joined] = await tx
       .select({ value: count() })
       .from(roomMembers)
@@ -468,11 +474,7 @@ export class ReportsService {
       "Terlalu banyak pengajuan banding. Coba lagi nanti.",
     );
     return this.db.transaction(async (tx) => {
-      await tx
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.id, auth.userId))
-        .for("no key update");
+      await tx.select({ id: users.id }).from(users).where(eq(users.id, auth.userId)).for("no key update");
       const [member] = await tx
         .select({
           suspendedAt: alumni.suspendedAt,
@@ -489,7 +491,12 @@ export class ReportsService {
       const now = this.clock.now();
 
       const active = await tx
-        .select({ id: reports.id, status: reports.status, version: reports.version, evidence: reports.evidence })
+        .select({
+          id: reports.id,
+          status: reports.status,
+          version: reports.version,
+          evidence: reports.evidence,
+        })
         .from(reports)
         .where(
           and(
@@ -601,4 +608,3 @@ export class ReportsService {
     });
   }
 }
-

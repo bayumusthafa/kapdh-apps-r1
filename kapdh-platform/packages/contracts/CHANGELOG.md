@@ -314,6 +314,18 @@ sehingga aturan berikut dicatat di sini untuk diterapkan pemilik domainnya sebel
 - Inti berkas (`core/files`): berkas yang dirujuk `reports.evidence` (gambar pesan, avatar profil, avatar grup) tidak
   dihapus saat pesan dihapus atau avatar diganti; hanya dihapus sesuai retensi D2.
 
+Status implementasi (slice api-moderation, tanpa perubahan bentuk kontrak):
+
+- `MembershipKernel.unsuspend` (core) kini menutup setiap banding aktif anggota sebagai dikabulkan di transaksi
+  pencabutan yang sama (status resolved, action unsuspend, `member_message` = pesan untuk anggota, audit
+  `moderation.report_resolved` per banding) dan mengirim SATU notifikasi; `adminUnsuspendMember` cukup memanggil
+  kernel tanpa menutup banding sendiri.
+- `FilesService.discard` (core) menahan berkas yang dirujuk `reports.evidence.file_ids` (dijadikan privat, tetap
+  ready) kecuali akun pemiliknya deletion_pending/deleted (D2).
+- Hitungan laporan untuk dasbor/lencana menu/AdminMemberDetail tersedia lewat `ModerationVisibility`
+  (`condition(linkedAlumniUserId)`, `counts(linkedAlumniUserId)`) yang diekspor `ModerationModule`.
+- Ketergantungan skema database di bawah sudah tersedia lewat migrasi `0006_final_contract_delta`.
+
 ### Event realtime
 
 - **[memutus]** Kesepuluh jenis event kini memiliki payload bertipe (`events/<type>.schema.json`) dan

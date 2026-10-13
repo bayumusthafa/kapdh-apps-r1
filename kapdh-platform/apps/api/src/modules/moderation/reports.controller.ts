@@ -53,7 +53,11 @@ const createReportSchema = z
       if (field === required && !present)
         issues.addIssue({ code: "custom", path: [field], message: "Wajib diisi untuk jenis laporan ini." });
       if (field !== required && present)
-        issues.addIssue({ code: "custom", path: [field], message: "Tidak boleh diisi untuk jenis laporan ini." });
+        issues.addIssue({
+          code: "custom",
+          path: [field],
+          message: "Tidak boleh diisi untuk jenis laporan ini.",
+        });
     }
     if (value.context_message_ids !== undefined && value.target_type !== "message")
       issues.addIssue({

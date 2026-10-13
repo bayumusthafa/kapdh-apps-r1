@@ -117,7 +117,11 @@ describe("PUT/DELETE /blocks/{userId} (AC F12-1)", () => {
     expect(cancelled).toHaveLength(2);
     for (const emit of cancelled) {
       expectRealtimeEnvelope(emit.data);
-      expect(emit.data.payload).toMatchObject({ change: "invitation_cancelled", actor_user_id: null, role: null });
+      expect(emit.data.payload).toMatchObject({
+        change: "invitation_cancelled",
+        actor_user_id: null,
+        role: null,
+      });
       // Tidak pernah ke kanal room (undangan tertunda hanya terlihat admin grup).
       expect(emit.channels.every((channel) => channel.startsWith("user:"))).toBe(true);
     }
@@ -159,7 +163,9 @@ describe("PUT/DELETE /blocks/{userId} (AC F12-1)", () => {
     const admin = await createAdmin(t);
     expect((await api().put(`/blocks/${admin.userId}`, undefined, { token: a.token })).statusCode).toBe(404);
     const pending = await createAlumni(t, { status: "pending_otp" });
-    expect((await api().put(`/blocks/${pending.userId}`, undefined, { token: a.token })).statusCode).toBe(404);
+    expect((await api().put(`/blocks/${pending.userId}`, undefined, { token: a.token })).statusCode).toBe(
+      404,
+    );
   });
 
   it("otorisasi: hanya anggota aktif (expired/suspended 403), sesi admin 403, tanpa sesi 401", async () => {

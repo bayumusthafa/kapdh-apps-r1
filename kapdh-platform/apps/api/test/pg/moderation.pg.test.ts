@@ -123,7 +123,10 @@ describe("Moderasi bersamaan (PostgreSQL 17)", () => {
     const statuses = result.map((res) => res.statusCode).sort();
     expect(statuses, result.map((r) => r.body).join("\n")).toEqual([200, 409, 409, 409, 409, 409]);
     for (const res of result.filter((r) => r.statusCode === 409))
-      expect(res.json()).toMatchObject({ code: "VERSION_CONFLICT", current: { status: "resolved", version: "2" } });
+      expect(res.json()).toMatchObject({
+        code: "VERSION_CONFLICT",
+        current: { status: "resolved", version: "2" },
+      });
 
     const events = await tdb.db
       .select()
@@ -145,7 +148,11 @@ describe("Moderasi bersamaan (PostgreSQL 17)", () => {
         // 5 = batas laju banding per 24 jam (APPEAL_RATE); semuanya mencapai transaksi.
         Promise.all(
           Array.from({ length: 5 }, () =>
-            http().post("/appeals", { description: "Mohon tinjau ulang pembatasan saya." }, { token: appellant.token }),
+            http().post(
+              "/appeals",
+              { description: "Mohon tinjau ulang pembatasan saya." },
+              { token: appellant.token },
+            ),
           ),
         ),
     );
@@ -206,7 +213,10 @@ describe("Moderasi bersamaan (PostgreSQL 17)", () => {
         ),
         runAsSystem(() =>
           withTx(api.db as unknown as Db, (tx) =>
-            kernel.unsuspend(tx, appellant.userId, { reason: "Dicabut dari menu anggota.", actorAdminId: null }),
+            kernel.unsuspend(tx, appellant.userId, {
+              reason: "Dicabut dari menu anggota.",
+              actorAdminId: null,
+            }),
           ),
         ),
       ]);
