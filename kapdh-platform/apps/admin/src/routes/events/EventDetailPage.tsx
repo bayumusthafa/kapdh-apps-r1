@@ -276,7 +276,12 @@ function EventOverview({ event: e }: { event: AdminEventDetail }) {
           </div>
           {(e.status === "open" || e.status === "closed") && auth.can("events.checkin") ? (
             <div className="px-5">
-              <Link to="/events/checkin" className={buttonClass({ variant: "outline", size: "sm" })}>
+              {/* Event langsung terpilih di pemindai agar QR event lain ditolak (AC F09-6). */}
+              <Link
+                to="/events/checkin"
+                search={{ event: e.id }}
+                className={buttonClass({ variant: "outline", size: "sm" })}
+              >
                 Buka pemindai check-in
               </Link>
             </div>
