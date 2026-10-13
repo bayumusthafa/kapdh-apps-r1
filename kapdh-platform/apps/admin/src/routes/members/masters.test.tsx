@@ -10,10 +10,17 @@ import { findToast, renderApp, signIn, type User } from "../../test/utils";
  * mock bukan bukti AC sisi server (PRD 7.3).
  */
 
+/** Potongan kode area dimuat lazy; saat suite berjalan paralel pemuatan pertama dapat melebihi 1 detik. */
+const LAZY_ROUTE_TIMEOUT_MS = 5_000;
+
 async function openMasters(user: User, path = "/members/masters") {
   renderApp(path);
   await signIn(user);
-  await screen.findByRole("heading", { level: 1, name: "Manajemen Skill & Profesi" });
+  await screen.findByRole(
+    "heading",
+    { level: 1, name: "Manajemen Skill & Profesi" },
+    { timeout: LAZY_ROUTE_TIMEOUT_MS },
+  );
 }
 
 function row(name: string): HTMLElement {
@@ -28,7 +35,11 @@ describe("master profesi dan keahlian (F-10, AC F10-4; server tiruan)", () => {
     const user = userEvent.setup();
     const { router } = renderApp("/members/masters");
     await signIn(user);
-    await screen.findByRole("heading", { level: 1, name: "Manajemen Skill & Profesi" });
+    await screen.findByRole(
+      "heading",
+      { level: 1, name: "Manajemen Skill & Profesi" },
+      { timeout: LAZY_ROUTE_TIMEOUT_MS },
+    );
     expect(await screen.findByRole("table", { name: "Daftar profesi" })).toBeInTheDocument();
     expect(screen.getByText("Menampilkan 11 dari 11")).toBeInTheDocument();
     const guru = row("Guru");
@@ -157,6 +168,15 @@ describe("master profesi dan keahlian (F-10, AC F10-4; server tiruan)", () => {
     expect(within(dialog).getByRole("textbox", { name: /Label/ })).toHaveValue("Dokter Umum");
     expect(mockMembers.master(professionId("Dokter"))?.label).toBe("Dokter Umum");
     expect(writes().map((w) => w.ifMatch)).toEqual(["1"]);
+  });
+
+  it("PRD 4.5: galat server pada daftar master ditampilkan dengan tombol coba lagi", async () => {
+    mockMembers.fail("GET", /^\/admin\/masters\/professions$/);
+    const user = userEvent.setup();
+    await openMasters(user);
+    expect(await screen.findByText("Data gagal dimuat")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Coba lagi" }));
+    expect(await screen.findByText("Menampilkan 11 dari 11")).toBeInTheDocument();
   });
 
   it("AC F15-1: admin tanpa master.manage tidak dapat membuka halaman master", async () => {
