@@ -121,7 +121,14 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
 
     const dialog = await screen.findByRole("alertdialog", { name: /Peringatkan laporan ini/ });
     expect(within(dialog).getByText(/Tanggal keanggotaan tidak berubah/)).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Ya, peringatkan" }));
+    // remove_message tidak dapat dibatalkan: dialog menyebutkannya dan memakai konfirmasi dua langkah (PRD 4.5).
+    expect(within(dialog).getByRole("list", { name: "Akibat tambahan" })).toHaveTextContent(
+      /Pesan terlapor diganti placeholder di chat untuk semua anggota room dan tidak dapat dikembalikan/,
+    );
+    const confirm = within(dialog).getByRole("button", { name: "Ya, peringatkan" });
+    expect(confirm).toBeDisabled();
+    await user.click(within(dialog).getByLabelText(/Saya sudah memeriksa bukti/));
+    await user.click(confirm);
 
     const decision = await section("Keputusan");
     expect(within(decision).getByText("Peringatkan")).toBeInTheDocument();
@@ -199,28 +206,94 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     expect(actionOptions(harassment).map((o) => o.value)).toEqual(["dismiss", "warn", "suspend"]);
   });
 
-  it("laporan grup tanpa subjek: warn mewajibkan memilih anggota grup", async () => {
+  it("AC F12-3: laporan grup (bukti tanpa pesan, sesuai createReport) - warn memilih subjek dari daftar anggota grup server", async () => {
+    // Bukti laporan grup menurut kontrak hanya nama, avatar dan jumlah anggota: sumber subjek BUKAN pesan bukti.
+    expect(mockModeration.get(MOCK_REPORT_IDS.groupSpam)?.evidence.messages).toEqual([]);
+    const user = userEvent.setup();
+    await openReport(user, MOCK_REPORT_IDS.groupSpam, "Laporan Spam");
+    const evidence = await section("Bukti");
+    expect(within(evidence).queryByRole("list", { name: "Pesan bukti" })).toBeNull();
+    expect(within(evidence).getByText(/87 anggota/)).toBeInTheDocument();
+
+    const card = await decide(user, /^Peringatkan/, "Promosi investasi bodong", "Grup bukan tempat promosi.");
+    const select = within(card).getByLabelText(/^Anggota grup yang dikenai tindakan/);
+    await waitFor(() => expect(select).toHaveAccessibleDescription(/Pilih anggota grup/));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    await waitFor(() => expect(select).toBeEnabled());
+    // Urutan kontrak: admin grup joined, anggota joined, lalu mantan anggota. Akun tertaut admin (Bayu) dan undangan
+    // yang dibatalkan sebelum diterima (Hasan) tidak dicantumkan.
+    const labels = within(select)
+      .getAllByRole("option")
+      .slice(1)
+      .map((o) => o.textContent);
+    expect(labels).toEqual([
+      "Dimas Prasetyo (12.02.01.9) | admin grup",
+      "Arya Kamandanu (10.02.01.3) | anggota",
+      "ridwan (06.02.01.4) | anggota",
+      "Lina Marlina (08.01.02.3) | mantan anggota (dikeluarkan), dulu admin grup",
+      "Sari Dewi (11.01.02.8) | mantan anggota (keluar), sedang disuspend",
+    ]);
+    const list = moderationRequests.find((r) => r.path.endsWith("/subject-candidates"));
+    expect(list?.method).toBe("GET");
+    expect(list?.query).toEqual({ limit: "50" });
+
+    await user.selectOptions(select, "Dimas Prasetyo (12.02.01.9) | admin grup");
+    await user.click(within(card).getByRole("button", { name: "Putuskan laporan" }));
+    const dialog = await screen.findByRole("alertdialog", { name: /Peringatkan laporan ini/ });
+    expect(within(dialog).getByText(/Anggota yang dikenai tindakan: Dimas Prasetyo/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Ya, peringatkan" }));
+    await section("Keputusan");
+    expect(resolveCalls()[0]?.body).toEqual({
+      action: "warn",
+      note: "Promosi investasi bodong",
+      member_message: "Grup bukan tempat promosi.",
+      subject_user_id: "0199e000-0000-7000-8000-0000000000c7",
+      remove_message: false,
+    });
+    const target = await section("Pihak terlapor");
+    expect(within(target).getByText("Dimas Prasetyo (12.02.01.9)")).toBeInTheDocument();
+  });
+
+  it("AC F12-4: suspend laporan grup tidak menawarkan anggota yang sudah disuspend; pencarian dikirim ke server", async () => {
+    const user = userEvent.setup();
+    await openReport(user, MOCK_REPORT_IDS.groupSpam, "Laporan Spam");
+    const card = await section("Putuskan laporan");
+    await user.click(within(card).getByRole("radio", { name: /^Suspend/ }));
+    const select = within(card).getByLabelText(/^Anggota grup yang dikenai tindakan/);
+    await waitFor(() => expect(select).toBeEnabled());
+    const sari = within(select).getByRole("option", { name: /Sari Dewi/ });
+    expect(sari).toBeDisabled();
+    expect(sari).toHaveTextContent("tidak dapat disuspend lagi");
+
+    await user.type(within(card).getByLabelText("Cari anggota grup"), "11.01");
+    await waitFor(() =>
+      expect(moderationRequests.at(-1)).toMatchObject({
+        path: `/admin/reports/${MOCK_REPORT_IDS.groupSpam}/subject-candidates`,
+        query: { q: "11.01", limit: "50" },
+      }),
+    );
+    await waitFor(() => expect(within(select).getAllByRole("option")).toHaveLength(2));
+  });
+
+  it("laporan grup: bila daftar anggota tidak tersedia, warn/suspend tidak dapat dikirim tetapi laporan dapat diabaikan", async () => {
+    mockModeration.setCandidatesUnavailable(true);
     const user = userEvent.setup();
     await openReport(user, MOCK_REPORT_IDS.groupSpam, "Laporan Spam");
     const card = await decide(user, /^Peringatkan/, "Promosi investasi bodong", "Grup bukan tempat promosi.");
-    await waitFor(() =>
-      expect(within(card).getByLabelText(/^Anggota grup yang dikenai tindakan/)).toHaveAccessibleDescription(
-        /Pilih anggota grup/,
-      ),
+    expect(await within(card).findByRole("alert")).toHaveTextContent(
+      /Daftar anggota grup tidak dapat dimuat.*laporan tetap dapat diabaikan/,
     );
+    expect(within(card).getByLabelText(/^Anggota grup yang dikenai tindakan/)).toBeDisabled();
     expect(screen.queryByRole("alertdialog")).toBeNull();
-    await user.selectOptions(
-      within(card).getByLabelText(/^Anggota grup yang dikenai tindakan/),
-      "Dimas Prasetyo",
-    );
+    expect(resolveCalls()).toHaveLength(0);
+
+    await user.click(within(card).getByRole("radio", { name: /^Abaikan/ }));
+    expect(within(card).queryByLabelText(/^Anggota grup yang dikenai tindakan/)).toBeNull();
     await user.click(within(card).getByRole("button", { name: "Putuskan laporan" }));
-    const dialog = await screen.findByRole("alertdialog", { name: /Peringatkan laporan ini/ });
-    await user.click(within(dialog).getByRole("button", { name: "Ya, peringatkan" }));
+    const dialog = await screen.findByRole("alertdialog", { name: /Abaikan laporan ini/ });
+    await user.click(within(dialog).getByRole("button", { name: "Ya, abaikan" }));
     await section("Keputusan");
-    expect(resolveCalls()[0]?.body).toMatchObject({
-      action: "warn",
-      subject_user_id: "0199e000-0000-7000-8000-0000000000c7",
-    });
+    expect(resolveCalls()[0]?.body).not.toHaveProperty("subject_user_id");
   });
 
   it("klaim mengirim If-Match dan menandai admin sebagai peninjau", async () => {

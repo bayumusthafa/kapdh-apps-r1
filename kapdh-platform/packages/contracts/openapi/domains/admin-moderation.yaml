@@ -229,6 +229,50 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         default: { $ref: "#/components/responses/Error" }
 
+  /admin/reports/{reportId}/subject-candidates:
+    get:
+      tags: [Admin Moderation]
+      operationId: adminListReportSubjectCandidates
+      summary: Calon subjek laporan grup, yaitu anggota dan mantan anggota grup (moderation.resolve, AC F12-3, F12-4).
+      description: |
+        Sumber pilihan `subject_user_id` pada adminResolveReport untuk laporan grup (`target_type` room). Bukti
+        laporan grup hanya memuat nama, avatar dan jumlah anggota (createReport, PRD 3.12), sehingga daftar ini
+        satu-satunya cara pengurus memilih anggota yang dikenai warn/suspend tanpa menjelajah chat. Isinya memakai
+        aturan yang SAMA dengan validasi `subject_user_id`: anggota grup yang pernah bergabung (status joined, atau
+        left/removed setelah pernah bergabung; undangan yang dibatalkan sebelum diterima tidak dihitung). Akun yang
+        sudah dihapus (D2) dan akun alumni tertaut pemanggil (pengurus tidak memutus perkara dirinya sendiri) tidak
+        dicantumkan. Setiap butir hanya identitas minimum tanpa kontak dan tanpa isi chat, ditambah status
+        keanggotaan terkini agar UI menawarkan suspend hanya untuk anggota yang belum disuspend. Urutan: anggota
+        joined berperan admin grup, anggota joined lain, lalu mantan anggota; dalam kelompok nama naik. `q` mencari
+        nama atau awalan nomor anggota. Paging keyset dengan cursor terikat `q` yang sama.
+
+        Hanya laporan grup yang masih aktif (open/in_review); laporan selain grup atau yang sudah diputus -> 400
+        VALIDATION_ERROR. Konflik kepentingan sama dengan adminGetReport (aturan domain butir a dan b): tertaut ke
+        pihak terlapor (termasuk anggota joined grup itu) -> 404 NOT_FOUND; tertaut ke pelapor -> 403 FORBIDDEN.
+        Pembacaan dicatat di audit seperti pembacaan bukti (`moderation.report_viewed`, aktor, laporan, request_id;
+        daftar anggota tidak disalin ke audit) dalam transaksi yang sama sebelum respons dikirim (PRD 3.12, AC F17-1).
+      x-kapdh-access: { audience: admin, permissions: [moderation.read, moderation.resolve] }
+      parameters:
+        - $ref: "#/components/parameters/ModerationReportId"
+        - name: q
+          in: query
+          required: false
+          description: Nama atau awalan nomor anggota.
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Calon subjek laporan grup.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminModerationSubjectCandidatePage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        default: { $ref: "#/components/responses/Error" }
+
 components:
   schemas:
     ModerationAction:
@@ -596,3 +640,31 @@ components:
         confirm:
           type: boolean
           description: Wajib true untuk suspend dan unsuspend (konfirmasi eksplisit, PRD 4.5).
+
+    AdminModerationRoomMemberStatus:
+      type: string
+      enum: [joined, left, removed]
+      description: |
+        Keanggotaan calon subjek di grup yang dilaporkan (room_members.status): joined = anggota saat ini;
+        left/removed = mantan anggota yang pernah bergabung.
+
+    AdminModerationSubjectCandidate:
+      allOf:
+        - $ref: "#/components/schemas/AdminModerationTargetMember"
+        - type: object
+          description: |
+            Anggota atau mantan anggota grup yang dapat dipilih sebagai `subject_user_id` (laporan grup).
+            `room_role` adalah peran di grup; untuk mantan anggota, peran terakhir sebelum keluar/dikeluarkan.
+          required: [room_status, room_role]
+          properties:
+            room_status: { $ref: "#/components/schemas/AdminModerationRoomMemberStatus" }
+            room_role: { $ref: "#/components/schemas/ChatMemberRole" }
+
+    AdminModerationSubjectCandidatePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminModerationSubjectCandidate" }
+        next_cursor: { type: [string, "null"] }

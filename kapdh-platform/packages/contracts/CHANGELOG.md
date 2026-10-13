@@ -412,6 +412,22 @@ Kosakata `x-kapdh-access` C2 (`permissions_any`, `role: super_admin`) kini diduk
 `@RequireAnyPermission(...)` dan `@RequireRole("super_admin")` di `apps/api/src/core/guards/decorators.ts`, dievaluasi
 dari database setiap request dan dicocokkan uji kontrak (`accessMismatches`).
 
+### admin-governance: calon subjek laporan grup (`admin-moderation.yaml`; F-12, AC F12-3, F12-4)
+
+Perubahan aditif oleh klien web admin (pemilik domain: api-moderation, belum diimplementasikan server; tercatat
+sebagai ketergantungan integrasi). `adminResolveReport` mewajibkan `subject_user_id` (anggota atau mantan anggota
+grup) untuk warn/suspend laporan grup, tetapi bukti laporan grup menurut `createReport` hanya memuat nama, avatar dan
+jumlah anggota tanpa pesan, sehingga pengurus tidak memiliki sumber pilihan subjek tanpa menjelajah chat.
+
+- Operasi baru `GET /admin/reports/{reportId}/subject-candidates` (`adminListReportSubjectCandidates`,
+  `[moderation.read, moderation.resolve]`): anggota grup yang pernah bergabung (aturan yang sama dengan validasi
+  `subject_user_id`, mis. `everJoinedRoom`), tanpa akun terhapus dan tanpa akun alumni tertaut pemanggil; `q`, cursor
+  dan limit; konflik kepentingan sama dengan `adminGetReport` (404/403); laporan selain grup aktif -> 400; pembacaan
+  diaudit `moderation.report_viewed`.
+- Skema baru `AdminModerationSubjectCandidatePage`, `AdminModerationSubjectCandidate`
+  (`AdminModerationTargetMember` + `room_status`, `room_role`) dan enum `AdminModerationRoomMemberStatus`
+  (`joined`, `left`, `removed`). Tidak ada operasi atau field lama yang berubah.
+
 ## 0.2.0
 
 Pemecahan `openapi/openapi.yaml` menjadi `openapi/root.yaml` + `openapi/domains/<domain>.yaml` (ARCHITECTURE §6),
