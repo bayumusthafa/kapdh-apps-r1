@@ -3,8 +3,10 @@ import type { DispatcherStatus } from "../src/outbox/dispatcher.js";
 import {
   buildHealthReport,
   createDbHealthProbes,
+  dispatcherStallMs,
   type HealthInputs,
   httpStatusFor,
+  schedulerStallMs,
 } from "../src/health/health.js";
 import { HealthServer } from "../src/health/health-server.js";
 import type { SchedulerStatus } from "../src/scheduler/scheduler.js";
@@ -173,10 +175,20 @@ describe("Health worker (PRD 5.5: DB, umur job/outbox tertua, tick penjadwal)", 
       error: { error_code: "ECONNREFUSED" },
     });
 
+    // Pool yang sesaat penuh (poll menunggu 90 s) belum dianggap macet: 503 memicu restart container.
+    const busy = await buildHealthReport(
+      inputs(clock, {
+        dispatcher: dispatcherStatus(clock, { lastLoopAt: new Date(T0.getTime() - 90_000) }),
+        scheduler: schedulerStatus(clock, { lastLeaderCheckAt: new Date(T0.getTime() - 90_000) }),
+      }),
+    );
+    expect(busy.status).toBe("ok");
+    expect(dispatcherStallMs(2_000)).toBe(120_000);
+    expect(schedulerStallMs(1_000)).toBe(120_000);
     const stalled = await buildHealthReport(
       inputs(clock, {
-        dispatcher: dispatcherStatus(clock, { lastLoopAt: new Date(T0.getTime() - 120_000) }),
-        scheduler: schedulerStatus(clock, { lastLeaderCheckAt: new Date(T0.getTime() - 120_000) }),
+        dispatcher: dispatcherStatus(clock, { lastLoopAt: new Date(T0.getTime() - 120_001) }),
+        scheduler: schedulerStatus(clock, { lastLeaderCheckAt: new Date(T0.getTime() - 120_001) }),
       }),
     );
     expect(stalled).toMatchObject({ status: "error", issues: ["dispatcher_stalled", "scheduler_stalled"] });
