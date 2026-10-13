@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { runAsSystem } from "../../src/core/context/request-context.js";
+import { RealtimeService } from "../../src/core/realtime/realtime.service.js";
 import { ledgerObjectKey, readLedgerDirectory } from "../../src/modules/account/deletion-ledger.js";
 import { DeletionLedgerService } from "../../src/modules/account/deletion-ledger.service.js";
 import {
@@ -22,6 +23,7 @@ import {
   signInAlumni,
   TEST_CONSENT_VERSION,
 } from "../support/factories.js";
+import { expectRealtimeEnvelope } from "../support/contract.js";
 import { httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
 import { expectFullyDeleted } from "./expect-deleted.js";
@@ -218,6 +220,34 @@ describe("Job account.deletion: penghapusan penuh (AC F14-3, F14-4, F14-5)", () 
       accept_policy_version: TEST_CONSENT_VERSION,
     });
     expect(again.statusCode, again.body).toBe(201);
+  });
+
+  it("AC F14-1, AC F14-3, AC F14-5: event realtime permintaan dan job (session.revoked, message.created/deleted, room.member_changed, room.updated) sesuai skema kontrak dan tanpa isi pesan pengguna", async () => {
+    const own = await createTestApp();
+    try {
+      await ensureAuditPurgeRole(own.db);
+      const captured: { channels: string[]; event: string; data: unknown }[] = [];
+      own.app.get(RealtimeService).useTransport({
+        kind: "none",
+        emit: (channels, event, data) => captured.push({ channels, event, data }),
+        join: () => undefined,
+        leave: () => undefined,
+        disconnect: () => undefined,
+      });
+      const rich = await createRichMember(own);
+      const { id } = await requestDeletionViaApp(own, rich.session);
+      // Socket pengguna diputus setelah commit permintaan (AC F14-1).
+      expect(captured.map((c) => c.event)).toContain("session.revoked");
+      expect(await runDeletion(own, id)).toMatchObject({ outcome: "completed" });
+      for (const { data } of captured) expectRealtimeEnvelope(data);
+      const types = new Set(captured.map((c) => c.event));
+      for (const type of ["message.created", "message.deleted", "room.member_changed", "room.updated"])
+        expect(types, type).toContain(type);
+      const serialized = JSON.stringify(captured);
+      for (const term of personalTerms(rich)) expect(serialized).not.toContain(term);
+    } finally {
+      await own.app.close();
+    }
   });
 });
 
