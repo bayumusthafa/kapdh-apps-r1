@@ -1,8 +1,9 @@
-import { banners, events, notifications, pages, posts } from "@kapdh/database";
+import { banners, events, notifications, pages, posts, tickets } from "@kapdh/database";
 import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectOperation } from "../support/contract.js";
+import { createAlumni } from "../support/factories.js";
 import { httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
 import {
@@ -262,6 +263,62 @@ describe("PRD 3.8: event mendatang dan berita terbaru di Beranda", () => {
     expect(upcoming[2]).toMatchObject({ registration_state: "not_yet_open" });
     expect(upcoming[3]).toMatchObject({ registration_state: "closed" });
     expect(upcoming[4]).toMatchObject({ registration_state: "open", seats_available: 100 });
+  });
+
+  it("AC F09-2 (proyeksi kursi, aturan tag Events): hold kedaluwarsa yang belum dilepas job dianggap lepas di Beranda", async () => {
+    await resetHome();
+    const member = await memberSession(t);
+    const now = t.clock.now();
+    const day = 24 * 3600_000;
+    const at = (offsetMs: number) => new Date(now.getTime() + offsetMs);
+    // Penghitung tersimpan belum dilepas job expiry (held_quantity masih menghitung hold kedaluwarsa).
+    const partly = await insertEvent(t, {
+      startsAt: at(day),
+      seatsTotal: 3,
+      heldQuantity: 2,
+      paidQuantity: 1,
+    });
+    const expiredOnly = await insertEvent(t, { startsAt: at(2 * day), seatsTotal: 1, heldQuantity: 1 });
+    const stillHeld = await insertEvent(t, {
+      startsAt: at(3 * day),
+      seatsTotal: 2,
+      heldQuantity: 1,
+      paidQuantity: 1,
+    });
+    const holders = await Promise.all(
+      Array.from({ length: 4 }, () => createAlumni(t, { status: "verified" })),
+    );
+    const hold = (eventId: string, userId: string, holdExpiresAt: Date) => ({
+      id: uuidv7(),
+      eventId,
+      userId,
+      status: "awaiting_payment" as const,
+      totalSnapshot: "50000.00",
+      holdExpiresAt,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await t.db.insert(tickets).values([
+      hold(partly.id, holders[0]!.userId, at(-60_000)), // kedaluwarsa
+      hold(partly.id, holders[1]!.userId, at(3600_000)), // masih aktif
+      hold(expiredOnly.id, holders[2]!.userId, now), // tepat hold_expires_at = now: sudah kedaluwarsa
+      hold(stillHeld.id, holders[3]!.userId, at(60_000)), // masih aktif
+    ]);
+
+    const upcoming = (await home(member.token)).upcoming_events;
+    expect(upcoming.map((e) => [e.id, e.seats_available, e.registration_state])).toEqual([
+      [partly.id, 1, "open"],
+      [expiredOnly.id, 1, "open"],
+      [stillHeld.id, 0, "sold_out"],
+    ]);
+    // Operasi baca tidak pernah menulis: penghitung dan status tiket tetap.
+    const [stored] = await t.db.select().from(events).where(eq(events.id, expiredOnly.id));
+    expect(stored!.heldQuantity).toBe(1);
+    const statuses = await t.db
+      .select({ status: tickets.status })
+      .from(tickets)
+      .where(eq(tickets.eventId, partly.id));
+    expect(statuses.map((s) => s.status)).toEqual(["awaiting_payment", "awaiting_payment"]);
   });
 
   it("AC F08-1: Beranda hanya memuat 5 berita terbaru yang sudah tampil", async () => {

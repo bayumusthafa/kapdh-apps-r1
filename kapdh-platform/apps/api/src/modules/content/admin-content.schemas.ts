@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { queryBool } from "../../core/validation/validate.js";
-import { CATEGORY_SLUG_MAX, PAGE_SLUG_MAX, POST_SLUG_MAX, SLUG_PATTERN } from "./content.util.js";
+import {
+  CATEGORY_SLUG_MAX,
+  CONTENT_BODY_HTML_MAX,
+  PAGE_SLUG_MAX,
+  POST_SLUG_MAX,
+  SLUG_PATTERN,
+} from "./content.util.js";
 
 /**
  * Skema masukan web admin konten (kontrak admin-content.yaml; galat 400 VALIDATION_ERROR dengan field_errors,
@@ -16,7 +22,10 @@ const slug = (max: number) =>
     .regex(SLUG_PATTERN, SLUG_MESSAGE);
 const text = (max: number, label: string) =>
   z.string().trim().min(1, `${label} wajib diisi.`).max(max, `${label} maksimal ${max} karakter.`);
-const html = z.string().min(1, "Isi wajib diisi.").max(200_000, "Isi maksimal 200.000 karakter.");
+const html = z
+  .string()
+  .min(1, "Isi wajib diisi.")
+  .max(CONTENT_BODY_HTML_MAX, "Isi maksimal 200.000 karakter.");
 const dateTime = z.iso.datetime({ offset: true, message: "Format waktu ISO 8601 dengan zona waktu." });
 const id = z.uuid({ message: "Format id tidak valid." });
 

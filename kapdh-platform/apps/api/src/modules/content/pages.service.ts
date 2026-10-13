@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../../core/adapters/clock.js";
 import { AuditService } from "../../core/audit/audit.service.js";
-import { AUDIT_DOCUMENT_LIMITS } from "../../core/audit/sanitize.js";
+import { AUDIT_DOCUMENT_LIMITS, sanitizeAuditValue } from "../../core/audit/sanitize.js";
 import { isUniqueViolation } from "../../core/db/errors.js";
 import type { Db, DbOrTx, Tx } from "../../core/db/types.js";
 import { AppException, fieldError, notFound, versionConflict } from "../../core/errors/app-exception.js";
@@ -23,6 +23,7 @@ import {
   isSystemPage,
   legalDocumentOf,
   legalSettingField,
+  retryContentTransaction,
   type SortSpec,
   sortAfter,
   sortKeySelection,
@@ -198,31 +199,32 @@ export class PagesService {
 
   /** Halaman baru selalu draf (belum ada salinan tayang). */
   async create(auth: AuthContext, input: PageCreateInput): Promise<AdminInfoPage> {
-    const body = this.media.sanitize(input.body_html);
-    if (!body.hasContent) throw fieldError("body_html", EMPTY_BODY);
+    const body = this.media.sanitizeBody(input.body_html, EMPTY_BODY);
     try {
-      return await this.db.transaction(async (tx) => {
-        const now = this.clock.now();
-        await this.media.attachBodyImages(tx, body.imageFileIds, "body_html");
-        const id = uuidv7();
-        await tx.insert(pages).values({
-          id,
-          slug: input.slug,
-          title: input.title.trim(),
-          bodyHtml: body.html,
-          version: 1,
-          updatedByAdminId: auth.adminId,
-          createdAt: now,
-          updatedAt: now,
-        });
-        await this.audit.write(tx, {
-          action: "page.created",
-          entityType: "page",
-          entityId: id,
-          after: { slug: input.slug, title: input.title.trim() },
-        });
-        return (await this.load(tx, id))!;
-      });
+      return await retryContentTransaction(() =>
+        this.db.transaction(async (tx) => {
+          const now = this.clock.now();
+          await this.media.attachBodyImages(tx, body.imageFileIds, "body_html");
+          const id = uuidv7();
+          await tx.insert(pages).values({
+            id,
+            slug: input.slug,
+            title: input.title.trim(),
+            bodyHtml: body.html,
+            version: 1,
+            updatedByAdminId: auth.adminId,
+            createdAt: now,
+            updatedAt: now,
+          });
+          await this.audit.write(tx, {
+            action: "page.created",
+            entityType: "page",
+            entityId: id,
+            after: { slug: input.slug, title: input.title.trim() },
+          });
+          return (await this.load(tx, id))!;
+        }),
+      );
     } catch (error) {
       if (isUniqueViolation(error, "pages_slug_key")) throw conflictField("slug", SLUG_TAKEN);
       throw error;
@@ -236,40 +238,44 @@ export class PagesService {
     expectedVersion: number,
     input: PageUpdateInput,
   ): Promise<AdminInfoPage> {
-    const body = input.body_html === undefined ? null : this.media.sanitize(input.body_html);
-    if (body && !body.hasContent) throw fieldError("body_html", EMPTY_BODY);
+    const body = input.body_html === undefined ? null : this.media.sanitizeBody(input.body_html, EMPTY_BODY);
     try {
-      return await this.db.transaction(async (tx) => {
-        const now = this.clock.now();
-        const row = await this.lockCurrent(tx, id, expectedVersion);
-        const changes: Partial<typeof pages.$inferInsert> = {};
-        if (input.slug !== undefined && input.slug !== row.slug) {
-          if (isSystemPage(row.slug) || row.publishedVersion !== null)
-            throw fieldError("slug", "Slug halaman baku atau halaman yang pernah terbit tidak dapat diubah.");
-          changes.slug = input.slug;
-        }
-        if (input.title !== undefined) changes.title = input.title.trim();
-        if (body) {
-          await this.media.attachBodyImages(tx, body.imageFileIds, "body_html");
-          changes.bodyHtml = body.html;
-        }
-        await tx
-          .update(pages)
-          .set({ ...changes, version: row.version + 1, updatedAt: now, updatedByAdminId: auth.adminId })
-          .where(and(eq(pages.id, id), eq(pages.version, expectedVersion)));
-        await this.audit.write(tx, {
-          action: "page.updated",
-          entityType: "page",
-          entityId: id,
-          before: { slug: row.slug, title: row.title },
-          after: {
-            slug: changes.slug ?? row.slug,
-            title: changes.title ?? row.title,
-            body_changed: body !== null,
-          },
-        });
-        return (await this.load(tx, id))!;
-      });
+      return await retryContentTransaction(() =>
+        this.db.transaction(async (tx) => {
+          const now = this.clock.now();
+          const row = await this.lockCurrent(tx, id, expectedVersion);
+          const changes: Partial<typeof pages.$inferInsert> = {};
+          if (input.slug !== undefined && input.slug !== row.slug) {
+            if (isSystemPage(row.slug) || row.publishedVersion !== null)
+              throw fieldError(
+                "slug",
+                "Slug halaman baku atau halaman yang pernah terbit tidak dapat diubah.",
+              );
+            changes.slug = input.slug;
+          }
+          if (input.title !== undefined) changes.title = input.title.trim();
+          if (body) {
+            await this.media.attachBodyImages(tx, body.imageFileIds, "body_html");
+            changes.bodyHtml = body.html;
+          }
+          await tx
+            .update(pages)
+            .set({ ...changes, version: row.version + 1, updatedAt: now, updatedByAdminId: auth.adminId })
+            .where(and(eq(pages.id, id), eq(pages.version, expectedVersion)));
+          await this.audit.write(tx, {
+            action: "page.updated",
+            entityType: "page",
+            entityId: id,
+            before: { slug: row.slug, title: row.title },
+            after: {
+              slug: changes.slug ?? row.slug,
+              title: changes.title ?? row.title,
+              body_changed: body !== null,
+            },
+          });
+          return (await this.load(tx, id))!;
+        }),
+      );
     } catch (error) {
       if (isUniqueViolation(error, "pages_slug_key")) throw conflictField("slug", SLUG_TAKEN);
       throw error;
@@ -301,7 +307,8 @@ export class PagesService {
    *    published_version;
    * 2. dokumen legal: app_settings.legal.<doc>_version = versi baru lewat SettingsService (baris dikunci FOR UPDATE
    *    lebih dulu sehingga penerbitan privasi dan ketentuan bersamaan berurutan, bukan saling menolak);
-   * 3. audit `page.published` berisi versi beserta teks tayang utuh.
+   * 3. audit `page.published` berisi versi beserta judul dan teks tayang UTUH; bila tidak dapat dicatat utuh,
+   *    seluruh penerbitan dibatalkan (400 `field_errors.body_html`), tidak pernah tayang dengan audit terpotong.
    */
   async publish(
     auth: AuthContext,
@@ -344,22 +351,31 @@ export class PagesService {
       const legalDocument = legalDocumentOf(published.slug);
       if (legalDocument)
         await this.mirrorLegalVersion(tx, legalDocument, published.publishedVersion!, changeNote);
+      const after = {
+        slug: published.slug,
+        legal_document: legalDocument,
+        published_version: published.publishedVersion,
+        published_at: now,
+        title: published.publishedTitle,
+        body_html: published.publishedBodyHtml,
+        body_sha256: createHash("sha256").update(published.publishedBodyHtml!, "utf8").digest("hex"),
+        change_note: changeNote,
+      };
+      // Teks tayang WAJIB tercatat utuh (F-01: versi yang disetujui dapat direproduksi). Batas isi hasil sanitasi
+      // (CONTENT_BODY_HTML_MAX) menjamin ini; bila tetap terpotong (mis. draf lama), penerbitan dibatalkan utuh.
+      const audited = sanitizeAuditValue(after, AUDIT_DOCUMENT_LIMITS) as Record<string, unknown> | null;
+      if (audited?.body_html !== published.publishedBodyHtml || audited?.title !== published.publishedTitle)
+        throw fieldError(
+          "body_html",
+          "Isi halaman terlalu besar untuk dicatat utuh di jejak audit. Persingkat isi, simpan draf, lalu terbitkan.",
+        );
       await this.audit.write(tx, {
         action: "page.published",
         entityType: "page",
         entityId: id,
         reason: changeNote,
         before: { published_version: previousVersion === 0 ? null : previousVersion },
-        after: {
-          slug: published.slug,
-          legal_document: legalDocument,
-          published_version: published.publishedVersion,
-          published_at: now,
-          title: published.publishedTitle,
-          body_html: published.publishedBodyHtml,
-          body_sha256: createHash("sha256").update(published.publishedBodyHtml!, "utf8").digest("hex"),
-          change_note: changeNote,
-        },
+        after,
         limits: AUDIT_DOCUMENT_LIMITS,
       });
       return (await this.load(tx, id))!;

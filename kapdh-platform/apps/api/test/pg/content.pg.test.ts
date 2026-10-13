@@ -8,6 +8,9 @@
  * - AC F15-5: arsip bersamaan dengan pengumuman -> tidak pernah ada notifikasi tanpa klaim announced_at.
  * - F-01: penerbitan kebijakan privasi dan ketentuan bersamaan -> keduanya berhasil berurutan (kunci baris
  *   app_settings.legal), tidak saling menolak dan tidak kehilangan versi.
+ * - PRD 2.5, 3.8: simpan konten yang merujuk gambar dan pembuangan gambar yang sama berurutan lewat kunci baris
+ *   berkas (gambar yang dirujuk tidak pernah terhapus; rujukan ke gambar terhapus ditolak 400), dan dua draf yang
+ *   merujuk gambar yang sama dalam urutan berlawanan tidak deadlock (kunci berkas urut id).
  */
 import "reflect-metadata";
 import { MemoryDriver } from "@kapdh/storage";
@@ -252,5 +255,223 @@ describe("F-01: penerbitan dokumen legal bersamaan pada PostgreSQL 17", () => {
       select value, version from app.app_settings where key = 'legal'`;
     expect(legal!.value).toMatchObject({ privacy_version: "1", terms_version: "1" });
     expect(legal!.version).toBe(3);
+  });
+});
+
+// ------------------------------------------------------------------------------------------ gambar konten
+
+/** Kunci advisory penahan: trigger uji menunggu kunci ini (shared) selama penahan memegangnya (exclusive). */
+const HOLD_KEY = 7_340_001;
+
+/** Gambar konten publik siap pakai milik pengurus (setara hasil POST /admin/content/media). */
+async function insertContentImage(ownerUserId: string): Promise<string> {
+  const fileId = id();
+  await tdb.sql`
+    insert into app.files (id, owner_user_id, purpose, storage_driver, object_key, mime, bytes, sha256,
+                           visibility, status, width, height)
+    values (${fileId}, ${ownerUserId}, 'post_cover', 'local', ${`post_cover/2026/10/${fileId}`}, 'image/jpeg',
+            100, ${"a".repeat(64)}, 'public', 'ready', 120, 60)`;
+  return fileId;
+}
+
+/** Jumlah backend database uji yang sedang menunggu kunci (opsional hanya kunci advisory). */
+async function lockWaiters(event?: "advisory"): Promise<number> {
+  const rows = await tdb.sql<{ wait_event: string }[]>`
+    select wait_event from pg_stat_activity
+    where datname = current_database() and wait_event_type = 'Lock'`;
+  return rows.filter((row) => !event || row.wait_event === event).length;
+}
+
+/** Menunggu sampai kondisi terpenuhi (true), atau `stop()` / batas waktu (false); tanpa jendela sleep tetap. */
+async function until(condition: () => Promise<boolean>, stop: () => boolean = () => false): Promise<boolean> {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    if (await condition()) return true;
+    if (stop()) return false;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  return false;
+}
+
+/**
+ * Menahan transaksi API di titik tertentu secara deterministik: trigger AFTER UPDATE (tabel + syarat WHEN) memanggil
+ * pg_advisory_xact_lock_shared(HOLD_KEY) selama penahan memegang kunci itu, sehingga transaksi berhenti SESUDAH
+ * pernyataan tersebut dengan semua kunci barisnya tetap dipegang. Trigger dibuang sesudah uji.
+ */
+async function withHold<T>(
+  table: "pages" | "files",
+  when: string,
+  work: (release: () => void) => Promise<T>,
+): Promise<T> {
+  await tdb.sql.unsafe(
+    "create or replace function app.test_content_hold() returns trigger language plpgsql as $$ " +
+      `begin perform pg_advisory_xact_lock_shared(${HOLD_KEY}); return null; end $$`,
+  );
+  await tdb.sql.unsafe(
+    `create trigger test_content_hold after update on app.${table} for each row when (${when}) ` +
+      "execute function app.test_content_hold()",
+  );
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => (release = resolve));
+  let signalHeld!: () => void;
+  const held = new Promise<void>((resolve) => (signalHeld = resolve));
+  const holder = tdb.sql.begin(async (tx) => {
+    await tx`select pg_advisory_xact_lock(${HOLD_KEY})`;
+    signalHeld();
+    await released;
+  });
+  try {
+    await held;
+    return await work(release);
+  } finally {
+    release();
+    await holder;
+    await tdb.sql.unsafe(`drop trigger if exists test_content_hold on app.${table}`);
+  }
+}
+
+async function contentAdmin() {
+  const admin = await createAdmin(owner, { permissions: ["content.manage"] });
+  const session = await signInAdmin({ app, clock }, admin);
+  const client = httpClient(app);
+  const as = { token: session.accessToken };
+  const createPost = async (body: Record<string, unknown>) => {
+    const res = await client.post(
+      "/admin/content/posts",
+      { title: "Berita Bersampul", body_html: "<p>Isi.</p>", ...body },
+      as,
+    );
+    expect(res.statusCode, res.body).toBe(201);
+    return res.json() as { id: string; version: string };
+  };
+  const createPage = async () => {
+    const res = await client.post(
+      "/admin/content/pages",
+      { slug: `info-${id().slice(-12)}`, title: "Info", body_html: "<p>Awal.</p>" },
+      as,
+    );
+    expect(res.statusCode, res.body).toBe(201);
+    return res.json() as { id: string; version: string };
+  };
+  const patch = (path: string, version: string, body: Record<string, unknown>) =>
+    client.patch(path, body, { ...as, headers: { "if-match": version } });
+  return { admin, createPost, createPage, patch };
+}
+
+const imgTag = (fileId: string, alt: string) =>
+  `<img src="${testEnv.API_PUBLIC_URL}/api/v1/files/public/${fileId}" alt="${alt}">`;
+
+async function fileStatus(fileId: string) {
+  const [row] = await tdb.sql<{ status: string; attached: boolean }[]>`
+    select status, attached_at is not null as attached from app.files where id = ${fileId}`;
+  return row!;
+}
+
+describe("PRD 2.5, 3.8: gambar konten di bawah konkurensi nyata PostgreSQL 17", () => {
+  it("PRD 3.8: simpan halaman yang merujuk cover berita bersamaan dengan penggantian cover itu -> gambar dipertahankan", async () => {
+    const { admin, createPost, createPage, patch } = await contentAdmin();
+    const oldCover = await insertContentImage(admin.userId);
+    const newCover = await insertContentImage(admin.userId);
+    const post = await createPost({ cover_file_id: oldCover });
+    const page = await createPage();
+    const body = `<p>Lihat sampul berita.</p>${imgTag(oldCover, "Sampul berita")}`;
+
+    const outcome = await withHold("pages", `new.id = '${page.id}'`, async (release) => {
+      // 1) Simpan halaman berhenti SESUDAH UPDATE pages (kunci berkas yang dirujuk tetap dipegang).
+      const pageSave = patch(`/admin/content/pages/${page.id}`, page.version, { body_html: body });
+      expect(await until(async () => (await lockWaiters("advisory")) >= 1)).toBe(true);
+      // 2) Ganti cover berita: cover lama dibuang hanya bila tidak dirujuk konten lain.
+      let swapSettled = false;
+      const coverSwap = patch(`/admin/content/posts/${post.id}`, post.version, {
+        cover_file_id: newCover,
+      }).finally(() => (swapSettled = true));
+      const swapWaited = await until(
+        async () => (await lockWaiters()) >= 2,
+        () => swapSettled,
+      );
+      release();
+      return { pageSave: await pageSave, coverSwap: await coverSwap, swapWaited };
+    });
+
+    expect(outcome.pageSave.statusCode, outcome.pageSave.body).toBe(200);
+    expect(outcome.coverSwap.statusCode, outcome.coverSwap.body).toBe(200);
+    expect(outcome.swapWaited, "pembuangan cover menunggu kunci berkas milik penyimpanan halaman").toBe(true);
+    expect((outcome.pageSave.json() as { body_html: string }).body_html).toContain(oldCover);
+    // Cover lama masih dirujuk halaman: tidak dibuang.
+    expect(await fileStatus(oldCover)).toEqual({ status: "ready", attached: true });
+    expect(await fileStatus(newCover)).toEqual({ status: "ready", attached: true });
+  });
+
+  it("PRD 3.8: cover dibuang lebih dahulu lalu halaman yang merujuknya disimpan bersamaan -> simpan ditolak 400", async () => {
+    const { admin, createPost, createPage, patch } = await contentAdmin();
+    const oldCover = await insertContentImage(admin.userId);
+    const newCover = await insertContentImage(admin.userId);
+    const post = await createPost({ cover_file_id: oldCover });
+    const page = await createPage();
+
+    const outcome = await withHold(
+      "files",
+      `new.id = '${oldCover}' and new.status = 'deleted'`,
+      async (release) => {
+        // 1) Ganti cover berhenti SESUDAH menandai cover lama `deleted` (baris berkas tetap terkunci).
+        const coverSwap = patch(`/admin/content/posts/${post.id}`, post.version, { cover_file_id: newCover });
+        expect(await until(async () => (await lockWaiters("advisory")) >= 1)).toBe(true);
+        // 2) Simpan halaman yang merujuk cover lama.
+        let saveSettled = false;
+        const pageSave = patch(`/admin/content/pages/${page.id}`, page.version, {
+          body_html: `<p>Sampul lama.</p>${imgTag(oldCover, "Sampul lama")}`,
+        }).finally(() => (saveSettled = true));
+        const saveWaited = await until(
+          async () => (await lockWaiters()) >= 2,
+          () => saveSettled,
+        );
+        release();
+        return { pageSave: await pageSave, coverSwap: await coverSwap, saveWaited };
+      },
+    );
+
+    expect(outcome.coverSwap.statusCode, outcome.coverSwap.body).toBe(200);
+    expect(outcome.saveWaited, "penyimpanan halaman menunggu kunci berkas milik pembuangan").toBe(true);
+    expect(outcome.pageSave.statusCode, outcome.pageSave.body).toBe(400);
+    expect(outcome.pageSave.json()).toMatchObject({
+      code: "VALIDATION_ERROR",
+      field_errors: { body_html: expect.any(Array) },
+    });
+    expect(await fileStatus(oldCover)).toMatchObject({ status: "deleted" });
+    const [stored] = await tdb.sql<{ body_html: string; version: number }[]>`
+      select body_html, version from app.pages where id = ${page.id}`;
+    expect(stored).toEqual({ body_html: "<p>Awal.</p>", version: Number(page.version) });
+  });
+
+  it("ARCHITECTURE §2: dua draf merujuk dua gambar baru dalam urutan berlawanan bersamaan -> keduanya 200 tanpa deadlock", async () => {
+    const { admin, createPage, patch } = await contentAdmin();
+    const first = await insertContentImage(admin.userId);
+    const second = await insertContentImage(admin.userId);
+    const pageA = await createPage();
+    const pageB = await createPage();
+
+    const results = await withHold(
+      "files",
+      `new.id in ('${first}', '${second}') and old.attached_at is null and new.attached_at is not null`,
+      async (release) => {
+        const saves = [
+          patch(`/admin/content/pages/${pageA.id}`, pageA.version, {
+            body_html: `${imgTag(first, "Satu")}${imgTag(second, "Dua")}`,
+          }),
+          patch(`/admin/content/pages/${pageB.id}`, pageB.version, {
+            body_html: `${imgTag(second, "Dua")}${imgTag(first, "Satu")}`,
+          }),
+        ];
+        // Kedua penyimpanan sudah berebut sebelum dilepas. Urutan lama (lampirkan menurut urutan di body): masing-
+        // masing memegang satu gambar lalu menunggu gambar lainnya -> deadlock 40P01 -> 500.
+        expect(await until(async () => (await lockWaiters()) >= 2)).toBe(true);
+        release();
+        return Promise.all(saves);
+      },
+    );
+
+    for (const res of results) expect(res.statusCode, res.body).toBe(200);
+    expect(await fileStatus(first)).toEqual({ status: "ready", attached: true });
+    expect(await fileStatus(second)).toEqual({ status: "ready", attached: true });
   });
 });
