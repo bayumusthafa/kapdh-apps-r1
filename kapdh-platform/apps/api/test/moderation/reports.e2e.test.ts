@@ -1,5 +1,5 @@
-import { alumni, auditLogs, files, notifications, reports, users } from "@kapdh/database";
-import { and, eq } from "drizzle-orm";
+import { alumni, auditLogs, files, notifications, reports, roomMembers, users } from "@kapdh/database";
+import { and, eq, inArray } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runAsSystem } from "../../src/core/context/request-context.js";
@@ -227,6 +227,34 @@ describe("POST /reports — pengguna (AC F12-2)", () => {
     await reportOk(t.app, reporter.token, { ...notFoundBody, target_user_id: expired.userId });
     await createDirectRoom(t, reporter.userId, hiddenProfile.userId);
     await reportOk(t.app, reporter.token, { ...notFoundBody, target_user_id: hiddenProfile.userId });
+  });
+
+  it("AC F12-2: undangan yang dibatalkan sebelum diterima bukan 'pernah satu room' (404); anggota yang dikeluarkan setelah bergabung tetap terhitung", async () => {
+    const reporter = await member();
+    const invitee = await member("verified", { showInDirectory: false });
+    const formerMember = await member("verified", { showInDirectory: false });
+    const group = await createGroupRoom(t, { adminId: reporter.userId });
+    await addRoomMember(t, group, invitee.userId, { status: "invited", invitedBy: reporter.userId });
+    // Blokir membatalkan undangan tertunda (invited → removed, joined_at kosong), lalu blokir dibuka lagi.
+    expect((await api().put(`/blocks/${invitee.userId}`, undefined, { token: reporter.token })).statusCode).toBe(
+      200,
+    );
+    expect((await api().delete(`/blocks/${invitee.userId}`, { token: reporter.token })).statusCode).toBe(204);
+    const [membership] = await t.db
+      .select()
+      .from(roomMembers)
+      .where(and(eq(roomMembers.roomId, group), eq(roomMembers.userId, invitee.userId)));
+    expect(membership).toMatchObject({ status: "removed", joinedAt: null });
+
+    const body = { target_type: "user", category: "spam" };
+    const neverJoined = await postReport(t.app, reporter.token, { ...body, target_user_id: invitee.userId });
+    expect(neverJoined.statusCode, neverJoined.body).toBe(404);
+    expectOperation("post", "/reports", neverJoined);
+    expect(await t.db.select().from(reports).where(eq(reports.targetUserId, invitee.userId))).toEqual([]);
+
+    // Dikeluarkan admin grup SETELAH bergabung (removed dengan joined_at) tetap "pernah satu room".
+    await addRoomMember(t, group, formerMember.userId, { status: "removed" });
+    await reportOk(t.app, reporter.token, { ...body, target_user_id: formerMember.userId });
   });
 });
 
@@ -573,6 +601,82 @@ describe("Retensi berkas bukti (PRD 3.12, D2; core FilesService.discard)", () =>
     // Laporan tetap tersimpan dan dapat diputus (hanya dismiss karena akun terlapor sudah dihapus).
     expect(profileRow.status).toBe("open");
   });
+
+  it("AC F14-3 / D2: deskripsi laporan dan alasan banding tulisan akun yang dihapus tidak ditampilkan lalu dikosongkan; laporan pihak lain tetap utuh; idempoten", async () => {
+    const admin = await createAdmin(t, { permissions: ["moderation.read"] });
+    const adminToken = (await signInAdmin(t, admin)).accessToken;
+    const author = await member("verified", { fullName: "Budi Santoso" });
+    const target = await member("verified", { fullName: "Terlapor D2" });
+    const witness = await member("verified", { fullName: "Saksi Aktif" });
+    const appellant = await member("suspended", { fullName: "Siti Aminah" });
+
+    const ownReport = await reportOk(t.app, author.token, {
+      target_type: "user",
+      target_user_id: target.userId,
+      category: "scam",
+      description: "Saya Budi Santoso, telp 0812-3456-7890, ditipu orang ini.",
+    });
+    const aboutAuthor = await reportOk(t.app, witness.token, {
+      target_type: "user",
+      target_user_id: author.userId,
+      category: "harassment",
+      description: "Orang ini mengancam saya di grup.",
+    });
+    const appealRes = await api().post(
+      "/appeals",
+      { description: "Saya Siti Aminah, alamat Jl. Melati 5, mohon pembatasan dicabut." },
+      { token: appellant.token },
+    );
+    expect(appealRes.statusCode, appealRes.body).toBe(201);
+    const appeal = appealRes.json().id as string;
+
+    await t.db
+      .update(users)
+      .set({ status: "deleted" })
+      .where(inArray(users.id, [author.userId, appellant.userId]));
+    const detailOf = async (id: string) =>
+      expectOperation(
+        "get",
+        "/admin/reports/{reportId}",
+        await api().get(`/admin/reports/${id}`, { token: adminToken }),
+      ) as Record<string, unknown>;
+    // Tampilan pengurus sudah anonim begitu akun berstatus deleted, sebelum job membersihkan kolomnya.
+    expect(await detailOf(ownReport)).toMatchObject({
+      description: null,
+      reporter: null,
+      subject: { user_id: target.userId },
+    });
+    expect(await detailOf(appeal)).toMatchObject({ category: "appeal", description: null, reporter: null, subject: null });
+    // Laporan pihak lain tentang akun yang dihapus: deskripsi penulisnya yang masih ada tetap tampil.
+    expect(await detailOf(aboutAuthor)).toMatchObject({
+      description: "Orang ini mengancam saya di grup.",
+      reporter: { user_id: witness.userId },
+      subject: null,
+    });
+
+    // Langkah job penghapusan akun: deskripsi tulisan akun itu dikosongkan, snapshot profilnya di laporan lain
+    // dibersihkan; pemanggilan ulang tidak mengubah apa pun.
+    expect(await inTx((tx) => anonymizeEvidenceOf(tx, author.userId, t.clock.now()))).toBe(2);
+    expect(await inTx((tx) => anonymizeEvidenceOf(tx, author.userId, t.clock.now()))).toBe(0);
+    expect(await inTx((tx) => anonymizeEvidenceOf(tx, appellant.userId, t.clock.now()))).toBe(1);
+    expect(await inTx((tx) => anonymizeEvidenceOf(tx, appellant.userId, t.clock.now()))).toBe(0);
+    const own = await reportRow(ownReport);
+    expect(own.description).toBeNull();
+    // Bukti laporan itu (profil pihak terlapor yang masih ada) tidak berubah.
+    expect(own.evidence).toMatchObject({ profile: { user_id: target.userId, full_name: "Terlapor D2" } });
+    const about = await reportRow(aboutAuthor);
+    expect(about.description).toBe("Orang ini mengancam saya di grup.");
+    expect(about.evidence).toMatchObject({ profile: { user_id: author.userId, full_name: null } });
+    const appealRow = await reportRow(appeal);
+    expect(appealRow).toMatchObject({ category: "appeal", status: "open", description: null });
+    for (const row of [own, about, appealRow]) {
+      const stored = JSON.stringify(row);
+      expect(stored).not.toContain("0812-3456-7890");
+      expect(stored).not.toContain("Budi Santoso");
+      expect(stored).not.toContain("Siti Aminah");
+      expect(stored).not.toContain("Jl. Melati");
+    }
+  });
 });
 
 describe("POST /appeals (PRD 3.12 mekanisme banding)", () => {
@@ -691,7 +795,7 @@ describe("POST /appeals (PRD 3.12 mekanisme banding)", () => {
     expect(audits).toHaveLength(1);
   });
 
-  it("jaring pengaman: banding usang ditutup sebagai dikabulkan lalu banding baru dibuat untuk suspend yang berlaku", async () => {
+  it("AC F12-3: jaring pengaman: banding usang ditutup oleh sistem (aktor audit system) sebagai dikabulkan lalu banding baru dibuat", async () => {
     const appellant = await member("suspended");
     const first = (
       await api().post("/appeals", { description: "Banding pertama saya." }, { token: appellant.token })
@@ -724,5 +828,26 @@ describe("POST /appeals (PRD 3.12 mekanisme banding)", () => {
     });
     const old = (await api().get(`/reports/${first}`, { token: session.accessToken })).json();
     expect(old).toMatchObject({ outcome: "action_taken" });
+
+    // Aktor keputusan penutupan adalah sistem, bukan pemohon yang memicu permintaan (AC F12-3, F17-1).
+    const auditOf = async (entityId: string, action: string) =>
+      (
+        await t.db
+          .select()
+          .from(auditLogs)
+          .where(and(eq(auditLogs.entityId, entityId), eq(auditLogs.action, action)))
+      )[0];
+    const closedAudit = await auditOf(first, "moderation.report_resolved");
+    expect(closedAudit).toMatchObject({ actorUserId: null, actorAdminId: null, effectiveRole: "system" });
+    expect(closedAudit!.after).toMatchObject({
+      closed_by: "system",
+      stale_appeal: true,
+      membership_unchanged: true,
+    });
+    // Banding baru tetap tercatat atas nama pemohon.
+    expect(await auditOf(res.json().id as string, "moderation.appeal_created")).toMatchObject({
+      actorUserId: appellant.userId,
+      effectiveRole: "alumni",
+    });
   });
 });

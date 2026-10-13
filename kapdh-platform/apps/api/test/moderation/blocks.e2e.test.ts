@@ -46,7 +46,7 @@ async function member(status: "verified" | "expiring" | "expired" | "suspended" 
 const api = () => httpClient(t.app);
 
 describe("PUT/DELETE /blocks/{userId} (AC F12-1)", () => {
-  it("AC F12-1: blokir dari satu pihak menolak dari pihak mana pun; idempoten; buka blokir hanya milik sendiri", async () => {
+  it("AC F12-1: blokir dari satu pihak membuat BlockPolicy menolak kedua arah; idempoten; buka blokir hanya milik sendiri", async () => {
     const a = await member();
     const b = await member("expiring");
 
@@ -55,7 +55,8 @@ describe("PUT/DELETE /blocks/{userId} (AC F12-1)", () => {
     const blocked = expectOperation("put", "/blocks/{userId}", res) as Record<string, unknown>;
     expect(blocked).toMatchObject({ user_id: b.userId, full_name: "Anggota expiring", avatar_url: null });
 
-    // Dua arah: kirim direct dari A ke B maupun B ke A ditolak oleh kebijakan yang sama.
+    // Dua arah: BlockPolicy (core) yang dipanggil modul chat saat kirim direct/undangan menolak A→B maupun B→A.
+    // Bukti end-to-end sendChatMessage/undangan yang ditolak milik slice api-chat (modul chat tidak ada di slice ini).
     expect(await policy.isBlockedEitherWay(a.userId, b.userId)).toBe(true);
     expect(await policy.isBlockedEitherWay(b.userId, a.userId)).toBe(true);
 

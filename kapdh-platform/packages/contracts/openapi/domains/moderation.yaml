@@ -121,7 +121,8 @@ paths:
       description: |
         Hanya anggota aktif. `target_type` menentukan field wajib (field lain tidak boleh diisi, 400):
         - user: `target_user_id`, anggota lain yang terlihat di direktori bagi pelapor atau pernah berada di room yang
-          sama; selain itu 404. Bukti: snapshot profil publik minimum (nama, bio, avatar).
+          sama (keduanya pernah bergabung; undangan yang dibatalkan sebelum diterima tidak dihitung); selain itu 404.
+          Bukti: snapshot profil publik minimum (nama, bio, avatar).
         - message: `message_id`, pesan orang lain di room tempat pelapor anggota joined dan terlihat baginya; selain
           itu 404. `context_message_ids` (maksimal 5, room sama, terlihat bagi pelapor) boleh ditambahkan sebagai
           konteks. Bukti: snapshot pesan (isi, gambar, pengirim, waktu) sehingga tetap tersedia walaupun pesan

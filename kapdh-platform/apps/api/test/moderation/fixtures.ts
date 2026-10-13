@@ -74,6 +74,8 @@ export async function addRoomMember(
     role?: "admin" | "member";
     invitedBy?: string | null;
     historyVisibleFrom?: Date | null;
+    /** Bawaan: kosong untuk invited/declined, sekarang untuk lainnya. null + removed = undangan yang dibatalkan. */
+    joinedAt?: Date | null;
   } = {},
 ): Promise<void> {
   const now = t.clock.now();
@@ -85,7 +87,8 @@ export async function addRoomMember(
     status,
     invitedBy: options.invitedBy ?? null,
     invitedAt: status === "invited" || options.invitedBy ? now : null,
-    joinedAt: status === "invited" || status === "declined" ? null : now,
+    joinedAt:
+      options.joinedAt !== undefined ? options.joinedAt : status === "invited" || status === "declined" ? null : now,
     leftAt: status === "left" || status === "removed" ? now : null,
     historyVisibleFrom: options.historyVisibleFrom ?? null,
     createdAt: now,
