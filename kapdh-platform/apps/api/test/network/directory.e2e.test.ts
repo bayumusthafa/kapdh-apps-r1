@@ -60,9 +60,7 @@ async function member(
   return created;
 }
 
-async function viewer(
-  options: CreateAlumniOptions & { profile?: Partial<AlumniRow> } = {},
-): Promise<Member> {
+async function viewer(options: CreateAlumniOptions & { profile?: Partial<AlumniRow> } = {}): Promise<Member> {
   const created = await member({ status: "verified", ...options });
   const session = await signInAlumni(t, created);
   return { ...created, token: session.accessToken };
@@ -226,7 +224,11 @@ describe("AC F10-1: hasil hanya anggota yang tampil menurut status terkini", () 
     const names = ["Sama Nama", "Sama Nama", "sama nama", "Budi", "andi", "budi", "Zaki", "Ahmad Zaki"];
     const created = [];
     for (const [i, fullName] of names.entries())
-      created.push({ ...(await member({ city, fullName, cohort: 10 + (i % 3) })), fullName, cohort: 10 + (i % 3) });
+      created.push({
+        ...(await member({ city, fullName, cohort: 10 + (i % 3) })),
+        fullName,
+        cohort: 10 + (i % 3),
+      });
 
     const expected = [...created]
       .sort((a, b) => {
@@ -526,7 +528,9 @@ describe("Profil anggota lain (GET /directory/{userId})", () => {
       city: "Pekanbaru",
       profile: { lastEducationInstitution: "Universitas Indonesia", lastEducationCity: "Jakarta" },
     });
-    await t.db.insert(alumniProfessions).values({ alumniUserId: target.userId, professionId: retiredProfession.id });
+    await t.db
+      .insert(alumniProfessions)
+      .values({ alumniUserId: target.userId, professionId: retiredProfession.id });
     await t.db.insert(alumniSkills).values([
       { alumniUserId: target.userId, skillId: skillB.id },
       { alumniUserId: target.userId, skillId: skillA.id },
@@ -631,7 +635,8 @@ describe("Profil anggota lain (GET /directory/{userId})", () => {
     const caller = await viewer();
     const target = await member();
     const now = t.clock.now();
-    const [low, high] = caller.userId < target.userId ? [caller.userId, target.userId] : [target.userId, caller.userId];
+    const [low, high] =
+      caller.userId < target.userId ? [caller.userId, target.userId] : [target.userId, caller.userId];
     const roomId = uuidv7();
     await t.db.insert(rooms).values({
       id: roomId,

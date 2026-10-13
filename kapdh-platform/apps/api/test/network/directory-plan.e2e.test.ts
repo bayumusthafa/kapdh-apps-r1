@@ -28,7 +28,20 @@ import { createTestDatabase } from "../support/test-app.js";
  */
 
 const PROFILES = 5000;
-const NAMES = ["ahmad", "budi", "citra", "dewi", "eko", "fajar", "gita", "hadi", "indah", "joko", "kiki", "lutfi"];
+const NAMES = [
+  "ahmad",
+  "budi",
+  "citra",
+  "dewi",
+  "eko",
+  "fajar",
+  "gita",
+  "hadi",
+  "indah",
+  "joko",
+  "kiki",
+  "lutfi",
+];
 const CITIES = ["Bandung", "Jakarta", "Garut", "Tasikmalaya", "Pekanbaru", "Bogor", "Cirebon", "Depok"];
 
 let pg: PGlite;
@@ -86,21 +99,41 @@ beforeAll(async () => {
     await db.insert(users).values(userRows);
     await db.insert(alumni).values(alumniRows);
   }
-  await db.insert(users).values({ id: viewerId, email: "penonton@contoh.test", passwordHash: "x", status: "active", kind: "alumni" });
+  await db
+    .insert(users)
+    .values({
+      id: viewerId,
+      email: "penonton@contoh.test",
+      passwordHash: "x",
+      status: "active",
+      kind: "alumni",
+    });
   await db
     .insert(alumniProfessions)
     .values(ids.filter((_, i) => i % 9 === 0).map((id) => ({ alumniUserId: id, professionId })));
-  await db.insert(alumniSkills).values(ids.filter((_, i) => i % 7 === 0).map((id) => ({ alumniUserId: id, skillId })));
-  await db.insert(blocks).values(
-    ids.slice(0, 300).map((id, i) => (i % 2 ? { blockerId: id, blockedId: ids[i + 1000]! } : { blockerId: id, blockedId: viewerId })),
-  );
+  await db
+    .insert(alumniSkills)
+    .values(ids.filter((_, i) => i % 7 === 0).map((id) => ({ alumniUserId: id, skillId })));
+  await db
+    .insert(blocks)
+    .values(
+      ids
+        .slice(0, 300)
+        .map((id, i) =>
+          i % 2 ? { blockerId: id, blockedId: ids[i + 1000]! } : { blockerId: id, blockedId: viewerId },
+        ),
+    );
   await pg.query("analyze");
 }, 120_000);
 afterAll(async () => {
   await pg?.close();
 });
 
-async function plan(input: { filters?: Partial<DirectoryFilters>; sort?: DirectorySort; after?: DirectoryPosition | null }) {
+async function plan(input: {
+  filters?: Partial<DirectoryFilters>;
+  sort?: DirectorySort;
+  after?: DirectoryPosition | null;
+}) {
   const query = directoryPageQuery(db, {
     viewerId,
     filters: { nameTokens: [], ...input.filters },
@@ -143,19 +176,17 @@ describe("N-01, AC F10-1: rencana kueri direktori memakai indeks dan keyset (EXP
     expectIndexedPage(first);
     expect(first).toContain("Index Scan Backward using alumni_cohort_class_idx on alumni");
 
-    const next = await plan({ sort: "cohort_desc", after: { s: "cohort_desc", c: 12, n: "dewi", id: uuidv7() } });
+    const next = await plan({
+      sort: "cohort_desc",
+      after: { s: "cohort_desc", c: 12, n: "dewi", id: uuidv7() },
+    });
     expectIndexedPage(next);
     expect(next).toContain("Index Scan Backward using alumni_cohort_class_idx on alumni");
     expect(next).toContain("Index Cond: (cohort <= '12'::smallint)");
   });
 
   it("AC F10-1: filter nama, kota, angkatan, profesi dan keahlian tetap memakai rencana halaman berindeks", async () => {
-    for (const filters of [
-      { nameTokens: ["ahm"] },
-      { city: "garut" },
-      { cohort: 5 },
-      { classLevel: 2 },
-    ])
+    for (const filters of [{ nameTokens: ["ahm"] }, { city: "garut" }, { cohort: 5 }, { classLevel: 2 }])
       expectIndexedPage(await plan({ filters }));
     const byProfession = await plan({ filters: { professionId } });
     expectIndexedPage(byProfession);

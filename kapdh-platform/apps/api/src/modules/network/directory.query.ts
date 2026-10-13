@@ -28,8 +28,7 @@ export interface DirectoryFilters {
 
 /** Posisi keyset terakhir yang dikirim klien lewat cursor opaque. */
 export type DirectoryPosition =
-  | { s: "name_asc"; n: string; id: string }
-  | { s: "cohort_desc"; c: number; n: string; id: string };
+  { s: "name_asc"; n: string; id: string } | { s: "cohort_desc"; c: number; n: string; id: string };
 
 /** Ekspresi kunci urut nama (harus SAMA PERSIS dengan ekspresi indeks alumni_full_name_idx). */
 export const sortName = sql<string>`lower(${alumni.fullName})`;
@@ -95,7 +94,9 @@ function filterConditions(db: DbOrTx, filters: DirectoryFilters): SQL[] {
         db
           .select({ one: sql`1` })
           .from(alumniSkills)
-          .where(and(eq(alumniSkills.alumniUserId, alumni.userId), eq(alumniSkills.skillId, filters.skillId))),
+          .where(
+            and(eq(alumniSkills.alumniUserId, alumni.userId), eq(alumniSkills.skillId, filters.skillId)),
+          ),
       ),
     );
   return conditions;

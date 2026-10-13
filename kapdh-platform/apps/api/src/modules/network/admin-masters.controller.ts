@@ -1,10 +1,6 @@
 import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post, Query } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
-import {
-  Audience,
-  RequireAnyPermission,
-  RequirePermission,
-} from "../../core/guards/decorators.js";
+import { Audience, RequireAnyPermission, RequirePermission } from "../../core/guards/decorators.js";
 import { UuidParam } from "../../core/validation/uuid-param.pipe.js";
 import { MastersService, parseMasterKind } from "./masters.service.js";
 
