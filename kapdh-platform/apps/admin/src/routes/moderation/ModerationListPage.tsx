@@ -6,15 +6,16 @@ import { Clock, Eye, Flag, Siren } from "lucide-react";
 import { useMemo, useState } from "react";
 import { api } from "../../api/client";
 import { useApiQuery } from "../../api/query";
+import { useAuth } from "../../auth/session";
 import { Badge, ReportStatusBadge } from "../../components/ui/Badge";
-import { StatCard } from "../../components/ui/Card";
+import { Card, StatCard } from "../../components/ui/Card";
 import { Checkbox } from "../../components/ui/Choice";
 import { DataTable, useCursorPaging } from "../../components/ui/DataTable";
 import { Field } from "../../components/ui/FormField";
 import { Select, type SelectOption } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SearchInput } from "../../components/ui/SearchInput";
-import { EmptyState } from "../../components/ui/States";
+import { EmptyState, ForbiddenState } from "../../components/ui/States";
 import { formatShortDateTime } from "../../lib/format";
 import { DELETED_ACCOUNT_LABEL } from "../../lib/labels";
 import { CATEGORY_LABEL, PriorityBadge, REPORTS_KEY, TARGET_LABEL } from "./labels";
@@ -71,6 +72,25 @@ export function subjectText(r: Pick<Item, "subject" | "room_name" | "target_type
  * laporan yang menyangkut akun alumni tertaut admin sendiri tidak pernah tampil (konflik kepentingan, AC F12-2).
  */
 export function ModerationPage() {
+  const auth = useAuth();
+  return (
+    <>
+      <PageHeader
+        title="Moderasi"
+        description="Laporan pengguna, pesan dan grup. Target penanganan: ancaman/keselamatan 24 jam, laporan lain 2 hari kerja."
+      />
+      {auth.can("moderation.read") ? (
+        <ModerationQueue />
+      ) : (
+        <Card>
+          <ForbiddenState description="Antrean dan bukti laporan memerlukan izin Membaca laporan moderasi (moderation.read). Hubungi Super Admin bila Anda memerlukannya." />
+        </Card>
+      )}
+    </>
+  );
+}
+
+function ModerationQueue() {
   const [status, setStatus] = useState<StatusFilter>("active");
   const [priority, setPriority] = useState<Priority | "">("");
   const [category, setCategory] = useState<Category | "">("");
@@ -180,11 +200,7 @@ export function ModerationPage() {
   const counts = list.data?.counts;
   return (
     <>
-      <PageHeader
-        title="Moderasi"
-        description="Laporan pengguna, pesan dan grup. Target penanganan: ancaman/keselamatan 24 jam, laporan lain 2 hari kerja."
-      />
-      <div className="flex flex-wrap gap-4">
+      <section aria-label="Ringkasan antrean" className="flex flex-wrap gap-4">
         <StatCard label="Terbuka" value={counts?.open ?? "-"} icon={<Flag />} tone="warning" loading={list.isPending} />
         <StatCard label="Sedang ditinjau" value={counts?.in_review ?? "-"} icon={<Eye />} tone="info" loading={list.isPending} />
         <StatCard
@@ -195,7 +211,7 @@ export function ModerationPage() {
           loading={list.isPending}
         />
         <StatCard label="Mendesak" value={counts?.urgent ?? "-"} icon={<Siren />} tone="danger" loading={list.isPending} />
-      </div>
+      </section>
       <section aria-label="Antrean laporan">
         <DataTable<Item>
           caption="Antrean laporan moderasi"
