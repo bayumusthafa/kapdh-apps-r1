@@ -21,7 +21,6 @@ import { Input, Select, type SelectOption } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, ForbiddenState } from "../../components/ui/States";
 import { TabPanel, Tabs } from "../../components/ui/Tabs";
-import { useToast } from "../../components/ui/Toast";
 import { cn } from "../../lib/cn";
 import { formatShortDateTime } from "../../lib/format";
 import { DELETED_ACCOUNT_LABEL } from "../../lib/labels";
@@ -276,9 +275,13 @@ function channelText(d: Delivery): string {
   return CHANNEL_LABEL[d.channel];
 }
 
+/** Nama baris untuk pembaca layar dan kotak centang, mis. "pengiriman Pembayaran Email ke Sari Dewi 12/10 10.00". */
+function deliveryLabel(d: Delivery): string {
+  return `pengiriman ${CATEGORY_LABEL[d.category]} ${channelText(d)} ke ${recipientText(d)} ${formatShortDateTime(d.created_at)}`;
+}
+
 function DeliveriesPanel({ since }: { since?: string }) {
   const queryClient = useQueryClient();
-  const toast = useToast();
   // Tautan dasbor (?since=) membuka kegagalan yang dapat ditindak sejak awal jendela hitungan.
   const initial: DeliveryFilterValues = since
     ? { ...EMPTY_DELIVERY_FILTER, status: "failed", retryable: "true", from: since }
@@ -333,7 +336,6 @@ function DeliveriesPanel({ since }: { since?: string }) {
           )}.`,
         );
       setNotice({ tone: skipped > 0 ? "warning" : "success", message: parts.join(" ") });
-      if (requeued > 0) toast.success(`${requeued} pengiriman dijadwalkan ulang.`);
       void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
       void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
     },
@@ -554,7 +556,7 @@ function DeliveriesPanel({ since }: { since?: string }) {
             selected,
             onChange: setSelected,
             resetKey: { applied, sort },
-            rowLabel: (d) => `pengiriman ${CATEGORY_LABEL[d.category]} ke ${recipientText(d)}`,
+            rowLabel: deliveryLabel,
             actions: (rows) => (
               <Button
                 size="sm"
@@ -572,7 +574,7 @@ function DeliveriesPanel({ since }: { since?: string }) {
                 size="sm"
                 variant="ghost"
                 leftIcon={<RotateCcw aria-hidden="true" className="size-4" />}
-                aria-label={`Kirim ulang pengiriman ${CATEGORY_LABEL[d.category]} ke ${recipientText(d)}`}
+                aria-label={`Kirim ulang ${deliveryLabel(d)}`}
                 loading={retry.isPending && retry.variables?.length === 1 && retry.variables[0] === d.id}
                 onClick={() => retry.mutate([d.id])}
               >
@@ -651,7 +653,6 @@ function topicText(topic: string): string {
 
 function OutboxPanel() {
   const queryClient = useQueryClient();
-  const toast = useToast();
   const [status, setStatus] = useState<OutboxStatus | "">("");
   const [topic, setTopic] = useState("");
   const [sort, setSort] = useState<OutboxSort>("created_at_desc");
@@ -701,7 +702,6 @@ function OutboxPanel() {
           )}.`,
         );
       setNotice({ tone: skipped > 0 ? "warning" : "success", message: parts.join(" ") });
-      if (requeued > 0) toast.success(`${requeued} event dikembalikan ke antrean.`);
       void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
       void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
     },
