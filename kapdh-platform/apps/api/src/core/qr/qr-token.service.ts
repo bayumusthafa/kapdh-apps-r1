@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { type ApiEnv, parseSigningKeys, type SigningKey } from "@kapdh/config";
-import { decodeProtectedHeader, jwtVerify, SignJWT } from "jose";
+import { compactVerify, decodeProtectedHeader, jwtVerify, SignJWT } from "jose";
 import type { Clock } from "../adapters/clock.js";
 import { UUID_PATTERN } from "../validation/validate.js";
 import { CLOCK, ENV } from "../tokens.js";
@@ -27,6 +27,12 @@ export interface SignedQrToken {
   token: string;
   expiresAt: Date;
   keyId: string;
+}
+
+/** Hasil {@link QrTokenService.inspect}: klaim token bertanda tangan sah, termasuk yang `exp`-nya sudah lewat. */
+export interface InspectedQrToken extends QrTokenClaims {
+  /** true bila `exp` <= waktu server (token tidak pernah boleh menghasilkan status Aktif, AC F06-3). */
+  expired: boolean;
 }
 
 /** N dari nomor AA.SS.JK.N (segmen terakhir), atau null bila bentuknya tidak valid. */
@@ -149,6 +155,58 @@ export class QrTokenService {
         issuedAt: new Date(iat * 1000),
         expiresAt: new Date(exp * 1000),
         keyId: header.kid,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Langkah 1 urutan penilaian kontrak verifyKta (public.yaml): tanda tangan (kid terdaftar, HS256 saja), issuer,
+   * audience dan bentuk klaim (sub UUID, seq bilangan bulat positif, iat tidak dari masa depan, 0 < exp - iat <= 7
+   * hari) diperiksa, TETAPI `exp` yang sudah lewat tidak ditolak: hasilnya ditandai `expired` agar pemanggil dapat
+   * membedakan akun terhapus (`not_found`), token yang dipangkas masa keanggotaan (`expired`) dan token usang
+   * (`invalid_token`) tanpa pernah memberi status Aktif (AC F06-2, F06-3, F05-5). null = token rusak/diubah/kunci tidak
+   * dikenal → `invalid_token` tanpa membaca data anggota. Klaim tidak pernah dibaca dari token yang belum diverifikasi.
+   */
+  async inspect(token: string): Promise<InspectedQrToken | null> {
+    if (typeof token !== "string" || token.length === 0 || token.length > 2048) return null;
+    try {
+      const header = decodeProtectedHeader(token);
+      if (header.alg !== "HS256" || typeof header.kid !== "string") return null;
+      if (header.typ !== undefined && header.typ !== "JWT") return null;
+      const secret = this.secrets.get(header.kid);
+      if (!secret) return null;
+      const { payload } = await compactVerify(token, secret, { algorithms: ["HS256"] });
+      const claims = JSON.parse(new TextDecoder().decode(payload)) as Record<string, unknown>;
+      const { iss, aud, sub, iat, exp, seq } = claims;
+      const audienceOk = aud === QR_AUDIENCE || (Array.isArray(aud) && aud.includes(QR_AUDIENCE));
+      const nowSeconds = Math.floor(this.clock.now().getTime() / 1000);
+      if (
+        iss !== QR_ISSUER ||
+        !audienceOk ||
+        typeof sub !== "string" ||
+        !UUID_PATTERN.test(sub) ||
+        typeof seq !== "number" ||
+        !Number.isSafeInteger(seq) ||
+        seq < 1 ||
+        typeof iat !== "number" ||
+        !Number.isSafeInteger(iat) ||
+        typeof exp !== "number" ||
+        !Number.isSafeInteger(exp) ||
+        iat > nowSeconds + CLOCK_SKEW_SECONDS ||
+        exp <= iat ||
+        exp - iat > QR_MAX_TTL_SECONDS
+      )
+        return null;
+      return {
+        userId: sub,
+        seq,
+        issuedAt: new Date(iat * 1000),
+        expiresAt: new Date(exp * 1000),
+        keyId: header.kid,
+        // Sama dengan aturan jose (`exp <= now` = kedaluwarsa) yang dipakai verify().
+        expired: exp <= nowSeconds,
       };
     } catch {
       return null;
