@@ -208,6 +208,42 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     expect(del?.ifMatch).toBe("2");
     expect(mockPayments.method(IDS.methodInactive)).toBeUndefined();
     await screen.findByText("Menampilkan 2 dari 2");
+    // N-11: tombol hapus pemicu ikut hilang; fokus pindah ke tombol "Tambah metode", tidak jatuh ke <body>.
+    expect(screen.queryByRole("button", { name: "Hapus [Nama bank 2]" })).toBeNull();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Tambah metode" })).toHaveFocus());
+  });
+
+  it("AC F15-3: ubah tanpa perubahan tidak meminta reautentikasi dan tidak mengirim PUT", async () => {
+    const user = userEvent.setup();
+    await openPayments(user, { tab: "methods" });
+    await methodsTable();
+    await user.click(screen.getByRole("button", { name: "Ubah [Nama e-wallet]" }));
+    const dialog = await screen.findByRole("dialog", { name: "Ubah metode pembayaran" });
+    const save = within(dialog).getByRole("button", { name: "Simpan metode" });
+    expect(save).toBeDisabled();
+    await user.click(save);
+    expect(screen.queryByRole("dialog", { name: "Konfirmasi identitas" })).toBeNull();
+
+    // Spasi di ujung isian dipangkas server sehingga tetap bukan perubahan.
+    const holder = within(dialog).getByRole("textbox", { name: /Nama pemilik rekening/ });
+    await user.type(holder, " ");
+    expect(save).toBeDisabled();
+    // Perubahan yang dikembalikan ke nilai semula juga bukan perubahan.
+    await user.click(within(dialog).getByRole("switch", { name: "Tampilkan ke alumni" }));
+    expect(save).toBeEnabled();
+    await user.click(within(dialog).getByRole("switch", { name: "Tampilkan ke alumni" }));
+    expect(save).toBeDisabled();
+    expect(methodRequests("PUT")).toHaveLength(0);
+
+    await user.click(within(dialog).getByRole("switch", { name: "Tampilkan ke alumni" }));
+    await user.click(save);
+    await confirmReauth(user, /Mengubah rekening tujuan pembayaran/);
+    expect(await findToast("success", "Metode pembayaran diperbarui.")).toBeInTheDocument();
+    expect(methodRequests("PUT")).toHaveLength(1);
+    expect(methodRequests("PUT")[0]?.body).toMatchObject({
+      account_holder: "[Nama pemilik akun]",
+      active: false,
+    });
   });
 
   it("AC F15-1: admin pembayaran tanpa settings.manage tidak melihat tab metode dan biaya", async () => {
