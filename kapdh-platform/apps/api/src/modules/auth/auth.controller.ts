@@ -1,6 +1,5 @@
 import { Body, Controller, HttpCode, Inject, Post, Req, Res } from "@nestjs/common";
 import type { ApiEnv } from "@kapdh/config";
-import { checkPassword } from "@kapdh/shared";
 import type { FastifyReply } from "fastify";
 import { z } from "zod";
 import type { Clock } from "../../core/adapters/clock.js";
@@ -20,12 +19,17 @@ import { jakartaYear } from "../../core/membership/period.js";
 import { CLOCK, ENV } from "../../core/tokens.js";
 import { validate } from "../../core/validation/validate.js";
 import { AuthService } from "./auth.service.js";
+import { passwordRuleSchema } from "./password-rules.js";
 
-const passwordSchema = z.string().refine((v) => checkPassword(v).valid, {
-  message: "Password 8 sampai 72 byte dengan huruf besar, huruf kecil, angka, dan simbol.",
-});
+/** Kode OTP 6 digit (kontrak OtpVerifyRequest, PasswordResetVerifyRequest). */
+export const otpCodeSchema = z.string().regex(/^\d{6}$/, "Kode 6 digit");
+/** Email masukan (kontrak `format: email`, maxLength 254); dinormalisasi di layanan. */
+export const emailSchema = z.string().trim().email("Email tidak valid").max(254);
 
-/** Alumni: pendaftaran, OTP, login, refresh, logout (F-01, F-02). Admin memakai refresh/logout yang sama. */
+/**
+ * Alumni: pendaftaran, OTP, koreksi email, login, refresh, logout (F-01, F-02; kontrak auth.yaml). Admin memakai
+ * refresh/logout yang sama.
+ */
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -46,8 +50,8 @@ export class AuthController {
         .object({
           full_name: z.string().trim().min(2, "Isi nama lengkap").max(120),
           gender: z.enum(["male", "female"], { message: "Pilih jenis kelamin" }),
-          email: z.string().trim().email("Email tidak valid").max(254),
-          password: passwordSchema,
+          email: emailSchema,
+          password: passwordRuleSchema,
           cohort: z.number().int().min(1).max(latestCohort, `Angkatan maksimal ${latestCohort}`),
           class_in: z.number().int().min(1).max(6),
           class_out: z.number().int().min(1).max(6),
@@ -77,7 +81,7 @@ export class AuthController {
     const input = validate(
       z.object({
         challenge_id: z.uuid(),
-        code: z.string().regex(/^\d{6}$/, "Kode 6 digit"),
+        code: otpCodeSchema,
         device_name: z.string().max(80).optional(),
       }),
       body,
@@ -93,6 +97,31 @@ export class AuthController {
     return this.auth.resendOtp(input.challenge_id);
   }
 
+  /** Keadaan challenge tanpa mengirim/mengganti kode (kontrak getOtpChallengeStatus; AC F16-4, F01-3). */
+  @Post("otp/status")
+  @HttpCode(200)
+  @Public()
+  status(@Body() body: unknown) {
+    const input = validate(z.object({ challenge_id: z.uuid() }), body);
+    return this.auth.otpStatus(input.challenge_id);
+  }
+
+  /** "Salah email? Ubah alamat email" pada layar OTP (PRD 2.2; kontrak correctPendingEmail). */
+  @Post("email-correction")
+  @HttpCode(200)
+  @Public()
+  correctEmail(@Body() body: unknown) {
+    const input = validate(
+      z.object({
+        challenge_id: z.uuid(),
+        password: z.string().min(1, "Masukkan sandi").max(128),
+        new_email: emailSchema,
+      }),
+      body,
+    );
+    return this.auth.correctPendingEmail(input);
+  }
+
   @Post("login")
   @HttpCode(200)
   @Public()
@@ -100,7 +129,8 @@ export class AuthController {
     const input = validate(
       z.object({
         email: z.string().trim().min(3).max(254),
-        password: z.string().min(1).max(256),
+        // Kontrak LoginRequest: maksimal 128 karakter; sandi > 72 byte UTF-8 ditolak dengan 401 yang sama (PRD 2.5).
+        password: z.string().min(1).max(128),
         device_name: z.string().max(80).optional(),
       }),
       body,
@@ -145,7 +175,8 @@ export class AuthController {
   @HttpCode(204)
   @Audience("any")
   @MemberAccess("any")
-  async logoutAll(@CurrentAuth() auth: AuthContext) {
-    await this.auth.logoutAll(auth.userId);
+  async logoutAll(@CurrentAuth() auth: AuthContext, @Res({ passthrough: true }) reply: FastifyReply) {
+    await this.auth.logoutAll(auth);
+    if (auth.audience === "admin") clearAdminRefreshCookie(reply, secureCookies(this.env));
   }
 }

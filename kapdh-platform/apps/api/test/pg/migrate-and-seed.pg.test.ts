@@ -132,12 +132,12 @@ describe("PRD 5.5: job migrasi tunggal dengan advisory lock pada PostgreSQL 17",
     expect(dueAt!.attnotnull).toBe(true);
   });
 
-  it("skema hasil migrasi lengkap: 39 tabel, sequence nomor anggota, trigger penjaga", async () => {
+  it("skema hasil migrasi lengkap: 40 tabel (39 + otp_decoys 0007), sequence nomor anggota, trigger penjaga", async () => {
     const tdb = await createPgTestDatabase("schema_shape");
     databases.push(tdb);
     const [tables] = await tdb.sql<{ n: number }[]>`
       select count(*)::int as n from pg_tables where schemaname = 'app'`;
-    expect(tables!.n).toBe(39);
+    expect(tables!.n).toBe(40);
     const [fee] = await tdb.sql<{ n: number }[]>`
       select count(*)::int as n from pg_tables where schemaname = 'app' and tablename = 'fee_settings'`;
     expect(fee!.n).toBe(0);
