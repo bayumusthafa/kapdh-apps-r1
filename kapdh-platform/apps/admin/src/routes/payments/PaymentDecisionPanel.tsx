@@ -5,61 +5,38 @@ import { useForm } from "react-hook-form";
 import { api } from "../../api/client";
 import { useApiMutation, useApiQuery } from "../../api/query";
 import { useAuth } from "../../auth/session";
-import { PAYMENT_STATUS, PaymentStageBadge } from "../../components/ui/Badge";
+import { Badge, PAYMENT_STATUS, PaymentStageBadge, TicketStatusBadge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Checkbox } from "../../components/ui/Choice";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
-import { KeyValueList, Timeline, type TimelineItem } from "../../components/ui/DataDisplay";
+import { KeyValueList, type KeyValueItem } from "../../components/ui/DataDisplay";
 import { FilePreview } from "../../components/ui/Files";
 import { Field, FormError } from "../../components/ui/FormField";
 import { Textarea } from "../../components/ui/Input";
 import { ErrorState, Loading } from "../../components/ui/States";
 import { cn } from "../../lib/cn";
-import { formatDateTime, formatRupiah } from "../../lib/format";
-import { DELETED_ACCOUNT_LABEL, PAYMENT_TYPE_LABEL } from "../../lib/labels";
+import { formatDate, formatDateTime, formatRupiah } from "../../lib/format";
+import { PAYMENT_TYPE_LABEL } from "../../lib/labels";
+import { memberName, memberSubtitle, METHOD_KIND_LABEL } from "./labels";
+import { PaymentAdjustmentsSection } from "./PaymentAdjustmentsSection";
+import { PaymentHistory } from "./PaymentHistory";
+import { PAYMENTS_KEY, paymentDetailKey } from "./queries";
+
+export { paymentDetailKey } from "./queries";
 
 type Detail = components["schemas"]["AdminPaymentDetail"];
-type PaymentEvent = components["schemas"]["AdminPaymentEvent"];
 
-/** Pesan di region live panel: hasil keputusan sendiri (success) atau perubahan oleh pihak lain (warning). */
+/** Pesan di region live panel: hasil tindakan sendiri (success) atau perubahan oleh pihak lain (warning). */
 interface Notice {
   tone: "success" | "warning";
   message: string;
   seq: number;
 }
 
-const EVENT_LABEL: Record<PaymentEvent["kind"], string> = {
-  created: "Tagihan dibuat",
-  method_changed: "Rekening tujuan diganti",
-  proof_submitted: "Bukti dikirim",
-  proof_replaced: "Bukti diganti",
-  approved: "Disetujui",
-  rejected: "Ditolak",
-  cancelled: "Dibatalkan",
-  adjusted: "Penyesuaian dicatat",
-};
-
-const EVENT_TONE: Record<PaymentEvent["kind"], TimelineItem["tone"]> = {
-  created: "neutral",
-  method_changed: "neutral",
-  proof_submitted: "info",
-  proof_replaced: "warning",
-  approved: "success",
-  rejected: "danger",
-  cancelled: "neutral",
-  adjusted: "info",
-};
-
-/** Pelaku entri histori untuk akuntabilitas pengurus (F-17); identitas admin hanya di histori pengurus. */
-function eventActor(e: PaymentEvent): string {
-  if (e.actor === "admin") return e.actor_admin ? `Pengurus: ${e.actor_admin.display_name}` : "Pengurus";
-  return e.actor === "system" ? "Sistem" : "Alumni";
-}
-
 /** Nama pemilik untuk judul dan teks; "Akun dihapus" bila datanya sudah dianonimkan (AC F14-4). */
 export function ownerName(p: Pick<Detail, "member">): string {
-  return p.member?.full_name ?? DELETED_ACCOUNT_LABEL;
+  return memberName(p.member);
 }
 
 /** Polling detail yang sedang dibuka (sama dengan antrean); hanya refetch berkala berlabel latar (AC F02-5). */
@@ -68,25 +45,23 @@ export const DETAIL_POLL_MS = 60_000;
 export const REASON_MIN = 3;
 export const REASON_MAX = 500;
 
-export function paymentDetailKey(paymentId: string) {
-  return ["admin-payment", paymentId] as const;
-}
-
 /**
  * Panel detail dan keputusan pembayaran (F-04, AC F04-2..F04-4, prototipe screen_8).
- * - Bentuk data AdminPaymentDetail final (C3): bukti aktif di objek `proof`, tahap `stage` dari server, tombol
- *   keputusan mengikuti `actions.can_decide`, pemilik terhapus tampil "Akun dihapus" tanpa berkas bukti (AC F14-4),
- *   dan tiket/event yang sudah dibatalkan menampilkan akibat persetujuan termasuk refund otomatis D6.
+ * - Bentuk data AdminPaymentDetail final (C3): bukti aktif di objek `proof` (gambar atau PDF lewat URL bertanda
+ *   tangan), tahap `stage` dari server, tombol mengikuti `actions` (`can_decide`, `can_cancel`, `can_adjust`),
+ *   pemilik terhapus tampil "Akun dihapus" tanpa berkas bukti (AC F14-4), dan tiket/event yang sudah dibatalkan
+ *   menampilkan akibat persetujuan termasuk refund otomatis D6.
+ * - Histori lengkap memuat alasan penolakan sebelumnya dan berkas bukti versi lama (U-02, AC F03-3); snapshot
+ *   rekening tujuan dan versi biaya ditampilkan apa adanya (AC F03-5, F15-3).
  * - Bila antrean melihat versi bukti lebih baru, detail langsung dimuat ulang. Detail juga di-polling (header
- *   latar, AC F02-5) karena bukti pengganti memperbarui `submitted_at` sehingga baris dapat pindah ke halaman
- *   antrean lain dan tidak terlihat oleh polling antrean.
- * - Formulir keputusan diberi key `id:proof_version` sehingga centang "dana sudah masuk" dan alasan SELALU
- *   direset saat bukti diganti; admin wajib memeriksa ulang bukti baru (perbaikan audit, AC F04-4).
- * - Konflik (bukti diganti/admin lain lebih dulu) → data terbaru dimuat ulang, tidak menimpa diam-diam.
+ *   latar, AC F02-5) karena bukti pengganti memperbarui `submitted_at` sehingga baris dapat pindah halaman.
+ * - Formulir keputusan diberi key `id:proof_version:version` sehingga centang "dana sudah masuk" dan alasan SELALU
+ *   direset saat bukti ATAU versi data berubah; admin wajib memeriksa ulang (AC F04-4).
+ * - Konflik (bukti diganti/admin lain lebih dulu) → data terbaru dimuat ulang, tidak menimpa diam-diam (AC F04-3).
  * - Fokus dan pengumuman (N-11, PRD 4.5): setelah admin memilih baris, fokus pindah ke judul detail begitu detail
- *   termuat. Setelah keputusan berhasil, atau setelah data terbaru dimuat ulang karena konflik/bukti diganti
+ *   termuat. Setelah tindakan berhasil, atau setelah data terbaru dimuat ulang karena konflik/bukti diganti
  *   (formulir dipasang ulang sehingga tombol yang difokus hilang), fokus dipindah ke judul dan alasannya
- *   diumumkan lewat region live yang selalu ada, termasuk bahwa centang dana dan alasan sudah dikosongkan.
+ *   diumumkan lewat region live yang selalu ada.
  */
 export function PaymentDecisionPanel({
   paymentId,
@@ -100,8 +75,8 @@ export function PaymentDecisionPanel({
 }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
-  /** Versi hasil keputusan admin ini sendiri; perubahan data ke versi itu bukan "diubah pihak lain". */
-  const ownDecisionVersion = useRef<string | null>(null);
+  /** Versi hasil tindakan admin ini sendiri; perubahan data ke versi itu bukan "diubah pihak lain". */
+  const ownActionVersion = useRef<string | null>(null);
   /** Versi terakhir yang ditampilkan, untuk mendeteksi data yang berubah setelah dimuat ulang. */
   const shown = useRef<{ version: string; proof: number; status: Detail["status"] } | null>(null);
   const detail = useApiQuery({
@@ -130,38 +105,42 @@ export function PaymentDecisionPanel({
     if (typeof heading?.scrollIntoView === "function") heading.scrollIntoView({ block: "nearest" });
   }, [focusRequest, loaded]);
 
-  // Data berubah setelah dimuat ulang (konflik keputusan, atau antrean melihat bukti baru): umumkan alasannya.
-  // Formulir keputusan memakai key id:proof_version sehingga dipasang ulang; bila fokus ikut hilang (jatuh ke
-  // <body>), kembalikan ke judul panel agar pengguna keyboard tidak tersesat.
+  // Data berubah setelah dimuat ulang (konflik keputusan, bukti baru, atau versi data naik): umumkan alasannya.
+  // Formulir keputusan memakai key id:proof_version:version sehingga dipasang ulang; bila fokus ikut hilang
+  // (jatuh ke <body>), kembalikan ke judul panel agar pengguna keyboard tidak tersesat.
   const data = detail.data;
   useEffect(() => {
     if (!data) return;
     const prev = shown.current;
     shown.current = { version: data.version, proof: data.proof_version, status: data.status };
     if (!prev || (prev.version === data.version && prev.proof === data.proof_version)) return;
-    if (ownDecisionVersion.current === data.version) return;
-    if (data.proof_version !== prev.proof)
-      setNotice((n) => ({
-        tone: "warning",
-        message: `Bukti transfer diganti alumni (versi ${data.proof_version}). Centang dana dan alasan dikosongkan; periksa ulang bukti sebelum memutus.`,
-        seq: (n?.seq ?? 0) + 1,
-      }));
-    else if (data.status !== prev.status)
-      setNotice((n) => ({
-        tone: "warning",
-        message: `Pembayaran ini sudah diputus admin lain: ${PAYMENT_STATUS[data.status].label}.`,
-        seq: (n?.seq ?? 0) + 1,
-      }));
+    if (ownActionVersion.current === data.version) return;
+    const message =
+      data.proof_version !== prev.proof
+        ? `Bukti transfer diganti alumni (versi ${data.proof_version}). Centang dana dan alasan dikosongkan; periksa ulang bukti sebelum memutus.`
+        : data.status !== prev.status
+          ? data.status === "cancelled"
+            ? "Pembayaran ini sudah dibatalkan."
+            : `Pembayaran ini sudah diputus admin lain: ${PAYMENT_STATUS[data.status].label}.`
+          : data.stage === "awaiting_review"
+            ? "Data pembayaran diperbarui. Centang dana dan alasan dikosongkan; periksa ulang sebelum memutus."
+            : "Data pembayaran diperbarui.";
+    setNotice((n) => ({ tone: "warning", message, seq: (n?.seq ?? 0) + 1 }));
     const active = document.activeElement;
     if (!active || active === document.body) headingRef.current?.focus();
   }, [data]);
 
-  // Keputusan berhasil: tombol yang difokus ikut hilang bersama formulir, jadi fokus dipindah ke judul panel.
+  // Tindakan berhasil: tombol yang difokus ikut hilang bersama formulir, jadi fokus dipindah ke judul panel.
   // Efek pasif berjalan setelah dialog konfirmasi selesai ditutup (pemulihan fokusnya gagal karena pemicu hilang).
-  const decidedSeq = notice?.tone === "success" ? notice.seq : 0;
+  const doneSeq = notice?.tone === "success" ? notice.seq : 0;
   useEffect(() => {
-    if (decidedSeq > 0) headingRef.current?.focus();
-  }, [decidedSeq]);
+    if (doneSeq > 0) headingRef.current?.focus();
+  }, [doneSeq]);
+
+  function onDone(message: string, version?: string) {
+    if (version) ownActionVersion.current = version;
+    setNotice((n) => ({ tone: "success", message, seq: (n?.seq ?? 0) + 1 }));
+  }
 
   if (detail.isPending)
     return (
@@ -183,13 +162,6 @@ export function PaymentDecisionPanel({
 
   const p = detail.data;
   const name = ownerName(p);
-  const timeline: TimelineItem[] = p.events.map((e, i) => ({
-    id: `${e.at}-${i}`,
-    title: `${EVENT_LABEL[e.kind] ?? e.kind}${e.proof_version ? ` (versi ${e.proof_version})` : ""}`,
-    time: formatDateTime(e.at),
-    description: [eventActor(e), e.reason ? `Alasan: ${e.reason}` : null].filter(Boolean).join(" | "),
-    tone: EVENT_TONE[e.kind] ?? "neutral",
-  }));
   // Berkas bukti terhapus bersama akun pemilik walau versi bukti >= 1 (D2, AC F14-4).
   const proofDeleted = p.proof === null && p.proof_version > 0;
   const awaitingDecision = p.stage === "awaiting_review";
@@ -210,7 +182,7 @@ export function PaymentDecisionPanel({
           </h2>
           <p className="text-xs text-text-muted">
             {[
-              p.member ? (p.member.member_number ?? "Belum bernomor") : "Data pemilik sudah dihapus",
+              memberSubtitle(p.member),
               p.member ? `Angkatan ${p.member.cohort}` : null,
               p.type === "ticket" && p.event_title ? `Tiket: ${p.event_title}` : PAYMENT_TYPE_LABEL[p.type],
             ]
@@ -249,67 +221,33 @@ export function PaymentDecisionPanel({
         </p>
       ) : null}
 
-      <KeyValueList
-        items={[
-          {
-            label: "Nominal tagihan",
-            value: (
-              <>
-                <span className="font-semibold">{formatRupiah(p.amount)}</span>
-                {p.lines.length > 1 ? (
-                  <span className="block text-xs font-normal text-text-muted">
-                    {p.lines.map((l) => `${l.label} ${formatRupiah(l.amount)}`).join(" + ")}
-                  </span>
-                ) : null}
-              </>
-            ),
-          },
-          {
-            label: "Rekening tujuan",
-            value: (
-              <>
-                {p.method.provider}
-                <span className="block text-xs font-normal text-text-muted">
-                  {p.method.account_number} a.n. {p.method.account_holder}
-                </span>
-              </>
-            ),
-          },
-          { label: "Dikirim", value: formatDateTime(p.submitted_at) },
-          {
-            label: "Riwayat",
-            value:
-              p.rejection_count === 0 ? "Belum pernah ditolak" : `Pernah ditolak ${p.rejection_count} kali`,
-          },
-          ...(p.transfer_note ? [{ label: "Catatan transfer", value: p.transfer_note, wide: true }] : []),
-        ]}
-      />
+      <KeyValueList items={detailItems(p)} />
 
-      <details className="group rounded-md border border-divider px-3">
-        <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-primary">
-          Riwayat lengkap ({p.events.length})
-        </summary>
-        <Timeline label="Riwayat pembayaran" items={timeline} className="pb-3" />
-      </details>
+      <PaymentHistory events={p.events} ownerLabel={name} activeProofVersion={p.proof_version} />
 
       {p.conflict_of_interest ? (
         <p role="note" className="rounded-md bg-warning-bg p-3 text-sm text-warning">
           Pembayaran ini milik akun alumni yang tertaut ke akun admin Anda. Mintalah pengurus lain untuk
-          memutus.
+          memutus atau memproses penyesuaiannya.
         </p>
       ) : null}
 
       <DecisionSection
-        key={`${p.id}:${p.proof_version}`}
+        key={`${p.id}:${p.proof_version}:${p.version}`}
         payment={p}
         onReload={() => void detail.refetch()}
-        onDecided={(message, version) => {
-          ownDecisionVersion.current = version;
-          setNotice((n) => ({ tone: "success", message, seq: (n?.seq ?? 0) + 1 }));
-        }}
+        onDecided={onDone}
       />
 
-      {/* Region live selalu ada (awalnya kosong) agar hasil keputusan dan muat ulang pasti diumumkan. */}
+      <CancelInstruction payment={p} onReload={() => void detail.refetch()} onCancelled={onDone} />
+
+      <PaymentAdjustmentsSection
+        payment={p}
+        onReload={() => void detail.refetch()}
+        onCreated={(message) => onDone(message)}
+      />
+
+      {/* Region live selalu ada (awalnya kosong) agar hasil tindakan dan muat ulang pasti diumumkan. */}
       <p
         role="status"
         aria-live="polite"
@@ -331,6 +269,114 @@ export function PaymentDecisionPanel({
       </p>
     </Card>
   );
+}
+
+/** Butir ringkasan detail (prototipe screen_8 + snapshot, versi dan histori keputusan). */
+function detailItems(p: Detail): KeyValueItem[] {
+  const items: KeyValueItem[] = [
+    {
+      label: "Nominal tagihan",
+      value: (
+        <>
+          <span className="font-semibold">{formatRupiah(p.amount)}</span>
+          {p.lines.length > 1 ? (
+            <span className="block text-xs font-normal text-text-muted">
+              {p.lines.map((l) => `${l.label} ${formatRupiah(l.amount)}`).join(" + ")}
+            </span>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      label: "Rekening tujuan",
+      value: (
+        <>
+          {METHOD_KIND_LABEL[p.method.kind]} {p.method.provider}
+          <span className="block text-xs font-normal text-text-muted">
+            {p.method.account_number} a.n. {p.method.account_holder}
+          </span>
+          {!p.method_active ? (
+            <span className="block text-xs font-normal text-text-muted">
+              Metode asal sudah nonaktif; snapshot ini tetap berlaku untuk pembayaran ini.
+            </span>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      label: "Dikirim",
+      value: p.submitted_at ? formatDateTime(p.submitted_at) : "Belum ada bukti",
+    },
+    {
+      label: "Riwayat",
+      value: p.rejection_count === 0 ? "Belum pernah ditolak" : `Pernah ditolak ${p.rejection_count} kali`,
+    },
+    {
+      label: "Versi bukti",
+      value: p.proof_version === 0 ? "Belum ada bukti" : `Versi ${p.proof_version}`,
+    },
+  ];
+  if (p.settings_version !== null)
+    items.push({
+      label: "Versi biaya",
+      value: (
+        <>
+          Versi {p.settings_version}
+          <span className="block text-xs font-normal text-text-muted">
+            Nominal mengikuti biaya saat tagihan dibuat.
+          </span>
+        </>
+      ),
+    });
+  if (p.review_due_at && p.stage === "awaiting_review")
+    items.push({
+      label: "Batas review",
+      value: (
+        <span className="flex flex-wrap items-center gap-1.5">
+          {formatDateTime(p.review_due_at)}
+          {p.overdue ? <Badge tone="warning">Lewat batas</Badge> : null}
+        </span>
+      ),
+    });
+  if (p.ticket)
+    items.push({
+      label: "Event",
+      value: (
+        <>
+          {p.ticket.event_title}
+          <span className="block text-xs font-normal text-text-muted">
+            {formatDateTime(p.ticket.event_starts_at, p.ticket.event_timezone)}
+          </span>
+          <span className="mt-1 block">
+            <TicketStatusBadge status={p.ticket.ticket_status} />
+          </span>
+        </>
+      ),
+    });
+  if (p.decided_at)
+    items.push({
+      label: "Diputus",
+      value: `${formatDateTime(p.decided_at)}${p.decided_by ? ` oleh ${p.decided_by.display_name}` : ""}`,
+    });
+  if (p.period)
+    items.push({
+      label: "Masa keanggotaan",
+      value: `${formatDate(p.period.starts_at)} sampai ${formatDate(p.period.expires_at)}`,
+    });
+  if (p.cancelled_at)
+    items.push({
+      label: "Dibatalkan",
+      value: `${formatDateTime(p.cancelled_at)}${p.cancel_reason ? ` | Alasan: ${p.cancel_reason}` : ""}`,
+      wide: true,
+    });
+  if (p.transfer_note) items.push({ label: "Catatan transfer", value: p.transfer_note, wide: true });
+  if (p.rejection_reason)
+    items.push({
+      label: p.status === "rejected" ? "Alasan penolakan" : "Alasan penolakan sebelumnya",
+      value: p.rejection_reason,
+      wide: true,
+    });
+  return items;
 }
 
 /** Akibat penolakan yang ditampilkan sebelum konfirmasi (PRD 4.3, 4.5, AC F03-3, F09-4, F14-4). */
@@ -406,12 +452,12 @@ function DecisionSection({
     onReloadLatest: () => {
       setConfirmReject(false);
       onReload();
-      void queryClient.invalidateQueries({ queryKey: ["admin-payments"] });
+      void queryClient.invalidateQueries({ queryKey: PAYMENTS_KEY });
     },
     onSuccess: (data) => {
       setConfirmReject(false);
       queryClient.setQueryData(paymentDetailKey(data.id), data);
-      void queryClient.invalidateQueries({ queryKey: ["admin-payments"] });
+      void queryClient.invalidateQueries({ queryKey: PAYMENTS_KEY });
       onDecided(decidedMessage(p, data), data.version);
     },
     onError: (error) => {
@@ -502,5 +548,120 @@ function DecisionSection({
         </blockquote>
       </ConfirmDialog>
     </form>
+  );
+}
+
+interface CancelVars {
+  paymentId: string;
+  version: string;
+  reason: string;
+}
+
+/**
+ * Batalkan instruksi pending TANPA bukti atas kebijakan pengurus (PRD 4.3 "pending ke cancelled: kebijakan
+ * admin", kontrak adminCancelPayment). Payment berbukti wajib diputus, bukan dibatalkan; tombol hanya muncul bila
+ * server mengizinkan (`actions.can_cancel`). Alasan wajib dan konfirmasi dua langkah (PRD 4.5); If-Match versi
+ * yang dilihat, konflik memuat ulang data terbaru (AC F15-4).
+ */
+function CancelInstruction({
+  payment: p,
+  onReload,
+  onCancelled,
+}: {
+  payment: Detail;
+  onReload: () => void;
+  onCancelled: (message: string, version: string) => void;
+}) {
+  const auth = useAuth();
+  const queryClient = useQueryClient();
+  /** Versi payment saat dialog dibuka (If-Match); perubahan selama dialog terbuka ditolak 409, bukan ditimpa. */
+  const [openVersion, setOpenVersion] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [reasonError, setReasonError] = useState<string | null>(null);
+
+  const cancel = useApiMutation<Detail, CancelVars>({
+    request: (v, ctx) =>
+      api.POST("/admin/payments/{paymentId}/cancel", {
+        params: {
+          path: { paymentId: v.paymentId },
+          header: { "If-Match": v.version, "Idempotency-Key": ctx.idempotencyKey },
+        },
+        body: { reason: v.reason },
+      }),
+    onReloadLatest: () => {
+      setOpenVersion(null);
+      onReload();
+      void queryClient.invalidateQueries({ queryKey: PAYMENTS_KEY });
+    },
+    onSuccess: (data) => {
+      setOpenVersion(null);
+      queryClient.setQueryData(paymentDetailKey(data.id), data);
+      void queryClient.invalidateQueries({ queryKey: PAYMENTS_KEY });
+      onCancelled(
+        p.member
+          ? "Instruksi pembayaran dibatalkan dan pemilik diberi notifikasi."
+          : "Instruksi pembayaran dibatalkan.",
+        data.version,
+      );
+    },
+    onError: (error) => {
+      const message = error.fieldErrors.reason?.join(" ");
+      if (message) setReasonError(message);
+    },
+  });
+
+  if (!p.actions.can_cancel || !auth.can("payments.decide")) return null;
+
+  function confirm() {
+    if (openVersion === null) return;
+    const trimmed = reason.trim();
+    if (trimmed.length < REASON_MIN) {
+      setReasonError(`Alasan pembatalan minimal ${REASON_MIN} karakter dan tidak boleh hanya spasi.`);
+      return;
+    }
+    setReasonError(null);
+    cancel.mutate({ paymentId: p.id, version: openVersion, reason: trimmed });
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-divider pt-4">
+      <p className="text-sm text-text-muted">
+        Belum ada bukti transfer. Instruksi yang ditinggalkan dapat dibatalkan agar alumni dapat membuat instruksi
+        baru; tindakan ini tidak membuka akses apa pun.
+      </p>
+      <Button
+        variant="danger"
+        onClick={() => {
+          setReason("");
+          setReasonError(null);
+          setOpenVersion(p.version);
+        }}
+      >
+        Batalkan instruksi
+      </Button>
+      <ConfirmDialog
+        open={openVersion !== null}
+        onCancel={() => setOpenVersion(null)}
+        onConfirm={confirm}
+        pending={cancel.isPending}
+        title="Batalkan instruksi pembayaran?"
+        description={`Instruksi ${PAYMENT_TYPE_LABEL[p.type].toLowerCase()} ${ownerName(p)} sebesar ${formatRupiah(p.amount)} dibatalkan. Alasan terlihat oleh pemilik dan tercatat di histori.`}
+        confirmLabel="Batalkan instruksi"
+        acknowledgement="Saya memastikan belum ada dana yang ditransfer untuk instruksi ini."
+      >
+        <Field label="Alasan pembatalan" required error={reasonError}>
+          {(a11y) => (
+            <Textarea
+              {...a11y}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              maxLength={REASON_MAX}
+              disabled={cancel.isPending}
+            />
+          )}
+        </Field>
+      </ConfirmDialog>
+    </div>
   );
 }

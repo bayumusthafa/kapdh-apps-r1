@@ -1,6 +1,11 @@
-import { requireAdmin } from "./auth";
+import { requireAdmin, requirePermission } from "./auth";
 import { error, json, type MockFile, type MockRoute, readMultipart, type S } from "./http";
-import { MOCK_PROOF_FILE_ID, MOCK_PROOF_FILE_ID_V2 } from "./payments";
+import {
+  MOCK_EVIDENCE_FILE_ID,
+  MOCK_PROOF_FILE_ID,
+  MOCK_PROOF_FILE_ID_PDF,
+  MOCK_PROOF_FILE_ID_V2,
+} from "./payments";
 
 /**
  * Tiruan unggah berkas bertujuan dan akses bertanda tangan (N-10, PRD 5.4). Aturan sama dengan server:
@@ -49,6 +54,15 @@ export function reset(): void {
     ref: fileRef(MOCK_PROOF_FILE_ID_V2, "payment_proof", "image/svg+xml", 2048),
     dataUrl: placeholderSvg("Bukti transfer versi 2"),
   });
+  // Bukti bayar PDF (N-10) dan bukti penyelesaian refund (D6) untuk data contoh pembayaran.
+  files.set(MOCK_PROOF_FILE_ID_PDF, {
+    ref: fileRef(MOCK_PROOF_FILE_ID_PDF, "payment_proof", "application/pdf", 48_213),
+    dataUrl: placeholderSvg("Dokumen PDF"),
+  });
+  files.set(MOCK_EVIDENCE_FILE_ID, {
+    ref: fileRef(MOCK_EVIDENCE_FILE_ID, "adjustment_evidence", "image/svg+xml", 2048),
+    dataUrl: placeholderSvg("Bukti transfer refund"),
+  });
 }
 reset();
 
@@ -72,6 +86,9 @@ export const routes: MockRoute[] = [
         return error(400, "VALIDATION_ERROR", "Purpose berkas tidak dikenal.", {
           field_errors: { purpose: ["Purpose tidak dikenal."] },
         });
+      // Kedua purpose admin hanya untuk pemegang payments.decide (kontrak uploadFile).
+      const denied = requirePermission(req, "payments.decide");
+      if (denied) return denied;
       if (!file || typeof file === "string")
         return error(400, "VALIDATION_ERROR", "Berkas wajib dipilih.", {
           field_errors: { file: ["Wajib."] },
