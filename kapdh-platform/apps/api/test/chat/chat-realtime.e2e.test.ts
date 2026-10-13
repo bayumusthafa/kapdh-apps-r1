@@ -129,7 +129,11 @@ describe("N-02 / AC F11-2: penyampaian message.created sesudah commit", () => {
     const readEvent = await aSocket.waitFor("read.updated", (e) => e.payload.user_id === b.userId);
     expect(readEvent.payload).toMatchObject({ room_id: room.id, last_read_message_id: sent.id });
     // Paket terlambat yang tidak memajukan cursor tidak menyiarkan apa pun.
-    const again = await api(t).put(`/chat/rooms/${room.id}/read`, { message_id: sent.id }, { token: b.token });
+    const again = await api(t).put(
+      `/chat/rooms/${room.id}/read`,
+      { message_id: sent.id },
+      { token: b.token },
+    );
     expect(again.statusCode).toBe(200);
     await aSocket.none("read.updated", (e) => e.payload.user_id === b.userId && e !== readEvent, 200);
 
@@ -208,11 +212,12 @@ describe("Grup: event undangan hanya ke calon anggota dan admin grup (N-09)", ()
     expect(joined.payload).toMatchObject({ role: "member", member_count: 3, actor_user_id: newcomer.userId });
     // Pengguna terdampak menerima tepat sekali (lewat kanal user, dikecualikan dari kanal room).
     await newcomerSocket.waitFor("room.member_changed", (e) => e.payload.change === "joined");
-    expect(newcomerSocket.of("room.member_changed").filter((e) => e.payload.change === "joined")).toHaveLength(1);
+    expect(
+      newcomerSocket.of("room.member_changed").filter((e) => e.payload.change === "joined"),
+    ).toHaveLength(1);
     // Pesan sistem "bergabung" sampai ke anggota lama dan anggota baru.
-    await regularSocket.waitFor(
-      "message.created",
-      (e) => (e.payload.message as { kind: string; body: string }).body.includes("bergabung"),
+    await regularSocket.waitFor("message.created", (e) =>
+      (e.payload.message as { kind: string; body: string }).body.includes("bergabung"),
     );
     const afterJoin = await sendText(t, regular, roomId, "Selamat datang");
     await newcomerSocket.waitFor("message.created", isMessage(afterJoin.id));
@@ -228,11 +233,21 @@ describe("AC F11-4 / AC F11-6: langganan dicabut saat akses berakhir", () => {
     const [removedSocket, leaverSocket] = [await connect(removed), await connect(leaver)];
     expect(removedSocket.serverChannels(t).has(`room:${roomId}`)).toBe(true);
 
-    const res = await api(t).delete(`/chat/rooms/${roomId}/members/${removed.userId}`, { token: admin.token });
+    const res = await api(t).delete(`/chat/rooms/${roomId}/members/${removed.userId}`, {
+      token: admin.token,
+    });
     expect(res.statusCode).toBe(204);
     const notice = await removedSocket.waitFor("room.member_changed", (e) => e.payload.change === "removed");
-    expect(notice.payload).toMatchObject({ user_id: removed.userId, actor_user_id: admin.userId, member_count: 2 });
-    await eventually(() => !removedSocket.serverChannels(t).has(`room:${roomId}`), 3000, "pencabutan langganan");
+    expect(notice.payload).toMatchObject({
+      user_id: removed.userId,
+      actor_user_id: admin.userId,
+      member_count: 2,
+    });
+    await eventually(
+      () => !removedSocket.serverChannels(t).has(`room:${roomId}`),
+      3000,
+      "pencabutan langganan",
+    );
     const afterRemoval = await sendText(t, admin, roomId, "Setelah dikeluarkan");
     await leaverSocket.waitFor("message.created", isMessage(afterRemoval.id));
     await removedSocket.none("message.created", isMessage(afterRemoval.id));
@@ -243,7 +258,11 @@ describe("AC F11-4 / AC F11-6: langganan dicabut saat akses berakhir", () => {
     const left = await api(t).post(`/chat/rooms/${roomId}/leave`, {}, { token: leaver.token });
     expect(left.statusCode).toBe(204);
     await leaverSocket.waitFor("room.member_changed", (e) => e.payload.change === "left");
-    await eventually(() => !leaverSocket.serverChannels(t).has(`room:${roomId}`), 3000, "pencabutan langganan");
+    await eventually(
+      () => !leaverSocket.serverChannels(t).has(`room:${roomId}`),
+      3000,
+      "pencabutan langganan",
+    );
     const afterLeave = await sendText(t, admin, roomId, "Setelah keluar");
     await leaverSocket.none("message.created", isMessage(afterLeave.id));
   });
@@ -335,7 +354,7 @@ describe("AC F11-3 / N-02: sinkron setelah reconnect tanpa kehilangan atau dupli
     local.set(live.id, (liveEvent.payload as { message: (typeof page.body.items)[number] }).message);
     // Event live TIDAK memajukan jangkar; sinkron after sampai next_cursor null, gabung berdasarkan id.
     const synced: string[] = [];
-    for (let cursor: string | null = anchor; cursor; ) {
+    for (let cursor: string | null = anchor; cursor;) {
       const res = await history(t, b, room.id, { after: cursor, limit: "2" });
       for (const message of res.body.items) {
         synced.push(message.id);
@@ -426,7 +445,11 @@ describe("Typing dan presence sementara (PRD 3.11, TTL, bukan bukti baca)", () =
       (e) => e.payload.user_id === pinger.userId && e.payload.status === "offline",
     );
     expect(offline.payload).toEqual({ user_id: pinger.userId, status: "offline", ttl_seconds: 0 });
-    await eventually(() => !pingerSocket.serverChannels(t).has(`room:${room.id}`), 3000, "pencabutan langganan");
+    await eventually(
+      () => !pingerSocket.serverChannels(t).has(`room:${room.id}`),
+      3000,
+      "pencabutan langganan",
+    );
   });
 });
 
@@ -441,7 +464,9 @@ describe("AC F12-1: blokir baru memberi tahu perangkat pemblokir saja", () => {
     await runAsSystem(() =>
       withTx(t.db, async (tx) => {
         await t.app.get(BlockPolicy).lockPair(tx, a.userId, b.userId);
-        await tx.insert(blocks).values({ blockerId: a.userId, blockedId: b.userId, createdAt: t.clock.now() });
+        await tx
+          .insert(blocks)
+          .values({ blockerId: a.userId, blockedId: b.userId, createdAt: t.clock.now() });
         await lifecycle.onBlockCreated(tx, a.userId, b.userId);
       }),
     );
@@ -450,7 +475,11 @@ describe("AC F12-1: blokir baru memberi tahu perangkat pemblokir saja", () => {
     await bSocket.none("room.updated");
     // Kirim dari kedua pihak ditolak walau socket dan room masih ada (AC F12-1).
     for (const who of [a, b]) {
-      const res = await sendRaw(t, who, room.id, { kind: "text", body: "Masih?", client_message_id: uuidv7() });
+      const res = await sendRaw(t, who, room.id, {
+        kind: "text",
+        body: "Masih?",
+        client_message_id: uuidv7(),
+      });
       expect(res.statusCode).toBe(403);
     }
     await bSocket.none("message.created", () => true, 100);

@@ -55,7 +55,11 @@ describe("AC F11-2: kirim pesan, ack sesudah commit, client_message_id idempoten
   it("AC F11-2: pesan valid 201 sesudah commit; pengulangan client_message_id mengembalikan pesan yang sama (200) tanpa pesan baru", async () => {
     const [a, , roomId] = await pair();
     const clientMessageId = uuidv7();
-    const first = await sendRaw(t, a, roomId, { client_message_id: clientMessageId, kind: "text", body: "Halo" });
+    const first = await sendRaw(t, a, roomId, {
+      client_message_id: clientMessageId,
+      kind: "text",
+      body: "Halo",
+    });
     expect(first.statusCode).toBe(201);
     const message = expectOperation("post", "/chat/rooms/{roomId}/messages", first) as {
       id: string;
@@ -67,9 +71,15 @@ describe("AC F11-2: kirim pesan, ack sesudah commit, client_message_id idempoten
     const [stored] = await t.db.select().from(messages).where(eq(messages.id, message.id));
     expect(stored?.body).toBe("Halo");
 
-    const retry = await sendRaw(t, a, roomId, { client_message_id: clientMessageId, kind: "text", body: "Halo" });
+    const retry = await sendRaw(t, a, roomId, {
+      client_message_id: clientMessageId,
+      kind: "text",
+      body: "Halo",
+    });
     expect(retry.statusCode).toBe(200);
-    expect((expectOperation("post", "/chat/rooms/{roomId}/messages", retry) as { id: string }).id).toBe(message.id);
+    expect((expectOperation("post", "/chat/rooms/{roomId}/messages", retry) as { id: string }).id).toBe(
+      message.id,
+    );
     const all = await t.db
       .select()
       .from(messages)
@@ -85,7 +95,11 @@ describe("AC F11-2: kirim pesan, ack sesudah commit, client_message_id idempoten
     expectOperation("post", "/chat/rooms/{roomId}/messages", conflict);
     // client_message_id unik per PENGIRIM: pengguna lain boleh memakai nilai yang sama.
     const [, b2, room2] = await pair();
-    const other = await sendRaw(t, b2, room2, { client_message_id: clientMessageId, kind: "text", body: "Halo" });
+    const other = await sendRaw(t, b2, room2, {
+      client_message_id: clientMessageId,
+      kind: "text",
+      body: "Halo",
+    });
     expect(other.statusCode).toBe(201);
   });
 
@@ -113,7 +127,9 @@ describe("AC F11-2: kirim pesan, ack sesudah commit, client_message_id idempoten
         400,
         "VALIDATION_ERROR",
       ]);
-      expect(Object.keys((res.json() as { field_errors: Record<string, unknown> }).field_errors)).toContain(field);
+      expect(Object.keys((res.json() as { field_errors: Record<string, unknown> }).field_errors)).toContain(
+        field,
+      );
       expectOperation("post", "/chat/rooms/{roomId}/messages", res);
     }
     // 4.000 karakter (code point, termasuk emoji) diterima; balasan di room yang sama diterima.
@@ -148,7 +164,10 @@ describe("AC F11-2: kirim pesan, ack sesudah commit, client_message_id idempoten
     const asSeenByB = page.body.items.find((m) => m.id === (sent.json() as { id: string }).id) as unknown as {
       image: { url: string };
     };
-    const content = await t.app.inject({ method: "GET", url: asSeenByB.image.url.slice(t.env.API_PUBLIC_URL.length) });
+    const content = await t.app.inject({
+      method: "GET",
+      url: asSeenByB.image.url.slice(t.env.API_PUBLIC_URL.length),
+    });
     expect(content.statusCode).toBe(200);
     // Berkas yang sama tidak dapat dipakai dua kali; berkas milik orang lain ditolak.
     const reuse = await sendRaw(t, a, roomId, { kind: "image", image_file_id: image.id });
@@ -235,16 +254,32 @@ describe("AC F11-3: riwayat keyset (created_at, id) dan sinkron setelah reconnec
     const roomId = await groupWith(t, admin, [early]);
     const old = await sendText(t, admin, roomId, "Lama");
     const newcomer = await member(t);
-    await api(t).post(`/chat/rooms/${roomId}/invitations`, { user_ids: [newcomer.userId] }, { token: admin.token });
+    await api(t).post(
+      `/chat/rooms/${roomId}/invitations`,
+      { user_ids: [newcomer.userId] },
+      { token: admin.token },
+    );
     await api(t).post(`/chat/invitations/${roomId}/accept`, {}, { token: newcomer.token });
     expect((await history(t, newcomer, roomId, { after: old.id })).res.statusCode).toBe(400);
-    expect((await sendRaw(t, newcomer, roomId, { kind: "text", body: "x", reply_to_id: old.id })).statusCode).toBe(400);
-    const read = await api(t).put(`/chat/rooms/${roomId}/read`, { message_id: old.id }, { token: newcomer.token });
+    expect(
+      (await sendRaw(t, newcomer, roomId, { kind: "text", body: "x", reply_to_id: old.id })).statusCode,
+    ).toBe(400);
+    const read = await api(t).put(
+      `/chat/rooms/${roomId}/read`,
+      { message_id: old.id },
+      { token: newcomer.token },
+    );
     expect(read.statusCode).toBe(400);
     // Balasan anggota lama ke pesan lama tampil bagi anggota baru tanpa pratinjau (di luar riwayatnya).
     const reply = await sendText(t, early, roomId, "Membalas pesan lama", { reply_to_id: old.id });
     const seen = (await history(t, newcomer, roomId)).body.items.find((m) => m.id === reply.id)!;
-    expect(seen.reply_to).toEqual({ id: old.id, available: false, sender_name: null, preview: null, has_image: false });
+    expect(seen.reply_to).toEqual({
+      id: old.id,
+      available: false,
+      sender_name: null,
+      preview: null,
+      has_image: false,
+    });
   });
 });
 
@@ -280,9 +315,9 @@ describe("Hapus pesan sendiri (placeholder) dan bukti laporan", () => {
     const system = (await history(t, admin, groupId)).body.items.find((m) => m.kind === "system")!;
     const sys = await api(t).delete(`/chat/rooms/${groupId}/messages/${system.id}`, { token: admin.token });
     expect(sys.statusCode).toBe(403);
-    expect((await api(t).delete(`/chat/rooms/${roomId}/messages/${uuidv7()}`, { token: a.token })).statusCode).toBe(
-      404,
-    );
+    expect(
+      (await api(t).delete(`/chat/rooms/${roomId}/messages/${uuidv7()}`, { token: a.token })).statusCode,
+    ).toBe(404);
   });
 
   it("PRD 3.12: gambar pesan yang dirujuk bukti laporan tidak ikut terhapus saat pengirim menghapus pesannya", async () => {
@@ -303,7 +338,9 @@ describe("Hapus pesan sendiri (placeholder) dan bukti laporan", () => {
       createdAt: t.clock.now(),
       updatedAt: t.clock.now(),
     });
-    expect((await api(t).delete(`/chat/rooms/${roomId}/messages/${id}`, { token: a.token })).statusCode).toBe(200);
+    expect((await api(t).delete(`/chat/rooms/${roomId}/messages/${id}`, { token: a.token })).statusCode).toBe(
+      200,
+    );
     const [file] = await t.db.select().from(files).where(eq(files.id, image.id));
     expect(file!.status).toBe("ready");
   });
@@ -315,7 +352,9 @@ describe("Reaksi emoji (PRD 6.4)", () => {
     const msg = await sendText(t, a, roomId, "Beri reaksi");
     const add = await api(t).put(reactionPath(roomId, msg.id, "👍"), {}, { token: b.token });
     expect(add.statusCode).toBe(200);
-    expect(expectOperation("put", "/chat/rooms/{roomId}/messages/{messageId}/reactions/{emoji}", add)).toEqual({
+    expect(
+      expectOperation("put", "/chat/rooms/{roomId}/messages/{messageId}/reactions/{emoji}", add),
+    ).toEqual({
       message_id: msg.id,
       reactions: [{ emoji: "👍", count: 1, reacted_by_me: true }],
     });
@@ -332,24 +371,34 @@ describe("Reaksi emoji (PRD 6.4)", () => {
     expect(
       expectOperation("delete", "/chat/rooms/{roomId}/messages/{messageId}/reactions/{emoji}", removed),
     ).toEqual({ message_id: msg.id, reactions: [{ emoji: "👍", count: 1, reacted_by_me: false }] });
-    expect((await api(t).delete(reactionPath(roomId, msg.id, "👍"), { token: b.token })).statusCode).toBe(200);
+    expect((await api(t).delete(reactionPath(roomId, msg.id, "👍"), { token: b.token })).statusCode).toBe(
+      200,
+    );
 
     const emojis = ["😀", "😂", "😍", "🙏", "🎉", "🔥", "👏", "❤️", "🇮🇩", "1️⃣"];
     for (const emoji of emojis)
-      expect((await api(t).put(reactionPath(roomId, msg.id, emoji), {}, { token: b.token })).statusCode, emoji).toBe(
-        200,
-      );
+      expect(
+        (await api(t).put(reactionPath(roomId, msg.id, emoji), {}, { token: b.token })).statusCode,
+        emoji,
+      ).toBe(200);
     const eleventh = await api(t).put(reactionPath(roomId, msg.id, "😎"), {}, { token: b.token });
     expect(eleventh.statusCode).toBe(400);
     // Mengulang emoji yang sudah ada tetap idempoten walau sudah 10.
-    expect((await api(t).put(reactionPath(roomId, msg.id, "😀"), {}, { token: b.token })).statusCode).toBe(200);
+    expect((await api(t).put(reactionPath(roomId, msg.id, "😀"), {}, { token: b.token })).statusCode).toBe(
+      200,
+    );
 
     for (const bad of ["ab", "👍👍", "x", "😀😀😀"])
-      expect((await api(t).put(reactionPath(roomId, msg.id, bad), {}, { token: b.token })).statusCode, bad).toBe(400);
+      expect(
+        (await api(t).put(reactionPath(roomId, msg.id, bad), {}, { token: b.token })).statusCode,
+        bad,
+      ).toBe(400);
     expect(() => parseEmoji("👩‍👩‍👧‍👦")).not.toThrow();
 
     await api(t).delete(`/chat/rooms/${roomId}/messages/${msg.id}`, { token: a.token });
-    expect((await api(t).put(reactionPath(roomId, msg.id, "👍"), {}, { token: b.token })).statusCode).toBe(400);
+    expect((await api(t).put(reactionPath(roomId, msg.id, "👍"), {}, { token: b.token })).statusCode).toBe(
+      400,
+    );
   });
 
   it("AC F12-1: reaksi di room direct ditolak bila ada blokir dari salah satu pihak (pesan galat sama)", async () => {
@@ -378,14 +427,20 @@ describe("AC F11-4: ID pesan dari room lain tidak memberi akses (UUID bukan izin
       expect([res.statusCode, errorCode(res)]).toEqual([404, "NOT_FOUND"]);
       expect(res.body).not.toContain("Pesan room Y");
     }
-    const read = await api(t).put(`/chat/rooms/${roomX}/read`, { message_id: foreign.id }, { token: b.token });
+    const read = await api(t).put(
+      `/chat/rooms/${roomX}/read`,
+      { message_id: foreign.id },
+      { token: b.token },
+    );
     expect([read.statusCode, errorCode(read)]).toEqual([400, "VALIDATION_ERROR"]);
     const anchor = await history(t, a, roomX, { before: foreign.id });
     expect(anchor.res.statusCode).toBe(400);
     // Pesan room Y tidak berubah; pemilik room X juga tidak dapat dipakai pihak Y.
     const [stored] = await t.db.select().from(messages).where(eq(messages.id, foreign.id));
     expect(stored).toMatchObject({ body: "Pesan room Y", deletedAt: null });
-    expect(await t.db.select().from(messageReactions).where(eq(messageReactions.messageId, foreign.id))).toEqual([]);
+    expect(
+      await t.db.select().from(messageReactions).where(eq(messageReactions.messageId, foreign.id)),
+    ).toEqual([]);
     const crossDelete = await api(t).delete(`/chat/rooms/${roomY}/messages/${own.id}`, { token: d.token });
     expect(crossDelete.statusCode).toBe(404);
   });
@@ -417,7 +472,11 @@ describe("Read cursor monoton (PRD 3.11)", () => {
     expect((asA.json() as { peer_last_read_message_id: string }).peer_last_read_message_id).toBe(m3.id);
     // Pesan sendiri tidak dihitung unread; pengirim otomatis membaca pesannya.
     expect((asA.json() as { unread_count: number; last_read_message_id: string }).unread_count).toBe(0);
-    const invalid = await api(t).put(`/chat/rooms/${roomId}/read`, { message_id: uuidv7() }, { token: b.token });
+    const invalid = await api(t).put(
+      `/chat/rooms/${roomId}/read`,
+      { message_id: uuidv7() },
+      { token: b.token },
+    );
     expect(invalid.statusCode).toBe(400);
   });
 });
@@ -461,7 +520,11 @@ describe("Push chat tanpa isi pesan (PRD 3.13, kontrak sendChatMessage)", () => 
 
     // Setelah membaca, pesan berikutnya membuka episode baru.
     const page = await history(t, active, roomId);
-    await api(t).put(`/chat/rooms/${roomId}/read`, { message_id: page.body.items.at(-1)!.id }, { token: active.token });
+    await api(t).put(
+      `/chat/rooms/${roomId}/read`,
+      { message_id: page.body.items.at(-1)!.id },
+      { token: active.token },
+    );
     await sendText(t, admin, roomId, "Pesan ketiga");
     expect((await chatInbox(active.userId)).slice(before)).toHaveLength(2);
   });
