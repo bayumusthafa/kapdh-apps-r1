@@ -13,7 +13,7 @@ import { AppException, notFound, versionConflict } from "../../core/errors/app-e
 import { decodeCursor, encodeCursor, parsePageQuery } from "../../core/pagination/cursor.js";
 import { CLOCK, DB } from "../../core/tokens.js";
 import { queryBool, UUID_PATTERN, validate, validateQuery } from "../../core/validation/validate.js";
-import { escapeLike } from "./directory.query.js";
+import { escapeLike, hasControlChar, hasNul } from "./directory.query.js";
 
 type AdminMasterItem = components["schemas"]["AdminMasterItem"];
 type AdminMasterPage = components["schemas"]["AdminMasterPage"];
@@ -97,11 +97,13 @@ const updateSchema = z
   .refine((body) => Object.keys(body).length > 0, { message: "Kirim minimal satu perubahan.", path: ["_"] });
 
 const listQuerySchema = z.object({
+  // Teks bebas tanpa karakter kontrol, sama dengan aturan label (NUL → PostgreSQL 22021; harus 400, PRD 5.2).
   q: z
     .string({ message: "Kata kunci tidak valid" })
     .trim()
     .min(1, "Kata kunci wajib diisi")
     .max(100)
+    .refine((value) => !hasControlChar(value), "Kata kunci tidak boleh memuat karakter kontrol")
     .optional(),
   active: queryBool().optional(),
   sort: z
@@ -111,17 +113,23 @@ const listQuerySchema = z.object({
     .optional(),
 });
 
+/**
+ * Isi cursor dibatasi pada nilai yang dapat dihasilkan server dan diterima kolomnya (cursor rusak/dimanipulasi → 400
+ * field `cursor`, bukan galat database 500): sort_order dalam rentang smallint (22003 bila di luar), label terurut
+ * tanpa NUL (22021), jumlah pemakaian bilangan bulat aman >= 0.
+ */
 const uuidValue = z.string().regex(UUID_PATTERN);
+const cursorLabel = z
+  .string()
+  .max(1000)
+  .refine((value) => !hasNul(value));
+const cursorSortOrder = z.number().int().min(-32768).max(32767);
+const cursorUsage = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 const positionSchema = z.discriminatedUnion("s", [
-  z.object({ s: z.literal("manual"), o: z.number().int(), l: z.string().max(1000), id: uuidValue }),
-  z.object({ s: z.literal("label_asc"), l: z.string().max(1000), id: uuidValue }),
-  z.object({ s: z.literal("label_desc"), l: z.string().max(1000), id: uuidValue }),
-  z.object({
-    s: z.literal("usage_desc"),
-    u: z.number().int().min(0),
-    l: z.string().max(1000),
-    id: uuidValue,
-  }),
+  z.object({ s: z.literal("manual"), o: cursorSortOrder, l: cursorLabel, id: uuidValue }),
+  z.object({ s: z.literal("label_asc"), l: cursorLabel, id: uuidValue }),
+  z.object({ s: z.literal("label_desc"), l: cursorLabel, id: uuidValue }),
+  z.object({ s: z.literal("usage_desc"), u: cursorUsage, l: cursorLabel, id: uuidValue }),
 ]);
 type MasterPosition = z.infer<typeof positionSchema>;
 
