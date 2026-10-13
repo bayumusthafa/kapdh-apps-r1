@@ -17,7 +17,13 @@ export async function openPayments(
   const query = params.toString();
   renderApp(query ? `/payments?${query}` : "/payments");
   await signIn(user);
-  await screen.findByRole("heading", { level: 1, name: opts.title ?? "Verifikasi Pembayaran" });
+  // Potongan kode halaman dimuat lazy; impor pertama di worker uji dapat lebih lama dari batas bawaan 1 detik
+  // saat suite berjalan paralel.
+  await screen.findByRole(
+    "heading",
+    { level: 1, name: opts.title ?? "Verifikasi Pembayaran" },
+    { timeout: 10_000 },
+  );
 }
 
 /** Isi dialog reautentikasi (sandi + TOTP) yang dibuka tindakan sensitif (AC F15-3). */

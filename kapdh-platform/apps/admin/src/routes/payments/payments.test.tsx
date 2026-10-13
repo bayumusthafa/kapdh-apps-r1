@@ -19,7 +19,7 @@ const listRequests = () => paymentRequests.filter((r) => r.method === "GET" && r
 const decisionPosts = () => requestsTo("POST", /\/decision$/);
 
 describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () => {
-  it("menampilkan antrean dengan kolom prototipe, usia antrean, penanda lewat 1 hari kerja dan jumlah di menu", async () => {
+  it("F-04, N-11: antrean dengan kolom prototipe, usia antrean, penanda lewat 1 hari kerja dan jumlah di menu", async () => {
     const user = userEvent.setup();
     await openPayments(user);
     const table = await screen.findByRole("table", { name: "Antrean pembayaran" });
@@ -41,11 +41,16 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
       expect(within(nav).getByRole("link", { name: /Verifikasi Pembayaran/ })).toHaveTextContent("23"),
     );
     expect(paymentRequests.some((r) => r.path === "/admin/payments/summary")).toBe(true);
-    // Hitungan tab: menunggu verifikasi dan penyesuaian yang menunggu proses.
+    // Hitungan tab: menunggu verifikasi dan penyesuaian yang menunggu proses, bermakna bagi pembaca layar (N-11).
     const tabs = screen.getByRole("tablist", { name: "Menu pembayaran" });
-    await waitFor(() =>
-      expect(within(tabs).getByRole("tab", { name: /Penyesuaian/ })).toHaveTextContent("Penyesuaian3"),
-    );
+    expect(
+      await within(tabs).findByRole("tab", { name: "Verifikasi Pembayaran, 23 menunggu verifikasi" }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(
+      within(tabs).getByRole("tab", { name: "Penyesuaian, 3 penyesuaian menunggu proses" }),
+    ).toBeInTheDocument();
+    // Tab tanpa hitungan tetap bernama labelnya saja.
+    expect(within(tabs).getByRole("tab", { name: "Kelola Metode" })).toBeInTheDocument();
   });
 
   it("paging kursor server: halaman berikutnya dan sebelumnya", async () => {
@@ -396,6 +401,9 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
     await user.click(confirm);
     const reason = within(dialog).getByRole("textbox", { name: /Alasan pembatalan/ });
     expect(reason).toHaveAccessibleDescription(/minimal 3 karakter/);
+    // N-11: fokus pindah ke isian alasan sehingga galatnya dibacakan (bukan tertinggal di tombol konfirmasi).
+    await waitFor(() => expect(reason).toHaveFocus());
+    expect(reason).toHaveAttribute("aria-invalid", "true");
     expect(requestsTo("POST", /\/cancel$/)).toHaveLength(0);
 
     await user.type(reason, "Instruksi ditinggalkan lebih dari 30 hari");
