@@ -93,7 +93,10 @@ export function MethodFormDialog({
   /** Versi dasar formulir (berubah saat admin memuat versi terbaru setelah konflik). */
   const [base, setBase] = useState<Method | null>(method);
   const [conflict, setConflict] = useState<Method | null>(null);
-  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: valuesOf(method, nextSortOrder) });
+  const form = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: valuesOf(method, nextSortOrder),
+  });
   const { reset } = form;
 
   useEffect(() => {
@@ -189,14 +192,18 @@ export function MethodFormDialog({
       }
     >
       {conflict ? (
-        <div role="alert" className="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning-bg p-3 text-sm">
+        <div
+          role="alert"
+          className="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning-bg p-3 text-sm"
+        >
           <p className="flex items-start gap-2 font-semibold text-warning">
             <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
             Metode ini sudah diubah admin lain. Perubahan Anda belum disimpan.
           </p>
           <p className="text-text">
-            Versi terbaru: {METHOD_KIND_LABEL[conflict.kind]} {conflict.provider}, {conflict.account_number} a.n.{" "}
-            {conflict.account_holder}, {conflict.active ? "aktif" : "nonaktif"}, urutan {conflict.sort_order}.
+            Versi terbaru: {METHOD_KIND_LABEL[conflict.kind]} {conflict.provider}, {conflict.account_number}{" "}
+            a.n. {conflict.account_holder}, {conflict.active ? "aktif" : "nonaktif"}, urutan{" "}
+            {conflict.sort_order}.
           </p>
           <div>
             <Button size="sm" variant="outline" onClick={reloadLatest}>
@@ -215,8 +222,8 @@ export function MethodFormDialog({
           <FormError message={errors.root?.server?.message} />
           {locked ? (
             <p role="note" className="rounded-md bg-info-bg p-3 text-sm text-info">
-              Metode ini sudah dipakai pembayaran sehingga jenis, penyedia, nomor dan nama pemilik rekening tidak
-              dapat diubah. Untuk rekening baru, nonaktifkan metode ini lalu tambah metode baru.
+              Metode ini sudah dipakai pembayaran sehingga jenis, penyedia, nomor dan nama pemilik rekening
+              tidak dapat diubah. Untuk rekening baru, nonaktifkan metode ini lalu tambah metode baru.
             </p>
           ) : null}
           <RadioGroup<MethodKind>
@@ -233,7 +240,14 @@ export function MethodFormDialog({
           </FormField>
           <FormField<Values, "account_number"> name="account_number" label="Nomor rekening" required>
             {(field, a11y) => (
-              <Input {...field} {...a11y} maxLength={64} disabled={locked} autoComplete="off" inputMode="text" />
+              <Input
+                {...field}
+                {...a11y}
+                maxLength={64}
+                disabled={locked}
+                autoComplete="off"
+                inputMode="text"
+              />
             )}
           </FormField>
           <FormField<Values, "account_holder"> name="account_holder" label="Nama pemilik rekening" required>

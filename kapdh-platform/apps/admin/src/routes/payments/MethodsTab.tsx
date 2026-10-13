@@ -160,7 +160,13 @@ export function MethodsTab() {
           <>
             <Field label="Status" className="flex-[0_1_180px]">
               {(a11y) => (
-                <Select {...a11y} size="sm" options={ACTIVE_OPTIONS} value={active} onValueChange={setActive} />
+                <Select
+                  {...a11y}
+                  size="sm"
+                  options={ACTIVE_OPTIONS}
+                  value={active}
+                  onValueChange={setActive}
+                />
               )}
             </Field>
             <Button

@@ -339,7 +339,8 @@ function applyDecision(
       ticket_status: ticketStatus,
       ticket: p.ticket && ticketStatus ? { ...p.ticket, ticket_status: ticketStatus } : p.ticket,
       // Periode keanggotaan hanya bila pemilik masih ada (akun dihapus: tanpa efek keanggotaan, PRD 4.4).
-      period: p.type !== "ticket" && p.member ? { starts_at: at, expires_at: expires.toISOString() } : p.period,
+      period:
+        p.type !== "ticket" && p.member ? { starts_at: at, expires_at: expires.toISOString() } : p.period,
       refund_on_approve: false,
     };
     return { payment, refund: p.refund_on_approve ? systemRefund(payment, at) : null };
@@ -501,7 +502,12 @@ function fixtures(): Fixtures {
     "2026-10-10T03:00:00Z",
     OTHER_ADMIN,
   ).payment;
-  const siti = withReplacedProof(sitiRejected, "2026-10-11T02:02:00Z", MOCK_PROOF_FILE_ID_V2, overdueAtMockNow);
+  const siti = withReplacedProof(
+    sitiRejected,
+    "2026-10-11T02:02:00Z",
+    MOCK_PROOF_FILE_ID_V2,
+    overdueAtMockNow,
+  );
 
   const base: Detail[] = [
     siti,
@@ -591,7 +597,13 @@ function fixtures(): Fixtures {
     applyDecision(
       build({
         id: "0199e000-0000-7000-8000-0000000001a1",
-        member: member("0199e000-0000-7000-8000-0000000002a1", "Fajar Nugroho", "24.01.01.21", 24, "verified"),
+        member: member(
+          "0199e000-0000-7000-8000-0000000002a1",
+          "Fajar Nugroho",
+          "24.01.01.21",
+          24,
+          "verified",
+        ),
         type: "ticket",
         amount: "50000.00",
         createdAt: "2026-10-02T02:00:00Z",
@@ -610,7 +622,13 @@ function fixtures(): Fixtures {
     applyDecision(
       build({
         id: "0199e000-0000-7000-8000-0000000001a2",
-        member: member("0199e000-0000-7000-8000-0000000002a2", "Laila Fitriani", "28.02.02.6", 28, "verified"),
+        member: member(
+          "0199e000-0000-7000-8000-0000000002a2",
+          "Laila Fitriani",
+          "28.02.02.6",
+          28,
+          "verified",
+        ),
         type: "ticket",
         amount: "75000.00",
         createdAt: "2026-09-25T02:00:00Z",
@@ -663,7 +681,10 @@ function fixtures(): Fixtures {
     version: nextVersion(gitaPaid),
     events: [
       ...gitaPaid.events,
-      event("2026-10-08T04:00:00Z", "adjusted", "admin", { reason: "Refund selesai", actor_admin: OTHER_ADMIN }),
+      event("2026-10-08T04:00:00Z", "adjusted", "admin", {
+        reason: "Refund selesai",
+        actor_admin: OTHER_ADMIN,
+      }),
     ],
   };
   const andi = applyDecision(
@@ -742,7 +763,8 @@ function fixtures(): Fixtures {
       payment: yusuf,
       kind: "correction",
       amount: "0.00",
-      reason: "Koreksi catatan: dana masuk ke rekening [Nama bank 1] pada 5 Okt, bukan 4 Okt seperti di bukti.",
+      reason:
+        "Koreksi catatan: dana masuk ke rekening [Nama bank 1] pada 5 Okt, bukan 4 Okt seperti di bukti.",
       createdAt: "2026-10-06T03:00:00Z",
       createdBy: OTHER_ADMIN,
       dueAt: null,
@@ -973,7 +995,11 @@ export const mockPayments = {
     );
   },
   /** Admin lain memutus lebih dulu (AC F04-3). */
-  decideAsOtherAdmin(paymentId: string, decision: "approve" | "reject", reason = "Dana tidak ditemukan."): void {
+  decideAsOtherAdmin(
+    paymentId: string,
+    decision: "approve" | "reject",
+    reason = "Dana tidak ditemukan.",
+  ): void {
     const p = payments.get(paymentId);
     if (!p) return;
     const result = applyDecision(p, decision, reason, new Date().toISOString(), OTHER_ADMIN);
@@ -1037,7 +1063,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type FieldErrors = Record<string, string[]>;
 
 function validationError(fieldErrors: FieldErrors): Response {
-  return error(400, "VALIDATION_ERROR", "Periksa kembali isian yang ditandai.", { field_errors: fieldErrors });
+  return error(400, "VALIDATION_ERROR", "Periksa kembali isian yang ditandai.", {
+    field_errors: fieldErrors,
+  });
 }
 
 /** Semua izin pada `x-kapdh-access.permissions` wajib dimiliki (AC F15-1, F16-3). */
@@ -1053,7 +1081,9 @@ function requireAll(req: MockRequest, permissions: readonly Permission[]): Respo
 function ifMatch(req: MockRequest): { version: string } | { denied: Response } {
   const raw = (req.headers.get("If-Match") ?? "").trim();
   if (raw === "")
-    return { denied: validationError({ "If-Match": ["Header If-Match wajib berisi versi data yang dibaca."] }) };
+    return {
+      denied: validationError({ "If-Match": ["Header If-Match wajib berisi versi data yang dibaca."] }),
+    };
   const m = /^(?:(?:W\/)?"(\d{1,9})"|(\d{1,9}))$/.exec(raw);
   if (!m) return { denied: validationError({ "If-Match": ["Format If-Match tidak valid."] }) };
   return { version: String(Number(m[1] ?? m[2])) };
@@ -1104,8 +1134,10 @@ function textInvalid(value: unknown, max: number): boolean {
 function methodInputErrors(body: Record<string, unknown>): FieldErrors {
   const fe: FieldErrors = {};
   if (body.kind !== "bank" && body.kind !== "ewallet") fe.kind = ["Pilih jenis rekening"];
-  if (textInvalid(body.provider, 80)) fe.provider = ["Nama bank atau e-wallet wajib diisi (maksimal 80 karakter)"];
-  if (textInvalid(body.account_number, 64)) fe.account_number = ["Nomor rekening wajib diisi (maksimal 64 karakter)"];
+  if (textInvalid(body.provider, 80))
+    fe.provider = ["Nama bank atau e-wallet wajib diisi (maksimal 80 karakter)"];
+  if (textInvalid(body.account_number, 64))
+    fe.account_number = ["Nomor rekening wajib diisi (maksimal 64 karakter)"];
   if (textInvalid(body.account_holder, 120))
     fe.account_holder = ["Nama pemilik rekening wajib diisi (maksimal 120 karakter)"];
   if (body.instructions !== null) {
@@ -1114,12 +1146,18 @@ function methodInputErrors(body: Record<string, unknown>): FieldErrors {
     else if (/<[^>]*>/.test(body.instructions)) fe.instructions = ["Petunjuk berupa teks polos tanpa HTML"];
   }
   if (typeof body.active !== "boolean") fe.active = ["Pilih status aktif"];
-  if (!Number.isInteger(body.sort_order) || (body.sort_order as number) < 0 || (body.sort_order as number) > 32767)
+  if (
+    !Number.isInteger(body.sort_order) ||
+    (body.sort_order as number) < 0 ||
+    (body.sort_order as number) > 32767
+  )
     fe.sort_order = ["Urutan tampil 0 sampai 32767"];
   return fe;
 }
 
-function methodFromInput(body: Record<string, unknown>): Omit<MethodRow, "id" | "version" | "created_at" | "updated_at"> {
+function methodFromInput(
+  body: Record<string, unknown>,
+): Omit<MethodRow, "id" | "version" | "created_at" | "updated_at"> {
   const instructions = typeof body.instructions === "string" ? body.instructions.trim() : "";
   return {
     kind: body.kind as MethodRow["kind"],
@@ -1138,7 +1176,8 @@ function destinationErrors(value: unknown, field: string): FieldErrors {
   const fe: FieldErrors = {};
   if (textInvalid(d.provider, 80)) fe[`${field}.provider`] = ["Nama bank atau e-wallet wajib diisi"];
   if (textInvalid(d.account_number, 64)) fe[`${field}.account_number`] = ["Nomor rekening wajib diisi"];
-  if (textInvalid(d.account_holder, 120)) fe[`${field}.account_holder`] = ["Nama pemilik rekening wajib diisi"];
+  if (textInvalid(d.account_holder, 120))
+    fe[`${field}.account_holder`] = ["Nama pemilik rekening wajib diisi"];
   return fe;
 }
 
@@ -1312,7 +1351,8 @@ export const routes: MockRoute[] = [
         // Validasi body (400) sebelum pemeriksaan keadaan.
         const decision = body.decision;
         const fieldErrors: FieldErrors = {};
-        if (decision !== "approve" && decision !== "reject") fieldErrors.decision = ["Keputusan tidak dikenal."];
+        if (decision !== "approve" && decision !== "reject")
+          fieldErrors.decision = ["Keputusan tidak dikenal."];
         if (!Number.isInteger(body.expected_proof_version) || (body.expected_proof_version as number) < 1)
           fieldErrors.expected_proof_version = ["Versi bukti tidak valid."];
         if (typeof body.expected_version !== "string" || body.expected_version.length > 64)
@@ -1376,9 +1416,14 @@ export const routes: MockRoute[] = [
         if (p.conflict_of_interest) return conflictOfInterest();
         // Hanya pending tanpa bukti (PRD 4.3): payment berbukti wajib diputus, rejected tidak dapat dibatalkan.
         if (p.status !== "pending" || p.proof_version !== 0)
-          return error(409, "PAYMENT_STATE_CONFLICT", "Pembayaran ini sudah berbukti atau tidak lagi menunggu.", {
-            current: present(p),
-          });
+          return error(
+            409,
+            "PAYMENT_STATE_CONFLICT",
+            "Pembayaran ini sudah berbukti atau tidak lagi menunggu.",
+            {
+              current: present(p),
+            },
+          );
         if (p.version !== expected.version)
           return error(409, "VERSION_CONFLICT", "Data pembayaran sudah berubah. Muat ulang.", {
             current: present(p),
@@ -1420,7 +1465,10 @@ export const routes: MockRoute[] = [
           if (kind === "correction") fe.refund_destination = ["Rekening tujuan hanya untuk refund."];
           else Object.assign(fe, destinationErrors(body.refund_destination, "refund_destination"));
         }
-        if (body.evidence_file_id !== undefined && (typeof body.evidence_file_id !== "string" || !UUID.test(body.evidence_file_id)))
+        if (
+          body.evidence_file_id !== undefined &&
+          (typeof body.evidence_file_id !== "string" || !UUID.test(body.evidence_file_id))
+        )
           fe.evidence_file_id = ["Berkas bukti tidak valid."];
         if (Object.keys(fe).length > 0) return validationError(fe);
         const p = payments.get(req.params.paymentId ?? "");
@@ -1446,7 +1494,8 @@ export const routes: MockRoute[] = [
             createdAt: at,
             createdBy: mockAdminRef(),
             // Refund: 7 hari kerja sejak pembatalan tiket/event terkait, atau sejak dicatat (PRD 3.9).
-            dueAt: kind === "refund" ? addBusinessDays(cancellationAt(p) ?? at, REFUND_DUE_BUSINESS_DAYS) : null,
+            dueAt:
+              kind === "refund" ? addBusinessDays(cancellationAt(p) ?? at, REFUND_DUE_BUSINESS_DAYS) : null,
             destination: body.refund_destination ? trimDestination(body.refund_destination) : null,
             evidenceFileId: (body.evidence_file_id as string | undefined) ?? null,
           }),
@@ -1483,7 +1532,9 @@ export const routes: MockRoute[] = [
         .filter((a) => {
           if (!q) return true;
           const m = payments.get(a.payment_id)?.member;
-          return Boolean(m && (m.full_name.toLowerCase().includes(q) || (m.member_number ?? "").startsWith(q)));
+          return Boolean(
+            m && (m.full_name.toLowerCase().includes(q) || (m.member_number ?? "").startsWith(q)),
+          );
         })
         // due_at_asc: tenggat terdekat dahulu, tanpa tenggat (koreksi) di akhir.
         .sort((a, b) =>
@@ -1650,7 +1701,8 @@ export const routes: MockRoute[] = [
         .filter((m) => active === undefined || m.active === active)
         // Urutan tampil yang diatur pengurus, lalu nama penyedia, lalu id (keyset kontrak).
         .sort(
-          (a, b) => a.sort_order - b.sort_order || a.provider.localeCompare(b.provider) || a.id.localeCompare(b.id),
+          (a, b) =>
+            a.sort_order - b.sort_order || a.provider.localeCompare(b.provider) || a.id.localeCompare(b.id),
         )
         .map(presentMethod);
       return json(200, paginate(items, req.url) satisfies S["AdminPaymentMethodPage"]);
@@ -1728,7 +1780,12 @@ export const routes: MockRoute[] = [
             ),
           );
       }
-      const updated: MethodRow = { ...m, ...input, version: nextVersion(m), updated_at: new Date().toISOString() };
+      const updated: MethodRow = {
+        ...m,
+        ...input,
+        version: nextVersion(m),
+        updated_at: new Date().toISOString(),
+      };
       methods.set(m.id, updated);
       return json(200, presentMethod(updated));
     },

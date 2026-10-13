@@ -75,7 +75,8 @@ function sortFor(filter: StatusFilter, queueSort: QueueSort): PaymentSort | unde
 
 /** Kolom waktu pertama mengikuti pilihan status: waktu kirim bukti, waktu keputusan, atau waktu dibuat. */
 function timeColumn(filter: StatusFilter): { header: string; value: (i: Item) => string | null } {
-  if (filter === "paid" || filter === "rejected") return { header: "Diputus (WIB)", value: (i) => i.decided_at };
+  if (filter === "paid" || filter === "rejected")
+    return { header: "Diputus (WIB)", value: (i) => i.decided_at };
   if (filter === "cancelled") return { header: "Dibuat (WIB)", value: (i) => i.created_at };
   return { header: "Dikirim (WIB)", value: (i) => i.submitted_at };
 }

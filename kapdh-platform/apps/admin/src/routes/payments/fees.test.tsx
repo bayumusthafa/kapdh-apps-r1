@@ -79,7 +79,9 @@ describe("biaya pembayaran (F-03, D4, AC F15-3; server tiruan)", () => {
     await confirmReauth(user);
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Biaya sudah diubah admin lain (versi 2). Perubahan Anda belum disimpan.");
+    expect(alert).toHaveTextContent(
+      "Biaya sudah diubah admin lain (versi 2). Perubahan Anda belum disimpan.",
+    );
     expect(alert).toHaveTextContent("perpanjangan Rp12.000");
     expect(await findToast("error", "Biaya sudah diubah admin lain")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Simpan biaya baru" })).toBeDisabled();

@@ -12,7 +12,9 @@ async function methodsTable() {
 }
 
 function rowOf(table: HTMLElement, provider: string): HTMLElement {
-  return within(table).getByRole("rowheader", { name: new RegExp(provider.replace(/[[\]]/g, "\\$&")) }).closest("tr")!;
+  return within(table)
+    .getByRole("rowheader", { name: new RegExp(provider.replace(/[[\]]/g, "\\$&")) })
+    .closest("tr")!;
 }
 
 describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", () => {
@@ -51,9 +53,15 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     await user.click(screen.getByRole("button", { name: "Tambah metode" }));
     const dialog = await screen.findByRole("dialog", { name: "Tambah metode pembayaran" });
     expect(within(dialog).getByRole("spinbutton", { name: /Urutan tampil/ })).toHaveValue(3);
-    await user.type(within(dialog).getByRole("textbox", { name: /Nama bank atau e-wallet/ }), "[[Nama bank 3]");
+    await user.type(
+      within(dialog).getByRole("textbox", { name: /Nama bank atau e-wallet/ }),
+      "[[Nama bank 3]",
+    );
     await user.type(within(dialog).getByRole("textbox", { name: /Nomor rekening/ }), "7001234567");
-    await user.type(within(dialog).getByRole("textbox", { name: /Nama pemilik rekening/ }), "Bendahara KAPDH");
+    await user.type(
+      within(dialog).getByRole("textbox", { name: /Nama pemilik rekening/ }),
+      "Bendahara KAPDH",
+    );
     await user.click(within(dialog).getByRole("button", { name: "Simpan metode" }));
 
     const reauth = await screen.findByRole("dialog", { name: "Konfirmasi identitas" });
@@ -130,7 +138,9 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     });
     expect(mockPayments.method(IDS.methodInUse)).toMatchObject({ active: false, version: "2" });
     const table = await methodsTable();
-    await waitFor(() => expect(within(rowOf(table, "[Nama bank 1]")).getByText("Nonaktif")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(within(rowOf(table, "[Nama bank 1]")).getByText("Nonaktif")).toBeInTheDocument(),
+    );
   });
 
   it("AC F15-4: konflik versi menampilkan versi terbaru dan meminta muat ulang, tidak menimpa diam-diam", async () => {
@@ -160,7 +170,9 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
 
     await user.click(within(alert).getByRole("button", { name: "Muat versi terbaru" }));
     expect(within(dialog).queryByRole("alert")).toBeNull();
-    expect(within(dialog).getByRole("textbox", { name: /Nama pemilik rekening/ })).toHaveValue("Bendahara Baru");
+    expect(within(dialog).getByRole("textbox", { name: /Nama pemilik rekening/ })).toHaveValue(
+      "Bendahara Baru",
+    );
     expect(provider).toHaveValue("[Nama e-wallet]");
     await user.clear(provider);
     await user.type(provider, "[[E-wallet baru]");
@@ -180,7 +192,9 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     const user = userEvent.setup();
     await openPayments(user, { tab: "methods" });
     const table = await methodsTable();
-    await user.click(within(rowOf(table, "[Nama bank 2]")).getByRole("button", { name: "Hapus [Nama bank 2]" }));
+    await user.click(
+      within(rowOf(table, "[Nama bank 2]")).getByRole("button", { name: "Hapus [Nama bank 2]" }),
+    );
     const dialog = await screen.findByRole("alertdialog", { name: /Hapus metode pembayaran\?/ });
     const confirm = within(dialog).getByRole("button", { name: "Hapus metode" });
     expect(confirm).toBeDisabled();
