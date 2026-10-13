@@ -290,7 +290,10 @@ export class AdminSettingsService {
     );
   }
 
-  async updateMaintenance(body: unknown, expectedVersion: number): Promise<Schemas["AdminMaintenanceSetting"]> {
+  async updateMaintenance(
+    body: unknown,
+    expectedVersion: number,
+  ): Promise<Schemas["AdminMaintenanceSetting"]> {
     const input = validate(MaintenanceInputSchema, body);
     const message = input.message && input.message.trim() !== "" ? input.message.trim() : null;
     const until = input.until ? new Date(input.until) : null;

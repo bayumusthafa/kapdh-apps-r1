@@ -148,7 +148,9 @@ export const ROLE_CATALOG: readonly AdminRoleInfo[] = [
 ];
 
 const ORDER = new Map<Permission, number>(PERMISSION_VALUES.map((permission, index) => [permission, index]));
-const INFO = new Map<Permission, AdminPermissionInfo>(PERMISSION_CATALOG.map((info) => [info.permission, info]));
+const INFO = new Map<Permission, AdminPermissionInfo>(
+  PERMISSION_CATALOG.map((info) => [info.permission, info]),
+);
 
 /** Izin dalam urutan katalog (kontrak AdminAccount.permissions). */
 export function sortPermissions(permissions: Iterable<Permission>): Permission[] {

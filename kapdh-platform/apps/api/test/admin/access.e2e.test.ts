@@ -31,8 +31,13 @@ afterAll(async () => {
 const normalize = (p: string) => p.replace(/\{[^}]+\}/g, "{}");
 
 function contractOperations() {
-  const operations: { method: string; path: string; operationId: string; tag: string; access?: ContractAccess }[] =
-    [];
+  const operations: {
+    method: string;
+    path: string;
+    operationId: string;
+    tag: string;
+    access?: ContractAccess;
+  }[] = [];
   for (const [path, item] of Object.entries(spec.paths))
     for (const [method, operation] of Object.entries(item as Record<string, Record<string, unknown>>)) {
       const tag = ((operation.tags as string[] | undefined) ?? []).find((name) => TAGS.includes(name));

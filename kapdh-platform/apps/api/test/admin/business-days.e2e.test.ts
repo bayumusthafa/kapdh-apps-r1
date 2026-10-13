@@ -21,8 +21,7 @@ describe("Hari kerja SQL = hari kerja TypeScript (kontrak C7 DashboardPayments: 
     const start = Date.parse("2026-10-11T17:00:00.000Z"); // Senin 00.00 WIB
     const samples: { at: Date; days: number }[] = [];
     for (let hour = 0; hour < 21 * 24; hour += 5)
-      for (const days of [0, 1, 2, 3, 5, 7])
-        samples.push({ at: new Date(start + hour * 3600_000), days });
+      for (const days of [0, 1, 2, 3, 5, 7]) samples.push({ at: new Date(start + hour * 3600_000), days });
     // Zona sesi database sengaja bukan Asia/Jakarta: hasil tidak boleh bergantung TimeZone sesi.
     await db.execute(sql`set time zone 'America/New_York'`);
     const results = await Promise.all(

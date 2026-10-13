@@ -27,7 +27,10 @@ beforeAll(async () => {
   api = httpClient(t.app);
   root = await superAdminActor(t, { displayName: "Super Admin Audit" });
   auditor = await adminActor(t, { permissions: ["audit.read"], displayName: "Pemeriksa Audit" });
-  exporter = await adminActor(t, { permissions: ["audit.read", "audit.export"], displayName: "Pengekspor Audit" });
+  exporter = await adminActor(t, {
+    permissions: ["audit.read", "audit.export"],
+    displayName: "Pengekspor Audit",
+  });
 });
 afterAll(async () => {
   await t.app.close();
@@ -63,8 +66,13 @@ async function seed(count = 6): Promise<Seeded> {
         entityType: tag,
         entityId: `entitas-${i % 3}`,
         requestId: `req-${tag}-${i}`,
-        reason: i === 1 ? "=HYPERLINK(\"http://contoh.test\")" : `alasan ${i}`,
-        before: { email: `lama-${i}@contoh.test`, phone: "+628111", status: "pending", nested: { city: "Bandung" } },
+        reason: i === 1 ? '=HYPERLINK("http://contoh.test")' : `alasan ${i}`,
+        before: {
+          email: `lama-${i}@contoh.test`,
+          phone: "+628111",
+          status: "pending",
+          nested: { city: "Bandung" },
+        },
         after: { status: "paid", amount: "60000.00", proof_file_id: uuidv7() },
         createdAt: at,
       }),
@@ -129,12 +137,20 @@ describe("GET /admin/audit/entries (AC F17-2, F17-4)", () => {
     expect(byAdmin).toMatchObject({
       action: "payment.approved",
       effective_role: "admin",
-      actor: { admin_id: exporter.admin.adminId, user_id: exporter.admin.userId, display_name: "Pengekspor Audit" },
+      actor: {
+        admin_id: exporter.admin.adminId,
+        user_id: exporter.admin.userId,
+        display_name: "Pengekspor Audit",
+      },
       request_id: `req-${s.tag}-0`,
       reason: "alasan 0",
     });
     const byMember = all.body.items.find((i: { id: string }) => i.id === s.ids[1]);
-    expect(byMember.actor).toEqual({ admin_id: null, user_id: s.memberId, display_name: `Pelaku Alumni ${s.tag}` });
+    expect(byMember.actor).toEqual({
+      admin_id: null,
+      user_id: s.memberId,
+      display_name: `Pelaku Alumni ${s.tag}`,
+    });
 
     const cases: [Record<string, string>, number[]][] = [
       [{ action: "payment.approved" }, [3, 2, 1, 0]],
@@ -186,7 +202,9 @@ describe("GET /admin/audit/entries (AC F17-2, F17-4)", () => {
   ])("filter tidak sah %j ditolak 400 pada %s", async (query, field) => {
     const res = await api.get(ENTRIES, { token: auditor.token, query: query as Record<string, string> });
     expect(res.statusCode).toBe(400);
-    expect(expectOperation("get", ENTRIES, res)).toMatchObject({ field_errors: { [field]: expect.any(Array) } });
+    expect(expectOperation("get", ENTRIES, res)).toMatchObject({
+      field_errors: { [field]: expect.any(Array) },
+    });
   });
 
   it("detail memuat before/after sebagaimana disimpan (tanpa penyamaran di dalam sistem); 404 dan 400", async () => {
@@ -198,7 +216,9 @@ describe("GET /admin/audit/entries (AC F17-2, F17-4)", () => {
     expect((await api.get(`${ENTRIES}/${uuidv7()}`, { token: auditor.token })).statusCode).toBe(404);
     const bad = await api.get(`${ENTRIES}/bukan-uuid`, { token: auditor.token });
     expect(bad.statusCode).toBe(400);
-    expect(expectOperation("get", "/admin/audit/entries/{entryId}", bad)).toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(expectOperation("get", "/admin/audit/entries/{entryId}", bad)).toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
   });
 
   it("AC F17-2: tanpa audit.read ditolak 403 walaupun URL/id diketahui; token alumni 403; tanpa token 401", async () => {
@@ -287,7 +307,11 @@ describe("Ekspor audit CSV asinkron (AC F17-2, F17-3, F17-4)", () => {
 
     // Unduhan: URL bertanda tangan <= 10 menit, diaudit, tanpa cache publik.
     const access = await api.get(`${EXPORTS}/${exp.id}/access`, { token: exporter.token });
-    const grant = expectOperation("get", ACCESS, access) as { url: string; expires_at: string; file_name: string };
+    const grant = expectOperation("get", ACCESS, access) as {
+      url: string;
+      expires_at: string;
+      file_name: string;
+    };
     expect(access.statusCode).toBe(200);
     expect(access.headers["cache-control"]).toBe("no-store");
     expect(grant.file_name).toBe(readyBody.file_name);
@@ -317,10 +341,12 @@ describe("Ekspor audit CSV asinkron (AC F17-2, F17-3, F17-4)", () => {
     ]);
     const data = rows.slice(1);
     // Hasil ekspor = hasil pencarian dengan filter yang sama, urutan sama (AC F17-4).
-    expect(data.map((r) => r[8])).toEqual(searched.body.items.map((i: { request_id: string }) => i.request_id));
+    expect(data.map((r) => r[8])).toEqual(
+      searched.body.items.map((i: { request_id: string }) => i.request_id),
+    );
     // AC F17-3: formula dinetralkan, kolom privat/secret tidak ikut ekspor.
     const formula = data.find((r) => r[8] === `req-${s.tag}-1`)!;
-    expect(formula[9]).toBe("'=HYPERLINK(\"http://contoh.test\")");
+    expect(formula[9]).toBe('\'=HYPERLINK("http://contoh.test")');
     expect(content.body).not.toMatch(/lama-\d@contoh\.test/);
     expect(content.body).not.toContain("+628111");
     const before = JSON.parse(formula[10]!) as Record<string, unknown>;
@@ -343,8 +369,17 @@ describe("Ekspor audit CSV asinkron (AC F17-2, F17-3, F17-4)", () => {
     const rows = await t.db
       .select()
       .from(auditLogs)
-      .where(and(eq(auditLogs.action, "audit.export.requested"), eq(auditLogs.actorAdminId, exporter.admin.adminId)));
-    expect(rows.filter((r) => (r.after as { filters: { entity_type?: string } }).filters.entity_type === filters.entity_type)).toHaveLength(1);
+      .where(
+        and(
+          eq(auditLogs.action, "audit.export.requested"),
+          eq(auditLogs.actorAdminId, exporter.admin.adminId),
+        ),
+      );
+    expect(
+      rows.filter(
+        (r) => (r.after as { filters: { entity_type?: string } }).filters.entity_type === filters.entity_type,
+      ),
+    ).toHaveLength(1);
   });
 
   it("AC F17-2: hanya peminta atau Super Admin; admin lain 404; tanpa audit.export 403 walaupun id/URL berkas diketahui", async () => {
@@ -398,7 +433,9 @@ describe("Ekspor audit CSV asinkron (AC F17-2, F17-3, F17-4)", () => {
     const s = await seed(1);
     const id = (await createExport(holder, { entity_type: s.tag })).json().id as string;
     await t.jobs.drainOutbox();
-    const grant = (await api.get(`${EXPORTS}/${id}/access`, { token: holder.token })).json() as { url: string };
+    const grant = (await api.get(`${EXPORTS}/${id}/access`, { token: holder.token })).json() as {
+      url: string;
+    };
     expect((await download(grant.url)).statusCode).toBe(200);
 
     const detail = (await api.get(`/admin/admins/${holder.admin.adminId}`, { token: root.token })).json();
@@ -420,7 +457,10 @@ describe("Ekspor audit CSV asinkron (AC F17-2, F17-3, F17-4)", () => {
     t.clock.advance(1000);
     const second = (await createExport(own, { entity_type: s.tag, action: "tidak.ada" })).json().id as string;
     const all = await api.get(EXPORTS, { token: own.token });
-    const body = expectOperation("get", EXPORTS, all) as { items: { id: string; status: string }[]; total: number };
+    const body = expectOperation("get", EXPORTS, all) as {
+      items: { id: string; status: string }[];
+      total: number;
+    };
     expect(body.items.map((i) => i.id)).toEqual([second, first]);
     expect(body.total).toBe(2);
     const processing = await api.get(EXPORTS, { token: own.token, query: { status: "processing" } });
@@ -428,7 +468,10 @@ describe("Ekspor audit CSV asinkron (AC F17-2, F17-3, F17-4)", () => {
     const ready = await api.get(EXPORTS, { token: own.token, query: { status: "ready", limit: "1" } });
     expect(ready.json()).toMatchObject({ total: 1, items: [{ id: first }], next_cursor: null });
     const paged = await api.get(EXPORTS, { token: own.token, query: { limit: "1" } });
-    const next = await api.get(EXPORTS, { token: own.token, query: { limit: "1", cursor: paged.json().next_cursor } });
+    const next = await api.get(EXPORTS, {
+      token: own.token,
+      query: { limit: "1", cursor: paged.json().next_cursor },
+    });
     expect(next.json().items.map((i: { id: string }) => i.id)).toEqual([first]);
     expect((await api.get(EXPORTS, { token: own.token, query: { status: "lain" } })).statusCode).toBe(400);
   });
@@ -497,13 +540,19 @@ describe("Ekspor audit CSV asinkron (AC F17-2, F17-3, F17-4)", () => {
       t.clock.advance(60_000);
     }
     const res = await api.get(`${EXPORTS}/${id}`, { token: own.token });
-    expect(expectOperation("get", EXPORT, res)).toMatchObject({ status: "failed", failure_reason: "processing_failed" });
+    expect(expectOperation("get", EXPORT, res)).toMatchObject({
+      status: "failed",
+      failure_reason: "processing_failed",
+    });
     const failed = await t.db
       .select()
       .from(auditLogs)
       .where(and(eq(auditLogs.action, "audit.export.failed"), eq(auditLogs.entityId, id)));
     expect(failed).toHaveLength(1);
-    expect(failed[0]).toMatchObject({ effectiveRole: "system", after: { failure_reason: "processing_failed" } });
+    expect(failed[0]).toMatchObject({
+      effectiveRole: "system",
+      after: { failure_reason: "processing_failed" },
+    });
     // Tidak ada objek storage maupun baris berkas yatim dari percobaan yang gagal.
     const exportFiles = await t.db.select().from(files).where(eq(files.ownerUserId, own.admin.userId));
     expect(exportFiles).toEqual([]);

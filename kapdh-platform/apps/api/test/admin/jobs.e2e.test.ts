@@ -37,8 +37,22 @@ describe("Job maintenance.cleanup harian (ARCHITECTURE §4.8)", () => {
     const keyOld = uuidv7();
     const keyLive = uuidv7();
     await t.db.insert(idempotencyKeys).values([
-      { id: keyOld, scope: member.userId, endpoint: "POST /uji", key: uuidv7(), payloadHash: "h", expiresAt: ago(1000) },
-      { id: keyLive, scope: member.userId, endpoint: "POST /uji", key: uuidv7(), payloadHash: "h", expiresAt: ago(-DAY) },
+      {
+        id: keyOld,
+        scope: member.userId,
+        endpoint: "POST /uji",
+        key: uuidv7(),
+        payloadHash: "h",
+        expiresAt: ago(1000),
+      },
+      {
+        id: keyLive,
+        scope: member.userId,
+        endpoint: "POST /uji",
+        key: uuidv7(),
+        payloadHash: "h",
+        expiresAt: ago(-DAY),
+      },
     ]);
     const otpOld = uuidv7();
     const otpRecent = uuidv7();
@@ -80,16 +94,37 @@ describe("Job maintenance.cleanup harian (ARCHITECTURE §4.8)", () => {
         session(oldWithPush, ago(SESSION_RETENTION_MS + 1000)),
         session(recentSession, ago(DAY)),
       ]);
-    await t.db
-      .insert(deviceTokens)
-      .values({ id: uuidv7(), userId: member.userId, sessionId: oldWithPush, platform: "android", token: `tok-${uuidv7()}` });
+    await t.db.insert(deviceTokens).values({
+      id: uuidv7(),
+      userId: member.userId,
+      sessionId: oldWithPush,
+      platform: "android",
+      token: `tok-${uuidv7()}`,
+    });
 
     await t.jobs.runScheduled("maintenance.cleanup");
 
-    expect((await t.db.select().from(idempotencyKeys).where(inArray(idempotencyKeys.id, [keyOld, keyLive]))).map((r) => r.id)).toEqual([keyLive]);
-    expect((await t.db.select().from(otpCodes).where(inArray(otpCodes.id, [otpOld, otpRecent]))).map((r) => r.id)).toEqual([otpRecent]);
+    expect(
+      (
+        await t.db
+          .select()
+          .from(idempotencyKeys)
+          .where(inArray(idempotencyKeys.id, [keyOld, keyLive]))
+      ).map((r) => r.id),
+    ).toEqual([keyLive]);
+    expect(
+      (
+        await t.db
+          .select()
+          .from(otpCodes)
+          .where(inArray(otpCodes.id, [otpOld, otpRecent]))
+      ).map((r) => r.id),
+    ).toEqual([otpRecent]);
     const left = (
-      await t.db.select().from(sessions).where(inArray(sessions.id, [oldSession, oldWithPush, recentSession]))
+      await t.db
+        .select()
+        .from(sessions)
+        .where(inArray(sessions.id, [oldSession, oldWithPush, recentSession]))
     ).map((r) => r.id);
     expect(left.sort()).toEqual([oldWithPush, recentSession].sort());
     // Idempoten: eksekusi kedua tidak gagal dan tidak menghapus apa pun lagi.
@@ -114,7 +149,9 @@ describe("Handler outbox email pengurus (F-16, ARCHITECTURE §4.7)", () => {
       payload: { admin_id: adminId, invite_expires_at: inviteExpiresAt.toISOString() },
     });
     // Admin sudah aktif (undangan diterima).
-    await runAsSystem(() => job.invitation(event(accepted.adminId, new Date(t.clock.now().getTime() + DAY)), jobCtx));
+    await runAsSystem(() =>
+      job.invitation(event(accepted.adminId, new Date(t.clock.now().getTime() + DAY)), jobCtx),
+    );
     // Ronde lain (invite_expires_at berbeda dari baris).
     await runAsSystem(() =>
       job.invitation(event(invited.adminId, new Date(invitedRow!.inviteExpiresAt!.getTime() - 1)), jobCtx),

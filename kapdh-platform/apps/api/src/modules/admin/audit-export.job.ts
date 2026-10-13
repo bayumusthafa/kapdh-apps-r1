@@ -82,7 +82,10 @@ export class AuditExportJob implements OnModuleInit {
   async handle(event: OutboxEvent<"audit.export.requested">, ctx: JobContext): Promise<void> {
     const request = await this.loadRequest(event.payload.export_id);
     if (!request) {
-      ctx.logger.warn({ export_id: event.payload.export_id }, "permintaan ekspor audit tidak ditemukan; dilewati");
+      ctx.logger.warn(
+        { export_id: event.payload.export_id },
+        "permintaan ekspor audit tidak ditemukan; dilewati",
+      );
       return;
     }
     try {

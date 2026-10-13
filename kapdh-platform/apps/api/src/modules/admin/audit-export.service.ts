@@ -35,7 +35,9 @@ type AuditExportPage = components["schemas"]["AuditExportPage"];
 type AuditExportAccess = components["schemas"]["AuditExportAccess"];
 
 const ListQuerySchema = z.object({
-  status: z.enum(["processing", "ready", "failed", "expired"], { message: "Status tidak dikenal" }).optional(),
+  status: z
+    .enum(["processing", "ready", "failed", "expired"], { message: "Status tidak dikenal" })
+    .optional(),
 });
 const cursorSchema = z.object({ created_at: z.coerce.date(), id: z.uuid() });
 const { requested } = exportTables;

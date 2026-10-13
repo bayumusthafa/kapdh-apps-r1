@@ -11,7 +11,7 @@ import {
 } from "./csv.js";
 
 describe("AC F17-3: netralisasi formula CSV", () => {
-  it.each(["=SUM(A1:A2)", "+62812", "-1", "@cmd", "\tisi", "\risi", "=HYPERLINK(\"http://x\")"])(
+  it.each(["=SUM(A1:A2)", "+62812", "-1", "@cmd", "\tisi", "\risi", '=HYPERLINK("http://x")'])(
     "AC F17-3: sel diawali karakter formula %j diberi awalan apostrof",
     (value) => {
       expect(neutralizeFormula(value)).toBe(`'${value}`);
@@ -75,12 +75,19 @@ describe("AC F17-3: penyamaran kolom privat dan secret pada ekspor", () => {
     expect(isPrivateExportKey(key)).toBe(true);
   });
 
-  it.each(["display_name", "role", "permissions", "status", "amount", "file_id", "row_count", "version", "reason"])(
-    "AC F17-3: kunci %s tidak disamarkan",
-    (key) => {
-      expect(isPrivateExportKey(key)).toBe(false);
-    },
-  );
+  it.each([
+    "display_name",
+    "role",
+    "permissions",
+    "status",
+    "amount",
+    "file_id",
+    "row_count",
+    "version",
+    "reason",
+  ])("AC F17-3: kunci %s tidak disamarkan", (key) => {
+    expect(isPrivateExportKey(key)).toBe(false);
+  });
 
   it("AC F17-3: penelusuran rekursif objek dan array; nama kunci dan null tetap ada", () => {
     const masked = maskPrivateFields({
@@ -102,7 +109,9 @@ describe("AC F17-3: penyamaran kolom privat dan secret pada ekspor", () => {
   });
 
   it("AC F17-3: objek bersarang di bawah kunci privat disamarkan seluruhnya", () => {
-    expect(maskPrivateFields({ address: { street: "Jl. Uji", zip: "40111" } })).toEqual({ address: MASKED_VALUE });
+    expect(maskPrivateFields({ address: { street: "Jl. Uji", zip: "40111" } })).toEqual({
+      address: MASKED_VALUE,
+    });
   });
 });
 
