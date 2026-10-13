@@ -85,10 +85,7 @@ void main() {
     expect(find.text('Dibuka mulai 12 Sep 2027'), findsOneWidget);
     expect(find.text('Perpanjangan KTA'), findsOneWidget);
     expect(find.text('Rp10.000'), findsWidgets);
-    expect(
-      find.text('Perpanjangan dibuka mulai 12 Sep 2027, 30 hari sebelum masa aktif berakhir.'),
-      findsOneWidget,
-    );
+    expect(find.text('Perpanjangan dibuka mulai 12 Sep 2027, 30 hari sebelum masa aktif berakhir.'), findsOneWidget);
     expect(tester.widget<KapdhButton>(buttonLabelled('Perpanjang')).onPressed, isNull);
     expect(app.adapter.requestsTo('/me/payments').where((r) => r.method == 'POST'), isEmpty);
   });
@@ -183,11 +180,8 @@ void main() {
       'terkirim layar perpanjangan memuat status terbaru', (tester) async {
     var meStage = 'awaiting_proof';
     var paymentStage = 'awaiting_transfer';
-    Map<String, Object?> renewalPayment() => meMembershipPaymentJson(
-      stage: meStage,
-      amount: '10000.00',
-      proofVersion: meStage == 'awaiting_proof' ? 0 : 1,
-    );
+    Map<String, Object?> renewalPayment() =>
+        meMembershipPaymentJson(stage: meStage, amount: '10000.00', proofVersion: meStage == 'awaiting_proof' ? 0 : 1);
     final app = await openRenewal(
       tester,
       status: 'expiring',
@@ -268,10 +262,7 @@ void main() {
       fees: renewalFees(openPaymentId: 'pay-1'),
     );
 
-    expect(
-      find.text('Bukti perpanjangan perlu diperbaiki: $reason. Anda tidak perlu transfer ulang.'),
-      findsOneWidget,
-    );
+    expect(find.text('Bukti perpanjangan perlu diperbaiki: $reason. Anda tidak perlu transfer ulang.'), findsOneWidget);
     expect(find.text('Lanjutkan pembayaran'), findsOneWidget);
   });
 

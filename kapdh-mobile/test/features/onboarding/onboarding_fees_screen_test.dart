@@ -90,7 +90,12 @@ void main() {
     final app = await openFees(
       tester,
       routes: {
-        '/me/fees': (_) => FakeResponse.json(200, feesJson(registration: feeQuoteJson(type: 'registration', openPaymentId: 'pay-1'))),
+        '/me/fees': (_) => FakeResponse.json(
+          200,
+          feesJson(
+            registration: feeQuoteJson(type: 'registration', openPaymentId: 'pay-1'),
+          ),
+        ),
         '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingTransferJson()),
       },
     );
@@ -149,13 +154,17 @@ void main() {
     expect(app.adapter.requestsTo('/me/payments'), isEmpty);
   });
 
-  testWidgets('AC F07-5: iuran pendaftaran sudah lunas (data usang): tanpa tombol bayar, arahan ke KTA', (tester) async {
+  testWidgets('AC F07-5: iuran pendaftaran sudah lunas (data usang): tanpa tombol bayar, arahan ke KTA', (
+    tester,
+  ) async {
     await openFees(
       tester,
       routes: {
         '/me/fees': (_) => FakeResponse.json(
           200,
-          feesJson(registration: feeQuoteJson(type: 'registration', eligible: false, ineligibleReason: 'already_registered')),
+          feesJson(
+            registration: feeQuoteJson(type: 'registration', eligible: false, ineligibleReason: 'already_registered'),
+          ),
         ),
       },
     );

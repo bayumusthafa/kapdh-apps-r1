@@ -45,19 +45,22 @@ void main() {
     expect((cached as KtaCacheHit).card.qr?.url, 'https://kapdh.or.id/kta/29.01.01.7#t=token-uji');
   });
 
-  test('AC F05-2: server tidak terjangkau dan cache tersinkron <= 7 hari: kartu Offline dengan waktu sinkron dan QR', () async {
-    await sync().sync(userId: 'user-1');
-    respond = FakeResponse.network;
-    clock.advance(const Duration(days: 6, hours: 23));
+  test(
+    'AC F05-2: server tidak terjangkau dan cache tersinkron <= 7 hari: kartu Offline dengan waktu sinkron dan QR',
+    () async {
+      await sync().sync(userId: 'user-1');
+      respond = FakeResponse.network;
+      clock.advance(const Duration(days: 6, hours: 23));
 
-    final view = await sync().sync(userId: 'user-1');
+      final view = await sync().sync(userId: 'user-1');
 
-    expect(view, isA<KtaOffline>());
-    final offline = view as KtaOffline;
-    expect(offline.syncedAt, testNow);
-    expect(offline.qrUsable, isTrue);
-    expect(offline.error.isNetwork, isTrue);
-  });
+      expect(view, isA<KtaOffline>());
+      final offline = view as KtaOffline;
+      expect(offline.syncedAt, testNow);
+      expect(offline.qrUsable, isTrue);
+      expect(offline.error.isNetwork, isTrue);
+    },
+  );
 
   test('AC F05-2: 5xx diperlakukan seperti server tidak terjangkau', () async {
     await sync().sync(userId: 'user-1');
@@ -79,10 +82,8 @@ void main() {
   });
 
   test('AC F05-3: batas offline_valid_until server (token QR lebih pendek) lewat: tidak tampil aktif', () async {
-    respond = () => FakeResponse.json(
-      200,
-      memberCardJson(expiresAt: expiresAt, qrExpiresAt: testNow.add(const Duration(days: 2))),
-    );
+    respond = () =>
+        FakeResponse.json(200, memberCardJson(expiresAt: expiresAt, qrExpiresAt: testNow.add(const Duration(days: 2))));
     await sync().sync(userId: 'user-1');
     respond = FakeResponse.network;
     clock.advance(const Duration(days: 3));

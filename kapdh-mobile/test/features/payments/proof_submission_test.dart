@@ -57,7 +57,10 @@ void main() {
     expect(put.method, 'PUT');
     expect(bodyOf(put), {'file_id': 'file-2', 'transfer_note': 'dari BSI a.n. Ahmad', 'expected_proof_version': 0});
     expect(idempotencyKeyOf(put), isNotEmpty);
-    expect(phases, containsAllInOrder([ProofSubmitPhase.uploading, ProofSubmitPhase.submitting, ProofSubmitPhase.idle]));
+    expect(
+      phases,
+      containsAllInOrder([ProofSubmitPhase.uploading, ProofSubmitPhase.submitting, ProofSubmitPhase.idle]),
+    );
     expect(submitter.hasUnknownOutcome, isFalse);
     // Hasil pasti: niat berikutnya memakai key baru.
     final next = await container
@@ -75,7 +78,9 @@ void main() {
       if (options.path == '/files') return FakeResponse.json(201, fileRefJson());
       if (options.path == '/me/payments/pay-1/proof') {
         putCount++;
-        return putCount == 1 ? FakeResponse.network() : FakeResponse.json(200, awaitingReviewJson(proofFileId: 'file-2'));
+        return putCount == 1
+            ? FakeResponse.network()
+            : FakeResponse.json(200, awaitingReviewJson(proofFileId: 'file-2'));
       }
       if (options.path == '/me/payments/pay-1') return FakeResponse.json(200, awaitingTransferJson());
       return FakeResponse.json(404, errorJson('NOT_FOUND', 'x'));
@@ -99,7 +104,9 @@ void main() {
     setUpWith((options) {
       if (options.path == '/files') return FakeResponse.json(201, fileRefJson());
       if (options.path == '/me/payments/pay-1/proof') return FakeResponse.network();
-      if (options.path == '/me/payments/pay-1') return FakeResponse.json(200, awaitingReviewJson(proofFileId: 'file-2'));
+      if (options.path == '/me/payments/pay-1') {
+        return FakeResponse.json(200, awaitingReviewJson(proofFileId: 'file-2'));
+      }
       return FakeResponse.json(404, errorJson('NOT_FOUND', 'x'));
     });
 
