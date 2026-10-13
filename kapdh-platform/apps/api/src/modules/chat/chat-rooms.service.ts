@@ -608,12 +608,14 @@ export class ChatRoomsService {
         skipped.push({ user_id: userId, reason });
         continue;
       }
+      // joined_at lama sengaja dipertahankan pada undangan ulang: menandai pernah bergabung (kelayakan room direct
+      // "pernah satu grup" dan kebijakan avatar pesan lamanya); diisi ulang saat undangan diterima. Selama invited
+      // riwayat tertutup karena hanya anggota joined yang dapat membaca (AC F11-4).
       const values = {
         role: "member" as const,
         status: "invited" as const,
         invitedBy: inviterId,
         invitedAt: now,
-        joinedAt: null,
         leftAt: null,
         historyVisibleFrom: null,
         lastReadMessageId: null,
@@ -639,7 +641,9 @@ export class ChatRoomsService {
           continue;
         }
       } else {
-        await tx.insert(roomMembers).values({ roomId: room.id, userId, ...values, createdAt: now });
+        await tx
+          .insert(roomMembers)
+          .values({ roomId: room.id, userId, ...values, joinedAt: null, createdAt: now });
       }
       seats++;
       invited.push(userId);
@@ -650,7 +654,8 @@ export class ChatRoomsService {
         body: `Anda diundang bergabung ke grup "${room.name}". Buka undangan untuk menerima atau menolak.`,
         route: "/chat/invitations",
         data: { room_id: room.id },
-        dedupKey: `chat.invitation:${room.id}:${now.getTime()}`,
+        // Satu notifikasi per peristiwa undangan (undangan ulang setelah ditolak/dibatalkan adalah peristiwa baru).
+        dedupKey: `chat.invitation:${room.id}:${uuidv7()}`,
       });
       this.events.memberChanged(
         {
