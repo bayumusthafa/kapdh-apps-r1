@@ -59,6 +59,17 @@ class _ContentWidgetFactory extends WidgetFactory {
     final uri = remoteImageUri(url);
     return uri == null ? null : _images(uri.toString());
   }
+
+  // Server hanya menyimpan `img` dari host berkas KAPDH (PRD 3.8); gambar data:, file: dan aset tidak pernah
+  // dimuat dari isi berita walaupun lolos ke klien.
+  @override
+  ImageProvider? imageProviderFromDataUri(String dataUri) => null;
+
+  @override
+  ImageProvider? imageProviderFromFileUri(String url) => null;
+
+  @override
+  ImageProvider? imageProviderFromAsset(String url) => null;
 }
 
 /// Tautan luar di dalam isi berita: teks bergaris bawah + ikon panah keluar; dibacakan "`teks`, tautan luar".
