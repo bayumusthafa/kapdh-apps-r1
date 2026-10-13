@@ -152,7 +152,9 @@ describe("tab Kategori (guideline p13/p14, F-15; server tiruan)", () => {
     const user = userEvent.setup();
     renderApp("/content?tab=categories");
     await signIn(user);
-    expect(await screen.findByRole("heading", { level: 1, name: "Akses ditolak" }, { timeout: 8000 })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Akses ditolak" }, { timeout: 8000 }),
+    ).toBeInTheDocument();
     expect(contentRequests).toHaveLength(0);
   });
 });

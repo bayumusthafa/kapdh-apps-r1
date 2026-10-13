@@ -225,8 +225,8 @@ export function BannerTargetField({
             <TargetUnavailableBadge />
           </div>
           <p className="text-text">
-            Tujuan saat ini tidak dapat dibuka anggota.{" "}
-            {UNAVAILABLE_REASON[target.type] ?? ""} Pilih tujuan lain atau nonaktifkan banner.
+            Tujuan saat ini tidak dapat dibuka anggota. {UNAVAILABLE_REASON[target.type] ?? ""} Pilih tujuan
+            lain atau nonaktifkan banner.
           </p>
         </div>
       ) : null}
