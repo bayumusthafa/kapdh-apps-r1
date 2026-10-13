@@ -1,10 +1,14 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { PlaceholderPage } from "../../components/layout/PlaceholderPage";
-import { Card } from "../../components/ui/Card";
+import { PermissionGate } from "../../components/ui/PermissionGate";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { UnderConstruction } from "../../components/ui/States";
 import { TabPanel, Tabs } from "../../components/ui/Tabs";
-import type { ContentTab } from "./routes";
+import { BannersTab } from "./BannersTab";
+import { CategoriesTab } from "./CategoriesTab";
+import { PagesTab } from "./PagesTab";
+import { PostsTab } from "./PostsTab";
+import type { CategoryKindParam, ContentTab } from "./routes";
+
+export { PostEditorPage } from "./PostEditorPage";
 
 const TAB_LABEL: Record<ContentTab, string> = {
   posts: "Berita",
@@ -13,33 +17,40 @@ const TAB_LABEL: Record<ContentTab, string> = {
   categories: "Kategori",
 };
 
-const TAB_ITEMS: Record<ContentTab, string[]> = {
-  posts: [
-    "Draf, jadwal terbit dan arsip berita (AC F15-5)",
-    "Editor teks kaya dengan sanitasi server",
-    "Sampul gambar",
-  ],
-  banners: ["Banner beranda dengan tautan ke berita/event/halaman", "Urutan dan masa tayang"],
-  pages: ["Halaman legal berversi: draf dan terbit (kebijakan privasi, ketentuan)"],
-  categories: ["Kategori berita dan event"],
+const TAB_DESCRIPTION: Record<ContentTab, string> = {
+  posts: "Feed informasi untuk anggota: draf, jadwal terbit dan arsip berita.",
+  banners: "Banner Beranda aplikasi: gambar, tujuan, masa tayang dan urutan.",
+  pages: "Halaman informasi dan legal berversi. Draf kerja tidak terlihat publik sampai diterbitkan.",
+  categories:
+    "Kategori untuk berita dan event. Kategori yang dipakai tidak dapat dihapus, hanya dinonaktifkan.",
 };
 
-/** Placeholder area content; diganti agen halaman admin `content` (Phase C). Tab disimpan di URL (?tab=). */
+/**
+ * Manajemen Konten (guideline p13, F-08, F-15): tab Berita | Banner | Halaman | Kategori. Tab aktif, jenis kategori
+ * dan halaman yang disunting disimpan di URL (?tab=, ?kind=, ?page=) agar dapat dibagikan dan dipulihkan. Rute
+ * memerlukan content.manage (AC F15-1); setiap tab juga dijaga di dalam halaman karena izin dapat dicabut saat
+ * halaman terbuka (AC F16-3), dan API tetap menolak setiap permintaan tanpa izin.
+ */
 export function ContentPage() {
   const search = useSearch({ from: "/app/content" });
   const navigate = useNavigate({ from: "/content" });
   const tab: ContentTab = search.tab ?? "posts";
+
+  function goTo(next: ContentTab, extra: { kind?: CategoryKindParam } = {}) {
+    void navigate({ search: { tab: next, ...extra }, replace: true });
+  }
+
   return (
     <>
       <PageHeader
         title="Manajemen Konten"
-        description="Berita, banner, halaman dan kategori yang tampil di aplikasi KAPDH."
+        description={TAB_DESCRIPTION[tab]}
         actions={
           <Tabs<ContentTab>
             label="Jenis konten"
             idPrefix="konten"
             value={tab}
-            onValueChange={(next) => void navigate({ search: { tab: next }, replace: true })}
+            onValueChange={(next) => goTo(next)}
             items={(Object.keys(TAB_LABEL) as ContentTab[]).map((value) => ({
               value,
               label: TAB_LABEL[value],
@@ -47,26 +58,31 @@ export function ContentPage() {
           />
         }
       />
-      <TabPanel idPrefix="konten" value={tab}>
-        <Card>
-          <UnderConstruction feature={`Pengelolaan ${TAB_LABEL[tab].toLowerCase()}`} items={TAB_ITEMS[tab]} />
-        </Card>
+      <TabPanel idPrefix="konten" value={tab} className="flex flex-col gap-5">
+        {tab === "categories" ? (
+          <PermissionGate anyOf={["content.manage", "events.manage"]}>
+            <CategoriesTab
+              kind={search.kind}
+              onKindChange={(kind) => void navigate({ search: { tab: "categories", kind }, replace: true })}
+            />
+          </PermissionGate>
+        ) : (
+          <PermissionGate anyOf={["content.manage"]}>
+            {tab === "posts" ? (
+              <PostsTab onManageCategories={() => goTo("categories", { kind: "post" })} />
+            ) : null}
+            {tab === "banners" ? <BannersTab /> : null}
+            {tab === "pages" ? (
+              <PagesTab
+                selectedId={search.page ?? null}
+                onSelect={(page) =>
+                  void navigate({ search: { tab: "pages", ...(page ? { page } : {}) }, replace: false })
+                }
+              />
+            ) : null}
+          </PermissionGate>
+        )}
       </TabPanel>
     </>
-  );
-}
-
-export function PostEditorPage() {
-  return (
-    <PlaceholderPage
-      title="Editor Berita"
-      breadcrumbs={[{ label: "Manajemen Konten", to: "/content" }, { label: "Editor Berita" }]}
-      feature="Pembuatan dan pengubahan berita"
-      items={[
-        "Judul, kategori, sampul dan isi",
-        "Simpan draf, jadwalkan atau terbitkan",
-        "Konflik versi ditangani dengan muat ulang (AC F15-4)",
-      ]}
-    />
   );
 }
