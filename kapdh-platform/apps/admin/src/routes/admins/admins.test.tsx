@@ -2,7 +2,13 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { mockAuth } from "../../api/mocks";
-import { adminRequests, MOCK_ADMIN_IDS, MOCK_CANDIDATE_IDS, mockAdmins, PERMISSION_CATALOG } from "../../api/mocks/admins";
+import {
+  adminRequests,
+  MOCK_ADMIN_IDS,
+  MOCK_CANDIDATE_IDS,
+  mockAdmins,
+  PERMISSION_CATALOG,
+} from "../../api/mocks/admins";
 import { confirmReauth, openPage, section } from "../../test/governance";
 import { findToast, renderApp, signIn, type User } from "../../test/utils";
 import { togglePermission } from "./shared";
@@ -41,13 +47,11 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     const table = screen.getByRole("table", { name: "Daftar admin" });
     const ahmad = within(table).getByRole("link", { name: "Ahmad Zulhadi" }).closest("tr")!;
     const chips = within(ahmad).getByRole("list", { name: "Peran dan akses" });
-    expect(within(chips).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
-      "USER",
-      "Admin",
-      "Pembayaran",
-      "Konten",
-      "Event",
-    ]);
+    expect(
+      within(chips)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent),
+    ).toEqual(["USER", "Admin", "Pembayaran", "Konten", "Event"]);
     expect(within(ahmad).getByText("Aktif")).toBeInTheDocument();
     const rina = within(table).getByRole("link", { name: "Rina Kartika" }).closest("tr")!;
     expect(within(rina).getByText("Diundang")).toBeInTheDocument();

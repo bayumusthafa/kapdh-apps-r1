@@ -87,7 +87,11 @@ function SettingsContent() {
   if (settings.isError)
     return (
       <Card>
-        <ErrorState error={settings.error} onRetry={() => void settings.refetch()} title="Pengaturan gagal dimuat" />
+        <ErrorState
+          error={settings.error}
+          onRetry={() => void settings.refetch()}
+          title="Pengaturan gagal dimuat"
+        />
       </Card>
     );
   const s = settings.data;
@@ -213,8 +217,8 @@ function SettingCard<V extends FieldValues>({
               <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
               <span>
                 Pengaturan ini sudah diubah {conflict.updated_by?.display_name ?? "pengurus lain"} (versi{" "}
-                {conflict.version}). Isian Anda belum disimpan; muat versi terbaru lalu ulangi perubahan bila masih
-                diperlukan.
+                {conflict.version}). Isian Anda belum disimpan; muat versi terbaru lalu ulangi perubahan bila
+                masih diperlukan.
               </span>
             </p>
             <Button
@@ -342,7 +346,11 @@ function MaintenanceCard({ setting }: { setting: Maintenance }) {
       >
         {(field, a11y) => <Textarea {...field} {...a11y} rows={3} maxLength={500} showCount />}
       </FormField>
-      <FormField<MaintenanceValues, "until"> control={form.control} name="until" label="Perkiraan selesai (opsional)">
+      <FormField<MaintenanceValues, "until">
+        control={form.control}
+        name="until"
+        label="Perkiraan selesai (opsional)"
+      >
         {(field, a11y) => (
           <DateTimeField
             {...a11y}
@@ -404,7 +412,10 @@ function MinVersionCard({ setting, storeLinks }: { setting: MinVersion; storeLin
       if (compareSemver(values[p].trim(), state.base[p]) > 0 && !storeLinks[p]) {
         form.setError(
           p,
-          { type: "manual", message: `Isi tautan toko ${PLATFORM_LABEL[p]} sebelum menaikkan versi minimum.` },
+          {
+            type: "manual",
+            message: `Isi tautan toko ${PLATFORM_LABEL[p]} sebelum menaikkan versi minimum.`,
+          },
           { shouldFocus: !blocked },
         );
         blocked = true;
@@ -433,9 +444,13 @@ function MinVersionCard({ setting, storeLinks }: { setting: MinVersion; storeLin
             name={p}
             label={`Versi minimum ${PLATFORM_LABEL[p]}`}
             required
-            hint={storeLinks[p] ? "Tautan toko terisi." : "Tautan toko belum diisi; versi belum dapat dinaikkan."}
+            hint={
+              storeLinks[p] ? "Tautan toko terisi." : "Tautan toko belum diisi; versi belum dapat dinaikkan."
+            }
           >
-            {(field, a11y) => <Input {...field} {...a11y} inputMode="decimal" placeholder="1.0.0" maxLength={32} />}
+            {(field, a11y) => (
+              <Input {...field} {...a11y} inputMode="decimal" placeholder="1.0.0" maxLength={32} />
+            )}
           </FormField>
         ))}
       </div>
@@ -450,15 +465,24 @@ const storeLinksSchema = z.object({
     .string()
     .trim()
     .max(500, "Tautan maksimal 500 karakter.")
-    .refine((v) => v === "" || /^https:\/\/play\.google\.com\//.test(v), "Gunakan tautan https://play.google.com/..."),
+    .refine(
+      (v) => v === "" || /^https:\/\/play\.google\.com\//.test(v),
+      "Gunakan tautan https://play.google.com/...",
+    ),
   ios: z
     .string()
     .trim()
     .max(500, "Tautan maksimal 500 karakter.")
-    .refine((v) => v === "" || /^https:\/\/apps\.apple\.com\//.test(v), "Gunakan tautan https://apps.apple.com/..."),
+    .refine(
+      (v) => v === "" || /^https:\/\/apps\.apple\.com\//.test(v),
+      "Gunakan tautan https://apps.apple.com/...",
+    ),
 });
 type StoreLinksValues = z.infer<typeof storeLinksSchema>;
-const storeLinksValues = (s: StoreLinks): StoreLinksValues => ({ android: s.android ?? "", ios: s.ios ?? "" });
+const storeLinksValues = (s: StoreLinks): StoreLinksValues => ({
+  android: s.android ?? "",
+  ios: s.ios ?? "",
+});
 
 function StoreLinksCard({ setting }: { setting: StoreLinks }) {
   const state = useSettingForm("store_links", setting, storeLinksValues, storeLinksSchema);
@@ -491,13 +515,24 @@ function StoreLinksCard({ setting }: { setting: StoreLinks }) {
       saving={save.isPending}
       saveLabel="Simpan tautan toko"
     >
-      <FormField<StoreLinksValues, "android"> control={form.control} name="android" label="Google Play (Android)">
+      <FormField<StoreLinksValues, "android">
+        control={form.control}
+        name="android"
+        label="Google Play (Android)"
+      >
         {(field, a11y) => (
-          <Input {...field} {...a11y} type="url" placeholder="https://play.google.com/store/apps/details?id=..." />
+          <Input
+            {...field}
+            {...a11y}
+            type="url"
+            placeholder="https://play.google.com/store/apps/details?id=..."
+          />
         )}
       </FormField>
       <FormField<StoreLinksValues, "ios"> control={form.control} name="ios" label="App Store (iOS)">
-        {(field, a11y) => <Input {...field} {...a11y} type="url" placeholder="https://apps.apple.com/id/app/..." />}
+        {(field, a11y) => (
+          <Input {...field} {...a11y} type="url" placeholder="https://apps.apple.com/id/app/..." />
+        )}
       </FormField>
     </SettingCard>
   );
@@ -515,7 +550,10 @@ const supportSchema = z.object({
   whatsapp: z
     .string()
     .trim()
-    .refine((v) => v === "" || /^\+[1-9][0-9]{7,14}$/.test(v), "Gunakan format internasional, mis. +6281234567890."),
+    .refine(
+      (v) => v === "" || /^\+[1-9][0-9]{7,14}$/.test(v),
+      "Gunakan format internasional, mis. +6281234567890.",
+    ),
 });
 type SupportValues = z.infer<typeof supportSchema>;
 const supportValues = (s: Support): SupportValues => ({ email: s.email, whatsapp: s.whatsapp ?? "" });
@@ -583,7 +621,11 @@ const instructionsValues = (s: PaymentInstructions): InstructionsValues => ({
 function PaymentInstructionsCard({ setting }: { setting: PaymentInstructions }) {
   const state = useSettingForm("payment_instructions", setting, instructionsValues, instructionsSchema);
   const { form } = state;
-  const save = useApiMutation<PaymentInstructions, InstructionsValues & { version: string }, InstructionsValues>({
+  const save = useApiMutation<
+    PaymentInstructions,
+    InstructionsValues & { version: string },
+    InstructionsValues
+  >({
     requiresReauth: true,
     reauthReason: "Mengubah instruksi bayar iuran per platform",
     setError: form.setError,
@@ -658,8 +700,14 @@ function PoliciesCard({ settings: s }: { settings: Settings }) {
         <KeyValueList
           items={[
             { label: "Periode keanggotaan", value: `${s.membership.period_months} bulan kalender per iuran` },
-            { label: "Status hampir habis", value: `${s.membership.expiring_days} hari sebelum masa aktif berakhir` },
-            { label: "Jendela perpanjangan", value: `${s.membership.renewal_window_days} hari sebelum berakhir` },
+            {
+              label: "Status hampir habis",
+              value: `${s.membership.expiring_days} hari sebelum masa aktif berakhir`,
+            },
+            {
+              label: "Jendela perpanjangan",
+              value: `${s.membership.renewal_window_days} hari sebelum berakhir`,
+            },
             { label: "Tahan kursi reservasi", value: `${s.events.hold_hours} jam` },
             { label: "Check-in dibuka", value: `${s.events.checkin_before_hours} jam sebelum acara` },
             { label: "Batal mandiri dengan refund penuh", value: `Sampai H-${s.events.self_cancel_days}` },
@@ -667,7 +715,10 @@ function PoliciesCard({ settings: s }: { settings: Settings }) {
               label: "Eskalasi bukti tiket",
               value: `${s.events.review_escalation_business_days} hari kerja`,
             },
-            { label: "Panjang pesan chat", value: `${s.chat.max_text_chars.toLocaleString("id-ID")} karakter` },
+            {
+              label: "Panjang pesan chat",
+              value: `${s.chat.max_text_chars.toLocaleString("id-ID")} karakter`,
+            },
             { label: "Anggota grup chat", value: `Maksimal ${s.chat.max_group_members} orang` },
           ]}
         />

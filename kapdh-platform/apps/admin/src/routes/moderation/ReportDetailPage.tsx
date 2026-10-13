@@ -127,7 +127,11 @@ function ReportDetail({ reportId }: { reportId: string }) {
       <>
         <PageHeader title="Detail Laporan" breadcrumbs={breadcrumbs} />
         <Card>
-          <ErrorState error={detail.error} onRetry={() => void detail.refetch()} title="Laporan gagal dimuat" />
+          <ErrorState
+            error={detail.error}
+            onRetry={() => void detail.refetch()}
+            title="Laporan gagal dimuat"
+          />
         </Card>
       </>
     );
@@ -160,8 +164,8 @@ function ReportDetail({ reportId }: { reportId: string }) {
       {r.conflict_of_interest ? (
         <p role="note" className="flex items-start gap-2 rounded-md bg-warning-bg p-3 text-sm text-warning">
           <ShieldAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-          Laporan ini dibuat akun alumni yang tertaut ke akun admin Anda. Anda dapat membacanya, tetapi klaim dan
-          keputusan harus dilakukan pengurus lain (PRD 2.3).
+          Laporan ini dibuat akun alumni yang tertaut ke akun admin Anda. Anda dapat membacanya, tetapi klaim
+          dan keputusan harus dilakukan pengurus lain (PRD 2.3).
         </p>
       ) : null}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
@@ -180,7 +184,8 @@ function ReportDetail({ reportId }: { reportId: string }) {
           ) : null}
           {!canResolve && decidable ? (
             <p role="note" className="text-sm text-text-muted">
-              Akun Anda hanya dapat membaca laporan. Klaim dan keputusan memerlukan izin Menyelesaikan laporan moderasi (moderation.resolve).
+              Akun Anda hanya dapat membaca laporan. Klaim dan keputusan memerlukan izin Menyelesaikan laporan
+              moderasi (moderation.resolve).
             </p>
           ) : null}
         </div>
@@ -216,13 +221,18 @@ function SummaryCard({ report: r }: { report: Detail }) {
         <KeyValueList
           items={[
             { label: "Kategori", value: CATEGORY_LABEL[r.category] },
-            { label: "Objek", value: TARGET_LABEL[r.target_type] + (r.room_name ? ` di grup ${r.room_name}` : "") },
+            {
+              label: "Objek",
+              value: TARGET_LABEL[r.target_type] + (r.room_name ? ` di grup ${r.room_name}` : ""),
+            },
             { label: "Dibuat", value: formatDateTime(r.created_at) },
             { label: "Target penanganan", value: formatDateTime(r.due_at) },
             { label: r.category === "appeal" ? "Pemohon banding" : "Pelapor", value: partyText(r.reporter) },
             {
               label: "Peninjau",
-              value: r.claimed_by ? `${r.claimed_by.display_name} sejak ${formatDateTime(r.claimed_at)}` : "Belum diklaim",
+              value: r.claimed_by
+                ? `${r.claimed_by.display_name} sejak ${formatDateTime(r.claimed_at)}`
+                : "Belum diklaim",
             },
             {
               label: r.category === "appeal" ? "Alasan banding" : "Penjelasan pelapor",
@@ -241,7 +251,15 @@ function SummaryCard({ report: r }: { report: Detail }) {
 }
 
 /** Gambar bukti bertanda tangan maksimal 10 menit; berkas yang dihapus sesuai retensi D2 ditampilkan sebagai teks. */
-function EvidenceImageView({ image, alt, onRefresh }: { image: EvidenceImage | null; alt: string; onRefresh: () => void }) {
+function EvidenceImageView({
+  image,
+  alt,
+  onRefresh,
+}: {
+  image: EvidenceImage | null;
+  alt: string;
+  onRefresh: () => void;
+}) {
   const now = useNow(15_000);
   if (!image) return null;
   if (!image.url)
@@ -255,7 +273,12 @@ function EvidenceImageView({ image, alt, onRefresh }: { image: EvidenceImage | n
     return (
       <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
         Tautan bukti kedaluwarsa (berlaku 10 menit).
-        <Button variant="ghost" size="sm" leftIcon={<RefreshCw aria-hidden="true" className="size-4" />} onClick={onRefresh}>
+        <Button
+          variant="ghost"
+          size="sm"
+          leftIcon={<RefreshCw aria-hidden="true" className="size-4" />}
+          onClick={onRefresh}
+        >
           Muat ulang bukti
         </Button>
       </div>
@@ -293,7 +316,11 @@ function EvidenceCard({ report: r, onRefresh }: { report: Detail; onRefresh: () 
                 <span className="flex flex-wrap items-center gap-2 text-xs">
                   <span className="font-semibold">{m.sender_name ?? DELETED_ACCOUNT_LABEL}</span>
                   <span className="text-text-muted">{formatDateTime(m.created_at)}</span>
-                  {m.reported ? <Badge tone="danger">Pesan yang dilaporkan</Badge> : <Badge tone="neutral">Konteks</Badge>}
+                  {m.reported ? (
+                    <Badge tone="danger">Pesan yang dilaporkan</Badge>
+                  ) : (
+                    <Badge tone="neutral">Konteks</Badge>
+                  )}
                 </span>
                 {m.kind === "system" ? <em className="text-text-muted">Pesan sistem</em> : null}
                 {m.body ? <p className="whitespace-pre-wrap break-words">{m.body}</p> : null}
@@ -312,24 +339,41 @@ function EvidenceCard({ report: r, onRefresh }: { report: Detail; onRefresh: () 
           </ol>
         ) : null}
         {e.room ? (
-          <section aria-label="Snapshot grup" className="flex flex-col gap-2 rounded-md border border-divider p-3 text-sm">
+          <section
+            aria-label="Snapshot grup"
+            className="flex flex-col gap-2 rounded-md border border-divider p-3 text-sm"
+          >
             <h3 className="font-semibold">Grup saat dilaporkan</h3>
             <p>
               {e.room.name ?? "Tanpa nama"} | {e.room.member_count} anggota
             </p>
-            <EvidenceImageView image={e.room.avatar} alt={`Avatar grup ${e.room.name ?? ""}`} onRefresh={onRefresh} />
+            <EvidenceImageView
+              image={e.room.avatar}
+              alt={`Avatar grup ${e.room.name ?? ""}`}
+              onRefresh={onRefresh}
+            />
           </section>
         ) : null}
         {e.profile ? (
-          <section aria-label="Snapshot profil" className="flex flex-col gap-2 rounded-md border border-divider p-3 text-sm">
+          <section
+            aria-label="Snapshot profil"
+            className="flex flex-col gap-2 rounded-md border border-divider p-3 text-sm"
+          >
             <h3 className="font-semibold">Profil saat dilaporkan</h3>
             <p>{e.profile.full_name ?? DELETED_ACCOUNT_LABEL}</p>
             {e.profile.bio ? <p className="text-text-muted">{e.profile.bio}</p> : null}
-            <EvidenceImageView image={e.profile.avatar} alt={`Foto profil ${e.profile.full_name ?? ""}`} onRefresh={onRefresh} />
+            <EvidenceImageView
+              image={e.profile.avatar}
+              alt={`Foto profil ${e.profile.full_name ?? ""}`}
+              onRefresh={onRefresh}
+            />
           </section>
         ) : null}
         {e.contested_suspension ? (
-          <section aria-label="Suspend yang dibanding" className="flex flex-col gap-2 rounded-md border border-divider p-3 text-sm">
+          <section
+            aria-label="Suspend yang dibanding"
+            className="flex flex-col gap-2 rounded-md border border-divider p-3 text-sm"
+          >
             <h3 className="flex flex-wrap items-center gap-2 font-semibold">
               Suspend yang dibanding
               {e.contested_suspension.in_force ? (
@@ -341,9 +385,20 @@ function EvidenceCard({ report: r, onRefresh }: { report: Detail; onRefresh: () 
             <KeyValueList
               items={[
                 { label: "Disuspend", value: formatDateTime(e.contested_suspension.suspended_at) },
-                { label: "Oleh", value: e.contested_suspension.suspended_by?.display_name ?? "Akun admin dihapus" },
-                { label: "Alasan internal", value: e.contested_suspension.suspension_reason ?? "-", wide: true },
-                { label: "Pesan untuk anggota", value: e.contested_suspension.suspension_message ?? "-", wide: true },
+                {
+                  label: "Oleh",
+                  value: e.contested_suspension.suspended_by?.display_name ?? "Akun admin dihapus",
+                },
+                {
+                  label: "Alasan internal",
+                  value: e.contested_suspension.suspension_reason ?? "-",
+                  wide: true,
+                },
+                {
+                  label: "Pesan untuk anggota",
+                  value: e.contested_suspension.suspension_message ?? "-",
+                  wide: true,
+                },
               ]}
             />
           </section>
@@ -395,7 +450,9 @@ function TargetCard({ report: r }: { report: Detail }) {
                 id: `${h.created_at}-${i}`,
                 title: HISTORY_LABEL[h.kind],
                 time: formatDateTime(h.created_at),
-                description: [h.actor_name ? `Oleh ${h.actor_name}` : null, h.reason].filter(Boolean).join(" | "),
+                description: [h.actor_name ? `Oleh ${h.actor_name}` : null, h.reason]
+                  .filter(Boolean)
+                  .join(" | "),
                 tone: h.kind === "suspend" ? "danger" : h.kind === "warn" ? "warning" : "success",
               }))}
             />
@@ -491,7 +548,9 @@ const resolveSchema = z.object({
 type ResolveValues = z.infer<typeof resolveSchema>;
 
 /** Tindakan yang ditawarkan sesuai jenis laporan dan status anggota (kontrak adminResolveReport). */
-export function actionOptions(r: Pick<Detail, "category" | "target_member" | "evidence">): RadioOption<Action>[] {
+export function actionOptions(
+  r: Pick<Detail, "category" | "target_member" | "evidence">,
+): RadioOption<Action>[] {
   if (r.category === "appeal") {
     if (r.evidence.contested_suspension?.in_force === false)
       return [
@@ -503,16 +562,34 @@ export function actionOptions(r: Pick<Detail, "category" | "target_member" | "ev
       ];
     return [
       { value: "dismiss", label: "Tolak banding", description: "Suspend tetap berlaku." },
-      { value: "unsuspend", label: "Kabulkan banding (cabut suspend)", description: "Status dihitung ulang dari masa aktif." },
+      {
+        value: "unsuspend",
+        label: "Kabulkan banding (cabut suspend)",
+        description: "Status dihitung ulang dari masa aktif.",
+      },
     ];
   }
   const suspended = Boolean(r.target_member?.suspended_at);
   const options: RadioOption<Action>[] = [
     { value: "dismiss", label: ACTION_LABEL.dismiss, description: "Bukan pelanggaran; tidak ada tindakan." },
-    { value: "warn", label: ACTION_LABEL.warn, description: "Peringatan tanpa mengubah tanggal keanggotaan." },
+    {
+      value: "warn",
+      label: ACTION_LABEL.warn,
+      description: "Peringatan tanpa mengubah tanggal keanggotaan.",
+    },
   ];
-  if (suspended) options.push({ value: "unsuspend", label: ACTION_LABEL.unsuspend, description: "Akhiri suspend yang berlaku." });
-  else options.push({ value: "suspend", label: ACTION_LABEL.suspend, description: "Batasi akses komunitas anggota." });
+  if (suspended)
+    options.push({
+      value: "unsuspend",
+      label: ACTION_LABEL.unsuspend,
+      description: "Akhiri suspend yang berlaku.",
+    });
+  else
+    options.push({
+      value: "suspend",
+      label: ACTION_LABEL.suspend,
+      description: "Batasi akses komunitas anggota.",
+    });
   return options;
 }
 
@@ -541,7 +618,8 @@ function ResolveCard({
   const action = form.watch("action") as Action | "";
   const appeal = r.category === "appeal";
   const needsMessage = action === "warn" || action === "suspend" || appeal;
-  const needsSubject = r.target_type === "room" && !r.target_member && (action === "warn" || action === "suspend");
+  const needsSubject =
+    r.target_type === "room" && !r.target_member && (action === "warn" || action === "suspend");
   const subjects = [
     ...new Map(
       r.evidence.messages
@@ -573,7 +651,10 @@ function ResolveCard({
       setConfirming(false);
       queryClient.setQueryData(reportDetailKey(r.id), data);
       void queryClient.invalidateQueries({ queryKey: [...REPORTS_KEY, "list"] });
-      notify("success", `Laporan diputus: ${ACTION_LABEL[data.resolution?.action ?? (form.getValues("action") as Action)]}.`);
+      notify(
+        "success",
+        `Laporan diputus: ${ACTION_LABEL[data.resolution?.action ?? (form.getValues("action") as Action)]}.`,
+      );
     },
     onReloadLatest: (error) => {
       setConfirming(false);
@@ -585,11 +666,19 @@ function ResolveCard({
   const submit = form.handleSubmit((v) => {
     let ok = true;
     if (needsMessage && v.member_message.trim().length < 3) {
-      form.setError("member_message", { type: "manual", message: "Pesan untuk anggota minimal 3 karakter." }, { shouldFocus: true });
+      form.setError(
+        "member_message",
+        { type: "manual", message: "Pesan untuk anggota minimal 3 karakter." },
+        { shouldFocus: true },
+      );
       ok = false;
     }
     if (needsSubject && !v.subject_user_id) {
-      form.setError("subject_user_id", { type: "manual", message: "Pilih anggota grup yang dikenai tindakan." }, { shouldFocus: ok });
+      form.setError(
+        "subject_user_id",
+        { type: "manual", message: "Pilih anggota grup yang dikenai tindakan." },
+        { shouldFocus: ok },
+      );
       ok = false;
     }
     if (ok) setConfirming(true);
@@ -609,7 +698,9 @@ function ResolveCard({
           legend="Tindakan"
           required
           value={action || null}
-          onValueChange={(v) => form.setValue("action", v, { shouldDirty: true, shouldValidate: form.formState.isSubmitted })}
+          onValueChange={(v) =>
+            form.setValue("action", v, { shouldDirty: true, shouldValidate: form.formState.isSubmitted })
+          }
           options={options}
           error={errors.action?.message}
         />

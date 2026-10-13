@@ -37,20 +37,50 @@ export const MOCK_CANDIDATE_IDS = {
 /** Katalog izin tetap (kontrak adminListPermissions). */
 export const PERMISSION_CATALOG: S["AdminPermissionInfo"][] = [
   ["payments.read", "Lihat pembayaran", "Melihat antrean dan bukti pembayaran.", "payments", []],
-  ["payments.decide", "Putuskan pembayaran", "Menyetujui atau menolak pembayaran.", "payments", ["payments.read"]],
+  [
+    "payments.decide",
+    "Putuskan pembayaran",
+    "Menyetujui atau menolak pembayaran.",
+    "payments",
+    ["payments.read"],
+  ],
   ["members.read", "Lihat anggota", "Melihat data anggota.", "members", []],
   ["members.manage", "Kelola anggota", "Mengubah data administratif anggota.", "members", ["members.read"]],
   ["content.manage", "Kelola konten", "Mengelola berita, banner dan halaman.", "content", []],
-  ["master.manage", "Kelola master profesi dan keahlian", "Mengelola daftar profesi dan keahlian.", "members", []],
+  [
+    "master.manage",
+    "Kelola master profesi dan keahlian",
+    "Mengelola daftar profesi dan keahlian.",
+    "members",
+    [],
+  ],
   ["events.manage", "Kelola event dan tiket", "Mengelola event, kuota dan tiket.", "events", []],
   ["events.checkin", "Check-in tiket", "Memindai tiket saat acara.", "events", []],
   ["moderation.read", "Lihat laporan", "Membaca laporan dan bukti moderasi.", "moderation", []],
-  ["moderation.resolve", "Putuskan laporan", "Mengabaikan, memperingatkan atau men-suspend.", "moderation", ["moderation.read"]],
+  [
+    "moderation.resolve",
+    "Putuskan laporan",
+    "Mengabaikan, memperingatkan atau men-suspend.",
+    "moderation",
+    ["moderation.read"],
+  ],
   ["audit.read", "Lihat audit", "Menelusuri jejak audit.", "audit", []],
   ["audit.export", "Ekspor audit", "Mengekspor audit ke CSV.", "audit", ["audit.read"]],
-  ["settings.manage", "Kelola metode bayar dan pengaturan", "Metode bayar, biaya dan pengaturan aplikasi.", "settings", []],
+  [
+    "settings.manage",
+    "Kelola metode bayar dan pengaturan",
+    "Metode bayar, biaya dan pengaturan aplikasi.",
+    "settings",
+    [],
+  ],
   ["admins.manage", "Kelola admin dan izin", "Hanya melekat pada Super Admin.", "admins", []],
-  ["notifications.manage", "Kelola pengiriman notifikasi", "Memantau dan mengulang pengiriman.", "notifications", []],
+  [
+    "notifications.manage",
+    "Kelola pengiriman notifikasi",
+    "Memantau dan mengulang pengiriman.",
+    "notifications",
+    [],
+  ],
 ].map(([permission, label, description, group, requires]) => ({
   permission: permission as Permission,
   label: label as string,
@@ -103,7 +133,9 @@ function linked(userId: string, fullName: string, memberNumber: string | null): 
   return { user_id: userId, full_name: fullName, member_number: memberNumber, avatar_url: null };
 }
 
-function detail(partial: Partial<Detail> & Pick<Detail, "id" | "display_name" | "email" | "role" | "status">): Detail {
+function detail(
+  partial: Partial<Detail> & Pick<Detail, "id" | "display_name" | "email" | "role" | "status">,
+): Detail {
   return {
     permissions: [],
     linked_alumni: null,
@@ -223,12 +255,60 @@ function candidateFixtures(): Candidate[] {
     ineligible_reason: reason,
   });
   return [
-    c(MOCK_CANDIDATE_IDS.ridwan, "ridwan", "06.02.01.4", "info.kapdh@gmail.com", "Wiraswasta", "verified", null),
-    c(MOCK_CANDIDATE_IDS.arya, "Arya Kamandanu", "10.02.01.3", "jawejob788@fidhost.com", null, "verified", null),
-    c(MOCK_CANDIDATE_IDS.bayu, "Bayu Musthafa Arief", "09.02.01.5", "waladsyuhada@gmail.com", "Guru", "verified", "already_admin"),
-    c(MOCK_CANDIDATE_IDS.ahmad, "Ahmad Zulhadi", "05.03.01.2", "ahmad.z@gmail.com", null, "expiring", "already_admin"),
-    c(MOCK_CANDIDATE_IDS.sari, "Sari Dewi", "11.01.02.8", "sari.dewi@gmail.com", "Perawat", "suspended", "suspended"),
-    c(MOCK_CANDIDATE_IDS.nur, "Nur Aini", null, "nur.aini@gmail.com", null, "pending_otp", "account_inactive"),
+    c(
+      MOCK_CANDIDATE_IDS.ridwan,
+      "ridwan",
+      "06.02.01.4",
+      "info.kapdh@gmail.com",
+      "Wiraswasta",
+      "verified",
+      null,
+    ),
+    c(
+      MOCK_CANDIDATE_IDS.arya,
+      "Arya Kamandanu",
+      "10.02.01.3",
+      "jawejob788@fidhost.com",
+      null,
+      "verified",
+      null,
+    ),
+    c(
+      MOCK_CANDIDATE_IDS.bayu,
+      "Bayu Musthafa Arief",
+      "09.02.01.5",
+      "waladsyuhada@gmail.com",
+      "Guru",
+      "verified",
+      "already_admin",
+    ),
+    c(
+      MOCK_CANDIDATE_IDS.ahmad,
+      "Ahmad Zulhadi",
+      "05.03.01.2",
+      "ahmad.z@gmail.com",
+      null,
+      "expiring",
+      "already_admin",
+    ),
+    c(
+      MOCK_CANDIDATE_IDS.sari,
+      "Sari Dewi",
+      "11.01.02.8",
+      "sari.dewi@gmail.com",
+      "Perawat",
+      "suspended",
+      "suspended",
+    ),
+    c(
+      MOCK_CANDIDATE_IDS.nur,
+      "Nur Aini",
+      null,
+      "nur.aini@gmail.com",
+      null,
+      "pending_otp",
+      "account_inactive",
+    ),
   ];
 }
 
@@ -300,7 +380,10 @@ function guard(req: MockRequest, opts: { reauth?: boolean } = {}): Response | nu
 }
 
 /** Replay Idempotency-Key: payload sama = hasil pertama; payload berbeda = 409 IDEMPOTENCY_CONFLICT. */
-function replay(req: MockRequest): { response: Response | null; remember: (status: number, body: unknown) => void } {
+function replay(req: MockRequest): {
+  response: Response | null;
+  remember: (status: number, body: unknown) => void;
+} {
   const key = req.headers.get("Idempotency-Key");
   const payload = JSON.stringify([req.method, req.path, req.body]);
   const prior = key ? replays.get(key) : undefined;
@@ -432,7 +515,8 @@ export const routes: MockRoute[] = [
         )
         .sort((a, b) => {
           if (sort === "created_at_desc") return b.created_at.localeCompare(a.created_at);
-          if (sort === "last_login_at_desc") return (b.last_login_at ?? "").localeCompare(a.last_login_at ?? "");
+          if (sort === "last_login_at_desc")
+            return (b.last_login_at ?? "").localeCompare(a.last_login_at ?? "");
           return a.display_name.localeCompare(b.display_name, "id");
         })
         .map(summary);
@@ -481,11 +565,13 @@ export const routes: MockRoute[] = [
       let linkedAlumni: S["AdminLinkedAlumni"] | null = null;
       const alumniId = b.alumni_user_id;
       if (alumniId !== undefined) {
-        const cand = typeof alumniId === "string" ? candidates.find((c) => c.user_id === alumniId) : undefined;
+        const cand =
+          typeof alumniId === "string" ? candidates.find((c) => c.user_id === alumniId) : undefined;
         if (!cand) fe.alumni_user_id = ["Alumni tidak ditemukan."];
         else if (cand.ineligible_reason === "account_inactive")
           fe.alumni_user_id = ["Akun alumni belum aktif atau dinonaktifkan."];
-        else if (cand.ineligible_reason === "suspended") fe.alumni_user_id = ["Alumni sedang dibatasi pengurus."];
+        else if (cand.ineligible_reason === "suspended")
+          fe.alumni_user_id = ["Alumni sedang dibatasi pengurus."];
         else if (cand.ineligible_reason !== "already_admin") {
           email ??= cand.email.toLowerCase();
           displayName ??= cand.full_name;
@@ -501,7 +587,8 @@ export const routes: MockRoute[] = [
       if (displayName !== null && (displayName.length < 1 || displayName.length > 120))
         fe.display_name = ["Nama tampilan 1-120 karakter."];
       if (Object.keys(fe).length > 0) return bad(fe);
-      if (emailTaken(email!, null)) return bad({ email: ["Email login sudah dipakai identitas admin lain."] }, 409);
+      if (emailTaken(email!, null))
+        return bad({ email: ["Email login sudah dipakai identitas admin lain."] }, 409);
       seq += 1;
       const id = `0199e000-0000-7000-8000-${(0xe00 + seq).toString(16).padStart(12, "0")}`;
       const me = mockCurrentIdentity();
@@ -523,7 +610,9 @@ export const routes: MockRoute[] = [
       admins.set(id, { detail: d, linkedUserId: linkedAlumni?.user_id ?? null });
       if (linkedAlumni)
         candidates = candidates.map((c) =>
-          c.user_id === linkedAlumni!.user_id ? { ...c, eligible: false, ineligible_reason: "already_admin" } : c,
+          c.user_id === linkedAlumni!.user_id
+            ? { ...c, eligible: false, ineligible_reason: "already_admin" }
+            : c,
         );
       const body = invitationResult(d);
       idem.remember(201, body);
@@ -558,7 +647,8 @@ export const routes: MockRoute[] = [
       const fe: Record<string, string[]> = {};
       if (b.display_name !== undefined && (typeof b.display_name !== "string" || !b.display_name.trim()))
         fe.display_name = ["Nama tampilan wajib diisi."];
-      if (b.role !== undefined && b.role !== "admin" && b.role !== "super_admin") fe.role = ["Peran tidak dikenal."];
+      if (b.role !== undefined && b.role !== "admin" && b.role !== "super_admin")
+        fe.role = ["Peran tidak dikenal."];
       const nextRole = (b.role ?? d.role) as AdminRole;
       if (b.role === "admin" && d.role === "super_admin" && b.permissions === undefined)
         fe.permissions = ["Sertakan izin saat mengubah peran menjadi Admin."];
@@ -566,10 +656,13 @@ export const routes: MockRoute[] = [
         const pe = permissionErrors(nextRole, b.permissions);
         if (pe) fe.permissions = pe;
       }
-      if (b.status !== undefined && b.status !== "active" && b.status !== "disabled") fe.status = ["Status tidak dikenal."];
+      if (b.status !== undefined && b.status !== "active" && b.status !== "disabled")
+        fe.status = ["Status tidak dikenal."];
       const reason = typeof b.reason === "string" ? b.reason.trim() : "";
-      if (b.status === "disabled" && reason.length < 3) fe.reason = ["Alasan minimal 3 karakter wajib saat menonaktifkan."];
-      if (b.email !== undefined && b.status !== undefined) fe.email = ["Email tidak dapat diubah bersama status."];
+      if (b.status === "disabled" && reason.length < 3)
+        fe.reason = ["Alasan minimal 3 karakter wajib saat menonaktifkan."];
+      if (b.email !== undefined && b.status !== undefined)
+        fe.email = ["Email tidak dapat diubah bersama status."];
       const email = typeof b.email === "string" ? b.email.trim().toLowerCase() : null;
       if (b.email !== undefined && (!email || !EMAIL.test(email))) fe.email = ["Format email tidak valid."];
       if (Object.keys(fe).length > 0) return bad(fe);
@@ -587,17 +680,28 @@ export const routes: MockRoute[] = [
           409,
           d,
         );
-      if (b.status === "disabled" && d.status === "disabled") return bad({ status: ["Admin sudah nonaktif."] }, 409, d);
+      if (b.status === "disabled" && d.status === "disabled")
+        return bad({ status: ["Admin sudah nonaktif."] }, 409, d);
       if (email !== null && email !== d.email) {
         const neverActive = d.activated_at === null;
         if (!(d.status === "invited" || (d.status === "disabled" && neverActive)))
-          return bad({ email: ["Email admin aktif diganti lewat Pulihkan akun (reset sandi dan MFA)."] }, 409, d);
-        if (emailTaken(email, d.id)) return bad({ email: ["Email login sudah dipakai identitas admin lain."] }, 409);
+          return bad(
+            { email: ["Email admin aktif diganti lewat Pulihkan akun (reset sandi dan MFA)."] },
+            409,
+            d,
+          );
+        if (emailTaken(email, d.id))
+          return bad({ email: ["Email login sudah dipakai identitas admin lain."] }, 409);
       }
       // Penjaga Super Admin aktif terakhir (AC F16-2).
       const demote = d.role === "super_admin" && nextRole !== "super_admin";
       const disable = b.status === "disabled";
-      if (d.role === "super_admin" && d.status === "active" && (demote || disable) && otherActiveSuperAdmins(d.id) === 0)
+      if (
+        d.role === "super_admin" &&
+        d.status === "active" &&
+        (demote || disable) &&
+        otherActiveSuperAdmins(d.id) === 0
+      )
         return bad(
           { [demote ? "role" : "status"]: ["Minimal satu Super Admin aktif harus tetap ada (AC F16-2)."] },
           409,
@@ -622,7 +726,11 @@ export const routes: MockRoute[] = [
         };
       if (b.status === "active") next = { ...next, status: "active", disabled_at: null };
       if (email !== null && email !== d.email)
-        next = { ...next, email, invite_expires_at: d.status === "invited" ? iso(INVITE_TTL_MS) : d.invite_expires_at };
+        next = {
+          ...next,
+          email,
+          invite_expires_at: d.status === "invited" ? iso(INVITE_TTL_MS) : d.invite_expires_at,
+        };
       r.detail = bump(next, permsChanged);
       return json(200, effective(r.detail));
     },
@@ -695,7 +803,11 @@ export const routes: MockRoute[] = [
       const version = checkVersion(req, d);
       if (version) return version;
       if (d.id === mockCurrentIdentity().admin_id)
-        return bad({ _: ["Anda tidak dapat memulihkan akun sendiri; gunakan ganti sandi atau backup code."] }, 409, d);
+        return bad(
+          { _: ["Anda tidak dapat memulihkan akun sendiri; gunakan ganti sandi atau backup code."] },
+          409,
+          d,
+        );
       if (d.status === "invited" || !d.activated_at)
         return bad({ _: ["Admin ini belum pernah aktif; gunakan Kirim ulang undangan."] }, 409, d);
       if (d.role === "super_admin" && d.status === "active" && otherActiveSuperAdmins(d.id) === 0)

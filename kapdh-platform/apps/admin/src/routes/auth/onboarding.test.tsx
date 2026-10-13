@@ -136,7 +136,9 @@ describe("undangan admin /invite#t= (F-16, kontrak admin-auth)", () => {
     mockInvitations.expireEnrollment();
     await user.type(screen.getByLabelText(/^Kode autentikator/), MOCK_CREDENTIALS.totp);
     await user.click(screen.getByRole("button", { name: "Konfirmasi dan aktifkan akun" }));
-    expect(await screen.findByText("Waktu pendaftaran habis atau undangan tidak berlaku")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Waktu pendaftaran habis atau undangan tidak berlaku"),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Minta undangan ulang ke Super Admin/)).toBeInTheDocument();
   });
 

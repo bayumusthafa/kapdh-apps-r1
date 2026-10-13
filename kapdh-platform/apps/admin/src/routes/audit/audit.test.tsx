@@ -42,7 +42,10 @@ describe("audit (F-17, AC F17-2..F17-4; server tiruan)", () => {
     await screen.findByText("Menampilkan 25 dari 33");
     await applyAction(user, "payment.approved");
     await screen.findByText("Menampilkan 1 dari 1");
-    expect(entryQueries().at(-1)?.query).toMatchObject({ action: "payment.approved", sort: "created_at_desc" });
+    expect(entryQueries().at(-1)?.query).toMatchObject({
+      action: "payment.approved",
+      sort: "created_at_desc",
+    });
     const table = screen.getByRole("table", { name: "Entri audit" });
     expect(within(table).getByText("Ahmad Zulhadi")).toBeInTheDocument();
     expect(within(table).getByText("Admin")).toBeInTheDocument();
@@ -55,7 +58,9 @@ describe("audit (F-17, AC F17-2..F17-4; server tiruan)", () => {
     const before = entryQueries().length;
     await user.type(within(filter).getByLabelText("Nama pelaku"), "a");
     fireEvent.change(within(filter).getByLabelText("Dari (WIB)"), { target: { value: "2026-10-12T10:00" } });
-    fireEvent.change(within(filter).getByLabelText("Sebelum (WIB)"), { target: { value: "2026-10-11T10:00" } });
+    fireEvent.change(within(filter).getByLabelText("Sebelum (WIB)"), {
+      target: { value: "2026-10-11T10:00" },
+    });
     await user.click(within(filter).getByRole("button", { name: "Terapkan filter" }));
     await waitFor(() =>
       expect(within(filter).getByLabelText("Nama pelaku")).toHaveAccessibleDescription(/minimal 2 karakter/),
@@ -118,7 +123,9 @@ describe("audit (F-17, AC F17-2..F17-4; server tiruan)", () => {
 
     await user.click(within(panel).getByRole("button", { name: /^Unduh audit-/ }));
     await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
-    expect(open.mock.calls[0]?.[0]).toMatch(/^https:\/\/files\.kapdh\.test\/signed\/audit-\d{8}-[0-9a-f]{8}\.csv/);
+    expect(open.mock.calls[0]?.[0]).toMatch(
+      /^https:\/\/files\.kapdh\.test\/signed\/audit-\d{8}-[0-9a-f]{8}\.csv/,
+    );
     expect(open.mock.calls[0]?.[2]).toContain("noopener");
     expect(auditRequests.some((r) => r.path.endsWith("/access"))).toBe(true);
   });

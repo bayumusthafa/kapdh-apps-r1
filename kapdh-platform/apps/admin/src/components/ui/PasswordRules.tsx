@@ -24,7 +24,10 @@ export function PasswordRules({ value, id, className }: { value: string; id?: st
   return (
     <ul id={id} aria-label="Syarat sandi" className={cn("grid gap-1 text-xs sm:grid-cols-2", className)}>
       {rules.map((r) => (
-        <li key={r.label} className={cn("flex items-center gap-1.5", r.ok ? "text-success" : "text-text-muted")}>
+        <li
+          key={r.label}
+          className={cn("flex items-center gap-1.5", r.ok ? "text-success" : "text-text-muted")}
+        >
           {r.ok ? (
             <Check aria-hidden="true" className="size-3.5 shrink-0" />
           ) : (

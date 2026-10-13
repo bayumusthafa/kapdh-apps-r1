@@ -98,8 +98,8 @@ function ProfileCard() {
         />
         {profile.previous_login_at ? (
           <p className="mt-3 text-xs text-text-muted">
-            Tidak mengenali login sebelumnya? Ganti sandi, keluarkan perangkat yang tidak dikenal, lalu hubungi Super
-            Admin.
+            Tidak mengenali login sebelumnya? Ganti sandi, keluarkan perangkat yang tidak dikenal, lalu
+            hubungi Super Admin.
           </p>
         ) : null}
       </div>
@@ -115,7 +115,10 @@ const passwordSchema = z
     new_password: newPasswordSchema,
     confirm: z.string(),
   })
-  .refine((v) => v.new_password === v.confirm, { path: ["confirm"], message: "Konfirmasi sandi tidak sama." });
+  .refine((v) => v.new_password === v.confirm, {
+    path: ["confirm"],
+    message: "Konfirmasi sandi tidak sama.",
+  });
 type PasswordValues = z.infer<typeof passwordSchema>;
 
 function ChangePasswordCard() {
@@ -163,7 +166,12 @@ function ChangePasswordCard() {
         >
           {(field, a11y) => <PasswordInput {...field} {...a11y} autoComplete="current-password" />}
         </FormField>
-        <FormField<PasswordValues, "new_password"> control={form.control} name="new_password" label="Sandi baru" required>
+        <FormField<PasswordValues, "new_password">
+          control={form.control}
+          name="new_password"
+          label="Sandi baru"
+          required
+        >
           {(field, a11y) => (
             <PasswordInput
               {...field}
@@ -174,7 +182,12 @@ function ChangePasswordCard() {
           )}
         </FormField>
         <PasswordRules id="syarat-sandi-akun" value={newPassword} />
-        <FormField<PasswordValues, "confirm"> control={form.control} name="confirm" label="Ulangi sandi baru" required>
+        <FormField<PasswordValues, "confirm">
+          control={form.control}
+          name="confirm"
+          label="Ulangi sandi baru"
+          required
+        >
           {(field, a11y) => <PasswordInput {...field} {...a11y} autoComplete="new-password" />}
         </FormField>
         <Button type="submit" className="self-start" loading={change.isPending} loadingText="Menyimpan...">
@@ -270,13 +283,15 @@ function SessionsCard() {
                         {s.current ? <Badge tone="success">Perangkat ini</Badge> : null}
                       </span>
                       <span className="text-xs text-text-muted">
-                        Masuk sejak {formatDateTime(s.created_at)} | aktivitas terakhir {formatDateTime(s.last_seen_at)}{" "}
-                        | berakhir {formatDateTime(s.expires_at)}
+                        Masuk sejak {formatDateTime(s.created_at)} | aktivitas terakhir{" "}
+                        {formatDateTime(s.last_seen_at)} | berakhir {formatDateTime(s.expires_at)}
                       </span>
                     </div>
                   </div>
                   {s.current ? (
-                    <span className="text-xs text-text-muted">Gunakan tombol Keluar untuk perangkat ini.</span>
+                    <span className="text-xs text-text-muted">
+                      Gunakan tombol Keluar untuk perangkat ini.
+                    </span>
                   ) : (
                     <Button
                       variant="outline"
@@ -376,7 +391,9 @@ function BackupCodesCard() {
       <div className="flex flex-col gap-3 px-5">
         <p className="flex items-center gap-2 text-sm">
           <KeyRound aria-hidden="true" className="size-4 text-primary" />
-          {remaining === undefined ? "Sisa backup code tidak diketahui." : `Sisa ${remaining} dari 10 backup code.`}
+          {remaining === undefined
+            ? "Sisa backup code tidak diketahui."
+            : `Sisa ${remaining} dari 10 backup code.`}
         </p>
         {low ? (
           <p role="note" className="flex items-start gap-2 rounded-md bg-warning-bg p-3 text-sm text-warning">
