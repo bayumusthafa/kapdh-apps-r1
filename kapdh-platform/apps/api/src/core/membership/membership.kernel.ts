@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { alumni, membershipEvents, payments, sessions, users } from "@kapdh/database";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { alumni, membershipEvents, payments, reports, sessions, users } from "@kapdh/database";
+import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../adapters/clock.js";
 import { AuditService } from "../audit/audit.service.js";
@@ -81,10 +81,27 @@ export interface UnsuspendInput {
   /** true bila pemanggil menutup banding anggota sebagai dikabulkan dalam transaksi yang sama (satu notifikasi). */
   appealGranted?: boolean;
   actorAdminId: string | null;
+  /**
+   * Awal catatan internal (`resolution_note`) banding aktif yang ditutup otomatis sebagai dikabulkan; `reason` selalu
+   * ditambahkan. Bawaan merujuk pencabutan dari menu anggota (kontrak adminUnsuspendMember langkah 2).
+   */
+  appealResolutionNote?: string;
+  /**
+   * Banding yang sedang diputus pemanggil sendiri dalam transaksi ini (adminResolveReport atas banding): tidak ikut
+   * ditutup kernel karena pemanggil menulis keputusannya sendiri.
+   */
+  excludeAppealId?: string;
 }
 
 /** Teks baku notifikasi pencabutan pembatasan bila `member_message` tidak dikirim (kontrak adminUnsuspendMember). */
 export const DEFAULT_UNSUSPEND_MESSAGE = "Pembatasan akun Anda telah dicabut pengurus";
+
+/** Batas catatan keputusan laporan (kontrak AdminModerationResolution.note maxLength 1000). */
+const RESOLUTION_NOTE_MAX = 1000;
+
+/** Awal catatan internal bawaan banding yang ditutup karena pembatasan dicabut dari menu anggota (kontrak C2). */
+export const DEFAULT_APPEAL_GRANTED_NOTE =
+  "Banding dikabulkan otomatis karena pembatasan dicabut pengurus melalui menu anggota.";
 
 export interface IdentityChanges {
   cohort?: number;
@@ -463,18 +480,23 @@ export class MembershipKernel {
   /**
    * Mencabut suspend (AC F12-5; kontrak adminUnsuspendMember dan adminResolveReport action unsuspend): status dihitung
    * ulang dari expires_at, sehingga anggota yang masa aktifnya sudah habis menjadi expired dan yang belum pernah paid
-   * menjadi unverified, bukan otomatis verified. Audit `member.unsuspended`; SATU notifikasi kategori account yang
-   * memuat `memberMessage` (atau teks baku) dan menyatakan banding dikabulkan bila `appealGranted`. Prasyarat: sedang
-   * suspended (selain itu 400 VALIDATION_ERROR dengan `current`). Mengembalikan effective_status baru.
+   * menjadi unverified, bukan otomatis verified. Audit `member.unsuspended`. Prasyarat: sedang suspended (selain itu
+   * 400 VALIDATION_ERROR dengan `current`). Mengembalikan effective_status baru dan banding yang ditutup.
    *
-   * Belum dilakukan di sini (menunggu migrasi kategori laporan `appeal`, kontrak C2/C6): menutup banding aktif anggota.
-   * Pemanggil yang menutup banding di transaksi yang sama mengirim `appealGranted: true`.
+   * Satu fungsi untuk SETIAP jalur unsuspend (kontrak C2 adminUnsuspendMember langkah 2, C6 adminResolveReport
+   * "ketergantungan lintas domain"): di bawah kunci users → alumni yang sama, setiap banding aktif anggota (reports
+   * berkategori `appeal`, target_user_id = anggota, status open/in_review; dikunci FOR UPDATE setelah alumni) ditutup
+   * sebagai DIKABULKAN: status resolved, action unsuspend, resolution_note (`appealResolutionNote` + alasan),
+   * member_message = pesan untuk anggota (decision_message pemohon), resolved_by/resolved_at, version naik, audit
+   * `moderation.report_resolved` per banding. Kecuali `excludeAppealId` (banding yang sedang diputus pemanggil).
+   * SATU notifikasi kategori account memuat `memberMessage` (atau teks baku) dan menyatakan banding dikabulkan bila
+   * `appealGranted` atau ada banding yang ditutup; tidak ada notifikasi ganda per banding.
    */
   async unsuspend(
     tx: Tx,
     userId: string,
     input: UnsuspendInput,
-  ): Promise<{ effectiveStatus: EffectiveStatus; eventId: string }> {
+  ): Promise<{ effectiveStatus: EffectiveStatus; eventId: string; closedAppealIds: string[] }> {
     assertCommitAware(tx, "MembershipKernel.unsuspend");
     const reason = input.reason.trim();
     if (reason.length === 0 || reason.length > 1000)
@@ -514,13 +536,28 @@ export class MembershipKernel {
       { accountStatus: member.accountStatus, expiresAt: member.expiresAt, suspendedAt: null },
       now,
     );
+    const closedAppealIds = await this.closeActiveAppeals(tx, userId, {
+      note: input.appealResolutionNote?.trim() || DEFAULT_APPEAL_GRANTED_NOTE,
+      reason,
+      memberMessage,
+      actorAdminId: input.actorAdminId,
+      excludeId: input.excludeAppealId ?? null,
+      unsuspendEventId: eventId,
+      now,
+    });
+    const appealGranted = input.appealGranted === true || closedAppealIds.length > 0;
     await this.audit.write(tx, {
       action: "member.unsuspended",
       entityType: "alumni",
       entityId: userId,
       reason,
       before: { suspended_at: member.suspendedAt },
-      after: { suspended_at: null, effective_status: status, appeal_granted: input.appealGranted === true },
+      after: {
+        suspended_at: null,
+        effective_status: status,
+        appeal_granted: appealGranted,
+        closed_appeal_ids: closedAppealIds,
+      },
     });
     const active = status === "verified" || status === "expiring";
     const guidance = active
@@ -532,15 +569,87 @@ export class MembershipKernel {
     await this.notifications.notify(tx, {
       userId,
       category: "account",
-      title: input.appealGranted ? "Banding dikabulkan" : "Pembatasan akun dicabut",
-      body: [input.appealGranted ? "Banding Anda dikabulkan." : null, sentence(memberMessage), guidance]
+      title: appealGranted ? "Banding dikabulkan" : "Pembatasan akun dicabut",
+      body: [appealGranted ? "Banding Anda dikabulkan." : null, sentence(memberMessage), guidance]
         .filter(Boolean)
         .join(" "),
       route: active ? "/kta" : status === "expired" ? "/renewal" : "/onboarding/fees",
       dedupKey: `membership.unsuspended:${eventId}`,
     });
     this.resyncRoomsAfterCommit(userId);
-    return { effectiveStatus: status, eventId };
+    return { effectiveStatus: status, eventId, closedAppealIds };
+  }
+
+  /**
+   * Menutup banding aktif anggota sebagai dikabulkan di transaksi unsuspend (kontrak C2 adminUnsuspendMember langkah 2,
+   * C6 adminResolveReport). Baris laporan dikunci SESUDAH users → alumni (urutan yang sama dengan keputusan moderasi
+   * dan POST /appeals) lalu diperbarui bersyarat status, sehingga banding yang sudah diputus pengurus lain tidak
+   * ditimpa. Audit per banding tanpa menyalin isi bukti (ARCHITECTURE §2 butir 3).
+   */
+  private async closeActiveAppeals(
+    tx: Tx,
+    userId: string,
+    input: {
+      note: string;
+      reason: string;
+      memberMessage: string;
+      actorAdminId: string | null;
+      excludeId: string | null;
+      unsuspendEventId: string;
+      now: Date;
+    },
+  ): Promise<string[]> {
+    const active = await tx
+      .select({ id: reports.id, status: reports.status, version: reports.version })
+      .from(reports)
+      .where(
+        and(
+          eq(reports.category, "appeal"),
+          eq(reports.targetUserId, userId),
+          inArray(reports.status, ["open", "in_review"]),
+          input.excludeId ? ne(reports.id, input.excludeId) : undefined,
+        ),
+      )
+      .orderBy(asc(reports.id))
+      .for("update");
+    const full = `${input.note} Alasan: ${input.reason}`;
+    const note =
+      full.length > RESOLUTION_NOTE_MAX ? `${full.slice(0, RESOLUTION_NOTE_MAX - 1).trimEnd()}…` : full;
+    const closed: string[] = [];
+    for (const appeal of active) {
+      const [updated] = await tx
+        .update(reports)
+        .set({
+          status: "resolved",
+          action: "unsuspend",
+          resolutionNote: note,
+          memberMessage: input.memberMessage,
+          resolvedByAdminId: input.actorAdminId,
+          resolvedAt: input.now,
+          version: sql`${reports.version} + 1`,
+          updatedAt: input.now,
+        })
+        .where(and(eq(reports.id, appeal.id), inArray(reports.status, ["open", "in_review"])))
+        .returning({ id: reports.id, version: reports.version });
+      if (!updated) continue;
+      closed.push(updated.id);
+      await this.audit.write(tx, {
+        action: "moderation.report_resolved",
+        entityType: "report",
+        entityId: updated.id,
+        reason: note,
+        before: { status: appeal.status, version: appeal.version },
+        after: {
+          status: "resolved",
+          action: "unsuspend",
+          outcome: "action_taken",
+          version: updated.version,
+          closed_by_unsuspend: true,
+          membership_event_id: input.unsuspendEventId,
+        },
+      });
+    }
+    return closed;
   }
 
   /**
