@@ -3,7 +3,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { QueueUnavailableError } from "../../src/queue/queue-driver.js";
 import { bootWorker, type WorkerService } from "../../src/runtime.js";
+import { FakeRedis } from "../support/fake-redis.js";
 import { eventually, memoryLogger } from "../support/fixtures.js";
 import { createWorkerPgDatabase, type WorkerPgDatabase } from "./support.js";
 
@@ -20,7 +22,7 @@ afterAll(async () => {
 });
 
 /** WorkerEnv seperti production minus secret API: DATABASE_URL role kapdh_worker, tanpa Redis (antrean inline). */
-function env() {
+function env(extra: Record<string, string> = {}) {
   return loadWorkerEnv({
     NODE_ENV: "test",
     DATABASE_URL: tdb.workerUrl,
@@ -33,6 +35,7 @@ function env() {
     WORKER_HEALTH_HOST: "127.0.0.1",
     OUTBOX_POLL_INTERVAL_MS: "250",
     WORKER_SHUTDOWN_TIMEOUT_MS: "10000",
+    ...extra,
   });
 }
 
@@ -40,7 +43,11 @@ async function health(worker: WorkerService) {
   const res = await fetch(`http://127.0.0.1:${worker.healthAddress()!.port}/healthz`);
   return {
     status: res.status,
-    body: (await res.json()) as { status: string; checks: { scheduler: { role: string } } },
+    body: (await res.json()) as {
+      status: string;
+      issues: string[];
+      checks: { scheduler: { role: string }; queue: { ok: boolean; driver: string } };
+    },
   };
 }
 
@@ -132,5 +139,55 @@ describe("Worker production lengkap (createWorkerDeps + createWorkerContext, rol
     } finally {
       await worker.stop("uji");
     }
+  });
+
+  it("PRD 5.1: REDIS_URL diisi tetapi Redis mati saat boot → bootWorker gagal setelah batas tunggu (proses keluar non-zero dan dijalankan ulang) tanpa menyisakan koneksi", async () => {
+    const redis = new FakeRedis();
+    await redis.reservePort();
+    const logs = memoryLogger("info");
+    const started = performance.now();
+    await expect(
+      bootWorker(env({ REDIS_URL: redis.url }), {
+        logger: logs.logger,
+        adjustSettings: (settings) => ({ ...settings, queue: { ...settings.queue, readyTimeoutMs: 1_500 } }),
+      }),
+    ).rejects.toBeInstanceOf(QueueUnavailableError);
+    expect(performance.now() - started).toBeGreaterThanOrEqual(1_400);
+    expect(logs.lines.some((line) => String(line.msg).startsWith("worker gagal start"))).toBe(true);
+    expect(logs.lines.some((line) => line.msg === "worker berjalan")).toBe(false);
+    await eventually(async () => (await workerConnections()).length === 0, 10_000);
+  });
+
+  it("PRD 5.1, 5.5: driver BullMQ — boot berhasil, health 200; Redis putus → 503 queue_unreachable tanpa menggantung; Redis kembali → 200 tanpa restart", async () => {
+    const redis = new FakeRedis();
+    await redis.start();
+    const worker = await bootWorker(env({ REDIS_URL: redis.url }), {
+      logger: memoryLogger("warn").logger,
+      adjustSettings: (settings) => ({
+        ...settings,
+        queue: { readyTimeoutMs: 5_000, operationTimeoutMs: 1_000 },
+      }),
+    });
+    try {
+      await eventually(async () => (await health(worker)).status === 200, 15_000);
+      expect((await health(worker)).body).toMatchObject({
+        status: "ok",
+        checks: { queue: { ok: true, driver: "bullmq" } },
+      });
+
+      await redis.stop();
+      await eventually(async () => {
+        const report = await health(worker);
+        return report.status === 503 && report.body.issues.includes("queue_unreachable");
+      }, 15_000);
+
+      await redis.start();
+      await eventually(async () => (await health(worker)).status === 200, 20_000);
+      expect((await health(worker)).body.checks.queue).toEqual({ ok: true, driver: "bullmq" });
+    } finally {
+      expect((await worker.stop("uji")).reason).toBe("uji");
+      await redis.stop();
+    }
+    await eventually(async () => (await workerConnections()).length === 0, 10_000);
   });
 });
