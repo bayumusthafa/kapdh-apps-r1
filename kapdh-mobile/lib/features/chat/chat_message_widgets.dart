@@ -158,10 +158,14 @@ class ChatImageView extends StatelessWidget {
     final w = image.width;
     final h = image.height;
     final aspect = (w != null && h != null && w > 0 && h > 0) ? (w / h).clamp(0.5, 2.0) : 4 / 3;
+    // Node semantik sendiri (bukan bagian label gelembung): "Foto" dapat diketuk untuk dibuka layar penuh, dan tombol
+    // "Muat ulang foto" saat URL gagal dimuat menjadi anaknya (N-11).
     return Semantics(
+      container: true,
       image: true,
       label: 'Foto',
       button: onOpen != null,
+      onTapHint: onOpen == null ? null : 'buka foto',
       child: GestureDetector(
         onTap: onOpen,
         child: ClipRRect(
@@ -262,22 +266,31 @@ class BubbleMeta extends StatelessWidget {
       DeliveryStatus.read => onDark ? KapdhColors.gold400 : KapdhColors.info,
       _ => muted,
     };
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    // Wrap, bukan Row: pada teks 200 % waktu dan status ("Gagal terkirim", "Dibaca 12") turun ke baris berikut di
+    // dalam gelembung yang lebarnya dibatasi, bukan meluap (N-11).
+    return Wrap(
+      alignment: WrapAlignment.end,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: KapdhSpace.s1,
       children: [
         Text(
           time,
           style: TextStyle(fontSize: KapdhFontSize.overline, color: muted),
         ),
-        if (status != null) ...[
-          const SizedBox(width: KapdhSpace.s1),
-          Icon(status!.icon, size: 14, color: statusColor),
-          const SizedBox(width: 2),
-          Text(
-            statusDetail ?? status!.label,
-            style: TextStyle(fontSize: KapdhFontSize.overline, color: statusColor),
+        if (status != null)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(status!.icon, size: 14, color: statusColor),
+              const SizedBox(width: 2),
+              Flexible(
+                child: Text(
+                  statusDetail ?? status!.label,
+                  style: TextStyle(fontSize: KapdhFontSize.overline, color: statusColor),
+                ),
+              ),
+            ],
           ),
-        ],
       ],
     );
   }
@@ -327,49 +340,62 @@ class ChatBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = mine ? _BubbleColors.mine : _BubbleColors.theirs;
     final width = MediaQuery.sizeOf(context).width;
+    // Teks gelembung sudah diringkas di [semanticsLabel] sehingga dikecualikan dari pohon semantik; gambar TIDAK,
+    // agar tombol "buka foto" dan "Muat ulang foto" (URL bertanda tangan kedaluwarsa) dapat dijangkau pembaca layar
+    // (N-11, PRD 5.4).
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         if (senderName != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 2),
-            child: Text(
-              senderName!,
-              style: const TextStyle(
-                fontSize: KapdhFontSize.caption,
-                fontWeight: FontWeight.w600,
-                color: KapdhColors.primary,
+          ExcludeSemantics(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(
+                senderName!,
+                style: const TextStyle(
+                  fontSize: KapdhFontSize.caption,
+                  fontWeight: FontWeight.w600,
+                  color: KapdhColors.primary,
+                ),
               ),
             ),
           ),
-        ?reply,
+        if (reply != null) ExcludeSemantics(child: reply),
         if (image != null)
           Padding(
             padding: const EdgeInsets.only(bottom: KapdhSpace.s1),
             child: image,
           ),
         if (deleted)
-          Text(
-            'Pesan ini telah dihapus',
-            style: TextStyle(fontStyle: FontStyle.italic, color: colors.muted, fontSize: KapdhFontSize.body),
+          ExcludeSemantics(
+            child: Text(
+              'Pesan ini telah dihapus',
+              style: TextStyle(fontStyle: FontStyle.italic, color: colors.muted, fontSize: KapdhFontSize.body),
+            ),
           )
         else if (body != null && body!.isNotEmpty)
-          Text(
-            body!,
-            style: TextStyle(color: colors.foreground, fontSize: KapdhFontSize.body, height: 1.4),
+          ExcludeSemantics(
+            child: Text(
+              body!,
+              style: TextStyle(color: colors.foreground, fontSize: KapdhFontSize.body, height: 1.4),
+            ),
           ),
         const SizedBox(height: 2),
-        Align(
-          alignment: Alignment.centerRight,
-          widthFactor: 1,
-          child: BubbleMeta(time: time, status: status, statusDetail: statusDetail, onDark: mine),
+        ExcludeSemantics(
+          child: Align(
+            alignment: Alignment.centerRight,
+            widthFactor: 1,
+            child: BubbleMeta(time: time, status: status, statusDetail: statusDetail, onDark: mine),
+          ),
         ),
       ],
     );
     final bubble = GestureDetector(
       onLongPress: onLongPress,
       onTap: onTap,
+      // Tindakan semantik disediakan Semantics di atas gelembung (satu node berlabel), bukan node kosong kedua.
+      excludeFromSemantics: true,
       child: Container(
         padding: const EdgeInsets.fromLTRB(KapdhSpace.s3, KapdhSpace.s2, KapdhSpace.s3, KapdhSpace.s1),
         decoration: BoxDecoration(
@@ -392,12 +418,11 @@ class ChatBubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            // Isi gelembung dibacakan sebagai satu label; reaksi dan keterangan galat tetap dapat dijangkau
+            // Isi gelembung dibacakan sebagai satu label; gambar, reaksi dan keterangan galat tetap dapat dijangkau
             // pembaca layar sebagai elemen terpisah (N-11).
             Semantics(
               container: true,
               label: semanticsLabel,
-              excludeSemantics: true,
               onLongPress: onLongPress,
               onTap: onTap,
               onLongPressHint: onLongPress == null ? null : 'tindakan pesan',

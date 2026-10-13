@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
@@ -151,6 +152,12 @@ class _ProfileViewState extends ConsumerState<_ProfileView> {
     }
   }
 
+  Future<void> _copy(String text, String done) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(done)));
+  }
+
   void _back() {
     final router = GoRouter.of(context);
     if (router.canPop()) {
@@ -206,12 +213,10 @@ class _ProfileViewState extends ConsumerState<_ProfileView> {
       if (p.phone != null && p.phone!.trim().isNotEmpty)
         _Section(
           title: 'Nomor Telpon',
-          child: InkWell(
-            onTap: () => _open(Uri(scheme: 'tel', path: p.phone!.replaceAll(RegExp(r'[^0-9+]'), ''))),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: KapdhSpace.s1),
-              child: SelectableText(p.phone!, style: _valueStyle),
-            ),
+          child: _PhoneLink(
+            phone: p.phone!,
+            onCall: () => _open(Uri(scheme: 'tel', path: p.phone!.replaceAll(RegExp(r'[^0-9+]'), ''))),
+            onCopy: () => _copy(p.phone!, 'Nomor telpon disalin.'),
           ),
         ),
       if (p.bio != null && p.bio!.trim().isNotEmpty)
@@ -441,6 +446,51 @@ class _IconLine extends StatelessWidget {
       ),
     );
     return onTap == null ? row : InkWell(onTap: onTap, child: row);
+  }
+}
+
+/// Nomor telpon yang dapat diketuk untuk menelepon (tautan `tel:`) dan ditekan lama untuk disalin. Teks biasa, bukan
+/// SelectableText, agar ketukan tidak ditelan gestur seleksi; target sentuh minimal 48 dp dan peran tautan bagi
+/// pembaca layar (N-11).
+class _PhoneLink extends StatelessWidget {
+  const _PhoneLink({required this.phone, required this.onCall, required this.onCopy});
+
+  final String phone;
+  final VoidCallback onCall;
+  final VoidCallback onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      link: true,
+      label: 'Telepon $phone',
+      onTapHint: 'menelepon',
+      onLongPressHint: 'salin nomor',
+      onTap: onCall,
+      onLongPress: onCopy,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onCall,
+        onLongPress: onCopy,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: KapdhSize.touchTargetMin),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.call_outlined, size: 18, color: KapdhColors.primary),
+              const SizedBox(width: KapdhSpace.s2),
+              Flexible(
+                child: Text(
+                  phone,
+                  style: _valueStyle.copyWith(color: KapdhColors.primary, decoration: TextDecoration.underline),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -121,7 +121,11 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
     // ulang widget saat fase layout.
     scheduleMicrotask(() {
       if (!mounted) return;
-      if (nearTop) unawaited(_controller.loadOlder());
+      // Setelah gagal, muat ulang hanya lewat tombol "Coba lagi" agar setiap gulir saat offline/dibatasi laju tidak
+      // menjadi request baru (PRD 4.5, N-01).
+      if (nearTop && ref.read(chatRoomControllerProvider(widget.roomId)).olderError == null) {
+        unawaited(_controller.loadOlder());
+      }
       if (atBottom != _atBottom) {
         setState(() {
           _atBottom = atBottom;
@@ -175,21 +179,24 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
       context: context,
       useRootNavigator: true,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Kamera'),
-              onTap: () => Navigator.of(sheetContext).pop(ChatImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Galeri'),
-              onTap: () => Navigator.of(sheetContext).pop(ChatImageSource.gallery),
-            ),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Kamera'),
+                onTap: () => Navigator.of(sheetContext).pop(ChatImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Galeri'),
+                onTap: () => Navigator.of(sheetContext).pop(ChatImageSource.gallery),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -237,51 +244,56 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
       context: context,
       useRootNavigator: true,
       showDragHandle: true,
+      // Tinggi mengikuti isi dan dapat digulir saat teks diperbesar, sehingga "Hapus pesan"/"Laporkan pesan" tetap
+      // terjangkau (N-11).
+      isScrollControlled: true,
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (canInteract)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4),
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: KapdhSpace.s1,
-                  children: [
-                    for (final emoji in quickReactions)
-                      IconButton(
-                        tooltip: 'Reaksi $emoji',
-                        onPressed: () => Navigator.of(sheetContext).pop('react:$emoji'),
-                        icon: Text(emoji, style: const TextStyle(fontSize: 24)),
-                      ),
-                  ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (canInteract)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4),
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: KapdhSpace.s1,
+                    children: [
+                      for (final emoji in quickReactions)
+                        IconButton(
+                          tooltip: 'Reaksi $emoji',
+                          onPressed: () => Navigator.of(sheetContext).pop('react:$emoji'),
+                          icon: Text(emoji, style: const TextStyle(fontSize: 24)),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            if (canInteract)
-              ListTile(
-                leading: const Icon(Icons.reply),
-                title: const Text('Balas'),
-                onTap: () => Navigator.of(sheetContext).pop('reply'),
-              ),
-            if (!deleted && (message.body?.isNotEmpty ?? false))
-              ListTile(
-                leading: const Icon(Icons.copy),
-                title: const Text('Salin teks'),
-                onTap: () => Navigator.of(sheetContext).pop('copy'),
-              ),
-            if (mine && !deleted)
-              ListTile(
-                leading: const Icon(Icons.delete_outline, color: KapdhColors.danger),
-                title: const Text('Hapus pesan'),
-                onTap: () => Navigator.of(sheetContext).pop('delete'),
-              ),
-            if (!mine && message.sender != null)
-              ListTile(
-                leading: const Icon(Icons.flag_outlined),
-                title: const Text('Laporkan pesan'),
-                onTap: () => Navigator.of(sheetContext).pop('report'),
-              ),
-          ],
+              if (canInteract)
+                ListTile(
+                  leading: const Icon(Icons.reply),
+                  title: const Text('Balas'),
+                  onTap: () => Navigator.of(sheetContext).pop('reply'),
+                ),
+              if (!deleted && (message.body?.isNotEmpty ?? false))
+                ListTile(
+                  leading: const Icon(Icons.copy),
+                  title: const Text('Salin teks'),
+                  onTap: () => Navigator.of(sheetContext).pop('copy'),
+                ),
+              if (mine && !deleted)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: KapdhColors.danger),
+                  title: const Text('Hapus pesan'),
+                  onTap: () => Navigator.of(sheetContext).pop('delete'),
+                ),
+              if (!mine && message.sender != null)
+                ListTile(
+                  leading: const Icon(Icons.flag_outlined),
+                  title: const Text('Laporkan pesan'),
+                  onTap: () => Navigator.of(sheetContext).pop('report'),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -326,28 +338,37 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
     }
   }
 
-  Future<void> _outgoingActions(OutgoingMessage entry, bool lapsed) async {
+  /// Kirim ulang hanya bila room masih menerima pesan dari saya; pesan yang ditolak karena blokir/lawan bicara tidak
+  /// tersedia/grup ditutup hanya dapat dibuang (AC F12-1).
+  static bool _canRetry(OutgoingMessage entry, ChatRoomViewState state) =>
+      entry.status == OutgoingStatus.failed && !state.membershipLapsed && (state.room?.canSend ?? false);
+
+  Future<void> _outgoingActions(OutgoingMessage entry, ChatRoomViewState state) async {
+    final canRetry = _canRetry(entry, state);
     final action = await showModalBottomSheet<String>(
       context: context,
       useRootNavigator: true,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (entry.status == OutgoingStatus.failed && !lapsed)
-              ListTile(
-                leading: const Icon(Icons.refresh),
-                title: const Text('Kirim ulang'),
-                onTap: () => Navigator.of(sheetContext).pop('retry'),
-              ),
-            if (entry.status != OutgoingStatus.sending)
-              ListTile(
-                leading: const Icon(Icons.delete_outline, color: KapdhColors.danger),
-                title: const Text('Buang pesan'),
-                onTap: () => Navigator.of(sheetContext).pop('discard'),
-              ),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (canRetry)
+                ListTile(
+                  leading: const Icon(Icons.refresh),
+                  title: const Text('Kirim ulang'),
+                  onTap: () => Navigator.of(sheetContext).pop('retry'),
+                ),
+              if (entry.status != OutgoingStatus.sending)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: KapdhColors.danger),
+                  title: const Text('Buang pesan'),
+                  onTap: () => Navigator.of(sheetContext).pop('discard'),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -467,7 +488,8 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
     final time = formatTime(entry.createdAt);
     final failure = entry.status == OutgoingStatus.sending ? null : entry.failureMessage;
     final hint = switch (entry.status) {
-      OutgoingStatus.failed => 'Ketuk untuk kirim ulang atau buang.',
+      OutgoingStatus.failed when _canRetry(entry, state) => 'Ketuk untuk kirim ulang atau buang.',
+      OutgoingStatus.failed => 'Ketuk untuk membuang.',
       OutgoingStatus.held => 'Dikirim setelah KTA diperpanjang.',
       OutgoingStatus.sending => null,
     };
@@ -501,6 +523,8 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                 image.bytes,
                 width: ChatImageView.maxWidth,
                 fit: BoxFit.cover,
+                // "Foto" sudah ada di label gelembung pesan keluar.
+                excludeFromSemantics: true,
                 errorBuilder: (_, _, _) => const SizedBox(
                   width: ChatImageView.maxWidth,
                   height: 120,
@@ -510,10 +534,8 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
             ),
       body: entry.body,
       status: status,
-      onTap: entry.status == OutgoingStatus.sending ? null : () => _outgoingActions(entry, state.membershipLapsed),
-      onLongPress: entry.status == OutgoingStatus.sending
-          ? null
-          : () => _outgoingActions(entry, state.membershipLapsed),
+      onTap: entry.status == OutgoingStatus.sending ? null : () => _outgoingActions(entry, state),
+      onLongPress: entry.status == OutgoingStatus.sending ? null : () => _outgoingActions(entry, state),
       footer: failure == null && hint == null
           ? null
           : Padding(

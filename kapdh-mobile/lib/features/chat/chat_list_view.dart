@@ -69,7 +69,13 @@ class ChatRoomListView extends ConsumerWidget {
         onRefresh: () => controller.refresh(silent: true),
         child: NotificationListener<ScrollNotification>(
           onNotification: (notification) {
-            if (notification.metrics.extentAfter < 300 && state.hasMore && !state.loadingMore) controller.loadMore();
+            // Setelah gagal, halaman berikut hanya lewat "Coba lagi" (PRD 4.5, N-01).
+            if (notification.metrics.extentAfter < 300 &&
+                state.hasMore &&
+                !state.loadingMore &&
+                state.moreError == null) {
+              controller.loadMore();
+            }
             return false;
           },
           child: ListView.separated(
