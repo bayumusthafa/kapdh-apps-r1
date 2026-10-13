@@ -10,7 +10,7 @@ import {
   tickets,
   users,
 } from "@kapdh/database";
-import { and, asc, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, lt, ne, type SQL, sql } from "drizzle-orm";
 import type { Clock } from "../../core/adapters/clock.js";
 import type { Db } from "../../core/db/types.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
@@ -232,7 +232,22 @@ export class DashboardService {
 
   // ------------------------------------------------------------------------------------------------ event
 
+  /**
+   * Jumlah tiket per event yang memenuhi `condition`, sebagai subquery berkelompok untuk LEFT JOIN. Subquery berkorelasi
+   * di daftar kolom tidak dipakai: pada kueri satu tabel Drizzle menulis kolom tanpa nama tabel sehingga
+   * `event_id = id` akan terikat ke tabel tickets di dalam subquery.
+   */
+  private ticketCounts(name: string, condition: SQL) {
+    return this.db
+      .select({ eventId: tickets.eventId, n: sql<number>`count(*)`.mapWith(Number).as(`${name}_n`) })
+      .from(tickets)
+      .where(condition)
+      .groupBy(tickets.eventId)
+      .as(name);
+  }
+
   private async events(): Promise<DashboardEvents> {
+    const review = this.ticketCounts("review_counts", eq(tickets.status, "awaiting_review"));
     const [[sold], sales] = await Promise.all([
       this.db.select({ count: count() }).from(tickets).where(eq(tickets.status, "paid")),
       this.db
@@ -245,11 +260,10 @@ export class DashboardService {
           seatsTotal: events.seatsTotal,
           paid: events.paidQuantity,
           held: events.heldQuantity,
-          awaitingReview: sql<number>`(select count(*) from ${tickets} where ${tickets.eventId} = ${events.id} and ${tickets.status} = 'awaiting_review')`.mapWith(
-            Number,
-          ),
+          awaitingReview: sql<number>`coalesce(${review.n}, 0)`.mapWith(Number),
         })
         .from(events)
+        .leftJoin(review, eq(review.eventId, events.id))
         .where(ne(events.status, "draft"))
         .orderBy(desc(events.startsAt), desc(events.id))
         .limit(SNIPPET),
@@ -272,6 +286,7 @@ export class DashboardService {
   }
 
   private async upcomingEvents(now: Date): Promise<DashboardUpcomingEvent[]> {
+    const checkedIn = this.ticketCounts("checkin_counts", isNotNull(tickets.checkedInAt));
     const rows = await this.db
       .select({
         id: events.id,
@@ -284,11 +299,10 @@ export class DashboardService {
         seatsTotal: events.seatsTotal,
         paid: events.paidQuantity,
         held: events.heldQuantity,
-        checkedIn: sql<number>`(select count(*) from ${tickets} where ${tickets.eventId} = ${events.id} and ${tickets.checkedInAt} is not null)`.mapWith(
-          Number,
-        ),
+        checkedIn: sql<number>`coalesce(${checkedIn.n}, 0)`.mapWith(Number),
       })
       .from(events)
+      .leftJoin(checkedIn, eq(checkedIn.eventId, events.id))
       .where(
         and(
           inArray(events.status, ["open", "closed"]),
