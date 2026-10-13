@@ -8,9 +8,9 @@ import { DB } from "../../core/tokens.js";
 
 const DEDUP_PREFIX = "member.password_reset_initiated:";
 
-/** Dedup notifikasi/outbox per challenge pemulihan (satu pemberitahuan per inisiasi, AC F16-4). */
-export function passwordResetDedupKey(challengeId: string): string {
-  return `${DEDUP_PREFIX}${challengeId}`;
+/** Dedup notifikasi/outbox per inisiasi pemulihan (satu pemberitahuan per inisiasi, AC F16-4); bukan challenge_id. */
+export function passwordResetDedupKey(initiationId: string): string {
+  return `${DEDUP_PREFIX}${initiationId}`;
 }
 
 /** Teks notifikasi keamanan: tanpa challenge_id maupun kode (kontrak adminInitiateMemberPasswordReset). */
