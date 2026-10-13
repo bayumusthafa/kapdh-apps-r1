@@ -54,7 +54,9 @@ export interface Mailer {
 /** Alasan pembatalan sebagai Error yang dapat diklasifikasi (default: batas waktu, `ETIMEDOUT`). */
 function abortError(signal: AbortSignal): Error {
   if (signal.reason instanceof Error) return signal.reason;
-  return Object.assign(new Error("Pengiriman email dibatalkan sebelum diterima server"), { code: "ETIMEDOUT" });
+  return Object.assign(new Error("Pengiriman email dibatalkan sebelum diterima server"), {
+    code: "ETIMEDOUT",
+  });
 }
 
 /**
@@ -159,7 +161,9 @@ export class SmtpMailer implements Mailer {
       signal?.addEventListener("abort", onAbort, { once: true });
       connection.once("error", (error: unknown) => finish(error));
       connection.once("end", () =>
-        finish(Object.assign(new Error("Koneksi SMTP ditutup sebelum pesan diterima"), { code: "ECONNECTION" })),
+        finish(
+          Object.assign(new Error("Koneksi SMTP ditutup sebelum pesan diterima"), { code: "ECONNECTION" }),
+        ),
       );
       connection.connect((connectError) => {
         if (connectError) return finish(connectError);
@@ -169,7 +173,9 @@ export class SmtpMailer implements Mailer {
             if (sendError) return finish(sendError);
             // Penerima ditolak server (tanpa galat dilempar): diperlakukan sebagai penolakan amplop permanen.
             if (info && Array.isArray(info.rejected) && info.rejected.length > 0)
-              return finish(Object.assign(new Error("Penerima email ditolak server SMTP"), { code: "EENVELOPE" }));
+              return finish(
+                Object.assign(new Error("Penerima email ditolak server SMTP"), { code: "EENVELOPE" }),
+              );
             finish(null, { messageId });
           });
         if (this.auth && (connection.allowsAuth || this.connectionOptions.forceAuth))

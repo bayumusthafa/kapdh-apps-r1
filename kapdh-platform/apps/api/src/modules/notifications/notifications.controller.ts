@@ -28,19 +28,19 @@ const markReadSchema = strictBody({
   all: z.boolean({ message: "Wajib true atau false" }).optional(),
   up_to: z.iso.datetime({ offset: true, message: "Gunakan format tanggal-waktu ISO 8601" }).optional(),
 }).superRefine((value, issue) => {
-    const hasIds = value.ids !== undefined;
-    const all = value.all === true;
-    if (hasIds === all)
-      issue.addIssue({
-        code: "custom",
-        path: hasIds ? ["all"] : ["ids"],
-        message: "Isi tepat salah satu: ids, atau all bernilai true.",
-      });
-    if (value.all === false)
-      issue.addIssue({ code: "custom", path: ["all"], message: "all hanya boleh bernilai true." });
-    if (value.up_to !== undefined && !all)
-      issue.addIssue({ code: "custom", path: ["up_to"], message: "up_to hanya dipakai bersama all: true." });
-  });
+  const hasIds = value.ids !== undefined;
+  const all = value.all === true;
+  if (hasIds === all)
+    issue.addIssue({
+      code: "custom",
+      path: hasIds ? ["all"] : ["ids"],
+      message: "Isi tepat salah satu: ids, atau all bernilai true.",
+    });
+  if (value.all === false)
+    issue.addIssue({ code: "custom", path: ["all"], message: "all hanya boleh bernilai true." });
+  if (value.up_to !== undefined && !all)
+    issue.addIssue({ code: "custom", path: ["up_to"], message: "up_to hanya dipakai bersama all: true." });
+});
 
 const toggles = <T extends readonly string[]>(categories: T) =>
   z.strictObject(

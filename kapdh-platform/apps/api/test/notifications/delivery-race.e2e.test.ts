@@ -81,7 +81,10 @@ async function scheduledNews(userId: string, count: number): Promise<string[]> {
 }
 
 async function pushRows(ids: string[]) {
-  return t.db.select().from(notificationDeliveries).where(inArray(notificationDeliveries.notificationId, ids));
+  return t.db
+    .select()
+    .from(notificationDeliveries)
+    .where(inArray(notificationDeliveries.notificationId, ids));
 }
 
 describe("Pemeriksaan ulang tepat sebelum provider (AC F13-5)", () => {
@@ -208,7 +211,8 @@ describe("Pemeriksaan ulang tepat sebelum provider (AC F13-5)", () => {
     expect(pushed.length).toBeLessThanOrEqual(4);
     const cancelled = (await pushRows(ids)).filter((row) => !pushed.includes(row.notificationId));
     expect(cancelled.length).toBe(8 - pushed.length);
-    for (const row of cancelled) expect(row).toMatchObject({ status: "cancelled", errorClass: "preference_disabled" });
+    for (const row of cancelled)
+      expect(row).toMatchObject({ status: "cancelled", errorClass: "preference_disabled" });
     expect(summary).toMatchObject({ sent: pushed.length, cancelled: 8 - pushed.length });
   });
 });
@@ -275,7 +279,12 @@ describe("Batas waktu percobaan membatalkan provider (AC F13-4)", () => {
       handler: (...args: unknown[]) => void,
       ms?: number,
       ...args: unknown[]
-    ) => realSetTimeout(handler, ms === DELIVERY_SEND_TIMEOUT_MS ? 30 : ms, ...args)) as unknown as typeof setTimeout);
+    ) =>
+      realSetTimeout(
+        handler,
+        ms === DELIVERY_SEND_TIMEOUT_MS ? 30 : ms,
+        ...args,
+      )) as unknown as typeof setTimeout);
     const hold = t.mailer.holdNext(); // server SMTP lambat: belum membalas akhir DATA
     const created = await notify(t, member.userId, { category: "payment" });
 
@@ -298,6 +307,10 @@ describe("Batas waktu percobaan membatalkan provider (AC F13-4)", () => {
     const mails = t.mailer.messagesTo(member.email);
     expect(mails).toHaveLength(1);
     expect(mails[0]!.dedupKey).toBe(first.id); // Message-ID sama pada setiap percobaan pengiriman ini
-    expect(await deliveryOf(t, created.id, "email")).toMatchObject({ status: "sent", attempt: 2, errorClass: null });
+    expect(await deliveryOf(t, created.id, "email")).toMatchObject({
+      status: "sent",
+      attempt: 2,
+      errorClass: null,
+    });
   });
 });

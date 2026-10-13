@@ -175,7 +175,10 @@ describe("SmtpMailer.send terhadap server SMTP tiruan (F-13)", () => {
     const mailer = new SmtpMailer(url, "noreply@kapdh.test");
     const controller = new AbortController();
     const first = mailer.send(message, { signal: controller.signal }).catch((e: unknown) => e);
-    await until(() => sessions[0]?.data !== null && sessions[0]?.data !== undefined, "akhir DATA diterima server");
+    await until(
+      () => sessions[0]?.data !== null && sessions[0]?.data !== undefined,
+      "akhir DATA diterima server",
+    );
     controller.abort(new ProviderTimeoutError());
     expect(await first).toBeInstanceOf(ProviderTimeoutError);
     stall = null;
@@ -224,7 +227,11 @@ describe("SmtpMailer.send terhadap server SMTP tiruan (F-13)", () => {
     rcptReply = "550 5.1.1 Alamat tidak ada\r\n";
     const mailer = new SmtpMailer(url, "noreply@kapdh.test");
     const error = await mailer.send(message).catch((e: unknown) => e);
-    expect(classifyMailError(error)).toEqual({ kind: "failed", errorClass: "bounce_hard", revokeToken: false });
+    expect(classifyMailError(error)).toEqual({
+      kind: "failed",
+      errorClass: "bounce_hard",
+      revokeToken: false,
+    });
     expect(sessions[0]!.accepted).toBe(false);
   });
 });
@@ -263,7 +270,12 @@ describe("Prosesor pengiriman → SMTP tiruan yang lambat (F-13, AC F13-1, F13-4
       handler: (...args: unknown[]) => void,
       ms?: number,
       ...args: unknown[]
-    ) => realSetTimeout(handler, ms === DELIVERY_SEND_TIMEOUT_MS ? 200 : ms, ...args)) as unknown as typeof setTimeout);
+    ) =>
+      realSetTimeout(
+        handler,
+        ms === DELIVERY_SEND_TIMEOUT_MS ? 200 : ms,
+        ...args,
+      )) as unknown as typeof setTimeout);
     stall = "DATA";
     const created = await notify(t, member.userId, { category: "membership", route: "/kta" });
     expect(await deliveryService(t).deliver(created.id)).toMatchObject({ claimed: 1, retried: 1 });
