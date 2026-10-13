@@ -99,15 +99,13 @@ beforeAll(async () => {
     await db.insert(users).values(userRows);
     await db.insert(alumni).values(alumniRows);
   }
-  await db
-    .insert(users)
-    .values({
-      id: viewerId,
-      email: "penonton@contoh.test",
-      passwordHash: "x",
-      status: "active",
-      kind: "alumni",
-    });
+  await db.insert(users).values({
+    id: viewerId,
+    email: "penonton@contoh.test",
+    passwordHash: "x",
+    status: "active",
+    kind: "alumni",
+  });
   await db
     .insert(alumniProfessions)
     .values(ids.filter((_, i) => i % 9 === 0).map((id) => ({ alumniUserId: id, professionId })));
