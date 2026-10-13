@@ -75,7 +75,10 @@ paths:
         kelas masuk, angkatan di luar rentang); 409 VERSION_CONFLICT (versi persetujuan usang atau dokumen legal
         belum terbit, lihat di atas); 409 VALIDATION_ERROR `field_errors.email` bila email sudah dipakai akun
         alumni yang aktif, dinonaktifkan atau sedang dihapus; 409 IDEMPOTENCY_CONFLICT; 429 RATE_LIMITED (batas
-        pengiriman OTP).
+        pengiriman OTP; cooldown kirim ulang; atau batas kegagalan sandi). Registrasi ulang akun `pending_otp`
+        membandingkan sandi dengan sandi tersimpan, sehingga setiap perbandingan memakai jatah batas kegagalan login
+        email itu (PRD 2.5: 10 kegagalan per 15 menit, bersama login): sandi sama mereset penghitung, sandi berbeda
+        tercatat sebagai kegagalan; setelah habis setiap registrasi ulang email itu ditolak 429 tanpa penulisan.
       security: []
       x-kapdh-access: { audience: public, idempotent: true }
       parameters:
@@ -324,7 +327,9 @@ paths:
         - `disabled` -> `next: account_disabled` tanpa sesi; klien menampilkan kontak bantuan (pemulihan hanya
           melalui pengurus, PRD 2.2).
         Sesi mencatat `device_name` dari body serta platform dan versi aplikasi dari header
-        X-App-Platform/X-App-Version, dan memperbarui `users.last_login_at`.
+        X-App-Platform/X-App-Version, dan memperbarui `users.last_login_at`. Sesi hanya diterbitkan bila sandi
+        yang dinilai masih sandi akun dan akun masih `active` di bawah kunci baris users: login yang sedang
+        berjalan ketika reset/ganti sandi atau penonaktifan commit mendapat 401 yang sama (AC F02-4).
 
         Galat: 401 UNAUTHENTICATED "Email atau sandi salah" (tidak membedakan email tidak terdaftar); 429
         RATE_LIMITED setelah 10 kegagalan dalam 15 menit per email atau ambang per IP, cooldown 15 menit dengan
@@ -375,6 +380,10 @@ paths:
         X-Reauth-Token yang masih berlaku tetap diterima setelah refresh. Refresh tidak dihitung
         sebagai aktivitas: sesi admin yang menganggur lebih dari 30 menit ditolak 401 (AC F02-5, N-08). Akun `disabled`, `deletion_pending` atau `deleted` ditolak 401.
         Refresh mobile memperbarui `app_version`/`platform` sesi dari header X-App-Version/X-App-Platform.
+        Rotasi yang sedang berjalan diserialkan dengan pencabutan sesi (logout, logout-all, revokeSession,
+        deteksi pemakaian ulang, reset/ganti sandi) lewat kunci baris users: pencabutan selalu ikut mencabut baris
+        hasil rotasi, atau rotasi kalah dan menjawab 401; tidak ada keluarga sesi yang lolos dari pencabutan yang
+        sudah dijawab sukses (AC F02-3, F02-6).
         403 FORBIDDEN bila Origin cookie admin tidak sesuai.
       security:
         - {}
@@ -434,7 +443,8 @@ paths:
         belum kedaluwarsa pun ditolak; setelah commit seluruh socket pengguna diputus (event `session.revoked`) dan
         token push dari sesi yang dicabut berhenti menerima notifikasi (AC F02-6, AC F13-5, PRD 9.2). Kejadian
         diaudit; alumni menerima notifikasi kategori `security` (wajib) dengan deep link `/account/sessions`. Untuk
-        sesi admin, cookie `kapdh_admin_rt` dihapus.
+        sesi admin, cookie `kapdh_admin_rt` dihapus. Rotasi refresh atau login perangkat lain yang sedang berjalan
+        saat permintaan ini tiba selesai lebih dulu lalu ikut dicabut, atau gagal 401 (lihat refreshSession).
       x-kapdh-access: { audience: any, member_access: any }
       responses:
         "204":
@@ -484,7 +494,8 @@ paths:
         Mencabut seluruh keluarga sesi `sessionId` milik pemanggil, menonaktifkan token push sesi itu dan memutus
         socketnya setelah commit (`session.revoked`). Mencabut sesi saat ini sama dengan logout (untuk sesi admin
         cookie `kapdh_admin_rt` dihapus). 404 NOT_FOUND bila sesi tidak ada, sudah dicabut atau kedaluwarsa, atau
-        milik pengguna lain (tidak dibedakan, N-09); 400 VALIDATION_ERROR bila `sessionId` bukan UUID.
+        milik pengguna lain (tidak dibedakan, N-09); 400 VALIDATION_ERROR bila `sessionId` bukan UUID. Rotasi
+        refresh keluarga itu yang sedang berjalan selesai lebih dulu dan baris barunya ikut dicabut (bukan 404).
       x-kapdh-access: { audience: any, member_access: any }
       parameters:
         - $ref: "#/components/parameters/SessionId"
