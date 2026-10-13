@@ -130,17 +130,32 @@ describe("adminCheckInTicket (AC F09-5)", () => {
     const event = await liveEvent({ seatsTotal: 5 });
     const gate = await officer();
     const expired = await memberSession(t, "expired", { fullName: "Anggota Kedaluwarsa" });
-    const expiredTicket = await insertTicket(t, { eventId: event.id, userId: expired.userId, status: "paid" });
+    const expiredTicket = await insertTicket(t, {
+      eventId: event.id,
+      userId: expired.userId,
+      status: "paid",
+    });
     const ok = await scan(gate, event.id, expiredTicket.qrCode!);
     expect(ok.statusCode, ok.body).toBe(200);
     const suspended = await memberSession(t, "suspended");
-    const suspendedTicket = await insertTicket(t, { eventId: event.id, userId: suspended.userId, status: "paid" });
+    const suspendedTicket = await insertTicket(t, {
+      eventId: event.id,
+      userId: suspended.userId,
+      status: "paid",
+    });
     const denied = await scan(gate, event.id, suspendedTicket.qrCode!);
     const body = expectOperation("post", "/admin/checkin", denied) as JsonBody;
-    expect(body).toMatchObject({ code: "VALIDATION_ERROR", current: { rejection_reason: "holder_ineligible" } });
+    expect(body).toMatchObject({
+      code: "VALIDATION_ERROR",
+      current: { rejection_reason: "holder_ineligible" },
+    });
     expect(JSON.stringify(body)).not.toMatch(/Pelanggaran/);
     const disabled = await memberSession(t);
-    const disabledTicket = await insertTicket(t, { eventId: event.id, userId: disabled.userId, status: "paid" });
+    const disabledTicket = await insertTicket(t, {
+      eventId: event.id,
+      userId: disabled.userId,
+      status: "paid",
+    });
     await t.db.update(users).set({ status: "disabled" }).where(eq(users.id, disabled.userId));
     expect((await scan(gate, event.id, disabledTicket.qrCode!)).json().current.rejection_reason).toBe(
       "holder_ineligible",
@@ -150,7 +165,9 @@ describe("adminCheckInTicket (AC F09-5)", () => {
     expect(deleted).toMatchObject({
       current: { rejection_reason: "holder_ineligible", ticket: { holder: { full_name: null } } },
     });
-    expect((await t.db.select().from(alumni).where(eq(alumni.userId, suspended.userId)))[0]!.suspendedAt).not.toBeNull();
+    expect(
+      (await t.db.select().from(alumni).where(eq(alumni.userId, suspended.userId)))[0]!.suspendedAt,
+    ).not.toBeNull();
   });
 });
 
@@ -164,7 +181,10 @@ describe("Penolakan check-in yang dapat ditindaklanjuti (AC F09-6)", () => {
     const wrongBody = expectOperation("post", "/admin/checkin", wrong) as JsonBody;
     expect(wrongBody).toMatchObject({
       code: "VALIDATION_ERROR",
-      current: { rejection_reason: "other_event", ticket: { event: { id: other.id, title: "Event Lain Uji" } } },
+      current: {
+        rejection_reason: "other_event",
+        ticket: { event: { id: other.id, title: "Event Lain Uji" } },
+      },
     });
     expect(wrongBody.message).toMatch(/Event Lain Uji/);
     const reasons: [string, string, string][] = [];
@@ -197,7 +217,11 @@ describe("Penolakan check-in yang dapat ditindaklanjuti (AC F09-6)", () => {
 
   it("D5: di luar jendela (terlalu awal / sesudah selesai) ditolak dengan jendela efektif; override jendela event dihormati", async () => {
     const gate = await officer();
-    const early = await createEventRow(t, { price: "0.00", startsInMs: 5 * HOUR, registrationClosesBeforeStartMs: HOUR });
+    const early = await createEventRow(t, {
+      price: "0.00",
+      startsInMs: 5 * HOUR,
+      registrationClosesBeforeStartMs: HOUR,
+    });
     const ticket = await reserve(t, await memberSession(t), early);
     const tooEarly = (await scan(gate, early.id, ticket.qr_code)).json();
     expect(tooEarly).toMatchObject({

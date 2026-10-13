@@ -1,7 +1,22 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
 import { alumni, categories, events, paymentAdjustments, payments, tickets } from "@kapdh/database";
-import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, or, type SQL, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
 import { AuditService } from "../../core/audit/audit.service.js";
@@ -141,7 +156,9 @@ export const adminCancelTicketSchema = z.object({
 
 const listEventsQuery = z.object({
   q: z.string().trim().min(1).max(100, "Kata kunci maksimal 100 karakter").optional(),
-  status: z.enum(["draft", "open", "closed", "done", "cancelled"], { message: "Status tidak valid" }).optional(),
+  status: z
+    .enum(["draft", "open", "closed", "done", "cancelled"], { message: "Status tidak valid" })
+    .optional(),
   category_id: z.uuid("Kategori tidak valid").optional(),
   starts_from: datetime("starts_from").optional(),
   starts_to: datetime("starts_to").optional(),
@@ -154,7 +171,9 @@ const listEventsQuery = z.object({
 
 const listTicketsQuery = z.object({
   status: z
-    .enum(["awaiting_payment", "awaiting_review", "paid", "expired", "cancelled"], { message: "Status tidak valid" })
+    .enum(["awaiting_payment", "awaiting_review", "paid", "expired", "cancelled"], {
+      message: "Status tidak valid",
+    })
     .optional(),
   checked_in: queryBool().optional(),
   q: z.string().trim().min(1).max(100, "Kata kunci maksimal 100 karakter").optional(),
@@ -171,7 +190,14 @@ type EventSort = NonNullable<z.infer<typeof listEventsQuery>["sort"]>;
 type TicketSort = NonNullable<z.infer<typeof listTicketsQuery>["sort"]>;
 
 /** Kolom acara yang perubahan nilainya diberitahukan ke pemegang tiket (kontrak adminUpdateEvent, AC F13-6). */
-const SCHEDULE_FIELDS = ["startsAt", "endsAt", "timezone", "locationName", "locationAddress", "locationUrl"] as const;
+const SCHEDULE_FIELDS = [
+  "startsAt",
+  "endsAt",
+  "timezone",
+  "locationName",
+  "locationAddress",
+  "locationUrl",
+] as const;
 
 function invalidCursor(): AppException {
   return new AppException(400, "VALIDATION_ERROR", "Parameter pencarian tidak valid.", {
@@ -180,7 +206,13 @@ function invalidCursor(): AppException {
 }
 
 /** Ekspresi SQL keyset (expr arah, id arah) untuk ekspresi non-kolom. */
-function keysetSql(expr: SQL, value: unknown, idValue: string, direction: "asc" | "desc", idColumn: SQL): SQL {
+function keysetSql(
+  expr: SQL,
+  value: unknown,
+  idValue: string,
+  direction: "asc" | "desc",
+  idColumn: SQL,
+): SQL {
   const op = direction === "asc" ? sql`>` : sql`<`;
   return sql`(${expr} ${op} ${value} or (${expr} = ${value} and ${idColumn} ${op} ${idValue}))`;
 }
@@ -256,7 +288,8 @@ function auditSnapshot(row: Partial<EventRow>): Record<string, unknown> {
   };
 }
 
-type AdminOutcome<T> = { kind: "ok"; value: T } | { kind: "error"; error: AppException; current?: "event" | "ticket" };
+type AdminOutcome<T> =
+  { kind: "ok"; value: T } | { kind: "error"; error: AppException; current?: "event" | "ticket" };
 
 /**
  * Pengelolaan event oleh pengurus (kontrak admin-events.yaml; F-09, F-15, AC F09-7, F15-2, F15-4, PRD 4.4, D6). Izin
@@ -336,7 +369,9 @@ export class AdminEventsService {
     ]);
     const last = visible[visible.length - 1];
     return {
-      items: visible.map((row) => this.views.adminEventSummary(row, extras.get(row.id)!, withTickets.has(row.id))),
+      items: visible.map((row) =>
+        this.views.adminEventSummary(row, extras.get(row.id)!, withTickets.has(row.id)),
+      ),
       total: Number(totalRow?.n ?? 0),
       next_cursor:
         rows.length > page.limit && last
@@ -433,7 +468,9 @@ export class AdminEventsService {
     await this.db.transaction(async (tx) => {
       if (values.categoryId) await this.assertCategory(tx, values.categoryId);
       if (values.coverFileId)
-        await this.files.attach(tx, values.coverFileId, auth.userId, "event_cover", { field: "cover_file_id" });
+        await this.files.attach(tx, values.coverFileId, auth.userId, "event_cover", {
+          field: "cover_file_id",
+        });
       const now = this.views.now();
       const [row] = await tx
         .insert(events)
@@ -474,7 +511,8 @@ export class AdminEventsService {
         return { kind: "error", error: versionConflict(null), current: "event" };
       if (!eventEditable(event.status))
         throw fieldError("status", "Event yang sudah selesai atau dibatalkan tidak dapat diubah.");
-      const date = (value: string | undefined, fallback: Date) => (value === undefined ? fallback : new Date(value));
+      const date = (value: string | undefined, fallback: Date) =>
+        value === undefined ? fallback : new Date(value);
       const nullableDate = (value: string | null | undefined, fallback: Date | null) =>
         value === undefined ? fallback : value === null ? null : new Date(value);
       const pick = <T>(value: T | undefined, fallback: T): T => (value === undefined ? fallback : value);
@@ -504,20 +542,28 @@ export class AdminEventsService {
         if (next.seatsTotal < event.heldQuantity - released.length + event.paidQuantity)
           return {
             kind: "error",
-            error: new AppException(409, "VALIDATION_ERROR", "Kuota tidak boleh di bawah kursi yang ditahan dan terjual.", {
-              fieldErrors: {
-                seats_total: [
-                  `Kuota minimal ${Math.max(1, event.heldQuantity - released.length + event.paidQuantity)} karena kursi sudah ditahan atau terjual.`,
-                ],
+            error: new AppException(
+              409,
+              "VALIDATION_ERROR",
+              "Kuota tidak boleh di bawah kursi yang ditahan dan terjual.",
+              {
+                fieldErrors: {
+                  seats_total: [
+                    `Kuota minimal ${Math.max(1, event.heldQuantity - released.length + event.paidQuantity)} karena kursi sudah ditahan atau terjual.`,
+                  ],
+                },
               },
-            }),
+            ),
             current: "event",
           };
       }
-      if (next.categoryId && next.categoryId !== event.categoryId) await this.assertCategory(tx, next.categoryId);
+      if (next.categoryId && next.categoryId !== event.categoryId)
+        await this.assertCategory(tx, next.categoryId);
       if (next.coverFileId !== event.coverFileId) {
         if (next.coverFileId)
-          await this.files.attach(tx, next.coverFileId, auth.userId, "event_cover", { field: "cover_file_id" });
+          await this.files.attach(tx, next.coverFileId, auth.userId, "event_cover", {
+            field: "cover_file_id",
+          });
         if (event.coverFileId) await this.files.discard(tx, event.coverFileId);
       }
       const [updated] = await tx
@@ -572,7 +618,11 @@ export class AdminEventsService {
       if (!event) throw notFound("Event tidak ditemukan.");
       if (event.version !== expectedVersion)
         return { kind: "error", error: versionConflict(null), current: "event" };
-      const [ticket] = await tx.select({ id: tickets.id }).from(tickets).where(eq(tickets.eventId, eventId)).limit(1);
+      const [ticket] = await tx
+        .select({ id: tickets.id })
+        .from(tickets)
+        .where(eq(tickets.eventId, eventId))
+        .limit(1);
       if (ticket)
         return {
           kind: "error",
@@ -688,7 +738,11 @@ export class AdminEventsService {
             }
             continue;
           }
-          const payment = await this.paymentsKernel.cancelForTicket(tx, ticket.id, `Event dibatalkan: ${reason}`);
+          const payment = await this.paymentsKernel.cancelForTicket(
+            tx,
+            ticket.id,
+            `Event dibatalkan: ${reason}`,
+          );
           if (payment.outcome === "cancelled") paymentsCancelled += 1;
           if (payment.outcome === "kept_with_proof") paymentsInReview += 1;
         }
@@ -806,7 +860,11 @@ export class AdminEventsService {
   // ------------------------------------------------------------------------------------------------ tiket
 
   /** GET /admin/events/{eventId}/tickets: semua tiket event dengan filter, urutan dan total (F-09, F-15). */
-  async tickets(auth: AuthContext, eventId: string, query: unknown): Promise<Schemas["AdminEventTicketPage"]> {
+  async tickets(
+    auth: AuthContext,
+    eventId: string,
+    query: unknown,
+  ): Promise<Schemas["AdminEventTicketPage"]> {
     const page = parsePageQuery(query);
     const params = validateQuery(listTicketsQuery, query);
     const sort: TicketSort = params.sort ?? "created_at_desc";
@@ -896,7 +954,9 @@ export class AdminEventsService {
       items,
       total: Number(totalRow?.n ?? 0),
       next_cursor:
-        rows.length > page.limit && last ? encodeCursor({ s: sort, k: keyOf(last), id: last.ticket.id }) : null,
+        rows.length > page.limit && last
+          ? encodeCursor({ s: sort, k: keyOf(last), id: last.ticket.id })
+          : null,
     };
   }
 
@@ -935,7 +995,10 @@ export class AdminEventsService {
         await this.ledger.expireTicket(tx, ticket, now);
         return {
           kind: "error",
-          error: versionConflict(null, "Reservasi tiket ini sudah kedaluwarsa sehingga tidak perlu dibatalkan."),
+          error: versionConflict(
+            null,
+            "Reservasi tiket ini sudah kedaluwarsa sehingga tidak perlu dibatalkan.",
+          ),
           current: "ticket",
         };
       }
@@ -952,17 +1015,29 @@ export class AdminEventsService {
       if (!adminCanCancel(ticket, event, now))
         return {
           kind: "error",
-          error: versionConflict(null, "Tiket ini tidak dapat dibatalkan lagi. Muat ulang untuk melihat status terbaru."),
+          error: versionConflict(
+            null,
+            "Tiket ini tidak dapat dibatalkan lagi. Muat ulang untuk melihat status terbaru.",
+          ),
           current: "ticket",
         };
-      if (ticket.version !== expectedVersion) return { kind: "error", error: versionConflict(null), current: "ticket" };
+      if (ticket.version !== expectedVersion)
+        return { kind: "error", error: versionConflict(null), current: "ticket" };
       if (input.refund && (ticket.status !== "paid" || toCents(ticket.totalSnapshot) === 0n))
         throw fieldError("refund", "Refund hanya untuk tiket berbayar yang sudah lunas.");
-      const cancelled = await this.ledger.cancelTicket(tx, ticket, { by: "admin", reason: input.reason, at: now });
+      const cancelled = await this.ledger.cancelTicket(tx, ticket, {
+        by: "admin",
+        reason: input.reason,
+        at: now,
+      });
       if (!cancelled) throw new Error("Tiket terkunci berubah di tengah transaksi");
       let refundId: string | null = null;
       if (ticket.status === "awaiting_payment")
-        await this.paymentsKernel.cancelForTicket(tx, ticket.id, `Tiket dibatalkan pengurus: ${input.reason}`);
+        await this.paymentsKernel.cancelForTicket(
+          tx,
+          ticket.id,
+          `Tiket dibatalkan pengurus: ${input.reason}`,
+        );
       else if (input.refund) refundId = await this.adminRefund(tx, auth, ticket, input.reason, now);
       await this.audit.write(tx, {
         action: "ticket.cancelled",

@@ -27,7 +27,9 @@ import { TicketLedger } from "./ticket-ledger.js";
 const MONEY = /^[0-9]{1,12}\.[0-9]{2}$/;
 
 export const reservationSchema = z.object({
-  expected_price: z.string({ message: "Harga wajib dikirim" }).regex(MONEY, "Format harga tidak valid, contoh 75000.00"),
+  expected_price: z
+    .string({ message: "Harga wajib dikirim" })
+    .regex(MONEY, "Format harga tidak valid, contoh 75000.00"),
   payment_method_id: z.union([z.uuid("Pilih rekening tujuan"), z.null()]).optional(),
 });
 
@@ -46,7 +48,11 @@ const SELF_REFUND_REASON = "Pembatalan mandiri sampai H-3 (D6)";
 type ReserveOutcome =
   | { kind: "created"; ticketId: string }
   | { kind: "not_found" }
-  | { kind: "conflict"; code: "RESERVATION_EXPIRED" | "VERSION_CONFLICT" | "EVENT_SOLD_OUT"; message: string };
+  | {
+      kind: "conflict";
+      code: "RESERVATION_EXPIRED" | "VERSION_CONFLICT" | "EVENT_SOLD_OUT";
+      message: string;
+    };
 
 type CancelOutcome =
   | { kind: "cancelled" }
@@ -268,8 +274,7 @@ export class ReservationsService {
       const cancelled = await this.ledger.cancelTicket(tx, ticket, { by: "self", reason, at: now });
       if (!cancelled) throw new Error("Tiket terkunci berubah di tengah transaksi");
       let refundId: string | null = null;
-      if (ticket.status === "awaiting_payment")
-        await this.payments.cancelForTicket(tx, ticket.id, reason);
+      if (ticket.status === "awaiting_payment") await this.payments.cancelForTicket(tx, ticket.id, reason);
       else if (refundEligible) {
         const payment = (await this.views.paymentsForTickets(tx, [ticket.id])).get(ticket.id);
         if (payment && payment.status === "paid") {

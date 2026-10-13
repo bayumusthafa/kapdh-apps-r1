@@ -81,7 +81,9 @@ export class AdminEventsController {
   @HttpCode(200)
   @Audience("admin")
   @RequirePermission("events.manage")
-  detail(@Param("eventId", UuidParamOrValidationError) eventId: string): Promise<Schemas["AdminEventDetail"]> {
+  detail(
+    @Param("eventId", UuidParamOrValidationError) eventId: string,
+  ): Promise<Schemas["AdminEventDetail"]> {
     return this.events.detail(eventId);
   }
 
@@ -173,7 +175,13 @@ export class AdminEventsController {
     @Body() body: unknown,
   ): Promise<Schemas["AdminEventTicket"]> {
     const expected = parseIfMatch(ifMatch);
-    return this.events.cancelTicket(auth, eventId, ticketId, expected, validate(adminCancelTicketSchema, body));
+    return this.events.cancelTicket(
+      auth,
+      eventId,
+      ticketId,
+      expected,
+      validate(adminCancelTicketSchema, body),
+    );
   }
 }
 
@@ -191,7 +199,11 @@ function multipartError(error: unknown): AppException {
     case "FST_INVALID_MULTIPART_CONTENT_TYPE":
       return new AppException(415, "FILE_INVALID", "Kirim gambar sebagai multipart/form-data.");
     default:
-      return new AppException(400, "VALIDATION_ERROR", "Format unggahan tidak valid. Pilih gambar lalu coba lagi.");
+      return new AppException(
+        400,
+        "VALIDATION_ERROR",
+        "Format unggahan tidak valid. Pilih gambar lalu coba lagi.",
+      );
   }
 }
 

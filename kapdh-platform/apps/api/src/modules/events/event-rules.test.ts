@@ -28,12 +28,20 @@ describe("Proyeksi hold dan kursi (AC F09-1, F09-2)", () => {
   it("AC F09-2: hold awaiting_payment yang lewat tampil expired; status lain tidak berubah", () => {
     expect(projectedTicketStatus({ status: "awaiting_payment", holdExpiresAt: at(-1) }, now)).toBe("expired");
     expect(projectedTicketStatus({ status: "awaiting_payment", holdExpiresAt: now }, now)).toBe("expired");
-    expect(projectedTicketStatus({ status: "awaiting_payment", holdExpiresAt: at(1) }, now)).toBe("awaiting_payment");
-    expect(projectedTicketStatus({ status: "awaiting_review", holdExpiresAt: null }, now)).toBe("awaiting_review");
+    expect(projectedTicketStatus({ status: "awaiting_payment", holdExpiresAt: at(1) }, now)).toBe(
+      "awaiting_payment",
+    );
+    expect(projectedTicketStatus({ status: "awaiting_review", holdExpiresAt: null }, now)).toBe(
+      "awaiting_review",
+    );
   });
 
   it("AC F09-1: seats_available = total - paid - held aktif, tidak pernah negatif", () => {
-    expect(seatProjection({ seatsTotal: 10, heldQuantity: 3, paidQuantity: 4 }, 1)).toEqual({ held: 2, paid: 4, available: 4 });
+    expect(seatProjection({ seatsTotal: 10, heldQuantity: 3, paidQuantity: 4 }, 1)).toEqual({
+      held: 2,
+      paid: 4,
+      available: 4,
+    });
     expect(seatProjection({ seatsTotal: 2, heldQuantity: 2, paidQuantity: 1 }, 0).available).toBe(0);
   });
 
@@ -56,10 +64,18 @@ describe("Label pendaftaran dan alasan blokir (kontrak EventRegistrationState)",
   });
 
   it("F-09: urutan alasan membership_required, has_active_ticket, lalu label pendaftaran", () => {
-    expect(reservationBlockReason({ status: "expired", hasActiveTicket: true, registration: "sold_out" })).toBe("membership_required");
-    expect(reservationBlockReason({ status: "verified", hasActiveTicket: true, registration: "sold_out" })).toBe("has_active_ticket");
-    expect(reservationBlockReason({ status: "expiring", hasActiveTicket: false, registration: "sold_out" })).toBe("sold_out");
-    expect(reservationBlockReason({ status: "verified", hasActiveTicket: false, registration: "open" })).toBeNull();
+    expect(
+      reservationBlockReason({ status: "expired", hasActiveTicket: true, registration: "sold_out" }),
+    ).toBe("membership_required");
+    expect(
+      reservationBlockReason({ status: "verified", hasActiveTicket: true, registration: "sold_out" }),
+    ).toBe("has_active_ticket");
+    expect(
+      reservationBlockReason({ status: "expiring", hasActiveTicket: false, registration: "sold_out" }),
+    ).toBe("sold_out");
+    expect(
+      reservationBlockReason({ status: "verified", hasActiveTicket: false, registration: "open" }),
+    ).toBeNull();
   });
 });
 
@@ -77,7 +93,9 @@ describe("Check-in (AC F09-5, F09-6, D5)", () => {
 
   it("D5: jendela bawaan 2 jam sebelum mulai sampai selesai; override dihormati", () => {
     expect(window).toEqual({ opensAt: at(-HOUR), closesAt: at(5 * HOUR) });
-    expect(checkinWindow({ ...event, checkinOpensAt: at(2 * HOUR), checkinClosesAt: at(3 * HOUR) }, 2)).toEqual({
+    expect(
+      checkinWindow({ ...event, checkinOpensAt: at(2 * HOUR), checkinClosesAt: at(3 * HOUR) }, 2),
+    ).toEqual({
       opensAt: at(2 * HOUR),
       closesAt: at(3 * HOUR),
     });
@@ -87,16 +105,30 @@ describe("Check-in (AC F09-5, F09-6, D5)", () => {
     expect(checkinRejection(base)).toBeNull();
     expect(checkinRejection({ ...base, requestedEventId: "e2" })).toBe("other_event");
     expect(checkinRejection({ ...base, event: { status: "cancelled" } })).toBe("event_cancelled");
-    expect(checkinRejection({ ...base, ticket: { ...base.ticket, status: "cancelled" } })).toBe("ticket_cancelled");
+    expect(checkinRejection({ ...base, ticket: { ...base.ticket, status: "cancelled" } })).toBe(
+      "ticket_cancelled",
+    );
     expect(
-      checkinRejection({ ...base, ticket: { ...base.ticket, status: "awaiting_payment", holdExpiresAt: at(-1) } }),
+      checkinRejection({
+        ...base,
+        ticket: { ...base.ticket, status: "awaiting_payment", holdExpiresAt: at(-1) },
+      }),
     ).toBe("ticket_expired");
     expect(
-      checkinRejection({ ...base, ticket: { ...base.ticket, status: "awaiting_payment", holdExpiresAt: at(1) } }),
+      checkinRejection({
+        ...base,
+        ticket: { ...base.ticket, status: "awaiting_payment", holdExpiresAt: at(1) },
+      }),
     ).toBe("ticket_awaiting_payment");
-    expect(checkinRejection({ ...base, ticket: { ...base.ticket, checkedInAt: at(-1) } })).toBe("already_checked_in");
-    expect(checkinRejection({ ...base, holder: { accountStatus: "active", suspended: true } })).toBe("holder_ineligible");
-    expect(checkinRejection({ ...base, holder: { accountStatus: null, suspended: false } })).toBe("holder_ineligible");
+    expect(checkinRejection({ ...base, ticket: { ...base.ticket, checkedInAt: at(-1) } })).toBe(
+      "already_checked_in",
+    );
+    expect(checkinRejection({ ...base, holder: { accountStatus: "active", suspended: true } })).toBe(
+      "holder_ineligible",
+    );
+    expect(checkinRejection({ ...base, holder: { accountStatus: null, suspended: false } })).toBe(
+      "holder_ineligible",
+    );
     expect(checkinRejection({ ...base, now: at(-2 * HOUR) })).toBe("too_early");
     expect(checkinRejection({ ...base, now: at(6 * HOUR) })).toBe("too_late");
     expect(checkinRejection({ ...base, event: { status: "done" } })).toBe("too_late");
@@ -122,12 +154,17 @@ describe("Pembatalan dan refund D6", () => {
   });
 
   it("D6: ringkasan kebijakan memakai zona waktu event dan H-3", () => {
-    const policy = cancellationPolicy({ startsAt: new Date("2026-10-15T02:00:00Z"), timezone: "Asia/Jakarta", price: "75000.00" }, { self_cancel_days: 3 });
+    const policy = cancellationPolicy(
+      { startsAt: new Date("2026-10-15T02:00:00Z"), timezone: "Asia/Jakarta", price: "75000.00" },
+      { self_cancel_days: 3 },
+    );
     expect(policy.full_refund_until).toBe("2026-10-12T02:00:00.000Z");
     expect(policy.summary).toBe(
       "Batalkan sampai 12 Okt 2026 09.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.",
     );
-    expect(formatEventDateTime(new Date("2026-10-12T02:00:00Z"), "Asia/Makassar")).toBe("12 Okt 2026 10.00 WITA");
+    expect(formatEventDateTime(new Date("2026-10-12T02:00:00Z"), "Asia/Makassar")).toBe(
+      "12 Okt 2026 10.00 WITA",
+    );
     expect(isValidTimezone("Asia/Jayapura")).toBe(true);
     expect(isValidTimezone("Mars/Olympus")).toBe(false);
   });

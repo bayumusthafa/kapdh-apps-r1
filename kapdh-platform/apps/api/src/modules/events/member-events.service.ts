@@ -1,7 +1,22 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
 import { alumni, blocks, events, tickets, users } from "@kapdh/database";
-import { and, asc, desc, eq, gt, ilike, inArray, isNull, lte, ne, notExists, or, type SQL, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  ilike,
+  inArray,
+  isNull,
+  lte,
+  ne,
+  notExists,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../../core/db/types.js";
 import { AppException, notFound } from "../../core/errors/app-exception.js";
@@ -30,7 +45,12 @@ function cursorMismatch(): AppException {
 const listEventsQuery = z.object({
   category_id: z.uuid("Kategori tidak valid").optional(),
   period: z.enum(["upcoming", "past"], { message: "Periode tidak valid" }).optional(),
-  q: z.string().trim().min(1, "Kata kunci minimal 1 karakter").max(100, "Kata kunci maksimal 100 karakter").optional(),
+  q: z
+    .string()
+    .trim()
+    .min(1, "Kata kunci minimal 1 karakter")
+    .max(100, "Kata kunci maksimal 100 karakter")
+    .optional(),
 });
 
 const eventCursor = z.object({ p: z.enum(["upcoming", "past"]), s: z.coerce.date(), id: z.uuid() });
@@ -144,7 +164,11 @@ export class MemberEventsService {
    * (akun aktif, tidak suspended, KTA aktif, show_in_directory) dan tidak saling memblokir dengan pemanggil. Hanya
    * nama, angkatan dan avatar; peserta lain dihilangkan dari payload.
    */
-  async participants(auth: AuthContext, eventId: string, query: unknown): Promise<Schemas["EventParticipantPage"]> {
+  async participants(
+    auth: AuthContext,
+    eventId: string,
+    query: unknown,
+  ): Promise<Schemas["EventParticipantPage"]> {
     const page = parsePageQuery(query);
     const after = page.cursor ? decodeCursor(page.cursor, participantCursor) : null;
     const [event] = await this.db
