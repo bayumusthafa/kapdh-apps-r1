@@ -49,7 +49,12 @@ SendFailureKind classifySendFailure(ApiException error) {
 /// Rujukan pesan yang dibalas, disalin saat menulis agar pratinjau tampil walaupun pesan itu belum/tidak dimuat.
 @immutable
 class OutgoingReply {
-  const OutgoingReply({required this.messageId, required this.senderName, required this.preview, required this.hasImage});
+  const OutgoingReply({
+    required this.messageId,
+    required this.senderName,
+    required this.preview,
+    required this.hasImage,
+  });
 
   final String messageId;
   final String? senderName;
@@ -144,7 +149,8 @@ class OutgoingMessage {
   );
 
   /// Percobaan kirim dimulai (pertama kali atau kirim ulang).
-  OutgoingMessage started() => _copy(status: OutgoingStatus.sending, clearFailure: true, autoRetry: false, attempts: attempts + 1);
+  OutgoingMessage started() =>
+      _copy(status: OutgoingStatus.sending, clearFailure: true, autoRetry: false, attempts: attempts + 1);
 
   /// Unggahan gambar selesai; percobaan berikutnya memakai berkas yang sama.
   OutgoingMessage uploaded(String fileId) => _copy(image: image?.withUploadedFile(fileId));

@@ -85,6 +85,24 @@ void main() {
       await settle(tester);
     });
 
+    testWidgets('AC F11-3: riwayat lama dimuat dengan keyset before saat digulir ke atas', (tester) async {
+      final server = _directRoom(messages: 40);
+      final app = await _openRoom(tester, server: server, realtime: FakeChatRealtime());
+      expect(find.text('Pesan 40'), findsOneWidget);
+      expect(find.text('Pesan 1'), findsNothing);
+      await tester.fling(find.byType(ListView).last, const Offset(0, 3000), 3000);
+      await settle(tester);
+      await tester.fling(find.byType(ListView).last, const Offset(0, 3000), 3000);
+      await settle(tester);
+      final before = app.adapter
+          .requestsTo('/chat/rooms/room-1/messages')
+          .where((r) => r.method == 'GET' && r.queryParameters['before'] != null)
+          .toList();
+      expect(before.first.queryParameters['before'], server.messages[10]['id']);
+      expect(find.text('Awal percakapan'), findsOneWidget);
+      expect(find.text('Pesan 1'), findsOneWidget);
+    });
+
     testWidgets('AC F11-2: pesan tampil "Mengirim" sampai ack sesudah commit, lalu "Terkirim" tanpa duplikat', (
       tester,
     ) async {
@@ -273,7 +291,9 @@ void main() {
     });
 
     testWidgets('AC F11-4: dikeluarkan saat room terbuka -> riwayat ditutup', (tester) async {
-      final server = _directRoom(room: roomJson(kind: 'group', title: 'Angkatan 29', memberCount: 3));
+      final server = _directRoom(
+        room: roomJson(kind: 'group', title: 'Angkatan 29', memberCount: 3),
+      );
       final realtime = FakeChatRealtime();
       await _openRoom(tester, server: server, realtime: realtime);
       expect(find.text('3 anggota'), findsOneWidget);
@@ -283,11 +303,19 @@ void main() {
     });
 
     testWidgets('grup: nama pengirim dan "Dibaca N" dari read cursor anggota', (tester) async {
-      final server = FakeChatServer(room: roomJson(kind: 'group', title: 'Angkatan 29', memberCount: 3));
+      final server = FakeChatServer(
+        room: roomJson(kind: 'group', title: 'Angkatan 29', memberCount: 3),
+      );
       server.commit(body: 'Halo semua');
       final mine = server.commit(senderId: 'user-1', body: 'Waalaikumsalam');
       server.members = [
-        memberJson(userId: 'user-1', name: 'Ahmad Islam', role: 'admin', isMe: true, lastReadMessageId: mine['id'] as String),
+        memberJson(
+          userId: 'user-1',
+          name: 'Ahmad Islam',
+          role: 'admin',
+          isMe: true,
+          lastReadMessageId: mine['id'] as String,
+        ),
         memberJson(userId: 'user-2', name: 'Gamerisa Dewi', lastReadMessageId: mine['id'] as String),
         memberJson(userId: 'user-3', name: 'Budi Santoso'),
       ];
@@ -310,24 +338,21 @@ void main() {
         server: server,
         realtime: FakeChatRealtime(),
         routes: {
-          '/reports': (_) => FakeResponse.json(
-            201,
-            {
-              'id': 'rep-1',
-              'category': 'spam',
-              'target_type': 'message',
-              'target_name': 'Gamerisa Dewi',
-              'room_name': null,
-              'description': null,
-              'status': 'open',
-              'priority': 'normal',
-              'outcome': null,
-              'decision_message': null,
-              'created_at': iso(testNow),
-              'due_at': iso(testNow.add(const Duration(days: 2))),
-              'resolved_at': null,
-            },
-          ),
+          '/reports': (_) => FakeResponse.json(201, {
+            'id': 'rep-1',
+            'category': 'spam',
+            'target_type': 'message',
+            'target_name': 'Gamerisa Dewi',
+            'room_name': null,
+            'description': null,
+            'status': 'open',
+            'priority': 'normal',
+            'outcome': null,
+            'decision_message': null,
+            'created_at': iso(testNow),
+            'due_at': iso(testNow.add(const Duration(days: 2))),
+            'resolved_at': null,
+          }),
         },
       );
       await tester.longPress(find.text('Pesan 3'));

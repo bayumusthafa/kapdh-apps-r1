@@ -24,9 +24,7 @@ Future<AppHarness> _openProfile(
       '/chat/rooms/room-9/messages': (_) => FakeResponse.json(200, pageJson(const [])),
       ...routes,
     }),
-    overrides: [
-      chatRealtimeProvider.overrideWithValue(FakeChatRealtime()),
-    ],
+    overrides: [chatRealtimeProvider.overrideWithValue(FakeChatRealtime())],
   );
   app.router.go('/network');
   await settle(tester);
@@ -40,10 +38,7 @@ void main() {
     testWidgets('AC F10-2: flag privasi mati -> kunci kontak tidak ada sehingga bagian kontak tidak tampil', (
       tester,
     ) async {
-      await _openProfile(
-        tester,
-        routes: {'/directory/user-2': (_) => FakeResponse.json(200, profileJson())},
-      );
+      await _openProfile(tester, routes: {'/directory/user-2': (_) => FakeResponse.json(200, profileJson())});
       expect(find.byType(MemberProfileScreen), findsOneWidget);
       expect(find.text('Ahmad Islam'), findsOneWidget);
       expect(find.text('Angkatan'), findsOneWidget);
@@ -84,10 +79,15 @@ void main() {
       expect(app.launched.last, Uri.parse('https://instagram.com/ahmadislam'));
       // Nilai yang bukan nama pengguna/https tidak pernah dibuka.
       expect(SocialNetwork.linkedin.linkFor('javascript:alert(1)'), isNull);
-      expect(SocialNetwork.linkedin.linkFor('https://www.linkedin.com/in/ahmad'), Uri.parse('https://www.linkedin.com/in/ahmad'));
+      expect(
+        SocialNetwork.linkedin.linkFor('https://www.linkedin.com/in/ahmad'),
+        Uri.parse('https://www.linkedin.com/in/ahmad'),
+      );
     });
 
-    testWidgets('AC F11-1: Kirim Pesan tanpa room membuat/mengambil room direct kanonik lalu membukanya', (tester) async {
+    testWidgets('AC F11-1: Kirim Pesan tanpa room membuat/mengambil room direct kanonik lalu membukanya', (
+      tester,
+    ) async {
       final app = await _openProfile(
         tester,
         routes: {
@@ -118,8 +118,7 @@ void main() {
       final app = await _openProfile(
         tester,
         routes: {
-          '/directory/user-2': (_) =>
-              FakeResponse.json(200, profileJson(isBlockedByMe: blocked, canMessage: !blocked)),
+          '/directory/user-2': (_) => FakeResponse.json(200, profileJson(isBlockedByMe: blocked, canMessage: !blocked)),
           '/blocks/user-2': (options) {
             blocked = options.method == 'PUT';
             return options.method == 'PUT'
@@ -222,7 +221,11 @@ void main() {
         routes: {
           '/directory/user-2': (_) => FakeResponse.json(
             200,
-            profileJson(email: 'ahmadislam@gmail.com', phone: '0812', social: {'instagram': 'ahmad', 'x': null, 'facebook': null, 'linkedin': null}),
+            profileJson(
+              email: 'ahmadislam@gmail.com',
+              phone: '0812',
+              social: {'instagram': 'ahmad', 'x': null, 'facebook': null, 'linkedin': null},
+            ),
           ),
         },
       );

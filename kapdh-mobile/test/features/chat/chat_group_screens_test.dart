@@ -74,7 +74,9 @@ FakeChatServer _group({bool admin = true, int otherAdmins = 0}) {
 void main() {
   group('Undangan grup (F-11, PRD 3.11)', () {
     testWidgets('terima undangan membuka room; tolak (dengan konfirmasi) menghapus undangan', (tester) async {
-      final server = FakeChatServer(room: roomJson(kind: 'group', title: 'Angkatan 29'));
+      final server = FakeChatServer(
+        room: roomJson(kind: 'group', title: 'Angkatan 29'),
+      );
       final app = await _open(
         tester,
         '/chat/invitations',
@@ -183,6 +185,70 @@ void main() {
       expect(app.adapter.requestsTo('/chat/rooms/room-1/members/user-7').single.method, 'DELETE');
     });
 
+    testWidgets('admin mengundang alumni lewat pemilih direktori; anggota/undangan yang ada tidak dapat dipilih', (
+      tester,
+    ) async {
+      final app = await _open(
+        tester,
+        '/chat/room-1/info',
+        server: _group(),
+        routes: {
+          '/directory': (_) => FakeResponse.json(
+            200,
+            directoryPageJson([
+              directoryMemberJson(userId: 'user-2', name: 'Gamerisa Dewi'),
+              directoryMemberJson(userId: 'user-8', name: 'Zainal Arifin'),
+              directoryMemberJson(userId: 'user-9', name: 'Nur Hasanah'),
+            ]),
+          ),
+          '/chat/rooms/room-1/invitations': (_) => FakeResponse.json(200, {
+            'invited_user_ids': ['user-8'],
+            'skipped': [
+              {'user_id': 'user-9', 'reason': 'room_full'},
+            ],
+          }),
+        },
+      );
+      await tester.tap(find.text('Undang'));
+      await settle(tester);
+      expect(find.text('Undang ke Angkatan 29'), findsOneWidget);
+      expect(find.text('Gamerisa Dewi'), findsNothing, reason: 'sudah anggota');
+      await tester.tap(find.text('Zainal Arifin'));
+      await tester.tap(find.text('Nur Hasanah'));
+      await tester.pump();
+      await tester.tap(find.text('Selesai (2)'));
+      await settle(tester);
+      final invite = app.adapter.requestsTo('/chat/rooms/room-1/invitations').single;
+      expect(invite.data, {
+        'user_ids': ['user-8', 'user-9'],
+      });
+      expect(invite.headers['Idempotency-Key'], isNotNull);
+      expect(find.text('1 undangan terkirim'), findsOneWidget);
+      expect(find.text('Nur Hasanah: grup sudah penuh (100 anggota)'), findsOneWidget);
+    });
+
+    testWidgets('AC F12-2: laporkan grup', (tester) async {
+      final app = await _open(
+        tester,
+        '/chat/room-1/info',
+        server: _group(admin: false),
+        routes: {
+          '/reports': (_) =>
+              FakeResponse.json(201, reportJson(targetType: 'room', targetName: null, roomName: 'Angkatan 29')),
+        },
+      );
+      await scrollAndTap(tester, find.text('Laporkan grup'));
+      await settle(tester);
+      await scrollAndTap(tester, find.text('Penipuan'));
+      await scrollAndTap(tester, find.text('Kirim laporan'));
+      await settle(tester);
+      expect(app.adapter.requestsTo('/reports').single.data, {
+        'target_type': 'room',
+        'room_id': 'room-1',
+        'category': 'scam',
+      });
+    });
+
     testWidgets('AC F11-5: admin terakhir wajib memilih pengganti sebelum keluar', (tester) async {
       final server = _group();
       final app = await _open(
@@ -242,7 +308,13 @@ void main() {
                   errorJson(
                     'VERSION_CONFLICT',
                     'Data sudah diubah anggota lain.',
-                    current: roomJson(kind: 'group', title: 'Angkatan 29 Riau', myRole: 'admin', canManage: true, version: '2'),
+                    current: roomJson(
+                      kind: 'group',
+                      title: 'Angkatan 29 Riau',
+                      myRole: 'admin',
+                      canManage: true,
+                      version: '2',
+                    ),
                   ),
                 )
               : FakeResponse.json(200, server.room),
@@ -284,7 +356,9 @@ void main() {
       final app = await _open(
         tester,
         '/chat/new-group',
-        server: FakeChatServer(room: roomJson(kind: 'group', title: 'Panitia Reuni', myRole: 'admin', canManage: true)),
+        server: FakeChatServer(
+          room: roomJson(kind: 'group', title: 'Panitia Reuni', myRole: 'admin', canManage: true),
+        ),
         picker: (_) async =>
             OutgoingImage(bytes: Uint8List.fromList([0xFF, 0xD8, 0xFF]), filename: 'grup.jpg', mime: 'image/jpeg'),
         routes: {
@@ -365,7 +439,8 @@ void main() {
         '/chat/invitations',
         textScale: 2,
         routes: {
-          '/chat/invitations': (_) => FakeResponse.json(200, pageJson([_invitationJson('room-2', 'Panitia Reuni Akbar')])),
+          '/chat/invitations': (_) =>
+              FakeResponse.json(200, pageJson([_invitationJson('room-2', 'Panitia Reuni Akbar')])),
         },
       );
       expect(tester.takeException(), isNull);

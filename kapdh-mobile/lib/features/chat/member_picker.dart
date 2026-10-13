@@ -128,9 +128,9 @@ class _MemberPickerPageState extends ConsumerState<MemberPickerPage> {
     setState(() {
       if (_selected.remove(member.userId) == null) {
         if (_selected.length >= widget.maxSelection) {
-          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-            SnackBar(content: Text('Maksimal ${widget.maxSelection} alumni dapat dipilih.')),
-          );
+          ScaffoldMessenger.maybeOf(
+            context,
+          )?.showSnackBar(SnackBar(content: Text('Maksimal ${widget.maxSelection} alumni dapat dipilih.')));
           return;
         }
         _selected[member.userId] = member;
