@@ -55,7 +55,10 @@ void main() {
     await scrollAndTap(tester, find.byKey(const ValueKey('deletion-submit')));
     await settle(tester);
     expect(find.text('Konfirmasi identitas'), findsOneWidget);
-    await tester.enterText(find.descendant(of: find.byType(AlertDialog), matching: find.byType(EditableText)), password);
+    await tester.enterText(
+      find.descendant(of: find.byType(AlertDialog), matching: find.byType(EditableText)),
+      password,
+    );
     await tester.pump();
     await tester.tap(find.text('Konfirmasi'));
     await settle(tester);
@@ -154,7 +157,10 @@ void main() {
     );
     expect(find.text('Tiket aktif: Reuni Akbar 2026'), findsOneWidget);
     expect(find.text('Rp75.000'), findsOneWidget);
-    expect(find.textContaining('Batalkan tiket paling lambat 29 Okt 2026, 09.00 WIB untuk refund penuh'), findsOneWidget);
+    expect(
+      find.textContaining('Batalkan tiket paling lambat 29 Okt 2026, 09.00 WIB untuk refund penuh'),
+      findsOneWidget,
+    );
     expect(find.text('Refund belum ditransfer'), findsOneWidget);
     expect(find.text('Kajian Akhir Tahun'), findsOneWidget);
     expect(find.textContaining('data rekening tujuan ikut dihapus'), findsOneWidget);

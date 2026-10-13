@@ -93,10 +93,8 @@ void main() {
   testWidgets('PRD 2.5: batas kegagalan (429) menampilkan hitung mundur pada tombol', (tester) async {
     await openPassword(
       tester,
-      change: (_) => FakeResponse.json(
-        429,
-        errorJson('RATE_LIMITED', 'Terlalu banyak percobaan.', retryAfterSeconds: 120),
-      ),
+      change: (_) =>
+          FakeResponse.json(429, errorJson('RATE_LIMITED', 'Terlalu banyak percobaan.', retryAfterSeconds: 120)),
     );
     await fill(tester);
     await submit(tester);
