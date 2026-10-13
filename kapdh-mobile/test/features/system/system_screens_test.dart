@@ -198,10 +198,11 @@ void main() {
       final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
       expect(tester.getTopLeft(find.byType(MaintenanceBanner)).dy, closeTo(appBarBottom, 1));
 
-      // Alur khusus mutasi tetap ke layar maintenance.
-      app.router.go('/renewal');
+      // Alur khusus mutasi tetap ke layar maintenance (pembuatan instruksi perpanjangan; layar /renewal sendiri
+      // adalah layar baca).
+      app.router.go('/payments/new/renewal');
       await settle(tester);
-      expect(app.location, '/maintenance?from=%2Frenewal');
+      expect(app.location, '/maintenance?from=%2Fpayments%2Fnew%2Frenewal');
     });
 
     testWidgets('503 MAINTENANCE dari request mana pun memasang mode baca terkendali', (tester) async {
