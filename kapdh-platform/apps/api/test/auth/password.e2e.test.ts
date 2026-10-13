@@ -12,11 +12,12 @@ import {
   sessions,
   users,
 } from "@kapdh/database";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { decodeJwt } from "jose";
 import { v7 as uuidv7 } from "uuid";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { maskEmail } from "../../src/core/identity/email.js";
+import { PasswordVerifier } from "../../src/core/identity/password-verifier.js";
 import { expectOperation } from "../support/contract.js";
 import {
   type AlumniFixture,
@@ -590,5 +591,88 @@ describe("AC F02-4: ganti sandi mensyaratkan sandi lama", () => {
       new_password: NEW_PASSWORD,
     });
     expect(anonymous.statusCode).toBe(401);
+  });
+});
+
+describe("AC F02-4: login yang menilai sandi lama tidak memperoleh sesi setelah reset/ganti sandi (TOCTOU)", () => {
+  /**
+   * Menjalankan `between` tepat setelah login menilai sandi dengan bcrypt (di luar transaksi) dan SEBELUM transaksi
+   * penerbitan sesi: jendela tempat reset/ganti sandi dapat commit (seluruh durasi bcrypt di produksi).
+   */
+  function afterPasswordCheck(between: () => Promise<void>) {
+    const verifier = t.app.get(PasswordVerifier);
+    const original = verifier.verify.bind(verifier);
+    return vi.spyOn(verifier, "verify").mockImplementationOnce(async (...args) => {
+      const user = await original(...args);
+      await between();
+      return user;
+    });
+  }
+
+  const liveSessionsOf = (userId: string) =>
+    t.db
+      .select({ id: sessions.id, familyId: sessions.familyId })
+      .from(sessions)
+      .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
+
+  it("AC F02-4: reset sandi commit di antara bcrypt dan penerbitan sesi → 401 generik, tanpa sesi baru", async () => {
+    const member = await createAlumni(t, { status: "verified" });
+    const { grant } = await resetGrant(member);
+    let reset = 0;
+    const spy = afterPasswordCheck(async () => {
+      reset = (
+        await api.post("/auth/password/reset", { reset_token: grant.reset_token, new_password: NEW_PASSWORD })
+      ).statusCode;
+    });
+    const login = await api.post("/auth/login", { email: member.email, password: member.password });
+    spy.mockRestore();
+
+    expect(reset).toBe(204);
+    expect(login.statusCode).toBe(401);
+    expect(login.json()).toMatchObject({ code: "UNAUTHENTICATED", message: "Email atau password salah." });
+    expectOperation("post", "/auth/login", login);
+    expect(await liveSessionsOf(member.userId)).toHaveLength(0);
+    expect((await api.post("/auth/login", { email: member.email, password: NEW_PASSWORD })).json().next).toBe(
+      "home",
+    );
+  });
+
+  it("AC F02-4: ganti sandi commit di antara bcrypt dan penerbitan sesi → 401, hanya sesi pengganti yang hidup", async () => {
+    const member = await createAlumni(t, { status: "verified" });
+    const owner = await signInAlumni(t, member);
+    let change = 0;
+    const spy = afterPasswordCheck(async () => {
+      change = (
+        await api.post(
+          "/auth/password/change",
+          { current_password: member.password, new_password: NEW_PASSWORD },
+          { token: owner.accessToken },
+        )
+      ).statusCode;
+    });
+    const login = await api.post("/auth/login", { email: member.email, password: member.password });
+    spy.mockRestore();
+
+    expect(change).toBe(204);
+    expect(login.statusCode).toBe(401);
+    expect(login.json()).toMatchObject({ code: "UNAUTHENTICATED", message: "Email atau password salah." });
+    const [ownerRow] = await t.db
+      .select({ familyId: sessions.familyId })
+      .from(sessions)
+      .where(eq(sessions.id, String(decodeJwt(owner.accessToken).sid)));
+    const live = await liveSessionsOf(member.userId);
+    expect(live.map((row) => row.familyId)).toEqual([ownerRow!.familyId]);
+    expect((await api.get("/me", { token: owner.accessToken })).statusCode).toBe(200);
+  });
+
+  it("akun dinonaktifkan di antara bcrypt dan penerbitan sesi → 401 generik, tanpa sesi", async () => {
+    const member = await createAlumni(t, { status: "verified" });
+    const spy = afterPasswordCheck(async () => {
+      await t.db.update(users).set({ status: "disabled" }).where(eq(users.id, member.userId));
+    });
+    const login = await api.post("/auth/login", { email: member.email, password: member.password });
+    spy.mockRestore();
+    expect(login.statusCode).toBe(401);
+    expect(await liveSessionsOf(member.userId)).toHaveLength(0);
   });
 });

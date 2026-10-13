@@ -327,6 +327,34 @@ describe("AC F01-4 / PRD 2.5: registrasi ulang akun pending_otp", () => {
     expect((await api.post("/auth/login", { email, password: PASSWORD })).json().next).toBe("home");
   });
 
+  it("PRD 2.5: registrasi ulang menilai sandi tersimpan → dihitung ke batas kegagalan login (bukan oracle sandi)", async () => {
+    const { email, challenge } = await register();
+    const guess = (password: string) => api.post("/auth/register", { ...attackerBody(email), password });
+    // Sembilan tebakan salah di dalam cooldown: 429 tanpa penulisan, masing-masing tercatat sebagai kegagalan.
+    for (let i = 0; i < 9; i++) expect((await guess(`Tebakan#20${i}x`)).statusCode).toBe(429);
+    // Pemilik mengirim ulang data dengan sandinya sendiri (ketuk ganda): challenge yang sama, penghitung direset.
+    const owner = await guess(PASSWORD);
+    expect(owner.statusCode).toBe(201);
+    expect(owner.json().challenge_id).toBe(challenge.challenge_id);
+    // Sepuluh tebakan salah berikutnya menghabiskan batas PRD 2.5 (10 per 15 menit per email)...
+    for (let i = 0; i < 10; i++) expect((await guess(`Tebakan#21${i}x`)).statusCode).toBe(429);
+    // ...sehingga tebakan BENAR pun ditolak 429 tanpa challenge_id: respons tidak lagi membedakan sandi.
+    const limited = await guess(PASSWORD);
+    expect(limited.statusCode).toBe(429);
+    expectOperation("post", "/auth/register", limited);
+    expect(limited.json()).toMatchObject({
+      code: "RATE_LIMITED",
+      message: "Terlalu banyak percobaan pendaftaran ulang untuk email ini. Coba lagi nanti.",
+    });
+    expect(limited.json().challenge_id).toBeUndefined();
+    expect(limited.headers["retry-after"]).toBeDefined();
+    // Batas dibagi dengan login (PRD 2.5).
+    expect((await api.post("/auth/login", { email, password: PASSWORD })).statusCode).toBe(429);
+    // Setelah jendela 15 menit pemilik dapat melanjutkan pendaftaran.
+    t.clock.advance(15 * 60_000 + 1000);
+    expect((await guess(PASSWORD)).statusCode).toBe(201);
+  });
+
   it("AC F01-4: registrasi ulang setelah akun aktif ditolak 409 dan tidak mengubah sandi akun aktif", async () => {
     const { email, challenge } = await register();
     await api.post("/auth/otp/verify", { challenge_id: challenge.challenge_id, code: t.mailer.last(email)! });

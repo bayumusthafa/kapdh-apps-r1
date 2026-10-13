@@ -17,6 +17,7 @@ import { decodeCursor, pageOf, parsePageQuery } from "../../core/pagination/curs
 import { RateLimitService } from "../../core/rate-limit/rate-limit.service.js";
 import { RealtimeService } from "../../core/realtime/realtime.service.js";
 import { CLOCK, DB, ENV } from "../../core/tokens.js";
+import { lockOwnerForRevocation } from "./session-locks.js";
 
 type Session = components["schemas"]["Session"];
 type SessionPage = components["schemas"]["SessionPage"];
@@ -132,12 +133,15 @@ export class SessionsService {
    * Mencabut satu keluarga sesi milik pemanggil (kontrak revokeSession): baris aktifnya dikunci, seluruh baris
    * keluarga dicabut, token push sesi itu dinonaktifkan (pengiriman pending dibatalkan, AC F13-5), audit, dan setelah
    * commit socketnya diputus (`session.revoked`). 404 bila tidak ada, sudah dicabut/kedaluwarsa, atau milik pengguna
-   * lain (tidak dibedakan, N-09). Mencabut sesi saat ini sama dengan logout.
+   * lain (tidak dibedakan, N-09). Mencabut sesi saat ini sama dengan logout. Pernyataan pertama mengunci baris users
+   * pemanggil FOR UPDATE (session-locks.ts): rotasi refresh keluarga itu yang sedang berjalan selesai dulu, sehingga
+   * baris barunya terlihat dan ikut dicabut (bukan 404 sementara perangkat tetap masuk).
    */
   async revoke(auth: AuthContext, familyId: string): Promise<{ current: boolean }> {
     const now = this.now();
     const current = familyId === auth.familyId;
     await this.db.transaction(async (tx) => {
+      await lockOwnerForRevocation(tx, auth.userId);
       const live = await tx
         .select({ id: sessions.id })
         .from(sessions)
