@@ -167,16 +167,13 @@ class _ReportCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Wrap: lencana turun ke baris berikut saat teks diperbesar 200 % (N-11).
+              Wrap(
+                spacing: KapdhSpace.s2,
+                runSpacing: KapdhSpace.s1,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Expanded(
-                    child: Text(
-                      reportCategoryLabel(report.category),
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const SizedBox(width: KapdhSpace.s2),
+                  Text(reportCategoryLabel(report.category), style: const TextStyle(fontWeight: FontWeight.w600)),
                   StatusBadge(reportStatusStyle(report.status)),
                 ],
               ),

@@ -491,7 +491,16 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
           ? null
           : ClipRRect(
               borderRadius: BorderRadius.circular(KapdhRadius.sm),
-              child: Image.memory(image.bytes, width: ChatImageView.maxWidth, fit: BoxFit.cover),
+              child: Image.memory(
+                image.bytes,
+                width: ChatImageView.maxWidth,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox(
+                  width: ChatImageView.maxWidth,
+                  height: 120,
+                  child: ColoredBox(color: KapdhColors.neutral100, child: Icon(Icons.image_outlined)),
+                ),
+              ),
             ),
       body: entry.body,
       status: status,
