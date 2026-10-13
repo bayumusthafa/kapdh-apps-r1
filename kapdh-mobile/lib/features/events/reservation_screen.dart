@@ -173,13 +173,20 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
           top: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s3, KapdhSpace.s5, KapdhSpace.s3),
-            child: KapdhButton(
-              key: const ValueKey('reservation-submit'),
-              label: priceChanged ? 'Setuju Harga Baru dan Daftar' : 'Daftar dan Lanjut Bayar',
-              busy: _busy,
-              busyLabel: 'Mendaftarkan…',
-              semanticsHint: _methodId == null ? 'Pilih metode pembayaran lebih dahulu' : null,
-              onPressed: canSubmit ? () => unawaited(_submit(event)) : null,
+            // Column min: bilah bawah setinggi tombolnya saja, bukan seluruh layar.
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                KapdhButton(
+                  key: const ValueKey('reservation-submit'),
+                  label: priceChanged ? 'Setuju Harga Baru dan Daftar' : 'Daftar dan Lanjut Bayar',
+                  busy: _busy,
+                  busyLabel: 'Mendaftarkan…',
+                  semanticsHint: _methodId == null ? 'Pilih metode pembayaran lebih dahulu' : null,
+                  onPressed: canSubmit ? () => unawaited(_submit(event)) : null,
+                ),
+              ],
             ),
           ),
         ),

@@ -94,10 +94,10 @@ Future<ReservationOutcome> submitReservation(
           return ReservationDone(ticketId: mine.id);
         }
         if (current.price != event.price) return ReservationPriceChanged(current);
-        await _explain(ref, 'Data event berubah', error.message);
+        _explain(ref, 'Data event berubah', error.message);
         return const ReservationStopped();
       case ErrorCode.eventSoldOut:
-        await _explain(
+        _explain(
           ref,
           'Kuota penuh',
           '${error.message}\n\nKursi dapat tersedia kembali bila ada reservasi yang berakhir atau dibatalkan.',
@@ -105,7 +105,7 @@ Future<ReservationOutcome> submitReservation(
         return const ReservationStopped();
       case ErrorCode.reservationExpired:
         final state = current == null ? null : registrationStateStyle(current.registrationState).label;
-        await _explain(ref, 'Pendaftaran tidak dibuka', state == null ? error.message : '${error.message}\n\n$state.');
+        _explain(ref, 'Pendaftaran tidak dibuka', state == null ? error.message : '${error.message}\n\n$state.');
         return const ReservationStopped();
       case ErrorCode.validationError when error.fieldErrors.containsKey('payment_method_id'):
         ref.invalidate(paymentMethodsProvider);
@@ -114,7 +114,7 @@ Future<ReservationOutcome> submitReservation(
         break;
     }
     if (error.isNetwork && context.mounted) return _checkAfterNetworkFailure(context, ref, event);
-    await ref.read(errorPresenterProvider).present(error, onReload: () => unawaited(detail.reload()));
+    unawaited(ref.read(errorPresenterProvider).present(error, onReload: () => unawaited(detail.reload())));
     return const ReservationStopped();
   }
 }
@@ -144,21 +144,26 @@ void showReservationRetry(WidgetRef ref, VoidCallback onRetry) {
     ..showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 10),
-        content: const Text('Pendaftaran belum terkirim karena koneksi terputus. Anda tidak terdaftar dua kali; coba lagi.'),
+        content: const Text(
+          'Pendaftaran belum terkirim karena koneksi terputus. Anda tidak terdaftar dua kali; coba lagi.',
+        ),
         action: SnackBarAction(label: 'Coba lagi', onPressed: onRetry),
       ),
     );
 }
 
-Future<void> _explain(WidgetRef ref, String title, String message) async {
+/// Penjelasan penolakan dalam dialog; tidak ditunggu sehingga tombol kirim kembali aktif di belakang dialog.
+void _explain(WidgetRef ref, String title, String message) {
   final context = ref.read(rootNavigatorKeyProvider).currentContext;
   if (context == null || !context.mounted) return;
-  await showDialog<void>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(title),
-      content: Text(message),
-      actions: [TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Tutup'))],
+  unawaited(
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Tutup'))],
+      ),
     ),
   );
 }
