@@ -184,13 +184,22 @@ describe("Pembatalan dan refund D6", () => {
       new Date("2026-10-12T02:00:00Z"),
     );
     // Europe/London: acara 27 Okt 09.00 GMT; 24 Okt masih BST sehingga H-3 09.00 lokal = 08.00Z (bukan 72 jam).
-    const london = { status: "open" as const, startsAt: new Date("2026-10-27T09:00:00Z"), timezone: "Europe/London" };
+    const london = {
+      status: "open" as const,
+      startsAt: new Date("2026-10-27T09:00:00Z"),
+      timezone: "Europe/London",
+    };
     expect(fullRefundUntil(london, "75000.00", 3)).toEqual(new Date("2026-10-24T08:00:00Z"));
     expect(fullRefundUntil(london, "0.00", 3)).toBeNull();
     expect(cancellationPolicy({ ...london, price: "75000.00" }, { self_cancel_days: 3 }).summary).toMatch(
       /^Batalkan sampai 24 Okt 2026 09\.00 Europe\/London \(H-3\)/,
     );
-    const paid = { status: "paid" as const, holdExpiresAt: null, checkedInAt: null, totalSnapshot: "75000.00" };
+    const paid = {
+      status: "paid" as const,
+      holdExpiresAt: null,
+      checkedInAt: null,
+      totalSnapshot: "75000.00",
+    };
     expect(memberRefundEligible(paid, london, new Date("2026-10-24T07:59:59Z"), 3)).toBe(true);
     expect(memberRefundEligible(paid, london, new Date("2026-10-24T08:00:00Z"), 3)).toBe(false);
     // Jam dinding yang tidak ada (jam dimajukan 29 Mar 01.00 GMT) digeser maju sepanjang celah.

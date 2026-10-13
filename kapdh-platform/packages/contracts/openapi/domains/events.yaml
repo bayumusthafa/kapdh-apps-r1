@@ -41,10 +41,14 @@ tags:
         sesudah kunci didapat.
       - Penerapan: createEventReservation dan job expiry hold mengunci event, tiket hold kedaluwarsa (urut id), lalu
         payment-nya. cancelMyTicket dan adminCancelTicket mengunci event, tiket, lalu payment tiket.
-        adminCancelEvent mengunci event, semua tiket aktif event (urut id), lalu payment tiket tersebut (urut id).
+        adminCancelEvent mengunci event, semua tiket aktif event termasuk hold kedaluwarsa (satu langkah, urut id),
+        lalu payment tiket tersebut (urut id).
         adminUpdateEvent dan adminSetEventStatus mengunci event (adminUpdateEvent yang menurunkan kuota juga
         melepas hold kedaluwarsa: event, tiket, payment). adminCheckInTicket hanya memakai UPDATE bersyarat pada
-        satu tiket. Penghapusan akun (F-14, "tiket hangus") mengunci per event: event, tiket, payment.
+        satu tiket. Penghapusan akun (F-14, "tiket hangus") mengunci per event: event, tiket, payment. Job
+        pengingat H-3/H-1 mengunci event `FOR SHARE` (tanpa mengunci tiket) lalu membaca ulang status, jadwal dan
+        pemegang paid, sehingga pengingat tidak pernah ditulis untuk jadwal usang atau event/tiket yang baru
+        dibatalkan (AC F13-6).
       - Modul pembayaran untuk payment `type=ticket` (kirim bukti, approve, reject, batal): handler tiket mengunci
         event lalu tiket SEBELUM modul pembayaran menjalankan `SELECT payments ... FOR UPDATE` (kirim bukti cukup
         mengunci tiket karena penghitung kursi tidak berubah). Ini memerlukan hook PaymentTypeHandler yang dipanggil
