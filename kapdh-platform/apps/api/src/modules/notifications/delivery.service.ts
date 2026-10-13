@@ -28,11 +28,13 @@ import {
   decideDelivery,
   DELIVERY_LEASE_MS,
   DELIVERY_RETRY_EVERY_MS,
+  DELIVERY_SEND_TIMEOUT_MS,
   lockScreenText,
   PUSH_BODY_MAX,
   PUSH_DEFAULT_BODY,
   PUSH_TITLE_MAX,
   type SendOutcome,
+  withProviderTimeout,
 } from "./delivery-policy.js";
 import { cancelPendingDeliveries, DEVICE_SWEEP_EVERY_MS, DevicesService } from "./devices.service.js";
 import { type EmailCategory, renderNotificationEmail } from "./email-templates.js";
@@ -396,23 +398,24 @@ export class NotificationDeliveryService implements OnModuleInit {
   private async sendOne(delivery: ClaimedDelivery, supportEmail: string): Promise<SendOutcome> {
     if (delivery.channel === "push") {
       try {
-        return classifyPushResult(await this.push.send(this.pushMessage(delivery)));
+        return classifyPushResult(
+          await withProviderTimeout(this.push.send(this.pushMessage(delivery)), DELIVERY_SEND_TIMEOUT_MS),
+        );
       } catch {
         return { kind: "retry", errorClass: "NETWORK" };
       }
     }
     try {
-      const result = await this.mailer.send(
-        renderNotificationEmail({
-          to: delivery.email,
-          category: delivery.category as EmailCategory,
-          title: delivery.title,
-          body: delivery.body,
-          route: delivery.route,
-          recipientName: delivery.recipientName,
-          supportEmail,
-        }),
-      );
+      const message = renderNotificationEmail({
+        to: delivery.email,
+        category: delivery.category as EmailCategory,
+        title: delivery.title,
+        body: delivery.body,
+        route: delivery.route,
+        recipientName: delivery.recipientName,
+        supportEmail,
+      });
+      const result = await withProviderTimeout(this.mailer.send(message), DELIVERY_SEND_TIMEOUT_MS);
       return { kind: "sent", providerMessageId: result.messageId };
     } catch (error) {
       return classifyMailError(error);

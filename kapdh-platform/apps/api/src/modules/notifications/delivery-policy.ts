@@ -19,6 +19,37 @@ export const DELIVERY_BACKOFF_MAX_MS = 3_600_000;
 export const DELIVERY_LEASE_MS = 5 * 60_000;
 /** Interval job `notifications.retry` (ARCHITECTURE §4.8). */
 export const DELIVERY_RETRY_EVERY_MS = 60_000;
+/**
+ * Batas waktu satu percobaan ke provider (SMTP/FCM), jauh di bawah {@link DELIVERY_LEASE_MS}: pengiriman yang macet
+ * (mis. socket SMTP menggantung, batas bawaan nodemailer 10 menit) dicatat sebagai gangguan sementara dan dijadwalkan
+ * ulang dengan backoff, bukan diklaim ulang worker lain selagi percobaan pertama masih berjalan.
+ */
+export const DELIVERY_SEND_TIMEOUT_MS = 60_000;
+
+/** Galat batas waktu percobaan provider; `code` ETIMEDOUT agar diklasifikasi `timeout` (email) atau NETWORK (push). */
+export class ProviderTimeoutError extends Error {
+  override name = "ProviderTimeoutError";
+  readonly code = "ETIMEDOUT";
+  constructor() {
+    super("Batas waktu pengiriman ke provider habis");
+  }
+}
+
+/** Menolak dengan {@link ProviderTimeoutError} bila `promise` tidak selesai dalam `timeoutMs`; timer selalu dilepas. */
+export async function withProviderTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new ProviderTimeoutError()), timeoutMs);
+        timer.unref();
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 /**
  * Jeda sebelum percobaan berikutnya setelah percobaan ke-`attempt` (dimulai 1) gagal sementara: eksponensial
