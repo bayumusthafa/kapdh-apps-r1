@@ -109,9 +109,7 @@ describe("tabel Event dan Tiket (guideline p14, F-15; server tiruan)", () => {
     await user.type(screen.getByRole("searchbox", { name: "Cari event" }), "lubuk");
     await screen.findByText("Menampilkan 1 dari 1", {}, { timeout: SEARCH_WAIT });
     // Ketikan lambat dapat memicu debounce pada "lubu" (hasilnya sama); tunggu permintaan untuk kata kunci lengkap.
-    await waitFor(() =>
-      expect(requests("GET", "/admin/events").at(-1)?.query).toMatchObject({ q: "lubuk" }),
-    );
+    await waitFor(() => expect(requests("GET", "/admin/events").at(-1)?.query).toMatchObject({ q: "lubuk" }));
     await user.clear(screen.getByRole("searchbox", { name: "Cari event" }));
     await screen.findByText("Menampilkan 6 dari 6", {}, { timeout: SEARCH_WAIT });
     await user.selectOptions(screen.getByRole("combobox", { name: "Status" }), "open");
