@@ -10,6 +10,7 @@ import { ApiError, toApiError } from "../../api/errors";
 import { useAuth } from "../../auth/session";
 import { AuthLayout } from "../../components/layout/AuthLayout";
 import { Button } from "../../components/ui/Button";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { KeyValueList } from "../../components/ui/DataDisplay";
 import { FormError, FormField } from "../../components/ui/FormField";
 import { Input } from "../../components/ui/Input";
@@ -97,6 +98,24 @@ export function EnrollPage() {
     started.current = true;
     void start();
   }, [start]);
+
+  // Token pendaftaran hanya ada di memori dan tidak dapat diterbitkan ulang (kontrak adminAcceptInvitation); backup
+  // code hanya tampil sekali. Muat ulang/menutup tab pada tahap ini meminta konfirmasi peramban (PRD 4.5).
+  const unsaved =
+    mfaToken !== null &&
+    (stage.kind === "starting" || stage.kind === "scan" || stage.kind === "error" || stage.kind === "codes");
+  useEffect(() => {
+    if (!unsaved) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Peramban lama memerlukan returnValue terisi agar dialog konfirmasinya tampil.
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [unsaved]);
+
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   function backToLogin() {
     auth.cancelLogin();
@@ -206,10 +225,23 @@ export function EnrollPage() {
       ) : null}
 
       {stage.kind === "scan" || stage.kind === "starting" || stage.kind === "error" ? (
-        <Button variant="ghost" fullWidth className="text-text-muted" onClick={backToLogin}>
-          Batalkan dan kembali ke halaman masuk
+        <Button variant="ghost" fullWidth className="text-text-muted" onClick={() => setConfirmCancel(true)}>
+          Batalkan aktivasi
         </Button>
       ) : null}
+      <ConfirmDialog
+        open={confirmCancel}
+        onCancel={() => setConfirmCancel(false)}
+        onConfirm={() => {
+          setConfirmCancel(false);
+          backToLogin();
+        }}
+        title="Batalkan aktivasi akun admin?"
+        description="Tautan undangan sudah terpakai dan token pendaftaran tidak dapat diterbitkan ulang. Bila dibatalkan, Anda tidak dapat melanjutkan aktivasi maupun masuk; Super Admin KAPDH perlu mengirim undangan ulang."
+        cancelLabel="Lanjutkan aktivasi"
+        confirmLabel="Ya, batalkan aktivasi"
+        acknowledgement="Saya memahami bahwa saya memerlukan undangan baru dari Super Admin."
+      />
     </AuthLayout>
   );
 }
