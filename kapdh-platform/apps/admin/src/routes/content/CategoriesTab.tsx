@@ -37,6 +37,7 @@ import {
   slugFromTitle,
 } from "./contentApi";
 import { CATEGORY_KIND_LABEL, CATEGORY_USAGE_NOUN } from "./labels";
+import { useDeferredFocus } from "./useDeferredFocus";
 
 type ActiveFilter = "all" | "true" | "false";
 
@@ -369,6 +370,7 @@ function CategoryFormDialog({
   const toast = useToast();
   const [base, setBase] = useState(category);
   const [conflict, setConflict] = useState<{ latest: AdminContentCategory | null } | null>(null);
+  const focusLabel = useDeferredFocus(() => form.setFocus("label"));
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
     defaultValues: toCategoryForm(category),
@@ -432,7 +434,7 @@ function CategoryFormDialog({
       setBase(latest);
       form.reset(toCategoryForm(latest));
       void invalidateContent(queryClient);
-      form.setFocus("label");
+      focusLabel();
     } catch (e) {
       toast.error(toApiError(e).message);
     }

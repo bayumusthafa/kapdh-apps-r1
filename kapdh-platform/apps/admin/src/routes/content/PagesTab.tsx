@@ -39,6 +39,7 @@ import {
 } from "./contentApi";
 import { HtmlPreview } from "./HtmlPreview";
 import { LEGAL_DOCUMENT_LABEL } from "./labels";
+import { useDeferredFocus } from "./useDeferredFocus";
 import { useLeaveGuard } from "./useLeaveGuard";
 
 const SORT_OPTIONS: { value: S["AdminInfoPageSort"]; label: string }[] = [
@@ -394,6 +395,7 @@ function PageEditor({ initial, onClose }: { initial: AdminInfoPage; onClose: () 
   const changes = pageChanges(values, base);
   const dirty = Object.keys(changes).length > 0;
   const guard = useLeaveGuard(dirty, "Perubahan draf halaman");
+  const focusTitle = useDeferredFocus(() => form.setFocus("title"));
   const body = useController({ control: form.control, name: "body_html" });
 
   useEffect(() => {
@@ -433,7 +435,7 @@ function PageEditor({ initial, onClose }: { initial: AdminInfoPage; onClose: () 
       setConflict(null);
       applyLatest(latest);
       toast.info("Versi terbaru dimuat.");
-      form.setFocus("title");
+      focusTitle();
     } catch (e) {
       toast.error(toApiError(e).message);
     }
