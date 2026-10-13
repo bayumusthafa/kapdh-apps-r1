@@ -138,7 +138,7 @@ export function classifyMailError(error: unknown): SendOutcome {
 
 const EMAIL_PATTERN = /[^\s@<>()[\],;:"]+@[^\s@<>()[\],;:"]+\.[A-Za-z]{2,}/g;
 /** Nomor telepon Indonesia (+62/62/0 diikuti 8xx) dengan pemisah spasi/tanda hubung. */
-const PHONE_PATTERN = /(?:\+?62|\b0)8\d(?:[\s-]?\d){6,11}\b/g;
+const PHONE_PATTERN = /(?:\+?62[\s-]?|\b0)8\d(?:[\s-]?\d){6,11}\b/g;
 const HIDDEN = "[disembunyikan]";
 
 /**
