@@ -66,9 +66,14 @@ export class DeletionDisclosureService {
     private readonly settings: SettingsService,
   ) {}
 
+  /**
+   * `db` boleh transaksi pemanggil (konfirmasi) atau DB biasa (GET). Pengaturan dibaca lewat `db` yang sama tanpa
+   * cache sehingga versi yang ditampilkan dan versi yang diperiksa saat konfirmasi selalu dihitung dari data yang
+   * sama, dan tidak ada kueri di luar transaksi yang sedang memegang kunci baris users.
+   */
   async compute(db: DbOrTx, user: { id: string; status: AccountStatus }): Promise<Disclosure> {
     const now = this.clock.now();
-    const legal = await this.settings.get("legal");
+    const { value: legal } = await this.settings.getEntry("legal", { tx: db });
     const base = {
       estimated_completion_days: DELETION_COMPLETION_DAYS,
       backup_retention_days: BACKUP_RETENTION_DAYS,
@@ -96,13 +101,16 @@ export class DeletionDisclosureService {
       .from(alumni)
       .where(eq(alumni.userId, user.id));
     const suspended = member?.suspendedAt != null;
-    const [activeTickets, pendingRefunds, openPayments, soleAdminGroups, linked] = await Promise.all([
-      this.activeTickets(db, user.id, suspended, now),
-      this.pendingRefunds(db, user.id),
-      this.openPayments(db, user.id),
-      this.soleAdminGroupCount(db, user.id),
-      db.select({ id: admins.id }).from(admins).where(eq(admins.linkedAlumniUserId, user.id)).limit(1),
-    ]);
+    // Berurutan: `db` dapat berupa satu koneksi transaksi (konfirmasi) yang tidak menjalankan kueri paralel.
+    const activeTickets = await this.activeTickets(db, user.id, suspended, now);
+    const pendingRefunds = await this.pendingRefunds(db, user.id);
+    const openPayments = await this.openPayments(db, user.id);
+    const soleAdminGroups = await this.soleAdminGroupCount(db, user.id);
+    const linked = await db
+      .select({ id: admins.id })
+      .from(admins)
+      .where(eq(admins.linkedAlumniUserId, user.id))
+      .limit(1);
     return this.withVersion(
       {
         ...base,
@@ -122,7 +130,9 @@ export class DeletionDisclosureService {
     suspended: boolean,
     now: Date,
   ): Promise<TicketWarning[]> {
-    const { self_cancel_days: selfCancelDays } = await this.settings.get("events");
+    const {
+      value: { self_cancel_days: selfCancelDays },
+    } = await this.settings.getEntry("events", { tx: db });
     const rows = await db
       .select({
         ticketId: tickets.id,
