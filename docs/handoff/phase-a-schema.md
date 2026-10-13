@@ -186,3 +186,47 @@ PG-LANE HELPERS (apps/api/test/pg/support.ts):
 
 TEST COUNTS: database package 19 tests (PGlite); API default lane 85 tests; pg lane 56 tests in 7 files.
 
+## Schema delta 0006
+Migration `0006_final_contract_delta` (drizzle-kit generate; no custom SQL needed). It adds what the final C3 and C6 contracts need. Journal order is now 0000 to 0005 as above, then 0006_final_contract_delta.
+
+PAYMENT_ADJUSTMENTS (contract C3):
+- New column `cancel_reason text`.
+- New column `cancelled_by_admin_id uuid`, FK `payment_adjustments_cancelled_by_admin_id_admins_id_fk` to admins(id) ON DELETE SET NULL, with partial index `payment_adjustments_cancelled_by_admin_id_idx` WHERE NOT NULL.
+- `payment_adjustments_cancelled_chk` is now `status <> 'cancelled' or (cancelled_at is not null and cancel_reason is not null and btrim(cancel_reason) <> '')`.
+- cancelled_by_admin_id is deliberately not required: a system cancellation, or an admin deleted later, leaves it null.
+- Services cancel with one conditional UPDATE that sets status, cancelled_at, cancel_reason and cancelled_by_admin_id. AdminPaymentAdjustment.cancel_reason and cancelled_by are read from these columns, never from audit_logs.
+- New Drizzle relation `paymentAdjustments.cancelledBy` (admins).
+
+REPORTS (contract C6):
+- Enum `app.report_category` gains `appeal`, appended last. An appeal is a report with category appeal, target_type user and target_user_id = reporter_id (PRD 3.12). Services enforce that shape; there is no CHECK for it (see open issues).
+- New column `claimed_by_admin_id uuid`, FK `reports_claimed_by_admin_id_admins_id_fk` to admins(id) ON DELETE SET NULL, with partial index `reports_claimed_by_admin_id_idx` WHERE NOT NULL.
+- New column `claimed_at timestamptz`.
+- New column `member_message text` with CHECK `reports_member_message_chk` (null or char_length <= 500). It holds the safe text for the member; resolution_note stays internal.
+- New column `message_removed_at timestamptz`, set when a decision removes the reported message.
+- New CHECK `reports_claimed_chk`: `status <> 'in_review' or claimed_at is not null`. The claim must set status, claimed_by_admin_id and claimed_at in one UPDATE.
+- `due_at` is now NOT NULL. The service computes it on insert (urgent 24 h, otherwise 2 business days); an insert without it fails with 23502.
+- New Drizzle relation `reports.claimedBy` (admins).
+
+APP_SETTINGS KEY:
+- `payment_instructions` = `{dues_hidden_platforms: ("android"|"ios")[]}`, seeded as `{dues_hidden_platforms: []}` (D13 iOS fallback; tickets are never hidden).
+- APP_SETTING_KEYS now has 10 keys: the 9 listed above plus payment_instructions.
+- It was already present before this delta in APP_SETTING_KEYS, REFERENCE_SETTINGS, apps/api core/settings/keys.ts (zod schema, max 2 unique platforms) and ARCHITECTURE §5.4; this delta verified it and added a test.
+- Environments seeded before the key existed get it by running `seed:reference` again. The seed inserts only missing keys and never overwrites edited values. Until then, SettingsService returns the default at version 0.
+
+RULES FOR LATER MIGRATIONS:
+- The migration job applies all pending migrations in ONE transaction. A later migration must not use `'appeal'` as an enum literal (CHECK, default, partial index, cast) while it could run in the same job as 0006, or PostgreSQL raises 55P04 "unsafe use of new value". Compare `category::text = 'appeal'` instead, or ship it after 0006 is applied everywhere.
+- A fresh database (PGlite tests, empty PG) does not show this problem, because the enum type is created in the same transaction. The upgrade-path tests do show it.
+- 0006 assumes no reports row has a null due_at and no cancelled adjustment lacks cancel_reason. This holds today because no module writes either table yet.
+
+TESTS:
+- packages/database (PGlite), 23 tests. New:
+  - the C6 report constraints and appeal;
+  - the C3 adjustment cancel check and SET NULL;
+  - the upgrade path (0000 to 0005 committed, then 0006 alone);
+  - backfilling the payment_instructions seed without overwriting.
+  - The FK-index test still passes with the two new FKs.
+- apps/api pg lane: migrate-and-seed.pg.test.ts adds the same upgrade path on PostgreSQL 17 (a `migrationsUpTo(tag)` helper copies a truncated journal).
+
+OPEN ISSUES:
+- packages/contracts/CHANGELOG.md, section "Ketergantungan skema database", still says these DB changes are "belum dibuat". The contracts owner should mark them done.
+- Possible later hardening: a CHECK for the appeal shape (`category::text <> 'appeal' or (target_type = 'user' and target_user_id = reporter_id)`, or one tolerant of SET NULL after account deletion). It was left out because the contracts list it only as a service rule.

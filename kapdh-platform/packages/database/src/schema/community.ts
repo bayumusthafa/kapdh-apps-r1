@@ -26,6 +26,11 @@ export const roomMemberStatus = app.enum("room_member_status", [
 ]);
 export const messageKind = app.enum("message_kind", ["text", "image", "system"]);
 export const reportTargetType = app.enum("report_target_type", ["user", "message", "room"]);
+/**
+ * Kategori laporan (kontrak ModerationReportCategory). `appeal` (migrasi 0006) = banding atas suspend diri sendiri
+ * (PRD 3.12): target_type user dan target_user_id = reporter_id, hanya dibuat lewat POST /appeals. Nilai enum baru
+ * tidak boleh dipakai pada SQL migrasi yang diterapkan dalam transaksi yang sama dengan `ADD VALUE`.
+ */
 export const reportCategory = app.enum("report_category", [
   "spam",
   "harassment",
@@ -34,6 +39,7 @@ export const reportCategory = app.enum("report_category", [
   "violence_threat",
   "scam",
   "other",
+  "appeal",
 ]);
 /** urgent = risiko ancaman/keselamatan, target 24 jam; normal 2 hari kerja (F-12, v3.2). */
 export const reportPriority = app.enum("report_priority", ["normal", "urgent"]);
@@ -223,8 +229,18 @@ export const reports = app.table(
     resolutionNote: text("resolution_note"),
     resolvedByAdminId: uuid("resolved_by_admin_id").references(() => admins.id, { onDelete: "set null" }),
     resolvedAt: tstz("resolved_at"),
-    /** Target penanganan: 24 jam untuk urgent, 2 hari kerja untuk lainnya (F-12). */
-    dueAt: tstz("due_at"),
+    /** Klaim pengurus open -> in_review (kontrak C6 adminClaimReport, migrasi 0006). */
+    claimedByAdminId: uuid("claimed_by_admin_id").references(() => admins.id, { onDelete: "set null" }),
+    claimedAt: tstz("claimed_at"),
+    /** Pesan aman untuk anggota pada warn/suspend/banding (maks. 500); resolution_note tetap catatan internal. */
+    memberMessage: text("member_message"),
+    /** Waktu pesan terlapor dihapus sebagai tindak lanjut keputusan (remove_message, kontrak C6). */
+    messageRemovedAt: tstz("message_removed_at"),
+    /**
+     * Target penanganan: 24 jam untuk urgent, 2 hari kerja untuk lainnya (F-12). Selalu diisi server saat insert;
+     * NOT NULL sejak migrasi 0006 (kontrak C6 due_at wajib).
+     */
+    dueAt: tstz("due_at").notNull(),
     version: version(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -244,7 +260,16 @@ export const reports = app.table(
     index("reports_resolved_by_admin_id_idx")
       .on(t.resolvedByAdminId)
       .where(sql`${t.resolvedByAdminId} is not null`),
+    index("reports_claimed_by_admin_id_idx")
+      .on(t.claimedByAdminId)
+      .where(sql`${t.claimedByAdminId} is not null`),
     check("reports_description_chk", sql`${t.description} is null or char_length(${t.description}) <= 2000`),
+    check(
+      "reports_member_message_chk",
+      sql`${t.memberMessage} is null or char_length(${t.memberMessage}) <= 500`,
+    ),
+    // Laporan in_review selalu sudah diklaim. claimed_by_admin_id tidak diwajibkan karena ON DELETE SET NULL.
+    check("reports_claimed_chk", sql`${t.status} <> 'in_review' or ${t.claimedAt} is not null`),
     check(
       "reports_resolved_chk",
       sql`${t.status} not in ('resolved','dismissed') or (${t.resolvedAt} is not null and ${t.action} is not null)`,
