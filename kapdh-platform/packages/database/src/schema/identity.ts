@@ -116,6 +116,42 @@ export const otpCodes = app.table(
   ],
 );
 
+/**
+ * Challenge pengganti alur non-enumerasi (PRD 2.5 "respons lupa sandi tidak mengungkap apakah email terdaftar";
+ * kontrak C1 forgotPassword, startWebDeletion, resendOtp, getOtpChallengeStatus, verifyPasswordResetOtp). Untuk email
+ * yang tidak memenuhi syarat, API mengembalikan challenge berbentuk sama tanpa mengirim email; baris ini menyimpan
+ * keadaannya agar status, kirim ulang (cooldown dan batas kirim per email yang sama), dan percobaan kode berperilaku
+ * persis seperti challenge nyata. Tidak ada akun, kode, atau email mentah: `email_key` = HMAC-SHA256 secret server
+ * atas email ternormalisasi (kunci kuota kirim yang sama dengan challenge nyata) dan `email_masked` hanya bentuk
+ * tersamar yang juga dikembalikan ke peminta (N-09, PRD 5.5). Kode tidak pernah ada, sehingga verifikasi selalu
+ * "kode salah" sampai percobaan habis.
+ */
+export const otpDecoys = app.table(
+  "otp_decoys",
+  {
+    id: id(), // challenge_id yang dikembalikan ke klien
+    purpose: otpPurpose("purpose").notNull(),
+    emailKey: text("email_key").notNull(),
+    emailMasked: text("email_masked").notNull(),
+    attempts: smallint("attempts").notNull().default(0),
+    expiresAt: tstz("expires_at").notNull(),
+    resendAvailableAt: tstz("resend_available_at").notNull(),
+    supersededAt: tstz("superseded_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    // Satu challenge pengganti aktif per email dan tujuan, cermin otp_codes_active_key. Penerbit mengunci advisory
+    // (email_key, tujuan) sebelum supersede + insert agar penerbit bersamaan berurutan.
+    uniqueIndex("otp_decoys_active_key")
+      .on(t.emailKey, t.purpose)
+      .where(sql`${t.supersededAt} is null`),
+    index("otp_decoys_created_at_idx").on(t.createdAt),
+    check("otp_decoys_attempts_chk", sql`${t.attempts} between 0 and 5`),
+    check("otp_decoys_purpose_chk", sql`${t.purpose} in ('password_reset','deletion')`),
+    check("otp_decoys_email_key_chk", sql`char_length(${t.emailKey}) = 64`),
+  ],
+);
+
 /** Sesi refresh dengan rotasi keluarga (AC F02-3), audience terpisah, MFA level, dan reautentikasi (F-14, F-16). */
 export const sessions = app.table(
   "sessions",
