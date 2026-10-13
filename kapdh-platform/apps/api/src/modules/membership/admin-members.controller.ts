@@ -15,7 +15,12 @@ import { UuidParam } from "../../core/validation/uuid-param.pipe.js";
 import { validate } from "../../core/validation/validate.js";
 import { AdminMembersService } from "./admin-members.service.js";
 import { MemberPasswordResetService } from "./member-password-reset.service.js";
-import { ADMIN_MEMBER_UPDATE_KEYS, adminMemberUpdateSchema, assertKnownFields } from "./profile-input.js";
+import {
+  ADMIN_MEMBER_UPDATE_KEYS,
+  adminMemberUpdateSchema,
+  assertHasChange,
+  assertKnownFields,
+} from "./profile-input.js";
 
 type AdminMemberPage = components["schemas"]["AdminMemberPage"];
 type AdminMemberDetail = components["schemas"]["AdminMemberDetail"];
@@ -104,8 +109,9 @@ export class AdminMembersController {
   ): Promise<AdminMemberDetail> {
     const expectedVersion = parseIfMatch(ifMatch);
     // AC F05-6: member_number, email, privasi dan field lain di luar skema ditolak sebelum apa pun berubah.
-    const known = assertKnownFields(body, ADMIN_MEMBER_UPDATE_KEYS, { identityEditable: true, minFields: 2 });
+    const known = assertKnownFields(body, ADMIN_MEMBER_UPDATE_KEYS, { identityEditable: true });
     const input = validate(adminMemberUpdateSchema, known);
+    assertHasChange(input, ["reason"]);
     return this.members.update(auth, userId, expectedVersion, input);
   }
 
