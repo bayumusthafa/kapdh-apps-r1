@@ -69,17 +69,21 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   AccountRepository get _repo => ref.read(accountRepositoryProvider);
 
-  List<TextEditingController> get _controllers => [
-    _city,
-    _phone,
-    _bio,
-    _eduInstitution,
-    _eduCity,
-    _instagram,
-    _x,
-    _facebook,
-    _linkedin,
+  /// Field teks formulir beserta nilainya di profil server: dipakai untuk mengisi formulir dan untuk mengenali
+  /// isian yang benar-benar diubah pengguna saat konflik versi (AC F15-4).
+  List<(TextEditingController, String? Function(Profile))> get _textFields => [
+    (_city, (p) => p.city),
+    (_phone, (p) => p.phone),
+    (_bio, (p) => p.bio),
+    (_eduInstitution, (p) => p.lastEducationInstitution),
+    (_eduCity, (p) => p.lastEducationCity),
+    (_instagram, (p) => p.socialInstagram),
+    (_x, (p) => p.socialX),
+    (_facebook, (p) => p.socialFacebook),
+    (_linkedin, (p) => p.socialLinkedin),
   ];
+
+  List<TextEditingController> get _controllers => [for (final (controller, _) in _textFields) controller];
 
   @override
   void initState() {
@@ -118,21 +122,47 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   void _fill(Me me) {
     final p = me.profile;
     _me = me;
-    _city.text = p.city ?? '';
-    _phone.text = p.phone ?? '';
-    _bio.text = p.bio ?? '';
-    _eduInstitution.text = p.lastEducationInstitution ?? '';
-    _eduCity.text = p.lastEducationCity ?? '';
-    _instagram.text = p.socialInstagram ?? '';
-    _x.text = p.socialX ?? '';
-    _facebook.text = p.socialFacebook ?? '';
-    _linkedin.text = p.socialLinkedin ?? '';
+    for (final (controller, value) in _textFields) {
+      controller.text = value(p) ?? '';
+    }
     _profession = p.profession;
     _skills = p.skills;
     _newAvatar = null;
     _uploadedAvatarId = null;
     _removeAvatar = false;
     _fieldErrors = const {};
+  }
+
+  /// "Pakai isian saya" setelah 409 VERSION_CONFLICT (AC F15-4, PRD 4.5): hanya field yang benar-benar diubah
+  /// pengguna terhadap versi yang ia buka diterapkan di atas [latest]. Field lain mengikuti versi terbaru, sehingga
+  /// simpan berikutnya (If-Match versi terbaru) tidak menimpa perubahan dari perangkat lain.
+  void _rebase(Me latest) {
+    final base = _me?.profile;
+    if (base == null) {
+      _fill(latest);
+      return;
+    }
+    final textEdits = [
+      for (final (controller, value) in _textFields)
+        if (_norm(controller.text) != value(base)) (controller, controller.text),
+    ];
+    final professionEdited = _profession?.id != base.profession?.id;
+    final profession = _profession;
+    final skillsEdited = !_sameSkills(_skills, base.skills);
+    final skills = _skills;
+    final newAvatar = _newAvatar;
+    final uploadedAvatarId = _uploadedAvatarId;
+    final removeAvatar = _removeAvatar;
+
+    _fill(latest);
+    for (final (controller, text) in textEdits) {
+      controller.text = text;
+    }
+    if (professionEdited) _profession = profession;
+    if (skillsEdited) _skills = skills;
+    _newAvatar = newAvatar;
+    _uploadedAvatarId = uploadedAvatarId;
+    _removeAvatar = removeAvatar;
   }
 
   static String? _norm(String value) {
@@ -339,10 +369,25 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   }
 
   /// 409 VERSION_CONFLICT (AC F15-4, PRD 4.5): profil diubah di perangkat lain. Pengguna memilih memuat versi
-  /// terbaru (isian dibuang) atau menerapkan isiannya di atas versi terbaru.
+  /// terbaru (isian dibuang) atau menerapkan perubahannya sendiri di atas versi terbaru ([_rebase]).
   Future<void> _onConflict(ApiException error) async {
     final current = error.current;
-    final latest = current is Map<String, Object?> ? Me.fromJson(current) : await _repo.getMe();
+    final Me latest;
+    if (current is Map<String, Object?>) {
+      latest = Me.fromJson(current);
+    } else {
+      try {
+        latest = await _repo.getMe();
+      } on ApiException catch (loadError) {
+        if (!mounted) return;
+        // Versi terbaru gagal dimuat (offline, 5xx): isian tetap utuh dan galat ditampilkan dengan "Coba lagi"
+        // yang memuat ulang versi terbaru lalu menawarkan pilihan konflik lagi (PRD 4.5).
+        unawaited(
+          ref.read(errorPresenterProvider).present(loadError, onRetry: () => unawaited(_onConflict(error))),
+        );
+        return;
+      }
+    }
     if (!mounted) return;
     final keepMine = await showDialog<bool>(
       context: context,
@@ -350,8 +395,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Profil diubah di perangkat lain'),
         content: const Text(
-          'Profil Anda baru saja diubah dari perangkat lain. Muat versi terbaru, atau terapkan isian Anda di atas '
-          'versi terbaru lalu simpan lagi.',
+          'Profil Anda baru saja diubah dari perangkat lain. Muat versi terbaru, atau terapkan hanya isian yang '
+          'Anda ubah di atas versi terbaru lalu simpan lagi.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Muat terbaru')),
@@ -362,7 +407,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     if (!mounted) return;
     setState(() {
       if (keepMine ?? false) {
-        _me = latest;
+        _rebase(latest);
       } else {
         _fill(latest);
       }
