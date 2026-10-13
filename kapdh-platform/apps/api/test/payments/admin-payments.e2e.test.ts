@@ -1,11 +1,4 @@
-import {
-  alumni,
-  auditLogs,
-  membershipEvents,
-  notifications,
-  outboxEvents,
-  payments,
-} from "@kapdh/database";
+import { alumni, auditLogs, membershipEvents, notifications, outboxEvents, payments } from "@kapdh/database";
 import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -25,6 +18,7 @@ import {
   reviewablePayment,
   submitProof,
   uploadProof,
+  type JsonBody,
 } from "./support.js";
 
 /**
@@ -55,7 +49,7 @@ describe("POST /admin/payments/{id}/decision (AC F04-1 sampai F04-5)", () => {
     const payment = await reviewablePayment(t, member);
     const admin = await adminSession(t);
     const res = await decide(t, admin, payment.paymentId, approveBody(payment));
-    const body = expectOperation("post", "/admin/payments/{paymentId}/decision", res) as Record<string, any>;
+    const body = expectOperation("post", "/admin/payments/{paymentId}/decision", res) as JsonBody;
     const now = t.clock.now();
     expect(body).toMatchObject({
       status: "paid",
@@ -89,9 +83,9 @@ describe("POST /admin/payments/{id}/decision (AC F04-1 sampai F04-5)", () => {
       .select()
       .from(outboxEvents)
       .where(eq(outboxEvents.topic, "notification.created"));
-    expect(outbox.some((e) => (e.payload as { notification_id?: string }).notification_id === inbox!.id)).toBe(
-      true,
-    );
+    expect(
+      outbox.some((e) => (e.payload as { notification_id?: string }).notification_id === inbox!.id),
+    ).toBe(true);
   });
 
   it("AC F04-2: alasan tolak kosong atau hanya spasi ditolak 400; alasan valid tersedia untuk pemilik dan pengurus", async () => {
@@ -105,7 +99,10 @@ describe("POST /admin/payments/{id}/decision (AC F04-1 sampai F04-5)", () => {
         expected_version: payment.version,
         ...(reason === undefined ? {} : { reason }),
       });
-      expect(expectOperation("post", "/admin/payments/{paymentId}/decision", res), String(reason)).toMatchObject({
+      expect(
+        expectOperation("post", "/admin/payments/{paymentId}/decision", res),
+        String(reason),
+      ).toMatchObject({
         code: "VALIDATION_ERROR",
         field_errors: { reason: expect.any(Array) },
       });
@@ -166,7 +163,7 @@ describe("POST /admin/payments/{id}/decision (AC F04-1 sampai F04-5)", () => {
       "get",
       "/admin/payments/{paymentId}",
       await api().get(`/admin/payments/${payment.paymentId}`, { token: admin.token }),
-    ) as Record<string, any>;
+    ) as JsonBody;
     const replaced = await submitProof(t, member, payment.paymentId, 1);
     const stale = await decide(t, admin, payment.paymentId, {
       decision: "approve",
@@ -212,7 +209,9 @@ describe("POST /admin/payments/{id}/decision (AC F04-1 sampai F04-5)", () => {
       await t.db.select().from(notifications).where(eq(notifications.userId, member.userId)),
     ).toHaveLength(1);
     const [profile] = await t.db.select().from(alumni).where(eq(alumni.userId, member.userId));
-    const replay = await decide(t, admin, payment.paymentId, approveBody(payment), { "idempotency-key": key });
+    const replay = await decide(t, admin, payment.paymentId, approveBody(payment), {
+      "idempotency-key": key,
+    });
     expect(replay.statusCode).toBe(200);
     expect(replay.headers["idempotent-replayed"]).toBe("true");
     const retry = await decide(t, admin, payment.paymentId, approveBody(payment));
@@ -253,14 +252,18 @@ describe("POST /admin/payments/{id}/decision (AC F04-1 sampai F04-5)", () => {
   it("PRD 2.3: pengurus tidak dapat memutus payment akun alumni tertautnya (403); detail menandai konflik", async () => {
     const member = await memberSession(t);
     const payment = await reviewablePayment(t, member);
-    const linked = await adminSession(t, ["payments.read", "payments.decide"], { linkedAlumniUserId: member.userId });
+    const linked = await adminSession(t, ["payments.read", "payments.decide"], {
+      linkedAlumniUserId: member.userId,
+    });
     const detail = await api().get(`/admin/payments/${payment.paymentId}`, { token: linked.token });
     expect(expectOperation("get", "/admin/payments/{paymentId}", detail)).toMatchObject({
       conflict_of_interest: true,
       actions: { can_decide: false, can_cancel: false, can_adjust: false },
     });
     const res = await decide(t, linked, payment.paymentId, approveBody(payment));
-    expect(expectOperation("post", "/admin/payments/{paymentId}/decision", res)).toMatchObject({ code: "FORBIDDEN" });
+    expect(expectOperation("post", "/admin/payments/{paymentId}/decision", res)).toMatchObject({
+      code: "FORBIDDEN",
+    });
     const [row] = await t.db.select().from(payments).where(eq(payments.id, payment.paymentId));
     expect(row!.status).toBe("pending");
   });
@@ -272,14 +275,18 @@ describe("POST /admin/payments/{id}/decision (AC F04-1 sampai F04-5)", () => {
     const content = await adminSession(t, ["content.manage"]);
     const decision = approveBody(payment);
     expect((await decide(t, reader, payment.paymentId, decision)).json().code).toBe("FORBIDDEN");
-    for (const url of ["/admin/payments", "/admin/payments/summary", `/admin/payments/${payment.paymentId}`]) {
+    for (const url of [
+      "/admin/payments",
+      "/admin/payments/summary",
+      `/admin/payments/${payment.paymentId}`,
+    ]) {
       const res = await api().get(url, { token: content.token });
       expect(res.statusCode, url).toBe(403);
       expect((await api().get(url, { token: member.token })).statusCode, url).toBeOneOf([401, 403]);
     }
-    expect((await decide(t, { ...reader, token: member.token }, payment.paymentId, decision)).statusCode).toBeOneOf([
-      401, 403,
-    ]);
+    expect(
+      (await decide(t, { ...reader, token: member.token }, payment.paymentId, decision)).statusCode,
+    ).toBeOneOf([401, 403]);
     const missing = await decide(t, await adminSession(t), uuidv7(), decision);
     expect(missing.statusCode).toBe(404);
   });
@@ -301,14 +308,14 @@ describe("GET /admin/payments dan /summary (F-04, F-15)", () => {
         token: admin.token,
         query: { stage: "awaiting_review" },
       });
-      const page = expectOperation("get", "/admin/payments", list) as { items: any[]; total: number };
+      const page = expectOperation("get", "/admin/payments", list) as { items: JsonBody[]; total: number };
       expect(page.items.map((i) => i.id)).toEqual([older.paymentId, newer.paymentId]);
       expect(page.total).toBe(2);
       const summary = expectOperation(
         "get",
         "/admin/payments/summary",
         await httpClient(t2.app).get("/admin/payments/summary", { token: admin.token }),
-      ) as Record<string, any>;
+      ) as JsonBody;
       expect(summary).toMatchObject({
         awaiting_review_count: 2,
         awaiting_transfer_count: 1,
@@ -323,7 +330,9 @@ describe("GET /admin/payments dan /summary (F-04, F-15)", () => {
         event_cancelled: null,
       });
       // Selasa 09.00 WIB + 1 hari kerja = Rabu 09.00 WIB.
-      expect(page.items[0].review_due_at).toBe(new Date(Date.parse(page.items[0].submitted_at) + DAY).toISOString());
+      expect(page.items[0].review_due_at).toBe(
+        new Date(Date.parse(page.items[0].submitted_at) + DAY).toISOString(),
+      );
       t2.clock.advance(DAY - HOUR / 2);
       // Sesi admin idle > 30 menit dicabut (ADMIN_IDLE_MS); masuk ulang setelah jam dimajukan.
       admin = await adminSession(t2);
@@ -337,7 +346,8 @@ describe("GET /admin/payments dan /summary (F-04, F-15)", () => {
       ).json();
       expect(notOverdue.items.map((i: { id: string }) => i.id)).not.toContain(older.paymentId);
       expect(
-        (await httpClient(t2.app).get("/admin/payments/summary", { token: admin.token })).json().overdue_count,
+        (await httpClient(t2.app).get("/admin/payments/summary", { token: admin.token })).json()
+          .overdue_count,
       ).toBe(1);
 
       const search = (
@@ -387,7 +397,10 @@ describe("GET /admin/payments dan /summary (F-04, F-15)", () => {
           query: { sort: "review_due_at_asc" },
         })
       ).json();
-      expect(due.items.map((i: { id: string }) => i.id).slice(0, 2)).toEqual([older.paymentId, newer.paymentId]);
+      expect(due.items.map((i: { id: string }) => i.id).slice(0, 2)).toEqual([
+        older.paymentId,
+        newer.paymentId,
+      ]);
     } finally {
       await t2.app.close();
     }
@@ -402,7 +415,7 @@ describe("GET /admin/payments dan /summary (F-04, F-15)", () => {
       "get",
       "/admin/payments/{paymentId}",
       await api().get(`/admin/payments/${payment.paymentId}`, { token: admin.token }),
-    ) as Record<string, any>;
+    ) as JsonBody;
     expect(detail).toMatchObject({
       proof: { file_id: replaced.proof_file_id, version: 2, mime: "image/jpeg" },
       transfer_note: "BSI a.n. Alumni Uji",
@@ -421,7 +434,8 @@ describe("GET /admin/payments dan /summary (F-04, F-15)", () => {
     }
     const otherMember = await memberSession(t);
     expect(
-      (await api().get(`/files/${proofEvents[0].proof_file_id}/access`, { token: otherMember.token })).statusCode,
+      (await api().get(`/files/${proofEvents[0].proof_file_id}/access`, { token: otherMember.token }))
+        .statusCode,
     ).toBe(404);
   });
 });
@@ -442,11 +456,15 @@ describe("POST /admin/payments/{id}/cancel (PRD 4.3)", () => {
       { reason: "Instruksi ditinggalkan" },
       { token: admin.token, headers: { "if-match": instruction.version } },
     );
-    const body = expectOperation("post", "/admin/payments/{paymentId}/cancel", res) as Record<string, any>;
+    const body = expectOperation("post", "/admin/payments/{paymentId}/cancel", res) as JsonBody;
     expect(body).toMatchObject({ status: "cancelled", cancel_reason: "Instruksi ditinggalkan" });
     expect(body.events.at(-1)).toMatchObject({ kind: "cancelled", actor: "admin" });
     const owner = (await api().get(`/me/payments/${instruction.paymentId}`, { token: member.token })).json();
-    expect(owner.events.at(-1)).toMatchObject({ kind: "cancelled", actor: "admin", reason: "Instruksi ditinggalkan" });
+    expect(owner.events.at(-1)).toMatchObject({
+      kind: "cancelled",
+      actor: "admin",
+      reason: "Instruksi ditinggalkan",
+    });
 
     const other = await memberSession(t);
     const proofed = await reviewablePayment(t, other);
@@ -497,9 +515,14 @@ describe("POST /admin/payments: pencatatan iuran di luar aplikasi (D13)", () => 
     const res = await api().post("/admin/payments", await recordBody(member.userId, admin.token), {
       token: admin.token,
     });
-    const body = expectOperation("post", "/admin/payments", res) as Record<string, any>;
+    const body = expectOperation("post", "/admin/payments", res) as JsonBody;
     expect(res.statusCode).toBe(201);
-    expect(body).toMatchObject({ status: "paid", amount: "60000.00", proof_version: 1, period: expect.any(Object) });
+    expect(body).toMatchObject({
+      status: "paid",
+      amount: "60000.00",
+      proof_version: 1,
+      period: expect.any(Object),
+    });
     expect(body.events.map((e: { kind: string; actor: string }) => `${e.kind}:${e.actor}`)).toEqual([
       "created:admin",
       "proof_submitted:admin",
@@ -510,7 +533,9 @@ describe("POST /admin/payments: pencatatan iuran di luar aplikasi (D13)", () => 
     // Bukti dan catatan pengurus tidak dibuka kepada anggota (N-09).
     expect(owner).toMatchObject({ status: "paid", proof_file_id: null, transfer_note: null });
     expect(owner.events[0].reason).toBeNull();
-    expect((await api().get(`/files/${body.proof.file_id}/access`, { token: member.token })).statusCode).toBe(404);
+    expect((await api().get(`/files/${body.proof.file_id}/access`, { token: member.token })).statusCode).toBe(
+      404,
+    );
     const [audit] = await t.db
       .select()
       .from(auditLogs)
@@ -527,7 +552,7 @@ describe("POST /admin/payments: pencatatan iuran di luar aplikasi (D13)", () => 
       token: admin.token,
     });
     expect(inPlace.statusCode).toBe(200);
-    const body = expectOperation("post", "/admin/payments", inPlace) as Record<string, any>;
+    const body = expectOperation("post", "/admin/payments", inPlace) as JsonBody;
     expect(body).toMatchObject({ id: instruction.paymentId, status: "paid" });
     expect(body.events.map((e: { kind: string }) => e.kind)).toEqual([
       "created",
@@ -600,13 +625,13 @@ describe("POST /admin/payments: pencatatan iuran di luar aplikasi (D13)", () => 
       { token: admin.token },
     );
     expect(expectOperation("post", "/admin/payments", foreignFile)).toMatchObject({ code: "FILE_INVALID" });
-    const linked = await adminSession(t, ["payments.read", "payments.decide"], { linkedAlumniUserId: member.userId });
+    const linked = await adminSession(t, ["payments.read", "payments.decide"], {
+      linkedAlumniUserId: member.userId,
+    });
     const conflict = await api().post("/admin/payments", await recordBody(member.userId, linked.token), {
       token: linked.token,
     });
     expect(conflict.json().code).toBe("FORBIDDEN");
-    expect(
-      await t.db.select().from(payments).where(eq(payments.userId, member.userId)),
-    ).toHaveLength(0);
+    expect(await t.db.select().from(payments).where(eq(payments.userId, member.userId))).toHaveLength(0);
   });
 });

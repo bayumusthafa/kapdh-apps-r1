@@ -35,6 +35,12 @@ import { uploadTestFile } from "../support/files.js";
 import { httpClient } from "../support/http.js";
 import { createTestApp, type TestApp, type TestAppOptions } from "../support/test-app.js";
 
+/**
+ * Body JSON hasil parse untuk asersi uji, bertipe longgar seperti JSON.parse / res.json(); bentuknya sudah divalidasi
+ * terhadap kontrak lewat expectOperation sebelum diperiksa.
+ */
+export type JsonBody = ReturnType<typeof JSON.parse>;
+
 const HOUR_MS = 3600_000;
 const DAY_MS = 24 * HOUR_MS;
 
@@ -63,7 +69,11 @@ export class TestTicketHandler implements OnModuleInit {
           .where(eq(tickets.id, payment.ticketId));
         if (!ticket) return;
         await tx.select({ id: events.id }).from(events).where(eq(events.id, ticket.eventId)).for("update");
-        await tx.select({ id: tickets.id }).from(tickets).where(eq(tickets.id, payment.ticketId)).for("update");
+        await tx
+          .select({ id: tickets.id })
+          .from(tickets)
+          .where(eq(tickets.id, payment.ticketId))
+          .for("update");
       },
       onProofSubmitted: async (tx, payment) => {
         const ticket = await this.ticket(tx, payment);
@@ -106,7 +116,12 @@ export class TestTicketHandler implements OnModuleInit {
         const [event] = await tx.select().from(events).where(eq(events.id, ticket.eventId));
         if (
           ticket.cancelledAt &&
-          fullRefundForCancelledTicket({ ownerPresent: payment.userId !== null, ticket, event: event!, selfCancelDays: 3 })
+          fullRefundForCancelledTicket({
+            ownerPresent: payment.userId !== null,
+            ticket,
+            event: event!,
+            selfCancelDays: 3,
+          })
         )
           return {
             refund: {
@@ -136,7 +151,12 @@ export class TestTicketHandler implements OnModuleInit {
     const at = new Date(TestTicketHandler.clockNow());
     await tx
       .update(tickets)
-      .set({ status: "cancelled", cancelledAt: at, cancelledBy: by, cancelReason: "Pembayaran tidak diterima" })
+      .set({
+        status: "cancelled",
+        cancelledAt: at,
+        cancelledBy: by,
+        cancelReason: "Pembayaran tidak diterima",
+      })
       .where(eq(tickets.id, ticket.id));
     await tx
       .update(events)
@@ -150,7 +170,10 @@ export class TestTicketHandlerModule {}
 
 /** Aplikasi uji payments: handler tiket penguji memakai TestClock aplikasi. */
 export async function createPaymentsApp(options: TestAppOptions = {}): Promise<TestApp> {
-  const t = await createTestApp({ ...options, extraModules: [TestTicketHandlerModule, ...(options.extraModules ?? [])] });
+  const t = await createTestApp({
+    ...options,
+    extraModules: [TestTicketHandlerModule, ...(options.extraModules ?? [])],
+  });
   TestTicketHandler.clockNow = () => t.clock.now().getTime();
   return t;
 }
@@ -282,7 +305,10 @@ export function decide(
   body: Record<string, unknown>,
   headers: Record<string, string> = {},
 ) {
-  return httpClient(t.app).post(`/admin/payments/${paymentId}/decision`, body, { token: admin.token, headers });
+  return httpClient(t.app).post(`/admin/payments/${paymentId}/decision`, body, {
+    token: admin.token,
+    headers,
+  });
 }
 
 /** Menjalankan fn di konteks request penguji (aktor anggota/pengurus/sistem) untuk memanggil kernel langsung. */

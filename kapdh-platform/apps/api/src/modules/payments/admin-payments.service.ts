@@ -1,10 +1,29 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
 import { alumni, events, payments, tickets, users } from "@kapdh/database";
-import { and, type AnyColumn, count, eq, gte, ilike, inArray, like, lt, or, type SQL, sql } from "drizzle-orm";
+import {
+  and,
+  type AnyColumn,
+  count,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  like,
+  lt,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import { z } from "zod";
 import type { Db, Tx } from "../../core/db/types.js";
-import { AppException, fieldError, forbidden, notFound, versionConflict } from "../../core/errors/app-exception.js";
+import {
+  AppException,
+  fieldError,
+  forbidden,
+  notFound,
+  versionConflict,
+} from "../../core/errors/app-exception.js";
 import { FilesService } from "../../core/files/files.service.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
 import { MembershipKernel } from "../../core/membership/membership.kernel.js";
@@ -73,7 +92,9 @@ export const recordPaymentSchema = z.object({
   payment_method_id: z.uuid("Pilih rekening tujuan"),
   proof_file_id: z.uuid("Unggah bukti verifikasi"),
   transfer_note: z.string().max(200, "Catatan maksimal 200 karakter").optional(),
-  funds_verified: z.literal(true, { message: "Konfirmasi bahwa dana sudah dicocokkan dengan mutasi rekening." }),
+  funds_verified: z.literal(true, {
+    message: "Konfirmasi bahwa dana sudah dicocokkan dengan mutasi rekening.",
+  }),
   reason: reasonText("Catatan verifikasi"),
 });
 
@@ -108,7 +129,11 @@ const FILE_INVALID_MESSAGE =
 
 /** Pemanggil pengurus dari AuthContext (izin dari database request ini). */
 export function adminViewerOf(auth: AuthContext): AdminViewer {
-  return { adminId: auth.adminId, permissions: auth.permissions, linkedAlumniUserId: auth.linkedAlumniUserId };
+  return {
+    adminId: auth.adminId,
+    permissions: auth.permissions,
+    linkedAlumniUserId: auth.linkedAlumniUserId,
+  };
 }
 
 /** 403 konflik kepentingan (PRD 2.3). */
@@ -315,7 +340,10 @@ export class AdminPaymentsService {
         .limit(1);
       const member = await this.membership.effectiveStatusFor(input.user_id, { db: tx, now });
       if (!user || user.kind !== "alumni" || user.status !== "active" || !member)
-        throw fieldError("user_id", "Akun alumni tidak ditemukan, belum aktif, atau sedang dalam proses penghapusan.");
+        throw fieldError(
+          "user_id",
+          "Akun alumni tidak ditemukan, belum aktif, atau sedang dalam proses penghapusan.",
+        );
       if (member.status === "suspended")
         throw fieldError("user_id", "Akun anggota sedang dibatasi; iuran tidak dapat dicatat.");
       const eligibility = duesEligibility(input.type, member.expiresAt, now);
@@ -410,7 +438,10 @@ export class AdminPaymentsService {
 }
 
 /** Kunci urut dan arah per pilihan `sort` (nilai kosong di akhir). */
-function sortKey(sort: PaymentSort, due: SQL<Date | null>): { key: SQL | AnyColumn; direction: SortDirection } {
+function sortKey(
+  sort: PaymentSort,
+  due: SQL<Date | null>,
+): { key: SQL | AnyColumn; direction: SortDirection } {
   switch (sort) {
     case "submitted_at_asc":
       return { key: payments.submittedAt, direction: "asc" };
@@ -425,10 +456,7 @@ function sortKey(sort: PaymentSort, due: SQL<Date | null>): { key: SQL | AnyColu
   }
 }
 
-function sortValue(
-  sort: PaymentSort,
-  row: { payment: PaymentRow; reviewDueAt: Date | null },
-): Date | null {
+function sortValue(sort: PaymentSort, row: { payment: PaymentRow; reviewDueAt: Date | null }): Date | null {
   switch (sort) {
     case "submitted_at_asc":
     case "submitted_at_desc":

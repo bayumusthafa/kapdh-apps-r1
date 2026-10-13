@@ -66,7 +66,9 @@ export function methodSnapshotOf(row: PaymentMethodRow): MethodSnapshot {
 }
 
 /** Membaca snapshot metode tersimpan; data lama tanpa `id` memakai metode asal payment. */
-export function readMethodSnapshot(payment: Pick<PaymentRow, "methodSnapshot" | "paymentMethodId">): MethodSnapshot {
+export function readMethodSnapshot(
+  payment: Pick<PaymentRow, "methodSnapshot" | "paymentMethodId">,
+): MethodSnapshot {
   const raw = (payment.methodSnapshot ?? {}) as Partial<MethodSnapshot>;
   return {
     id: raw.id ?? payment.paymentMethodId ?? "00000000-0000-0000-0000-000000000000",
@@ -91,11 +93,18 @@ export function readLineSnapshot(payment: Pick<PaymentRow, "linesSnapshot">): Li
  * Baris dan total iuran dari pengaturan `fees` versi aktif (D4, AC F03-1): registration = register alumni baru +
  * pembuatan KTA; renewal = perpanjangan KTA per tahun. Nilai klien tidak pernah dipakai (PRD 3.3).
  */
-export function duesLines(fees: SettingValue<"fees">, type: DuesType): { lines: LineSnapshot[]; total: string } {
+export function duesLines(
+  fees: SettingValue<"fees">,
+  type: DuesType,
+): { lines: LineSnapshot[]; total: string } {
   const lines: LineSnapshot[] =
     type === "registration"
       ? [
-          { code: "registration_fee", label: LINE_LABELS.registration_fee, amount: money(fees.registration_fee) },
+          {
+            code: "registration_fee",
+            label: LINE_LABELS.registration_fee,
+            amount: money(fees.registration_fee),
+          },
           { code: "card_fee", label: LINE_LABELS.card_fee, amount: money(fees.card_fee) },
         ]
       : [{ code: "renewal_fee", label: LINE_LABELS.renewal_fee, amount: money(fees.renewal_fee) }];
@@ -259,10 +268,12 @@ export function fullRefundForCancelledTicket(input: {
   selfCancelDays: number;
 }): boolean {
   const { ticket, event } = input;
-  if (!input.ownerPresent || !ticket || !event || ticket.status !== "cancelled" || !ticket.cancelledAt) return false;
+  if (!input.ownerPresent || !ticket || !event || ticket.status !== "cancelled" || !ticket.cancelledAt)
+    return false;
   if (ticket.cancelledBy === "self")
     return (
-      ticket.cancelledAt.getTime() <= selfCancelFullRefundUntil(event.startsAt, input.selfCancelDays).getTime()
+      ticket.cancelledAt.getTime() <=
+      selfCancelFullRefundUntil(event.startsAt, input.selfCancelDays).getTime()
     );
   if (event.status !== "cancelled" || ticket.cancelledBy === "admin") return false;
   return !event.cancelledAt || ticket.cancelledAt.getTime() >= event.cancelledAt.getTime();

@@ -75,7 +75,11 @@ export const adjustmentListQuery = z.object({
   sort: z.enum(["due_at_asc", "created_at_desc"]).optional(),
 });
 
-const cursorSchema = z.object({ s: z.enum(["due_at_asc", "created_at_desc"]), k: z.string().nullable(), id: z.uuid() });
+const cursorSchema = z.object({
+  s: z.enum(["due_at_asc", "created_at_desc"]),
+  k: z.string().nullable(),
+  id: z.uuid(),
+});
 
 /**
  * Penyesuaian refund dan koreksi atas payment paid (PRD 3.4, 4.3, D6, D2): paid tidak pernah diubah; penyesuaian
@@ -105,8 +109,12 @@ export class AdminAdjustmentsService {
       filters.payment_id ? eq(paymentAdjustments.paymentId, filters.payment_id) : undefined,
       filters.overdue === true ? overdue : undefined,
       filters.overdue === false ? sql`not ${overdue}` : undefined,
-      filters.has_refund_destination === true ? sql`${paymentAdjustments.refundDestination} is not null` : undefined,
-      filters.has_refund_destination === false ? sql`${paymentAdjustments.refundDestination} is null` : undefined,
+      filters.has_refund_destination === true
+        ? sql`${paymentAdjustments.refundDestination} is not null`
+        : undefined,
+      filters.has_refund_destination === false
+        ? sql`${paymentAdjustments.refundDestination} is null`
+        : undefined,
       filters.q
         ? or(
             ilike(alumni.fullName, `%${escapeLike(filters.q)}%`),
@@ -256,7 +264,10 @@ export class AdminAdjustmentsService {
       const { payment, adjustment } = await this.lockPair(tx, target);
       const current = () => this.views.adminAdjustmentDetail(tx, adjustmentId, viewer);
       if (adjustment.status !== "pending")
-        throw paymentStateConflict("Penyesuaian yang sudah selesai atau dibatalkan tidak dapat diubah.", await current());
+        throw paymentStateConflict(
+          "Penyesuaian yang sudah selesai atau dibatalkan tidak dapat diubah.",
+          await current(),
+        );
       if (adjustment.version !== expectedVersion) throw versionConflict(await current());
       if (input.refund_destination !== undefined && adjustment.kind !== "refund")
         throw fieldError("refund_destination", "Rekening tujuan hanya untuk refund.");
@@ -450,9 +461,15 @@ export class AdminAdjustmentsService {
   }
 
   /** Aturan nominal sama dengan pembuatan: refund > 0 dan total refund <= nominal payment; koreksi >= 0. */
-  private async assertAmount(tx: Tx, payment: PaymentRow, adjustment: AdjustmentRow, value: string): Promise<void> {
+  private async assertAmount(
+    tx: Tx,
+    payment: PaymentRow,
+    adjustment: AdjustmentRow,
+    value: string,
+  ): Promise<void> {
     if (adjustment.kind !== "refund") return;
-    const remaining = toCents(payment.amount) - (await this.ledger.refundedCents(tx, payment.id, adjustment.id));
+    const remaining =
+      toCents(payment.amount) - (await this.ledger.refundedCents(tx, payment.id, adjustment.id));
     const requested = toCents(value);
     if (requested <= 0n || requested > remaining)
       throw fieldError(
@@ -512,4 +529,3 @@ export function formatRupiah(value: string): string {
   const fraction = cents % 100n;
   return fraction === 0n ? `Rp${whole}` : `Rp${whole},${fraction.toString().padStart(2, "0")}`;
 }
-
