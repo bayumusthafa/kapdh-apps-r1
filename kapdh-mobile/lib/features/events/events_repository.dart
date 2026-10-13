@@ -65,6 +65,10 @@ class EventsRepository {
     );
   }
 
+  /// Hasil reservasi yang tertunda karena jaringan putus sudah diketahui lewat detail event (tiket aktif ada): key
+  /// dilepas agar pendaftaran ulang kelak (sesudah tiket ini berakhir/dibatalkan) tidak memutar ulang hasil lama.
+  Future<void> completeReservation(String eventId) => _idempotency.complete(reserveIntent(eventId));
+
   Future<CursorPage<TicketSummary>> listMyTickets({required TicketListView view, String? cursor}) async {
     final page = await _events.listMyTickets(view: view, cursor: cursor, limit: pageSize);
     return (items: page.items, nextCursor: page.nextCursor);

@@ -80,7 +80,7 @@ class _TicketContent extends ConsumerWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s8),
       children: [
-        _EventHeader(ticket: ticket),
+        _EventHeader(ticket: ticket, canOpenEvent: active),
         const SizedBox(height: KapdhSpace.s4),
         ..._statusSection(context, ref, active),
         if (payment != null) ...[
@@ -244,19 +244,22 @@ class _TicketContent extends ConsumerWidget {
     if (reason == null) return;
     final expectedRefundEligible = ticket.refundEligible;
     final error = await controller.cancel(expectedRefundEligible: expectedRefundEligible, reason: reason);
+    if (!context.mounted) return;
+    final current = ref.read(ticketDetailControllerProvider(ticket.id)).ticket;
     if (error == null) {
-      final refundPending = controller.state.ticket?.refunds.any((r) => r.status == TicketRefundStatus.pending);
+      final refundPending = current?.refunds.any((r) => r.status == TicketRefundStatus.pending) ?? false;
       showAppSnackBar(
         ref,
-        refundPending == true
+        refundPending
             ? 'Tiket dibatalkan. Refund penuh diproses bendahara paling lambat $refundBusinessDays hari kerja; '
                   'rekening tujuan diminta di halaman pembayaran.'
+            : ticket.status == TicketStatus.awaitingPayment
+            ? 'Reservasi dibatalkan dan kursi dilepas. Jangan transfer untuk reservasi ini.'
             : 'Tiket dibatalkan dan kursi Anda dilepas.',
       );
       return;
     }
     final presenter = ref.read(errorPresenterProvider);
-    final current = controller.state.ticket;
     switch (error.code) {
       case ErrorCode.versionConflict:
         final refundLost = expectedRefundEligible && current != null && !current.refundEligible;
@@ -345,9 +348,13 @@ String _cancelledText(TicketDetail ticket) {
 }
 
 class _EventHeader extends StatelessWidget {
-  const _EventHeader({required this.ticket});
+  const _EventHeader({required this.ticket, required this.canOpenEvent});
 
   final TicketDetail ticket;
+
+  /// Detail event dibuka dari tab Event yang hanya untuk anggota aktif (matriks rute PRD 2.2); anggota expired
+  /// melihat jadwal dan lokasi di kartu ini.
+  final bool canOpenEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -407,13 +414,15 @@ class _EventHeader extends StatelessWidget {
                   color: KapdhColors.text,
                   size: 13,
                 ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    onPressed: () => unawaited(context.push(AppRoutes.event(event.id))),
-                    child: const Text('Lihat detail event'),
+                if (canOpenEvent)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      key: const ValueKey('ticket-open-event'),
+                      onPressed: () => unawaited(context.push(AppRoutes.event(event.id))),
+                      child: const Text('Lihat detail event'),
+                    ),
                   ),
-                ),
               ],
             ),
           ),

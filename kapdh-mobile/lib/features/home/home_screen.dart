@@ -36,17 +36,18 @@ class HomeScreen extends ConsumerWidget {
     final unread = active
         ? ref.watch(homeControllerProvider.select((state) => state.home?.quickAccess.unreadNotificationCount))
         : null;
+    // Beranda tidak memakai AppScaffold; pita global Offline/Pemeliharaan dipasang sendiri tepat di bawah kepala.
     final banner = AppBannerScope.of(context);
     return Scaffold(
       backgroundColor: KapdhColors.background,
+      appBar: HomeHeader(
+        name: name,
+        unreadCount: unread,
+        onNotifications: () => unawaited(context.push(AppRoutes.notifications)),
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          HomeHeader(
-            name: name,
-            unreadCount: unread,
-            onNotifications: () => unawaited(context.push(AppRoutes.notifications)),
-          ),
           ?banner,
           Expanded(
             child: SafeArea(
@@ -276,14 +277,14 @@ class _GatedHome extends StatelessWidget {
         'KTA Anda belum aktif',
         'Selesaikan iuran pendaftaran agar pengurus dapat memverifikasi keanggotaan. Setelah KTA aktif, berita, '
             'event dan jejaring alumni terbuka di Beranda.',
-        'Bayar iuran',
+        'Selesaikan Iuran Pendaftaran',
         AppRoutes.onboardingFees,
       ),
       EffectiveStatus.expired => (
         'Masa keanggotaan berakhir',
         'Perpanjang KTA untuk kembali membuka berita, event, jejaring dan chat. Tiket event yang sudah lunas tetap '
             'berlaku dan dapat dibuka di Tiket Saya.',
-        'Perpanjang KTA',
+        'Perpanjang Keanggotaan',
         AppRoutes.renewal,
       ),
       _ => ('Beranda belum tersedia', 'Beranda belum tersedia untuk status akun Anda saat ini.', null, null),

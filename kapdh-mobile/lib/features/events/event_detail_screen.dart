@@ -14,7 +14,6 @@ import '../../design/design.dart';
 import '../home/shared/content_widgets.dart';
 import '../home/shared/links.dart';
 import '../home/shared/member_gate.dart';
-import '../home/shared/paged_list.dart';
 import '../home/shared/remote_image.dart';
 import 'event_format.dart';
 import 'events_controllers.dart';
@@ -61,9 +60,13 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             )
           : ErrorState.fromException(error, onRetry: () => unawaited(ref.read(provider.notifier).reload()));
     } else {
+      final showParticipants = isActiveMember(status);
       body = RefreshIndicator(
-        onRefresh: () => ref.read(provider.notifier).reload(),
-        child: _EventContent(event: event!, showParticipants: isActiveMember(status)),
+        onRefresh: () => Future.wait<Object?>([
+          ref.read(provider.notifier).reload(),
+          if (showParticipants) ref.read(participantsControllerProvider(widget.eventId).notifier).refresh(),
+        ]),
+        child: _EventContent(event: event!, showParticipants: showParticipants),
       );
     }
     return AppScaffold(
@@ -86,9 +89,10 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   /// metode bayar dan total, lalu ke layar pembayaran bersama (guideline hal. 8 "Detail Tiket").
   Future<void> _reserve(EventDetail event) async {
     if (!event.isFree) {
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => ReservationScreen(eventId: event.id)),
+      final done = await Navigator.of(context).push<ReservationDone>(
+        MaterialPageRoute<ReservationDone>(builder: (_) => ReservationScreen(eventId: event.id)),
       );
+      if (done != null && mounted) openReservationResult(context, ref, done);
       return;
     }
     final confirmed = await showDialog<bool>(
