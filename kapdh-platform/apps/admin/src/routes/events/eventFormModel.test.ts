@@ -138,7 +138,7 @@ describe("model formulir event (F-15, kontrak adminCreateEvent/adminUpdateEvent)
 
   it("PATCH hanya berisi field yang berubah; waktu yang sama dalam format berbeda tidak dianggap berubah", () => {
     const base = formFromDetail(DETAIL);
-    expect(toUpdateRequest(DETAIL, base, { lockPrice: false })).toEqual({});
+    expect(toUpdateRequest(DETAIL, base)).toEqual({});
     const edited = {
       ...base,
       title: "Reuni Akbar 2027",
@@ -146,16 +146,16 @@ describe("model formulir event (F-15, kontrak adminCreateEvent/adminUpdateEvent)
       starts_at: "2027-03-10T02:00:00Z",
       location_url: "",
     };
-    expect(toUpdateRequest(DETAIL, edited, { lockPrice: false })).toEqual({
+    expect(toUpdateRequest(DETAIL, edited)).toEqual({
       title: "Reuni Akbar 2027",
       seats_total: 120,
     });
   });
 
-  it("PRD 4.4: harga terkunci tidak pernah dikirim walau isian berubah", () => {
+  it("PRD 4.4, AC F03-5: harga event bertiket tetap dapat diubah (kontrak adminUpdateEvent) dan dikirim bila berubah", () => {
+    expect(DETAIL.has_tickets).toBe(true);
     const edited = { ...formFromDetail(DETAIL), price: "75000.00" };
-    expect(toUpdateRequest(DETAIL, edited, { lockPrice: true })).toEqual({});
-    expect(toUpdateRequest(DETAIL, edited, { lockPrice: false })).toEqual({ price: "75000.00" });
+    expect(toUpdateRequest(DETAIL, edited)).toEqual({ price: "75000.00" });
   });
 
   it("AC F13-6: perubahan jadwal, zona atau lokasi memberi notifikasi pemegang tiket; judul/kuota tidak", () => {

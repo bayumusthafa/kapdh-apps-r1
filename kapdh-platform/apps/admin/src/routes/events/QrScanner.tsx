@@ -4,8 +4,12 @@ import { Button } from "../../components/ui/Button";
 import { Select } from "../../components/ui/Input";
 import { Field } from "../../components/ui/FormField";
 
-/** Kode yang sama diabaikan selama jeda ini agar satu QR di depan kamera tidak dipindai berulang. */
-export const DUPLICATE_SCAN_WINDOW_MS = 3_000;
+/**
+ * Jendela geser kode yang sama (AC F09-5): selama QR yang sama terus terbaca (zxing membacanya kira-kira tiap
+ * 600 ms), kode itu diabaikan berapa lama pun peserta menahan ponselnya. Kode yang sama baru dikirim lagi setelah
+ * tidak terbaca selama jeda ini, misalnya ponsel diturunkan lalu ditunjukkan ulang.
+ */
+export const SAME_CODE_ABSENT_MS = 2_000;
 
 type ScannerState =
   { kind: "idle" } | { kind: "starting" } | { kind: "scanning" } | { kind: "error"; message: string };
@@ -29,8 +33,9 @@ export function cameraErrorMessage(e: unknown): string {
 /**
  * Pemindai QR kamera untuk check-in (AC F09-5, F09-6) memakai pustaka @zxing/browser yang dimuat lazy saat kamera
  * dinyalakan, sehingga bundel halaman lain tidak membawanya. Kamera belakang dipilih bawaan; perangkat lain dapat
- * dipilih setelah izin diberikan. Kode yang sama dalam {@link DUPLICATE_SCAN_WINDOW_MS} dan pemindaian selama
- * `paused` (permintaan check-in sedang berjalan) diabaikan. Kamera dimatikan saat komponen dilepas.
+ * dipilih setelah izin diberikan. Kode yang masih terbaca terus-menerus (lihat {@link SAME_CODE_ABSENT_MS}) dan
+ * pemindaian selama `paused` (permintaan check-in sedang berjalan) diabaikan, sehingga QR yang ditahan lama tidak
+ * berubah menjadi "Sudah check-in" palsu. Kamera dimatikan saat komponen dilepas.
  */
 export function QrScanner({
   onDecode,
@@ -97,11 +102,16 @@ export function QrScanner({
         constraints,
         videoRef.current ?? undefined,
         (result) => {
-          if (!result || pausedRef.current) return;
+          if (!result) return;
           const text = result.getText();
           const now = Date.now();
           const last = lastRef.current;
-          if (last && last.text === text && now - last.at < DUPLICATE_SCAN_WINDOW_MS) return;
+          if (last && last.text === text && now - last.at < SAME_CODE_ABSENT_MS) {
+            // Masih di depan kamera (juga selama permintaan berjalan): perpanjang jendela, jangan kirim ulang.
+            last.at = now;
+            return;
+          }
+          if (pausedRef.current) return;
           lastRef.current = { text, at: now };
           onDecodeRef.current(text);
         },

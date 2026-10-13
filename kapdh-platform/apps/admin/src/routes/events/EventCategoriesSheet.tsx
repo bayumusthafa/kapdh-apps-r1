@@ -1,8 +1,8 @@
 import type { components } from "@kapdh/contracts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash } from "lucide-react";
-import { useState } from "react";
+import { Pencil, Plus, RefreshCw, Trash, TriangleAlert } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { FormProvider, useForm, type UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { api } from "../../api/client";
@@ -47,6 +47,64 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
+function valuesOf(c: Category): Values {
+  return { label: c.label, slug: c.slug, sort_order: String(c.sort_order) };
+}
+
+/** Kategori dari `current` galat VERSION_CONFLICT (kontrak adminUpdateEventCategory). */
+function currentCategory(current: unknown): Category | null {
+  if (
+    current &&
+    typeof current === "object" &&
+    "id" in current &&
+    "version" in current &&
+    "label" in current &&
+    "slug" in current &&
+    "sort_order" in current
+  )
+    return current as Category;
+  return null;
+}
+
+/**
+ * Peringatan versi baru saat formulir ubah terbuka (AC F15-4, PRD 4.5): nilai terbaru ditampilkan, simpan dikunci
+ * sampai admin memuat versi terbaru, sehingga perubahan admin lain tidak tertimpa diam-diam.
+ */
+function StaleCategoryAlert({ latest, onReload }: { latest: Category; onReload: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.focus();
+  }, [latest.version]);
+  return (
+    <div
+      ref={ref}
+      tabIndex={-1}
+      role="alert"
+      className="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning-bg p-3 text-sm text-warning outline-none"
+    >
+      <p className="flex items-start gap-2 font-semibold">
+        <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+        Kategori ini sudah diubah admin lain (versi {latest.version}).
+      </p>
+      <p className="text-text">
+        Versi terbaru: {latest.label} | {latest.slug} | urutan {latest.sort_order} |{" "}
+        {latest.active ? "aktif" : "nonaktif"}. Perubahan Anda belum disimpan dan tidak akan menimpa versi
+        terbaru. Muat versi terbaru, lalu ulangi perubahan yang masih diperlukan.
+      </p>
+      <div>
+        <Button
+          size="sm"
+          variant="outline"
+          leftIcon={<RefreshCw aria-hidden="true" className="size-4" />}
+          onClick={onReload}
+        >
+          Muat versi terbaru
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function CategoryForm({
   initial,
   submitLabel,
@@ -54,6 +112,8 @@ function CategoryForm({
   onSubmit,
   onCancel,
   form,
+  stale,
+  onReloadLatest,
 }: {
   initial?: Category;
   submitLabel: string;
@@ -61,15 +121,25 @@ function CategoryForm({
   onSubmit: (v: Values) => void;
   onCancel?: () => void;
   form: UseFormReturn<Values>;
+  /** Versi lebih baru dari yang dipakai formulir (konflik atau terlihat di daftar). */
+  stale?: Category | null;
+  onReloadLatest?: () => void;
 }) {
   return (
     <FormProvider {...form}>
       <form
         noValidate
         aria-label={initial ? `Ubah kategori ${initial.label}` : "Tambah kategori event"}
-        onSubmit={(e) => void form.handleSubmit(onSubmit)(e)}
+        onSubmit={(e) => {
+          if (stale) {
+            e.preventDefault();
+            return;
+          }
+          void form.handleSubmit(onSubmit)(e);
+        }}
         className="flex flex-col gap-3"
       >
+        {stale && onReloadLatest ? <StaleCategoryAlert latest={stale} onReload={onReloadLatest} /> : null}
         <FormError message={form.formState.errors.root?.server?.message} />
         <FormField<Values, "label"> name="label" label="Nama kategori" required>
           {(field, a11y) => (
@@ -92,7 +162,14 @@ function CategoryForm({
               Batal
             </Button>
           ) : null}
-          <Button type="submit" size="sm" loading={pending} loadingText="Menyimpan...">
+          <Button
+            type="submit"
+            size="sm"
+            loading={pending}
+            loadingText="Menyimpan..."
+            disabled={Boolean(stale)}
+            focusableWhenDisabled
+          >
             {submitLabel}
           </Button>
         </div>
@@ -105,11 +182,15 @@ function CategoryForm({
  * Manajemen Kategori event (guideline p14) lewat /admin/content/event-categories dengan izin events.manage, sehingga
  * pengurus event mengelola kategorinya tanpa izin konten (PRD 2.3, AC F15-1). Kategori yang dipakai event tidak
  * dapat dihapus, hanya dinonaktifkan; kategori nonaktif tetap tampil pada event lama. Perubahan berversi memakai
- * If-Match (AC F15-4).
+ * If-Match (AC F15-4): formulir ubah memakai versi saat dibuka (bukan versi daftar yang dimuat ulang), dan bila
+ * kategori berubah di tempat lain, nilai terbaru ditampilkan dengan tombol muat ulang; simpan dikunci sampai itu.
  */
 export function EventCategoriesSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState<string | null>(null);
+  /** Kategori saat formulir ubah dibuka: dasar diff dan If-Match. */
+  const [editing, setEditing] = useState<Category | null>(null);
+  /** Versi terbaru dari `current` konflik saat menyimpan formulir ubah. */
+  const [conflict, setConflict] = useState<Category | null>(null);
   const [toDelete, setToDelete] = useState<Category | null>(null);
   const list = useApiQuery({
     queryKey: eventKeys.managedCategories({ limit: CATEGORY_PAGE_LIMIT }),
@@ -153,9 +234,19 @@ export function EventCategoriesSheet({ open, onClose }: { open: boolean; onClose
     },
   });
 
+  const closeEditor = () => {
+    setEditing(null);
+    setConflict(null);
+  };
+
   const update = useApiMutation<
     Category,
-    { category: Category; body: components["schemas"]["AdminContentCategoryUpdateRequest"] },
+    {
+      category: Category;
+      body: components["schemas"]["AdminContentCategoryUpdateRequest"];
+      /** Dari formulir ubah (bukan sakelar aktif): konflik ditampilkan di formulir. */
+      fromForm?: boolean;
+    },
     Values
   >({
     setError: editForm.setError,
@@ -165,9 +256,19 @@ export function EventCategoriesSheet({ open, onClose }: { open: boolean; onClose
         body,
       }),
     successMessage: (c) => `Kategori "${c.label}" disimpan.`,
-    onReloadLatest: () => void refresh(),
-    onSuccess: async () => {
-      setEditing(null);
+    onReloadLatest: (err, vars) => {
+      void refresh();
+      if (!vars.fromForm || editing?.id !== vars.category.id) return;
+      // AC F15-4: formulir tetap memakai versi lamanya; versi terbaru ditawarkan, tidak dipasang diam-diam.
+      const latest = currentCategory(err.current);
+      if (latest) setConflict(latest);
+    },
+    onError: (err, vars) => {
+      // Kategori dihapus admin lain: formulir ubahnya tidak berlaku lagi.
+      if (err.code === "NOT_FOUND" && vars.fromForm) closeEditor();
+    },
+    onSuccess: async (_saved, vars) => {
+      if (vars.fromForm) closeEditor();
       await refresh();
     },
   });
@@ -189,8 +290,16 @@ export function EventCategoriesSheet({ open, onClose }: { open: boolean; onClose
   });
 
   function startEdit(c: Category) {
-    editForm.reset({ label: c.label, slug: c.slug, sort_order: String(c.sort_order) });
-    setEditing(c.id);
+    editForm.reset(valuesOf(c));
+    setConflict(null);
+    setEditing(c);
+  }
+
+  /** Muat versi terbaru ke formulir ubah; admin mengulangi perubahan yang masih diperlukan (AC F15-4). */
+  function reloadLatest(latest: Category) {
+    editForm.reset(valuesOf(latest));
+    setConflict(null);
+    setEditing(latest);
   }
 
   const items = list.data?.items ?? [];
@@ -238,23 +347,27 @@ export function EventCategoriesSheet({ open, onClose }: { open: boolean; onClose
             <ul className="flex flex-col divide-y divide-divider rounded-lg border border-divider">
               {items.map((c) => (
                 <li key={c.id} className="flex flex-col gap-3 p-3">
-                  {editing === c.id ? (
+                  {editing?.id === c.id ? (
                     <CategoryForm
                       form={editForm}
-                      initial={c}
+                      initial={editing}
                       submitLabel="Simpan"
                       pending={update.isPending}
-                      onCancel={() => setEditing(null)}
+                      onCancel={closeEditor}
+                      // Versi baru terlihat di daftar yang dimuat ulang, atau dari `current` konflik simpan.
+                      stale={c.version !== editing.version ? c : conflict}
+                      onReloadLatest={() => reloadLatest(c.version !== editing.version ? c : (conflict ?? c))}
                       onSubmit={(v) => {
+                        const base = editing;
                         const body = {
-                          ...(v.label !== c.label ? { label: v.label } : {}),
-                          ...(v.slug && v.slug !== c.slug ? { slug: v.slug } : {}),
-                          ...(Number(v.sort_order) !== c.sort_order
+                          ...(v.label !== base.label ? { label: v.label } : {}),
+                          ...(v.slug && v.slug !== base.slug ? { slug: v.slug } : {}),
+                          ...(Number(v.sort_order) !== base.sort_order
                             ? { sort_order: Number(v.sort_order) }
                             : {}),
                         };
-                        if (Object.keys(body).length === 0) setEditing(null);
-                        else update.mutate({ category: c, body });
+                        if (Object.keys(body).length === 0) closeEditor();
+                        else update.mutate({ category: base, body, fromForm: true });
                       }}
                     />
                   ) : (

@@ -75,10 +75,13 @@ export function EventActions({
   event,
   onEdit,
   onCancelled,
+  onStatusChanged,
 }: {
   event: AdminEventDetail;
   onEdit: () => void;
   onCancelled: (result: CancelResult) => void;
+  /** Status berubah: tombol pemicunya bisa hilang (allowed_actions baru), pemanggil memindahkan fokus (N-11). */
+  onStatusChanged?: () => void;
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -112,6 +115,7 @@ export function EventActions({
       setStatusAction(null);
       storeEventDetail(queryClient, saved);
       toast.success(v.success);
+      onStatusChanged?.();
     },
     onReloadLatest: reloadLatest,
     onError: (err) => {
@@ -259,8 +263,10 @@ function CancelEventDialog({
   const [reasonError, setReasonError] = useState<string | null>(null);
   const reasonId = useId();
   const stats = useEventStats(event.id);
-  // Money string: berbayar bila ada digit bukan nol (tanpa aritmetika floating point, ARCHITECTURE §2).
-  const paidEvent = /[1-9]/.test(event.price);
+  // Money string: berbayar bila ada digit bukan nol (tanpa aritmetika floating point, ARCHITECTURE §2). Harga dapat
+  // berubah setelah tiket dibuat (PRD 4.4), jadi event yang kini gratis tetap dianggap berbayar bila sudah ada
+  // pendapatan dari tiket lama.
+  const paidEvent = /[1-9]/.test(event.price) || /[1-9]/.test(stats.data?.gross_revenue ?? "");
 
   const cancel = useApiMutation<CancelResult, { reason: string; version: string }>({
     intent: (v) => v,
@@ -331,8 +337,9 @@ function CancelEventDialog({
           {paidEvent ? (
             <>
               <li>
-                Setiap tiket lunas mendapat refund penuh ({formatRupiah(event.price)}) yang dicatat untuk
-                diproses manual oleh bendahara paling lambat 7 hari kerja.
+                Setiap tiket lunas berbayar mendapat refund penuh sebesar total yang dibayar pemegangnya
+                (harga saat tiket dipesan), dicatat untuk diproses manual oleh bendahara paling lambat 7 hari
+                kerja.
               </li>
               <li>
                 Reservasi tanpa bukti dibatalkan. Pembayaran yang buktinya sedang ditinjau tetap di antrean
