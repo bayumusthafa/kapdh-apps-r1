@@ -234,7 +234,9 @@ describe("Penjadwal job terdaftar dengan leader tunggal (ARCHITECTURE §4.8, PRD
     expect(a.runs).toHaveLength(2);
     const jobId = a.runs[0]!.jobId;
     // ARCHITECTURE §2.7: id eksekusi memakai UUID v7 (format sama dengan bawaan JobRunner).
-    expect(jobId).toMatch(/^notifications\.retry:[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(jobId).toMatch(
+      /^notifications\.retry:[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
     expect(a.runs[1]!.jobId).toBe(jobId);
     const queueJobId = `scheduled.notifications.retry.${Math.floor(T0.getTime() / 60_000) * 60_000}`;
     const failed = a.logs.lines.find((line) => line.msg === "job terjadwal gagal");
