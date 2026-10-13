@@ -25,6 +25,7 @@ import { OutboxService } from "../../core/outbox/outbox.service.js";
 import { RateLimitService } from "../../core/rate-limit/rate-limit.service.js";
 import { CLOCK, DB, ENV } from "../../core/tokens.js";
 import {
+  auditAuthFailure,
   auditMfaLockout,
   enrollmentBinding,
   MFA_FAILS_LIMIT,
@@ -262,7 +263,8 @@ export class AdminOnboardingService {
   // ------------------------------------------------------------------ pendaftaran TOTP (langkah 4-5)
 
   /**
-   * Urutan pemeriksaan /totp/enroll dan /totp/confirm (kontrak C1) dengan baris admin dan mfa_totp terkunci:
+   * Urutan pemeriksaan /totp/enroll dan /totp/confirm (kontrak C1) dengan baris admins, users, lalu mfa_totp terkunci
+   * (urutan kunci identitas admin, admin-auth.shared.ts; users ikut dikunci karena confirm memperbarui last_login_at):
    *   1. token: klaim sah (diperiksa pemanggil), admin subjek ada dan milik akun `sub`, pengikat HMAC sama dengan
    *      password_hash saat ini → selain itu 401;
    *   2. admin `active` dengan TOTP terverifikasi → 403 "Aktivasi sudah selesai";
@@ -271,7 +273,7 @@ export class AdminOnboardingService {
   private async lockEnrollment(tx: Tx, claims: AdminEnrollClaims): Promise<EnrollmentState> {
     const [admin] = await tx.select().from(admins).where(eq(admins.id, claims.adminId)).for("update");
     if (!admin || admin.userId !== claims.userId) throw enrollmentGone();
-    const [user] = await tx.select().from(users).where(eq(users.id, admin.userId)).limit(1);
+    const [user] = await tx.select().from(users).where(eq(users.id, admin.userId)).for("no key update");
     if (
       !user ||
       !safeEqualText(enrollmentBinding(this.env.OTP_HMAC_SECRET, user.passwordHash), claims.binding)
@@ -447,7 +449,13 @@ export class AdminOnboardingService {
         await slot.release();
         throw e;
       }
-      // Kegagalan ke-5 mengunci konfirmasi selama 15 menit: satu audit per penguncian (F-17).
+      // F-17: kegagalan kode pertama dalam jendela diaudit; kegagalan ke-5 mengunci konfirmasi selama 15 menit (satu
+      // audit per penguncian).
+      await auditAuthFailure(
+        { db: this.db, audit: this.audit, limits: this.limits },
+        e.adminId,
+        "enrollment",
+      );
       if (slot.count === MFA_FAILS_LIMIT) await auditMfaLockout(this.db, this.audit, e.adminId, "enrollment");
       throw wrongCodeError(e.field, slot.count);
     }

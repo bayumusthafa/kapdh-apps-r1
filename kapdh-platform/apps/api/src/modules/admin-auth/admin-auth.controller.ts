@@ -47,13 +47,20 @@ export class AdminAuthController {
     setAdminRefreshCookie(reply, issued.refreshToken, issued.refreshExpiresAt, secureCookies(this.env));
   }
 
-  /** adminLogin: tahap sandi; hanya admin aktif dengan TOTP terverifikasi (AC F02-2). */
+  /**
+   * adminLogin: tahap sandi; hanya admin aktif dengan TOTP terverifikasi (AC F02-2). Masukan divalidasi sesuai
+   * AdminLoginRequest (email format email maks. 254, sandi 1-128) → 400 VALIDATION_ERROR sebelum batas kegagalan login
+   * disentuh (PRD 5.2).
+   */
   @Post("auth/login")
   @HttpCode(200)
   @Public()
   login(@Body() body: unknown) {
     const input = validate(
-      z.object({ email: z.string().trim().min(3).max(254), password: z.string().min(1).max(256) }),
+      z.object({
+        email: z.string().trim().email("Email tidak valid").max(254),
+        password: z.string().min(1).max(128),
+      }),
       body,
     );
     return this.auth.adminLogin(input.email, input.password);

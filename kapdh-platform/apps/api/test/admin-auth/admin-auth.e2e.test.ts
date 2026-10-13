@@ -699,6 +699,82 @@ describe("AC F02-2: login admin dua tahap, mfa_token sekali pakai, anti replay T
     expect(await auditsOf(fixture.adminId, "admin.login")).toHaveLength(4);
   });
 
+  it("AC F02-2 PRD 2.5: mfa_token bekas ditolak 401 sebelum kode dinilai; pemegangnya tidak dapat menghabiskan jatah kode admin", async () => {
+    const fixture = await invited();
+    const activated = await activateInvitation(t, fixture.inviteToken);
+    const login = (
+      await post("/admin/auth/login", { email: fixture.email, password: NEW_ADMIN_PASSWORD })
+    ).json();
+    const first = freshTotp(clock, activated.secret, activated.lastStep);
+    expect(
+      (await post("/admin/auth/mfa", { mfa_token: login.mfa_token, totp_code: first.code })).statusCode,
+    ).toBe(200);
+
+    // Pengulangan permintaan yang responsnya hilang (token dan kode yang sama) → 401 kembali ke login, bukan
+    // "Kode salah" yang menahan pengguna di layar MFA dengan token mati.
+    const retry = await post("/admin/auth/mfa", { mfa_token: login.mfa_token, totp_code: first.code });
+    expect(retry.statusCode).toBe(401);
+    expect(retry.json().code).toBe("UNAUTHENTICATED");
+    expectOperation("post", "/admin/auth/mfa", retry);
+
+    // Pemegang token bekas (tanpa sandi) dari IP lain: kode salah dan backup code tebakan selalu 401.
+    const deadToken = (payload: object) =>
+      app.inject({
+        method: "POST",
+        url: "/api/v1/admin/auth/mfa",
+        payload: { mfa_token: login.mfa_token, ...payload },
+        remoteAddress: "203.0.113.9",
+      });
+    for (let i = 0; i < 6; i++) {
+      const res = await deadToken({ totp_code: wrongTotpFor(activated.secret, clock.now(), i + 1) });
+      expect(res.statusCode, res.body).toBe(401);
+      expect(res.json().code).toBe("UNAUTHENTICATED");
+    }
+    expect((await deadToken({ backup_code: "ABCDE-FGHIJ" })).statusCode).toBe(401);
+    expect(await auditsOf(fixture.adminId, "admin.mfa_locked")).toHaveLength(0);
+    expect(await auditsOf(fixture.adminId, "admin.auth_failed")).toHaveLength(0);
+
+    // Admin asli: jatah 5 kode per 15 menit utuh (kode salah pertama menyisakan 4), lalu kode benar → 200.
+    const relogin = (
+      await post("/admin/auth/login", { email: fixture.email, password: NEW_ADMIN_PASSWORD })
+    ).json();
+    const wrong = await post("/admin/auth/mfa", {
+      mfa_token: relogin.mfa_token,
+      totp_code: wrongTotpFor(activated.secret, clock.now()),
+    });
+    expect(wrong.statusCode).toBe(400);
+    expect(wrong.json().field_errors.totp_code).toEqual(["Kode salah. Sisa percobaan 4."]);
+    const next = freshTotp(clock, activated.secret, first.step);
+    expect(
+      (await post("/admin/auth/mfa", { mfa_token: relogin.mfa_token, totp_code: next.code })).statusCode,
+    ).toBe(200);
+  });
+
+  it("AC F02-2 PRD 5.2: AdminLoginRequest divalidasi (format email, sandi maks. 128) → 400 tanpa menyentuh batas kegagalan login", async () => {
+    const fixture = await createAdmin(t);
+    const badEmail = await post("/admin/auth/login", { email: "bukan-email", password: fixture.password });
+    expect(badEmail.statusCode).toBe(400);
+    expect(badEmail.json().code).toBe("VALIDATION_ERROR");
+    expect(badEmail.json().field_errors.email).toBeDefined();
+    expectOperation("post", "/admin/auth/login", badEmail);
+
+    // Melebihi maxLength kontrak: 400 berulang tidak pernah menjadi 429 untuk email ini (batas 10 kegagalan).
+    for (let i = 0; i < 12; i++) {
+      const tooLong = await post("/admin/auth/login", { email: fixture.email, password: "A".repeat(129) });
+      expect(tooLong.statusCode).toBe(400);
+      expect(tooLong.json().field_errors.password).toBeDefined();
+    }
+    // Tepat 128 karakter masih dinilai (sandi salah → 401).
+    expect(
+      (await post("/admin/auth/login", { email: fixture.email, password: "A".repeat(128) })).statusCode,
+    ).toBe(401);
+    const ok = await post("/admin/auth/login", {
+      email: ` ${fixture.email.toUpperCase()} `,
+      password: fixture.password,
+    });
+    expect(ok.statusCode, ok.body).toBe(200);
+  });
+
   it("F-02: backup code sekali pakai (HMAC, atomik): berhasil sekali, kedua kali 400; sisa terlihat di /admin/me", async () => {
     const fixture = await invited();
     const activated = await activateInvitation(t, fixture.inviteToken);
@@ -895,6 +971,97 @@ describe("AC F02-4: ganti sandi admin", () => {
     const mfa = await post("/admin/auth/password/change", body, authed(login.mfa_token));
     expect(mfa.json().code).toBe("MFA_REQUIRED");
     expect((await post("/admin/auth/password/change", body)).statusCode).toBe(401);
+  });
+});
+
+describe("F-17: kegagalan autentikasi admin diaudit tanpa rahasia, dibatasi per jendela", () => {
+  const failures = async (adminId: string, stage: string) =>
+    (await auditsOf(adminId, "admin.auth_failed")).filter(
+      (row) => (row.after as { stage?: string }).stage === stage,
+    );
+
+  it("F-17: sandi salah, kode MFA salah dan sandi lama salah → satu admin.auth_failed per tahap per 15 menit", async () => {
+    const fixture = await createAdmin(t);
+    const wrongPassword = "Salah#2026x";
+    for (let i = 0; i < 3; i++)
+      expect(
+        (await post("/admin/auth/login", { email: fixture.email, password: wrongPassword })).statusCode,
+      ).toBe(401);
+    const password = await failures(fixture.adminId, "password");
+    expect(password).toHaveLength(1);
+    expect(password[0]).toMatchObject({
+      effectiveRole: "anonymous",
+      actorAdminId: null,
+      entityType: "admin",
+      after: { stage: "password", window_minutes: 15 },
+    });
+    expect(JSON.stringify(password)).not.toContain(wrongPassword);
+    expect(JSON.stringify(password)).not.toContain(fixture.email);
+
+    // Email yang bukan identitas admin tidak menghasilkan baris audit (tanpa entitas; tidak dapat membanjiri log).
+    const total = async () =>
+      (await db.select().from(auditLogs).where(eq(auditLogs.action, "admin.auth_failed"))).length;
+    const before = await total();
+    expect(
+      (await post("/admin/auth/login", { email: `asing-${uuidv7()}@kapdh.test`, password: wrongPassword }))
+        .statusCode,
+    ).toBe(401);
+    expect(await total()).toBe(before);
+
+    // Tahap MFA: kode salah setelah sandi benar (sinyal sandi bocor) diaudit sekali tanpa kode.
+    const login = (
+      await post("/admin/auth/login", { email: fixture.email, password: fixture.password })
+    ).json();
+    const wrongCode = wrongTotpFor(fixture.totpSecret, clock.now());
+    for (let i = 0; i < 2; i++)
+      expect(
+        (await post("/admin/auth/mfa", { mfa_token: login.mfa_token, totp_code: wrongCode })).statusCode,
+      ).toBe(400);
+    const mfa = await failures(fixture.adminId, "mfa");
+    expect(mfa).toHaveLength(1);
+    expect(JSON.stringify(mfa)).not.toContain(wrongCode);
+
+    // Ganti sandi: sandi lama salah diaudit dengan aktor admin pemanggil.
+    const session = await signInAdmin(t, fixture);
+    for (let i = 0; i < 2; i++)
+      expect(
+        (
+          await post(
+            "/admin/auth/password/change",
+            { current_password: wrongPassword, new_password: "Baru#2026xx" },
+            authed(session.accessToken),
+          )
+        ).statusCode,
+      ).toBe(400);
+    const change = await failures(fixture.adminId, "change_password");
+    expect(change).toHaveLength(1);
+    expect(change[0]).toMatchObject({ actorAdminId: fixture.adminId, effectiveRole: "admin" });
+    expect(JSON.stringify(change)).not.toContain(wrongPassword);
+    expect(JSON.stringify(change)).not.toContain("Baru#2026xx");
+
+    // Jendela berikutnya: kegagalan baru diaudit lagi.
+    clock.advance(15 * 60_000 + 1_000);
+    expect(
+      (await post("/admin/auth/login", { email: fixture.email, password: wrongPassword })).statusCode,
+    ).toBe(401);
+    expect(await failures(fixture.adminId, "password")).toHaveLength(2);
+  });
+
+  it("F-17 F-16: kode salah saat konfirmasi pendaftaran TOTP → admin.auth_failed tahap enrollment, sekali per jendela", async () => {
+    const fixture = await invited();
+    const enrollToken = await acceptInvitation(app, fixture.inviteToken);
+    const secret = (await post("/admin/auth/totp/enroll", { mfa_token: enrollToken })).json()
+      .secret as string;
+    const wrongCode = wrongTotpFor(secret, clock.now());
+    for (let i = 0; i < 2; i++)
+      expect(
+        (await post("/admin/auth/totp/confirm", { mfa_token: enrollToken, totp_code: wrongCode })).statusCode,
+      ).toBe(400);
+    const rows = await failures(fixture.adminId, "enrollment");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ effectiveRole: "anonymous", entityId: fixture.adminId });
+    expect(JSON.stringify(rows)).not.toContain(wrongCode);
+    expect(JSON.stringify(rows)).not.toContain(secret);
   });
 });
 
