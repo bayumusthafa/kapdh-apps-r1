@@ -109,7 +109,8 @@ export function FilePreview({
     );
 
   const url = access.data.url;
-  const kind = previewKind(mime, url);
+  // mime dari pemanggil (FileRef/bukti) diutamakan, lalu mime dari GET /files/{id}/access.
+  const kind = previewKind(mime ?? access.data.mime, url);
   const showImage = kind !== "pdf" && !broken;
 
   async function openFresh(e: MouseEvent<HTMLAnchorElement>) {

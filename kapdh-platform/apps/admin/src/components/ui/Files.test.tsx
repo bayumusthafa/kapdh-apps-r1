@@ -41,7 +41,7 @@ describe("FileUpload (N-10)", () => {
     await signInViaApi();
     const user = userEvent.setup({ applyAccept: false });
     const onChange = vi.fn();
-    renderWithProviders(<Harness purpose="cover" onChange={onChange} />);
+    renderWithProviders(<Harness purpose="adjustment_evidence" onChange={onChange} />);
     const input = screen.getByTestId("file-input");
     await user.upload(input, new File(["%PDF-1.7"], "proposal.pdf", { type: "application/pdf" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -57,7 +57,7 @@ describe("FileUpload (N-10)", () => {
     await signInViaApi();
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderWithProviders(<Harness purpose="cover" onChange={onChange} />);
+    renderWithProviders(<Harness purpose="adjustment_evidence" onChange={onChange} />);
     const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], "besar.png", { type: "image/png" });
     await user.upload(screen.getByTestId("file-input"), big);
     expect(await screen.findByRole("alert")).toHaveTextContent("Gambar maksimal 5 MB.");
@@ -68,14 +68,14 @@ describe("FileUpload (N-10)", () => {
     await signInViaApi();
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderWithProviders(<Harness purpose="cover" onChange={onChange} />);
+    renderWithProviders(<Harness purpose="adjustment_evidence" onChange={onChange} />);
     await user.upload(
       screen.getByTestId("file-input"),
       new File([new Uint8Array([137, 80, 78, 71])], "sampul.png", { type: "image/png" }),
     );
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     // Isi berkas tidak terbawa lintas realm jsdom→undici di lingkungan uji; cukup periksa metadata FileRef.
-    expect(onChange.mock.calls[0]![0]).toMatchObject({ purpose: "cover", mime: "image/png" });
+    expect(onChange.mock.calls[0]![0]).toMatchObject({ purpose: "adjustment_evidence", mime: "image/png" });
     expect(screen.getByRole("img", { name: "Pratinjau sampul berita" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ganti berkas: Sampul" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Hapus berkas" }));
@@ -97,8 +97,14 @@ describe("previewKind (bukti bayar boleh PDF, N-10)", () => {
 describe("FilePreview (PRD 5.4)", () => {
   it("URL akses kedaluwarsa dianggap tidak layak dibuka; masih lama = layak", () => {
     const now = Date.parse("2026-10-13T08:00:00Z");
-    expect(isAccessExpired({ url: "u", expires_at: "2026-10-13T08:00:03Z" }, now)).toBe(true);
-    expect(isAccessExpired({ url: "u", expires_at: "2026-10-13T08:09:00Z" }, now)).toBe(false);
+    expect(isAccessExpired({ url: "u", expires_at: "2026-10-13T08:00:03Z", mime: "image/png" }, now)).toBe(
+      true,
+    );
+    expect(isAccessExpired({ url: "u", expires_at: "2026-10-13T08:09:00Z", mime: "image/png" }, now)).toBe(
+      false,
+    );
+    // Berkas publik: URL tetap tanpa kedaluwarsa.
+    expect(isAccessExpired({ url: "u", expires_at: null, mime: "image/png" }, now)).toBe(false);
     expect(isAccessExpired(undefined, now)).toBe(true);
   });
 

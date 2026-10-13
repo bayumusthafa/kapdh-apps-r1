@@ -8,7 +8,7 @@
  *      superuser) maupun memakai SET ROLE,
  *   4. setiap berkas uji membuat database sendiri dari template (test/pg/support.ts).
  */
-import EmbeddedPostgres from "embedded-postgres";
+import type EmbeddedPostgresType from "embedded-postgres";
 import { createDb, runMigrations } from "@kapdh/database";
 import { randomBytes } from "node:crypto";
 import { readdirSync, rmSync, statSync } from "node:fs";
@@ -83,6 +83,16 @@ async function sweepStaleDirs(): Promise<void> {
 }
 
 export default async function setup(project: TestProject) {
+  // embedded-postgres memasang async-exit-hook saat dimuat; hook "beforeExit"-nya memanggil process.exit(0) dan menimpa
+  // exitCode 1 dari vitest, sehingga uji yang gagal tetap berakhir sukses. Listener yang ditambahkan modul itu dicatat
+  // di sini dan dilepas di teardown setelah cluster dihentikan sendiri.
+  const listenersBefore = new Set(process.listeners("beforeExit"));
+  const { default: EmbeddedPostgres } = (await import("embedded-postgres")) as {
+    default: typeof EmbeddedPostgresType;
+  };
+  const exitHookListeners = process
+    .listeners("beforeExit")
+    .filter((listener) => !listenersBefore.has(listener));
   await sweepStaleDirs();
   const databaseDir = join(tmpdir(), `${DIR_PREFIX}${process.pid}-${Date.now()}`);
   const port = await freePort();
@@ -150,6 +160,7 @@ export default async function setup(project: TestProject) {
 
   return async () => {
     await pg.stop();
+    for (const listener of exitHookListeners) process.off("beforeExit", listener);
     if (!(await removeDir(databaseDir))) {
       process.stderr.write(
         `[pg-lane] direktori ${databaseDir} masih terkunci; akan disapu pada run berikutnya.\n`,
