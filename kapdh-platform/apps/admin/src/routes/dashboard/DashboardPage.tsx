@@ -48,7 +48,7 @@ export const TRANSACTION_SEARCH_LIMIT = 10;
 /**
  * Dasbor pengurus (F-15, AC F15-1, PRD 3.15, guideline hlm. 11-12): kartu Pengguna Aktif, Total Transaksi dan
  * Tiket Terjual; antrean kerja yang perlu tindakan (pembayaran menunggu dan lewat batas, penyesuaian/refund,
- * laporan terbuka/mendesak/lewat target, event mendatang, job gagal); tabel Pengguna, Penjualan Tiket dan Riwayat
+ * laporan aktif/mendesak/lewat target, event mendatang, job gagal); tabel Pengguna, Penjualan Tiket dan Riwayat
  * Transaksi. Server hanya mengirim bagian yang diizinkan, sehingga admin pembayaran tanpa izin lain hanya melihat
  * data pembayaran. Usia antrean dihitung dari `generated_at` server, bukan jam perangkat.
  */
@@ -81,11 +81,41 @@ export function DashboardPage() {
           </Button>
         }
       />
+      {/* Region live selalu ada agar kegagalan pembaruan latar diumumkan dengan sopan (N-11). */}
+      <div role="status" aria-live="polite">
+        {d && dashboard.isError ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-warning-bg p-3 text-sm text-warning">
+            <p className="flex min-w-0 items-start gap-2">
+              <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+              <span className="min-w-0 break-words">
+                Gagal memperbarui dasbor ({dashboard.error.message}). Data yang tampil terakhir diperbarui{" "}
+                {formatDateTime(d.generated_at)}.
+              </span>
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<RefreshCw aria-hidden="true" className="size-4" />}
+              loading={dashboard.isFetching}
+              loadingText="Mencoba lagi..."
+              onClick={() => void dashboard.refetch()}
+            >
+              Coba lagi
+            </Button>
+          </div>
+        ) : null}
+      </div>
+      {/*
+        Data terakhir tetap ditampilkan bila pembaruan (polling 60 detik atau muat ulang) gagal: kartu, antrean dan
+        kata kunci Riwayat Transaksi tidak hilang (PRD 4.5). Keadaan galat penuh hanya bila belum pernah ada data.
+      */}
       {dashboard.isPending ? (
         <Card className="p-2">
           <Loading label="Memuat dasbor..." rows={6} />
         </Card>
-      ) : dashboard.isError ? (
+      ) : d ? (
+        <DashboardContent dashboard={d} />
+      ) : (
         <Card>
           <ErrorState
             error={dashboard.error}
@@ -93,8 +123,6 @@ export function DashboardPage() {
             title="Dasbor gagal dimuat"
           />
         </Card>
-      ) : (
-        <DashboardContent dashboard={dashboard.data} />
       )}
     </>
   );
@@ -120,7 +148,7 @@ function DashboardContent({ dashboard: d }: { dashboard: Dashboard }) {
           {d.members ? (
             <StatCard
               label="Pengguna Aktif"
-              value={d.members.active_count}
+              value={<StatValue>{d.members.active_count}</StatValue>}
               hint={`dari ${d.members.total_alumni} total alumni`}
               icon={<Users />}
             />
@@ -128,7 +156,7 @@ function DashboardContent({ dashboard: d }: { dashboard: Dashboard }) {
           {d.payments ? (
             <StatCard
               label="Total Transaksi"
-              value={formatRupiah(d.payments.paid_total_amount)}
+              value={<StatValue>{formatRupiah(d.payments.paid_total_amount)}</StatValue>}
               hint={`${d.payments.paid_count} pembayaran lunas`}
               icon={<Wallet />}
             />
@@ -136,7 +164,7 @@ function DashboardContent({ dashboard: d }: { dashboard: Dashboard }) {
           {d.events ? (
             <StatCard
               label="Tiket Terjual"
-              value={d.events.tickets_sold_count}
+              value={<StatValue>{d.events.tickets_sold_count}</StatValue>}
               hint="semua event"
               icon={<Ticket />}
             />
@@ -149,7 +177,8 @@ function DashboardContent({ dashboard: d }: { dashboard: Dashboard }) {
           <h2 id="dasbor-tindakan" className="font-heading text-h3 font-semibold text-primary">
             Perlu tindakan
           </h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {/* Kolom berukuran rem: saat teks diperbesar 200% kartu turun ke kolom lebih sedikit (WCAG 1.4.4, N-11). */}
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4">
             {d.payments ? <PaymentsQueue payments={d.payments} now={generatedAt} /> : null}
             {d.moderation ? <ModerationQueue moderation={d.moderation} now={generatedAt} /> : null}
             {d.jobs ? <JobsQueue jobs={d.jobs} now={generatedAt} /> : null}
@@ -170,6 +199,14 @@ function DashboardContent({ dashboard: d }: { dashboard: Dashboard }) {
   );
 }
 
+/**
+ * Nilai kartu statistik yang boleh dipatah di mana saja (mis. "Rp295.224" pada layar 375 px dengan teks 200%), agar
+ * kartu tidak melebar melewati layar (WCAG 1.4.4, 1.4.10; N-11).
+ */
+function StatValue({ children }: { children: ReactNode }) {
+  return <span className="[overflow-wrap:anywhere]">{children}</span>;
+}
+
 // ------------------------------------------------------------------------------------------------------------
 // Antrean kerja
 
@@ -179,6 +216,34 @@ interface QueueItem {
   /** Butuh tindakan (nilai > 0): teks tebal + ikon, bukan warna saja (ARCHITECTURE §2 butir 10). */
   attention?: boolean;
   detail?: ReactNode;
+}
+
+/**
+ * Judul kartu antrean sebagai h3 di bawah h2 "Perlu tindakan" (struktur judul, WCAG 1.3.1). Teks judul boleh
+ * membungkus sehingga tidak terpotong saat teks diperbesar.
+ */
+function QueueHeader({
+  id,
+  title,
+  icon,
+  description,
+}: {
+  id: string;
+  title: string;
+  icon: ReactNode;
+  description?: string;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5 px-5 pt-4">
+      <h3 id={id} className="flex min-w-0 items-center gap-2 font-heading text-h3 font-semibold text-primary">
+        <span aria-hidden="true" className="shrink-0 [&_svg]:size-5">
+          {icon}
+        </span>
+        <span className="min-w-0 break-words">{title}</span>
+      </h3>
+      {description ? <p className="text-sm text-text-muted">{description}</p> : null}
+    </div>
+  );
 }
 
 function QueueCard({
@@ -196,31 +261,30 @@ function QueueCard({
 }) {
   return (
     <Card aria-labelledby={id} className="flex min-w-0 flex-col gap-3 pb-4">
-      <CardHeader
-        titleId={id}
-        title={
-          <span className="flex items-center gap-2">
-            <span aria-hidden="true" className="text-primary [&_svg]:size-5">
-              {icon}
-            </span>
-            {title}
-          </span>
-        }
-      />
+      <QueueHeader id={id} title={title} icon={icon} />
+      {/*
+        Setiap grup adalah anak langsung <dl> berisi <dt>/<dd> (HTML: dl > div > dt + dd), sehingga label dan nilai
+        berpasangan bagi teknologi bantu (WCAG 1.3.1). Grid membiarkan label membungkus dan nilai tetap di kanan.
+      */}
       <dl className="flex flex-col gap-2 px-5 text-sm">
         {items.map((item) => (
           <div
             key={item.label}
-            className="flex flex-col gap-0.5 border-b border-divider pb-2 last:border-b-0"
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-0.5 border-b border-divider pb-2 last:border-b-0"
           >
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-text-muted">{item.label}</dt>
-              <dd className={cn("flex items-center gap-1 font-semibold", item.attention && "text-danger")}>
-                {item.attention ? <CircleAlert aria-hidden="true" className="size-4" /> : null}
-                {item.value}
-              </dd>
-            </div>
-            {item.detail ? <dd className="text-xs text-text-muted">{item.detail}</dd> : null}
+            <dt className="min-w-0 break-words text-text-muted">{item.label}</dt>
+            <dd
+              className={cn(
+                "flex items-center gap-1 justify-self-end font-semibold",
+                item.attention && "text-danger",
+              )}
+            >
+              {item.attention ? <CircleAlert aria-hidden="true" className="size-4 shrink-0" /> : null}
+              {item.value}
+            </dd>
+            {item.detail ? (
+              <dd className="col-span-2 min-w-0 break-words text-xs text-text-muted">{item.detail}</dd>
+            ) : null}
           </div>
         ))}
       </dl>
@@ -260,7 +324,16 @@ function PaymentsQueue({ payments: p, now }: { payments: DashboardPayments; now:
           label: "Lewat batas review",
           value: p.overdue_count,
           attention: p.overdue_count > 0,
-          detail: typeBreakdown(p.overdue_by_type),
+          // Halaman pembayaran belum menerima filter URL stage/overdue (area payments); sampai itu tersedia, baris
+          // lewat batas dikenali dari penandanya di antrean verifikasi, bukan dari daftar tersaring.
+          detail: [
+            typeBreakdown(p.overdue_by_type),
+            p.overdue_count > 0
+              ? "berpenanda Lewat 1 hari kerja/Lewat batas review di antrean verifikasi"
+              : null,
+          ]
+            .filter(Boolean)
+            .join("; "),
         },
         {
           label: "Penyesuaian/refund tertunda",
@@ -275,8 +348,12 @@ function PaymentsQueue({ payments: p, now }: { payments: DashboardPayments; now:
         },
       ]}
       footer={
-        <Link to="/payments" className={buttonClass({ variant: "ghost", size: "sm", className: "-ml-4" })}>
-          Buka antrean pembayaran
+        <Link
+          to="/payments"
+          search={{ tab: "verify" }}
+          className={buttonClass({ variant: "ghost", size: "sm", className: "-ml-4" })}
+        >
+          Buka antrean verifikasi
         </Link>
       }
     />
@@ -291,11 +368,13 @@ function ModerationQueue({ moderation: m, now }: { moderation: DashboardModerati
       icon={<Flag />}
       items={[
         {
-          label: "Laporan terbuka",
+          // open_count = open + in_review (kontrak DashboardModeration), sama dengan antrean bawaan "Aktif" dan
+          // jumlah kartu Terbuka + Sedang ditinjau di halaman Moderasi.
+          label: "Laporan aktif (terbuka + ditinjau)",
           value: m.open_count,
           detail: m.oldest_open_created_at
             ? `terlama ${formatRelativeAge(m.oldest_open_created_at, now)}`
-            : "Tidak ada laporan terbuka.",
+            : "Tidak ada laporan aktif.",
         },
         {
           label: "Mendesak (target 24 jam)",
@@ -306,7 +385,7 @@ function ModerationQueue({ moderation: m, now }: { moderation: DashboardModerati
       ]}
       footer={
         <Link to="/moderation" className={buttonClass({ variant: "ghost", size: "sm", className: "-ml-4" })}>
-          Buka antrean moderasi
+          Buka antrean moderasi aktif
         </Link>
       }
     />
@@ -373,16 +452,10 @@ function UpcomingEvents({ events }: { events: UpcomingEvent[] }) {
   const canManage = auth.can("events.manage");
   return (
     <Card aria-labelledby="antrean-event" className="flex min-w-0 flex-col gap-3 pb-4">
-      <CardHeader
-        titleId="antrean-event"
-        title={
-          <span className="flex items-center gap-2">
-            <span aria-hidden="true" className="text-primary [&_svg]:size-5">
-              <CalendarDays />
-            </span>
-            Event mendatang
-          </span>
-        }
+      <QueueHeader
+        id="antrean-event"
+        title="Event mendatang"
+        icon={<CalendarDays />}
         description="30 hari ke depan."
       />
       {events.length === 0 ? (

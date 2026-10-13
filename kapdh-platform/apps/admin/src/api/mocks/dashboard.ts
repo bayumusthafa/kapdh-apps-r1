@@ -1,6 +1,6 @@
 import type { Permission } from "@kapdh/contracts";
 import { mockHasPermission, requireAdmin } from "./auth";
-import { json, type MockRequest, type MockRoute, type S } from "./http";
+import { error, json, type MockRequest, type MockRoute, type S } from "./http";
 import { moderationCounts } from "./moderation";
 import { notificationJobCounts } from "./notifications";
 import { paymentRequests, routes as paymentRoutes } from "./payments";
@@ -24,9 +24,20 @@ export interface DashboardRequestLog {
 /** Log permintaan dasbor (uji: header latar pada polling, AC F02-5). */
 export const dashboardRequests: DashboardRequestLog[] = [];
 
+/** Simulasi server dasbor bermasalah (5xx) untuk uji keadaan galat dan data usang (PRD 4.5). */
+let failing = false;
+
 export function reset(): void {
   dashboardRequests.length = 0;
+  failing = false;
 }
+
+/** Kendali server tiruan dasbor untuk uji dan dev:mock. */
+export const mockDashboard = {
+  setFailing(value: boolean): void {
+    failing = value;
+  },
+};
 
 function iso(offsetMs: number): string {
   return new Date(Date.now() + offsetMs).toISOString();
@@ -304,6 +315,7 @@ export const routes: MockRoute[] = [
       log(req);
       const unauth = requireAdmin(req);
       if (unauth) return unauth;
+      if (failing) return error(500, "INTERNAL_ERROR", "Terjadi kesalahan pada server. Coba lagi.");
       // Bagian tanpa izin dihilangkan dari payload (AC F15-1); izin dibaca ulang setiap permintaan (AC F16-3).
       const body: S["AdminDashboard"] = { generated_at: new Date().toISOString() };
       if (has("payments.read")) {

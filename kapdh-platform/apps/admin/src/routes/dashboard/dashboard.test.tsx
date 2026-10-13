@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api/client";
 import { mockAuth, paymentRequests } from "../../api/mocks";
-import { dashboardRequests } from "../../api/mocks/dashboard";
+import { dashboardRequests, mockDashboard } from "../../api/mocks/dashboard";
 import { moderationCounts } from "../../api/mocks/moderation";
 import { notificationJobCounts } from "../../api/mocks/notifications";
 import { openPage, section } from "../../test/governance";
@@ -52,7 +52,10 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
     expect(await queueValue("Pembayaran", "Lewat batas review")).toBe(String(summary.data!.overdue_count));
     // Moderasi memakai aturan visibilitas yang sama dengan antrean (laporan terhadap akun tertaut tidak dihitung).
     const mod = moderationCounts();
-    expect(await queueValue("Moderasi", "Laporan terbuka")).toBe(String(mod.open + mod.in_review));
+    // open_count = open + in_review, berlabel jelas agar sama dengan Terbuka + Sedang ditinjau di halaman Moderasi.
+    expect(await queueValue("Moderasi", "Laporan aktif (terbuka + ditinjau)")).toBe(
+      String(mod.open + mod.in_review),
+    );
     expect(await queueValue("Moderasi", "Mendesak (target 24 jam)")).toBe(String(mod.urgent));
     expect(await queueValue("Moderasi", "Lewat target penanganan")).toBe(String(mod.overdue));
     const jobs = notificationJobCounts();
@@ -113,7 +116,7 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
       el?.tagName === "A" &&
       (el.textContent ?? "").replace(/\s+/g, "") === `${label}${count}${what}`.replace(/\s+/g, "");
     expect(
-      await within(nav).findByRole("link", { name: badgeLink("Moderasi", reports, "laporan terbuka") }),
+      await within(nav).findByRole("link", { name: badgeLink("Moderasi", reports, "laporan aktif") }),
     ).toBeVisible();
     expect(
       within(nav).getByRole("link", { name: badgeLink("Notifikasi", failed, "job gagal") }),
@@ -194,5 +197,76 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
     await user.click(screen.getByRole("button", { name: "Muat ulang" }));
     await waitFor(() => expect(dashboardCalls().length).toBeGreaterThan(polled));
     expect(dashboardCalls().at(-1)?.background).toBe(false);
+  });
+
+  it("PRD 4.5: polling yang gagal mempertahankan data terakhir dan kata kunci pencarian, dengan pemberitahuan data usang", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    await openPage(user, "/", "Dashboard");
+    await screen.findByRole("region", { name: "Statistik" });
+    const card = await section("Riwayat Transaksi");
+    await user.type(within(card).getByLabelText("Cari transaksi"), "ridwan");
+    expect(await within(card).findByText("Tidak ada transaksi yang cocok")).toBeInTheDocument();
+
+    mockDashboard.setFailing(true);
+    const before = dashboardCalls().length;
+    await act(async () => {
+      vi.advanceTimersByTime(DASHBOARD_POLL_MS + 500);
+    });
+    await waitFor(() => expect(dashboardCalls().length).toBeGreaterThan(before));
+    expect(await screen.findByText(/Gagal memperbarui dasbor/)).toBeInTheDocument();
+    expect(screen.getByText(/Gagal memperbarui dasbor/).closest('[role="status"]')).not.toBeNull();
+    // Konten tetap: statistik, antrean dan pencarian Riwayat Transaksi tidak hilang.
+    expect(screen.queryByText("Dasbor gagal dimuat")).toBeNull();
+    expect(screen.getByRole("region", { name: "Statistik" })).toBeInTheDocument();
+    expect(await section("Pembayaran")).toBeInTheDocument();
+    expect(within(await section("Riwayat Transaksi")).getByLabelText("Cari transaksi")).toHaveValue("ridwan");
+
+    mockDashboard.setFailing(false);
+    await user.click(screen.getByRole("button", { name: "Coba lagi" }));
+    await waitFor(() => expect(screen.queryByText(/Gagal memperbarui dasbor/)).toBeNull());
+    expect(dashboardCalls().at(-1)?.background).toBe(false);
+  });
+
+  it("PRD 4.5: pemuatan pertama yang gagal (belum ada data) menampilkan keadaan galat dengan Coba lagi", async () => {
+    mockDashboard.setFailing(true);
+    const user = userEvent.setup();
+    await openPage(user, "/", "Dashboard");
+    expect(await screen.findByText("Dasbor gagal dimuat")).toBeInTheDocument();
+    mockDashboard.setFailing(false);
+    await user.click(screen.getByRole("button", { name: "Coba lagi" }));
+    expect(await screen.findByRole("region", { name: "Statistik" })).toBeInTheDocument();
+  });
+
+  it("N-11, WCAG 1.3.1: kartu antrean memakai dl > div > dt + dd yang sah dan judul h3 di bawah h2 Perlu tindakan", async () => {
+    const user = userEvent.setup();
+    await openPage(user, "/", "Dashboard");
+    const queues = (await screen.findByRole("heading", { level: 2, name: "Perlu tindakan" })).closest(
+      "section",
+    )!;
+    const terms = queues.querySelectorAll("dt, dd");
+    expect(terms.length).toBeGreaterThan(0);
+    for (const el of terms) {
+      const parent = el.parentElement!;
+      const valid =
+        parent.tagName === "DL" || (parent.tagName === "DIV" && parent.parentElement?.tagName === "DL");
+      expect(valid, `${el.tagName} "${el.textContent}" di dalam ${parent.tagName}`).toBe(true);
+    }
+    for (const name of ["Pembayaran", "Moderasi", "Job gagal", "Event mendatang"])
+      expect(within(queues).getByRole("heading", { level: 3, name })).toBeInTheDocument();
+    expect(within(queues).queryAllByRole("heading", { level: 2 })).toHaveLength(1);
+    // Grid antrean berukuran rem (auto-fit) sehingga kolom berkurang saat teks diperbesar 200% (WCAG 1.4.4).
+    const grid = within(queues).getByRole("region", { name: "Pembayaran" }).parentElement!;
+    expect(grid.className).toMatch(/auto-fit,minmax\(min\(100%,\d+rem\)/);
+  });
+
+  it("F-15: tautan antrean pembayaran membuka tab verifikasi tempat baris lewat batas ditandai", async () => {
+    const user = userEvent.setup();
+    await openPage(user, "/", "Dashboard");
+    const payments = await section("Pembayaran");
+    expect(within(payments).getByRole("link", { name: "Buka antrean verifikasi" })).toHaveAttribute(
+      "href",
+      "/payments?tab=verify",
+    );
   });
 });
