@@ -388,9 +388,10 @@ export class AdminReportsService {
   }
 
   /**
-   * Bukti dari snapshot saat laporan dibuat (PRD 3.12): identitas pihak yang akunnya sudah dihapus tampil anonim (D2),
-   * gambar lewat URL bertanda tangan <= 10 menit yang terikat sesi admin (kebijakan akses berkas bukti didaftarkan
-   * modul ini), `deleted_since_report` dari keadaan pesan terkini, `in_force` banding dari suspend terkini.
+   * Bukti dari snapshot saat laporan dibuat (PRD 3.12): identitas, foto dan isi chat pihak yang akunnya sudah dihapus
+   * tampil anonim/placeholder (D2, AC F14-3), gambar lewat URL bertanda tangan <= 10 menit yang terikat sesi admin
+   * (kebijakan akses berkas bukti didaftarkan modul ini), `deleted_since_report` dari keadaan pesan terkini, `in_force`
+   * banding dari suspend terkini.
    */
   private async toEvidence(
     db: DbOrTx,
@@ -412,13 +413,17 @@ export class AdminReportsService {
       stored.messages.map(async (message) => {
         const sender = message.sender_user_id ? people.get(message.sender_user_id) : undefined;
         const senderGone = message.sender_user_id === null || sender === undefined;
+        // D2 / AC F14-3: isi chat buatan akun yang sudah dihapus menjadi placeholder tanpa isi, juga di bukti
+        // (sebelum maupun sesudah job penghapusan membersihkan snapshot lewat anonymizeEvidenceOf). Pesan sistem
+        // (tanpa pengirim) tetap tampil.
+        const senderDeleted = message.sender_user_id !== null && sender === undefined;
         return {
           message_id: message.message_id,
           reported: message.reported,
           sender_user_id: senderGone ? null : message.sender_user_id,
           sender_name: senderGone ? null : message.sender_name,
           kind: message.kind,
-          body: message.body,
+          body: senderDeleted ? null : message.body,
           image: message.image_file_id ? await this.image(message.image_file_id, auth, senderGone) : null,
           created_at: message.created_at,
           deleted_since_report: deletedNow.get(message.message_id) ?? true,

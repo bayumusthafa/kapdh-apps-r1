@@ -187,13 +187,15 @@ describe("GET /admin/reports/{reportId}: bukti terminimalkan, akses diaudit (PRD
     });
     expect(await auditsOf(id, "moderation.report_viewed")).toHaveLength(2);
 
-    // D2: akun pengirim dihapus → identitas anonim di bukti, subjek dan target_member null, gambar tidak dilayani.
+    // D2, AC F14-3: akun pengirim dihapus → identitas anonim di bukti, isi chatnya menjadi placeholder tanpa isi,
+    // subjek dan target_member null, gambar tidak dilayani.
     await t.db.update(users).set({ status: "deleted" }).where(eq(users.id, sender.userId));
     const anonymous = await detail(admin.token, id);
     expect(anonymous).toMatchObject({ subject: null, target_member: null });
     expect(anonymous.evidence.messages[1]).toMatchObject({
       sender_user_id: null,
       sender_name: null,
+      body: null,
       image: { file_id: null, url: null, url_expires_at: null },
     });
   });

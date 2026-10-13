@@ -8,6 +8,7 @@ import type { Tx } from "../../src/core/db/types.js";
 import { FilesService } from "../../src/core/files/files.service.js";
 import { DEFAULT_UNSUSPEND_MESSAGE, MembershipKernel } from "../../src/core/membership/membership.kernel.js";
 import { addBusinessDaysJakarta } from "../../src/modules/moderation/due-at.js";
+import { anonymizeEvidenceOf } from "../../src/modules/moderation/evidence-anonymize.js";
 import { expectOperation } from "../support/contract.js";
 import { createAdmin, createAlumni, signInAdmin, signInAlumni } from "../support/factories.js";
 import { uploadTestFile } from "../support/files.js";
@@ -488,6 +489,87 @@ describe("Retensi berkas bukti (PRD 3.12, D2; core FilesService.discard)", () =>
     await t.db.update(users).set({ status: "deletion_pending" }).where(eq(users.id, sender.userId));
     expect(await t.db.transaction((tx) => filesService.discard(tx, image.id))).toBe(true);
     expect((await fileRow(image.id)).status).toBe("deleted");
+  });
+
+  it("AC F14-3 / D2: akun dihapus → nama, foto dan isi chatnya di bukti dianonimkan; laporan tetap ada; idempoten", async () => {
+    const reporter = await member("verified", { fullName: "Pelapor Anonimisasi" });
+    const sender = await member("verified", { fullName: "Pengirim Dihapus" });
+    const admin = await createAdmin(t, { permissions: ["moderation.read"] });
+    const adminToken = (await signInAdmin(t, admin)).accessToken;
+    const group = await createGroupRoom(t, { name: "Grup D2", adminId: reporter.userId });
+    await addRoomMember(t, group, sender.userId);
+    const image = await uploadTestFile(t, sender.token, "chat_image");
+    const avatar = await uploadTestFile(t, sender.token, "avatar");
+    await t.db
+      .update(alumni)
+      .set({ avatarFileId: avatar.id, bio: "Bio pengirim pribadi" })
+      .where(eq(alumni.userId, sender.userId));
+    const context = await createMessage(t, group, reporter.userId, { body: "Konteks dari pelapor" });
+    const reported = await createMessage(t, group, sender.userId, {
+      imageFileId: image.id,
+      body: "Isi chat pengirim",
+    });
+    const messageReport = await reportOk(t.app, reporter.token, {
+      target_type: "message",
+      message_id: reported,
+      context_message_ids: [context],
+      category: "harassment",
+    });
+    const profileReport = await reportOk(t.app, reporter.token, {
+      target_type: "user",
+      target_user_id: sender.userId,
+      category: "harassment",
+    });
+
+    // Begitu akun berstatus deleted, tampilan bukti sudah anonim walaupun snapshot belum dibersihkan job.
+    await t.db.update(users).set({ status: "deleted" }).where(eq(users.id, sender.userId));
+    const view = await api().get(`/admin/reports/${messageReport}`, { token: adminToken });
+    const shown = (expectOperation("get", "/admin/reports/{reportId}", view) as {
+      evidence: { messages: { message_id: string }[] };
+    }).evidence.messages;
+    expect(shown.find((m) => m.message_id === reported)).toMatchObject({
+      sender_user_id: null,
+      sender_name: null,
+      body: null,
+      image: { file_id: null, url: null },
+    });
+    expect(shown.find((m) => m.message_id === context)).toMatchObject({
+      sender_user_id: reporter.userId,
+      body: "Konteks dari pelapor",
+    });
+
+    // Langkah job penghapusan akun (modul account): snapshot dibersihkan; pemanggilan ulang tidak mengubah apa pun.
+    expect(await inTx((tx) => anonymizeEvidenceOf(tx, sender.userId, t.clock.now()))).toBe(2);
+    expect(await inTx((tx) => anonymizeEvidenceOf(tx, sender.userId, t.clock.now()))).toBe(0);
+    const messageEvidence = (await reportRow(messageReport)).evidence as {
+      file_ids: string[];
+      messages: Record<string, unknown>[];
+    };
+    expect(messageEvidence.file_ids).toEqual([]);
+    expect(messageEvidence.messages.find((m) => m.message_id === reported)).toMatchObject({
+      reported: true,
+      sender_user_id: null,
+      sender_name: null,
+      body: null,
+      image_file_id: null,
+    });
+    expect(messageEvidence.messages.find((m) => m.message_id === context)).toMatchObject({
+      sender_user_id: reporter.userId,
+      sender_name: "Pelapor Anonimisasi",
+      body: "Konteks dari pelapor",
+    });
+    const profileRow = await reportRow(profileReport);
+    expect(profileRow.evidence).toMatchObject({
+      file_ids: [],
+      profile: { user_id: sender.userId, full_name: null, bio: null, avatar_file_id: null },
+    });
+    for (const stored of [messageEvidence, profileRow.evidence]) {
+      expect(JSON.stringify(stored)).not.toContain("Pengirim Dihapus");
+      expect(JSON.stringify(stored)).not.toContain("Isi chat pengirim");
+      expect(JSON.stringify(stored)).not.toContain("Bio pengirim pribadi");
+    }
+    // Laporan tetap tersimpan dan dapat diputus (hanya dismiss karena akun terlapor sudah dihapus).
+    expect(profileRow.status).toBe("open");
   });
 });
 
