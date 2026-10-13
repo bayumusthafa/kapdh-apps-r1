@@ -15,6 +15,12 @@ import {
 } from "../support/factories.js";
 import type { TestApp } from "../support/test-app.js";
 
+/**
+ * Body JSON respons yang sudah divalidasi kontrak lewat expectOperation (tipe sama dengan `JSON.parse` dan
+ * `res.json()`), untuk membaca field bersarang di uji tanpa mendeklarasikan ulang skema kontrak.
+ */
+export type JsonBody = ReturnType<typeof JSON.parse>;
+
 export interface AdminActor {
   admin: EnrolledAdminFixture;
   token: string;
