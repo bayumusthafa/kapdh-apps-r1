@@ -1,13 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { components } from "@kapdh/contracts";
-import { useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { Clock, ImageOff, RefreshCw, ShieldAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { api } from "../../api/client";
-import type { ApiError } from "../../api/errors";
+import { type ApiError, toApiError } from "../../api/errors";
 import { useApiMutation, useApiQuery } from "../../api/query";
 import { useAuth } from "../../auth/session";
 import { Badge, MembershipStatusBadge, ReportStatusBadge } from "../../components/ui/Badge";
@@ -20,6 +20,7 @@ import { FormError, FormField } from "../../components/ui/FormField";
 import { Select, Textarea } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { PermissionGate } from "../../components/ui/PermissionGate";
+import { SearchInput } from "../../components/ui/SearchInput";
 import { ErrorState, ForbiddenState, Loading } from "../../components/ui/States";
 import { cn } from "../../lib/cn";
 import { formatDateTime } from "../../lib/format";
@@ -38,6 +39,10 @@ import {
 type Detail = components["schemas"]["AdminModerationReportDetail"];
 type Action = components["schemas"]["ModerationAction"];
 type EvidenceImage = components["schemas"]["AdminModerationEvidenceImage"];
+type Candidate = components["schemas"]["AdminModerationSubjectCandidate"];
+
+/** Jumlah calon subjek per permintaan; grup lebih besar dipersempit lewat pencarian. */
+export const SUBJECT_CANDIDATE_LIMIT = 50;
 
 interface Notice {
   tone: "success" | "warning";
@@ -54,6 +59,10 @@ export const ACTION_CONSEQUENCE: Record<Action, string> = {
   unsuspend:
     "Suspend dicabut; status dihitung ulang dari masa aktif, sehingga anggota yang masa aktifnya habis menjadi expired, bukan otomatis terverifikasi (AC F12-5).",
 };
+
+/** Akibat `remove_message` (kontrak adminResolveReport): tidak dapat dibatalkan dan langsung terlihat di chat. */
+export const REMOVE_MESSAGE_CONSEQUENCE =
+  "Pesan terlapor diganti placeholder di chat untuk semua anggota room dan tidak dapat dikembalikan. Snapshot bukti tetap tersimpan.";
 
 /**
  * Detail laporan moderasi (F-12, AC F12-2..F12-5, PRD 3.12; izin moderation.read, keputusan moderation.resolve).
@@ -606,6 +615,7 @@ function ResolveCard({
 }) {
   const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
+  const [subjectLabel, setSubjectLabel] = useState<string | null>(null);
   const options = actionOptions(r);
   const form = useForm<ResolveValues>({
     resolver: zodResolver(resolveSchema),
@@ -622,14 +632,8 @@ function ResolveCard({
   const needsMessage = action === "warn" || action === "suspend" || appeal;
   const needsSubject =
     r.target_type === "room" && !r.target_member && (action === "warn" || action === "suspend");
-  const subjects = [
-    ...new Map(
-      r.evidence.messages
-        .filter((m) => m.sender_user_id)
-        .map((m) => [m.sender_user_id!, m.sender_name ?? "Anggota tanpa nama"] as const),
-    ),
-  ];
   const strong = action === "suspend" || action === "unsuspend";
+  const removeMessage = r.target_type === "message" && form.watch("remove_message");
 
   const resolve = useApiMutation<Detail, ResolveValues, ResolveValues>({
     setError: form.setError,
@@ -708,22 +712,7 @@ function ResolveCard({
           error={errors.action?.message}
         />
         {needsSubject ? (
-          <FormField<ResolveValues, "subject_user_id">
-            control={form.control}
-            name="subject_user_id"
-            label="Anggota grup yang dikenai tindakan"
-            required
-          >
-            {(field, a11y) => (
-              <Select
-                {...a11y}
-                value={field.value}
-                onValueChange={field.onChange}
-                placeholder="Pilih anggota"
-                options={subjects.map(([id, name]) => ({ value: id, label: name }))}
-              />
-            )}
-          </FormField>
+          <SubjectField report={r} action={action} form={form} onSubjectLabel={setSubjectLabel} />
         ) : null}
         <FormField<ResolveValues, "note">
           control={form.control}
@@ -756,7 +745,8 @@ function ResolveCard({
       </form>
       <ConfirmDialog
         open={confirming}
-        tone={strong ? "danger" : "primary"}
+        // Menjadikan pesan placeholder tidak dapat dibatalkan, sehingga memakai konfirmasi dua langkah (PRD 4.5).
+        tone={strong || removeMessage ? "danger" : "primary"}
         onCancel={() => setConfirming(false)}
         onConfirm={() => resolve.mutate(form.getValues())}
         pending={resolve.isPending}
@@ -765,10 +755,143 @@ function ResolveCard({
         confirmLabel={action ? `Ya, ${ACTION_LABEL[action].toLowerCase()}` : "Putuskan"}
         acknowledgement="Saya sudah memeriksa bukti dan keputusan ini sesuai pedoman moderasi."
       >
+        {(needsSubject && subjectLabel) || removeMessage ? (
+          <ul aria-label="Akibat tambahan" className="flex list-disc flex-col gap-1 pl-5 text-sm">
+            {needsSubject && subjectLabel ? <li>Anggota yang dikenai tindakan: {subjectLabel}.</li> : null}
+            {removeMessage ? <li className="font-medium text-danger">{REMOVE_MESSAGE_CONSEQUENCE}</li> : null}
+          </ul>
+        ) : null}
         <blockquote className="rounded-md border-l-4 border-primary bg-green-50 px-3 py-2 text-sm text-text">
           {form.getValues("note")}
         </blockquote>
       </ConfirmDialog>
     </Card>
+  );
+}
+
+const ROOM_STATUS_LABEL: Record<Candidate["room_status"], string> = {
+  joined: "anggota",
+  left: "mantan anggota (keluar)",
+  removed: "mantan anggota (dikeluarkan)",
+};
+
+/** "Dimas Prasetyo (12.02.01.9) | admin grup" atau "... | mantan anggota (keluar), sedang disuspend". */
+export function candidateLabel(c: Candidate): string {
+  const membership =
+    c.room_role === "admin"
+      ? c.room_status === "joined"
+        ? "admin grup"
+        : `${ROOM_STATUS_LABEL[c.room_status]}, dulu admin grup`
+      : ROOM_STATUS_LABEL[c.room_status];
+  return `${partyText(c)} | ${membership}${c.suspended_at ? ", sedang disuspend" : ""}`;
+}
+
+/**
+ * Pilihan subjek laporan grup (kontrak adminResolveReport `subject_user_id`). Bukti laporan grup tidak memuat pesan
+ * (createReport), sehingga calon diambil dari GET /admin/reports/{id}/subject-candidates: anggota dan mantan anggota
+ * yang pernah bergabung, tanpa akun tertaut pengurus sendiri. Anggota yang sedang disuspend tidak dapat dipilih untuk
+ * suspend. Bila daftar tidak dapat dimuat, warn/suspend tidak dapat dikirim dan laporan hanya dapat diabaikan.
+ */
+function SubjectField({
+  report: r,
+  action,
+  form,
+  onSubjectLabel,
+}: {
+  report: Detail;
+  action: Action;
+  form: UseFormReturn<ResolveValues>;
+  onSubjectLabel: (label: string | null) => void;
+}) {
+  const [q, setQ] = useState("");
+  const candidates = useApiQuery({
+    queryKey: [...REPORTS_KEY, "subject-candidates", r.id, q],
+    placeholderData: keepPreviousData,
+    request: ({ signal, headers }) =>
+      api.GET("/admin/reports/{reportId}/subject-candidates", {
+        params: {
+          path: { reportId: r.id },
+          query: { limit: SUBJECT_CANDIDATE_LIMIT, ...(q ? { q } : {}) },
+        },
+        signal,
+        headers,
+      }),
+  });
+  const items = candidates.data?.items ?? [];
+  const selected = form.watch("subject_user_id");
+  const blocked = (c: Candidate) => action === "suspend" && c.suspended_at !== null;
+  const chosen = items.find((c) => c.user_id === selected);
+
+  // Pilihan yang tidak lagi sah (mis. beralih ke suspend untuk anggota yang sudah disuspend) dikosongkan.
+  const invalid = chosen !== undefined && blocked(chosen);
+  useEffect(() => {
+    if (invalid) form.setValue("subject_user_id", "");
+  }, [invalid, form]);
+  const label = chosen && !invalid ? candidateLabel(chosen) : null;
+  useEffect(() => onSubjectLabel(label), [label, onSubjectLabel]);
+
+  const hint = candidates.isError
+    ? null
+    : candidates.isPending
+      ? "Memuat anggota grup..."
+      : items.length === 0
+        ? q
+          ? "Tidak ada anggota grup yang cocok dengan pencarian."
+          : "Tidak ada anggota grup yang dapat dipilih; laporan ini hanya dapat diabaikan."
+        : candidates.data?.next_cursor
+          ? `Menampilkan ${items.length} anggota pertama; persempit dengan pencarian nama atau nomor anggota.`
+          : "Anggota dan mantan anggota yang pernah bergabung di grup ini. Akun alumni Anda sendiri tidak dicantumkan.";
+
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-divider p-3">
+      <SearchInput
+        label="Cari anggota grup"
+        value={q}
+        onValueChange={setQ}
+        placeholder="Nama atau nomor anggota"
+      />
+      {candidates.isError ? (
+        <div role="alert" className="flex flex-col items-start gap-2 rounded-md bg-danger-bg p-3 text-sm">
+          <p className="text-danger">
+            Daftar anggota grup tidak dapat dimuat ({toApiError(candidates.error).message}). Tanpa memilih
+            anggota, peringatan atau suspend untuk laporan grup tidak dapat diputus; laporan tetap dapat
+            diabaikan.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<RefreshCw aria-hidden="true" className="size-4" />}
+            onClick={() => void candidates.refetch()}
+          >
+            Muat ulang daftar anggota
+          </Button>
+        </div>
+      ) : null}
+      <FormField<ResolveValues, "subject_user_id">
+        control={form.control}
+        name="subject_user_id"
+        label="Anggota grup yang dikenai tindakan"
+        required
+        hint={hint}
+      >
+        {(field, a11y) => (
+          <Select
+            {...a11y}
+            ref={field.ref}
+            name={field.name}
+            value={field.value}
+            onBlur={field.onBlur}
+            onValueChange={field.onChange}
+            disabled={candidates.isPending || candidates.isError}
+            placeholder="Pilih anggota"
+            options={items.map((c) => ({
+              value: c.user_id,
+              label: blocked(c) ? `${candidateLabel(c)} (tidak dapat disuspend lagi)` : candidateLabel(c),
+              disabled: blocked(c),
+            }))}
+          />
+        )}
+      </FormField>
+    </div>
   );
 }
