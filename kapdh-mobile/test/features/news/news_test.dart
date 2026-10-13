@@ -142,6 +142,50 @@ void main() {
       expect(find.byKey(const ValueKey('post-detail')), findsOneWidget);
     });
 
+    testWidgets(
+      'PRD 2.2 feed ditolak server (403 MEMBERSHIP_REQUIRED): /me dimuat ulang, Berita khusus anggota aktif',
+      (tester) async {
+        var status = 'verified';
+        final app = await pumpMemberApp(
+          tester,
+          location: '/news',
+          routes: {
+            '/me': (_) => FakeResponse.json(200, meJson(status: status)),
+            '/categories': (_) => FakeResponse.json(200, {'items': <Object?>[]}),
+            '/posts': (_) {
+              // Masa keanggotaan berakhir di server sebelum klien tahu.
+              status = 'expired';
+              return FakeResponse.json(403, errorJson('MEMBERSHIP_REQUIRED', 'Fitur ini khusus anggota aktif.'));
+            },
+          },
+        );
+        expect(app.adapter.requestsTo('/me').length, greaterThanOrEqualTo(2));
+        expect(app.location, '/news');
+        expect(find.text('Berita khusus anggota aktif'), findsOneWidget);
+        expect(find.text('Perpanjang KTA'), findsOneWidget);
+        expect(find.byType(ErrorState), findsNothing);
+      },
+    );
+
+    testWidgets('PRD 2.2 detail berita ditolak ACCOUNT_SUSPENDED: /me dimuat ulang lalu ke portal pembatasan', (
+      tester,
+    ) async {
+      var status = 'verified';
+      final app = await pumpMemberApp(
+        tester,
+        location: '/news/halal-bihalal-2026',
+        routes: {
+          '/me': (_) => FakeResponse.json(200, meJson(status: status)),
+          '/posts/halal-bihalal-2026': (_) {
+            status = 'suspended';
+            return FakeResponse.json(403, errorJson('ACCOUNT_SUSPENDED', 'Akun Anda sedang dibatasi.'));
+          },
+        },
+      );
+      expect(app.adapter.requestsTo('/me').length, greaterThanOrEqualTo(2));
+      expect(app.location, '/restricted');
+    });
+
     testWidgets('PRD 2.2 unverified: Berita khusus anggota aktif tanpa request /posts', (tester) async {
       final app = await pumpMemberApp(tester, status: 'unverified', location: '/news');
       expect(app.location, '/news');

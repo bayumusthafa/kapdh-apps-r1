@@ -22,7 +22,8 @@ Uri? externalLinkUri(String? raw) {
 }
 
 /// Menampilkan snackbar singkat lewat messenger akar.
-void showAppSnackBar(WidgetRef ref, String message) => showMessengerSnackBar(ref.read(scaffoldMessengerKeyProvider), message);
+void showAppSnackBar(WidgetRef ref, String message) =>
+    showMessengerSnackBar(ref.read(scaffoldMessengerKeyProvider), message);
 
 /// Snackbar lewat kunci messenger akar yang sudah diambil sebelumnya. Dipakai sesudah `await`: kunci messenger
 /// hidup selama aplikasi, sedangkan WidgetRef layar tidak boleh dipakai lagi bila layarnya sudah ditutup.

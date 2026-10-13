@@ -61,10 +61,11 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       onPressed: () => unawaited(context.push(AppRoutes.tickets)),
     );
     if (!isActiveMember(status)) {
+      // Hanya sesaat sebelum router mengalihkan status nonaktif (tab Event terkunci, PRD 2.2): tanpa request daftar.
+      // Tiket lunas anggota expired dibuka lewat Beranda atau lembar tab terkunci.
       return AppScaffold(
         title: 'Event',
         showBack: false,
-        actions: [if (status == EffectiveStatus.expired) ticketsAction],
         body: MemberOnlyNotice(feature: 'Event', status: status),
       );
     }
