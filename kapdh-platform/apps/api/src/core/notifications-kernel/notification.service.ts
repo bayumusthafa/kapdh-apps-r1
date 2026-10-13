@@ -43,6 +43,14 @@ export interface NotifyInput {
    * transaksi/job diulang (AC F13-1, F13-6).
    */
   dedupKey: string;
+  /**
+   * Bawaan true: outbox `notification.created` diterbitkan sehingga worker mengirim push/email sesuai kategori dan
+   * preferensi. false: hanya kotak masuk + event realtime, tanpa outbox (push dan email tidak dijadwalkan), untuk
+   * penahanan push yang diketahui modul pemanggil, mis. room chat yang di-mute atau push chat yang dimatikan (kontrak
+   * setChatRoomMute dan sendChatMessage; kategori chat tidak memiliki kanal email). Kotak masuk tetap riwayat resmi
+   * (AC F13-2).
+   */
+  externalDelivery?: boolean;
 }
 
 export interface NotifyResult {
@@ -87,7 +95,7 @@ function validate(input: NotifyInput): void {
  * Kernel notifikasi (ARCHITECTURE §4.2, §4.7; F-13). `notify` dipanggil di dalam transaksi perubahan bisnis:
  *   1. baris `notifications` (inbox = riwayat resmi; `ON CONFLICT (dedup_key) DO NOTHING`),
  *   2. outbox `notification.created` pada transaksi yang sama (AC F04-1, F04-5: email/push dikirim worker sesuai
- *      preferensi; kegagalan kanal tidak membatalkan keputusan),
+ *      preferensi; kegagalan kanal tidak membatalkan keputusan), kecuali `externalDelivery: false` (hanya inbox),
  *   3. setelah commit: event realtime `notification.created` ke `user:<id>` beserta jumlah belum dibaca.
  * Preferensi push/email TIDAK diperiksa di sini (inbox selalu ditulis, AC F13-2); prosesor `notifications.deliver`
  * yang memilih kanal.
@@ -137,11 +145,12 @@ export class NotificationService {
         .limit(1);
       return { id: existing!.id, created: false };
     }
-    await this.outbox.publish(tx, {
-      topic: "notification.created",
-      dedupKey: `notification.created:${id}`,
-      payload: { notification_id: id, user_id: input.userId },
-    });
+    if (input.externalDelivery !== false)
+      await this.outbox.publish(tx, {
+        topic: "notification.created",
+        dedupKey: `notification.created:${id}`,
+        payload: { notification_id: id, user_id: input.userId },
+      });
     afterCommit(async () => {
       const unread = await this.unreadCount(input.userId);
       this.realtime.emitToUser(input.userId, "notification.created", id, {

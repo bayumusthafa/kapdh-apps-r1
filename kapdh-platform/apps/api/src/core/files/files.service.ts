@@ -113,7 +113,12 @@ const LINK_EXPIRED = "Tautan berkas tidak berlaku. Buka ulang dari aplikasi.";
  */
 @Injectable()
 export class FilesService implements OnModuleInit {
-  private readonly policies = new Map<FilePurpose, FileAccessPolicy[]>();
+  /** Kebijakan bawaan core per purpose (pemilik, izin pengurus). */
+  private readonly defaultPolicies = new Map<FilePurpose, FileAccessPolicy[]>();
+  /** Kebijakan yang didaftarkan modul domain (digabung OR). */
+  private readonly modulePolicies = new Map<FilePurpose, FileAccessPolicy[]>();
+  /** Purpose yang kebijakan bawaannya digantikan modul pemiliknya (`replaceDefaults`). */
+  private readonly replacedDefaults = new Set<FilePurpose>();
   private readonly urlKey: Uint8Array;
 
   constructor(
@@ -128,23 +133,30 @@ export class FilesService implements OnModuleInit {
   ) {
     this.urlKey = deriveFileUrlKey(env.FILE_URL_SECRET);
     // Kebijakan bawaan core (PRD 2.3): pemilik, ditambah izin pengurus yang relevan. Modul menambah aturan lain
-    // (anggota room untuk chat_image, direktori untuk avatar, dsb.).
+    // (anggota room untuk chat_image, direktori untuk avatar, dsb.) atau menggantikan bawaan bila pemilik berkas tidak
+    // boleh membuka tanpa syarat (chat_image: hanya anggota room, AC F11-4).
     const owner = FilePolicies.owner();
-    this.registerAccessPolicy("avatar", owner);
-    this.registerAccessPolicy("avatar", FilePolicies.adminPermission("members.read"));
-    this.registerAccessPolicy("chat_image", owner);
-    this.registerAccessPolicy("payment_proof", owner);
-    this.registerAccessPolicy("payment_proof", FilePolicies.adminPermission("payments.read"));
-    this.registerAccessPolicy("adjustment_evidence", FilePolicies.adminPermission("payments.read"));
+    this.registerDefaultPolicy("avatar", owner);
+    this.registerDefaultPolicy("avatar", FilePolicies.adminPermission("members.read"));
+    this.registerDefaultPolicy("chat_image", owner);
+    this.registerDefaultPolicy("payment_proof", owner);
+    this.registerDefaultPolicy("payment_proof", FilePolicies.adminPermission("payments.read"));
+    this.registerDefaultPolicy("adjustment_evidence", FilePolicies.adminPermission("payments.read"));
     // Ekspor audit (kontrak C7): audit.read + audit.export DAN pemohon ekspor atau Super Admin; jalur unduh utama
     // adalah adminGetAuditExportAccess.
-    this.registerAccessPolicy(
+    this.registerDefaultPolicy(
       "audit_export",
       FilePolicies.allOf(
         FilePolicies.adminPermission("audit.read", "audit.export"),
         FilePolicies.anyOf(owner, FilePolicies.superAdmin()),
       ),
     );
+  }
+
+  private registerDefaultPolicy(purpose: FilePurpose, policy: FileAccessPolicy): void {
+    const list = this.defaultPolicies.get(purpose) ?? [];
+    list.push(policy);
+    this.defaultPolicies.set(purpose, list);
   }
 
   onModuleInit(): void {
@@ -522,20 +534,34 @@ export class FilesService implements OnModuleInit {
   /**
    * Menambah kebijakan baca berkas privat untuk purpose (digabung OR dengan kebijakan bawaan dan modul lain).
    * Dipanggil modul di onModuleInit, mis. chat: anggota room boleh membuka chat_image di room itu.
+   *
+   * `replaceDefaults: true` (modul pemilik purpose): kebijakan BAWAAN core untuk purpose itu (mis. pemilik berkas)
+   * tidak lagi dievaluasi, sehingga aturan modul menjadi penentu, mis. pengunggah chat_image yang sudah keluar room
+   * tidak dapat membuka gambarnya (AC F11-4). Kebijakan yang didaftarkan modul lain tetap berlaku (OR), tidak
+   * bergantung urutan inisialisasi modul.
    */
-  registerAccessPolicy(purpose: FilePurpose, policy: FileAccessPolicy): void {
+  registerAccessPolicy(
+    purpose: FilePurpose,
+    policy: FileAccessPolicy,
+    options: { replaceDefaults?: boolean } = {},
+  ): void {
     if (!(FILE_PURPOSES as readonly string[]).includes(purpose))
       throw new Error(`Purpose tidak dikenal: ${purpose}`);
-    const list = this.policies.get(purpose) ?? [];
+    const list = this.modulePolicies.get(purpose) ?? [];
     list.push(policy);
-    this.policies.set(purpose, list);
+    this.modulePolicies.set(purpose, list);
+    if (options.replaceDefaults) this.replacedDefaults.add(purpose);
   }
 
   /** true bila penampil boleh membuka berkas (publik selalu boleh). */
   async canAccess(file: FileRow, viewer: FileViewer, db: DbOrTx = this.db): Promise<boolean> {
     if (file.visibility === "public") return true;
-    for (const policy of this.policies.get(file.purpose as FilePurpose) ?? [])
-      if (await policy({ file, viewer, db })) return true;
+    const purpose = file.purpose as FilePurpose;
+    const policies = [
+      ...(this.replacedDefaults.has(purpose) ? [] : (this.defaultPolicies.get(purpose) ?? [])),
+      ...(this.modulePolicies.get(purpose) ?? []),
+    ];
+    for (const policy of policies) if (await policy({ file, viewer, db })) return true;
     return false;
   }
 

@@ -246,7 +246,7 @@ export class ChatMessagesService {
           .update(roomMembers)
           .set({ lastReadMessageId: id, lastReadAt: now, updatedAt: now })
           .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.userId, auth.userId)));
-        await this.schedulePush(tx, room, auth.userId, now);
+        await this.scheduleNotifications(tx, room, auth.userId, now);
         const found = await messageRows(tx, { roomId, viewerId: auth.userId, ids: [id] });
         const [message] = await this.presenter.messages(tx, found, auth);
         const [broadcast] = await this.presenter.messages(tx, found, null, { realtime: true });
@@ -344,20 +344,28 @@ export class ChatMessagesService {
   }
 
   /**
-   * Push kategori chat tanpa isi pesan (PRD 3.13, §4.7) HANYA untuk anggota joined selain pengirim yang aktif
-   * (verified/expiring, tidak suspended), tidak mute room, dan preferensi push chat-nya menyala (kontrak
-   * sendChatMessage). Satu notifikasi per "episode belum dibaca": kunci dedup memuat read cursor penerima, sehingga
-   * pesan berikutnya sebelum penerima membaca tidak menambah inbox maupun push (riwayat resmi tetap di chat).
+   * Notifikasi kategori chat tanpa isi pesan (PRD 3.13, §4.7) untuk anggota joined selain pengirim yang aktif
+   * (verified/expiring, tidak suspended; deep link `/chat/<roomId>` menjawab 403 bagi yang tidak aktif):
+   * - kotak masuk SELALU ditulis: riwayat resmi yang tidak dihilangkan preferensi push maupun mute (AC F13-2; kontrak
+   *   updateNotificationPreferences "mematikan kategori hanya menghentikan push/email", setChatRoomMute "pesan, unread
+   *   dan inbox tetap tersedia");
+   * - push hanya dijadwalkan (outbox) bila room tidak di-mute DAN preferensi push chat menyala (kontrak sendChatMessage);
+   *   selain itu notifikasi hanya-inbox (`externalDelivery: false`; kategori chat tidak memiliki kanal email).
+   * Satu notifikasi per "episode belum dibaca": kunci dedup memuat read cursor penerima, sehingga pesan berikutnya
+   * sebelum penerima membaca tidak menambah inbox maupun push.
    */
-  private async schedulePush(tx: Tx, room: RoomRow, senderId: string, now: Date): Promise<void> {
+  private async scheduleNotifications(tx: Tx, room: RoomRow, senderId: string, now: Date): Promise<void> {
     const members = await tx
-      .select({ userId: roomMembers.userId, lastRead: roomMembers.lastReadMessageId })
+      .select({
+        userId: roomMembers.userId,
+        lastRead: roomMembers.lastReadMessageId,
+        muted: roomMembers.muted,
+      })
       .from(roomMembers)
       .where(
         and(
           eq(roomMembers.roomId, room.id),
           eq(roomMembers.status, "joined"),
-          eq(roomMembers.muted, false),
           ne(roomMembers.userId, senderId),
         ),
       );
@@ -366,12 +374,12 @@ export class ChatMessagesService {
       members.map((m) => m.userId),
       { db: tx, now },
     );
-    let recipients = members.filter((m) => {
+    const recipients = members.filter((m) => {
       const status = statuses.get(m.userId);
       return status !== undefined && status.accountStatus === "active" && hasActiveMembership(status.status);
     });
     if (recipients.length === 0) return;
-    const optedOut = new Set(
+    const pushOff = new Set(
       (
         await tx
           .select({ userId: notificationPreferences.userId })
@@ -389,24 +397,21 @@ export class ChatMessagesService {
           )
       ).map((row) => row.userId),
     );
-    recipients = recipients.filter((r) => !optedOut.has(r.userId));
     const dedupOf = (r: { lastRead: string | null }) => `chat.message:${room.id}:${r.lastRead ?? "none"}`;
     // Saring awal episode yang sudah memiliki notifikasi (format kunci NotificationService: u:<user>:<dedupKey>);
     // notify() tetap menjadi pengaman dedup bila format berubah.
     const existing = new Set(
-      recipients.length === 0
-        ? []
-        : (
-            await tx
-              .select({ key: notifications.dedupKey })
-              .from(notifications)
-              .where(
-                inArray(
-                  notifications.dedupKey,
-                  recipients.map((r) => `u:${r.userId}:${dedupOf(r)}`),
-                ),
-              )
-          ).map((row) => row.key),
+      (
+        await tx
+          .select({ key: notifications.dedupKey })
+          .from(notifications)
+          .where(
+            inArray(
+              notifications.dedupKey,
+              recipients.map((r) => `u:${r.userId}:${dedupOf(r)}`),
+            ),
+          )
+      ).map((row) => row.key),
     );
     const sender = room.kind === "direct" ? await this.writer.displayName(tx, senderId) : null;
     for (const recipient of recipients) {
@@ -420,6 +425,7 @@ export class ChatMessagesService {
         route: `/chat/${room.id}`,
         data: { room_id: room.id },
         dedupKey: dedupOf(recipient),
+        externalDelivery: !recipient.muted && !pushOff.has(recipient.userId),
       });
     }
   }

@@ -1,8 +1,9 @@
 /**
  * Helper uji modul chat (F-11, F-12): anggota bersesi, room direct/grup lewat API, kirim pesan, dan socket realtime.
  */
-import { blocks } from "@kapdh/database";
+import { alumni, blocks, files } from "@kapdh/database";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
+import { eq } from "drizzle-orm";
 import type { Namespace } from "socket.io";
 import { io, type Socket } from "socket.io-client";
 import { v7 as uuidv7 } from "uuid";
@@ -16,6 +17,7 @@ import {
   type CreateAlumniOptions,
   signInAlumni,
 } from "../support/factories.js";
+import { uploadTestFile } from "../support/files.js";
 import { httpClient } from "../support/http.js";
 import type { TestApp } from "../support/test-app.js";
 
@@ -120,6 +122,29 @@ export async function block(t: TestApp, blocker: Member, blocked: Member): Promi
   await t.db
     .insert(blocks)
     .values({ blockerId: blocker.userId, blockedId: blocked.userId, createdAt: t.clock.now() });
+}
+
+/**
+ * Avatar privat anggota (purpose avatar, visibilitas privat bawaan) yang sudah terpasang di profil alumni, seperti
+ * hasil alur ubah foto profil modul account. Mengembalikan id berkas.
+ */
+export async function setAvatar(t: TestApp, who: Member): Promise<string> {
+  const avatar = await uploadTestFile(t, who.token, "avatar");
+  expect(avatar.visibility).toBe("private");
+  await t.db.update(files).set({ attachedAt: t.clock.now() }).where(eq(files.id, avatar.id));
+  await t.db.update(alumni).set({ avatarFileId: avatar.id }).where(eq(alumni.userId, who.userId));
+  return avatar.id;
+}
+
+/** Path relatif URL berkas bertanda tangan (untuk `app.inject`). */
+export function fileUrlPath(t: TestApp, url: string): string {
+  expect(url.startsWith(t.env.API_PUBLIC_URL)).toBe(true);
+  return url.slice(t.env.API_PUBLIC_URL.length);
+}
+
+/** Membuka URL berkas tanpa header Authorization (seperti widget gambar klien); mengembalikan status HTTP. */
+export async function openFileUrl(t: TestApp, url: string): Promise<number> {
+  return (await t.app.inject({ method: "GET", url: fileUrlPath(t, url) })).statusCode;
 }
 
 export function errorCode(res: InjectResponse): string {
