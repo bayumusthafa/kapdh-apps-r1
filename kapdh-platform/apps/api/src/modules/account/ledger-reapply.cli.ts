@@ -3,6 +3,7 @@
  * pengelola infra SETELAH database dan berkas dipulihkan dan SEBELUM API/worker dibuka:
  *
  *   node dist/modules/account/ledger-reapply.cli.js --dir /restore/ledger/account-deletions
+ *   (atau `pnpm --filter @kapdh/api account:ledger-reapply -- --dir <folder>`)
  *
  * `--dir` menunjuk salinan ledger TERBARU (folder `ledger/account-deletions` di STORAGE_LOCAL_ROOT, hasil sinkron
  * bucket S3, atau salinan ledger pada manifest backup terbaru), bukan ledger dari backup yang dipulihkan. Tanpa
