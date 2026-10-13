@@ -18,7 +18,8 @@ const requests = (method: string, path: string) =>
 async function open(user: User, path: string, heading: string) {
   renderApp(path);
   await signIn(user);
-  return screen.findByRole("heading", { level: 1, name: heading });
+  // Potongan kode area dimuat lazy: beri waktu lebih dari bawaan 1 detik saat suite berjalan paralel.
+  return screen.findByRole("heading", { level: 1, name: heading }, { timeout: 5_000 });
 }
 
 function rowOf(table: HTMLElement, name: string | RegExp): HTMLElement {
@@ -489,5 +490,31 @@ describe("Manajemen Kategori event (guideline p14, izin events.manage)", () => {
     await user.click(within(confirm).getByRole("button", { name: "Hapus kategori" }));
     await findToast("success", 'Kategori "Bakti Sosial" dihapus.');
     await waitFor(() => expect(within(sheet).queryByText("Bakti Sosial")).toBeNull());
+  });
+});
+
+describe("keadaan layar detail event (PRD 4.5)", () => {
+  it("event yang tidak ada menampilkan Data tidak ditemukan", async () => {
+    const user = userEvent.setup();
+    renderApp("/events/0199e100-0000-7000-8000-0000000000ff");
+    await signIn(user);
+    // Potongan kode area dimuat lazy lalu detail diminta: beri waktu lebih dari bawaan 1 detik.
+    expect(await screen.findByText("Data tidak ditemukan", {}, { timeout: 5_000 })).toBeInTheDocument();
+    expect(screen.getByText("Event tidak ditemukan.")).toBeInTheDocument();
+  });
+
+  it("event tanpa tiket menampilkan keadaan kosong peserta; event selesai tidak dapat diubah", async () => {
+    const user = userEvent.setup();
+    await open(user, `/events/${MOCK_EVENT_IDS.mancing}?tab=tickets`, MANCING);
+    expect(await screen.findByText("Belum ada peserta")).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "Event dan Tiket" }));
+    const table = await screen.findByRole("table", { name: "Daftar event" });
+    await user.click(
+      within(rowOf(table, /Jalan Sehat Kemerdekaan/)).getByRole("link", { name: "Jalan Sehat Kemerdekaan" }),
+    );
+    await screen.findByRole("heading", { level: 1, name: "Jalan Sehat Kemerdekaan" });
+    expect(screen.queryByRole("tab", { name: "Ubah Event" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ubah" })).toBeNull();
+    expect(screen.getByText("Selesai")).toBeInTheDocument();
   });
 });

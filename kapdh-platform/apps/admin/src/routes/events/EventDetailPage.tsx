@@ -2,6 +2,7 @@ import type { components } from "@kapdh/contracts";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Ban, CalendarClock, CircleCheck, Hourglass, ImageOff, MapPin, Ticket, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "../../auth/session";
 import { Badge, EventStatusBadge } from "../../components/ui/Badge";
 import { buttonClass } from "../../components/ui/Button";
 import { Card, CardHeader, StatCard } from "../../components/ui/Card";
@@ -132,6 +133,7 @@ export function EventDetailPage() {
 }
 
 function EventOverview({ event: e }: { event: AdminEventDetail }) {
+  const auth = useAuth();
   const stats = useEventStats(e.id);
   const s = stats.data;
   const free = !/[1-9]/.test(e.price);
@@ -272,7 +274,7 @@ function EventOverview({ event: e }: { event: AdminEventDetail }) {
               />
             )}
           </div>
-          {e.status === "open" || e.status === "closed" ? (
+          {(e.status === "open" || e.status === "closed") && auth.can("events.checkin") ? (
             <div className="px-5">
               <Link to="/events/checkin" className={buttonClass({ variant: "outline", size: "sm" })}>
                 Buka pemindai check-in
