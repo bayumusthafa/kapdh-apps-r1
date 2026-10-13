@@ -203,7 +203,7 @@ describe("Runtime worker (ARCHITECTURE §4.8, PRD 5.1, 5.5)", () => {
 
     // Proses lain setelah lease habis: event diklaim ulang dan selesai sekali (handler idempoten, PRD 5.1).
     const next = build();
-    next.clock.advance(60_001);
+    next.clock.set(new Date(leased.lockedUntil!.getTime() + 1));
     const [claim] = await next.jobs.claimOutbox({ limit: 10, lockMs: 60_000 });
     expect(claim).toMatchObject({ id, attempts: 2 });
     expect(await next.jobs.processOutboxClaim(claim!, { lockMs: 60_000 })).toBe("dispatched");
@@ -213,6 +213,36 @@ describe("Runtime worker (ARCHITECTURE §4.8, PRD 5.1, 5.5)", () => {
       w.logs.lines.some((line) => String(line.msg).startsWith("lease outbox hilang sebelum hasil dicatat")),
     );
     expect(await outboxRow(tdb.db, id)).toMatchObject({ status: "dispatched", attempts: 2 });
+  });
+
+  it("PRD 5.5: poll outbox gagal setiap iterasi walau DB dan antrean menjawab ping → /healthz 503 dispatcher_failing setelah batas macet (worker dijalankan ulang)", async () => {
+    const w = build();
+    // Antrean menolak setiap hitungan slot (mis. Redis menolak perintah walau PING lolos).
+    w.queue.capacity = async () => {
+      throw Object.assign(new Error("READONLY You can't write against a read only replica."), {
+        code: "READONLY",
+      });
+    };
+    await w.service.start();
+    try {
+      await eventually(() => w.service.dispatcher.status().consecutiveFailures >= 2);
+      const early = await getHealth(w.service);
+      expect(early.status).toBe(200);
+      // Lewat batas macet di jam aplikasi; loop tetap berputar (last_loop_at segar) tetapi tidak ada poll berhasil.
+      w.clock.advance(121_000);
+      await eventually(async () => {
+        const health = await getHealth(w.service);
+        return health.status === 503 && (health.body.issues as string[]).join() === "dispatcher_failing";
+      });
+      const failing = await getHealth(w.service);
+      expect(failing.body).toMatchObject({
+        status: "error",
+        issues: ["dispatcher_failing"],
+        checks: { database: { ok: true }, queue: { ok: true }, outbox: { ok: false } },
+      });
+    } finally {
+      await w.service.stop("uji");
+    }
   });
 
   it("start gagal (port health dipakai) → komponen yang sudah berjalan dihentikan dan sumber daya ditutup", async () => {

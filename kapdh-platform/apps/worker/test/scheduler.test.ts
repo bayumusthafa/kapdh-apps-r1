@@ -222,6 +222,64 @@ describe("Penjadwal job terdaftar dengan leader tunggal (ARCHITECTURE §4.8, PRD
     await a.queue.close(1_000);
   });
 
+  it("N-14: satu job_id eksekusi menghubungkan log antrean, log/konteks JobRunner, dan audit job; queue_job_id = slot jadwal", async () => {
+    const clock = new TestClock(T0);
+    const a = await instance("a", new SharedLock(), clock, {
+      jobs: [{ name: "notifications.retry", everyMs: 60_000 }],
+      failFirst: "notifications.retry",
+    });
+    await a.scheduler.tick();
+    await a.queue.drained();
+    // Percobaan pertama gagal, percobaan ulang antrean berhasil: keduanya memakai job_id eksekusi yang sama.
+    expect(a.runs).toHaveLength(2);
+    const jobId = a.runs[0]!.jobId;
+    expect(jobId).toMatch(/^notifications\.retry:[0-9a-f-]{36}$/);
+    expect(a.runs[1]!.jobId).toBe(jobId);
+    const queueJobId = `scheduled.notifications.retry.${Math.floor(T0.getTime() / 60_000) * 60_000}`;
+    const failed = a.logs.lines.find((line) => line.msg === "job terjadwal gagal");
+    expect(failed).toMatchObject({ job_id: jobId });
+    const retried = a.logs.lines.find((line) => line.msg === "job antrean gagal; dicoba ulang");
+    expect(retried).toMatchObject({ job_id: jobId, queue_job_id: queueJobId, attempt: 1 });
+    const done = a.logs.lines.find((line) => line.msg === "job terjadwal selesai");
+    expect(done).toMatchObject({ job_id: jobId, queue_job_id: queueJobId, attempt: 2 });
+    await a.queue.close(1_000);
+  });
+
+  it("PRD 5.5: kegagalan menjadwalkan (antrean menolak) dicatat sebagai enqueueFailingSince sampai pulih; pemeriksaan leader yang berhasil dicatat terpisah", async () => {
+    const clock = new TestClock(T0);
+    const lock = new SharedLock();
+    const a = await instance("a", lock, clock, { jobs: [{ name: "reservations.expire", everyMs: 60_000 }] });
+    const enqueue = a.queue.enqueue.bind(a.queue);
+    a.queue.enqueue = async () => {
+      throw Object.assign(new Error("Stream not writeable"), { code: "QUEUE_UNAVAILABLE" });
+    };
+    await a.scheduler.tick();
+    expect(a.scheduler.status()).toMatchObject({
+      role: "leader",
+      lastLeaderCheckOkAt: T0,
+      enqueueFailingSince: T0,
+    });
+    // Dicoba lagi (maks 15 s): awal rangkaian kegagalan tetap.
+    clock.advance(15_000);
+    await a.scheduler.tick();
+    expect(a.scheduler.status().enqueueFailingSince).toEqual(T0);
+    expect(a.runs).toHaveLength(0);
+    // Antrean pulih: penjadwalan berhasil dan status kegagalan dihapus.
+    a.queue.enqueue = enqueue;
+    clock.advance(15_000);
+    await a.scheduler.tick();
+    await a.queue.drained();
+    expect(a.runs).toHaveLength(1);
+    expect(a.scheduler.status().enqueueFailingSince).toBeNull();
+    // Pemeriksaan kunci gagal: lastLeaderCheckAt maju (loop hidup), lastLeaderCheckOkAt tetap (health: scheduler_failing).
+    lock.failing = true;
+    clock.advance(1_000);
+    await a.scheduler.tick();
+    expect(a.scheduler.status().lastLeaderCheckAt).toEqual(clock.now());
+    expect(a.scheduler.status().lastLeaderCheckOkAt).toEqual(new Date(T0.getTime() + 30_000));
+    await a.queue.close(1_000);
+  });
+
   it("loop tick berjalan sendiri setiap tickMs dan berhenti saat stop()", async () => {
     const clock = new TestClock(T0);
     const a = await instance("a", new SharedLock(), clock);

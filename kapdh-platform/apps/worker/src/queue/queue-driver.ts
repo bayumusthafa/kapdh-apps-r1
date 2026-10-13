@@ -27,10 +27,14 @@ export interface QueueJob<T> {
 
 export interface JobMeta {
   queue: QueueName;
+  /** Id job di antrean (kunci dedup), dicatat sebagai `queue_job_id`. */
   jobId: string;
   /** Percobaan ke-n (dimulai 1). */
   attempt: number;
-  /** Logger terikat `queue` dan `job_id` (N-14). */
+  /**
+   * Logger terikat `queue`, `job_id` (id korelasi yang sama dengan log JobRunner dan audit, lihat
+   * {@link RegisterOptions.correlate}), `queue_job_id`, dan `attempt` (N-14).
+   */
   logger: Logger;
 }
 
@@ -44,26 +48,44 @@ export interface RegisterOptions<T> {
    * dispatcher melepas klaim outbox agar instance berikutnya tidak menunggu lease habis.
    */
   discard?: (data: T) => Promise<void>;
+  /**
+   * `job_id` untuk semua log antrean job ini (N-14: satu job_id menghubungkan log antrean, log JobRunner, dan audit):
+   * mis. `outbox:<id event>` atau id eksekusi job terjadwal. Bawaan: id job antrean.
+   */
+  correlate?: (data: T) => string;
 }
 
 export interface QueueDriver {
   readonly kind: "inline" | "bullmq";
   /** Mendaftarkan processor sebelum {@link start}. */
   register<T>(queue: QueueName, processor: Processor<T>, options: RegisterOptions<T>): void;
+  /** Melempar bila backend antrean tidak siap dalam batas waktu (proses keluar dan dijalankan ulang orkestrator). */
   start(): Promise<void>;
-  /** Menambahkan job; false bila dedup (jobId yang sama masih ada). Melempar bila backend antrean tidak tersedia. */
+  /**
+   * Menambahkan job; false bila dedup (jobId yang sama masih ada). Melempar (cepat, dengan batas waktu) bila backend
+   * antrean tidak tersedia.
+   */
   enqueue<T>(queue: QueueName, job: QueueJob<T>): Promise<boolean>;
   /** Slot kosong untuk backpressure: dispatcher tidak mengklaim lebih dari yang dapat segera diproses. */
   capacity(queue: QueueName): Promise<number>;
   /** True bila job dengan id ini masih menunggu, berjalan, atau menunggu retry. */
   isPending(queue: QueueName, jobId: string): Promise<boolean>;
-  /** Pemeriksaan kesehatan backend antrean (Redis ping); inline selalu true. */
+  /**
+   * Pemeriksaan kesehatan backend antrean: Redis menjawab DAN semua klien BullMQ terinisialisasi serta konsumennya
+   * berjalan; inline selalu true.
+   */
   ping(): Promise<boolean>;
   /**
    * Berhenti mengambil job baru dan menunggu job yang sedang berjalan sampai `timeoutMs`. True bila semua selesai
    * tepat waktu; false bila batas waktu habis (job yang tersisa dipulihkan lewat lease/stalled check).
    */
   close(timeoutMs: number): Promise<boolean>;
+}
+
+/** Backend antrean tidak tersedia (Redis tidak siap, putus, atau tidak menjawab dalam batas waktu). */
+export class QueueUnavailableError extends Error {
+  override name = "QueueUnavailableError";
+  readonly code = "QUEUE_UNAVAILABLE";
 }
 
 /**
@@ -95,6 +117,29 @@ export async function settledWithin(promise: Promise<unknown>, timeoutMs: number
         () => true as const,
       ),
       timeout,
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Hasil promise, atau {@link QueueUnavailableError} bila tidak selesai dalam `timeoutMs` (operasi Redis yang
+ * menggantung tidak pernah menahan poll/tick). Penolakan promise setelah batas waktu diabaikan.
+ */
+export async function withinTimeout<T>(promise: Promise<T>, timeoutMs: number, what: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  promise.catch(() => undefined);
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new QueueUnavailableError(`${what} tidak selesai dalam ${timeoutMs} ms`)),
+          Math.max(0, timeoutMs),
+        );
+        timer.unref();
+      }),
     ]);
   } finally {
     clearTimeout(timer);

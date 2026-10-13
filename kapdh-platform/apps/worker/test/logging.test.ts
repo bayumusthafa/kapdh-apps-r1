@@ -66,9 +66,14 @@ describe("Log terstruktur worker (N-14)", () => {
       topic: "event.cancelled",
       attempts: 1,
     });
+    // N-14: log antrean memakai job_id yang sama dengan log JobRunner (dan audit handler), plus id job antrean.
     const queued = lines.find((line) => line.msg === "job antrean selesai");
-    expect(queued).toMatchObject({ queue: "outbox", attempt: 1 });
-    expect(String(queued!.job_id)).toMatch(/^outbox\.event\.cancelled%3A/);
+    expect(queued).toMatchObject({ queue: "outbox", attempt: 1, job_id: `outbox:${id}` });
+    expect(String(queued!.queue_job_id)).toMatch(/^outbox\.event\.cancelled%3A/);
+    const correlated = lines.filter((line) => line.job_id === `outbox:${id}`).map((line) => line.msg);
+    expect(correlated).toEqual(
+      expect.arrayContaining(["event outbox gagal; dijadwalkan ulang", "job antrean selesai"]),
+    );
     const leak = lines.find((line) => line.msg === "handler mencatat konteks");
     expect(leak).toMatchObject({
       refresh_token: "[REDACTED]",

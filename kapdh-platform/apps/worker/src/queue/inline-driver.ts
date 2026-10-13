@@ -139,7 +139,10 @@ class InlineQueue {
       try {
         await this.options.discard(entry.job.data);
       } catch (error) {
-        this.logger.warn({ job_id: entry.job.jobId, error: safeError(error) }, "job dibuang tanpa pelepasan");
+        this.logger.warn(
+          { ...this.logContext(entry.job), error: safeError(error) },
+          "job dibuang tanpa pelepasan",
+        );
       }
     }
     this.notifyIdle();
@@ -167,7 +170,7 @@ class InlineQueue {
 
   private async run(entry: Entry): Promise<void> {
     const { job } = entry;
-    const logger = this.logger.child({ job_id: job.jobId, attempt: entry.attempt });
+    const logger = this.logger.child({ ...this.logContext(job), attempt: entry.attempt });
     const started = performance.now();
     try {
       await this.processor(job.data, { queue: this.name, jobId: job.jobId, attempt: entry.attempt, logger });
@@ -195,6 +198,17 @@ class InlineQueue {
       this.pump();
       this.notifyIdle();
     }
+  }
+
+  /** job_id korelasi (sama dengan log JobRunner/audit, N-14) dan id job antrean. */
+  private logContext(job: QueueJob<unknown>): { job_id: string; queue_job_id: string } {
+    let correlationId = job.jobId;
+    try {
+      correlationId = this.options.correlate?.(job.data) ?? job.jobId;
+    } catch {
+      // Data job tidak dikenal: tetap memakai id antrean.
+    }
+    return { job_id: correlationId, queue_job_id: job.jobId };
   }
 
   private notifyIdle(): void {
