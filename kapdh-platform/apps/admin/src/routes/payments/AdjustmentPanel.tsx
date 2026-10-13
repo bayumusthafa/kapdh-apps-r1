@@ -61,8 +61,11 @@ function asAdjustment(value: unknown): Adjustment | null {
  * - Rekening tujuan refund tampil HANYA selama pending dan hanya bila server mengirimnya (pemegang
  *   payments.decide tanpa konflik kepentingan); setelah selesai/dibatalkan rekening dihapus server (D2).
  * - Tandai selesai: refund wajib melampirkan bukti transfer (purpose adjustment_evidence); koreksi boleh tanpa
- *   bukti. Batalkan: alasan wajib dan konfirmasi dua langkah (PRD 4.5). Ubah: nominal, alasan dan rekening tujuan
- *   yang diterima lewat kontak dukungan resmi.
+ *   bukti. Refund tanpa rekening tercatat diperingatkan lebih dahulu. Batalkan: alasan wajib dan konfirmasi dua
+ *   langkah (PRD 4.5). Ubah: nominal, alasan dan rekening tujuan yang diterima lewat kontak dukungan resmi;
+ *   menghapus rekening tersimpan meminta konfirmasi dua langkah.
+ * - Tombol proses hanya tampil bila payment asal tidak berkonflik kepentingan (`conflict_of_interest` dari server,
+ *   PRD 2.3); admin tertaut melihat catatan agar pengurus lain yang memproses.
  * - Semua perubahan memakai If-Match `version`; konflik (mis. pemilik baru saja mengirim rekening tujuan) memuat
  *   data terbaru dan diumumkan, tidak menimpa diam-diam (AC F15-4).
  */
@@ -669,8 +672,9 @@ function editDefaults(a: Adjustment): EditValues {
 
 /**
  * Ubah penyesuaian pending (kontrak adminUpdatePaymentAdjustment, PATCH): hanya field yang berubah dikirim.
- * Rekening tujuan dapat dicatat dari kontak dukungan resmi atau dihapus (null); server memeriksa ulang batas total
- * refund terhadap penyesuaian lain atas payment yang sama.
+ * Rekening tujuan dapat dicatat dari kontak dukungan resmi atau dihapus (null, setelah konfirmasi dua langkah
+ * karena kiriman pemilik hilang permanen, PRD 4.5); server memeriksa ulang batas total refund terhadap
+ * penyesuaian lain atas payment yang sama.
  */
 function EditDialog({ open, adjustment: a, onClose, onDone, onConflict }: DialogProps) {
   const schema = useMemo(() => editSchema(a.kind, a.payment.amount), [a.kind, a.payment.amount]);
@@ -798,7 +802,7 @@ function EditDialog({ open, adjustment: a, onClose, onDone, onConflict }: Dialog
                 label="Catat rekening tujuan refund"
                 description={
                   a.refund_destination
-                    ? "Hapus centang untuk menghapus rekening tujuan yang tersimpan."
+                    ? "Hapus centang untuk menghapus rekening tujuan yang tersimpan; penghapusan meminta konfirmasi."
                     : "Gunakan hanya untuk rekening yang diterima lewat kontak dukungan resmi."
                 }
                 checked={withDestination}
