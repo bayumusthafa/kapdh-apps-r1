@@ -17,12 +17,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { SearchInput } from "../../components/ui/SearchInput";
 import { EmptyState, ErrorState, ForbiddenState, Loading } from "../../components/ui/States";
 import { cn } from "../../lib/cn";
-import {
-  GENDER_OPTIONS,
-  latestCohort,
-  MEMBER_SORT_OPTIONS,
-  STATUS_FILTER_OPTIONS,
-} from "./labels";
+import { GENDER_OPTIONS, latestCohort, MEMBER_SORT_OPTIONS, STATUS_FILTER_OPTIONS } from "./labels";
 import { CursorPager, pageSummary } from "./CursorPager";
 import { masterOptionLabel, memberKeys, useMasterOptions } from "./queries";
 import type { MembersSearch } from "./routes";
@@ -213,7 +208,10 @@ function FilterPanel({
   const skills = useMasterOptions("skills");
   const cohortOptions = [
     { value: "all", label: "Semua angkatan" },
-    ...Array.from({ length: latestCohort() }, (_, i) => ({ value: String(i + 1), label: `Angkatan ${i + 1}` })),
+    ...Array.from({ length: latestCohort() }, (_, i) => ({
+      value: String(i + 1),
+      label: `Angkatan ${i + 1}`,
+    })),
   ];
   const masterHint = (failed: boolean) => (failed ? "Pilihan gagal dimuat. Muat ulang halaman." : undefined);
 
