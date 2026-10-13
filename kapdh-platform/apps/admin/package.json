@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource/poppins": "5.2.7",
     "@hookform/resolvers": "5.9.1",
     "@kapdh/contracts": "workspace:*",
     "@kapdh/design-tokens": "workspace:*",
