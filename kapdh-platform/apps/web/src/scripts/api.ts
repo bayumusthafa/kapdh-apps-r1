@@ -144,11 +144,6 @@ export function failureAction(failure: ApiFailure): ErrorUiAction {
   return failure.status === 429 ? ERROR_UI_RATE_LIMITED : CLIENT_ERROR_UI.UNKNOWN.action;
 }
 
-/** Kode galat kontrak dari server, atau null bila kegagalan bukan body `Error` yang sah. */
-export function failureCode(failure: ApiFailure): string | null {
-  return failure.kind === "http" ? (failure.error?.code ?? null) : null;
-}
-
 /** Pesan pertama `field_errors[field]` (atau `_`) dari galat validasi. */
 export function fieldMessage(error: ApiError | null, field: string): string | null {
   const list = error?.field_errors?.[field] ?? error?.field_errors?.["_"];
