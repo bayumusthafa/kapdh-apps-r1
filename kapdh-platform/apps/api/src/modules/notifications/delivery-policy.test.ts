@@ -40,9 +40,9 @@ describe("Jadwal backoff pengiriman (AC F13-4, R5)", () => {
       errorClass: "UNAVAILABLE",
       revokeToken: false,
     });
-    expect(
-      decideDelivery({ kind: "failed", errorClass: "UNREGISTERED", revokeToken: true }, 1, NOW),
-    ).toEqual({ status: "failed", errorClass: "UNREGISTERED", revokeToken: true });
+    expect(decideDelivery({ kind: "failed", errorClass: "UNREGISTERED", revokeToken: true }, 1, NOW)).toEqual(
+      { status: "failed", errorClass: "UNREGISTERED", revokeToken: true },
+    );
     expect(decideDelivery({ kind: "sent", providerMessageId: "m-1" }, 3, NOW)).toEqual({
       status: "sent",
       providerMessageId: "m-1",
@@ -134,9 +134,9 @@ describe("Kebijakan kanal per kategori (ARCHITECTURE §4.7, AC F13-2)", () => {
     expect(channelEnabled("news", "email", true)).toBe(false);
     expect(channelEnabled("chat", "email", undefined)).toBe(false);
     expect(channelEnabled("event", "email", null)).toBe(true);
-    expect(["payment", "membership", "event", "security", "account"].every((c) => hasEmailChannel(c as never))).toBe(
-      true,
-    );
+    expect(
+      ["payment", "membership", "event", "security", "account"].every((c) => hasEmailChannel(c as never)),
+    ).toBe(true);
     expect(hasEmailChannel("news") || hasEmailChannel("chat")).toBe(false);
   });
 });

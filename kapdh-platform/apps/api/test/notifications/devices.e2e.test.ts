@@ -234,7 +234,11 @@ describe("POST /devices/unregister (unregisterDevice)", () => {
     expect(foreign.statusCode).toBe(204);
     expectOperation("post", "/devices/unregister", foreign);
     expect((await tokenRow(t, token))!.revokedAt).toBeNull();
-    const unknown = await api().post("/devices/unregister", { token: fcmToken() }, { token: other.accessToken });
+    const unknown = await api().post(
+      "/devices/unregister",
+      { token: fcmToken() },
+      { token: other.accessToken },
+    );
     expect(unknown.statusCode).toBe(204);
 
     for (let i = 0; i < 2; i++) {

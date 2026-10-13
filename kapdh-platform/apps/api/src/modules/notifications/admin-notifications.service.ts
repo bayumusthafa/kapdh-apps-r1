@@ -304,7 +304,8 @@ export class AdminNotificationsService {
     for (const row of state) {
       let reason: AdminDeliveryRetrySkipReason;
       if (row.status !== "failed") reason = "not_failed";
-      else if (row.userStatus === "disabled" || row.userStatus === "deleted") reason = "recipient_unavailable";
+      else if (row.userStatus === "disabled" || row.userStatus === "deleted")
+        reason = "recipient_unavailable";
       else if (row.channel === "push" && row.tokenUserId !== null && row.tokenUserId !== row.ownerId)
         reason = "token_reassigned";
       else if (row.channel === "push" && (row.tokenUserId === null || row.tokenRevokedAt !== null))
@@ -335,16 +336,16 @@ export class AdminNotificationsService {
     });
     const after = query.cursor ? decodeKeyset(query.cursor, fingerprint) : null;
     const filters = and(
-      query.status
-        ? eq(outboxEvents.status, query.status)
-        : inArray(outboxEvents.status, ["failed", "dead"]),
+      query.status ? eq(outboxEvents.status, query.status) : inArray(outboxEvents.status, ["failed", "dead"]),
       query.topic ? eq(outboxEvents.topic, query.topic) : undefined,
       query.from ? gte(outboxEvents.createdAt, query.from) : undefined,
       query.to ? lt(outboxEvents.createdAt, query.to) : undefined,
     );
     const order = direction === "asc" ? asc : desc;
     const found = await this.outboxQuery(this.db, sortColumn)
-      .where(and(filters, after ? keysetAfterExact(sortColumn, outboxEvents.id, after, direction) : undefined))
+      .where(
+        and(filters, after ? keysetAfterExact(sortColumn, outboxEvents.id, after, direction) : undefined),
+      )
       .orderBy(order(sortColumn), order(outboxEvents.id))
       .limit(query.limit + 1);
     const [total] = await this.db.select({ value: count() }).from(outboxEvents).where(filters);
@@ -401,7 +402,9 @@ export class AdminNotificationsService {
       const items =
         requeued.length === 0
           ? []
-          : await this.outboxQuery(tx, outboxEvents.createdAt).where(inArray(outboxEvents.id, [...requeuedIds]));
+          : await this.outboxQuery(tx, outboxEvents.createdAt).where(
+              inArray(outboxEvents.id, [...requeuedIds]),
+            );
       const byId = new Map(items.map((row) => [row.id, toAdminOutbox(row, now)]));
       const skipped = eventIds
         .filter((id) => !requeuedIds.has(id))

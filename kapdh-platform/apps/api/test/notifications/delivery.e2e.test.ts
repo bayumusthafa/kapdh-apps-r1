@@ -89,7 +89,12 @@ describe("notifications.deliver (AC F13-1)", () => {
       ["push", "sent"],
     ]);
     for (const row of rows)
-      expect(row).toMatchObject({ attempt: 1, providerStatus: "accepted", errorClass: null, nextRetryAt: null });
+      expect(row).toMatchObject({
+        attempt: 1,
+        providerStatus: "accepted",
+        errorClass: null,
+        nextRetryAt: null,
+      });
     for (const token of m.tokens) {
       const [message] = t.push.to(token);
       expect(message).toEqual({
@@ -112,7 +117,7 @@ describe("notifications.deliver (AC F13-1)", () => {
     expect(mail!.text).toContain(`kapdh://app/payments/${paymentId}`);
   });
 
-  it("AC F13-1: outbox/handler diulang dan notify ulang dengan kunci sama tidak menggandakan inbox, pengiriman, maupun push", async () => {
+  it("AC F13-1, F13-6: outbox/handler/job diulang dan notify ulang dengan kunci dedup sama tidak menggandakan inbox, pengiriman, maupun push", async () => {
     const m = await memberWithDevice();
     const dedupKey = `payment.decided:${uuidv7()}`;
     const created = await notify(t, m.userId, { dedupKey });
@@ -155,7 +160,11 @@ describe("Preferensi dan kategori (AC F13-2)", () => {
 
     const payment = await notify(t, m.userId, { category: "payment" });
     const news = await notify(t, m.userId, { category: "news", route: "/news/reuni-akbar-2026" });
-    const chat = await notify(t, m.userId, { category: "chat", title: "Pesan baru", route: "/chat/invitations" });
+    const chat = await notify(t, m.userId, {
+      category: "chat",
+      title: "Pesan baru",
+      route: "/chat/invitations",
+    });
     const security = await notify(t, m.userId, { category: "security", route: "/account/sessions" });
     const account = await notify(t, m.userId, { category: "account", route: "/restricted" });
     await t.jobs.drainOutbox();
@@ -219,7 +228,12 @@ describe("Kelas galat FCM dan retry (AC F13-4, R5)", () => {
     await t.jobs.drainOutbox();
     expect((await deliveryOf(t, waiting.id, "push")).status).toBe("pending");
 
-    t.push.failNext(token, { ok: false, errorClass: "unregistered", retryable: false, deactivateToken: true });
+    t.push.failNext(token, {
+      ok: false,
+      errorClass: "unregistered",
+      retryable: false,
+      deactivateToken: true,
+    });
     const created = await notify(t, m.userId);
     await t.jobs.drainOutbox();
     expect(await deliveryOf(t, created.id, "push")).toMatchObject({
@@ -247,7 +261,12 @@ describe("Kelas galat FCM dan retry (AC F13-4, R5)", () => {
   it("AC F13-4: INVALID_ARGUMENT karena token menonaktifkan token; INVALID_ARGUMENT payload gagal tanpa menonaktifkan", async () => {
     const m = await memberWithDevice();
     const token = m.tokens[0]!;
-    t.push.failNext(token, { ok: false, errorClass: "invalid_argument", retryable: false, deactivateToken: false });
+    t.push.failNext(token, {
+      ok: false,
+      errorClass: "invalid_argument",
+      retryable: false,
+      deactivateToken: false,
+    });
     const payload = await notify(t, m.userId);
     await t.jobs.drainOutbox();
     expect(await deliveryOf(t, payload.id, "push")).toMatchObject({
@@ -256,7 +275,12 @@ describe("Kelas galat FCM dan retry (AC F13-4, R5)", () => {
     });
     expect((await tokenRow(t, token))!.revokedAt).toBeNull();
 
-    t.push.failNext(token, { ok: false, errorClass: "invalid_argument", retryable: false, deactivateToken: true });
+    t.push.failNext(token, {
+      ok: false,
+      errorClass: "invalid_argument",
+      retryable: false,
+      deactivateToken: true,
+    });
     const invalidToken = await notify(t, m.userId);
     await t.jobs.drainOutbox();
     expect((await deliveryOf(t, invalidToken.id, "push")).status).toBe("failed");
@@ -266,7 +290,14 @@ describe("Kelas galat FCM dan retry (AC F13-4, R5)", () => {
   it("AC F13-4: 429/5xx/jaringan → retry dengan backoff eksponensial tanpa menonaktifkan token; setelah batas → failed", async () => {
     const m = await memberWithDevice();
     const token = m.tokens[0]!;
-    const classes = ["quota_exceeded", "unavailable", "internal", "network", "unavailable", "quota_exceeded"] as const;
+    const classes = [
+      "quota_exceeded",
+      "unavailable",
+      "internal",
+      "network",
+      "unavailable",
+      "quota_exceeded",
+    ] as const;
     for (const errorClass of classes)
       t.push.failNext(token, { ok: false, errorClass, retryable: true, deactivateToken: false });
     const created = await notify(t, m.userId);
@@ -350,7 +381,10 @@ describe("Email transaksional (F-13)", () => {
     t.mailer.failNext(Object.assign(new Error("koneksi habis waktu"), { code: "ETIMEDOUT" }));
     const timeout = await notify(t, m.userId, { category: "event", route: "/events" });
     await t.jobs.drainOutbox();
-    expect(await deliveryOf(t, timeout.id, "email")).toMatchObject({ status: "pending", errorClass: "timeout" });
+    expect(await deliveryOf(t, timeout.id, "email")).toMatchObject({
+      status: "pending",
+      errorClass: "timeout",
+    });
     t.clock.advance(deliveryBackoffMs(1));
     await t.jobs.runScheduled("notifications.retry");
     expect(await deliveryOf(t, timeout.id, "email")).toMatchObject({
@@ -433,7 +467,10 @@ describe("Klaim worker: lease, pembatalan saat klaim (kontrak C7)", () => {
       ["email", "cancelled", "recipient_unavailable"],
       ["push", "cancelled", "recipient_unavailable"],
     ]);
-    expect(await deliveryOf(t, forB.id, "push")).toMatchObject({ status: "cancelled", errorClass: "token_revoked" });
+    expect(await deliveryOf(t, forB.id, "push")).toMatchObject({
+      status: "cancelled",
+      errorClass: "token_revoked",
+    });
     expect((await deliveryOf(t, forB.id, "email")).status).toBe("sent");
     expect(t.push.sent).toHaveLength(0);
   });

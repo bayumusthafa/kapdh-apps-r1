@@ -396,6 +396,28 @@ Perbaikan tinjauan kedua C7 (belum ada klien atau controller, dicatat untuk penu
   MFA_REQUIRED) untuk `adminGetDashboard`, `adminGetDashboardBadges`, `adminListPermissions`; 400 ValidationError
   untuk `getNotification`, `adminGetAdmin`, `adminGetAuditEntry`, `adminGetAuditExport`, `adminGetAuditExportAccess`.
 
+### api-notifications: implementasi F-13 (`notifications.yaml`, `admin-notifications.yaml`; tidak memutus)
+
+Semua 12 operasi kedua domain kini dilayani modul API `notifications` (tanpa perubahan operasi, field, atau skema).
+Perubahan hanya pada deskripsi, mencatat perilaku server yang perlu diketahui klien dan web admin:
+
+- `InboxNotification`: payload data FCM membawa `notification_id`, `category`, `deep_link` dan juga `route` (path
+  yang sama; dibaca klien Flutter sebagai `data.route`). Bagian `notification` push hanya judul dan isi ringkas
+  (alamat email/nomor telepon disamarkan), collapse key = id notifikasi. Rute tersimpan yang bukan rute §8.4
+  menjadi `deep_link` null.
+- `registerDevice`: baris sesi aktif keluarga pemanggil dikunci lebih dulu (urutan kunci sama dengan logout); bila
+  keluarga sudah dicabut, 401 UNAUTHENTICATED dan token tidak pernah aktif untuk sesi yang sudah keluar (AC F13-5).
+- `adminListNotificationDeliveries`: daftar `error_class` dilengkapi (FCM `NETWORK`, `AUTH_ERROR`; email `network`,
+  `auth_error`, `unknown`; pembatalan sisi server `recipient_unavailable`, `push_disabled`); INVALID_ARGUMENT yang
+  menunjuk token registrasi juga menonaktifkan token. Jadwal retry otomatis: 1, 2, 4, 8, 16 menit (Retry-After
+  dihormati, maksimal 1 jam), paling banyak 6 percobaan, lalu `failed`; selama retry status tetap `pending` dengan
+  `error_class` terakhir. `from` harus sebelum `to` (400). Urutan `updated_at_desc` dapat melewatkan/mengulang baris
+  yang berubah selama penelusuran.
+- `AdminNotificationDelivery.retryable`: "akun aktif" = users.status bukan `disabled`/`deleted`.
+- `adminRetryNotificationDeliveries` / `adminRetryOutboxEvents`: batas 20 permintaan per menit per admin;
+  attempt/attempts tidak direset sehingga pengiriman/event yang sudah mencapai batas mendapat satu percobaan per retry
+  pengurus; pengiriman dikirim job `notifications.retry` (setiap menit).
+
 ### core-api: Files (`files.yaml`; PRD 2.5, 5.4, N-10)
 
 Pemilik `files.yaml` adalah core-api (`apps/api/src/core/files` + controller tipis `modules/files`).

@@ -16,6 +16,7 @@ import type { PushMessage, PushSender } from "../../core/adapters/push.js";
 import { rows } from "../../core/db/rows.js";
 import type { Db } from "../../core/db/types.js";
 import { JobRegistry } from "../../core/jobs/job-registry.js";
+import { safeError } from "../../core/logging/safe-error.js";
 import { deepLinkFor } from "../../core/notifications-kernel/app-routes.js";
 import type { NotificationCategory } from "../../core/notifications-kernel/notification.service.js";
 import { SettingsService } from "../../core/settings/settings.service.js";
@@ -57,11 +58,7 @@ export interface ClaimedDelivery {
 
 /** Alasan pembatalan saat klaim (kontrak admin-notifications: pembatalan sisi server). */
 export type ClaimCancelReason =
-  | "recipient_unavailable"
-  | "token_revoked"
-  | "token_reassigned"
-  | "preference_disabled"
-  | "push_disabled";
+  "recipient_unavailable" | "token_revoked" | "token_reassigned" | "preference_disabled" | "push_disabled";
 
 export interface DeliveryRunSummary {
   claimed: number;
@@ -194,7 +191,8 @@ export class NotificationDeliveryService implements OnModuleInit {
             eq(notificationPreferences.category, target.category),
           ),
         );
-      const stored = (channel: NotificationChannel) => preferences.find((p) => p.channel === channel)?.enabled;
+      const stored = (channel: NotificationChannel) =>
+        preferences.find((p) => p.channel === channel)?.enabled;
       const values: (typeof notificationDeliveries.$inferInsert)[] = [];
       // Push dinonaktifkan konfigurasi (tanpa proyek FCM di luar production): kanal push dilewati, inbox tetap ada.
       if (this.push.enabled && channelEnabled(target.category, "push", stored("push"))) {
@@ -250,20 +248,38 @@ export class NotificationDeliveryService implements OnModuleInit {
   ): Promise<DeliveryRunSummary> {
     const logger = options.logger ?? this.rootLogger;
     const { claimed, cancelled } = await this.claim(options.notificationId ?? null, options.limit ?? 50);
-    const summary: DeliveryRunSummary = { claimed: claimed.length, sent: 0, retried: 0, failed: 0, cancelled };
+    const summary: DeliveryRunSummary = {
+      claimed: claimed.length,
+      sent: 0,
+      retried: 0,
+      failed: 0,
+      cancelled,
+    };
     if (claimed.length === 0) return summary;
     const supportEmail = (await this.settings.get("support")).email;
     const queue = [...claimed];
+    const errors: unknown[] = [];
     const worker = async () => {
       for (let next = queue.shift(); next; next = queue.shift()) {
-        const outcome = await this.sendOne(next, supportEmail);
-        const status = await this.record(next, outcome, logger);
-        if (status === "sent") summary.sent++;
-        else if (status === "pending") summary.retried++;
-        else if (status === "failed") summary.failed++;
+        try {
+          const outcome = await this.sendOne(next, supportEmail);
+          const status = await this.record(next, outcome, logger);
+          if (status === "sent") summary.sent++;
+          else if (status === "pending") summary.retried++;
+          else if (status === "failed") summary.failed++;
+        } catch (error) {
+          // Galat database saat mencatat: pengiriman lain tetap diproses; yang ini diklaim ulang setelah lease habis.
+          errors.push(error);
+          logger.error(
+            { delivery_id: next.id, notification_id: next.notificationId, error: safeError(error) },
+            "hasil pengiriman notifikasi gagal dicatat",
+          );
+        }
       }
     };
     await Promise.all(Array.from({ length: Math.min(SEND_CONCURRENCY, claimed.length) }, () => worker()));
+    // Handler outbox gagal → event dicoba ulang (idempoten: pengiriman sudah ada, yang terkirim tidak dikirim lagi).
+    if (errors.length > 0) throw errors[0];
     return summary;
   }
 
@@ -320,7 +336,11 @@ export class NotificationDeliveryService implements OnModuleInit {
       if (claimable.length > 0)
         await tx
           .update(notificationDeliveries)
-          .set({ attempt: sql`${notificationDeliveries.attempt} + 1`, nextRetryAt: leaseUntil, updatedAt: now })
+          .set({
+            attempt: sql`${notificationDeliveries.attempt} + 1`,
+            nextRetryAt: leaseUntil,
+            updatedAt: now,
+          })
           .where(
             inArray(
               notificationDeliveries.id,

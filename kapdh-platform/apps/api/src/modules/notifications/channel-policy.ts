@@ -28,7 +28,9 @@ export function isMandatoryCategory(category: NotificationCategory): boolean {
 
 /** Kategori yang memiliki kanal email (preferensi atau wajib). news dan chat tidak pernah dikirim lewat email. */
 export function hasEmailChannel(category: NotificationCategory): boolean {
-  return isMandatoryCategory(category) || (EMAIL_PREFERENCE_CATEGORIES as readonly string[]).includes(category);
+  return (
+    isMandatoryCategory(category) || (EMAIL_PREFERENCE_CATEGORIES as readonly string[]).includes(category)
+  );
 }
 
 /**
