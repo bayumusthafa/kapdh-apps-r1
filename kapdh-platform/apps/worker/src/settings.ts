@@ -71,6 +71,21 @@ export function splitConcurrency(total: number): { outbox: number; scheduled: nu
   return { outbox: Math.max(1, total - scheduled), scheduled };
 }
 
+/** Ukuran pool kerja per proses yang dibuat core `createWorkerDeps` (apps/api/src/worker.ts). */
+export function workerPoolSize(concurrency: number): number {
+  return Math.max(2, concurrency + 1);
+}
+
+/**
+ * True bila total job paralel (outbox + terjadwal) menyisakan minimal satu koneksi pool kerja untuk heartbeat lease dan
+ * finalisasi outbox (PRD 5.1). False hanya untuk WORKER_CONCURRENCY=1 (2 job, pool 2); runtime memperingatkannya.
+ */
+export function hasPoolHeadroom(
+  settings: Pick<WorkerSettings, "concurrency" | "outboxConcurrency" | "scheduledConcurrency">,
+): boolean {
+  return settings.outboxConcurrency + settings.scheduledConcurrency < workerPoolSize(settings.concurrency);
+}
+
 export function resolveWorkerSettings(env: WorkerEnv): WorkerSettings {
   const split = splitConcurrency(env.WORKER_CONCURRENCY);
   return {

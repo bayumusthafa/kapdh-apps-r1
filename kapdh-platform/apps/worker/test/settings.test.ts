@@ -1,7 +1,7 @@
 import { loadWorkerEnv } from "@kapdh/config";
 import { OUTBOX_LOCK_MS } from "@kapdh/api/worker";
 import { describe, expect, it } from "vitest";
-import { resolveWorkerSettings, splitConcurrency } from "../src/settings.js";
+import { hasPoolHeadroom, resolveWorkerSettings, splitConcurrency, workerPoolSize } from "../src/settings.js";
 
 const BASE = {
   DATABASE_URL: "postgres://kapdh_worker:x@127.0.0.1:5432/kapdh",
@@ -56,10 +56,14 @@ describe("Pengaturan worker dari WorkerEnv (packages/config, PRD 5.1, 5.3)", () 
       expect(split.scheduled).toBeGreaterThanOrEqual(1);
       // Pool kerja createWorkerDeps: max(2, WORKER_CONCURRENCY + 1). Setiap job memegang paling banyak satu koneksi,
       // sehingga selalu tersisa koneksi untuk heartbeat lease/finalisasi outbox (kecuali WORKER_CONCURRENCY=1: 1 + 1).
-      const pool = Math.max(2, total + 1);
+      const pool = workerPoolSize(total);
+      expect(pool).toBe(Math.max(2, total + 1));
       expect(split.outbox + split.scheduled).toBe(Math.max(2, total));
       expect(split.outbox + split.scheduled).toBeLessThanOrEqual(pool);
       if (total >= 2) expect(split.outbox + split.scheduled).toBeLessThan(pool);
+      // Runtime memperingatkan konfigurasi tanpa koneksi cadangan (hanya WORKER_CONCURRENCY=1).
+      const resolved = resolveWorkerSettings(loadWorkerEnv({ ...BASE, WORKER_CONCURRENCY: String(total) }));
+      expect(hasPoolHeadroom(resolved)).toBe(total >= 2);
     }
     expect(splitConcurrency(5)).toEqual({ outbox: 3, scheduled: 2 });
   });

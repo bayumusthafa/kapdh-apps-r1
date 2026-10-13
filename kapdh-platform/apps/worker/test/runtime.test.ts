@@ -144,6 +144,30 @@ describe("Runtime worker (ARCHITECTURE §4.8, PRD 5.1, 5.5)", () => {
       });
       // Konfigurasi sensitif tidak pernah dicatat (N-14).
       expect(JSON.stringify(w.logs.lines)).not.toContain("postgres://");
+      // Bawaan WORKER_CONCURRENCY=4: pool kerja menyisakan koneksi cadangan, tanpa peringatan.
+      expect(w.logs.lines.some((line) => String(line.msg).startsWith("WORKER_CONCURRENCY < 2"))).toBe(false);
+    } finally {
+      await w.service.stop("uji");
+    }
+  });
+
+  it("PRD 5.1: WORKER_CONCURRENCY=1 → start memperingatkan bahwa pool kerja tidak menyisakan koneksi untuk heartbeat lease outbox", async () => {
+    const single = resolveWorkerSettings(
+      loadWorkerEnv({
+        ...BASE_ENV,
+        WORKER_CONCURRENCY: "1",
+        WORKER_HEALTH_PORT: "0",
+        WORKER_HEALTH_HOST: "127.0.0.1",
+      }),
+    );
+    const w = build({ settings: single });
+    await w.service.start();
+    try {
+      const warning = w.logs.lines.find((line) => String(line.msg).startsWith("WORKER_CONCURRENCY < 2"));
+      expect(warning).toMatchObject({ level: "warn", concurrency: 1 });
+      // Tetap berfungsi: event outbox diproses.
+      const id = await insertOutboxEvent(tdb.db, w.clock);
+      await eventually(async () => (await outboxRow(tdb.db, id)).status === "dispatched");
     } finally {
       await w.service.stop("uji");
     }

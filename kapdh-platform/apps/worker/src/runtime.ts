@@ -24,7 +24,7 @@ import { InlineQueueDriver } from "./queue/inline-driver.js";
 import { type QueueDriver, settledWithin } from "./queue/queue-driver.js";
 import { connectLeaderLock, type LeaderLock } from "./scheduler/leader-lock.js";
 import { type ScheduledJobRunner, type ScheduledJobSource, Scheduler } from "./scheduler/scheduler.js";
-import { resolveWorkerSettings, type WorkerSettings } from "./settings.js";
+import { hasPoolHeadroom, resolveWorkerSettings, type WorkerSettings } from "./settings.js";
 
 /** Sumber daya yang ditutup saat shutdown (pool, koneksi, konteks Nest). */
 export interface NamedResource {
@@ -117,6 +117,13 @@ export class WorkerService {
         },
         "worker berjalan",
       );
+      if (!hasPoolHeadroom(settings))
+        // PRD 5.1 (lease outbox): job outbox + job terjadwal dapat memakai seluruh pool kerja max(2, WORKER_CONCURRENCY + 1),
+        // sehingga heartbeat lease dan finalisasi outbox bisa tertahan di belakang sapuan terjadwal yang panjang.
+        logger.warn(
+          { concurrency: settings.concurrency },
+          "WORKER_CONCURRENCY < 2: tidak ada koneksi cadangan untuk heartbeat lease outbox; gunakan nilai >= 2 di production",
+        );
       return address;
     } catch (error) {
       logger.error(
