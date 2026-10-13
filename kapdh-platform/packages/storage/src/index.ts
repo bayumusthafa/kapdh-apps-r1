@@ -2,6 +2,7 @@
  * @kapdh/storage — StorageDriver berkas KAPDH (PRD 5.4, ARCHITECTURE §4.2): disk lokal, S3-compatible, dan memori untuk
  * uji. API memilih driver dari env STORAGE_DRIVER lewat {@link createStorageDriver}.
  */
+import { resolve } from "node:path";
 import { StorageConfigError, type StorageDriver } from "./driver.js";
 import { LocalDriver } from "./local-driver.js";
 import { S3Driver } from "./s3-driver.js";
@@ -23,9 +24,18 @@ export interface StorageEnv {
   S3_FORCE_PATH_STYLE: boolean;
 }
 
-/** Driver sesuai STORAGE_DRIVER. Validasi kelengkapan S3 sudah dilakukan packages/config; dicek ulang di sini. */
-export function createStorageDriver(env: StorageEnv): StorageDriver {
-  if (env.STORAGE_DRIVER === "local") return new LocalDriver(env.STORAGE_LOCAL_ROOT);
+/**
+ * Driver sesuai STORAGE_DRIVER. Validasi kelengkapan S3 sudah dilakukan packages/config; dicek ulang di sini.
+ * STORAGE_LOCAL_ROOT relatif (mis. `./.data/files` di .env.example) diselesaikan dari folder kerja proses (`cwd`,
+ * bawaan process.cwd()) di SATU tempat ini, sehingga API, worker dan CLI memakai folder yang sama; LocalDriver sendiri
+ * tetap hanya menerima path absolut.
+ */
+export function createStorageDriver(env: StorageEnv, options: { cwd?: string } = {}): StorageDriver {
+  if (env.STORAGE_DRIVER === "local") {
+    const root = env.STORAGE_LOCAL_ROOT.trim();
+    if (!root) throw new StorageConfigError("STORAGE_LOCAL_ROOT wajib diisi");
+    return new LocalDriver(resolve(options.cwd ?? process.cwd(), root));
+  }
   if (!env.S3_BUCKET || !env.S3_REGION || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY)
     throw new StorageConfigError("STORAGE_DRIVER=s3 membutuhkan S3_BUCKET, S3_REGION dan kredensial");
   return new S3Driver({

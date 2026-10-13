@@ -2,7 +2,7 @@ import { adminPermissions, admins, alumni, sessions, users } from "@kapdh/databa
 import { eq } from "drizzle-orm";
 import { decodeJwt } from "jose";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { TokenService } from "../../src/modules/auth/token.service.js";
+import { TokenService } from "../../src/core/identity/token.service.js";
 import {
   type AlumniFixtureStatus,
   createAdmin,
@@ -274,15 +274,60 @@ describe("ARCHITECTURE §4.3: @RequireAnyPermission (permissions_any) dan @Requi
   });
 });
 
-describe("ARCHITECTURE §4.3: @RequireReauth (X-Reauth-Token aud kapdh-reauth, terikat sesi, 10 menit)", () => {
+describe("ARCHITECTURE §4.3: @RequireReauth (X-Reauth-Token aud kapdh-reauth, terikat KELUARGA sesi, 10 menit)", () => {
+  /** Keluarga sesi (Session.id kontrak C1) dari baris sesi access token. */
+  async function familyOf(accessToken: string): Promise<string> {
+    const sid = String(decodeJwt(accessToken).sid);
+    const [row] = await t.db
+      .select({ familyId: sessions.familyId })
+      .from(sessions)
+      .where(eq(sessions.id, sid));
+    return row!.familyId;
+  }
+
+  /** Token seperti POST /auth/reauth kontrak C1: `sid` = family_id sesi pemanggil. */
   async function reauthToken(accessToken: string, level = 1) {
     const claims = decodeJwt(accessToken);
     return (
       await t.app
         .get(TokenService)
-        .signReauth({ userId: String(claims.sub), sessionId: String(claims.sid), level })
+        .signReauth({ userId: String(claims.sub), familyId: await familyOf(accessToken), level })
     ).token;
   }
+
+  const sensitive = (accessToken: string, reauth: string) =>
+    api.post("/__probe/sensitive", {}, { token: accessToken, headers: { "x-reauth-token": reauth } });
+
+  it("kontrak C1 reauthenticate: token tetap berlaku setelah rotasi refresh; id baris dan keluarga lain ditolak", async () => {
+    const { member, accessToken, refreshToken } = await memberToken("verified");
+    const reauth = await reauthToken(accessToken);
+    expect((await sensitive(accessToken, reauth)).statusCode).toBe(200);
+
+    // Refresh 15 menit di tengah alur sensitif (AC F15-3, F16-1, F-14) tidak memaksa reautentikasi ulang.
+    t.clock.advance(60_000);
+    const refreshed = await api.post("/auth/refresh", { refresh_token: refreshToken });
+    expect(refreshed.statusCode).toBe(200);
+    const rotatedAccess = refreshed.json().access_token as string;
+    expect(decodeJwt(rotatedAccess).sid).not.toBe(decodeJwt(accessToken).sid);
+    const afterRotation = await sensitive(rotatedAccess, reauth);
+    expect(afterRotation.statusCode).toBe(200);
+    expect(afterRotation.json().reauthenticated).toBe(true);
+
+    // Token yang (keliru) terikat id BARIS sesi tidak pernah diterima.
+    const rowBound = await t.app.get(TokenService).signReauth({
+      userId: member.userId,
+      familyId: String(decodeJwt(rotatedAccess).sid),
+      level: 1,
+    });
+    expect((await sensitive(rotatedAccess, rowBound.token)).json().code).toBe("REAUTH_REQUIRED");
+
+    // Keluarga lain milik pengguna yang sama (perangkat kedua) selalu ditolak.
+    const otherDevice = await signInAlumni(t, member);
+    expect((await sensitive(otherDevice.accessToken, reauth)).json().code).toBe("REAUTH_REQUIRED");
+    expect((await sensitive(rotatedAccess, await reauthToken(otherDevice.accessToken))).json().code).toBe(
+      "REAUTH_REQUIRED",
+    );
+  });
 
   it("tanpa header atau token rusak → 403 REAUTH_REQUIRED", async () => {
     const { accessToken } = await memberToken("verified");

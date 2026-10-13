@@ -3,7 +3,6 @@ import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 import type { BaseEnv } from "@kapdh/config";
 import type { StorageDriver } from "@kapdh/storage";
 import type { Logger } from "pino";
-import { TokenService } from "../modules/auth/token.service.js";
 import type { Clock } from "./adapters/clock.js";
 import type { Mailer } from "./adapters/mailer.js";
 import type { PushSender } from "./adapters/push.js";
@@ -11,7 +10,7 @@ import type { RedisClient } from "./adapters/redis.js";
 import { AuditService } from "./audit/audit.service.js";
 import { tryCtx } from "./context/request-context.js";
 import { TxRunner } from "./db/tx-runner.js";
-import { setAfterCommitErrorReporter } from "./db/tx.js";
+import { commitAwareDb, setAfterCommitErrorReporter } from "./db/tx.js";
 import type { Db } from "./db/types.js";
 import { ErrorFilter } from "./errors/error.filter.js";
 import { FilesService } from "./files/files.service.js";
@@ -20,6 +19,9 @@ import { SessionValidator } from "./guards/session-validator.js";
 import { RequestGate } from "./http/request-gate.js";
 import { IdempotencyService } from "./idempotency/idempotency.service.js";
 import { IdempotencyInterceptor } from "./idempotency/idempotent.js";
+import { PasswordVerifier } from "./identity/password-verifier.js";
+import { SessionIssuer } from "./identity/session-issuer.js";
+import { TokenService } from "./identity/token.service.js";
 import { JobRegistry } from "./jobs/job-registry.js";
 import { JobRunner } from "./jobs/job-runner.js";
 import { AppLogger } from "./logging/logger.js";
@@ -98,11 +100,15 @@ const SHARED_SERVICES = [
 ];
 
 /**
- * Khusus runtime HTTP: verifikasi token dan sesi, guard, gerbang maintenance/versi, filter galat, token QR KTA
- * (secret QR tidak diberikan ke worker), dan gateway Socket.IO /realtime.
+ * Khusus runtime HTTP: token JWT, penerbit sesi dan pemeriksa sandi (secret JWT/OTP/TOTP hanya di API), verifikasi
+ * sesi, guard, gerbang maintenance/versi, filter galat, token QR KTA (secret QR tidak diberikan ke worker), dan
+ * gateway Socket.IO /realtime. Provider modul yang dimuat worker (`<m>-jobs.module.ts`) tidak boleh bergantung pada
+ * layanan di daftar ini.
  */
-const API_SERVICES = [
+export const API_ONLY_PROVIDERS = [
   TokenService,
+  SessionIssuer,
+  PasswordVerifier,
   SessionValidator,
   AuthGuard,
   RequestGate,
@@ -145,7 +151,8 @@ export class CoreModule implements OnModuleInit {
       (deps.redis ? new RedisRateLimitStore(deps.redis) : new MemoryRateLimitStore());
     const values: Provider[] = [
       { provide: ENV, useValue: deps.env },
-      { provide: DB, useValue: deps.db },
+      // db.transaction dari DB yang diinjeksi selalu commit-aware (afterCommit menunggu commit; ARCHITECTURE §4.10).
+      { provide: DB, useValue: commitAwareDb(deps.db) },
       { provide: CLOCK, useValue: deps.clock },
       { provide: MAILER, useValue: deps.mailer },
       { provide: PUSH, useValue: deps.push },
@@ -156,7 +163,7 @@ export class CoreModule implements OnModuleInit {
       { provide: RUNTIME_MODE, useValue: runtime.mode },
     ];
     const api = runtime.mode === "api";
-    const services = api ? [...SHARED_SERVICES, ...API_SERVICES] : SHARED_SERVICES;
+    const services = api ? [...SHARED_SERVICES, ...API_ONLY_PROVIDERS] : SHARED_SERVICES;
     return {
       module: CoreModule,
       global: true,

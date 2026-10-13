@@ -79,14 +79,49 @@ export function redactPaths(keys: readonly string[] = REDACTED_KEYS, depth = RED
 interface SerializableRequest {
   method?: string;
   url?: string;
+  params?: unknown;
   routeOptions?: { url?: string };
 }
 
-/** Request dicatat tanpa query string (bisa berisi kata kunci pencarian nama/token) dan tanpa IP/header (PRD 5.5). */
+/**
+ * Parameter path yang merupakan kredensial pembawa (bearer) dan tidak pernah boleh tercatat: `token` pada
+ * GET /files/content/{token} adalah URL berkas privat bertanda tangan yang berlaku sampai 10 menit (PRD 5.4).
+ */
+export const SECRET_PATH_PARAMS: ReadonlySet<string> = new Set(["token"]);
+
+const REDACTED = "[REDACTED]";
+/** Segmen path mentah yang tampak seperti token (JWT kompak atau string acak panjang) pada rute yang tidak dikenal. */
+const TOKEN_LIKE_SEGMENT = /^(?:[A-Za-z0-9_-]+\.){2}[A-Za-z0-9_-]*$|^[A-Za-z0-9_%+=-]{40,}$/;
+
+/**
+ * Path untuk log TANPA rahasia (ARCHITECTURE §2 butir 3, N-14): rute yang cocok direkonstruksi dari pola rute dan
+ * nilai parameternya, dengan parameter rahasia ({@link SECRET_PATH_PARAMS}) diganti `[REDACTED]`; rute tidak dikenal
+ * (404) memakai path mentah dengan segmen berbentuk token disamarkan. Query string tidak pernah dicatat.
+ */
+export function loggablePath(req: SerializableRequest): string | undefined {
+  const route = req?.routeOptions?.url;
+  const params = (req?.params ?? {}) as Record<string, unknown>;
+  if (typeof route === "string") {
+    return route.replace(/:([A-Za-z0-9_]+)/g, (_match, name: string) => {
+      if (SECRET_PATH_PARAMS.has(name)) return REDACTED;
+      const value = params[name];
+      // Nilai panjang tidak wajar (bukan UUID/slug/kind) tidak dicatat agar log tetap kecil.
+      return typeof value === "string" && value.length <= 128 ? encodeURIComponent(value) : REDACTED;
+    });
+  }
+  if (typeof req?.url !== "string") return undefined;
+  return req.url
+    .split("?")[0]!
+    .split("/")
+    .map((segment) => (TOKEN_LIKE_SEGMENT.test(segment) ? REDACTED : segment))
+    .join("/");
+}
+
+/** Request dicatat tanpa query string (bisa berisi kata kunci pencarian nama/token), token path, IP, dan header (PRD 5.5). */
 function requestSerializer(req: SerializableRequest) {
   return {
     method: req?.method,
-    url: typeof req?.url === "string" ? req.url.split("?")[0] : undefined,
+    url: loggablePath(req),
     route: req?.routeOptions?.url,
   };
 }

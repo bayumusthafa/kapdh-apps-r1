@@ -11,7 +11,14 @@ export type SessionAudience = "mobile" | "admin";
  */
 export interface AuthContext {
   userId: string;
+  /** Id BARIS sesi access token ini (berganti setiap rotasi refresh ±15 menit). */
   sessionId: string;
+  /**
+   * Keluarga sesi (`sessions.family_id` = `Session.id` kontrak C1): identitas perangkat yang stabil selama rotasi
+   * refresh. Pakai ini untuk semua keadaan yang harus bertahan rotasi: pengikatan X-Reauth-Token (`sid`), "sesi saat
+   * ini" pada daftar/pencabutan sesi, kanal socket `session:<familyId>`.
+   */
+  familyId: string;
   sessionVersion: number;
   audience: SessionAudience;
   /** 1 = sandi, 2 = sandi + TOTP (admin wajib 2, AC F02-2). */

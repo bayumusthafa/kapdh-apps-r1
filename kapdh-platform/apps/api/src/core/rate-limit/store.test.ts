@@ -60,6 +60,45 @@ describe("MemoryRateLimitStore sliding window (PRD 2.5, D1)", () => {
   });
 });
 
+describe("Reservasi atomik acquire/release (PRD 2.5, D1: batas kegagalan tidak dapat dilewati paralel)", () => {
+  it("acquire mencatat dan mengembalikan jumlah + tiket; penuh → ms tunggu tanpa pencatatan; release mengembalikan", async () => {
+    const store = new MemoryRateLimitStore();
+    const first = await store.acquire("mfa:a", 2, MINUTE, 1_000);
+    const second = await store.acquire("mfa:a", 2, MINUTE, 1_000);
+    expect(first).toMatchObject({ waitMs: 0, count: 1 });
+    expect(second).toMatchObject({ waitMs: 0, count: 2 });
+    expect(first.ticket).not.toBeNull();
+    const full = await store.acquire("mfa:a", 2, MINUTE, 1_500);
+    expect(full).toEqual({ waitMs: MINUTE - 500, count: 0, ticket: null });
+    await store.release("mfa:a", second.ticket!);
+    expect(await store.acquire("mfa:a", 2, MINUTE, 2_000)).toMatchObject({ waitMs: 0, count: 2 });
+    // Release tiket yang sudah keluar jendela / kunci tidak ada tidak melempar.
+    await store.release("tidak-ada", "1");
+  });
+
+  it("RateLimitService.reserve: N panggilan bersamaan → tepat `limit` slot; release idempoten", async () => {
+    const service = new RateLimitService(new MemoryRateLimitStore(), {
+      now: () => new Date("2026-10-13T02:00:00Z"),
+    });
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () => service.reserve("login:x", 5, MINUTE)),
+    );
+    const slots = results.filter((r) => r.slot !== null);
+    expect(slots).toHaveLength(5);
+    expect(slots.map((r) => r.slot!.count).sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5]);
+    expect(results.filter((r) => r.slot === null).every((r) => r.wait > 0)).toBe(true);
+    await slots[0]!.slot!.release();
+    await slots[0]!.slot!.release();
+    const again = await service.reserve("login:x", 5, MINUTE);
+    expect(again.slot?.count).toBe(5);
+    expect((await service.reserve("login:x", 5, MINUTE)).slot).toBeNull();
+    await expect(service.reserveOrThrow("login:x", 5, MINUTE, "Coba lagi nanti.")).rejects.toMatchObject({
+      status: 429,
+      code: "RATE_LIMITED",
+    });
+  });
+});
+
 describe("RateLimitService (ARCHITECTURE §4.2)", () => {
   it("consume mengembalikan detik tunggu dan consumeOrThrow melempar 429 RATE_LIMITED dengan retry_after", async () => {
     let now = new Date("2026-10-13T02:00:00Z");
