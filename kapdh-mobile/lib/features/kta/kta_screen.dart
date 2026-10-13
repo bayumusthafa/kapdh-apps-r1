@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +7,7 @@ import 'package:kapdh_api/kapdh_api.dart';
 
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
+import '../../core/cache/kta_avatar_cache.dart';
 import '../../core/format/formatters.dart';
 import '../../core/session/session_controller.dart';
 import '../../core/session/session_state.dart';
@@ -32,10 +32,31 @@ class KtaScreen extends ConsumerStatefulWidget {
 }
 
 class _KtaScreenState extends ConsumerState<KtaScreen> {
+  /// Jeda percobaan sinkron otomatis selama kartu tampil dari cache atau tidak dapat ditampilkan karena server tidak
+  /// terjangkau (AC F05-4): bertambah sampai 5 menit agar tidak membebani server dan baterai.
+  static const retryDelays = [
+    Duration(seconds: 15),
+    Duration(seconds: 30),
+    Duration(minutes: 1),
+    Duration(minutes: 2),
+    Duration(minutes: 5),
+  ];
+
   KtaView _view = const KtaLoading();
   bool _syncing = false;
   late final AppLifecycleListener _lifecycle;
   StreamSubscription<NotificationCreatedPayload>? _updates;
+  StreamSubscription<void>? _reconnects;
+  Timer? _retry;
+  int _retryAttempt = 0;
+
+  /// Tampilan berasal dari cache offline atau gagal karena server tidak terjangkau: status kartu bisa sudah berubah
+  /// di server, sehingga sinkron diulang begitu server terjangkau lagi (AC F05-2, F05-4).
+  bool get _awaitingServer => switch (_view) {
+    KtaOffline() => true,
+    KtaUnavailable(:final reason) => reason != null,
+    _ => false,
+  };
 
   @override
   void initState() {
@@ -45,12 +66,19 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
     // Iuran disetujui atau keanggotaan berubah (notifikasi realtime): kartu menjadi Aktif tanpa menunggu pengguna
     // menyinkronkan (PRD 4.1, AC F05-1).
     _updates = ref.read(paymentUpdatesProvider).listen((_) => unawaited(_sync()));
+    // Koneksi kembali saat sesi tetap aktif (jaringan sempat putus): kartu cache diganti status server terbaru,
+    // termasuk status dibatasi (AC F05-4). Sesi yang kembali dari offlineLastKnown ditangani pendengar sesi di build.
+    _reconnects = ref.read(realtimeReconnectedProvider).listen((_) {
+      if (_awaitingServer) unawaited(_sync());
+    });
     unawaited(_sync());
   }
 
   @override
   void dispose() {
+    _retry?.cancel();
     unawaited(_updates?.cancel());
+    unawaited(_reconnects?.cancel());
     _lifecycle.dispose();
     super.dispose();
   }
@@ -58,15 +86,37 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
   Future<void> _sync() async {
     final userId = ref.read(sessionProvider).userId;
     if (_syncing || userId == null) return;
+    _retry?.cancel();
     setState(() => _syncing = true);
     try {
       final view = await ref.read(ktaSyncProvider).sync(userId: userId);
       if (!mounted) return;
       setState(() => _view = view);
       if (view is KtaOnline) _followStatus(view.card);
+      _scheduleRetry();
     } finally {
       if (mounted) setState(() => _syncing = false);
     }
+  }
+
+  /// Selama kartu tampil dari cache (atau tidak tampil karena server tidak terjangkau), sinkron dicoba ulang otomatis
+  /// dengan jeda bertambah. Pemicu konektivitas saja tidak cukup: jaringan dapat tersambung tanpa server terjangkau
+  /// (captive portal) dan realtime tidak tersambung untuk akun yang baru dibatasi (AC F05-4).
+  void _scheduleRetry() {
+    _retry?.cancel();
+    if (!_awaitingServer) {
+      _retryAttempt = 0;
+      return;
+    }
+    final delay = retryDelays[_retryAttempt < retryDelays.length ? _retryAttempt : retryDelays.length - 1];
+    _retryAttempt++;
+    _retry = Timer(delay, () {
+      if (!mounted) return;
+      // Di latar belakang tidak ada request; kembali ke aplikasi memicu sinkron lewat AppLifecycleListener.
+      final lifecycle = WidgetsBinding.instance.lifecycleState;
+      if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
+      unawaited(_sync());
+    });
   }
 
   /// Kartu menunjukkan status yang berbeda dari sesi (mis. iuran baru disetujui atau akun dibatasi): muat ulang /me
@@ -101,10 +151,13 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
     final url = card.avatarUrl;
     if (url == null) return null;
     // URL foto bertanda tangan berumur pendek; kunci cache mengikuti berkas avatar agar foto tetap tampil saat
-    // offline dan berganti saat avatar diganti (kontrak C2 MemberCard.avatar_url).
+    // offline dan berganti saat avatar diganti (kontrak C2 MemberCard.avatar_url). Foto disimpan di cache KTA
+    // tersendiri yang dihapus bersama cache kartu (logout, berganti akun, dibatasi; PRD 5.2, AC F05-3).
     final fileId = ref.read(sessionProvider).me?.profile.avatarFileId;
     final userId = ref.read(sessionProvider).userId;
-    return CachedNetworkImageProvider(url, cacheKey: fileId == null ? null : 'kta-avatar-$userId-$fileId');
+    return ref
+        .read(ktaAvatarCacheProvider)
+        .imageFor(url, cacheKey: fileId == null ? null : 'kta-avatar-$userId-$fileId');
   }
 
   @override
@@ -225,13 +278,75 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
     final reason = view.reason;
     if (reason == null) return ErrorState.fromException(view.error, onRetry: () => unawaited(_sync()));
     final (:title, :message) = ktaOfflineMissOf(reason);
-    return ErrorState(
+    return _OfflineUnavailable(
       key: const ValueKey('kta-offline-unavailable'),
-      icon: Icons.cloud_off,
       title: title,
       message: message,
-      retryLabel: 'Sinkronkan',
-      onRetry: _syncing ? null : () => unawaited(_sync()),
+      syncing: _syncing,
+      onSync: () => _sync(),
+    );
+  }
+}
+
+/// KTA tidak dapat ditampilkan karena server tidak terjangkau dan cache tidak sah (AC F05-3). Tombol Sinkronkan
+/// selebar layar agar labelnya membungkus, bukan meluap, pada teks 200 % (N-11); tarik ke bawah juga menyinkronkan.
+class _OfflineUnavailable extends StatelessWidget {
+  const _OfflineUnavailable({
+    super.key,
+    required this.title,
+    required this.message,
+    required this.syncing,
+    required this.onSync,
+  });
+
+  final String title;
+  final String message;
+  final bool syncing;
+  final Future<void> Function() onSync;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onSync,
+      child: ListView(
+        padding: const EdgeInsets.all(KapdhSpace.s6),
+        children: [
+          const SizedBox(height: KapdhSpace.s6),
+          Center(
+            child: ExcludeSemantics(
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: const BoxDecoration(color: KapdhColors.dangerBg, shape: BoxShape.circle),
+                child: const Icon(Icons.cloud_off, size: 30, color: KapdhColors.danger),
+              ),
+            ),
+          ),
+          const SizedBox(height: KapdhSpace.s4),
+          Semantics(
+            header: true,
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: KapdhFontSize.h3, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: KapdhSpace.s2),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
+          ),
+          const SizedBox(height: KapdhSpace.s5),
+          KapdhButton.outlined(
+            label: 'Sinkronkan',
+            icon: Icons.sync,
+            busy: syncing,
+            busyLabel: 'Menyinkronkan...',
+            onPressed: syncing ? null : () => unawaited(onSync()),
+          ),
+        ],
+      ),
     );
   }
 }

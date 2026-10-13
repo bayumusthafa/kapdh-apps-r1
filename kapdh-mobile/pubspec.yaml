@@ -51,6 +51,9 @@ dependencies:
   google_fonts: ^6.3.3
   qr_flutter: ^4.1.0
   cached_network_image: ^4.0.4
+  # Sudah terkunci sebagai dependensi cached_network_image; dipakai langsung untuk cache foto KTA tersendiri yang
+  # dihapus saat logout (PRD 5.2, AC F05-3).
+  flutter_cache_manager: ^3.4.5
   flutter_widget_from_html_core: ^0.17.4
 
   # Format, waktu dan utilitas.

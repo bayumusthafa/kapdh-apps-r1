@@ -73,7 +73,7 @@ class _NewPaymentScreenState extends ConsumerState<NewPaymentScreen> {
       final quote = type == MembershipPaymentType.registration ? fees.registration : fees.renewal;
       _quote = quote;
       final open = quote.openPaymentId;
-      if (open != null) return _openResolved(type, open);
+      if (open != null) return await _openResolved(type, open);
       if (fees.instructionsHidden) return _set(_Step.blocked, block: _Block.hidden);
       if (!quote.eligible) return _set(_Step.blocked, block: _Block.ineligible);
       methods = await _repo.listMethods();
@@ -120,7 +120,7 @@ class _NewPaymentScreenState extends ConsumerState<NewPaymentScreen> {
       final fees = await _repo.getFees();
       final quote = type == MembershipPaymentType.registration ? fees.registration : fees.renewal;
       final open = quote.openPaymentId;
-      if (open != null) return _openResolved(type, open);
+      if (open != null) return await _openResolved(type, open);
     } on ApiException catch (error) {
       if (isOutcomeUnknown(error)) return _set(_Step.unknown, error: error);
       return _set(_Step.failed, error: error);

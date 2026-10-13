@@ -59,7 +59,11 @@ final class KtaCacheMiss extends KtaCacheResult {
 /// status dibatasi. Tampilan offline selalu berlabel "Offline" dan bukan bukti status saat ini. Cache dihapus saat
 /// logout atau berganti akun. Disimpan di secure storage karena memuat data pribadi dan URL token QR.
 class KtaCacheStore {
-  KtaCacheStore(this._store, {Clock clock = systemClock}) : _clock = clock;
+  /// [onClear] dijalankan setiap kali cache dihapus, untuk data turunan kartu yang harus ikut hilang (foto KTA,
+  /// `KtaAvatarCache`; PRD 5.2, AC F05-3).
+  KtaCacheStore(this._store, {Clock clock = systemClock, Future<void> Function()? onClear})
+    : _clock = clock,
+      _onClear = onClear;
 
   static const storageKey = 'kapdh.kta_card.v1';
 
@@ -71,6 +75,7 @@ class KtaCacheStore {
 
   final SecureStore _store;
   final Clock _clock;
+  final Future<void> Function()? _onClear;
 
   /// Menyimpan kartu hasil GET /me/card untuk [userId]. Kartu berstatus dibatasi menggantikan cache lama sehingga
   /// kartu aktif lama tidak tampil lagi (AC F05-4).
@@ -124,5 +129,9 @@ class KtaCacheStore {
     return KtaCacheHit(card: card, syncedAt: syncedAt, qrUsable: qrUsable);
   }
 
-  Future<void> clear() => _store.delete(storageKey);
+  Future<void> clear() async {
+    await _store.delete(storageKey);
+    final onClear = _onClear;
+    if (onClear != null) await onClear();
+  }
 }
