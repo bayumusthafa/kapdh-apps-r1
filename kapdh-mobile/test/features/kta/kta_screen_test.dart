@@ -196,6 +196,33 @@ void main() {
       expect(app.location, '/renewal');
     });
 
+    testWidgets('AC F07-2, AC F07-5: KTA kedaluwarsa: QR tidak tampil, jendela perpanjangan tetap terbuka', (
+      tester,
+    ) async {
+      final past = testNow.subtract(const Duration(days: 3));
+      final app = await openKta(
+        tester,
+        status: 'expired',
+        meExpiresAt: past,
+        card: () => FakeResponse.json(200, memberCardJson(status: 'expired', expiresAt: past, withQr: false)),
+        routes: {
+          '/me/membership': (_) =>
+              FakeResponse.json(200, membershipJson(status: 'expired', expiresAt: past, renewalEligible: true)),
+          '/me/fees': (_) => FakeResponse.json(200, feesJson(renewal: feeQuoteJson(type: 'renewal'))),
+        },
+      );
+
+      expect(app.location, '/kta');
+      expect(find.bySemanticsLabel('Status: KTA Kedaluwarsa'), findsOneWidget);
+      expect(shownCard(tester).qrData, isNull);
+      expect(find.text('QR aktif kembali setelah perpanjangan'), findsOneWidget);
+      expect(find.text('Berakhir 09/10/2026'), findsOneWidget);
+      expect(find.byKey(const ValueKey('kta-brightness-tip')), findsNothing);
+      await tester.tap(buttonLabelled('Perpanjang'));
+      await settle(tester);
+      expect(app.location, '/renewal');
+    });
+
     testWidgets('AC F05-5: sinkron ulang setelah perpanjangan: nomor tetap dan masa berlaku mengikuti periode baru', (
       tester,
     ) async {
