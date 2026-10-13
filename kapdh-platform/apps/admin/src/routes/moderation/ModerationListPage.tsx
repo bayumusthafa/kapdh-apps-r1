@@ -11,7 +11,7 @@ import { StatCard } from "../../components/ui/Card";
 import { Checkbox } from "../../components/ui/Choice";
 import { DataTable, useCursorPaging } from "../../components/ui/DataTable";
 import { Field } from "../../components/ui/FormField";
-import { Select } from "../../components/ui/Input";
+import { Select, type SelectOption } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SearchInput } from "../../components/ui/SearchInput";
 import { EmptyState } from "../../components/ui/States";
@@ -43,11 +43,11 @@ const PRIORITY_OPTIONS = [
   { value: "urgent", label: "Mendesak" },
   { value: "normal", label: "Normal" },
 ] as const;
-const CATEGORY_OPTIONS = [
+const CATEGORY_OPTIONS: readonly SelectOption<Category | "">[] = [
   { value: "", label: "Semua kategori" },
   ...(Object.keys(CATEGORY_LABEL) as Category[]).map((c) => ({ value: c, label: CATEGORY_LABEL[c] })),
 ];
-const TARGET_OPTIONS = [
+const TARGET_OPTIONS: readonly SelectOption<Target | "">[] = [
   { value: "", label: "Semua objek" },
   ...(Object.keys(TARGET_LABEL) as Target[]).map((t) => ({ value: t, label: TARGET_LABEL[t] })),
 ];

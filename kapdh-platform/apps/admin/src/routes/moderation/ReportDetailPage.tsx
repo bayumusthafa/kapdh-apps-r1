@@ -551,7 +551,8 @@ function ResolveCard({
           note: v.note.trim(),
           ...(v.member_message.trim() ? { member_message: v.member_message.trim() } : {}),
           ...(needsSubject && v.subject_user_id ? { subject_user_id: v.subject_user_id } : {}),
-          ...(r.target_type === "message" ? { remove_message: v.remove_message } : {}),
+          // remove_message hanya bermakna untuk laporan pesan; selain itu selalu false (bawaan kontrak).
+          remove_message: r.target_type === "message" ? v.remove_message : false,
           ...(v.action === "suspend" || v.action === "unsuspend" ? { confirm: true } : {}),
         },
       }),
