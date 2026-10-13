@@ -179,6 +179,10 @@ describe("editor berita (F-08, AC F08-1, F15-4, F15-5; server tiruan)", () => {
   it("pratinjau menampilkan isi seperti aplikasi anggota dengan tautan luar ditandai", async () => {
     const user = userEvent.setup();
     await openEditor(user, CONTENT_IDS.postDonasi);
+    // Isi bertautan dari server tidak membuat formulir dianggap berubah saat dimuat (AC F15-4).
+    await screen.findByRole("textbox", { name: /^Isi berita/ });
+    expect(screen.getByText("Belum ada perubahan untuk disimpan.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Simpan perubahan" })).toHaveAttribute("aria-disabled", "true");
     await user.click(screen.getByRole("button", { name: "Pratinjau" }));
     const dialog = await screen.findByRole("dialog", { name: "Pratinjau berita" });
     const article = within(dialog).getByRole("article", { name: "Pratinjau Donasi korban bencana" });
