@@ -92,7 +92,9 @@ const usedBackupCodes = new Set<string>();
 /** Sandi admin yang sedang berlaku (berubah lewat POST /admin/auth/password/change, mocks/account.ts). */
 let password: string = PASSWORD;
 /** Backup code yang berlaku (bentuk ternormalisasi); diganti seluruhnya saat dibuat ulang (F-02). */
-let backupCodes = new Set<string>([BACKUP_CODE]);
+/** 10 backup code awal; hanya BACKUP_CODE yang diketahui uji (sisa = 10 seperti server). */
+const INITIAL_BACKUP_CODES = [BACKUP_CODE, ...Array.from({ length: 9 }, (_, i) => `MOCKBACKUP${i}`)];
+let backupCodes = new Set<string>(INITIAL_BACKUP_CODES);
 /** Identitas login yang sedang dipakai sesi tiruan; berganti setelah aktivasi undangan (mocks/invitations.ts). */
 interface MockIdentity {
   admin_id: string;
@@ -123,7 +125,7 @@ export function reset(): void {
   reauthTokens.clear();
   usedBackupCodes.clear();
   password = PASSWORD;
-  backupCodes = new Set([BACKUP_CODE]);
+  backupCodes = new Set(INITIAL_BACKUP_CODES);
   identity = { ...DEFAULT_IDENTITY };
   authRequests.length = 0;
 }
@@ -420,6 +422,11 @@ export function mockCheckPassword(value: string): boolean {
 /** Simpan sandi baru admin yang sedang masuk (POST /admin/auth/password/change). */
 export function mockSetPassword(value: string): void {
   password = value;
+}
+
+/** Tandai `count` backup code (selain BACKUP_CODE) sudah terpakai, untuk uji sisa kode sedikit. */
+export function mockConsumeBackupCodes(count: number): void {
+  for (const code of [...backupCodes].filter((c) => c !== BACKUP_CODE).slice(0, count)) usedBackupCodes.add(code);
 }
 
 /** Ganti seluruh backup code; yang lama tidak berlaku lagi (POST /admin/auth/backup-codes, F-02). */

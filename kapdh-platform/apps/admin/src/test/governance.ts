@@ -19,7 +19,8 @@ export async function confirmReauth(user: User, opts: { password?: string; code?
 export async function openPage(user: User, path: string, title: string | RegExp) {
   const app = renderApp(path);
   await signIn(user);
-  await screen.findByRole("heading", { level: 1, name: title });
+  // Potongan kode area dimuat lazy; pemuatan pertama di suite paralel bisa lebih dari 1 detik.
+  await screen.findByRole("heading", { level: 1, name: title }, { timeout: 5_000 });
   return app;
 }
 
