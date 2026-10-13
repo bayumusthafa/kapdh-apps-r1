@@ -371,6 +371,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   /// 409 VERSION_CONFLICT (AC F15-4, PRD 4.5): profil diubah di perangkat lain. Pengguna memilih memuat versi
   /// terbaru (isian dibuang) atau menerapkan perubahannya sendiri di atas versi terbaru ([_rebase]).
   Future<void> _onConflict(ApiException error) async {
+    // "Coba lagi" pada snackbar dapat diketuk setelah layar ditutup.
+    if (!mounted) return;
     final current = error.current;
     final Me latest;
     if (current is Map<String, Object?>) {
@@ -382,9 +384,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         if (!mounted) return;
         // Versi terbaru gagal dimuat (offline, 5xx): isian tetap utuh dan galat ditampilkan dengan "Coba lagi"
         // yang memuat ulang versi terbaru lalu menawarkan pilihan konflik lagi (PRD 4.5).
-        unawaited(
-          ref.read(errorPresenterProvider).present(loadError, onRetry: () => unawaited(_onConflict(error))),
-        );
+        unawaited(ref.read(errorPresenterProvider).present(loadError, onRetry: () => unawaited(_onConflict(error))));
         return;
       }
     }

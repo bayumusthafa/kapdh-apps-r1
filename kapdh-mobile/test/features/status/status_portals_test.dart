@@ -352,9 +352,7 @@ void main() {
       await openPortal(
         tester,
         login: pending(),
-        extra: {
-          '/public/deletion/verify': (_) => FakeResponse.json(400, errorJson('VALIDATION_ERROR', 'Kode salah.')),
-        },
+        extra: {'/public/deletion/verify': (_) => FakeResponse.json(400, errorJson('VALIDATION_ERROR', 'Kode salah.'))},
       );
       await requestAndEnterCode(tester, code: '000000');
       expect(find.text('Kode salah.'), findsOneWidget);
