@@ -409,7 +409,9 @@ Perubahan hanya pada deskripsi, mencatat perilaku server yang perlu diketahui kl
   keluarga sudah dicabut, 401 UNAUTHENTICATED dan token tidak pernah aktif untuk sesi yang sudah keluar (AC F13-5).
 - `adminListNotificationDeliveries`: daftar `error_class` dilengkapi (FCM `NETWORK`, `AUTH_ERROR`; email `network`,
   `auth_error`, `unknown`; pembatalan sisi server `recipient_unavailable`, `push_disabled`); INVALID_ARGUMENT yang
-  menunjuk token registrasi juga menonaktifkan token. Jadwal retry otomatis: 1, 2, 4, 8, 16 menit (Retry-After
+  menunjuk token registrasi juga menonaktifkan token. `AUTH_ERROR` karena token akses OAuth FCM ditolak (401 tanpa
+  THIRD_PARTY_AUTH_ERROR) atau gagal ditukar dicoba ulang; THIRD_PARTY_AUTH_ERROR dan 403 gagal tanpa retry otomatis.
+  Jadwal retry otomatis: 1, 2, 4, 8, 16 menit (Retry-After
   dihormati, maksimal 1 jam), paling banyak 6 percobaan, lalu `failed`; selama retry status tetap `pending` dengan
   `error_class` terakhir. `from` harus sebelum `to` (400). Urutan `updated_at_desc` dapat melewatkan/mengulang baris
   yang berubah selama penelusuran.

@@ -249,6 +249,41 @@ describe("FcmPushSender terhadap endpoint HTTP tiruan (FCM HTTP v1)", () => {
     expect(tokenRequests().length).toBe(before + 1);
   });
 
+  it("AC F13-4: 401 UNAUTHENTICATED (token akses OAuth ditolak) → auth_error dapat dicoba ulang; percobaan berikutnya menukar token baru", async () => {
+    const fcm = sender();
+    expect(await fcm.send(message)).toMatchObject({ ok: true });
+    const before = tokenRequests().length;
+    sendReplies = [
+      {
+        status: 401,
+        body: {
+          error: {
+            code: 401,
+            status: "UNAUTHENTICATED",
+            message: "Request had invalid authentication credentials.",
+          },
+        },
+      },
+      { status: 403, body: { error: { code: 403, status: "PERMISSION_DENIED", message: "ditolak" } } },
+    ];
+    expect(await fcm.send(message)).toEqual({
+      ok: false,
+      errorClass: "auth_error",
+      retryable: true,
+      deactivateToken: false,
+    });
+    // Izin akun layanan kurang (403 tanpa SENDER_ID_MISMATCH): perlu perbaikan konfigurasi, tidak dicoba ulang otomatis.
+    expect(await fcm.send(message)).toEqual({
+      ok: false,
+      errorClass: "auth_error",
+      retryable: false,
+      deactivateToken: false,
+    });
+    expect(tokenRequests().length).toBe(before + 1);
+    const retried = sends().at(-1)!;
+    expect(retried.headers.authorization).toBe(`Bearer akses-${tokenCounter}`);
+  });
+
   it("AC F13-4: OAuth gagal → auth_error dapat dicoba ulang; server tidak merespons → timeout jaringan dapat dicoba ulang", async () => {
     tokenReplies = [{ status: 400, body: { error: "invalid_grant" } }];
     expect(await sender().send(message)).toEqual({

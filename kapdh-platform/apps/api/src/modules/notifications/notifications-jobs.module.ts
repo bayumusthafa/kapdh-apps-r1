@@ -9,6 +9,8 @@ import { NotificationPreferencesService } from "./preferences.service.js";
  * - `notifications.deliver` = handler topik outbox `notification.created` (email + push sesuai preferensi, kelas galat
  *   FCM; AC F13-1, F13-4);
  * - `notifications.retry` = job terjadwal setiap menit untuk pengiriman jatuh tempo (backoff, retry pengurus);
+ * - `notifications.device-sweep` = job terjadwal setiap jam yang mencabut token perangkat dari sesi yang berakhir tanpa
+ *   logout (AC F13-5);
  * beserta layanan domain yang mereka pakai (token perangkat, preferensi, inbox).
  *
  * Diimpor modul notifications (job juga terdaftar di aplikasi API/uji: `jobs.runScheduled("notifications.retry")`) dan

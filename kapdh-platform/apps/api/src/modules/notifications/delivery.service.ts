@@ -34,7 +34,7 @@ import {
   PUSH_TITLE_MAX,
   type SendOutcome,
 } from "./delivery-policy.js";
-import { cancelPendingDeliveries, DevicesService } from "./devices.service.js";
+import { cancelPendingDeliveries, DEVICE_SWEEP_EVERY_MS, DevicesService } from "./devices.service.js";
 import { type EmailCategory, renderNotificationEmail } from "./email-templates.js";
 import { safeRoute } from "./inbox.service.js";
 
@@ -106,6 +106,8 @@ const UNAVAILABLE_ACCOUNT_STATUSES = new Set(["disabled", "deleted"]);
  *   `ON CONFLICT (notification_id, channel, device_token_id) DO NOTHING` dan handler tidak pernah menulis inbox,
  *   sehingga outbox yang diulang tidak menggandakan inbox maupun pengiriman (AC F13-1).
  * - `notifications.retry` (setiap menit): mengirim pengiriman `pending` yang jatuh tempo (backoff, retry pengurus).
+ * - `notifications.device-sweep` (setiap jam): mencabut token perangkat yang keluarga sesinya sudah berakhir tanpa
+ *   logout (AC F13-5), lihat {@link DevicesService.revokeEndedSessionTokens}.
  *
  * Klaim: `SELECT … FOR UPDATE OF d SKIP LOCKED` lalu attempt + 1 dan lease `next_retry_at` dalam satu transaksi,
  * sehingga dua worker tidak mengirim pengiriman yang sama bersamaan. Pada statement klaim yang sama diperiksa ulang:
@@ -141,6 +143,15 @@ export class NotificationDeliveryService implements OnModuleInit {
       everyMs: DELIVERY_RETRY_EVERY_MS,
       run: async (_now, job) => {
         await this.retryDue(job.logger);
+      },
+    });
+    // AC F13-5: token perangkat dari sesi yang berakhir tanpa logout (kedaluwarsa) berhenti menerima notifikasi.
+    this.jobs.registerScheduled({
+      name: "notifications.device-sweep",
+      everyMs: DEVICE_SWEEP_EVERY_MS,
+      run: async (_now, job) => {
+        const revoked = await this.devices.revokeEndedSessionTokens();
+        if (revoked > 0) job.logger.info({ revoked }, "token perangkat dari sesi yang berakhir dicabut");
       },
     });
   }
