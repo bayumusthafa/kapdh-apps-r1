@@ -136,7 +136,7 @@ describe("migrasi journal pada PGlite", () => {
       "select created_at from drizzle.__drizzle_migrations order by id",
     );
     expect(recorded.rows.map((r) => Number(r.created_at))).toEqual(journal.entries.map((e) => e.when));
-    expect(await count("select count(*)::int as n from pg_tables where schemaname = 'app'")).toBe(39);
+    expect(await count("select count(*)::int as n from pg_tables where schemaname = 'app'")).toBe(40);
   });
 
   it("journal berurutan naik dan setiap migrasi memisahkan satu statement per breakpoint", () => {
