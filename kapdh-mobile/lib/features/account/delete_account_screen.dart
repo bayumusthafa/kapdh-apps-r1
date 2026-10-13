@@ -13,6 +13,7 @@ import '../../core/format/formatters.dart';
 import '../../core/session/session_controller.dart';
 import '../../core/ui/reauth_dialog.dart';
 import '../../design/design.dart';
+import 'widgets/scroll_column.dart';
 import '../status/deletion_portal.dart';
 import 'account_repository.dart';
 import 'widgets/account_section.dart';
@@ -130,7 +131,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
           });
           if (current is! Map<String, Object?>) unawaited(_load());
         default:
-          await ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_submit()));
+          unawaited(ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_submit())));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -172,7 +173,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
       );
     }
     final warnings = _hasWarnings(d);
-    return ListView(
+    return ScrollColumn(
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s8),
       children: [
         const InfoBox(

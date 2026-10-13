@@ -91,7 +91,7 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
       if (emailErrors != null) {
         setState(() => _emailError = emailErrors.join(' '));
       } else {
-        await ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_send()));
+        unawaited(ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_send())));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -120,7 +120,7 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
           _expiredNote = 'Kode sebelumnya tidak berlaku lagi. Kirim kode baru.';
         });
       } else {
-        await ref.read(errorPresenterProvider).present(error);
+        unawaited(ref.read(errorPresenterProvider).present(error));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -157,7 +157,7 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
                 'menerima email pemberitahuan penyelesaian.';
           });
         default:
-          await ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_verify()));
+          unawaited(ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_verify())));
       }
     } finally {
       if (mounted) setState(() => _busy = false);

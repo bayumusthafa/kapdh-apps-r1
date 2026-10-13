@@ -10,6 +10,7 @@ import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
 import '../../core/session/session_controller.dart';
 import '../../design/design.dart';
+import 'widgets/scroll_column.dart';
 import 'account_repository.dart';
 import 'avatar_image.dart';
 import 'widgets/account_section.dart';
@@ -157,8 +158,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       errors['phone'] = 'Gunakan angka, boleh diawali + (mis. +62 812 3456 7890).';
     }
     if (_bio.text.trim().length > 500) errors['bio'] = 'Maksimal 500 karakter.';
-    if ((_norm(_eduInstitution.text)?.length ?? 0) > 120)
+    if ((_norm(_eduInstitution.text)?.length ?? 0) > 120) {
       errors['last_education_institution'] = 'Maksimal 120 karakter.';
+    }
     if ((_norm(_eduCity.text)?.length ?? 0) > 80) errors['last_education_city'] = 'Maksimal 80 karakter.';
     for (final (key, controller) in [
       ('social_instagram', _instagram),
@@ -320,6 +322,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       await _leave();
     } on ApiException catch (error) {
       if (!mounted) return;
+      // Tombol kembali aktif sebelum dialog galat/konflik tampil.
+      setState(() => _saving = false);
       if (error.code == ErrorCode.versionConflict) {
         await _onConflict(error);
       } else if (error.fieldErrors.isNotEmpty) {
@@ -327,7 +331,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         _snack(error.message);
       } else {
         if (error.code == ErrorCode.fileInvalid) setState(() => _uploadedAvatarId = null);
-        await ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_save()));
+        unawaited(ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_save())));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -448,7 +452,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       ),
     );
 
-    return ListView(
+    return ScrollColumn(
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s8),
       children: [
         Center(

@@ -193,7 +193,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       ref.read(notificationUnreadCountProvider.notifier).set(result.unreadCount);
       if (_unreadOnly) unawaited(_load());
     } on ApiException catch (error) {
-      if (mounted) await ref.read(errorPresenterProvider).present(error, onRetry: _markAll);
+      if (mounted) unawaited(ref.read(errorPresenterProvider).present(error, onRetry: _markAll));
     } finally {
       if (mounted) setState(() => _markingAll = false);
     }

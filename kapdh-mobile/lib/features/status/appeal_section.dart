@@ -109,7 +109,7 @@ class _AppealSectionState extends ConsumerState<AppealSection> {
       } else if (error.fieldErrors['description'] case final messages?) {
         setState(() => _fieldError = messages.join(' '));
       } else {
-        await ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_submit()));
+        unawaited(ref.read(errorPresenterProvider).present(error, onRetry: () => unawaited(_submit())));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
