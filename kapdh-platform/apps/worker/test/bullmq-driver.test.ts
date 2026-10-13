@@ -249,7 +249,9 @@ describe("Driver BullMQ (PRD 5.1: dispatcher meneruskan ke BullMQ dengan dedup k
       expect.arrayContaining(["worker:outbox:force", "queue:outbox:kapdh:test:bull"]),
     );
     expect(await driver.ping()).toBe(false);
-    expect(lines.some((line) => String(line.msg).startsWith("Redis BullMQ tidak siap saat start"))).toBe(true);
+    expect(lines.some((line) => String(line.msg).startsWith("Redis BullMQ tidak siap saat start"))).toBe(
+      true,
+    );
   });
 
   it("PRD 5.5: ping() (health) false bila Redis tidak menjawab, klien BullMQ belum/tidak siap, atau loop konsumen berhenti di luar shutdown", async () => {

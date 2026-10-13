@@ -136,7 +136,9 @@ export class BullMqQueueDriver implements QueueDriver {
       // Termasuk koneksi blocking duplikat milik setiap Worker. Inisialisasi yang gagal tidak pernah dicoba ulang
       // BullMQ, jadi start gagal di sini daripada berjalan dengan antrean yang rusak permanen.
       await withinTimeout(
-        Promise.all([...this.queues.values(), ...this.workers.values()].map((client) => client.waitUntilReady())),
+        Promise.all(
+          [...this.queues.values(), ...this.workers.values()].map((client) => client.waitUntilReady()),
+        ),
         remaining(),
         "inisialisasi klien BullMQ",
       );
@@ -269,7 +271,12 @@ export class BullMqQueueDriver implements QueueDriver {
           attempt,
         });
         const started = performance.now();
-        await registration.processor(job.data, { queue: name, jobId: queueJobId, attempt, logger: jobLogger });
+        await registration.processor(job.data, {
+          queue: name,
+          jobId: queueJobId,
+          attempt,
+          logger: jobLogger,
+        });
         jobLogger.debug({ duration_ms: Math.round(performance.now() - started) }, "job antrean selesai");
       },
       { connection, prefix, concurrency: registration.concurrency },

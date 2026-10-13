@@ -204,7 +204,11 @@ describe("Dispatcher outbox (PRD 5.1, ARCHITECTURE §4.8)", () => {
     h.fake.release();
     expect(await processing).toBe("dispatched");
     expect(h.fake.calls).toHaveLength(1);
-    expect(await outboxRow(tdb.db, id)).toMatchObject({ status: "dispatched", attempts: 1, lockedUntil: null });
+    expect(await outboxRow(tdb.db, id)).toMatchObject({
+      status: "dispatched",
+      attempts: 1,
+      lockedUntil: null,
+    });
     await h.queue.close(1_000);
   });
 
