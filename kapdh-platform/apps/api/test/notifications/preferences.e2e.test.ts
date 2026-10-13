@@ -5,6 +5,7 @@ import { expectOperation } from "../support/contract.js";
 import { createAdmin, createAlumni, signInAdmin, signInAlumni } from "../support/factories.js";
 import { httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
+import { expectIndonesianFieldErrors } from "./support.js";
 
 /** Preferensi push/email per kategori (F-13, AC F13-2; ARCHITECTURE §4.7). */
 
@@ -96,13 +97,23 @@ describe("GET/PUT /notifications/preferences", () => {
       { push: { ...ALL_ON.push, security: false }, email: ALL_ON.email },
       { push: ALL_ON.push, email: { ...ALL_ON.email, news: false } },
       { ...ALL_ON, mandatory_categories: [] },
+      { push: "semua", email: ALL_ON.email },
     ]) {
       const res = await api().put("/notifications/preferences", body, { token: m.token });
       expect(res.statusCode, JSON.stringify(body)).toBe(400);
       expect(expectOperation("put", "/notifications/preferences", res)).toMatchObject({
         code: "VALIDATION_ERROR",
       });
+      expectIndonesianFieldErrors(res.json(), JSON.stringify(body).slice(0, 80));
     }
+    const mandatory = await api().put(
+      "/notifications/preferences",
+      { push: { ...ALL_ON.push, security: false }, email: ALL_ON.email },
+      { token: m.token },
+    );
+    expect((mandatory.json() as { field_errors: Record<string, string[]> }).field_errors.push).toContain(
+      "Kategori tidak dikenal atau wajib (tidak dapat diatur): security",
+    );
   });
 
   it("otorisasi: tanpa sesi 401; token admin 403", async () => {

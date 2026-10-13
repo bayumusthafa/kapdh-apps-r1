@@ -12,7 +12,7 @@ import {
 } from "../support/factories.js";
 import { httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import { notify } from "./support.js";
+import { expectIndonesianFieldErrors, notify } from "./support.js";
 
 /**
  * Kotak masuk in-app (F-13; kontrak notifications.yaml listNotifications, getNotificationUnreadCount, getNotification,
@@ -286,7 +286,7 @@ describe("POST /notifications/read", () => {
     expect(all.json()).toEqual({ updated_count: 1, unread_count: 0 });
   });
 
-  it("kombinasi tidak valid → 400 VALIDATION_ERROR", async () => {
+  it("kombinasi tidak valid → 400 VALIDATION_ERROR dengan pesan berbahasa Indonesia (ARCHITECTURE §2.9)", async () => {
     const m = await member();
     const id = uuidv7();
     for (const body of [
@@ -300,11 +300,27 @@ describe("POST /notifications/read", () => {
       { all: true, up_to: "kemarin" },
       { all: true, extra: 1 },
       { ids: Array.from({ length: 101 }, () => uuidv7()) },
+      { all: "true" },
+      { ids: id },
+      [id],
     ]) {
       const res = await api().post("/notifications/read", body, { token: m.token });
       expect(res.statusCode, JSON.stringify(body).slice(0, 80)).toBe(400);
       expect(expectOperation("post", "/notifications/read", res)).toMatchObject({ code: "VALIDATION_ERROR" });
+      expectIndonesianFieldErrors(res.json(), JSON.stringify(body).slice(0, 80));
     }
+    const typed = await api().post("/notifications/read", { all: "true" }, { token: m.token });
+    expect((typed.json() as { field_errors: Record<string, string[]> }).field_errors.all).toContain(
+      "Wajib true atau false",
+    );
+    const notList = await api().post("/notifications/read", { ids: id }, { token: m.token });
+    expect((notList.json() as { field_errors: Record<string, string[]> }).field_errors.ids).toContain(
+      "Harus berupa daftar id",
+    );
+    const foreign = await api().post("/notifications/read", { all: true, extra: 1 }, { token: m.token });
+    expect((foreign.json() as { field_errors: Record<string, string[]> }).field_errors._).toContain(
+      "Kolom tidak dikenal: extra",
+    );
     const admin = await createAdmin(t, { role: "super_admin" });
     const session = await signInAdmin(t, admin);
     const forbidden = await api().post("/notifications/read", { all: true }, { token: session.accessToken });
