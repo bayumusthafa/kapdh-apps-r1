@@ -6,11 +6,17 @@ import { v7 as uuidv7 } from "uuid";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { runAsSystem } from "../../src/core/context/request-context.js";
 import { RealtimeService } from "../../src/core/realtime/realtime.service.js";
-import { ledgerObjectKey, readLedgerDirectory } from "../../src/modules/account/deletion-ledger.js";
+import { MemoryDriver } from "@kapdh/storage";
+import {
+  ledgerObjectKey,
+  readLedgerDirectory,
+  writeLedgerEntryMonotonic,
+} from "../../src/modules/account/deletion-ledger.js";
 import { DeletionLedgerService } from "../../src/modules/account/deletion-ledger.service.js";
 import {
   ACCOUNT_DELETION_JOB,
   AccountDeletionProcessor,
+  type DeletionRunResult,
   deletionRetryBackoffMs,
   EMAIL_MAX_FAILURES,
 } from "../../src/modules/account/deletion-processor.js";
@@ -359,6 +365,111 @@ describe("Job account.deletion: kegagalan dan retry (AC F14-2)", () => {
     const results = await Promise.all([runDeletion(t, request.id), runDeletion(t, request.id)]);
     expect(results.map((r) => r.outcome).sort()).toEqual(["completed", "skipped"]);
     expect(processor).toBeInstanceOf(AccountDeletionProcessor);
+  });
+
+  it("AC F14-2, AC F14-6, D2: worker yang macet melewati sewa saat mengirim email kehilangan klaimnya; worker pengambil alih menyelesaikan, worker lama tidak menimpa steps_done/ledger dan tidak mengirim email lagi", async () => {
+    const rich = await createRichMember(t);
+    const { id, requestNumber } = await requestDeletionViaApp(t, rich.session);
+    const mailBefore = t.mailer.mail.length;
+    const original = t.mailer.sendTransactional.bind(t.mailer);
+    let takeover: DeletionRunResult | undefined;
+    t.mailer.sendTransactional = async (mail) => {
+      await original(mail);
+      if (takeover) return;
+      // Server SMTP menerima email worker A, lalu proses A macet melewati sewa 15 menit; sapuan (worker B)
+      // mengambil alih klaim dan menyelesaikan penghapusan sebelum A berjalan lagi.
+      t.clock.advance(16 * 60_000);
+      takeover = { outcome: "skipped" };
+      takeover = await runDeletion(t, id);
+    };
+    let stale: DeletionRunResult;
+    try {
+      stale = await runDeletion(t, id);
+    } finally {
+      t.mailer.sendTransactional = original;
+    }
+    expect(takeover).toEqual({ outcome: "completed", requestNumber });
+    expect(stale).toEqual({ outcome: "claim_lost", requestNumber, step: "notify_requested" });
+
+    const done = await expectFullyDeleted(t, rich, requestNumber);
+    expect(done.attempts).toBe(2);
+    const deletedKeys = [
+      rich.files.avatar,
+      rich.files.chatImage,
+      rich.files.groupAvatar,
+      rich.files.proofPaid,
+      rich.files.proofOld,
+      rich.files.proofReview,
+      rich.files.adminProof,
+      rich.files.proofTicket,
+      rich.files.evidence,
+    ]
+      .map((file) => file.objectKey)
+      .sort();
+    expect((done.ledger as { object_keys: string[] }).object_keys).toEqual(deletedKeys);
+    expect(readLedger(t.storage, ledgerObjectKey(requestNumber, done.requestedAt))).toMatchObject({
+      state: "completed",
+      object_keys: deletedKeys,
+    });
+    // Email: kiriman A yang sudah diterima SMTP, lalu email B; tidak ada email sesudah email selesai.
+    expect(t.mailer.mail.slice(mailBefore).map((m) => m.subject)).toEqual([
+      expect.stringContaining(requestNumber),
+      expect.stringContaining(requestNumber),
+      `Penghapusan akun KAPDH ${requestNumber} selesai`,
+    ]);
+    const completions = await t.db
+      .select()
+      .from(auditLogs)
+      .where(and(eq(auditLogs.action, "account.deletion_completed"), eq(auditLogs.entityId, id)));
+    expect(completions).toHaveLength(1);
+  });
+
+  it("AC F14-2, AC F14-6: klaim hilang di antara langkah → eksekusi lama berhenti pada transaksi berikutnya tanpa efek; status gagal/selesai milik pemegang klaim baru tidak ditimpa", async () => {
+    const rich = await createRichMember(t);
+    const { id, requestNumber } = await requestDeletionViaApp(t, rich.session);
+    const processor = t.app.get(AccountDeletionProcessor);
+    let takeover: DeletionRunResult | undefined;
+    processor.setStepObserver(async ({ step }) => {
+      if (step !== "credentials" || takeover) return;
+      takeover = { outcome: "skipped" };
+      t.clock.advance(16 * 60_000);
+      takeover = await runDeletion(t, id);
+    });
+    const stale = await runDeletion(t, id);
+    expect(takeover).toEqual({ outcome: "completed", requestNumber });
+    expect(stale).toEqual({ outcome: "claim_lost", requestNumber, step: "ledger_final" });
+    const done = await expectFullyDeleted(t, rich, requestNumber);
+    expect(done).toMatchObject({ status: "completed", attempts: 2, lastError: null });
+  });
+
+  it("AC F14-6: ledger eksternal ditulis monoton (completed tidak diturunkan, object key tidak hilang)", async () => {
+    const storage = new MemoryDriver();
+    const entry = {
+      v: 1 as const,
+      kind: "kapdh.account_deletion" as const,
+      deletion_id: uuidv7(),
+      request_number: "DEL-2026-ABCD1234",
+      user_id: uuidv7(),
+      source: "app" as const,
+      requested_at: "2026-10-13T02:00:00.000Z",
+      state: "completed" as const,
+      completed_at: "2026-10-14T02:00:00.000Z",
+      object_keys: ["avatar/2026/10/a", "payment_proof/2026/10/b"],
+      written_at: "2026-10-14T02:00:00.000Z",
+    };
+    const key = await writeLedgerEntryMonotonic(storage, entry);
+    await writeLedgerEntryMonotonic(storage, {
+      ...entry,
+      state: "requested",
+      completed_at: null,
+      object_keys: [],
+    });
+    expect(readLedger(storage, key)).toMatchObject({ state: "completed", object_keys: entry.object_keys });
+    await writeLedgerEntryMonotonic(storage, { ...entry, object_keys: ["chat_image/2026/10/c"] });
+    expect(readLedger(storage, key)).toMatchObject({
+      state: "completed",
+      object_keys: ["avatar/2026/10/a", "chat_image/2026/10/c", "payment_proof/2026/10/b"],
+    });
   });
 });
 
