@@ -407,6 +407,9 @@ Perubahan hanya pada deskripsi, mencatat perilaku server yang perlu diketahui kl
   menjadi `deep_link` null.
 - `registerDevice`: baris sesi aktif keluarga pemanggil dikunci lebih dulu (urutan kunci sama dengan logout); bila
   keluarga sudah dicabut, 401 UNAUTHENTICATED dan token tidak pernah aktif untuk sesi yang sudah keluar (AC F13-5).
+  Sesi yang berakhir tanpa logout (refresh kedaluwarsa) juga berarti keluar: job worker `notifications.device-sweep`
+  (setiap jam) mencabut token keluarga sesi yang tidak lagi aktif atau token tanpa ikatan sesi, beserta pengiriman
+  `pending`-nya; PUT /devices dari keluarga yang sudah kedaluwarsa ditolak 401.
 - `adminListNotificationDeliveries`: daftar `error_class` dilengkapi (FCM `NETWORK`, `AUTH_ERROR`; email `network`,
   `auth_error`, `unknown`; pembatalan sisi server `recipient_unavailable`, `push_disabled`); INVALID_ARGUMENT yang
   menunjuk token registrasi juga menonaktifkan token. `AUTH_ERROR` karena token akses OAuth FCM ditolak (401 tanpa

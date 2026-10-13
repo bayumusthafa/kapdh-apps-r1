@@ -4,9 +4,13 @@ import {
   classifyPushResult,
   decideDelivery,
   DELIVERY_BACKOFF_MAX_MS,
+  DELIVERY_LEASE_MS,
   DELIVERY_MAX_ATTEMPTS,
+  DELIVERY_SEND_TIMEOUT_MS,
   deliveryBackoffMs,
   lockScreenText,
+  ProviderTimeoutError,
+  withProviderTimeout,
 } from "./delivery-policy.js";
 import { channelEnabled, hasEmailChannel } from "./channel-policy.js";
 
@@ -47,6 +51,18 @@ describe("Jadwal backoff pengiriman (AC F13-4, R5)", () => {
       status: "sent",
       providerMessageId: "m-1",
     });
+  });
+
+  it("AC F13-4: percobaan provider yang macet dihentikan sebelum lease klaim habis lalu dijadwalkan ulang (timeout)", async () => {
+    expect(DELIVERY_SEND_TIMEOUT_MS).toBeLessThan(DELIVERY_LEASE_MS);
+    const hanging = new Promise<string>(() => {});
+    const error = await withProviderTimeout(hanging, 20).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ProviderTimeoutError);
+    expect(classifyMailError(error)).toEqual({ kind: "retry", errorClass: "timeout" });
+    expect(await withProviderTimeout(Promise.resolve("ok"), 1_000)).toBe("ok");
+    await expect(withProviderTimeout(Promise.reject(new Error("galat asli")), 1_000)).rejects.toThrow(
+      "galat asli",
+    );
   });
 });
 
