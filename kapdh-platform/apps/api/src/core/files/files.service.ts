@@ -475,7 +475,9 @@ export class FilesService implements OnModuleInit {
   /**
    * Berkas buatan sistem (purpose `uploader: system`, mis. ekspor audit CSV): langsung `ready` + terlampir, dengan
    * kedaluwarsa opsional. Dipanggil job worker; objek ditulis lebih dulu lalu baris dicatat (objek dibuang bila
-   * pencatatan gagal).
+   * pencatatan gagal). Dengan `tx`, baris dicatat di transaksi pemanggil (mis. bersama entri audit
+   * `audit.export.completed`, kontrak C7); bila transaksi itu kemudian batal, pemanggil wajib membuang objeknya lewat
+   * {@link deleteStoredObject}.
    */
   async storeGenerated(input: {
     ownerUserId: string | null;
@@ -483,6 +485,7 @@ export class FilesService implements OnModuleInit {
     mime: string;
     body: ObjectBody;
     expiresAt?: Date | null;
+    tx?: DbOrTx;
   }): Promise<FileRow> {
     const spec = FILE_PURPOSE_SPECS[input.purpose];
     if (spec.uploader !== "system") throw new Error(`Purpose ${input.purpose} bukan berkas buatan sistem`);
@@ -491,7 +494,7 @@ export class FilesService implements OnModuleInit {
     const objectKey = objectKeyFor(input.purpose, now, id);
     const stored = await this.storage.put(objectKey, input.body, { contentType: input.mime });
     try {
-      const [row] = await this.db
+      const [row] = await (input.tx ?? this.db)
         .insert(files)
         .values({
           id,
@@ -515,6 +518,17 @@ export class FilesService implements OnModuleInit {
       await this.storage.delete(objectKey).catch(() => undefined);
       throw error;
     }
+  }
+
+  /**
+   * Membuang objek storage berkas buatan sistem yang barisnya batal dicatat (transaksi pemanggil
+   * {@link storeGenerated} dengan `tx` rollback). Galat hapus hanya dicatat; objek yatim tidak pernah dilayani karena
+   * tidak memiliki baris `files`.
+   */
+  async deleteStoredObject(objectKey: string): Promise<void> {
+    await this.storage.delete(objectKey).catch((error: unknown) => {
+      this.logger.warn({ error: safeError(error) }, "objek berkas buatan sistem gagal dibuang");
+    });
   }
 
   // ------------------------------------------------------------------------------------------------ akses baca
