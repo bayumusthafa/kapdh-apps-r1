@@ -158,7 +158,8 @@ function findOasdiff() {
 }
 
 function runOasdiff(bin, base, head) {
-  const r = spawnSync(bin, ["breaking", base, head, "--format", "json", "--color", "never"], {
+  // Tanpa --color: oasdiff >= 1.32 menolak --color selain format text/singleline, dan JSON memang tanpa warna.
+  const r = spawnSync(bin, ["breaking", base, head, "--format", "json"], {
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   });
