@@ -12,6 +12,7 @@ import { FILE_TOKEN_MAX_LENGTH } from "./core/files/file-token.js";
 import { MAX_UPLOAD_BYTES } from "./core/files/purposes.js";
 import { installHttpHooks, installMultipartGate } from "./core/http/fastify-hooks.js";
 import { RequestGate } from "./core/http/request-gate.js";
+import { trustProxyHops } from "./core/http/trust-proxy.js";
 import { createRootLogger, NestPinoLogger } from "./core/logging/logger.js";
 import type { RateLimitStore } from "./core/rate-limit/store.js";
 import { KapdhIoAdapter } from "./core/realtime/io-adapter.js";
@@ -52,8 +53,9 @@ export async function createApp(
     // request_id selalu dibuat server; X-Request-Id klien hanya dicatat sebagai client_request_id.
     requestIdHeader: false,
     genReqId: () => uuidv7(),
-    // Hanya hop proxy tepercaya (Traefik); X-Forwarded-For dari klien tidak dapat memalsukan req.ip (PRD 2.5).
-    trustProxy: deps.env.TRUST_PROXY_HOPS > 0 ? deps.env.TRUST_PROXY_HOPS : false,
+    // Hanya hop proxy tepercaya (Traefik, peer langsung wajib privat); X-Forwarded-For dari klien tidak dapat
+    // memalsukan req.ip (PRD 2.5). Fastify >= 5.12 tidak menerima hop-count numerik (core/http/trust-proxy.ts).
+    trustProxy: trustProxyHops(deps.env.TRUST_PROXY_HOPS),
     bodyLimit: JSON_BODY_LIMIT,
     // Token URL berkas privat ada di path `/files/content/{token}` (PRD 5.4); bawaan Fastify 100 karakter terlalu
     // pendek untuk JWT kompak. Parameter lain tetap divalidasi (UUID pipe, zod).

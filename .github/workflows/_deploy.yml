@@ -1,0 +1,250 @@
+# Deploy satu lingkungan (staging atau production); dipanggil deploy-staging.yml dan release.yml.
+# PRD 5.5: job migrasi tunggal dengan lock dijalankan SEBELUM image baru berjalan (bukan saat startup replica);
+# image dirujuk dengan digest sehingga production menjalankan image yang sama dengan yang lulus staging; rollback
+# image tidak membalik skema. PRD 5.3: staging dan production memakai secrets, domain dan database terpisah
+# (GitHub Environments "staging" dan "production"), SSH hanya dari IP tepercaya/VPN. Urutan langkah dan pemulihan:
+# docs/runbooks/ci-cd.md.
+#
+# Satu job saja: persetujuan environment production (gerbang rilis PRD 9.3) cukup diberikan sekali.
+name: Deploy lingkungan (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: staging atau production (nama GitHub Environment).
+        required: true
+        type: string
+      sha:
+        description: Commit sumber image (40 heksadesimal).
+        required: true
+        type: string
+      registry:
+        description: Namespace registry huruf kecil, mis. ghcr.io/pemilik.
+        required: true
+        type: string
+      source_tag:
+        description: Tag image sumber (mis. v1.2.0; wajib untuk production); kosong = sha-<commit>[-<lingkungan>].
+        required: false
+        type: string
+        default: ""
+
+permissions: {}
+
+jobs:
+  deploy:
+    name: Migrasi, rollout dan uji asap (${{ inputs.environment }})
+    # Runner deploy harus dapat menjangkau SSH host deploy (PRD 5.3: SSH dibatasi IP tepercaya/VPN). Pilihan: runner
+    # self-hosted di dalam jaringan tepercaya (variabel repo DEPLOY_RUNS_ON, mis. ["self-hosted","kapdh-deploy"]) atau
+    # runner GitHub + Tailscale (secrets TS_OAUTH_CLIENT_ID/TS_OAUTH_SECRET, wajib bila runner milik GitHub).
+    runs-on: ${{ fromJSON(vars.DEPLOY_RUNS_ON || '"ubuntu-24.04"') }}
+    timeout-minutes: 90
+    environment:
+      name: ${{ inputs.environment }}
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      KAPDH_ENV: ${{ inputs.environment }}
+      KAPDH_SHA: ${{ inputs.sha }}
+      KAPDH_REGISTRY: ${{ inputs.registry }}
+      KAPDH_SOURCE_TAG: ${{ inputs.source_tag }}
+      TS_ENABLED: ${{ secrets.TS_OAUTH_CLIENT_ID != '' && secrets.TS_OAUTH_SECRET != '' }}
+    steps:
+      - name: Validasi masukan
+        run: |
+          set -euo pipefail
+          case "$KAPDH_ENV" in
+            staging | production) ;;
+            *) echo "::error::environment harus staging atau production"; exit 1 ;;
+          esac
+          [[ "$KAPDH_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::sha tidak valid"; exit 1; }
+          [[ "$KAPDH_REGISTRY" =~ ^ghcr\.io/[a-z0-9._-]+$ ]] || { echo "::error::registry tidak valid"; exit 1; }
+          if [ -n "$KAPDH_SOURCE_TAG" ] && ! [[ "$KAPDH_SOURCE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+            echo "::error::source_tag harus vX.Y.Z atau vX.Y.Z-rc.N"
+            exit 1
+          fi
+          # Production hanya menjalankan image rilis bertag (release.yml); forced command server memeriksa ulang.
+          if [ "$KAPDH_ENV" = "production" ] && [ -z "$KAPDH_SOURCE_TAG" ]; then
+            echo "::error::production wajib source_tag vX.Y.Z (image rilis)"
+            exit 1
+          fi
+
+      - name: Periksa secrets, variabel dan jalur jaringan environment ${{ inputs.environment }}
+        env:
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          COOLIFY_DEPLOY_URL: ${{ secrets.COOLIFY_DEPLOY_URL }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          WEB_URL: ${{ vars.WEB_URL }}
+          ADMIN_URL: ${{ vars.ADMIN_URL }}
+          RUNNER_KIND: ${{ runner.environment }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in DEPLOY_SSH_HOST DEPLOY_SSH_USER DEPLOY_SSH_PRIVATE_KEY DEPLOY_SSH_KNOWN_HOSTS \
+            COOLIFY_DEPLOY_URL COOLIFY_API_TOKEN API_BASE_URL WEB_URL ADMIN_URL; do
+            [ -n "${!name:-}" ] || missing+=("$name")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error title=Konfigurasi environment $KAPDH_ENV belum lengkap::${missing[*]} (docs/runbooks/ci-cd.md)"
+            exit 1
+          fi
+          # PRD 5.3: SSH 22 hanya dari IP tepercaya/VPN. Runner milik GitHub (IP bersama) wajib lewat Tailscale; tanpa
+          # itu deploy berhenti alih-alih membuka port 22 ke seluruh rentang IP GitHub Actions.
+          if [ "$RUNNER_KIND" != "self-hosted" ] && [ "$TS_ENABLED" != "true" ]; then
+            echo "::error title=Jalur SSH tidak tepercaya::runner $RUNNER_KIND tanpa Tailscale (TS_OAUTH_CLIENT_ID/TS_OAUTH_SECRET). Pakai runner self-hosted (DEPLOY_RUNS_ON) atau Tailscale (runbook bagian 4.4)."
+            exit 1
+          fi
+
+      - name: Checkout commit sumber
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+
+      - name: Siapkan Node.js (skrip infra/ci tanpa dependensi)
+        uses: ./.github/actions/setup-platform
+        with:
+          install: "false"
+          cache: "false"
+
+      # URL API yang dibakar ke image web/admin (infra/ci/images.json) harus sama dengan API yang diuji asap di bawah.
+      - name: URL API environment sama dengan URL yang dibakar ke image web/admin
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          baked=$(node kapdh-platform/infra/ci/images.mjs api-base-url --env "$KAPDH_ENV")
+          if [ "${API_BASE_URL%/}" != "$baked" ]; then
+            echo "::error title=API_BASE_URL tidak cocok::vars.API_BASE_URL=${API_BASE_URL%/}, images.json $KAPDH_ENV=$baked"
+            exit 1
+          fi
+
+      - name: Pasang crane
+        uses: ./.github/actions/install-tool
+        with:
+          tool: crane
+
+      - name: Login GHCR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+        run: crane auth login ghcr.io -u "$ACTOR" --password-stdin <<<"$GH_TOKEN"
+
+      - name: Resolusi digest image
+        id: digests
+        run: |
+          set -euo pipefail
+          refs="$RUNNER_TEMP/kapdh-refs.tsv"
+          out="$RUNNER_TEMP/kapdh-digests.tsv"
+          node kapdh-platform/infra/ci/images.mjs refs --env "$KAPDH_ENV" --sha "$KAPDH_SHA" \
+            --registry "$KAPDH_REGISTRY" --format tsv >"$refs"
+          expected=$(node kapdh-platform/infra/ci/images.mjs count)
+          : >"$out"
+          while IFS=$'\t' read -r name repo source; do
+            if [ -n "$KAPDH_SOURCE_TAG" ]; then source="$repo:$KAPDH_SOURCE_TAG"; fi
+            digest=$(crane digest "$source")
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::digest $source tidak valid"; exit 1; }
+            printf '%s\t%s\t%s\n' "$name" "$repo" "$digest" >>"$out"
+            if [ "$name" = "api" ]; then echo "api_ref=$repo@$digest" >>"$GITHUB_OUTPUT"; fi
+            echo "$name: $source -> $digest"
+          done <"$refs"
+          rows=$(wc -l <"$out")
+          if [ "$rows" -ne "$expected" ]; then
+            echo "::error::$rows dari $expected image teresolusi"
+            exit 1
+          fi
+          grep -q $'^api\t' "$out" || { echo "::error::image api tidak ada di katalog"; exit 1; }
+
+      - name: VPN ke host deploy (Tailscale; wajib untuk runner milik GitHub)
+        if: env.TS_ENABLED == 'true'
+        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Siapkan kunci SSH deploy
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/kapdh-ssh"
+          printf '%s\n' "$SSH_KEY" >"$RUNNER_TEMP/kapdh-ssh/id"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" >"$RUNNER_TEMP/kapdh-ssh/known_hosts"
+
+      # Forced command di server (kapdh-platform/infra/ci/remote-migrate.sh), terikat ke lingkungan kunci ini:
+      # [production: dump pra-migrasi] -> roles.sql dari image -> migrate.js sebagai kapdh_migrator (advisory lock)
+      # -> roles.sql. Production menyertakan tag rilis; server memastikan digest = image bertag. Tanpa stdin.
+      - name: Job migrasi tunggal (sebelum image baru dideploy)
+        env:
+          SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          SSH_PORT: ${{ vars.DEPLOY_SSH_PORT || '22' }}
+          API_REF: ${{ steps.digests.outputs.api_ref }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/kapdh-ssh/id" -p "$SSH_PORT" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$RUNNER_TEMP/kapdh-ssh/known_hosts" \
+            -o ConnectTimeout=20 -o ServerAliveInterval=30 -o ServerAliveCountMax=6 \
+            "$SSH_USER@$SSH_HOST" "migrate $KAPDH_ENV $API_REF${KAPDH_SOURCE_TAG:+ $KAPDH_SOURCE_TAG}" </dev/null
+
+      - name: Pindahkan kanal :${{ inputs.environment }} ke digest yang sama
+        run: |
+          set -euo pipefail
+          while IFS=$'\t' read -r name repo digest; do
+            crane tag "$repo@$digest" "$KAPDH_ENV"
+            now=$(crane digest "$repo:$KAPDH_ENV")
+            if [ "$now" != "$digest" ]; then
+              echo "::error::$repo:$KAPDH_ENV menunjuk $now, bukan $digest"
+              exit 1
+            fi
+            echo "$name -> $repo:$KAPDH_ENV ($digest)"
+          done <"$RUNNER_TEMP/kapdh-digests.tsv"
+
+      - name: Deploy Coolify (webhook rahasia) dan tunggu selesai
+        env:
+          COOLIFY_DEPLOY_URL: ${{ secrets.COOLIFY_DEPLOY_URL }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+        run: node kapdh-platform/infra/ci/coolify-deploy.mjs --timeout 900
+
+      # Readiness + header keamanan + commit image yang benar-benar melayani (KAPDH_COMMIT di /health dan
+      # /version.json): kontainer lama yang tidak di-rollout membuat langkah ini gagal.
+      - name: Uji asap HTTP (termasuk commit image yang berjalan)
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          WEB_URL: ${{ vars.WEB_URL }}
+          ADMIN_URL: ${{ vars.ADMIN_URL }}
+        run: >-
+          node kapdh-platform/infra/ci/smoke.mjs --timeout 300 --expect-commit "$KAPDH_SHA"
+          "api=${API_BASE_URL%/}/health/ready" "web=${WEB_URL%/}/" "admin=${ADMIN_URL%/}/"
+
+      - name: Ringkasan deploy
+        if: always()
+        run: |
+          {
+            echo "### Deploy $KAPDH_ENV: commit \`$KAPDH_SHA\`${KAPDH_SOURCE_TAG:+ (tag $KAPDH_SOURCE_TAG)}"
+            echo ""
+            echo "| Image | Digest |"
+            echo "| --- | --- |"
+            if [ -f "$RUNNER_TEMP/kapdh-digests.tsv" ]; then
+              while IFS=$'\t' read -r _ repo digest; do echo "| \`$repo\` | \`$digest\` |"; done <"$RUNNER_TEMP/kapdh-digests.tsv"
+            fi
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Hapus kunci SSH
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/kapdh-ssh"

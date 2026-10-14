@@ -8,8 +8,10 @@
 //    dan versi package.json @kapdh/contracts = versi pubspec.yaml kapdh_api;
 // 2. membangkitkan ulang bundle dan SDK dari HEAD;
 // 3. membuat commit rilis TERPISAH (anak HEAD, tidak memindahkan branch mana pun dan tidak menyentuh index/working
-//    tree) berisi pohon HEAD + lib/src terbangkit, lalu tag beranotasi `contracts-v<versi>` menunjuk commit itu.
-// Main tetap tanpa berkas terbangkit; hanya tag rilis yang membawanya.
+//    tree) berisi pohon HEAD + lib/src terbangkit + dist/openapi.yaml (kontrak rilis yang dibekukan; menjadi
+//    pembanding gerbang N-13 `pnpm contracts:breaking`), lalu tag beranotasi `contracts-v<versi>` menunjuk commit itu.
+// Main tetap tanpa berkas terbangkit; hanya tag rilis yang membawanya. Di CI dijalankan oleh workflow Release
+// (aksi contracts-sdk), yang juga mendorong tag dan memverifikasi isinya (docs/runbooks/ci-cd.md).
 //
 // Pemakaian (dari kapdh-platform): pnpm contracts:release-sdk [--dry-run]
 // Lalu: git push origin contracts-v<versi>. Repo Flutter terpisah memakai:
@@ -86,7 +88,7 @@ let tree;
 let added;
 try {
   git(["read-tree", head], { env });
-  git(["add", "--force", "--", toGitPath(PATHS.dartSrc)], { env });
+  git(["add", "--force", "--", toGitPath(PATHS.dartSrc), toGitPath(PATHS.bundle)], { env });
   tree = git(["write-tree"], { env });
   added = git(["diff-tree", "-r", "--name-only", "--no-commit-id", `${head}^{tree}`, tree], {}).split("\n");
 } finally {
@@ -94,6 +96,7 @@ try {
 }
 const generatedEntry = `${toGitPath(PATHS.dartSrc)}/generated.dart`;
 if (!added.includes(generatedEntry)) fail(`${generatedEntry} tidak masuk pohon rilis`);
+if (!added.includes(toGitPath(PATHS.bundle))) fail(`${toGitPath(PATHS.bundle)} tidak masuk pohon rilis`);
 console.log(
   `\nPohon rilis ${tree}: ${added.length} berkas SDK terbangkit ditambahkan ke HEAD ${head.slice(0, 12)}.`,
 );
@@ -104,7 +107,8 @@ if (dryRun) {
 }
 const message =
   `release(contracts): kapdh_api ${dartVersion} (SDK Dart terbangkit, ADR-001)\n\n` +
-  `Pohon HEAD ${head} ditambah ${toGitPath(PATHS.dartSrc)}/** hasil gen-dart.mjs.`;
+  `Pohon HEAD ${head} ditambah ${toGitPath(PATHS.dartSrc)}/** hasil gen-dart.mjs dan ` +
+  `${toGitPath(PATHS.bundle)} hasil assemble.mjs (pembanding N-13).`;
 const commit = git(["commit-tree", tree, "-p", head, "-F", "-"], { input: message });
 git([
   "tag",

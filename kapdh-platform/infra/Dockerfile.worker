@@ -1,16 +1,16 @@
 # syntax=docker/dockerfile:1.26.0@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 # Image worker KAPDH (PRD 5.1, 5.5; ARCHITECTURE §4.8). Dibangun di CI, bukan di VPS production (PRD 5.3).
 # Konteks build = kapdh-platform/:
-#   docker build -f infra/Dockerfile.worker -t kapdh-worker:<versi> .
-# Migrasi TIDAK dijalankan image ini (job rilis tunggal dengan lock, infra/Dockerfile.api target `release`, PRD 5.5).
-# Secrets hanya dari environment saat runtime, tidak pernah di layer image. Worker tidak menerima secret
-# JWT/OTP/TOTP/QR dan login database-nya kapdh_worker tanpa akses mfa_totp (least privilege, PRD 5.1).
-
-# Node 24.19.0 (ARCHITECTURE §1, .nvmrc) di Alpine 3.24; digest dipin sama dengan Dockerfile.api (PRD 7.1).
-ARG NODE_IMAGE=node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
+#   docker build -f infra/Dockerfile.worker --build-arg KAPDH_COMMIT=$(git rev-parse HEAD) -t kapdh-worker .
+# Migrasi TIDAK dijalankan image ini (job deployment tunggal dengan lock: infra/ci/remote-migrate.sh di jalur CI,
+# infra/Dockerfile.api target `release` di jalur Compose cadangan; PRD 5.5). Secrets hanya dari environment saat
+# runtime, tidak pernah di layer image. Worker tidak menerima secret JWT/OTP/TOTP/QR dan login database-nya
+# kapdh_worker tanpa akses mfa_totp (least privilege, PRD 5.1).
+# Base image dipin versi patch + digest (PRD 7.1); versi Node sama dengan Node CI (.github/actions/setup-platform).
 
 # ------------------------------------------------------------------------------------------------ tahap build
-FROM ${NODE_IMAGE} AS build
+# Node 24.19.0 (ARCHITECTURE §1, .nvmrc) di Alpine 3.24; digest dipin sama dengan Dockerfile.api (PRD 7.1).
+FROM node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS build
 WORKDIR /repo
 ENV CI=true \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0
@@ -35,13 +35,21 @@ RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
   && test -f "$api_dir/dist/worker.js"
 
 # ---------------------------------------------------------------------------------------------- tahap runtime
-FROM ${NODE_IMAGE} AS runtime
+FROM node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 # Berkas aplikasi milik root dan hanya-baca untuk proses; satu-satunya lokasi tulis adalah volume berkas lokal
 # (STORAGE_LOCAL_ROOT bawaan /data/files, volume yang sama dengan API untuk cleanup/ekspor).
 COPY --from=build /out ./
 RUN mkdir -p /data/files && chown node:node /data/files
+# Commit sumber image (log dan pemeriksaan image di CI); bukan secret.
+ARG KAPDH_COMMIT=""
+RUN case "$KAPDH_COMMIT" in \
+      "") ;; \
+      *[!0-9a-f]*) echo "KAPDH_COMMIT wajib 40 heksadesimal huruf kecil" >&2; exit 1 ;; \
+      *) [ "${#KAPDH_COMMIT}" -eq 40 ] || { echo "KAPDH_COMMIT wajib 40 heksadesimal" >&2; exit 1; } ;; \
+    esac
+ENV KAPDH_COMMIT=$KAPDH_COMMIT
 # Pengguna non-root bawaan image node (uid 1000).
 USER node
 # Endpoint health internal (GET /healthz); tidak dirutekan publik oleh Traefik.

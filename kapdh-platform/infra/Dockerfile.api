@@ -1,25 +1,27 @@
 # syntax=docker/dockerfile:1.26.0@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
-# Image API KAPDH (NestJS 11 + Fastify) dan image job rilis (PRD 5.3, 5.5, 7.1; D7, D12). Dibangun di CI, bukan di VPS
-# production (PRD 5.3, 10.2 "build di CI"). Konteks build = kapdh-platform/:
+# Image API KAPDH (NestJS 11 + Fastify) dan image job rilis (PRD 5.1, 5.3, 5.5, 7.1; D7, D12). Dibangun di CI, bukan di
+# VPS production (PRD 5.3, 10.2 "build di CI"). Konteks build = kapdh-platform/ (berkas lokal disaring .dockerignore):
 #
-#   docker build -f infra/Dockerfile.api --target api     -t kapdh-api:<versi> .
-#   docker build -f infra/Dockerfile.api --target release -t kapdh-release:<versi> .
+#   docker build -f infra/Dockerfile.api --target api     --build-arg KAPDH_COMMIT=$(git rev-parse HEAD) -t kapdh-api .
+#   docker build -f infra/Dockerfile.api --target release --build-arg KAPDH_COMMIT=$(git rev-parse HEAD) -t kapdh-release .
 #
 # - target `api`     : runtime API (`node dist/main.js`), juga memuat CLI satu kali pakai: bootstrap Super Admin
 #                      (`node dist/cli/bootstrap-admin.js`), gerbang go-live (`node dist/cli/golive-check.js`),
-#                      ledger penghapusan (`node dist/modules/account/ledger-reapply.cli.js`), dan CLI paket database
-#                      (`node node_modules/@kapdh/database/dist/bin/{migrate,seed-reference}.js`).
+#                      ledger penghapusan (`node dist/modules/account/ledger-reapply.cli.js`), CLI paket database
+#                      (`node node_modules/@kapdh/database/dist/bin/{migrate,seed-reference}.js`) dan `db/roles.sql`
+#                      yang disalin job migrasi CI (infra/ci/remote-migrate.sh, docker cp dari digest yang sama).
 # - target `release` : runtime yang sama + psql 17 + infra/db/*.sql + infra/scripts/release-job.sh. Satu job deployment
-#                      dengan advisory lock (PRD 5.5): roles.sql → migrasi → roles.sql → seed referensi → gerbang
-#                      go-live. Migrasi TIDAK pernah dijalankan saat startup replica API/worker.
+#                      dengan advisory lock (PRD 5.5) untuk jalur Compose cadangan dan run-release.sh: roles.sql →
+#                      migrasi → roles.sql → seed referensi → gerbang go-live. Migrasi TIDAK pernah dijalankan saat
+#                      startup replica API/worker.
 #
-# Secret hanya dari environment saat runtime (Coolify/berkas env), tidak pernah di layer image (PRD 5.3).
-
-# Node 24.19.0 (ARCHITECTURE §1, .nvmrc) di Alpine 3.24; digest manifest list multi-arsitektur dipin (PRD 7.1).
-ARG NODE_IMAGE=node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
+# Base image dipin versi patch + digest (PRD 7.1), versi Node sama dengan Node CI (.github/actions/setup-platform,
+# diperiksa infra/ci/check-workflows.mjs dan infra/scripts/validate-infra.mjs). Secret hanya dari environment saat
+# runtime (Coolify/berkas env), tidak pernah di layer image (PRD 5.3).
 
 # ------------------------------------------------------------------------------------------------ tahap build
-FROM ${NODE_IMAGE} AS build
+# Node 24.19.0 (ARCHITECTURE §1, .nvmrc) di Alpine 3.24; digest manifest list multi-arsitektur dipin (PRD 7.1).
+FROM node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS build
 WORKDIR /repo
 ENV CI=true \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0
@@ -49,13 +51,25 @@ RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
   && test -f node_modules/@kapdh/database/migrations/meta/_journal.json
 
 # --------------------------------------------------------------------------------------------- tahap runtime
-FROM ${NODE_IMAGE} AS runtime
+FROM node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 # Berkas aplikasi milik root dan hanya-baca bagi proses. Satu-satunya lokasi tulis: volume berkas lokal
 # (STORAGE_LOCAL_ROOT bawaan /data/files, PRD 5.4) yang dipakai bersama worker.
 COPY --from=build /out ./
 RUN mkdir -p /data/files && chown node:node /data/files
+# Grant role database dari commit yang sama. Job migrasi CI (infra/ci/remote-migrate.sh) menyalinnya dari image ini
+# (docker cp, dipin digest), bukan dari klien SSH, lalu menjalankannya sebagai pemilik database.
+COPY infra/db/roles.sql db/roles.sql
+# Commit sumber image: dilaporkan GET /api/v1/health (`commit`) agar uji asap deploy membuktikan kontainer yang
+# melayani trafik adalah digest yang dipromosikan (infra/ci/smoke.mjs). Bukan secret.
+ARG KAPDH_COMMIT=""
+RUN case "$KAPDH_COMMIT" in \
+      "") ;; \
+      *[!0-9a-f]*) echo "KAPDH_COMMIT wajib 40 heksadesimal huruf kecil" >&2; exit 1 ;; \
+      *) [ "${#KAPDH_COMMIT}" -eq 40 ] || { echo "KAPDH_COMMIT wajib 40 heksadesimal" >&2; exit 1; } ;; \
+    esac
+ENV KAPDH_COMMIT=$KAPDH_COMMIT
 # Pengguna non-root bawaan image node (uid 1000).
 USER node
 EXPOSE 3000

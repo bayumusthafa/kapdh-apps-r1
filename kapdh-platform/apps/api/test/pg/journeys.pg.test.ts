@@ -214,6 +214,7 @@ function collectNonIsoTimestamps(where: string, value: unknown, path = "$"): voi
  * Penanda cacat yang terbukti saat audit: `assertion` menegaskan perilaku yang benar dan saat ini gagal. Bila asersi
  * lulus (cacat diperbaiki), uji gagal agar penanda dilepas.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- semua cacat audit sudah diperbaiki; penanda dipakai lagi bila ada temuan baru
 async function expectDefect(id: string, assertion: () => unknown | Promise<unknown>): Promise<void> {
   let fixed = false;
   try {

@@ -1,0 +1,41 @@
+# Pembaruan pin rantai pasok CI (PRD 7.1: versi patch, image digest dan lockfile dipin; upgrade mayor perlu ADR).
+# Hanya action GitHub (dipin SHA commit) dan base image Dockerfile (dipin digest). Dependensi npm/pub diperbarui
+# manual bersama uji kontrak dan regresi, bukan otomatis. Setiap PR Dependabot tetap wajib lulus "CI lulus".
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/setup-platform
+      - /.github/actions/setup-flutter
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Jakarta
+    # Versi baru baru dipertimbangkan setelah 14 hari (rilis yang ditarik kembali tidak ikut).
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore(ci)
+  - package-ecosystem: docker
+    directory: /kapdh-platform/infra
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Jakarta
+    cooldown:
+      default-days: 14
+    # PRD 7.1: upgrade mayor runtime (mis. Node 25/26) wajib lewat ADR, bukan PR otomatis. nginx: hanya patch pada
+    # cabang stable yang dipakai (1.30.x); cabang minor ganjil adalah mainline dan cabang stable berikutnya perlu
+    # ditinjau manual. Node: minor/patch 24.x diusulkan bersama digest; PR itu sengaja gagal di check-workflows.mjs
+    # sampai node-version di .github/actions/setup-platform dinaikkan dalam PR yang sama (Node CI = Node image).
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: nginx
+        update-types: ["version-update:semver-minor"]
+    commit-message:
+      prefix: chore(ops)

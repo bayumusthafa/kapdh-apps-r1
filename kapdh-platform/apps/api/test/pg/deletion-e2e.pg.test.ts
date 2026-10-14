@@ -1098,6 +1098,7 @@ describe("LENS D5: penghapusan akun ujung ke ujung lewat alur API nyata (F-14, D
 // ------------------------------------------------------------------------------------- celah yang ditemukan audit
 
 /** D5_REVEAL_GAPS=1 menjalankan uji celah sebagai `it` biasa untuk melihat kegagalan sebenarnya. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- semua celah D5 sudah diperbaiki; dipakai lagi bila ada celah baru
 const gap = process.env.D5_REVEAL_GAPS ? it : it.fails;
 
 describe("LENS D5: celah privasi yang ditemukan (it.fails = celah masih ada)", () => {

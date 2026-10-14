@@ -21,6 +21,7 @@
     "build": "pnpm run generate && tsc -p tsconfig.json",
     "test": "node --test scripts/test/*.test.mjs",
     "test:dart": "pnpm run generate:dart && node scripts/check-dart.mjs",
+    "breaking": "node scripts/check-breaking.mjs",
     "release:dart": "node scripts/release-dart-sdk.mjs"
   },
   "devDependencies": {

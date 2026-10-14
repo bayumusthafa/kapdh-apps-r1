@@ -1,18 +1,18 @@
 # syntax=docker/dockerfile:1.26.0@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
-# Image situs publik kapdh.or.id (apps/web, Astro static; D12, PRD 4.6, 7.1; N-07). Dibangun di CI (PRD 5.3). URL API
-# dibakukan saat build, jadi image dibangun per lingkungan dari commit yang sama:
+# Image situs publik kapdh.or.id (apps/web, Astro static; D12, PRD 4.6, 7.1; N-07). Dibangun di CI, bukan di VPS
+# production (PRD 5.3, 10.2). Konteks build = kapdh-platform/ (berkas lokal disaring .dockerignore). URL API dibakukan
+# Astro saat build, jadi staging dan production adalah dua varian image dari commit yang sama (infra/ci/images.json):
 #
-#   docker build -f infra/Dockerfile.web -t kapdh-web:<versi> .
+#   docker build -f infra/Dockerfile.web --build-arg KAPDH_COMMIT=$(git rev-parse HEAD) -t kapdh-web:<versi> .
 #   docker build -f infra/Dockerfile.web --build-arg PUBLIC_API_URL=https://staging-api.kapdh.or.id/api/v1 \
-#     -t kapdh-web:<versi>-staging .
+#     --build-arg KAPDH_COMMIT=$(git rev-parse HEAD) -t kapdh-web:<versi>-staging .
 #
 # Build menjalankan gerbang CSP situs (apps/web/scripts/assert-csp-safe.mjs); header ada di infra/nginx-web.conf.
-
-ARG NODE_IMAGE=node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
-ARG NGINX_IMAGE=nginx:1.30.5-alpine3.24@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94
+# Base image dipin versi patch + digest (PRD 7.1); nginx berjalan sebagai user nginx (uid 101) di port 8080
+# (infra/nginx-main.conf).
 
 # ------------------------------------------------------------------------------------------------ tahap build
-FROM ${NODE_IMAGE} AS build
+FROM node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS build
 WORKDIR /repo
 ENV CI=true \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0
@@ -32,14 +32,25 @@ RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
   && test -f apps/web/dist/404.html
 
 # ---------------------------------------------------------------------------------------------- tahap runtime
-FROM ${NGINX_IMAGE}
+# nginx 1.30.5 stable (Alpine 3.24), digest dipin (PRD 7.1).
+FROM nginx:1.30.5-alpine3.24@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94
 COPY infra/nginx-main.conf /etc/nginx/nginx.conf
 COPY infra/nginx-web.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
+# Commit sumber image di /version.json: uji asap deploy membuktikan kontainer yang melayani trafik adalah digest
+# yang dipromosikan (infra/ci/smoke.mjs). Bukan secret.
+ARG KAPDH_COMMIT=""
+RUN case "$KAPDH_COMMIT" in \
+      "") ;; \
+      *[!0-9a-f]*) echo "KAPDH_COMMIT wajib 40 heksadesimal huruf kecil" >&2; exit 1 ;; \
+      *) [ "${#KAPDH_COMMIT}" -eq 40 ] || { echo "KAPDH_COMMIT wajib 40 heksadesimal" >&2; exit 1; } ;; \
+    esac \
+  && printf '{"commit":"%s"}\n' "$KAPDH_COMMIT" > /usr/share/nginx/html/version.json
 # Pengguna non-root `nginx` (uid 101) dari image resmi; berkas situs milik root dan hanya-baca.
 USER 101
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
 STOPSIGNAL SIGQUIT
+# Langsung nginx tanpa skrip docker-entrypoint.d (envsubst/IPv6 tidak dipakai; konfigurasi sudah final saat build).
 ENTRYPOINT ["nginx", "-g", "daemon off;"]

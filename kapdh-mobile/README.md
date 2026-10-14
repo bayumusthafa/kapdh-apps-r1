@@ -119,3 +119,8 @@ flutter drive --profile --driver=test_driver/integration_test.dart \
 - Build APK debug/profile Android sudah diverifikasi lokal (Phase D, emulator Android 15); IPA belum (perlu macOS +
   Xcode). `android/build.gradle.kts` menambal compileSdk dan target Java plugin file_picker 10.x; hapus tambalan itu
   setelah file_picker dinaikkan (naik mayor, perlu ADR).
+
+Build staging/production, penandatanganan Android (`android/key.properties`, tidak di-commit), catatan iOS,
+penempatan konfigurasi Firebase dan APK debug di CI: [`docs/BUILD.md`](docs/BUILD.md). CI (`.github/workflows/ci.yml`
+di akar repo) menjalankan `flutter pub get --enforce-lockfile`, `dart format`, `flutter analyze` dan `flutter test`
+dengan Flutter 3.47.2 pada setiap pull request.
