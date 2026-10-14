@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { components } from "@kapdh/contracts";
 import { membershipLabelFor } from "@kapdh/shared";
 import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -10,7 +11,7 @@ import type { ApiError } from "../../api/errors";
 import { unwrap, useApiMutation, useApiQuery } from "../../api/query";
 import { useAuth } from "../../auth/session";
 import { MembershipStatusBadge, PaymentStageBadge } from "../../components/ui/Badge";
-import { Button } from "../../components/ui/Button";
+import { Button, buttonClass } from "../../components/ui/Button";
 import { Checkbox, RadioGroup } from "../../components/ui/Choice";
 import { Combobox, type ComboboxOption } from "../../components/ui/Combobox";
 import { Dialog } from "../../components/ui/Dialog";
@@ -18,13 +19,14 @@ import { FileUpload } from "../../components/ui/Files";
 import { FormError, FormField } from "../../components/ui/FormField";
 import { Input, Textarea } from "../../components/ui/Input";
 import { ErrorState, Loading } from "../../components/ui/States";
+import { cn } from "../../lib/cn";
 import { formatDate, formatDateTime, formatRupiah } from "../../lib/format";
 import { PAYMENT_TYPE_LABEL } from "../../lib/labels";
 import { requiredText } from "../../lib/validation";
 import { memberKeys } from "../members/queries";
 import { METHOD_KIND_LABEL } from "./labels";
 import { FEES_KEY, METHODS_KEY, PAYMENTS_KEY, paymentDetailKey } from "./queries";
-import { DUES_TYPES, duesUnavailableReason, recordBlockReason } from "./recordEligibility";
+import { DUES_TYPES, duesUnavailableReason, feesUnconfigured, recordBlockReason } from "./recordEligibility";
 
 type S = components["schemas"];
 type Detail = S["AdminPaymentDetail"];
@@ -186,6 +188,15 @@ export function RecordDuesDialog({
     : null;
   const amount = current ? current.amount : fee;
   const method = methods.data?.items.find((x) => x.id === methodId) ?? null;
+  /**
+   * Payment baru memakai nominal `fees` versi aktif; server menolak 403 bila nominal belum tersimpan (versi 0, nilai
+   * bawaan kode) atau total jenis iuran itu 0.00 (gagal tertutup, kontrak adminRecordPayment). Tagihan terbuka yang
+   * diselesaikan di tempat memakai snapshot-nya sendiri sehingga tidak terpengaruh.
+   */
+  const feesUnset =
+    type !== null && openPayment.isSuccess && current === null && fees.data !== undefined
+      ? feesUnconfigured(fees.data, type)
+      : false;
 
   const record = useApiMutation<Detail, RecordBody, Values>({
     setError: form.setError,
@@ -213,8 +224,12 @@ export function RecordDuesDialog({
         form.setValue("proof_file_id", null);
         form.setError("proof_file_id", { type: "server", message: error.message });
       }
-      if (error.code === "FORBIDDEN")
+      // Konflik kepentingan, izin dicabut, atau nominal iuran belum ditetapkan (gagal tertutup): pesan server, lalu
+      // biaya dimuat ulang agar catatan nominal di dialog mengikuti keadaan server.
+      if (error.code === "FORBIDDEN") {
         form.setError("root.server", { type: "server", message: error.message });
+        void queryClient.invalidateQueries({ queryKey: FEES_KEY });
+      }
       // Status akun atau kelayakan berubah sejak dimuat (400 user_id/type): muat ulang data anggota.
       if (error.fieldErrors.user_id || error.fieldErrors.type)
         void queryClient.invalidateQueries({ queryKey: memberKeys.detail(userId) });
@@ -230,7 +245,13 @@ export function RecordDuesDialog({
   });
 
   const ready =
-    canMembers && canMethods && m !== undefined && block === null && !typeUnavailable && !awaitingReview;
+    canMembers &&
+    canMethods &&
+    m !== undefined &&
+    block === null &&
+    !typeUnavailable &&
+    !awaitingReview &&
+    !feesUnset;
 
   function submit(v: Values) {
     if (!ready || v.type === null || v.payment_method_id === null || v.proof_file_id === null) return;
@@ -363,13 +384,14 @@ export function RecordDuesDialog({
                   current={current}
                   fee={fee}
                   feesVersion={fees.data?.version ?? null}
+                  feesUnset={feesUnset}
                   onOpenPayment={onOpenPayment}
                 />
               ) : null}
             </>
           ) : null}
 
-          {m && !block && !typeUnavailable && type !== null && !awaitingReview ? (
+          {m && !block && !typeUnavailable && type !== null && !awaitingReview && !feesUnset ? (
             <>
               {!canMethods ? (
                 <p role="note" className="rounded-md bg-neutral-bg p-3 text-sm text-text-muted">
@@ -537,6 +559,7 @@ function OpenPaymentNote({
   current,
   fee,
   feesVersion,
+  feesUnset,
   onOpenPayment,
 }: {
   loading: boolean;
@@ -545,12 +568,30 @@ function OpenPaymentNote({
   current: S["AdminPaymentItem"] | null;
   fee: string | null;
   feesVersion: string | null;
+  /** Nominal iuran belum ditetapkan: payment baru akan ditolak server (403, gagal tertutup). */
+  feesUnset: boolean;
   onOpenPayment: (paymentId: string) => void;
 }) {
   if (loading) return <Loading label="Memeriksa tagihan iuran yang sudah ada..." rows={1} />;
   if (error)
     return (
       <ErrorState error={error} onRetry={onRetry} compact title="Tagihan iuran yang ada gagal diperiksa" />
+    );
+  if (!current && feesUnset)
+    return (
+      <div role="note" className="flex flex-col gap-2 rounded-md bg-warning-bg p-3 text-sm text-warning">
+        <p>
+          Nominal iuran ini belum ditetapkan atau bernilai nol, sehingga iuran baru belum dapat dicatat.
+          Simpan nominal iuran yang disahkan bendahara di tab Biaya terlebih dahulu.
+        </p>
+        <Link
+          to="/payments"
+          search={{ tab: "fees" }}
+          className={cn(buttonClass({ variant: "outline", size: "sm" }), "self-start")}
+        >
+          Buka tab Biaya
+        </Link>
+      </div>
     );
   if (!current)
     return (

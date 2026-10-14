@@ -24,7 +24,7 @@ import { PermissionGate } from "../../components/ui/PermissionGate";
 import { ErrorState, Loading } from "../../components/ui/States";
 import { cn } from "../../lib/cn";
 import { formatDateTime } from "../../lib/format";
-import { RECORD_PERMISSIONS } from "../payments/recordEligibility";
+import { RECORD_FORM_PERMISSIONS, RECORD_PERMISSIONS } from "../payments/recordEligibility";
 
 type Settings = components["schemas"]["AdminAppSettings"];
 type Meta = components["schemas"]["AdminSettingMeta"];
@@ -694,11 +694,13 @@ function PaymentInstructionsCard({ setting }: { setting: PaymentInstructions }) 
 /**
  * Jalur pencatatan iuran D13 (adminRecordPayment). Anggota di platform yang instruksinya disembunyikan tidak dapat
  * mengunggah bukti iuran, sehingga aktivasi dan perpanjangannya hanya dapat dicatat pengurus berizin payments.read +
- * payments.decide lewat "Catat iuran". Bila instruksi sedang disembunyikan, catatan ditampilkan sebagai peringatan.
+ * payments.decide lewat "Catat iuran"; formulirnya juga membaca data anggota (members.read) serta rekening penerima
+ * dan nominal (settings.manage). Bila instruksi sedang disembunyikan, catatan ditampilkan sebagai peringatan.
  */
 function RecordDuesNote({ hidden }: { hidden: boolean }) {
   const auth = useAuth();
   const canRecord = RECORD_PERMISSIONS.every((p) => auth.can(p));
+  const canUseForm = RECORD_FORM_PERMISSIONS.every((p) => auth.can(p));
   return (
     <div
       role="note"
@@ -712,9 +714,9 @@ function RecordDuesNote({ hidden }: { hidden: boolean }) {
         Anggota di platform yang instruksinya disembunyikan tidak dapat mengunggah bukti iuran. Aktivasi dan
         perpanjangan mereka dicatat pengurus lewat Catat iuran di Verifikasi Pembayaran setelah dana
         dicocokkan dengan mutasi rekening penerima.
-        {canRecord
+        {canUseForm
           ? ""
-          : " Pencatatan memerlukan izin melihat dan memutus pembayaran (payments.read dan payments.decide); pastikan ada pengurus dengan izin itu sebelum menyembunyikan instruksi."}
+          : " Pencatatan memerlukan izin melihat dan memutus pembayaran (payments.read dan payments.decide), melihat data anggota (members.read), serta kelola pengaturan (settings.manage) untuk daftar rekening penerima; pastikan ada pengurus dengan seluruh izin itu sebelum menyembunyikan instruksi."}
       </p>
       {canRecord ? (
         <Link
