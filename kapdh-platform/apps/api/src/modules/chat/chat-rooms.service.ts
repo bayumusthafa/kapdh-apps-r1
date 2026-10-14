@@ -62,6 +62,7 @@ import {
   roomSummaries,
   seatCount,
   sharedGroupHistory,
+  sharedGroupHistoryAmong,
   toDate,
 } from "./chat.queries.js";
 import { uuidField } from "./chat.validation.js";
@@ -555,7 +556,9 @@ export class ChatRoomsService {
   /**
    * Undangan di bawah kunci baris room (kapasitas joined + undangan tertunda <= batas tidak terlampaui undangan paralel).
    * Kunci pasangan BlockPolicy diambil berurutan (urutan direct_key) sebelum memeriksa blokir, sehingga blokir yang
-   * dibuat bersamaan diserialkan (AC F12-1). Alasan tidak dapat diundang sengaja tidak dibedakan (N-09).
+   * dibuat bersamaan diserialkan (AC F12-1). Calon anggota wajib aktif, tidak saling memblokir dengan pengundang, dan
+   * terlihat di direktori bagi pengundang atau pernah satu grup dengannya (syarat openDirectRoom). Alasan tidak dapat
+   * diundang sengaja tidak dibedakan (N-09).
    */
   private async inviteLocked(
     tx: Tx,
@@ -588,6 +591,14 @@ export class ChatRoomsService {
     );
     await lockPairs(tx, inviterId, lockable);
     const blocked = await blockedAmong(tx, inviterId, lockable);
+    // Kelayakan yang sama dengan openDirectRoom (PRD 3.10, N-09, N-15): anggota yang tersembunyi dari direktori hanya
+    // dapat diundang oleh anggota yang pernah satu grup dengannya, sehingga user_id (mis. klaim `sub` QR KTA) tidak dapat
+    // dipakai mengirim undangan tak diminta atau memeriksa statusnya; alasannya not_invitable, tidak dibedakan.
+    const acquainted = await sharedGroupHistoryAmong(
+      tx,
+      inviterId,
+      lockable.filter((id) => facts.get(id)?.show_in_directory !== true),
+    );
     let seats = await seatCount(tx, room.id);
     const admins = await joinedAdminIds(tx, room.id);
     const memberCount = await joinedCount(tx, room.id);
@@ -610,7 +621,8 @@ export class ChatRoomsService {
             expiresAt: toDate(fact.expires_at),
           },
           now,
-        )
+        ) ||
+        (!fact.show_in_directory && !acquainted.has(userId))
       )
         reason = "not_invitable";
       else if (seats >= max) reason = "room_full";
