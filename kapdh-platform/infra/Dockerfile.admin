@@ -4,7 +4,8 @@
 # VITE_API_BASE_URL dibakar Vite saat build, sehingga staging dan production adalah dua varian image dari commit yang
 # sama (infra/ci/images.json; docs/adr/ADR-010-pipeline-ci-cd.md). Image tidak memuat secret apa pun: access token
 # admin hanya di memori dan refresh token di cookie HttpOnly milik API (PRD 5.2).
-# Base image dipin dengan digest (PRD 7.1); naikkan bersama NODE_VERSION di .github/workflows.
+# Base image dipin versi patch + digest (PRD 7.1); versi Node sama dengan Node CI (.github/actions/setup-platform).
+# nginx berjalan sebagai user nginx (uid 101) di port 8080 (infra/nginx-main.conf).
 
 # ------------------------------------------------------------------------------------------------ tahap build
 FROM node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS build
@@ -25,6 +26,17 @@ RUN pnpm install --frozen-lockfile --filter "@kapdh/admin..." \
 
 # ---------------------------------------------------------------------------------------------- tahap runtime
 FROM nginx:1.30.5-alpine3.24@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94
-COPY --from=build /repo/apps/admin/dist /usr/share/nginx/html
+COPY infra/nginx-main.conf /etc/nginx/nginx.conf
 COPY infra/nginx-admin.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+COPY --from=build /repo/apps/admin/dist /usr/share/nginx/html
+# Commit sumber image di /version.json: uji asap deploy membuktikan kontainer yang melayani trafik adalah digest
+# yang dipromosikan (infra/ci/smoke.mjs). Bukan secret.
+ARG KAPDH_COMMIT=""
+RUN case "$KAPDH_COMMIT" in \
+      "") ;; \
+      *[!0-9a-f]*) echo "KAPDH_COMMIT wajib 40 heksadesimal huruf kecil" >&2; exit 1 ;; \
+      *) [ "${#KAPDH_COMMIT}" -eq 40 ] || { echo "KAPDH_COMMIT wajib 40 heksadesimal" >&2; exit 1; } ;; \
+    esac \
+  && printf '{"commit":"%s"}\n' "$KAPDH_COMMIT" > /usr/share/nginx/html/version.json
+USER nginx
+EXPOSE 8080

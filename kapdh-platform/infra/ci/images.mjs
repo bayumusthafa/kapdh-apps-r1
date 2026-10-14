@@ -5,6 +5,8 @@
 //   refs --env <env> --sha <sha> --registry <ghcr.io/owner> [--format tsv]
 //                                     JSON [{name, repository, source}] (atau baris TSV) sumber promosi/retag per image
 //   validate                          memeriksa katalog (Dockerfile ada, lingkungan lengkap, URL https)
+//   count                             jumlah image (workflow memastikan setiap loop memproses semua image)
+//   api-base-url --env <env>          URL API yang dibakar ke web/admin lingkungan itu
 // Tanpa dependensi; diuji oleh infra/ci/test/images.test.mjs.
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -150,6 +152,17 @@ export function main(argv = process.argv.slice(2), out = console.log) {
     else out(JSON.stringify(refs));
     return 0;
   }
+  if (command === "count") {
+    out(String(catalog.images.length));
+    return 0;
+  }
+  if (command === "api-base-url") {
+    // URL API yang dibakar ke image web/admin lingkungan itu; _deploy.yml membandingkannya dengan vars.API_BASE_URL.
+    const env = arg(argv, "--env");
+    if (!ENVIRONMENTS.includes(env)) throw new Error(`lingkungan tidak dikenal: ${env}`);
+    out(catalog.environments[env].api_base_url);
+    return 0;
+  }
   if (command === "validate") {
     const errors = validateCatalog(catalog);
     for (const e of errors) console.error(`::error title=infra/ci/images.json::${e}`);
@@ -157,7 +170,7 @@ export function main(argv = process.argv.slice(2), out = console.log) {
     return errors.length === 0 ? 0 : 1;
   }
   console.error(
-    "Pemakaian: images.mjs matrix --mode ci|publish | refs --env E --sha S --registry R [--format tsv] | validate",
+    "Pemakaian: images.mjs matrix --mode ci|publish | refs --env E --sha S --registry R [--format tsv] | count | api-base-url --env E | validate",
   );
   return 2;
 }

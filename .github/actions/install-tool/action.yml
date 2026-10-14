@@ -5,7 +5,7 @@ name: Pasang alat CI terpin
 description: Mengunduh biner alat CI terpin dan memverifikasi SHA-256 sebelum dipakai.
 inputs:
   tool:
-    description: oasdiff | osv-scanner | actionlint | shellcheck | crane
+    description: oasdiff | osv-scanner | actionlint | shellcheck | crane | grype
     required: true
 runs:
   using: composite
@@ -40,6 +40,12 @@ runs:
             url="https://github.com/koalaman/shellcheck/releases/download/v${version}/shellcheck-v${version}.linux.x86_64.tar.xz"
             sha256=8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
             member=shellcheck
+            ;;
+          grype) # pemindaian kerentanan image Docker (paket OS + bahasa), N-16; dinilai infra/ci/vuln-gate.mjs
+            version=0.119.0
+            url="https://github.com/anchore/grype/releases/download/v${version}/grype_${version}_linux_amd64.tar.gz"
+            sha256=3fa2dc4b924621ab65404cf08d0b8438d896d80ab949c9d5a4ca283c36004c9b
+            member=grype
             ;;
           crane) # promosi/retag image GHCR dengan digest tetap (PRD 5.5)
             version=0.22.1

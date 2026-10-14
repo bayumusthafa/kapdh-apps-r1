@@ -1,0 +1,20 @@
+# Konteks build image KAPDH (kapdh-platform/, infra/Dockerfile.*). Image hanya dibangun dari sumber ter-commit dan
+# lockfile (PRD 7.1), tanpa secrets lokal (PRD 5.3: secrets tidak pernah masuk image layer). Selaras dengan .gitignore:
+# - .env dan .env.* (kecuali .env.example): Vite/Astro membaca .env* saat build dan dapat membakar nilai VITE_*/PUBLIC_*
+#   lokal ke bundle; nilai build hanya dari --build-arg (infra/ci/images.json);
+# - node_modules, hasil build dan cache lokal: dibangun ulang di image dari pnpm-lock.yaml.
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/dist
+**/.turbo
+**/.astro
+**/coverage
+**/*.log
+**/.DS_Store
+**/.dart_tool
+**/.data
+packages/contracts/src/generated
+packages/contracts/dart/kapdh_api/lib/src
+packages/contracts/dart/kapdh_api/pubspec.lock

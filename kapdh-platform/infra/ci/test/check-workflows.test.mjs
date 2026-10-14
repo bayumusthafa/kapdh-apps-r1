@@ -20,7 +20,12 @@ runs:
 `;
 
 const roots = [];
-function fixture(workflows, { dockerfile = "FROM node:24.19.0-alpine3.24@sha256:abc\n" } = {}) {
+const D = "d".repeat(64);
+const E = "e".repeat(64);
+function fixture(
+  workflows,
+  { dockerfile = `FROM node:24.19.0-alpine3.24@sha256:${D} AS build\nFROM build\n` } = {},
+) {
   const root = mkdtempSync(join(tmpdir(), "kapdh-cw-"));
   roots.push(root);
   const write = (p, text) => {
@@ -102,13 +107,36 @@ describe("check-workflows", () => {
     assert.match(errorsOf({ "f.yml": good, "g.yml": other }), /dipin 9c091bb21b7c/);
   });
 
-  it("versi node Dockerfile berbeda dengan Node CI ditolak; tanpa versi patch hanya peringatan", () => {
+  it("base image Dockerfile wajib versi patch + digest, digest konsisten, node = Node CI (PRD 7.1)", () => {
     assert.match(
-      errorsOf({ "h.yml": good }, { dockerfile: "FROM node:24.21.0-alpine\n" }),
+      errorsOf({ "h.yml": good }, { dockerfile: `FROM node:24.21.0-alpine@sha256:${D}\n` }),
       /node 24\.21\.0 berbeda dengan Node CI 24\.19\.0/,
     );
-    const r = checkAll({ repoRoot: fixture({ "i.yml": good }, { dockerfile: "FROM node:24-alpine\n" }) });
-    assert.deepEqual(r.errors, []);
-    assert.match(r.warnings.join("\n"), /belum dipin versi patch/);
+    assert.match(
+      errorsOf({ "i.yml": good }, { dockerfile: "FROM node:24-alpine\n" }),
+      /node:24-alpine wajib dipin nama:versi@sha256/,
+    );
+    assert.match(
+      errorsOf({ "j.yml": good }, { dockerfile: `FROM nginx:1.30-alpine@sha256:${D}\n` }),
+      /wajib berversi patch lengkap/,
+    );
+    assert.match(
+      errorsOf(
+        { "k.yml": good },
+        {
+          dockerfile: `FROM nginx:1.30.5-alpine3.24@sha256:${D} AS a\nFROM nginx:1.30.5-alpine3.24@sha256:${E}\n`,
+        },
+      ),
+      /digest berbeda/,
+    );
+    assert.equal(
+      errorsOf(
+        { "l.yml": good },
+        {
+          dockerfile: `FROM node:24.19.0-alpine3.24@sha256:${D} AS build\nFROM --platform=linux/amd64 build AS out\n`,
+        },
+      ),
+      "",
+    );
   });
 });

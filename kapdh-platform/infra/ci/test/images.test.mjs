@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   buildMatrix,
   loadCatalog,
+  main,
   normalizeRegistry,
   shaTag,
   sourceRefs,
@@ -87,5 +88,29 @@ describe("katalog image", () => {
     assert.ok(errors.some((e) => /Dockerfile infra\/Dockerfile.admin tidak ditemukan/.test(e)));
     assert.ok(errors.some((e) => /staging.api_base_url wajib https/.test(e)));
     assert.ok(errors.some((e) => /tidak_ada kosong/.test(e)));
+  });
+});
+
+describe("CLI katalog image", () => {
+  const run = (argv) => {
+    const out = [];
+    const code = main(argv, (l) => out.push(l));
+    return { code, out };
+  };
+
+  it("count dan api-base-url untuk pemeriksaan workflow (_deploy.yml, release.yml)", () => {
+    assert.deepEqual(run(["count"]), { code: 0, out: [String(catalog.images.length)] });
+    assert.deepEqual(run(["api-base-url", "--env", "production"]), {
+      code: 0,
+      out: [catalog.environments.production.api_base_url],
+    });
+    assert.throws(() => run(["api-base-url", "--env", "dev"]), /lingkungan tidak dikenal/);
+  });
+
+  it("smoke setiap image memeriksa commit terbakar dan proses bukan root", () => {
+    for (const image of catalog.images) {
+      assert.match(image.smoke, /KAPDH_EXPECTED_COMMIT/, image.name);
+      assert.match(image.smoke, /id -u/, image.name);
+    }
   });
 });

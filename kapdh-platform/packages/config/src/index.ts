@@ -121,6 +121,15 @@ const baseShape = {
   /** Proyek FCM untuk push (Firebase hanya untuk FCM, ARCHITECTURE §2.4). Tanpa nilai: push nonaktif di luar production. */
   FCM_PROJECT_ID: z.string().min(1).optional(),
   FCM_SERVICE_ACCOUNT_JSON: z.string().min(2).optional(),
+  /**
+   * Commit sumber image (40 heksadesimal), dibakar infra/Dockerfile.api/worker dari build arg CI (bukan dari Coolify).
+   * API melaporkannya di GET /health agar uji asap deploy membuktikan kontainer yang melayani trafik adalah digest yang
+   * dipromosikan (PRD 5.5, infra/ci/smoke.mjs). Bukan secret; kosong di development.
+   */
+  KAPDH_COMMIT: z
+    .string()
+    .regex(/^[0-9a-f]{40}$/, "KAPDH_COMMIT wajib 40 heksadesimal huruf kecil")
+    .optional(),
 };
 
 type Issue = { path: string; message: string };
@@ -172,7 +181,8 @@ const apiShape = {
   PORT: z.coerce.number().int().positive().default(3000),
   /**
    * Jumlah hop proxy tepercaya (Traefik) untuk req.ip. 0 = abaikan X-Forwarded-For. Bawaan 1 di staging/production,
-   * 0 di development/test, sehingga klien tidak bisa memalsukan IP untuk lolos rate limit (PRD 2.5).
+   * 0 di development/test, sehingga klien tidak bisa memalsukan IP untuk lolos rate limit (PRD 2.5). Peer langsung
+   * (hop 0) juga wajib beralamat privat/loopback (apps/api/src/core/http/trust-proxy.ts).
    */
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).optional(),
   /** HSTS baru diaktifkan setelah seluruh subdomain yang dicakup siap HTTPS (N-07). */
