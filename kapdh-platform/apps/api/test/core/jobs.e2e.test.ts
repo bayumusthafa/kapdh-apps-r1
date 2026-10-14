@@ -53,6 +53,9 @@ class JobsProbe implements OnModuleInit {
   ) {}
 
   onModuleInit() {
+    // Modul events (F-09) mendaftarkan handler asli `events.cancelled.fanout`; probe aplikasi uji ini menggantikannya
+    // agar perilaku dispatcher (retry, korelasi, aktor) diamati tanpa efek domain.
+    (this.jobs as unknown as { handlers: Map<string, unknown> }).handlers.delete("event.cancelled");
     this.jobs.registerTopicHandler({
       topic: "event.cancelled",
       handle: async (event, job) => {
