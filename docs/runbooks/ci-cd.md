@@ -3,7 +3,7 @@
 Status: R1.0, disiapkan Tahap E (rilis). Rujukan: PRD 5.3, 5.5, 7.1, 8.2, 8.3, 8.4, 9.3, 10.2; N-13, N-16; D7, D9,
 D10, D12, D16. Menutup temuan audit D2-09 (CI tidak terpasang, jalur PG17/Flutter/Dart/format/audit tidak berjalan)
 dan sebagian D2-12 (gerbang perubahan kontrak yang memutus klien; bagian 3). Keputusan desain:
-`docs/adr/ADR-010-pipeline-ci-cd.md`.
+`docs/adr/024-pipeline-ci-cd.md`.
 
 > Penting: workflow ini ditulis dan diperiksa secara statis di mesin pengembang (tanpa Docker, Java, Go).
 > Belum pernah dijalankan di GitHub. Run pertama di GitHub dan gladi staging (bagian 11) wajib dilakukan dan
@@ -35,7 +35,7 @@ Actions > Release > Run workflow (contracts-sdk) ──> gerbang N-13 -> pnpm co
 
 PRD 5.5 terpenuhi sebagai berikut: push main yang lolos CI membangun staging; tag versi yang disetujui gerbang rilis
 mempromosikan image yang sama (digest identik untuk api/worker; varian production web/admin yang dibangun pada commit
-yang sama, ADR-010); migrasi dijalankan satu job dengan lock sebelum image baru berjalan, bukan saat startup replica.
+yang sama, ADR-024); migrasi dijalankan satu job dengan lock sebelum image baru berjalan, bukan saat startup replica.
 
 ## 2. Job CI (`.github/workflows/ci.yml`)
 
@@ -331,4 +331,4 @@ wajib berasal dari commit yang kontraknya sudah dirilis sebagai tag `contracts-v
   (IP klien di log/rate limit).
 - Tag `contracts-v*` pertama belum ada (rilis aplikasi akan gagal sampai dibuat).
 - Image web/admin per lingkungan karena URL API dibakar saat build; usulan jangka menengah: konfigurasi runtime agar
-  satu digest juga untuk web/admin (ADR-010).
+  satu digest juga untuk web/admin (ADR-024).

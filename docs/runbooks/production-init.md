@@ -20,8 +20,10 @@ Langkah berikutnya: `docs/runbooks/go-live.md`. Persiapan toko aplikasi: `docs/r
   jaringan Docker dilihat di panel Coolify atau `docker ps`. Perintah database memakai `psql` di dalam kontainer
   PostgreSQL karena image aplikasi tidak memuat `psql`; `-U postgres` berarti superuser resource PostgreSQL (ganti
   bila Coolify memakai nama lain).
-- Bila paket infra Fase E menyediakan job rilis yang menjalankan urutan langkah 2 secara otomatis, pakai job itu;
-  urutan, keluaran yang diharapkan, dan pemeriksaan di bawah tetap menjadi acuan.
+- Urutan langkah 2 (dan gerbang go-live) dijalankan otomatis oleh job rilis (ADR-023, ADR-024): jalur CI lewat
+  `infra/ci/remote-migrate.sh` (`docs/runbooks/ci-cd.md` bagian 5) atau manual/Compose lewat image `kapdh-release`
+  (`docs/runbooks/rilis-dan-gerbang-go-live.md` bagian 4). Pakai job itu; urutan, keluaran yang diharapkan, dan
+  pemeriksaan di bawah tetap menjadi acuan dan cara manual bila job tidak tersedia.
 
 ## Ringkasan urutan
 
@@ -76,9 +78,10 @@ Langkah berikutnya: `docs/runbooks/go-live.md`. Persiapan toko aplikasi: `docs/r
   - `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, dan
     `Permissions-Policy` yang hanya mengizinkan `camera=(self)` (pemindai check-in).
 
-  `style-src 'self'` tanpa `'unsafe-inline'` baru dapat dipakai setelah editor TipTap tidak lagi menyuntikkan `<style>`
-  (`injectCSS: false`); perubahan itu dan konfigurasi nginx admin ada di paket infra Fase E yang belum digabung ke
-  `main`. Sampai itu digabung, pakai `style-src 'self' 'unsafe-inline'`. **[bukti]** di staging: login + MFA, detail
+  Image admin (`infra/Dockerfile.admin`) sudah mengirim header ini dari `infra/nginx-admin.conf`: `default-src 'none'`,
+  `style-src 'self'` tanpa `'unsafe-inline'` (editor TipTap `injectCSS: false`, gaya dasar di `tiptap-base.css`),
+  `connect-src`/`img-src` = origin API persis yang dirender saat build (bukan wildcard), dan gerbang CSP hasil build
+  (`infra/scripts/admin-csp.mjs`). **[bukti]** di staging: login + MFA, detail
   pembayaran dengan pratinjau bukti, editor konten, dan check-in kamera berjalan tanpa pelanggaran CSP di konsol
   peramban; keluaran `curl -sI https://staging-admin.kapdh.or.id/`.
 - [ ] **HSTS (N-07)**, diaktifkan setelah semua host yang dicakup melayani HTTPS dan **sebelum** go-live:
@@ -100,21 +103,17 @@ Langkah berikutnya: `docs/runbooks/go-live.md`. Persiapan toko aplikasi: `docs/r
     `deletion_ledger: "fail"`, ADR-014) atau kehilangan dependensi tidak menerima trafik
     (`docs/runbooks/restore-backup.md` langkah 1). `GET /api/v1/health` hanya liveness proses.
   - Worker: `infra/Dockerfile.worker`, tanpa domain, health internal `GET /healthz` port 3001 (tidak dirutekan publik).
-  - Situs publik: `infra/Dockerfile.web` (nginx port 80), `--build-arg PUBLIC_API_URL=https://api.kapdh.or.id/api/v1`.
-  - Web admin: berkas statis `apps/admin/dist` hasil
-    `VITE_API_BASE_URL=https://api.kapdh.or.id/api/v1 pnpm --filter @kapdh/admin build`; `main` belum memuat
-    Dockerfile admin, jadi hosting mengikuti paket infra Fase E dan wajib mengirim header di 1.2.
-- [ ] **PEMBLOKIR: image API belum dapat dibangun dari `main`.** `infra/Dockerfile.api` menjalankan
-      `pnpm deploy --filter @kapdh/api --prod /out` tanpa `--legacy`; pnpm 10.28 (versi `packageManager`) menolaknya
-      dengan `ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE` karena `inject-workspace-packages` tidak diset (direproduksi di
-      mesin build 14 Oktober 2026). Akibatnya langkah 2.3, 2.5, 3.1 dan `ledger-reapply` pada rollback, yang semuanya
-      berjalan di image API, belum dapat dieksekusi. Perbaikan (milik paket infra Fase E, yang sudah memuatnya tetapi
-      belum digabung): `pnpm --filter @kapdh/api deploy --prod --legacy /out`, sama dengan `infra/Dockerfile.worker`.
-      Runbook ini baru dianggap dapat dieksekusi setelah CI membangun **kedua** image dan memeriksa bahwa image API
-      memuat `dist/main.js`, `dist/cli/bootstrap-admin.js`, `dist/modules/account/ledger-reapply.cli.js`,
-      `node_modules/@kapdh/database/dist/bin/{migrate,seed-reference}.js` dan
-      `node_modules/@kapdh/database/migrations/meta/_journal.json` (keluaran `deploy --prod --legacy` di mesin build
-      memuat semuanya; image Docker sendiri belum pernah dibangun). **[bukti]** log build CI kedua image.
+  - Situs publik: `infra/Dockerfile.web` (nginx non-root port **8080**), varian per lingkungan dari katalog
+    `infra/ci/images.json` (`PUBLIC_API_URL`).
+  - Web admin: `infra/Dockerfile.admin` (nginx non-root port **8080**), varian per lingkungan (`VITE_API_BASE_URL`;
+    CSP dirender dari origin yang sama, header 1.2 sudah ada di image).
+- [ ] **Image dibangun CI dari tag rilis yang sama** (`deploy-staging.yml`, lalu `release.yml` mempromosikan digest
+      yang sama; `docs/runbooks/ci-cd.md`). `infra/Dockerfile.api` memakai `pnpm deploy --prod --legacy` (pnpm 10
+      menolak deploy tanpa `inject-workspace-packages`, `ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE`) dan build gagal bila
+      `dist/main.js`, `dist/cli/{bootstrap-admin,golive-check}.js`, `node_modules/@kapdh/database/dist/bin/
+      {migrate,seed-reference}.js` atau `migrations/meta/_journal.json` hilang; uji asap image (`infra/ci/images.json`)
+      memeriksa berkas, commit dan proses non-root. Image Docker belum pernah dibangun di mesin build (tanpa Docker):
+      **[bukti]** run CI pertama yang hijau (job `docker` dan `compose-stack`) dan log `deploy-staging.yml`.
 - [ ] Stop grace period: API >= 30 detik; worker > `WORKER_SHUTDOWN_TIMEOUT_MS` + 10 detik (bawaan 25 s → >= 35 s).
 
 ### 1.4 Secrets dan environment
@@ -161,13 +160,13 @@ maintenance, tautan toko, dan kontak dukungan **tidak** diatur lewat env, tetapi
 
 ### 1.5 Backup di luar VPS dan restore (PRD 5.5; N-06; D2, D9)
 
-> **PEMBLOKIR GO-LIVE.** `main` belum memuat alat backup (dump terenkripsi, sinkron berkas, manifest, jeda mutasi atau
-> snapshot) maupun runbook Compose cadangan (PRD 5.5). Keduanya milik paket backup-ops dan infra Fase E yang belum
-> digabung. Yang sudah ada di `main` hanya sisi aplikasi restore: `docs/runbooks/restore-backup.md` (urutan aman agar
-> akun terhapus tidak hidup kembali) dan CLI `account:ledger-reapply`. Go-live ditunda sampai alat backup digabung,
-> runbook backup/restore operasional tersedia di `docs/runbooks/`, dan drill di bawah lulus.
+> **PEMBLOKIR GO-LIVE sampai drill lulus.** Alat backup (`kapdh-platform/infra/backup/`: dump terenkripsi, restic
+> berkas, manifest, restore ke lingkungan bersih, verifikasi; ADR-018, ADR-019) dan runbooknya
+> (`docs/runbooks/backup-restore.md`, Compose cadangan `docs/runbooks/compose-cadangan.md`) sudah ada, tetapi baru diuji
+> kering dengan alat palsu (`sh infra/backup/test/dry-run.sh`). Go-live ditunda sampai drill di bawah lulus terhadap
+> PostgreSQL, restic dan object storage sungguhan (bukti di `docs/qa/restore-drills/`).
 
-Kriteria penerimaan alat backup (PRD 5.5), diperiksa PI saat paket itu digabung:
+Kriteria penerimaan alat backup (PRD 5.5), diperiksa PI pada drill pertama di staging:
 
 - [ ] Tujuan object storage di luar VPS (mis. Cloudflare R2, Backblaze B2, atau penyedia VPS), retensi 30 hari.
 - [ ] Backup harian **terenkripsi**: dump PostgreSQL + `/data/files` termasuk seluruh awalan `ledger/` (folder
@@ -228,10 +227,11 @@ flag maintenance ada di database yang direstore), salinan ledger terbaru diamank
 
   Kueri diuji pada PostgreSQL 17 lokal; skrip cron dan monitor push belum diuji. Event outbox `dead` sudah tercakup
   oleh isu worker `outbox_dead_events`. Lonjakan bounce/complaint email dipantau di dasbor provider D10.
-- [ ] Log diagnostik retensi 30 hari tanpa PII (PRD 5.5). Error tracking (GlitchTip) belum terpasang di kode; bila
-      ditambahkan, perbarui formulir privasi toko (`app-store-submission.md`).
-- [ ] Runbook Compose cadangan (PRD 5.5: panel Coolify mati tidak boleh menghilangkan jalur deploy) belum ada di
-      `main`; termasuk pemblokir 1.5.
+- [ ] Log diagnostik retensi 30 hari tanpa PII (PRD 5.5). Error tracking GlitchTip terpasang di API dan worker
+      (`SENTRY_DSN`, ADR-021; `docs/runbooks/monitoring.md` bagian 5) dari baris log yang sudah aman; web admin dan
+      aplikasi Flutter belum. Bila ditambahkan ke aplikasi, perbarui formulir privasi toko (`app-store-submission.md`).
+- [ ] Runbook Compose cadangan (PRD 5.5: panel Coolify mati tidak boleh menghilangkan jalur deploy):
+      `docs/runbooks/compose-cadangan.md`; stack-nya diuji di CI (job `compose-stack`), belum di VPS.
 
 ---
 
@@ -309,8 +309,9 @@ DATABASE_URL=postgres://kapdh_migrator:<sandi-migrator>@<host-postgres-internal>
     satu instance;
   - `curl -s https://api.kapdh.or.id/api/v1/public/config` → `legal` masih `null` (halaman belum terbit).
 
-  Catatan: readiness juga lulus pada database tanpa admin dan tanpa konfigurasi tersahkan (temuan audit D2-02); gerbang
-  konfigurasi adalah pemeriksaan SQL di `go-live.md` bagian 2.
+  Catatan: readiness sengaja tetap lulus pada database tanpa admin dan tanpa konfigurasi tersahkan; gerbang konfigurasi
+  adalah `golive:check` (ADR-023, temuan audit D2-02) yang dijalankan job rilis, ditambah pemeriksaan silang SQL di
+  `go-live.md` bagian 2.3.
 
 - [ ] **2.7 Pastikan tanpa fixture dev** **[bukti]** (harus `0`):
 
@@ -479,7 +480,8 @@ Ikuti `docs/runbooks/app-store-submission.md` bagian 1-5. Ringkas:
 - [ ] Backup pertama staging → restore ke lingkungan bersih mengikuti `docs/runbooks/restore-backup.md` (API/worker
       skala 0, ledger terbaru diamankan, `account:ledger-reapply` keluar 0, readiness 200 dengan
       `"deletion_ledger": "ok"`) → login admin + MFA dan akun uji berhasil. **Lulus hanya bila RPO <= 24 jam dan RTO
-      <= 4 jam** (N-06, 1.5); catat keduanya. Selama alat backup belum digabung (1.5), butir ini tidak dapat lulus.
+      <= 4 jam** (N-06, 1.5); catat keduanya dengan `infra/backup/restore.sh` + `verify-restore.sh`
+      (`docs/runbooks/backup-restore.md` bagian 8, templat `docs/qa/restore-drills/TEMPLATE.md`).
 - [ ] **[bukti]** Laporan gladi: durasi tiap langkah, masalah dan perbaikannya, versi image/SDK/build Flutter.
 - [ ] Sign-off gladi oleh PI (operasional, restore) dan QA (smoke test) di tabel `go-live.md` bagian 4.
 

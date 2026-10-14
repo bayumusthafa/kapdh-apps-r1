@@ -1,7 +1,9 @@
-# ADR-010: Pipeline CI/CD, promosi image dan gerbang kontrak
+# ADR-024: Pipeline CI/CD, promosi image dan gerbang kontrak
 
 - Status: diusulkan (Tahap E, Oktober 2026). Perlu persetujuan pemilik produk dan pengelola infra (D9).
-- Rujukan: PRD 5.3, 5.5, 7.1, 8.2, 8.4, 9.3, 10.2; N-13, N-16; D7, D9, D12, D16; ADR-001; temuan audit D2-09, D2-12.
+- Nomor: semula ADR-010 (berkas `ADR-010-...`); dinomori ulang 024 pada integrasi akhir R1.0 karena bentrok dengan
+  ADR-010 (worker sebagai runtime job registry).
+- Rujukan: PRD 5.3, 5.5, 7.1, 8.2, 8.4, 9.3, 10.2; N-13, N-16; D7, D9, D12, D16; ADR-001, ADR-023; temuan audit D2-09, D2-12.
 - Rincian operasional: `docs/runbooks/ci-cd.md`.
 
 ## Konteks
@@ -35,7 +37,7 @@ production terpisah; build tidak boleh membebani VPS (PRD 10.2).
    men-deploy: [dump pra-migrasi] -> `roles.sql` -> [enforce: gerbang go-live pra-migrasi] -> `migrate.js` di image
    API yang sama (digest) sebagai `kapdh_migrator` dengan advisory lock -> `roles.sql` -> seed referensi idempoten ->
    gerbang go-live penuh (`golive-check.js --allow-schema-ahead`; urutan dan kebijakan mode sama dengan job rilis
-   Compose, ADR job rilis dan gerbang go-live). Mode gerbang (`enforce` bawaan production, `report` bawaan staging;
+   Compose, ADR-023). Mode gerbang (`enforce` bawaan production, `report` bawaan staging;
    pengecualian production wajib alasan + penyetuju) hanya dari berkas konfigurasi server. Penolakan menghentikan
    deploy sebelum kanal dan Coolify (integrasi akhir R1.0). Lingkungan diikat di sisi server (argumen forced command,
    satu user Unix dan satu kunci per lingkungan); perintah klien untuk lingkungan lain ditolak. `roles.sql` diambil

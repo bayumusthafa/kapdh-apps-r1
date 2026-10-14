@@ -17,7 +17,7 @@
 #   kapdh-ci-migrate production migrate production ghcr.io/<owner>/kapdh-api@sha256:<digest> v1.2.0
 #
 # Urutan (docs/handoff/phase-a-schema.md "Ops order"; sama dengan job rilis infra/scripts/release-job.sh di jalur
-# Compose cadangan, docs/adr/0002-job-rilis-dan-gerbang-go-live.md):
+# Compose cadangan, docs/adr/023-job-rilis-dan-gerbang-go-live.md):
 #   [production, atau bila KAPDH_BACKUP_DIR diisi] dump pg_dump -Fc sebelum migrasi (gagal = berhenti, PRD 5.5/8.4)
 #   -> roles.sql -> [mode enforce] gerbang go-live pra-migrasi (`golive-check.js --preflight`; ditolak = skema tidak
 #   diubah) -> migrate.js sebagai kapdh_migrator (advisory lock MIGRATION_LOCK_KEY, semua migrasi tertunda dalam satu
