@@ -243,7 +243,10 @@ Additional decorators (evaluated after authentication, server-side, every reques
 - `@CurrentAuth()` param decorator → `AuthContext`.
 
 Global request hooks (before guards): maintenance mode rejects mutating methods with `503 MAINTENANCE` except
-`/auth/refresh`, `/auth/logout*`, `/admin/**`, `/public/**` reads (GET, plus `POST /public/kta/verify`); app-version gate rejects mutations from
+`/auth/refresh`, `/auth/logout*`, `DELETE /auth/sessions/{id}`, `/admin/**`, `/public/**` reads (GET, plus
+`POST /public/kta/verify`), and — only when the bearer is a valid admin-audience access token — `POST /auth/reauth`
+(so an admin can obtain a fresh `X-Reauth-Token` and switch maintenance off) and `POST /files` (admin work uploads:
+recorded-payment proof, refund evidence); app-version gate rejects mutations from
 `X-App-Platform: android|ios` with `X-App-Version` below `min_app_version` → `426 UPGRADE_REQUIRED`.
 
 Fastify `trustProxy` comes from env `TRUST_PROXY_HOPS` (default 1 in prod, 0 in dev/test).

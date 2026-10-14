@@ -20,6 +20,22 @@ export interface ReportPartyRef {
 }
 
 /**
+ * Predikat SQL "laporan terlihat bagi pengurus bertautan `linkedAlumniUserId`" atas tabel `reports` (lihat
+ * {@link ModerationVisibility}); undefined bila pengurus tidak bertautan ke akun alumni (semua laporan terlihat).
+ * Fungsi murni agar dapat dipakai juga di luar instance, mis. kebijakan akses berkas bukti (evidence-file-policy.ts).
+ */
+export function reportVisibleTo(linkedAlumniUserId: string | null): SQL | undefined {
+  if (!linkedAlumniUserId) return undefined;
+  return and(
+    or(isNull(reports.targetUserId), ne(reports.targetUserId, linkedAlumniUserId)),
+    sql`not (${reports.targetType} = 'room' and ${reports.targetUserId} is null and exists (
+      select 1 from ${roomMembers} rm
+      where rm.room_id = ${reports.roomId} and rm.user_id = ${linkedAlumniUserId} and rm.status = 'joined'
+    ))`,
+  );
+}
+
+/**
  * Aturan visibilitas konflik kepentingan laporan untuk pengurus (kontrak admin-moderation aturan domain butir a dan c;
  * PRD 2.3, AC F12-2), dievaluasi per request dari `admins.linked_alumni_user_id` pemanggil:
  * laporan yang pihak terlapornya akun alumni tertaut pemanggil TIDAK PERNAH terlihat olehnya, yaitu
@@ -40,16 +56,12 @@ export class ModerationVisibility {
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
-  /** Predikat SQL "laporan terlihat bagi pemanggil" atas tabel `reports`; undefined bila admin tanpa akun tertaut. */
+  /**
+   * Predikat SQL "laporan terlihat bagi pemanggil" atas tabel `reports`; undefined bila admin tanpa akun tertaut.
+   * Sama dengan {@link reportVisibleTo} yang juga dipakai kebijakan akses berkas bukti (evidence-file-policy.ts).
+   */
   condition(linkedAlumniUserId: string | null): SQL | undefined {
-    if (!linkedAlumniUserId) return undefined;
-    return and(
-      or(isNull(reports.targetUserId), ne(reports.targetUserId, linkedAlumniUserId)),
-      sql`not (${reports.targetType} = 'room' and ${reports.targetUserId} is null and exists (
-        select 1 from ${roomMembers} rm
-        where rm.room_id = ${reports.roomId} and rm.user_id = ${linkedAlumniUserId} and rm.status = 'joined'
-      ))`,
-    );
+    return reportVisibleTo(linkedAlumniUserId);
   }
 
   /** true bila akun tertaut pemanggil adalah pihak terlapor laporan ini (detail/klaim/keputusan → 404). */

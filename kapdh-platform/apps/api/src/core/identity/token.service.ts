@@ -55,8 +55,19 @@ export interface ReauthClaims {
   expiresAt: Date;
 }
 
+/**
+ * Pengikat keadaan kredensial pada token tahap sandi admin (AC F02-4, F02-6, N-08): tahap TOTP hanya menerbitkan sesi
+ * bila sandi dan session_version yang dinilai di tahap sandi masih berlaku.
+ */
+export interface MfaBinding {
+  /** users.session_version saat sandi dinilai (`sv`); logout semua/pemulihan menaikkannya. */
+  sessionVersion: number;
+  /** HMAC secret server atas password_hash yang dinilai (`bnd`); ganti/reset sandi membatalkannya. */
+  credential: string;
+}
+
 /** Klaim token tahap sandi admin (aud kapdh-admin-mfa, AC F02-2). */
-export interface MfaClaims {
+export interface MfaClaims extends MfaBinding {
   userId: string;
   /** Id unik token (`jti`): token dikonsumsi sekali setelah sesi admin berhasil dibuat (kontrak adminVerifyMfa). */
   tokenId: string;
@@ -169,17 +180,37 @@ export class TokenService {
 
   /**
    * Token tahap sandi admin: hanya bisa dipakai di POST /admin/auth/mfa (AC F02-2). Membawa `jti` acak sehingga modul
-   * admin-auth dapat mengonsumsinya sekali setelah sesi dibuat (kontrak adminVerifyMfa).
+   * admin-auth dapat mengonsumsinya sekali setelah sesi dibuat (kontrak adminVerifyMfa), serta pengikat kredensial
+   * `sv` (session_version) dan `bnd` (HMAC password_hash) yang dinilai ulang di bawah kunci baris users sebelum sesi
+   * diterbitkan: ganti/reset sandi atau logout semua perangkat membatalkan token yang belum dipakai (AC F02-4, F02-6).
    */
-  signMfa(userId: string): Promise<{ token: string; expiresAt: Date }> {
-    return this.sign({ jti: uuidv7() }, userId, AUD.mfa, MFA_TTL_SECONDS);
+  signMfa(userId: string, binding: MfaBinding): Promise<{ token: string; expiresAt: Date }> {
+    return this.sign(
+      { jti: uuidv7(), sv: binding.sessionVersion, bnd: binding.credential },
+      userId,
+      AUD.mfa,
+      MFA_TTL_SECONDS,
+    );
   }
 
-  /** Klaim token tahap sandi admin, atau null bila rusak/kedaluwarsa/audience lain/tanpa `jti`. */
+  /** Klaim token tahap sandi admin, atau null bila rusak/kedaluwarsa/audience lain/tanpa `jti`/tanpa pengikat. */
   async verifyMfaClaims(token: string): Promise<MfaClaims | null> {
     const payload = await this.verify(token, AUD.mfa, MFA_TTL_SECONDS);
-    if (!payload || typeof payload.jti !== "string" || typeof payload.exp !== "number") return null;
-    return { userId: payload.sub!, tokenId: payload.jti, expiresAt: new Date(payload.exp * 1000) };
+    if (
+      !payload ||
+      typeof payload.jti !== "string" ||
+      typeof payload.exp !== "number" ||
+      typeof payload.sv !== "number" ||
+      typeof payload.bnd !== "string"
+    )
+      return null;
+    return {
+      userId: payload.sub!,
+      tokenId: payload.jti,
+      expiresAt: new Date(payload.exp * 1000),
+      sessionVersion: payload.sv,
+      credential: payload.bnd,
+    };
   }
 
   async verifyMfa(token: string): Promise<string | null> {

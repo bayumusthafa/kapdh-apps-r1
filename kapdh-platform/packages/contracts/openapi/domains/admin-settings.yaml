@@ -150,8 +150,10 @@ paths:
       operationId: adminUpdateMaintenance
       summary: Aktifkan atau akhiri mode maintenance (settings.manage + reautentikasi, PRD 4.5, 8.4).
       description: |
-        Selama `active` true, mutasi anggota ditolak 503 MAINTENANCE kecuali refresh/logout; baca tetap terkendali
-        dan API admin tetap berjalan (ARCHITECTURE §4.3). Saat mengaktifkan, `message` wajib diisi (rentang
+        Selama `active` true, mutasi anggota ditolak 503 MAINTENANCE kecuali refresh/logout dan pencabutan sesi; baca
+        tetap terkendali dan API admin tetap berjalan (ARCHITECTURE §4.3), termasuk POST /auth/reauth dan POST /files
+        dengan access token admin, sehingga maintenance tetap dapat diakhiri lewat API setelah token reautentikasi
+        yang dipakai saat mengaktifkan kedaluwarsa. Saat mengaktifkan, `message` wajib diisi (rentang
         estimasi dan kanal dukungan, PRD 4.5) dan `until` (perkiraan selesai) bila diisi harus di masa depan.
         Status tampil di GET /public/config. Audit before/after; If-Match usang menghasilkan 409 VERSION_CONFLICT.
       x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
