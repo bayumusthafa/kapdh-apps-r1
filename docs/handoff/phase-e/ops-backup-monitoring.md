@@ -64,6 +64,19 @@ CLIs: `loadtest:seed` (`dist/cli/loadtest-seed.js`, refuses production), `accoun
    "Diperbarui oleh ADR-019 (ledger luar VPS, D5-07)"; link `infra/{backup,monitoring,loadtest}/README.md` from
    `kapdh-platform/README.md` / `infra/README.md`.
 
-## Verification (this branch, after the merge)
+## Verification (this branch, after the merge, Windows 11 + Git Bash)
 
-See the final report of this slice for the exact command results.
+| Command | Result |
+| ------- | ------ |
+| `pnpm build` | pass, 10/10 tasks |
+| `pnpm typecheck` | pass, 16/16 tasks |
+| `pnpm lint` | pass, 9/9 (after cherry-picking E2's 5e8bb90 for two unused helpers left by the Phase D merge; contracts keeps its 2 known warnings) |
+| `pnpm format:check` | pass |
+| `pnpm --filter @kapdh/api test` (alone) | pass, 124 files, 2706 tests |
+| `pnpm --filter @kapdh/api test:pg` (PostgreSQL 17) | pass, 28 files (1 skipped), 237 tests |
+| other packages via `pnpm test` | database 23, config 27, shared 16, storage 40, web 169, worker 54, contracts pass; admin 594/594 when run alone (8 UI tests timed out at 20 s inside the parallel turbo run on a loaded machine) |
+| `sh infra/backup/test/dry-run.sh` | 37 pass (role-password scenarios skipped on NTFS) |
+| `sh infra/monitoring/test/dry-run.sh` | 36 pass |
+
+Not run anywhere: real PostgreSQL backup/restore with restic/rclone/R2 or B2, Uptime Kuma, GlitchTip, a load test on the
+target VPS, a storage migration against a real S3 provider, Docker images.
