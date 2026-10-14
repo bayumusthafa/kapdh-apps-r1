@@ -4,7 +4,8 @@
 // Membandingkan kontrak kepala (openapi/ dirakit ulang) dengan kontrak rilis terakhir (tag `contracts-vX.Y.Z`
 // tertinggi, atau --base-ref) memakai `oasdiff breaking`, lalu menerapkan kebijakan di scripts/lib/breaking.mjs:
 // lulus bila aditif; perubahan memutus hanya lulus bila versi mayor info.version DAN info.x-kapdh-min-app-version
-// naik bersama. Juga memastikan info.version = package.json = pubspec kapdh_api.
+// naik bersama. Juga memastikan info.version = package.json = pubspec kapdh_api, x-kapdh-min-app-version tidak turun,
+// dan membandingkan skema event realtime events/*.schema.json (scripts/lib/events-compat.mjs; oasdiff hanya HTTP).
 //
 // Kontrak dasar diambil dari tag: dist/openapi.yaml yang ikut di commit rilis (release-dart-sdk.mjs), atau bila tidak
 // ada (tag lama), dirakit dari openapi/ pada tag itu dengan perakit saat ini. Sebelum ada tag rilis kontrak, belum
@@ -16,9 +17,18 @@
 //   --changes-json <file>  pakai keluaran `oasdiff breaking --format json` yang sudah ada (uji kering tanpa oasdiff)
 //   --report <file.md>     tulis laporan Markdown (juga ke GITHUB_STEP_SUMMARY bila ada)
 //   --head-out <file>      simpan bundle kepala (untuk artefak CI)
+//   --require-baseline     gagal bila belum ada tag contracts-v* (dipakai rilis aplikasi, release.yml)
 // Keluar 0 lulus, 1 gagal kebijakan, 2 galat alat (oasdiff/git tidak dapat dijalankan).
 import { execFileSync, spawnSync } from "node:child_process";
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -34,6 +44,7 @@ import {
   renderReport,
   versionConsistency,
 } from "./lib/breaking.mjs";
+import { diffEventSchemas } from "./lib/events-compat.mjs";
 import { PACKAGE_ROOT, PATHS } from "./lib/fs.mjs";
 
 const TAG_PREFIX = "contracts-v";
@@ -120,6 +131,28 @@ function readBlobs(specs) {
   return blobs;
 }
 
+/** Skema event realtime pada ref git ({nama berkas: skema}), atau null bila ref belum memuat events/. */
+function eventsAtRef(ref) {
+  const pkgPath = relative(top(), PACKAGE_ROOT).split("\\").join("/");
+  const listing = git(["ls-tree", "-r", "--name-only", ref, "--", `${pkgPath}/events`])
+    .split("\n")
+    .filter((f) => f.endsWith(".schema.json"));
+  if (listing.length === 0) return null;
+  const contents = readBlobs(listing.map((file) => `${ref}:${file}`));
+  return Object.fromEntries(
+    listing.map((file, i) => [file.split("/").pop(), JSON.parse(contents[i].toString("utf8"))]),
+  );
+}
+
+/** Skema event realtime di working tree. */
+function eventsAtHead() {
+  return Object.fromEntries(
+    readdirSync(PATHS.eventsDir)
+      .filter((f) => f.endsWith(".schema.json"))
+      .map((f) => [f, JSON.parse(readFileSync(join(PATHS.eventsDir, f), "utf8"))]),
+  );
+}
+
 function findOasdiff() {
   return arg("--oasdiff") ?? process.env.OASDIFF ?? "oasdiff";
 }
@@ -183,6 +216,16 @@ export function main() {
       console.log("oasdiff memuat kontrak kepala (OpenAPI 3.1) tanpa galat.");
     }
     if (!baseRef) {
+      if (process.argv.includes("--require-baseline")) {
+        // Rilis aplikasi (release.yml) wajib memiliki pembanding: build Flutter yang dibagikan memakai SDK bertag.
+        annotate(
+          "error",
+          "Gerbang kontrak N-13",
+          `Belum ada tag ${TAG_PREFIX}*; rilis SDK kontrak (Actions > Release > contracts-sdk) wajib dibuat ` +
+            "sebelum rilis aplikasi dan sebelum build Flutter dibagikan (D16).",
+        );
+        return 1;
+      }
       annotate(
         "notice",
         "Gerbang kontrak N-13",
@@ -203,9 +246,23 @@ export function main() {
     const baseFile = join(work, "base.yaml");
     writeFileSync(baseFile, renderBundle(baseDoc));
     console.log(`Pembanding ${baseRef}: ${source}.`);
-    const changes = changesJson
+    const httpChanges = changesJson
       ? normalizeChanges(JSON.parse(readFileSync(changesJson, "utf8")))
       : runOasdiff(bin, baseFile, headFile);
+    // Skema event realtime (Socket.IO) tidak tercakup oasdiff; dibandingkan dengan aturan pembaca yang sama.
+    const baseEvents = eventsAtRef(baseRef);
+    if (baseEvents === null)
+      annotate(
+        "notice",
+        "Gerbang kontrak N-13",
+        `${baseRef} tidak memuat events/*.schema.json; event tidak dibandingkan`,
+      );
+    const eventChanges = baseEvents === null ? [] : diffEventSchemas(baseEvents, eventsAtHead());
+    console.log(
+      `Skema event realtime: ${eventChanges.filter((c) => c.level >= 3).length} perubahan memutus, ` +
+        `${eventChanges.filter((c) => c.level === 2).length} peringatan.`,
+    );
+    const changes = [...httpChanges, ...eventChanges];
 
     // 4. Kebijakan.
     const base = contractMeta(baseDoc);
