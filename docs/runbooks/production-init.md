@@ -262,8 +262,15 @@ DATABASE_URL=postgres://kapdh_migrator:<sandi-migrator>@<host-postgres-internal>
   \password kapdh_migrator
   \password kapdh_app
   \password kapdh_worker
+  \password kapdh_backup
+  \password kapdh_monitor
   \q
   ```
+
+  `kapdh_backup` (backup harian `infra/backup`, `pg_read_all_data`) dan `kapdh_monitor` (pemeriksa
+  `infra/monitoring/check-app.sh`) juga role LOGIN dari `roles.sql`; sandinya disimpan di password manager dan di
+  `/etc/kapdh/backup.secrets.env` / `/etc/kapdh/monitoring.env` (`docs/runbooks/backup-restore.md` bagian 3,
+  `docs/runbooks/monitoring.md`).
 
 - [ ] **2.3 Migrasi** sebagai `kapdh_migrator` dari image API rilis, pada jaringan Docker yang sama dengan PostgreSQL
       **[bukti]**:

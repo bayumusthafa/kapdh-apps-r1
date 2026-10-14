@@ -2,7 +2,7 @@
 
 - Status: Diterima (Fase E, E3 operasi); belum dibuktikan restore drill staging
 - Tanggal dicatat: 14 Oktober 2026
-- Rujukan: PRD 2.4 N-06, 5.5, 8.2, 8.4, 9.1 U-11/U-12, 9.2 #9; D2 (retensi 30 hari), D9 (tujuan backup, pemegang
+- Rujukan: PRD 2.4 N-06, 5.5, 8.2, 8.4, 9.1 U-11/U-12, 9.2 #8; D2 (retensi 30 hari), D9 (tujuan backup, pemegang
   kunci); AC F14-6; audit D2-03
 - Bukti di kode: `kapdh-platform/infra/backup/{backup.sh,restore.sh,verify-restore.sh,verify-http.mjs,lib.sh}`,
   `infra/backup/sql/*.sql`, `infra/backup/manifest.schema.json`, `infra/backup/systemd/`, `infra/backup/cron/`,

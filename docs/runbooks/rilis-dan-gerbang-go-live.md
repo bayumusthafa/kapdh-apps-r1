@@ -260,9 +260,10 @@ Pengecualian tidak berlaku untuk go-live pertama (bagian 4 langkah 7) dan tidak 
 
 Job rilis image lama **tidak boleh** dijalankan di atas skema yang lebih baru: `roles.sql` lama dapat memberi ulang hak
 yang dicabut rilis baru (mis. tabel append-only baru). Job rilis manual menolaknya sebelum `roles.sql`. Jalur
-otomatis (`release.yml` aksi `deploy-tag`) menjalankan job migrasi image lama (migrasi 0, gerbang dengan
-`--allow-schema-ahead`) termasuk `roles.sql` lama: sesudahnya terapkan ulang `roles.sql` terbaru secara manual
-(`docs/runbooks/ci-cd.md` bagian 9).
+otomatis (`release.yml` aksi `deploy-tag`) menjalankan job migrasi image lama yang mendeteksi skema lebih baru dari
+journal image dan hanya menjalankan gerbang go-live (pra-migrasi bila enforce, lalu penuh `--allow-schema-ahead`);
+`roles.sql`, migrasi dan seed referensi image lama dilewati sehingga `roles.sql` terbaru tetap berlaku
+(`docs/runbooks/ci-cd.md` bagian 5 langkah 2 dan bagian 9).
 
 1. Pastikan migrasi antara tag lama dan tag sekarang kompatibel mundur (catatan rilis/PR; PRD 5.5). Bila tidak, jangan
    rollback image: perbaikan maju, mode maintenance read-only bila integritas data terancam.

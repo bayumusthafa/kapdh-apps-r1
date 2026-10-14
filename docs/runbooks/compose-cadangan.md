@@ -86,6 +86,10 @@ backup (`images.api`).
 
 4. `up -d` seluruh stack (bagian 4, tanpa proxy dahulu), verifikasi konsistensi (bagian 5: login/MFA, total uang,
    tiket, berkas) dari jaringan internal, baru jalankan proxy (`compose.proxy.yml`) untuk membuka lalu lintas.
+   Pengaman kedua bila urutan ini terlewat: health check Traefik cadangan untuk API memakai readiness
+   `/api/v1/health/ready` (`infra/traefik/render-dynamic.sh`, sama dengan Coolify), yang menjawab 503
+   `deletion_ledger: fail` selama ledger belum diterapkan, sehingga Traefik tidak merutekan trafik ke API itu
+   (AC F14-6, ADR-014). HEALTHCHECK image tetap liveness.
 
 ## 3. Job rilis
 

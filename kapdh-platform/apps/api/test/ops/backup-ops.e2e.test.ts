@@ -49,7 +49,7 @@ afterAll(async () => {
 });
 
 describe("SQL backup/restore (infra/backup/sql, PRD 5.5, N-06)", () => {
-  it("N-06, PRD 9.2 #9: stats.sql menghitung jumlah, total uang per jenis dan versi skema migrasi tanpa data pribadi", async () => {
+  it("N-06, PRD 9.2 #8: stats.sql menghitung jumlah, total uang per jenis dan versi skema migrasi tanpa data pribadi", async () => {
     const before = await stats();
     const member = await createAlumni(t, { status: "verified" });
     await createMembershipPayment(t, { userId: member.userId });

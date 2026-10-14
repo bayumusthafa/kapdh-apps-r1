@@ -2,7 +2,9 @@
 // Gerbang CSP web admin (N-07, PRD 5.2; temuan audit D3-07). Dipakai infra/Dockerfile.admin dan CI:
 //
 //   node infra/scripts/admin-csp.mjs render --api-base <VITE_API_BASE_URL> --conf infra/nginx-admin.conf --out <berkas>
-//     Mengganti __KAPDH_API_ORIGIN__ dengan origin API. https wajib, kecuali localhost/127.0.0.1 untuk uji image lokal.
+//     Mengganti __KAPDH_API_ORIGIN__ dengan origin API. Hanya https://<host>/api/v1 (N-07), kebijakan yang sama dengan
+//     pemeriksaan build arg di infra/Dockerfile.admin dan katalog infra/ci/images.json; image admin tidak dibangun untuk
+//     API http lokal (pengembangan lokal memakai `pnpm --filter @kapdh/admin dev` dengan proxy Vite).
 //   node infra/scripts/admin-csp.mjs check --dist apps/admin/dist --conf <berkas hasil render>
 //     Memastikan hasil build kompatibel dengan CSP (tanpa skrip/gaya inline, handler on*, URL javascript:, sumber
 //     origin lain) dan konfigurasi nginx memuat header wajib. Aturan HTML sama dengan situs publik
@@ -12,9 +14,8 @@ import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export const API_ORIGIN_PLACEHOLDER = "__KAPDH_API_ORIGIN__";
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
-/** Origin API dari VITE_API_BASE_URL; https wajib di luar localhost (N-07). */
+/** Origin API dari VITE_API_BASE_URL; hanya https://<host>/api/v1 (N-07, sama dengan Dockerfile.admin). */
 export function apiOriginOf(apiBase) {
   let url;
   try {
@@ -22,10 +23,11 @@ export function apiOriginOf(apiBase) {
   } catch {
     throw new Error(`VITE_API_BASE_URL tidak valid: ${apiBase}`);
   }
-  if (url.protocol !== "https:" && !(url.protocol === "http:" && LOCAL_HOSTS.has(url.hostname)))
-    throw new Error(`VITE_API_BASE_URL wajib https (N-07): ${apiBase}`);
+  if (url.protocol !== "https:") throw new Error(`VITE_API_BASE_URL wajib https (N-07): ${apiBase}`);
   if (url.username || url.password || url.search || url.hash)
     throw new Error(`VITE_API_BASE_URL tidak boleh memuat kredensial, query, atau fragmen: ${apiBase}`);
+  if (url.pathname !== "/api/v1")
+    throw new Error(`VITE_API_BASE_URL wajib https://<host>/api/v1: ${apiBase}`);
   return url.origin;
 }
 

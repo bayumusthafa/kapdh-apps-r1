@@ -26,6 +26,12 @@
 #   sebagai kapdh_migrator dengan `--allow-schema-ahead` (deploy ulang tag lama = rollback image; skema lebih baru
 #   dicatat sebagai peringatan, PRD 8.4). Mode `enforce` (bawaan production) menggagalkan job pada penolakan sehingga
 #   CI tidak men-deploy image; mode `report` (bawaan staging) hanya mencetak laporan.
+# Image lebih lama dari skema (database memuat migrasi yang tidak ada di journal image; aksi `deploy-tag` release.yml =
+# rollback image): roles.sql, migrasi dan seed referensi image itu DILEWATI dengan peringatan, hanya gerbang go-live
+# (pra-migrasi bila enforce, lalu penuh `--allow-schema-ahead`) yang dijalankan. roles.sql lama melakukan REVOKE/GRANT
+# ulang atas semua tabel dan hanya mengenal pembatasan versinya, sehingga menjalankannya pada skema baru akan melonggarkan
+# hak tabel yang dibatasi rilis baru (PRD 5.1 least privilege); roles.sql rilis terbaru tetap berlaku. Job rilis manual
+# (release-job.sh) menolak keadaan ini sama sekali.
 # roles.sql DIAMBIL DARI IMAGE API yang dipin digest (/app/db/roles.sql, infra/Dockerfile.api), bukan dari klien:
 # SQL yang dijalankan sebagai pemilik database hanya berasal dari artefak CI yang sama dengan kode migrasi.
 # Production hanya menerima digest yang sama dengan image bertag rilis vX.Y.Z di registry (dibuat release.yml).
@@ -45,7 +51,10 @@
 #   KAPDH_RELEASE_GATE_REASON=<alasan>                (wajib bila production + report: pengecualian gerbang, mis.
 #                                                      "inisialisasi pertama PRD 8.2"; dicetak ke log CI sebagai bukti)
 #   KAPDH_RELEASE_GATE_APPROVER=<nama>                (wajib bila production + report: penyetuju, D9)
-# Mode gerbang hanya dari berkas konfigurasi server (pengelola infra), tidak pernah dari perintah klien CI.
+# Mode gerbang hanya dari berkas konfigurasi server (pengelola infra), tidak pernah dari perintah klien CI. Nama tanpa
+# awalan KAPDH_ (RELEASE_GATE, RELEASE_GATE_REASON, RELEASE_GATE_APPROVER) milik job rilis manual
+# (infra/scripts/run-release.sh, /etc/kapdh/<lingkungan>/release.env) dan DITOLAK di sini dengan pesan jelas agar
+# pengecualian yang ditulis dengan nama itu tidak diam-diam diabaikan.
 # URL database tidak pernah dicetak dan tidak muncul di argumen proses (diteruskan lewat environment docker -e NAMA).
 set -eu
 
@@ -133,7 +142,13 @@ esac
 case "$BACKUP_MAX_AGE_DAYS" in
   "" | *[!0-9]*) die "KAPDH_BACKUP_MAX_AGE_DAYS harus bilangan bulat" ;;
 esac
-# Gerbang go-live (PRD 9.2 #9, 9.3): kebijakan sama dengan RELEASE_GATE job rilis (infra/scripts/release-job.sh).
+# Gerbang go-live (PRD 9.2 #9, 9.3): kebijakan sama dengan RELEASE_GATE job rilis (infra/scripts/release-job.sh), tetapi
+# dengan nama KAPDH_RELEASE_GATE*. Nama job rilis manual ditolak (bukan diabaikan) agar salah nama terlihat di log CI.
+for legacy in RELEASE_GATE RELEASE_GATE_REASON RELEASE_GATE_APPROVER; do
+  eval "legacy_value=\${$legacy:-}"
+  [ -z "$legacy_value" ] ||
+    die "$legacy tidak berlaku untuk job migrasi CI; tulis KAPDH_$legacy di $CONFIG (docs/runbooks/ci-cd.md bagian 5)"
+done
 GATE_MODE=${KAPDH_RELEASE_GATE:-}
 if [ -z "$GATE_MODE" ]; then
   if [ "$ENV_NAME" = "production" ]; then GATE_MODE=enforce; else GATE_MODE=report; fi
@@ -185,20 +200,37 @@ if [ -n "$RELEASE_TAG" ]; then
   fi
 fi
 
-# roles.sql dari image API yang sama (tanpa menjalankan kode image: docker create + docker cp).
+# roles.sql dan journal migrasi dari image API yang sama (tanpa menjalankan kode image: docker create + docker cp).
+JOURNAL="$WORK/_journal.json"
 CID=$(docker create "$IMAGE") || die "docker create image API gagal"
 docker cp "$CID:/app/db/roles.sql" "$ROLES" >/dev/null || die "image API tidak memuat /app/db/roles.sql"
+docker cp "$CID:/app/node_modules/@kapdh/database/migrations/meta/_journal.json" "$JOURNAL" >/dev/null ||
+  die "image API tidak memuat journal migrasi (node_modules/@kapdh/database/migrations/meta/_journal.json)"
 docker rm -f "$CID" >/dev/null 2>&1 || true
 CID=""
 [ -s "$ROLES" ] || die "roles.sql di image kosong"
 grep -q 'kapdh_migrator' "$ROLES" || die "/app/db/roles.sql di image bukan infra/db/roles.sql"
 chmod 0444 "$ROLES"
+IMAGE_MIGRATIONS=$(grep -o '"tag"' "$JOURNAL" | wc -l | tr -d ' ')
+[ "$IMAGE_MIGRATIONS" -gt 0 ] || die "journal migrasi image kosong"
 
 apply_roles() {
   # shellcheck disable=SC2016 # $ADMIN_DATABASE_URL sengaja diekspansi oleh sh di dalam kontainer, bukan di host
   ADMIN_DATABASE_URL=$KAPDH_ADMIN_DATABASE_URL docker run --rm --network "$KAPDH_DOCKER_NETWORK" \
     -e ADMIN_DATABASE_URL -v "$ROLES:/kapdh/roles.sql:ro" "$KAPDH_PSQL_IMAGE" \
     sh -c 'exec psql "$ADMIN_DATABASE_URL" -X -q -v ON_ERROR_STOP=1 -f /kapdh/roles.sql'
+}
+
+# Jumlah migrasi tercatat di database (0 bila tabel drizzle belum ada), baca saja. SQL diteruskan lewat environment
+# agar kutipannya tidak ikut diurai shell di dalam kontainer.
+db_migrations() {
+  # shellcheck disable=SC2016 # diekspansi oleh sh di dalam kontainer
+  ADMIN_DATABASE_URL=$KAPDH_ADMIN_DATABASE_URL \
+    SQL_HAS_TABLE="select to_regclass('drizzle.__drizzle_migrations') is not null" \
+    SQL_COUNT="select count(*) from drizzle.__drizzle_migrations" \
+    docker run --rm --network "$KAPDH_DOCKER_NETWORK" -e ADMIN_DATABASE_URL -e SQL_HAS_TABLE -e SQL_COUNT \
+    "$KAPDH_PSQL_IMAGE" sh -c 'q() { psql "$ADMIN_DATABASE_URL" -X -q -t -A -v ON_ERROR_STOP=1 -c "$1"; };
+      has=$(q "$SQL_HAS_TABLE") || exit 1; if [ "$has" = t ]; then q "$SQL_COUNT"; else echo 0; fi'
 }
 
 # Dump pra-migrasi (format custom pg_dump). Dibuat di host dengan umask 077 (berisi data pribadi; D2, N-09), diverifikasi
@@ -271,8 +303,28 @@ if [ -n "$BACKUP_DIR" ]; then
   backup_before_migration
 fi
 
-log "1/6 roles.sql (sebelum migrasi)"
-apply_roles || die "roles.sql sebelum migrasi gagal"
+# Versi skema dibanding journal image (sama dengan langkah 2 release-job.sh). Image lebih lama dari skema = rollback
+# image (deploy-tag): skema, hak dan data referensi rilis terbaru dibiarkan; hanya gerbang go-live yang dijalankan.
+DB_MIGRATIONS=$(db_migrations) || die "versi skema database tidak dapat dibaca"
+case "$DB_MIGRATIONS" in
+  "" | *[!0-9]*) die "jumlah migrasi tercatat tidak valid" ;;
+esac
+log "versi skema: migrasi tercatat $DB_MIGRATIONS, journal image $IMAGE_MIGRATIONS"
+SCHEMA_AHEAD=false
+if [ "$DB_MIGRATIONS" -gt "$IMAGE_MIGRATIONS" ]; then
+  SCHEMA_AHEAD=true
+  log "PERINGATAN: database memuat $((DB_MIGRATIONS - IMAGE_MIGRATIONS)) migrasi yang tidak dikenal image ini (image lebih"
+  log "PERINGATAN: lama dari skema: rollback image). roles.sql, migrasi dan seed referensi image ini DILEWATI agar hak"
+  log "PERINGATAN: tabel dan data referensi rilis terbaru tidak ditimpa versi lama (PRD 5.1, 5.5, 8.4); hanya gerbang"
+  log "PERINGATAN: go-live yang dijalankan. Pastikan migrasi baru kompatibel mundur (docs/runbooks/ci-cd.md bagian 9)."
+fi
+
+if [ "$SCHEMA_AHEAD" = true ]; then
+  log "1/6 roles.sql DILEWATI (skema lebih baru dari image; roles.sql rilis terbaru tetap berlaku)"
+else
+  log "1/6 roles.sql (sebelum migrasi)"
+  apply_roles || die "roles.sql sebelum migrasi gagal"
+fi
 
 if [ "$GATE_MODE" = "enforce" ]; then
   log "2/6 gerbang go-live pra-migrasi (konfigurasi pengurus; skema belum diubah)"
@@ -292,15 +344,21 @@ else
   log "2/6 gerbang pra-migrasi dilewati (mode laporan)"
 fi
 
-log "3/6 migrasi skema sebagai kapdh_migrator (advisory lock)"
-run_in_image node node_modules/@kapdh/database/dist/bin/migrate.js || die "migrasi gagal; image baru JANGAN dideploy"
+if [ "$SCHEMA_AHEAD" = true ]; then
+  log "3/6 migrasi DILEWATI (journal image tidak memuat migrasi baru)"
+  log "4/6 roles.sql DILEWATI (skema lebih baru dari image)"
+  log "5/6 seed referensi DILEWATI (data referensi rilis terbaru tetap berlaku)"
+else
+  log "3/6 migrasi skema sebagai kapdh_migrator (advisory lock)"
+  run_in_image node node_modules/@kapdh/database/dist/bin/migrate.js || die "migrasi gagal; image baru JANGAN dideploy"
 
-log "4/6 roles.sql (grant objek skema terbaru)"
-apply_roles || die "roles.sql sesudah migrasi gagal"
+  log "4/6 roles.sql (grant objek skema terbaru)"
+  apply_roles || die "roles.sql sesudah migrasi gagal"
 
-log "5/6 seed referensi (idempoten, tanpa fixture)"
-run_in_image node node_modules/@kapdh/database/dist/bin/seed-reference.js ||
-  die "seed referensi gagal; image baru JANGAN dideploy"
+  log "5/6 seed referensi (idempoten, tanpa fixture)"
+  run_in_image node node_modules/@kapdh/database/dist/bin/seed-reference.js ||
+    die "seed referensi gagal; image baru JANGAN dideploy"
+fi
 
 log "6/6 gerbang go-live penuh (mode $GATE_MODE)"
 set +e
