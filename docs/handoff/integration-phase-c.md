@@ -153,12 +153,28 @@ no test was changed.
 
 ### Verification (final tree)
 
+The integrator session was interrupted after the notes commit `df23f70`. The resumed session re-ran the whole final
+verification on that tree before closing the track. Checks performed at that point:
+
+- `main` was still at `fe5482d`, so the branch did not need re-basing or a new merge from `main`.
+- All five slice branch tips are ancestors of `HEAD`:
+  - `326f106` (ce6-13)
+  - `1ffaf3c` (ce6-14)
+  - `64d6322` (ce6-15)
+  - `202be20` (584-6)
+  - `8df3c4c` (584-7)
+- `git diff main..HEAD` outside `kapdh-mobile/**` touches only this document.
+- The working tree was clean after the build and every check.
+
+No new breakage was found, so the track needed no further fixes. These are the results of the resumed run:
+
 | Command | Result |
 | ------- | ------ |
 | `kapdh-platform: pnpm install` | pass ("Already up to date") |
-| `kapdh-platform: pnpm build` | pass (10/10 tasks). The Dart SDK was generated in `packages/contracts/dart/kapdh_api/lib/src`. |
+| `kapdh-platform: pnpm build --force` | pass (10/10 tasks, 0 cached). The Dart SDK was regenerated in `packages/contracts/dart/kapdh_api/lib/src`: 38 files, 0 written, 0 deleted, so the committed SDK is current. |
 | `kapdh-platform: pnpm typecheck` | pass (15/15 tasks). No platform files changed in this track; run as an extra check. |
+| `kapdh-platform: pnpm test` | not run. No mobile branch touches `kapdh-platform`, and the platform tree is identical to `main`. |
 | `kapdh-mobile: flutter.bat pub get` | pass |
 | `kapdh-mobile: flutter.bat analyze` | pass ("No issues found!") |
 | `kapdh-mobile: flutter.bat test` | pass (871 tests, "All tests passed!") |
-| `kapdh-mobile: dart.bat format --output=none --set-exit-if-changed lib test` | Only the pre-existing `lib/app/theme/kapdh_tokens.dart` is reported. |
+| `kapdh-mobile: dart.bat format --output=none --set-exit-if-changed lib test` | Only the pre-existing `lib/app/theme/kapdh_tokens.dart` is reported (exit 1). It is unchanged from `main`. |
