@@ -523,6 +523,16 @@ Coolify on one VPS (4 vCPU/8 GB/100 GB), Traefik TLS, images built in CI, single
 daily encrypted backups (pg_dump + restic of `/data/files`) to off-VPS object storage with manifest and deletion
 ledger, monthly restore drill, Uptime Kuma + GlitchTip, staging and production fully separated.
 
+- CI/CD (ADR-024, `docs/runbooks/ci-cd.md`): `.github/workflows/ci.yml` (status "CI lulus": build, typecheck, lint,
+  format, PGlite + PG17 lanes, Dart SDK, Flutter, `pnpm audit --prod`/OSV, contract breaking-change gate N-13, image
+  builds + smoke + grype, Compose stack job), `deploy-staging.yml` (images once per commit `sha-<commit>`, catalog
+  `infra/ci/images.json`), `release.yml` (same digest promoted to `vX.Y.Z`, approval-gated production deploy,
+  `deploy-tag` rollback). Images: `infra/Dockerfile.{api,worker,web,admin}`, `api` target `release` for the release job.
+- Release job + go-live gate (ADR-023, `docs/runbooks/rilis-dan-gerbang-go-live.md`): one sequence ([pre-migration
+  dump] → `roles.sql` → `golive:check --preflight` → migrate as `kapdh_migrator` → `roles.sql` → `seed:reference` →
+  `golive:check`), `enforce` in production (refusal stops the deploy), `report` in staging; run by the CI forced
+  command `infra/ci/remote-migrate.sh` (Coolify path) or by `infra/scripts/release-job.sh` in the `kapdh-release`
+  image (manual and Compose fallback, `docs/runbooks/compose-cadangan.md`). Never at replica startup.
 - Backup/restore: `infra/backup/` (backup.sh, restore.sh, verify-restore.sh; ADR-018), runbooks
   `docs/runbooks/backup-restore.md` (procedure, monthly drill, RPO/RTO) and `restore-backup.md` (application order).
   Retention (D2): dump snapshots older than 30 days are forgotten, files snapshots are forgotten with their paired

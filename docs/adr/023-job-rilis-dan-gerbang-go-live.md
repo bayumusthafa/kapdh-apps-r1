@@ -1,6 +1,8 @@
-# ADR-0002: Job rilis dalam image tersendiri dan gerbang go-live sebagai CLI
+# ADR-023: Job rilis dalam image tersendiri dan gerbang go-live sebagai CLI
 
 - Status: diusulkan (Fase E, menunggu pembuktian di staging)
+- Nomor: semula ADR-0002 (berkas `0002-...`); dinomori ulang 023 pada integrasi akhir R1.0 karena bentrok dengan
+  ADR-002 (kontrak per domain).
 - Tanggal: 14 Oktober 2026
 - Rujukan: PRD 5.3, 5.5, 7.1, 8.2, 8.3, 8.4, 9.2, 9.3, 10.2; D1, D4, D7, D9, D12, D13; U-12; temuan audit D2-02, D4-01,
   D2-07, D3-07.
@@ -62,7 +64,7 @@ pada database tanpa pengurus dan tanpa biaya.
 
 ## Pembaruan (integrasi akhir R1.0)
 
-Pipeline CI/CD (ADR pipeline CI/CD, `.github/workflows/`) dibangun paralel dan memakai job migrasi lewat SSH forced
+Pipeline CI/CD (ADR-024, `.github/workflows/`) dibangun paralel dan memakai job migrasi lewat SSH forced
 command (`infra/ci/remote-migrate.sh`) yang diikat ke satu lingkungan di sisi server. Saat integrasi:
 
 - Keputusan 2 diperbarui: jalur Coolify **utama** adalah `_deploy.yml` → `remote-migrate.sh` dengan image `kapdh-api`

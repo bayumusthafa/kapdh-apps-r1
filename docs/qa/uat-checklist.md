@@ -66,9 +66,9 @@ secara sengaja.
 | U-08 Notifikasi | F-13 | covered | | |
 | U-09 Data pribadi | F-14; N-09, N-10, N-15 | partial per `traceability.md` (D2-01); sejak hardening Fase D readiness menahan API sampai ledger diterapkan (ADR-014), drill restore staging belum | | |
 | U-10 Pengurus | F-15, F-16, F-17 | covered | | |
-| U-11 Operasi | N-01..N-06; N-14 | partial (tanpa beban, restore, alert; alat backup belum di `main`) | | |
-| U-12 Inisialisasi produksi | PRD 8.2, 8.3 | partial (tanpa gerbang otomatis, D2-02) | | |
-| U-13 Klien | N-03, N-11, N-12, N-13 | partial (tanpa matriks perangkat/a11y) | | |
+| U-11 Operasi | N-01..N-06; N-14 | partial (alat beban, backup/restore dan monitor ada di `infra/`, belum dijalankan di staging/VPS nyata) | | |
+| U-12 Inisialisasi produksi | PRD 8.2, 8.3 | partial (gerbang `golive:check` + job rilis ada, ADR-023; image/CI/deploy dan drill restore belum pernah dijalankan) | | |
+| U-13 Klien | N-03, N-11, N-12, N-13 | partial (matriks D7 + smoke `integration_test` ada, baru emulator Android; gerbang N-13 ada, belum ada tag `contracts-v*`) | | |
 
 ---
 
@@ -271,7 +271,7 @@ kondisi PRD 2.4 (VPS sasaran, 100 sesi anggota, 5 sesi admin, 5.000 profil, 100.
 | 11.2 | PI | Uji realtime 100 sesi | p95 commit → tampil <= 2 detik; reconnect tanpa kehilangan/duplikasi (N-02) | | | |
 | 11.3 | PI | Naikkan beban bertahap sampai target gagal | Titik jenuh dan rencana kapasitas tercatat (N-04, D7) | | | |
 | 11.4 | PI | Monitor eksternal aktif 30 hari staging/production | Laporan ketersediaan; target usulan 99,5 % (N-05) | | | |
-| 11.5 | PI | Backup harian (alat paket backup-ops Fase E; belum di `main`) → restore ke lingkungan bersih mengikuti `restore-backup.md`, ukur waktu | RPO <= 24 jam dan RTO <= 4 jam terbukti (N-06; melebihi = Gagal); ledger diterapkan sebelum dibuka; pemeriksaan PRD 5.5 (login/MFA, anggota, total uang, tiket, chat, berkas, penghapusan terdahulu) lulus | | | |
+| 11.5 | PI | Backup harian (`infra/backup/backup.sh`, `docs/runbooks/backup-restore.md`) → restore ke lingkungan bersih (`restore.sh` + `verify-restore.sh`, urutan aplikasi `restore-backup.md`), ukur waktu; isi `docs/qa/restore-drills/TEMPLATE.md` | RPO <= 24 jam dan RTO <= 4 jam terbukti (N-06; melebihi = Gagal); ledger diterapkan sebelum dibuka; pemeriksaan PRD 5.5 (login/MFA, anggota, total uang, tiket, chat, berkas, penghapusan terdahulu) lulus | | | |
 | 11.6 | PI | Matikan worker 10 menit lalu nyalakan; matikan Redis 1 menit | Alert terkirim (worker `/healthz`, readiness); outbox diproses ulang sekali (PRD 9.2, 5.1) | | | |
 | 11.7 | PI | Ambil `request_id` dari galat aplikasi; telusuri log API, worker, audit | Terhubung dengan `request_id`/`job_id`; tidak ada sandi/OTP/token/isi chat/bukti di log (N-14) | | | |
 | 11.8 | PI | Isi disk sampai 60 %/80 % (atau ubah ambang monitor sementara) | Alert warning/critical (PRD 5.4) | | | |
@@ -307,7 +307,7 @@ Bukti: perangkat/browser sasaran, keyboard/semantics/text scaling, kontrak, deep
 | 13.6 | QA | Deep link `kapdh://app/payments/<id>` dan `kapdh://app/forgot/otp?challenge_id=...` saat login, logout, beda akun | Rute benar dengan pemeriksaan otorisasi (AC F13-3) | | | |
 | 13.7 | SA | Pengaturan → versi minimum di atas versi terpasang | Aplikasi menampilkan wajib update dengan tautan toko; mutasi dari versi lama ditolak `UPGRADE_REQUIRED` | | | |
 | 13.8 | SA | Pengaturan → Maintenance aktif dengan pesan dan perkiraan | Aplikasi: mode baca + layar maintenance untuk alur mutasi; situs publik menampilkan banner; admin tetap berfungsi | | | |
-| 13.9 | DEV | Bandingkan `dist/openapi.yaml` rilis dengan rilis sebelumnya; build aplikasi versi sebelumnya terhadap API baru | Tidak ada perubahan yang memutus klien yang didukung, atau tercatat di `CHANGELOG.md` dengan rencana (N-13; gerbang otomatis belum ada, D2-12) | | | |
+| 13.9 | DEV | Bandingkan `dist/openapi.yaml` rilis dengan rilis sebelumnya; build aplikasi versi sebelumnya terhadap API baru | Tidak ada perubahan yang memutus klien yang didukung, atau tercatat di `CHANGELOG.md` dengan rencana (N-13; gerbang otomatis `pnpm contracts:breaking` di CI, ADR-024, aktif setelah tag `contracts-v*` pertama, D2-12) | | | |
 
 ## Lampiran A. Menyiapkan anggota expiring/expired di staging
 
