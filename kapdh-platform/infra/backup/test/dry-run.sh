@@ -14,6 +14,11 @@ TEST_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 BACKUP_DIR=$(dirname "$TEST_DIR")
 ROOT=${1:-$(mktemp -d "${TMPDIR:-/tmp}/kapdh-dry-run.XXXXXX")}
 mkdir -p "$ROOT"
+# Git Bash: path /tmp/... milik MSYS tidak dikenal Node (alat tiruan) -> pakai bentuk C:/... untuk semua path kerja.
+if command -v cygpath >/dev/null 2>&1; then ROOT=$(cygpath -m "$ROOT"); fi
+# Izin berkas POSIX (chmod 600) tidak berlaku di Git Bash/NTFS; skenario yang memeriksanya hanya di Linux/macOS.
+POSIX_PERMS=1
+case $(uname -s 2>/dev/null || echo unknown) in MINGW* | MSYS* | CYGWIN*) POSIX_PERMS=0 ;; esac
 # Git Bash: jangan ubah argumen bergaya path (id:/path) saat memanggil node.
 MSYS_NO_PATHCONV=1
 MSYS2_ARG_CONV_EXCL='*'
@@ -105,6 +110,13 @@ sed "s/2026-10-14T19:00:00Z/$CAPTURED/" "$FIXTURE/stats.json" >"$FIXTURE/stats.t
 sed 's/"paid_total" : "15000000.00"/"paid_total" : "14990000.00"/' "$FIXTURE/stats.json" >"$FIXTURE/stats-bad.json"
 printf 'kata-sandi-restic-uji\n' >"$FIXTURE/restic-password"
 chmod 600 "$FIXTURE/restic-password"
+# Sandi role LOGIN di host restore (ROLE_PASSWORDS_SQL, 0600): tidak boleh muncul di log/bukti restore.
+ROLE_SECRET=sandi-role-uji-JANGAN-TERCATAT
+printf "ALTER ROLE kapdh_app PASSWORD '%s';\nALTER ROLE kapdh_worker PASSWORD '%s';\n" "$ROLE_SECRET" "$ROLE_SECRET" \
+  >"$FIXTURE/role-passwords.sql"
+chmod 600 "$FIXTURE/role-passwords.sql"
+cp "$FIXTURE/role-passwords.sql" "$FIXTURE/role-passwords-terbuka.sql"
+chmod 644 "$FIXTURE/role-passwords-terbuka.sql"
 
 # CLI ledger-reapply tiruan: mencatat argumen dan memastikan setiap --dir ada dan berisi entri.
 cat >"$FIXTURE/fake-ledger-reapply.sh" <<'EOF'
@@ -214,6 +226,9 @@ restore_env() {
 }
 restore_env ok
 EVID=$ROOT/evidence-ok
+ROLE_PASSWORDS_SQL=''
+[ "$POSIX_PERMS" = 1 ] && ROLE_PASSWORDS_SQL=$FIXTURE/role-passwords.sql
+export ROLE_PASSWORDS_SQL
 if "$BACKUP_DIR/restore.sh" --target-kind drill --yes --evidence-dir "$EVID" >"$ROOT/restore-ok.log" 2>&1; then
   pass "restore.sh drill keluar 0"
 else
@@ -234,6 +249,16 @@ expect "laporan memeriksa total uang (paid_total)" grep -q '^PASS paid_total' "$
 expect "ringkasan bukti memuat durasi restore dan umur backup" \
   sh -c "grep -q '^restore_seconds=' '$EVID/summary.txt' && grep -q '^backup_age_at_start_seconds=[0-9]' '$EVID/summary.txt'"
 expect "folder sementara restore (dump) dihapus" sh -c "! find '$WORK_DIR/tmp' -name db.dump 2>/dev/null | grep -q ."
+if [ "$POSIX_PERMS" = 1 ]; then
+  expect "sandi role (ROLE_PASSWORDS_SQL) diterapkan sesudah roles.sql pertama" \
+    test -s "$FAKE_STATE_DIR/role-passwords-applied"
+  expect "sandi role tidak tercatat di log maupun folder bukti" \
+    sh -c "! grep -rq '$ROLE_SECRET' '$EVID' '$ROOT/restore-ok.log'"
+else
+  printf 'LEWATI %s\n' "ROLE_PASSWORDS_SQL (izin berkas POSIX tidak tersedia di Git Bash/NTFS; jalankan di Linux)"
+fi
+ROLE_PASSWORDS_SQL=''
+export ROLE_PASSWORDS_SQL
 
 # ======================================================================================== 4. restore ditolak/gagal
 restore_env dirty
@@ -242,6 +267,16 @@ if "$BACKUP_DIR/restore.sh" --target-kind drill --yes --evidence-dir "$ROOT/evid
   fail "FILES_ROOT tidak kosong ditolak"
 else
   expect "FILES_ROOT tidak kosong ditolak" grep -q 'tidak kosong' "$ROOT/restore-dirty.log"
+fi
+if [ "$POSIX_PERMS" = 1 ]; then
+  restore_env rolepw
+  if ROLE_PASSWORDS_SQL=$FIXTURE/role-passwords-terbuka.sql "$BACKUP_DIR/restore.sh" --target-kind drill --yes \
+    --evidence-dir "$ROOT/evidence-rolepw" >"$ROOT/restore-rolepw.log" 2>&1; then
+    fail "ROLE_PASSWORDS_SQL yang dapat dibaca semua pengguna ditolak"
+  else
+    expect "ROLE_PASSWORDS_SQL yang dapat dibaca semua pengguna ditolak" \
+      grep -q 'ROLE_PASSWORDS_SQL dapat dibaca semua pengguna' "$ROOT/restore-rolepw.log"
+  fi
 fi
 restore_env staging
 if "$BACKUP_DIR/restore.sh" --target-kind staging --yes >"$ROOT/restore-staging.log" 2>&1; then fail "target staging ditolak (PRD 5.3)"; else
