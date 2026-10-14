@@ -6,6 +6,7 @@
 export * from "./admin-refresh-cookie.js";
 export * from "./crypto.js";
 export * from "./email.js";
+export * from "./otp-quota.js";
 export * from "./password-verifier.js";
 export * from "./session-issuer.js";
 export * from "./token.service.js";

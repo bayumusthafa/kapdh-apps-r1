@@ -3,13 +3,17 @@
  *   1. initdb ke direktori sementara unik di os.tmpdir() (persistent: true agar embedded-postgres tidak menghapusnya
  *      sendiri; pembersihan dilakukan di teardown dengan toleransi EBUSY/EPERM Windows),
  *   2. database template `kapdh_template` dimigrasi dengan job migrasi production (`runMigrations`, advisory lock),
+ *      lalu diisi seed referensi production (`seedReference`: app_settings termasuk `fees` versi 1, master usulan
+ *      nonaktif, halaman legal draf; PRD 8.2 langkah 4), sama dengan jalur PGlite dan jalur PG worker. Tanpa seed,
+ *      instruksi iuran ditolak karena nominal `fees` belum tersimpan (fail closed, temuan D4-02),
  *   3. infra/db/roles.sql diterapkan DUA KALI (role + grant, sekaligus bukti idempoten), lalu role LOGIN kapdh_app dan
  *      kapdh_worker diberi sandi acak sehingga uji dapat tersambung sebagai role aplikasi yang sebenarnya (bukan
  *      superuser) maupun memakai SET ROLE,
  *   4. setiap berkas uji membuat database sendiri dari template (test/pg/support.ts).
  */
 import type EmbeddedPostgresType from "embedded-postgres";
-import { createDb, runMigrations } from "@kapdh/database";
+import { createDb, type Database, runMigrations } from "@kapdh/database";
+import { seedReference } from "@kapdh/database/seeds/reference";
 import { randomBytes } from "node:crypto";
 import { readdirSync, rmSync, statSync } from "node:fs";
 import { createServer } from "node:net";
@@ -36,6 +40,8 @@ declare module "vitest" {
 
 const DIR_PREFIX = "kapdh-pg-lane-";
 export const TEMPLATE_DB = "kapdh_template";
+/** Waktu seed referensi template (sama dengan template PGlite; sebelum TestClock bawaan 2026-10-13T02:00Z). */
+export const PG_TEMPLATE_SEEDED_AT = new Date("2026-10-01T00:00:00Z");
 const ROLES_SQL = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../infra/db/roles.sql");
 
 function freePort(): Promise<number> {
@@ -132,8 +138,12 @@ export default async function setup(project: TestProject) {
     await admin.unsafe(`create database ${TEMPLATE_DB}`);
     // Migrasi template memakai job migrasi production (journal Drizzle dalam advisory lock, PRD 5.5).
     await runMigrations({ url: `${base}/${TEMPLATE_DB}` });
-    const template = createDb(`${base}/${TEMPLATE_DB}`, { max: 1 }).sql;
+    const { db: templateDb, sql: template } = createDb(`${base}/${TEMPLATE_DB}`, { max: 1 });
     try {
+      await seedReference(templateDb as unknown as Database, {
+        now: PG_TEMPLATE_SEEDED_AT,
+        requestId: "seed-reference-api-pg-lane",
+      });
       await template.file(ROLES_SQL);
       await template.file(ROLES_SQL);
       // Sandi hex acak (tanpa kutip) untuk role LOGIN uji; cluster sekali pakai, tidak pernah dicetak.

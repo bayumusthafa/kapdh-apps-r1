@@ -79,7 +79,10 @@ paths:
         Berkas privat: kebijakan akses purpose diperiksa lebih dulu (pemilik; pengurus `payments.read` untuk bukti
         bayar, termasuk versi bukti lama yang dirujuk riwayat pembayaran, dan bukti penyesuaian; `members.read` untuk
         avatar; ekspor audit hanya untuk `audit.read` + `audit.export` yang juga pemohon ekspor atau Super Admin,
-        dengan jalur unduh utama adminGetAuditExportAccess; aturan modul seperti anggota room untuk gambar chat), lalu
+        dengan jalur unduh utama adminGetAuditExportAccess; aturan modul seperti anggota room untuk gambar chat;
+        `moderation.read` untuk gambar chat dan avatar yang dirujuk bukti laporan, HANYA bila minimal satu laporan
+        perujuk terlihat bagi pemanggil menurut aturan konflik kepentingan admin-moderation butir a, dan setiap akses
+        itu dicatat audit `moderation.evidence_viewed` sebelum URL diterbitkan), lalu
         URL bertanda tangan berumur <= 10 menit terikat berkas + purpose + keluarga sesi pemanggil (Session.id). URL
         tetap berlaku melewati rotasi refresh, tetapi berhenti berlaku bila sesi dicabut (logout, logout semua
         perangkat, suspend). Berkas publik: URL tetap dan `expires_at` null. `mime` memberi tahu klien cara

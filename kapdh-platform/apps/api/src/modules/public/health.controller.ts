@@ -9,6 +9,7 @@ import type { RedisClient } from "../../core/adapters/redis.js";
 import type { Db } from "../../core/db/types.js";
 import { Public } from "../../core/guards/decorators.js";
 import { CLOCK, DB, REDIS, STORAGE } from "../../core/tokens.js";
+import { DeletionLedgerGate } from "../account/deletion-ledger-gate.js";
 
 type HealthStatus = components["schemas"]["HealthStatus"];
 type HealthReadiness = components["schemas"]["HealthReadiness"];
@@ -41,8 +42,10 @@ async function probe(check: () => Promise<unknown>): Promise<CheckState> {
 
 /**
  * Health check (PRD 5.5, N-05): /health = liveness proses (tanpa dependensi, untuk orkestrator), /health/ready =
- * kesiapan melayani: ping PostgreSQL, Redis bila dikonfigurasi, storage bila dipasang, ditambah umur outbox pending
- * tertua sebagai sinyal worker macet (tidak memengaruhi status API). Tidak memuat pesan galat, host, atau data pribadi.
+ * kesiapan melayani: ping PostgreSQL, Redis bila dikonfigurasi, storage bila dipasang, deletion ledger sudah
+ * diterapkan ke database (AC F14-6: database pulihan yang belum menjalankan ledger-reapply tidak dibuka), ditambah umur
+ * outbox pending tertua sebagai sinyal worker macet (tidak memengaruhi status API). Tidak memuat pesan galat, host,
+ * atau data pribadi.
  */
 @Controller("health")
 export class HealthController {
@@ -51,6 +54,7 @@ export class HealthController {
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(REDIS) private readonly redis: RedisClient | null,
     @Inject(STORAGE) private readonly storage: StorageDriver | null,
+    private readonly deletionLedger: DeletionLedgerGate,
   ) {}
 
   @Get()
@@ -74,7 +78,11 @@ export class HealthController {
       storage ? probe(() => storage.stat(STORAGE_PROBE_KEY)) : Promise.resolve<CheckState>("skipped"),
     ]);
     const oldestPendingSeconds = database === "ok" ? await this.oldestPendingOutboxSeconds(now) : null;
-    const ready = database === "ok" && redisState !== "fail" && storageState !== "fail";
+    // Deletion ledger dinilai hanya bila database dan storage terjangkau (selain itu readiness sudah gagal).
+    const deletionLedger: CheckState =
+      database === "ok" && storageState === "ok" ? await this.deletionLedgerState() : "skipped";
+    const ready =
+      database === "ok" && redisState !== "fail" && storageState !== "fail" && deletionLedger !== "fail";
     if (!ready) void reply.status(503);
     return {
       status: ready ? "ok" : "unavailable",
@@ -83,9 +91,18 @@ export class HealthController {
         database,
         redis: redisState,
         storage: storageState,
+        deletion_ledger: deletionLedger,
         outbox_oldest_pending_seconds: oldestPendingSeconds,
       },
     };
+  }
+
+  private async deletionLedgerState(): Promise<CheckState> {
+    try {
+      return await withTimeout(this.deletionLedger.check(), CHECK_TIMEOUT_MS);
+    } catch {
+      return "fail";
+    }
   }
 
   /** Umur event outbox `pending` tertua (detik), null bila tidak ada atau kueri gagal. */

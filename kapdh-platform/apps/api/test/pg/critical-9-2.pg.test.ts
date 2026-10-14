@@ -1198,9 +1198,11 @@ describe("PRD 9.2 #9 / AC F14-6, D2: akun dihapus lalu backup dipulihkan (Postgr
 // ----------------------------------------------------------------------------------------------- skenario 10
 
 describe("PRD 9.2 #10 / PRD 8.2 butir 3-4, 9.3: gerbang go-live menolak konfigurasi produksi yang belum disahkan", () => {
-  // Tidak ada gerbang (CLI/endpoint/health/boot) yang memeriksa app_settings.fees belum disahkan (baris tidak ada →
-  // SETTING_DEFAULTS dipakai diam-diam, atau nominal 0.00 diterima skema), fixture dev ([Contoh], domain .test) di
-  // database produksi, maupun minimal dua Super Admin aktif ber-TOTP. Temuan audit D4; uji ditulis saat gerbang ada.
+  // Tidak ada gerbang (CLI/endpoint/health/boot) yang memeriksa app_settings.fees belum disahkan, fixture dev
+  // ([Contoh], domain .test) di database produksi, maupun minimal dua Super Admin aktif ber-TOTP. Temuan audit D4;
+  // uji ditulis saat gerbang ada. Sejak perbaikan D4-02, nominal iuran yang belum tersimpan (versi 0) atau bertotal
+  // 0.00 sudah ditolak saat instruksi iuran dibuat (fail closed, test/payments/dues-configuration.e2e.test.ts dan
+  // invarian D4-02 di bawah), tetapi itu bukan gerbang go-live: aplikasi tetap dapat berjalan dengan konfigurasi itu.
   it.todo(
     "production dengan nominal kosong/nol, fixture dev, atau kurang dari dua Super Admin ber-TOTP → gerbang go-live menolak",
   );
@@ -1228,5 +1230,17 @@ describe("Invarian data sesudah seluruh skenario berkas ini (PRD 6.4, ARCHITECTU
       where a.kind = 'refund' and a.status <> 'cancelled'
       group by p.id, p.amount having sum(a.amount) > p.amount`;
     expect(refunds.map((r) => r.id)).toEqual([]);
+  });
+
+  it("D4-02 (PRD 8.2 butir 4, AC F17-1): setiap payment iuran memakai versi `fees` tersimpan (>= 1), nominal > 0", async () => {
+    const [dues] = await sql<{ n: number }[]>`
+      select count(*)::int as n from app.payments where type in ('registration', 'renewal')`;
+    expect(dues!.n).toBeGreaterThan(0);
+    const unbacked = await sql<{ id: string }[]>`
+      select p.id from app.payments p
+      where p.type in ('registration', 'renewal')
+        and (p.settings_version is null or p.settings_version < 1 or p.amount <= 0
+             or p.settings_version > coalesce((select s.version from app.app_settings s where s.key = 'fees'), 0))`;
+    expect(unbacked.map((r) => r.id)).toEqual([]);
   });
 });
