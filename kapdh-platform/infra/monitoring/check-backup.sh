@@ -7,7 +7,8 @@
 #     infra/monitoring/check-backup.sh
 #
 #   KUMA_PUSH_BACKUP_AGE    down bila snapshot kapdh-db atau kapdh-files terbaru lebih tua dari BACKUP_MAX_AGE_H (26)
-#   KUMA_PUSH_BACKUP_CHECK  hasil `restic check --read-data-subset` mingguan (CHECK_WEEKDAY, bawaan 7 = Minggu)
+#   KUMA_PUSH_BACKUP_CHECK  hasil `restic check --read-data-subset` mingguan pada CHECK_WEEKDAY/CHECK_HOUR_UTC (bawaan
+#                           6/21 = Sabtu 21.00 UTC = Minggu 04.00 WIB; date +%u, 1 = Senin)
 set -eu
 umask 077
 
@@ -22,7 +23,8 @@ require_var RESTIC_REPOSITORY
 KAPDH_ENV=${KAPDH_ENV:-production}
 RESTIC_HOST=${RESTIC_HOST:-kapdh-$KAPDH_ENV}
 BACKUP_MAX_AGE_H=${BACKUP_MAX_AGE_H:-26}
-CHECK_WEEKDAY=${CHECK_WEEKDAY:-7}
+CHECK_WEEKDAY=${CHECK_WEEKDAY:-6}
+CHECK_HOUR_UTC=${CHECK_HOUR_UTC:-21}
 CHECK_SUBSET=${CHECK_SUBSET:-5%}
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/kapdh-check-backup.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
@@ -53,7 +55,9 @@ else
 fi
 log "umur backup:$DETAIL"
 
-if [ "$(date -u +%u)" = "$CHECK_WEEKDAY" ] && [ "$(date -u +%H)" = "${CHECK_HOUR_UTC:-21}" ]; then
+# Jam dibandingkan tanpa nol di depan (CHECK_HOUR_UTC=4 sama dengan 04).
+HOUR_NOW=$(date -u +%H)
+if [ "$(date -u +%u)" = "$CHECK_WEEKDAY" ] && [ "${HOUR_NOW#0}" = "${CHECK_HOUR_UTC#0}" ]; then
   log "restic check --read-data-subset=$CHECK_SUBSET"
   if restic check --read-data-subset="$CHECK_SUBSET" >"$TMP/check.log" 2>&1; then
     kuma_push "${KUMA_PUSH_BACKUP_CHECK:-}" up "restic check subset $CHECK_SUBSET lulus" ""

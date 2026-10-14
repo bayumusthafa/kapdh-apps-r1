@@ -1,0 +1,10 @@
+#!/bin/sh
+# Tiruan psql untuk uji kering check-app.sh: SQL dibaca dari stdin lalu keluaran kanned $FAKE_APP_HEALTH dicetak;
+# FAKE_PSQL_FAIL=1 meniru database tidak terjangkau.
+set -eu
+cat >/dev/null
+if [ "${FAKE_PSQL_FAIL:-0}" = 1 ]; then
+  echo 'psql: error: connection to server failed' >&2
+  exit 2
+fi
+cat "$FAKE_APP_HEALTH"
