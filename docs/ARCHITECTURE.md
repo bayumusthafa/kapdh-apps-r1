@@ -513,13 +513,17 @@ ledger, monthly restore drill, Uptime Kuma + GlitchTip, staging and production f
 
 - Backup/restore: `infra/backup/` (backup.sh, restore.sh, verify-restore.sh; ADR-018), runbooks
   `docs/runbooks/backup-restore.md` (procedure, monthly drill, RPO/RTO) and `restore-backup.md` (application order).
+  Retention (D2): dump snapshots older than 30 days are forgotten, files snapshots are forgotten with their paired
+  dump, then `restic prune --max-unused 0`; `RETENTION_DAYS + BUCKET_NONCURRENT_DAYS <= 30`. Restore runs as root (or
+  the `FILES_OWNER` uid) so the ledger CLI in the image (uid 1000) can read the ledger copy; the CLI never needs Redis.
+  After restore: API alone until readiness `deletion_ledger: ok`, then the worker.
 - Deletion ledger: StorageDriver copy + head + readiness gate (ADR-014) AND a synchronous append-only off-VPS bucket
   `DELETION_LEDGER_S3_*` written before any data is deleted (ADR-019, required for the production worker).
 - Monitoring: Uptime Kuma HTTP monitors + Push heartbeats from `infra/monitoring/*.sh` (disk, worker, outbox,
   providers, deletions, backup age); GlitchTip via `SENTRY_DSN` from safe error logs only (ADR-021);
   `docs/runbooks/monitoring.md`, `incident-response.md`.
-- Capacity: `infra/loadtest/` (N-01, N-02, N-04) with the staging-only dataset CLI `loadtest:seed` (ADR-020);
-  `docs/runbooks/load-test.md`.
+- Capacity: `infra/loadtest/` (N-01, N-02, N-04) with the staging-only dataset CLI `loadtest:seed` (ADR-020; refuses
+  databases without `ALTER DATABASE ... SET kapdh.environment = 'staging'`); `docs/runbooks/load-test.md`.
 - Storage migration local -> S3 with `STORAGE_FALLBACK_LOCAL_ROOT` (ADR-022); `docs/runbooks/storage-migration.md`.
 
 ## 11. Agent protocol

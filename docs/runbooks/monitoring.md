@@ -5,7 +5,7 @@ Pemilik: pengelola infra (PRD 5.5, D9). Rujukan: PRD 2.4 N-01..N-06 dan N-14, 5.
 
 > **Status bukti.** Probe realtime dan pemeriksaan HTTP restore diuji terhadap API uji yang benar-benar mendengar
 > (`apps/api/test/ops`); SQL pemeriksa diuji di PostgreSQL 17 dengan role `kapdh_monitor`; keputusan up/down skrip
-> `check-*.sh` diuji kering dengan curl/restic/psql/docker tiruan (`sh infra/monitoring/test/dry-run.sh`, 36
+> `check-*.sh` diuji kering dengan curl/restic/psql/docker tiruan (`sh infra/monitoring/test/dry-run.sh`, 37
 > pemeriksaan; df/du/date sungguhan). Uptime Kuma, GlitchTip dan
 > kanal alert belum dipasang; monitor di bawah adalah konfigurasi yang harus dibuat dan diuji di staging lalu production
 > (U-11). Pengirim galat GlitchTip di API/worker diuji terhadap server envelope tiruan
@@ -43,7 +43,7 @@ Interval/percobaan ulang adalah usulan awal; ubah bila alert terlalu sering atau
 | 12 | Antrean bayar | Push dari `check-app.sh` | bukti bayar tertua menunggu > 48 jam (D5: eskalasi 2 hari kerja) | heartbeat 10 menit | down | Sedang |
 | 13 | Disk peringatan | Push dari `check-host.sh` (5 menit) | salah satu `/`, `/data/files`, `/var/lib/docker` ≥ 60 % atau berkas > 20 GB (PRD 5.4) | heartbeat 10 menit | down | Sedang |
 | 14 | Disk kritis | Push dari `check-host.sh` | ≥ 80 % | heartbeat 10 menit | down | Kritis |
-| 15 | Backup harian | Push dari `backup.sh` | sukses harian | heartbeat 26 jam | down / tak ada heartbeat | Kritis |
+| 15 | Backup harian | Push dari `backup.sh` | sukses harian; down juga bila backup tersimpan tetapi `images.api`/`images.worker` kosong di manifest (production) | heartbeat 26 jam | down / tak ada heartbeat | Kritis |
 | 16 | Umur backup | Push dari `check-backup.sh` (setiap jam) | snapshot `kapdh-db`/`kapdh-files` terbaru > 26 jam (RPO N-06) | heartbeat 2 jam | down | Kritis |
 | 17 | Integritas backup | Push dari `check-backup.sh` (Minggu) | `restic check --read-data-subset=5%` | heartbeat 8 hari | down | Tinggi |
 | 18 | Database | ditutup oleh monitor 2 (readiness `database`) dan 9-12 (database tak terjangkau = semua down) | | | | Kritis |
@@ -56,7 +56,11 @@ staging tidak boleh menjalankan uji beban yang mengganggu production (PRD 5.3).
 1. Salin `infra/monitoring` dan `infra/backup` ke `/opt/kapdh/infra/`.
 2. Buat `/etc/kapdh/monitoring.env` dari `infra/monitoring/monitoring.env.example` (0600). Isi sandi `kapdh_monitor`
    (role dibuat `infra/db/roles.sql`, hanya membaca kolom status/waktu) lewat PGPASSFILE atau `PG_EXEC`.
-3. Pasang jadwal `infra/backup/cron/kapdh-backup` ke `/etc/cron.d/` (atau unit systemd setara). Node ≥ 22 dibutuhkan
+3. Pasang jadwal pemeriksa `infra/monitoring/cron/kapdh-monitoring` ke `/etc/cron.d/` (semua berupa interval, tidak
+   bergantung zona waktu host). Jadwal backup harian dipasang TERPISAH dan hanya satu: systemd timer ATAU
+   `infra/backup/cron/kapdh-backup` (backup-restore.md bagian 3 langkah 8). URL Push boleh disalin apa adanya dari
+   Kuma: query bawaan `?status=up&msg=OK&ping=` dibuang skrip (tanpa itu Kuma membaca `status` ganda dan mencatat
+   setiap heartbeat DOWN). Node ≥ 22 dibutuhkan
    `realtime-probe.mjs`; tanpa Node di host, jalankan probe di kontainer: `docker run --rm -e REALTIME_URL -e
    KUMA_PUSH_REALTIME <image-api> node - < /opt/kapdh/infra/monitoring/realtime-probe.mjs`.
 4. Uji setiap skrip sekali secara manual, pastikan monitor Push di Kuma berubah hijau, lalu uji jalur merah: hentikan
