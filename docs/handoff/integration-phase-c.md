@@ -94,6 +94,25 @@ summary` = total of `stage=awaiting_review&overdue=true`, moderation/badge = `/a
   FOR UPDATE first; recovery updates users, revokes sessions, then deletes TOTP; email re-issue revokes sessions
   before deleting the pending TOTP. Behaviour and audit are unchanged (admin e2e and PG lane pass).
 
+## 2. worker
+
+No textual conflicts. `main` had not touched `core/jobs/**`, `worker.ts` or `packages/config` since the worker branch's
+base, so the worker's shared changes (JobRunner claim/process/release split with atomic lease takeover,
+`runScheduled(name, {jobId?})`, the extra `@kapdh/api/worker` exports, the four optional WorkerEnv keys) merged as
+the branch had them. Checked by hand:
+
+- `core/db/locks.ts`: the new bigint key `ADVISORY_LOCK_KEYS.workerSchedulerLeader = 4711000520` does not collide with
+  `lastSuperAdmin` (…518) or `bootstrapSuperAdmin` (…519); it lives in the single-bigint key space, separate from the
+  two-int4 `ADVISORY_LOCK_NAMESPACES` (`otpDecoy` 47_110_003, `auditExport` 47_110_004).
+- The handoff check for the interrupted-fixer revert: `job-runner.ts` contains the `MENGAMBIL ALIH` takeover and
+  `runScheduled(name, options: { jobId?: string })`.
+- Scheduled jobs and outbox topics added by the Phase C API slices (api-admin `maintenance.cleanup` and the audit
+  export handler, the account deletion processor, notifications delivery, content announce, events and membership
+  expiry reminders) need no worker change: the worker schedules and routes whatever the `JobRegistry` holds.
+- Verified after the merge: `pnpm build`, `pnpm --filter @kapdh/worker test` (9 files, 54/54), API
+  `test/core/jobs.e2e.test.ts` + `test/core/worker-package.e2e.test.ts` (17/17). The whole suite and both PG lanes
+  run again in the final verification.
+
 ## Breakages already on main before this track (fixed in a separate commit)
 
 Found by the first full API run after merge 1; neither involves an api-admin file.

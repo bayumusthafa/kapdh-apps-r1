@@ -2,19 +2,35 @@
   "name": "@kapdh/worker",
   "version": "0.1.0",
   "private": true,
-  "description": "Worker outbox, BullMQ, pengingat, cleanup, ekspor dan penghapusan akun. Diisi pada irisan notifikasi.",
+  "description": "Runtime worker KAPDH: dispatcher outbox, antrean BullMQ/inline, penjadwal ber-leader, health, shutdown halus (PRD 5.1, 5.5, N-14).",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src",
-    "test": "echo \"belum ada uji\""
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "lint": "eslint src test",
+    "test": "vitest run",
+    "test:pg": "vitest run --config vitest.pg.config.ts"
   },
   "dependencies": {
-    "@kapdh/config": "workspace:*"
+    "@kapdh/api": "workspace:*",
+    "@kapdh/config": "workspace:*",
+    "bullmq": "5.81.5",
+    "drizzle-orm": "0.45.4",
+    "ioredis": "5.11.1",
+    "pino": "10.4.0",
+    "postgres": "3.4.9",
+    "uuid": "14.0.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@kapdh/database": "workspace:*",
+    "@types/node": "24.19.2",
+    "embedded-postgres": "17.6.0-beta.15",
     "typescript": "5.9.3",
-    "@types/node": "24.19.2"
+    "vitest": "5.0.3"
   }
 }
