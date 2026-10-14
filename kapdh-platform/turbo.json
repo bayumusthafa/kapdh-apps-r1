@@ -29,6 +29,14 @@
       "dependsOn": ["^build"],
       "cache": false
     },
+    "test:live": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "@kapdh/admin#test:live": {
+      "dependsOn": ["^build", "@kapdh/api#build"],
+      "cache": false
+    },
     "@kapdh/contracts#test": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/shared/src/**"]

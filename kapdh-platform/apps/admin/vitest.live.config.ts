@@ -2,8 +2,9 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
 /**
- * Jalur uji klien terhadap API nyata (temuan audit D2-14, PRD 7.3/9.3): `pnpm build` lalu
- * `pnpm --filter @kapdh/admin test:live`. Tidak termasuk `pnpm test` (butuh build API dan lebih lambat).
+ * Jalur uji klien terhadap API nyata (temuan audit D2-14, PRD 7.3/9.3): `pnpm test:live` dari root monorepo (turbo
+ * membangun apps/api lebih dulu), atau `pnpm build` lalu `pnpm --filter @kapdh/admin test:live`. Tidak termasuk
+ * `pnpm test` (butuh build API dan lebih lambat).
  *
  * - live/global-setup.mjs menjalankan API hasil merge (apps/api/dist) di port TCP lokal dengan PGlite + seed dev.
  * - Mode `live` (`--mode live` di skrip test:live; src/live/setup.ts menolak mode lain): klien API memakai fetch
