@@ -1,0 +1,335 @@
+# CI KAPDH Apps: gerbang rilis N-16 (lint, typecheck, uji unit/integrasi termasuk jalur PostgreSQL 17 nyata dan uji
+# akses objek, build image, tanpa kerentanan kritis) dan N-13 (perubahan kontrak tidak memutus klien yang didukung).
+# PRD 5.5, 7.1, 9.3; temuan audit D2-09 dan D2-12. Penjelasan setiap job, secrets dan cara menjalankan lokal:
+# docs/runbooks/ci-cd.md. Proteksi branch main cukup mewajibkan satu status: "CI lulus".
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+    working-directory: kapdh-platform
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+
+jobs:
+  workflows:
+    name: Workflow dan skrip ops
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Pasang shellcheck
+        uses: ./.github/actions/install-tool
+        with:
+          tool: shellcheck
+      - name: Pasang actionlint
+        uses: ./.github/actions/install-tool
+        with:
+          tool: actionlint
+      - name: actionlint (blok run diperiksa shellcheck)
+        working-directory: .
+        run: actionlint -color
+      - name: shellcheck skrip infra
+        run: |
+          set -euo pipefail
+          mapfile -t scripts < <(git ls-files -- 'infra/*.sh')
+          if [ "${#scripts[@]}" -eq 0 ]; then
+            echo "Tidak ada skrip shell di infra/."
+            exit 0
+          fi
+          shellcheck --severity=style "${scripts[@]}"
+          echo "shellcheck lulus: ${scripts[*]}"
+
+  verify:
+    name: Kontrak, build, typecheck, lint, format, drift
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Siapkan kapdh-platform
+        uses: ./.github/actions/setup-platform
+      - name: Pemeriksaan statis workflow dan uji skrip CI
+        run: |
+          node infra/ci/check-workflows.mjs
+          node infra/ci/images.mjs validate
+          node --test 'infra/ci/test/*.test.mjs'
+      - name: Lint kontrak OpenAPI dan skema event (PRD 5.2)
+        run: pnpm contracts:lint
+      - name: Build
+        run: pnpm build
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Lint
+        run: pnpm lint
+      - name: Format (Prettier)
+        run: pnpm format:check
+      - name: Drift berkas terbangkit (token desain, kontrak, skema Drizzle)
+        run: |
+          set -euo pipefail
+          pnpm tokens:gen
+          pnpm contracts:gen
+          pnpm --filter @kapdh/database exec drizzle-kit check
+          # Skema Drizzle yang berubah tanpa migrasi menghasilkan berkas migrations/ baru di bawah ini.
+          timeout 300 pnpm --filter @kapdh/database exec drizzle-kit generate
+          # Salinan token Flutter di aplikasi wajib identik dengan keluaran generator (PRD 7.2: token diselaraskan).
+          cmp packages/design-tokens/flutter/lib/kapdh_tokens.dart ../kapdh-mobile/lib/app/theme/kapdh_tokens.dart
+          changes=$(git status --porcelain --untracked-files=all -- . ../kapdh-mobile)
+          if [ -n "$changes" ]; then
+            echo "::error title=Drift berkas terbangkit::Generator mengubah berkas ter-commit atau membuat berkas baru; jalankan pnpm tokens:gen, pnpm contracts:gen atau db:generate lalu commit hasilnya."
+            printf '%s\n' "$changes"
+            git --no-pager diff --stat
+            exit 1
+          fi
+
+  test:
+    name: Uji unit dan integrasi (PGlite)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Siapkan kapdh-platform
+        uses: ./.github/actions/setup-platform
+      # Uji API/admin/web/worker/paket, termasuk uji kontrak expectOperation dan uji akses objek (N-16, PRD 9.2).
+      # Konkurensi 2 mengurangi timeout palsu pada uji berat (catatan integrasi fase C).
+      - name: pnpm test
+        run: pnpm exec turbo run test --concurrency=2
+
+  test-pg:
+    name: Uji PostgreSQL 17 nyata (api, worker)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Siapkan kapdh-platform
+        uses: ./.github/actions/setup-platform
+      # embedded-postgres 17 (ARCHITECTURE §9.2): race kursi terakhir, double approval, Super Admin terakhir, room
+      # langsung, idempotensi, outbox dan leader penjadwal worker (AC F01-4, F04-3, F04-4, F09-1, F11-1, F16-2).
+      - name: pnpm test:pg (@kapdh/api, @kapdh/worker)
+        run: pnpm exec turbo run test:pg --concurrency=1
+
+  contracts-compat:
+    name: Kontrak tidak memutus klien (N-13)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout (riwayat dan tag contracts-v*)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Siapkan kapdh-platform
+        uses: ./.github/actions/setup-platform
+      - name: Pasang oasdiff
+        uses: ./.github/actions/install-tool
+        with:
+          tool: oasdiff
+      - name: oasdiff breaking terhadap tag contracts-v* terakhir
+        run: >-
+          node packages/contracts/scripts/check-breaking.mjs
+          --report "$RUNNER_TEMP/kontrak-n13.md"
+          --head-out "$RUNNER_TEMP/openapi.yaml"
+      - name: Simpan laporan N-13 dan bundle kontrak
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kontrak-n13
+          path: |
+            ${{ runner.temp }}/kontrak-n13.md
+            ${{ runner.temp }}/openapi.yaml
+          if-no-files-found: ignore
+          retention-days: 14
+
+  dart-sdk:
+    name: SDK Dart kapdh_api (analyze dan test)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Siapkan kapdh-platform
+        uses: ./.github/actions/setup-platform
+      - name: Siapkan Flutter
+        uses: ./.github/actions/setup-flutter
+      - name: pnpm contracts:test-dart
+        run: pnpm contracts:test-dart
+
+  mobile:
+    name: Flutter analyze, format dan test (kapdh-mobile)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Siapkan kapdh-platform
+        uses: ./.github/actions/setup-platform
+      # kapdh-mobile memakai SDK kapdh_api lewat dependensi path; lib/src dibangkitkan, tidak di-commit (ADR-001).
+      - name: Bangkitkan SDK Dart
+        run: pnpm contracts:gen
+      - name: Siapkan Flutter
+        uses: ./.github/actions/setup-flutter
+      - name: flutter pub get (lockfile dikunci)
+        working-directory: kapdh-mobile
+        run: flutter pub get --enforce-lockfile
+      - name: dart format (kecuali salinan token terbangkit)
+        working-directory: kapdh-mobile
+        run: |
+          set -euo pipefail
+          git ls-files -z -- 'lib/*.dart' 'test/*.dart' \
+            | grep -zv '^lib/app/theme/kapdh_tokens.dart$' \
+            | xargs -0 dart format --output=none --set-exit-if-changed
+      - name: flutter analyze
+        working-directory: kapdh-mobile
+        run: flutter analyze
+      - name: flutter test
+        working-directory: kapdh-mobile
+        run: flutter test
+
+  audit:
+    name: Audit kerentanan dependensi (N-16)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Siapkan pnpm dan Node.js
+        uses: ./.github/actions/setup-platform
+        with:
+          install: "false"
+          cache: "false"
+      - name: pnpm audit produksi (laporan tinggi, tidak memblokir)
+        run: |
+          if ! pnpm audit --prod --audit-level high; then
+            echo "::warning title=pnpm audit::Ada kerentanan tingkat tinggi pada dependensi produksi; tangani dan catat pemiliknya sebelum go-live (N-16, PRD 9.3)."
+          fi
+      - name: pnpm audit produksi (gerbang kritis)
+        run: pnpm audit --prod --audit-level critical
+      - name: Pasang osv-scanner
+        uses: ./.github/actions/install-tool
+        with:
+          tool: osv-scanner
+      - name: OSV pubspec.lock kapdh-mobile (gerbang kritis)
+        working-directory: .
+        run: |
+          set -uo pipefail
+          set +e
+          osv-scanner scan source --format json -L kapdh-mobile/pubspec.lock > "$RUNNER_TEMP/osv.json"
+          code=$?
+          set -e
+          # 0 = tanpa temuan, 1 = ada temuan (dinilai osv-gate.mjs), lainnya = galat alat.
+          if [ "$code" -ne 0 ] && [ "$code" -ne 1 ]; then
+            echo "::error title=osv-scanner::keluar $code"
+            exit "$code"
+          fi
+          node kapdh-platform/infra/ci/osv-gate.mjs "$RUNNER_TEMP/osv.json"
+
+  docker-plan:
+    name: Rencana image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Siapkan Node.js
+        uses: ./.github/actions/setup-platform
+        with:
+          install: "false"
+          cache: "false"
+      - name: Matriks dari infra/ci/images.json
+        id: plan
+        run: |
+          set -euo pipefail
+          node infra/ci/images.mjs validate
+          echo "matrix=$(node infra/ci/images.mjs matrix --mode ci)" >> "$GITHUB_OUTPUT"
+
+  docker:
+    name: Image ${{ matrix.id }} (build tanpa push, uji asap)
+    needs: docker-plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.docker-plan.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Siapkan Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build ${{ matrix.image }} (${{ matrix.environment }})
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: kapdh-platform
+          file: kapdh-platform/${{ matrix.dockerfile }}
+          build-args: ${{ matrix.build_args }}
+          platforms: linux/amd64
+          push: false
+          load: true
+          provenance: false
+          sbom: false
+          tags: kapdh-ci/${{ matrix.image }}:${{ github.sha }}${{ matrix.tag_suffix }}
+          cache-from: type=gha,scope=${{ matrix.id }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.id }}
+      # api: migrate.js + jurnal migrasi ada (job migrasi deployment); web/admin: `nginx -t` atas konfigurasi nginx.
+      - name: Uji asap image
+        env:
+          IMAGE: kapdh-ci/${{ matrix.image }}:${{ github.sha }}${{ matrix.tag_suffix }}
+          SMOKE: ${{ matrix.smoke }}
+        run: docker run --rm --entrypoint sh "$IMAGE" -c "$SMOKE"
+
+  ci-ok:
+    name: CI lulus
+    if: always()
+    needs: [workflows, verify, test, test-pg, contracts-compat, dart-sdk, mobile, audit, docker]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Semua job wajib lulus
+        working-directory: .
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          failed=$(jq -r 'to_entries[] | select(.value.result != "success") | "\(.key)=\(.value.result)"' <<<"$RESULTS")
+          if [ -n "$failed" ]; then
+            echo "::error title=CI gagal::$(tr '\n' ' ' <<<"$failed")"
+            exit 1
+          fi
+          echo "Semua job CI lulus."

@@ -1,0 +1,30 @@
+# Image web admin KAPDH (apps/admin: React 19 + Vite 8, ARCHITECTURE §7; D12 admin.kapdh.or.id). Dibangun di CI, bukan
+# di VPS production (PRD 5.3, 10.2). Konteks build = kapdh-platform/:
+#   docker build -f infra/Dockerfile.admin --build-arg VITE_API_BASE_URL=https://api.kapdh.or.id/api/v1 -t kapdh-admin .
+# VITE_API_BASE_URL dibakar Vite saat build, sehingga staging dan production adalah dua varian image dari commit yang
+# sama (infra/ci/images.json; docs/adr/ADR-010-pipeline-ci-cd.md). Image tidak memuat secret apa pun: access token
+# admin hanya di memori dan refresh token di cookie HttpOnly milik API (PRD 5.2).
+# Base image dipin dengan digest (PRD 7.1); naikkan bersama NODE_VERSION di .github/workflows.
+
+# ------------------------------------------------------------------------------------------------ tahap build
+FROM node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS build
+WORKDIR /repo
+ENV CI=true
+RUN corepack enable
+COPY . .
+ARG VITE_API_BASE_URL=https://api.kapdh.or.id/api/v1
+# Hanya https://<host>/api/v1 (N-07); build tanpa URL API yang sah dihentikan, bukan diam-diam memakai origin admin.
+RUN case "$VITE_API_BASE_URL" in \
+      https://*/api/v1) ;; \
+      *) echo "VITE_API_BASE_URL wajib https://<host>/api/v1, diterima: $VITE_API_BASE_URL" >&2; exit 1 ;; \
+    esac
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+# Hanya admin dan dependensi workspace-nya (contracts, shared, design-tokens).
+RUN pnpm install --frozen-lockfile --filter "@kapdh/admin..." \
+  && pnpm --filter "@kapdh/admin..." build
+
+# ---------------------------------------------------------------------------------------------- tahap runtime
+FROM nginx:1.30.5-alpine3.24@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94
+COPY --from=build /repo/apps/admin/dist /usr/share/nginx/html
+COPY infra/nginx-admin.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80

@@ -9,7 +9,12 @@
 openapi: 3.1.0
 info:
   title: KAPDH Apps API
+  # Versi kontrak = package.json @kapdh/contracts = pubspec kapdh_api = tag rilis contracts-vX.Y.Z (N-13).
   version: 0.2.0
+  # Versi aplikasi anggota terendah yang didukung kontrak ini (N-13, PRD 4.5). Gerbang CI `pnpm contracts:breaking`
+  # hanya menerima perubahan yang memutus bila versi mayor di atas DAN nilai ini naik bersama; setelah aplikasi baru
+  # dapat diunduh, app_settings.min_app_version dinaikkan ke nilai ini (PRD 8.4, docs/runbooks/ci-cd.md).
+  x-kapdh-min-app-version: 1.0.0
   summary: Kontrak API KAPDH Apps (PRD v3.5).
   description: |
     Satu-satunya pintu akses untuk aplikasi Flutter, web admin, dan situs publik.

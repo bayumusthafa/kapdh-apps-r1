@@ -18,6 +18,7 @@
     "contracts:lint": "pnpm --filter @kapdh/contracts lint",
     "contracts:gen": "pnpm --filter @kapdh/contracts generate",
     "contracts:test-dart": "pnpm --filter @kapdh/contracts test:dart",
+    "contracts:breaking": "pnpm --filter @kapdh/contracts breaking",
     "contracts:release-sdk": "pnpm --filter @kapdh/contracts release:dart",
     "tokens:gen": "node packages/design-tokens/build.mjs",
     "format": "prettier --write .",

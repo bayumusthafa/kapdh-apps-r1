@@ -1,0 +1,32 @@
+# Pembaruan pin rantai pasok CI (PRD 7.1: versi patch, image digest dan lockfile dipin; upgrade mayor perlu ADR).
+# Hanya action GitHub (dipin SHA commit) dan base image Dockerfile (dipin digest). Dependensi npm/pub diperbarui
+# manual bersama uji kontrak dan regresi, bukan otomatis. Setiap PR Dependabot tetap wajib lulus "CI lulus".
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/setup-platform
+      - /.github/actions/setup-flutter
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Jakarta
+    # Versi baru baru dipertimbangkan setelah 14 hari (rilis yang ditarik kembali tidak ikut).
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore(ci)
+  - package-ecosystem: docker
+    directory: /kapdh-platform/infra
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Jakarta
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: chore(ops)
