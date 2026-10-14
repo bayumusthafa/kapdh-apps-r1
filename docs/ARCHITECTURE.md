@@ -28,10 +28,11 @@ KAPDHAPPS/                      single git repo, branch main (ADR-001)
     packages/shared             TS enums, error→UI catalog, status routes, password rules (pure, isomorphic)
     packages/contracts          OpenAPI 3.1 (root.yaml + domains/*.yaml), realtime event schemas, TS types, Dart SDK generator
     packages/database           Drizzle schema (schema "app"), SQL migrations, seeds
-    packages/storage            StorageDriver (local disk, S3-compatible)
+    packages/storage            StorageDriver (local disk, S3-compatible, fallback read during migration)
     packages/config             env validation (api / worker / shared)
     packages/design-tokens      tokens.json → Tailwind CSS theme + Dart tokens
-    infra/                      Dockerfiles, compose (dev + production fallback), nginx, CI, backup scripts
+    infra/                      Dockerfiles, compose (dev + production fallback), nginx, CI, backup/restore (backup/),
+                                monitoring checks (monitoring/), load generators (loadtest/)
   kapdh-mobile/                 Flutter 3.47 app (Android/iOS). Depends on the generated Dart SDK by path.
 ```
 
@@ -509,6 +510,17 @@ screen state, interceptor/session tests with http_mock_adapter, 200% text scale 
 Coolify on one VPS (4 vCPU/8 GB/100 GB), Traefik TLS, images built in CI, single migration job with advisory lock,
 daily encrypted backups (pg_dump + restic of `/data/files`) to off-VPS object storage with manifest and deletion
 ledger, monthly restore drill, Uptime Kuma + GlitchTip, staging and production fully separated.
+
+- Backup/restore: `infra/backup/` (backup.sh, restore.sh, verify-restore.sh; ADR-018), runbooks
+  `docs/runbooks/backup-restore.md` (procedure, monthly drill, RPO/RTO) and `restore-backup.md` (application order).
+- Deletion ledger: StorageDriver copy + head + readiness gate (ADR-014) AND a synchronous append-only off-VPS bucket
+  `DELETION_LEDGER_S3_*` written before any data is deleted (ADR-019, required for the production worker).
+- Monitoring: Uptime Kuma HTTP monitors + Push heartbeats from `infra/monitoring/*.sh` (disk, worker, outbox,
+  providers, deletions, backup age); GlitchTip via `SENTRY_DSN` from safe error logs only (ADR-021);
+  `docs/runbooks/monitoring.md`, `incident-response.md`.
+- Capacity: `infra/loadtest/` (N-01, N-02, N-04) with the staging-only dataset CLI `loadtest:seed` (ADR-020);
+  `docs/runbooks/load-test.md`.
+- Storage migration local -> S3 with `STORAGE_FALLBACK_LOCAL_ROOT` (ADR-022); `docs/runbooks/storage-migration.md`.
 
 ## 11. Agent protocol
 

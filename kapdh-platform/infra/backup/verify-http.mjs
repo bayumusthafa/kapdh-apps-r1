@@ -104,7 +104,8 @@ async function main() {
   await check("ready", async () => {
     const res = await call(base, "GET", "/health/ready");
     const checks = res.json?.checks ?? {};
-    const detail = `HTTP ${res.status} database=${checks.database} redis=${checks.redis} storage=${checks.storage}`;
+    // deletion_ledger: database pulihan sudah mengenal permintaan penghapusan terbaru di kepala ledger (AC F14-6).
+    const detail = `HTTP ${res.status} database=${checks.database} redis=${checks.redis} storage=${checks.storage} deletion_ledger=${checks.deletion_ledger}`;
     report(res.status === 200 && res.json?.status === "ok" ? "PASS" : "FAIL", "ready", detail);
   });
 
