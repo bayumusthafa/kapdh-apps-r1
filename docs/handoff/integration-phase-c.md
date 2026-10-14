@@ -176,6 +176,35 @@ heavier lazily loaded check-in page. Verified after the merge: admin typecheck, 
   is shadowed by one loaded earlier (checked by adding a temporary duplicate file: both assertions failed and named
   both files). Passes on the merged tree.
 
+## 8. admin-governance
+
+### Conflicts
+
+- `pnpm-lock.yaml` / `apps/admin/package.json` (`@fontsource/poppins`): public-web pinned 5.3.0 for the site,
+  admin-governance pinned 5.2.7 for the admin (both to stop loading Google Fonts). Chosen: one version, 5.3.0, for
+  both apps (same OFL-1.1 package, no dependencies or install scripts, ships the same `400/500/600/700.css` entry
+  points that `apps/admin/src/main.tsx` imports), so the monorepo bundles one Poppins build. Took the lockfile from
+  `HEAD` and re-ran `pnpm install`; the only lockfile change is the admin importer entry. `index-html.test.ts`
+  (governance) still passes: it checks the `@fontsource/poppins/<weight>.css` imports, not the version.
+
+### Semantic integration
+
+- `apps/admin/src/routes/dashboard/dashboard.test.tsx`: three tests encoded the payments mock as it was on the
+  governance branch's base (no paid payments; Siti's payment `…a1` at proof version 1). admin-payments' final mock
+  (merged earlier) has four paid fixtures (Rp210.000 gross: two Rp75.000 tickets, a Rp50.000 ticket approved after
+  its event was cancelled, a Rp10.000 renewal) and gives Siti a rejected proof v1 plus a replacement v2 (AC F03-3).
+  The dashboard mock already sums every paid payment of the payments mock plus its own history, which is the
+  contract rule ("jumlah bruto seluruh payment paid, sebelum penyesuaian/refund"), so the displayed Rp505.224 is
+  right. Kept each test's intent and adjusted only its setup/expectations: the totals are named constants with their
+  derivation (Rp505.224, and Rp565.224 after the test approves Siti's Rp60.000), and the approve step reads the
+  payment's current `proof_version`/`version` from `GET /admin/payments/{id}` instead of assuming 1.
+- Contract addition `GET /admin/reports/{reportId}/subject-candidates` (admin-moderation.yaml, owned by
+  api-moderation) and its CHANGELOG subsection merged cleanly (subsection kept after the api-admin one, before
+  `## 0.2.0`). `contracts:lint` valid (the 2 known warnings), contracts test 39/39, `contracts:test-dart` passes.
+- `mocks/dashboard.ts` reads the payments mock through its exported `routes` (no route of its own under
+  `/admin/payments*`); the new mock-router guard confirms no collisions across the 14 area mocks.
+- Verified after the merge: `pnpm build` 10/10, admin typecheck and lint, `@kapdh/admin` test 41 files 459/459.
+
 ## Breakages already on main before this track (fixed in a separate commit)
 
 Found by the first full API run after merge 1; neither involves an api-admin file.

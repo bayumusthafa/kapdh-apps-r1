@@ -28,13 +28,25 @@ export interface NavLinkItem {
   label: string;
 }
 
+export type NavBadge = "pending_payments" | "reports_open" | "failed_jobs";
+
+/** Teks pembaca layar di belakang angka lencana (status tidak hanya lewat warna/angka, N-11). */
+export const NAV_BADGE_LABEL: Record<NavBadge, string> = {
+  pending_payments: "pembayaran menunggu",
+  reports_open: "laporan aktif",
+  failed_jobs: "job gagal",
+};
+
 export interface NavSection {
   id: string;
   label: string;
   icon: LucideIcon;
   links: NavLinkItem[];
-  /** Penanda angka emas (prototipe screen_8: jumlah pembayaran menunggu). */
-  badge?: "pending_payments";
+  /**
+   * Penanda angka emas: pembayaran menunggu (prototipe screen_8), laporan moderasi aktif (open + in_review) dan job gagal yang dapat
+   * ditindak (GET /admin/dashboard/badges, F-15).
+   */
+  badge?: NavBadge;
 }
 
 export const NAV_SECTIONS: NavSection[] = [
@@ -80,6 +92,7 @@ export const NAV_SECTIONS: NavSection[] = [
     id: "moderation",
     label: "Moderasi",
     icon: Flag,
+    badge: "reports_open",
     links: [{ to: "/moderation", label: "Laporan Moderasi" }],
   },
   { id: "audit", label: "Audit", icon: ScrollText, links: [{ to: "/audit", label: "Audit" }] },
@@ -87,6 +100,7 @@ export const NAV_SECTIONS: NavSection[] = [
     id: "notifications",
     label: "Notifikasi",
     icon: Bell,
+    badge: "failed_jobs",
     links: [{ to: "/notifications", label: "Pengiriman" }],
   },
   {
