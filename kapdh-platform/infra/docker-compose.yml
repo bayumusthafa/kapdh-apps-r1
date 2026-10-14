@@ -1,8 +1,14 @@
-# Lingkungan pengembangan lokal (PRD 5.3). Production dan staging dideploy lewat Coolify dengan secrets terpisah.
+# Lingkungan pengembangan lokal (PRD 5.3: dev memakai Docker Compose lokal). Production dan staging dideploy lewat
+# Coolify dengan secrets terpisah; jalur cadangannya infra/compose.production.yml (+ compose.staging.yml).
+# Versi dan digest image sama dengan production (PostgreSQL 17, Redis 7; PRD 7.1) agar perilaku dev tidak menyimpang.
+# Port hanya terikat ke 127.0.0.1 (tidak pernah terbuka ke jaringan, N-07).
+#
+#   docker compose -f infra/docker-compose.yml up -d
+#   DATABASE_URL=postgres://kapdh:kapdh-dev-only@localhost:5432/kapdh pnpm --filter @kapdh/database migrate
 name: kapdh-dev
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17.11-alpine3.24@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
     environment:
       POSTGRES_DB: kapdh
       POSTGRES_USER: kapdh
@@ -14,13 +20,18 @@ services:
       interval: 5s
       retries: 10
   redis:
-    image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    image: redis:7.4.11-alpine3.21@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    # noeviction sama dengan production (BullMQ tidak boleh kehilangan kunci antrean).
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
     ports: ["127.0.0.1:6379:6379"]
     volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
   mailpit:
     # Menangkap email OTP di lokal: buka http://localhost:8025
-    image: axllent/mailpit:v1.27
+    image: axllent/mailpit:v1.27.11@sha256:e22dce5b36f93c77082e204a3942fb6b283b7896e057458400a4c88344c3df68
     ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
 volumes:
   pgdata: {}

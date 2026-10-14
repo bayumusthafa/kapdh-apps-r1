@@ -1,0 +1,106 @@
+# Traefik cadangan untuk Compose cadangan (PRD 5.1 "melalui Traefik dengan HTTPS/WSS", 5.5; N-07; D12). Hanya
+# dipakai bila proxy Coolify tidak berjalan (docs/runbooks/compose-cadangan.md); proxy Coolify dan proxy ini tidak
+# boleh berjalan bersamaan karena sama-sama memakai port 80/443.
+#
+#   docker network create kapdh-edge          # sekali; juga dipakai compose.production.yml / compose.staging.yml
+#   docker compose --env-file /etc/kapdh/proxy.env -f infra/compose.proxy.yml up -d
+#
+# Tanpa socket Docker (permukaan serangan kecil): konfigurasi dinamis disusun dari env oleh
+# infra/traefik/render-dynamic.sh saat start dan merutekan ke nama kontainer kapdh-<lingkungan>-<layanan>-1.
+# TLS 1.2+ dengan sertifikat Let's Encrypt (TLS-ALPN-01 di port 443); HTTP dialihkan permanen ke HTTPS; WebSocket
+# Socket.IO (/socket.io/, namespace /realtime) diteruskan otomatis. Log akses Traefik dimatikan karena memuat query
+# string (N-14); API dan nginx mencatat permintaan tanpa query.
+name: kapdh-edge
+
+services:
+  traefik:
+    # Traefik v3.7.13 (linux), digest manifest list dipin (PRD 7.1).
+    image: traefik:v3.7.13@sha256:24841fe2de7304c149343d877d2923b4c8800a38ba015dea9174c23b20e344a0
+    restart: unless-stopped
+    environment:
+      # Kontak Let's Encrypt (pemberitahuan kedaluwarsa sertifikat), mis. infra@kapdh.or.id.
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL wajib}
+      KAPDH_PRODUCTION_DOMAIN_WEB: ${KAPDH_PRODUCTION_DOMAIN_WEB:-kapdh.or.id}
+      KAPDH_PRODUCTION_DOMAIN_ADMIN: ${KAPDH_PRODUCTION_DOMAIN_ADMIN:-admin.kapdh.or.id}
+      KAPDH_PRODUCTION_DOMAIN_API: ${KAPDH_PRODUCTION_DOMAIN_API:-api.kapdh.or.id}
+      KAPDH_PRODUCTION_WWW_REDIRECT: ${KAPDH_PRODUCTION_WWW_REDIRECT:-true}
+      KAPDH_STAGING_DOMAIN_WEB: ${KAPDH_STAGING_DOMAIN_WEB:-}
+      KAPDH_STAGING_DOMAIN_ADMIN: ${KAPDH_STAGING_DOMAIN_ADMIN:-}
+      KAPDH_STAGING_DOMAIN_API: ${KAPDH_STAGING_DOMAIN_API:-}
+      KAPDH_HSTS: ${KAPDH_HSTS:-false}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        sh /kapdh/render-dynamic.sh > /etc/traefik/dynamic/kapdh.yml
+        && exec traefik
+        --global.checknewversion=false
+        --global.sendanonymoususage=false
+        --log.level=INFO
+        --log.format=json
+        --api.dashboard=false
+        --ping=true
+        --ping.entrypoint=ping
+        --entrypoints.ping.address=:8082
+        --entrypoints.web.address=:80
+        --entrypoints.web.http.redirections.entrypoint.to=websecure
+        --entrypoints.web.http.redirections.entrypoint.scheme=https
+        --entrypoints.web.http.redirections.entrypoint.permanent=true
+        --entrypoints.websecure.address=:443
+        --entrypoints.websecure.http.tls.certresolver=le
+        --certificatesresolvers.le.acme.email=$${ACME_EMAIL}
+        --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+        --certificatesresolvers.le.acme.tlschallenge=true
+        --providers.file.directory=/etc/traefik/dynamic
+        --providers.file.watch=false
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./traefik/render-dynamic.sh:/kapdh/render-dynamic.sh:ro
+      - letsencrypt:/letsencrypt
+    tmpfs:
+      - /etc/traefik/dynamic:size=1m
+      - /tmp:size=8m
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    networks:
+      - edge
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "traefik",
+          "healthcheck",
+          "--ping",
+          "--ping.entrypoint=ping",
+          "--entrypoints.ping.address=:8082",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+networks:
+  edge:
+    external: true
+    name: ${KAPDH_EDGE_NETWORK:-kapdh-edge}
+
+volumes:
+  # Sertifikat dan kunci ACME (acme.json, mode 600). Ikut dicadangkan agar pemulihan tidak terkena rate limit ACME.
+  letsencrypt:
+    name: kapdh-edge-letsencrypt
