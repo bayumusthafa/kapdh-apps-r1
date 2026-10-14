@@ -1,0 +1,34 @@
+# Menyiapkan Flutter stable terpin (ARCHITECTURE §1: Flutter 3.47.2 / Dart 3.13.2; kapdh-mobile/pubspec.lock dikunci
+# untuk versi ini). Satu-satunya tempat versi Flutter CI; menaikkan patch 3.47.x wajib diuji ulang lokal (analyze,
+# test, contracts:test-dart) dan menaikkan minor/mayor memerlukan ADR (PRD 7.1).
+name: Siapkan Flutter
+description: Flutter stable terpin dengan cache, analitik dimatikan, dan verifikasi versi terpasang.
+inputs:
+  flutter-version:
+    description: Versi Flutter stable.
+    default: "3.47.2"
+runs:
+  using: composite
+  steps:
+    - name: Flutter ${{ inputs.flutter-version }}
+      uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      with:
+        channel: stable
+        flutter-version: ${{ inputs.flutter-version }}
+        cache: true
+    - name: Verifikasi versi dan matikan analitik
+      shell: bash
+      env:
+        EXPECTED: ${{ inputs.flutter-version }}
+      run: |
+        set -euo pipefail
+        flutter config --no-analytics >/dev/null
+        dart --disable-analytics >/dev/null
+        version_text=$(flutter --version)
+        # Baris pertama: "Flutter 3.47.2 • channel stable • ...".
+        actual=$(awk 'NR == 1 { print $2 }' <<<"$version_text")
+        if [ "$actual" != "$EXPECTED" ]; then
+          echo "::error title=Versi Flutter::terpasang $actual, dipin $EXPECTED"
+          exit 1
+        fi
+        printf '%s\n' "$version_text"

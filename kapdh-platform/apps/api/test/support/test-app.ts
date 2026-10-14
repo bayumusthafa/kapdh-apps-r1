@@ -43,6 +43,7 @@ export const testEnv: ApiEnv = {
   FILE_URL_SECRET: "f".repeat(40),
   FCM_PROJECT_ID: undefined,
   FCM_SERVICE_ACCOUNT_JSON: undefined,
+  KAPDH_COMMIT: undefined,
   TRUST_PROXY_HOPS: 0,
   HSTS_ENABLED: false,
   JWT_ACCESS_SECRET: "t".repeat(40),

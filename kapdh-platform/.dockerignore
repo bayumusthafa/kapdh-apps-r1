@@ -1,7 +1,8 @@
-# Konteks build image KAPDH = kapdh-platform/ (PRD 5.3: image dibangun di CI). Hanya sumber yang dibutuhkan build
-# yang dikirim ke daemon; keluaran build, dependensi terpasang, secret lokal, dan data uji tidak pernah masuk layer.
+# Konteks build image KAPDH = kapdh-platform/ (infra/Dockerfile.*; PRD 5.3: image dibangun di CI). Image hanya
+# dibangun dari sumber ter-commit dan lockfile (PRD 7.1); keluaran build, dependensi terpasang, secret lokal, dan data
+# uji tidak pernah masuk layer. Selaras dengan .gitignore.
 
-# Dependensi dan keluaran build: selalu dibangun ulang di dalam image dari lockfile.
+# Dependensi dan keluaran build: selalu dibangun ulang di dalam image dari pnpm-lock.yaml.
 **/node_modules
 **/dist
 **/.turbo
@@ -11,9 +12,12 @@
 packages/contracts/src/generated
 packages/contracts/dart/kapdh_api/lib/src
 packages/contracts/dart/kapdh_api/.dart_tool
+packages/contracts/dart/kapdh_api/pubspec.lock
 **/.dart_tool
 
-# Secret dan konfigurasi lokal (PRD 5.3: secret tidak masuk source atau image layer). Berkas contoh tetap ikut.
+# Secret dan konfigurasi lokal (PRD 5.3: secret tidak masuk source atau image layer). Vite/Astro membaca .env* saat
+# build dan dapat membakar nilai VITE_*/PUBLIC_* lokal ke bundle; nilai build hanya dari --build-arg
+# (infra/ci/images.json). Berkas contoh tetap ikut.
 **/.env
 **/.env.*
 !**/.env.example

@@ -48,8 +48,11 @@ function configKeys() {
   return { base: section("baseShape"), api: section("apiShape"), worker: section("workerShape") };
 }
 const keys = configKeys();
-const apiKeys = new Set([...keys.base, ...keys.api]);
-const workerKeys = new Set([...keys.base, ...keys.worker]);
+// Dibakar ke image dari build arg CI (infra/Dockerfile.*, infra/ci/images.json), bukan dari env runtime: contoh env dan
+// compose TIDAK boleh mengisinya karena nilai runtime akan menutupi commit image yang dilaporkan GET /health.
+const IMAGE_BAKED = new Set(["KAPDH_COMMIT"]);
+const apiKeys = new Set([...keys.base, ...keys.api].filter((k) => !IMAGE_BAKED.has(k)));
+const workerKeys = new Set([...keys.base, ...keys.worker].filter((k) => !IMAGE_BAKED.has(k)));
 const API_ONLY_SECRETS = [
   "JWT_ACCESS_SECRET",
   "OTP_HMAC_SECRET",
@@ -86,6 +89,8 @@ for (const [path, nodeEnv] of [
     }
     if (!env.has(key)) fail(path, `variabel packages/config ${key} tidak tercantum`);
   }
+  for (const key of IMAGE_BAKED)
+    if (env.has(key)) fail(path, `${key} dibakar ke image oleh CI; jangan diisi di env runtime`);
   if (env.get("NODE_ENV") !== nodeEnv) fail(path, `NODE_ENV harus ${nodeEnv}`);
   for (const [key, value] of env)
     if (/^(?!ganti-dengan)[A-Za-z0-9+/_-]{40,}$/.test(value) && !key.endsWith("_URL"))
@@ -232,7 +237,7 @@ if (dev) {
     for (const port of svc.ports ?? [])
       if (!String(port).startsWith("127.0.0.1:")) fail(path, `${name}: port dev harus terikat 127.0.0.1`);
 }
-for (const path of ["infra/ci/github-actions-ci.yml", "infra/ci/github-actions-images.yml"]) parseYaml(path);
+for (const path of ["infra/ci/github-actions-images.yml"]) parseYaml(path);
 
 // ------------------------------------------------------------------------------------- Traefik dinamis
 try {

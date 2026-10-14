@@ -24,9 +24,21 @@ describe("API dasar (PRD 5.2, 5.5, N-14)", () => {
   it("GET /health: liveness dengan waktu dari Clock dan x-request-id", async () => {
     const res = await api.get("/health");
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ status: "ok", time: t.clock.now().toISOString() });
+    expect(res.json()).toEqual({ status: "ok", time: t.clock.now().toISOString(), commit: null });
     expect(String(res.headers["x-request-id"])).toMatch(UUID);
     expectOperation("get", "/health", res);
+  });
+
+  it("GET /health melaporkan commit sumber image (KAPDH_COMMIT) untuk uji asap deploy (PRD 5.5)", async () => {
+    const commit = "0123456789abcdef0123456789abcdef01234567";
+    const built = await createTestApp({ env: { KAPDH_COMMIT: commit } });
+    try {
+      const res = await httpClient(built.app).get("/health");
+      expect(res.statusCode).toBe(200);
+      expect(expectOperation("get", "/health", res)).toMatchObject({ status: "ok", commit });
+    } finally {
+      await built.app.close();
+    }
   });
 
   it("GET /health/ready: ping database dan storage, Redis dilewati, umur outbox pending tertua (PRD 5.5)", async () => {
