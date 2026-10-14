@@ -142,7 +142,9 @@ paths:
         Event selalu dibuat `draft` dan baru terlihat anggota setelah diterbitkan (POST .../status `open`).
         Validasi server: judul 1..200 karakter setelah trim; `ends_at > starts_at`;
         `registration_opens_at < registration_closes_at <= ends_at`; `checkin_opens_at`/`checkin_closes_at` keduanya
-        kosong (bawaan D5: 2 jam sebelum mulai sampai selesai) atau keduanya terisi dengan closes > opens;
+        kosong (bawaan D5: 2 jam sebelum mulai sampai selesai) atau keduanya terisi dengan closes > opens dan
+        `checkin_closes_at <= ends_at` (jendela lain boleh dibuka lebih awal atau ditutup lebih cepat, tetapi tidak
+        melewati akhir acara karena event menjadi `done` saat acara selesai; `field_errors.checkin_closes_at`);
         `location_url` https; `timezone` IANA valid (bawaan Asia/Jakarta); `category_id` kategori event aktif;
         `cover_file_id` berkas purpose `event_cover` berstatus ready hasil POST /admin/event-covers yang diunggah
         pemanggil dan belum dihapus (berkas publik; saat event disimpan `attached_at` diisi agar tidak dibersihkan
@@ -323,9 +325,11 @@ paths:
         - hold kedaluwarsa yang belum dilepas menjadi expired lebih dahulu (sama dengan createEventReservation
           langkah 1), sehingga status yang sudah tampil kepada anggota lewat proyeksi baca tidak berubah.
         - tiket awaiting_payment lainnya -> cancelled (`cancelled_by=admin`), payment pending tanpa bukti dibatalkan.
-        - tiket paid -> cancelled, QR tidak berlaku; payment tetap paid dan untuk total > 0 dibuat
-          payment_adjustment refund pending sebesar total dengan tenggat 7 hari kerja (D6). Tiket gratis tanpa refund.
-        - tiket awaiting_review -> cancelled; payment-nya tetap pending di antrean verifikasi karena dana mungkin
+        - tiket paid -> cancelled (`cancelled_by=system`), QR tidak berlaku; payment tetap paid dan untuk total > 0
+          dibuat payment_adjustment refund pending sebesar total dengan tenggat 7 hari kerja (D6). Tiket gratis tanpa
+          refund.
+        - tiket awaiting_review -> cancelled (`cancelled_by=system`, akibat pembatalan event, bukan keputusan per tiket,
+          sehingga persetujuan dana sesudahnya memicu refund penuh D6); payment-nya tetap pending di antrean verifikasi karena dana mungkin
           sudah ditransfer. Bila pengurus kemudian menyetujui (dana terverifikasi), payment menjadi paid dan refund
           penuh otomatis dibuat, tiket tetap cancelled dan penghitung kursi tidak berubah; bila ditolak, tidak ada
           refund dan kursi tidak dilepas kedua kalinya (aturan payment tiket pada deskripsi tag Events dan
@@ -814,7 +818,10 @@ components:
           type: [string, "null"]
           format: date-time
           description: Override jendela check-in; isi bersama checkin_closes_at atau kosongkan keduanya (D5).
-        checkin_closes_at: { type: [string, "null"], format: date-time }
+        checkin_closes_at:
+          type: [string, "null"]
+          format: date-time
+          description: Wajib > checkin_opens_at dan <= ends_at (D5).
         price: { $ref: "#/components/schemas/Money" }
         seats_total: { type: integer, minimum: 1, maximum: 100000 }
 

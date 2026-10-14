@@ -41,10 +41,14 @@ tags:
         sesudah kunci didapat.
       - Penerapan: createEventReservation dan job expiry hold mengunci event, tiket hold kedaluwarsa (urut id), lalu
         payment-nya. cancelMyTicket dan adminCancelTicket mengunci event, tiket, lalu payment tiket.
-        adminCancelEvent mengunci event, semua tiket aktif event (urut id), lalu payment tiket tersebut (urut id).
+        adminCancelEvent mengunci event, semua tiket aktif event termasuk hold kedaluwarsa (satu langkah, urut id),
+        lalu payment tiket tersebut (urut id).
         adminUpdateEvent dan adminSetEventStatus mengunci event (adminUpdateEvent yang menurunkan kuota juga
         melepas hold kedaluwarsa: event, tiket, payment). adminCheckInTicket hanya memakai UPDATE bersyarat pada
-        satu tiket. Penghapusan akun (F-14, "tiket hangus") mengunci per event: event, tiket, payment.
+        satu tiket. Penghapusan akun (F-14, "tiket hangus") mengunci per event: event, tiket, payment. Job
+        pengingat H-3/H-1 mengunci event `FOR SHARE` (tanpa mengunci tiket) lalu membaca ulang status, jadwal dan
+        pemegang paid, sehingga pengingat tidak pernah ditulis untuk jadwal usang atau event/tiket yang baru
+        dibatalkan (AC F13-6).
       - Modul pembayaran untuk payment `type=ticket` (kirim bukti, approve, reject, batal): handler tiket mengunci
         event lalu tiket SEBELUM modul pembayaran menjalankan `SELECT payments ... FOR UPDATE` (kirim bukti cukup
         mengunci tiket karena penghitung kursi tidak berubah). Ini memerlukan hook PaymentTypeHandler yang dipanggil
@@ -56,7 +60,8 @@ tags:
       - Bukti dikirim lewat PUT /me/payments/{paymentId}/proof memakai `payment.id` dari tiket. Bukti sebelum
         `hold_expires_at` memindahkan tiket ke awaiting_review dan kursi tetap ditahan sampai keputusan.
       - Tiket expired atau hold sudah lewat (termasuk payment yang sudah dibatalkan sistem karena hold habis):
-        410 RESERVATION_EXPIRED. Tiket cancelled atau payment tiket rejected: 409 PAYMENT_STATE_CONFLICT dengan
+        409 RESERVATION_EXPIRED dengan `current` = PaymentDetail (status HTTP sama dengan submitPaymentProof dan
+        createEventReservation). Tiket cancelled atau payment tiket rejected: 409 PAYMENT_STATE_CONFLICT dengan
         `current` = PaymentDetail (AC F09-2, F09-4).
       - Keputusan pengurus: approve membuat tiket paid, held menjadi paid dan QR diterbitkan (AC F04-1); reject
         bersifat final, tiket cancelled dan hold dilepas (AC F09-4).
@@ -252,7 +257,7 @@ paths:
         `payment.id`. Klien lalu mengunggah bukti (POST /files purpose payment_proof, kemudian
         PUT /me/payments/{paymentId}/proof) sebelum `hold_expires_at`; bukti tepat waktu memindahkan tiket ke
         awaiting_review dan kursi tetap ditahan sampai keputusan. Bukti sesudah hold lewat ditolak submitPaymentProof
-        dengan 410 RESERVATION_EXPIRED (AC F09-2; aturan lengkap payment tiket di tag Events). Keputusan pengurus di
+        dengan 409 RESERVATION_EXPIRED (AC F09-2; aturan lengkap payment tiket di tag Events). Keputusan pengurus di
         antrean pembayaran: approve -> tiket paid, held menjadi paid, QR diterbitkan (AC F04-1); reject -> payment
         rejected final, tiket cancelled dan hold dilepas (AC F09-4).
         Hasil event gratis: tiket langsung `paid` dengan total 0.00, QR diterbitkan, paid_quantity +1, tanpa
@@ -442,7 +447,10 @@ components:
     TicketCancelledBy:
       type: string
       enum: [self, admin, system]
-      description: Pihak yang membatalkan tiket; system untuk penolakan otomatis/penghapusan akun.
+      description: |
+        Pihak yang membatalkan tiket: self (peserta), admin (pengurus membatalkan tiket atau instruksi pembayarannya,
+        termasuk hold awaiting_payment saat event dibatalkan), system (penolakan pembayaran tiket, tiket paid dan
+        awaiting_review yang dibatalkan akibat pembatalan event, penghapusan akun).
 
     EventRegistrationState:
       type: string
@@ -719,7 +727,7 @@ components:
       description: |
         Penunjuk payment tiket (`type=ticket`). Unggah/ganti bukti lewat PUT /me/payments/{id}/proof
         (submitPaymentProof) sebelum `hold_expires_at`. Penolakan mengikuti submitPaymentProof: hold sudah lewat
-        atau tiket expired -> 410 RESERVATION_EXPIRED (AC F09-2); tiket cancelled atau payment rejected -> 409
+        atau tiket expired -> 409 RESERVATION_EXPIRED (AC F09-2); tiket cancelled atau payment rejected -> 409
         PAYMENT_STATE_CONFLICT (AC F09-4). Detail dan histori lewat GET /me/payments/{id}.
       required:
         - id
