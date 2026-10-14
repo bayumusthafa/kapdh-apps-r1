@@ -7,6 +7,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
+import { createHash } from "node:crypto";
 import { Readable } from "node:stream";
 import {
   assertSafeObjectKey,
@@ -31,6 +32,12 @@ export interface S3DriverConfig {
   forcePathStyle?: boolean;
   accessKeyId: string;
   secretAccessKey: string;
+  /**
+   * Kirim header Content-MD5 pada setiap PutObject. Wajib untuk bucket dengan Object Lock/retensi bawaan (AWS S3
+   * menolak PutObject tanpa checksum di bucket seperti itu), yaitu bucket deletion ledger luar VPS (AC F14-6, D5-07).
+   * Hanya body buffer; body stream (multipart) ditolak dalam mode ini.
+   */
+  contentMd5?: boolean;
 }
 
 /** Ukuran bagian unggahan multipart untuk body stream (minimum S3 5 MiB). */
@@ -56,11 +63,13 @@ export class S3Driver implements StorageDriver {
   readonly name = "s3" as const;
   private readonly bucket: string;
   private readonly client: S3Client;
+  private readonly contentMd5: boolean;
 
   constructor(config: S3DriverConfig, client?: S3Client) {
     if (!config.bucket || !config.region || !config.accessKeyId || !config.secretAccessKey)
       throw new StorageConfigError("Konfigurasi S3 tidak lengkap (S3_BUCKET, S3_REGION, kredensial)");
     this.bucket = config.bucket;
+    this.contentMd5 = config.contentMd5 ?? false;
     this.client =
       client ??
       new S3Client({
@@ -85,10 +94,13 @@ export class S3Driver implements StorageDriver {
           Body: data,
           ContentType: meta.contentType,
           ContentLength: data.byteLength,
+          ...(this.contentMd5 ? { ContentMD5: createHash("md5").update(data).digest("base64") } : {}),
         }),
       );
       return { key, bytes: data.byteLength, contentType: meta.contentType, sha256: sha256Hex(data) };
     }
+    if (this.contentMd5)
+      throw new StorageConfigError("Body stream tidak didukung pada driver dengan Content-MD5 wajib");
     // Stream (ekspor besar): unggahan multipart bertahap; objek baru terlihat setelah selesai.
     const hasher = new HashingStream();
     body.on("error", (error) => hasher.destroy(error));

@@ -53,6 +53,7 @@ import {
 } from "./deletion-policy.js";
 import { redactAuditSnapshot, scrubEvidence } from "./deletion-redaction.js";
 import { type DeletionRow, DeletionRequestService, mapLastSuperAdmin } from "./deletion-request.service.js";
+import { OffsiteDeletionLedger } from "./offsite-deletion-ledger.js";
 
 /**
  * Langkah job `account.deletion` (F-14, AC F14-2..F14-6) berurutan. Setiap langkah idempoten: dapat diulang setelah
@@ -61,7 +62,10 @@ import { type DeletionRow, DeletionRequestService, mapLastSuperAdmin } from "./d
  * `account_deletions.steps_done` pada transaksi terakhir langkah itu.
  */
 export const DELETION_STEPS = [
-  /** Entri ledger eksternal `requested` (AC F14-6): permintaan bertahan walau backup lebih tua dari permintaan. */
+  /**
+   * Entri ledger eksternal `requested` (AC F14-6): permintaan bertahan walau backup lebih tua dari permintaan. Ditulis
+   * ke store luar VPS (wajib berhasil, D5-07) lalu ke StorageDriver.
+   */
   "ledger_open",
   /** Email konfirmasi berisi nomor permintaan (kontrak requestAccountDeletion). */
   "notify_requested",
@@ -94,7 +98,7 @@ export const DELETION_STEPS = [
    * dianonimkan: status deleted, email pengganti, sandi tidak sah (AC F14-2, F14-3).
    */
   "credentials",
-  /** Entri ledger eksternal `completed` beserta object key berkas yang dihapus (AC F14-6). */
+  /** Entri ledger eksternal `completed` beserta object key berkas yang dihapus (AC F14-6), luar VPS + StorageDriver. */
   "ledger_final",
 ] as const;
 export type DeletionStep = (typeof DELETION_STEPS)[number];
@@ -214,6 +218,7 @@ export class DeletionSteps {
     private readonly realtime: RealtimeService,
     private readonly fileService: FilesService,
     private readonly requests: DeletionRequestService,
+    private readonly offsite: OffsiteDeletionLedger,
   ) {}
 
   private now() {
@@ -334,26 +339,39 @@ export class DeletionSteps {
   }
 
   /**
-   * Entri ledger eksternal ditulis hanya oleh pemegang klaim (fencing tepat sebelum menulis) dan secara monoton
-   * ({@link writeLedgerEntryMonotonic}): entri `completed` tidak pernah diturunkan dan object key tidak pernah hilang.
-   * Kepala ledger dimajukan setiap kali (readiness API setelah restore, AC F14-6).
+   * Entri ledger eksternal ditulis hanya oleh pemegang klaim (fencing tepat sebelum menulis). Urutan: lebih dahulu
+   * DITAMBAHKAN ke store luar VPS (append-only, {@link OffsiteDeletionLedger}; galat menggagalkan langkah sehingga
+   * langkah berikutnya, yang menghapus data, tidak berjalan tanpa jejak di luar VPS; audit D5-07), lalu salinan di
+   * StorageDriver ditulis secara monoton ({@link writeLedgerEntryMonotonic}): entri `completed` tidak pernah
+   * diturunkan, object key tidak pernah hilang, dan kepala ledger dimajukan (readiness API setelah restore, AC F14-6).
+   * Pengulangan langkah hanya menambah versi entri yang sama di store luar VPS; pembaca menggabungkannya.
    */
   async ledgerOpen(ctx: StepContext): Promise<void> {
-    const storage = this.requireStorage();
+    this.requireStorage();
     await this.refreshMemberSeqFloor(ctx);
-    await this.fence(this.db, ctx);
-    await writeLedgerEntryMonotonic(storage, this.ledgerEntry(ctx, "requested", null));
+    await this.writeLedger(ctx, "requested", null);
     await this.finish(ctx, "ledger_open");
   }
 
   async ledgerFinal(ctx: StepContext): Promise<void> {
-    const storage = this.requireStorage();
+    this.requireStorage();
     await this.refreshMemberSeqFloor(ctx);
     // Ekspor audit yang selesai dibuat bersamaan dengan anonimisasi audit (lihat purgeAuditExports).
     await this.purgeAuditExports(ctx);
-    await this.fence(this.db, ctx);
-    await writeLedgerEntryMonotonic(storage, this.ledgerEntry(ctx, "completed", this.now()));
+    await this.writeLedger(ctx, "completed", this.now());
     await this.finish(ctx, "ledger_final");
+  }
+
+  private async writeLedger(
+    ctx: StepContext,
+    state: LedgerEntry["state"],
+    completedAt: Date | null,
+  ): Promise<void> {
+    const storage = this.requireStorage();
+    await this.fence(this.db, ctx);
+    const entry = this.ledgerEntry(ctx, state, completedAt);
+    await this.offsite.append(entry);
+    await writeLedgerEntryMonotonic(storage, entry);
   }
 
   private async accountEmail(userId: string): Promise<string | null> {

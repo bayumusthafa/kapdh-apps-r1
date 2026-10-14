@@ -79,7 +79,11 @@ async function createDatabase(
  * Koneksi nyata sebagai role LOGIN aplikasi (kapdh_app = API, kapdh_worker = worker) ke database uji, bukan superuser,
  * sehingga grant dan keanggotaan role (infra/db/roles.sql) teruji persis seperti production. Pemanggil wajib end().
  */
-export function connectAs(database: PgTestDatabase, role: "kapdh_app" | "kapdh_worker", poolSize = 2) {
+export function connectAs(
+  database: PgTestDatabase,
+  role: "kapdh_app" | "kapdh_worker" | "kapdh_backup" | "kapdh_monitor",
+  poolSize = 2,
+) {
   const config = laneConfig();
   const url = `postgres://${role}:${config.rolePassword}@${config.host}:${config.port}/${database.name}`;
   return createDb(url, { max: poolSize, applicationName: `kapdh-pg-test-${role}` });

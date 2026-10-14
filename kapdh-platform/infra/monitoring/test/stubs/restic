@@ -1,0 +1,32 @@
+#!/bin/sh
+# Tiruan restic untuk uji kering check-backup.sh: `snapshots --tag <tag>` mengembalikan satu snapshot berwaktu
+# $FAKE_SNAPSHOT_TIME (atau larik kosong untuk tag di $FAKE_NO_SNAPSHOT_TAG); `check` keluar $FAKE_RESTIC_CHECK_EXIT.
+set -eu
+cmd=$1
+shift
+printf '%s %s\n' "$cmd" "$*" >>"$FAKE_STATE_DIR/restic.log"
+case $cmd in
+  snapshots)
+    if [ "${FAKE_RESTIC_FAIL:-0}" = 1 ]; then
+      echo "Fatal: unable to open repository" >&2
+      exit 1
+    fi
+    tag=''
+    while [ $# -gt 0 ]; do
+      [ "$1" = --tag ] && tag=$2
+      shift
+    done
+    if [ "$tag" = "${FAKE_NO_SNAPSHOT_TAG:-}" ]; then
+      echo '[]'
+    else
+      id=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      printf '[{"time":"%s","paths":["/data/files"],"hostname":"kapdh-production","tags":["kapdh","%s"],"id":"%s"}]\n' \
+        "$FAKE_SNAPSHOT_TIME" "$tag" "$id"
+    fi
+    ;;
+  check) exit "${FAKE_RESTIC_CHECK_EXIT:-0}" ;;
+  *)
+    echo "perintah tiruan tidak dikenal: $cmd" >&2
+    exit 2
+    ;;
+esac
