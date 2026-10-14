@@ -7,6 +7,9 @@
 #   KAPDH_WEB=staging.kapdh.or.id KAPDH_ADMIN=staging-admin.kapdh.or.id KAPDH_API=staging-api.kapdh.or.id \
 #     KAPDH_VPS_HOST=<ip publik VPS> sh infra/scripts/staging-smoke.sh
 #
+# KAPDH_EXPECT_HSTS=true mewajibkan header HSTS 1 tahun + includeSubDomains di ketiga domain (setelah HSTS diaktifkan,
+# runbook rilis bagian 7); bawaan false hanya mencetak keadaannya.
+#
 # Nilai TLS (grade) diperiksa terpisah lewat SSL Labs (https://www.ssllabs.com/ssltest/) untuk ketiga domain.
 set -eu
 
@@ -69,6 +72,24 @@ for host in "$web" "$admin"; do
   case "$csp" in *"frame-ancestors 'none'"*) pass "$host CSP frame-ancestors 'none'" ;; *) bad "$host CSP: '$csp'" ;; esac
   [ "$(header X-Frame-Options)" = "DENY" ] && pass "$host X-Frame-Options DENY" || bad "$host X-Frame-Options"
   [ "$(header Referrer-Policy)" = "no-referrer" ] && pass "$host Referrer-Policy" || bad "$host Referrer-Policy"
+done
+
+# HSTS (N-07): hanya diwajibkan setelah diaktifkan untuk SELURUH subdomain (runbook rilis bagian 7). Web dan admin
+# memperoleh header dari middleware proxy (Coolify/Traefik), API dari helmet (HSTS_ENABLED=true).
+expect_hsts="${KAPDH_EXPECT_HSTS:-false}"
+for host in "$web" "$admin" "$api"; do
+  path="/"
+  [ "$host" = "$api" ] && path="/api/v1/health"
+  status "https://$host$path" >/dev/null
+  hsts="$(header Strict-Transport-Security)"
+  if [ "$expect_hsts" = "true" ]; then
+    case "$hsts" in
+      *max-age=31536000*includeSubDomains* | *max-age=31536000*includesubdomains*) pass "$host HSTS: $hsts" ;;
+      *) bad "$host HSTS '$hsts' (harus max-age=31536000; includeSubDomains)" ;;
+    esac
+  else
+    echo "info   $host HSTS belum diwajibkan (KAPDH_EXPECT_HSTS=false): '${hsts:-tidak ada}'"
+  fi
 done
 
 code="$(status "https://$api/api/v1/health/ready")"

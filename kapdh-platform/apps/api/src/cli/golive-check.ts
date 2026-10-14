@@ -2,11 +2,12 @@
  * CLI gerbang go-live production (PRD 9.2 "production dideploy dengan konfigurasi yang belum disahkan (nominal kosong,
  * fixture dev, atau tanpa Super Admin ber-TOTP); gerbang menolak go-live", PRD 9.3, U-12). Hanya membaca database.
  *
- *   DATABASE_URL=postgres://kapdh_migrator:...@db:5432/kapdh node dist/cli/golive-check.js [--json]
+ *   DATABASE_URL=postgres://kapdh_migrator:...@db:5432/kapdh node dist/cli/golive-check.js [--json] [--preflight]
  *   pnpm --filter @kapdh/api golive:check
  *
- * Dijalankan job rilis (infra/scripts/release-job.sh) setelah migrasi dan seed referensi; kode keluar bukan nol
- * menggagalkan job sehingga image tidak dipromosikan. Rincian: docs/runbooks/rilis-dan-gerbang-go-live.md.
+ * Dijalankan job rilis (infra/scripts/release-job.sh) dua kali: `--preflight` sebelum migrasi (mode enforce) dan
+ * penuh setelah migrasi dan seed referensi; kode keluar 1 pada mode enforce menggagalkan job sehingga image tidak
+ * dipromosikan. Rincian dan rollback (`--allow-schema-ahead`): docs/runbooks/rilis-dan-gerbang-go-live.md.
  */
 import { createDb } from "@kapdh/database";
 import type { Db } from "../core/db/types.js";

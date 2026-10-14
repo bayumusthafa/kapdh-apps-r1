@@ -2,11 +2,13 @@
 # dipakai bila proxy Coolify tidak berjalan (docs/runbooks/compose-cadangan.md); proxy Coolify dan proxy ini tidak
 # boleh berjalan bersamaan karena sama-sama memakai port 80/443.
 #
-#   docker network create kapdh-edge          # sekali; juga dipakai compose.production.yml / compose.staging.yml
+#   docker network create kapdh-edge          # sekali; jaringan edge production (compose.production.yml)
+#   docker network create kapdh-edge-staging  # sekali; jaringan edge staging (compose.staging.yml), walau staging mati
 #   docker compose --env-file /etc/kapdh/proxy.env -f infra/compose.proxy.yml up -d
 #
 # Tanpa socket Docker (permukaan serangan kecil): konfigurasi dinamis disusun dari env oleh
-# infra/traefik/render-dynamic.sh saat start dan merutekan ke nama kontainer kapdh-<lingkungan>-<layanan>-1.
+# infra/traefik/render-dynamic.sh saat start dan merutekan ke nama kontainer kapdh-<lingkungan>-<layanan>-1. Hanya
+# Traefik yang tersambung ke jaringan edge production DAN staging; kedua stack tidak saling menjangkau (D12, PRD 5.3).
 # TLS 1.2+ dengan sertifikat Let's Encrypt (TLS-ALPN-01 di port 443); HTTP dialihkan permanen ke HTTPS; WebSocket
 # Socket.IO (/socket.io/, namespace /realtime) diteruskan otomatis. Log akses Traefik dimatikan karena memuat query
 # string (N-14); API dan nginx mencatat permintaan tanpa query.
@@ -71,6 +73,7 @@ services:
       - NET_BIND_SERVICE
     networks:
       - edge
+      - edge-staging
     healthcheck:
       test:
         [
@@ -98,7 +101,10 @@ services:
 networks:
   edge:
     external: true
-    name: ${KAPDH_EDGE_NETWORK:-kapdh-edge}
+    name: kapdh-edge
+  edge-staging:
+    external: true
+    name: kapdh-edge-staging
 
 volumes:
   # Sertifikat dan kunci ACME (acme.json, mode 600). Ikut dicadangkan agar pemulihan tidak terkena rate limit ACME.

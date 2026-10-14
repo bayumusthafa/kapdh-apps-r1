@@ -187,6 +187,11 @@ if (prod) {
   if (s.api.environment.NODE_ENV !== "production") fail(path, "NODE_ENV api harus dipatok production");
   if (parseInt(String(s.worker.stop_grace_period), 10) < 35)
     fail(path, "worker stop_grace_period >= timeout + 10 s");
+  // D12: jaringan edge dipatok per lingkungan (tanpa interpolasi env) agar staging tidak menjangkau API production.
+  if (prod.networks?.edge?.name !== "kapdh-edge" || prod.networks?.edge?.external !== true)
+    fail(path, "jaringan edge production harus external dengan nama tetap kapdh-edge");
+  for (const key of ["RELEASE_GATE", "RELEASE_GATE_REASON", "RELEASE_GATE_APPROVER"])
+    if (!(key in (s.release.environment ?? {}))) fail(path, `release tidak meneruskan ${key}`);
   if (problems.length === 0) ok.push(`${path}: struktur, isolasi jaringan, batas sumber daya dan env lulus`);
 }
 if (staging) {
@@ -200,6 +205,8 @@ if (staging) {
       fail(path, `${name}: NODE_ENV staging wajib`);
   if (staging.services.release?.environment?.KAPDH_ENV !== "staging")
     fail(path, "release KAPDH_ENV staging wajib");
+  if (staging.networks?.edge?.name !== "kapdh-edge-staging" || staging.networks?.edge?.external !== true)
+    fail(path, "jaringan edge staging harus dipatok kapdh-edge-staging (terpisah dari production, D12)");
 }
 if (proxy) {
   const path = "infra/compose.proxy.yml";
@@ -211,6 +218,12 @@ if (proxy) {
   const cmd = t.entrypoint.join(" ");
   for (const flag of ["--api.dashboard=false", "redirections.entrypoint.scheme=https", "tlschallenge=true"])
     if (!cmd.includes(flag)) fail(path, `Traefik tanpa ${flag}`);
+  const joined = (t.networks ?? []).map((n) => proxy.networks?.[n]?.name).sort();
+  if (JSON.stringify(joined) !== JSON.stringify(["kapdh-edge", "kapdh-edge-staging"]))
+    fail(
+      path,
+      `Traefik harus tersambung ke kapdh-edge dan kapdh-edge-staging (ditemukan ${joined.join(", ")})`,
+    );
 }
 if (dev) {
   const path = "infra/docker-compose.yml";

@@ -64,10 +64,21 @@ case "$kind" in
   web)
     fetch GET / >/dev/null
     expect "web Cache-Control beranda" "$(header Cache-Control)" "no-cache"
+    asset="$(grep -o '/_astro/[A-Za-z0-9_.-]*\.css' "$work/b" | head -n 1 || true)"
     expect "KTA shell /kta/<nomor>" "$(fetch GET /kta/25.01.01.1)" "200"
     expect "KTA no-store" "$(header Cache-Control)" "no-store"
     expect "KTA noindex" "$(header X-Robots-Tag)" "noindex, nofollow"
     expect "halaman tidak ada" "$(fetch GET /tidak-ada-sama-sekali)" "404"
+    expect "halaman tidak ada no-store" "$(header Cache-Control)" "no-store"
+    # Rolling deploy: aset hash yang belum ada di kontainer ini → 404 yang TIDAK pernah disimpan immutable.
+    expect "aset /_astro/ hilang 404" "$(fetch GET /_astro/tidak-ada.js)" "404"
+    expect "aset /_astro/ hilang no-store" "$(header Cache-Control)" "no-store"
+    if [ -n "$asset" ]; then
+      expect "aset Astro" "$(fetch GET "$asset")" "200"
+      expect "aset Astro immutable" "$(header Cache-Control)" "public, max-age=31536000, immutable"
+    else
+      expect "aset /_astro/*.css ditemukan di beranda" "tidak" "ya"
+    fi
     ;;
   admin)
     fetch GET / >/dev/null
@@ -79,6 +90,10 @@ case "$kind" in
     expect_contains "rute SPA berisi shell" "$(cat "$work/b")" '<div id="root"></div>'
     expect "rute /invite" "$(fetch GET /invite)" "200"
     expect "aset hilang 404 (bukan shell)" "$(fetch GET /assets/tidak-ada.js)" "404"
+    # Rolling deploy Coolify: 404 aset hash baru dari kontainer lama tidak boleh tersimpan immutable 1 tahun.
+    expect "aset hilang no-store (bukan immutable)" "$(header Cache-Control)" "no-store"
+    expect "POST rute SPA ditolak" "$(fetch POST /members)" "405"
+    expect "405 no-store" "$(header Cache-Control)" "no-store"
     asset="$(grep -o '/assets/index-[A-Za-z0-9_-]*\.js' "$work/b" 2>/dev/null | head -n 1 || true)"
     if [ -z "$asset" ]; then
       fetch GET / >/dev/null

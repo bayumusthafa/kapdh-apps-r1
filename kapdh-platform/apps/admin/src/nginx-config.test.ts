@@ -69,9 +69,30 @@ describe("infra/nginx-admin.conf", () => {
   it("cache: index.html dan rute SPA no-store, /assets immutable; fallback SPA tidak menelan aset hilang", () => {
     expect(conf).toMatch(/default\s+"no-store";/);
     expect(conf).toMatch(/~\^\/assets\/\s+"public, max-age=31536000, immutable";/);
-    expect(conf).toContain("add_header Cache-Control $kapdh_admin_cache always;");
     expect(conf).toContain("try_files $uri /index.html;");
     expect(conf).toMatch(/location \^~ \/assets\/ \{\s+access_log off;\s+try_files \$uri =404;/);
+  });
+
+  it("cache: nilai immutable hanya untuk respons sukses; 404 aset saat rolling deploy selalu no-store", () => {
+    const m = /map \$status \$kapdh_admin_cache_control \{([^}]*)\}/.exec(conf);
+    expect(m, "map $status tidak ada").not.toBeNull();
+    const entries = new Map(
+      m![1]!
+        .split(";")
+        .map((line) => line.trim().split(/\s+/))
+        .filter((parts) => parts.length === 2)
+        .map(([key, value]) => [key!, value!]),
+    );
+    expect(entries).toEqual(
+      new Map([
+        ["default", '"no-store"'],
+        ["200", "$kapdh_admin_cache"],
+        ["206", "$kapdh_admin_cache"],
+        ["304", "$kapdh_admin_cache"],
+      ]),
+    );
+    expect(conf).toContain("add_header Cache-Control $kapdh_admin_cache_control always;");
+    expect(conf).not.toContain("add_header Cache-Control $kapdh_admin_cache always;");
   });
 
   it("add_header hanya di tingkat server; hanya GET/HEAD; non-root port 8080", () => {
