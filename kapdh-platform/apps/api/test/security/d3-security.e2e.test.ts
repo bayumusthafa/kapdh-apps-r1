@@ -1,7 +1,9 @@
 import { auditLogs } from "@kapdh/database";
 import { and, eq, like } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { v7 as uuidv7 } from "uuid";
 import { totp } from "../../src/core/identity/crypto.js";
+import { reauthTokenFor } from "../admin/helpers.js";
 import {
   createAdmin,
   createAlumni,
@@ -20,12 +22,19 @@ import { addRoomMember, createGroupRoom, createMessage, reportOk } from "../mode
  * Audit keamanan Fase D, lensa D3 (OWASP ASVS L2). Setiap tes menyatakan perilaku AMAN yang diharapkan dan GAGAL pada
  * kode saat ini, membuktikan cacatnya. Tes ditandai `it.fails` agar suite tetap hijau sampai perbaikan masuk; setelah
  * perbaikan, `it.fails` akan gagal (tes lulus) dan wajib diganti menjadi `it` oleh pembuat perbaikan.
+ *
+ * Diperbaiki (hardening api-identity, kini `it` biasa): D3-01, D3-03, D3-04, D3-05, D3-06. D3-02 (modul files/moderasi)
+ * masih `it.fails`.
  */
 
 let t: TestApp;
 beforeAll(async () => {
   t = await createTestApp();
   await publishLegalVersions(t);
+});
+// Setiap uji memulai dengan batas laju kosong (IP uji sama untuk semua permintaan inject).
+beforeEach(() => {
+  t.rateLimits.clear();
 });
 afterAll(async () => {
   await t.app.close();
@@ -50,7 +59,7 @@ function registerBody(email: string) {
 const REGISTER_BUDGET_PER_IP = 120;
 
 describe("D3-01 enumerasi email terdaftar tanpa batas laju (PRD 2.5, ASVS 2.2.1)", () => {
-  it.fails(
+  it(
     "POST /auth/register: jawaban 409 'Email sudah terdaftar' tidak memakai anggaran per IP sehingga dapat diulang tanpa batas",
     async () => {
       const victim = await createAlumni(t, { status: "verified" });
@@ -66,7 +75,7 @@ describe("D3-01 enumerasi email terdaftar tanpa batas laju (PRD 2.5, ASVS 2.2.1)
     120_000,
   );
 
-  it.fails(
+  it(
     "POST /auth/email-correction: akun pending milik penyerang menjadi oracle email terdaftar tanpa batas (jatah login dikembalikan setiap kali)",
     async () => {
       const victim = await createAlumni(t, { status: "verified" });
@@ -190,7 +199,7 @@ describe("D3-03 mfa_token admin tidak terikat keadaan kredensial (N-08, AC F02-4
     return totp(admin.totpSecret, t.clock.now());
   }
 
-  it.fails(
+  it(
     "mfa_token yang terbit sebelum admin mengganti sandi masih menghasilkan sesi admin baru",
     async () => {
       const { admin, session, mfaToken } = await newAdminWithPendingMfa();
@@ -206,7 +215,7 @@ describe("D3-03 mfa_token admin tidak terikat keadaan kredensial (N-08, AC F02-4
     },
   );
 
-  it.fails(
+  it(
     "mfa_token yang terbit sebelum 'keluar semua perangkat' masih menghasilkan sesi admin baru",
     async () => {
       const { admin, session, mfaToken } = await newAdminWithPendingMfa();
@@ -220,7 +229,7 @@ describe("D3-03 mfa_token admin tidak terikat keadaan kredensial (N-08, AC F02-4
 });
 
 describe("D3-05 kuota kirim OTP per email tidak dibagi antarmodul (PRD 2.5: 5 kirim per jam per email)", () => {
-  it.fails(
+  it(
     "lupa sandi (kunci otp:<HMAC email>) dan hapus akun web (kunci otp:<email mentah>) masing-masing mengirim 5 OTP per jam ke email yang sama",
     async () => {
       const victim = await createAlumni(t, { status: "verified" });
@@ -239,47 +248,110 @@ describe("D3-05 kuota kirim OTP per email tidak dibagi antarmodul (PRD 2.5: 5 ki
       const sent = t.mailer.sent.filter((mail) => mail.to === victim.email).length;
       // Aman: total email OTP ke satu alamat dalam satu jam <= 5 (kuota dipakai bersama semua tujuan).
       expect(sent).toBeLessThanOrEqual(5);
+      // Hapus akun web setelah kuota habis dijawab 429 yang sama (nyata maupun pengganti).
+      expect(statuses.slice(6)).toEqual([429, 429, 429, 429, 429]);
     },
   );
+
+  it("hapus akun web lebih dulu lalu pemulihan sandi oleh Super Admin: satu kuota 5 per jam untuk email yang sama", async () => {
+    const victim = await createAlumni(t, { status: "verified" });
+    for (let i = 0; i < 3; i++) {
+      expect((await api().post("/public/deletion/challenge", { email: victim.email })).statusCode).toBe(202);
+      t.clock.advance(61_000);
+    }
+    const superAdmin = await createAdmin(t, { permissions: [], role: "super_admin" });
+    const session = await signInAdmin(t, superAdmin);
+    const reauth = await reauthTokenFor(t, session.accessToken);
+    const reset = () =>
+      api().post(
+        `/admin/members/${victim.userId}/password-reset`,
+        { reason: "Uji kuota OTP lintas modul", confirm: true },
+        {
+          token: session.accessToken,
+          headers: { "idempotency-key": uuidv7(), "x-reauth-token": reauth },
+        },
+      );
+    expect((await reset()).statusCode).toBe(202);
+    expect((await reset()).statusCode).toBe(202);
+    const limited = await reset();
+    expect(limited.statusCode).toBe(429);
+    expect(limited.json()).toMatchObject({ code: "RATE_LIMITED" });
+  });
 });
 
 describe("D3-06 sesi admin tanpa batas umur absolut (N-08, PRD 5.2 'TTL refresh terpisah dari idle'; ASVS 3.3.2 L2)", () => {
-  it.fails(
+  it(
     "rotasi refresh menggeser kedaluwarsa 12 jam setiap 15 menit sehingga admin aktif tidak pernah wajib autentikasi ulang",
     async () => {
       const admin = await createAdmin(t, { permissions: ["members.read"] });
       let { accessToken, refreshCookie } = await signInAdmin(t, admin);
       const startedAt = t.clock.now().getTime();
-      let lastRefreshStatus = 0;
-      let hours = 0;
+      let refreshes = 0;
+      let endedAtHours = 0;
+      let ended: { me: number; refresh: number | null } | null = null;
       // 14 jam aktivitas: setiap 14 menit satu permintaan admin (aktivitas) lalu refresh terjadwal.
       for (let i = 0; i < 60; i++) {
         t.clock.advance(14 * 60_000);
+        const hours = (t.clock.now().getTime() - startedAt) / 3600_000;
         const me = await api().get("/admin/me", { token: accessToken });
-        expect(me.statusCode).toBe(200);
+        if (me.statusCode !== 200) {
+          ended = { me: me.statusCode, refresh: null };
+          endedAtHours = hours;
+          break;
+        }
         const refresh = await api().post(
           "/auth/refresh",
           {},
           { cookies: { kapdh_admin_rt: refreshCookie }, headers: { origin: t.env.ADMIN_ORIGIN } },
         );
-        lastRefreshStatus = refresh.statusCode;
-        hours = (t.clock.now().getTime() - startedAt) / 3600_000;
-        if (refresh.statusCode !== 200) break;
+        if (refresh.statusCode !== 200) {
+          ended = { me: me.statusCode, refresh: refresh.statusCode };
+          endedAtHours = hours;
+          break;
+        }
+        refreshes++;
         accessToken = refresh.json().access_token as string;
         refreshCookie = /kapdh_admin_rt=([^;]+)/.exec(String(refresh.headers["set-cookie"]))![1]!;
+        // Baris hasil rotasi mewarisi batas keluarga (12 jam sejak login), tidak bergeser.
+        const expires = /Expires=([^;]+)/i.exec(String(refresh.headers["set-cookie"]))?.[1];
+        expect(Date.parse(expires ?? "")).toBe(Math.floor((startedAt + 12 * 3600_000) / 1000) * 1000);
       }
-      // Aman: setelah 12 jam sejak login MFA, refresh ditolak dan admin wajib masuk ulang (sandi + TOTP).
-      expect(hours).toBeGreaterThan(12);
-      expect(lastRefreshStatus).toBe(401);
+      // Aman: sebelum 12 jam sesi tetap dapat dipakai dan diperbarui; setelah 12 jam sejak login MFA sesi berakhir
+      // (access token dan refresh ditolak 401) dan admin wajib masuk ulang (sandi + TOTP).
+      expect(refreshes).toBe(51);
+      expect(endedAtHours).toBeGreaterThan(12);
+      expect(endedAtHours).toBeLessThanOrEqual(12 + 14 / 60);
+      expect(ended).toMatchObject({ me: 401 });
+      const late = await api().post(
+        "/auth/refresh",
+        {},
+        { cookies: { kapdh_admin_rt: refreshCookie }, headers: { origin: t.env.ADMIN_ORIGIN } },
+      );
+      expect(late.statusCode).toBe(401);
     },
     120_000,
   );
+
+  it("refresh mobile juga tidak memperpanjang umur keluarga sesi (60 hari sejak login)", async () => {
+    const member = await createAlumni(t, { status: "verified" });
+    const login = await api().post("/auth/login", { email: member.email, password: DEFAULT_PASSWORD });
+    expect(login.statusCode).toBe(200);
+    const first = login.json().session as { refresh_token: string; refresh_expires_at: string };
+    t.clock.advance(30 * 24 * 3600_000);
+    const rotated = await api().post("/auth/refresh", { refresh_token: first.refresh_token });
+    expect(rotated.statusCode).toBe(200);
+    // Batas keluarga tetap = login + 60 hari.
+    expect(rotated.json().refresh_expires_at).toBe(first.refresh_expires_at);
+    t.clock.advance(30 * 24 * 3600_000 + 60_000);
+    const expired = await api().post("/auth/refresh", { refresh_token: rotated.json().refresh_token });
+    expect(expired.statusCode).toBe(401);
+  });
 });
 
 describe("D3-04 respons token dan data pribadi tanpa Cache-Control: no-store (RFC 6749 §5.1, ASVS 8.2.1)", () => {
   const noStore = (value: unknown) => String(value ?? "").includes("no-store");
 
-  it.fails(
+  it(
     "login, verifikasi OTP, refresh, reauth, reset token dan MFA admin tidak mengirim no-store",
     async () => {
       const member = await createAlumni(t, { status: "verified" });
@@ -323,7 +395,7 @@ describe("D3-04 respons token dan data pribadi tanpa Cache-Control: no-store (RF
     },
   );
 
-  it.fails("GET /me dan GET /admin/members/{id} (PII) tidak mengirim no-store", async () => {
+  it("GET /me dan GET /admin/members/{id} (PII) tidak mengirim no-store", async () => {
     const member = await createAlumni(t, { status: "verified" });
     const token = (await signInAlumni(t, member)).accessToken;
     const me = await api().get("/me", { token });
@@ -334,5 +406,16 @@ describe("D3-04 respons token dan data pribadi tanpa Cache-Control: no-store (RF
     expect(detail.statusCode).toBe(200);
     expect(noStore(me.headers["cache-control"]), "/me").toBe(true);
     expect(noStore(detail.headers["cache-control"]), "/admin/members/{id}").toBe(true);
+  });
+
+  it("galat juga no-store + Pragma no-cache; rute yang menyatakan cache publik sendiri tidak ditimpa", async () => {
+    const unauth = await api().get("/me");
+    expect(unauth.statusCode).toBe(401);
+    expect(unauth.headers["cache-control"]).toBe("no-store");
+    expect(unauth.headers["pragma"]).toBe("no-cache");
+    const config = await api().get("/public/config");
+    expect(config.statusCode).toBe(200);
+    expect(config.headers["cache-control"]).toBe("public, max-age=30");
+    expect(config.headers["pragma"]).toBeUndefined();
   });
 });
