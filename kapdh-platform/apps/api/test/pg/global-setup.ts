@@ -137,7 +137,7 @@ export default async function setup(project: TestProject) {
       await template.file(ROLES_SQL);
       await template.file(ROLES_SQL);
       // Sandi hex acak (tanpa kutip) untuk role LOGIN uji; cluster sekali pakai, tidak pernah dicetak.
-      for (const role of ["kapdh_app", "kapdh_worker"]) {
+      for (const role of ["kapdh_app", "kapdh_worker", "kapdh_backup", "kapdh_monitor"]) {
         await template.unsafe(`alter role ${role} password '${rolePassword}'`);
       }
     } finally {
