@@ -10,7 +10,9 @@
 //     sebagai mayor, aturan semver) DAN `x-kapdh-min-app-version` naik bersamaan, yaitu versi aplikasi lama yang
 //     terputus resmi tidak didukung lagi dan akan menerima 426 UPGRADE_REQUIRED setelah app_settings.min_app_version
 //     dinaikkan (PRD 4.5, 8.4).
-//   - Versi kontrak tidak boleh turun.
+//   - Versi kontrak tidak boleh turun; `x-kapdh-min-app-version` tidak boleh turun atau dihapus (versi aplikasi yang
+//     sudah dinyatakan tidak didukung tidak boleh "didukung lagi" diam-diam).
+//   - Perubahan skema event realtime (scripts/lib/events-compat.mjs) ikut dinilai dengan aturan yang sama.
 
 export const MIN_APP_VERSION_KEY = "x-kapdh-min-app-version";
 
@@ -99,6 +101,14 @@ export function evaluateCompatibility({ changes, base, head }) {
     problems.push(`info.version turun dari ${base.version} ke ${head.version}`);
   if (head.minAppVersion !== null && !parseSemver(head.minAppVersion))
     problems.push(`${MIN_APP_VERSION_KEY} bukan semver: ${head.minAppVersion}`);
+  if (base.minAppVersion !== null && parseSemver(base.minAppVersion)) {
+    if (head.minAppVersion === null)
+      problems.push(`${MIN_APP_VERSION_KEY} dihapus (rilis sebelumnya ${base.minAppVersion})`);
+    else if (parseSemver(head.minAppVersion) && compareSemver(head.minAppVersion, base.minAppVersion) < 0)
+      problems.push(
+        `${MIN_APP_VERSION_KEY} turun dari ${base.minAppVersion} ke ${head.minAppVersion}; versi minimum tidak boleh turun`,
+      );
+  }
 
   if (breaking.length > 0) {
     if (!isMajorBump(base.version, head.version))
