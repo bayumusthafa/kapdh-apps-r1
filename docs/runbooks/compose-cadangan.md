@@ -13,9 +13,12 @@ tag image, dan hasil pemeriksaan di log insiden.
 | -------- | ------ | -------- |
 | A. Panel mati, kontainer aplikasi masih berjalan | situs/API normal, panel tidak dapat dibuka | Tidak memindahkan apa pun. Pulihkan panel (`docker ps` untuk kontainer coolify, log, restart). Kontainer aplikasi dapat di-restart dengan `docker restart <nama>`. Lanjut ke B hanya bila perlu deploy/restart yang tidak bisa ditunggu. |
 | B. Panel mati dan harus deploy atau menjalankan ulang stack | perbaikan mendesak, kontainer aplikasi mati | Jalankan stack Compose cadangan memakai data yang SAMA (bagian 2-4). |
-| C. VPS hilang/rusak | semua layanan berhenti | VPS baru → restore backup DB + berkas + deletion ledger (runbook backup/restore) → bagian 1-5 dengan volume/direktori hasil restore. |
+| C. VPS hilang/rusak | semua layanan berhenti | VPS baru → bagian 1 → restore dan buka layanan dengan urutan bagian 2a (RTO N-06 <= 4 jam). |
 
 ## 1. Siapkan host (sekali; skenario B/C)
+
+Akses registry (image GHCR privat): `docker login ghcr.io` sebagai root dengan token `read:packages` (runbook rilis
+bagian 2 butir 7). Tanpa ini `pull` gagal.
 
 ```bash
 sudo mkdir -p /opt/kapdh /etc/kapdh
@@ -26,7 +29,9 @@ sudo cp infra/.env.production.example /etc/kapdh/production.env
 sudo cp infra/traefik/proxy.env.example /etc/kapdh/proxy.env
 sudo chmod 600 /etc/kapdh/*.env
 sudo install -d -o 1000 -g 1000 -m 750 /srv/kapdh/production/files   # sudah ada bila sebelumnya memakai Coolify
+# Jaringan edge per lingkungan (D12): Traefik cadangan tersambung ke keduanya; staging tidak menjangkau production.
 docker network create kapdh-edge
+docker network create kapdh-edge-staging
 ```
 
 Isi `/etc/kapdh/production.env` dari pengelola secret (D9). Nilai **wajib sama** dengan yang dipakai resource Coolify:
@@ -51,6 +56,34 @@ Isi `KAPDH_PGDATA_VOLUME` dan `KAPDH_REDISDATA_VOLUME` di `/etc/kapdh/production
 Superuser di volume lama harus `postgres` dengan `POSTGRES_PASSWORD` yang sama; bila berbeda, sesuaikan
 `ADMIN_DATABASE_URL` lewat `POSTGRES_PASSWORD`.
 
+## 2a. Pulihkan dari backup (skenario C)
+
+Runbook backup/restore (manifest, restic, dump) belum ada di repo ini dan menjadi dependensi terbuka; langkah berikut
+hanya urutan yang wajib dari sisi deployment (PRD 5.5, 8.4; AC F14-6). Gunakan `KAPDH_IMAGE_TAG` yang tercatat di
+manifest backup.
+
+1. Pulihkan volume PostgreSQL dan direktori `/srv/kapdh/production/files` dari backup (manifest yang sama). Isi
+   `KAPDH_PGDATA_VOLUME`/`KAPDH_REDISDATA_VOLUME` bila nama volume hasil restore berbeda. Redis boleh kosong
+   (dibangun ulang dari outbox, PRD 5.5).
+2. Jalankan data saja, lalu job rilis (role dan sandi role untuk cluster hasil restore; migrasi 0 pada tag yang sama):
+
+   ```bash
+   docker compose --env-file /etc/kapdh/production.env -f infra/compose.production.yml up -d postgres redis
+   docker compose --env-file /etc/kapdh/production.env -f infra/compose.production.yml --profile release run --rm release
+   ```
+
+3. Terapkan ulang deletion ledger dari salinan ledger **terbaru** (bukan salinan di dalam backup) dengan image dan env
+   worker (login `kapdh_worker`), SEBELUM layanan dibuka. Kode keluar 1 = ada entri gagal: jangan lanjut.
+
+   ```bash
+   docker compose --env-file /etc/kapdh/production.env -f infra/compose.production.yml run --rm \
+     -v /srv/kapdh/restore/ledger:/restore/ledger:ro worker \
+     node node_modules/@kapdh/api/dist/modules/account/ledger-reapply.cli.js --dir /restore/ledger/account-deletions
+   ```
+
+4. `up -d` seluruh stack (bagian 4, tanpa proxy dahulu), verifikasi konsistensi (bagian 5: login/MFA, total uang,
+   tiket, berkas) dari jaringan internal, baru jalankan proxy (`compose.proxy.yml`) untuk membuka lalu lintas.
+
 ## 3. Job rilis
 
 ```bash
@@ -59,9 +92,16 @@ docker compose --env-file /etc/kapdh/production.env -f infra/compose.production.
 docker compose --env-file /etc/kapdh/production.env -f infra/compose.production.yml --profile release run --rm release
 ```
 
-Production memakai mode gerbang `enforce` (bawaan): bila gerbang menolak, jangan lanjut ke `up`; hal ini berarti data
-production tidak lagi memenuhi syarat go-live (lihat tabel penolakan di runbook rilis). Job idempoten bila skema
-sudah mutakhir.
+Production memakai mode gerbang `enforce` (bawaan). Bila job gagal, jangan lanjut ke `up` dengan tag baru:
+
+- cek versi skema atau gerbang pra-migrasi menolak → skema belum berubah; stack dengan tag lama tetap dapat dijalankan
+  (runbook rilis bagian 5.1);
+- gerbang penuh menolak setelah migrasi → perbaikan maju (runbook rilis bagian 5.2);
+- hotfix mendesak saat pemeriksaan konfigurasi yang tidak terkait sedang merah → pengecualian beralasan: isi
+  `RELEASE_GATE=report`, `RELEASE_GATE_REASON`, `RELEASE_GATE_APPROVER` di berkas env untuk satu job itu lalu
+  kosongkan kembali (runbook rilis bagian 5.3).
+
+Job idempoten bila skema sudah mutakhir.
 
 ## 4. Jalankan stack dan proxy
 
@@ -74,8 +114,9 @@ docker compose --env-file /etc/kapdh/proxy.env -f infra/compose.proxy.yml up -d
 ```
 
 Traefik cadangan menerbitkan sertifikat Let's Encrypt baru (TLS-ALPN-01, port 443) ke volume `kapdh-edge-letsencrypt`
-dan merutekan `kapdh.or.id`/`www`, `admin.`, `api.` ke `kapdh-production-{web,admin,api}-1`. Staging hanya ikut
-dirutekan bila `KAPDH_STAGING_DOMAIN_*` diisi dan stack staging dijalankan:
+dan merutekan `kapdh.or.id`/`www`, `admin.`, `api.` ke `kapdh-production-{web,admin,api}-1`. HSTS: `KAPDH_HSTS=true` di
+`proxy.env` hanya setelah seluruh subdomain siap HTTPS (runbook rilis bagian 7). Staging hanya ikut dirutekan bila
+`KAPDH_STAGING_DOMAIN_*` diisi dan stack staging dijalankan:
 
 ```bash
 sudo install -d -o 1000 -g 1000 -m 750 /srv/kapdh/staging/files
@@ -84,8 +125,9 @@ docker compose --env-file /etc/kapdh/staging.env -f infra/compose.production.yml
 docker compose --env-file /etc/kapdh/staging.env -f infra/compose.production.yml -f infra/compose.staging.yml up -d
 ```
 
-Staging memiliki project `kapdh-staging`, `NODE_ENV=staging`, volume `kapdh-staging-*` dan direktori
-`/srv/kapdh/staging/files` yang dipatok overlay, sehingga berkas env yang tertukar tidak memasang data production.
+Staging memiliki project `kapdh-staging`, `NODE_ENV=staging`, volume `kapdh-staging-*`, direktori
+`/srv/kapdh/staging/files` dan jaringan `kapdh-edge-staging` yang dipatok overlay, sehingga berkas env yang tertukar
+tidak memasang data production dan kontainer staging tidak dapat menjangkau API production tanpa Traefik (D12).
 
 ## 5. Verifikasi
 
@@ -111,7 +153,9 @@ Outbox yang tertunda selama gangguan dikirim ulang otomatis oleh worker (PRD 5.1
 | Bootstrap Super Admin (PRD 8.2 langkah 3) | `docker compose ... exec api node dist/cli/bootstrap-admin.js --email <email> --name "<nama>"` |
 | Gerbang go-live saja | `docker compose ... --profile release run --rm --entrypoint sh release -c 'DATABASE_URL="$MIGRATOR_DATABASE_URL" node dist/cli/golive-check.js'` |
 | Seed referensi saja (idempoten) | `docker compose ... --profile release run --rm --entrypoint sh release -c 'DATABASE_URL="$MIGRATOR_DATABASE_URL" node node_modules/@kapdh/database/dist/bin/seed-reference.js'` |
-| Ganti tag image | ubah `KAPDH_IMAGE_TAG`, lalu `pull`, job rilis, `up -d` |
+| Rilis tag baru (maju) | ubah `KAPDH_IMAGE_TAG`, lalu `pull`, job rilis, `up -d` |
+| Rollback image ke tag lama | pastikan migrasi kompatibel mundur; ubah `KAPDH_IMAGE_TAG`, `pull`, `up -d api worker web admin` TANPA job rilis (job menolak image yang lebih lama dari skema; runbook rilis bagian 6.1) |
+| Gerbang dengan image lama (bukti rollback, baca saja) | `docker compose ... --profile release run --rm --entrypoint sh release -c 'DATABASE_URL="$MIGRATOR_DATABASE_URL" node dist/cli/golive-check.js --allow-schema-ahead'` |
 | Hentikan tanpa menghapus data | `docker compose ... down` (JANGAN `down -v`: menghapus volume database) |
 
 ## 7. Kembali ke Coolify
