@@ -89,6 +89,20 @@ let logoutHold: Promise<void> | null = null;
 const validAccess = new Set<string>();
 const reauthTokens = new Map<string, number>();
 const usedBackupCodes = new Set<string>();
+/** Sandi admin yang sedang berlaku (berubah lewat POST /admin/auth/password/change, mocks/account.ts). */
+let password: string = PASSWORD;
+/** Backup code yang berlaku (bentuk ternormalisasi); diganti seluruhnya saat dibuat ulang (F-02). */
+/** 10 backup code awal; hanya BACKUP_CODE yang diketahui uji (sisa = 10 seperti server). */
+const INITIAL_BACKUP_CODES = [BACKUP_CODE, ...Array.from({ length: 9 }, (_, i) => `MOCKBACKUP${i}`)];
+let backupCodes = new Set<string>(INITIAL_BACKUP_CODES);
+/** Identitas login yang sedang dipakai sesi tiruan; berganti setelah aktivasi undangan (mocks/invitations.ts). */
+interface MockIdentity {
+  admin_id: string;
+  email: string;
+  has_linked_alumni: boolean;
+}
+const DEFAULT_IDENTITY: MockIdentity = { admin_id: ADMIN_ID, email: ADMIN_EMAIL, has_linked_alumni: true };
+let identity: MockIdentity = { ...DEFAULT_IDENTITY };
 
 export interface RecordedRequest {
   method: string;
@@ -110,7 +124,15 @@ export function reset(): void {
   validAccess.clear();
   reauthTokens.clear();
   usedBackupCodes.clear();
+  password = PASSWORD;
+  backupCodes = new Set(INITIAL_BACKUP_CODES);
+  identity = { ...DEFAULT_IDENTITY };
   authRequests.length = 0;
+}
+
+/** Normalisasi backup code seperti server: huruf besar, tanpa spasi/tanda hubung (core/identity/crypto.ts). */
+export function normalizeMockBackupCode(code: string): string {
+  return code.toUpperCase().replace(/[\s-]/g, "");
 }
 
 function effectivePermissions(): Permission[] {
@@ -154,9 +176,14 @@ export function mockHasPermission(permission: Permission): boolean {
   return effectivePermissions().includes(permission);
 }
 
+/** Peran admin tiruan yang sedang masuk, untuk operasi khusus Super Admin (mis. AC F16-4, `role: super_admin`). */
+export function mockAdminRole(): AdminRole {
+  return profile.role;
+}
+
 /** Identitas admin tiruan yang sedang masuk sebagai pelaku (decided_by, actor_admin, updated_by; F-17). */
 export function mockAdminRef(): { admin_id: string; display_name: string } {
-  return { admin_id: ADMIN_ID, display_name: profile.display_name };
+  return { admin_id: identity.admin_id, display_name: profile.display_name };
 }
 
 /** Respons 429 setelah batas kegagalan kode terlampaui (PRD 2.5). */
@@ -233,7 +260,7 @@ export const routes: MockRoute[] = [
     handler: ({ body }) => {
       const email = String(body?.email ?? "").toLowerCase();
       // Hanya admin aktif dengan TOTP terverifikasi; admin undangan ditolak sama dengan sandi salah (F-16).
-      if (email === ADMIN_EMAIL && body?.password === PASSWORD) {
+      if (email === identity.email && body?.password === password) {
         tokenSeq += 1;
         pendingMfaToken = { token: `mock-mfa-${tokenSeq}`, expiresAt: Date.now() + MFA_TOKEN_TTL_MS };
         mfaFailures = 0;
@@ -265,10 +292,10 @@ export const routes: MockRoute[] = [
           field_errors: { totp_code: ["Isi kode autentikator atau backup code."] },
         });
       if (mfaFailures >= MAX_CODE_FAILURES) return tooManyFailures();
-      const backup = hasBackup ? String(body?.backup_code).toUpperCase() : "";
+      const backup = hasBackup ? normalizeMockBackupCode(String(body?.backup_code)) : "";
       const codeOk = hasTotp
         ? body?.totp_code === TOTP
-        : backup === BACKUP_CODE && !usedBackupCodes.has(backup);
+        : backupCodes.has(backup) && !usedBackupCodes.has(backup);
       if (!codeOk) {
         // Kode salah adalah galat formulir (400), bukan 401: mfa_token tetap berlaku (kontrak C1).
         mfaFailures += 1;
@@ -326,14 +353,14 @@ export const routes: MockRoute[] = [
       if (unauth) return unauth;
       // email, has_linked_alumni dan backup_codes_remaining selalu dikirim server (deskripsi AdminProfile).
       const me: S["AdminProfile"] = {
-        admin_id: ADMIN_ID,
+        admin_id: identity.admin_id,
         display_name: profile.display_name,
-        email: ADMIN_EMAIL,
+        email: identity.email,
         role: profile.role,
         permissions: effectivePermissions(),
         permissions_version: profile.permissions_version,
-        has_linked_alumni: true,
-        backup_codes_remaining: 10 - usedBackupCodes.size,
+        has_linked_alumni: identity.has_linked_alumni,
+        backup_codes_remaining: [...backupCodes].filter((c) => !usedBackupCodes.has(c)).length,
         previous_login_at: null,
       };
       return json(200, me);
@@ -350,10 +377,12 @@ export const routes: MockRoute[] = [
       // Kredensial salah = 400 VALIDATION_ERROR dengan field_errors (kontrak auth: bukan 401).
       // Admin: sandi DAN tepat satu dari totp_code atau backup_code (sekali pakai).
       const backup =
-        typeof req.body?.backup_code === "string" ? String(req.body.backup_code).toUpperCase() : null;
+        typeof req.body?.backup_code === "string"
+          ? normalizeMockBackupCode(String(req.body.backup_code))
+          : null;
       const fieldErrors: Record<string, string[]> = {};
-      if (req.body?.password !== PASSWORD) fieldErrors.password = ["Sandi salah."];
-      else if (backup !== null && (backup !== BACKUP_CODE || usedBackupCodes.has(backup)))
+      if (req.body?.password !== password) fieldErrors.password = ["Sandi salah."];
+      else if (backup !== null && (!backupCodes.has(backup) || usedBackupCodes.has(backup)))
         fieldErrors.backup_code = ["Backup code salah."];
       else if (backup === null && req.body?.totp_code !== TOTP)
         fieldErrors.totp_code = ["Kode autentikator salah."];
@@ -378,3 +407,70 @@ export const routes: MockRoute[] = [
     },
   },
 ];
+
+// ---------------------------------------------------------------------------------------------------------------
+// Pembantu untuk server tiruan area governance (akun, undangan). Tambahan aditif; perilaku di atas tidak berubah.
+
+/** Identitas admin yang sedang masuk (untuk area lain yang meniru field per pemanggil). */
+export function mockCurrentIdentity(): {
+  admin_id: string;
+  email: string;
+  display_name: string;
+  role: AdminRole;
+} {
+  return {
+    admin_id: identity.admin_id,
+    email: identity.email,
+    display_name: profile.display_name,
+    role: profile.role,
+  };
+}
+
+/** Sandi admin yang sedang masuk cocok (ganti sandi mensyaratkan sandi lama, AC F02-4). */
+export function mockCheckPassword(value: string): boolean {
+  return value === password;
+}
+
+/** Simpan sandi baru admin yang sedang masuk (POST /admin/auth/password/change). */
+export function mockSetPassword(value: string): void {
+  password = value;
+}
+
+/** Tandai `count` backup code (selain BACKUP_CODE) sudah terpakai, untuk uji sisa kode sedikit. */
+export function mockConsumeBackupCodes(count: number): void {
+  for (const code of [...backupCodes].filter((c) => c !== BACKUP_CODE).slice(0, count))
+    usedBackupCodes.add(code);
+}
+
+/** Ganti seluruh backup code; yang lama tidak berlaku lagi (POST /admin/auth/backup-codes, F-02). */
+export function mockReplaceBackupCodes(codes: readonly string[]): void {
+  backupCodes = new Set(codes.map(normalizeMockBackupCode));
+  usedBackupCodes.clear();
+}
+
+/**
+ * Terbitkan sesi admin baru untuk identitas lain (konfirmasi TOTP pertama setelah undangan, F-16): sesi lama di
+ * tab tiruan diganti, sama seperti server menimpa cookie kapdh_admin_rt.
+ */
+export function mockSignInAs(next: {
+  admin_id: string;
+  email: string;
+  display_name: string;
+  role: AdminRole;
+  permissions: Permission[];
+  has_linked_alumni: boolean;
+  backup_codes: readonly string[];
+}): S["AdminSession"] {
+  identity = { admin_id: next.admin_id, email: next.email, has_linked_alumni: next.has_linked_alumni };
+  profile = {
+    role: next.role,
+    permissions: [...next.permissions],
+    display_name: next.display_name,
+    permissions_version: 1,
+  };
+  backupCodes = new Set(next.backup_codes.map(normalizeMockBackupCode));
+  usedBackupCodes.clear();
+  validAccess.clear();
+  setSessionActive(true);
+  return issueAccess();
+}

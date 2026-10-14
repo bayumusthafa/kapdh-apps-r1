@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /kta/
+Disallow: /delete-account
+
+Sitemap: https://kapdh.or.id/sitemap.xml

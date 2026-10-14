@@ -421,8 +421,8 @@ to run fixture data; dev seed (`seeds/dev.ts`) adds clearly marked synthetic fix
 - Design follows guideline p10–17 and `screen_8_admin_payments.html`: dark green sidebar (`surface-dark`), logo,
   gold pending-count pill, cream background, white cards, dark-green pill tabs, green edit / red delete row icons.
 - Areas and routes (all pre-registered in Foundation):
-  `/login, /login/mfa, /login/enroll, /invite/$token` · `/` Dashboard · `/payments` (tabs: Verifikasi | Metode |
-  Biaya | Penyesuaian) · `/members`, `/members/$userId`, `/members/masters` · `/content` (tabs: Berita | Banner |
+  `/login, /login/mfa, /login/enroll, /invite` (token in the fragment: `/invite#t=<token>`) · `/` Dashboard ·
+  `/payments` (tabs: Verifikasi | Metode | Biaya | Penyesuaian) · `/members`, `/members/$userId`, `/members/masters` · `/content` (tabs: Berita | Banner |
   Halaman | Kategori), `/content/posts/new`, `/content/posts/$postId` · `/events`, `/events/new`, `/events/$eventId`,
   `/events/checkin` · `/moderation`, `/moderation/$reportId` · `/admins`, `/admins/$adminId` · `/audit` ·
   `/notifications` · `/settings` · `/account`.

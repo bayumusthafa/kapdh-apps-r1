@@ -4,12 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
+    <!-- Kontrak admin-auth: tautan undangan /invite#t=<token> tidak boleh bocor lewat Referer (header juga dari proxy). -->
+    <meta name="referrer" content="no-referrer" />
+    <!-- Tanpa sumber pihak ketiga (font di-bundel dari origin sendiri, src/main.tsx): kontrak admin-auth untuk /invite. -->
     <title>KAPDH Admin</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
   </head>
   <body>
     <div id="root"></div>

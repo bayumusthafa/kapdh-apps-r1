@@ -14,6 +14,11 @@ export const ADVISORY_LOCK_KEYS = {
   lastSuperAdmin: 4711000518,
   /** Bootstrap Super Admin pertama (PRD 8.2 langkah 3). */
   bootstrapSuperAdmin: 4711000519,
+  /**
+   * Leader penjadwal apps/worker: kunci advisory SESI (`pg_try_advisory_lock`) pada koneksi khusus, sehingga hanya satu
+   * instance worker yang menjalankan job terjadwal (ARCHITECTURE §4.8, PRD 5.1).
+   */
+  workerSchedulerLeader: 4711000520,
 } as const;
 
 /**
@@ -40,6 +45,8 @@ export const ADVISORY_LOCK_NAMESPACES = {
    * penerbit bersamaan berurutan seperti penerbit challenge nyata yang mengunci baris users.
    */
   otpDecoy: 47_110_003,
+  /** Satu entri terminal per ekspor audit (completed/failed), kunci = id ekspor (kontrak C7 AuditExport, AC F17-4). */
+  auditExport: 47_110_004,
 } as const;
 
 /**

@@ -6,14 +6,14 @@ export const adminsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/admins",
   beforeLoad: guard("/admins"),
-  component: lazyRouteComponent(() => import("./AdminsPages"), "AdminsPage"),
+  component: lazyRouteComponent(() => import("./AdminsListPage"), "AdminsPage"),
 });
 
 export const adminDetailRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/admins/$adminId",
   beforeLoad: guard("/admins/$adminId"),
-  component: lazyRouteComponent(() => import("./AdminsPages"), "AdminDetailPage"),
+  component: lazyRouteComponent(() => import("./AdminDetailPage"), "AdminDetailPage"),
 });
 
 export const adminsRoutes = [adminsRoute, adminDetailRoute] as const;

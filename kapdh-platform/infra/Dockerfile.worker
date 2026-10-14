@@ -1,0 +1,37 @@
+# Image worker KAPDH (PRD 5.1, 5.5; ARCHITECTURE §4.8). Dibangun di CI, bukan di VPS production (PRD 5.3).
+# Konteks build = kapdh-platform/:
+#   docker build -f infra/Dockerfile.worker -t kapdh-worker .
+# Migrasi TIDAK dijalankan image ini (job deployment tunggal dengan lock, PRD 5.5). Secrets hanya dari environment
+# Coolify saat runtime, tidak pernah di layer image. Worker tidak menerima secret JWT/OTP/TOTP/QR (least privilege).
+
+# ------------------------------------------------------------------------------------------------ tahap build
+FROM node:24-alpine AS build
+WORKDIR /repo
+ENV CI=true
+RUN corepack enable
+COPY . .
+# Hanya worker dan dependensi workspace-nya (API core + modul job, database, config, storage, contracts, shared).
+# `pnpm deploy` pnpm 10 mewajibkan inject-workspace-packages; tanpa itu dipakai implementasi `--legacy` yang menyalin
+# paket workspace (sesuai field "files") ke node_modules produksi yang mandiri di /out.
+RUN pnpm install --frozen-lockfile --filter "@kapdh/worker..." \
+  && pnpm --filter "@kapdh/worker..." build \
+  && pnpm --filter @kapdh/worker deploy --prod --legacy /out
+
+# ---------------------------------------------------------------------------------------------- tahap runtime
+FROM node:24-alpine
+ENV NODE_ENV=production
+WORKDIR /app
+# Berkas aplikasi milik root dan hanya-baca untuk proses; satu-satunya lokasi tulis adalah volume berkas lokal
+# (STORAGE_LOCAL_ROOT bawaan /data/files, dipasang sebagai volume yang sama dengan API untuk cleanup/ekspor).
+COPY --from=build /out ./
+RUN mkdir -p /data/files && chown node:node /data/files
+# Pengguna non-root bawaan image node (uid 1000).
+USER node
+# Endpoint health internal (GET /healthz); tidak dirutekan publik oleh Traefik.
+EXPOSE 3001
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.WORKER_HEALTH_PORT||3001)+'/healthz',{signal:AbortSignal.timeout(4000)}).then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+# SIGTERM → shutdown halus (berhenti poll, selesaikan job berjalan sampai WORKER_SHUTDOWN_TIMEOUT_MS, lepas leader).
+# Atur stop_grace_period container > WORKER_SHUTDOWN_TIMEOUT_MS + 10 detik.
+STOPSIGNAL SIGTERM
+CMD ["node", "dist/main.js"]

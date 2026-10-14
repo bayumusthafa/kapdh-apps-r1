@@ -18,6 +18,7 @@ export * from "./FormField";
 export * from "./Input";
 export * from "./PageHeader";
 export * from "./PasswordInput";
+export * from "./PasswordRules";
 export * from "./PermissionGate";
 export * from "./QrCode";
 export * from "./ReauthDialog";

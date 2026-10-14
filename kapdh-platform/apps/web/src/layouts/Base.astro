@@ -1,41 +1,170 @@
 ---
 import "../styles/global.css";
-interface Props { title: string; description?: string; noindex?: boolean }
-const { title, description = "Keluarga Alumni Pesantren Darel Hikmah", noindex = false } = Astro.props;
+import { FOOTER_LINKS, MAIN_NAV, isCurrentPath, resolveApiBase } from "../lib/site";
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Halaman dinamis (KTA, hapus akun) tidak diindeks mesin pencari. */
+  noindex?: boolean;
+  /** Tampilkan wadah banner maintenance yang diisi dari /public/config (PRD 4.5). */
+  maintenanceBanner?: boolean;
+}
+
+const {
+  title,
+  description = "Platform alumni Keluarga Alumni Pondok Pesantren Darel Hikmah: KTA digital, jejaring, event dan tiket.",
+  noindex = false,
+  maintenanceBanner = false,
+} = Astro.props;
+// Basis API ditanam saat build; skrip halaman membacanya dari meta (tanpa skrip inline, CSP N-07).
+const apiBase = resolveApiBase({ PUBLIC_API_URL: import.meta.env.PUBLIC_API_URL, DEV: import.meta.env.DEV });
+const pathname = Astro.url.pathname;
+const canonical = new URL(pathname, Astro.site).href;
+const year = new Date().getFullYear();
 ---
+
 <!doctype html>
 <html lang="id">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={description} />
-    {noindex && <meta name="robots" content="noindex" />}
-    <meta name="referrer" content="no-referrer" />
     <title>{title} | KAPDH</title>
-    <link rel="icon" href="/logo-kapdh.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <meta name="description" content={description} />
+    {noindex ? <meta name="robots" content="noindex, nofollow" /> : <link rel="canonical" href={canonical} />}
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#0E280C" />
+    <meta name="kapdh-api-base" content={apiBase} />
+    <meta property="og:site_name" content="KAPDH" />
+    <meta property="og:title" content={`${title} | KAPDH`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:locale" content="id_ID" />
+    <link rel="icon" type="image/png" href="/logo-kapdh.png" />
+    <link rel="apple-touch-icon" href="/logo-kapdh.png" />
   </head>
-  <body class="min-h-screen">
-    <header class="bg-surface-dark text-text-on-dark">
-      <div class="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-        <img src="/logo-kapdh.png" alt="Logo KAPDH" width="40" height="40" />
-        <a href="/" class="font-heading text-lg font-bold text-accent no-underline">KAPDH</a>
-        <nav aria-label="Navigasi utama" class="ml-auto flex flex-wrap gap-4 text-sm">
-          <a href="/#unduh" class="text-green-100">Unduh aplikasi</a>
-          <a href="/kebijakan-privasi" class="text-green-100">Privasi</a>
-          <a href="/delete-account" class="text-green-100">Hapus akun</a>
+  <body class="flex min-h-screen flex-col">
+    <a
+      href="#konten"
+      class="sr-only z-50 rounded-md bg-accent px-4 py-3 font-semibold text-on-accent focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+      >Lewati ke konten</a
+    >
+    <header class="relative z-10 border-b border-divider bg-surface-brand">
+      <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
+        <a href="/" class="flex min-h-11 items-center gap-3 text-green-950 no-underline" aria-label="KAPDH, ke beranda">
+          <img src="/logo-kapdh.png" alt="" width="44" height="44" class="size-11 shrink-0" />
+          <span class="flex flex-col leading-tight">
+            <span class="text-sm font-medium sm:text-base">Keluarga Alumni</span>
+            <span class="text-sm font-medium sm:text-base">Ponpes Darel Hikmah</span>
+          </span>
+        </a>
+        <nav aria-label="Navigasi utama" class="ml-auto hidden items-center gap-1 lg:flex">
+          {
+            MAIN_NAV.map((item) => (
+              <a
+                href={item.href}
+                aria-current={isCurrentPath(item.href, pathname) ? "page" : undefined}
+                class="flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-green-950 hover:bg-green-50 aria-[current=page]:text-primary aria-[current=page]:underline aria-[current=page]:decoration-accent aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-8"
+              >
+                {item.label}
+              </a>
+            ))
+          }
+          <a href="/unduh" class="btn-primary ml-2 min-h-11 px-4 text-sm">Unduh Aplikasi</a>
         </nav>
+        <details class="nav-menu relative ml-auto lg:hidden">
+          <summary
+            class="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-divider bg-surface px-3 text-sm font-semibold text-green-950"
+          >
+            <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"
+              ><path d="M4 6h16M4 12h16M4 18h16"></path></svg
+            >
+            Menu
+          </summary>
+          <nav
+            aria-label="Navigasi utama (ponsel)"
+            class="absolute right-0 mt-2 flex w-64 flex-col gap-1 rounded-lg bg-surface p-2 shadow-raised"
+          >
+            {
+              MAIN_NAV.map((item) => (
+                <a
+                  href={item.href}
+                  aria-current={isCurrentPath(item.href, pathname) ? "page" : undefined}
+                  class="flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-green-950 hover:bg-green-50 aria-[current=page]:bg-green-50 aria-[current=page]:text-primary"
+                >
+                  {item.label}
+                </a>
+              ))
+            }
+            <a href="/unduh" class="btn-primary mt-1 min-h-11 text-sm">Unduh Aplikasi</a>
+          </nav>
+        </details>
       </div>
     </header>
-    <main class="mx-auto max-w-5xl px-4 py-8"><slot /></main>
-    <footer class="border-t border-divider">
-      <div class="mx-auto flex max-w-5xl flex-wrap gap-4 px-4 py-6 text-sm text-text-muted">
-        <span>Keluarga Alumni Pondok Pesantren Darel Hikmah</span>
-        <a href="/ketentuan">Ketentuan</a>
-        <a href="/kebijakan-privasi">Kebijakan privasi</a>
-        <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a>
+    {
+      maintenanceBanner && (
+        <div data-maintenance hidden role="status" class="border-b border-warning/30 bg-warning-bg">
+          <p class="mx-auto flex max-w-6xl items-start gap-2 px-4 py-3 text-sm text-text sm:px-6">
+            <svg viewBox="0 0 24 24" class="mt-0.5 size-5 shrink-0 text-warning" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z" />
+              <path d="M12 6v6l4 2" />
+            </svg>
+            <span class="flex min-w-0 flex-col gap-1">
+              <span>
+                <strong class="font-semibold">Pemeliharaan. </strong>
+                <span data-maintenance-text />
+              </span>
+              {/* PRD 4.5: maintenance menjelaskan rentang estimasi, retry dan kanal dukungan (diisi dari /public/config). */}
+              <span>
+                Butuh bantuan? Hubungi
+                <a data-support-email href="mailto:bantuan@kapdh.or.id" class="font-semibold break-all text-primary underline"
+                  >bantuan@kapdh.or.id</a
+                ><span data-support-whatsapp hidden>
+                  atau WhatsApp <a target="_blank" rel="noopener noreferrer" class="font-semibold text-primary underline"></a></span
+                >.
+                <button type="button" data-config-retry data-maintenance-retry class="btn-link min-h-11 text-primary"
+                  >Periksa lagi</button
+                >
+              </span>
+            </span>
+          </p>
+        </div>
+      )
+    }
+    <main id="konten" tabindex="-1" class="flex-1 focus:outline-none">
+      <slot />
+    </main>
+    <footer class="relative overflow-hidden bg-surface-dark text-text-on-dark">
+      <div class="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.4fr_1fr]">
+        <div class="flex flex-col gap-4">
+          <div class="flex items-center gap-3">
+            <img src="/logo-kapdh.png" alt="" width="48" height="48" class="size-12" />
+            <p class="leading-tight">
+              <span class="block font-heading text-xl font-bold text-accent">KAPDH</span>
+              <span class="text-sm text-green-100">Keluarga Alumni Pondok Pesantren Darel Hikmah</span>
+            </p>
+          </div>
+          <p class="max-w-md text-sm text-green-100">
+            Media komunikasi dan informasi untuk menghubungkan alumni di seluruh Indonesia.
+          </p>
+        </div>
+        <nav aria-label="Tautan situs">
+          <ul class="grid grid-cols-1 gap-x-6 gap-y-1 text-sm min-[380px]:grid-cols-2">
+            {
+              FOOTER_LINKS.map((link) => (
+                <li>
+                  <a href={link.href} class="flex min-h-11 items-center text-green-100 underline-offset-4 hover:text-accent hover:underline">
+                    {link.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
       </div>
+      <div class="border-t border-white/10">
+        <p class="mx-auto max-w-6xl px-4 py-4 text-xs text-green-100 sm:px-6">© {year} KAPDH. Hak cipta dilindungi.</p>
+      </div>
+      <div class="h-2 bg-primary" aria-hidden="true"></div>
     </footer>
   </body>
 </html>

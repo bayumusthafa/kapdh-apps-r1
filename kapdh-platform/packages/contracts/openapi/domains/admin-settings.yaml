@@ -1,8 +1,9 @@
 # Domain admin-settings (C3 Finance): pengaturan aplikasi terversi dan teraudit di app_settings (ARCHITECTURE §5.4):
 # biaya iuran (D4), versi aplikasi minimum, maintenance, tautan toko aplikasi, kontak dukungan, platform yang
 # menyembunyikan instruksi iuran (rencana cadangan D13), serta nilai kebijakan keanggotaan/event/chat yang hanya
-# dapat dibaca. Modul API: apps/api/src/modules/admin (settings) dan payments (fees, payment_instructions). Lihat
-# keterangan `x-kapdh-access` di payments.yaml.
+# dapat dibaca. Modul API: apps/api/src/modules/admin untuk SEMUA operasi domain ini, termasuk fees dan
+# payment_instructions (modul payments hanya membaca nilainya lewat SettingsService untuk snapshot payment baru,
+# AC F03-5). Lihat keterangan `x-kapdh-access` di payments.yaml.
 #
 # Setiap kunci memiliki `version` sendiri (app_settings.version). Pembaruan memakai If-Match versi kunci tersebut;
 # versi berbeda menghasilkan 409 VERSION_CONFLICT dengan `current` berisi objek pengaturan terbaru (AC F15-4).

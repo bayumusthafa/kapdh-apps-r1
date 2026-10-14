@@ -1,0 +1,368 @@
+# Phase C integration: platform track
+
+Integrator report for merging the Phase C platform branches into `main` (on top of the API slices auth, admin-auth,
+membership, payments, content, network, chat, moderation, account, events and notifications that were already on
+`main`). Branches were merged one at a time with `git merge --no-ff`, in this order:
+
+| #   | Branch                      | Slice            |
+| --- | --------------------------- | ---------------- |
+| 1   | worktree-wf_b8bd7d01-232-11 | api-admin        |
+| 2   | worktree-wf_b8bd7d01-232-12 | worker           |
+| 3   | worktree-wf_2dfc8f13-ce6-7  | public-web       |
+| 4   | worktree-wf_2dfc8f13-ce6-8  | admin-payments   |
+| 5   | worktree-wf_2dfc8f13-ce6-9  | admin-members    |
+| 6   | worktree-wf_2dfc8f13-ce6-10 | admin-content    |
+| 7   | worktree-wf_2dfc8f13-ce6-11 | admin-events     |
+| 8   | worktree-wf_2dfc8f13-ce6-12 | admin-governance |
+
+Every non-trivial resolution is listed below: the file, what each side wanted, what was chosen and why.
+
+## 1. api-admin
+
+### Conflicts
+
+- `apps/api/src/core/adapters/mailer.ts`
+  - main (notifications, membership, account): `send(message: MailMessage, options?: {signal}) -> Promise<MailSendResult>`
+    is REQUIRED (the F-13 delivery processor needs the abort signal, the Message-ID and SMTP error classes);
+    `sendOtp(..., OtpMailOptions)`; optional `sendTransactional(TransactionalMail)`. MailMessage has `html?` and
+    `dedupKey?`.
+  - api-admin: an OPTIONAL `send?(MailMessage): Promise<void>` for its outbox handlers (admin invitation, security
+    notices), made optional only so that other Mailer implementations keep compiling; `MemoryMailer.lastMessage(to)`;
+    `DevLogMailer.send` prints the body so the invitation link is usable in development without SMTP.
+  - Chosen: main's unified interface (required `send` with options and result). It already serves api-admin's callers:
+    `AdminMailJob.deliver()` calls `this.mailer.send(message)` and ignores the result. The api-admin guard is kept as a
+    runtime check (a cast test double without `send` still makes the handler fail clearly so the outbox retries), and
+    its test (`jobs.e2e` "Mailer tanpa jalur transaksional") now builds the legacy double with a cast, because a
+    `Mailer` without `send` no longer type-checks. `MemoryMailer` is main's (sent/mail/messages/aborted/holdNext/
+    failNext/messagesTo) plus api-admin's `lastMessage(to)`. One `DevLogMailer.send` returning `{messageId: null}`
+    that prints subject, recipient AND the text body (development only; main.ts and the worker refuse this mailer
+    outside development, same policy as the OTP code it already prints), so admin invitation links work without SMTP.
+    The duplicated `MailMessage` declaration was merged into main's (doc updated to cover F-16 mail).
+- `apps/api/src/core/db/locks.ts`: both sides added `ADVISORY_LOCK_NAMESPACES` value `47_110_003` (main: `otpDecoy`,
+  auth slice; api-admin: `auditExport`). Both kept; `otpDecoy` keeps 47_110_003 (already shipped with the auth
+  migration's tests), `auditExport` moved to **47_110_004**. All usages reference the constant
+  (`audit-export.job.ts`, `test/pg/admin-governance.pg.test.ts`), so no other change was needed.
+- `apps/api/src/core/files/files.service.ts`: main split access policies into `defaultPolicies` / `modulePolicies` /
+  `replacedDefaults` (`registerAccessPolicy(..., {replaceDefaults})`, chat AC F11-4); api-admin had the older single
+  `policies` map and added `accessHooks` + `registerAccessHook(purpose, hook)` + `storeGenerated({tx})` +
+  `deleteStoredObject`. Union: main's three policy collections plus api-admin's `accessHooks`; `accessFor` evaluates
+  the main policy model and then runs the hooks before signing the URL (already auto-merged that way).
+- `apps/api/src/core/outbox/topics.ts`: `admin.security_notice.kind` union of main's `activated`,
+  `backup_codes_regenerated` (admin-auth) and api-admin's `email_changed`. Since api-admin's `AdminMailJob` is the
+  single handler of the topic (JobRegistry rejects duplicate handlers) and its template table is a
+  `Record<kind, ...>`, templates for `activated` and `backup_codes_regenerated` were added in
+  `modules/admin/admin-mail.ts`, so every kind admin-auth publishes is actually emailed.
+- `packages/contracts/CHANGELOG.md`: both sections kept (api-notifications, then Fase C api-admin).
+
+### Semantic integration
+
+- Invitation link: main's core already had `adminInviteLink()` (core/identity/crypto.ts, used by the bootstrap CLI);
+  api-admin had its own `adminInvitationLink()`. Both produce `${ADMIN_ORIGIN}/invite#t=<token>`. The admin helper
+  now delegates to the core one (one source of the link form); the core one gained `encodeURIComponent` (a no-op for
+  base64url tokens). api-admin's open issue about the CLI printing `/invite/<token>` was already fixed on main.
+- Shared queue formulas (api-admin review finding 7, left for integration; contract admin-dashboard: "one summary
+  query shared with the payments module, not a second formula"). api-admin computed dashboard/badge counts with its
+  own `modules/admin/queue-rules.ts` + `business-days.ts`; main's payments, moderation and notifications slices each
+  shipped their own single source (`PaymentsKernel.summary`/`reviewDueSql`, `ModerationVisibility.dashboardSummary`,
+  `countActionableFailedDeliveries`). The two sets disagreed:
+  - payments overdue is `review_due_at <= now` (also the `overdue=true` list filter); admin used `now > review_due_at`,
+    so a payment exactly at its deadline was overdue in the queue but not on the dashboard (same for adjustments);
+  - notifications `retryable` treats a recipient as available unless `disabled`/`deleted` (contract text), admin
+    required `users.status = 'active'`, so failed deliveries to `deletion_pending` accounts were missing from
+    `DashboardJobs.failed_delivery_count` but present in the list total;
+  - payments' `addBusinessDaysSql` added `make_interval(days)` to a timestamptz, which follows DST of the database
+    session time zone; admin's version did the arithmetic on Jakarta local time (its test runs with
+    `America/New_York` and failed against the payments SQL across 1 Nov 2026).
+  - Chosen: the domain owners' functions are the single source, admin keeps none. `payment-sql.ts` gained
+    `paymentQueueDetail()` (the SAME query as `paymentQueueSummary`, plus `oldest_submitted_at` and `overdue_by_type`
+    that only the dashboard needs) and `PaymentsKernel.dashboardSummary(now)`; `DashboardService` uses it,
+    `ModerationVisibility.dashboardSummary` for the moderation section and `reports_open` badge, and
+    `countActionableFailedDeliveries` for the jobs section. `AdminModule` imports `PaymentsJobsModule` and
+    `ModerationModule`. `modules/payments/business-days.ts` `addBusinessDaysSql` now does the day arithmetic on
+    Jakarta local time (results unchanged in UTC sessions); `modules/admin/business-days.ts` re-exports it so the
+    admin unit/TZ tests exercise the one implementation (both formulas were proven equal: 7q + r + 2·[w+r>5] − back).
+    `queue-rules.ts` keeps only `tsLiteral` and `FAILED_DELIVERY_WINDOW_MS`.
+  - New test `test/admin/queue-consistency.e2e.test.ts`: for the same caller, dashboard payments = the payments
+    summary endpoint = total of `stage=awaiting_review&overdue=true`, moderation/badge = `/admin/reports` counts (linked
+    alumni and joined-group exclusions), jobs = deliveries list total; data includes the boundary cases above. With
+    api-admin's old formulas restored temporarily, the payments and deliveries tests failed (overdue 1 vs 3, failed
+    deliveries 1 vs 2); with the unified code all pass. Existing `dashboard.e2e` expectations are unchanged.
+- Admin lock order: admin-auth documents `admins → users → mfa_totp` (admin-auth.shared.ts) and api-auth requires every
+  session revocation to lock `users` FOR UPDATE before touching `sessions` (auth/session-locks.ts; its report names
+  "admin disable" explicitly). api-admin's `recover()` deleted `mfa_totp` before updating `users`, and
+  `revokeSessions()` updated `sessions` before `users`. Fixed in `admins.service.ts`: `revokeSessions` locks `users`
+  FOR UPDATE first; recovery updates users, revokes sessions, then deletes TOTP; email re-issue revokes sessions
+  before deleting the pending TOTP. Behaviour and audit are unchanged (admin e2e and PG lane pass).
+
+## 2. worker
+
+No textual conflicts. `main` had not touched `core/jobs/**`, `worker.ts` or `packages/config` since the worker branch's
+base, so the worker's shared changes (JobRunner claim/process/release split with atomic lease takeover,
+`runScheduled(name, {jobId?})`, the extra `@kapdh/api/worker` exports, the four optional WorkerEnv keys) merged as
+the branch had them. Checked by hand:
+
+- `core/db/locks.ts`: the new bigint key `ADVISORY_LOCK_KEYS.workerSchedulerLeader = 4711000520` does not collide with
+  `lastSuperAdmin` (…518) or `bootstrapSuperAdmin` (…519); it lives in the single-bigint key space, separate from the
+  two-int4 `ADVISORY_LOCK_NAMESPACES` (`otpDecoy` 47_110_003, `auditExport` 47_110_004).
+- The handoff check for the interrupted-fixer revert: `job-runner.ts` contains the `MENGAMBIL ALIH` takeover and
+  `runScheduled(name, options: { jobId?: string })`.
+- Scheduled jobs and outbox topics added by the Phase C API slices (api-admin `maintenance.cleanup` and the audit
+  export handler, the account deletion processor, notifications delivery, content announce, events and membership
+  expiry reminders) need no worker change: the worker schedules and routes whatever the `JobRegistry` holds.
+- Verified after the merge: `pnpm build`, `pnpm --filter @kapdh/worker test` (9 files, 54/54), API
+  `test/core/jobs.e2e.test.ts` + `test/core/worker-package.e2e.test.ts` (17/17). The whole suite and both PG lanes
+  run again in the final verification.
+
+## 3. public-web
+
+- `pnpm-lock.yaml` (only conflict): `main` (worker, api-admin) added bullmq/msgpackr, sanitize-html and friends;
+  public-web added `@kapdh/shared`, `@fontsource/poppins` 5.3.0, `@astrojs/check` and `jsdom` to the `apps/web`
+  importer. Took `main`'s lockfile and re-ran `pnpm install`; the result is the union (diff against either parent
+  shows only the other side's packages).
+- Semantic check: every endpoint the site calls exists on the merged API with the contract's path
+  (`public/deletion/{challenge,verify,confirm}` in account, `auth/otp/resend`, `public/kta/verify` in membership,
+  `public/pages/{slug}` in content, `public/config`), and the site compiles against the merged contract types and
+  `@kapdh/shared` error catalog. Its delete-account 409 handling relies on core idempotency sending
+  `retry_after_seconds` only for "still processing", which is unchanged on `main`.
+- The site self-hosts Poppins (`@fontsource/poppins`, `src/styles/global.css`), so admin-governance's open note that
+  `apps/web` still loads Google Fonts is obsolete after this merge.
+- Verified after the merge: `pnpm build` (10/10, CSP gate passes for 11 pages), `@kapdh/web` test 14 files 169/169,
+  typecheck (astro check 0 errors + tsc) and lint.
+
+## 4. admin-payments
+
+No textual conflicts (all changes under `apps/admin`; the foundation `Tabs.tsx` `countLabel` and the payments mock
+controls are additive). The page and its mocks type-check against the merged contracts, including main's api-payments
+additions (`conflict_of_interest` on the payment detail that the adjustment panel now reads). Verified after the
+merge: `pnpm build` 10/10, admin typecheck and lint, `@kapdh/admin` test 18 files 190/190.
+
+## 5. admin-members
+
+No textual conflicts. Foundation changes are additive (`ConfirmDialog.confirmDisabled`, `Breadcrumb.search`,
+`mockAdminRole()` in the auth mock). The report's possible mock collision on `GET /admin/members` does not occur:
+`mocks/members.ts` is the only mock that registers `/admin/members*` and `/admin/masters*`. Verified after the merge:
+admin build, typecheck and lint; `@kapdh/admin` test 20 files 241/241 (190 + the members tests). The first full run
+had one timeout in the foundation `flow.test.tsx` "keluar membersihkan seluruh cache" (the lazily loaded /payments
+page under parallel load); it passed alone (25/25) and in a full re-run.
+
+## 6. admin-content
+
+No textual conflicts. The one cross-slice decision this slice handed to the integrator, event-category ownership, is
+kept as the slice chose it: the events page owns the event-category UI (guideline p14, C4 handoff F8), so
+`mocks/content.ts` registers no `/admin/content/event-categories*` route and `mocks/events.ts` (merged next) is
+their only mock. `/content` manages post categories (`/admin/content/post-categories`) only. Both paths are in
+`admin-content.yaml`, and the API serves them from the content module. Verified after the merge: admin typecheck,
+lint and build; `@kapdh/admin` test 28 files 294/294.
+
+## 7. admin-events
+
+No textual conflicts; `pnpm-lock.yaml` auto-merged (`@zxing/browser` 0.2.1 and `@zxing/library` 0.23.0 for the
+camera scanner) and `pnpm install` left it unchanged. `flow.test.tsx` (foundation) only gained a longer wait for the
+heavier lazily loaded check-in page. Verified after the merge: admin typecheck, lint and build, `@kapdh/admin` test
+31 files 355/355. Integration fix in a follow-up commit:
+
+- `apps/admin/src/api/mocks/content.ts` + `mocks/events.ts` (dev:mock banner targets). admin-content's banner target
+  picker searches `GET /admin/events`, which only the events mock serves, but the content mock validated and resolved
+  event targets against its own private three-event map. After both merged, an admin with `events.manage` who picked
+  any event from the list got "Event tujuan tidak ditemukan." on save. Each side wanted to keep its own fixtures
+  (content tests use `CONTENT_IDS.event*`, events tests use `MOCK_EVENT_IDS`). Chosen: events mock exports a read-only
+  `peekEventForMocks(id)` (title, status, category ref from its own categories); content's new `eventTarget(id)`
+  checks its own map first, then the events mock, for both `validateTarget` and `bannerTarget`. The availability rule
+  (open or closed) is unchanged. New test `banners.test.tsx` "AC F08-2: event dipilih dari daftar event admin (area
+  events) ...": failed before the fix (no success toast), passes after.
+- New guard `apps/admin/src/api/mocks/routes.test.ts`: the mock router answers with the FIRST matching route in
+  alphabetical file order, which is how the content/events event-category collision the two slices warned about would
+  have hidden one side. The test fails when two area mocks register the same method + path template or when any route
+  is shadowed by one loaded earlier (checked by adding a temporary duplicate file: both assertions failed and named
+  both files). Passes on the merged tree. (Review follow-up, section 9: the guard now reads the router's own table
+  instead of a copy of its loading logic.)
+
+## 8. admin-governance
+
+### Conflicts
+
+- `pnpm-lock.yaml` / `apps/admin/package.json` (`@fontsource/poppins`): public-web pinned 5.3.0 for the site,
+  admin-governance pinned 5.2.7 for the admin (both to stop loading Google Fonts). Chosen: one version, 5.3.0, for
+  both apps (same OFL-1.1 package, no dependencies or install scripts, ships the same `400/500/600/700.css` entry
+  points that `apps/admin/src/main.tsx` imports), so the monorepo bundles one Poppins build. Took the lockfile from
+  `HEAD` and re-ran `pnpm install`; the only lockfile change is the admin importer entry. `index-html.test.ts`
+  (governance) still passes: it checks the `@fontsource/poppins/<weight>.css` imports, not the version.
+
+### Semantic integration
+
+- `apps/admin/src/routes/dashboard/dashboard.test.tsx`: three tests encoded the payments mock as it was on the
+  governance branch's base (no paid payments; Siti's payment `…a1` at proof version 1). admin-payments' final mock
+  (merged earlier) has four paid fixtures (Rp210.000 gross: two Rp75.000 tickets, a Rp50.000 ticket approved after
+  its event was cancelled, a Rp10.000 renewal) and gives Siti a rejected proof v1 plus a replacement v2 (AC F03-3).
+  The dashboard mock already sums every paid payment of the payments mock plus its own history, which is the
+  contract rule ("jumlah bruto seluruh payment paid, sebelum penyesuaian/refund"), so the displayed Rp505.224 is
+  right. Kept each test's intent and adjusted only its setup/expectations: the totals are named constants with their
+  derivation (Rp505.224, and Rp565.224 after the test approves Siti's Rp60.000), and the approve step reads the
+  payment's current `proof_version`/`version` from `GET /admin/payments/{id}` instead of assuming 1. (Review
+  follow-up, section 9: the named constants were replaced by totals derived from the payments mock.)
+- Contract addition `GET /admin/reports/{reportId}/subject-candidates` (admin-moderation.yaml, owned by
+  api-moderation) and its CHANGELOG subsection merged cleanly (subsection kept after the api-admin one, before
+  `## 0.2.0`). `contracts:lint` valid (the 2 known warnings), contracts test 39/39, `contracts:test-dart` passes.
+- `mocks/dashboard.ts` reads the payments mock through its exported `routes` (no route of its own under
+  `/admin/payments*`); the new mock-router guard confirms no collisions across the 14 area mocks.
+- Verified after the merge: `pnpm build` 10/10, admin typecheck and lint, `@kapdh/admin` test 41 files 459/459.
+
+### Integration blockers the slice handed over (fixed in follow-up commits)
+
+- **API `GET /admin/reports/{reportId}/subject-candidates`** (`apps/api/src/modules/moderation`). The contract
+  operation merged without a server, which broke the merged tree: the moderation access test
+  (`test/moderation/admin-queue.e2e.test.ts`, every moderation operation has exactly one handler with matching
+  `x-kapdh-access`) failed with `adminListReportSubjectCandidates` missing (checked by running the pre-fix test
+  against the merged contract), and in production every group report could only be dismissed. admin-governance
+  wanted the list as the only way to pick `subject_user_id`; api-moderation owns the rules it must follow. Chosen:
+  implemented in `AdminReportsService.subjectCandidates` with api-moderation's own rules rather than new ones:
+  `everJoinedRoom` (the predicate `validateDecision` uses), deleted accounts and the caller's linked alumni left out,
+  `ModerationVisibility.isReportedParty` → 404, reporter conflict → 403 (same checks and order as `resolve`), not an
+  active group report → 400 `VALIDATION_ERROR`; ordering group admins, joined members, former members, then
+  `lower(full_name)` with the byte-wise `~<~` comparison the network directory uses, keyset cursor bound to `q`;
+  items built with the module's `toTargetMember`. The read and its `moderation.report_viewed` audit (via
+  `subject_candidates`, counts only, no member ids) run in one transaction before the response; refusals write no
+  audit, as for detail. Controller: admin audience, permissions `moderation.read` + `moderation.resolve`. Tests (`admin-reports.e2e.test.ts`, 3 new): membership/role/order and exclusions, a
+  listed former member accepted by `resolve`, audit without the list; `q` by name and member-number prefix, paging,
+  cursor bound to `q`, 101-char `q` → 400; 404/403/400/permission cases with no audit. The access test lists the
+  new operation. CHANGELOG subsection updated (no longer "belum diimplementasikan").
+- **Dashboard "Lewat batas review" link** (`apps/admin/src/routes/payments/{routes.tsx,VerificationTab.tsx}`,
+  `routes/dashboard/DashboardPage.tsx`). admin-dashboard.yaml requires the overdue row to open
+  `/payments?stage=awaiting_review&overdue=true` with the same count; the payments page (admin-payments) accepted
+  only `tab`, `payment`, `adjustment`, so governance linked to `?tab=verify` and explained the badges instead.
+  Chosen: additive `stage`/`overdue` search params on `/payments` (validated like the others; unknown values
+  ignored) that initialise the verification queue's filters; a new "Batas review" select (Semua / Lewat batas review
+  / Belum lewat batas) shown for the "Menunggu" status sends adminListPayments' `overdue` filter, which the payments
+  mock already implements; a user change of status or this filter drops the link params from the URL. The dashboard
+  row now carries "Lihat yang lewat batas" to exactly `/payments?stage=awaiting_review&overdue=true`; the existing
+  "Buka antrean verifikasi" footer link (`?tab=verify`) and its test are unchanged. Tests: dashboard "F-15, AC
+  F15-1: 'Lihat yang lewat batas' ..." (href, navigation, the list request filters, "Menampilkan N dari N" with N =
+  the card's value) and payments "F-15: ?stage=awaiting_review&overdue=true ..." (first request already filtered,
+  N = summary `overdue_count`, switching back, `on_time`, and the filter hidden and not sent for other statuses).
+- `docs/ARCHITECTURE.md` §7 listed `/invite/$token`; the contract and both slices use `/invite#t=<token>` (token in
+  the fragment, never sent to a server). The route list now says so (governance open issue).
+
+## 9. Review follow-up (fixer pass on the integrated tree)
+
+A review of the integrated tree raised four low-severity findings. All four were checked against the code and are
+real; all four are fixed. No finding was rejected.
+
+- **Dashboard event links led to a not-found page in dev:mock** (`apps/admin/src/api/mocks/{dashboard,events}.ts`).
+  This was the same cross-mock event-identity problem as the banner targets in section 7, but in the dashboard.
+  admin-governance's dashboard mock had its own five events (`0199e000-…-e5..e9`, e.g. "Seminar AI untuk
+  Mahasiswa"). admin-events' mock answers `GET /admin/events/{eventId}` only for `MOCK_EVENT_IDS`
+  (`0199e100-…-e1..e6`, e.g. "Seminar AI untuk Alumni"). `DashboardPage` links every "Event mendatang" and
+  "Penjualan Tiket" row to `/events/$eventId`, so in dev:mock each link opened a 404 detail page. The governance
+  side wanted dashboard-shaped data (ticket sales, upcoming events, tickets sold). The events side owns the events
+  and the seat-count rules (the read projection: expired holds are not counted as held). Chosen: the events mock
+  exports a read-only `peekEventStatsForMocks()`. It returns each event's id, title, status, schedule, location and
+  its paid, held, available, awaiting-review and checked-in counts, computed with the same `seatCounts` and
+  `projectedStatus` that its list and detail use. The dashboard mock builds `events` and `upcoming_events` from it
+  and applies the admin-dashboard.yaml rules itself:
+  - "Tiket Terjual" counts paid tickets in all events.
+  - "Penjualan Tiket" lists every event except drafts, ordered by `starts_at` descending, at most 10.
+  - "Event mendatang" lists open or closed events that start within the next 30 days, ordered by `starts_at`
+    ascending, at most 10.
+
+  The dashboard's own event fixtures are removed. The historical sample transactions keep their `event_title` text,
+  which is not linked. New test in `dashboard.test.tsx`, "F-15: setiap tautan event di dasbor menunjuk event yang
+  dikenal area Event dan membuka detailnya". For every `/events/<id>` link in both sections, it checks that the
+  events mock knows the id and that the title matches. It then clicks the first link and checks for the event
+  detail `h1` and the URL. Before the fix it failed on the first row ("Mancing Bareng Alumni (0199e000-…-e5):
+  expected undefined"); it passes after. The existing tests keep their intent, with event names taken from the events
+  mock (`mockEvents.event(MOCK_EVENT_IDS.seminar).title`) instead of the old dashboard titles:
+  - The super-admin test sees the seminar as a link under "Event mendatang", and the cancelled Pramuka event is not
+    listed there.
+  - The cancelled event is listed under "Penjualan Tiket", and the draft Mancing event is not.
+  - The check-in-only admin sees the seminar title without a link.
+
+- **Hard-coded "Total Transaksi" totals** (`apps/admin/src/routes/dashboard/dashboard.test.tsx`). Section 8 had
+  made `PAID_TOTAL = "Rp505.224"` and `PAID_TOTAL_AFTER_APPROVE = "Rp565.224"` named constants. Any change to an
+  admin-payments fixture would have broken three dashboard tests that do not own that data. Chosen: the test
+  derives the total from the contract rule (gross of all paid payments). The rule is
+  `sum(GET /admin/payments?status=paid&limit=100 amounts) + sum(mockDashboard.historicalTransactions())`, using
+  BigInt cents. The test asserts that the list has a single page, is not empty and contains only `paid` payments,
+  then formats the total with `formatRupiah`. `mockDashboard.historicalTransactions()` is a new read-only accessor
+  for the dashboard's legacy sample. The approval test also keeps its "total grows" intent explicitly: after it
+  approves Siti's payment, the gross equals the gross before approval plus that payment's `amount`. "Tiket Terjual"
+  is derived the same way, as the sum of `paid_quantity` over `GET /admin/events`, instead of the literal `"333"`.
+- **Router guard copied the router's loading logic** (`apps/admin/src/api/mocks/{index,routes.test}.ts`). The guard
+  repeated `index.ts`'s `import.meta.glob` patterns and its alphabetical sort. If the router changed, the guard
+  would have kept checking the old order. Chosen: `index.ts` now builds and exports `mockRouteTable` (each compiled
+  route with its source file, in match order) and `matchMockRoute(method, path)`. `mockFetch` uses the same
+  function. The guard imports both, so it checks the exact table and matcher that dev:mock uses. It also gained two
+  checks:
+  - no test file or router helper is loaded as an area;
+  - every route matches its own sample path, so a route that can never be reached is reported even when no other
+    route wins.
+
+  I confirmed it still catches collisions: a temporary `aaa-probe.ts` with `GET /admin/dashboard` and
+  `GET /admin/events/{anything}` made both the duplicate check and the shadowing check fail, and both failures named
+  the two files. The probe was then deleted.
+
+- **Duplicated deleted-account label** (`apps/admin/src/routes/events/{labels.ts,CheckinPage.tsx,EventTicketsTab.tsx}`).
+  The events area defined its own `ANONYMOUS_HOLDER = "Akun dihapus"`, while payments, dashboard, moderation and
+  notifications use `DELETED_ACCOUNT_LABEL` from `lib/labels.ts`. Chosen: `ANONYMOUS_HOLDER` is removed, and the
+  check-in page and ticket tab import `DELETED_ACCOUNT_LABEL`. The rendered text is unchanged and the events and
+  check-in tests pass unchanged.
+
+## Breakages already on main before this track (fixed in a separate commit)
+
+Found by the first full API run after merge 1; neither involves an api-admin file.
+
+- `test/content/access.e2e.test.ts` and `test/events/access.e2e.test.ts` failed: the content slice
+  (`/admin/content/event-categories`, 5 operations) and the events slice (`/admin/event-categories`, 1 operation)
+  both named their controller class `AdminEventCategoriesController`, and the access tests select routes by
+  `<Controller>.<method>` name, so each test saw the other's routes. The content class was renamed
+  `AdminManagedEventCategoriesController` (after its operationId `adminListManagedEventCategories`) and the content
+  test's controller list updated. No route, path or access metadata changed.
+- PG lane `notifications.pg.test.ts` "registerDevice bersamaan dengan logout" returned 500 (deadlock 40P01) in every
+  run: `DevicesService.register` locked the session row and then inserted `device_tokens` (FK check takes FOR KEY
+  SHARE on `users`), while logout (auth slice, `lockOwnerForRevocation`) holds `users` FOR UPDATE and waits for that
+  session row. `register` now takes `users` FOR SHARE as its first statement (the auth slice's documented order:
+  owner row before session rows; SHARE is compatible with refresh rotation and conflicts with revocation), so
+  register and logout serialize: 204 then revoked, or 401.
+
+## Final verification (final tree, after the section 9 review follow-up)
+
+Run from `kapdh-platform` on the tree with the section 9 fixes (the follow-up commit on top of `0b63b12`). Every
+result below was observed in this session. The test run used `--force`, so no turbo cache was replayed.
+
+| Command                                            | Result                                                                                                                                     |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm build`                                       | pass, 10/10 tasks                                                                                                                          |
+| `pnpm typecheck`                                   | pass, 16/16 tasks                                                                                                                          |
+| `pnpm lint`                                        | pass, 9/9 tasks (only the 2 known redocly `no-ambiguous-paths` warnings)                                                                   |
+| `pnpm exec turbo run test --concurrency=1 --force` | pass, 16/16 tasks: api 109 files 1351, admin 41 files 463, web 169, worker 54, contracts 39, config 24, storage 33, database 23, shared 16 |
+| `pnpm --filter @kapdh/api test:pg`                 | pass, 23 files, 153 tests (exit 0)                                                                                                         |
+| `pnpm contracts:lint`                              | pass, valid (2 known warnings); event schemas valid                                                                                        |
+| `pnpm contracts:test-dart`                         | pass, analyze clean and fixture tests pass                                                                                                 |
+| `pnpm format:check`                                | pass                                                                                                                                       |
+| `pnpm --filter @kapdh/worker test:pg` (extra)      | pass, 3 files, 11 tests (exit 0)                                                                                                           |
+
+Admin went from 461 to 463 tests: the new dashboard event-link test and the router guard's new check that test files
+and router helpers are not loaded as areas. Both PG lanes print `TypeError: done is not a function` from
+`embedded-postgres@17.6.0-beta.15` (`dist/index.js:349`) after the summary, while the embedded server shuts down.
+All tests have passed by then and the exit code is 0. None of the follow-up changes touch the API, the worker or
+their test harness.
+
+## Still open after this track (carried from the slice reports, not integration conflicts)
+
+- Ops/infra: `infra/Dockerfile.worker` never built as an image and `infra/nginx-web.conf` never run through
+  `nginx -t` (no Docker/nginx on this machine); BullMQ Lua paths not exercised against a real Redis (staging smoke
+  test: enqueue/dedup, stalled jobs, backpressure across instances).
+- `test/core/worker-package.e2e.test.ts` has a 30 s timeout that the worker slice saw flake under heavy load (it
+  passed in every run here).
+- The PG lanes (api, worker) print `TypeError: done is not a function` from `embedded-postgres@17.6.0-beta.15` while
+  shutting down. It appears after all tests pass and the exit code is 0. Worth checking when that pre-release
+  dependency is next upgraded.
+- Product decisions: admin-events allows ticket-price changes behind a confirmation (contract `adminUpdateEvent`)
+  instead of the task text's price lock; check-in scanner lists only events whose window opens within 24 h.
+- Admin UI gaps: D13 `adminRecordPayment` has no screen; `nav.ts` labels `/payments` "Verifikasi Pembayaran" for a
+  settings-only admin; `ROUTE_ACCESS` lets members.manage-only admins open member pages that then show Forbidden;
+  no deep link to a single payment from members/events; precondition 400s show the default toast next to the page
+  notice; admin-payments reads `conflict_of_interest` through one extra payment-detail request (an additive field
+  on `AdminPaymentAdjustment` would remove it); the post conflict notice cannot name the last editor (no
+  `updated_by` on `AdminPost`).
+- Client evidence for the admin and web slices runs against mocks (PRD 7.3); end-to-end runs against the merged
+  API are still to do.

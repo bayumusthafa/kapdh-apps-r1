@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AdminBannersController } from "./admin-banners.controller.js";
 import {
-  AdminEventCategoriesController,
+  AdminManagedEventCategoriesController,
   AdminPostCategoriesController,
 } from "./admin-categories.controller.js";
 import { AdminContentMediaController } from "./admin-media.controller.js";
@@ -32,7 +32,7 @@ import { PublicPagesController } from "./public-pages.controller.js";
     AdminBannersController,
     AdminPagesController,
     AdminPostCategoriesController,
-    AdminEventCategoriesController,
+    AdminManagedEventCategoriesController,
     AdminContentMediaController,
   ],
   providers: [

@@ -49,7 +49,8 @@ export function newAdminInviteToken(): string {
  * log akses (ARCHITECTURE §2 butir 3). Bentuk `/invite/<token>` atau `?token=` dilarang.
  */
 export function adminInviteLink(adminOrigin: string, token: string): string {
-  return `${adminOrigin.replace(/\/+$/, "")}/invite#t=${token}`;
+  // Token base64url tidak berubah oleh encodeURIComponent; pengodean hanya pengaman bila bentuk token berubah.
+  return `${adminOrigin.replace(/\/+$/, "")}/invite#t=${encodeURIComponent(token)}`;
 }
 
 /**

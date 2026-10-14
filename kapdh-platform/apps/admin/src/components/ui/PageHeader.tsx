@@ -8,6 +8,8 @@ export interface Breadcrumb {
   label: string;
   /** Tanpa `to` = halaman saat ini (aria-current="page"). */
   to?: StaticAppPath;
+  /** Parameter pencarian tujuan, mis. filter daftar yang sedang dipakai agar kembali ke daftar yang sama. */
+  search?: Record<string, unknown>;
 }
 
 /** Judul tab peramban mengikuti halaman agar pembaca layar dan riwayat peramban jelas (N-11). */
@@ -50,6 +52,9 @@ export function PageHeader({
                 {b.to ? (
                   <Link
                     to={b.to}
+                    // Tipe search per rute tidak dapat diturunkan dari union path; rute tujuan tetap memvalidasinya
+                    // lewat validateSearch.
+                    {...(b.search ? { search: b.search as never } : {})}
                     className="inline-flex min-h-6 items-center font-medium text-primary hover:underline"
                   >
                     {b.label}
