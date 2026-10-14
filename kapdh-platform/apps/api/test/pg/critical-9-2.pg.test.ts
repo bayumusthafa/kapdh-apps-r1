@@ -1198,9 +1198,11 @@ describe("PRD 9.2 #9 / AC F14-6, D2: akun dihapus lalu backup dipulihkan (Postgr
 // ----------------------------------------------------------------------------------------------- skenario 10
 
 describe("PRD 9.2 #10 / PRD 8.2 butir 3-4, 9.3: gerbang go-live menolak konfigurasi produksi yang belum disahkan", () => {
-  // Tidak ada gerbang (CLI/endpoint/health/boot) yang memeriksa app_settings.fees belum disahkan (baris tidak ada →
-  // SETTING_DEFAULTS dipakai diam-diam, atau nominal 0.00 diterima skema), fixture dev ([Contoh], domain .test) di
-  // database produksi, maupun minimal dua Super Admin aktif ber-TOTP. Temuan audit D4; uji ditulis saat gerbang ada.
+  // Tidak ada gerbang (CLI/endpoint/health/boot) yang memeriksa app_settings.fees belum disahkan, fixture dev
+  // ([Contoh], domain .test) di database produksi, maupun minimal dua Super Admin aktif ber-TOTP. Temuan audit D4;
+  // uji ditulis saat gerbang ada. Sejak perbaikan D4-02, nominal iuran yang belum tersimpan (versi 0) atau bertotal
+  // 0.00 sudah ditolak saat instruksi iuran dibuat (fail closed, test/payments/dues-configuration.e2e.test.ts dan
+  // invarian D4-02 di bawah), tetapi itu bukan gerbang go-live: aplikasi tetap dapat berjalan dengan konfigurasi itu.
   it.todo(
     "production dengan nominal kosong/nol, fixture dev, atau kurang dari dua Super Admin ber-TOTP → gerbang go-live menolak",
   );
