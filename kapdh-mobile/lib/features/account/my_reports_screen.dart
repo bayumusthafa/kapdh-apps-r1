@@ -1,16 +1,5 @@
-import 'package:flutter/material.dart';
+/// Akun > Laporan Saya (F-12, AC F12-2). Layar dibangun di irisan jejaring-chat; rute `/account/reports` memakai
+/// kelas yang diekspor ulang di sini.
+library;
 
-import '../../design/design.dart';
-
-/// Laporan Saya (F-12): rute sudah terdaftar; isi layar dibangun pada irisan fitur berikutnya (BUILD_PLAN fase C).
-class MyReportsScreen extends StatelessWidget {
-  const MyReportsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) => const UnderConstructionScreen(
-    title: 'Laporan Saya',
-    feature: 'F-12',
-    description: 'Laporan yang Anda kirim beserta statusnya.',
-    fallbackLocation: '/account',
-  );
-}
+export '../network/my_reports_screen.dart' show MyReportsScreen;
