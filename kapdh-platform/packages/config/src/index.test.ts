@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
 import { describe, expect, it } from "vitest";
 import {
+  deletionLedgerConfigured,
   loadApiEnv,
   loadDevelopmentEnvFile,
   loadServerEnv,
@@ -124,6 +125,48 @@ describe("loadApiEnv", () => {
     expect(env.S3_FORCE_PATH_STYLE).toBe(true);
   });
 
+  it("PRD 7.1: SENTRY_DSN opsional, berbentuk DSN GlitchTip/Sentry; kosong = nonaktif", () => {
+    expect(loadApiEnv({ ...api, SENTRY_DSN: "" }).SENTRY_DSN).toBeUndefined();
+    const env = loadApiEnv({
+      ...api,
+      SENTRY_DSN: "https://kuncipublik@glitchtip.kapdh.or.id/3",
+      SENTRY_ENVIRONMENT: "staging",
+      SENTRY_RELEASE: "api:v1.0.0",
+    });
+    expect(env.SENTRY_DSN).toBe("https://kuncipublik@glitchtip.kapdh.or.id/3");
+    expect(loadWorkerEnv({ ...base, SENTRY_DSN: "https://k@host.test/sub/12" }).SENTRY_DSN).toBe(
+      "https://k@host.test/sub/12",
+    );
+    expect(() => loadApiEnv({ ...api, SENTRY_DSN: "https://glitchtip.kapdh.or.id/3" })).toThrow(/SENTRY_DSN/);
+    expect(() => loadApiEnv({ ...api, SENTRY_DSN: "https://k@glitchtip.kapdh.or.id/proyek" })).toThrow(
+      /SENTRY_DSN/,
+    );
+  });
+
+  it("PRD 5.4: STORAGE_FALLBACK_LOCAL_ROOT (baca-cadangan perpindahan storage) hanya bersama STORAGE_DRIVER=s3", () => {
+    expect(() => loadApiEnv({ ...api, STORAGE_FALLBACK_LOCAL_ROOT: "/data/files" })).toThrow(
+      /STORAGE_FALLBACK_LOCAL_ROOT/,
+    );
+    const s3 = {
+      ...api,
+      STORAGE_DRIVER: "s3",
+      S3_REGION: "ap-southeast-1",
+      S3_BUCKET: "kapdh-files",
+      S3_ACCESS_KEY_ID: "akses",
+      S3_SECRET_ACCESS_KEY: "rahasia",
+    };
+    expect(
+      loadApiEnv({ ...s3, STORAGE_FALLBACK_LOCAL_ROOT: "/data/files" }).STORAGE_FALLBACK_LOCAL_ROOT,
+    ).toBe("/data/files");
+    // Nilai kosong (variabel Coolify dikosongkan setelah perpindahan) = tidak diisi.
+    expect(
+      loadApiEnv({ ...s3, STORAGE_FALLBACK_LOCAL_ROOT: "" }).STORAGE_FALLBACK_LOCAL_ROOT,
+    ).toBeUndefined();
+    expect(
+      loadApiEnv({ ...api, STORAGE_FALLBACK_LOCAL_ROOT: "" }).STORAGE_FALLBACK_LOCAL_ROOT,
+    ).toBeUndefined();
+  });
+
   it("FCM opsional di luar production tetapi diisi berpasangan dan JSON valid", () => {
     expect(() => loadApiEnv({ ...api, FCM_PROJECT_ID: "kapdh-dev" })).toThrow(/FCM_SERVICE_ACCOUNT_JSON/);
     expect(() =>
@@ -141,6 +184,67 @@ describe("loadWorkerEnv", () => {
 
   it("menerapkan aturan production yang sama dengan API", () => {
     expect(() => loadWorkerEnv({ ...base, NODE_ENV: "production" })).toThrow(/SMTP_URL/);
+  });
+
+  it("AC F14-6, D5-07: deletion ledger luar VPS wajib untuk worker production, lengkap bila diisi, dan bucket terpisah dari berkas", () => {
+    const productionWorker = {
+      ...base,
+      NODE_ENV: "production",
+      SMTP_URL: "smtp://u:p@mail.test:587",
+      REDIS_URL: "redis://redis:6379",
+      FCM_PROJECT_ID: "kapdh-prod",
+      FCM_SERVICE_ACCOUNT_JSON: fcmJson,
+    };
+    const ledger = {
+      DELETION_LEDGER_S3_ENDPOINT: "https://akun.r2.cloudflarestorage.com",
+      DELETION_LEDGER_S3_REGION: "auto",
+      DELETION_LEDGER_S3_BUCKET: "kapdh-prod-deletion-ledger",
+      DELETION_LEDGER_S3_ACCESS_KEY_ID: "ledger-writer",
+      DELETION_LEDGER_S3_SECRET_ACCESS_KEY: "rahasia-ledger",
+    };
+    expect(() => loadWorkerEnv(productionWorker)).toThrow(/DELETION_LEDGER_S3_BUCKET/);
+    const env = loadWorkerEnv({
+      ...productionWorker,
+      ...ledger,
+      DELETION_LEDGER_S3_FORCE_PATH_STYLE: "true",
+    });
+    expect(env).toMatchObject({
+      DELETION_LEDGER_S3_BUCKET: "kapdh-prod-deletion-ledger",
+      DELETION_LEDGER_S3_FORCE_PATH_STYLE: true,
+    });
+    expect(deletionLedgerConfigured(env)).toBe(true);
+    // API production tidak memegang kredensial ledger (least privilege) dan tidak diwajibkan.
+    expect(loadApiEnv(production).DELETION_LEDGER_S3_BUCKET).toBeUndefined();
+    // Di luar production opsional, tetapi bila diisi wajib lengkap; galat tidak memuat nilai secret.
+    expect(deletionLedgerConfigured(loadWorkerEnv(base))).toBe(false);
+    try {
+      loadWorkerEnv({ ...base, DELETION_LEDGER_S3_BUCKET: "kapdh-ledger" });
+      expect.unreachable();
+    } catch (e) {
+      expect((e as Error).message).toMatch(/DELETION_LEDGER_S3_SECRET_ACCESS_KEY/);
+    }
+    expect(() =>
+      loadWorkerEnv({ ...base, ...ledger, DELETION_LEDGER_S3_SECRET_ACCESS_KEY: undefined }),
+    ).toThrow(/DELETION_LEDGER_S3_SECRET_ACCESS_KEY/);
+    // Bucket ledger yang sama dengan bucket berkas pada endpoint yang sama ditolak.
+    const files = {
+      STORAGE_DRIVER: "s3",
+      S3_ENDPOINT: ledger.DELETION_LEDGER_S3_ENDPOINT,
+      S3_REGION: "auto",
+      S3_BUCKET: ledger.DELETION_LEDGER_S3_BUCKET,
+      S3_ACCESS_KEY_ID: "files",
+      S3_SECRET_ACCESS_KEY: "rahasia-berkas",
+    };
+    try {
+      loadWorkerEnv({ ...base, ...ledger, ...files });
+      expect.unreachable();
+    } catch (e) {
+      expect((e as Error).message).toMatch(/DELETION_LEDGER_S3_BUCKET: wajib bucket terpisah/);
+      expect((e as Error).message).not.toContain("rahasia");
+    }
+    expect(loadWorkerEnv({ ...base, ...ledger, ...files, S3_BUCKET: "kapdh-prod-files" }).S3_BUCKET).toBe(
+      "kapdh-prod-files",
+    );
   });
 
   it("variabel runtime worker opsional (health, poll outbox, shutdown) divalidasi rentangnya", () => {

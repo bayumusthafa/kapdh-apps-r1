@@ -5,6 +5,7 @@ import type { AddressInfo } from "node:net";
 /**
  * Server S3 tiruan minimal (path-style) untuk menguji S3Driver tanpa jaringan: PutObject, CopyObject, GetObject,
  * HeadObject, DeleteObject. Bucket `bucket-rusak` selalu menjawab 403 AccessDenied untuk menguji penerusan galat.
+ * Bucket `bucket-terkunci` meniru bucket Object Lock AWS: PutObject tanpa Content-MD5 yang cocok ditolak 400.
  * Hanya untuk uji; tidak dikompilasi ke dist (tsconfig exclude).
  */
 export interface FakeS3 {
@@ -52,6 +53,10 @@ export async function startFakeS3(): Promise<FakeS3> {
             return;
           }
           const body = await readBody(req);
+          if (bucket === "bucket-terkunci") {
+            const md5 = createHash("md5").update(body).digest("base64");
+            if (req.headers["content-md5"] !== md5) return xmlError(res, 400, "InvalidRequest", path);
+          }
           objects.set(path, {
             body,
             contentType: String(req.headers["content-type"] ?? "application/octet-stream"),

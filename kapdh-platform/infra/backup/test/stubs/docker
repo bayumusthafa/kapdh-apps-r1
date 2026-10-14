@@ -1,0 +1,25 @@
+#!/bin/sh
+# Tiruan docker untuk uji kering image_ref backup.sh (CONTAINER_<NAMA> = nama kontainer atau filter label=...).
+# Kontainer worker: tag ghcr.io/kapdh/worker:v1.0.0, digest registri sha256:feedbeef. Perintah lain: keluar 1.
+set -eu
+case "${1:-} ${2:-}" in
+  "ps --filter")
+    [ "${3:-}" = "label=com.docker.compose.service=worker" ] && echo 0123456789ab
+    exit 0
+    ;;
+  "image inspect")
+    [ "${5:-}" = "sha256:abcdef0123" ] || exit 1
+    echo "ghcr.io/kapdh/worker@sha256:feedbeef"
+    exit 0
+    ;;
+  "inspect --format")
+    [ "${4:-}" = 0123456789ab ] || exit 1
+    case ${3:-} in
+      '{{.Config.Image}}') echo "ghcr.io/kapdh/worker:v1.0.0" ;;
+      '{{.Image}}') echo "sha256:abcdef0123" ;;
+      *) exit 1 ;;
+    esac
+    exit 0
+    ;;
+esac
+exit 1

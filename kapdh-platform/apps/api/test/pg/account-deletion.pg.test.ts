@@ -209,13 +209,14 @@ const cliPath = join(
 
 describe("CLI ledger-reapply (AC F14-6, runbook restore)", () => {
   it.skipIf(!existsSync(cliPath))(
-    "AC F14-6: CLI sebagai kapdh_worker menerapkan ulang entri ledger ke database pulihan, menghapus ulang objek berkas, keluar 0; ledger rusak → keluar 1 tanpa data pribadi di keluaran",
+    "AC F14-6, D5-07: CLI sebagai kapdh_worker menggabungkan salinan ledger luar VPS dan ledger backup (--dir berulang), menerapkan ulang ke database pulihan, menghapus ulang objek berkas, keluar 0 walau Redis pulihan belum menyala; ledger rusak → keluar 1 tanpa data pribadi di keluaran",
     async () => {
       const lane = inject("kapdhPg")!;
       const workerUrl = `postgres://kapdh_worker:${lane.rolePassword}@${lane.host}:${lane.port}/${tdb.name}`;
       const member = await createAlumni(fixtures, { status: "verified" });
       const root = mkdtempSync(join(tmpdir(), "kapdh-files-"));
       const ledgerDir = mkdtempSync(join(tmpdir(), "kapdh-ledger-"));
+      const offsiteDir = mkdtempSync(join(tmpdir(), "kapdh-ledger-offsite-"));
       try {
         // Objek berkas yang muncul kembali dari backup berkas lama.
         const objectKey = `avatar/2026/10/${uuidv7()}`;
@@ -250,20 +251,32 @@ describe("CLI ledger-reapply (AC F14-6, runbook restore)", () => {
           FILE_URL_SECRET: testEnv.FILE_URL_SECRET,
           STORAGE_DRIVER: "local",
           STORAGE_LOCAL_ROOT: root,
+          // Env worker production memuat REDIS_URL, tetapi saat restore Redis pulihan belum menyala: CLI tidak boleh
+          // bergantung padanya (penerapan ulang akun yang masih ada memicu event realtime). Port 9 = tidak terjangkau.
+          REDIS_URL: "redis://127.0.0.1:9",
         };
-        const run = (dir: string) =>
+        // Salinan bucket luar VPS (layout append-only, hasil rclone copy): versi requested dari permintaan yang sama.
+        const offsiteFolder = join(offsiteDir, "2026", "10", requestNumber.toLowerCase());
+        mkdirSync(offsiteFolder, { recursive: true });
+        writeFileSync(
+          join(offsiteFolder, `requested-${uuidv7()}.json`),
+          JSON.stringify({ ...entry, state: "requested", completed_at: null, object_keys: [] }),
+        );
+        const run = (...dirs: string[]) =>
           new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
             execFile(
               process.execPath,
-              [cliPath, "--dir", dir],
+              [cliPath, ...dirs.flatMap((dir) => ["--dir", dir])],
               { env, cwd: root, timeout: 120_000 },
               (error, stdout, stderr) =>
                 resolve({ code: error ? ((error as { code?: number }).code ?? 1) : 0, stdout, stderr }),
             );
           });
 
-        const ok = await run(ledgerDir);
+        const ok = await run(offsiteDir, ledgerDir);
         expect(ok.code, ok.stderr).toBe(0);
+        expect(ok.stdout).toContain("Folder ledger        : 2");
+        expect(ok.stdout).toContain("Entri ledger         : 1");
         expect(ok.stdout).toContain(`Diterapkan ulang     : 1 ${requestNumber}`);
         expect(ok.stdout).toContain("Gagal                : 0");
         expect(ok.stdout).not.toContain(member.email);
@@ -294,6 +307,7 @@ describe("CLI ledger-reapply (AC F14-6, runbook restore)", () => {
       } finally {
         rmSync(root, { recursive: true, force: true });
         rmSync(ledgerDir, { recursive: true, force: true });
+        rmSync(offsiteDir, { recursive: true, force: true });
       }
     },
     180_000,
