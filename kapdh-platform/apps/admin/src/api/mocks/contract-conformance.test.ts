@@ -174,6 +174,17 @@ function paramsText(params: unknown): string {
 
 const KNOWN_NONCONFORMING: Record<string, string> = {};
 
+/**
+ * Operasi kontrak web admin (audience admin, atau path /admin/**) yang belum memiliki rute tiruan, beserta alasannya.
+ * Halaman yang kelak memakai operasi ini wajib menambah tiruannya lebih dahulu (ARCHITECTURE §7).
+ */
+const KNOWN_WITHOUT_MOCK: Record<string, string> = {
+  "POST /admin/payments":
+    "D6-01: adminRecordPayment (rencana cadangan D13) belum memiliki layar maupun tiruan di web admin",
+  "GET /admin/content/event-categories/{categoryId}":
+    "adminGetEventCategory tidak dipakai UI (lembar kategori event membaca daftar)",
+};
+
 // ---------------------------------------------------------------------------------------------------------------
 // Pemanggil
 // ---------------------------------------------------------------------------------------------------------------
@@ -1932,6 +1943,21 @@ describe("tiruan admin: galat dan cakupan", () => {
     // Ringkasan untuk laporan audit: semua pelanggaran yang teramati di berkas ini.
     const lines = [...allViolations.entries()].flatMap(([k, v]) => [...v].map((x) => `${k} :: ${x}`));
     if (lines.length > 0) console.info(`Pelanggaran kontrak tiruan admin:\n${lines.join("\n")}`);
+  });
+
+  it("setiap operasi kontrak web admin memiliki rute tiruan, kecuali yang tercatat di KNOWN_WITHOUT_MOCK", () => {
+    const mocked = new Set(mockRouteTable.map(({ route: r }) => `${r.method} ${r.path}`));
+    const missing: string[] = [];
+    for (const [path, item] of Object.entries(spec.paths))
+      for (const method of ["get", "post", "put", "patch", "delete"]) {
+        const op = item[method] as JsonObject | undefined;
+        if (!op) continue;
+        const access = (op["x-kapdh-access"] ?? {}) as { audience?: string };
+        if (access.audience !== "admin" && !path.startsWith("/admin/")) continue;
+        const key = `${method.toUpperCase()} ${path}`;
+        if (!mocked.has(key)) missing.push(key);
+      }
+    expect(missing.sort()).toEqual(Object.keys(KNOWN_WITHOUT_MOCK).sort());
   });
 
   it("setiap rute tiruan dipanggil skenario representatif dan pelanggaran hanya pada rute yang tercatat", () => {
