@@ -125,22 +125,6 @@ beforeAll(async () => {
 }, 180_000);
 
 afterAll(async () => {
-  if (process.env.D7_DUMP)
-    (await import("node:fs")).writeFileSync(
-      process.env.D7_DUMP,
-      JSON.stringify(
-        {
-          messages: mailer.messages,
-          otp: mailer.sent.map((m) => ({ to: m.to, purpose: m.purpose, text: m.text })),
-          transactional: mailer.mail,
-          push: push.sent,
-          notifications:
-            await sql`select category, title, body, data, dedup_key from app.notifications order by created_at`,
-        },
-        null,
-        2,
-      ),
-    );
   await worker?.close();
   await app?.close();
   await workerConn?.sql.end({ timeout: 5 });
@@ -2793,15 +2777,212 @@ describe("D7 (e+): blokir dua arah pada chat langsung dan undangan grup", () => 
       { name: "Grup Terblokir", invitee_user_ids: [blocker.userId] },
       { token: blocked.token, headers: APP },
     );
-    if (group.statusCode === 201) {
-      const body = group.json() as Json;
-      expect(body.invitations.invited_user_ids ?? []).not.toContain(blocker.userId);
-    } else {
-      expect([400, 403, 409], show("post", "/chat/rooms (undang pemblokir)", group)).toContain(
-        group.statusCode,
-      );
+    // Kontrak createChatGroup: calon yang terblokir dilewati (invitations.skipped), grup tetap dibuat.
+    expect(group.statusCode, show("post", "/chat/rooms (undang pemblokir)", group)).toBe(201);
+    const created = expectOperation("post", "/chat/rooms", group) as Json;
+    expect(created.invitations.invited_user_ids).not.toContain(blocker.userId);
+    expect(created.invitations.skipped.map((s: Json) => s.user_id)).toContain(blocker.userId);
+    const invites = await step("get", "/chat/invitations", "/chat/invitations", 200, undefined, {
+      token: blocker.token,
+    });
+    expect(JSON.stringify(invites.json.items)).not.toContain(created.room.id);
+  });
+});
+
+describe("D7 (e3): langganan room Socket.IO mengikuti status keanggotaan (AC F11-6, events/README.md)", () => {
+  it("AC F11-6: socket anggota expired tidak menerima pesan grup; setelah renewal disetujui socket yang sama dimasukkan ulang ke room", async () => {
+    const owner = await memberFixture({ status: "verified", fullName: "Vino Pemilik Grup" });
+    const lapsing = await memberFixture({ status: "expiring", fullName: "Wati Hampir Habis" });
+    const group = await step(
+      "post",
+      "/chat/rooms",
+      "/chat/rooms",
+      201,
+      { name: "Grup Perpanjang", invitee_user_ids: [lapsing.userId] },
+      { token: owner.token, idem: true, headers: APP },
+    );
+    const groupId = group.json.room.id as string;
+    await step(
+      "post",
+      `/chat/invitations/${groupId}/accept`,
+      "/chat/invitations/{roomId}/accept",
+      200,
+      undefined,
+      {
+        token: lapsing.token,
+        idem: true,
+        headers: APP,
+      },
+    );
+    // Masa keanggotaan habis.
+    const [row] = await sql<{ expires_at: string }[]>`
+      select expires_at from app.alumni where user_id = ${lapsing.userId}`;
+    clock.set(new Date(new Date(row!.expires_at).getTime() + HOUR));
+    const ownerToken = (await loginAlumni(owner.email, owner.password)).token;
+    const expiredSession = await loginAlumni(lapsing.email, lapsing.password);
+    const socket = await connectSocket({ ...lapsing, token: expiredSession.token });
+    try {
+      const before = await sendText({ ...owner, token: ownerToken }, groupId, "Pesan saat Wati expired");
+      const beforeMsg = expectOperation("post", "/chat/rooms/{roomId}/messages", before) as Json;
+      await socket.none("message.created", (e) => e.entity_id === beforeMsg.id, 400);
+      const denied = await call("get", `/chat/rooms/${groupId}/messages`, undefined, {
+        token: expiredSession.token,
+      });
+      expect(denied.statusCode).toBe(403);
+
+      // Renewal disetujui → socket yang masih tersambung dimasukkan ulang ke room (butir 5).
+      const payment = await submitDues({ token: expiredSession.token }, "renewal", {
+        data: await testJpeg(),
+        filename: "wati.jpg",
+        contentType: "image/jpeg",
+      });
+      const admin = await adminFixture({ permissions: ["payments.read", "payments.decide"] });
+      await decide(admin, payment.id, "approve");
+      const after = await sendText({ ...owner, token: ownerToken }, groupId, "Selamat datang kembali Wati");
+      const afterMsg = expectOperation("post", "/chat/rooms/{roomId}/messages", after) as Json;
+      await socket.waitFor("message.created", (e) => e.entity_id === afterMsg.id);
+    } finally {
+      socket.close();
     }
-    expectOperation("post", "/chat/rooms", group);
+  });
+
+  it("AC F12-5: socket sesi terbatas anggota suspended dimasukkan ulang ke room setelah unsuspend", async () => {
+    const owner = await memberFixture({ status: "verified", fullName: "Xavi Pemilik Grup" });
+    const member = await memberFixture({ status: "verified", fullName: "Yuni Dibatasi Sementara" });
+    const group = await step(
+      "post",
+      "/chat/rooms",
+      "/chat/rooms",
+      201,
+      { name: "Grup Pulih", invitee_user_ids: [member.userId] },
+      { token: owner.token, idem: true, headers: APP },
+    );
+    const groupId = group.json.room.id as string;
+    await step(
+      "post",
+      `/chat/invitations/${groupId}/accept`,
+      "/chat/invitations/{roomId}/accept",
+      200,
+      undefined,
+      {
+        token: member.token,
+        idem: true,
+        headers: APP,
+      },
+    );
+    const moderator = await adminFixture({
+      permissions: ["members.read", "moderation.read", "moderation.resolve"],
+    });
+    const detail = await step(
+      "get",
+      `/admin/members/${member.userId}`,
+      "/admin/members/{userId}",
+      200,
+      undefined,
+      {
+        token: moderator.token,
+      },
+    );
+    const suspended = await step(
+      "post",
+      `/admin/members/${member.userId}/suspend`,
+      "/admin/members/{userId}/suspend",
+      200,
+      { reason: "Uji langganan socket", member_message: "Akun dibatasi sementara.", confirm: true },
+      { token: moderator.token, idem: true, headers: { "if-match": detail.json.version } },
+    );
+    const restricted = await loginAlumni(member.email, member.password);
+    const socket = await connectSocket({ ...member, token: restricted.token });
+    try {
+      const during = await sendText(owner, groupId, "Pesan selama dibatasi");
+      const duringMsg = expectOperation("post", "/chat/rooms/{roomId}/messages", during) as Json;
+      await socket.none("message.created", (e) => e.entity_id === duringMsg.id, 400);
+      await step(
+        "post",
+        `/admin/members/${member.userId}/unsuspend`,
+        "/admin/members/{userId}/unsuspend",
+        200,
+        { reason: "Selesai ditinjau", confirm: true },
+        { token: moderator.token, idem: true, headers: { "if-match": suspended.json.version } },
+      );
+      const after = await sendText(owner, groupId, "Selamat bergabung lagi");
+      const afterMsg = expectOperation("post", "/chat/rooms/{roomId}/messages", after) as Json;
+      await socket.waitFor("message.created", (e) => e.entity_id === afterMsg.id);
+    } finally {
+      socket.close();
+    }
+  });
+});
+
+describe("D7 (idem): ulangan jaringan dengan Idempotency-Key yang sama di sepanjang perjalanan (PRD 4.3)", () => {
+  it("PRD 4.3, AC F03-4, F09-1: reservasi, instruksi iuran, kirim bukti dan keputusan yang diulang memutar hasil pertama", async () => {
+    const admin = await adminFixture({ permissions: ["events.manage", "payments.read", "payments.decide"] });
+    const event = await createOpenEvent(admin, {
+      title: "Event Ulang Jaringan",
+      price: "30000.00",
+      seats: 4,
+      startsInMs: 8 * DAY,
+    });
+    const member = await memberFixture({ status: "expiring", fullName: "Zul Sinyal Lemah" });
+    const replayed = async (method: HttpMethod, path: string, op: string, body: unknown, status: number) => {
+      const key = uuidv7();
+      const first = await step(method, path, op, status, body, {
+        token: member.token,
+        headers: { ...APP, "idempotency-key": key },
+      });
+      const second = await call(method, path, body, {
+        token: member.token,
+        headers: { ...APP, "idempotency-key": key },
+      });
+      expect(second.statusCode, show(method, `${path} (ulang)`, second, body)).toBe(status);
+      expect(second.headers["idempotent-replayed"], show(method, `${path} (ulang)`, second, body)).toBe(
+        "true",
+      );
+      expect(expectOperation(method, op, second)).toEqual(first.json);
+      return first.json;
+    };
+    const ticket = await replayed(
+      "post",
+      `/events/${event.id}/reservations`,
+      "/events/{eventId}/reservations",
+      { expected_price: "30000.00", payment_method_id: await bankMethod() },
+      201,
+    );
+    const dues = await replayed(
+      "post",
+      "/me/payments",
+      "/me/payments",
+      { type: "renewal", payment_method_id: await bankMethod() },
+      201,
+    );
+    const proof = await uploadMultipart(member.token, "payment_proof", {
+      data: await testJpeg(),
+      filename: "ulang.jpg",
+      contentType: "image/jpeg",
+    });
+    await replayed(
+      "put",
+      `/me/payments/${dues.id}/proof`,
+      "/me/payments/{paymentId}/proof",
+      { file_id: proof.json.id, expected_proof_version: 0 },
+      200,
+    );
+    const ticketProof = await uploadMultipart(member.token, "payment_proof", {
+      data: await testJpeg(),
+      filename: "ulang-tiket.jpg",
+      contentType: "image/jpeg",
+    });
+    await replayed(
+      "put",
+      `/me/payments/${ticket.payment.id}/proof`,
+      "/me/payments/{paymentId}/proof",
+      { file_id: ticketProof.json.id, expected_proof_version: 0 },
+      200,
+    );
+    const [counts] = await sql<{ tickets: number; payments: number }[]>`
+      select (select count(*)::int from app.tickets where user_id = ${member.userId}) as tickets,
+             (select count(*)::int from app.payments where user_id = ${member.userId}) as payments`;
+    expect(counts).toEqual({ tickets: 1, payments: 2 });
   });
 });
 
@@ -2874,6 +3055,96 @@ describe("D7 (k): preferensi notifikasi dan logout perangkat (F-13)", () => {
     );
     await drain();
     expect(push.to(fcm)).toHaveLength(1);
+  });
+});
+
+describe("D7 (k2): kelas galat FCM pada pengiriman worker (F-13)", () => {
+  it("AC F13-4: UNAVAILABLE dicoba ulang tanpa menonaktifkan token; UNREGISTERED menonaktifkan token sehingga notifikasi berikutnya tidak dikirim", async () => {
+    const member = await memberFixture({ status: "expiring", fullName: "Anton Token Usang" });
+    const fcm = `fcm-usang-${member.userId}`;
+    await step(
+      "put",
+      "/devices",
+      "/devices",
+      204,
+      { platform: "android", token: fcm, app_version: "1.0.0" },
+      {
+        token: member.token,
+      },
+    );
+    await drain();
+    await runJob("notifications.retry");
+    const admin = await adminFixture({ permissions: ["payments.read", "payments.decide"] });
+    const payment = await submitDues(member, "renewal", {
+      data: await testJpeg(),
+      filename: "fcm.jpg",
+      contentType: "image/jpeg",
+    });
+    push.failNext(fcm, { ok: false, errorClass: "unavailable", retryable: true, deactivateToken: false });
+    await decide(admin, payment.id, "approve");
+    await drain();
+    const [device] = await sql<{ revoked_at: string | null }[]>`
+      select revoked_at from app.device_tokens where token = ${fcm}`;
+    expect(device!.revoked_at).toBeNull();
+    clock.advance(30 * 60_000);
+    await runJob("notifications.retry");
+    expect(push.to(fcm)).toHaveLength(2);
+    const [sentRow] = await sql<{ status: string; attempt: number }[]>`
+      select d.status, d.attempt from app.notification_deliveries d
+      join app.device_tokens t on t.id = d.device_token_id where t.token = ${fcm}`;
+    expect(sentRow).toMatchObject({ status: "sent", attempt: 2 });
+
+    // UNREGISTERED: token dinonaktifkan; notifikasi berikutnya (expiry reminder tidak relevan) → suspend notice.
+    const moderator = await adminFixture({
+      permissions: ["members.read", "moderation.read", "moderation.resolve"],
+    });
+    const memberToken = (await loginAlumni(member.email, member.password)).token;
+    await step(
+      "put",
+      "/devices",
+      "/devices",
+      204,
+      { platform: "android", token: fcm, app_version: "1.0.0" },
+      {
+        token: memberToken,
+      },
+    );
+    const card = await step("get", "/me/card", "/me/card", 200, undefined, { token: memberToken });
+    expect(card.json.status_label).toBe("active");
+    push.failNext(fcm, { ok: false, errorClass: "unregistered", retryable: false, deactivateToken: true });
+    const detail = await step(
+      "get",
+      `/admin/members/${member.userId}`,
+      "/admin/members/{userId}",
+      200,
+      undefined,
+      {
+        token: moderator.token,
+      },
+    );
+    const suspended = await step(
+      "post",
+      `/admin/members/${member.userId}/suspend`,
+      "/admin/members/{userId}/suspend",
+      200,
+      { reason: "Uji token FCM", member_message: "Akun dibatasi sementara.", confirm: true },
+      { token: moderator.token, idem: true, headers: { "if-match": detail.json.version } },
+    );
+    await drain();
+    const [revoked] = await sql<{ revoked_at: string | null }[]>`
+      select revoked_at from app.device_tokens where token = ${fcm} order by created_at desc limit 1`;
+    expect(revoked!.revoked_at).not.toBeNull();
+    const pushesBefore = push.to(fcm).length;
+    await step(
+      "post",
+      `/admin/members/${member.userId}/unsuspend`,
+      "/admin/members/{userId}/unsuspend",
+      200,
+      { reason: "Selesai", confirm: true },
+      { token: moderator.token, idem: true, headers: { "if-match": suspended.json.version } },
+    );
+    await drain();
+    expect(push.to(fcm)).toHaveLength(pushesBefore);
   });
 });
 
@@ -3230,6 +3501,156 @@ describe("D7 (p): perubahan event setelah ada tiket (F-09, F-15)", () => {
   });
 });
 
+describe("D7 (p2): harga event berubah setelah ada reservasi (PRD 4.4, AC F03-5)", () => {
+  it("PRD 4.4: harga baru hanya untuk reservasi baru; reservasi lama memakai snapshot; expected_price lama ditolak", async () => {
+    const admin = await adminFixture({ permissions: ["events.manage", "payments.read", "payments.decide"] });
+    const event = await createOpenEvent(admin, {
+      title: "Event Harga Naik",
+      price: "30000.00",
+      seats: 5,
+      startsInMs: 9 * DAY,
+    });
+    const early = await memberFixture({ status: "verified", fullName: "Agus Harga Lama" });
+    const held = await step(
+      "post",
+      `/events/${event.id}/reservations`,
+      "/events/{eventId}/reservations",
+      201,
+      { expected_price: "30000.00", payment_method_id: await bankMethod() },
+      { token: early.token, idem: true, headers: APP },
+    );
+    const current = await step(
+      "get",
+      `/admin/events/${event.id}`,
+      "/admin/events/{eventId}",
+      200,
+      undefined,
+      {
+        token: admin.token,
+      },
+    );
+    await step(
+      "patch",
+      `/admin/events/${event.id}`,
+      "/admin/events/{eventId}",
+      200,
+      { price: "45000.00" },
+      { token: admin.token, headers: { "if-match": current.json.version } },
+    );
+    const stale = await call(
+      "post",
+      `/events/${event.id}/reservations`,
+      { expected_price: "30000.00", payment_method_id: await bankMethod() },
+      {
+        token: (await memberFixture({ status: "verified", fullName: "Budi Harga Basi" })).token,
+        headers: APP,
+      },
+    );
+    expect(stale.statusCode, show("post", "reservations (harga basi)", stale)).toBe(409);
+    expectOperation("post", "/events/{eventId}/reservations", stale);
+    const late = await memberFixture({ status: "verified", fullName: "Cici Harga Baru" });
+    const fresh = await step(
+      "post",
+      `/events/${event.id}/reservations`,
+      "/events/{eventId}/reservations",
+      201,
+      { expected_price: "45000.00", payment_method_id: await bankMethod() },
+      { token: late.token, idem: true, headers: APP },
+    );
+    expect(fresh.json).toMatchObject({ total: "45000.00", payment: { amount: "45000.00" } });
+    const old = await step("get", `/me/tickets/${held.json.id}`, "/me/tickets/{ticketId}", 200, undefined, {
+      token: early.token,
+    });
+    expect(old.json).toMatchObject({ total: "30000.00", payment: { amount: "30000.00" } });
+    const proof = await uploadMultipart(early.token, "payment_proof", {
+      data: await testJpeg(),
+      filename: "lama.jpg",
+      contentType: "image/jpeg",
+    });
+    await step(
+      "put",
+      `/me/payments/${held.json.payment.id}/proof`,
+      "/me/payments/{paymentId}/proof",
+      200,
+      { file_id: proof.json.id, expected_proof_version: 0 },
+      { token: early.token, idem: true, headers: APP },
+    );
+    const approved = await decide(admin, held.json.payment.id, "approve");
+    expect(approved.amount).toBe("30000.00");
+  });
+});
+
+describe("D7 (authz): objek milik anggota lain di sepanjang alur iuran (N-09, AC F10-5)", () => {
+  it("N-09: bukti, payment, tiket dan berkas milik anggota lain tidak dapat dipakai atau dibaca lewat ID", async () => {
+    const alice = await memberFixture({ status: "unverified", fullName: "Alya Pemilik" });
+    const bob = await memberFixture({ status: "unverified", fullName: "Bima Pengintip" });
+    const alicePayment = await submitDues(alice, "registration", {
+      data: await testJpeg(),
+      filename: "alya.jpg",
+      contentType: "image/jpeg",
+    });
+    const bobPayment = await step(
+      "post",
+      "/me/payments",
+      "/me/payments",
+      201,
+      { type: "registration", payment_method_id: await bankMethod() },
+      { token: bob.token, idem: true, headers: APP },
+    );
+    // Bob memakai berkas bukti milik Alya.
+    const reuse = await call(
+      "put",
+      `/me/payments/${bobPayment.json.id}/proof`,
+      { file_id: alicePayment.fileId, expected_proof_version: 0 },
+      { token: bob.token, headers: APP },
+    );
+    expect([400, 404, 422], show("put", "proof dengan berkas orang lain", reuse)).toContain(reuse.statusCode);
+    expectOperation("put", "/me/payments/{paymentId}/proof", reuse);
+    for (const [path, op] of [
+      [`/me/payments/${alicePayment.id}`, "/me/payments/{paymentId}"],
+      [`/files/${alicePayment.fileId}/access`, "/files/{fileId}/access"],
+    ] as const) {
+      const res = await call("get", path, undefined, { token: bob.token });
+      expect([403, 404], show("get", path, res)).toContain(res.statusCode);
+      expectOperation("get", op, res);
+    }
+    const cancel = await call(
+      "post",
+      `/me/payments/${alicePayment.id}/cancel`,
+      {},
+      { token: bob.token, headers: { ...APP, "if-match": "1" } },
+    );
+    expect([403, 404], show("post", "cancel payment orang lain", cancel)).toContain(cancel.statusCode);
+    // Admin hanya payments.read tidak dapat memutus.
+    const reader = await adminFixture({ permissions: ["payments.read"] });
+    const detail = await step(
+      "get",
+      `/admin/payments/${alicePayment.id}`,
+      "/admin/payments/{paymentId}",
+      200,
+      undefined,
+      { token: reader.token },
+    );
+    expect(detail.json.actions.can_decide).toBe(false);
+    const denied = await call(
+      "post",
+      `/admin/payments/${alicePayment.id}/decision`,
+      {
+        decision: "approve",
+        expected_proof_version: 1,
+        expected_version: detail.json.version,
+        funds_verified: true,
+      },
+      { token: reader.token },
+    );
+    expect(denied.statusCode).toBe(403);
+    const [row] = await sql<
+      { status: string }[]
+    >`select status from app.payments where id = ${alicePayment.id}`;
+    expect(row!.status).toBe("pending");
+  });
+});
+
 describe("D7 (q): keluar grup oleh admin terakhir (F-11)", () => {
   it("AC F11-5, F11-4: admin terakhir wajib memilih pengganti; setelah keluar riwayat & langganan socket ditolak", async () => {
     const owner = await memberFixture({ status: "verified", fullName: "Abel Admin Grup" });
@@ -3387,6 +3808,18 @@ describe("D7 (r): pengaturan admin berlaku ke klien (F-15)", () => {
       });
       expect(reauth.statusCode).toBe(503);
       expect(expectOperation("post", "/auth/reauth", reauth)).toMatchObject({ code: "MAINTENANCE" });
+      // Unggahan kerja pengurus (bukti D13, bukti refund) lewat POST /files juga tertolak walau /admin/** bebas.
+      const upload = multipartBody([
+        { name: "purpose", value: "adjustment_evidence" },
+        { name: "file", filename: "refund.jpg", contentType: "image/jpeg", data: await testJpeg() },
+      ]);
+      const adminUpload = (await app.inject({
+        method: "POST",
+        url: "/api/v1/files",
+        payload: upload.payload,
+        headers: { ...upload.headers, authorization: `Bearer ${admin.token}` },
+      })) as unknown as InjectResponse;
+      expect(adminUpload.statusCode).toBe(503);
       const stuck = await call(
         "put",
         "/admin/settings/maintenance",
@@ -3766,6 +4199,45 @@ describe("D7 (x): konflik kepentingan pengurus tertaut alumni dan verifikasi dan
     }
     const approved = await decide(other, payment.id, "approve");
     expect(approved.status).toBe("paid");
+
+    // Akun alumni pribadi pengurus tetap dapat dihapus terpisah (PRD 3.14); identitas admin tetap berfungsi.
+    const disclosure = await step(
+      "get",
+      "/me/deletion/disclosure",
+      "/me/deletion/disclosure",
+      200,
+      undefined,
+      {
+        token: alumniSelf.token,
+      },
+    );
+    expect(disclosure.json.linked_admin_identity).toBe(true);
+    const requested = await step(
+      "post",
+      "/me/deletion",
+      "/me/deletion",
+      202,
+      { confirm: true, acknowledged_disclosure_version: disclosure.json.version },
+      { token: alumniSelf.token, idem: true, headers: { ...APP, ...(await memberReauth(alumniSelf)) } },
+    );
+    await drain();
+    const [row] = await sql<{ status: string; last_error: string | null }[]>`
+      select status, last_error from app.account_deletions where request_number = ${requested.json.request_number}`;
+    expect(row!.status, String(row!.last_error)).toBe("completed");
+    const adminView = await step(
+      "get",
+      `/admin/admins/${linked.adminId}`,
+      "/admin/admins/{adminId}",
+      200,
+      undefined,
+      {
+        token: superAdmin.token,
+      },
+    );
+    expect(adminView.json.status).toBe("active");
+    expect(adminView.res.body).not.toContain("Kurnia Bendahara Anggota");
+    const stillWorks = await call("get", "/admin/payments", undefined, { token: linked.token });
+    expect(stillWorks.statusCode).toBe(200);
   });
 });
 
