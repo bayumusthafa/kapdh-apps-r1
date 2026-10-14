@@ -1,0 +1,7 @@
+#!/bin/sh
+# Tiruan psql untuk uji kering (infra/backup/test/fake-tools.mjs). stdin dialirkan lewat cat agar FIFO sesi snapshot
+# juga terbaca di Git Bash.
+set -eu
+FT=$FAKE_TOOLS
+if command -v cygpath >/dev/null 2>&1; then FT=$(cygpath -m "$FT"); fi
+cat | node "$FT" psql "$@"

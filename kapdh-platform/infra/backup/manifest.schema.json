@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kapdh.or.id/schemas/backup-manifest.v1.json",
+  "title": "Manifest backup KAPDH v1",
+  "description": "Ditulis infra/backup/backup.sh dan disimpan di snapshot restic kapdh-db bersama db.dump dan salinan deletion ledger (PRD 5.5: manifest menghubungkan dump DB, checksum berkas, waktu, schema version, image version dan deletion ledger). Tanpa secret dan tanpa data pribadi.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "version",
+    "backup_id",
+    "environment",
+    "restic_host",
+    "started_at",
+    "manifest_written_at",
+    "consistency",
+    "retention_days",
+    "tools",
+    "images",
+    "database",
+    "files",
+    "deletion_ledger"
+  ],
+  "$defs": {
+    "isoTime": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "safeOrNull": {
+      "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^[A-Za-z0-9._:@/+=-]+$" }]
+    },
+    "stats": {
+      "type": "object",
+      "description": "Keluaran infra/backup/sql/stats.sql pada snapshot yang sama dengan pg_dump.",
+      "required": ["captured_at", "schema", "invariant", "info", "latest"],
+      "properties": {
+        "captured_at": { "$ref": "#/$defs/isoTime" },
+        "schema": {
+          "type": "object",
+          "required": ["applied", "last_created_at"],
+          "properties": {
+            "applied": { "type": "integer", "minimum": 0 },
+            "last_created_at": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "invariant": {
+          "type": "object",
+          "required": [
+            "users",
+            "admins_active",
+            "super_admins_active",
+            "payments",
+            "payments_paid",
+            "paid_total",
+            "paid_registration",
+            "paid_renewal",
+            "paid_ticket",
+            "adjustments",
+            "adjustments_completed_total",
+            "tickets",
+            "events",
+            "rooms"
+          ],
+          "additionalProperties": {
+            "oneOf": [{ "type": "integer" }, { "type": "string", "pattern": "^\\d+\\.\\d{2}$" }]
+          }
+        },
+        "info": { "type": "object", "additionalProperties": { "type": "integer" } },
+        "latest": { "type": "object" }
+      }
+    }
+  },
+  "properties": {
+    "kind": { "const": "kapdh.backup_manifest" },
+    "version": { "const": 1 },
+    "backup_id": { "type": "string", "pattern": "^kapdh-[a-z0-9-]+-\\d{8}T\\d{6}Z$" },
+    "environment": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "restic_host": { "type": "string" },
+    "started_at": { "$ref": "#/$defs/isoTime" },
+    "manifest_written_at": { "$ref": "#/$defs/isoTime" },
+    "consistency": { "const": "db_snapshot_then_files" },
+    "retention_days": { "type": "integer", "minimum": 1, "maximum": 30 },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["restic", "rclone", "pg_dump"],
+      "properties": {
+        "restic": { "$ref": "#/$defs/safeOrNull" },
+        "rclone": { "$ref": "#/$defs/safeOrNull" },
+        "pg_dump": { "$ref": "#/$defs/safeOrNull" }
+      }
+    },
+    "images": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["api", "worker", "web", "admin"],
+      "properties": {
+        "api": { "$ref": "#/$defs/safeOrNull" },
+        "worker": { "$ref": "#/$defs/safeOrNull" },
+        "web": { "$ref": "#/$defs/safeOrNull" },
+        "admin": { "$ref": "#/$defs/safeOrNull" }
+      }
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dump_file",
+        "dump_format",
+        "db_dump_sha256",
+        "db_dump_bytes",
+        "db_toc_entries",
+        "db_snapshot_captured_at",
+        "db_dump_seconds",
+        "stats"
+      ],
+      "properties": {
+        "dump_file": { "const": "db.dump" },
+        "dump_format": { "const": "custom" },
+        "db_dump_sha256": { "$ref": "#/$defs/sha256" },
+        "db_dump_bytes": { "type": "integer", "minimum": 1 },
+        "db_toc_entries": { "type": "integer", "minimum": 1 },
+        "db_snapshot_captured_at": { "$ref": "#/$defs/isoTime" },
+        "db_dump_seconds": { "type": "integer", "minimum": 0 },
+        "stats": { "$ref": "#/$defs/stats" }
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "files_root",
+        "files_snapshot_id",
+        "files_snapshot_started_at",
+        "files_total",
+        "files_bytes",
+        "files_local_ledger_entries"
+      ],
+      "properties": {
+        "files_root": { "type": "string" },
+        "files_snapshot_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "files_snapshot_started_at": { "$ref": "#/$defs/isoTime" },
+        "files_total": { "type": "integer", "minimum": 0 },
+        "files_bytes": { "type": "integer", "minimum": 0 },
+        "files_local_ledger_entries": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "deletion_ledger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ledger_offsite_remote",
+        "ledger_offsite_dir",
+        "ledger_offsite_entries",
+        "ledger_offsite_index_sha256",
+        "objects"
+      ],
+      "properties": {
+        "ledger_offsite_remote": { "$ref": "#/$defs/safeOrNull" },
+        "ledger_offsite_dir": { "const": "ledger-offsite" },
+        "ledger_offsite_entries": { "type": "integer", "minimum": 0 },
+        "ledger_offsite_index_sha256": { "$ref": "#/$defs/sha256" },
+        "objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key", "sha256"],
+            "properties": {
+              "key": { "type": "string", "pattern": "^account-deletions/[a-z0-9._/-]+\\.json$" },
+              "sha256": { "$ref": "#/$defs/sha256" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
