@@ -149,12 +149,14 @@ KAPDH_BACKUP_SECRETS=$ROOT/tidak-ada.secrets.env
 KAPDH_ENV=production
 LEDGER_RCLONE_REMOTE=kapdhledger:kapdh-prod-deletion-ledger
 IMAGE_API=ghcr.io/kapdh/api:v1.0.0@sha256:0123abcd
+# Worker dibaca dari kontainer lewat filter label (docker tiruan di stubs): tag + digest registri.
+CONTAINER_WORKER=label=com.docker.compose.service=worker
 # Batas tunggu pendek agar bug sesi snapshot terlihat cepat (produksi: 120/600 detik).
 SNAPSHOT_TIMEOUT_S=20
 STATS_TIMEOUT_S=30
 export PATH FAKE_TOOLS FAKE_STATE_DIR FAKE_RCLONE_ROOT FAKE_STATS FAKE_RESTORED_STATS RESTIC_REPOSITORY \
   RESTIC_PASSWORD_FILE KAPDH_BACKUP_ENV KAPDH_BACKUP_SECRETS KAPDH_ENV LEDGER_RCLONE_REMOTE IMAGE_API \
-  SNAPSHOT_TIMEOUT_S STATS_TIMEOUT_S
+  CONTAINER_WORKER SNAPSHOT_TIMEOUT_S STATS_TIMEOUT_S
 rm -rf "$RESTIC_REPOSITORY" "$FAKE_STATE_DIR"
 
 db_snapshot_manifest() {
@@ -191,13 +193,15 @@ if [ -f "$MANIFEST" ]; then
     test "$(json_get "$MANIFEST" 'j.files.files_total+"/"+j.files.files_local_ledger_entries')" = "3/1"
   expect "manifest memuat 2 objek ledger luar VPS dengan sha256 (hanya account-deletions/**)" \
     test "$(json_get "$MANIFEST" 'j.deletion_ledger.objects.length+"/"+j.deletion_ledger.objects.every(o=>/^account-deletions\//.test(o.key)&&/^[0-9a-f]{64}$/.test(o.sha256))')" = "2/true"
-  expect "manifest memuat versi alat dan image" \
-    test "$(json_get "$MANIFEST" 'j.tools.restic+"|"+j.tools.rclone+"|"+j.tools.pg_dump+"|"+j.images.api+"|"+j.images.worker')" = \
-    "0.18.0|v1.69.1|17.6|ghcr.io/kapdh/api:v1.0.0@sha256:0123abcd|null"
+  expect "manifest memuat versi alat dan image (IMAGE_API; worker dari kontainer berlabel sebagai tag@digest)" \
+    test "$(json_get "$MANIFEST" 'j.tools.restic+"|"+j.tools.rclone+"|"+j.tools.pg_dump+"|"+j.images.api+"|"+j.images.worker+"|"+j.images.web')" = \
+    "0.18.0|v1.69.1|17.6|ghcr.io/kapdh/api:v1.0.0@sha256:0123abcd|ghcr.io/kapdh/worker:v1.0.0@sha256:feedbeef|null"
 fi
 expect "pg_dump dipanggil dengan --snapshot (snapshot bersama statistik)" grep -q '^pg_dump .*--snapshot=' "$FAKE_STATE_DIR/calls.log"
-expect "retensi restic forget --keep-within 30d --prune per (host,paths)" \
-  grep -q '^restic forget --host kapdh-production --tag kapdh --group-by host,paths --keep-within 30d --prune' "$FAKE_STATE_DIR/calls.log"
+expect "retensi dump: restic forget --tag kapdh-db --keep-within 30d per (host,paths)" \
+  grep -q '^restic forget --host kapdh-production --tag kapdh-db --group-by host,paths --keep-within 30d$' "$FAKE_STATE_DIR/calls.log"
+expect "prune terpisah dengan --max-unused 0 (D2: pack campuran ikut dikemas ulang)" \
+  grep -q '^restic prune --max-unused 0$' "$FAKE_STATE_DIR/calls.log"
 expect "stage berisi dump (data pribadi) dihapus setelah unggah" test ! -e "$WORK_DIR/stage"
 expect "lock dilepas" test ! -e "$WORK_DIR/.backup.lock"
 expect "status keberhasilan terakhir ditulis" grep -q '^db_snapshot=' "$WORK_DIR/status/last-success"
@@ -213,6 +217,65 @@ fi
 if RETENTION_DAYS=45 "$BACKUP_DIR/backup.sh" >"$ROOT/backup-4.log" 2>&1; then fail "retensi > 30 hari ditolak (D2)"; else
   expect "retensi > 30 hari ditolak (D2)" grep -q 'RETENTION_DAYS maksimal 30' "$ROOT/backup-4.log"
 fi
+if BUCKET_NONCURRENT_DAYS=7 "$BACKUP_DIR/backup.sh" >"$ROOT/backup-5.log" 2>&1; then
+  fail "retensi 30 + versi lama bucket 7 hari ditolak (D2)"
+else
+  expect "retensi 30 + versi lama bucket 7 hari ditolak (D2)" \
+    grep -q 'RETENTION_DAYS + BUCKET_NONCURRENT_DAYS maksimal 30' "$ROOT/backup-5.log"
+fi
+if RESTIC_PRUNE=0 "$BACKUP_DIR/backup.sh" >"$ROOT/backup-6.log" 2>&1; then fail "production tanpa prune ditolak (D2)"; else
+  expect "production tanpa prune ditolak (D2)" grep -q 'RESTIC_PRUNE=1 wajib di production' "$ROOT/backup-6.log"
+fi
+
+# ======================================================================================== 2b. retensi berpasangan
+# Repo tiruan diberi: pasangan dump+berkas berumur 40 hari (backup_id X), snapshot berkas dari run gagal 1 hari lalu
+# tanpa dump (Y), dan snapshot berkas tanpa tag backup_id. Sesudah backup berikutnya: dump X dilupakan kebijakan
+# keep-within, berkas X dan Y dilupakan berpasangan, snapshot tanpa tag dibiarkan (peringatan), backup run 1 tetap ada.
+inject_snapshots() {
+  node -e '
+const fs=require("fs"),p=require("path"),c=require("crypto");
+const dir=p.join(process.argv[1],"snapshots");
+const all=fs.readdirSync(dir).map(f=>JSON.parse(fs.readFileSync(p.join(dir,f),"utf8"))).sort((a,b)=>a.time.localeCompare(b.time));
+const db=all.filter(s=>s.tags.includes("kapdh-db")).pop(), files=all.filter(s=>s.tags.includes("kapdh-files")).pop();
+const bid=(d)=>"kapdh-production-"+d.toISOString().replace(/[-:]/g,"").replace(/\.\d+Z$/,"Z");
+const add=(base,ageDays,tag,role)=>{const id=c.randomBytes(32).toString("hex");const t=new Date(Date.now()-ageDays*86400000);
+  const s={...base,time:t.toISOString(),tags:["kapdh",role,"env-production",...(tag?[tag]:[])],id,short_id:id.slice(0,8)};
+  fs.writeFileSync(p.join(dir,id+".json"),JSON.stringify(s));return id;};
+const x=bid(new Date(Date.now()-40*86400000)), y=bid(new Date(Date.now()-86400000));
+const out={dbX:add(db,40,x,"kapdh-db"),filesX:add(files,40.01,x,"kapdh-files"),filesY:add(files,1,y,"kapdh-files"),filesNoTag:add(files,2,null,"kapdh-files"),db1:db.id,files1:files.id};
+process.stdout.write(Object.entries(out).map(([k,v])=>k+"="+v).join("\n")+"\n");' "$(native "$RESTIC_REPOSITORY")"
+}
+inject_snapshots >"$ROOT/injected.env"
+inj() { sed -n "s/^$1=//p" "$ROOT/injected.env"; }
+rm -f "$FAKE_STATE_DIR/forgotten"
+if "$BACKUP_DIR/backup.sh" >"$ROOT/backup-retention.log" 2>&1; then pass "backup dengan snapshot lama keluar 0"; else
+  fail "backup dengan snapshot lama keluar 0 (lihat $ROOT/backup-retention.log)"
+  cat "$ROOT/backup-retention.log"
+fi
+expect "dump berumur 40 hari dilupakan kebijakan keep-within" grep -q "^$(inj dbX) " "$FAKE_STATE_DIR/forgotten"
+expect "snapshot berkas pasangannya ikut dilupakan (berpasangan, bukan per waktu grup)" \
+  grep -q "^$(inj filesX) " "$FAKE_STATE_DIR/forgotten"
+expect "snapshot berkas run gagal tanpa dump dilupakan" grep -q "^$(inj filesY) " "$FAKE_STATE_DIR/forgotten"
+expect "snapshot berkas tanpa tag backup_id tidak disentuh dan diberi peringatan" \
+  sh -c "! grep -q '^$(inj filesNoTag) ' '$FAKE_STATE_DIR/forgotten' && grep -q 'tanpa tag backup_id' '$ROOT/backup-retention.log'"
+expect "pasangan backup run 1 tetap ada" \
+  test -f "$RESTIC_REPOSITORY/snapshots/$(inj db1).json" -a -f "$RESTIC_REPOSITORY/snapshots/$(inj files1).json"
+
+# ======================================================================================== 2c. versi image wajib
+rm -f "$WORK_DIR/status/last-success"
+BEFORE=$(count_db_snapshots)
+if IMAGE_API='' "$BACKUP_DIR/backup.sh" >"$ROOT/backup-images.log" 2>&1; then
+  fail "production tanpa images.api -> run gagal"
+else
+  pass "production tanpa images.api -> run gagal (keluar bukan nol, heartbeat down)"
+fi
+AFTER=$(count_db_snapshots)
+expect "production tanpa images.api -> backup TETAP tersimpan (snapshot dump baru, status last-success)" \
+  test "$AFTER" -gt "$BEFORE" -a -s "$WORK_DIR/status/last-success"
+expect "production tanpa images.api -> pesan menyebut backup tersimpan dan bidang yang kosong" \
+  grep -q 'TERSIMPAN.*images.api kosong' "$ROOT/backup-images.log"
+# Manifest acuan uji restore = backup terbaru.
+MANIFEST=$(db_snapshot_manifest || true)
 
 # ======================================================================================== 3. restore berhasil
 restore_env() {
@@ -221,7 +284,9 @@ restore_env() {
   FAKE_FILES_ROOT=$FILES_ROOT
   FAKE_STATE_DIR=$ROOT/state-restore-$1
   LEDGER_REAPPLY_CMD=$FIXTURE/fake-ledger-reapply.sh
-  export WORK_DIR FILES_ROOT FAKE_FILES_ROOT FAKE_STATE_DIR LEDGER_REAPPLY_CMD
+  # CLI tiruan berjalan sebagai pengguna uji ini (pada host restore sungguhan: root, chown ke 1000:1000).
+  FILES_OWNER="$(id -u):$(id -g)"
+  export WORK_DIR FILES_ROOT FAKE_FILES_ROOT FAKE_STATE_DIR LEDGER_REAPPLY_CMD FILES_OWNER
   rm -rf "$WORK_DIR" "$FILES_ROOT" "$FAKE_STATE_DIR"
 }
 restore_env ok
@@ -249,6 +314,36 @@ expect "laporan memeriksa total uang (paid_total)" grep -q '^PASS paid_total' "$
 expect "ringkasan bukti memuat durasi restore dan umur backup" \
   sh -c "grep -q '^restore_seconds=' '$EVID/summary.txt' && grep -q '^backup_age_at_start_seconds=[0-9]' '$EVID/summary.txt'"
 expect "folder sementara restore (dump) dihapus" sh -c "! find '$WORK_DIR/tmp' -name db.dump 2>/dev/null | grep -q ."
+expect "salinan ledger (id dan object key) disimpan di folder bukti untuk verifikasi sesudah layanan menyala" \
+  sh -c "test -d '$EVID/ledger/offsite-now/account-deletions' -a -d '$EVID/ledger/files-backup' && grep -q '^ledger_copy_dir=' '$EVID/summary.txt'"
+expect "CLI ledger-reapply membaca salinan dari folder bukti" grep -q "^$EVID/ledger/offsite-now$" "$FAKE_STATE_DIR/ledger-reapply.args"
+
+# Verifikasi ulang sesudah API/worker pulihan menyala (runbook bagian 7 langkah 6): lease worker baru bukan kegagalan.
+if FAKE_OUTBOX_LEASED=2 "$BACKUP_DIR/verify-restore.sh" --manifest "$EVID/manifest.json" --files-root "$FILES_ROOT" \
+  --ledger-dir "$EVID/ledger" --post-start >"$ROOT/verify-post.log" 2>&1; then
+  pass "verify-restore.sh --post-start keluar 0 dengan worker memegang lease"
+else
+  fail "verify-restore.sh --post-start keluar 0 dengan worker memegang lease (lihat $ROOT/verify-post.log)"
+  cat "$ROOT/verify-post.log"
+fi
+POST_REPORT=$(find "$EVID" -maxdepth 1 -name 'verify-report-post-start-*.txt' | head -n 1)
+expect "--post-start: laporan bawaan ditulis di folder bukti (samping manifest), laporan restore tidak tertimpa" \
+  sh -c "test -n '$POST_REPORT' && test -s '$POST_REPORT' && grep -q '^PASS paid_total' '$EVID/verify-report.txt'"
+expect "--post-start: lease outbox INFO, ledger tetap memeriksa 2 akun dari salinan bukti" \
+  sh -c "grep -q '^INFO outbox.lease' '$POST_REPORT' && grep -q '2 akun pada ledger' '$POST_REPORT' && ! grep -q '^FAIL' '$POST_REPORT'"
+if FAKE_OUTBOX_LEASED=2 "$BACKUP_DIR/verify-restore.sh" --manifest "$EVID/manifest.json" --files-root "$FILES_ROOT" \
+  --post-start --report "$ROOT/verify-post-noledger.txt" >"$ROOT/verify-post-noledger.log" 2>&1; then
+  fail "--post-start tanpa --ledger-dir ditolak"
+else
+  expect "--post-start tanpa --ledger-dir -> FAIL (pemeriksaan ledger tidak boleh lulus kosong)" \
+    grep -q '^FAIL ledger.folder' "$ROOT/verify-post-noledger.txt"
+fi
+if FAKE_OUTBOX_LEASED=2 "$BACKUP_DIR/verify-restore.sh" --manifest "$EVID/manifest.json" --files-root "$FILES_ROOT" \
+  --ledger-dir "$EVID/ledger" --report "$ROOT/verify-pre-leased.txt" >"$ROOT/verify-pre-leased.log" 2>&1; then
+  fail "tanpa --post-start, lease outbox yang tersisa tetap FAIL"
+else
+  expect "tanpa --post-start, lease outbox yang tersisa tetap FAIL" grep -q '^FAIL outbox.lease' "$ROOT/verify-pre-leased.txt"
+fi
 if [ "$POSIX_PERMS" = 1 ]; then
   expect "sandi role (ROLE_PASSWORDS_SQL) diterapkan sesudah roles.sql pertama" \
     test -s "$FAKE_STATE_DIR/role-passwords-applied"
@@ -260,7 +355,37 @@ fi
 ROLE_PASSWORDS_SQL=''
 export ROLE_PASSWORDS_SQL
 
+# ======================================================================================== 3b. baseline kosong (PRD 8.2)
+restore_env baseline-fail
+if FAKE_SUPER_ADMINS=0 "$BACKUP_DIR/restore.sh" --target-kind drill --yes --evidence-dir "$ROOT/evidence-baseline-fail" \
+  >"$ROOT/restore-baseline-fail.log" 2>&1; then
+  fail "nol Super Admin tanpa --baseline-empty -> verifikasi gagal"
+else
+  expect "nol Super Admin tanpa --baseline-empty -> FAIL super_admin.aktif" \
+    grep -q '^FAIL super_admin.aktif' "$ROOT/evidence-baseline-fail/verify-report.txt"
+fi
+restore_env baseline
+if FAKE_SUPER_ADMINS=0 "$BACKUP_DIR/restore.sh" --target-kind drill --yes --baseline-empty \
+  --evidence-dir "$ROOT/evidence-baseline" >"$ROOT/restore-baseline.log" 2>&1; then
+  pass "--baseline-empty (PRD 8.2 langkah 1, sebelum bootstrap Super Admin) keluar 0"
+else
+  fail "--baseline-empty (PRD 8.2 langkah 1, sebelum bootstrap Super Admin) keluar 0 (lihat $ROOT/restore-baseline.log)"
+  cat "$ROOT/restore-baseline.log"
+fi
+expect "--baseline-empty: nol Super Admin WARN dan tercatat di ringkasan" \
+  sh -c "grep -q '^WARN super_admin.aktif' '$ROOT/evidence-baseline/verify-report.txt' && grep -q '^baseline_empty=1' '$ROOT/evidence-baseline/summary.txt'"
+
 # ======================================================================================== 4. restore ditolak/gagal
+if [ "$(id -u)" != 0 ]; then
+  restore_env owner
+  if FILES_OWNER="$(($(id -u) + 1)):$(id -g)" "$BACKUP_DIR/restore.sh" --target-kind drill --yes \
+    --evidence-dir "$ROOT/evidence-owner" >"$ROOT/restore-owner.log" 2>&1; then
+    fail "pengguna selain root/FILES_OWNER ditolak"
+  else
+    expect "pengguna selain root/FILES_OWNER ditolak sebelum mengunduh apa pun" \
+      sh -c "grep -q 'jalankan restore.sh sebagai root atau uid' '$ROOT/restore-owner.log' && ! grep -qs '^restic ' '$FAKE_STATE_DIR/calls.log'"
+  fi
+fi
 restore_env dirty
 mkdir -p "$FILES_ROOT" && printf x >"$FILES_ROOT/sisa"
 if "$BACKUP_DIR/restore.sh" --target-kind drill --yes --evidence-dir "$ROOT/evidence-dirty" >"$ROOT/restore-dirty.log" 2>&1; then

@@ -125,8 +125,10 @@ bytes_of() {
 
 # Heartbeat Uptime Kuma (monitor Push): status up/down, pesan singkat, durasi (detik). Kegagalan push hanya dicatat
 # agar monitor "tidak ada heartbeat" yang memicu alert (docs/runbooks/monitoring.md).
+# URL yang disalin dari Kuma berbentuk `.../api/push/<token>?status=up&msg=OK&ping=`; query bawaan itu dibuang lebih
+# dahulu. Bila tidak, `status` terkirim dua kali, Kuma membacanya sebagai larik dan SETIAP heartbeat tercatat DOWN.
 kuma_push() {
-  _url=$1
+  _url=${1%%\?*}
   _status=$2
   _msg=$3
   _ping=${4:-}
@@ -176,6 +178,26 @@ restic_ids() {
 
 restic_first_id() {
   restic_ids "$1" | head -n 1
+}
+
+# Pasangan `<id-snapshot> <backup_id>` dari keluaran `restic snapshots --json` (tanpa jq). backup_id adalah tag
+# kapdh-<env>-<yyyymmdd>T<hhmmss>Z yang diberikan backup.sh ke snapshot berkas DAN snapshot dump satu run; snapshot
+# tanpa tag itu menghasilkan `<id> ` (backup_id kosong). Urutan kunci JSON restic: time ... tags ... id.
+restic_backup_pairs() {
+  tr ',' '\n' <"$1" | sed -n \
+    -e 's/^[[:space:]{[]*"time":.*/T/p' \
+    -e 's/^.*"\(kapdh-[a-z0-9-]*-[0-9]\{8\}T[0-9]\{6\}Z\)".*$/B \1/p' \
+    -e 's/^[[:space:]{[]*"id":"\([0-9a-f]\{64\}\)".*/I \1/p' |
+    {
+      _bid=''
+      while read -r _kind _value; do
+        case $_kind in
+          T) _bid='' ;;
+          B) _bid=$_value ;;
+          I) printf '%s %s\n' "$_value" "$_bid" ;;
+        esac
+      done
+    }
 }
 
 restic_first_time() {

@@ -13,6 +13,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
@@ -135,14 +136,17 @@ function handleStatement(sql, vars, out) {
     case "verify-checks": {
       const ids = (vars.ledger_user_ids ?? "{}").replace(/[{}]/g, "").split(",").filter(Boolean);
       writeFileSync(state("ledger-user-ids"), ids.join("\n"));
-      out("super_admins_active=2");
+      out(`super_admins_active=${process.env.FAKE_SUPER_ADMINS ?? 2}`);
       out(`ledger_users_present=${ids.length}`);
       out(`ledger_users_not_deleted=${process.env.FAKE_LEDGER_NOT_DELETED ?? 0}`);
       out("ledger_users_with_profile=0");
       out("deletions_completed_not_deleted=0");
       out("deletions_open=0");
       out("outbox_dead=0");
-      out(`outbox_leased=${readState("outbox-released") === "1" ? 0 : 3}`);
+      // FAKE_OUTBOX_LEASED: lease worker pulihan yang sudah menyala (verify-restore.sh --post-start).
+      out(
+        `outbox_leased=${process.env.FAKE_OUTBOX_LEASED ?? (readState("outbox-released") === "1" ? 0 : 3)}`,
+      );
       return;
     }
     case "release-outbox":
@@ -264,11 +268,23 @@ function restic(args) {
         cpSync(join(source, key), target);
         bytes += statSync(join(source, key)).size;
       }
+      // Urutan dan bentuk kunci seperti `restic snapshots --json` 0.17+ (tags sebelum id, objek summary bersarang).
+      const time = new Date().toISOString();
       const meta = {
-        time: new Date().toISOString(),
+        time,
+        tree: randomBytes(32).toString("hex"),
         paths: [source],
         hostname: flag(rest, "--host")[0],
+        username: "root",
+        excludes: flag(rest, "--exclude"),
         tags: flag(rest, "--tag").flatMap((t) => t.split(",")),
+        program_version: "restic 0.18.0",
+        summary: {
+          backup_start: time,
+          backup_end: time,
+          files_new: files.length,
+          total_bytes_processed: bytes,
+        },
         id,
         short_id: id.slice(0, 8),
       };
@@ -319,10 +335,46 @@ function restic(args) {
       process.stdout.write(readFileSync(join(root, "data", id, relative(meta.paths[0], file))));
       return;
     }
-    case "forget":
+    case "forget": {
+      // Dua bentuk yang dipakai backup.sh: kebijakan --keep-within per grup (host, paths) relatif terhadap snapshot
+      // terbaru grup itu (seperti restic), atau daftar id eksplisit. Snapshot yang dilupakan dihapus dari repo tiruan.
+      const root = repo();
+      if (rest.includes("--prune")) throw new Error("prune dijalankan terpisah dengan --max-unused 0");
+      const ids = rest.filter((a) => /^[0-9a-f]{8,64}$/.test(a));
+      const within = flag(rest, "--keep-within")[0];
+      let doomed = [];
+      if (ids.length > 0) {
+        doomed = snapshots(root).filter((s) => ids.some((id) => s.id.startsWith(id)));
+        if (doomed.length !== ids.length) throw new Error("id snapshot tidak ditemukan");
+      } else {
+        if (!within) throw new Error("--keep-within atau id snapshot wajib");
+        if (flag(rest, "--group-by")[0] !== "host,paths") throw new Error("--group-by host,paths wajib");
+        const days = Number(/^(\d+)d$/.exec(within)?.[1]);
+        const host = flag(rest, "--host")[0];
+        const list = snapshots(root).filter(
+          (s) => (!host || s.hostname === host) && hasTags(s, flag(rest, "--tag")),
+        );
+        const latest = new Map();
+        for (const s of list) {
+          const key = `${s.hostname}|${s.paths}`;
+          if (!latest.has(key) || latest.get(key) < s.time) latest.set(key, s.time);
+        }
+        doomed = list.filter(
+          (s) => Date.parse(s.time) < Date.parse(latest.get(`${s.hostname}|${s.paths}`)) - days * 86_400_000,
+        );
+        process.stdout.write(`Applying Policy: keep snapshots within ${within}\n`);
+      }
+      for (const s of doomed) {
+        rmSync(join(root, "snapshots", `${s.id}.json`), { force: true });
+        appendFileSync(state("forgotten"), `${s.id} ${s.tags.join(",")}\n`);
+      }
+      process.stdout.write(`removed ${doomed.length} snapshots\n`);
+      return;
+    }
+    case "prune":
       repo();
-      if (!flag(rest, "--keep-within")[0]) throw new Error("--keep-within wajib");
-      process.stdout.write("Applying Policy: keep snapshots within 30d\n");
+      if (flag(rest, "--max-unused")[0] !== "0") throw new Error("--max-unused 0 wajib (D2)");
+      process.stdout.write("repacking packs\n");
       return;
     default:
       throw new Error(`perintah restic tiruan tidak dikenal: ${command}`);

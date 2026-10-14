@@ -4,7 +4,13 @@
 # ulang sendiri:
 #
 #   infra/backup/verify-restore.sh --manifest <manifest.json> [--db kapdh] [--files-root /data/files]
-#     [--ledger-dir <folder salinan ledger>] [--report <berkas>] [--sample 50]
+#     [--ledger-dir <folder salinan ledger>] [--report <berkas>] [--sample 50] [--post-start] [--baseline-empty]
+#
+#   --post-start     dijalankan ulang SESUDAH API/worker pulihan menyala (runbook bagian 7 langkah 6): lease outbox milik
+#                    worker baru adalah normal (INFO, bukan FAIL). Pakai --ledger-dir <bukti>/ledger dari restore.sh.
+#   --baseline-empty bukti PRD 8.2 langkah 1 (database tanpa data pengguna, sebelum bootstrap Super Admin): nol Super
+#                    Admin menjadi WARN. Login/MFA admin drill dilewati bila DRILL_ADMIN_EMAIL kosong (WARN).
+#   --report         bawaan: verify-report[-post-start]-<waktu>.txt di folder manifest (folder bukti restore.sh).
 #
 # Pemeriksaan (FAIL = jangan buka layanan; WARN = catat di bukti drill dan tindak lanjuti):
 #   1. invariant  : jumlah akun, payment, payment paid, total uang per jenis, penyesuaian, tiket, event, room dan
@@ -13,8 +19,8 @@
 #   3. ledger     : setiap akun di deletion ledger yang ada di database berstatus deleted tanpa profil; objek berkas
 #                   pada ledger tidak ada di FILES_ROOT; permintaan selesai tidak memiliki akun aktif.
 #   4. berkas     : setiap baris `ready` driver local memiliki objek; sha256 sampel cocok; objek yatim dilaporkan.
-#   5. Super Admin: minimal satu aktif (FAIL bila nol), WARN bila kurang dari dua (PRD 8.2).
-#   6. outbox     : lease lama sudah dilepas; event dead dilaporkan.
+#   5. Super Admin: minimal satu aktif (FAIL bila nol, WARN pada --baseline-empty), WARN bila kurang dari dua (PRD 8.2).
+#   6. outbox     : lease lama sudah dilepas (INFO pada --post-start); event dead dilaporkan.
 #   7. HTTP (bila VERIFY_API_URL diisi): /health, /health/ready, login + MFA admin drill, /admin/me, berkas publik.
 set -eu
 umask 077
@@ -30,6 +36,8 @@ FILES=${FILES_ROOT:-/data/files}
 LEDGER_DIR=''
 REPORT=''
 SAMPLE=${VERIFY_SAMPLE:-50}
+POST_START=0
+BASELINE_EMPTY=0
 while [ $# -gt 0 ]; do
   case $1 in
     --manifest | --db | --files-root | --ledger-dir | --report | --sample)
@@ -44,8 +52,10 @@ while [ $# -gt 0 ]; do
       esac
       shift 2
       ;;
+    --post-start) POST_START=1 && shift ;;
+    --baseline-empty) BASELINE_EMPTY=1 && shift ;;
     -h | --help)
-      sed -n '2,20p' "$0"
+      sed -n '2,24p' "$0"
       exit 0
       ;;
     *) die "argumen tidak dikenal: $1" ;;
@@ -58,7 +68,13 @@ case $DB in '' | *[!a-z0-9_]*) die "--db hanya huruf kecil, angka, garis bawah" 
 case $SAMPLE in '' | *[!0-9]*) die "--sample harus bilangan bulat" ;; esac
 [ -n "${PG_EXEC:-}" ] || require_cmd psql
 require_cmd sha256sum find sort sed tr wc head cut comm
-REPORT=${REPORT:-./verify-report.txt}
+# Bawaan di samping manifest (folder bukti restore.sh), bukan di folder kerja saat ini; nama berwaktu agar laporan
+# restore.sh tidak tertimpa.
+if [ -z "$REPORT" ]; then
+  _suffix=''
+  [ "$POST_START" -eq 1 ] && _suffix=-post-start
+  REPORT="$(dirname "$MANIFEST")/verify-report$_suffix-$(date -u +%Y%m%dT%H%M%SZ).txt"
+fi
 : >"$REPORT"
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/kapdh-verify.XXXXXX")
 trap 'rm -rf "$WORK"' EXIT
@@ -79,7 +95,11 @@ sql_file() {
 [ "$(manifest_get "$MANIFEST" kind)" = kapdh.backup_manifest ] || die "manifest tidak dikenal"
 EXPECTED=$(manifest_get_object "$MANIFEST" stats)
 [ -n "$EXPECTED" ] || die "manifest tidak memuat statistik database"
-printf 'manifest %s\nbackup %s\nverifikasi %s\n\n' "$MANIFEST" "$(manifest_get "$MANIFEST" backup_id)" "$(now_iso)" >>"$REPORT"
+_mode=sebelum-layanan
+[ "$POST_START" -eq 1 ] && _mode=sesudah-layanan-menyala
+[ "$BASELINE_EMPTY" -eq 1 ] && _mode="$_mode baseline-kosong"
+printf 'manifest %s\nbackup %s\nverifikasi %s\nmode %s\n\n' "$MANIFEST" "$(manifest_get "$MANIFEST" backup_id)" \
+  "$(now_iso)" "$_mode" >>"$REPORT"
 
 # ------------------------------------------------------------------------------- 1-2. invariant dan skema
 ACTUAL=$({
@@ -115,6 +135,12 @@ done <"$WORK/compare.txt"
 # ------------------------------------------------------------------------------- 3. deletion ledger
 : >"$WORK/ledger-users"
 : >"$WORK/ledger-keys"
+if [ -n "$LEDGER_DIR" ] && [ ! -d "$LEDGER_DIR" ]; then
+  result FAIL ledger.folder "--ledger-dir tidak ada; pakai <bukti>/ledger dari restore.sh"
+fi
+if [ -z "$LEDGER_DIR" ] && [ "$POST_START" -eq 1 ]; then
+  result FAIL ledger.folder "--post-start wajib --ledger-dir <bukti>/ledger (tanpanya pemeriksaan ledger kosong)"
+fi
 if [ -n "$LEDGER_DIR" ] && [ -d "$LEDGER_DIR" ]; then
   find "$LEDGER_DIR" -type f -name '*.json' >"$WORK/ledger-files"
   while IFS= read -r _f; do
@@ -201,11 +227,19 @@ if [ "${_v:-0}" -ge 2 ] 2>/dev/null; then
   result PASS super_admin.aktif "$_v"
 elif [ "${_v:-0}" -ge 1 ] 2>/dev/null; then
   result WARN super_admin.aktif "$_v (PRD 8.2: minimal dua sebelum go-live)"
+elif [ "$BASELINE_EMPTY" -eq 1 ]; then
+  result WARN super_admin.aktif "0 Super Admin aktif (baseline kosong PRD 8.2 langkah 1, sebelum bootstrap)"
 else
   result FAIL super_admin.aktif "0 Super Admin aktif"
 fi
 _v=$(check_value outbox_leased)
-if [ "$_v" = 0 ]; then result PASS outbox.lease "0 lease lama"; else result FAIL outbox.lease "$_v event masih ber-lease (jalankan sql/release-outbox.sql)"; fi
+if [ "$_v" = 0 ]; then
+  result PASS outbox.lease "0 lease lama"
+elif [ "$POST_START" -eq 1 ]; then
+  result INFO outbox.lease "$_v event sedang diproses worker pulihan (normal sesudah worker menyala)"
+else
+  result FAIL outbox.lease "$_v event masih ber-lease (jalankan sql/release-outbox.sql)"
+fi
 _v=$(check_value outbox_dead)
 if [ "$_v" = 0 ]; then result PASS outbox.dead "0"; else result WARN outbox.dead "$_v event dead; tinjau last_error sebelum diputuskan"; fi
 

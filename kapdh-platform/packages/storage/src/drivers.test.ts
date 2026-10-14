@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   assertSafeObjectKey,
   createStorageDriver,
+  destroyStorageDriver,
   FallbackReadDriver,
   hashObject,
   LocalDriver,
@@ -322,6 +323,16 @@ describe("FallbackReadDriver (perpindahan local -> S3, PRD 5.4 fallback read)", 
     expect(primary.contents("audit_export/2026/10/salinan")?.toString()).toBe("bukti-lama");
   });
 
+  it("shutdown: destroyStorageDriver menutup klien S3 yang dibungkus FallbackReadDriver; driver tanpa sumber daya diabaikan", () => {
+    const closed: string[] = [];
+    const s3Like = Object.assign(new MemoryDriver(), { destroy: () => closed.push("utama") });
+    const driver = new FallbackReadDriver(s3Like, new MemoryDriver());
+    destroyStorageDriver(driver);
+    expect(closed).toEqual(["utama"]);
+    expect(() => destroyStorageDriver(new MemoryDriver())).not.toThrow();
+    expect(() => destroyStorageDriver(null)).not.toThrow();
+  });
+
   it("galat driver utama selain tidak-ada diteruskan (tidak diam-diam membaca salinan lama)", async () => {
     const { primary, driver } = await setup();
     primary.failNext("get");
@@ -352,6 +363,8 @@ describe("FallbackReadDriver (perpindahan local -> S3, PRD 5.4 fallback read)", 
       expect((await readAll(await driver.get(key))).toString()).toBe("isi-lama");
       await driver.put("avatar/2026/10/fallback-baru", Buffer.from("x"), { contentType: "image/png" });
       expect(fakeS3.objects.has(`${s3Config.bucket}/avatar/2026/10/fallback-baru`)).toBe(true);
+      // Shutdown: klien S3 di dalam pembungkus ditutup (tanpa galat).
+      expect(() => destroyStorageDriver(driver)).not.toThrow();
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }

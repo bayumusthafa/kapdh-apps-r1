@@ -9,8 +9,9 @@ Prosedur, lingkungan, tabel kapasitas dan bukti: `docs/runbooks/load-test.md`.
 | `realtime-load.mjs` | N-02: latensi kirim → `message.created` di penerima online (p95 ≤ 2 detik), pesan hilang/duplikat, sinkron reconnect `after=<jangkar>`                                                          |
 | `lib.mjs`           | Penjadwal kedatangan, pencatat persentil, klien HTTP, sesi anggota (refresh) dan admin (TOTP), klien Socket.IO minimal                                                                          |
 
-Dataset dan kredensial dibuat CLI di image API (staging saja; menolak production):
-`node dist/cli/loadtest-seed.js --confirm-database <db> --out kapdh-loadtest.json`.
+Dataset dan kredensial dibuat CLI di image API (staging saja; menolak production dan database tanpa penanda
+`ALTER DATABASE kapdh SET kapdh.environment = 'staging'`, lihat docs/runbooks/load-test.md bagian 3):
+`node dist/cli/loadtest-seed.js --confirm-database kapdh --out kapdh-loadtest.json`.
 
 ```sh
 node infra/loadtest/api-load.mjs --credentials kapdh-loadtest.json --base-url https://staging-api.kapdh.or.id

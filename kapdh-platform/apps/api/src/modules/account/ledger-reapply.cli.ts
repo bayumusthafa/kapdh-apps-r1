@@ -3,8 +3,13 @@
  * Dijalankan pengelola infra (infra/backup/restore.sh) SETELAH database dan berkas dipulihkan dan SEBELUM API/worker
  * dibuka:
  *
- *   node dist/modules/account/ledger-reapply.cli.js --dir /restore/ledger-offsite --dir /restore/ledger-backup
- *   (atau `pnpm --filter @kapdh/api account:ledger-reapply -- --dir <folder> [--dir <folder> ...]`)
+ *   image API  : node dist/modules/account/ledger-reapply.cli.js --dir /restore/ledger-offsite --dir /restore/ledger-backup
+ *   image worker: node node_modules/@kapdh/api/dist/modules/account/ledger-reapply.cli.js --dir ...
+ *   (repo dev: `pnpm --filter @kapdh/api account:ledger-reapply -- --dir <folder> [--dir <folder> ...]`)
+ *
+ * Folder `--dir` wajib dapat dibaca pengguna proses (image: `node`, uid 1000). Redis TIDAK dibutuhkan: CLI berjalan
+ * saat layanan mati (sebelum Redis pulihan menyala), jadi klien Redis tidak dibuat walau REDIS_URL ada di env worker;
+ * event realtime menjadi no-op karena belum ada klien tersambung.
  *
  * `--dir` (boleh diulang) menunjuk salinan ledger TERBARU, bukan hanya ledger dari backup yang dipulihkan:
  *   1. salinan bucket deletion ledger LUAR VPS (DELETION_LEDGER_S3_*, append-only; `rclone copy` oleh restore.sh), dan
@@ -35,7 +40,7 @@ async function main(): Promise<number> {
       "Pakai: --dir <folder salinan ledger/account-deletions terbaru> (boleh diulang)",
     );
   const entries = mergeLedgerEntries(dirs.flatMap((dir) => readLedgerDirectory(dir)));
-  const runtime = createWorkerDeps(env);
+  const runtime = createWorkerDeps(env, { redis: false });
   const worker = await createWorkerContext(runtime.deps);
   try {
     const jobId = `ledger-reapply:${uuidv7()}`;
@@ -60,6 +65,14 @@ async function main(): Promise<number> {
     await runtime.close();
   }
 }
+
+// Penolakan promise yang lolos dari efek samping (mis. adapter pihak ketiga yang tidak menangkap galatnya sendiri)
+// tidak boleh mematikan proses tanpa jejak di tengah penerapan ulang: catat tipenya saja (N-14) dan keluar 1 agar
+// restore.sh berhenti dan layanan tetap tertutup. CLI idempoten, jadi dijalankan ulang setelah penyebabnya diperbaiki.
+process.on("unhandledRejection", (e: unknown) => {
+  process.stderr.write(`Gagal: penolakan tak tertangani ${(e as Error)?.name ?? "tidak dikenal"}\n`);
+  process.exit(1);
+});
 
 main()
   .then((code) => process.exit(code))
