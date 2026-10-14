@@ -20,7 +20,7 @@
  * Celah yang ditemukan audit didokumentasikan sebagai `it.fails` dengan id temuan (D5-xx): uji itu LULUS selama celah
  * masih ada dan GAGAL begitu diperbaiki (ubah menjadi `it` saat memperbaiki). `D5_REVEAL_GAPS=1` menjalankannya sebagai
  * `it` biasa untuk melihat kegagalan sebenarnya:
- *   D5-01 inbox anggota lain memuat nama anggota yang dihapus (notifikasi chat direct);
+ *   D5-01 inbox anggota lain memuat nama anggota yang dihapus (notifikasi chat direct) -- diperbaiki, kini `it`;
  *   D5-02 respons idempotensi pengurus (check-in) memuat nama/nomor anggota sampai 24 jam;
  *   D5-03 bukti refund yang diunggah SETELAH penghapusan tidak pernah dihapus;
  *   D5-04 notifikasi yang dibuat selama jendela deletion_pending setelah langkah notifications tersisa;
@@ -1101,15 +1101,12 @@ describe("LENS D5: penghapusan akun ujung ke ujung lewat alur API nyata (F-14, D
 const gap = process.env.D5_REVEAL_GAPS ? it : it.fails;
 
 describe("LENS D5: celah privasi yang ditemukan (it.fails = celah masih ada)", () => {
-  gap(
-    "D5-01 (D2, AC F14-3): kotak masuk anggota lain tidak lagi memuat nama anggota yang sudah dihapus",
-    async () => {
-      // Notifikasi chat direct ke Ahmad: "Ada pesan baru dari <nama pengirim>." disimpan di inbox Ahmad dan tidak
-      // disentuh job penghapusan (langkah notifications hanya menghapus inbox milik akun yang dihapus).
-      const hits = await notificationsMentioning(NAME);
-      expect(hits).toEqual([]);
-    },
-  );
+  // Diperbaiki: notifikasi chat direct tidak lagi memuat nama pengirim (chat.notifications.ts), dan langkah
+  // notifications menulis ulang baris format lama di kotak masuk lawan bicara ke teks netral.
+  it("D5-01 (D2, AC F14-3): kotak masuk anggota lain tidak lagi memuat nama anggota yang sudah dihapus", async () => {
+    const hits = await notificationsMentioning(NAME);
+    expect(hits).toEqual([]);
+  });
 
   gap(
     "D5-02 (D2): respons idempotensi pengurus yang memuat nama/nomor anggota ikut dihapus bersama akun",
@@ -1320,7 +1317,7 @@ async function registerNewMember(): Promise<number> {
 
 /**
  * Pemeriksaan per tabel setelah penghapusan (dipakai pada database live dan database pulihan). Celah yang sudah
- * didokumentasikan (D5-01, D5-02) dikecualikan di sini dan diuji terpisah dengan `it.fails`.
+ * didokumentasikan (D5-02) dikecualikan di sini dan diuji terpisah dengan `it.fails`.
  */
 async function expectErased(db: Db, storage: MemoryDriver, options: { restored?: boolean } = {}) {
   const userId = S.budi.userId;
@@ -1559,9 +1556,9 @@ async function expectErased(db: Db, storage: MemoryDriver, options: { restored?:
   if (options.restored) expect(deletion!.ledger).toMatchObject({ restored: true });
 
   // Pemindaian SEMUA tabel skema app: tidak ada teks pribadi Budi tersisa (D2, PRD 6.5), kecuali celah yang
-  // didokumentasikan terpisah (D5-01 inbox anggota lain, D5-02 respons idempotensi pengurus).
+  // didokumentasikan terpisah (D5-02 respons idempotensi pengurus; D5-01 sudah diperbaiki).
   const hits = await personalDataHits(db, personalTerms());
-  const knownGaps: Record<string, number> = { notifications: 1, idempotency_keys: 1 };
+  const knownGaps: Record<string, number> = { idempotency_keys: 1 };
   const unexpected = Object.fromEntries(
     Object.entries(hits).filter(([table, n]) => n > (knownGaps[table] ?? 0)),
   );
