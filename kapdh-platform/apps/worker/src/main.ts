@@ -1,5 +1,5 @@
 import { EnvValidationError, loadDevelopmentEnvFile, loadWorkerEnv } from "@kapdh/config";
-import { createRootLogger, safeError } from "@kapdh/api/worker";
+import { createRootLogger, errorTrackingFromEnv, safeError } from "@kapdh/api/worker";
 import { resolve } from "node:path";
 import type { Logger } from "pino";
 import { bootWorker, type WorkerService } from "./runtime.js";
@@ -65,7 +65,11 @@ async function main(): Promise<void> {
     throw new EnvValidationError(
       "SMTP_URL wajib di luar development; email transaksional tidak boleh hanya dicetak ke log (N-14)",
     );
-  const logger = createRootLogger({ level: env.LOG_LEVEL, service: "kapdh-worker" });
+  const logger = createRootLogger({
+    level: env.LOG_LEVEL,
+    service: "kapdh-worker",
+    errorTracking: errorTrackingFromEnv(env),
+  });
   const worker = await bootWorker(env, { logger });
   installSignalHandlers(worker, logger, resolveWorkerSettings(env).shutdownTimeoutMs);
 }
