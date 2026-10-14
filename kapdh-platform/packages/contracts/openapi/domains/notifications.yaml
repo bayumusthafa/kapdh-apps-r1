@@ -181,7 +181,10 @@ paths:
         pencocokan token dengan sesi selalu melalui `sessions.family_id`.
 
         Langkah dalam SATU transaksi:
-        1. Baris sesi pemanggil (sid access token) dibaca untuk family_id. Baris device_tokens untuk token ini
+        1. Baris sesi pemanggil (sid access token) dibaca untuk family_id. Baris sesi AKTIF keluarga itu dikunci
+           (FOR NO KEY UPDATE, urutan kunci yang sama dengan logout/pencabutan sesi) sehingga pendaftaran yang
+           bersamaan dengan logout berurutan: bila keluarga sudah dicabut, 401 UNAUTHENTICATED dan token tidak
+           pernah aktif untuk sesi yang sudah keluar. Baris device_tokens untuk token ini
            dikunci (SELECT ... FOR UPDATE; bila belum ada, INSERT ... ON CONFLICT (token) DO NOTHING lalu dikunci).
         2. Token berpindah AKUN (device_tokens.user_id berbeda dari pemanggil, misalnya logout lalu masuk akun
            lain di perangkat yang sama): seluruh pengiriman `pending` pada token itu dibatalkan (status
@@ -203,8 +206,14 @@ paths:
 
         Sebagai pertahanan berlapis, worker hanya mengirim push bila pada saat klaim pengiriman (statement yang
         sama) device_tokens.revoked_at IS NULL DAN device_tokens.user_id = notifications.user_id; selain itu
-        pengiriman dibatalkan tanpa dikirim. Predikat yang sama dipakai retry admin, jadi `token_reassigned`
-        selalu berarti token kini milik AKUN lain.
+        pengiriman dibatalkan tanpa dikirim. Predikat yang sama diperiksa ulang untuk SETIAP pengiriman tepat
+        sebelum provider dipanggil (transaksi pendek: token dikunci FOR SHARE, lalu baris pengiriman FOR UPDATE
+        dengan syarat masih `pending` dan attempt klaim yang sama), sehingga logout, unregister, perpindahan token
+        atau preferensi yang commit setelah klaim tetapi sebelum giliran sebuah pengiriman selalu mencegah
+        pengiriman itu. Yang dapat lolos hanya percobaan yang SUDAH berjalan di provider saat pencabutan commit
+        (paling lama batas waktu satu percobaan, 60 detik); bila provider menerimanya, riwayat mencatatnya `sent`
+        apa adanya. Predikat yang sama dipakai retry admin, jadi `token_reassigned` selalu berarti token kini
+        milik AKUN lain.
 
         Pencabutan berbasis keluarga (AC F13-5): logout, logout-all, pencabutan sesi (DELETE
         /auth/sessions/{sessionId}), reuse refresh token yang mencabut keluarga, dan penghapusan akun mencabut
@@ -213,8 +222,12 @@ paths:
         pencabutan, dan membatalkan pengiriman `pending`-nya (error_class `token_revoked`). Agar ikatan tidak putus
         oleh pembersihan baris sesi lama (FK ON DELETE SET NULL), rotasi refresh memindahkan device_tokens.session_id
         dari baris lama ke baris baru dalam transaksi rotasi yang sama (modul auth), dan job pembersihan sesi
-        mencabut token keluarga yang kedaluwarsa sebelum menghapus barisnya. Token tidak pernah dicatat di log atau
-        audit (ARCHITECTURE §2) dan tidak pernah dikembalikan API.
+        mencabut token keluarga yang kedaluwarsa sebelum menghapus barisnya. Sesi yang berakhir tanpa logout (refresh
+        kedaluwarsa) juga berarti keluar: job worker `notifications.device-sweep` (setiap jam) mencabut token yang
+        keluarga sesinya tidak lagi memiliki baris aktif (belum dicabut dan belum kedaluwarsa) atau yang tidak terikat
+        baris sesi mana pun, beserta pengiriman `pending`-nya (`token_revoked`); token yang diikat ulang ke sesi baru
+        secara bersamaan tidak ikut dicabut. PUT /devices dari keluarga sesi yang sudah kedaluwarsa ditolak 401.
+        Token tidak pernah dicatat di log atau audit (ARCHITECTURE §2) dan tidak pernah dikembalikan API.
       x-kapdh-access: { audience: mobile, member_access: any }
       requestBody:
         required: true
@@ -287,7 +300,12 @@ components:
         Deep link satu bentuk di semua kanal (PRD 3.13, ARCHITECTURE §4.7): notifications.data.route menyimpan
         rute aplikasi sebagai STRING path (ARCHITECTURE §8.4, misalnya `/payments/<id>`); `deep_link` di REST,
         payload realtime dan payload data FCM (bersama `notification_id` dan `category`) adalah bentuk eksternal
-        `kapdh://app` + path tersebut. Klien cukup mengurai satu format. Katalog rute per kategori:
+        `kapdh://app` + path tersebut. Klien cukup mengurai satu format. Payload data FCM juga membawa `route`
+        (path yang sama, untuk klien yang membaca `data.route`); keduanya tidak ada bila notifikasi tanpa rute.
+        Bagian `notification` push hanya judul dan isi ringkas (alamat email/nomor telepon disamarkan sebagai
+        pertahanan berlapis) dengan collapse key = id notifikasi, sehingga pengiriman ulang menggantikan, bukan
+        menggandakan, notifikasi di baki perangkat. Rute tersimpan yang bukan rute aplikasi sah (§8.4) tidak pernah
+        dikirim: `deep_link` menjadi null. Katalog rute per kategori:
 
         | rute (path)              | kategori lazim   |
         | ------------------------ | ---------------- |
