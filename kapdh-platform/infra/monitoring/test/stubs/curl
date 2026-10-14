@@ -1,0 +1,22 @@
+#!/bin/sh
+# Tiruan curl untuk uji kering pemeriksa monitoring (infra/monitoring/test/dry-run.sh): heartbeat Uptime Kuma Push
+# dicatat ke $FAKE_STATE_DIR/kuma.log sebagai `<url> status=.. msg=.. ping=..`; URL .../healthz mengembalikan isi
+# $FAKE_WORKER_JSON (tidak ada berkas = koneksi gagal, kode 7 seperti curl).
+set -eu
+url=''
+data=''
+while [ $# -gt 0 ]; do
+  case $1 in
+    --data-urlencode) data="$data $2" && shift 2 ;;
+    -o | -m | --retry) shift 2 ;;
+    -*) shift ;;
+    *) url=$1 && shift ;;
+  esac
+done
+case $url in
+  *healthz*)
+    [ -n "${FAKE_WORKER_JSON:-}" ] && [ -f "$FAKE_WORKER_JSON" ] || exit 7
+    cat "$FAKE_WORKER_JSON"
+    ;;
+  *) printf '%s%s\n' "$url" "$data" >>"$FAKE_STATE_DIR/kuma.log" ;;
+esac
