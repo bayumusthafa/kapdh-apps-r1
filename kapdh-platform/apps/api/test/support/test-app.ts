@@ -40,6 +40,7 @@ export const testEnv: ApiEnv = {
   S3_ACCESS_KEY_ID: undefined,
   S3_SECRET_ACCESS_KEY: undefined,
   S3_FORCE_PATH_STYLE: false,
+  STORAGE_FALLBACK_LOCAL_ROOT: undefined,
   FILE_URL_SECRET: "f".repeat(40),
   FCM_PROJECT_ID: undefined,
   FCM_SERVICE_ACCOUNT_JSON: undefined,

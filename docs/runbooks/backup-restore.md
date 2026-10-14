@@ -260,6 +260,6 @@ Simpan di folder `docs/qa/restore-drills/<yyyy-mm>/` (tanpa data pribadi) atau a
   `pg_restore` dari stdin (jalur `PG_EXEC`) untuk dump yang dibuat `pg_dump` lewat `docker exec`, perilaku `restic
   restore <id>:<path>`, filter rclone `--include`, dan object lock penyedia dengan header Content-MD5.
 - Skrip backup/restore/verifikasi berkas hanya mendukung `STORAGE_DRIVER=local`. Sebelum pindah ke S3 (PRD 5.4), ikuti
-  docs/runbooks/storage-migration.md bagian 6 (backup berkas S3) dan perbarui skrip.
+  docs/runbooks/storage-migration.md bagian 7 (backup berkas S3) dan perbarui skrip.
 - Smoke test HTTP otomatis hanya login/MFA admin drill, `/admin/me`, health dan berkas publik; pemeriksaan anggota,
   tiket dan chat di drill masih manual (bagian 8.3 langkah 5).
