@@ -15,6 +15,9 @@
 \getenv kapdh_migrator_pw KAPDH_MIGRATOR_DB_PASSWORD
 \getenv kapdh_app_pw KAPDH_APP_DB_PASSWORD
 \getenv kapdh_worker_pw KAPDH_WORKER_DB_PASSWORD
+-- Role backup harian dan pemeriksa kesehatan (roles.sql; infra/backup, infra/monitoring). Opsional.
+\getenv kapdh_backup_pw KAPDH_BACKUP_DB_PASSWORD
+\getenv kapdh_monitor_pw KAPDH_MONITOR_DB_PASSWORD
 
 \if :{?kapdh_migrator_pw}
 ALTER ROLE kapdh_migrator PASSWORD :'kapdh_migrator_pw';
@@ -27,4 +30,12 @@ ALTER ROLE kapdh_app PASSWORD :'kapdh_app_pw';
 \if :{?kapdh_worker_pw}
 ALTER ROLE kapdh_worker PASSWORD :'kapdh_worker_pw';
 \echo 'role-passwords: sandi kapdh_worker diterapkan'
+\endif
+\if :{?kapdh_backup_pw}
+ALTER ROLE kapdh_backup PASSWORD :'kapdh_backup_pw';
+\echo 'role-passwords: sandi kapdh_backup diterapkan'
+\endif
+\if :{?kapdh_monitor_pw}
+ALTER ROLE kapdh_monitor PASSWORD :'kapdh_monitor_pw';
+\echo 'role-passwords: sandi kapdh_monitor diterapkan'
 \endif

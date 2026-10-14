@@ -28,7 +28,7 @@ for arg in "$@"; do
   case "$arg" in
     */roles.sql) echo "psql roles.sql" >>"$SHIM_LOG" ;;
     */role-passwords.sql)
-      echo "psql role-passwords.sql migrator=${KAPDH_MIGRATOR_DB_PASSWORD+set} app=${KAPDH_APP_DB_PASSWORD+set} worker=${KAPDH_WORKER_DB_PASSWORD+set}" >>"$SHIM_LOG"
+      echo "psql role-passwords.sql migrator=${KAPDH_MIGRATOR_DB_PASSWORD+set} app=${KAPDH_APP_DB_PASSWORD+set} worker=${KAPDH_WORKER_DB_PASSWORD+set} backup=${KAPDH_BACKUP_DB_PASSWORD+set} monitor=${KAPDH_MONITOR_DB_PASSWORD+set}" >>"$SHIM_LOG"
       ;;
     *to_regclass*)
       echo "psql cek-skema" >>"$SHIM_LOG"
@@ -161,8 +161,13 @@ run gerbang-galat-teknis 1 "$report_full" KAPDH_ENV=staging SHIM_GATE_CODE=3 ADM
   MIGRATOR_DATABASE_URL="$MIGRATOR_URL"
 run migrasi-gagal 1 "${head}node golive-check --preflight;node migrate;$" KAPDH_ENV=production \
   SHIM_MIGRATE_CODE=1 ADMIN_DATABASE_URL="$ADMIN_URL" MIGRATOR_DATABASE_URL="$MIGRATOR_URL"
-run sandi-kosong-tidak-diterapkan 0 "psql role-passwords.sql migrator=set app= worker=;" KAPDH_ENV=production \
-  KAPDH_MIGRATOR_DB_PASSWORD=abc KAPDH_APP_DB_PASSWORD= ADMIN_DATABASE_URL="$ADMIN_URL" \
+run sandi-kosong-tidak-diterapkan 0 "psql role-passwords.sql migrator=set app= worker= backup= monitor=;" \
+  KAPDH_ENV=production KAPDH_MIGRATOR_DB_PASSWORD=abc KAPDH_APP_DB_PASSWORD= ADMIN_DATABASE_URL="$ADMIN_URL" \
+  MIGRATOR_DATABASE_URL="$MIGRATOR_URL"
+
+# Role backup/monitor (infra/backup, infra/monitoring): diteruskan bila terisi, kosong tetap tidak diterapkan.
+run sandi-backup-monitor 0 "psql role-passwords.sql migrator= app= worker= backup=set monitor=;" \
+  KAPDH_ENV=production KAPDH_BACKUP_DB_PASSWORD=abc KAPDH_MONITOR_DB_PASSWORD= ADMIN_DATABASE_URL="$ADMIN_URL" \
   MIGRATOR_DATABASE_URL="$MIGRATOR_URL"
 
 if [ "$failures" -ne 0 ]; then
