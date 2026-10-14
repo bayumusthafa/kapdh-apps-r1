@@ -12,6 +12,7 @@ import { AdminReportsService, type ResolveInput } from "./admin-reports.service.
 
 type Detail = components["schemas"]["AdminModerationReportDetail"];
 type Page = components["schemas"]["AdminModerationReportPage"];
+type CandidatePage = components["schemas"]["AdminModerationSubjectCandidatePage"];
 
 const CATEGORIES = [
   "spam",
@@ -32,6 +33,10 @@ const queueQuerySchema = z.object({
   overdue: queryBool().optional(),
   q: z.string().trim().min(1, "Minimal 1 karakter").max(100, "Maksimal 100 karakter").optional(),
   sort: z.enum(["due", "newest", "oldest"]).default("due"),
+});
+
+const candidateQuerySchema = z.object({
+  q: z.string().trim().min(1, "Minimal 1 karakter").max(100, "Maksimal 100 karakter").optional(),
 });
 
 /** Teks wajib yang tidak boleh hanya spasi (AC F12-3: keputusan wajib beralasan; DB reports_resolution_note_chk). */
@@ -88,6 +93,27 @@ export class AdminReportsController {
   @RequirePermission("moderation.read")
   get(@CurrentAuth() auth: AuthContext, @Param("reportId", UuidParam) reportId: string): Promise<Detail> {
     return this.reports.get(auth, reportId);
+  }
+
+  /**
+   * Calon subjek laporan grup (anggota dan mantan anggota grup) untuk `subject_user_id` warn/suspend (AC F12-3,
+   * F12-4). Izin sama dengan keputusan karena hanya dipakai untuk memutus laporan.
+   */
+  @Get(":reportId/subject-candidates")
+  @Audience("admin")
+  @RequirePermission("moderation.read", "moderation.resolve")
+  subjectCandidates(
+    @CurrentAuth() auth: AuthContext,
+    @Param("reportId", UuidParam) reportId: string,
+    @Query() query: unknown,
+  ): Promise<CandidatePage> {
+    const filters = validateQuery(candidateQuerySchema, query);
+    const page = parsePageQuery(query);
+    return this.reports.subjectCandidates(auth, reportId, {
+      q: filters.q,
+      cursor: page.cursor,
+      limit: page.limit,
+    });
   }
 
   @Post(":reportId/claim")
