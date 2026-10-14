@@ -157,8 +157,13 @@ function handleStatement(sql, vars, out) {
     case "public-file":
       return;
     default:
-      // roles.sql dan pernyataan lain tanpa tag: diterima tanpa keluaran.
+      // roles.sql dan pernyataan lain tanpa tag: diterima tanpa keluaran. Sandi role (ROLE_PASSWORDS_SQL) hanya
+      // dicatat sebagai penanda urutan, tanpa isi.
       if (/kapdh_migrator/.test(sql)) appendFileSync(state("roles-applied"), "1\n");
+      if (/ALTER ROLE [a-z_]+ PASSWORD/i.test(sql)) {
+        if (!existsSync(state("roles-applied"))) throw new Error("sandi role diatur sebelum roles.sql");
+        appendFileSync(state("role-passwords-applied"), "1\n");
+      }
   }
 }
 

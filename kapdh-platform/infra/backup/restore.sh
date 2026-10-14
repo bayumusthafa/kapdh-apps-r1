@@ -92,6 +92,12 @@ if [ -n "$LEDGER_RCLONE_REMOTE" ]; then
 elif [ "$ALLOW_NO_OFFSITE" -ne 1 ]; then
   die "LEDGER_RCLONE_REMOTE wajib: ledger luar VPS TERBARU harus diterapkan ulang sebelum layanan dibuka (AC F14-6)"
 fi
+# Sandi role LOGIN (ALTER ROLE ... PASSWORD ...) dari berkas 0600 di host restore; diperiksa sebelum mengunduh apa pun.
+ROLE_PASSWORDS_SQL=${ROLE_PASSWORDS_SQL:-}
+if [ -n "$ROLE_PASSWORDS_SQL" ]; then
+  [ -f "$ROLE_PASSWORDS_SQL" ] || die "ROLE_PASSWORDS_SQL $ROLE_PASSWORDS_SQL tidak ada"
+  [ -z "$(find "$ROLE_PASSWORDS_SQL" -prune -perm -004 2>/dev/null)" ] || die "ROLE_PASSWORDS_SQL dapat dibaca semua pengguna"
+fi
 
 T0_EPOCH=$(now_epoch)
 T0=$(now_iso)
@@ -194,11 +200,8 @@ if [ "$DB_EXISTS" != 1 ]; then
     die "CREATE DATABASE $RESTORE_DB gagal"
 fi
 sql_on "$RESTORE_DB" <"$ROLES_SQL" >"$EVIDENCE_DIR/roles-before.log" 2>&1 || die "roles.sql (sebelum restore) gagal"
-# Sandi role LOGIN dari berkas SQL 0600 di host restore (ALTER ROLE ... PASSWORD ...); keluaran dibuang agar tidak ada
-# yang tercatat di bukti.
-if [ -n "${ROLE_PASSWORDS_SQL:-}" ]; then
-  [ -f "$ROLE_PASSWORDS_SQL" ] || die "ROLE_PASSWORDS_SQL $ROLE_PASSWORDS_SQL tidak ada"
-  [ -z "$(find "$ROLE_PASSWORDS_SQL" -prune -perm -004 2>/dev/null)" ] || die "ROLE_PASSWORDS_SQL dapat dibaca semua pengguna"
+# Sandi role sesudah roles.sql pertama (role sudah ada); keluaran dibuang agar tidak ada yang tercatat di bukti.
+if [ -n "$ROLE_PASSWORDS_SQL" ]; then
   sql_on "$RESTORE_ADMIN_DB" <"$ROLE_PASSWORDS_SQL" >/dev/null 2>&1 || die "pengaturan sandi role gagal"
 fi
 pg pg_restore --single-transaction --exit-on-error --no-password -d "$RESTORE_DB" <"$STAGE_DIR/db.dump" \
