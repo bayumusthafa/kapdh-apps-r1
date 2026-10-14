@@ -545,4 +545,27 @@ describe("Notifikasi chat tanpa isi pesan (PRD 3.13, kontrak sendChatMessage/set
     expect(await chatInbox(active.userId)).toHaveLength(2);
     expect(await chatInbox(muter.userId)).toHaveLength(1);
   });
+
+  it("D2 / AC F14-3: notifikasi pesan room direct tidak menyalin nama pengirim ke kotak masuk penerima", async () => {
+    const sender = await member(t, "verified", { fullName: "Pengirim Bernama Unik" });
+    const recipient = await member(t);
+    const room = await openDirect(t, sender, recipient);
+    await sendText(t, sender, room.id, "Halo, ini pesan pribadi");
+    const inbox = await t.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.userId, recipient.userId), eq(notifications.category, "chat")));
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]).toMatchObject({
+      title: "Pesan baru",
+      body: "Ada pesan baru di percakapan langsung.",
+      data: { room_id: room.id, route: `/chat/${room.id}` },
+    });
+    expect(JSON.stringify(inbox[0])).not.toContain("Pengirim Bernama Unik");
+    expect(JSON.stringify(inbox[0])).not.toContain("pesan pribadi");
+    // GET /notifications (kotak masuk anggota) memakai baris yang sama.
+    const listed = await api(t).get("/notifications", { token: recipient.token });
+    expect(listed.statusCode, listed.body).toBe(200);
+    expect(listed.body).not.toContain("Pengirim Bernama Unik");
+  });
 });
