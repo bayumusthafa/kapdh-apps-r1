@@ -1,0 +1,32 @@
+# Backup harian KAPDH (PRD 5.5, N-06; docs/runbooks/backup-restore.md). Dipicu kapdh-backup.timer.
+# Pasang: salin infra/backup ke /opt/kapdh/infra/backup, lalu
+#   install -m 0644 kapdh-backup.service kapdh-backup.timer /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now kapdh-backup.timer
+# Uji sekali: systemctl start kapdh-backup.service && journalctl -u kapdh-backup -n 50
+[Unit]
+Description=KAPDH backup harian (pg_dump + restic /data/files + deletion ledger luar VPS)
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+# root: membaca /data/files (berkas 0600 milik uid 1000) dan docker exec bila PG_EXEC dipakai.
+User=root
+# Konfigurasi dari EnvironmentFile; lib.sh tidak membaca berkas lagi (/dev/null bukan berkas biasa).
+Environment=KAPDH_BACKUP_ENV=/dev/null KAPDH_BACKUP_SECRETS=/dev/null
+Environment=RESTIC_CACHE_DIR=/var/backups/kapdh/.cache-restic
+EnvironmentFile=/etc/kapdh/backup.env
+EnvironmentFile=/etc/kapdh/backup.secrets.env
+ExecStart=/opt/kapdh/infra/backup/backup.sh
+# Backup tidak boleh berebut CPU/IO dengan API (N-01): prioritas rendah.
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+# Batas waktu: backup yang macet dihentikan dan heartbeat down dikirim oleh trap skrip.
+TimeoutStartSec=3h
+PrivateTmp=true
+NoNewPrivileges=true
+# full: /usr, /boot, /etc hanya-baca; /var (WORK_DIR, cache restic) tetap dapat ditulis.
+ProtectSystem=full
+ProtectHome=read-only
+UMask=0077

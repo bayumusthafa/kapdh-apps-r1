@@ -1,0 +1,13 @@
+# Jadwal backup harian KAPDH: 02:15 WIB (19:15 UTC), di luar jam sibuk. RPO <= 24 jam (N-06) tercapai bila setiap
+# run berhasil; kegagalan dideteksi monitor Push "backup harian" Uptime Kuma (heartbeat 26 jam).
+[Unit]
+Description=Jadwal backup harian KAPDH
+
+[Timer]
+OnCalendar=*-*-* 19:15:00 UTC
+# Run yang terlewat (VPS mati saat jadwal) dijalankan segera setelah menyala.
+Persistent=true
+RandomizedDelaySec=5m
+
+[Install]
+WantedBy=timers.target
