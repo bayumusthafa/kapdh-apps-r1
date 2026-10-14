@@ -15,6 +15,13 @@ yang memutus hanya diterima bila versi mayor `info.version` dan nilai ini naik b
 rilis `pnpm contracts:release-sdk` kini juga membawa `dist/openapi.yaml` sebagai pembanding. Tidak ada perubahan
 skema, path atau kode terbangkit.
 
+Gerbang yang sama kini juga membandingkan skema event realtime `events/*.schema.json` (properti wajib dihapus atau
+menjadi opsional, tipe diperlebar, jenis event dihapus = memutus) dan menolak `x-kapdh-min-app-version` yang turun.
+
+`GET /health` (`HealthStatus`): field opsional baru `commit` (40 heksadesimal atau null), commit sumber image API yang
+sedang melayani, dipakai uji asap deploy untuk membuktikan digest yang dipromosikan benar-benar berjalan (PRD 5.5).
+Aditif, tidak memutus.
+
 ### Hardening Fase D (chat, moderasi, maintenance)
 
 Tanpa perubahan skema; hanya aturan yang didokumentasikan pada deskripsi operasi.

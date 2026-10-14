@@ -123,7 +123,9 @@ hanya selama job, lalu dihapus.
 
 ## 6. Daftar periksa rilis toko (PRD 8.2 langkah 6, 8.3, D16)
 
-1. Tag kontrak `contracts-vX.Y.Z` sudah ada dan build memakai SDK dari kontrak itu (N-13).
+1. Tag kontrak `contracts-vX.Y.Z` sudah ada dan build memakai SDK dari kontrak itu (N-13). Ini juga berlaku untuk
+   build pertama yang dibagikan ke penguji (D16): sejak tag itu, CI membandingkan setiap perubahan kontrak HTTP dan
+   event realtime dengannya. Rilis backend (`release.yml`) gagal bila tag `contracts-v*` belum ada.
 2. Backend production aktif dan lulus smoke test (reviewer memerlukan layanan yang berfungsi).
 3. Versi `pubspec.yaml` >= versi aplikasi minimum; build memakai konfigurasi production, push production aktif,
    simbol obfuscation diarsipkan.
