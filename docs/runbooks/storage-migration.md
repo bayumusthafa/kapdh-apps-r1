@@ -80,10 +80,22 @@ Tidak boleh ada baris `BERBEDA`. Selama tahap ini pembacaan tetap aman karena ba
 **Penghapusan yang bersilangan dengan salinan.** Bila sebuah berkas dihapus (penghapusan akun, discard) tepat saat
 rclone menyalinnya, salinan dapat tertulis ke bucket SESUDAH penghapusan. Setelah salinan selesai:
 
-1. Terapkan ulang deletion ledger terbaru terhadap driver baru (menghapus lagi objek akun yang sudah dihapus):
-   salin bucket ledger luar VPS (`rclone copy kapdhledger:<bucket> /root/ledger --include "/account-deletions/**"`),
-   lalu jalankan CLI di kontainer worker: `node dist/modules/account/ledger-reapply.cli.js --dir /root/ledger/account-deletions`
-   (pasang folder ke kontainer). Keluaran `Gagal : 0`.
+1. Terapkan ulang deletion ledger terbaru terhadap driver baru (menghapus lagi objek akun yang sudah dihapus). Salin
+   bucket ledger luar VPS dengan kunci hanya-baca, jadikan dapat dibaca pengguna image (`node`, uid 1000), lalu
+   jalankan CLI dengan **image API** yang sedang berjalan dan env worker yang SAMA dengan worker saat ini
+   (`STORAGE_DRIVER=s3`, `S3_*`, `STORAGE_FALLBACK_LOCAL_ROOT=/data/files`, sehingga objek dihapus di bucket dan disk):
+
+   ```sh
+   rclone copy kapdhledger:<bucket> /root/ledger --include "/account-deletions/**"
+   chown -R 1000:1000 /root/ledger
+   docker run --rm --network <jaringan-db> --env-file /etc/kapdh/worker.env \
+     -v /data/files:/data/files -v /root/ledger:/ledger:ro <image-api@sha256:...> \
+     node dist/modules/account/ledger-reapply.cli.js --dir /ledger/account-deletions
+   ```
+
+   Di dalam kontainer image worker, path CLI adalah
+   `node node_modules/@kapdh/api/dist/modules/account/ledger-reapply.cli.js` (folder `dist/` image worker hanya berisi
+   runtime worker). Keluaran wajib `Gagal : 0`.
 2. Hapus objek bucket milik baris yang sudah `deleted`:
 
    ```sh
@@ -110,7 +122,8 @@ Dapat dilakukan dari tahap A, B atau C selama salinan lama belum dibersihkan (ba
 2. Salin objek yang hanya ada di bucket (dibuat sejak T-switch) ke disk dan cocokkan:
    `rclone copy kapdhfiles:kapdh-prod-files /data/files --checksum` lalu `rclone check kapdhfiles:kapdh-prod-files
    /data/files --one-way --checksum`.
-3. Terapkan ulang deletion ledger terbaru terhadap disk (bagian 4 butir 1, dengan env `STORAGE_DRIVER=local`) agar
+3. Terapkan ulang deletion ledger terbaru terhadap disk (perintah image API di bagian 4 butir 1, dengan env worker
+   yang diubah menjadi `STORAGE_DRIVER=local`, `S3_*` dan `STORAGE_FALLBACK_LOCAL_ROOT` dikosongkan) agar
    berkas akun yang dihapus selama di S3 tidak hidup kembali dari salinan lama (AC F14-6), dan hapus berkas baris
    `deleted` dari disk (daftar bagian 4 butir 2).
 4. Env API/worker: `STORAGE_DRIVER=local`, kosongkan `S3_*` dan `STORAGE_FALLBACK_LOCAL_ROOT`; `UPDATE app.files SET
