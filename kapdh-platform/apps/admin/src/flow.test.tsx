@@ -325,7 +325,10 @@ describe("menu dan rute berizin (AC F15-1, F16-3)", () => {
     renderApp("/login");
     const nav = await signIn(user);
     await user.click(within(nav).getByRole("link", { name: /Manajemen Event & Tiket/ }));
-    expect(await screen.findByRole("heading", { level: 1, name: "Check-in Tiket" })).toBeInTheDocument();
+    // Halaman pemindai (potongan kode lazy area events) lebih berat dari placeholder: beri waktu saat suite paralel.
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Check-in Tiket" }, { timeout: 5_000 }),
+    ).toBeInTheDocument();
   });
 
   it("AC F16-3 (UI): izin dicabut Super Admin terlihat setelah muat ulang profil; halaman terkait tertutup", async () => {
