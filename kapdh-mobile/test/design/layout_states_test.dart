@@ -77,6 +77,55 @@ void main() {
     expect(find.text('beranda'), findsOneWidget);
   });
 
+  testWidgets('AppScaffold: panah kembali menghormati PopScope halaman seperti tombol kembali sistem (PRD 4.5)', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    var guarded = true;
+    var asked = 0;
+    StateSetter? setFormState;
+    final router = GoRouter(
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => const Text('beranda')),
+        GoRoute(
+          path: '/form',
+          builder: (_, _) => StatefulBuilder(
+            builder: (context, setState) {
+              setFormState = setState;
+              return PopScope(
+                canPop: !guarded,
+                onPopInvokedWithResult: (didPop, _) {
+                  if (!didPop) asked++;
+                },
+                child: const AppScaffold(title: 'Formulir', body: Text('isi')),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    router.go('/');
+    await tester.pumpAndSettle();
+    final pushed = router.push<void>('/form');
+    await tester.pumpAndSettle();
+
+    // Isian belum disimpan: PopScope menahan dan diberi tahu (dialog "Buang perubahan?" di layar nyata).
+    await tester.tap(find.byTooltip('Kembali'));
+    await tester.pumpAndSettle();
+    expect(asked, 1);
+    expect(find.text('Formulir'), findsOneWidget);
+
+    // Setelah formulir bersih, panah kembali menutup halaman.
+    setFormState!(() => guarded = false);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Kembali'));
+    await tester.pumpAndSettle();
+    await pushed;
+    expect(find.text('beranda'), findsOneWidget);
+  });
+
   testWidgets('AppBannerScope: pita global di bawah app bar; pita milik layar menggantikannya (tanpa pita ganda)', (
     tester,
   ) async {

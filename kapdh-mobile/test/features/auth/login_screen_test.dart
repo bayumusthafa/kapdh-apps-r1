@@ -141,7 +141,7 @@ void main() {
     expect(find.text('Masukkan kode verifikasi'), findsOneWidget);
   });
 
-  testWidgets('akun deletion_pending: status penghapusan tampil di login, tanpa sesi (F-14, PRD 2.2)', (tester) async {
+  testWidgets('akun deletion_pending: portal status penghapusan tanpa sesi (F-14, PRD 2.2)', (tester) async {
     final app = await pumpApp(
       tester,
       handler: apiRoutes({
@@ -159,16 +159,19 @@ void main() {
       }),
     );
     await fillAndSubmit(tester);
-    expect(app.location, '/login');
+    expect(app.location, '/deletion-status');
     expect(find.text('Penghapusan akun sedang diproses'), findsOneWidget);
-    expect(find.textContaining('DEL-2026-7K3Q9X (Permintaan Diterima)'), findsOneWidget);
-    expect(find.textContaining('19 Okt 2026, 10.00 WIB'), findsOneWidget);
+    expect(find.text('DEL-2026-7K3Q9X'), findsOneWidget);
+    expect(find.text('Permintaan Diterima'), findsWidgets);
+    expect(find.text('19 Okt 2026, 10.00 WIB'), findsOneWidget);
     expect(find.text('Hubungi pengurus'), findsOneWidget);
     expect(app.container.read(sessionProvider).hasSession, isFalse);
     expect(app.adapter.requestsTo('/me'), isEmpty);
   });
 
-  testWidgets('akun disabled: pesan akun tidak aktif dan kontak pengurus, tanpa sesi (PRD 2.2)', (tester) async {
+  testWidgets('akun disabled: portal status akun tidak aktif dan kontak pengurus, tanpa sesi (PRD 2.2)', (
+    tester,
+  ) async {
     final app = await pumpApp(
       tester,
       handler: apiRoutes({
@@ -176,7 +179,7 @@ void main() {
       }),
     );
     await fillAndSubmit(tester);
-    expect(app.location, '/login');
+    expect(app.location, '/deletion-status');
     expect(find.text('Akun tidak aktif'), findsOneWidget);
     expect(find.text('Hubungi pengurus'), findsOneWidget);
     expect(app.container.read(sessionProvider).hasSession, isFalse);

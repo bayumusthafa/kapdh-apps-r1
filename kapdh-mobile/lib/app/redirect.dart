@@ -92,6 +92,8 @@ RouteGroup routeGroupOf(String path) {
     'network' => RouteGroup.network,
     'chat' when !single => RouteGroup.chat,
     'notifications' when single => RouteGroup.notifications,
+    // Gerbang ketukan push /notifications/<id> (AC F13-3): akses sama dengan kotak masuk.
+    'notifications' when segments.length == 2 => RouteGroup.notifications,
     'account' when single => RouteGroup.account,
     'account' when second == 'blocked' => RouteGroup.accountCommunity,
     'account' when second == 'reports' => RouteGroup.accountReports,
@@ -150,8 +152,16 @@ const Map<EffectiveStatus, Set<RouteGroup>> _allowed = {
   // kedaluwarsa tetap dapat dilihat dan dipakai, beserta detail event yang pernah dipesan (kontrak C5 getEvent).
   // Ditolak: daftar event dan pemesanan baru, direktori, chat.
   EffectiveStatus.expired: {..._memberBase, RouteGroup.renewal, RouteGroup.tickets, RouteGroup.eventDetail},
-  // Portal pembatasan, bantuan (legal), status laporan/banding sendiri dan penghapusan setelah verifikasi identitas.
-  EffectiveStatus.suspended: {RouteGroup.restricted, RouteGroup.accountReports, RouteGroup.accountDelete},
+  // Portal pembatasan, bantuan (legal), status laporan/banding sendiri (moderation.yaml member_access any),
+  // penghapusan setelah verifikasi identitas, dan kotak masuk resmi: kontrak C7 memberi semua operasi notifikasi
+  // member_access `any` agar anggota suspended tetap dapat membaca notifikasi keamanan dan pengurus (AC F13-2).
+  // Tujuan deep link notifikasi tetap melewati matriks ini.
+  EffectiveStatus.suspended: {
+    RouteGroup.restricted,
+    RouteGroup.accountReports,
+    RouteGroup.accountDelete,
+    RouteGroup.notifications,
+  },
   // Pemeriksaan status penghapusan/pemulihan dengan challenge terbatas.
   EffectiveStatus.disabled: {RouteGroup.deletionStatus},
   EffectiveStatus.deletionPending: {RouteGroup.deletionStatus},
@@ -253,6 +263,9 @@ String? resolveRedirect(RedirectState state, Uri location) {
 }
 
 bool _readableDuringMaintenance(SessionState session, RouteGroup group, String path) {
+  // Portal status penghapusan tanpa sesi hanya menampilkan status yang sudah diketahui (nomor permintaan dari login
+  // atau dari permintaan hapus akun); pemeriksaan ulang yang ditolak MAINTENANCE dijelaskan di layar (PRD 4.5).
+  if (group == RouteGroup.deletionStatus && session.phase == SessionPhase.anonymous) return true;
   final status = session.effectiveStatus;
   if (!session.hasSession || status == null || routeForStatus(status) == null) return false;
   return isRouteAllowed(status, group) && !isMutationOnlyRoute(path);
@@ -284,6 +297,11 @@ String? _anonymous(SessionState session, Uri location, RouteGroup group) {
       return session.challenge?.purpose == OtpPurpose.passwordReset ? null : AppRoutes.forgot;
     case RouteGroup.forgotReset:
       return session.resetToken != null ? null : AppRoutes.forgot;
+    case RouteGroup.deletionStatus:
+      // Kontrak C1: akun deletion_pending/disabled tidak pernah mendapat sesi (login mengembalikan
+      // next=deletion_pending/account_disabled). Portal status bekerja tanpa sesi dengan challenge terbatas
+      // (PRD 2.2, F-14): status dari login atau permintaan hapus, dan pemeriksaan ulang lewat OTP email.
+      return null;
     case RouteGroup.splash:
       return _withFrom(AppRoutes.login, _fromParam(location));
     default:
