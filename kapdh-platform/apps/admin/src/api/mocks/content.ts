@@ -1,5 +1,6 @@
 import type { Permission } from "@kapdh/contracts";
 import { mockAdminRef, requirePermission } from "./auth";
+import { peekEventForMocks } from "./events";
 import {
   error,
   json,
@@ -684,6 +685,20 @@ function postDetail(p: PostRow): S["AdminPost"] {
   };
 }
 
+/**
+ * Event tujuan banner: data contoh area ini lebih dahulu (uji konten memakai CONTENT_IDS.event*), lalu event server
+ * tiruan area events. Pemilih tujuan mencari lewat GET /admin/events (mocks/events.ts), sehingga event yang dipilih
+ * di sana harus lolos validasi dan tampil sebagai tujuan di sini (integrasi Fase C, satu sumber event di dev:mock).
+ */
+function eventTarget(
+  id: string,
+): { id: string; title: string; status: EventStatus; category: S["ContentCategoryRef"] | null } | undefined {
+  const own = events.get(id);
+  if (own)
+    return { id: own.id, title: own.title, status: own.status, category: categoryRef(own.category_id) };
+  return peekEventForMocks(id);
+}
+
 function bannerTarget(b: BannerRow): S["AdminBannerTarget"] {
   const base = { type: b.target_type, value: b.target_value };
   if (b.target_type === "none" || b.target_type === "url")
@@ -700,14 +715,14 @@ function bannerTarget(b: BannerRow): S["AdminBannerTarget"] {
     };
   }
   if (b.target_type === "event") {
-    const e = b.target_value ? events.get(b.target_value) : undefined;
+    const e = b.target_value ? eventTarget(b.target_value) : undefined;
     if (!e) return { ...base, available: false, label: null, route: null, category: null };
     return {
       ...base,
       available: e.status === "open" || e.status === "closed",
       label: e.title,
       route: `/events/${e.id}`,
-      category: categoryRef(e.category_id),
+      category: e.category,
     };
   }
   const pg = [...pages.values()].find((x) => x.slug === b.target_value);
@@ -1437,7 +1452,7 @@ function validateTarget(errs: FieldErrors, type: unknown, value: unknown): void 
   }
   if (type === "post" && !(UUID.test(value) && posts.has(value)))
     errs.target_value = ["Berita tujuan tidak ditemukan."];
-  if (type === "event" && !(UUID.test(value) && events.has(value)))
+  if (type === "event" && !(UUID.test(value) && eventTarget(value)))
     errs.target_value = ["Event tujuan tidak ditemukan."];
   if (type === "page" && ![...pages.values()].some((p) => p.slug === value))
     errs.target_value = ["Halaman tujuan tidak ditemukan."];

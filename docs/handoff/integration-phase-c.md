@@ -154,6 +154,28 @@ their only mock. `/content` manages post categories (`/admin/content/post-catego
 `admin-content.yaml`, and the API serves them from the content module. Verified after the merge: admin typecheck,
 lint and build; `@kapdh/admin` test 28 files 294/294.
 
+## 7. admin-events
+
+No textual conflicts; `pnpm-lock.yaml` auto-merged (`@zxing/browser` 0.2.1 and `@zxing/library` 0.23.0 for the
+camera scanner) and `pnpm install` left it unchanged. `flow.test.tsx` (foundation) only gained a longer wait for the
+heavier lazily loaded check-in page. Verified after the merge: admin typecheck, lint and build, `@kapdh/admin` test
+31 files 355/355. Integration fix in a follow-up commit:
+
+- `apps/admin/src/api/mocks/content.ts` + `mocks/events.ts` (dev:mock banner targets). admin-content's banner target
+  picker searches `GET /admin/events`, which only the events mock serves, but the content mock validated and resolved
+  event targets against its own private three-event map. After both merged, an admin with `events.manage` who picked
+  any event from the list got "Event tujuan tidak ditemukan." on save. Each side wanted to keep its own fixtures
+  (content tests use `CONTENT_IDS.event*`, events tests use `MOCK_EVENT_IDS`). Chosen: events mock exports a read-only
+  `peekEventForMocks(id)` (title, status, category ref from its own categories); content's new `eventTarget(id)`
+  checks its own map first, then the events mock, for both `validateTarget` and `bannerTarget`. The availability rule
+  (open or closed) is unchanged. New test `banners.test.tsx` "AC F08-2: event dipilih dari daftar event admin (area
+  events) ...": failed before the fix (no success toast), passes after.
+- New guard `apps/admin/src/api/mocks/routes.test.ts`: the mock router answers with the FIRST matching route in
+  alphabetical file order, which is how the content/events event-category collision the two slices warned about would
+  have hidden one side. The test fails when two area mocks register the same method + path template or when any route
+  is shadowed by one loaded earlier (checked by adding a temporary duplicate file: both assertions failed and named
+  both files). Passes on the merged tree.
+
 ## Breakages already on main before this track (fixed in a separate commit)
 
 Found by the first full API run after merge 1; neither involves an api-admin file.

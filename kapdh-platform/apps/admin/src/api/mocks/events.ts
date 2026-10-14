@@ -825,6 +825,25 @@ export function reset(): void {
 }
 reset();
 
+/**
+ * Baca satu event untuk server tiruan area lain (tujuan banner di mocks/content.ts). Pencarian tujuan banner memakai
+ * GET /admin/events di sini, sehingga event yang dipilih harus dikenali juga oleh validasi dan tampilan tujuan banner
+ * (satu sumber event di dev:mock). Hanya baca; tidak mengubah keadaan.
+ */
+export function peekEventForMocks(
+  id: string,
+): { id: string; title: string; status: EventStatus; category: S["ContentCategoryRef"] | null } | undefined {
+  const e = events.get(id);
+  if (!e) return undefined;
+  const c = e.category_id ? categories.get(e.category_id) : undefined;
+  return {
+    id: e.id,
+    title: e.title,
+    status: e.status,
+    category: c ? { id: c.id, slug: c.slug, label: c.label } : null,
+  };
+}
+
 /** Kendali server tiruan untuk uji dan dev:mock. */
 export const mockEvents = {
   /** Pengurus lain mengubah event (versi naik), untuk uji konflik versi (AC F15-4). */

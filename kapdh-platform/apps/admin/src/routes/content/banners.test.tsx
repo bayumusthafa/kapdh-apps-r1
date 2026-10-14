@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it } from "vitest";
 import { mockAuth } from "../../api/mocks/auth";
 import { CONTENT_IDS, contentRequests, mockContent } from "../../api/mocks/content";
+import { MOCK_EVENT_IDS } from "../../api/mocks/events";
 import { findToast, renderApp, signIn, type User } from "../../test/utils";
 
 // Suite admin berjalan paralel; potongan kode area dan editor dimuat lazy sehingga butuh waktu tunggu lebih.
@@ -146,6 +147,32 @@ describe("tab Banner (F-08, AC F08-2, F15-4; server tiruan)", () => {
       type: "post",
       label: "Halal bi Halal",
       category: { label: "Promo Spesial" },
+    });
+  });
+
+  it("AC F08-2: event dipilih dari daftar event admin (area events) tersimpan sebagai tujuan banner yang tersedia", async () => {
+    // Integrasi Fase C: pencarian memakai GET /admin/events milik area events, sehingga tujuan yang dipilih harus
+    // dikenali server tiruan konten saat validasi dan saat menampilkan tujuan (satu sumber event di dev:mock).
+    const user = userEvent.setup();
+    const table = await openBanners(user);
+    await user.click(within(table).getByRole("button", { name: "Ubah banner Pusat bantuan" }));
+    const dialog = await screen.findByRole("dialog", { name: "Ubah banner" });
+    await user.click(within(dialog).getByRole("radio", { name: "Event" }));
+    await user.type(within(dialog).getByRole("combobox", { name: /^Event tujuan/ }), "Seminar AI");
+    await user.click(await screen.findByRole("option", { name: /Seminar AI untuk Alumni/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Simpan perubahan" }));
+
+    await findToast("success", 'Banner "Pusat bantuan" diperbarui.');
+    expect(contentRequests.find((r) => r.method === "PATCH")?.body).toEqual({
+      target_type: "event",
+      target_value: MOCK_EVENT_IDS.seminar,
+    });
+    expect(mockContent.banner(CONTENT_IDS.bannerBantuan)?.target).toMatchObject({
+      type: "event",
+      value: MOCK_EVENT_IDS.seminar,
+      available: true,
+      label: "Seminar AI untuk Alumni",
+      route: `/events/${MOCK_EVENT_IDS.seminar}`,
     });
   });
 
