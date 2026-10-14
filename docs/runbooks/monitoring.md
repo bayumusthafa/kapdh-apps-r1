@@ -121,6 +121,11 @@ PRD 7.1 menetapkan GlitchTip/Uptime Kuma sebagai kandidat observabilitas. Rencan
 
 ## 8. Kapasitas
 
-Ambang kapasitas (N-04) berasal dari uji beban (docs/runbooks/load-test.md). Pantau dari Coolify/`docker stats`:
-CPU rata-rata > 70 % selama 15 menit, RAM > 85 %, atau p95 API yang tercatat uji beban mendekati batas N-01 adalah
-pemicu menambah kapasitas sebelum target gagal.
+Ambang kapasitas (N-04) berasal dari uji beban bertingkat (docs/runbooks/load-test.md bagian 5,
+`infra/loadtest/api-load.mjs --steps`). Pantau dari Coolify/`docker stats`: CPU rata-rata > 70 % selama 15 menit,
+RAM > 85 %, laju permintaan produksi > 70 % kapasitas terukur, atau p95 API mendekati batas N-01 adalah pemicu
+menambah kapasitas sebelum target gagal.
+
+| Tanggal uji | Image | Kapasitas terukur (kedatangan/detik) | Titik gagal | Ambang naik kapasitas | Laporan |
+| ----------- | ----- | ------------------------------------ | ----------- | --------------------- | ------- |
+| belum diuji | | | | | docs/qa/load/ |
