@@ -6,6 +6,7 @@ pribadi: hanya angka, id snapshot, nomor permintaan penghapusan dan id acak yang
 | Butir | Nilai |
 | ----- | ----- |
 | Tanggal drill | |
+| Jenis: baseline kosong (PRD 8.2 langkah 1, `--baseline-empty`) / drill penuh (U-12) / drill bulanan | |
 | Pelaksana (pengelola infra) / saksi (QA) | |
 | Lingkungan drill (VPS sementara, region, spesifikasi) | |
 | Backup dipakai: `backup_id`, snapshot `kapdh-db`, snapshot `kapdh-files` | |
@@ -21,13 +22,16 @@ pribadi: hanya angka, id snapshot, nomor permintaan penghapusan dan id acak yang
 
 ## Hasil
 
-- [ ] `verify-report.txt`: 0 FAIL (lampirkan; WARN dicatat dan ditindaklanjuti)
-- [ ] `http.admin.login`, `http.admin.mfa`, `http.berkas.publik`, `ready` (dengan `deletion_ledger=ok`) PASS
+- [ ] `verify-report.txt` (restore.sh, sebelum layanan): 0 FAIL (lampirkan; WARN dicatat dan ditindaklanjuti)
+- [ ] `verify-report-post-start-*.txt` (`--post-start --ledger-dir <bukti>/ledger`, sesudah API lalu worker menyala): 0 FAIL
+- [ ] `http.admin.login`, `http.admin.mfa`, `http.berkas.publik`, `ready` (dengan `deletion_ledger=ok`) PASS (baseline
+      kosong: `http.admin.*` dan `super_admin.aktif` WARN)
 - [ ] `ledger-reapply.log`: `Gagal : 0`; nomor permintaan yang diterapkan ulang: …
 - [ ] `outbox.txt` (jumlah per status setelah lease dilepas)
 - [ ] Pemeriksaan manual (3 anggota acak, 1 payment paid, 1 tiket, 1 room chat, 1 bukti bayar): id yang diperiksa …
 - [ ] Penghapusan terdahulu: 1-3 nomor permintaan, akun berstatus `deleted` dan tidak dapat login
-- [ ] Lingkungan drill dimusnahkan (waktu, bukti penghapusan VPS/volume)
+- [ ] Lingkungan drill dimusnahkan (waktu, bukti penghapusan VPS/volume), termasuk folder bukti `ledger/` (tidak disalin
+      ke repo)
 
 ## Temuan dan tindak lanjut
 

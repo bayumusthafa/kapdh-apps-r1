@@ -33,12 +33,23 @@ konsistensi rujukan DB-berkas atau jeda mutasi. D2: backup berotasi 30 hari dan 
 4. **Manifest JSON** (`manifest.schema.json`): id backup, sha256 dan ukuran dump, id snapshot berkas, statistik DB,
    versi skema, referensi image, versi alat, dan daftar objek deletion ledger luar VPS dengan sha256. Dibaca balik dari
    repositori dan dicocokkan sha256 sebelum backup dinyatakan berhasil.
-5. **Retensi:** `restic forget --keep-within 30d --prune` setiap run; skrip menolak `RETENTION_DAYS` > 30 (D2).
+5. **Retensi (D2: backup berotasi 30 hari):** setiap run `restic forget --tag kapdh-db --keep-within 30d`, lalu snapshot
+   berkas dilupakan BERPASANGAN dengan dump-nya (tag `backup_id` yang sama; keep-within restic dihitung per grup dari
+   snapshot terbaru grup itu, sehingga tanpa pasangan manifest tertua dapat merujuk snapshot berkas yang sudah
+   dibuang), lalu `restic prune --max-unused 0` (bawaan restic menoleransi 5 % data tak terpakai, sehingga blob akun
+   terhapus dapat tertahan di pack campuran). Skrip menolak `RETENTION_DAYS + BUCKET_NONCURRENT_DAYS` > 30 (versi lama
+   objek yang ditahan penyedia sesudah prune ikut dihitung) dan production tanpa prune. Bucket backup tanpa masa versi
+   lama secara bawaan; perlindungan ransomware dengan versi lama/object lock hanya dalam batas 30 hari itu dan dengan
+   persetujuan pemilik D2. (Diperbarui oleh perbaikan audit E3; sebelumnya `forget --keep-within 30d --prune` per grup
+   dan versi noncurrent 7 hari.)
 6. **Restore** hanya ke lingkungan bersih (database tanpa skema `app`, volume kosong); urutan: roles.sql → pg_restore
    satu transaksi → roles.sql → (opsional) migrasi → snapshot berkas yang dirujuk manifest → deletion ledger TERBARU
    dari bucket luar VPS + salinan backup lewat CLI `ledger-reapply` (wajib keluar 0) → pelepasan lease outbox →
    `verify-restore.sh` (invariant uang dan jumlah persis, ledger diterapkan, berkas dan sha256 sampel, Super Admin,
-   HTTP login/MFA admin drill). Keluar bukan nol = layanan tidak dibuka.
+   HTTP login/MFA admin drill). Keluar bukan nol = layanan tidak dibuka. restore.sh berjalan sebagai root (atau uid
+   `FILES_OWNER`) dan menyimpan salinan ledger di `<bukti>/ledger` milik `FILES_OWNER`, karena CLI berjalan di image
+   sebagai `node` (uid 1000); CLI tidak membutuhkan Redis. Sesudah restore: API sendiri sampai readiness
+   `deletion_ledger: ok`, lalu worker, lalu `verify-restore.sh --post-start`.
 7. Skrip POSIX sh (`set -eu`) dengan alat standar (psql/pg_dump 17, restic, rclone, curl), tanpa jq, tanpa mencetak
    secret atau data pribadi; heartbeat Uptime Kuma Push untuk setiap run.
 

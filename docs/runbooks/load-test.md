@@ -45,7 +45,9 @@ reservasi 20/jam, kirim chat 60/menit per akun) agar 429 tidak mengaburkan hasil
 ## 2. Lingkungan
 
 - **Hanya staging** (`staging-api`, D12) dengan database, Redis, volume dan secrets terpisah dari production (PRD
-  5.3). Data sintetis saja; `loadtest:seed` menolak `NODE_ENV=production` dan menuntut nama database dikonfirmasi.
+  5.3). Data sintetis saja; `loadtest:seed` menolak `NODE_ENV=production`, menuntut nama database dikonfirmasi, dan
+  hanya berjalan pada database bertanda `kapdh.environment = 'staging'` (nama database staging dan production
+  sama-sama `kapdh`, jadi nama saja tidak membedakannya).
 - **VPS setara production** (D7). Bila staging berbagi VPS dengan production, uji beban DILARANG setelah ada data
   pengguna nyata (PRD 5.3 "staging tidak boleh melakukan stress test yang mengganggu production"): jalankan sebelum
   go-live, atau di VPS sementara berspesifikasi sama yang dimusnahkan setelahnya.
@@ -58,14 +60,21 @@ reservasi 20/jam, kirim chat 60/menit per akun) agar 429 tidak mengaburkan hasil
 
 ## 3. Persiapan dataset (sekali per siklus uji)
 
-1. Reset database staging: buat ulang database kosong → `pnpm --filter @kapdh/database migrate` → `infra/db/roles.sql`
-   → `seed:reference` → bootstrap Super Admin (PRD 8.2). Kosongkan volume berkas staging.
+1. Reset database staging: buat ulang database kosong → job migrasi rilis (PRD 5.5; image, bukan pnpm) → `infra/db/roles.sql`
+   → `seed:reference` → bootstrap Super Admin (PRD 8.2). Kosongkan volume berkas staging. Pasang penanda staging
+   sekali per database, sebagai pemilik database (JANGAN pernah di production; penanda ikut hilang bila database
+   dibuat ulang):
+
+   ```sql
+   ALTER DATABASE kapdh SET kapdh.environment = 'staging';
+   ```
+
 2. Dataset sintetis PRD 2.4 dari kontainer API staging (env API: `DATABASE_URL` kapdh_app, `BCRYPT_COST`,
    `TOTP_ENC_KEY`):
 
    ```sh
    docker exec -it <kontainer-api-staging> node dist/cli/loadtest-seed.js \
-     --confirm-database <nama-database-staging> --out /tmp/kapdh-loadtest.json
+     --confirm-database kapdh --out /tmp/kapdh-loadtest.json
    # Bawaan: --profiles 5000 --login-members 100 --admins 5 --messages 100000 --group-rooms 40 --direct-rooms 200
    #         --events 20 --pending-payments 1000 --posts 30. Untuk uji kapasitas tambah akun: --login-members 300.
    docker cp <kontainer-api-staging>:/tmp/kapdh-loadtest.json ./kapdh-loadtest.json && chmod 600 kapdh-loadtest.json
