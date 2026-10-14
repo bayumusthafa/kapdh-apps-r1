@@ -920,10 +920,14 @@ void main() {
     testWidgets('AC F03-2: bukti yang sedang diperiksa dibuka layar penuh; URL baca diminta baru setiap dibuka', (
       tester,
     ) async {
-      final app = await openPayment(tester, {
-        '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingReviewJson()),
-        accessPath: (_) => FakeResponse.json(200, accessJson()),
-      }, overrides: [images]);
+      final app = await openPayment(
+        tester,
+        {
+          '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingReviewJson()),
+          accessPath: (_) => FakeResponse.json(200, accessJson()),
+        },
+        overrides: [images],
+      );
       expect(app.adapter.requestsTo(accessPath), isEmpty, reason: 'URL baca hanya diminta saat anggota membukanya');
       await scrollAndTap(tester, find.byKey(const ValueKey('proof-view')));
       await settle(tester);
@@ -946,10 +950,14 @@ void main() {
       tester,
     ) async {
       var calls = 0;
-      final app = await openPayment(tester, {
-        '/me/payments/pay-1': (_) => FakeResponse.json(200, needsFixJson()),
-        accessPath: (_) => FakeResponse.json(200, accessJson(url: calls++ == 0 ? expiredUrl : freshUrl)),
-      }, overrides: [images]);
+      final app = await openPayment(
+        tester,
+        {
+          '/me/payments/pay-1': (_) => FakeResponse.json(200, needsFixJson()),
+          accessPath: (_) => FakeResponse.json(200, accessJson(url: calls++ == 0 ? expiredUrl : freshUrl)),
+        },
+        overrides: [images],
+      );
       expect(find.byKey(const ValueKey('proof-reupload')), findsOneWidget);
       await scrollAndTap(tester, find.byKey(const ValueKey('proof-view')));
       await settle(tester);
@@ -963,10 +971,14 @@ void main() {
     });
 
     testWidgets('bukti PDF dibuka aplikasi penampil perangkat sesuai mime', (tester) async {
-      final app = await openPayment(tester, {
-        '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingReviewJson()),
-        accessPath: (_) => FakeResponse.json(200, accessJson(mime: 'application/pdf')),
-      }, overrides: [images]);
+      final app = await openPayment(
+        tester,
+        {
+          '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingReviewJson()),
+          accessPath: (_) => FakeResponse.json(200, accessJson(mime: 'application/pdf')),
+        },
+        overrides: [images],
+      );
       await scrollAndTap(tester, find.byKey(const ValueKey('proof-view')));
       await settle(tester);
       expect(find.byType(ProofImageViewer), findsNothing);
@@ -974,10 +986,14 @@ void main() {
     });
 
     testWidgets('N-09: berkas yang tidak tersedia lagi (404) dijelaskan tanpa membedakan alasan', (tester) async {
-      await openPayment(tester, {
-        '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingReviewJson()),
-        accessPath: (_) => FakeResponse.json(404, errorJson('NOT_FOUND', 'Berkas tidak ditemukan.')),
-      }, overrides: [images]);
+      await openPayment(
+        tester,
+        {
+          '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingReviewJson()),
+          accessPath: (_) => FakeResponse.json(404, errorJson('NOT_FOUND', 'Berkas tidak ditemukan.')),
+        },
+        overrides: [images],
+      );
       await scrollAndTap(tester, find.byKey(const ValueKey('proof-view')));
       await settle(tester);
       expect(find.byType(ProofImageViewer), findsNothing);
@@ -987,21 +1003,25 @@ void main() {
     testWidgets('tanpa proof_file_id (belum ada bukti, atau bukti dicatat pengurus) tautan tidak tampil', (
       tester,
     ) async {
-      final app = await openPayment(tester, {
-        '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingTransferJson()),
-        // Bukti dicatat pengurus (POST /admin/payments, D13): server tidak mengirim proof_file_id (N-09).
-        '/me/payments/pay-2': (_) => FakeResponse.json(
-          200,
-          paymentJson(
-            id: 'pay-2',
-            stage: 'awaiting_review',
-            proofVersion: 1,
-            submittedAt: testNow,
-            canChangeMethod: false,
-            canCancel: false,
+      final app = await openPayment(
+        tester,
+        {
+          '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingTransferJson()),
+          // Bukti dicatat pengurus (POST /admin/payments, D13): server tidak mengirim proof_file_id (N-09).
+          '/me/payments/pay-2': (_) => FakeResponse.json(
+            200,
+            paymentJson(
+              id: 'pay-2',
+              stage: 'awaiting_review',
+              proofVersion: 1,
+              submittedAt: testNow,
+              canChangeMethod: false,
+              canCancel: false,
+            ),
           ),
-        ),
-      }, overrides: [images]);
+        },
+        overrides: [images],
+      );
       expect(find.text('Transfer tepat sebesar'), findsOneWidget);
       expect(find.byKey(const ValueKey('proof-view')), findsNothing);
 

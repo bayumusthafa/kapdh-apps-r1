@@ -197,13 +197,10 @@ void main() {
       await pumpApp(
         tester,
         tokens: savedTokens(),
-        handler: apiRoutes(
-          {
-            '/me': (_) => FakeResponse.json(200, meFullJson(status: 'suspended')),
-            '/reports': (_) => FakeResponse.json(200, {'items': <Object?>[], 'next_cursor': null}),
-          },
-          config: publicConfigJson(maintenance: true),
-        ),
+        handler: apiRoutes({
+          '/me': (_) => FakeResponse.json(200, meFullJson(status: 'suspended')),
+          '/reports': (_) => FakeResponse.json(200, {'items': <Object?>[], 'next_cursor': null}),
+        }, config: publicConfigJson(maintenance: true)),
       );
       await tester.tap(find.text('Lanjut dalam mode baca'));
       await settle(tester);

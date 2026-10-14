@@ -102,8 +102,7 @@ RouteGroup routeGroupOf(String path) {
     // Gerbang ketukan push /notifications/<id> (AC F13-3): akses sama dengan kotak masuk.
     'notifications' when segments.length == 2 => RouteGroup.notifications,
     'account' when single => RouteGroup.account,
-    'account' when (second == 'sessions' || second == 'password') && segments.length == 2 =>
-      RouteGroup.accountSecurity,
+    'account' when (second == 'sessions' || second == 'password') && segments.length == 2 => RouteGroup.accountSecurity,
     'account' when second == 'blocked' => RouteGroup.accountCommunity,
     'account' when second == 'reports' => RouteGroup.accountReports,
     'account' when second == 'delete' => RouteGroup.accountDelete,

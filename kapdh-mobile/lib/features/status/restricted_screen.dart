@@ -17,8 +17,9 @@ import 'status_portal_actions.dart';
 
 /// Portal pembatasan untuk anggota suspended (PRD 2.2): alasan aman dari server (`suspension_message`, tanpa alasan
 /// internal), kotak masuk resmi (kontrak C7, AC F13-2), pemulihan akun (sesi perangkat dan ganti password, AC F02-6),
-/// banding (PRD 3.12), kontak bantuan, ketentuan komunitas, dan penghapusan akun setelah verifikasi identitas (F-14). Aplikasi utama, KTA aktif, pembayaran baru dan tindakan komunitas tidak tersedia; verifikasi KTA
-/// publik juga menampilkan status ini (AC F12-4).
+/// banding (PRD 3.12), kontak bantuan, ketentuan komunitas, dan penghapusan akun setelah verifikasi identitas (F-14).
+/// Aplikasi utama, KTA aktif, pembayaran baru dan tindakan komunitas tidak tersedia; verifikasi KTA publik juga
+/// menampilkan status ini (AC F12-4).
 class RestrictedScreen extends ConsumerWidget {
   const RestrictedScreen({super.key});
 
