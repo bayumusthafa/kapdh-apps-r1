@@ -41,6 +41,7 @@ import { FilesService } from "../../core/files/files.service.js";
 import { revokeDeviceTokens } from "../../core/notifications-kernel/device-tokens.js";
 import { RealtimeService } from "../../core/realtime/realtime.service.js";
 import { CLOCK, DB, MAILER, STORAGE } from "../../core/tokens.js";
+import { neutralizeDirectChatNotificationsOf } from "../chat/chat.notifications.js";
 import { forfeitableTicketWhere } from "./deletion-disclosure.service.js";
 import { type LedgerEntry, writeLedgerEntryMonotonic } from "./deletion-ledger.js";
 import {
@@ -1018,6 +1019,8 @@ export class DeletionSteps {
     await this.tx(ctx, async (tx) => {
       // notification_deliveries ikut terhapus (FK CASCADE dari notifications dan device_tokens).
       await tx.delete(notifications).where(eq(notifications.userId, userId));
+      // Kotak masuk lawan bicara room direct: baris lama "Ada pesan baru dari <nama>." menjadi teks netral (D2).
+      await neutralizeDirectChatNotificationsOf(tx, userId);
       await tx.delete(notificationPreferences).where(eq(notificationPreferences.userId, userId));
       await tx.delete(deviceTokens).where(eq(deviceTokens.userId, userId));
       await this.markDone(tx, ctx, "notifications");
