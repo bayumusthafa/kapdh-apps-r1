@@ -129,6 +129,13 @@ the branch had them. Checked by hand:
 - Verified after the merge: `pnpm build` (10/10, CSP gate passes for 11 pages), `@kapdh/web` test 14 files 169/169,
   typecheck (astro check 0 errors + tsc) and lint.
 
+## 4. admin-payments
+
+No textual conflicts (all changes under `apps/admin`; the foundation `Tabs.tsx` `countLabel` and the payments mock
+controls are additive). The page and its mocks type-check against the merged contracts, including main's api-payments
+additions (`conflict_of_interest` on the payment detail that the adjustment panel now reads). Verified after the
+merge: `pnpm build` 10/10, admin typecheck and lint, `@kapdh/admin` test 18 files 190/190.
+
 ## Breakages already on main before this track (fixed in a separate commit)
 
 Found by the first full API run after merge 1; neither involves an api-admin file.
