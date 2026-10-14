@@ -9,12 +9,16 @@
 #   3. Database: roles.sql -> pg_restore --single-transaction -> roles.sql (grant objek, append-only).
 #   4. (Opsional) MIGRATE_CMD bila image yang dipakai lebih baru dari skema backup, lalu roles.sql lagi.
 #   5. Berkas: restore snapshot berkas yang DIRUJUK manifest (bukan "terbaru"), cocokkan jumlah berkas.
-#   6. Deletion ledger: salinan bucket luar VPS TERBARU (rclone) + salinan di backup + ledger di berkas pulihan,
-#      lalu LEDGER_REAPPLY_CMD (CLI ledger-reapply) wajib keluar 0. AC F14-6: sebelum layanan dibuka.
+#   6. Deletion ledger: salinan bucket luar VPS TERBARU (rclone) + salinan di backup + ledger di berkas pulihan ke
+#      <bukti>/ledger (hanya id dan object key; dipakai lagi oleh verify-restore.sh --post-start), dimiliki FILES_OWNER
+#      agar terbaca pengguna image (node, uid 1000), lalu LEDGER_REAPPLY_CMD (CLI ledger-reapply) wajib keluar 0.
+#      AC F14-6: sebelum layanan dibuka. CLI tidak membutuhkan Redis (Redis pulihan boleh belum menyala).
 #   7. Replay outbox: lease instance lama dilepas (sql/release-outbox.sql); worker baru memproses ulang.
 #   8. verify-restore.sh: jumlah + total uang vs manifest, ledger diterapkan, berkas, Super Admin, (opsional) HTTP.
 #   9. Ringkasan bukti: RTO (durasi skrip) dan umur backup (RPO) di folder bukti.
 #
+# Pengguna: root (berkas pulihan dan salinan ledger di-chown ke FILES_OWNER) atau uid FILES_OWNER sendiri; pengguna lain
+# ditolak sebelum mengunduh apa pun karena CLI di kontainer (uid 1000) tidak akan bisa membaca/menghapus berkasnya.
 # Restore data production ke staging DILARANG (PRD 5.3); drill memakai lingkungan bersih terisolasi yang dimusnahkan
 # setelah selesai. Keluar bukan nol = jangan buka layanan.
 set -eu
@@ -34,6 +38,8 @@ Pakai: restore.sh --target-kind drill|production [opsi]
   --yes                          tanpa konfirmasi interaktif
   --allow-missing-offsite-ledger HANYA bila bucket ledger luar VPS hilang permanen; akun yang dihapus sesudah
                                  backup dapat muncul kembali (catat dan laporkan, AC F14-6)
+  --baseline-empty               bukti PRD 8.2 langkah 1 (backup/restore database tanpa data pengguna, sebelum
+                                 bootstrap Super Admin): nol Super Admin menjadi WARN, bukan FAIL
 Konfigurasi lewat env/berkas (KAPDH_BACKUP_ENV, lihat infra/backup/backup.env.example bagian restore).
 EOF
 }
@@ -43,6 +49,7 @@ TARGET_KIND=''
 EVIDENCE_DIR=''
 ASSUME_YES=0
 ALLOW_NO_OFFSITE=0
+BASELINE_EMPTY=0
 while [ $# -gt 0 ]; do
   case $1 in
     --snapshot | --target-kind | --evidence-dir)
@@ -56,6 +63,7 @@ while [ $# -gt 0 ]; do
       ;;
     --yes) ASSUME_YES=1 && shift ;;
     --allow-missing-offsite-ledger) ALLOW_NO_OFFSITE=1 && shift ;;
+    --baseline-empty) BASELINE_EMPTY=1 && shift ;;
     -h | --help) usage && exit 0 ;;
     *) die "argumen tidak dikenal: $1 (lihat --help)" ;;
   esac
@@ -73,7 +81,9 @@ WORK_DIR=${WORK_DIR:-/var/restore/kapdh}
 RESTORE_DB=${RESTORE_DB:-kapdh}
 RESTORE_ADMIN_DB=${RESTORE_ADMIN_DB:-postgres}
 FILES_ROOT=${FILES_ROOT:-/data/files}
-FILES_OWNER=${FILES_OWNER:-1000:1000}
+# uid[:gid] pengguna image API/worker (node = 1000:1000). Kosong (FILES_OWNER= di berkas env) = CLI berjalan sebagai
+# pengguna skrip ini (mis. LEDGER_REAPPLY_CMD langsung di host).
+FILES_OWNER=${FILES_OWNER-1000:1000}
 ROLES_SQL=${ROLES_SQL:-$KAPDH_BACKUP_DIR/../db/roles.sql}
 LEDGER_RCLONE_REMOTE=${LEDGER_RCLONE_REMOTE:-}
 LEDGER_REAPPLY_CMD=${LEDGER_REAPPLY_CMD:-}
@@ -85,6 +95,13 @@ case $SNAPSHOT in latest) ;; '' | *[!0-9a-f]*) die "--snapshot harus id heksades
 require_var RESTIC_REPOSITORY LEDGER_REAPPLY_CMD
 [ -n "${RESTIC_PASSWORD_FILE:-}${RESTIC_PASSWORD_COMMAND:-}" ] || die "RESTIC_PASSWORD_FILE wajib"
 [ -f "$ROLES_SQL" ] || die "ROLES_SQL $ROLES_SQL tidak ada"
+RUN_UID=$(id -u)
+if [ -n "$FILES_OWNER" ]; then
+  case $FILES_OWNER in *[!0-9:]* | :* | *: | *:*:*) die "FILES_OWNER harus uid atau uid:gid numerik" ;; esac
+  if [ "$RUN_UID" != 0 ] && [ "$RUN_UID" != "${FILES_OWNER%%:*}" ]; then
+    die "jalankan restore.sh sebagai root atau uid ${FILES_OWNER%%:*} (FILES_OWNER): berkas pulihan dan salinan ledger wajib dapat dibaca/dihapus CLI ledger-reapply di kontainer"
+  fi
+fi
 require_cmd restic sha256sum find sort sed tr wc head cut cp
 [ -n "${PG_EXEC:-}" ] || require_cmd psql pg_restore
 if [ -n "$LEDGER_RCLONE_REMOTE" ]; then
@@ -113,7 +130,7 @@ acquire_lock "$LOCK"
 cleanup() {
   _code=$?
   set +e
-  # Dump dan salinan ledger sementara berisi data pribadi/id; bukti drill hanya berisi angka dan log.
+  # Dump berisi data pribadi dan dihapus; folder bukti hanya berisi angka, log dan salinan ledger (id dan object key).
   rm -rf "$TMP"
   release_lock "$LOCK"
   if [ "$_code" -ne 0 ]; then
@@ -225,12 +242,15 @@ FILES_RESTORED=$(find "$FILES_ROOT" -type f | wc -l | tr -d ' ')
 if [ -n "$FILES_TOTAL_EXPECTED" ] && [ "$FILES_RESTORED" != "$FILES_TOTAL_EXPECTED" ]; then
   die "jumlah berkas pulihan $FILES_RESTORED berbeda dari manifest $FILES_TOTAL_EXPECTED"
 fi
-if [ "$(id -u)" = 0 ] && [ -n "$FILES_OWNER" ]; then chown -R "$FILES_OWNER" "$FILES_ROOT"; fi
+if [ "$RUN_UID" = 0 ] && [ -n "$FILES_OWNER" ]; then chown -R "$FILES_OWNER" "$FILES_ROOT"; fi
 log "berkas pulihan: $FILES_RESTORED (manifest: ${FILES_TOTAL_EXPECTED:-?})"
 
 # ------------------------------------------------------------------------------------------- 5. deletion ledger
 step "5/8 deletion ledger: salinan TERBARU bucket luar VPS + salinan backup + ledger di berkas pulihan"
-LEDGER_WORK=$TMP/ledger
+# Di folder bukti, bukan TMP: verify-restore.sh --post-start sesudah layanan menyala membutuhkannya lagi. Isinya hanya
+# id dan object key (tanpa nama/email/telepon); tetap jangan disalin ke repo (docs/qa).
+LEDGER_WORK=$EVIDENCE_DIR/ledger
+rm -rf "$LEDGER_WORK"
 mkdir -p "$LEDGER_WORK"
 if [ -n "$LEDGER_RCLONE_REMOTE" ]; then
   rclone copy "$LEDGER_RCLONE_REMOTE" "$LEDGER_WORK/offsite-now" --include "/account-deletions/**" \
@@ -244,6 +264,8 @@ if [ -d "$STAGE_DIR/ledger-offsite" ]; then cp -R "$STAGE_DIR/ledger-offsite" "$
 if [ -d "$FILES_ROOT/ledger/account-deletions" ]; then
   cp -R "$FILES_ROOT/ledger/account-deletions" "$LEDGER_WORK/files-backup"
 fi
+# umask 077 membuat salinan 0700/0600 milik pengguna skrip; CLI di image berjalan sebagai FILES_OWNER (node, uid 1000).
+if [ "$RUN_UID" = 0 ] && [ -n "$FILES_OWNER" ]; then chown -R "$FILES_OWNER" "$LEDGER_WORK"; fi
 LEDGER_FILES=$(find "$LEDGER_WORK" -type f -name '*.json' | wc -l | tr -d ' ')
 log "berkas entri ledger: $LEDGER_FILES"
 
@@ -269,8 +291,11 @@ log "outbox: $(tr '\n' ' ' <"$EVIDENCE_DIR/outbox.txt")"
 
 # ------------------------------------------------------------------------------------------- 7. verifikasi
 step "7/8 verifikasi konsistensi (verify-restore.sh)"
+VERIFY_MODE=''
+[ "$BASELINE_EMPTY" -eq 1 ] && VERIFY_MODE=--baseline-empty
+# shellcheck disable=SC2086 # VERIFY_MODE kosong atau satu opsi
 "$KAPDH_BACKUP_DIR/verify-restore.sh" --manifest "$MANIFEST" --db "$RESTORE_DB" --files-root "$FILES_ROOT" \
-  --ledger-dir "$LEDGER_WORK" --report "$EVIDENCE_DIR/verify-report.txt" ||
+  --ledger-dir "$LEDGER_WORK" --report "$EVIDENCE_DIR/verify-report.txt" $VERIFY_MODE ||
   die "verifikasi gagal (lihat verify-report.txt); JANGAN buka layanan"
 
 # ------------------------------------------------------------------------------------------- 8. ringkasan
@@ -292,7 +317,9 @@ BACKUP_AGE_SECONDS=''
   printf 'backup_age_at_start_seconds=%s\n' "${BACKUP_AGE_SECONDS:-tidak-diketahui}"
   printf 'files_restored=%s\n' "$FILES_RESTORED"
   printf 'ledger_entry_files=%s\n' "$LEDGER_FILES"
+  printf 'ledger_copy_dir=%s\n' "$LEDGER_WORK"
+  printf 'baseline_empty=%s\n' "$BASELINE_EMPTY"
 } >>"$EVIDENCE_DIR/summary.txt"
 step "8/8 SELESAI dalam ${RTO_SECONDS}s; umur backup saat mulai: ${BACKUP_AGE_SECONDS:-?}s. Bukti: $EVIDENCE_DIR"
-log "Langkah berikut (runbook): nyalakan Redis kosong -> worker -> API -> smoke test -> buka web/admin."
+log "Langkah berikut (runbook bagian 7): Redis kosong -> API 1 replika tertutup (readiness deletion_ledger ok) -> worker -> verify-restore.sh --post-start --ledger-dir $LEDGER_WORK -> smoke test -> buka web/admin."
 kuma_push "$KUMA_PUSH_RESTORE" up "restore $RUN_ID ${RTO_SECONDS}s" "$RTO_SECONDS"

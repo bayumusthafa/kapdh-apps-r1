@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { EnvValidationError, loadApiEnv, loadDevelopmentEnvFile } from "@kapdh/config";
-import { createStorageDriver, S3Driver } from "@kapdh/storage";
+import { createStorageDriver, destroyStorageDriver } from "@kapdh/storage";
 import { createDb } from "@kapdh/database";
 import { resolve } from "node:path";
 import { createApp } from "./bootstrap.js";
@@ -44,7 +44,7 @@ async function main() {
     .getInstance()
     .addHook("onClose", async () => {
       smtp?.close();
-      if (storage instanceof S3Driver) storage.destroy();
+      destroyStorageDriver(storage);
       await redis?.quit().catch(() => undefined);
       await sql.end({ timeout: 5 });
     });

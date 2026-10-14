@@ -15,10 +15,14 @@
 #      titik ini; restore TETAP membaca bucket terbaru (AC F14-6, audit D5-07).
 #   4. Manifest JSON mengikat dump (sha256), snapshot berkas, ledger (sha256 per objek), versi skema, image dan versi
 #      alat; dump + manifest + salinan ledger diunggah sebagai snapshot restic kedua (terenkripsi AES-256 restic).
-#   5. Retensi 30 hari (D2: backup berotasi 30 hari) + prune agar data akun terhapus benar-benar hilang dari repo.
+#   5. Retensi (D2: backup berotasi 30 hari): snapshot dump di luar RETENTION_DAYS dilupakan, snapshot berkas
+#      dilupakan BERPASANGAN dengan dump-nya (tag backup_id yang sama), lalu `prune --max-unused 0` agar blob akun
+#      terhapus benar-benar hilang dari repo (bukan tertahan di pack campuran). RETENTION_DAYS + BUCKET_NONCURRENT_DAYS
+#      (masa versi lama objek di bucket penyedia) maksimal 30.
 #
-# Keluar 0 bila seluruh langkah berhasil; selain itu 1 dan heartbeat Uptime Kuma `down`. Dump berisi data pribadi:
-# folder stage 0700 dan dihapus setelah diunggah/gagal. Tidak ada secret yang dicetak.
+# Keluar 0 bila seluruh langkah berhasil; selain itu 1 dan heartbeat Uptime Kuma `down` (termasuk production dengan
+# images.api/worker kosong: backup tersimpan tetapi run gagal). Dump berisi data pribadi: folder stage 0700 dan dihapus
+# setelah diunggah/gagal. Tidak ada secret yang dicetak.
 set -eu
 umask 077
 
@@ -29,7 +33,7 @@ KAPDH_SCRIPT=kapdh-backup
 
 case ${1:-} in
   -h | --help)
-    sed -n '2,22p' "$0"
+    sed -n '2,25p' "$0"
     exit 0
     ;;
   '') ;;
@@ -42,6 +46,7 @@ KAPDH_ENV=${KAPDH_ENV:-production}
 WORK_DIR=${WORK_DIR:-/var/backups/kapdh}
 FILES_ROOT=${FILES_ROOT:-/data/files}
 RETENTION_DAYS=${RETENTION_DAYS:-30}
+BUCKET_NONCURRENT_DAYS=${BUCKET_NONCURRENT_DAYS:-0}
 RESTIC_PRUNE=${RESTIC_PRUNE:-1}
 RESTIC_HOST=${RESTIC_HOST:-kapdh-$KAPDH_ENV}
 LEDGER_RCLONE_REMOTE=${LEDGER_RCLONE_REMOTE:-}
@@ -52,8 +57,17 @@ STATS_TIMEOUT_S=${STATS_TIMEOUT_S:-600}
 
 case $KAPDH_ENV in '' | *[!a-z0-9-]*) die "KAPDH_ENV hanya huruf kecil, angka, tanda hubung" ;; esac
 case $RETENTION_DAYS in '' | *[!0-9]*) die "RETENTION_DAYS harus bilangan bulat" ;; esac
+case $BUCKET_NONCURRENT_DAYS in '' | *[!0-9]*) die "BUCKET_NONCURRENT_DAYS harus bilangan bulat" ;; esac
 # D2: backup berotasi 30 hari; retensi lebih panjang menyimpan data akun terhapus melebihi janji kepada pengguna.
 [ "$RETENTION_DAYS" -le 30 ] || die "RETENTION_DAYS maksimal 30 (D2, PRD 3.14)"
+# Versi lama objek yang ditahan penyedia sesudah prune (versioning/lifecycle bucket backup) ikut dihitung: data akun
+# terhapus baru hilang setelah RETENTION_DAYS + BUCKET_NONCURRENT_DAYS. Nilai ini WAJIB sama dengan aturan bucket.
+[ $((RETENTION_DAYS + BUCKET_NONCURRENT_DAYS)) -le 30 ] ||
+  die "RETENTION_DAYS + BUCKET_NONCURRENT_DAYS maksimal 30 (D2); turunkan RETENTION_DAYS atau masa versi lama bucket"
+case $RESTIC_PRUNE in 0 | 1) ;; *) die "RESTIC_PRUNE harus 0 atau 1" ;; esac
+if [ "$RESTIC_PRUNE" != 1 ] && [ "$KAPDH_ENV" = production ]; then
+  die "RESTIC_PRUNE=1 wajib di production: tanpa prune data akun terhapus tertahan di repositori (D2)"
+fi
 require_var RESTIC_REPOSITORY
 [ -n "${RESTIC_PASSWORD_FILE:-}${RESTIC_PASSWORD_COMMAND:-}" ] ||
   die "RESTIC_PASSWORD_FILE atau RESTIC_PASSWORD_COMMAND wajib (kunci backup terpisah dari salinan backup, PRD 5.5)"
@@ -69,9 +83,48 @@ else
   log "PERINGATAN: LEDGER_RCLONE_REMOTE kosong; manifest tidak memuat salinan deletion ledger luar VPS"
 fi
 
+# Referensi image yang sedang berjalan (PRD 5.5 "image version"; restore memakai image yang sama): IMAGE_<NAMA> yang
+# ditulis langkah rilis ke backup.env, atau dibaca dari kontainer CONTAINER_<NAMA> (nama kontainer, atau filter
+# `label=<kunci>=<nilai>` untuk docker ps bila nama kontainer berubah setiap deploy) sebagai `tag@sha256:digest`.
+image_ref() {
+  eval "_ref=\${IMAGE_$1:-}"
+  eval "_container=\${CONTAINER_$1:-}"
+  if [ -z "$_ref" ] && [ -n "$_container" ] && command -v docker >/dev/null 2>&1; then
+    case $_container in
+      label=*) _container=$(docker ps --filter "$_container" --format '{{.ID}}' 2>/dev/null | head -n 1 || true) ;;
+    esac
+    if [ -n "$_container" ]; then
+      _tag=$(docker inspect --format '{{.Config.Image}}' "$_container" 2>/dev/null || true)
+      _image_id=$(docker inspect --format '{{.Image}}' "$_container" 2>/dev/null || true)
+      _digest=''
+      if [ -n "$_image_id" ]; then
+        _digest=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$_image_id" \
+          2>/dev/null | head -n 1 || true)
+      fi
+      case $_tag in
+        *@sha256:*) _ref=$_tag ;;
+        *) if [ -n "$_digest" ] && [ -n "$_tag" ]; then _ref="$_tag@${_digest#*@}"; else _ref=${_tag:-$_digest}; fi ;;
+      esac
+    fi
+  fi
+  printf '%s' "$_ref"
+}
+IMG_API=$(image_ref API)
+IMG_WORKER=$(image_ref WORKER)
+IMG_WEB=$(image_ref WEB)
+IMG_ADMIN=$(image_ref ADMIN)
+# Production: image API/worker wajib tercatat (restore dan ledger-reapply memakai image yang sama). Backup TETAP dibuat
+# (RPO lebih penting), tetapi run diakhiri gagal + heartbeat down agar konfigurasi diperbaiki hari itu juga.
+IMAGES_MISSING=''
+if [ "$KAPDH_ENV" = production ]; then
+  [ -n "$IMG_API" ] || IMAGES_MISSING="api"
+  [ -n "$IMG_WORKER" ] || IMAGES_MISSING="${IMAGES_MISSING:+$IMAGES_MISSING,}worker"
+fi
+
 STARTED_EPOCH=$(now_epoch)
 STARTED_AT=$(now_iso)
 BACKUP_ID="kapdh-$KAPDH_ENV-$(date -u +%Y%m%dT%H%M%SZ)"
+FAIL_NOTE=''
 # Path stage TETAP: grup retensi restic (host, paths) harus stabil antarhari.
 STAGE=$WORK_DIR/stage
 TMP=$WORK_DIR/tmp
@@ -96,8 +149,8 @@ cleanup() {
   rm -rf "$STAGE" "$TMP"
   release_lock "$LOCK"
   if [ "$_code" -ne 0 ]; then
-    log "backup $BACKUP_ID GAGAL (kode $_code)"
-    kuma_push "$KUMA_PUSH_BACKUP" down "backup $BACKUP_ID gagal (kode $_code)" ""
+    log "${FAIL_NOTE:-backup $BACKUP_ID GAGAL (kode $_code)}"
+    kuma_push "$KUMA_PUSH_BACKUP" down "${FAIL_NOTE:-backup $BACKUP_ID gagal (kode $_code)}" ""
   fi
   exit "$_code"
 }
@@ -108,6 +161,9 @@ trap 'exit 143' TERM
 
 rm -rf "$STAGE" "$TMP"
 mkdir -p "$STAGE" "$TMP"
+if [ -n "$IMAGES_MISSING" ]; then
+  log "PERINGATAN: images.$IMAGES_MISSING kosong (IMAGE_*/CONTAINER_* di backup.env); backup tetap dibuat, run berakhir gagal"
+fi
 
 # Menunggu baris `<NAMA>=<nilai>` dari sesi psql latar belakang.
 wait_marker() {
@@ -221,24 +277,9 @@ RCLONE_VERSION=''
 [ -n "$LEDGER_RCLONE_REMOTE" ] && RCLONE_VERSION=$(tool_version rclone version)
 PG_DUMP_VERSION=$(tool_version pg pg_dump --version)
 
-# Referensi image yang sedang berjalan (PRD 5.5 "image version"): IMAGE_<NAMA> dari deploy, atau dibaca dari
-# kontainer CONTAINER_<NAMA> lewat docker inspect.
-image_ref() {
-  eval "_ref=\${IMAGE_$1:-}"
-  eval "_container=\${CONTAINER_$1:-}"
-  if [ -z "$_ref" ] && [ -n "$_container" ] && command -v docker >/dev/null 2>&1; then
-    _ref=$(docker inspect --format '{{.Config.Image}}' "$_container" 2>/dev/null || true)
-  fi
-  printf '%s' "$_ref"
-}
-
 # Semua nilai divalidasi lewat penugasan sederhana (set -e menghentikan skrip bila json_safe/json_int gagal; galat di
 # dalam substitusi argumen printf tidak akan menghentikannya).
 MANIFEST_WRITTEN_AT=$(now_iso)
-IMG_API=$(image_ref API)
-IMG_WORKER=$(image_ref WORKER)
-IMG_WEB=$(image_ref WEB)
-IMG_ADMIN=$(image_ref ADMIN)
 J_BACKUP_ID=$(json_safe "$BACKUP_ID" backup_id)
 J_ENV=$(json_safe "$KAPDH_ENV" environment)
 J_HOST=$(json_safe "$RESTIC_HOST" restic_host)
@@ -346,12 +387,47 @@ REMOTE_MANIFEST_SHA=$(restic dump "$DB_SNAPSHOT" "$STAGE/manifest.json" 2>/dev/n
 [ "$REMOTE_MANIFEST_SHA" = "$MANIFEST_SHA" ] || die "manifest di repositori tidak cocok dengan salinan lokal"
 
 # ------------------------------------------------------------------------------------------- 6. retensi
-PRUNE_FLAG=''
-[ "$RESTIC_PRUNE" = 1 ] && PRUNE_FLAG=--prune
-log "6/6 retensi: keep-within ${RETENTION_DAYS}d per grup (host, paths) ${PRUNE_FLAG}"
-# shellcheck disable=SC2086
-restic forget --host "$RESTIC_HOST" --tag kapdh --group-by host,paths --keep-within "${RETENTION_DAYS}d" \
-  $PRUNE_FLAG >"$TMP/forget.log" 2>&1 || die "restic forget/prune gagal: $(tail -n 3 "$TMP/forget.log" | tr '\n' ' ')"
+# a) Snapshot dump (+ manifest) di luar jendela RETENTION_DAYS dilupakan (relatif terhadap snapshot dump terbaru).
+# b) Snapshot berkas dilupakan BERPASANGAN: hanya dipertahankan bila snapshot dump dengan backup_id yang sama masih ada.
+#    Tanpa ini grup berkas dihitung mundur dari waktunya sendiri (snapshot berkas diambil beberapa menit/jam sebelum
+#    dump diunggah), sehingga manifest tertua yang masih ada dapat merujuk snapshot berkas yang sudah dibuang. Snapshot
+#    berkas dari run gagal (tanpa dump) ikut dilupakan: restore selalu berawal dari manifest.
+# c) prune --max-unused 0: pack yang bercampur blob terpakai dan tidak terpakai juga dikemas ulang, sehingga data akun
+#    terhapus tidak tertahan melewati masa rotasi (bawaan restic menoleransi 5 % data tak terpakai; D2).
+log "6/6 retensi: dump keep-within ${RETENTION_DAYS}d, berkas berpasangan dengan dump, prune=${RESTIC_PRUNE}"
+restic forget --host "$RESTIC_HOST" --tag kapdh-db --group-by host,paths --keep-within "${RETENTION_DAYS}d" \
+  >"$TMP/forget.log" 2>&1 || die "restic forget (dump) gagal: $(tail -n 3 "$TMP/forget.log" | tr '\n' ' ')"
+restic snapshots --json --host "$RESTIC_HOST" --tag kapdh-db >"$TMP/db-snapshots.json" 2>>"$TMP/forget.log" ||
+  die "daftar snapshot dump gagal dibaca untuk retensi"
+restic snapshots --json --host "$RESTIC_HOST" --tag kapdh-files >"$TMP/files-snapshots.json" 2>>"$TMP/forget.log" ||
+  die "daftar snapshot berkas gagal dibaca untuk retensi"
+restic_backup_pairs "$TMP/db-snapshots.json" | cut -d ' ' -f 2 | sed '/^$/d' | LC_ALL=C sort -u >"$TMP/keep-backup-ids"
+restic_backup_pairs "$TMP/files-snapshots.json" >"$TMP/files-pairs"
+# Pengaman: run ini sendiri wajib terbaca di kedua daftar; bila tidak (format JSON restic berubah), tidak ada snapshot
+# berkas yang dilupakan.
+grep -qx "$BACKUP_ID" "$TMP/keep-backup-ids" || die "retensi dibatalkan: snapshot dump run ini tidak terbaca"
+grep -q "^$FILES_SNAPSHOT[0-9a-f]* $BACKUP_ID\$" "$TMP/files-pairs" ||
+  die "retensi dibatalkan: snapshot berkas run ini tidak terbaca beserta backup_id-nya"
+: >"$TMP/forget-files"
+while read -r _id _bid; do
+  [ -n "$_id" ] || continue
+  if [ -z "$_bid" ]; then
+    log "PERINGATAN: snapshot berkas $_id tanpa tag backup_id; tidak diubah, tinjau manual"
+    continue
+  fi
+  grep -qx "$_bid" "$TMP/keep-backup-ids" || printf '%s\n' "$_id" >>"$TMP/forget-files"
+done <"$TMP/files-pairs"
+FORGET_FILES=$(wc -l <"$TMP/forget-files" | tr -d ' ')
+if [ "$FORGET_FILES" -gt 0 ]; then
+  # shellcheck disable=SC2046 # id heksadesimal, satu per baris
+  restic forget $(cat "$TMP/forget-files") >>"$TMP/forget.log" 2>&1 ||
+    die "restic forget (berkas berpasangan) gagal: $(tail -n 3 "$TMP/forget.log" | tr '\n' ' ')"
+fi
+log "retensi: $(wc -l <"$TMP/keep-backup-ids" | tr -d ' ') backup dipertahankan, $FORGET_FILES snapshot berkas dilupakan"
+if [ "$RESTIC_PRUNE" = 1 ]; then
+  restic prune --max-unused 0 >>"$TMP/forget.log" 2>&1 ||
+    die "restic prune gagal: $(tail -n 3 "$TMP/forget.log" | tr '\n' ' ')"
+fi
 
 FINISHED_EPOCH=$(now_epoch)
 DURATION=$((FINISHED_EPOCH - STARTED_EPOCH))
@@ -366,5 +442,9 @@ mkdir -p "$WORK_DIR/status"
   printf 'duration_seconds=%s\n' "$DURATION"
   printf 'manifest_sha256=%s\n' "$MANIFEST_SHA"
 } >"$WORK_DIR/status/last-success"
+if [ -n "$IMAGES_MISSING" ]; then
+  FAIL_NOTE="backup $BACKUP_ID TERSIMPAN (db=$DB_SNAPSHOT), tetapi images.$IMAGES_MISSING kosong di manifest"
+  die "isi IMAGE_* (tag@digest dari langkah rilis) atau CONTAINER_* di backup.env (PRD 5.5)"
+fi
 log "selesai $BACKUP_ID: db=$DB_SNAPSHOT files=$FILES_SNAPSHOT ledger=$LEDGER_ENTRIES objek, ${DURATION}s"
 kuma_push "$KUMA_PUSH_BACKUP" up "$BACKUP_ID ledger=$LEDGER_ENTRIES" "$DURATION"

@@ -21,8 +21,15 @@ export interface LoadtestSeedDeps {
   stderr: CliOutput;
 }
 
+/**
+ * Penanda database staging/dev (GUC kustom per database; `ALTER DATABASE <db> SET kapdh.environment = 'staging'`).
+ * Production tidak pernah memilikinya, sehingga DATABASE_URL yang salah menunjuk ke production selalu ditolak.
+ */
+export const LOADTEST_MARKER_SETTING = "kapdh.environment";
+export const LOADTEST_ALLOWED_MARKERS: readonly string[] = ["staging", "development"];
+
 export const LOADTEST_SEED_USAGE = [
-  "Pakai (HANYA staging/dev, PRD 5.3; docs/runbooks/load-test.md):",
+  "Pakai (HANYA staging/dev bertanda kapdh.environment, PRD 5.3; docs/runbooks/load-test.md):",
   "  loadtest:seed --confirm-database <nama database> --out <berkas kredensial baru> [ukuran]",
   "  loadtest:seed --confirm-database <nama database> --top-up-payments <jumlah>",
   "Ukuran (bawaan PRD 2.4): --profiles 5000 --login-members 100 --admins 5 --messages 100000",
@@ -69,7 +76,8 @@ export function generateLoadPassword(): string {
 /**
  * CLI dataset uji beban (docs/runbooks/load-test.md). Kode keluar: 0 berhasil, 1 ditolak/gagal, 2 argumen salah.
  * Penjaga: NODE_ENV production ditolak; `--confirm-database` wajib sama dengan current_database() sehingga salah
- * DATABASE_URL tidak menulis ke database lain; berkas kredensial baru ditulis 0600 dan tidak pernah dicetak.
+ * DATABASE_URL tidak menulis ke database lain; database tujuan wajib bertanda `kapdh.environment` = staging/development
+ * (nama database staging dan production bisa sama); berkas kredensial baru ditulis 0600 dan tidak pernah dicetak.
  */
 export async function runLoadtestSeedCommand(
   args: readonly string[],
@@ -104,6 +112,22 @@ export async function runLoadtestSeedCommand(
     if (row?.name !== confirm) {
       deps.stderr.write(
         `Ditolak: --confirm-database "${confirm}" berbeda dari database tujuan DATABASE_URL. Periksa koneksi.\n`,
+      );
+      return 1;
+    }
+    // Penanda positif: nama database staging dan production bisa sama (`kapdh`), jadi yang membedakan adalah
+    // penanda yang hanya dipasang di database staging/dev (bukan NODE_ENV kontainer yang bisa salah menunjuk).
+    const [marker] = rows<{ marker: string | null }>(
+      await deps.db.execute(sql`select current_setting(${LOADTEST_MARKER_SETTING}, true) as marker`),
+    );
+    if (!LOADTEST_ALLOWED_MARKERS.includes(marker?.marker ?? "")) {
+      deps.stderr.write(
+        [
+          `Ditolak: database "${confirm}" tidak bertanda staging (${LOADTEST_MARKER_SETTING}). Pasang SEKALI di database`,
+          `staging sebagai pemiliknya: ALTER DATABASE ${confirm} SET ${LOADTEST_MARKER_SETTING} = 'staging'; lalu`,
+          "sambung ulang. JANGAN pernah memasangnya di production (PRD 5.3, 8.2).",
+          "",
+        ].join("\n"),
       );
       return 1;
     }

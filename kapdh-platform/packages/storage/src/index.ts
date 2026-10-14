@@ -32,6 +32,15 @@ export interface StorageEnv {
 }
 
 /**
+ * Menutup sumber daya driver saat shutdown API/worker/CLI: klien HTTP S3Driver, termasuk yang dibungkus
+ * FallbackReadDriver selama perpindahan storage. Driver tanpa sumber daya (lokal, memori) diabaikan.
+ */
+export function destroyStorageDriver(driver: StorageDriver | null | undefined): void {
+  const closable = driver as Partial<{ destroy: () => void }> | null | undefined;
+  if (typeof closable?.destroy === "function") closable.destroy();
+}
+
+/**
  * Driver sesuai STORAGE_DRIVER (S3 dengan baca-cadangan disk lama bila STORAGE_FALLBACK_LOCAL_ROOT diisi). Validasi kelengkapan S3 sudah dilakukan packages/config; dicek ulang di sini.
  * STORAGE_LOCAL_ROOT relatif (mis. `./.data/files` di .env.example) diselesaikan dari folder kerja proses (`cwd`,
  * bawaan process.cwd()) di SATU tempat ini, sehingga API, worker dan CLI memakai folder yang sama; LocalDriver sendiri
