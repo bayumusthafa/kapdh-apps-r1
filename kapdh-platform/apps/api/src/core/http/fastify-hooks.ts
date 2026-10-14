@@ -66,6 +66,8 @@ export function installHttpHooks(fastify: FastifyInstance, gate: () => RequestGa
       url: request.routeOptions?.url ?? request.url,
       appPlatform: appPlatform(request),
       appVersion: header(request, "x-app-version"),
+      // Pengecualian maintenance khusus sesi admin (POST /auth/reauth, POST /files) memeriksa access token ini.
+      authorization: header(request, "authorization"),
     });
   });
 

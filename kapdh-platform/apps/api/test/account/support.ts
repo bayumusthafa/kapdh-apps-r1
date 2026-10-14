@@ -788,6 +788,18 @@ export async function createRichMember(
     dedupKey: `u:${member.userId}:uji:${notificationId}`,
     createdAt: now,
   });
+  // Kotak masuk lawan bicara room direct dengan format lama yang memuat nama anggota (sebelum teks netral berlaku,
+  // temuan audit D5-01): langkah notifications wajib menulis ulangnya ke teks netral (D2, AC F14-3).
+  await t.db.insert(notifications).values({
+    id: uuidv7(),
+    userId: peer.userId,
+    category: "chat",
+    title: "Pesan baru",
+    body: "Ada pesan baru dari Budi Penghapus.",
+    data: { room_id: direct, route: `/chat/${direct}` },
+    dedupKey: `u:${peer.userId}:chat.message:${direct}:none`,
+    createdAt: now,
+  });
   await t.db
     .insert(notificationPreferences)
     .values({ userId: member.userId, category: "news", channel: "push", enabled: false, updatedAt: now });

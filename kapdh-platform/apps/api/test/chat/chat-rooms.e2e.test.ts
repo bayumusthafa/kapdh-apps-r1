@@ -2,7 +2,16 @@
  * Room direct, grup, anggota dan undangan (F-11, F-12; AC F11-1, F11-4, F11-5, F12-1; PRD 3.11, 3.12; kontrak
  * domains/chat.yaml). PGlite: urutan dan keunikan; balapan nyata ada di test/pg/chat.pg.test.ts.
  */
-import { blocks, files, messages, notifications, outboxEvents, roomMembers, rooms } from "@kapdh/database";
+import {
+  alumni,
+  blocks,
+  files,
+  messages,
+  notifications,
+  outboxEvents,
+  roomMembers,
+  rooms,
+} from "@kapdh/database";
 import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -108,9 +117,88 @@ describe("AC F11-1: room direct kanonik", () => {
   it("AC F11-1: anggota yang tersembunyi dari direktori tetap dapat dihubungi bila pernah satu grup", async () => {
     const a = await member(t);
     const hidden = await member(t, "verified", { showInDirectory: false });
-    await groupWith(t, a, [hidden]);
+    // Anggota tersembunyi yang mengundang (undangan ke anggota tersembunyi tanpa riwayat satu grup tidak dikirim).
+    await groupWith(t, hidden, [a]);
     const res = await api(t).post("/chat/direct", { user_id: hidden.userId }, { token: a.token });
     expect(res.statusCode).toBe(201);
+  });
+});
+
+describe("PRD 3.10, 3.11, N-09: undangan grup memakai syarat kelayakan openDirectRoom", () => {
+  it("anggota tersembunyi dari direktori tanpa riwayat satu grup dilewati not_invitable (tanpa baris, notifikasi, atau event) pada pembuatan grup dan undangan", async () => {
+    const inviter = await member(t);
+    const visible = await member(t);
+    const hidden = await member(t, "verified", { showInDirectory: false });
+    const notificationsBefore = await t.db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, hidden.userId));
+
+    const created = await api(t).post(
+      "/chat/rooms",
+      { name: "Hubungi saya di 0812", invitee_user_ids: [hidden.userId, visible.userId] },
+      { token: inviter.token },
+    );
+    expect(created.statusCode, created.body).toBe(201);
+    const body = expectOperation("post", "/chat/rooms", created) as {
+      room: { id: string };
+      invitations: { invited_user_ids: string[]; skipped: { user_id: string; reason: string }[] };
+    };
+    expect(body.invitations.invited_user_ids).toEqual([visible.userId]);
+    expect(body.invitations.skipped).toEqual([{ user_id: hidden.userId, reason: "not_invitable" }]);
+
+    // Undangan lewat POST /chat/rooms/{roomId}/invitations: alasan sama dengan akun yang tidak ada (tidak dibedakan).
+    const unknown = uuidv7();
+    const invited = await api(t).post(
+      `/chat/rooms/${body.room.id}/invitations`,
+      { user_ids: [hidden.userId, unknown] },
+      { token: inviter.token },
+    );
+    expect(invited.statusCode, invited.body).toBe(200);
+    expect(expectOperation("post", "/chat/rooms/{roomId}/invitations", invited)).toEqual({
+      invited_user_ids: [],
+      skipped: [
+        { user_id: hidden.userId, reason: "not_invitable" },
+        { user_id: unknown, reason: "not_invitable" },
+      ],
+    });
+    expect(
+      await t.db
+        .select()
+        .from(roomMembers)
+        .where(and(eq(roomMembers.roomId, body.room.id), eq(roomMembers.userId, hidden.userId))),
+    ).toEqual([]);
+    expect(
+      await t.db.select().from(notifications).where(eq(notifications.userId, hidden.userId)),
+    ).toHaveLength(notificationsBefore.length);
+  });
+
+  it("anggota tersembunyi yang pernah satu grup dengan pengundang tetap dapat diundang; riwayat satu grup orang lain tidak dihitung", async () => {
+    const inviter = await member(t);
+    const stranger = await member(t);
+    const hidden = await member(t, "verified", { showInDirectory: false });
+    // Riwayat satu grup antara anggota tersembunyi dan pihak ketiga tidak membuat pengundang layak mengundangnya.
+    await groupWith(t, hidden, [stranger], "Grup Pihak Ketiga");
+    const roomId = await groupWith(t, inviter, [], "Grup Undangan Kenalan");
+    const first = await api(t).post(
+      `/chat/rooms/${roomId}/invitations`,
+      { user_ids: [hidden.userId] },
+      { token: inviter.token },
+    );
+    expect(first.json()).toEqual({
+      invited_user_ids: [],
+      skipped: [{ user_id: hidden.userId, reason: "not_invitable" }],
+    });
+
+    // Setelah pernah sama-sama joined di satu grup (anggota tersembunyi yang mengundang), undangan dapat dikirim.
+    await groupWith(t, hidden, [inviter], "Grup Kenalan");
+    const second = await api(t).post(
+      `/chat/rooms/${roomId}/invitations`,
+      { user_ids: [hidden.userId] },
+      { token: inviter.token },
+    );
+    expect(second.statusCode, second.body).toBe(200);
+    expect(second.json()).toEqual({ invited_user_ids: [hidden.userId], skipped: [] });
   });
 });
 
@@ -513,7 +601,7 @@ describe("Grup: undangan wajib diterima, kapasitas, admin (PRD 3.11)", () => {
   it("PRD 3.11 (N-09): admin grup dapat membuka avatar calon anggota pada daftar undangan walau calon anggota tersembunyi dari direktori; anggota biasa tidak", async () => {
     const admin = await member(t);
     const regular = await member(t);
-    const invitee = await member(t, "verified", { showInDirectory: false });
+    const invitee = await member(t, "verified");
     const roomId = await groupWith(t, admin, [regular]);
     const avatarId = await setAvatar(t, invitee);
     const invited = await api(t).post(
@@ -522,6 +610,10 @@ describe("Grup: undangan wajib diterima, kapasitas, admin (PRD 3.11)", () => {
       { token: admin.token },
     );
     expect(invited.statusCode, invited.body).toBe(200);
+    expect(invited.json()).toMatchObject({ invited_user_ids: [invitee.userId] });
+    // Calon anggota menyembunyikan diri dari direktori SETELAH diundang (undangan baru ke anggota tersembunyi tanpa
+    // riwayat satu grup tidak dikirim): kebijakan avatar direktori tidak lagi berlaku bagi admin grup.
+    await t.db.update(alumni).set({ showInDirectory: false }).where(eq(alumni.userId, invitee.userId));
 
     const listed = await api(t).get(`/chat/rooms/${roomId}/members`, {
       token: admin.token,
