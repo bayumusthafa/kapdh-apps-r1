@@ -9,9 +9,11 @@ import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/design/design.dart';
 import 'package:kapdh_mobile/features/home/home_repository.dart';
 import 'package:kapdh_mobile/features/home/shared/links.dart';
+import 'package:kapdh_mobile/features/notifications/notifications_repository.dart';
 
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
+import '../account/account_fixtures.dart' show inboxJson, notificationId1, notificationId2, notificationPageJson;
 import 'content_fixtures.dart';
 import 'feature_harness.dart';
 
@@ -61,6 +63,70 @@ void main() {
       await scrollAndTap(tester, find.text('Camping Alumni KAPDH'));
       await settle(tester);
       expect(app.location, '/events/event-1');
+    });
+
+    testWidgets('F-13 lonceng dan akses cepat Beranda memakai penghitung belum dibaca bersama: tandai semua dibaca di '
+        'kotak masuk lalu kembali membersihkan Beranda tanpa memuat ulang GET /home', (tester) async {
+      final app = await pumpMemberApp(
+        tester,
+        routes: {
+          '/home': (_) => FakeResponse.json(200, homeJson(unread: 3)),
+          '/notifications/unread-count': (_) => FakeResponse.json(200, {'unread_count': 3}),
+          '/notifications': (_) =>
+              FakeResponse.json(200, notificationPageJson([inboxJson(notificationId1)], unreadCount: 3)),
+          '/notifications/read': (_) => FakeResponse.json(200, {'updated_count': 3, 'unread_count': 0}),
+        },
+      );
+      expect(find.byTooltip('Notifikasi, 3 belum dibaca'), findsOneWidget);
+      expect(find.text('3 belum dibaca'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('home-notifications')));
+      await settle(tester);
+      expect(app.location, '/notifications');
+      await tester.tap(find.byKey(const ValueKey('notifications-mark-all')));
+      await settle(tester);
+      await tester.tap(find.byTooltip('Kembali'));
+      await settle(tester);
+
+      expect(app.location, '/home');
+      expect(find.byTooltip('Notifikasi'), findsOneWidget);
+      expect(find.byTooltip('Notifikasi, 3 belum dibaca'), findsNothing);
+      expect(find.text('3 belum dibaca'), findsNothing);
+      expect(find.text('Semua terbaca'), findsOneWidget);
+      expect(app.adapter.requestsTo('/home'), hasLength(1));
+    });
+
+    testWidgets('F-13 notifikasi baru lewat realtime menaikkan lonceng Beranda yang tetap terpasang di tab', (
+      tester,
+    ) async {
+      final events = StreamController<NotificationCreatedPayload>.broadcast();
+      addTearDown(events.close);
+      await pumpMemberApp(
+        tester,
+        overrides: [notificationCreatedEventsProvider.overrideWithValue(events.stream)],
+        routes: {
+          '/home': (_) => FakeResponse.json(200, homeJson(unread: 0)),
+          '/notifications/unread-count': (_) => FakeResponse.json(200, {'unread_count': 0}),
+        },
+      );
+      expect(find.byTooltip('Notifikasi'), findsOneWidget);
+      expect(find.text('Semua terbaca'), findsOneWidget);
+
+      events.add(
+        NotificationCreatedPayload.fromJson({
+          'id': notificationId2,
+          'category': 'news',
+          'title': 'Berita baru: Silaturahmi',
+          'body': null,
+          'deep_link': 'kapdh://app/news/silaturahmi',
+          'created_at': testNow.toUtc().toIso8601String(),
+          'unread_count': 4,
+        }),
+      );
+      await settle(tester);
+
+      expect(find.byTooltip('Notifikasi, 4 belum dibaca'), findsOneWidget);
+      expect(find.text('4 belum dibaca'), findsOneWidget);
     });
 
     testWidgets('AC F08-2 banner yang targetnya sudah tidak tersedia menampilkan pesan yang jelas', (tester) async {
@@ -374,6 +440,23 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('quick-tickets')));
       await settle(tester);
       expect(app.location, '/tickets');
+    });
+
+    testWidgets('F-13 expired: lonceng dan akses cepat Notifikasi memakai penghitung bersama tanpa GET /home', (
+      tester,
+    ) async {
+      final app = await pumpMemberApp(
+        tester,
+        status: 'expired',
+        location: '/home',
+        push: false,
+        routes: {
+          '/notifications/unread-count': (_) => FakeResponse.json(200, {'unread_count': 2}),
+        },
+      );
+      expect(app.adapter.requestsTo('/home'), isEmpty);
+      expect(find.byTooltip('Notifikasi, 2 belum dibaca'), findsOneWidget);
+      expect(find.text('2 belum dibaca'), findsOneWidget);
     });
   });
 }

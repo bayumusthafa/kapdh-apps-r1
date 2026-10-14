@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_api/kapdh_api.dart';
-import 'package:kapdh_mobile/features/payments/payment_updates.dart';
+import 'package:kapdh_mobile/features/notifications/notifications_repository.dart';
 
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
@@ -35,7 +35,7 @@ Future<AppHarness> openHistory(
   final app = await pumpApp(
     tester,
     tokens: savedTokens(),
-    overrides: [realtimeNotificationsProvider.overrideWithValue(updates ?? const Stream.empty())],
+    overrides: [notificationCreatedEventsProvider.overrideWithValue(updates ?? const Stream.empty())],
     handler: apiRoutes({
       '/me': (_) => FakeResponse.json(200, meJson(status: status, expiresAt: DateTime.utc(2027, 10, 12, 7))),
       '/me/fees': (_) => FakeResponse.json(200, feesJson()),

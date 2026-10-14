@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
 import '../../core/api/api_providers.dart';
-import '../../core/realtime/realtime_client.dart';
+import '../../core/realtime/connection_transitions.dart';
 import '../../core/session/session_controller.dart';
 import 'chat_list_controller.dart';
 import 'chat_outbox.dart';
@@ -192,17 +192,9 @@ class ChatRoomController extends Notifier<ChatRoomViewState> {
     final acks = ref.read(chatOutboxProvider.notifier).acknowledged.listen((message) {
       if (message.roomId == roomId && ref.mounted) _applyTimeline((t) => t.upsert(message));
     });
-    var previous = realtime.connection.value;
-    void onConnection() {
-      final next = realtime.connection.value;
-      final reconnected = next == RealtimeConnectionState.connected && previous != RealtimeConnectionState.connected;
-      previous = next;
-      if (reconnected && ref.mounted) {
-        unawaited(resync());
-      }
-    }
-
-    realtime.connection.addListener(onConnection);
+    final stopConnection = listenConnectedTransitions(realtime.connection, () {
+      if (ref.mounted) unawaited(resync());
+    });
     // /me baru: keanggotaan aktif kembali (perpanjangan disetujui) melepas pesan yang ditahan (PRD 4.5).
     ref.listen(sessionProvider.select((s) => (s.me?.effectiveStatus, s.me?.expiresAt)), (_, _) {
       _lapsedByServer = false;
@@ -228,7 +220,7 @@ class ChatRoomController extends Notifier<ChatRoomViewState> {
     ref.onDispose(() {
       unawaited(events.cancel());
       unawaited(acks.cancel());
-      realtime.connection.removeListener(onConnection);
+      stopConnection();
     });
     Future.microtask(_open);
     return ChatRoomViewState(membershipLapsed: _membershipLapsedLocally());

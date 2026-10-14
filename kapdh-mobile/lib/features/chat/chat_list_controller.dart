@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../core/realtime/connection_transitions.dart';
 import '../../core/realtime/realtime_client.dart';
 import '../../core/session/session_controller.dart';
 import '../../core/session/session_state.dart';
@@ -54,22 +55,13 @@ class ChatBadgeCountsController extends Notifier<ChatBadgeCounts> {
     ref.watch(chatMyUserIdProvider);
     if (!ref.watch(sessionProvider.select(_chatActive))) return const ChatBadgeCounts();
     final realtime = ref.watch(chatRealtimeProvider);
-    var previous = realtime.connection.value;
-    void onConnection() {
-      final next = realtime.connection.value;
-      if (next == RealtimeConnectionState.connected && previous != RealtimeConnectionState.connected) {
-        _refreshUnlessListsAlive();
-      }
-      previous = next;
-    }
-
-    realtime.connection.addListener(onConnection);
+    final stopConnection = listenConnectedTransitions(realtime.connection, _refreshUnlessListsAlive);
     final events = realtime.events.listen(_onEvent);
     ref.onDispose(() {
-      realtime.connection.removeListener(onConnection);
+      stopConnection();
       unawaited(events.cancel());
     });
-    if (previous == RealtimeConnectionState.connected) Future.microtask(_refreshUnlessListsAlive);
+    if (realtime.connection.value == RealtimeConnectionState.connected) Future.microtask(_refreshUnlessListsAlive);
     return const ChatBadgeCounts();
   }
 
@@ -236,22 +228,13 @@ class ChatRoomListController extends PagedController<ChatRoomSummary> {
     final realtime = ref.watch(chatRealtimeProvider);
     final events = realtime.events.listen(_onEvent);
     final acks = ref.watch(chatOutboxProvider.notifier).acknowledged.listen(_onAck);
-    var previous = realtime.connection.value;
-    void onConnection() {
-      final next = realtime.connection.value;
-      // Reconnect: event yang terlewat selama terputus tidak dikirim ulang; muat ulang daftar.
-      if (next == RealtimeConnectionState.connected && previous != RealtimeConnectionState.connected) {
-        requestRefresh();
-      }
-      previous = next;
-    }
-
-    realtime.connection.addListener(onConnection);
+    // Reconnect: event yang terlewat selama terputus tidak dikirim ulang; muat ulang daftar.
+    final stopConnection = listenConnectedTransitions(realtime.connection, requestRefresh);
     ref.listen<int>(chatListRefreshProvider, (_, _) => requestRefresh());
     ref.onDispose(() {
       unawaited(events.cancel());
       unawaited(acks.cancel());
-      realtime.connection.removeListener(onConnection);
+      stopConnection();
     });
     return super.build();
   }

@@ -7,6 +7,7 @@ import 'package:kapdh_mobile/core/cache/kta_avatar_cache.dart';
 import 'package:kapdh_mobile/core/cache/kta_cache_store.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/design/design.dart';
+import 'package:kapdh_mobile/features/notifications/notifications_repository.dart';
 import 'package:kapdh_mobile/features/payments/payment_updates.dart';
 import 'package:kapdh_mobile/features/status/restricted_screen.dart';
 
@@ -40,7 +41,7 @@ Future<AppHarness> openKta(
     store: store,
     textScale: textScale,
     overrides: [
-      realtimeNotificationsProvider.overrideWithValue(updates ?? const Stream.empty()),
+      notificationCreatedEventsProvider.overrideWithValue(updates ?? const Stream.empty()),
       realtimeReconnectedProvider.overrideWithValue(reconnects ?? const Stream.empty()),
       if (avatars != null) ktaAvatarCacheProvider.overrideWithValue(avatars),
     ],

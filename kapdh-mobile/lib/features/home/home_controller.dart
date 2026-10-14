@@ -6,6 +6,7 @@ import 'package:kapdh_api/kapdh_api.dart';
 
 import '../../core/session/session_controller.dart';
 import '../news/news_controllers.dart';
+import '../notifications/notification_unread_count.dart';
 import 'home_repository.dart';
 import 'shared/paged_list.dart';
 
@@ -87,6 +88,9 @@ class HomeController extends Notifier<HomeState> {
       final home = await ref.read(homeRepositoryProvider).getHome();
       if (!ref.mounted || generation != _generation) return;
       state = HomeState(home: home);
+      // Jumlah belum dibaca dari server yang baru saja menjawab menyelaraskan penghitung bersama (lonceng Beranda,
+      // menu Akun; F-13), mis. sesudah tarik untuk menyegarkan. Angka dari cache tidak dipakai karena bisa usang.
+      ref.read(notificationUnreadCountProvider.notifier).set(home.quickAccess.unreadNotificationCount);
       try {
         await cache.save(userId, home, ifEpoch: epoch);
       } on Object catch (error) {

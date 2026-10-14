@@ -254,6 +254,54 @@ Map<String, Object?> ticketPageJson(List<Map<String, Object?>> items, {String? n
   'next_cursor': nextCursor,
 };
 
+/// `PaymentDetail` (payments.yaml) pembayaran tiket yang dibuka layar pembayaran bersama (`/payments/:id`, F-04)
+/// sesudah reservasi berbayar atau "Bayar Sekarang" di tiket: menunggu bukti pertama, batas kirim bukti = hold tiket.
+Map<String, Object?> ticketPaymentDetailJson({
+  String id = 'payment-9',
+  String ticketId = 'ticket-1',
+  String amount = '200000.00',
+  required DateTime holdExpiresAt,
+}) => {
+  'id': id,
+  'type': 'ticket',
+  'status': 'pending',
+  'stage': 'awaiting_transfer',
+  'amount': amount,
+  'lines': [
+    {'code': 'ticket', 'label': 'Tiket Camping Alumni KAPDH', 'amount': amount},
+  ],
+  'method': paymentMethodJson(),
+  'proof_version': 0,
+  'proof_file_id': null,
+  'transfer_note': null,
+  'submitted_at': null,
+  'decided_at': null,
+  'rejection_reason': null,
+  'cancelled_at': null,
+  'cancel_reason': null,
+  'ticket': {
+    'ticket_id': ticketId,
+    'event_id': 'event-1',
+    'event_title': 'Camping Alumni KAPDH',
+    'event_starts_at': iso(eventStartsAt),
+    'event_timezone': 'Asia/Jakarta',
+    'ticket_status': 'awaiting_payment',
+    'hold_expires_at': iso(holdExpiresAt),
+    'event_status': 'open',
+    'ticket_cancelled_by': null,
+  },
+  'period': null,
+  'created_at': iso(testNow),
+  'version': '1',
+  'actions': {'can_submit_proof': true, 'can_change_method': true, 'can_cancel': false},
+  'events': [
+    {'at': iso(testNow), 'kind': 'created', 'actor': 'member', 'proof_version': null, 'reason': null},
+  ],
+  'adjustments': <Object?>[],
+  'method_active': true,
+  'instructions_hidden': false,
+};
+
 Map<String, Object?> paymentMethodJson({
   String id = 'method-bsi',
   String kind = 'bank',

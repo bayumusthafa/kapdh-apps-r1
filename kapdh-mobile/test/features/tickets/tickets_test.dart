@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/design/design.dart';
+import 'package:kapdh_mobile/features/payments/widgets/proof_upload_section.dart';
 
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
@@ -143,6 +144,12 @@ void main() {
             200,
             ticketDetailJson(status: 'awaiting_payment', holdExpiresAt: testNow.add(const Duration(hours: 24))),
           ),
+          // Layar pembayaran bersama (F-04) yang dibuka "Bayar Sekarang".
+          '/me/payments/payment-9': (_) =>
+              FakeResponse.json(200, ticketPaymentDetailJson(holdExpiresAt: testNow.add(const Duration(hours: 24)))),
+          '/payment-methods': (_) => FakeResponse.json(200, {
+            'items': [paymentMethodJson()],
+          }),
         },
       );
       expect(find.text('Selesaikan pembayaran dalam'), findsOneWidget);
@@ -158,6 +165,11 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('ticket-pay')));
       await settle(tester);
       expect(app.location, '/payments/payment-9');
+      // Instruksi tiket di layar pembayaran bersama, bukan galat "tidak ditemukan".
+      expect(find.byType(ErrorState), findsNothing);
+      expect(find.text('Tiket Camping Alumni KAPDH'), findsWidgets);
+      expect(find.textContaining('Kirim bukti sebelum 13 Okt 2026, 14.00 WIB'), findsOneWidget);
+      expect(tester.widget<ProofUploadSection>(find.byType(ProofUploadSection)).onPick, isNotNull);
     });
 
     testWidgets('AC F09-2 hold habis: layar memuat ulang status dari server dan tiket tampil expired', (tester) async {

@@ -32,7 +32,8 @@ Override get testImagesOverride => remoteImageProviderFactoryProvider.overrideWi
 
 /// Menjalankan aplikasi dengan sesi anggota [status] (GET /me) lalu membuka [location] (push di atas rute awal
 /// status agar tombol kembali bekerja seperti dari Beranda). [settled] false: frame dipompa tanpa menunggu tenang
-/// (untuk memeriksa keadaan memuat selagi request ditahan).
+/// (untuk memeriksa keadaan memuat selagi request ditahan). [overrides] menambah pengganti provider (mis. aliran
+/// realtime tiruan).
 Future<AppHarness> pumpMemberApp(
   WidgetTester tester, {
   Map<String, FakeHandler> routes = const {},
@@ -44,6 +45,7 @@ Future<AppHarness> pumpMemberApp(
   double textScale = 1,
   Map<String, Object?>? config,
   bool settled = true,
+  List<Override> overrides = const [],
 }) async {
   requestedImages.clear();
   final app = await pumpApp(
@@ -53,7 +55,7 @@ Future<AppHarness> pumpMemberApp(
     clock: clock,
     textScale: textScale,
     settle: settled,
-    overrides: [testImagesOverride],
+    overrides: [testImagesOverride, ...overrides],
     handler: apiRoutes({'/me': (_) => FakeResponse.json(200, meJson(status: status)), ...routes}, config: config),
   );
   if (!settled) await pumpFrames(tester);
