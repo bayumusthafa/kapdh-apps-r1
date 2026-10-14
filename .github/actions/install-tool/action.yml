@@ -1,0 +1,77 @@
+# Memasang alat CI dari rilis resminya dengan versi DAN SHA-256 yang dipin di sini (PRD 7.1 pin versi; N-16 rantai
+# pasok). Satu-satunya tempat pin alat; perbarui versi, URL dan sha256 bersamaan (digest dari halaman rilis GitHub).
+# Hanya runner Linux x86_64.
+name: Pasang alat CI terpin
+description: Mengunduh biner alat CI terpin dan memverifikasi SHA-256 sebelum dipakai.
+inputs:
+  tool:
+    description: oasdiff | osv-scanner | actionlint | shellcheck | crane
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Pasang ${{ inputs.tool }}
+      shell: bash
+      env:
+        TOOL: ${{ inputs.tool }}
+      run: |
+        set -euo pipefail
+        case "$TOOL" in
+          oasdiff) # gerbang kontrak N-13 (OpenAPI 3.1 didukung sejak v1.15.0)
+            version=1.32.1
+            url="https://github.com/oasdiff/oasdiff/releases/download/v${version}/oasdiff_${version}_linux_amd64.tar.gz"
+            sha256=7c8939fc49b75ee11fec66a5b83b37a2fca6aee109fed85013b1ba2ac2a1ee7f
+            member=oasdiff
+            ;;
+          osv-scanner) # kerentanan dependensi Flutter (pubspec.lock), N-16
+            version=2.6.0
+            url="https://github.com/google/osv-scanner/releases/download/v${version}/osv-scanner_linux_amd64"
+            sha256=ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108
+            member=""
+            ;;
+          actionlint) # pemeriksaan workflow GitHub Actions
+            version=1.7.12
+            url="https://github.com/rhysd/actionlint/releases/download/v${version}/actionlint_${version}_linux_amd64.tar.gz"
+            sha256=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+            member=actionlint
+            ;;
+          shellcheck) # skrip POSIX sh di infra (dipakai juga oleh actionlint)
+            version=0.11.0
+            url="https://github.com/koalaman/shellcheck/releases/download/v${version}/shellcheck-v${version}.linux.x86_64.tar.xz"
+            sha256=8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
+            member=shellcheck
+            ;;
+          crane) # promosi/retag image GHCR dengan digest tetap (PRD 5.5)
+            version=0.22.1
+            url="https://github.com/google/go-containerregistry/releases/download/v${version}/go-containerregistry_Linux_x86_64.tar.gz"
+            sha256=0ab7a1d6932a213aed964ce97666c3077fe691c8606413674a8b3e0b9ec4cda0
+            member=crane
+            ;;
+          *)
+            echo "::error title=install-tool::alat tidak dikenal: $TOOL"
+            exit 1
+            ;;
+        esac
+        if [ "$(uname -s)-$(uname -m)" != "Linux-x86_64" ]; then
+          echo "::error title=install-tool::hanya runner Linux x86_64 yang didukung"
+          exit 1
+        fi
+        work="$RUNNER_TEMP/kapdh-tools/$TOOL"
+        bin_dir="$RUNNER_TEMP/kapdh-tools/bin"
+        rm -rf "$work"
+        mkdir -p "$work/extract" "$bin_dir"
+        curl -fsSL --retry 3 --proto '=https' --tlsv1.2 -o "$work/download" "$url"
+        echo "$sha256  $work/download" | sha256sum -c --quiet -
+        if [ -z "$member" ]; then
+          install -m 0755 "$work/download" "$bin_dir/$TOOL"
+        else
+          tar -xf "$work/download" -C "$work/extract"
+          found=$(find "$work/extract" -type f -name "$member" -print -quit)
+          if [ -z "$found" ]; then
+            echo "::error title=install-tool::$member tidak ada di arsip $TOOL $version"
+            exit 1
+          fi
+          install -m 0755 "$found" "$bin_dir/$member"
+        fi
+        echo "$bin_dir" >> "$GITHUB_PATH"
+        echo "$TOOL $version terpasang (sha256 terverifikasi)."

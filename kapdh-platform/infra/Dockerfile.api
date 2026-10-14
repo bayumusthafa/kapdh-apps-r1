@@ -3,7 +3,10 @@ FROM node:24-alpine AS build
 WORKDIR /repo
 RUN corepack enable
 COPY . .
-RUN pnpm install --frozen-lockfile && pnpm --filter @kapdh/api... build && pnpm deploy --filter @kapdh/api --prod /out
+# pnpm 10: `pnpm deploy` tanpa inject-workspace-packages wajib --legacy (tanpa itu gagal
+# ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE). Hasil /out memuat node_modules/@kapdh/database/dist/bin/migrate.js dan
+# migrations/ untuk job migrasi deployment (PRD 5.5; diperiksa uji asap image di CI, infra/ci/images.json).
+RUN pnpm install --frozen-lockfile && pnpm --filter @kapdh/api... build && pnpm --filter @kapdh/api deploy --prod --legacy /out
 
 FROM node:24-alpine
 ENV NODE_ENV=production
