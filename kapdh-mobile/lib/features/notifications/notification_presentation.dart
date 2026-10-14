@@ -33,6 +33,10 @@ Uri? notificationTarget(String? deepLink) {
 /// di-push dari luar cangkang.
 const Set<String> _shellBranches = {'home', 'events', 'kta', 'network', 'account'};
 
+/// Rute `/account/...` yang didaftarkan di luar cangkang (router.dart; juga dibuka anggota suspended): di-push seperti
+/// rute detail lain, sehingga tombol kembali dari tujuan notifikasi keamanan kembali ke kotak masuk.
+const Set<String> _outsideShell = {AppRoutes.accountSessions, AppRoutes.accountPassword, AppRoutes.accountDelete};
+
 /// Membuka tujuan notifikasi. Rute detail di luar cangkang di-push agar tombol kembali kembali ke kotak masuk;
 /// [replace] mengganti lokasi saat ini (gerbang ketukan push). Semua jalur melewati redirect yang memeriksa sesi dan
 /// status lebih dulu (AC F13-3); endpoint objek tujuan tetap memeriksa izin di server (PRD 2.1).
@@ -40,7 +44,8 @@ void openNotificationTarget(BuildContext context, Uri location, {bool replace = 
   final router = GoRouter.of(context);
   final target = location.hasQuery ? '${location.path}?${location.query}' : location.path;
   final segments = location.pathSegments;
-  final inShell = segments.isNotEmpty && _shellBranches.contains(segments.first);
+  final inShell =
+      segments.isNotEmpty && _shellBranches.contains(segments.first) && !_outsideShell.contains(location.path);
   if (replace || inShell || target == AppRoutes.notifications) {
     router.go(target);
   } else {

@@ -9,6 +9,7 @@ import 'package:kapdh_mobile/features/status/deletion_portal.dart';
 import 'package:kapdh_mobile/features/status/deletion_status_screen.dart';
 import 'package:kapdh_mobile/features/status/restricted_screen.dart';
 
+import '../../support/a11y.dart';
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
 import '../account/account_fixtures.dart';
@@ -101,6 +102,111 @@ void main() {
       });
       expect(app.location, '/restricted');
       expect(app.router.canPop(), isFalse);
+    });
+
+    testWidgets('PRD 2.2 "pemulihan akun", AC F02-6: sesi perangkat dan ganti password dibuka dari portal tanpa '
+        'cangkang tab anggota', (tester) async {
+      final app = await openRestricted(
+        tester,
+        extra: {
+          '/auth/sessions': (_) => FakeResponse.json(200, {
+            'items': [
+              sessionJson('fam-1', current: true),
+              sessionJson('fam-2', deviceName: 'iPhone 13', platform: 'ios'),
+            ],
+            'next_cursor': null,
+          }),
+          '/auth/sessions/fam-2': (_) => FakeResponse.json(204),
+          '/auth/password/change': (_) => FakeResponse.json(204),
+        },
+      );
+      expect(find.text('KEAMANAN AKUN'), findsOneWidget);
+      await expectMeetsAccessibilityGuidelines(tester);
+
+      await scrollAndTap(tester, find.byKey(const ValueKey('restricted-sessions')));
+      await settle(tester);
+      expect(app.location, '/account/sessions');
+      expect(find.text('Sesi Perangkat'), findsOneWidget);
+      expect(find.text('iPhone 13'), findsOneWidget);
+      // Anggota suspended tidak melihat tab Beranda/Event/KTA di bawah layar ini.
+      expect(find.byType(NavigationBar), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('session-revoke-fam-2')));
+      await settle(tester);
+      await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.text('Keluarkan')));
+      await settle(tester);
+      expect(app.adapter.requestsTo('/auth/sessions/fam-2').single.method, 'DELETE');
+      expect(find.text('iPhone 13'), findsNothing);
+      await tester.tap(find.byTooltip('Kembali'));
+      await settle(tester);
+      expect(app.location, '/restricted');
+
+      await scrollAndTap(tester, find.byKey(const ValueKey('restricted-password')));
+      await settle(tester);
+      expect(app.location, '/account/password');
+      expect(find.text('Ganti Password'), findsOneWidget);
+      for (final (key, value) in [('current', 'Lama#2026'), ('new', 'Baru#2026x'), ('confirm', 'Baru#2026x')]) {
+        await tester.enterText(
+          find.descendant(of: find.byKey(ValueKey('password-$key')), matching: find.byType(EditableText)),
+          value,
+        );
+      }
+      await tester.pump();
+      await scrollAndTap(tester, find.byKey(const ValueKey('password-submit')));
+      await settle(tester);
+      expect(app.adapter.requestsTo('/auth/password/change'), hasLength(1));
+      // Selesai: kembali ke portal pembatasan, bukan ke tab Akun yang tidak tersedia.
+      expect(app.location, '/restricted');
+    });
+
+    testWidgets('AC F02-6: notifikasi keamanan (deep link /account/sessions) membuka sesi perangkat, kembali ke kotak '
+        'masuk', (tester) async {
+      final app = await openRestricted(
+        tester,
+        extra: {
+          '/notifications/unread-count': (_) => FakeResponse.json(200, {'unread_count': 1}),
+          '/notifications': (_) => FakeResponse.json(
+            200,
+            notificationPageJson([
+              inboxJson(
+                notificationId1,
+                category: 'security',
+                title: 'Keluar dari semua perangkat',
+                deepLink: 'kapdh://app/account/sessions',
+              ),
+            ]),
+          ),
+          '/notifications/read': (_) => FakeResponse.json(200, {'updated_count': 1, 'unread_count': 0}),
+          '/auth/sessions': (_) => FakeResponse.json(200, {
+            'items': [sessionJson('fam-1', current: true)],
+            'next_cursor': null,
+          }),
+        },
+      );
+      await scrollAndTap(tester, find.byKey(const ValueKey('restricted-notifications')));
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('notification-$notificationId1')));
+      await settle(tester);
+      expect(app.location, '/account/sessions');
+      expect(find.text('PERANGKAT INI'), findsOneWidget);
+      await tester.tap(find.byTooltip('Kembali'));
+      await settle(tester);
+      expect(app.location, '/notifications');
+    });
+
+    testWidgets('PRD 4.5: ganti password dari portal ditandai ditunda selama pemeliharaan', (tester) async {
+      await pumpApp(
+        tester,
+        tokens: savedTokens(),
+        handler: apiRoutes({
+          '/me': (_) => FakeResponse.json(200, meFullJson(status: 'suspended')),
+          '/reports': (_) => FakeResponse.json(200, {'items': <Object?>[], 'next_cursor': null}),
+        }, config: publicConfigJson(maintenance: true)),
+      );
+      await tester.tap(find.text('Lanjut dalam mode baca'));
+      await settle(tester);
+      expect(find.byType(RestrictedScreen), findsOneWidget);
+      expect(find.bySemanticsLabel('Ganti password, Ditunda selama pemeliharaan'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('^Sesi perangkat, Tinjau')), findsOneWidget);
     });
 
     testWidgets('PRD 3.12: banding dikirim dari portal pembatasan dan statusnya tampil', (tester) async {

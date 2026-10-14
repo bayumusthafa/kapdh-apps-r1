@@ -97,6 +97,15 @@ Aturan yang wajib diikuti fitur:
 secure storage memori; `test/support/app_harness.dart`: aplikasi lengkap dari splash). Font runtime dimatikan di
 `test/flutter_test_config.dart`.
 
+`integration_test/critical_flows_test.dart` menjalankan smoke alur kritis (masuk dengan Keystore/Keychain asli, KTA,
+kirim bukti bayar) dan pengukuran N-03 di perangkat/emulator matriks D7 (`docs/qa/device-matrix.md`):
+
+```bash
+flutter test integration_test/critical_flows_test.dart -d <perangkat>          # smoke, build debug
+flutter drive --profile --driver=test_driver/integration_test.dart \
+  --target=integration_test/critical_flows_test.dart -d <perangkat>          # smoke + p95 N-03
+```
+
 ## Tindak lanjut rilis
 
 - Bundel TTF Poppins sebagai aset dan matikan `GoogleFonts.config.allowRuntimeFetching` (saat ini Poppins diunduh
@@ -107,4 +116,6 @@ secure storage memori; `test/support/app_harness.dart`: aplikasi lengkap dari sp
   (`tool/generate_launcher_icons.ps1`); ganti dengan berkas desain resmi bila tersedia.
 - iOS: tim Apple, entitlement Push Notifications (`aps-environment`) dan Associated Domains `applinks:kapdh.or.id`
   untuk Universal Links; kunci APNs di proyek Firebase.
-- Tidak ada build APK/IPA di mesin pengembang ini (tanpa Java/Xcode); verifikasi build dilakukan CI.
+- Build APK debug/profile Android sudah diverifikasi lokal (Phase D, emulator Android 15); IPA belum (perlu macOS +
+  Xcode). `android/build.gradle.kts` menambal compileSdk dan target Java plugin file_picker 10.x; hapus tambalan itu
+  setelah file_picker dinaikkan (naik mayor, perlu ADR).
