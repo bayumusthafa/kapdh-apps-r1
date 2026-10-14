@@ -1,6 +1,12 @@
 import type { Permission } from "@kapdh/contracts";
 import { mockAdminRef, mockHasPermission, requirePermission, requireReauth } from "./auth";
 import { error, json, type MockRequest, type MockRoute, noContent, paginate, type S } from "./http";
+import {
+  applyPaidDuesForMocks,
+  MOCK_MEMBER,
+  peekMemberForMocks,
+  registerMemberPaymentsSourceForMocks,
+} from "./members";
 
 /**
  * Tiruan area pembayaran web admin mengikuti kontrak admin-payments dan admin-settings final (C3): antrean,
@@ -20,6 +26,11 @@ import { error, json, type MockRequest, type MockRoute, noContent, paginate, typ
  * - Rekening tujuan refund hanya dikirim di detail penyesuaian kepada pemegang payments.decide yang tidak
  *   berkonflik kepentingan, selama pending; tidak pernah di daftar; dihapus saat selesai/dibatal (D2).
  * - Metode yang sudah dipakai payment (`in_use`) hanya dapat dinonaktifkan; identitas rekeningnya terkunci.
+ * - Pencatatan iuran D13 (adminRecordPayment): kelayakan seperti GET /me/fees, payment terbuka awaiting_transfer/
+ *   needs_fix diselesaikan di tempat (200), awaiting_review → 409 dengan `current`, selain itu payment baru dari biaya
+ *   aktif (201); bukti wajib payment_proof unggahan admin pemanggil yang belum terpakai (422).
+ * - Anggota Siti, Hasan, Fikri dan Nur adalah anggota tiruan members.ts yang sama (user_id sama): payment mereka
+ *   tampil di "Pembayaran terbaru" detail anggota, dan iuran yang paid memperbarui masa aktif anggota itu.
  */
 type Detail = S["AdminPaymentDetail"];
 type PaymentEvent = S["AdminPaymentEvent"];
@@ -155,6 +166,19 @@ function member(
   };
 }
 
+/** Pemilik payment yang juga anggota tiruan members.ts (identitas, nomor dan status dari sana). */
+function directoryMember(userId: string): S["AdminPaymentMember"] {
+  const m = peekMemberForMocks(userId);
+  if (!m) throw new Error(`Anggota tiruan ${userId} tidak ada di members.ts`);
+  return {
+    user_id: m.user_id,
+    full_name: m.full_name,
+    member_number: m.member_number,
+    cohort: m.cohort,
+    effective_status: m.effective_status,
+  };
+}
+
 const NO_ACTIONS: S["AdminPaymentActions"] = { can_decide: false, can_cancel: false, can_adjust: false };
 
 function event(
@@ -281,7 +305,10 @@ function withMethodChange(p: Detail, at: string): Detail {
   };
 }
 
-/** Bukti pengganti: pending tetap pending, iuran rejected kembali pending pada payment yang sama (AC F03-3). */
+/**
+ * Bukti berikutnya dari anggota: instruksi tanpa bukti menjadi berbukti (proof_submitted), pending tetap pending dan
+ * iuran rejected kembali pending pada payment yang sama (proof_replaced, AC F03-3).
+ */
 function withReplacedProof(p: Detail, at: string, fileId: string, overdue: (due: string) => boolean): Detail {
   const proofVersion = p.proof_version + 1;
   const dueAt = reviewDueAt(p.type, at, p.event_starts_at);
@@ -298,7 +325,10 @@ function withReplacedProof(p: Detail, at: string, fileId: string, overdue: (due:
     version: nextVersion(p),
     events: [
       ...p.events,
-      event(at, "proof_replaced", "member", { proof_version: proofVersion, proof_file_id: fileId }),
+      event(at, p.proof_version === 0 ? "proof_submitted" : "proof_replaced", "member", {
+        proof_version: proofVersion,
+        proof_file_id: fileId,
+      }),
     ],
   };
 }
@@ -489,7 +519,7 @@ function fixtures(): Fixtures {
   // Siti: bukti versi 1 ditolak, lalu bukti pengganti versi 2 dikirim; alasan lama tetap di histori (AC F03-3).
   const sitiV1 = build({
     id: "0199e000-0000-7000-8000-0000000000a1",
-    member: member("0199e000-0000-7000-8000-0000000000b1", "Siti Rahmawati", "27.02.02.5", 27, "unverified"),
+    member: directoryMember(MOCK_MEMBER.siti),
     type: "registration",
     amount: "60000.00",
     createdAt: "2026-10-09T01:40:00Z",
@@ -522,7 +552,7 @@ function fixtures(): Fixtures {
     }),
     build({
       id: "0199e000-0000-7000-8000-0000000000a3",
-      member: member("0199e000-0000-7000-8000-0000000000b3", "Muhammad Fikri", "18.01.01.3", 18, "expiring"),
+      member: directoryMember(MOCK_MEMBER.fikri),
       type: "renewal",
       amount: "10000.00",
       createdAt: "2026-10-12T07:50:00Z",
@@ -530,7 +560,7 @@ function fixtures(): Fixtures {
     }),
     build({
       id: "0199e000-0000-7000-8000-0000000000a5",
-      member: member("0199e000-0000-7000-8000-0000000000b5", "Nur Aisyah", "30.02.02.9", 30, "verified"),
+      member: directoryMember(MOCK_MEMBER.nur),
       type: "ticket",
       amount: "75000.00",
       createdAt: "2026-10-12T08:30:00Z",
@@ -582,7 +612,7 @@ function fixtures(): Fixtures {
     withMethodChange(
       build({
         id: "0199e000-0000-7000-8000-0000000000a7",
-        member: member("0199e000-0000-7000-8000-0000000000b7", "Hasan Basri", "16.02.01.4", 16, "expired"),
+        member: directoryMember(MOCK_MEMBER.hasan),
         type: "renewal",
         amount: "10000.00",
         createdAt: "2026-10-12T03:00:00Z",
@@ -817,6 +847,24 @@ let adjustments = new Map<string, Adjustment>();
 let methods = new Map<string, MethodRow>();
 let fees: S["FeeSettings"];
 let methodSeq = 0;
+/** Nomor urut payment iuran yang dicatat pengurus (D13). */
+let recordSeq = 0;
+
+/** Berkas unggahan yang dikenal tiruan files.ts, untuk memeriksa bukti verifikasi D13 (422 FILE_INVALID). */
+export interface MockUploadedFile {
+  purpose: S["FilePurpose"];
+  mime: string;
+  bytes: number;
+  /** Admin pengunggah; null untuk berkas contoh unggahan anggota. */
+  owner_admin_id: string | null;
+}
+type FileLookup = (fileId: string) => MockUploadedFile | undefined;
+let fileLookup: FileLookup = () => undefined;
+
+/** Dipanggil files.ts (yang mengimpor berkas ini) agar tidak ada impor melingkar. */
+export function registerFileLookupForMocks(lookup: FileLookup): void {
+  fileLookup = lookup;
+}
 /** Idempotency-Key: payload pertama dan respons pertama yang berhasil (ARCHITECTURE §4.2, PRD 4.3). */
 const replays = new Map<string, { payload: string; status: number; body: unknown }>();
 
@@ -956,6 +1004,7 @@ export function reset(): void {
   for (const hold of holds.splice(0)) hold.release();
   adjustmentSeq = 0;
   methodSeq = 0;
+  recordSeq = 0;
   const data = fixtures();
   payments = new Map(data.payments.map((p) => [p.id, p]));
   adjustments = new Map(data.adjustments.map((a) => [a.id, a]));
@@ -963,6 +1012,22 @@ export function reset(): void {
   fees = feeSettings("50000.00", "10000.00", "10000.00", "1", "2026-10-01T00:00:00Z", null);
 }
 reset();
+
+// "Pembayaran terbaru" pada detail anggota tiruan memuat payment tiruan ini milik anggota tersebut (D6-02).
+registerMemberPaymentsSourceForMocks((userId) =>
+  [...payments.values()]
+    .filter((p) => p.member?.user_id === userId)
+    .map((p) => ({
+      id: p.id,
+      type: p.type,
+      status: p.status,
+      amount: p.amount,
+      proof_version: p.proof_version,
+      created_at: p.created_at,
+      submitted_at: p.submitted_at,
+      decided_at: p.decided_at,
+    })),
+);
 
 function canDecide(p: Detail): boolean {
   return mockHasPermission("payments.decide") && !p.conflict_of_interest;
@@ -989,11 +1054,21 @@ function adjustmentsOf(paymentId: string): Adjustment[] {
     .sort((a, b) => a.created_at.localeCompare(b.created_at));
 }
 
+/**
+ * Identitas pemilik dihitung saat request seperti server: pemilik yang juga anggota tiruan members.ts memakai status
+ * efektif terkininya (mis. menjadi verified setelah iurannya disetujui).
+ */
+function liveMember(m: S["AdminPaymentMember"] | null): S["AdminPaymentMember"] | null {
+  if (!m) return null;
+  return peekMemberForMocks(m.user_id) ? directoryMember(m.user_id) : m;
+}
+
 /** Tindakan yang diizinkan server untuk pemanggil saat ini (izin, tahap, konflik kepentingan). */
 function present(p: Detail): Detail {
   const decide = canDecide(p);
   return {
     ...p,
+    member: liveMember(p.member),
     adjustments: adjustmentsOf(p.id).map((a) => presentAdjustment(a)),
     actions: {
       can_decide: decide && p.stage === "awaiting_review",
@@ -1010,7 +1085,7 @@ function summary(p: Detail): S["AdminPaymentItem"] {
     status: p.status,
     stage: p.stage,
     amount: p.amount,
-    member: p.member,
+    member: liveMember(p.member),
     event_title: p.event_title,
     event_starts_at: p.event_starts_at,
     ticket_status: p.ticket_status,
@@ -1053,9 +1128,26 @@ export const mockPayments = {
   ): void {
     const p = payments.get(paymentId);
     if (!p) return;
-    const result = applyDecision(p, decision, reason, new Date().toISOString(), OTHER_ADMIN);
+    const at = new Date().toISOString();
+    const result = applyDecision(p, decision, reason, at, OTHER_ADMIN);
     payments.set(paymentId, result.payment);
     if (result.refund) adjustments.set(result.refund.id, result.refund);
+    if (decision === "approve") duesPaid(result.payment, at);
+  },
+  /** Admin lain membatalkan instruksi tanpa bukti (PRD 4.3), sehingga anggota tidak lagi punya payment terbuka. */
+  cancelAsOtherAdmin(paymentId: string, reason = "Instruksi ditinggalkan."): void {
+    const p = payments.get(paymentId);
+    if (!p || p.status !== "pending" || p.proof_version !== 0) return;
+    const at = new Date().toISOString();
+    payments.set(paymentId, {
+      ...p,
+      status: "cancelled",
+      stage: "cancelled",
+      cancelled_at: at,
+      cancel_reason: reason,
+      version: nextVersion(p),
+      events: [...p.events, event(at, "cancelled", "admin", { reason, actor_admin: OTHER_ADMIN })],
+    });
   },
   /** Data payment berubah tanpa bukti baru (mis. status tiket terkait), sehingga `version` naik. */
   touch(paymentId: string): void {
@@ -1094,6 +1186,13 @@ export const mockPayments = {
   },
   fees(): S["FeeSettings"] {
     return fees;
+  },
+  /**
+   * Pengaturan `fees` belum pernah tersimpan: GET /admin/settings/fees mengembalikan nilai bawaan kode dengan versi
+   * "0", dan iuran baru ditolak 403 sampai pengurus menyimpan nominal (gagal tertutup, PRD 8.2 butir 4).
+   */
+  unsetFees(): void {
+    fees = feeSettings("50000.00", "10000.00", "10000.00", "0", "2026-10-01T00:00:00Z", null);
   },
   /** Admin lain menyimpan biaya baru (AC F15-4). */
   updateFeesAsOtherAdmin(registrationFee: string, cardFee: string, renewalFee: string): void {
@@ -1345,7 +1444,275 @@ function recordAdjusted(p: Detail, a: Adjustment, at: string): void {
   });
 }
 
+/** Iuran yang menjadi paid memperbarui masa aktif anggota tiruan members.ts yang sama (handler keanggotaan server). */
+function duesPaid(p: Detail, at: string): void {
+  if (p.status !== "paid" || p.type === "ticket" || !p.member) return;
+  applyPaidDuesForMocks(p.member.user_id, { paymentId: p.id, type: p.type, approvedAt: at });
+}
+
+const RECORD_FILE_INVALID =
+  "Berkas bukti tidak dapat dipakai. Unggah ulang bukti verifikasi (JPG/PNG maksimal 5 MB atau PDF maksimal 10 MB).";
+
+interface RecordOwner {
+  member: S["AdminPaymentMember"];
+  accountStatus: S["AccountStatus"];
+  expiresAt: string | null;
+  linkedToCaller: boolean;
+}
+
+/**
+ * Pemilik iuran adminRecordPayment: anggota tiruan members.ts (pilihan alumni di UI), atau pemilik payment contoh
+ * tiruan ini yang tidak ada di members.ts (status dari payment-nya; tertaut bila payment-nya berkonflik kepentingan).
+ */
+function recordOwner(userId: string): RecordOwner | null {
+  const d = peekMemberForMocks(userId);
+  if (d)
+    return {
+      member: directoryMember(userId),
+      accountStatus: d.account_status,
+      expiresAt: d.expires_at,
+      linkedToCaller: d.linked_admin_id === mockAdminRef().admin_id,
+    };
+  const owned = [...payments.values()].filter((p) => p.member?.user_id === userId);
+  const first = owned[0];
+  if (!first?.member) return null;
+  return {
+    member: first.member,
+    accountStatus: "active",
+    expiresAt: null,
+    linkedToCaller: owned.some((p) => p.conflict_of_interest),
+  };
+}
+
+/** Kelayakan seperti GET /me/fees (AC F07-5): registration bila belum pernah paid, renewal bila expiring/expired. */
+function recordEligibility(type: "registration" | "renewal", status: S["EffectiveStatus"]): Response | null {
+  if (type === "registration")
+    return status === "unverified"
+      ? null
+      : error(409, "PAYMENT_STATE_CONFLICT", "Iuran pendaftaran anggota ini sudah disetujui.");
+  if (status === "unverified")
+    return validationError({
+      type: ["Perpanjangan hanya dapat dicatat setelah iuran pendaftaran disetujui."],
+    });
+  if (status === "verified")
+    return validationError({
+      type: ["Jendela perpanjangan anggota ini belum dibuka (30 hari sebelum masa aktif habis)."],
+    });
+  return null;
+}
+
+/** Baris dan total iuran dari pengaturan `fees` versi aktif (AC F03-5); nominal tidak pernah dari klien. */
+function duesFromFees(type: "registration" | "renewal"): { lines: S["PaymentLine"][]; total: string } {
+  if (type === "registration")
+    return {
+      lines: [
+        { code: "registration_fee", label: "Register alumni baru", amount: fees.registration_fee },
+        { code: "card_fee", label: "Pembuatan KTA", amount: fees.card_fee },
+      ],
+      total: fees.registration_total,
+    };
+  return {
+    lines: [{ code: "renewal_fee", label: "Perpanjangan KTA", amount: fees.renewal_fee }],
+    total: fees.renewal_fee,
+  };
+}
+
+/** Pesan 403 server untuk pengurus (apps/api payment-ledger DUES_UNCONFIGURED_MESSAGE.admin). */
+const DUES_UNCONFIGURED_ADMIN =
+  "Nominal iuran belum ditetapkan atau bernilai nol. Simpan nominal iuran yang disahkan bendahara di Pengaturan Biaya terlebih dahulu.";
+
+/** Nominal iuran belum tersimpan (versi "0", nilai bawaan kode) atau total jenis ini 0.00 (gagal tertutup). */
+function duesUnconfigured(type: "registration" | "renewal"): boolean {
+  return fees.version === "0" || /^0+\.00$/.test(duesFromFees(type).total);
+}
+
+function methodSnapshot(m: MethodRow): S["PaymentMethod"] {
+  return {
+    id: m.id,
+    kind: m.kind,
+    provider: m.provider,
+    account_number: m.account_number,
+    account_holder: m.account_holder,
+    instructions: m.instructions,
+  };
+}
+
+function addMonthsIso(iso: string, months: number): string {
+  const d = new Date(iso);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  return d.toISOString();
+}
+
+/**
+ * adminRecordPayment (D13): urutan pemeriksaan seperti server (validasi body, konflik kepentingan, akun, kelayakan,
+ * payment terbuka berbukti, metode, berkas bukti), lalu satu "transaksi": payment baru (201) atau payment terbuka
+ * diselesaikan di tempat (200), bukti pengurus versi berikutnya, lalu paid beraktor admin.
+ */
+function recordDues(req: MockRequest): Ok | Response {
+  const body = req.body ?? {};
+  const fe: FieldErrors = {};
+  if (typeof body.user_id !== "string" || !UUID.test(body.user_id)) fe.user_id = ["Pilih akun alumni"];
+  if (body.type !== "registration" && body.type !== "renewal") fe.type = ["Pilih jenis iuran"];
+  if (typeof body.payment_method_id !== "string" || !UUID.test(body.payment_method_id))
+    fe.payment_method_id = ["Pilih rekening tujuan"];
+  if (typeof body.proof_file_id !== "string" || !UUID.test(body.proof_file_id))
+    fe.proof_file_id = ["Unggah bukti verifikasi"];
+  if (
+    body.transfer_note !== undefined &&
+    (typeof body.transfer_note !== "string" || body.transfer_note.length > 200)
+  )
+    fe.transfer_note = ["Catatan maksimal 200 karakter"];
+  if (body.funds_verified !== true)
+    fe.funds_verified = ["Konfirmasi bahwa dana sudah dicocokkan dengan mutasi rekening."];
+  if (reasonInvalid(body.reason))
+    fe.reason = ["Catatan verifikasi minimal 3 karakter dan tidak boleh hanya spasi."];
+  if (Object.keys(fe).length > 0) return validationError(fe);
+  const userId = body.user_id as string;
+  const type = body.type as "registration" | "renewal";
+  const reason = String(body.reason).trim();
+
+  const owner = recordOwner(userId);
+  if (owner?.linkedToCaller) return conflictOfInterest();
+  const status = owner?.member.effective_status;
+  if (
+    !owner ||
+    owner.accountStatus !== "active" ||
+    status === "pending_otp" ||
+    status === "disabled" ||
+    status === "deletion_pending"
+  )
+    return validationError({
+      user_id: ["Akun alumni tidak ditemukan, belum aktif, atau sedang dalam proses penghapusan."],
+    });
+  if (status === "suspended")
+    return validationError({ user_id: ["Akun anggota sedang dibatasi; iuran tidak dapat dicatat."] });
+  const refused = recordEligibility(type, owner.member.effective_status);
+  if (refused) return refused;
+
+  const open = [...payments.values()].find(
+    (p) =>
+      p.member?.user_id === userId && p.type === type && (p.status === "pending" || p.status === "rejected"),
+  );
+  if (open && open.status === "pending" && open.proof_version >= 1)
+    return error(
+      409,
+      "PAYMENT_STATE_CONFLICT",
+      "Anggota sudah mengirim bukti untuk iuran ini. Putuskan bukti tersebut dari antrean verifikasi.",
+      { current: present(open) },
+    );
+  // Payment baru gagal tertutup bila nominal iuran belum ditetapkan (versi 0 atau total 0.00), seperti
+  // PaymentLedger.duesSnapshot di server: diperiksa sebelum metode dan berkas, tanpa payment yang dibuat.
+  if (!open && duesUnconfigured(type)) return error(403, "FORBIDDEN", DUES_UNCONFIGURED_ADMIN);
+  const method = methods.get(body.payment_method_id as string);
+  if (!method) return validationError({ payment_method_id: ["Metode pembayaran tidak ditemukan."] });
+  const fileId = body.proof_file_id as string;
+  const file = fileLookup(fileId);
+  const used = [...payments.values()].some(
+    (p) => p.proof?.file_id === fileId || p.events.some((e) => e.proof_file_id === fileId),
+  );
+  if (!file || file.purpose !== "payment_proof" || file.owner_admin_id !== mockAdminRef().admin_id || used)
+    return error(422, "FILE_INVALID", RECORD_FILE_INVALID);
+
+  const at = new Date().toISOString();
+  const admin = mockAdminRef();
+  let base: Detail;
+  if (open) {
+    base =
+      open.method_id === method.id
+        ? open
+        : {
+            ...open,
+            method: methodSnapshot(method),
+            method_id: method.id,
+            method_active: method.active,
+            version: nextVersion(open),
+            events: [...open.events, event(at, "method_changed", "admin", { actor_admin: admin })],
+          };
+  } else {
+    recordSeq += 1;
+    const dues = duesFromFees(type);
+    base = {
+      id: `0199e000-0000-7000-8000-0000000006${String(recordSeq).padStart(2, "0")}`,
+      type,
+      status: "pending",
+      stage: "awaiting_transfer",
+      amount: dues.total,
+      member: owner.member,
+      event_title: null,
+      event_starts_at: null,
+      ticket_status: null,
+      event_cancelled: null,
+      submitted_at: null,
+      decided_at: null,
+      review_due_at: null,
+      proof_version: 0,
+      overdue: false,
+      created_at: at,
+      version: "1",
+      lines: dues.lines,
+      method: methodSnapshot(method),
+      method_id: method.id,
+      method_active: method.active,
+      proof: null,
+      transfer_note: null,
+      rejection_reason: null,
+      rejection_count: 0,
+      decided_by: null,
+      cancelled_at: null,
+      cancel_reason: null,
+      ticket: null,
+      period: null,
+      settings_version: fees.version,
+      // Catatan verifikasi tersimpan pada histori created (hanya pengurus) untuk payment baru.
+      events: [event(at, "created", "admin", { reason, actor_admin: admin })],
+      adjustments: [],
+      conflict_of_interest: false,
+      refund_on_approve: false,
+      actions: NO_ACTIONS,
+    };
+  }
+  const proofVersion = base.proof_version + 1;
+  const note = typeof body.transfer_note === "string" ? body.transfer_note.trim() : "";
+  const proofed: Detail = {
+    ...base,
+    status: "pending",
+    stage: "awaiting_review",
+    proof_version: proofVersion,
+    proof: { file_id: fileId, version: proofVersion, mime: file.mime, bytes: file.bytes, submitted_at: at },
+    submitted_at: at,
+    transfer_note: note || null,
+    version: nextVersion(base),
+    events: [
+      ...base.events,
+      event(at, base.proof_version === 0 ? "proof_submitted" : "proof_replaced", "admin", {
+        proof_version: proofVersion,
+        proof_file_id: fileId,
+        actor_admin: admin,
+      }),
+    ],
+  };
+  const approved = applyDecision(proofed, "approve", "", at, admin).payment;
+  // Payment terbuka yang diselesaikan di tempat menyimpan catatan verifikasi pada histori approved.
+  const events = approved.events.map((e, i) =>
+    i === approved.events.length - 1 && open ? { ...e, reason } : e,
+  );
+  const previousExpiry = owner.expiresAt;
+  const starts =
+    type === "renewal" && previousExpiry && Date.parse(previousExpiry) > Date.parse(at) ? previousExpiry : at;
+  const paid: Detail = {
+    ...approved,
+    events,
+    period: { starts_at: starts, expires_at: addMonthsIso(starts, 12) },
+  };
+  payments.set(paid.id, paid);
+  duesPaid(paid, at);
+  return { status: open ? 200 : 201, body: present(paid) };
+}
+
 const DECIDE: readonly Permission[] = ["payments.read", "payments.decide"];
+
+/** Pesan bawaan server untuk VERSION_CONFLICT (apps/api core/errors versionConflict). */
+const VERSION_CONFLICT_MESSAGE = "Data sudah diubah orang lain. Muat ulang untuk melihat versi terbaru.";
 
 const paymentRoutes: MockRoute[] = [
   {
@@ -1387,6 +1754,17 @@ const paymentRoutes: MockRoute[] = [
         .sort(sorters[sort])
         .map(summary);
       return json(200, paginate(items, req.url) satisfies S["AdminPaymentPage"]);
+    },
+  },
+  {
+    // adminRecordPayment: rencana cadangan D13 (PRD 10.1), payments.read + payments.decide, idempoten.
+    method: "POST",
+    path: "/admin/payments",
+    handler: (req) => {
+      log(req);
+      const denied = requireAll(req, DECIDE);
+      if (denied) return denied;
+      return withReplay(req, () => recordDues(req));
     },
   },
   {
@@ -1463,24 +1841,31 @@ const paymentRoutes: MockRoute[] = [
             "Pembayaran milik akun alumni yang tertaut ke Anda tidak dapat diputus.",
           );
         const current = present(p);
+        // Pesan galat sama dengan server (admin-payments.service decide), diperiksa jalur test:live.
         if (p.status !== "pending" || p.proof_version === 0)
-          return error(409, "PAYMENT_STATE_CONFLICT", "Pembayaran sudah diputus admin lain.", { current });
+          return error(
+            409,
+            "PAYMENT_STATE_CONFLICT",
+            p.status === "pending"
+              ? "Pembayaran belum memiliki bukti transfer sehingga belum dapat diputus."
+              : "Pembayaran ini sudah diputus atau dibatalkan. Muat ulang untuk melihat status terbaru.",
+            { current },
+          );
         if (body.expected_proof_version !== p.proof_version)
-          return error(409, "PROOF_VERSION_CONFLICT", "Bukti sudah diganti. Periksa bukti terbaru.", {
-            current,
-          });
+          return error(
+            409,
+            "PROOF_VERSION_CONFLICT",
+            "Bukti transfer sudah diganti anggota setelah layar dibuka. Periksa bukti versi terbaru.",
+            { current },
+          );
         if (body.expected_version !== p.version)
-          return error(409, "VERSION_CONFLICT", "Data pembayaran sudah berubah. Muat ulang.", { current });
+          return error(409, "VERSION_CONFLICT", VERSION_CONFLICT_MESSAGE, { current });
 
-        const result = applyDecision(
-          p,
-          decision as "approve" | "reject",
-          reason.trim(),
-          new Date().toISOString(),
-          mockAdminRef(),
-        );
+        const at = new Date().toISOString();
+        const result = applyDecision(p, decision as "approve" | "reject", reason.trim(), at, mockAdminRef());
         payments.set(p.id, result.payment);
         if (result.refund) adjustments.set(result.refund.id, result.refund);
+        duesPaid(result.payment, at);
         return { status: 200, body: present(result.payment) };
       });
     },
@@ -1506,15 +1891,13 @@ const paymentRoutes: MockRoute[] = [
           return error(
             409,
             "PAYMENT_STATE_CONFLICT",
-            "Pembayaran ini sudah berbukti atau tidak lagi menunggu.",
-            {
-              current: present(p),
-            },
+            p.status === "pending"
+              ? "Pembayaran yang sudah berbukti wajib diputus (setujui atau tolak), bukan dibatalkan."
+              : "Hanya pembayaran pending tanpa bukti yang dapat dibatalkan.",
+            { current: present(p) },
           );
         if (p.version !== expected.version)
-          return error(409, "VERSION_CONFLICT", "Data pembayaran sudah berubah. Muat ulang.", {
-            current: present(p),
-          });
+          return error(409, "VERSION_CONFLICT", VERSION_CONFLICT_MESSAGE, { current: present(p) });
         const at = new Date().toISOString();
         const reason = String(body.reason).trim();
         const cancelled: Detail = {
