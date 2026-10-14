@@ -150,6 +150,13 @@ components:
       properties:
         status: { type: string, const: ok }
         time: { type: string, format: date-time }
+        commit:
+          type: [string, "null"]
+          pattern: "^[0-9a-f]{40}$"
+          description: |
+            Commit sumber image API yang sedang melayani (opsional bagi klien; null bila image dibangun tanpa build arg
+            KAPDH_COMMIT, mis. lokal). Dipakai uji asap deploy untuk membuktikan digest yang dipromosikan benar-benar
+            berjalan (PRD 5.5). Bukan rahasia dan tidak memuat data pribadi.
 
     HealthCheckState:
       type: string

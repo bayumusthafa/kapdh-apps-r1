@@ -1,13 +1,16 @@
-# Rilis KAPDH Apps (PRD 5.5, 8.3, 9.3; ADR-001; N-13). Prosedur lengkap: docs/runbooks/ci-cd.md.
+# Rilis KAPDH Apps (PRD 5.5, 8.3, 8.4, 9.3; ADR-001; N-13, N-16). Prosedur lengkap: docs/runbooks/ci-cd.md.
 #
-# 1. Tag aplikasi vX.Y.Z (atau vX.Y.Z-rc.N) pada commit main yang sudah lulus staging (status kapdh/staging):
-#    image TIDAK dibangun ulang. Digest image sha-<commit> (api/worker) dan varian -production (web/admin) yang dibangun
-#    pipeline staging diberi tag vX.Y.Z, manifest rilis + bundle OpenAPI dilampirkan ke GitHub Release, lalu deploy
-#    production (job migrasi -> kanal :production -> Coolify -> uji asap) menunggu persetujuan environment
-#    "production" sebagai gerbang rilis.
-# 2. Rilis SDK kontrak: workflow_dispatch aksi "contracts-sdk" dari main menjalankan gerbang N-13 lalu
-#    `pnpm contracts:release-sdk` (commit rilis berisi SDK Dart terbangkit + dist/openapi.yaml) dan mendorong tag
-#    contracts-vX.Y.Z. Tag contracts-v* (dari dispatch atau didorong manual) diverifikasi lalu diterbitkan.
+# 1. Tag aplikasi vX.Y.Z (atau vX.Y.Z-rc.N) pada commit main yang sudah lulus staging (run deploy-staging.yml sukses
+#    dari main untuk commit itu; infra/ci/staging-evidence.mjs): image TIDAK dibangun ulang. Gerbang: N-13 terhadap
+#    tag contracts-v* (wajib ada), pnpm audit (tinggi memblokir), pindai image kritis. Digest sha-<commit> (api/worker)
+#    dan varian -production (web/admin) diberi tag vX.Y.Z, GitHub Release DRAF dibuat (manifest + OpenAPI), deploy
+#    production menunggu persetujuan environment "production" (gerbang rilis), lalu Release diterbitkan.
+# 2. Rollback / deploy ulang: workflow_dispatch aksi "deploy-tag" dengan tag rilis yang sudah terbit (tidak terbatas
+#    jendela re-run 30 hari GitHub). Persetujuan production tetap wajib.
+# 3. Rilis SDK kontrak: workflow_dispatch aksi "contracts-sdk" dari main. Job tanpa izin tulis menjalankan gerbang
+#    N-13 dan `pnpm contracts:release-sdk` (commit rilis + tag contracts-vX.Y.Z), lalu job terpisah TANPA dependensi
+#    pihak ketiga memverifikasi isi tag dan mendorongnya. Tag contracts-v* (dari dispatch atau didorong manual)
+#    diverifikasi lalu diterbitkan.
 name: Release
 
 on:
@@ -16,15 +19,22 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: contracts-sdk = rilis SDK Dart dari HEAD main (tag contracts-v<versi package.json @kapdh/contracts>).
+        description: >-
+          contracts-sdk = rilis SDK Dart dari HEAD main (tag contracts-v<versi @kapdh/contracts>);
+          deploy-tag = deploy ulang tag rilis aplikasi yang sudah terbit ke production (rollback).
         required: true
         type: choice
-        options: [contracts-sdk]
+        options: [contracts-sdk, deploy-tag]
+      tag:
+        description: Khusus deploy-tag - tag rilis aplikasi yang sudah terbit (vX.Y.Z atau vX.Y.Z-rc.N).
+        required: false
+        type: string
+        default: ""
 
 permissions: {}
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.ref }}-${{ inputs.action || 'tag' }}
   cancel-in-progress: false
 
 jobs:
@@ -33,11 +43,11 @@ jobs:
     name: Verifikasi tag rilis aplikasi
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: read
-      statuses: read
+      actions: read
     outputs:
       sha: ${{ steps.tag.outputs.sha }}
       version: ${{ steps.tag.outputs.version }}
@@ -46,6 +56,8 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+      GRYPE_CHECK_FOR_APP_UPDATE: "false"
     steps:
       - name: Checkout (riwayat main dan tag)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -76,24 +88,18 @@ jobs:
             echo "prerelease=$prerelease"
             echo "registry=ghcr.io/${OWNER,,}"
           } >>"$GITHUB_OUTPUT"
-      - name: Commit sudah lulus staging (status kapdh/staging)
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          SHA: ${{ steps.tag.outputs.sha }}
-        run: |
-          set -euo pipefail
-          state=$(gh api "repos/$REPO/commits/$SHA/status" \
-            --jq '[.statuses[] | select(.context == "kapdh/staging")][0].state // "none"')
-          if [ "$state" != "success" ]; then
-            echo "::error title=Belum lulus staging::status kapdh/staging untuk $SHA = $state; deploy staging dulu (PRD 5.5)"
-            exit 1
-          fi
       - name: Siapkan Node.js
         uses: ./.github/actions/setup-platform
         with:
           install: "false"
           cache: "false"
+      # Bukti = run deploy-staging.yml sukses dari main untuk commit ini (bukan status commit bebas teks).
+      - name: Commit sudah lulus staging (run deploy-staging.yml dari main)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ steps.tag.outputs.sha }}
+        run: node kapdh-platform/infra/ci/staging-evidence.mjs --repo "$REPO" --sha "$SHA"
       - name: Pasang crane
         uses: ./.github/actions/install-tool
         with:
@@ -107,13 +113,91 @@ jobs:
         run: |
           set -euo pipefail
           crane auth login ghcr.io -u "$ACTOR" --password-stdin <<<"$GH_TOKEN"
-          while IFS=$'\t' read -r name _ source; do
-            echo "$name: $source -> $(crane digest "$source")"
-          done < <(node kapdh-platform/infra/ci/images.mjs refs --env production --sha "$SHA" --registry "$REGISTRY" --format tsv)
+          refs="$RUNNER_TEMP/kapdh-refs.tsv"
+          out="$RUNNER_TEMP/kapdh-source-digests.tsv"
+          node kapdh-platform/infra/ci/images.mjs refs --env production --sha "$SHA" --registry "$REGISTRY" \
+            --format tsv >"$refs"
+          expected=$(node kapdh-platform/infra/ci/images.mjs count)
+          : >"$out"
+          while IFS=$'\t' read -r name repo source; do
+            digest=$(crane digest "$source")
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::digest $source tidak valid"; exit 1; }
+            printf '%s\t%s\t%s\n' "$name" "$repo" "$digest" >>"$out"
+            echo "$name: $source -> $digest"
+          done <"$refs"
+          rows=$(wc -l <"$out")
+          if [ "$rows" -ne "$expected" ]; then
+            echo "::error::$rows dari $expected image sumber ditemukan"
+            exit 1
+          fi
+      - name: Pasang grype
+        uses: ./.github/actions/install-tool
+        with:
+          tool: grype
+      # Kerentanan kritis yang terbit sesudah staging tetap menghentikan promosi (N-16).
+      - name: Pindai kerentanan image yang akan dipromosikan (gerbang kritis + allowlist)
+        run: |
+          set -euo pipefail
+          while IFS=$'\t' read -r name repo digest; do
+            grype "registry:$repo@$digest" --platform linux/amd64 --output json --file "$RUNNER_TEMP/grype-$name.json"
+            node kapdh-platform/infra/ci/vuln-gate.mjs --source grype "$RUNNER_TEMP/grype-$name.json" \
+              --fail-on critical --label "image $name (rilis)"
+          done <"$RUNNER_TEMP/kapdh-source-digests.tsv"
+
+  app-gates:
+    name: Gerbang kontrak N-13 dan audit dependensi rilis
+    needs: app-verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # Tanpa izin tulis: pnpm install (skrip dependensi pihak ketiga) hanya berjalan di job baca-saja.
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+        working-directory: kapdh-platform
+    steps:
+      - name: Checkout commit rilis (riwayat dan tag contracts-v*)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.app-verify.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Siapkan kapdh-platform
+        uses: ./.github/actions/setup-platform
+      - name: Pasang oasdiff
+        uses: ./.github/actions/install-tool
+        with:
+          tool: oasdiff
+      # N-13: rilis aplikasi wajib memiliki rilis kontrak pembanding dan kontrak commit ini tidak memutusnya.
+      - name: Gerbang N-13 terhadap tag contracts-v* terakhir (wajib ada)
+        run: node packages/contracts/scripts/check-breaking.mjs --require-baseline
+      - name: pnpm audit produksi (gerbang tinggi + allowlist; N-16, PRD 9.3)
+        run: |
+          set -uo pipefail
+          set +e
+          pnpm audit --prod --json > "$RUNNER_TEMP/pnpm-audit.json"
+          code=$?
+          set -e
+          echo "pnpm audit keluar $code (laporan dinilai vuln-gate.mjs)"
+          node infra/ci/vuln-gate.mjs --source pnpm-audit "$RUNNER_TEMP/pnpm-audit.json" \
+            --fail-on high --label "pnpm audit --prod (rilis)"
+      - name: Bundle OpenAPI rilis
+        run: |
+          set -euo pipefail
+          pnpm contracts:bundle
+          cp packages/contracts/dist/openapi.yaml "$RUNNER_TEMP/openapi.yaml"
+      - name: Simpan bundle OpenAPI untuk GitHub Release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rilis-openapi
+          path: ${{ runner.temp }}/openapi.yaml
+          if-no-files-found: error
+          retention-days: 7
 
   app-promote:
-    name: Promosi image ${{ github.ref_name }} (digest sama)
-    needs: app-verify
+    name: Promosi image ${{ github.ref_name }} (digest sama) dan Release draf
+    needs: [app-verify, app-gates]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -132,8 +216,12 @@ jobs:
         with:
           ref: ${{ needs.app-verify.outputs.sha }}
           persist-credentials: false
-      - name: Siapkan kapdh-platform
+      # Tanpa pnpm install: job dengan izin tulis tidak menjalankan skrip dependensi pihak ketiga.
+      - name: Siapkan Node.js (skrip infra/ci tanpa dependensi)
         uses: ./.github/actions/setup-platform
+        with:
+          install: "false"
+          cache: "false"
       - name: Pasang crane
         uses: ./.github/actions/install-tool
         with:
@@ -145,10 +233,15 @@ jobs:
         run: |
           set -euo pipefail
           crane auth login ghcr.io -u "$ACTOR" --password-stdin <<<"$GH_TOKEN"
+          refs="$RUNNER_TEMP/kapdh-refs.tsv"
           out="$RUNNER_TEMP/kapdh-release-digests.tsv"
+          node kapdh-platform/infra/ci/images.mjs refs --env production --sha "$SHA" --registry "$REGISTRY" \
+            --format tsv >"$refs"
+          expected=$(node kapdh-platform/infra/ci/images.mjs count)
           : >"$out"
           while IFS=$'\t' read -r name repo source; do
             digest=$(crane digest "$source")
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::digest $source tidak valid"; exit 1; }
             crane tag "$repo@$digest" "$TAG"
             tagged=$(crane digest "$repo:$TAG")
             if [ "$tagged" != "$digest" ]; then
@@ -157,25 +250,35 @@ jobs:
             fi
             printf '%s\t%s\t%s\n' "$name" "$repo" "$digest" >>"$out"
             echo "$name: $repo:$TAG = $digest"
-          done < <(node kapdh-platform/infra/ci/images.mjs refs --env production --sha "$SHA" --registry "$REGISTRY" --format tsv)
-      - name: Manifest rilis dan bundle OpenAPI
+          done <"$refs"
+          rows=$(wc -l <"$out")
+          if [ "$rows" -ne "$expected" ]; then
+            echo "::error::$rows dari $expected image diberi tag $TAG"
+            exit 1
+          fi
+      - name: Ambil bundle OpenAPI rilis
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: rilis-openapi
+          path: ${{ runner.temp }}/rilis-openapi
+      - name: Manifest rilis
         working-directory: kapdh-platform
         run: |
           set -euo pipefail
           node infra/ci/release-manifest.mjs --tag "$TAG" --sha "$SHA" \
             --digests "$RUNNER_TEMP/kapdh-release-digests.tsv" \
             --out "$RUNNER_TEMP/release-manifest.json" --notes "$RUNNER_TEMP/release-notes.md"
-          pnpm contracts:bundle
-          cp packages/contracts/dist/openapi.yaml "$RUNNER_TEMP/openapi.yaml"
-      - name: GitHub Release ${{ github.ref_name }}
+      # Draf sampai deploy production sukses (app-publish); persetujuan yang ditolak tidak meninggalkan rilis terbit.
+      - name: GitHub Release draf ${{ github.ref_name }}
         env:
           GH_TOKEN: ${{ github.token }}
           PRERELEASE: ${{ needs.app-verify.outputs.prerelease }}
         run: |
           set -euo pipefail
-          args=(--verify-tag --title "KAPDH Apps $TAG" --notes-file "$RUNNER_TEMP/release-notes.md" --generate-notes)
+          args=(--draft --verify-tag --title "KAPDH Apps $TAG" --notes-file "$RUNNER_TEMP/release-notes.md" --generate-notes)
           if [ "$PRERELEASE" = "true" ]; then args+=(--prerelease); fi
-          gh release create "$TAG" "${args[@]}" "$RUNNER_TEMP/release-manifest.json" "$RUNNER_TEMP/openapi.yaml"
+          gh release create "$TAG" "${args[@]}" "$RUNNER_TEMP/release-manifest.json" \
+            "$RUNNER_TEMP/rilis-openapi/openapi.yaml"
 
   app-deploy:
     name: Deploy production (gerbang rilis)
@@ -191,14 +294,140 @@ jobs:
       source_tag: ${{ github.ref_name }}
     secrets: inherit
 
+  app-publish:
+    name: Terbitkan GitHub Release ${{ github.ref_name }}
+    needs: [app-verify, app-deploy]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Release draf -> terbit (deploy production sukses)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ needs.app-verify.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          latest=true
+          if [ "$PRERELEASE" = "true" ]; then latest=false; fi
+          gh release edit "$TAG" --repo "$REPO" --draft=false --latest="$latest"
+
+  # ------------------------------------------------------------------------- rollback / deploy ulang tag rilis
+  rollback-verify:
+    name: Verifikasi tag rilis untuk deploy ulang
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'deploy-tag'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      sha: ${{ steps.tag.outputs.sha }}
+      registry: ${{ steps.tag.outputs.registry }}
+      tag: ${{ steps.tag.outputs.tag }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout (riwayat main dan tag)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Tag rilis terbit pada commit main
+        id: tag
+        env:
+          REF: ${{ github.ref }}
+          TAG: ${{ inputs.tag }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error title=Deploy ulang::jalankan dari branch main (ADR-010)"
+            exit 1
+          fi
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+            echo "::error title=Deploy ulang::tag harus vX.Y.Z atau vX.Y.Z-rc.N"
+            exit 1
+          fi
+          sha=$(git rev-parse --verify --quiet "refs/tags/$TAG^{commit}") ||
+            { echo "::error title=Deploy ulang::tag $TAG tidak ada"; exit 1; }
+          git merge-base --is-ancestor "$sha" origin/main ||
+            { echo "::error title=Deploy ulang::commit $sha bukan bagian dari main"; exit 1; }
+          # Hanya rilis yang pernah lulus deploy production (Release sudah terbit, bukan draf).
+          draft=$(gh release view "$TAG" --repo "$REPO" --json isDraft --jq .isDraft) ||
+            { echo "::error title=Deploy ulang::GitHub Release $TAG tidak ada"; exit 1; }
+          if [ "$draft" != "false" ]; then
+            echo "::error title=Deploy ulang::Release $TAG masih draf (belum pernah lulus production)"
+            exit 1
+          fi
+          {
+            echo "sha=$sha"
+            echo "tag=$TAG"
+            echo "registry=ghcr.io/${OWNER,,}"
+          } >>"$GITHUB_OUTPUT"
+      - name: Siapkan Node.js
+        uses: ./.github/actions/setup-platform
+        with:
+          install: "false"
+          cache: "false"
+      - name: Pasang crane
+        uses: ./.github/actions/install-tool
+        with:
+          tool: crane
+      - name: Image rilis bertag tersedia di GHCR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+          SHA: ${{ steps.tag.outputs.sha }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          REGISTRY: ${{ steps.tag.outputs.registry }}
+        run: |
+          set -euo pipefail
+          crane auth login ghcr.io -u "$ACTOR" --password-stdin <<<"$GH_TOKEN"
+          refs="$RUNNER_TEMP/kapdh-refs.tsv"
+          node kapdh-platform/infra/ci/images.mjs refs --env production --sha "$SHA" --registry "$REGISTRY" \
+            --format tsv >"$refs"
+          expected=$(node kapdh-platform/infra/ci/images.mjs count)
+          found=0
+          while IFS=$'\t' read -r name repo _; do
+            digest=$(crane digest "$repo:$TAG")
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::digest $repo:$TAG tidak valid"; exit 1; }
+            echo "$name: $repo:$TAG -> $digest"
+            found=$((found + 1))
+          done <"$refs"
+          if [ "$found" -ne "$expected" ]; then
+            echo "::error::$found dari $expected image rilis $TAG ditemukan"
+            exit 1
+          fi
+
+  rollback-deploy:
+    name: Deploy ulang ${{ inputs.tag }} ke production (gerbang rilis)
+    needs: rollback-verify
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: production
+      sha: ${{ needs.rollback-verify.outputs.sha }}
+      registry: ${{ needs.rollback-verify.outputs.registry }}
+      source_tag: ${{ needs.rollback-verify.outputs.tag }}
+    secrets: inherit
+
   # ------------------------------------------------------------------------------------------- rilis SDK kontrak
   contracts-release:
-    name: Buat tag rilis SDK kontrak
+    name: Buat commit dan tag rilis SDK kontrak (tanpa izin tulis)
     if: github.event_name == 'workflow_dispatch' && inputs.action == 'contracts-sdk'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # Baca-saja: pnpm install menjalankan skrip dependensi pihak ketiga; token tulis tidak pernah ada di job ini.
     permissions:
-      contents: write
+      contents: read
     outputs:
       tag: ${{ steps.release.outputs.tag }}
     defaults:
@@ -212,11 +441,11 @@ jobs:
         run: |
           echo "::error title=Rilis SDK::jalankan dari branch main (ADR-001)"
           exit 1
-      - name: Checkout main (kredensial dipertahankan untuk mendorong tag)
+      - name: Checkout main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
       - name: Siapkan kapdh-platform
         uses: ./.github/actions/setup-platform
       - name: Pasang oasdiff
@@ -225,7 +454,7 @@ jobs:
           tool: oasdiff
       - name: Gerbang N-13 sebelum rilis
         run: node packages/contracts/scripts/check-breaking.mjs
-      - name: pnpm contracts:release-sdk dan dorong tag
+      - name: pnpm contracts:release-sdk (commit dan tag lokal) lalu bundle git
         id: release
         run: |
           set -euo pipefail
@@ -234,17 +463,81 @@ jobs:
           pnpm contracts:release-sdk
           version=$(node -p "require('./packages/contracts/package.json').version")
           tag="contracts-v$version"
-          git push origin "refs/tags/$tag"
+          git bundle create "$RUNNER_TEMP/contracts-sdk.bundle" "refs/tags/$tag" "^$GITHUB_SHA"
           echo "tag=$tag" >>"$GITHUB_OUTPUT"
+      - name: Simpan bundle git rilis SDK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: contracts-sdk-bundle
+          path: ${{ runner.temp }}/contracts-sdk.bundle
+          if-no-files-found: error
+          retention-days: 1
+
+  contracts-push:
+    name: Verifikasi dan dorong tag rilis SDK kontrak
+    needs: contracts-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Satu-satunya job dengan contents: write: tanpa pnpm/Node dan tanpa kode dari bundle yang dijalankan.
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      TAG: ${{ needs.contracts-release.outputs.tag }}
+    steps:
+      - name: Checkout main (commit yang sama)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Ambil bundle git rilis SDK
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: contracts-sdk-bundle
+          path: ${{ runner.temp }}/contracts-sdk
+      - name: Tag hanya menambah SDK terbangkit dan dist/openapi.yaml di atas commit main ini
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^contracts-v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::tag tidak valid: $TAG"; exit 1; }
+          bundle="$RUNNER_TEMP/contracts-sdk/contracts-sdk.bundle"
+          git bundle verify "$bundle"
+          git fetch --no-tags "$bundle" "refs/tags/$TAG:refs/tags/$TAG"
+          [ "$(git cat-file -t "refs/tags/$TAG")" = "tag" ] || { echo "::error::$TAG bukan tag beranotasi"; exit 1; }
+          commit=$(git rev-parse "refs/tags/$TAG^{commit}")
+          parent=$(git rev-parse "$commit^")
+          if [ "$parent" != "$GITHUB_SHA" ] || [ "$(git rev-list --count "$GITHUB_SHA..$commit")" != "1" ]; then
+            echo "::error::commit rilis $commit bukan anak tunggal $GITHUB_SHA"
+            exit 1
+          fi
+          version=$(git show "$GITHUB_SHA:kapdh-platform/packages/contracts/package.json" | jq -r .version)
+          [ "$TAG" = "contracts-v$version" ] || { echo "::error::$TAG tidak cocok dengan versi $version"; exit 1; }
+          bad=$(git diff --name-only "$GITHUB_SHA" "$commit" |
+            grep -Ev '^kapdh-platform/packages/contracts/(dart/kapdh_api/lib/src/|dist/openapi\.yaml$)' || true)
+          if [ -n "$bad" ]; then
+            echo "::error title=Isi tag rilis SDK::berkas di luar SDK terbangkit/bundle berubah"
+            printf '%s\n' "$bad"
+            exit 1
+          fi
+      - name: Dorong tag ${{ needs.contracts-release.outputs.tag }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -euo pipefail
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.$SERVER_URL/.extraheader" \
+            GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth" git push origin "refs/tags/$TAG"
 
   contracts-verify:
     name: Verifikasi tag SDK kontrak
-    needs: contracts-release
+    needs: [contracts-release, contracts-push]
     # Tag yang didorong GITHUB_TOKEN tidak memicu workflow baru, jadi verifikasi berjalan di run yang sama.
     if: >-
       ${{ !cancelled() && (
         (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/contracts-v')) ||
-        needs.contracts-release.result == 'success'
+        needs.contracts-push.result == 'success'
       ) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30

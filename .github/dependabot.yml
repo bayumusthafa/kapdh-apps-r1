@@ -28,5 +28,14 @@ updates:
       timezone: Asia/Jakarta
     cooldown:
       default-days: 14
+    # PRD 7.1: upgrade mayor runtime (mis. Node 25/26) wajib lewat ADR, bukan PR otomatis. nginx: hanya patch pada
+    # cabang stable yang dipakai (1.30.x); cabang minor ganjil adalah mainline dan cabang stable berikutnya perlu
+    # ditinjau manual. Node: minor/patch 24.x diusulkan bersama digest; PR itu sengaja gagal di check-workflows.mjs
+    # sampai node-version di .github/actions/setup-platform dinaikkan dalam PR yang sama (Node CI = Node image).
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: nginx
+        update-types: ["version-update:semver-minor"]
     commit-message:
       prefix: chore(ops)

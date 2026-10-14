@@ -6,7 +6,7 @@
 //   COOLIFY_API_TOKEN   token API Coolify (Bearer) dengan izin deploy
 // Argumen: --timeout <detik> (bawaan 900), --interval <detik> (bawaan 10), --dry-run (validasi saja, tanpa jaringan).
 //
-// Keluar 0 bila semua deployment `finished`, 1 bila ada yang gagal/dibatalkan/habis waktu. URL dan token tidak pernah
+// Keluar 0 bila semua deployment `finished`, 1 bila ada yang gagal/dibatalkan/habis waktu/tidak dapat dipantau. URL dan token tidak pernah
 // ditulis ke log; UUID hanya ditampilkan 8 karakter pertama.
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -70,7 +70,8 @@ export async function triggerDeploy({ url, token, fetchImpl = fetch }) {
 
 /**
  * Menunggu setiap deployment selesai. Deployment tanpa deployment_uuid (mis. resource jenis service) tidak dapat
- * dipantau; dilaporkan sebagai peringatan dan kebenarannya dibuktikan uji asap sesudahnya.
+ * dipantau dan dinilai GAGAL: tanpa status rollout, kontainer lama dapat tetap melayani sementara status staging
+ * tercatat sukses. Jadikan resource KAPDH berjenis aplikasi "Docker Image" (runbook ci-cd.md bagian 6).
  */
 export async function waitForDeployments({
   apiBase,
@@ -89,9 +90,9 @@ export async function waitForDeployments({
     if (d?.deployment_uuid) pending.set(d.deployment_uuid, d);
     else {
       log(
-        `::warning::resource ${short(d?.resource_uuid)} tidak mengembalikan deployment_uuid; tidak dapat dipantau`,
+        `::error::resource ${short(d?.resource_uuid)} tidak mengembalikan deployment_uuid; rollout tidak dapat dipantau`,
       );
-      results.push({ resource: short(d?.resource_uuid), status: "unmonitored", ok: true });
+      results.push({ resource: short(d?.resource_uuid), status: "unmonitored", ok: false });
     }
   }
   const deadline = now() + timeoutMs;

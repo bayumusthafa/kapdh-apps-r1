@@ -3,24 +3,44 @@
 # oleh job deployment tunggal dengan lock, bukan setiap startup replica"; PRD 8.2 langkah 2; ARCHITECTURE §10).
 #
 # Dipasang pengelola infra di VPS sebagai /usr/local/bin/kapdh-ci-migrate (pemilik root, mode 0755) dan dikunci
-# sebagai forced command di ~deploy/.ssh/authorized_keys, satu kunci per lingkungan:
-#   restrict,command="/usr/local/bin/kapdh-ci-migrate" ssh-ed25519 AAAA... github-actions-kapdh-staging
-# CI (.github/workflows/_deploy.yml) menjalankan:
-#   ssh deploy@<host> "migrate <staging|production> ghcr.io/<owner>/kapdh-api@sha256:<64 hex>" < infra/db/roles.sql
-# Pengelola infra juga dapat menjalankannya manual dengan argumen yang sama (runbook docs/runbooks/ci-cd.md).
+# sebagai forced command. Lingkungan DIIKAT DI SISI SERVER oleh argumen forced command, satu user Unix dan satu kunci
+# per lingkungan (docs/runbooks/ci-cd.md bagian 5):
+#   ~kapdh-ci-staging/.ssh/authorized_keys:
+#     restrict,command="/usr/local/bin/kapdh-ci-migrate staging" ssh-ed25519 AAAA... github-actions-kapdh-staging
+#   ~kapdh-ci-production/.ssh/authorized_keys:
+#     restrict,command="/usr/local/bin/kapdh-ci-migrate production" ssh-ed25519 AAAA... github-actions-kapdh-production
+# CI (.github/workflows/_deploy.yml) mengirim perintah (tanpa stdin):
+#   migrate staging    ghcr.io/<owner>/kapdh-api@sha256:<64 hex>
+#   migrate production ghcr.io/<owner>/kapdh-api@sha256:<64 hex> vX.Y.Z[-rc.N]
+# Lingkungan pada perintah klien wajib sama dengan lingkungan yang diikat forced command: kunci staging tidak pernah
+# dapat memigrasi production. Pengelola infra dapat menjalankan manual dengan argumen yang sama:
+#   kapdh-ci-migrate production migrate production ghcr.io/<owner>/kapdh-api@sha256:<digest> v1.2.0
 #
-# Urutan (docs/handoff/phase-a-schema.md "Ops order"): roles.sql -> migrate.js sebagai kapdh_migrator (advisory lock
-# MIGRATION_LOCK_KEY, semua migrasi tertunda dalam satu transaksi) -> roles.sql lagi (grant objek baru). Tidak ada
-# seed: data referensi production dijalankan terpisah dan sekali (PRD 8.2 langkah 4).
+# Urutan (docs/handoff/phase-a-schema.md "Ops order"):
+#   [production, atau bila KAPDH_BACKUP_DIR diisi] dump pg_dump -Fc sebelum migrasi (gagal = berhenti, PRD 5.5/8.4)
+#   -> roles.sql -> migrate.js sebagai kapdh_migrator (advisory lock MIGRATION_LOCK_KEY, semua migrasi tertunda dalam
+#   satu transaksi) -> roles.sql lagi (grant objek baru). Tidak ada seed (PRD 8.2 langkah 4).
+# roles.sql DIAMBIL DARI IMAGE API yang dipin digest (/app/db/roles.sql, infra/Dockerfile.api), bukan dari klien:
+# SQL yang dijalankan sebagai pemilik database hanya berasal dari artefak CI yang sama dengan kode migrasi.
+# Production hanya menerima digest yang sama dengan image bertag rilis vX.Y.Z di registry (dibuat release.yml).
 #
-# Konfigurasi per lingkungan: /etc/kapdh/ci-migrate/<env>.env (pemilik user deploy, mode 0400), berisi:
+# Konfigurasi: $CONFIG_DIR/<lingkungan>.env (pemilik user CI lingkungan itu, mode 0400), berisi:
+#   KAPDH_ENVIRONMENT=<staging|production>          (wajib sama dengan lingkungan forced command)
 #   KAPDH_DOCKER_NETWORK=<jaringan Docker tempat PostgreSQL lingkungan itu dapat dijangkau>
 #   KAPDH_API_REPOSITORY=ghcr.io/<owner>/kapdh-api    (hanya repositori ini yang boleh dijalankan)
 #   KAPDH_PSQL_IMAGE=postgres:17.11-alpine3.24@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
 #   KAPDH_MIGRATOR_DATABASE_URL=postgres://kapdh_migrator:<sandi>@<host>:5432/<db>
-#   KAPDH_ADMIN_DATABASE_URL=postgres://<pemilik database>:<sandi>@<host>:5432/<db>
+#   KAPDH_ADMIN_DATABASE_URL=postgres://<superuser/pemilik database>:<sandi>@<host>:5432/<db>
+#   KAPDH_BACKUP_DIR=/var/backups/kapdh/premigrate   (wajib production; direktori mode 0700 milik user CI)
+#   KAPDH_BACKUP_KEEP=3                               (opsional; jumlah dump pra-migrasi yang disimpan)
+#   KAPDH_BACKUP_MAX_AGE_DAYS=7                       (opsional; dump lebih tua dihapus, data pribadi D2)
+#   KAPDH_BACKUP_OFFSITE_HOOK=/usr/local/bin/...      (opsional; salin dump terenkripsi ke luar VPS, gagal = berhenti)
 # URL database tidak pernah dicetak dan tidak muncul di argumen proses (diteruskan lewat environment docker -e NAMA).
 set -eu
+
+# Satu-satunya lokasi konfigurasi. Uji lokal (infra/ci/test/remote-migrate.test.mjs) mengganti baris ini pada salinan
+# skrip; tidak ada variabel environment yang dapat mengalihkannya.
+CONFIG_DIR=/etc/kapdh/ci-migrate
 
 log() {
   printf '%s kapdh-ci-migrate: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
@@ -31,33 +51,77 @@ die() {
   exit 1
 }
 
-# Perintah dari SSH forced command dipecah per spasi tanpa ekspansi glob; setiap kata divalidasi pola ketat.
+valid_env() {
+  case "$1" in
+    staging | production) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Lingkungan yang diikat server: argumen pertama dari forced command (atau dari pengelola infra saat manual).
+[ "$#" -ge 1 ] || die "lingkungan forced command tidak diisi (command=\"/usr/local/bin/kapdh-ci-migrate <lingkungan>\")"
+BOUND_ENV=$1
+shift
+valid_env "$BOUND_ENV" || die "lingkungan forced command harus staging atau production"
+
+# Perintah klien: lewat SSH dari SSH_ORIGINAL_COMMAND (dipecah per spasi tanpa ekspansi glob), atau argumen sisa
+# saat dijalankan manual. Setiap kata divalidasi pola ketat di bawah.
 if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
+  [ "$#" -eq 0 ] || die "argumen tambahan tidak diizinkan pada forced command"
   set -f
   # shellcheck disable=SC2086 # pemecahan kata disengaja (lihat komentar di atas)
   set -- $SSH_ORIGINAL_COMMAND
   set +f
 fi
 
-[ "$#" -eq 3 ] || die "pemakaian: migrate <staging|production> <repositori-api>@sha256:<digest>"
+[ "$#" -eq 3 ] || [ "$#" -eq 4 ] ||
+  die "pemakaian: migrate <staging|production> <repositori-api>@sha256:<digest> [vX.Y.Z]"
 [ "$1" = "migrate" ] || die "perintah tidak dikenal; hanya 'migrate' yang diizinkan"
 ENV_NAME=$2
 IMAGE=$3
-case "$ENV_NAME" in
-  staging | production) ;;
-  *) die "lingkungan harus staging atau production" ;;
-esac
+RELEASE_TAG=${4:-}
+valid_env "$ENV_NAME" || die "lingkungan harus staging atau production"
+[ "$ENV_NAME" = "$BOUND_ENV" ] ||
+  die "kunci ini terikat ke lingkungan $BOUND_ENV; permintaan untuk $ENV_NAME ditolak"
 
-# KAPDH_CI_MIGRATE_CONFIG_DIR hanya untuk uji lokal skrip; forced command SSH tidak meneruskan env klien.
-CONFIG="${KAPDH_CI_MIGRATE_CONFIG_DIR:-/etc/kapdh/ci-migrate}/${ENV_NAME}.env"
+if [ -n "$RELEASE_TAG" ]; then
+  case "$RELEASE_TAG" in
+    *[!0-9A-Za-z.-]*) die "tag rilis tidak valid" ;;
+  esac
+  printf '%s\n' "$RELEASE_TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$' ||
+    die "tag rilis harus vX.Y.Z atau vX.Y.Z-rc.N"
+fi
+[ "$ENV_NAME" != "production" ] || [ -n "$RELEASE_TAG" ] ||
+  die "production hanya menerima image rilis: sertakan tag vX.Y.Z (release.yml)"
+
+CONFIG="$CONFIG_DIR/$BOUND_ENV.env"
 [ -r "$CONFIG" ] || die "konfigurasi $CONFIG tidak ada atau tidak terbaca"
 # shellcheck source=/dev/null # berkas milik pengelola infra di server
 . "$CONFIG"
+: "${KAPDH_ENVIRONMENT:?wajib di $CONFIG}"
 : "${KAPDH_DOCKER_NETWORK:?wajib di $CONFIG}"
 : "${KAPDH_API_REPOSITORY:?wajib di $CONFIG}"
 : "${KAPDH_PSQL_IMAGE:?wajib di $CONFIG}"
 : "${KAPDH_MIGRATOR_DATABASE_URL:?wajib di $CONFIG}"
 : "${KAPDH_ADMIN_DATABASE_URL:?wajib di $CONFIG}"
+[ "$KAPDH_ENVIRONMENT" = "$BOUND_ENV" ] ||
+  die "$CONFIG menyatakan KAPDH_ENVIRONMENT=$KAPDH_ENVIRONMENT, bukan $BOUND_ENV (berkas tertukar?)"
+case "$KAPDH_PSQL_IMAGE" in
+  *@sha256:*) ;;
+  *) die "KAPDH_PSQL_IMAGE wajib dipin @sha256:<digest> (PRD 7.1)" ;;
+esac
+BACKUP_DIR=${KAPDH_BACKUP_DIR:-}
+BACKUP_KEEP=${KAPDH_BACKUP_KEEP:-3}
+BACKUP_MAX_AGE_DAYS=${KAPDH_BACKUP_MAX_AGE_DAYS:-7}
+BACKUP_HOOK=${KAPDH_BACKUP_OFFSITE_HOOK:-}
+[ "$ENV_NAME" != "production" ] || [ -n "$BACKUP_DIR" ] ||
+  die "KAPDH_BACKUP_DIR wajib untuk production: migrasi tidak berjalan tanpa dump pra-migrasi (PRD 5.5, 8.4)"
+case "$BACKUP_KEEP" in
+  "" | *[!0-9]* | 0) die "KAPDH_BACKUP_KEEP harus bilangan bulat >= 1" ;;
+esac
+case "$BACKUP_MAX_AGE_DAYS" in
+  "" | *[!0-9]*) die "KAPDH_BACKUP_MAX_AGE_DAYS harus bilangan bulat" ;;
+esac
 
 # Hanya image API dari repositori yang diizinkan, dirujuk dengan digest (image yang sama dengan yang dideploy).
 DIGEST=${IMAGE#"${KAPDH_API_REPOSITORY}@sha256:"}
@@ -66,16 +130,42 @@ case "$DIGEST" in
   "" | *[!0-9a-f]*) die "digest image tidak valid" ;;
 esac
 [ "${#DIGEST}" -eq 64 ] || die "digest image harus 64 karakter heksadesimal"
+SHORT=$(printf '%.12s' "$DIGEST")
 
 WORK=$(mktemp -d)
-trap 'rm -rf "$WORK"' EXIT
+CID=""
+cleanup() {
+  if [ -n "$CID" ]; then docker rm -f "$CID" >/dev/null 2>&1 || true; fi
+  rm -rf "$WORK"
+}
+trap cleanup EXIT
 trap 'exit 130' INT TERM
 chmod 0755 "$WORK"
 ROLES="$WORK/roles.sql"
-# roles.sql dikirim CI lewat stdin dari commit yang sama dengan image (batas 1 MiB).
-dd bs=1024 count=1024 of="$ROLES" 2>/dev/null
-[ -s "$ROLES" ] || die "roles.sql tidak diterima di stdin"
-grep -q 'kapdh_migrator' "$ROLES" || die "stdin bukan infra/db/roles.sql"
+
+log "lingkungan $ENV_NAME, image ${KAPDH_API_REPOSITORY}@sha256:$SHORT${RELEASE_TAG:+ (rilis $RELEASE_TAG)}"
+docker pull --quiet "$IMAGE" >/dev/null || die "docker pull image API gagal (login ghcr.io di server?)"
+docker pull --quiet "$KAPDH_PSQL_IMAGE" >/dev/null || die "docker pull image psql gagal"
+
+# Tag rilis harus menunjuk image yang sama (ID image identik) dengan digest yang diminta.
+if [ -n "$RELEASE_TAG" ]; then
+  docker pull --quiet "$KAPDH_API_REPOSITORY:$RELEASE_TAG" >/dev/null ||
+    die "image rilis $KAPDH_API_REPOSITORY:$RELEASE_TAG tidak ada di registry"
+  by_digest=$(docker image inspect --format '{{.Id}}' "$IMAGE") || die "docker image inspect digest gagal"
+  by_tag=$(docker image inspect --format '{{.Id}}' "$KAPDH_API_REPOSITORY:$RELEASE_TAG") ||
+    die "docker image inspect tag rilis gagal"
+  if [ -z "$by_digest" ] || [ "$by_digest" != "$by_tag" ]; then
+    die "digest $SHORT bukan image rilis $RELEASE_TAG; production hanya menjalankan image rilis"
+  fi
+fi
+
+# roles.sql dari image API yang sama (tanpa menjalankan kode image: docker create + docker cp).
+CID=$(docker create "$IMAGE") || die "docker create image API gagal"
+docker cp "$CID:/app/db/roles.sql" "$ROLES" >/dev/null || die "image API tidak memuat /app/db/roles.sql"
+docker rm -f "$CID" >/dev/null 2>&1 || true
+CID=""
+[ -s "$ROLES" ] || die "roles.sql di image kosong"
+grep -q 'kapdh_migrator' "$ROLES" || die "/app/db/roles.sql di image bukan infra/db/roles.sql"
 chmod 0444 "$ROLES"
 
 apply_roles() {
@@ -85,9 +175,61 @@ apply_roles() {
     sh -c 'exec psql "$ADMIN_DATABASE_URL" -X -q -v ON_ERROR_STOP=1 -f /kapdh/roles.sql'
 }
 
-log "lingkungan $ENV_NAME, image ${KAPDH_API_REPOSITORY}@sha256:$(printf '%.12s' "$DIGEST")"
-docker pull --quiet "$IMAGE" >/dev/null || die "docker pull image API gagal (login ghcr.io di server?)"
-docker pull --quiet "$KAPDH_PSQL_IMAGE" >/dev/null || die "docker pull image psql gagal"
+# Dump pra-migrasi (format custom pg_dump). Dibuat di host dengan umask 077 (berisi data pribadi; D2, N-09), diverifikasi
+# dapat dibaca pg_restore, dicatat di manifest, lalu (opsional) disalin ke luar VPS oleh hook. Pemulihan:
+# docs/runbooks/ci-cd.md bagian 9 dan docs/runbooks/restore-backup.md (deletion ledger wajib diterapkan ulang).
+backup_before_migration() {
+  [ -d "$BACKUP_DIR" ] || die "KAPDH_BACKUP_DIR $BACKUP_DIR tidak ada"
+  stamp=$(date -u +%Y%m%dT%H%M%SZ)
+  dump="$BACKUP_DIR/kapdh-$ENV_NAME-premigrate-$stamp-$SHORT.dump"
+  (
+    umask 077
+    # shellcheck disable=SC2016 # diekspansi di dalam kontainer
+    ADMIN_DATABASE_URL=$KAPDH_ADMIN_DATABASE_URL docker run --rm --network "$KAPDH_DOCKER_NETWORK" \
+      -e ADMIN_DATABASE_URL "$KAPDH_PSQL_IMAGE" \
+      sh -c 'exec pg_dump --format=custom --compress=6 --dbname="$ADMIN_DATABASE_URL"' >"$dump.partial"
+  ) || {
+    rm -f "$dump.partial"
+    die "pg_dump pra-migrasi gagal; migrasi TIDAK dijalankan"
+  }
+  [ -s "$dump.partial" ] || {
+    rm -f "$dump.partial"
+    die "dump pra-migrasi kosong; migrasi TIDAK dijalankan"
+  }
+  docker run --rm -i --network none "$KAPDH_PSQL_IMAGE" pg_restore --list <"$dump.partial" >/dev/null || {
+    rm -f "$dump.partial"
+    die "dump pra-migrasi tidak dapat dibaca pg_restore; migrasi TIDAK dijalankan"
+  }
+  mv "$dump.partial" "$dump"
+  sum=$(sha256sum "$dump" | cut -d ' ' -f 1)
+  bytes=$(wc -c <"$dump" | tr -d ' ')
+  (
+    umask 077
+    printf '{"time":"%s","environment":"%s","file":"%s","sha256":"%s","bytes":%s,"api_digest":"sha256:%s","release":"%s"}\n' \
+      "$stamp" "$ENV_NAME" "${dump##*/}" "$sum" "$bytes" "$DIGEST" "$RELEASE_TAG" >>"$BACKUP_DIR/premigrate-manifest.jsonl"
+  )
+  log "dump pra-migrasi ${dump##*/} ($bytes byte, sha256 $(printf '%.12s' "$sum"))"
+  if [ -n "$BACKUP_HOOK" ]; then
+    "$BACKUP_HOOK" "$dump" || die "hook salinan luar VPS gagal; migrasi TIDAK dijalankan"
+    log "dump pra-migrasi disalin ke luar VPS (hook)"
+  fi
+  # Rotasi: nama berstempel waktu lebar tetap sehingga urutan glob = urutan waktu (terlama dulu).
+  set -- "$BACKUP_DIR"/kapdh-"$ENV_NAME"-premigrate-*.dump
+  excess=$(($# - BACKUP_KEEP))
+  while [ "$excess" -gt 0 ]; do
+    rm -f -- "$1"
+    shift
+    excess=$((excess - 1))
+  done
+  if [ "$BACKUP_MAX_AGE_DAYS" -gt 0 ]; then
+    find "$BACKUP_DIR" -type f -name "kapdh-$ENV_NAME-premigrate-*.dump" -mtime +"$BACKUP_MAX_AGE_DAYS" -exec rm -f {} +
+  fi
+}
+
+if [ -n "$BACKUP_DIR" ]; then
+  log "0/3 dump database sebelum migrasi"
+  backup_before_migration
+fi
 
 log "1/3 roles.sql (sebelum migrasi)"
 apply_roles || die "roles.sql sebelum migrasi gagal"

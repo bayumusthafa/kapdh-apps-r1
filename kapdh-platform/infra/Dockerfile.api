@@ -1,6 +1,13 @@
-# Image API dibangun di CI, bukan di VPS production (PRD 5.3).
-FROM node:24-alpine AS build
+# Image API KAPDH (NestJS + Fastify; PRD 5.1). Dibangun di CI, bukan di VPS production (PRD 5.3). Konteks build =
+# kapdh-platform/ (berkas lokal disaring .dockerignore):
+#   docker build -f infra/Dockerfile.api --build-arg KAPDH_COMMIT=$(git rev-parse HEAD) -t kapdh-api .
+# Base image dipin versi patch + digest (PRD 7.1); versi Node sama dengan Node CI (.github/actions/setup-platform),
+# diperiksa infra/ci/check-workflows.mjs. Migrasi TIDAK dijalankan saat start (job deployment tunggal, PRD 5.5).
+
+# ------------------------------------------------------------------------------------------------ tahap build
+FROM node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS build
 WORKDIR /repo
+ENV CI=true
 RUN corepack enable
 COPY . .
 # pnpm 10: `pnpm deploy` tanpa inject-workspace-packages wajib --legacy (tanpa itu gagal
@@ -8,10 +15,23 @@ COPY . .
 # migrations/ untuk job migrasi deployment (PRD 5.5; diperiksa uji asap image di CI, infra/ci/images.json).
 RUN pnpm install --frozen-lockfile && pnpm --filter @kapdh/api... build && pnpm --filter @kapdh/api deploy --prod --legacy /out
 
-FROM node:24-alpine
+# ---------------------------------------------------------------------------------------------- tahap runtime
+FROM node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /out .
+# Grant role database dari commit yang sama. Job migrasi (infra/ci/remote-migrate.sh) menyalinnya dari image ini
+# (docker cp, dipin digest), bukan dari klien SSH, lalu menjalankannya sebagai pemilik database.
+COPY infra/db/roles.sql db/roles.sql
+# Commit sumber image: dilaporkan GET /api/v1/health (`commit`) agar uji asap deploy membuktikan kontainer yang
+# melayani trafik adalah digest yang dipromosikan (infra/ci/smoke.mjs). Bukan secret.
+ARG KAPDH_COMMIT=""
+RUN case "$KAPDH_COMMIT" in \
+      "") ;; \
+      *[!0-9a-f]*) echo "KAPDH_COMMIT wajib 40 heksadesimal huruf kecil" >&2; exit 1 ;; \
+      *) [ "${#KAPDH_COMMIT}" -eq 40 ] || { echo "KAPDH_COMMIT wajib 40 heksadesimal" >&2; exit 1; } ;; \
+    esac
+ENV KAPDH_COMMIT=$KAPDH_COMMIT
 USER node
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
