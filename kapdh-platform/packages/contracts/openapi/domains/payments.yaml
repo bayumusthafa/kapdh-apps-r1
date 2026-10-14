@@ -159,6 +159,9 @@ paths:
         - 403 FORBIDDEN: instruksi iuran disembunyikan untuk platform pemanggil (`X-App-Platform`, rencana
           cadangan D13); klien versi lama yang belum mengenal `instructions_hidden` menampilkan pesan server.
           Request tanpa `X-App-Platform` diperlakukan sebagai platform yang tidak menyembunyikan instruksi.
+        - 403 FORBIDDEN: nominal iuran belum ditetapkan pengurus (gagal tertutup, PRD 8.2 butir 4, 9.3): pengaturan
+          `fees` belum tersimpan (versi 0, nilai bawaan kode tidak pernah ditagihkan) atau total jenis iuran ini
+          0.00. Tidak ada payment yang dibuat; klien menampilkan pesan server.
         - 400 VALIDATION_ERROR: `payment_method_id` tidak ada atau tidak aktif (field_errors.payment_method_id);
           renewal sebelum jendela perpanjangan dibuka (field_errors.type).
         - 409 PAYMENT_STATE_CONFLICT: registration padahal iuran pendaftaran sudah paid.
@@ -971,4 +974,6 @@ components:
           description: Lama periode per iuran paid (12 bulan kalender sejak disetujui, PRD 2.1, D4).
         settings_version:
           type: string
-          description: Versi pengaturan `fees` yang dipakai kutipan ini.
+          description: |
+            Versi pengaturan `fees` yang dipakai kutipan ini. "0" berarti nominal belum tersimpan (kutipan memakai
+            nilai bawaan kode); POST /me/payments menolaknya dengan 403 FORBIDDEN sampai pengurus menyimpan nominal.
