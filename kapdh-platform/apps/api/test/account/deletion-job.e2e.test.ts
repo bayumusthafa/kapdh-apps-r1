@@ -1,6 +1,15 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { accountDeletions, alumni, auditLogs, notifications, roomMembers, rooms } from "@kapdh/database";
+import {
+  accountDeletions,
+  alumni,
+  auditLogs,
+  membershipEvents,
+  notifications,
+  roomMembers,
+  rooms,
+  users,
+} from "@kapdh/database";
 import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -355,15 +364,21 @@ describe("Job account.deletion: kegagalan dan retry (AC F14-2)", () => {
       );
     // Kernel notifikasi melewati penerima deletion_pending: tanpa inbox, outbox maupun realtime.
     expect(await notice(`uji:${uuidv7()}`)).toEqual({ id: "", created: false, skipped: "account_closed" });
-    expect(await t.db.select().from(notifications).where(eq(notifications.userId, member.userId))).toEqual([]);
+    expect(await t.db.select().from(notifications).where(eq(notifications.userId, member.userId))).toEqual(
+      [],
+    );
 
-    // Job gagal sesudah langkah notifications; notifikasi yang lolos pemeriksaan secara bersamaan (disimulasikan
-    // langsung) tertulis selama jendela retry, lalu disapu langkah credentials.
+    // Job gagal sesudah langkah notifications dan finance (keduanya tidak diulang saat retry); notifikasi yang lolos
+    // pemeriksaan secara bersamaan dan histori keanggotaan baru (disimulasikan langsung) tertulis selama jendela retry,
+    // lalu disapu langkah credentials.
     const processor = t.app.get(AccountDeletionProcessor);
     processor.setStepObserver(({ step }) => {
-      if (step === "notifications") throw new Error("storage mati");
+      if (step === "finance") throw new Error("storage mati");
     });
     expect(await runDeletion(t, id)).toMatchObject({ outcome: "failed" });
+    expect((await deletionRow(t.db, id)).stepsDone).toEqual(
+      expect.arrayContaining(["notifications", "finance"]),
+    );
     processor.setStepObserver(null);
     await t.db.insert(notifications).values({
       id: uuidv7(),
@@ -375,9 +390,23 @@ describe("Job account.deletion: kegagalan dan retry (AC F14-2)", () => {
       dedupKey: `u:${member.userId}:uji-sapuan:${uuidv7()}`,
       createdAt: t.clock.now(),
     });
+    // Histori keanggotaan yang ditulis pihak lain selama jendela retry juga disapu (tautan akun dan alasan dibuang).
+    const lateEvent = uuidv7();
+    await t.db.insert(membershipEvents).values({
+      id: lateEvent,
+      userId: member.userId,
+      kind: "warn",
+      reason: "Peringatan tertulis untuk anggota ini",
+      createdAt: t.clock.now(),
+    });
     t.clock.advance(deletionRetryBackoffMs(1));
     expect(await runDeletion(t, id)).toMatchObject({ outcome: "completed" });
-    expect(await t.db.select().from(notifications).where(eq(notifications.userId, member.userId))).toEqual([]);
+    expect(await t.db.select().from(notifications).where(eq(notifications.userId, member.userId))).toEqual(
+      [],
+    );
+    expect(await t.db.select().from(membershipEvents).where(eq(membershipEvents.id, lateEvent))).toEqual([
+      expect.objectContaining({ userId: null, reason: null, kind: "warn" }),
+    ]);
     // Akun deleted juga dilewati.
     expect(await notice(`uji:${uuidv7()}`)).toMatchObject({ created: false, skipped: "account_closed" });
   });
@@ -661,7 +690,11 @@ describe("Deletion ledger: penerapan ulang setelah restore (AC F14-6)", () => {
         userId: late.userId,
         status: "completed",
       });
-      expect(absentRow!.ledger).toMatchObject({ restored: true, absent: true, member_seq_floor: lateEntry.member_seq_floor });
+      expect(absentRow!.ledger).toMatchObject({
+        restored: true,
+        absent: true,
+        member_seq_floor: lateEntry.member_seq_floor,
+      });
       await publishLegalVersions(restored);
       const nextSeq = await registerAndActivate(restored, `pasca-pulih-${uuidv7().slice(-8)}@contoh.test`);
       expect(nextSeq).toBeGreaterThan(lateSeq);
@@ -728,7 +761,9 @@ describe("Deletion ledger: penerapan ulang setelah restore (AC F14-6)", () => {
       try {
         await source.storage.put(LEDGER_HEAD_KEY, Buffer.from("{rusak"), { contentType: "application/json" });
         expect((await httpClient(fresh.app).get("/health/ready")).statusCode).toBe(503);
-        await runAsSystem(() => fresh.app.get(DeletionLedgerService).reapply(readLedgerDirectory(ledgerDir!)));
+        await runAsSystem(() =>
+          fresh.app.get(DeletionLedgerService).reapply(readLedgerDirectory(ledgerDir!)),
+        );
         expect((await httpClient(fresh.app).get("/health/ready")).statusCode).toBe(200);
       } finally {
         await fresh.app.close();

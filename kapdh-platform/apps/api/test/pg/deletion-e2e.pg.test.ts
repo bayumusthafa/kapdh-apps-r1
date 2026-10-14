@@ -1228,16 +1228,13 @@ describe("LENS D5: celah privasi yang ditemukan (it.fails = celah masih ada)", (
     expect(second).toMatchObject({ outcome: "completed" });
   });
 
-  it(
-    "D5-04 (D2, AC F14-2/F14-3): inbox yang dibuat selama jendela deletion_pending ikut dihapus saat retry",
-    async () => {
-      // Celah: retry melanjutkan dari steps_done (notifications sudah selesai), sehingga notifikasi baru itu tetap ada
-      // pada akun `deleted` (judul/isi keputusan pembayaran) selamanya.
-      expect(await remainingPersonalData(rt.owner.db as unknown as Db, windowUserId)).toMatchObject({
-        notifications: 0,
-      });
-    },
-  );
+  it("D5-04 (D2, AC F14-2/F14-3): inbox yang dibuat selama jendela deletion_pending ikut dihapus saat retry", async () => {
+    // Celah: retry melanjutkan dari steps_done (notifications sudah selesai), sehingga notifikasi baru itu tetap ada
+    // pada akun `deleted` (judul/isi keputusan pembayaran) selamanya.
+    expect(await remainingPersonalData(rt.owner.db as unknown as Db, windowUserId)).toMatchObject({
+      notifications: 0,
+    });
+  });
   const reuse = { deletedSeq: 0, nextSeq: 0 };
   it("D5-05 persiapan: anggota mendaftar SETELAH backup lalu menghapus akun; backup dipulihkan, ledger diterapkan ulang", async () => {
     await rt.close();
@@ -1278,14 +1275,11 @@ describe("LENS D5: celah privasi yang ditemukan (it.fails = celah masih ada)", (
     rt = await openRuntime(liveDb, liveStorage);
   });
 
-  it(
-    "D5-05 (PRD 6.4, AC F14-6): setelah restore + ledger, N anggota yang sudah dihapus tidak dialokasikan ulang",
-    () => {
-      // Celah: entri ledger tidak memuat N dan penerapan ulang tidak memajukan membership_no_seq, sehingga N milik
-      // akun yang dihapus setelah titik backup diberikan lagi kepada pendaftar berikutnya.
-      expect(reuse.nextSeq).toBeGreaterThan(reuse.deletedSeq);
-    },
-  );
+  it("D5-05 (PRD 6.4, AC F14-6): setelah restore + ledger, N anggota yang sudah dihapus tidak dialokasikan ulang", () => {
+    // Celah: entri ledger tidak memuat N dan penerapan ulang tidak memajukan membership_no_seq, sehingga N milik
+    // akun yang dihapus setelah titik backup diberikan lagi kepada pendaftar berikutnya.
+    expect(reuse.nextSeq).toBeGreaterThan(reuse.deletedSeq);
+  });
 });
 
 // ----------------------------------------------------------------------------------------------- pemeriksaan

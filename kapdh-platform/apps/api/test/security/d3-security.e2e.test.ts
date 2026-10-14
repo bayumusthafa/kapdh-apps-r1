@@ -59,46 +59,38 @@ function registerBody(email: string) {
 const REGISTER_BUDGET_PER_IP = 120;
 
 describe("D3-01 enumerasi email terdaftar tanpa batas laju (PRD 2.5, ASVS 2.2.1)", () => {
-  it(
-    "POST /auth/register: jawaban 409 'Email sudah terdaftar' tidak memakai anggaran per IP sehingga dapat diulang tanpa batas",
-    async () => {
-      const victim = await createAlumni(t, { status: "verified" });
-      const statuses = new Set<number>();
-      for (let i = 0; i <= REGISTER_BUDGET_PER_IP; i++) {
-        const res = await api().post("/auth/register", registerBody(victim.email));
-        statuses.add(res.statusCode);
-        if (res.statusCode === 429) break;
-      }
-      // Aman: setelah anggaran per IP habis, server menjawab 429 tanpa mengungkap keberadaan email.
-      expect(statuses.has(429)).toBe(true);
-    },
-    120_000,
-  );
+  it("POST /auth/register: jawaban 409 'Email sudah terdaftar' tidak memakai anggaran per IP sehingga dapat diulang tanpa batas", async () => {
+    const victim = await createAlumni(t, { status: "verified" });
+    const statuses = new Set<number>();
+    for (let i = 0; i <= REGISTER_BUDGET_PER_IP; i++) {
+      const res = await api().post("/auth/register", registerBody(victim.email));
+      statuses.add(res.statusCode);
+      if (res.statusCode === 429) break;
+    }
+    // Aman: setelah anggaran per IP habis, server menjawab 429 tanpa mengungkap keberadaan email.
+    expect(statuses.has(429)).toBe(true);
+  }, 120_000);
 
-  it(
-    "POST /auth/email-correction: akun pending milik penyerang menjadi oracle email terdaftar tanpa batas (jatah login dikembalikan setiap kali)",
-    async () => {
-      const victim = await createAlumni(t, { status: "verified" });
-      const reg = await api().post("/auth/register", registerBody("penyerang-koreksi@contoh.test"));
-      expect(reg.statusCode).toBe(201);
-      const challengeId = reg.json().challenge_id as string;
-      const statuses: number[] = [];
-      for (let i = 0; i < 40; i++) {
-        const res = await api().post("/auth/email-correction", {
-          challenge_id: challengeId,
-          password: "Kapdh#2026",
-          new_email: victim.email,
-        });
-        statuses.push(res.statusCode);
-        if (res.statusCode === 429) break;
-      }
-      // Bukti oracle: jawaban membedakan email terdaftar.
-      expect(statuses[0]).toBe(409);
-      // Aman: percobaan berulang dibatasi (mis. kuota kirim OTP/registrasi per IP) sebelum 40 kali.
-      expect(statuses).toContain(429);
-    },
-    120_000,
-  );
+  it("POST /auth/email-correction: akun pending milik penyerang menjadi oracle email terdaftar tanpa batas (jatah login dikembalikan setiap kali)", async () => {
+    const victim = await createAlumni(t, { status: "verified" });
+    const reg = await api().post("/auth/register", registerBody("penyerang-koreksi@contoh.test"));
+    expect(reg.statusCode).toBe(201);
+    const challengeId = reg.json().challenge_id as string;
+    const statuses: number[] = [];
+    for (let i = 0; i < 40; i++) {
+      const res = await api().post("/auth/email-correction", {
+        challenge_id: challengeId,
+        password: "Kapdh#2026",
+        new_email: victim.email,
+      });
+      statuses.push(res.statusCode);
+      if (res.statusCode === 429) break;
+    }
+    // Bukti oracle: jawaban membedakan email terdaftar.
+    expect(statuses[0]).toBe(409);
+    // Aman: percobaan berulang dibatasi (mis. kuota kirim OTP/registrasi per IP) sebelum 40 kali.
+    expect(statuses).toContain(429);
+  }, 120_000);
 });
 
 describe("D3-02 akses berkas bukti moderasi melewati aturan konflik kepentingan dan audit (PRD 2.3, 3.12, AC F12-2)", () => {
@@ -199,59 +191,50 @@ describe("D3-03 mfa_token admin tidak terikat keadaan kredensial (N-08, AC F02-4
     return totp(admin.totpSecret, t.clock.now());
   }
 
-  it(
-    "mfa_token yang terbit sebelum admin mengganti sandi masih menghasilkan sesi admin baru",
-    async () => {
-      const { admin, session, mfaToken } = await newAdminWithPendingMfa();
-      const changed = await api().post(
-        "/admin/auth/password/change",
-        { current_password: admin.password, new_password: "Pengurus#Baru2026" },
-        { token: session.accessToken },
-      );
-      expect(changed.statusCode).toBe(204);
-      const mfa = await api().post("/admin/auth/mfa", { mfa_token: mfaToken, totp_code: nextTotp(admin) });
-      // Aman: kredensial yang dinilai di tahap sandi sudah tidak berlaku → 401.
-      expect(mfa.statusCode).toBe(401);
-    },
-  );
+  it("mfa_token yang terbit sebelum admin mengganti sandi masih menghasilkan sesi admin baru", async () => {
+    const { admin, session, mfaToken } = await newAdminWithPendingMfa();
+    const changed = await api().post(
+      "/admin/auth/password/change",
+      { current_password: admin.password, new_password: "Pengurus#Baru2026" },
+      { token: session.accessToken },
+    );
+    expect(changed.statusCode).toBe(204);
+    const mfa = await api().post("/admin/auth/mfa", { mfa_token: mfaToken, totp_code: nextTotp(admin) });
+    // Aman: kredensial yang dinilai di tahap sandi sudah tidak berlaku → 401.
+    expect(mfa.statusCode).toBe(401);
+  });
 
-  it(
-    "mfa_token yang terbit sebelum 'keluar semua perangkat' masih menghasilkan sesi admin baru",
-    async () => {
-      const { admin, session, mfaToken } = await newAdminWithPendingMfa();
-      const all = await api().post("/auth/logout-all", {}, { token: session.accessToken });
-      expect(all.statusCode).toBe(204);
-      const mfa = await api().post("/admin/auth/mfa", { mfa_token: mfaToken, totp_code: nextTotp(admin) });
-      // Aman: session_version naik → token tahap sandi lama tidak berlaku.
-      expect(mfa.statusCode).toBe(401);
-    },
-  );
+  it("mfa_token yang terbit sebelum 'keluar semua perangkat' masih menghasilkan sesi admin baru", async () => {
+    const { admin, session, mfaToken } = await newAdminWithPendingMfa();
+    const all = await api().post("/auth/logout-all", {}, { token: session.accessToken });
+    expect(all.statusCode).toBe(204);
+    const mfa = await api().post("/admin/auth/mfa", { mfa_token: mfaToken, totp_code: nextTotp(admin) });
+    // Aman: session_version naik → token tahap sandi lama tidak berlaku.
+    expect(mfa.statusCode).toBe(401);
+  });
 });
 
 describe("D3-05 kuota kirim OTP per email tidak dibagi antarmodul (PRD 2.5: 5 kirim per jam per email)", () => {
-  it(
-    "lupa sandi (kunci otp:<HMAC email>) dan hapus akun web (kunci otp:<email mentah>) masing-masing mengirim 5 OTP per jam ke email yang sama",
-    async () => {
-      const victim = await createAlumni(t, { status: "verified" });
-      const statuses: number[] = [];
-      for (let i = 0; i < 6; i++) {
-        statuses.push((await api().post("/auth/password/forgot", { email: victim.email })).statusCode);
-        t.clock.advance(61_000);
-      }
-      // Kuota per email modul auth habis setelah 5 kirim.
-      expect(statuses).toEqual([202, 202, 202, 202, 202, 429]);
-      for (let i = 0; i < 5; i++) {
-        statuses.push((await api().post("/public/deletion/challenge", { email: victim.email })).statusCode);
-        t.clock.advance(61_000);
-      }
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      const sent = t.mailer.sent.filter((mail) => mail.to === victim.email).length;
-      // Aman: total email OTP ke satu alamat dalam satu jam <= 5 (kuota dipakai bersama semua tujuan).
-      expect(sent).toBeLessThanOrEqual(5);
-      // Hapus akun web setelah kuota habis dijawab 429 yang sama (nyata maupun pengganti).
-      expect(statuses.slice(6)).toEqual([429, 429, 429, 429, 429]);
-    },
-  );
+  it("lupa sandi (kunci otp:<HMAC email>) dan hapus akun web (kunci otp:<email mentah>) masing-masing mengirim 5 OTP per jam ke email yang sama", async () => {
+    const victim = await createAlumni(t, { status: "verified" });
+    const statuses: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      statuses.push((await api().post("/auth/password/forgot", { email: victim.email })).statusCode);
+      t.clock.advance(61_000);
+    }
+    // Kuota per email modul auth habis setelah 5 kirim.
+    expect(statuses).toEqual([202, 202, 202, 202, 202, 429]);
+    for (let i = 0; i < 5; i++) {
+      statuses.push((await api().post("/public/deletion/challenge", { email: victim.email })).statusCode);
+      t.clock.advance(61_000);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const sent = t.mailer.sent.filter((mail) => mail.to === victim.email).length;
+    // Aman: total email OTP ke satu alamat dalam satu jam <= 5 (kuota dipakai bersama semua tujuan).
+    expect(sent).toBeLessThanOrEqual(5);
+    // Hapus akun web setelah kuota habis dijawab 429 yang sama (nyata maupun pengganti).
+    expect(statuses.slice(6)).toEqual([429, 429, 429, 429, 429]);
+  });
 
   it("hapus akun web lebih dulu lalu pemulihan sandi oleh Super Admin: satu kuota 5 per jam untuk email yang sama", async () => {
     const victim = await createAlumni(t, { status: "verified" });
@@ -280,57 +263,53 @@ describe("D3-05 kuota kirim OTP per email tidak dibagi antarmodul (PRD 2.5: 5 ki
 });
 
 describe("D3-06 sesi admin tanpa batas umur absolut (N-08, PRD 5.2 'TTL refresh terpisah dari idle'; ASVS 3.3.2 L2)", () => {
-  it(
-    "rotasi refresh menggeser kedaluwarsa 12 jam setiap 15 menit sehingga admin aktif tidak pernah wajib autentikasi ulang",
-    async () => {
-      const admin = await createAdmin(t, { permissions: ["members.read"] });
-      let { accessToken, refreshCookie } = await signInAdmin(t, admin);
-      const startedAt = t.clock.now().getTime();
-      let refreshes = 0;
-      let endedAtHours = 0;
-      let ended: { me: number; refresh: number | null } | null = null;
-      // 14 jam aktivitas: setiap 14 menit satu permintaan admin (aktivitas) lalu refresh terjadwal.
-      for (let i = 0; i < 60; i++) {
-        t.clock.advance(14 * 60_000);
-        const hours = (t.clock.now().getTime() - startedAt) / 3600_000;
-        const me = await api().get("/admin/me", { token: accessToken });
-        if (me.statusCode !== 200) {
-          ended = { me: me.statusCode, refresh: null };
-          endedAtHours = hours;
-          break;
-        }
-        const refresh = await api().post(
-          "/auth/refresh",
-          {},
-          { cookies: { kapdh_admin_rt: refreshCookie }, headers: { origin: t.env.ADMIN_ORIGIN } },
-        );
-        if (refresh.statusCode !== 200) {
-          ended = { me: me.statusCode, refresh: refresh.statusCode };
-          endedAtHours = hours;
-          break;
-        }
-        refreshes++;
-        accessToken = refresh.json().access_token as string;
-        refreshCookie = /kapdh_admin_rt=([^;]+)/.exec(String(refresh.headers["set-cookie"]))![1]!;
-        // Baris hasil rotasi mewarisi batas keluarga (12 jam sejak login), tidak bergeser.
-        const expires = /Expires=([^;]+)/i.exec(String(refresh.headers["set-cookie"]))?.[1];
-        expect(Date.parse(expires ?? "")).toBe(Math.floor((startedAt + 12 * 3600_000) / 1000) * 1000);
+  it("rotasi refresh menggeser kedaluwarsa 12 jam setiap 15 menit sehingga admin aktif tidak pernah wajib autentikasi ulang", async () => {
+    const admin = await createAdmin(t, { permissions: ["members.read"] });
+    let { accessToken, refreshCookie } = await signInAdmin(t, admin);
+    const startedAt = t.clock.now().getTime();
+    let refreshes = 0;
+    let endedAtHours = 0;
+    let ended: { me: number; refresh: number | null } | null = null;
+    // 14 jam aktivitas: setiap 14 menit satu permintaan admin (aktivitas) lalu refresh terjadwal.
+    for (let i = 0; i < 60; i++) {
+      t.clock.advance(14 * 60_000);
+      const hours = (t.clock.now().getTime() - startedAt) / 3600_000;
+      const me = await api().get("/admin/me", { token: accessToken });
+      if (me.statusCode !== 200) {
+        ended = { me: me.statusCode, refresh: null };
+        endedAtHours = hours;
+        break;
       }
-      // Aman: sebelum 12 jam sesi tetap dapat dipakai dan diperbarui; setelah 12 jam sejak login MFA sesi berakhir
-      // (access token dan refresh ditolak 401) dan admin wajib masuk ulang (sandi + TOTP).
-      expect(refreshes).toBe(51);
-      expect(endedAtHours).toBeGreaterThan(12);
-      expect(endedAtHours).toBeLessThanOrEqual(12 + 14 / 60);
-      expect(ended).toMatchObject({ me: 401 });
-      const late = await api().post(
+      const refresh = await api().post(
         "/auth/refresh",
         {},
         { cookies: { kapdh_admin_rt: refreshCookie }, headers: { origin: t.env.ADMIN_ORIGIN } },
       );
-      expect(late.statusCode).toBe(401);
-    },
-    120_000,
-  );
+      if (refresh.statusCode !== 200) {
+        ended = { me: me.statusCode, refresh: refresh.statusCode };
+        endedAtHours = hours;
+        break;
+      }
+      refreshes++;
+      accessToken = refresh.json().access_token as string;
+      refreshCookie = /kapdh_admin_rt=([^;]+)/.exec(String(refresh.headers["set-cookie"]))![1]!;
+      // Baris hasil rotasi mewarisi batas keluarga (12 jam sejak login), tidak bergeser.
+      const expires = /Expires=([^;]+)/i.exec(String(refresh.headers["set-cookie"]))?.[1];
+      expect(Date.parse(expires ?? "")).toBe(Math.floor((startedAt + 12 * 3600_000) / 1000) * 1000);
+    }
+    // Aman: sebelum 12 jam sesi tetap dapat dipakai dan diperbarui; setelah 12 jam sejak login MFA sesi berakhir
+    // (access token dan refresh ditolak 401) dan admin wajib masuk ulang (sandi + TOTP).
+    expect(refreshes).toBe(51);
+    expect(endedAtHours).toBeGreaterThan(12);
+    expect(endedAtHours).toBeLessThanOrEqual(12 + 14 / 60);
+    expect(ended).toMatchObject({ me: 401 });
+    const late = await api().post(
+      "/auth/refresh",
+      {},
+      { cookies: { kapdh_admin_rt: refreshCookie }, headers: { origin: t.env.ADMIN_ORIGIN } },
+    );
+    expect(late.statusCode).toBe(401);
+  }, 120_000);
 
   it("refresh mobile juga tidak memperpanjang umur keluarga sesi (60 hari sejak login)", async () => {
     const member = await createAlumni(t, { status: "verified" });
@@ -351,49 +330,46 @@ describe("D3-06 sesi admin tanpa batas umur absolut (N-08, PRD 5.2 'TTL refresh 
 describe("D3-04 respons token dan data pribadi tanpa Cache-Control: no-store (RFC 6749 §5.1, ASVS 8.2.1)", () => {
   const noStore = (value: unknown) => String(value ?? "").includes("no-store");
 
-  it(
-    "login, verifikasi OTP, refresh, reauth, reset token dan MFA admin tidak mengirim no-store",
-    async () => {
-      const member = await createAlumni(t, { status: "verified" });
-      const login = await api().post("/auth/login", { email: member.email, password: DEFAULT_PASSWORD });
-      expect(login.statusCode).toBe(200);
-      const refresh = await api().post("/auth/refresh", {
-        refresh_token: login.json().session.refresh_token,
-      });
-      expect(refresh.statusCode).toBe(200);
-      const reauth = await api().post(
-        "/auth/reauth",
-        { password: DEFAULT_PASSWORD },
-        { token: refresh.json().access_token },
-      );
-      expect(reauth.statusCode).toBe(200);
-      const forgot = await api().post("/auth/password/forgot", { email: member.email });
-      const verify = await api().post("/auth/password/forgot/verify", {
-        challenge_id: forgot.json().challenge_id,
-        code: t.mailer.last(member.email)!,
-      });
-      expect(verify.statusCode).toBe(200);
-      const admin = await createAdmin(t, { permissions: ["members.read"] });
-      const adminLogin = await api().post("/admin/auth/login", {
-        email: admin.email,
-        password: admin.password,
-      });
-      const mfa = await api().post("/admin/auth/mfa", {
-        mfa_token: adminLogin.json().mfa_token,
-        totp_code: totp(admin.totpSecret, t.clock.now()),
-      });
-      expect(mfa.statusCode).toBe(200);
-      const headers = {
-        login: login.headers["cache-control"],
-        refresh: refresh.headers["cache-control"],
-        reauth: reauth.headers["cache-control"],
-        reset_token: verify.headers["cache-control"],
-        admin_mfa_token: adminLogin.headers["cache-control"],
-        admin_session: mfa.headers["cache-control"],
-      };
-      for (const [name, value] of Object.entries(headers)) expect(noStore(value), name).toBe(true);
-    },
-  );
+  it("login, verifikasi OTP, refresh, reauth, reset token dan MFA admin tidak mengirim no-store", async () => {
+    const member = await createAlumni(t, { status: "verified" });
+    const login = await api().post("/auth/login", { email: member.email, password: DEFAULT_PASSWORD });
+    expect(login.statusCode).toBe(200);
+    const refresh = await api().post("/auth/refresh", {
+      refresh_token: login.json().session.refresh_token,
+    });
+    expect(refresh.statusCode).toBe(200);
+    const reauth = await api().post(
+      "/auth/reauth",
+      { password: DEFAULT_PASSWORD },
+      { token: refresh.json().access_token },
+    );
+    expect(reauth.statusCode).toBe(200);
+    const forgot = await api().post("/auth/password/forgot", { email: member.email });
+    const verify = await api().post("/auth/password/forgot/verify", {
+      challenge_id: forgot.json().challenge_id,
+      code: t.mailer.last(member.email)!,
+    });
+    expect(verify.statusCode).toBe(200);
+    const admin = await createAdmin(t, { permissions: ["members.read"] });
+    const adminLogin = await api().post("/admin/auth/login", {
+      email: admin.email,
+      password: admin.password,
+    });
+    const mfa = await api().post("/admin/auth/mfa", {
+      mfa_token: adminLogin.json().mfa_token,
+      totp_code: totp(admin.totpSecret, t.clock.now()),
+    });
+    expect(mfa.statusCode).toBe(200);
+    const headers = {
+      login: login.headers["cache-control"],
+      refresh: refresh.headers["cache-control"],
+      reauth: reauth.headers["cache-control"],
+      reset_token: verify.headers["cache-control"],
+      admin_mfa_token: adminLogin.headers["cache-control"],
+      admin_session: mfa.headers["cache-control"],
+    };
+    for (const [name, value] of Object.entries(headers)) expect(noStore(value), name).toBe(true);
+  });
 
   it("GET /me dan GET /admin/members/{id} (PII) tidak mengirim no-store", async () => {
     const member = await createAlumni(t, { status: "verified" });
