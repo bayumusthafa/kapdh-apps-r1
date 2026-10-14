@@ -310,6 +310,11 @@ export class AdminAdjustmentsService {
   /**
    * Selesaikan penyesuaian (kontrak adminCompletePaymentAdjustment): refund wajib bukti penyelesaian; satu UPDATE
    * bersyarat (completed, completed_by, rekening tujuan dikosongkan, D2), histori `adjusted`, audit, notifikasi.
+   *
+   * Pemilik payment sudah/sedang dihapus (F-14; refund pending sengaja dibiarkan job penghapusan, PRD 4.4): bukti
+   * tetap wajib sebagai syarat penyelesaian, tetapi tidak disimpan karena memuat rekening dan nama penerima (D2, AC
+   * F14-4). Rujukannya diputus pada UPDATE yang sama dan berkasnya dihapus terjamin setelah commit
+   * ({@link FilesService.eraseAfterCommit}); audit hanya mencatat sha256/ukuran berkas.
    */
   async complete(
     auth: AuthContext,
@@ -320,6 +325,7 @@ export class AdminAdjustmentsService {
     const viewer = adminViewerOf(auth);
     const target = await this.unlockedTarget(adjustmentId, viewer);
     await this.db.transaction(async (tx) => {
+      await this.lockOwner(tx, target);
       const { payment, adjustment } = await this.lockPair(tx, target);
       const current = () => this.views.adminAdjustmentDetail(tx, adjustmentId, viewer);
       if (adjustment.status !== "pending")
@@ -333,6 +339,7 @@ export class AdminAdjustmentsService {
       }
       if (adjustment.kind === "refund" && !evidenceFileId)
         throw fieldError("evidence_file_id", "Lampirkan bukti transfer refund sebelum menandai selesai.");
+      const erase = evidenceFileId !== null && (await this.ownerErased(tx, payment));
       const now = this.ledger.now();
       const [completed] = await tx
         .update(paymentAdjustments)
@@ -341,7 +348,7 @@ export class AdminAdjustmentsService {
           completedAt: now,
           completedByAdminId: auth.adminId,
           refundDestination: null,
-          evidenceFileId,
+          evidenceFileId: erase ? null : evidenceFileId,
           version: sql`${paymentAdjustments.version} + 1`,
           updatedAt: now,
         })
@@ -353,6 +360,7 @@ export class AdminAdjustmentsService {
           ),
         )
         .returning();
+      const erased = erase ? await this.files.eraseAfterCommit(tx, evidenceFileId!) : null;
       await this.ledger.insertEvent(tx, {
         paymentId: payment.id,
         kind: "adjusted",
@@ -364,7 +372,10 @@ export class AdminAdjustmentsService {
         entityType: "payment_adjustment",
         entityId: adjustmentId,
         before: this.auditView(adjustment),
-        after: this.auditView(completed!),
+        after: {
+          ...this.auditView(completed!),
+          ...(erased ? { evidence_erased: erasedEvidence(erased) } : {}),
+        },
       });
       await this.ledger.notifyOwner(tx, payment, {
         dedupKey: `payment.adjustment_completed:${adjustmentId}`,
@@ -381,6 +392,8 @@ export class AdminAdjustmentsService {
   /**
    * Batalkan penyesuaian pending dengan alasan (kontrak adminCancelPaymentAdjustment): alasan dan pelaku disimpan di
    * kolom penyesuaian (bukan dibaca dari audit), rekening tujuan dikosongkan (D2); refund → notifikasi teks baku.
+   * Bukti yang sempat dilampirkan pada payment yang pemiliknya sudah/sedang dihapus ikut dihapus terjamin (D2), sama
+   * seperti {@link complete}.
    */
   async cancel(
     auth: AuthContext,
@@ -391,11 +404,13 @@ export class AdminAdjustmentsService {
     const viewer = adminViewerOf(auth);
     const target = await this.unlockedTarget(adjustmentId, viewer);
     await this.db.transaction(async (tx) => {
+      await this.lockOwner(tx, target);
       const { payment, adjustment } = await this.lockPair(tx, target);
       const current = () => this.views.adminAdjustmentDetail(tx, adjustmentId, viewer);
       if (adjustment.status !== "pending")
         throw paymentStateConflict("Penyesuaian ini sudah selesai atau dibatalkan.", await current());
       if (adjustment.version !== expectedVersion) throw versionConflict(await current());
+      const erase = adjustment.evidenceFileId !== null && (await this.ownerErased(tx, payment));
       const now = this.ledger.now();
       const [cancelled] = await tx
         .update(paymentAdjustments)
@@ -405,6 +420,7 @@ export class AdminAdjustmentsService {
           cancelReason: input.reason,
           cancelledByAdminId: auth.adminId,
           refundDestination: null,
+          ...(erase ? { evidenceFileId: null } : {}),
           version: sql`${paymentAdjustments.version} + 1`,
           updatedAt: now,
         })
@@ -416,13 +432,17 @@ export class AdminAdjustmentsService {
           ),
         )
         .returning();
+      const erased = erase ? await this.files.eraseAfterCommit(tx, adjustment.evidenceFileId!) : null;
       await this.audit.write(tx, {
         action: "payment_adjustment.cancelled",
         entityType: "payment_adjustment",
         entityId: adjustmentId,
         reason: input.reason,
         before: this.auditView(adjustment),
-        after: this.auditView(cancelled!),
+        after: {
+          ...this.auditView(cancelled!),
+          ...(erased ? { evidence_erased: erasedEvidence(erased) } : {}),
+        },
       });
       if (adjustment.kind === "refund")
         await this.ledger.notifyOwner(tx, payment, {
@@ -447,6 +467,31 @@ export class AdminAdjustmentsService {
     if (!row) throw notFound("Penyesuaian tidak ditemukan.");
     if (conflictOfInterest(viewer, row.userId)) throw conflictOfInterestError();
     return row;
+  }
+
+  /**
+   * Baris users pemilik payment dikunci FOR SHARE sebelum payment (URUTAN KUNCI users → payments → payment_adjustments)
+   * agar status akun yang dibaca {@link ownerErased} tidak berubah sampai commit: permintaan penghapusan akun
+   * (UPDATE users → deletion_pending) menunggu penyelesaian ini, sehingga bukti yang tersimpan selalu terlihat oleh
+   * langkah `files` job penghapusan, atau penyelesaian ini sendiri melihat deletion_pending dan menghapus buktinya.
+   */
+  private async lockOwner(tx: Tx, target: { userId: string | null }): Promise<void> {
+    if (!target.userId) return;
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, target.userId)).for("share");
+  }
+
+  /**
+   * Pemilik payment sudah dihapus (payment anonim, F-14 AC F14-4) atau sedang dalam proses penghapusan
+   * (deletion_pending/deleted; penghapusan tidak dapat dibatalkan): bukti penyesuaian tidak boleh disimpan (D2).
+   */
+  private async ownerErased(tx: Tx, payment: PaymentRow): Promise<boolean> {
+    if (!payment.userId) return true;
+    const [owner] = await tx
+      .select({ status: users.status })
+      .from(users)
+      .where(eq(users.id, payment.userId))
+      .limit(1);
+    return !owner || owner.status === "deletion_pending" || owner.status === "deleted";
   }
 
   /** URUTAN KUNCI: payment asal lalu penyesuaian. */
@@ -524,6 +569,11 @@ export class AdminAdjustmentsService {
       version: adjustment.version,
     };
   }
+}
+
+/** Jejak audit bukti yang dihapus karena pemilik payment dihapus: hanya id, sha256 dan ukuran (tanpa isi, D2). */
+function erasedEvidence(file: { id: string; sha256: string; bytes: number }) {
+  return { file_id: file.id, sha256: file.sha256, bytes: file.bytes, reason_code: "owner_deleted" };
 }
 
 /** Rp60.000 (tampilan notifikasi; ARCHITECTURE §2 butir 5). */
