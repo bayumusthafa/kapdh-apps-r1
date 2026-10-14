@@ -125,6 +125,15 @@ export function enrollmentBinding(serverSecret: string, passwordHash: string): s
   return createHmac("sha256", serverSecret).update(`admin-enroll:${passwordHash}`).digest("base64url");
 }
 
+/**
+ * Pengikat mfa_token (tahap sandi admin) ke password_hash yang dinilai di tahap sandi (klaim `bnd`, AC F02-4): HMAC
+ * secret server dengan label berbeda dari pengikat pendaftaran, sehingga kedua token tidak saling menggantikan. Sandi
+ * diganti/direset sebelum tahap TOTP → pengikat tidak cocok → tahap TOTP menolak 401 tanpa sesi.
+ */
+export function mfaTokenBinding(serverSecret: string, passwordHash: string): string {
+  return createHmac("sha256", serverSecret).update(`admin-mfa:${passwordHash}`).digest("base64url");
+}
+
 /** Perbandingan waktu-konstan dua string (pengikat token). */
 export function safeEqualText(a: string, b: string): boolean {
   const x = Buffer.from(a, "utf8");

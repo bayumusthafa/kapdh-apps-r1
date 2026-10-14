@@ -103,6 +103,12 @@ paths:
         kode yang dikirim tidak dikonsumsi dan percobaan itu tidak dihitung ke batas 5 kode per admin (pemegang
         token bekas tidak dapat mengunci admin, PRD 2.5). Kode salah tidak mengonsumsi token.
 
+        mfa_token TERIKAT KREDENSIAL (AC F02-4, F02-6, N-08): token membawa `session_version` dan pengikat HMAC
+        password_hash yang dinilai di tahap sandi; keduanya dinilai ulang di bawah kunci baris users sebelum sesi
+        dibuat. Sandi diganti atau direset (POST /admin/auth/password/change, pemulihan) atau "keluar semua
+        perangkat" (session_version naik) setelah mfa_token terbit -> 401 UNAUTHENTICATED tanpa sesi, walau kode
+        benar; UI kembali ke /login.
+
         Kode salah adalah galat formulir, sama dengan /totp/confirm dan POST /auth/reauth: 400 VALIDATION_ERROR
         dengan `field_errors.totp_code` atau `field_errors.backup_code` berisi sisa percobaan (mis. "Kode salah.
         Sisa percobaan 3."); mfa_token tetap berlaku sampai kedaluwarsa sehingga UI tetap di layar /login/mfa.
@@ -138,8 +144,8 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "401":
           description: |
-            UNAUTHENTICATED: mfa_token tidak sah atau kedaluwarsa, admin tidak aktif, atau TOTP tidak terverifikasi;
-            kembali ke halaman login.
+            UNAUTHENTICATED: mfa_token tidak sah atau kedaluwarsa, sandi atau session_version berubah sejak tahap
+            sandi, admin tidak aktif, atau TOTP tidak terverifikasi; kembali ke halaman login.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

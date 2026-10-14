@@ -14,7 +14,12 @@ import { TokenService } from "./token.service.js";
 type TokenPair = components["schemas"]["TokenPair"];
 
 const HOUR_MS = 3600_000;
-/** TTL refresh (D1, dikunci pengembang Tahap 0): mobile 60 hari, admin 12 jam. */
+/**
+ * TTL refresh (D1, dikunci pengembang Tahap 0): mobile 60 hari, admin 12 jam. Umur ABSOLUT keluarga sesi sejak login
+ * (PRD 5.2 "TTL refresh ... terpisah dari idle timeout", N-08, ASVS 3.3.2): rotasi refresh tidak memperpanjangnya,
+ * sehingga admin aktif tetap wajib sandi + TOTP lagi paling lambat 12 jam setelah login (idle 30 menit tetap terpisah)
+ * dan perangkat mobile wajib masuk ulang paling lambat 60 hari setelah login.
+ */
 export const REFRESH_TTL_MS: Readonly<Record<SessionAudience, number>> = {
   mobile: 60 * 24 * HOUR_MS,
   admin: 12 * HOUR_MS,
@@ -39,6 +44,11 @@ export interface IssueSessionInput {
   deviceName?: string;
   /** Diisi pada rotasi refresh (keluarga yang sama); kosong = keluarga baru. */
   familyId?: string;
+  /**
+   * Batas umur keluarga sesi (expires_at baris yang dirotasi). Wajib diisi bersama `familyId` pada rotasi: baris baru
+   * mewarisi batas ini dan tidak pernah melewatinya, sehingga TTL refresh adalah umur absolut keluarga sejak login.
+   */
+  familyExpiresAt?: Date;
 }
 
 /**
@@ -65,7 +75,11 @@ export class SessionIssuer {
     const sessionId = uuidv7();
     const familyId = input.familyId ?? uuidv7();
     const refreshToken = randomToken();
-    const refreshExpiresAt = new Date(now.getTime() + REFRESH_TTL_MS[input.audience]);
+    // Keluarga baru: login + TTL. Rotasi: batas keluarga yang sama (tidak bergeser), dibatasi TTL dari sekarang.
+    const ttlEnd = now.getTime() + REFRESH_TTL_MS[input.audience];
+    const refreshExpiresAt = new Date(
+      input.familyExpiresAt ? Math.min(input.familyExpiresAt.getTime(), ttlEnd) : ttlEnd,
+    );
     const admin = input.audience === "admin";
     await tx.insert(sessions).values({
       id: sessionId,

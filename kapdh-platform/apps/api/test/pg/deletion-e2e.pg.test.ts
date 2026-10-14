@@ -23,8 +23,8 @@
  *   D5-01 inbox anggota lain memuat nama anggota yang dihapus (notifikasi chat direct);
  *   D5-02 respons idempotensi pengurus (check-in) memuat nama/nomor anggota sampai 24 jam;
  *   D5-03 bukti refund yang diunggah SETELAH penghapusan tidak pernah dihapus;
- *   D5-04 notifikasi yang dibuat selama jendela deletion_pending setelah langkah notifications tersisa;
- *   D5-05 N anggota yang dihapus setelah titik backup dialokasikan ulang setelah restore + ledger.
+ *   D5-04 (diperbaiki, kini `it`) notifikasi yang dibuat selama jendela deletion_pending setelah langkah notifications;
+ *   D5-05 (diperbaiki, kini `it`) N anggota yang dihapus setelah titik backup dialokasikan ulang setelah restore + ledger.
  */
 import "reflect-metadata";
 import type { Permission } from "@kapdh/contracts";
@@ -1206,17 +1206,29 @@ describe("LENS D5: celah privasi yang ditemukan (it.fails = celah masih ada)", (
     expect(first).toMatchObject({ outcome: "failed", step: "files" });
     await relogin(S.treasurer);
     await approve(ticket.payment.id);
+    // Perbaikan D5-04: keputusan payment untuk akun deletion_pending tidak menulis inbox (tanpa outbox/email).
     const created = await rt.owner.db
       .select()
       .from(notifications)
       .where(eq(notifications.userId, fixture.userId));
-    expect(created.length).toBeGreaterThan(0);
+    expect(created).toEqual([]);
+    // Notifikasi yang lolos pemeriksaan status secara bersamaan (disimulasikan langsung) disapu langkah credentials.
+    await rt.owner.db.insert(notifications).values({
+      id: uuidv7(),
+      userId: fixture.userId,
+      category: "payment",
+      title: "Pembayaran disetujui",
+      body: "Notifikasi yang lolos bersamaan selama jendela retry.",
+      data: {},
+      dedupKey: `u:${fixture.userId}:uji-d5-04:${uuidv7()}`,
+      createdAt: clock.now(),
+    });
     clock.advance(HOUR);
     const second = await runAsSystem(() => processor.run(row!.id), { jobId: `account.deletion:${uuidv7()}` });
     expect(second).toMatchObject({ outcome: "completed" });
   });
 
-  gap(
+  it(
     "D5-04 (D2, AC F14-2/F14-3): inbox yang dibuat selama jendela deletion_pending ikut dihapus saat retry",
     async () => {
       // Celah: retry melanjutkan dari steps_done (notifications sudah selesai), sehingga notifikasi baru itu tetap ada
@@ -1266,7 +1278,7 @@ describe("LENS D5: celah privasi yang ditemukan (it.fails = celah masih ada)", (
     rt = await openRuntime(liveDb, liveStorage);
   });
 
-  gap(
+  it(
     "D5-05 (PRD 6.4, AC F14-6): setelah restore + ledger, N anggota yang sudah dihapus tidak dialokasikan ulang",
     () => {
       // Celah: entri ledger tidak memuat N dan penerapan ulang tidak memajukan membership_no_seq, sehingga N milik

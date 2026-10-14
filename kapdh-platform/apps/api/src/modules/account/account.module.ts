@@ -5,6 +5,7 @@ import { AccountDeletionController, WebDeletionController } from "./account.cont
 import { AccountDeletionService } from "./account-deletion.service.js";
 import { DeletionDecoyOtpInterceptor } from "./deletion-decoy-otp.interceptor.js";
 import { DeletionDisclosureService } from "./deletion-disclosure.service.js";
+import { DeletionLedgerGate } from "./deletion-ledger-gate.js";
 import { OtpQuota } from "./otp-policy.js";
 import { WebDeletionDecoys } from "./web-deletion-decoys.js";
 import { WebDeletionService } from "./web-deletion.service.js";
@@ -14,7 +15,7 @@ import { WebDeletionService } from "./web-deletion.service.js";
  * (/public/deletion/challenge, /verify, /confirm), job penghapusan dan deletion ledger (modul job).
  * Challenge pengganti penghapusan web pada POST /auth/otp/resend dan /auth/otp/status dijawab
  * {@link DeletionDecoyOtpInterceptor} (non-enumerasi, PRD 2.5); `WebDeletionDecoys` tetap diekspor agar modul auth
- * dapat mendelegasikan langsung.
+ * dapat mendelegasikan langsung. `DeletionLedgerGate` diekspor untuk readiness GET /health/ready (AC F14-6).
  */
 @Module({
   imports: [AccountJobsModule],
@@ -25,8 +26,9 @@ import { WebDeletionService } from "./web-deletion.service.js";
     WebDeletionService,
     WebDeletionDecoys,
     OtpQuota,
+    DeletionLedgerGate,
     { provide: APP_INTERCEPTOR, useClass: DeletionDecoyOtpInterceptor },
   ],
-  exports: [WebDeletionDecoys],
+  exports: [WebDeletionDecoys, DeletionLedgerGate],
 })
 export class AccountModule {}
