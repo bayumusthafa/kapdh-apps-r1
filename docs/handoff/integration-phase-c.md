@@ -256,3 +256,37 @@ Found by the first full API run after merge 1; neither involves an api-admin fil
   session row. `register` now takes `users` FOR SHARE as its first statement (the auth slice's documented order:
   owner row before session rows; SHARE is compatible with refresh rotation and conflicts with revocation), so
   register and logout serialize: 204 then revoked, or 401.
+
+## Final verification (final tree, commit be6de01)
+
+Run from `kapdh-platform` after the last commit; every result below was observed in this session.
+
+| Command                                       | Result                                                                                                                                     |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm build`                                  | pass, 10/10 tasks                                                                                                                          |
+| `pnpm typecheck`                              | pass, 16/16 tasks                                                                                                                          |
+| `pnpm lint`                                   | pass, 9/9 tasks (only the 2 known redocly `no-ambiguous-paths` warnings)                                                                   |
+| `pnpm exec turbo run test --concurrency=1`    | pass, 16/16 tasks: api 109 files 1351, admin 41 files 461, web 169, worker 54, contracts 39, config 24, storage 33, database 23, shared 16 |
+| `pnpm --filter @kapdh/api test:pg`            | pass, 23 files, 153 tests                                                                                                                  |
+| `pnpm contracts:lint`                         | pass, valid (2 known warnings); event schemas valid                                                                                        |
+| `pnpm contracts:test-dart`                    | pass, analyze clean and fixture tests pass                                                                                                 |
+| `pnpm format:check`                           | pass                                                                                                                                       |
+| `pnpm --filter @kapdh/worker test:pg` (extra) | pass, 3 files, 11 tests                                                                                                                    |
+
+## Still open after this track (carried from the slice reports, not integration conflicts)
+
+- Ops/infra: `infra/Dockerfile.worker` never built as an image and `infra/nginx-web.conf` never run through
+  `nginx -t` (no Docker/nginx on this machine); BullMQ Lua paths not exercised against a real Redis (staging smoke
+  test: enqueue/dedup, stalled jobs, backpressure across instances).
+- `test/core/worker-package.e2e.test.ts` has a 30 s timeout that the worker slice saw flake under heavy load (it
+  passed in every run here).
+- Product decisions: admin-events allows ticket-price changes behind a confirmation (contract `adminUpdateEvent`)
+  instead of the task text's price lock; check-in scanner lists only events whose window opens within 24 h.
+- Admin UI gaps: D13 `adminRecordPayment` has no screen; `nav.ts` labels `/payments` "Verifikasi Pembayaran" for a
+  settings-only admin; `ROUTE_ACCESS` lets members.manage-only admins open member pages that then show Forbidden;
+  no deep link to a single payment from members/events; precondition 400s show the default toast next to the page
+  notice; admin-payments reads `conflict_of_interest` through one extra payment-detail request (an additive field
+  on `AdminPaymentAdjustment` would remove it); the post conflict notice cannot name the last editor (no
+  `updated_by` on `AdminPost`).
+- Client evidence for the admin and web slices runs against mocks (PRD 7.3); end-to-end runs against the merged
+  API are still to do.
