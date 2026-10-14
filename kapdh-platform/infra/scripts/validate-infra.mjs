@@ -253,15 +253,15 @@ if (dev) {
       if (!String(port).startsWith("127.0.0.1:")) fail(path, `${name}: port dev harus terikat 127.0.0.1`);
 }
 // Workflow CI (.github/workflows/ci.yml, aturan umum di infra/ci/check-workflows.mjs) wajib tetap menjalankan
-// pemeriksaan infra ini: validasi statis, uji kering job rilis, uji asap header image dan stack Compose lengkap.
+// pemeriksaan infra ini: validasi statis, uji kering job rilis, uji asap header image dan stack Compose lengkap, serta
+// jalur klien admin terhadap API nyata (`pnpm test:live`, temuan audit D2-14). Setiap pemeriksaan wajib berada di job
+// yang menjadi syarat status "CI lulus" (ci-ok.needs).
 {
   const path = "../.github/workflows/ci.yml";
   const ci = parseYaml(path);
   if (ci) {
-    const runs = Object.values(ci.jobs ?? {})
-      .flatMap((job) => job.steps ?? [])
-      .map((step) => step.run ?? "")
-      .join("\n");
+    const required = new Set(ci.jobs?.["ci-ok"]?.needs ?? []);
+    const runsOf = (job) => (job.steps ?? []).map((step) => step.run ?? "").join("\n");
     for (const needle of [
       "node infra/scripts/validate-infra.mjs",
       "sh infra/scripts/release-job.test.sh",
@@ -271,9 +271,19 @@ if (dev) {
       "sh infra/scripts/smoke-static.sh admin",
       "sh infra/scripts/ci-stack-smoke.sh",
       "--target release",
-    ])
-      if (!runs.includes(needle)) fail(".github/workflows/ci.yml", `tidak menjalankan ${needle}`);
-    if (!(ci.jobs?.["ci-ok"]?.needs ?? []).includes("compose-stack"))
+      "pnpm test:live",
+    ]) {
+      const jobs = Object.entries(ci.jobs ?? {})
+        .filter(([, job]) => runsOf(job).includes(needle))
+        .map(([name]) => name);
+      if (jobs.length === 0) fail(".github/workflows/ci.yml", `tidak menjalankan ${needle}`);
+      else if (!jobs.some((name) => required.has(name)))
+        fail(
+          ".github/workflows/ci.yml",
+          `${needle} hanya di job ${jobs.join(", ")} yang bukan syarat "CI lulus"`,
+        );
+    }
+    if (!required.has("compose-stack"))
       fail(".github/workflows/ci.yml", "status CI lulus tidak bergantung pada job compose-stack");
   }
 }
@@ -303,6 +313,11 @@ try {
         if (!routers[name]?.tls?.certResolver) fail("traefik", `${name} tanpa TLS`);
         const url = services[name]?.loadBalancer?.servers?.[0]?.url ?? "";
         if (!url.startsWith(`http://kapdh-${env}-${svc}-1:`)) fail("traefik", `${name} menunjuk ${url}`);
+        // API: readiness (gerbang deletion ledger AC F14-6, ADR-014), sama dengan healthcheck Coolify; web/admin: /healthz.
+        const health = services[name]?.loadBalancer?.healthCheck?.path;
+        const expected = svc === "api" ? "/api/v1/health/ready" : "/healthz";
+        if (health !== expected)
+          fail("traefik", `${name}: healthCheck ${health ?? "(tidak ada)"}, seharusnya ${expected}`);
       }
     if (dyn.tls?.options?.default?.minVersion !== "VersionTLS12") fail("traefik", "TLS minimal 1.2 (N-07)");
     if (

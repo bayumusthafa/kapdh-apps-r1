@@ -1,7 +1,7 @@
 # Runbook: backup, restore dan restore drill KAPDH
 
 Pemilik: pengelola infra (PRD 5.5, D9). Saksi drill: QA. Persetujuan operasional: pengelola infra (PRD 9.3).
-Rujukan: PRD 2.4 N-06, 3.14 AC F14-6 dan D2, 5.5, 8.2, 8.3, 8.4, 9.1 U-11/U-12, 9.2 #9, 10.1 D9; ARCHITECTURE §10.
+Rujukan: PRD 2.4 N-06, 3.14 AC F14-6 dan D2, 5.5, 8.2, 8.3, 8.4, 9.1 U-11/U-12, 9.2 #8, 10.1 D9; ARCHITECTURE §10.
 Perkakas: `kapdh-platform/infra/backup/` (skrip), `kapdh-platform/infra/db/roles.sql` (role), CLI
 `ledger-reapply` di image API. Urutan sisi aplikasi (kepala ledger, gerbang readiness `deletion_ledger`, floor
 nomor anggota) dijelaskan juga di `docs/runbooks/restore-backup.md`; keputusan desain: ADR-014, ADR-018, ADR-019.
@@ -24,8 +24,8 @@ Urutan deployment Compose cadangan (bila Coolify tidak tersedia) dan daftar secr
 | RPO (data hilang maksimal)           | ≤ 24 jam (N-06)           | Backup harian 02:15 WIB + alert umur backup > 26 jam; drill mencatat umur backup saat restore dimulai                                                                                          |
 | RTO (waktu pulih maksimal)           | ≤ 4 jam (N-06)            | Drill mencatat waktu dari keputusan restore sampai layanan siap dibuka (bagian 8.4)                                                                                                            |
 | Retensi                              | 30 hari, tidak lebih (D2) | Setiap run: dump di luar 30 hari dilupakan, snapshot berkas dilupakan berpasangan, `restic prune --max-unused 0`; backup.sh menolak `RETENTION_DAYS + BUCKET_NONCURRENT_DAYS` > 30 (bagian 10) |
-| Penghapusan akun tidak hidup kembali | AC F14-6, PRD 9.2 #9      | Deletion ledger di luar VPS diterapkan ulang sebelum layanan dibuka; verify-restore.sh                                                                                                         |
-| Total uang tetap cocok               | PRD 9.2 #9                | Statistik invariant di manifest = database pulihan (verify-restore.sh)                                                                                                                         |
+| Penghapusan akun tidak hidup kembali | AC F14-6, PRD 9.2 #8      | Deletion ledger di luar VPS diterapkan ulang sebelum layanan dibuka; verify-restore.sh                                                                                                         |
+| Total uang tetap cocok               | PRD 9.2 #8                | Statistik invariant di manifest = database pulihan (verify-restore.sh)                                                                                                                         |
 
 ## 2. Arsitektur backup
 
@@ -95,6 +95,11 @@ Pemisahan kunci (PRD 5.5 "kunci backup disimpan terpisah dari salinan backup"):
    `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `PGPASSWORD` atau `PGPASSFILE`, dan
    `RCLONE_CONFIG_KAPDHLEDGER_*`. Tulis kata sandi restic acak (≥ 32 karakter) ke `/etc/kapdh/restic-password` (0600)
    dan simpan juga di password manager + salinan cetak (D9).
+   **Topologi** (bawaan contoh): `FILES_ROOT=/srv/kapdh/production/files`, yaitu direktori host yang di-bind ke
+   `/data/files` kontainer API/worker oleh resource Coolify maupun Compose cadangan (`KAPDH_FILES_DIR`); di runbook
+   ini `/data/files` berarti direktori itu bila perintah dijalankan di host. PostgreSQL tidak diterbitkan ke host
+   (jaringan Docker internal), maka `PG_EXEC` menjalankan `pg_dump`/`psql` di kontainer PostgreSQL
+   (`kapdh-production-postgres-1` pada Compose; nama kontainer resource PostgreSQL pada Coolify).
    **Versi image** (PRD 5.5, manifest `images.*`): isi `IMAGE_API`/`IMAGE_WORKER` (tag@digest) dan perbarui setiap
    rilis sebagai langkah runbook rilis, ATAU isi `CONTAINER_API`/`CONTAINER_WORKER` dengan filter label
    (`label=<kunci>=<nilai>`; cek `docker ps --filter "<filter>" --format '{{.Image}}'` menampilkan tepat satu

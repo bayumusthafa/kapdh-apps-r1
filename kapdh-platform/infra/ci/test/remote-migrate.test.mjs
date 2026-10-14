@@ -49,6 +49,14 @@ case "$cmd" in
     exit 0 ;;
   create) printf '%s\\n' "fakecid0001"; exit 0 ;;
   cp)
+    case "$1" in
+      *_journal.json)
+        [ -z "\${FAKE_NO_JOURNAL:-}" ] || exit 1
+        i=0
+        : >"$2"
+        while [ "$i" -lt "\${FAKE_JOURNAL_TAGS:-8}" ]; do printf '{"idx":%s,"tag":"%04d_m"}\\n' "$i" "$i" >>"$2"; i=$((i + 1)); done
+        exit 0 ;;
+    esac
     [ -z "\${FAKE_NO_ROLES:-}" ] || exit 1
     printf '%s\\n' "\${FAKE_ROLES:--- roles kapdh_migrator}" >"$2"
     exit 0 ;;
@@ -60,6 +68,10 @@ case "$cmd" in
         printf 'PGDMP-palsu'
         exit 0 ;;
       *pg_restore*) cat >/dev/null; exit "\${FAKE_RESTORE_EXIT:-0}" ;;
+      *SQL_COUNT*)
+        [ -z "\${FAKE_SCHEMA_FAIL:-}" ] || exit 1
+        printf '%s\\n' "\${FAKE_DB_MIGRATIONS:-0}"
+        exit 0 ;;
       *migrate.js*) exit "\${FAKE_MIGRATE_EXIT:-0}" ;;
       *seed-reference.js*) exit "\${FAKE_SEED_EXIT:-0}" ;;
       *golive-check.js*--preflight*) echo "laporan pra-migrasi palsu"; exit "\${FAKE_PREFLIGHT_EXIT:-0}" ;;
@@ -120,7 +132,9 @@ function stepOf(line) {
   if (line.includes("seed-reference.js")) return "seed";
   if (line.includes("golive-check.js --preflight")) return "gate-preflight";
   if (line.includes("golive-check.js")) return "gate";
-  return "roles";
+  if (line.includes("-e SQL_COUNT")) return "schema";
+  if (line.includes("/kapdh/roles.sql:ro")) return "roles";
+  return `tak-dikenal: ${line}`;
 }
 
 const steps = (docker) =>
@@ -155,7 +169,7 @@ describe(
       const r = run({ command: `migrate staging ${REF}` });
       assert.equal(r.status, 0, r.out);
       // Staging = mode laporan: gerbang pra-migrasi dilewati, gerbang penuh hanya dicetak.
-      assert.deepEqual(steps(r.docker), ["roles", "migrate", "roles", "seed", "gate"]);
+      assert.deepEqual(steps(r.docker), ["schema", "roles", "migrate", "roles", "seed", "gate"]);
       assert.match(r.docker, /docker create ghcr\.io\/kapdh\/kapdh-api@sha256:a{64}/);
       assert.match(r.docker, /docker cp fakecid0001:\/app\/db\/roles\.sql /);
       // SQL yang dijalankan berasal dari image, bukan stdin klien.
@@ -232,6 +246,7 @@ describe(
       assert.deepEqual(steps(ok.docker), [
         "dump",
         "verify-dump",
+        "schema",
         "roles",
         "gate-preflight",
         "migrate",
@@ -331,7 +346,7 @@ describe(
 
       const failed = run({ command: `migrate staging ${REF}`, env: { FAKE_MIGRATE_EXIT: "1" } });
       assert.equal(failed.status, 1);
-      assert.deepEqual(steps(failed.docker), ["roles", "migrate"]);
+      assert.deepEqual(steps(failed.docker), ["schema", "roles", "migrate"]);
       assert.match(failed.out, /JANGAN dideploy/);
     });
 
@@ -343,7 +358,7 @@ describe(
       });
       assert.equal(r.status, 1, r.out);
       assert.match(r.out, /pra-migrasi MENOLAK/);
-      assert.deepEqual(steps(r.docker), ["dump", "verify-dump", "roles", "gate-preflight"]);
+      assert.deepEqual(steps(r.docker), ["dump", "verify-dump", "schema", "roles", "gate-preflight"]);
     });
 
     it("PRD 9.2 #9: production (enforce) - gerbang penuh menolak sesudah migrasi: kode 1, image tidak dideploy", () => {
@@ -442,6 +457,86 @@ describe(
       });
       assert.equal(client.status, 1);
       assert.equal(client.docker, "");
+    });
+
+    it("nama variabel job rilis manual (RELEASE_GATE*) di konfigurasi atau environment ditolak dengan pesan jelas", () => {
+      for (const extra of [
+        { RELEASE_GATE: "report" },
+        { RELEASE_GATE_REASON: "inisialisasi pertama PRD 8.2" },
+        { RELEASE_GATE_APPROVER: "Pemilik Produk" },
+      ]) {
+        config("production", extra);
+        try {
+          const r = run({ bound: ["production"], command: `migrate production ${REF} v1.2.0` });
+          const [name] = Object.keys(extra);
+          assert.equal(r.status, 1, r.out);
+          assert.match(r.out, new RegExp(`${name} tidak berlaku untuk job migrasi CI; tulis KAPDH_${name}`));
+          assert.equal(r.docker, "");
+        } finally {
+          config("production");
+        }
+      }
+      const env = run({
+        bound: ["production"],
+        command: `migrate production ${REF} v1.2.0`,
+        env: { RELEASE_GATE: "report" },
+      });
+      assert.equal(env.status, 1);
+      assert.match(env.out, /RELEASE_GATE tidak berlaku untuk job migrasi CI/);
+      assert.equal(env.docker, "");
+    });
+
+    it("rollback image (skema lebih baru dari journal image): roles.sql, migrasi dan seed image lama DILEWATI; gerbang tetap berjalan", () => {
+      const r = run({
+        bound: ["production"],
+        command: `migrate production ${REF} v1.1.0`,
+        env: { FAKE_DB_MIGRATIONS: "10", FAKE_JOURNAL_TAGS: "8" },
+      });
+      assert.equal(r.status, 0, r.out);
+      // roles.sql lama tidak pernah diterapkan (hak tabel yang dibatasi rilis baru tetap), skema dan data tidak diubah.
+      assert.deepEqual(steps(r.docker), ["dump", "verify-dump", "schema", "gate-preflight", "gate"]);
+      assert.doesNotMatch(r.docker, /^-- roles kapdh_migrator$/m);
+      assert.match(r.out, /migrasi tercatat 10, journal image 8/);
+      assert.match(r.out, /memuat 2 migrasi yang tidak dikenal image ini/);
+      assert.match(r.out, /1\/6 roles\.sql DILEWATI/);
+      assert.match(r.out, /4\/6 roles\.sql DILEWATI/);
+      assert.match(r.out, /5\/6 seed referensi DILEWATI/);
+      // Gerbang penuh tetap menolak konfigurasi yang belum disahkan pada rollback (mode enforce).
+      const refused = run({
+        bound: ["production"],
+        command: `migrate production ${REF} v1.1.0`,
+        env: { FAKE_DB_MIGRATIONS: "10", FAKE_JOURNAL_TAGS: "8", FAKE_GATE_EXIT: "1" },
+      });
+      assert.equal(refused.status, 1);
+      assert.match(refused.out, /image JANGAN dideploy/);
+
+      // Skema sama dengan journal (deploy ulang tag yang sama) atau tertinggal: urutan normal.
+      for (const count of ["8", "0"]) {
+        const same = run({ command: `migrate staging ${REF}`, env: { FAKE_DB_MIGRATIONS: count } });
+        assert.equal(same.status, 0, same.out);
+        assert.deepEqual(steps(same.docker), ["schema", "roles", "migrate", "roles", "seed", "gate"]);
+      }
+    });
+
+    it("versi skema tidak terbaca atau journal image tidak ada: berhenti sebelum roles.sql", () => {
+      const unreadable = run({ command: `migrate staging ${REF}`, env: { FAKE_SCHEMA_FAIL: "1" } });
+      assert.equal(unreadable.status, 1);
+      assert.match(unreadable.out, /versi skema database tidak dapat dibaca/);
+      assert.deepEqual(steps(unreadable.docker), ["schema"]);
+
+      const invalid = run({ command: `migrate staging ${REF}`, env: { FAKE_DB_MIGRATIONS: "t" } });
+      assert.equal(invalid.status, 1);
+      assert.match(invalid.out, /jumlah migrasi tercatat tidak valid/);
+
+      const noJournal = run({ command: `migrate staging ${REF}`, env: { FAKE_NO_JOURNAL: "1" } });
+      assert.equal(noJournal.status, 1);
+      assert.match(noJournal.out, /tidak memuat journal migrasi/);
+      assert.deepEqual(steps(noJournal.docker), []);
+
+      const emptyJournal = run({ command: `migrate staging ${REF}`, env: { FAKE_JOURNAL_TAGS: "0" } });
+      assert.equal(emptyJournal.status, 1);
+      assert.match(emptyJournal.out, /journal migrasi image kosong/);
+      assert.deepEqual(steps(emptyJournal.docker), []);
     });
 
     it("pengelola infra dapat menjalankan manual dengan argumen yang sama (lingkungan tetap terikat)", () => {

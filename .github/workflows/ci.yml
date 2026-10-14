@@ -79,7 +79,7 @@ jobs:
       - name: Build
         run: pnpm build
       # Compose/env/Dockerfile/Traefik (butuh @kapdh/config hasil build), uji kering job rilis, backup/restore dan
-      # pemeriksaan monitoring dengan alat palsu (PRD 5.5, 9.2 #9; N-06; AC F14-6; temuan audit D2-03, D2-07, D3-07).
+      # pemeriksaan monitoring dengan alat palsu (PRD 5.5, 9.2 #8 dan #9; N-06; AC F14-6; temuan audit D2-03, D2-07, D3-07).
       - name: Validasi statis infra dan uji kering job rilis, backup, monitoring
         run: |
           set -euo pipefail
@@ -127,6 +127,11 @@ jobs:
       # Konkurensi 2 mengurangi timeout palsu pada uji berat (catatan integrasi fase C).
       - name: pnpm test
         run: pnpm exec turbo run test --concurrency=2
+      # Klien admin terhadap API hasil build nyata (PGlite + seed dev, port TCP lokal): login + TOTP, keputusan
+      # bersamaan 409, "Catat iuran" D13, peringatan dan pencabutan sesi idle (temuan audit D2-14, PRD 7.3/9.3;
+      # ARCHITECTURE §9.3). Bukan bagian pnpm test; turbo membangun apps/api lebih dulu.
+      - name: pnpm test:live (admin terhadap API nyata)
+        run: pnpm test:live
 
   test-pg:
     name: Uji PostgreSQL 17 nyata (api, worker)
@@ -215,7 +220,7 @@ jobs:
         working-directory: kapdh-mobile
         run: |
           set -euo pipefail
-          git ls-files -z -- 'lib/*.dart' 'test/*.dart' \
+          git ls-files -z -- 'lib/*.dart' 'test/*.dart' 'integration_test/*.dart' 'test_driver/*.dart' \
             | grep -zv '^lib/app/theme/kapdh_tokens.dart$' \
             | xargs -0 dart format --output=none --set-exit-if-changed
       - name: flutter analyze

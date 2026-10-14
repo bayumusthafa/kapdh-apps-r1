@@ -10,7 +10,7 @@ terpisah), 7.1, 8.2 langkah 5-6, 8.3, 8.4; D7 (Android 8.0+, iOS 15+), D10 (FCM/
 | Alat | Versi | Catatan |
 | --- | --- | --- |
 | Flutter / Dart | 3.47.2 / 3.13.2 | Dipin; `pubspec.lock` dikunci untuk versi ini. CI: `.github/actions/setup-flutter`. |
-| JDK | 21 (Temurin) | Untuk build Android (Gradle 9, AGP 9). Tidak ada di mesin build Windows; build Android dilakukan CI atau mesin lain. |
+| JDK | 21 (Temurin) | Untuk build Android (Gradle 9, AGP 9). Mesin build Windows: Temurin 21 lewat `flutter config --jdk-dir`; APK debug/profile sudah dibangun dan dijalankan di emulator Android 15 pada Phase D (`../../docs/qa/device-matrix.md`). Build rilis bertanda tangan (bagian 3.2) hanya di mesin tepercaya yang memegang kunci unggah; IPA hanya di macOS + Xcode (belum dibangun). |
 | Android SDK | sesuai `flutter.compileSdkVersion` | minSdk 26 (Android 8.0, D7). |
 | Xcode + CocoaPods | versi yang didukung Flutter 3.47 | Hanya macOS. Deployment target iOS 15.0 (D7). |
 | SDK `kapdh_api` | dibangkitkan | `cd ../kapdh-platform && pnpm install && pnpm contracts:gen`, lalu `flutter pub get`. |

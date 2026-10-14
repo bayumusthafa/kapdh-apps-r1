@@ -115,14 +115,17 @@ if [ "$staging" = "true" ]; then
   router staging-api "$(host "$stg_api")"
 fi
 
+# API memakai READINESS (/api/v1/health/ready), sama dengan healthcheck Coolify: database pulihan yang belum menjalankan
+# ledger-reapply menjawab 503 (deletion_ledger: fail) sehingga Traefik tidak merutekan trafik ke sana (AC F14-6, PRD 9.2
+# #8, ADR-014). HEALTHCHECK image tetap liveness (/api/v1/health) agar kontainer tidak di-restart saat dependensi turun.
 printf '  services:\n'
 service production-web "http://kapdh-production-web-1:8080" /healthz
 service production-admin "http://kapdh-production-admin-1:8080" /healthz
-service production-api "http://kapdh-production-api-1:3000" /api/v1/health
+service production-api "http://kapdh-production-api-1:3000" /api/v1/health/ready
 if [ "$staging" = "true" ]; then
   service staging-web "http://kapdh-staging-web-1:8080" /healthz
   service staging-admin "http://kapdh-staging-admin-1:8080" /healthz
-  service staging-api "http://kapdh-staging-api-1:3000" /api/v1/health
+  service staging-api "http://kapdh-staging-api-1:3000" /api/v1/health/ready
 fi
 
 printf 'tls:\n'
