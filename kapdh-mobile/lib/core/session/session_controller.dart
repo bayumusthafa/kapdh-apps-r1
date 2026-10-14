@@ -6,6 +6,7 @@ import 'package:kapdh_api/kapdh_api.dart';
 
 import '../api/api_providers.dart';
 import '../api/api_signals.dart';
+import '../cache/kta_avatar_cache.dart';
 import '../cache/kta_cache_store.dart';
 import '../storage/token_store.dart';
 import 'me_snapshot_store.dart';
@@ -14,8 +15,14 @@ import 'session_state.dart';
 
 final meSnapshotStoreProvider = Provider<MeSnapshotStore>((ref) => MeSnapshotStore(ref.watch(secureStoreProvider)));
 
+/// Cache KTA offline; foto KTA (cache disk tersendiri) ikut dihapus setiap kali cache kartu dihapus: logout, sesi
+/// dicabut, berganti akun, status dibatasi, atau kartu tidak sah lagi untuk tampil offline (PRD 5.2, AC F05-3).
 final ktaCacheStoreProvider = Provider<KtaCacheStore>(
-  (ref) => KtaCacheStore(ref.watch(secureStoreProvider), clock: ref.watch(clockProvider)),
+  (ref) => KtaCacheStore(
+    ref.watch(secureStoreProvider),
+    clock: ref.watch(clockProvider),
+    onClear: () => ref.read(ktaAvatarCacheProvider).clear(),
+  ),
 );
 
 final sessionProvider = NotifierProvider<SessionController, SessionState>(SessionController.new);
