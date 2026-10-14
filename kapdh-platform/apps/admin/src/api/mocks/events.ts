@@ -828,7 +828,7 @@ reset();
 /**
  * Baca satu event untuk server tiruan area lain (tujuan banner di mocks/content.ts). Pencarian tujuan banner memakai
  * GET /admin/events di sini, sehingga event yang dipilih harus dikenali juga oleh validasi dan tampilan tujuan banner
- * (satu sumber event di dev:mock). Hanya baca; tidak mengubah keadaan.
+ * (satu sumber event di dev:mock; dasbor memakai peekEventStatsForMocks). Hanya baca; tidak mengubah keadaan.
  */
 export function peekEventForMocks(
   id: string,
@@ -842,6 +842,55 @@ export function peekEventForMocks(
     status: e.status,
     category: c ? { id: c.id, slug: c.slug, label: c.label } : null,
   };
+}
+
+/** Hitungan kursi dan tiket satu event menurut proyeksi baca tiruan ini (lihat peekEventStatsForMocks). */
+export interface MockEventStats {
+  id: string;
+  title: string;
+  status: EventStatus;
+  starts_at: string;
+  ends_at: string;
+  timezone: string;
+  location_name: string | null;
+  seats_total: number;
+  /** Tiket paid (paid_quantity). */
+  paid_quantity: number;
+  /** Kursi ditahan awaiting_payment/awaiting_review yang belum lewat hold (held_quantity). */
+  held_quantity: number;
+  seats_available: number;
+  /** Tiket awaiting_review. */
+  awaiting_review_quantity: number;
+  checked_in_count: number;
+}
+
+/**
+ * Semua event beserta hitungan kursinya untuk server tiruan area lain (dasbor di mocks/dashboard.ts). Tautan dasbor
+ * membuka /events/$eventId yang dijawab tiruan ini, sehingga dasbor harus memakai id, judul dan hitungan yang sama
+ * (satu sumber event di dev:mock). Hitungan memakai aturan proyeksi baca yang sama dengan daftar dan detail event.
+ * Hanya baca; tidak mengubah keadaan.
+ */
+export function peekEventStatsForMocks(): MockEventStats[] {
+  const now = nowMs();
+  return [...events.values()].map((e) => {
+    const c = seatCounts(e, now);
+    return {
+      id: e.id,
+      title: e.title,
+      status: e.status,
+      starts_at: e.starts_at,
+      ends_at: e.ends_at,
+      timezone: e.timezone,
+      location_name: e.location_name,
+      seats_total: e.seats_total,
+      paid_quantity: c.paid,
+      held_quantity: c.held,
+      seats_available: c.available,
+      awaiting_review_quantity: ticketsOf(e.id).filter((t) => projectedStatus(t, now) === "awaiting_review")
+        .length,
+      checked_in_count: c.checkedIn,
+    };
+  });
 }
 
 /** Kendali server tiruan untuk uji dan dev:mock. */
