@@ -1,13 +1,195 @@
 ---
+import StoreButtons from "../components/StoreButtons.astro";
 import Base from "../layouts/Base.astro";
+
+// Fitur Utama sesuai Guidelines KAPDH v1.0 halaman 4 (kartu putih dan hijau bergantian).
+const features = [
+  {
+    title: "KTA Alumni",
+    body: "Pendataan dan pengelolaan informasi alumni, lengkap dengan kartu tanda anggota digital ber-QR.",
+    dark: false,
+    icon: ["M3 5h18v14H3z", "M8.5 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z", "M5.5 16a3 3 0 0 1 6 0", "M14 9h4", "M14 13h4"],
+  },
+  {
+    title: "Jejaring",
+    body: "Fitur untuk membangun dan memperluas jaringan serta hubungan antar alumni.",
+    dark: true,
+    icon: [
+      "M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z",
+      "M5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+      "M19 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+      "M5 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+      "M19 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+      "m6.5 6.5 3 3M17.5 6.5l-3 3M6.5 17.5l3-3M17.5 17.5l-3-3",
+    ],
+  },
+  {
+    title: "Event",
+    body: "Menampilkan informasi kegiatan atau acara KAPDH dan pondok pesantren yang dapat diikuti alumni.",
+    dark: false,
+    icon: [
+      "M12 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+      "M12 9v6m0 0-2 6m2-6 2 6M8 10l4-1 4 1",
+      "M5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 1v4m0 0-1.5 4M5 16l1.5 4",
+      "M19 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 1v4m0 0-1.5 4m1.5-4 1.5 4",
+    ],
+  },
+  {
+    title: "Tiket",
+    body: "Menyediakan akses tiket dan informasi tiket untuk berbagai kegiatan KAPDH dan Ponpes.",
+    dark: true,
+    icon: ["M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 0 0-6V6H3z", "M14 6v2M14 11v2M14 16v2"],
+  },
+];
+
+const quickLinks = [
+  {
+    href: "/kta",
+    title: "Verifikasi KTA",
+    body: "Pindai QR pada KTA digital anggota untuk melihat status keanggotaan terkini.",
+  },
+  { href: "/bantuan", title: "Bantuan", body: "Panduan memakai aplikasi dan jawaban atas pertanyaan umum." },
+  { href: "/delete-account", title: "Hapus Akun", body: "Ajukan penghapusan akun dan data Anda tanpa memasang aplikasi." },
+  { href: "/kontak", title: "Kontak", body: "Hubungi pengurus melalui email atau WhatsApp bantuan." },
+];
 ---
-<Base title="Beranda">
-  <section class="flex flex-col gap-4 py-6">
-    <h1 class="font-heading text-display font-semibold text-primary">Platform Alumni KAPDH</h1>
-    <p class="max-w-2xl text-body-lg">Menghubungkan Keluarga Alumni Pondok Pesantren Darel Hikmah di seluruh Indonesia: KTA digital, jejaring alumni, event dan tiket.</p>
+
+<Base title="Beranda" maintenanceBanner>
+  <section class="relative overflow-hidden">
+    <svg class="brand-arcs -top-24 -right-24 size-96" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <circle cx="200" cy="0" r="60"></circle>
+      <circle cx="200" cy="0" r="80"></circle>
+      <circle cx="200" cy="0" r="100"></circle>
+      <circle cx="200" cy="0" r="120"></circle>
+      <circle cx="200" cy="0" r="140"></circle>
+      <circle cx="200" cy="0" r="160"></circle>
+    </svg>
+    <div class="relative mx-auto grid max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.2fr_1fr] lg:py-20">
+      <div class="flex flex-col gap-5">
+        <h1 class="flex flex-col font-heading leading-none text-primary">
+          <span class="flex items-start gap-2">
+            <span class="mt-2 flex flex-col gap-1" aria-hidden="true">
+              <span class="block size-4 bg-accent sm:size-5"></span>
+              <span class="ml-1 block size-2.5 bg-primary sm:size-3"></span>
+            </span>
+            <span class="text-6xl font-bold tracking-tight sm:text-7xl">KAPDH</span>
+          </span>
+          <span class="mt-1 text-4xl font-medium sm:text-5xl">Platform</span>
+        </h1>
+        <p class="max-w-xl text-lg text-neutral-700">
+          Platform Alumni KAPDH untuk Menghubungkan Alumni di Seluruh Indonesia
+        </p>
+        <ul class="flex flex-col gap-2 text-neutral-700">
+          <li class="flex items-center gap-3">
+            <svg viewBox="0 0 32 16" class="h-4 w-8 shrink-0 text-accent" fill="currentColor" aria-hidden="true"><path d="M0 0h20l12 8-12 8H0l12-8z"></path></svg>
+            Aplikasi anggota untuk Android dan iOS
+          </li>
+          <li class="flex items-center gap-3">
+            <svg viewBox="0 0 32 16" class="h-4 w-8 shrink-0 text-accent" fill="currentColor" aria-hidden="true"><path d="M0 0h20l12 8-12 8H0l12-8z"></path></svg>
+            Portal pengurus untuk manajemen data alumni
+          </li>
+        </ul>
+        <div class="mt-2 flex flex-col gap-3 sm:flex-row">
+          <a href="#unduh" class="btn-primary">Unduh Aplikasi</a>
+          <a href="/tentang" class="btn-outline">Tentang KAPDH</a>
+        </div>
+      </div>
+      <div class="relative mx-auto flex size-60 max-w-full items-center justify-center sm:size-72 lg:size-80">
+        <svg class="absolute inset-0 size-full text-primary" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="2 7" stroke-linecap="round" aria-hidden="true">
+          <circle cx="100" cy="100" r="96"></circle>
+        </svg>
+        <img src="/logo-kapdh.png" alt="Logo Keluarga Alumni Ponpes Darel Hikmah" width="220" height="220" class="relative size-48 sm:size-56 lg:size-64" />
+      </div>
+    </div>
   </section>
-  <section id="unduh" class="flex flex-col gap-3 rounded-lg bg-surface-dark p-6 text-text-on-dark">
-    <h2 class="font-heading text-h2 font-semibold text-accent">Unduh aplikasi</h2>
-    <p class="text-sm text-green-100">Tautan Google Play dan App Store ditambahkan setelah aplikasi disetujui toko.</p>
+
+  <section aria-labelledby="tentang-h" class="bg-surface">
+    <div class="mx-auto grid max-w-6xl gap-6 px-4 py-14 sm:px-6 md:grid-cols-[1fr_1.5fr]">
+      <h2 id="tentang-h" class="font-heading text-3xl font-bold text-primary">
+        Tentang KAPDH Apps<span class="ml-2 inline-block h-1 w-10 bg-accent align-middle" aria-hidden="true"></span>
+      </h2>
+      <div class="flex flex-col gap-4 text-neutral-700">
+        <p class="text-lg">
+          KAPDH Apps merupakan aplikasi alumni sebagai media komunikasi dan informasi untuk menghubungkan alumni di seluruh
+          Indonesia. Aplikasi ini menyediakan fitur pendataan alumni, forum komunikasi, serta informasi kegiatan alumni dan
+          pondok pesantren.
+        </p>
+        <p>
+          Anggota mendaftar dan membayar iuran langsung dari aplikasi, lalu memakai KTA digital, jejaring alumni, event dan
+          tiket, serta chat. Data pribadi dilindungi: KAPDH tidak pernah meminta NIK atau Nomor KTP.
+        </p>
+        <a href="/tentang" class="btn-link self-start px-0 text-sm">Selengkapnya tentang KAPDH</a>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="fitur-h" class="relative">
+    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <h2 id="fitur-h" class="text-center font-heading text-4xl font-semibold text-green-950 sm:text-5xl">Fitur Utama</h2>
+      <ul class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {
+          features.map((f) => (
+            <li class={`flex flex-col items-center gap-4 rounded-xl p-7 text-center shadow-card ${f.dark ? "bg-green-700 text-white" : "bg-surface text-neutral-700"}`}>
+              <svg viewBox="0 0 24 24" class={`size-16 ${f.dark ? "text-white" : "text-green-700"}`} fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                {f.icon.map((d) => (
+                  <path d={d} />
+                ))}
+              </svg>
+              <h3 class={`text-lg font-bold ${f.dark ? "text-white" : "text-green-950"}`}>{f.title}</h3>
+              <p class="text-sm leading-relaxed">{f.body}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <section id="unduh" aria-labelledby="unduh-h" class="relative overflow-hidden bg-surface-dark text-text-on-dark">
+    <svg class="brand-arcs -bottom-28 -left-28 size-96 text-white" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <circle cx="0" cy="200" r="70"></circle>
+      <circle cx="0" cy="200" r="95"></circle>
+      <circle cx="0" cy="200" r="120"></circle>
+      <circle cx="0" cy="200" r="145"></circle>
+    </svg>
+    <div class="relative mx-auto grid max-w-6xl items-center gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1.3fr_1fr]">
+      <div class="flex flex-col gap-4">
+        <h2 id="unduh-h" class="font-heading text-3xl font-bold text-accent sm:text-4xl">Unduh Aplikasi KAPDH</h2>
+        <p class="max-w-xl text-green-100">
+          Daftar, bayar iuran, dan dapatkan KTA digital Anda. Tersedia untuk Android 8.0 ke atas dan iOS 15 ke atas.
+        </p>
+        <a href="/unduh" class="btn-link self-start px-0 text-sm text-accent">Cara bergabung dan persyaratan perangkat</a>
+      </div>
+      <StoreButtons tone="dark" />
+    </div>
+  </section>
+
+  <section aria-labelledby="layanan-h">
+    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <h2 id="layanan-h" class="font-heading text-2xl font-semibold text-green-950">Layanan publik</h2>
+      <ul class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {
+          quickLinks.map((q) => (
+            <li>
+              <a href={q.href} class="card flex h-full flex-col gap-2 p-5 no-underline outline-offset-2 hover:shadow-raised">
+                <span class="flex items-center justify-between gap-2 font-semibold text-primary">
+                  {q.title}
+                  <svg viewBox="0 0 24 24" class="size-5 shrink-0 text-accent" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                </span>
+                <span class="text-sm text-text-muted">{q.body}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
   </section>
 </Base>
+
+<script>
+  import { readApiBase } from "../scripts/api";
+  import { mountConfigConsumers } from "../scripts/config-page";
+
+  void mountConfigConsumers(document, readApiBase());
+</script>

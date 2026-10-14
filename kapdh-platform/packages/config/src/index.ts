@@ -223,6 +223,20 @@ const workerShape = {
   ...baseShape,
   /** Jumlah job paralel per proses worker (BullMQ concurrency). */
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(4),
+  /**
+   * Port endpoint health worker `GET /healthz` (PRD 5.5). Kosong = 3001 (bawaan apps/worker); 0 = port acak dari OS
+   * (uji). Endpoint tidak pernah dirutekan publik oleh Traefik.
+   */
+  WORKER_HEALTH_PORT: z.coerce.number().int().min(0).max(65535).optional(),
+  /** Alamat bind endpoint health. Kosong = 0.0.0.0 (dapat dijangkau healthcheck container dan Uptime Kuma). */
+  WORKER_HEALTH_HOST: z.string().min(1).max(255).optional(),
+  /** Interval poll dispatcher outbox dalam ms. Kosong = 2000 (ARCHITECTURE §4.8). */
+  OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(250).max(60_000).optional(),
+  /**
+   * Batas waktu shutdown halus dalam ms: menunggu job yang sedang berjalan sebelum keluar. Kosong = 25000; set
+   * stop_grace_period container lebih besar dari nilai ini.
+   */
+  WORKER_SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1000).max(600_000).optional(),
 };
 
 export const baseEnvSchema = z.object(baseShape).superRefine((env, ctx) => {

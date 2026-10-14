@@ -6,6 +6,7 @@ import {
   messages,
   notifications,
   reports,
+  roomMembers,
   sessions,
   users,
 } from "@kapdh/database";
@@ -891,5 +892,165 @@ describe("POST /admin/reports/{reportId}/resolve (AC F12-3..F12-5)", () => {
     expect(replay.statusCode).toBe(200);
     expect(replay.headers["idempotent-replayed"]).toBe("true");
     expect(await auditsOf(another, "moderation.report_resolved")).toHaveLength(1);
+  });
+});
+
+describe("GET /admin/reports/{reportId}/subject-candidates (AC F12-3, F12-4; integrasi admin-governance)", () => {
+  type CandidatePage = {
+    items: {
+      user_id: string;
+      full_name: string;
+      member_number: string | null;
+      effective_status: string;
+      suspended_at: string | null;
+      room_status: string;
+      room_role: string;
+    }[];
+    next_cursor: string | null;
+  };
+
+  const candidatesOf = (token: string, id: string, query: Record<string, string> = {}) =>
+    api().get(`/admin/reports/${id}/subject-candidates`, { token, query });
+
+  async function candidates(token: string, id: string, query: Record<string, string> = {}) {
+    const res = await candidatesOf(token, id, query);
+    expect(res.statusCode, res.body).toBe(200);
+    return expectOperation("get", "/admin/reports/{reportId}/subject-candidates", res) as CandidatePage;
+  }
+
+  const candidateViews = async (id: string) =>
+    (await auditsOf(id, "moderation.report_viewed")).filter(
+      (a) => (a.after as { via?: string } | null)?.via === "subject_candidates",
+    );
+
+  it("AC F12-3: anggota joined (admin grup dulu) lalu mantan anggota, urut nama; tanpa undangan batal, akun terhapus dan akun tertaut pemanggil; diaudit tanpa daftar anggota", async () => {
+    const groupAdmin = await member("Zaenal Admin Grup");
+    const reporter = await member("Bagus Pelapor");
+    const joined = await member("Agus Anggota");
+    const suspended = await member("Cici Disuspend", "suspended");
+    const left = await member("Dedi Keluar");
+    const removed = await member("Ani Dikeluarkan");
+    const cancelledInvitee = await member("Undangan Batal");
+    const invited = await member("Masih Diundang");
+    const deleted = await member("Akun Terhapus");
+    const linkedFormer = await member("Mantan Tertaut");
+    const group = await createGroupRoom(t, { adminId: groupAdmin.userId });
+    for (const m of [reporter, joined, suspended, deleted]) await addRoomMember(t, group, m.userId);
+    await addRoomMember(t, group, left.userId, { status: "left" });
+    await addRoomMember(t, group, removed.userId, { status: "removed", invitedBy: groupAdmin.userId });
+    await addRoomMember(t, group, linkedFormer.userId, { status: "left" });
+    await addRoomMember(t, group, cancelledInvitee.userId, {
+      status: "removed",
+      invitedBy: groupAdmin.userId,
+      joinedAt: null,
+    });
+    await addRoomMember(t, group, invited.userId, { status: "invited", invitedBy: groupAdmin.userId });
+    const id = await reportOk(t.app, reporter.token, {
+      target_type: "room",
+      room_id: group,
+      category: "spam",
+    });
+    await t.db.update(users).set({ status: "deleted" }).where(eq(users.id, deleted.userId));
+    // Pemanggil tertaut ke MANTAN anggota: laporan tetap terlihat (bukan pihak terlapor), akunnya tidak dicantumkan.
+    const admin = await moderator({ linkedAlumniUserId: linkedFormer.userId });
+
+    const page = await candidates(admin.token, id);
+    expect(page.items.map((c) => [c.full_name, c.room_status, c.room_role])).toEqual([
+      ["Zaenal Admin Grup", "joined", "admin"],
+      ["Agus Anggota", "joined", "member"],
+      ["Bagus Pelapor", "joined", "member"],
+      ["Cici Disuspend", "joined", "member"],
+      ["Ani Dikeluarkan", "removed", "member"],
+      ["Dedi Keluar", "left", "member"],
+    ]);
+    expect(page.next_cursor).toBeNull();
+    const cici = page.items.find((c) => c.user_id === suspended.userId)!;
+    expect(cici.effective_status).toBe("suspended");
+    expect(cici.suspended_at).not.toBeNull();
+
+    const viewed = await candidateViews(id);
+    expect(viewed).toHaveLength(1);
+    expect(viewed[0]!.actorAdminId).toBe(admin.adminId);
+    expect(JSON.stringify(viewed[0]!.after)).not.toContain(joined.userId);
+
+    // Aturan yang sama dengan validasi subject_user_id: calon dari daftar ini dapat dipilih untuk keputusan.
+    const decided = await resolveReport(t.app, admin.token, id, await reportVersion(t.app, admin.token, id), {
+      action: "warn",
+      note: "Spam promosi di grup.",
+      member_message: "Hentikan promosi di grup.",
+      subject_user_id: removed.userId,
+    });
+    expect(decided.statusCode, decided.body).toBe(200);
+  });
+
+  it("AC F12-4: q mencari nama atau awalan nomor anggota; paging keyset terikat q yang sama", async () => {
+    const admin = await moderator();
+    const groupAdmin = await member("Rudi Admin Cari");
+    const reporter = await member("Pelapor Cari");
+    const a = await member("Siti Aminah");
+    const b = await member("Siti Badriah");
+    const c = await member("Siti Chairunnisa");
+    const group = await createGroupRoom(t, { adminId: groupAdmin.userId });
+    for (const m of [reporter, a, b]) await addRoomMember(t, group, m.userId);
+    await addRoomMember(t, group, c.userId, { status: "left" });
+    const id = await reportOk(t.app, reporter.token, {
+      target_type: "room",
+      room_id: group,
+      category: "spam",
+    });
+
+    const first = await candidates(admin.token, id, { q: "siti", limit: "2" });
+    expect(first.items.map((x) => x.full_name)).toEqual(["Siti Aminah", "Siti Badriah"]);
+    expect(first.next_cursor).not.toBeNull();
+    const second = await candidates(admin.token, id, { q: "siti", limit: "2", cursor: first.next_cursor! });
+    expect(second.items.map((x) => x.full_name)).toEqual(["Siti Chairunnisa"]);
+    expect(second.next_cursor).toBeNull();
+
+    const byNumber = await candidates(admin.token, id, { q: b.memberNumber! });
+    expect(byNumber.items.map((x) => x.user_id)).toEqual([b.userId]);
+    // Cursor dari pencarian lain tidak boleh dipakai.
+    const mismatched = await candidatesOf(admin.token, id, { q: "rudi", cursor: first.next_cursor! });
+    expect(mismatched.statusCode).toBe(400);
+    expect(mismatched.json().field_errors).toHaveProperty("cursor");
+    expect((await candidatesOf(admin.token, id, { q: "x".repeat(101) })).statusCode).toBe(400);
+  });
+
+  it("konflik kepentingan sama dengan detail (404 terlapor, 403 pelapor); bukan laporan grup aktif → 400; izin moderation.resolve wajib", async () => {
+    const groupAdmin = await member("Admin Grup Konflik");
+    const reporter = await member("Pelapor Konflik");
+    const joinedLinked = await member("Anggota Tertaut");
+    const target = await member("Terlapor Pengguna");
+    const group = await createGroupRoom(t, { adminId: groupAdmin.userId });
+    await addRoomMember(t, group, reporter.userId);
+    await addRoomMember(t, group, joinedLinked.userId);
+    const id = await reportOk(t.app, reporter.token, {
+      target_type: "room",
+      room_id: group,
+      category: "spam",
+    });
+    const admin = await moderator();
+
+    const linkedToMember = await moderator({ linkedAlumniUserId: joinedLinked.userId });
+    expect((await candidatesOf(linkedToMember.token, id)).statusCode).toBe(404);
+    // Pelapor yang masih joined juga anggota grup terlapor (404 lebih dulu); setelah keluar, konflik pelapor → 403.
+    await t.db
+      .update(roomMembers)
+      .set({ status: "left", leftAt: t.clock.now() })
+      .where(and(eq(roomMembers.roomId, group), eq(roomMembers.userId, reporter.userId)));
+    const linkedToReporter = await moderator({ linkedAlumniUserId: reporter.userId });
+    expect((await candidatesOf(linkedToReporter.token, id)).statusCode).toBe(403);
+    const readOnly = await moderator({ permissions: ["moderation.read"] });
+    expect((await candidatesOf(readOnly.token, id)).statusCode).toBe(403);
+    expect((await candidatesOf(admin.token, uuidv7())).statusCode).toBe(404);
+
+    const userReportId = await userReport(reporter.token, target.userId);
+    const notGroup = await candidatesOf(admin.token, userReportId);
+    expect(notGroup.statusCode, notGroup.body).toBe(400);
+    expect(notGroup.json().code).toBe("VALIDATION_ERROR");
+
+    await resolveOk(admin.token, id, { action: "dismiss", note: "Bukan pelanggaran." });
+    expect((await candidatesOf(admin.token, id)).statusCode).toBe(400);
+    // Penolakan tidak membuka daftar anggota sehingga tidak diaudit sebagai pembacaan.
+    expect(await candidateViews(id)).toHaveLength(0);
   });
 });

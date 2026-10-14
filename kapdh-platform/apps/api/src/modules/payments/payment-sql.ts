@@ -85,22 +85,49 @@ export interface PaymentQueueSummary {
   generated_at: string;
 }
 
+/**
+ * Ringkasan antrean beserta rincian yang hanya dipakai dasbor C7 (DashboardPayments.oldest_submitted_at dan
+ * overdue_by_type), dihitung oleh kueri yang SAMA dengan AdminPaymentSummary: kontrak admin-dashboard mewajibkan "satu
+ * query ringkasan bersama dengan modul payments, bukan rumus kedua".
+ */
+export interface PaymentQueueDetail {
+  summary: PaymentQueueSummary;
+  oldestSubmittedAt: Date | null;
+  overdueByType: { registration: number; renewal: number; ticket: number };
+}
+
 export async function paymentQueueSummary(
   db: DbOrTx,
   rules: ReviewRules,
   now: Date,
 ): Promise<PaymentQueueSummary> {
+  return (await paymentQueueDetail(db, rules, now)).summary;
+}
+
+export async function paymentQueueDetail(
+  db: DbOrTx,
+  rules: ReviewRules,
+  now: Date,
+): Promise<PaymentQueueDetail> {
   const due = reviewDueSql(rules);
   const awaitingReview = sql`${payments.proofVersion} >= 1`;
+  const overdue = sql`${due} <= ${tsParam(now)}`;
   const counted = (condition: SQL) => sql<number>`count(*) filter (where ${condition})`.mapWith(Number);
   const [queue] = await db
     .select({
       awaitingReview: counted(awaitingReview),
-      overdue: counted(sql`${due} <= ${tsParam(now)}`),
+      overdue: counted(overdue),
       awaitingTransfer: counted(sql`${payments.proofVersion} = 0`),
       registration: counted(sql`${awaitingReview} and ${payments.type} = 'registration'`),
       renewal: counted(sql`${awaitingReview} and ${payments.type} = 'renewal'`),
       ticket: counted(sql`${awaitingReview} and ${payments.type} = 'ticket'`),
+      overdueRegistration: counted(sql`${overdue} and ${payments.type} = 'registration'`),
+      overdueRenewal: counted(sql`${overdue} and ${payments.type} = 'renewal'`),
+      overdueTicket: counted(sql`${overdue} and ${payments.type} = 'ticket'`),
+      oldestSubmittedAt:
+        sql<Date | null>`min(${payments.submittedAt}) filter (where ${awaitingReview})`.mapWith(
+          payments.submittedAt,
+        ),
     })
     .from(payments)
     .leftJoin(tickets, eq(tickets.id, payments.ticketId))
@@ -116,16 +143,24 @@ export async function paymentQueueSummary(
     .from(paymentAdjustments)
     .where(eq(paymentAdjustments.status, "pending"));
   return {
-    awaiting_review_count: queue?.awaitingReview ?? 0,
-    overdue_count: queue?.overdue ?? 0,
-    awaiting_transfer_count: queue?.awaitingTransfer ?? 0,
-    awaiting_review_by_type: {
-      registration: queue?.registration ?? 0,
-      renewal: queue?.renewal ?? 0,
-      ticket: queue?.ticket ?? 0,
+    summary: {
+      awaiting_review_count: queue?.awaitingReview ?? 0,
+      overdue_count: queue?.overdue ?? 0,
+      awaiting_transfer_count: queue?.awaitingTransfer ?? 0,
+      awaiting_review_by_type: {
+        registration: queue?.registration ?? 0,
+        renewal: queue?.renewal ?? 0,
+        ticket: queue?.ticket ?? 0,
+      },
+      adjustments_pending_count: Number(adjustments?.pending ?? 0),
+      adjustments_overdue_count: adjustments?.overdue ?? 0,
+      generated_at: now.toISOString(),
     },
-    adjustments_pending_count: Number(adjustments?.pending ?? 0),
-    adjustments_overdue_count: adjustments?.overdue ?? 0,
-    generated_at: now.toISOString(),
+    oldestSubmittedAt: queue?.oldestSubmittedAt ?? null,
+    overdueByType: {
+      registration: queue?.overdueRegistration ?? 0,
+      renewal: queue?.overdueRenewal ?? 0,
+      ticket: queue?.overdueTicket ?? 0,
+    },
   };
 }

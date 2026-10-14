@@ -16,11 +16,18 @@ const totpSchema = z.object({
     .trim()
     .regex(/^\d{6}$/, "Masukkan 6 digit kode dari aplikasi autentikator."),
 });
+/**
+ * Backup code server: 10 karakter base32 yang ditampilkan berkelompok XXXXX-XXXXX (core/identity/crypto.ts); server
+ * menormalisasi huruf besar dan membuang spasi/tanda hubung, sehingga keduanya diterima di sini.
+ */
 const backupSchema = z.object({
   code: z
     .string()
     .trim()
-    .regex(/^[0-9A-Fa-f]{10}$/, "Backup code terdiri dari 10 karakter (angka 0-9 dan huruf A-F)."),
+    .regex(
+      /^[0-9A-Za-z]{5}[\s-]?[0-9A-Za-z]{5}$/,
+      "Backup code terdiri dari 10 huruf/angka, boleh dengan tanda hubung (contoh ABCDE-FGH23).",
+    ),
 });
 type Values = { code: string };
 
@@ -90,7 +97,7 @@ export function MfaPage() {
             required
           >
             {(field, a11y) => (
-              <Input {...field} {...a11y} autoComplete="off" spellCheck={false} maxLength={10} autoFocus />
+              <Input {...field} {...a11y} autoComplete="off" spellCheck={false} maxLength={11} autoFocus />
             )}
           </FormField>
         ) : (
