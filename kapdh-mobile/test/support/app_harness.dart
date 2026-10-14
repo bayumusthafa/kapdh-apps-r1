@@ -37,7 +37,8 @@ StoredTokens savedTokens() => StoredTokens(
   refreshToken: 'refresh-1',
 );
 
-/// Menjalankan [KapdhApp] mulai dari splash sampai tenang. [tokens] diisi bila sesi tersimpan.
+/// Menjalankan [KapdhApp] mulai dari splash sampai tenang. [tokens] diisi bila sesi tersimpan. [phoneSize] false
+/// memakai layar perangkat apa adanya (integration_test di perangkat nyata, N-12).
 Future<AppHarness> pumpApp(
   WidgetTester tester, {
   required FakeHandler handler,
@@ -48,8 +49,9 @@ Future<AppHarness> pumpApp(
   List<Override> overrides = const [],
   Future<void> Function(ProviderContainer container)? beforeStart,
   bool settle = true,
+  bool phoneSize = true,
 }) async {
-  usePhoneSize(tester);
+  if (phoneSize) usePhoneSize(tester);
   if (textScale != 1) {
     tester.platformDispatcher.textScaleFactorTestValue = textScale;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
