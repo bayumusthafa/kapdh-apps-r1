@@ -23,6 +23,11 @@ enum RouteGroup {
   home,
   news,
   events,
+
+  /// Detail satu event `/events/:eventId`: juga dibuka anggota expired untuk event yang pernah ia pesan (tiket lunas
+  /// tetap berlaku, deep link notifikasi event; kontrak C5 getEvent `nonsuspended`). Server menjawab 403
+  /// MEMBERSHIP_REQUIRED untuk event lain dan layar menjelaskannya.
+  eventDetail,
   tickets,
   kta,
   renewal,
@@ -74,6 +79,7 @@ RouteGroup routeGroupOf(String path) {
     'payments' => RouteGroup.payments,
     'home' when single => RouteGroup.home,
     'news' => RouteGroup.news,
+    'events' when segments.length == 2 => RouteGroup.eventDetail,
     'events' => RouteGroup.events,
     'tickets' => RouteGroup.tickets,
     'kta' when single => RouteGroup.kta,
@@ -115,6 +121,7 @@ const Map<EffectiveStatus, Set<RouteGroup>> _allowed = {
   EffectiveStatus.verified: {
     ..._memberBase,
     RouteGroup.events,
+    RouteGroup.eventDetail,
     RouteGroup.tickets,
     RouteGroup.network,
     RouteGroup.chat,
@@ -124,6 +131,7 @@ const Map<EffectiveStatus, Set<RouteGroup>> _allowed = {
   EffectiveStatus.expiring: {
     ..._memberBase,
     RouteGroup.events,
+    RouteGroup.eventDetail,
     RouteGroup.tickets,
     RouteGroup.network,
     RouteGroup.chat,
@@ -131,8 +139,9 @@ const Map<EffectiveStatus, Set<RouteGroup>> _allowed = {
     RouteGroup.accountCommunity,
   },
   // Riwayat sendiri, kartu kedaluwarsa, perpanjangan, pengaturan akun, hapus akun; tiket yang sudah paid sebelum
-  // kedaluwarsa tetap dapat dilihat dan dipakai. Ditolak: pemesanan baru, direktori, chat.
-  EffectiveStatus.expired: {..._memberBase, RouteGroup.renewal, RouteGroup.tickets},
+  // kedaluwarsa tetap dapat dilihat dan dipakai, beserta detail event yang pernah dipesan (kontrak C5 getEvent).
+  // Ditolak: daftar event dan pemesanan baru, direktori, chat.
+  EffectiveStatus.expired: {..._memberBase, RouteGroup.renewal, RouteGroup.tickets, RouteGroup.eventDetail},
   // Portal pembatasan, bantuan (legal) dan penghapusan setelah verifikasi identitas.
   EffectiveStatus.suspended: {RouteGroup.restricted, RouteGroup.accountDelete},
   // Pemeriksaan status penghapusan/pemulihan dengan challenge terbatas.
