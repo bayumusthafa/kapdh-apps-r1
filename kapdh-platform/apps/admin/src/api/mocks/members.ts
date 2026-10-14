@@ -529,14 +529,9 @@ function memberFixtures(): MemberState[] {
       class_out: 6,
       seq: 8,
       city: "Pekanbaru",
-      registered_at: "2026-10-11T01:30:00Z",
+      registered_at: "2026-10-09T01:30:00Z",
       skill_ids: [skillId("Kuliner")],
-      recent_payments: [
-        {
-          ...payment(6, "registration", "pending", "2026-10-11T01:40:00Z", null),
-          submitted_at: "2026-10-11T02:02:00Z",
-        },
-      ],
+      // Iuran pendaftaran yang menunggu verifikasi berasal dari tiruan payments (anggota yang sama, D6-02).
     }),
     seed({
       user_id: MOCK_MEMBER.nur,
@@ -848,7 +843,7 @@ function present(m: MemberState): Detail {
       : null,
     linked_admin: m.linked_admin,
     periods: [...m.periods],
-    recent_payments: canPayments ? m.recent_payments.slice(0, 10) : null,
+    recent_payments: canPayments ? recentPayments(m).slice(0, 10) : null,
     recent_tickets: canEvents || canPayments ? m.recent_tickets.slice(0, 10) : null,
     moderation: canModeration ? m.moderation : null,
     version: String(m.version),
@@ -962,6 +957,85 @@ export const mockMembers = {
     };
   },
 };
+
+/* ------------------------------------------------------------------------------------------------------------ */
+/* Akses lintas tiruan (pembayaran)                                                                              */
+/* ------------------------------------------------------------------------------------------------------------ */
+
+/**
+ * Identitas dan status keanggotaan anggota tiruan untuk area pembayaran (baca saja). Tiruan payments memakai anggota
+ * yang SAMA (user_id sama) untuk payment contoh Siti, Hasan, Fikri dan Nur, untuk pencatatan iuran D13
+ * (adminRecordPayment) dan untuk keputusan iuran, sehingga tautan antara detail anggota dan Verifikasi Pembayaran
+ * menunjuk data yang sama di dev:mock.
+ */
+export interface MockMemberSnapshot {
+  user_id: string;
+  full_name: string;
+  member_number: string | null;
+  cohort: number;
+  account_status: S["AccountStatus"];
+  effective_status: EffectiveStatus;
+  expires_at: string | null;
+  /** Admin yang tertaut ke akun alumni ini (konflik kepentingan, PRD 2.3). */
+  linked_admin_id: string | null;
+}
+
+export function peekMemberForMocks(userId: string): MockMemberSnapshot | undefined {
+  const m = members.get(userId);
+  if (!m) return undefined;
+  return {
+    user_id: m.user_id,
+    full_name: m.full_name,
+    member_number: memberNumber(m),
+    cohort: m.cohort,
+    account_status: m.account_status,
+    effective_status: effectiveStatus(m),
+    expires_at: m.expires_at,
+    linked_admin_id: m.linked_admin?.admin_id ?? null,
+  };
+}
+
+/**
+ * Sumber ringkasan pembayaran anggota dari tiruan payments. Didaftarkan oleh payments.ts (yang mengimpor berkas ini)
+ * agar tidak ada impor melingkar; tanpa sumber hanya data historis anggota yang tampil.
+ */
+type MemberPaymentsSource = (userId: string) => S["AdminMemberPaymentSummary"][];
+let memberPaymentsSource: MemberPaymentsSource | null = null;
+
+export function registerMemberPaymentsSourceForMocks(source: MemberPaymentsSource | null): void {
+  memberPaymentsSource = source;
+}
+
+/** Pembayaran terbaru: data historis anggota + payment tiruan payments milik anggota ini, terbaru dahulu. */
+function recentPayments(m: MemberState): S["AdminMemberPaymentSummary"][] {
+  const live = memberPaymentsSource?.(m.user_id) ?? [];
+  const ids = new Set(live.map((p) => p.id));
+  return [...live, ...m.recent_payments.filter((p) => !ids.has(p.id))].sort(
+    (a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id),
+  );
+}
+
+/**
+ * Iuran anggota menjadi paid (keputusan pengurus atau pencatatan D13): periode baru seperti handler keanggotaan
+ * server (PRD 4.2): aktivasi dari approved_at, perpanjangan dari max(expires_at lama, approved_at), 12 bulan.
+ */
+export function applyPaidDuesForMocks(
+  userId: string,
+  input: { paymentId: string; type: "registration" | "renewal"; approvedAt: string },
+): void {
+  const m = members.get(userId);
+  if (!m) return;
+  const prev = m.periods[0] ?? null;
+  const period =
+    input.type === "renewal" && prev
+      ? renewal(prev, input.paymentId, input.approvedAt)
+      : activation(input.paymentId, input.approvedAt);
+  m.periods = [period, ...m.periods];
+  m.starts_at = period.starts_at;
+  m.expires_at = period.expires_at;
+  m.events = [...m.events, { ...periodEvent(period, prev), actor: mockAdminRef() }];
+  m.version += 1;
+}
 
 /** Bungkus handler: tahanan dan kegagalan buatan diterapkan sebelum logika server tiruan. */
 function controlled(route: MockRoute): MockRoute {

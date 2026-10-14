@@ -2,10 +2,13 @@ import type { components } from "@kapdh/contracts";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
 import { useApiQuery } from "../../api/query";
+import { useAuth } from "../../auth/session";
 import { Badge, PaymentStageBadge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
 import { DataTable, useCursorPaging } from "../../components/ui/DataTable";
 import { Field } from "../../components/ui/FormField";
 import { Select } from "../../components/ui/Input";
@@ -16,6 +19,8 @@ import { useNow } from "../../lib/hooks";
 import { memberName, memberSubtitle, paymentTypeText as typeText } from "./labels";
 import { PaymentDecisionPanel } from "./PaymentDecisionPanel";
 import { PAYMENTS_KEY } from "./queries";
+import { RECORD_PERMISSIONS } from "./recordEligibility";
+import { RecordDuesDialog } from "./RecordDuesDialog";
 
 type Item = components["schemas"]["AdminPaymentItem"];
 type PaymentStatus = components["schemas"]["PaymentStatus"];
@@ -134,7 +139,14 @@ export function VerificationTab() {
   const navigate = useNavigate({ from: "/payments" });
   const [q, setQ] = useState("");
   const [type, setType] = useState<PaymentType | "all">("all");
-  const [status, setStatus] = useState<StatusFilter>("awaiting_review");
+  /**
+   * Cakupan dari tautan (`?user=` detail anggota, `?event=` tab Tiket event): filter `user_id`/`event_id`
+   * adminListPayments. Daftar terbatas dibuka dengan status "Semua" agar payment lunas dan ditolak ikut tampil.
+   */
+  const scopeUser = search.user;
+  const scopeEvent = search.event;
+  const scoped = scopeUser !== undefined || scopeEvent !== undefined;
+  const [status, setStatus] = useState<StatusFilter>(scoped ? "all" : "awaiting_review");
   const [overdue, setOverdue] = useState<OverdueFilter>(overdueFilterOf(search.overdue));
   const [queueSort, setQueueSort] = useState<QueueSort>("submitted_at_asc");
   const [selectedId, setSelectedId] = useState<string | null>(search.payment ?? null);
@@ -144,7 +156,7 @@ export function VerificationTab() {
   const sort = sortFor(status, queueSort);
   /** Saringan batas review hanya bermakna untuk antrean "Menunggu" (pending berbukti). */
   const overdueQuery = status === "awaiting_review" && overdue !== "all" ? overdue === "overdue" : undefined;
-  const filters = { q, type, status, sort, overdue: overdueQuery };
+  const filters = { q, type, status, sort, overdue: overdueQuery, user: scopeUser, event: scopeEvent };
   const paging = useCursorPaging(filters, PAYMENT_PAGE_SIZE);
 
   // Tautan URL dari dasbor (`?stage=awaiting_review&overdue=true`) menyetel saringan yang sama dengan filter
@@ -157,6 +169,16 @@ export function VerificationTab() {
   useEffect(() => {
     if (linkedOverdue !== undefined) setOverdue(overdueFilterOf(linkedOverdue));
   }, [linkedOverdue]);
+
+  // Cakupan baru dari tautan (juga saat halaman ini sudah terbuka) menampilkan seluruh status payment itu.
+  useEffect(() => {
+    if (scopeUser !== undefined || scopeEvent !== undefined) setStatus("all");
+  }, [scopeUser, scopeEvent]);
+
+  /** Hapus cakupan anggota/event: kembali ke antrean seluruh anggota dengan saringan yang sedang dipilih. */
+  function clearScope() {
+    void navigate({ search: (prev) => ({ ...prev, user: undefined, event: undefined }), replace: true });
+  }
 
   /** Pilihan pengguna mengganti saringan dari tautan; URL dibersihkan agar muat ulang tidak menimpanya. */
   function clearLinkedFilters() {
@@ -178,6 +200,35 @@ export function VerificationTab() {
     setFocusRequest((n) => n + 1);
   }, [linked]);
 
+  // "Catat iuran" (D13, adminRecordPayment): payments.read + payments.decide sesuai x-kapdh-access kontrak.
+  const auth = useAuth();
+  const canRecord = RECORD_PERMISSIONS.every((p) => auth.can(p));
+  /** Dialog pencatatan iuran yang terbuka; `userId` alumni terpilih dari tautan detail anggota. */
+  const [recording, setRecording] = useState<{ userId: string | null } | null>(null);
+  // Tautan `?record=` (detail anggota, Pengaturan) membuka dialog sekali; parameter dihapus agar muat ulang tidak
+  // membukanya lagi.
+  const recordRequest = search.record;
+  useEffect(() => {
+    if (recordRequest === undefined) return;
+    if (canRecord) setRecording({ userId: recordRequest === true ? null : recordRequest });
+    void navigate({ search: (prev) => ({ ...prev, record: undefined }), replace: true });
+  }, [recordRequest, canRecord, navigate]);
+
+  /**
+   * Panel dipasang ulang setelah pencatatan, agar payment yang sedang terbuka lalu diselesaikan di tempat oleh admin
+   * ini sendiri tidak diumumkan sebagai "diputus admin lain".
+   */
+  const [panelEpoch, setPanelEpoch] = useState(0);
+
+  /** Tutup dialog lalu buka payment hasil (atau payment yang perlu diputus) di panel keputusan. */
+  function openFromRecord(paymentId: string) {
+    setRecording(null);
+    setPanelEpoch((n) => n + 1);
+    setSelectedId(paymentId);
+    setFocusRequest((n) => n + 1);
+    void navigate({ search: (prev) => ({ ...prev, record: undefined, payment: paymentId }), replace: true });
+  }
+
   const list = useApiQuery({
     queryKey: [...PAYMENTS_KEY, "list", { ...filters, cursor: paging.cursor }],
     pollMs: PAYMENT_POLL_MS,
@@ -190,6 +241,8 @@ export function VerificationTab() {
             ...(overdueQuery !== undefined ? { overdue: overdueQuery } : {}),
             ...(type !== "all" ? { type } : {}),
             ...(q ? { q } : {}),
+            ...(scopeUser ? { user_id: scopeUser } : {}),
+            ...(scopeEvent ? { event_id: scopeEvent } : {}),
             ...(sort ? { sort } : {}),
             ...(paging.cursor ? { cursor: paging.cursor } : {}),
             limit: PAYMENT_PAGE_SIZE,
@@ -290,6 +343,11 @@ export function VerificationTab() {
   );
 
   const selectedItem = list.data?.items.find((i) => i.id === selectedId);
+  /** Nama cakupan dari baris hasil (nama anggota atau judul event); umum bila daftar kosong atau akun dihapus. */
+  const scopedItem = list.data?.items[0];
+  const scopeLabel = scopeUser
+    ? `milik ${scopedItem?.member?.full_name ?? "satu anggota"}`
+    : `tiket ${scopedItem?.event_title ? `event ${scopedItem.event_title}` : "satu event"}`;
 
   return (
     <div className="flex flex-col gap-5">
@@ -349,7 +407,37 @@ export function VerificationTab() {
             )}
           </Field>
         ) : null}
+        {canRecord ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto"
+            leftIcon={<Plus aria-hidden="true" className="size-4" />}
+            onClick={() => setRecording({ userId: null })}
+          >
+            Catat iuran
+          </Button>
+        ) : null}
       </div>
+      {scoped ? (
+        <div
+          role="note"
+          aria-label="Cakupan daftar pembayaran"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-info-bg px-3 py-2 text-sm text-info"
+        >
+          <span>Hanya menampilkan pembayaran {scopeLabel}.</span>
+          <Button variant="ghost" size="sm" onClick={clearScope}>
+            Tampilkan semua pembayaran
+          </Button>
+        </div>
+      ) : null}
+      <RecordDuesDialog
+        open={recording !== null}
+        initialUserId={recording?.userId ?? null}
+        onClose={() => setRecording(null)}
+        onRecorded={(payment) => openFromRecord(payment.id)}
+        onOpenPayment={openFromRecord}
+      />
 
       <div className="flex flex-wrap items-start gap-5">
         <section aria-label="Antrean pembayaran" className="min-w-0 flex-[3_1_520px]">
@@ -378,9 +466,13 @@ export function VerificationTab() {
             emptyState={
               <EmptyState
                 compact
-                title={q ? "Tidak ada pembayaran yang cocok" : "Antrean kosong"}
+                title={q || scoped ? "Tidak ada pembayaran yang cocok" : "Antrean kosong"}
                 description={
-                  q ? "Ubah kata kunci atau filter." : "Tidak ada pembayaran dengan jenis dan status ini."
+                  q
+                    ? "Ubah kata kunci atau filter."
+                    : scoped
+                      ? `Tidak ada pembayaran ${scopeLabel} dengan jenis dan status ini.`
+                      : "Tidak ada pembayaran dengan jenis dan status ini."
                 }
               />
             }
@@ -389,7 +481,7 @@ export function VerificationTab() {
         <div className="min-w-0 flex-[2_1_340px]">
           {selectedId ? (
             <PaymentDecisionPanel
-              key={selectedId}
+              key={`${selectedId}:${panelEpoch}`}
               paymentId={selectedId}
               listProofVersion={selectedItem?.proof_version}
               focusRequest={focusRequest}

@@ -465,12 +465,25 @@ describe("peserta dan tiket (F-09)", () => {
     const dewi = rowOf(table, /Dewi Lestari/);
     expect(within(dewi).getByText("Menunggu verifikasi")).toBeInTheDocument();
     expect(within(dewi).getByText("Lewat batas review")).toBeInTheDocument();
+    // D6-02: tautan membuka payment tiket ini langsung di panel keputusan, bukan antrean bawaan.
+    const paymentId = within(dewi).getByText(/^ID /).getAttribute("title");
+    expect(paymentId).toMatch(/^[0-9a-f-]{36}$/);
     expect(within(dewi).getByRole("link", { name: "Putuskan di Verifikasi Pembayaran" })).toHaveAttribute(
       "href",
-      "/payments",
+      `/payments?tab=verify&payment=${paymentId}`,
     );
     expect(within(dewi).getByText("Putuskan pembayaran dahulu")).toBeInTheDocument();
     expect(within(dewi).queryByRole("button", { name: /Batalkan tiket/ })).toBeNull();
+    // D6-02: payment tiket lain (lunas) juga dibuka langsung, dan daftar dapat dibatasi ke event ini.
+    const nurulPayment = within(nurul).getByText(/^ID /).getAttribute("title");
+    expect(within(nurul).getByRole("link", { name: "Lihat pembayaran tiket Nurul Hidayah" })).toHaveAttribute(
+      "href",
+      `/payments?tab=verify&payment=${nurulPayment}`,
+    );
+    expect(screen.getByRole("link", { name: "Pembayaran tiket event ini" })).toHaveAttribute(
+      "href",
+      `/payments?tab=verify&event=${MOCK_EVENT_IDS.reuni}`,
+    );
     expect(within(rowOf(table, /Rina Marlina/)).getByText("Kedaluwarsa")).toBeInTheDocument();
     expect(within(rowOf(table, /Yusuf Maulana/)).getByText("Tidak memenuhi syarat")).toBeInTheDocument();
     expect(within(rowOf(table, /Akun dihapus/)).getByText("Data pemegang sudah dihapus")).toBeInTheDocument();
@@ -536,6 +549,8 @@ describe("peserta dan tiket (F-09)", () => {
     await open(user, `/events/${MOCK_EVENT_IDS.reuni}?tab=tickets`, REUNI);
     const table = await screen.findByRole("table", { name: "Peserta dan tiket" });
     expect(within(table).queryByRole("link", { name: "Putuskan di Verifikasi Pembayaran" })).toBeNull();
+    expect(within(table).queryByRole("link", { name: /^Lihat pembayaran tiket/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Pembayaran tiket event ini" })).toBeNull();
     await user.click(
       within(rowOf(table, /Siti Rahmawati/)).getByRole("button", { name: "Batalkan tiket Siti Rahmawati" }),
     );
