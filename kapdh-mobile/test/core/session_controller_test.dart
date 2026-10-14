@@ -3,6 +3,7 @@ import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:dio/dio.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 import 'package:kapdh_mobile/core/api/api_providers.dart';
+import 'package:kapdh_mobile/core/cache/decoded_image_memory.dart';
 import 'package:kapdh_mobile/core/session/me_snapshot_store.dart';
 import 'package:kapdh_mobile/core/session/session_controller.dart';
 import 'package:kapdh_mobile/core/session/session_state.dart';
@@ -98,9 +99,11 @@ void main() {
 
     test('sesi dicabut (refresh UNAUTHENTICATED): anonim dan data privat dihapus', () async {
       final store = MemorySecureStore();
+      var evictions = 0;
       final container = makeContainer(
         store: store,
         adapter: FakeHttpAdapter((_) => FakeResponse.json(401, errorJson('UNAUTHENTICATED', 'Sesi berakhir.'))),
+        overrides: [decodedImageEvictorProvider.overrideWithValue(() => evictions++)],
       );
       await container.read(tokenStoreProvider).save(storedTokens());
       await MeSnapshotStore(store).save(meOf(), testNow);
@@ -113,6 +116,7 @@ void main() {
       expect(store.values.keys, isNot(contains(TokenStore.storageKey)));
       expect(store.values.keys, isNot(contains(MeSnapshotStore.storageKey)));
       expect(store.values.keys, isNot(contains(KtaCacheStore.storageKey)));
+      expect(evictions, greaterThan(0), reason: 'gambar privat terdekode dibuang dari memori (PRD 5.2)');
     });
 
     test('kembali online: offlineLastKnown diganti status server terbaru', () async {
@@ -235,15 +239,21 @@ void main() {
       expect(await container.read(tokenStoreProvider).read(), isNull);
     });
 
-    test('logout menghapus token, snapshot, cache KTA dan kunci idempotensi walau server tidak terjangkau', () async {
+    test('logout menghapus token, snapshot, cache KTA, kunci idempotensi dan gambar privat di memori walau server '
+        'tidak terjangkau', () async {
       var online = true;
       final store = MemorySecureStore();
+      var evictions = 0;
       final container = makeContainer(
         store: store,
         adapter: FakeHttpAdapter((options) => online ? FakeResponse.json(200, meJson()) : FakeResponse.network()),
+        overrides: [decodedImageEvictorProvider.overrideWithValue(() => evictions++)],
       );
       await container.read(tokenStoreProvider).save(storedTokens());
       await container.read(sessionProvider.notifier).bootstrap();
+      // Memuat ulang /me akun yang sama tidak membuang gambar yang sedang tampil.
+      await container.read(sessionProvider.notifier).refreshMe();
+      expect(evictions, 0);
       await container.read(ktaCacheStoreProvider).save(userId: 'user-1', card: cardOf());
       await container.read(idempotencyStoreProvider).keyFor('payment.create', {'type': 'registration'});
       store.values['kapdh.lain'] = 'tetap';
@@ -253,6 +263,7 @@ void main() {
 
       expect(container.read(sessionProvider).phase, SessionPhase.anonymous);
       expect(store.values.keys, ['kapdh.lain']);
+      expect(evictions, 1);
     });
 
     test('keluar semua perangkat gagal: galat dilempar dan sesi lokal tetap', () async {
@@ -272,23 +283,32 @@ void main() {
       expect(await container.read(tokenStoreProvider).read(), isNotNull);
     });
 
-    test('akun berbeda masuk di perangkat yang sama: cache KTA akun lama dihapus (AC F05-3)', () async {
-      final adapter = FakeHttpAdapter((options) {
-        if (options.path == '/auth/login') {
-          return FakeResponse.json(200, {'next': 'home', 'session': tokenPairJson(access: 'b')});
-        }
-        return FakeResponse.json(200, meJson(userId: 'user-2'));
-      });
-      final store = MemorySecureStore();
-      final container = makeContainer(adapter: adapter, store: store);
-      await MeSnapshotStore(store).save(meOf(userId: 'user-1'), testNow);
-      await container.read(ktaCacheStoreProvider).save(userId: 'user-1', card: cardOf());
+    test(
+      'akun berbeda masuk di perangkat yang sama: cache KTA dan gambar privat akun lama dihapus (AC F05-3)',
+      () async {
+        final adapter = FakeHttpAdapter((options) {
+          if (options.path == '/auth/login') {
+            return FakeResponse.json(200, {'next': 'home', 'session': tokenPairJson(access: 'b')});
+          }
+          return FakeResponse.json(200, meJson(userId: 'user-2'));
+        });
+        final store = MemorySecureStore();
+        var evictions = 0;
+        final container = makeContainer(
+          adapter: adapter,
+          store: store,
+          overrides: [decodedImageEvictorProvider.overrideWithValue(() => evictions++)],
+        );
+        await MeSnapshotStore(store).save(meOf(userId: 'user-1'), testNow);
+        await container.read(ktaCacheStoreProvider).save(userId: 'user-1', card: cardOf());
 
-      await container.read(sessionProvider.notifier).login(email: 'b@b.id', password: 'Rahasia#123');
+        await container.read(sessionProvider.notifier).login(email: 'b@b.id', password: 'Rahasia#123');
 
-      expect(container.read(sessionProvider).userId, 'user-2');
-      expect(store.values.containsKey(KtaCacheStore.storageKey), isFalse);
-    });
+        expect(container.read(sessionProvider).userId, 'user-2');
+        expect(store.values.containsKey(KtaCacheStore.storageKey), isFalse);
+        expect(evictions, 1, reason: 'foto anggota dan bukti bayar akun sebelumnya dibuang dari memori (PRD 5.2)');
+      },
+    );
 
     test('sinyal MEMBERSHIP_REQUIRED dari request mana pun memuat ulang /me (ErrorUiAction.refreshStatus)', () async {
       var meCalls = 0;
