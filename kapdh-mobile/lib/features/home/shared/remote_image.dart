@@ -29,8 +29,8 @@ Uri? remoteImageUri(String? url) {
 }
 
 /// Gambar jaringan PUBLIK (lihat [remoteImageProviderFactoryProvider]) dengan tempat kosong yang rapi saat URL kosong,
-/// memuat, atau gagal dimuat (N-03). Label
-/// [semanticLabel] dibacakan pembaca layar; tanpa label gambar dianggap dekoratif (N-11).
+/// memuat, atau gagal dimuat (N-03). Label [semanticLabel] dibacakan pembaca layar; tanpa label gambar dianggap
+/// dekoratif (N-11).
 class RemoteImage extends ConsumerWidget {
   const RemoteImage({
     super.key,
