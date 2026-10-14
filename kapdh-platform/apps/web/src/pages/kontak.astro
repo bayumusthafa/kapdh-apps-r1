@@ -1,0 +1,63 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Kontak" description="Hubungi bantuan KAPDH melalui email atau WhatsApp." maintenanceBanner>
+  <section class="border-b border-divider bg-surface">
+    <div class="mx-auto flex max-w-4xl flex-col gap-2 px-4 py-10 sm:px-6">
+      <h1 class="font-heading text-3xl font-bold text-green-950 sm:text-4xl">Kontak</h1>
+      <p class="text-text-muted">Kanal bantuan resmi pengurus KAPDH untuk pertanyaan akun, iuran, KTA, dan event.</p>
+    </div>
+  </section>
+
+  <div class="mx-auto grid max-w-4xl gap-6 px-4 py-10 sm:px-6 md:grid-cols-2">
+    <section aria-labelledby="email-h" class="card flex flex-col gap-3 p-6">
+      <h2 id="email-h" class="flex items-center gap-2 font-semibold text-green-950">
+        <svg viewBox="0 0 24 24" class="size-5 text-primary" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+          <path d="m22 7-10 6L2 7"></path>
+        </svg>
+        Email
+      </h2>
+      {/* Nilai awal PRD 8.3; diganti nilai app_settings.support dari /public/config saat halaman dibuka. */}
+      <a data-support-email href="mailto:bantuan@kapdh.or.id" class="text-lg font-semibold break-all text-primary underline">bantuan@kapdh.or.id</a>
+      <p class="text-sm text-text-muted">Dijawab pada hari kerja. Sertakan email akun dan, bila ada, nomor pembayaran atau nomor permintaan penghapusan.</p>
+    </section>
+    <section aria-labelledby="wa-h" class="card flex flex-col gap-3 p-6">
+      <h2 id="wa-h" class="flex items-center gap-2 font-semibold text-green-950">
+        <svg viewBox="0 0 24 24" class="size-5 text-primary" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20.5l1.7-5.2A8.5 8.5 0 1 1 21 11.5Z"></path>
+        </svg>
+        WhatsApp admin
+      </h2>
+      <p data-support-pending class="text-sm text-text-muted">Memuat kontak terbaru…</p>
+      {/* PRD 4.5: gagal memuat /public/config tidak disembunyikan diam-diam; tampil pesan dan coba lagi. */}
+      <p data-support-error hidden class="info-box flex flex-wrap items-center gap-x-2 text-sm">
+        Kontak terbaru belum dapat dimuat. Email bantuan pada halaman ini tetap dapat dipakai.
+        <button type="button" data-config-retry class="btn-link min-h-11 text-primary">Coba lagi</button>
+      </p>
+      <p data-support-whatsapp hidden>
+        <a target="_blank" rel="noopener noreferrer" class="text-lg font-semibold text-primary underline"></a>
+      </p>
+      <p class="text-sm text-text-muted">Bila nomor belum tersedia, gunakan email bantuan.</p>
+    </section>
+  </div>
+
+  <div class="mx-auto flex max-w-4xl flex-col gap-4 px-4 pb-12 sm:px-6">
+    <div class="warning-box flex flex-col gap-1 text-sm">
+      <p class="font-semibold">Jaga keamanan akun Anda</p>
+      <p>Pengurus KAPDH tidak pernah meminta sandi, kode OTP, atau kode cadangan. Jangan bagikan kode tersebut kepada siapa pun.</p>
+    </div>
+    <p class="text-sm text-text-muted">
+      Ingin menghapus akun? Gunakan halaman <a href="/delete-account" class="font-semibold text-primary underline">Hapus Akun</a>
+      yang menerima permintaan langsung tanpa memasang aplikasi.
+    </p>
+  </div>
+</Base>
+
+<script>
+  import { readApiBase } from "../scripts/api";
+  import { mountConfigConsumers } from "../scripts/config-page";
+
+  void mountConfigConsumers(document, readApiBase());
+</script>

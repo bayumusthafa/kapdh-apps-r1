@@ -113,6 +113,22 @@ the branch had them. Checked by hand:
   `test/core/jobs.e2e.test.ts` + `test/core/worker-package.e2e.test.ts` (17/17). The whole suite and both PG lanes
   run again in the final verification.
 
+## 3. public-web
+
+- `pnpm-lock.yaml` (only conflict): `main` (worker, api-admin) added bullmq/msgpackr, sanitize-html and friends;
+  public-web added `@kapdh/shared`, `@fontsource/poppins` 5.3.0, `@astrojs/check` and `jsdom` to the `apps/web`
+  importer. Took `main`'s lockfile and re-ran `pnpm install`; the result is the union (diff against either parent
+  shows only the other side's packages).
+- Semantic check: every endpoint the site calls exists on the merged API with the contract's path
+  (`public/deletion/{challenge,verify,confirm}` in account, `auth/otp/resend`, `public/kta/verify` in membership,
+  `public/pages/{slug}` in content, `public/config`), and the site compiles against the merged contract types and
+  `@kapdh/shared` error catalog. Its delete-account 409 handling relies on core idempotency sending
+  `retry_after_seconds` only for "still processing", which is unchanged on `main`.
+- The site self-hosts Poppins (`@fontsource/poppins`, `src/styles/global.css`), so admin-governance's open note that
+  `apps/web` still loads Google Fonts is obsolete after this merge.
+- Verified after the merge: `pnpm build` (10/10, CSP gate passes for 11 pages), `@kapdh/web` test 14 files 169/169,
+  typecheck (astro check 0 errors + tsc) and lint.
+
 ## Breakages already on main before this track (fixed in a separate commit)
 
 Found by the first full API run after merge 1; neither involves an api-admin file.
