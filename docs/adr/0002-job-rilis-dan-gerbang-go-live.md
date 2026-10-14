@@ -60,9 +60,26 @@ pada database tanpa pengurus dan tanpa biaya.
 7. Compose cadangan memakai jaringan edge terpisah per lingkungan (`kapdh-edge`, `kapdh-edge-staging`, dipatok, bukan
    dari env); hanya Traefik cadangan yang tersambung ke keduanya (D12).
 
+## Pembaruan (integrasi akhir R1.0)
+
+Pipeline CI/CD (ADR pipeline CI/CD, `.github/workflows/`) dibangun paralel dan memakai job migrasi lewat SSH forced
+command (`infra/ci/remote-migrate.sh`) yang diikat ke satu lingkungan di sisi server. Saat integrasi:
+
+- Keputusan 2 diperbarui: jalur Coolify **utama** adalah `_deploy.yml` → `remote-migrate.sh` dengan image `kapdh-api`
+  (digest), yang kini menjalankan urutan dan gerbang yang sama (dump pra-migrasi → `roles.sql` → gerbang pra-migrasi →
+  migrasi → `roles.sql` → seed referensi → gerbang penuh `--allow-schema-ahead`), dengan mode `KAPDH_RELEASE_GATE*`
+  dari berkas konfigurasi server. `run-release.sh` + image `kapdh-release` tetap jalur manual dan Compose cadangan.
+  Perbedaan yang disengaja: jalur otomatis tidak menolak image yang lebih lama dari skema (aksi `deploy-tag` = rollback
+  image lewat pipeline), sehingga `roles.sql` terbaru wajib diterapkan ulang manual sesudah rollback; dan sandi role
+  LOGIN diatur pengelola secrets, bukan dari env job.
+- Image `kapdh-release` masuk katalog image CI (`infra/ci/images.json`) dan dipromosikan dengan digest yang sama.
+- Keputusan 6: aturan dasar ProseMirror kini satu salinan di `apps/admin/src/components/ui/tiptap-base.css`
+  (bukan `styles.css`).
+
 ## Konsekuensi
 
-- Satu langkah manual (atau otomatisasi di VPS) per rilis sebelum redeploy Coolify; dicatat di runbook rilis.
+- Satu langkah manual (atau otomatisasi di VPS) per rilis sebelum redeploy Coolify; dicatat di runbook rilis. Pada
+  jalur otomatis langkah ini dijalankan pipeline (lihat Pembaruan).
 - Superuser PostgreSQL hanya ada di berkas env job rilis. Dua job rilis bersamaan aman untuk migrasi (advisory lock)
   tetapi GRANT bersamaan dapat gagal dan harus diulang; operator menjalankan satu job pada satu waktu.
 - Gerbang pra-migrasi memakai kode image baru terhadap skema lama; bila kueri gerbang membutuhkan kolom dari migrasi

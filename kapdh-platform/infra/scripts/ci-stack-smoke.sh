@@ -1,6 +1,6 @@
 #!/bin/sh
 # Uji asap stack Compose production lengkap di CI (Linux + Docker), memakai image yang baru dibangun dengan tag
-# kapdh-ci/kapdh-<layanan>:ci (infra/ci/github-actions-images.yml). Membuktikan tanpa VPS: `docker compose config`
+# kapdh-ci/kapdh-<layanan>:ci (job compose-stack .github/workflows/ci.yml). Membuktikan tanpa VPS: `docker compose config`
 # untuk production dan staging, job rilis (cek versi skema + roles.sql via psql → migrasi kapdh_migrator → seed →
 # gerbang mode laporan dengan pengecualian beralasan), penolakan image yang lebih lama dari skema, gerbang pra-migrasi
 # mode enforce menolak database baru (PRD 9.2) sebelum migrasi, healthcheck semua kontainer, header web/admin,

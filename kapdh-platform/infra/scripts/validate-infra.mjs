@@ -4,7 +4,7 @@
 //
 //   node infra/scripts/validate-infra.mjs
 //
-// Memeriksa: YAML compose/CI/Traefik valid; image dipin digest; DB/Redis tanpa port host dan hanya di jaringan
+// Memeriksa: YAML compose/Traefik valid; CI menjalankan pemeriksaan infra; image dipin digest; DB/Redis tanpa port host dan hanya di jaringan
 // internal; healthcheck, batas sumber daya dan hardening; worker tanpa secret API (least privilege); setiap variabel
 // packages/config tercantum di contoh env dan diteruskan compose; contoh env ditolak validasi apa adanya (placeholder)
 // tetapi lolos setelah secret diisi; Dockerfile non-root dengan HEALTHCHECK. Keluar 1 bila ada pelanggaran.
@@ -237,7 +237,29 @@ if (dev) {
     for (const port of svc.ports ?? [])
       if (!String(port).startsWith("127.0.0.1:")) fail(path, `${name}: port dev harus terikat 127.0.0.1`);
 }
-for (const path of ["infra/ci/github-actions-images.yml"]) parseYaml(path);
+// Workflow CI (.github/workflows/ci.yml, aturan umum di infra/ci/check-workflows.mjs) wajib tetap menjalankan
+// pemeriksaan infra ini: validasi statis, uji kering job rilis, uji asap header image dan stack Compose lengkap.
+{
+  const path = "../.github/workflows/ci.yml";
+  const ci = parseYaml(path);
+  if (ci) {
+    const runs = Object.values(ci.jobs ?? {})
+      .flatMap((job) => job.steps ?? [])
+      .map((step) => step.run ?? "")
+      .join("\n");
+    for (const needle of [
+      "node infra/scripts/validate-infra.mjs",
+      "sh infra/scripts/release-job.test.sh",
+      "sh infra/scripts/smoke-static.sh web",
+      "sh infra/scripts/smoke-static.sh admin",
+      "sh infra/scripts/ci-stack-smoke.sh",
+      "--target release",
+    ])
+      if (!runs.includes(needle)) fail(".github/workflows/ci.yml", `tidak menjalankan ${needle}`);
+    if (!(ci.jobs?.["ci-ok"]?.needs ?? []).includes("compose-stack"))
+      fail(".github/workflows/ci.yml", "status CI lulus tidak bergantung pada job compose-stack");
+  }
+}
 
 // ------------------------------------------------------------------------------------- Traefik dinamis
 try {
