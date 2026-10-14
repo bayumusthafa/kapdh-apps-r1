@@ -622,6 +622,27 @@ export async function sharedGroupHistory(db: DbOrTx, a: string, b: string): Prom
   return row?.ok === true;
 }
 
+/**
+ * Kandidat yang pernah sama-sama menjadi anggota joined satu grup dengan `userId` ({@link sharedGroupHistory} untuk
+ * banyak kandidat sekaligus; syarat kelayakan undangan grup bagi anggota yang tersembunyi dari direktori).
+ */
+export async function sharedGroupHistoryAmong(
+  db: DbOrTx,
+  userId: string,
+  candidates: readonly string[],
+): Promise<Set<string>> {
+  if (candidates.length === 0) return new Set();
+  const found = rows<{ user_id: string }>(
+    await db.execute(sql`
+      select distinct y.user_id from app.room_members x
+      join app.room_members y on y.room_id = x.room_id
+      join app.rooms r on r.id = x.room_id and r.kind = 'group'
+      where x.user_id = ${userId}::uuid and y.user_id in (${uuidList(candidates)})
+        and x.joined_at is not null and y.joined_at is not null`),
+  );
+  return new Set(found.map((row) => row.user_id));
+}
+
 /** Blokir antara `userId` dan kandidat: himpunan kandidat yang memblokir atau diblokir (dua arah, F-12). */
 export async function blockedAmong(
   db: DbOrTx,

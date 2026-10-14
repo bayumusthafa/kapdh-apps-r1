@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import type { ApiEnv } from "@kapdh/config";
 import type { components } from "@kapdh/contracts";
@@ -14,6 +14,7 @@ import type { Db, DbOrTx, Tx } from "../../core/db/types.js";
 import { AppException } from "../../core/errors/app-exception.js";
 import { generateOtp, otpHmac, safeEqualHex, sha256 } from "../../core/identity/crypto.js";
 import { maskEmail, normalizeEmail } from "../../core/identity/email.js";
+import { otpEmailKey } from "../../core/identity/otp-quota.js";
 import { LOGIN_WINDOW_MS } from "../../core/identity/password-verifier.js";
 import { safeError } from "../../core/logging/safe-error.js";
 import type { AccountStatus } from "../../core/membership/effective-status.js";
@@ -126,9 +127,7 @@ export class OtpChallengeService {
    * (PRD 2.5), tanpa menyimpan email mentah orang yang tidak terdaftar (N-09).
    */
   emailKey(email: string): string {
-    return createHmac("sha256", this.env.OTP_HMAC_SECRET)
-      .update(`otp-email:${normalizeEmail(email)}`)
-      .digest("hex");
+    return otpEmailKey(this.env.OTP_HMAC_SECRET, email);
   }
 
   toChallenge(row: OtpRow | OtpDecoyRow, emailMasked: string): OtpChallenge {
@@ -157,6 +156,7 @@ export class OtpChallengeService {
         HOUR_MS,
         "Terlalu banyak permintaan kode dari jaringan ini. Coba lagi nanti.",
       );
+    // Kunci sama dengan otpSendQuotaKey (core): satu bucket per email untuk semua modul (PRD 2.5).
     await this.limits.consumeOrThrow(
       `otp:${emailKey}`,
       OTP_SENDS_PER_HOUR,

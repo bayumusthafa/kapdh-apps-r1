@@ -40,8 +40,11 @@ export function mapLastSuperAdmin(error: unknown): never {
 
 export interface CreateDeletionInput {
   source: "app" | "web";
-  /** Status akun yang diharapkan saat konfirmasi (`active` termasuk suspended, atau `pending_otp` dari web). */
-  expectedStatus: Extract<AccountStatus, "active" | "pending_otp">;
+  /**
+   * Status akun yang diharapkan saat konfirmasi (`active` termasuk suspended, atau `pending_otp` dari web), atau
+   * `disabled` untuk permintaan dari kanal bantuan lewat CLI operator (AccountStatusService, PRD 2.2).
+   */
+  expectedStatus: Extract<AccountStatus, "active" | "pending_otp" | "disabled">;
   actor: Pick<Actor, "kind" | "userId" | "adminId" | "adminRole">;
 }
 
