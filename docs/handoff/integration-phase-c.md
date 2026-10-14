@@ -136,6 +136,15 @@ controls are additive). The page and its mocks type-check against the merged con
 additions (`conflict_of_interest` on the payment detail that the adjustment panel now reads). Verified after the
 merge: `pnpm build` 10/10, admin typecheck and lint, `@kapdh/admin` test 18 files 190/190.
 
+## 5. admin-members
+
+No textual conflicts. Foundation changes are additive (`ConfirmDialog.confirmDisabled`, `Breadcrumb.search`,
+`mockAdminRole()` in the auth mock). The report's possible mock collision on `GET /admin/members` does not occur:
+`mocks/members.ts` is the only mock that registers `/admin/members*` and `/admin/masters*`. Verified after the merge:
+admin build, typecheck and lint; `@kapdh/admin` test 20 files 241/241 (190 + the members tests). The first full run
+had one timeout in the foundation `flow.test.tsx` "keluar membersihkan seluruh cache" (the lazily loaded /payments
+page under parallel load); it passed alone (25/25) and in a full re-run.
+
 ## Breakages already on main before this track (fixed in a separate commit)
 
 Found by the first full API run after merge 1; neither involves an api-admin file.

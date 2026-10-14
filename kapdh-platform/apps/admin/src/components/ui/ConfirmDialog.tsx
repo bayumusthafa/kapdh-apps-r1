@@ -28,6 +28,11 @@ export interface ConfirmDialogProps {
   confirmText?: string;
   /** Permintaan sedang berjalan: tombol konfirmasi memuat dan dialog tidak dapat ditutup. */
   pending?: boolean;
+  /**
+   * Tombol konfirmasi dinonaktifkan sementara (mis. menunggu hitung mundur RATE_LIMITED). Tombol tetap dapat
+   * difokus agar fokus keyboard tidak jatuh ke <body> (N-11).
+   */
+  confirmDisabled?: boolean;
 }
 
 export function ConfirmDialog({
@@ -43,6 +48,7 @@ export function ConfirmDialog({
   acknowledgement = "Saya memahami akibat tindakan ini.",
   confirmText,
   pending = false,
+  confirmDisabled = false,
 }: ConfirmDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -84,7 +90,8 @@ export function ConfirmDialog({
           <Button
             variant={tone === "danger" ? "danger-solid" : "primary"}
             loading={pending}
-            disabled={!secondStepDone}
+            disabled={!secondStepDone || confirmDisabled}
+            focusableWhenDisabled={confirmDisabled}
             onClick={() => void onConfirm()}
           >
             {confirmLabel}
