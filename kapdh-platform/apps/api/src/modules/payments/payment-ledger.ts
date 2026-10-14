@@ -14,7 +14,8 @@ import type { Clock } from "../../core/adapters/clock.js";
 import { AuditService } from "../../core/audit/audit.service.js";
 import { ctx, SYSTEM_ACTOR } from "../../core/context/request-context.js";
 import type { DbOrTx, Tx } from "../../core/db/types.js";
-import { AppException, fieldError, notFound } from "../../core/errors/app-exception.js";
+import { AppException, fieldError, forbidden, notFound } from "../../core/errors/app-exception.js";
+import { AppLogger, type ContextLogger } from "../../core/logging/logger.js";
 import { formatDateWib } from "../../core/membership/format.js";
 import { NotificationService } from "../../core/notifications-kernel/notification.service.js";
 import { PaymentHandlerRegistry } from "../../core/payments-kernel/payment-handler.registry.js";
@@ -65,6 +66,14 @@ export interface ApprovalResult {
   refund: AdjustmentRow | null;
 }
 
+/** Pesan 403 bila nominal iuran belum ditetapkan (lihat {@link PaymentLedger.duesSnapshot}). */
+export const DUES_UNCONFIGURED_MESSAGE = {
+  member:
+    "Pembayaran iuran belum dapat dibuat karena nominal iuran belum ditetapkan pengurus. Hubungi kontak dukungan pengurus.",
+  admin:
+    "Nominal iuran belum ditetapkan atau bernilai nol. Simpan nominal iuran yang disahkan bendahara di Pengaturan Biaya terlebih dahulu.",
+} as const;
+
 /**
  * Primitif tulis domain pembayaran yang dipakai layanan HTTP modul payments dan PaymentsKernel (ekspor lintas modul).
  * Semua metode berjalan di dalam transaksi commit-aware pemanggil dan TIDAK mengambil kunci tingkat lebih awal dari
@@ -73,13 +82,18 @@ export interface ApprovalResult {
  */
 @Injectable()
 export class PaymentLedger {
+  private readonly log: ContextLogger;
+
   constructor(
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly audit: AuditService,
     private readonly notifications: NotificationService,
     private readonly settings: SettingsService,
     private readonly registry: PaymentHandlerRegistry,
-  ) {}
+    logs: AppLogger,
+  ) {
+    this.log = logs.for("PaymentLedger");
+  }
 
   now(): Date {
     return this.clock.now();
@@ -114,6 +128,13 @@ export class PaymentLedger {
   /**
    * Snapshot iuran dari pengaturan `fees` versi aktif (AC F03-1, F03-5). Baris app_settings dikunci FOR SHARE
    * (kunci daun) sehingga versi tidak berubah sampai transaksi selesai.
+   *
+   * Gagal tertutup (PRD 8.2 butir 4, 9.3; AC F17-1): nominal hanya diambil dari baris `fees` yang TERSIMPAN (versi >= 1,
+   * ditulis seed referensi `seed.reference` atau `settings.updated` pengurus, keduanya teraudit). Tanpa baris itu
+   * SettingsService mengembalikan nilai bawaan kode dengan versi 0, yang tidak pernah disahkan bendahara dan tidak
+   * dapat ditelusuri ke audit; total iuran 0.00 juga ditolak karena transfer Rp0 tidak dapat diverifikasi pengurus
+   * (paid = dana diverifikasi, PRD 3.4). Keduanya 403 FORBIDDEN dengan pesan konfigurasi dan log error untuk operator;
+   * tidak ada payment yang dibuat.
    */
   async duesSnapshot(
     tx: Tx,
@@ -121,6 +142,16 @@ export class PaymentLedger {
   ): Promise<{ lines: LineSnapshot[]; total: string; settingsVersion: number }> {
     const fees = await this.settings.getEntry("fees", { tx, lock: true });
     const { lines, total } = duesLines(fees.value, type);
+    const problem = fees.version < 1 ? "fees_not_stored" : toCents(total) <= 0n ? "zero_total" : null;
+    if (problem) {
+      this.log.error("instruksi iuran ditolak: nominal iuran belum dikonfigurasi", {
+        setting: "fees",
+        settings_version: fees.version,
+        dues_type: type,
+        problem,
+      });
+      throw forbidden(DUES_UNCONFIGURED_MESSAGE[ctx().actor.kind === "admin" ? "admin" : "member"]);
+    }
     return { lines, total, settingsVersion: fees.version };
   }
 

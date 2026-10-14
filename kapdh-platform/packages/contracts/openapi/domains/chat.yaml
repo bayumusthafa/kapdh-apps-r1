@@ -102,7 +102,8 @@ paths:
       description: |
         Pembuat langsung joined dengan peran admin. Setiap `invitee_user_ids` diproses seperti
         POST /chat/rooms/{roomId}/invitations: calon anggota berstatus invited dan harus menerima sendiri; yang tidak
-        dapat diundang (bukan anggota aktif, blokir dua arah dengan pembuat, kapasitas 100) dilewati dengan alasan di
+        dapat diundang (bukan anggota aktif, blokir dua arah dengan pembuat, tersembunyi dari direktori tanpa pernah
+        satu grup dengan pembuat, kapasitas 100) dilewati dengan alasan di
         `invitations.skipped`, tanpa membatalkan pembuatan grup. Undangan masuk kotak masuk penerima (kategori chat,
         deep link `/chat/invitations`) dan event realtime `room.member_changed` (change=invited) hanya ke kanal
         user:<id> penerima dan admin grup (bukan kanal room).
@@ -324,10 +325,13 @@ paths:
       summary: Undang anggota ke grup; hanya admin grup, calon anggota wajib menerima (F-11, F-12).
       description: |
         Hanya admin grup pada room group yang belum ditutup (anggota biasa -> 403 FORBIDDEN). Per pengguna:
-        - diundang (status invited, invited_by = pemanggil) bila anggota aktif (verified/expiring, tidak suspended)
-          dan tidak ada blokir dua arah antara pemanggil dan calon anggota (F-12);
+        - diundang (status invited, invited_by = pemanggil) bila anggota aktif (verified/expiring, tidak suspended),
+          tidak ada blokir dua arah antara pemanggil dan calon anggota (F-12), dan calon anggota terlihat di
+          direktori bagi pemanggil atau pernah menjadi anggota joined grup yang sama dengannya (syarat yang sama
+          dengan POST /chat/direct; PRD 3.10, N-09);
         - dilewati dengan alasan: already_member, already_invited, room_full (joined + invited sudah 100), atau
-          not_invitable (bukan anggota aktif, akun tidak ada, diri sendiri, atau blokir; alasan tidak dibedakan).
+          not_invitable (bukan anggota aktif, akun tidak ada, diri sendiri, blokir, atau tersembunyi dari direktori
+          tanpa pernah satu grup; alasan tidak dibedakan).
         Undangan ulang setelah left/declined/removed diperbolehkan. Kapasitas dihitung di bawah kunci baris room
         sehingga undangan paralel tidak melampaui 100. Penerima mendapat notifikasi inbox (kategori chat) dan event
         `room.member_changed` (change=invited) yang hanya dikirim ke kanal user:<id> penerima dan admin grup, tidak
@@ -568,7 +572,9 @@ paths:
         URL terikat sesi itu) dan menjadwalkan push kategori chat (tanpa isi pesan) HANYA untuk anggota joined selain
         pengirim yang effective_status-nya verified/expiring dan tidak suspended saat penjadwalan, tidak mute room,
         dan preferensi push chat-nya aktif. Notifikasi kotak masuk (tanpa isi pesan, satu per episode belum dibaca)
-        tetap ditulis untuk anggota aktif yang mute room atau mematikan push chat (riwayat resmi, AC F13-2). Anggota
+        tetap ditulis untuk anggota aktif yang mute room atau mematikan push chat (riwayat resmi, AC F13-2). Teks
+        notifikasi room direct tidak memuat nama pengirim ("Ada pesan baru di percakapan langsung."), karena kotak
+        masuk penerima bertahan setelah akun pengirim dihapus (D2, AC F14-3); room grup memuat nama grup. Anggota
         expired/suspended tidak menerima notifikasi chat karena deep link `/chat/<roomId>` akan menjawab 403 dan
         mereka tidak dapat mute/keluar grup (PRD 2.2). Laju pengiriman dibatasi (429).
       x-kapdh-access: { audience: mobile, member_access: active }
@@ -1006,7 +1012,8 @@ components:
       enum: [already_member, already_invited, room_full, not_invitable]
       description: |
         Alasan undangan dilewati. not_invitable sengaja tidak membedakan akun tidak ada, bukan anggota aktif, diri
-        sendiri, atau blokir (F-12, N-09).
+        sendiri, blokir, atau anggota yang tersembunyi dari direktori tanpa pernah satu grup dengan pengundang
+        (F-12, N-09, PRD 3.10).
 
     ChatInviteSkip:
       type: object
