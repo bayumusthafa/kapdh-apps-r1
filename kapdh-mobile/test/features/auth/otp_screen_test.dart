@@ -430,7 +430,9 @@ void main() {
       expect(find.text('Coba lagi dalam 2:00'), findsOneWidget);
     });
 
-    testWidgets('AC F01-3: challenge tidak berlaku lagi (410): lembar ditutup, tawaran mulai ulang pendaftaran', (tester) async {
+    testWidgets('AC F01-3: challenge tidak berlaku lagi (410): lembar ditutup, tawaran mulai ulang pendaftaran', (
+      tester,
+    ) async {
       final app = await openOtp(
         tester,
         apiRoutes({
@@ -668,6 +670,33 @@ void main() {
       expect(app.container.read(authEmailHintProvider), 'ahmad.islam@email.com');
       expect(app.container.read(registrationDraftProvider)?.email, 'ahmad.islam@email.com');
       expect(find.text('Akun belum aktif. Masukkan kode terbaru yang dikirim ke email Anda.'), findsOneWidget);
+    });
+
+    testWidgets('AC F01-4, PRD 2.5: login pemeriksaan kena cooldown: masuk sendiri dengan email baru terisi', (
+      tester,
+    ) async {
+      var corrections = 0;
+      final app = await openOtp(
+        tester,
+        apiRoutes({
+          '/auth/email-correction': (_) => ++corrections == 1
+              ? FakeResponse.network()
+              : FakeResponse.json(410, errorJson('OTP_EXPIRED', 'Kode tidak berlaku lagi.')),
+          '/auth/login': (_) =>
+              FakeResponse.json(429, errorJson('RATE_LIMITED', 'Terlalu banyak percobaan.', retryAfterSeconds: 900)),
+        }),
+        withCredentials: true,
+      );
+      await submitCorrection(tester);
+      await scrollAndTap(tester, find.byKey(const ValueKey('correction-submit')));
+      await settle(tester);
+      expect(find.byType(EmailCorrectionSheet), findsNothing);
+      expect(find.text('Terlalu banyak percobaan.'), findsOneWidget);
+
+      await scrollAndTap(tester, find.text('Masuk untuk memeriksa status'));
+      await settle(tester);
+      expect(app.location, '/login');
+      expect(find.text('ahmad.benar@email.com'), findsOneWidget, reason: 'email dari koreksi yang belum terbantah');
     });
 
     testWidgets('AC F01-4: pemeriksaan lewat login juga terputus: lembar tetap terbuka untuk dicoba lagi', (

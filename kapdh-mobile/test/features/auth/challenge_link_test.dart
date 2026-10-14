@@ -294,9 +294,7 @@ void main() {
       expect(find.text('Masukkan kode pemulihan'), findsOneWidget);
     });
 
-    testWidgets('AC F16-4: sesi dicabut server saat pemberitahuan tampil: tautan langsung dilanjutkan', (
-      tester,
-    ) async {
+    testWidgets('AC F16-4: sesi dicabut server saat pemberitahuan tampil: tautan langsung dilanjutkan', (tester) async {
       var revoked = false;
       final app = await pumpApp(
         tester,
@@ -373,7 +371,9 @@ void main() {
     expect(app.location, '/onboarding/fees');
   });
 
-  testWidgets('AC F01-3, kontrak C1: challenge aktivasi dari tautan yang tidak berlaku menawarkan masuk', (tester) async {
+  testWidgets('AC F01-3, kontrak C1: challenge aktivasi dari tautan yang tidak berlaku menawarkan masuk', (
+    tester,
+  ) async {
     final app = await coldStart(
       tester,
       '/register/otp?challenge=$linkId',
