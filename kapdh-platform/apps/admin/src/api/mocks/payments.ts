@@ -1187,6 +1187,13 @@ export const mockPayments = {
   fees(): S["FeeSettings"] {
     return fees;
   },
+  /**
+   * Pengaturan `fees` belum pernah tersimpan: GET /admin/settings/fees mengembalikan nilai bawaan kode dengan versi
+   * "0", dan iuran baru ditolak 403 sampai pengurus menyimpan nominal (gagal tertutup, PRD 8.2 butir 4).
+   */
+  unsetFees(): void {
+    fees = feeSettings("50000.00", "10000.00", "10000.00", "0", "2026-10-01T00:00:00Z", null);
+  },
   /** Admin lain menyimpan biaya baru (AC F15-4). */
   updateFeesAsOtherAdmin(registrationFee: string, cardFee: string, renewalFee: string): void {
     fees = feeSettings(
@@ -1510,6 +1517,15 @@ function duesFromFees(type: "registration" | "renewal"): { lines: S["PaymentLine
   };
 }
 
+/** Pesan 403 server untuk pengurus (apps/api payment-ledger DUES_UNCONFIGURED_MESSAGE.admin). */
+const DUES_UNCONFIGURED_ADMIN =
+  "Nominal iuran belum ditetapkan atau bernilai nol. Simpan nominal iuran yang disahkan bendahara di Pengaturan Biaya terlebih dahulu.";
+
+/** Nominal iuran belum tersimpan (versi "0", nilai bawaan kode) atau total jenis ini 0.00 (gagal tertutup). */
+function duesUnconfigured(type: "registration" | "renewal"): boolean {
+  return fees.version === "0" || /^0+\.00$/.test(duesFromFees(type).total);
+}
+
 function methodSnapshot(m: MethodRow): S["PaymentMethod"] {
   return {
     id: m.id,
@@ -1584,6 +1600,9 @@ function recordDues(req: MockRequest): Ok | Response {
       "Anggota sudah mengirim bukti untuk iuran ini. Putuskan bukti tersebut dari antrean verifikasi.",
       { current: present(open) },
     );
+  // Payment baru gagal tertutup bila nominal iuran belum ditetapkan (versi 0 atau total 0.00), seperti
+  // PaymentLedger.duesSnapshot di server: diperiksa sebelum metode dan berkas, tanpa payment yang dibuat.
+  if (!open && duesUnconfigured(type)) return error(403, "FORBIDDEN", DUES_UNCONFIGURED_ADMIN);
   const method = methods.get(body.payment_method_id as string);
   if (!method) return validationError({ payment_method_id: ["Metode pembayaran tidak ditemukan."] });
   const fileId = body.proof_file_id as string;

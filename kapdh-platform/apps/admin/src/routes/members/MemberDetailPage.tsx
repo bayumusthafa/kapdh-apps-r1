@@ -640,9 +640,10 @@ function PermissionNote({ children }: { children: ReactNode }) {
 
 /**
  * Pembayaran terbaru anggota. Setiap baris menaut ke payment itu di Verifikasi Pembayaran (`?payment=`), sehingga
- * panel keputusan langsung membuka payment yang dimaksud apa pun statusnya (F-04, PRD 4.5). "Catat iuran" membuka
- * pencatatan iuran di luar aplikasi (rencana cadangan D13, adminRecordPayment) dengan alumni ini sudah terpilih,
- * hanya bila iurannya dapat dicatat sekarang.
+ * panel keputusan langsung membuka payment yang dimaksud apa pun statusnya (F-04, PRD 4.5); "Semua pembayaran"
+ * membuka daftar yang dibatasi ke anggota ini (`?user=`), termasuk payment di luar ringkasan terbaru. "Catat iuran"
+ * membuka pencatatan iuran di luar aplikasi (rencana cadangan D13, adminRecordPayment) dengan alumni ini sudah
+ * terpilih, hanya bila iurannya dapat dicatat sekarang.
  */
 function PaymentsCard({ member }: { member: MemberDetail }) {
   const auth = useAuth();
@@ -668,12 +669,13 @@ function PaymentsCard({ member }: { member: MemberDetail }) {
                 Catat iuran
               </Link>
             ) : null}
+            {/* Seluruh payment anggota ini (filter user_id adminListPayments, semua status), bukan antrean bawaan. */}
             <Link
               to="/payments"
-              search={{ tab: "verify" }}
+              search={{ tab: "verify", user: member.user_id }}
               className={buttonClass({ variant: "ghost", size: "sm" })}
             >
-              Verifikasi Pembayaran
+              Semua pembayaran
             </Link>
           </>
         ) : null

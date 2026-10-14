@@ -1,6 +1,6 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { findToast, renderApp } from "../test/utils";
 import { adminApi, advanceServerClock, live, proofFile, signInLive, totpCode } from "./fixtures";
 import { cookieNames, cookieValue, rawFetch } from "./http";
@@ -10,8 +10,8 @@ import { cookieNames, cookieValue, rawFetch } from "./http";
  * sesi dan klien openapi-fetch yang sama dengan build produksi berbicara HTTP dengan apps/api/dist di port lokal
  * (PGlite + seed dev, live/api-server.mjs). Uji ini membuktikan bahwa klausa UI yang di jalur bawaan hanya diuji
  * terhadap server tiruan (src/api/mocks) juga berlaku terhadap server sungguhan: login dua tahap dan pemulihan sesi
- * (AC F02-1, F02-2), idle 30 menit (AC F02-5), keputusan bersamaan (AC F04-3), serta pencatatan iuran D13 dan
- * tautan payment dari detail anggota (temuan D6-01, D6-02).
+ * (AC F02-1, F02-2), peringatan idle dan "Tetap masuk" serta idle 30 menit (AC F02-5), keputusan bersamaan
+ * (AC F04-3), serta pencatatan iuran D13 dan tautan payment dari detail anggota (temuan D6-01, D6-02).
  *
  * Satu API dan satu database untuk seluruh berkas: urutan uji di bawah disengaja (idle terakhir).
  */
@@ -157,8 +157,62 @@ describe("web admin x API nyata (D2-14)", () => {
     expect(row).toHaveAttribute("href", `/payments?tab=verify&payment=${paymentId}`);
     // Iuran pendaftaran sudah tercatat: Catat iuran tidak lagi ditawarkan untuk anggota ini.
     expect(within(card).queryByRole("link", { name: "Catat iuran" })).toBeNull();
+    expect(within(card).getByRole("link", { name: "Semua pembayaran" })).toHaveAttribute(
+      "href",
+      `/payments?tab=verify&user=${unverified.userId}`,
+    );
     await user.click(row);
     expect(await screen.findByRole("article", { name: unverified.name })).toBeInTheDocument();
+
+    // D6-02: "Semua pembayaran" dibatasi ke anggota ini oleh filter user_id API, seluruh status (payment lunas tadi).
+    await act(() => router.navigate({ to: "/payments", search: { tab: "verify", user: unverified.userId } }));
+    const scope = await screen.findByRole("note", { name: "Cakupan daftar pembayaran" });
+    await waitFor(() =>
+      expect(scope).toHaveTextContent(`Hanya menampilkan pembayaran milik ${unverified.name}.`),
+    );
+    const table = await screen.findByRole("table", { name: "Antrean pembayaran" });
+    // Data antrean sebelumnya dapat tampil sebentar (keepPreviousData) sampai respons berfilter tiba.
+    await waitFor(() => {
+      const owners = within(table)
+        .getAllByRole("rowheader")
+        .map((cell) => cell.textContent ?? "");
+      expect(owners.length).toBeGreaterThan(0);
+      expect(owners.every((name) => name.includes(unverified.name))).toBe(true);
+    });
+    expect(screen.getByRole("combobox", { name: "Status" })).toHaveValue("all");
+  });
+
+  it("AC F02-5: peringatan 2 menit sebelum idle; 'Tetap masuk' menyentuh API sehingga idle server ikut diperpanjang", async () => {
+    const user = userEvent.setup();
+    const { router } = renderApp("/login");
+    await signInLive(user);
+    await screen.findByRole("heading", { level: 1, name: "Dashboard" });
+
+    // Jam klien (hanya Date; timer tetap nyata agar fetch dan waitFor berjalan) dan jam server maju bersama tanpa
+    // aktivitas pengguna: 28,5 menit sejak masuk, di dalam jendela peringatan 2 menit.
+    const quiet = 28.5 * 60_000;
+    vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true, now: Date.now() });
+    try {
+      vi.setSystemTime(Date.now() + quiet);
+      await advanceServerClock(quiet);
+      const dialog = await screen.findByRole("alertdialog", { name: "Sesi akan berakhir" });
+      await user.click(within(dialog).getByRole("button", { name: "Tetap masuk" }));
+      // Dialog baru tertutup setelah GET /admin/me tanpa header latar berhasil di server (AppShell stayActive).
+      await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+
+      // 3 menit kemudian: 31,5 menit sejak masuk, tetapi hanya 3 menit sejak "Tetap masuk". Refresh dan polling latar
+      // tidak memperpanjang idle (AC F02-5, API e2e), sehingga sesi hanya hidup karena sentuhan "Tetap masuk".
+      vi.setSystemTime(Date.now() + 3 * 60_000);
+      await advanceServerClock(3 * 60_000);
+      await act(() => router.navigate({ to: "/members" }));
+      expect(await screen.findByRole("heading", { level: 1, name: "Manajemen Users" })).toBeInTheDocument();
+      // Daftar termuat dari server (alumni seed dev), bukan galat sesi.
+      expect((await screen.findAllByText(/^\[Contoh\] /)).length).toBeGreaterThan(0);
+      expect(screen.queryByText("Sesi berakhir. Silakan masuk kembali.")).toBeNull();
+      expect(router.state.location.pathname).toBe("/members");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("AC F02-5: idle server diukur dari aktivitas; setelah 30 menit tanpa aktivitas permintaan berikutnya mengakhiri sesi UI", async () => {

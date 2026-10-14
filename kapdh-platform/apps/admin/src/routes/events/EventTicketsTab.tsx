@@ -7,7 +7,7 @@ import { api } from "../../api/client";
 import { useApiMutation } from "../../api/query";
 import { useAuth } from "../../auth/session";
 import { Badge, TICKET_STATUS, TicketStatusBadge } from "../../components/ui/Badge";
-import { Button } from "../../components/ui/Button";
+import { Button, buttonClass } from "../../components/ui/Button";
 import { RadioGroup } from "../../components/ui/Choice";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { Avatar } from "../../components/ui/DataDisplay";
@@ -17,6 +17,7 @@ import { Select, Textarea } from "../../components/ui/Input";
 import { SearchInput } from "../../components/ui/SearchInput";
 import { EmptyState } from "../../components/ui/States";
 import { useToast } from "../../components/ui/Toast";
+import { cn } from "../../lib/cn";
 import { formatDateTime, formatRupiah, formatShortDateTime } from "../../lib/format";
 import { DELETED_ACCOUNT_LABEL } from "../../lib/labels";
 import {
@@ -175,6 +176,16 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
                 >
                   Putuskan di Verifikasi Pembayaran
                 </Link>
+              ) : canSeePayments ? (
+                // Payment lain (menunggu bukti, lunas, ditolak, dibatalkan) dibuka langsung untuk histori dan bukti.
+                <Link
+                  to="/payments"
+                  search={{ tab: "verify", payment: p.id }}
+                  aria-label={`Lihat pembayaran tiket ${holderName(t)}`}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
+                  Lihat pembayaran
+                </Link>
               ) : null}
               {t.refunds.map((r) => (
                 <Badge
@@ -280,6 +291,16 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
                 />
               )}
             </Field>
+            {canSeePayments ? (
+              // Seluruh payment tiket event ini (filter event_id adminListPayments, semua status).
+              <Link
+                to="/payments"
+                search={{ tab: "verify", event: event.id }}
+                className={cn(buttonClass({ variant: "ghost", size: "sm" }), "self-end")}
+              >
+                Pembayaran tiket event ini
+              </Link>
+            ) : null}
           </>
         }
         rowActions={(t) =>
