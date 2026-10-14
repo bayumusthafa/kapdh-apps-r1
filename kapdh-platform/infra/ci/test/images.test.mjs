@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildMatrix,
+  dockerStages,
   loadCatalog,
   main,
   normalizeRegistry,
@@ -19,7 +20,7 @@ describe("katalog image", () => {
     assert.deepEqual(validateCatalog(catalog), []);
     assert.deepEqual(
       catalog.images.map((i) => i.name),
-      ["api", "worker", "web", "admin"],
+      ["api", "release", "worker", "web", "admin"],
     );
   });
 
@@ -27,8 +28,13 @@ describe("katalog image", () => {
     const { include } = buildMatrix(catalog, "ci");
     assert.deepEqual(
       include.map((e) => e.id),
-      ["api", "worker", "web-production", "admin-production"],
+      ["api", "release", "worker", "web-production", "admin-production"],
     );
+    // api dan release dari Dockerfile yang sama, tahap berbeda; image lain memakai tahap terakhir.
+    assert.equal(include.find((e) => e.name === "api").target, "api");
+    assert.equal(include.find((e) => e.name === "release").target, "release");
+    assert.equal(include.find((e) => e.name === "release").dockerfile, "infra/Dockerfile.api");
+    assert.equal(include.find((e) => e.name === "worker").target, "");
     const web = include.find((e) => e.name === "web");
     assert.equal(web.build_args, "PUBLIC_API_URL=https://api.kapdh.or.id/api/v1");
     assert.equal(
@@ -44,6 +50,7 @@ describe("katalog image", () => {
       include.map((e) => `${e.image}${e.tag_suffix}`),
       [
         "kapdh-api",
+        "kapdh-release",
         "kapdh-worker",
         "kapdh-web-staging",
         "kapdh-web-production",
@@ -61,6 +68,7 @@ describe("katalog image", () => {
       refs.map((r) => r.source),
       [
         `ghcr.io/org-kapdh/kapdh-api:sha-${SHA}`,
+        `ghcr.io/org-kapdh/kapdh-release:sha-${SHA}`,
         `ghcr.io/org-kapdh/kapdh-worker:sha-${SHA}`,
         `ghcr.io/org-kapdh/kapdh-web:sha-${SHA}-production`,
         `ghcr.io/org-kapdh/kapdh-admin:sha-${SHA}-production`,
@@ -68,7 +76,8 @@ describe("katalog image", () => {
     );
     const staging = sourceRefs(catalog, { env: "staging", sha: SHA, registry: "ghcr.io/org-kapdh" });
     assert.equal(staging[0].source, refs[0].source, "api staging = api production (digest sama, PRD 5.5)");
-    assert.equal(staging[2].source, `ghcr.io/org-kapdh/kapdh-web:sha-${SHA}-staging`);
+    assert.equal(staging[1].source, refs[1].source, "release staging = release production");
+    assert.equal(staging[3].source, `ghcr.io/org-kapdh/kapdh-web:sha-${SHA}-staging`);
   });
 
   it("input tidak sah ditolak", () => {
@@ -83,11 +92,26 @@ describe("katalog image", () => {
   it("validasi menangkap Dockerfile hilang, URL non-https dan build arg tanpa nilai", () => {
     const broken = structuredClone(catalog);
     broken.environments.staging.api_base_url = "http://staging-api.kapdh.or.id/api/v1";
-    broken.images[3].build_args = { VITE_API_BASE_URL: "tidak_ada" };
+    broken.images.find((i) => i.name === "admin").build_args = { VITE_API_BASE_URL: "tidak_ada" };
+    broken.images.find((i) => i.name === "release").target = "tidak-ada";
+    broken.images.find((i) => i.name === "worker").target = "Bukan Nama";
     const errors = validateCatalog(broken, { exists: (p) => p !== "infra/Dockerfile.admin" });
     assert.ok(errors.some((e) => /Dockerfile infra\/Dockerfile.admin tidak ditemukan/.test(e)));
     assert.ok(errors.some((e) => /staging.api_base_url wajib https/.test(e)));
     assert.ok(errors.some((e) => /tidak_ada kosong/.test(e)));
+    assert.ok(errors.some((e) => /release: tahap tidak-ada tidak ada di infra\/Dockerfile.api/.test(e)));
+    assert.ok(errors.some((e) => /worker: target tidak valid/.test(e)));
+  });
+
+  it("tahap Dockerfile dibaca dari baris FROM ... AS", () => {
+    assert.deepEqual(
+      [
+        ...dockerStages(
+          "FROM node:24 AS build\nFROM node:24 AS runtime\nFROM runtime AS release\nFROM runtime AS api\n",
+        ),
+      ],
+      ["build", "runtime", "release", "api"],
+    );
   });
 });
 

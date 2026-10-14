@@ -59,6 +59,8 @@ function entry(catalog, image, env) {
     name: image.name,
     image: `${catalog.name_prefix}${image.name}`,
     dockerfile: image.dockerfile,
+    // Tahap Dockerfile (input `target` build-push-action); string kosong = tahap terakhir.
+    target: image.target ?? "",
     environment: image.per_environment ? env : "any",
     tag_suffix: suffix,
     build_args: buildArgsFor(catalog, image, env).join("\n"),
@@ -96,8 +98,19 @@ export function sourceRefs(catalog, { env, sha, registry }) {
   });
 }
 
+/** Nama tahap (`FROM <image> AS <nama>`) dalam teks Dockerfile, huruf kecil. */
+export function dockerStages(text) {
+  return new Set([...text.matchAll(/^FROM\s+\S+\s+AS\s+(\S+)\s*$/gim)].map((m) => m[1].toLowerCase()));
+}
+
 /** Memeriksa katalog; mengembalikan daftar galat (kosong = valid). */
-export function validateCatalog(catalog, { exists = (p) => existsSync(join(PLATFORM_ROOT, p)) } = {}) {
+export function validateCatalog(
+  catalog,
+  {
+    exists = (p) => existsSync(join(PLATFORM_ROOT, p)),
+    read = (p) => readFileSync(join(PLATFORM_ROOT, p), "utf8"),
+  } = {},
+) {
   const errors = [];
   if (typeof catalog.name_prefix !== "string" || !/^[a-z][a-z0-9-]*-$/.test(catalog.name_prefix))
     errors.push("name_prefix wajib huruf kecil dan diakhiri '-'");
@@ -113,6 +126,12 @@ export function validateCatalog(catalog, { exists = (p) => existsSync(join(PLATF
     seen.add(image.name);
     if (typeof image.dockerfile !== "string" || !exists(image.dockerfile))
       errors.push(`image ${image.name}: Dockerfile ${image.dockerfile} tidak ditemukan`);
+    if (image.target !== undefined) {
+      if (typeof image.target !== "string" || !NAME_RE.test(image.target))
+        errors.push(`image ${image.name}: target tidak valid: ${image.target}`);
+      else if (exists(image.dockerfile ?? "") && !dockerStages(read(image.dockerfile)).has(image.target))
+        errors.push(`image ${image.name}: tahap ${image.target} tidak ada di ${image.dockerfile}`);
+    }
     if (typeof image.smoke !== "string" || image.smoke.trim() === "")
       errors.push(`image ${image.name}: smoke wajib diisi (perintah sh di dalam image)`);
     if (!image.per_environment && Object.keys(image.build_args ?? {}).length > 0)

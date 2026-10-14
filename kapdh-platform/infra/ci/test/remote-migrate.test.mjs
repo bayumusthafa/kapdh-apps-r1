@@ -1,4 +1,4 @@
-// Uji job migrasi deployment tunggal (infra/ci/remote-migrate.sh; PRD 5.3, 5.5, 8.4, 9.3) dengan `docker` palsu di
+// Uji job migrasi deployment tunggal (infra/ci/remote-migrate.sh; PRD 5.3, 5.5, 8.4, 9.2 #9, 9.3) dengan `docker` palsu di
 // PATH: lingkungan terikat forced command, roles.sql hanya dari image, production hanya image rilis, dump pra-migrasi
 // wajib di production, URL database tidak pernah muncul di argumen proses. Butuh `sh` POSIX (dash di CI; Git Bash di
 // Windows); dilewati bila tidak ada.
@@ -61,6 +61,9 @@ case "$cmd" in
         exit 0 ;;
       *pg_restore*) cat >/dev/null; exit "\${FAKE_RESTORE_EXIT:-0}" ;;
       *migrate.js*) exit "\${FAKE_MIGRATE_EXIT:-0}" ;;
+      *seed-reference.js*) exit "\${FAKE_SEED_EXIT:-0}" ;;
+      *golive-check.js*--preflight*) echo "laporan pra-migrasi palsu"; exit "\${FAKE_PREFLIGHT_EXIT:-0}" ;;
+      *golive-check.js*) echo "laporan gerbang palsu"; exit "\${FAKE_GATE_EXIT:-0}" ;;
       *psql*)
         for a in "$@"; do
           case "$a" in *:/kapdh/roles.sql:ro) head -n 1 "\${a%:/kapdh/roles.sql:ro}" >>"$FAKE_LOG" ;; esac
@@ -110,19 +113,21 @@ function run({ bound = ["staging"], command, args = [], env = {} } = {}) {
   return { status: r.status, out: `${r.stdout}${r.stderr}`, docker: readFileSync(log, "utf8") };
 }
 
+function stepOf(line) {
+  if (line.includes("pg_dump")) return "dump";
+  if (line.includes("pg_restore")) return "verify-dump";
+  if (line.includes("migrate.js")) return "migrate";
+  if (line.includes("seed-reference.js")) return "seed";
+  if (line.includes("golive-check.js --preflight")) return "gate-preflight";
+  if (line.includes("golive-check.js")) return "gate";
+  return "roles";
+}
+
 const steps = (docker) =>
   docker
     .split("\n")
     .filter((l) => l.startsWith("docker run"))
-    .map((l) =>
-      l.includes("pg_dump")
-        ? "dump"
-        : l.includes("pg_restore")
-          ? "verify-dump"
-          : l.includes("migrate.js")
-            ? "migrate"
-            : "roles",
-    );
+    .map(stepOf);
 
 describe(
   "remote-migrate.sh (forced command job migrasi)",
@@ -146,10 +151,11 @@ describe(
 
     after(() => rmSync(root, { recursive: true, force: true }));
 
-    it("staging: roles.sql (dari image) -> migrate -> roles.sql, URL database hanya lewat environment", () => {
+    it("staging: roles.sql (dari image) -> migrate -> roles.sql -> seed -> gerbang (laporan), URL database hanya lewat environment", () => {
       const r = run({ command: `migrate staging ${REF}` });
       assert.equal(r.status, 0, r.out);
-      assert.deepEqual(steps(r.docker), ["roles", "migrate", "roles"]);
+      // Staging = mode laporan: gerbang pra-migrasi dilewati, gerbang penuh hanya dicetak.
+      assert.deepEqual(steps(r.docker), ["roles", "migrate", "roles", "seed", "gate"]);
       assert.match(r.docker, /docker create ghcr\.io\/kapdh\/kapdh-api@sha256:a{64}/);
       assert.match(r.docker, /docker cp fakecid0001:\/app\/db\/roles\.sql /);
       // SQL yang dijalankan berasal dari image, bukan stdin klien.
@@ -223,7 +229,17 @@ describe(
 
       const ok = run({ bound: ["production"], command: `migrate production ${REF} v1.2.0` });
       assert.equal(ok.status, 0, ok.out);
-      assert.deepEqual(steps(ok.docker), ["dump", "verify-dump", "roles", "migrate", "roles"]);
+      assert.deepEqual(steps(ok.docker), [
+        "dump",
+        "verify-dump",
+        "roles",
+        "gate-preflight",
+        "migrate",
+        "roles",
+        "seed",
+        "gate",
+      ]);
+      assert.match(ok.out, /mode gerbang go-live enforce/);
       assert.match(ok.docker, /docker pull --quiet ghcr\.io\/kapdh\/kapdh-api:v1\.2\.0/);
       const dir = join(root, "backup-production");
       const dumps = readdirSync(dir).filter((f) => f.endsWith(".dump"));
@@ -317,6 +333,115 @@ describe(
       assert.equal(failed.status, 1);
       assert.deepEqual(steps(failed.docker), ["roles", "migrate"]);
       assert.match(failed.out, /JANGAN dideploy/);
+    });
+
+    it("PRD 9.2 #9: production (enforce) - gerbang pra-migrasi menolak: migrasi TIDAK dijalankan", () => {
+      const r = run({
+        bound: ["production"],
+        command: `migrate production ${REF} v1.2.0`,
+        env: { FAKE_PREFLIGHT_EXIT: "1" },
+      });
+      assert.equal(r.status, 1, r.out);
+      assert.match(r.out, /pra-migrasi MENOLAK/);
+      assert.deepEqual(steps(r.docker), ["dump", "verify-dump", "roles", "gate-preflight"]);
+    });
+
+    it("PRD 9.2 #9: production (enforce) - gerbang penuh menolak sesudah migrasi: kode 1, image tidak dideploy", () => {
+      const r = run({
+        bound: ["production"],
+        command: `migrate production ${REF} v1.2.0`,
+        env: { FAKE_GATE_EXIT: "1" },
+      });
+      assert.equal(r.status, 1, r.out);
+      assert.match(r.out, /MENOLAK setelah migrasi; image JANGAN dideploy/);
+      assert.deepEqual(steps(r.docker).slice(-4), ["migrate", "roles", "seed", "gate"]);
+      // Gerbang memakai image API yang sama (digest), sebagai kapdh_migrator lewat environment, mengizinkan skema
+      // lebih baru (deploy ulang tag lama = rollback image).
+      const gateLine = r.docker.split("\n").find((l) => l.includes("golive-check.js --allow-schema-ahead"));
+      assert.ok(gateLine, r.docker);
+      assert.match(
+        gateLine,
+        /-e DATABASE_URL -e NODE_ENV=production ghcr\.io\/kapdh\/kapdh-api@sha256:a{64} /,
+      );
+      assert.match(gateLine, /\| admin_env= db_env=set$/);
+    });
+
+    it("gerbang pra-migrasi tidak dapat dijalankan (kode 3, skema lama): peringatan, gerbang penuh menentukan", () => {
+      const r = run({
+        bound: ["production"],
+        command: `migrate production ${REF} v1.2.0`,
+        env: { FAKE_PREFLIGHT_EXIT: "3" },
+      });
+      assert.equal(r.status, 0, r.out);
+      assert.match(r.out, /pra-migrasi tidak dapat dijalankan \(kode 3/);
+      assert.deepEqual(steps(r.docker).slice(-3), ["roles", "seed", "gate"]);
+      const broken = run({
+        bound: ["production"],
+        command: `migrate production ${REF} v1.2.0`,
+        env: { FAKE_GATE_EXIT: "3" },
+      });
+      assert.equal(broken.status, 1);
+      assert.match(broken.out, /tidak dapat dijalankan \(kode 3\); image JANGAN dideploy/);
+    });
+
+    it("staging (report): gerbang yang menolak hanya dilaporkan; seed gagal menghentikan job", () => {
+      const r = run({ command: `migrate staging ${REF}`, env: { FAKE_GATE_EXIT: "1" } });
+      assert.equal(r.status, 0, r.out);
+      assert.match(r.out, /2\/6 gerbang pra-migrasi dilewati \(mode laporan\)/);
+      assert.match(r.out, /gerbang menolak, tetapi mode laporan/);
+      assert.match(r.out, /laporan gerbang palsu/);
+
+      const seed = run({ command: `migrate staging ${REF}`, env: { FAKE_SEED_EXIT: "1" } });
+      assert.equal(seed.status, 1);
+      assert.match(seed.out, /seed referensi gagal/);
+      assert.ok(!steps(seed.docker).includes("gate"));
+    });
+
+    it("pengecualian gerbang production hanya dari konfigurasi server, wajib alasan dan penyetuju", () => {
+      config("production", { KAPDH_RELEASE_GATE: "report" });
+      try {
+        const r = run({ bound: ["production"], command: `migrate production ${REF} v1.2.0` });
+        assert.equal(r.status, 1);
+        assert.match(r.out, /wajib disertai KAPDH_RELEASE_GATE_REASON dan KAPDH_RELEASE_GATE_APPROVER/);
+        assert.equal(r.docker, "");
+      } finally {
+        config("production");
+      }
+      config("production", {
+        KAPDH_RELEASE_GATE: "report",
+        KAPDH_RELEASE_GATE_REASON: "inisialisasi pertama PRD 8.2",
+        KAPDH_RELEASE_GATE_APPROVER: "Pemilik Produk",
+      });
+      try {
+        const r = run({
+          bound: ["production"],
+          command: `migrate production ${REF} v1.2.0`,
+          env: { FAKE_GATE_EXIT: "1" },
+        });
+        assert.equal(r.status, 0, r.out);
+        assert.match(r.out, /PENGECUALIAN GERBANG go-live di production/);
+        assert.match(r.out, /alasan: inisialisasi pertama PRD 8\.2/);
+        assert.match(r.out, /disetujui: Pemilik Produk/);
+        assert.ok(!steps(r.docker).includes("gate-preflight"));
+      } finally {
+        config("production");
+      }
+      config("staging", { KAPDH_BACKUP_DIR: null, KAPDH_RELEASE_GATE: "longgar" });
+      try {
+        const r = run({ command: `migrate staging ${REF}` });
+        assert.equal(r.status, 1);
+        assert.match(r.out, /KAPDH_RELEASE_GATE harus enforce atau report/);
+        assert.equal(r.docker, "");
+      } finally {
+        config("staging", { KAPDH_BACKUP_DIR: null });
+      }
+      // Perintah klien tidak dapat melonggarkan gerbang.
+      const client = run({
+        bound: ["production"],
+        command: `migrate production ${REF} v1.2.0 report`,
+      });
+      assert.equal(client.status, 1);
+      assert.equal(client.docker, "");
     });
 
     it("pengelola infra dapat menjalankan manual dengan argumen yang sama (lingkungan tetap terikat)", () => {

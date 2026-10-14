@@ -1,13 +1,22 @@
 {
-  "$comment": "Katalog image KAPDH untuk CI/CD (PRD 5.3, 5.5, 7.1). Satu-satunya tempat daftar image, Dockerfile, build arg per lingkungan dan uji asap image; dibaca infra/ci/images.mjs oleh .github/workflows/{ci,deploy-staging,release,_deploy}.yml. api dan worker tidak bergantung lingkungan sehingga digest yang sama dipromosikan staging -> production. web dan admin membakar URL API saat build (Astro PUBLIC_API_URL, Vite VITE_API_BASE_URL), jadi setiap commit dibangun dua varian (staging dan production) dari sumber yang sama dalam satu pipeline; varian production yang dipromosikan tidak pernah dibangun ulang saat rilis (docs/adr/ADR-010-pipeline-ci-cd.md). Uji asap image (smoke) dijalankan `docker run --entrypoint sh -e KAPDH_EXPECTED_COMMIT=<commit>`: berkas wajib ada, commit sumber terbakar di image (KAPDH_COMMIT / version.json), proses bukan root.",
+  "$comment": "Katalog image KAPDH untuk CI/CD (PRD 5.3, 5.5, 7.1). Satu-satunya tempat daftar image, Dockerfile, build arg per lingkungan dan uji asap image; dibaca infra/ci/images.mjs oleh .github/workflows/{ci,deploy-staging,release,_deploy}.yml. api, release dan worker tidak bergantung lingkungan sehingga digest yang sama dipromosikan staging -> production. web dan admin membakar URL API saat build (Astro PUBLIC_API_URL, Vite VITE_API_BASE_URL), jadi setiap commit dibangun dua varian (staging dan production) dari sumber yang sama dalam satu pipeline; varian production yang dipromosikan tidak pernah dibangun ulang saat rilis (docs/adr/ADR-010-pipeline-ci-cd.md). Uji asap image (smoke) dijalankan `docker run --entrypoint sh -e KAPDH_EXPECTED_COMMIT=<commit>`: berkas wajib ada, commit sumber terbakar di image (KAPDH_COMMIT / version.json), proses bukan root. Image release (infra/Dockerfile.api target release: psql 17 + infra/scripts/release-job.sh) adalah job rilis untuk jalur Compose cadangan dan run-release.sh (docs/runbooks/compose-cadangan.md); jalur Coolify memakai infra/ci/remote-migrate.sh dengan image api. target = tahap Dockerfile yang dibangun (kosong = tahap terakhir).",
   "name_prefix": "kapdh-",
   "images": [
     {
       "name": "api",
       "dockerfile": "infra/Dockerfile.api",
+      "target": "api",
       "per_environment": false,
       "build_args": {},
       "smoke": "test -f dist/main.js && test -f node_modules/@kapdh/database/dist/bin/migrate.js && test -f node_modules/@kapdh/database/migrations/meta/_journal.json && grep -q kapdh_migrator db/roles.sql && test -n \"$KAPDH_EXPECTED_COMMIT\" && test \"$KAPDH_COMMIT\" = \"$KAPDH_EXPECTED_COMMIT\" && test \"$(id -u)\" != 0"
+    },
+    {
+      "name": "release",
+      "dockerfile": "infra/Dockerfile.api",
+      "target": "release",
+      "per_environment": false,
+      "build_args": {},
+      "smoke": "test -x /app/infra/scripts/release-job.sh && test -f /app/infra/db/roles.sql && test -f /app/infra/db/role-passwords.sql && test -f dist/cli/golive-check.js && test -f node_modules/@kapdh/database/dist/bin/migrate.js && test -f node_modules/@kapdh/database/dist/bin/seed-reference.js && psql --version | grep -q \"PostgreSQL) 17\" && test -n \"$KAPDH_EXPECTED_COMMIT\" && test \"$KAPDH_COMMIT\" = \"$KAPDH_EXPECTED_COMMIT\" && test \"$(id -u)\" != 0"
     },
     {
       "name": "worker",

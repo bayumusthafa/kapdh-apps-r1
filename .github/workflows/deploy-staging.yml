@@ -169,6 +169,7 @@ jobs:
         with:
           context: kapdh-platform
           file: kapdh-platform/${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
           build-args: |
             ${{ matrix.build_args }}
             KAPDH_COMMIT=${{ needs.plan.outputs.sha }}

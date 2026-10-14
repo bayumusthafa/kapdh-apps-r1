@@ -29,8 +29,7 @@ Jalur cadangan saat panel Coolify tidak tersedia: **Compose cadangan** (`compose
 | `compose.proxy.yml`, `traefik/`                   | Traefik cadangan tanpa socket Docker, satu-satunya yang tersambung ke `kapdh-edge` dan `kapdh-edge-staging`; rute dirender dari env (`traefik/render-dynamic.sh`).                                                                                                                                                                                                                           |
 | `docker-compose.yml`                              | Dev lokal (PostgreSQL 17, Redis 7, Mailpit; port hanya 127.0.0.1).                                                                                                                                                                                                                                                                                                                           |
 | `.env.production.example`, `.env.staging.example` | Seluruh variabel `packages/config` + variabel Compose, tanpa secret.                                                                                                                                                                                                                                                                                                                         |
-| `ci/github-actions-ci.yml`                        | Lint/typecheck/test/build/format + jalur PostgreSQL 17 (`test:pg`).                                                                                                                                                                                                                                                                                                                          |
-| `ci/github-actions-images.yml`                    | Validasi statis, build semua image, dry-run entry, `nginx -t`, uji asap header, stack Compose lengkap, publish GHCR, promosi tag.                                                                                                                                                                                                                                                            |
+| `ci/`                                             | Skrip pendukung workflow `.github/workflows/` (katalog image `images.json`, forced command migrasi + gerbang `remote-migrate.sh`, deploy Coolify, uji asap, gerbang kerentanan); lihat `ci/README.md`. Job `compose-stack` di `ci.yml` menjalankan build semua image, dry-run entry, `nginx -t`, uji asap header dan stack Compose lengkap.                                                  |
 | `scripts/validate-infra.mjs`                      | Validasi statis tanpa Docker (YAML, digest, isolasi jaringan, env lengkap, least privilege, non-root).                                                                                                                                                                                                                                                                                       |
 | `scripts/release-job.test.sh`                     | Uji kering `release-job.sh` dengan shim psql/node (urutan, mode gerbang, kode keluar).                                                                                                                                                                                                                                                                                                       |
 | `scripts/smoke-static.sh`                         | Uji asap header/cache/fallback kontainer web dan admin.                                                                                                                                                                                                                                                                                                                                      |
@@ -48,17 +47,28 @@ Jalur cadangan saat panel Coolify tidak tersedia: **Compose cadangan** (`compose
 | `kapdh-web`     | `Dockerfile.web`             | 8080                    | nginx (101) | URL API dibakukan saat build → varian `-staging`.  |
 | `kapdh-admin`   | `Dockerfile.admin`           | 8080                    | nginx (101) | URL API dibakukan saat build → varian `-staging`.  |
 
-Push `main` yang lolos CI menerbitkan `ghcr.io/<org>/kapdh-<image>:sha-<commit12>` (web/admin juga
-`sha-<commit12>-staging`) dan dideploy ke staging; run main tidak pernah dibatalkan run berikutnya (hanya PR). Tag
-`vX.Y.Z` yang disetujui gerbang rilis memberi tag versi pada **digest yang sama** (`docker buildx imagetools create`),
-tanpa build ulang (PRD 5.5); promosi gagal dengan pesan jelas bila salah satu image `sha-<commit>` belum ada. Paket GHCR
+Push `main` yang lolos CI menerbitkan `ghcr.io/<org>/kapdh-<image>:sha-<commit 40 heksadesimal>` (web/admin sebagai
+`sha-<commit>-staging` dan `sha-<commit>-production`; `.github/workflows/deploy-staging.yml`, katalog
+`ci/images.json`) dan dideploy ke staging; tag `sha-<commit>` sekali tulis (re-run tidak membangun ulang). Tag
+`vX.Y.Z` yang disetujui gerbang rilis memberi tag versi pada **digest yang sama** (`crane tag`, `release.yml`), tanpa
+build ulang (PRD 5.5); promosi gagal dengan pesan jelas bila salah satu image `sha-<commit>` belum ada. Paket GHCR
 privat: VPS dan Coolify menarik image setelah `docker login ghcr.io` (token `read:packages`; runbook rilis bagian 2). Semua base image dipin digest
 (Node 24.19.0/Alpine 3.24, nginx 1.30.5, PostgreSQL 17.11, Redis 7.4.11, Traefik 3.7.13; PRD 7.1).
 
 ## Job rilis (PRD 5.5) dan gerbang go-live (PRD 9.2, 9.3)
 
 Satu job per rilis per lingkungan, **sebelum** API dan worker baru dijalankan; migrasi tidak pernah berjalan saat
-startup replica. Urutan dan env ada di kepala `scripts/release-job.sh`. Mode gerbang:
+startup replica. Dua pelaksana dengan gerbang dan kebijakan mode yang sama:
+
+- jalur otomatis Coolify: `ci/remote-migrate.sh` (forced command SSH yang dipanggil `.github/workflows/_deploy.yml`)
+  dengan image `kapdh-api` yang dipin digest: [dump pra-migrasi] → `roles.sql` → gerbang pra-migrasi → migrasi →
+  `roles.sql` → seed referensi → gerbang penuh (`--allow-schema-ahead`); mode dari `KAPDH_RELEASE_GATE*` di berkas
+  konfigurasi server (`docs/runbooks/ci-cd.md` bagian 5);
+- jalur manual dan Compose cadangan: image `kapdh-release` (`scripts/release-job.sh`, dijalankan `scripts/run-release.sh`
+  atau service `release`), ditambah cek versi skema dan sandi role dari env; mode dari `RELEASE_GATE*`. Urutan dan env
+  ada di kepala `scripts/release-job.sh`.
+
+Mode gerbang:
 
 - `enforce` (bawaan production): `golive:check --preflight` SEBELUM migrasi (konfigurasi pengurus; ditolak → skema dan
   API yang berjalan tidak tersentuh) dan `golive:check` penuh setelah seed; job gagal (kode 1) bila salah satunya
@@ -107,5 +117,6 @@ pnpm --filter @kapdh/api test:pg test/pg/golive-gate.pg.test.ts test/pg/release-
 pnpm --filter @kapdh/admin test src/nginx-config.test.ts
 ```
 
-Build image, `nginx -t`, uji asap header dan stack Compose hanya berjalan di CI/mesin dengan Docker
-(`ci/github-actions-images.yml`). Hal yang wajib dibuktikan di staging nyata tercantum di runbook rilis.
+Build image, `nginx -t`, uji asap header dan stack Compose hanya berjalan di CI/mesin dengan Docker (job
+`compose-stack` di `.github/workflows/ci.yml`; `validate-infra.mjs` memastikan job itu tetap ada). Hal yang wajib
+dibuktikan di staging nyata tercantum di runbook rilis.

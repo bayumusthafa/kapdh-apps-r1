@@ -14,17 +14,19 @@ dan sebagian D2-12 (gerbang perubahan kontrak yang memutus klien; bagian 3). Kep
 ```
 Pull request ──> CI (ci.yml) ──> wajib "CI lulus" ──> merge ke main
 push main ──> CI ──(sukses)──> Deploy staging (deploy-staging.yml, judul run "Deploy staging <sha>")
-    build + push image GHCR sekali per commit: kapdh-{api,worker}:sha-<commit>,
+    build + push image GHCR sekali per commit: kapdh-{api,release,worker}:sha-<commit>,
                                                kapdh-{web,admin}:sha-<commit>-{staging,production}
     -> uji asap image + pindai kerentanan image (grype, kritis memblokir)
-    -> job migrasi tunggal staging (SSH forced command terikat staging: roles.sql dari image -> migrate.js -> roles.sql)
+    -> job migrasi tunggal staging (SSH forced command terikat staging: roles.sql dari image -> migrate.js -> roles.sql
+       -> seed referensi -> gerbang go-live mode laporan)
     -> kanal :staging dipindah ke digest yang sama -> deploy Coolify (tunggu selesai)
     -> uji asap HTTP: readiness, header keamanan, dan COMMIT image yang benar-benar melayani
     -> run sukses = bukti staging; status commit "kapdh/staging" hanya informasi
 tag vX.Y.Z (commit main dengan run deploy-staging sukses) ──> Release (release.yml)
     verifikasi (bukti staging, image ada, pindai image) + gerbang (N-13 terhadap tag contracts-v* wajib ada,
     pnpm audit tinggi) -> tag image vX.Y.Z TANPA build ulang (digest sama) -> GitHub Release DRAF
-    -> [persetujuan environment production] -> dump pra-migrasi -> job migrasi production -> kanal :production
+    -> [persetujuan environment production] -> dump pra-migrasi -> job migrasi production dengan gerbang go-live
+       enforce (pra-migrasi + penuh, PRD 9.2 #9) -> kanal :production
     -> Coolify -> uji asap commit -> Release diterbitkan
 Actions > Release > Run workflow (deploy-tag, tag=vX.Y.Z) ──> deploy ulang rilis terbit ke production (rollback)
 Actions > Release > Run workflow (contracts-sdk) ──> gerbang N-13 -> pnpm contracts:release-sdk (job baca-saja)
@@ -37,18 +39,19 @@ yang sama, ADR-010); migrasi dijalankan satu job dengan lock sebelum image baru 
 
 ## 2. Job CI (`.github/workflows/ci.yml`)
 
-| Job | Isi | Rujukan | Perintah lokal (dari `kapdh-platform/`) |
-| --- | --- | --- | --- |
-| Workflow dan skrip ops | actionlint (blok `run` diperiksa shellcheck), shellcheck `infra/**/*.sh` | N-16 | tidak tersedia lokal (tanpa Go/shellcheck) |
-| Kontrak, build, typecheck, lint, format, drift | `check-workflows.mjs`, `images.mjs validate`, uji `infra/ci/test` (termasuk forced command migrasi dengan `docker` palsu), `contracts:lint`, `build`, `typecheck`, `lint`, `format:check`; drift: `tokens:gen`, `contracts:gen`, `drizzle-kit check` + `generate` tanpa berkas baru, salinan token Flutter identik | N-16, PRD 7.2 | `node infra/ci/check-workflows.mjs`, `pnpm build`, dst. |
-| Uji unit dan integrasi (PGlite) | `turbo run test --concurrency=2`: API (uji kontrak `expectOperation`, uji akses objek), admin, web, worker, paket | N-16, PRD 9.2 | `pnpm test` |
-| Uji PostgreSQL 17 nyata | `turbo run test:pg`: `@kapdh/api` dan `@kapdh/worker` dengan embedded-postgres 17 (race kursi, double approval, Super Admin terakhir, room langsung, idempotensi, outbox, leader) | AC F01-4, F04-3, F04-4, F09-1, F11-1, F16-2; PRD 9.2 | `pnpm test:pg` |
-| Kontrak tidak memutus klien | `oasdiff breaking` + diff skema event realtime terhadap tag `contracts-v*` tertinggi, kebijakan bagian 3 | N-13, U-13 | `pnpm contracts:breaking` (perlu oasdiff) |
-| SDK Dart | `pnpm contracts:test-dart` (Flutter 3.47.2) | N-13, PRD 5.2 | sama |
-| Flutter | `flutter pub get --enforce-lockfile`, `dart format` (kecuali salinan token terbangkit), `flutter analyze`, `flutter test` | N-11, N-16 | `flutter.bat analyze`, `flutter.bat test` |
-| Audit kerentanan | `pnpm audit --prod` dan osv-scanner atas `kapdh-mobile/pubspec.lock`, dinilai `infra/ci/vuln-gate.mjs`: tinggi dan kritis GAGAL kecuali tercatat di `infra/ci/vuln-allowlist.json`; sedang dan tanpa skor = peringatan | N-16, PRD 9.3 | `pnpm audit --prod --json > a.json; node infra/ci/vuln-gate.mjs --source pnpm-audit a.json` |
-| Image | build tanpa push `api`, `worker`, `web`, `admin` (varian production) dengan `KAPDH_COMMIT`; uji asap image (`migrate.js`, jurnal migrasi dan `db/roles.sql` di image API; `nginx -t` untuk web/admin; commit terbakar; proses bukan root); grype: kerentanan kritis GAGAL (allowlist sama) | PRD 5.3, 7.1, 10.2; N-16 | tidak tersedia lokal (tanpa Docker) |
-| CI lulus | agregat: gagal bila satu job wajib tidak `success` | — | — |
+| Job                                            | Isi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Rujukan                                              | Perintah lokal (dari `kapdh-platform/`)                                                       |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Workflow dan skrip ops                         | actionlint (blok `run` diperiksa shellcheck), shellcheck `infra/**/*.sh`                                                                                                                                                                                                                                                                                                                                                                                                                  | N-16                                                 | tidak tersedia lokal (tanpa Go/shellcheck)                                                    |
+| Kontrak, build, typecheck, lint, format, drift | `check-workflows.mjs`, `images.mjs validate`, uji `infra/ci/test` (termasuk forced command migrasi + gerbang dengan `docker` palsu), `contracts:lint`, `build`, `infra/scripts/validate-infra.mjs` (compose/env/Dockerfile/Traefik), `sh -n` skrip infra, uji kering `infra/scripts/release-job.test.sh`, `typecheck`, `lint`, `format:check`; drift: `tokens:gen`, `contracts:gen`, `drizzle-kit check` + `generate` tanpa berkas baru, salinan token Flutter identik                    | N-16, PRD 7.2                                        | `node infra/ci/check-workflows.mjs`, `pnpm build`, dst.                                       |
+| Uji unit dan integrasi (PGlite)                | `turbo run test --concurrency=2`: API (uji kontrak `expectOperation`, uji akses objek), admin, web, worker, paket                                                                                                                                                                                                                                                                                                                                                                         | N-16, PRD 9.2                                        | `pnpm test`                                                                                   |
+| Uji PostgreSQL 17 nyata                        | `turbo run test:pg`: `@kapdh/api` dan `@kapdh/worker` dengan embedded-postgres 17 (race kursi, double approval, Super Admin terakhir, room langsung, idempotensi, outbox, leader)                                                                                                                                                                                                                                                                                                         | AC F01-4, F04-3, F04-4, F09-1, F11-1, F16-2; PRD 9.2 | `pnpm test:pg`                                                                                |
+| Kontrak tidak memutus klien                    | `oasdiff breaking` + diff skema event realtime terhadap tag `contracts-v*` tertinggi, kebijakan bagian 3                                                                                                                                                                                                                                                                                                                                                                                  | N-13, U-13                                           | `pnpm contracts:breaking` (perlu oasdiff)                                                     |
+| SDK Dart                                       | `pnpm contracts:test-dart` (Flutter 3.47.2)                                                                                                                                                                                                                                                                                                                                                                                                                                               | N-13, PRD 5.2                                        | sama                                                                                          |
+| Flutter                                        | `flutter pub get --enforce-lockfile`, `dart format` (kecuali salinan token terbangkit), `flutter analyze`, `flutter test`                                                                                                                                                                                                                                                                                                                                                                 | N-11, N-16                                           | `flutter.bat analyze`, `flutter.bat test`                                                     |
+| Audit kerentanan                               | `pnpm audit --prod` dan osv-scanner atas `kapdh-mobile/pubspec.lock`, dinilai `infra/ci/vuln-gate.mjs`: tinggi dan kritis GAGAL kecuali tercatat di `infra/ci/vuln-allowlist.json`; sedang dan tanpa skor = peringatan                                                                                                                                                                                                                                                                    | N-16, PRD 9.3                                        | `pnpm audit --prod --json > a.json; node infra/ci/vuln-gate.mjs --source pnpm-audit a.json`   |
+| Image                                          | build tanpa push `api`, `release`, `worker`, `web`, `admin` (varian production; `release` = `Dockerfile.api` target `release`) dengan `KAPDH_COMMIT`; uji asap image (`migrate.js`, jurnal migrasi dan `db/roles.sql` di image API; `release-job.sh`, psql 17 dan `golive-check.js` di image release; `nginx -t` untuk web/admin; commit terbakar; proses bukan root); grype: kerentanan kritis GAGAL (allowlist sama)                                                                    | PRD 5.3, 7.1, 10.2; N-16                             | tidak tersedia lokal (tanpa Docker)                                                           |
+| Stack Compose production                       | build lokal kelima image + varian staging web/admin, dry-run entry (galat konfigurasi, bukan modul hilang), `nginx -t` keempat varian, uji asap header `infra/scripts/smoke-static.sh`, lalu `infra/scripts/ci-stack-smoke.sh`: job rilis nyata dengan psql (cek versi skema, gerbang pra-migrasi enforce menolak database baru, pengecualian beralasan), healthcheck semua kontainer, PostgreSQL/Redis tidak terjangkau dari jaringan edge, edge staging tidak menjangkau API production | PRD 5.5, 9.2 #9; N-07; D2-07, D3-07, D12             | tidak tersedia lokal (tanpa Docker); bagian statisnya `node infra/scripts/validate-infra.mjs` |
+| CI lulus                                       | agregat: gagal bila satu job wajib tidak `success`                                                                                                                                                                                                                                                                                                                                                                                                                                        | —                                                    | —                                                                                             |
 
 Proteksi branch `main` cukup mewajibkan satu status: **CI lulus**.
 
@@ -101,31 +104,31 @@ Perubahan berkas ini lewat pull request yang ditinjau pemilik produk atau pengel
 
 ### 4.1 Environments
 
-| Environment | Aturan |
-| --- | --- |
-| `staging` | Deployment branch: hanya `main`. Tanpa reviewer. |
+| Environment  | Aturan                                                                                                                                                                                                                                                               |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `staging`    | Deployment branch: hanya `main`. Tanpa reviewer.                                                                                                                                                                                                                     |
 | `production` | Required reviewers: pemilik produk dan satu cadangan (D9); "Prevent self-review". Deployment branches and tags: tag `v*` (rilis) dan branch `main` (hanya untuk aksi `deploy-tag`/rollback yang dijalankan dari main). Persetujuan ini adalah gerbang rilis PRD 9.3. |
 
 ### 4.2 Secrets per environment (nama sama di staging dan production, nilai berbeda; PRD 5.3)
 
-| Secret | Isi |
-| --- | --- |
-| `DEPLOY_SSH_HOST` | Host/IP VPS untuk job migrasi (lewat VPN/jaringan tepercaya). |
-| `DEPLOY_SSH_USER` | User CI lingkungan itu di VPS: `kapdh-ci-staging` atau `kapdh-ci-production` (bagian 5). |
-| `DEPLOY_SSH_PRIVATE_KEY` | Kunci privat ed25519 khusus CI per lingkungan; sisi server dikunci forced command yang terikat lingkungan. |
-| `DEPLOY_SSH_KNOWN_HOSTS` | Baris `known_hosts` host deploy (`ssh-keyscan -t ed25519 <host>`, diverifikasi manual). |
-| `COOLIFY_DEPLOY_URL` | `https://<coolify>/api/v1/deploy?uuid=<api>,<worker>,<web>,<admin>&force=false` (UUID resource lingkungan itu). |
-| `COOLIFY_API_TOKEN` | Token API Coolify berizin deploy, terpisah per lingkungan. |
+| Secret                                  | Isi                                                                                                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `DEPLOY_SSH_HOST`                       | Host/IP VPS untuk job migrasi (lewat VPN/jaringan tepercaya).                                                                        |
+| `DEPLOY_SSH_USER`                       | User CI lingkungan itu di VPS: `kapdh-ci-staging` atau `kapdh-ci-production` (bagian 5).                                             |
+| `DEPLOY_SSH_PRIVATE_KEY`                | Kunci privat ed25519 khusus CI per lingkungan; sisi server dikunci forced command yang terikat lingkungan.                           |
+| `DEPLOY_SSH_KNOWN_HOSTS`                | Baris `known_hosts` host deploy (`ssh-keyscan -t ed25519 <host>`, diverifikasi manual).                                              |
+| `COOLIFY_DEPLOY_URL`                    | `https://<coolify>/api/v1/deploy?uuid=<api>,<worker>,<web>,<admin>&force=false` (UUID resource lingkungan itu).                      |
+| `COOLIFY_API_TOKEN`                     | Token API Coolify berizin deploy, terpisah per lingkungan.                                                                           |
 | `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET` | OAuth client Tailscale (tag `tag:ci`). WAJIB bila job deploy berjalan di runner milik GitHub; job gagal tanpa keduanya (bagian 4.4). |
 
 ### 4.3 Variables per environment
 
-| Variable | staging | production |
-| --- | --- | --- |
-| `API_BASE_URL` | `https://staging-api.kapdh.or.id/api/v1` | `https://api.kapdh.or.id/api/v1` |
-| `WEB_URL` | subdomain staging situs publik (usulan `https://staging.kapdh.or.id`) | `https://kapdh.or.id` |
-| `ADMIN_URL` | `https://staging-admin.kapdh.or.id` | `https://admin.kapdh.or.id` |
-| `DEPLOY_SSH_PORT` | opsional, bawaan 22 | opsional |
+| Variable          | staging                                                               | production                       |
+| ----------------- | --------------------------------------------------------------------- | -------------------------------- |
+| `API_BASE_URL`    | `https://staging-api.kapdh.or.id/api/v1`                              | `https://api.kapdh.or.id/api/v1` |
+| `WEB_URL`         | subdomain staging situs publik (usulan `https://staging.kapdh.or.id`) | `https://kapdh.or.id`            |
+| `ADMIN_URL`       | `https://staging-admin.kapdh.or.id`                                   | `https://admin.kapdh.or.id`      |
+| `DEPLOY_SSH_PORT` | opsional, bawaan 22                                                   | opsional                         |
 
 Domain mengikuti D12. URL API yang dibakar ke image web/admin ada di `kapdh-platform/infra/ci/images.json`; job deploy
 GAGAL bila `API_BASE_URL` environment berbeda dengan nilai katalog untuk lingkungan itu.
@@ -160,6 +163,14 @@ Job migrasi dijalankan CI lewat SSH ke VPS sebelum Coolify men-deploy image baru
 3. `node node_modules/@kapdh/database/dist/bin/migrate.js` di image API yang sama, sebagai `kapdh_migrator`, advisory
    lock `MIGRATION_LOCK_KEY`.
 4. `roles.sql` lagi (grant objek baru). Urutan `docs/handoff/phase-a-schema.md`.
+5. Seed referensi (`node_modules/@kapdh/database/dist/bin/seed-reference.js`, idempoten: hanya baris yang belum ada,
+   nilai pengurus tidak ditimpa, fixture ditolak), sama dengan job rilis Compose (`infra/scripts/release-job.sh`).
+6. Gerbang go-live (`node dist/cli/golive-check.js`, PRD 9.2 #9, 9.3; daftar pemeriksaan di
+   `kapdh-platform/infra/README.md`) dari image API yang sama sebagai `kapdh_migrator`. Mode dari berkas konfigurasi
+   server, bukan dari CI: `enforce` (bawaan production) menjalankan `--preflight` sebelum langkah 3 (ditolak = skema
+   tidak diubah) dan gerbang penuh setelah langkah 5 (ditolak = kode 1, kanal dan Coolify tidak dijalankan, perbaiki
+   maju); `report` (bawaan staging) hanya mencetak laporan. Gerbang penuh memakai `--allow-schema-ahead` karena aksi
+   `deploy-tag` (rollback image) menjalankan image lama di atas skema baru; hal itu dicatat sebagai peringatan.
 
 Production hanya menerima digest yang sama dengan image bertag rilis `vX.Y.Z` di registry (perintah klien wajib
 menyertakan tag; server membandingkan ID image digest dan tag). Gagal di langkah mana pun = deploy berhenti; image lama
@@ -180,7 +191,9 @@ Pemasangan (per VPS, pengelola infra):
    opsional `KAPDH_BACKUP_KEEP` (bawaan 3), `KAPDH_BACKUP_MAX_AGE_DAYS` (bawaan 7) dan `KAPDH_BACKUP_OFFSITE_HOOK`
    (skrip milik root yang menyalin dump terenkripsi ke tujuan backup luar VPS, mis. restic/rclone yang sama dengan
    backup harian; keluar bukan nol = migrasi tidak berjalan). Database, role dan sandi staging dan production terpisah
-   (PRD 5.3).
+   (PRD 5.3). Gerbang go-live: opsional `KAPDH_RELEASE_GATE` (`enforce`/`report`; bawaan enforce di production,
+   report di staging); `report` di production adalah pengecualian dan wajib `KAPDH_RELEASE_GATE_REASON` +
+   `KAPDH_RELEASE_GATE_APPROVER` (dicetak ke log CI untuk paket bukti PRD 9.3). Perintah klien tidak dapat mengubahnya.
 4. `authorized_keys` per user, lingkungan menjadi argumen forced command:
    - `~kapdh-ci-staging/.ssh/authorized_keys`:
      `restrict,command="/usr/local/bin/kapdh-ci-migrate staging" ssh-ed25519 AAAA... github-actions-kapdh-staging`
@@ -188,6 +201,7 @@ Pemasangan (per VPS, pengelola infra):
      `restrict,command="/usr/local/bin/kapdh-ci-migrate production" ssh-ed25519 AAAA... github-actions-kapdh-production`
 
    Jangan menambahkan `AcceptEnv`/`PermitUserEnvironment` untuk user ini.
+
 5. Jalur jaringan SSH (bagian 4.4).
 6. Uji manual dari mesin tepercaya:
    - staging: `ssh kapdh-ci-staging@<host> "migrate staging ghcr.io/<owner>/kapdh-api@sha256:<digest>"`
@@ -195,9 +209,13 @@ Pemasangan (per VPS, pengelola infra):
    - pengelola infra di server: `sudo -u kapdh-ci-production /usr/local/bin/kapdh-ci-migrate production migrate production ghcr.io/<owner>/kapdh-api@sha256:<digest> v1.0.0`
 
 Inisialisasi pertama (PRD 8.2): `roles.sql` pertama membuat role; atur sandi role LOGIN (`ALTER ROLE ... PASSWORD`)
-dari pengelola secrets, bukan dari CI. Seed referensi (`dist/bin/seed-reference.js`) dan bootstrap Super Admin
-(`admin:bootstrap`) TIDAK dijalankan CI: keduanya sekali pakai dan memerlukan nilai yang disahkan (PRD 8.2 langkah
-3-4; README kapdh-platform).
+dari pengelola secrets, bukan dari CI. Seed referensi berjalan setiap job (langkah 5) tetapi hanya membuat kerangka
+yang belum ada; nilai yang wajib disahkan pengurus (metode bayar, halaman legal, master, kontak) dan bootstrap Super
+Admin (`admin:bootstrap`, sekali pakai di server) TIDAK dijalankan CI (PRD 8.2 langkah 3-4). Karena database production
+pertama belum punya Super Admin ber-TOTP, deploy production pertama memakai pengecualian gerbang di
+`/etc/kapdh/ci-migrate/production.env` (`KAPDH_RELEASE_GATE=report`, alasan "inisialisasi pertama PRD 8.2", penyetuju
+pemilik produk). Hapus ketiga baris itu sebelum go-live: go-live wajib lulus mode `enforce`
+(`docs/runbooks/rilis-dan-gerbang-go-live.md` bagian 4).
 
 ## 6. Coolify
 
@@ -208,7 +226,7 @@ dari pengelola secrets, bukan dari CI. Seed referensi (`dist/bin/seed-reference.
 - Port kontainer: api 3000, worker 3001 (health internal), web dan admin **8080** (nginx berjalan sebagai user
   `nginx`, bukan root; `infra/nginx-main.conf`). Sesuaikan port pada resource web/admin dan health check Traefik.
 - Perintah start image tidak menjalankan migrasi (PRD 5.5). Worker: `stop_grace_period` > `WORKER_SHUTDOWN_TIMEOUT_MS`
-  + 10 detik (Dockerfile.worker).
+  - 10 detik (Dockerfile.worker).
 - `COOLIFY_DEPLOY_URL` memuat UUID keempat resource sekaligus; CI menunggu status setiap deployment (`finished`,
   `failed`, `cancelled`) lewat `GET /api/v1/deployments/<uuid>`, lalu uji asap HTTP memeriksa
   `API_BASE_URL/health/ready` (database, Redis, storage, deletion ledger), header CSP/nosniff web dan admin, dan
@@ -265,7 +283,9 @@ dari pengelola secrets, bukan dari CI. Seed referensi (`dist/bin/seed-reference.
   image bertag ada, lalu menjalankan deploy production yang sama (persetujuan, migrasi, kanal, Coolify, uji asap commit).
   Tidak bergantung jendela re-run 30 hari GitHub. Cadangan manual: `crane tag <repo>@<digest lama> production` per image
   lalu deploy Coolify.
-- Job migrasi image lama tidak menjalankan migrasi apa pun karena jurnalnya lebih pendek; skema TIDAK dibalik. Rollback
+- Job migrasi image lama tidak menjalankan migrasi apa pun karena jurnalnya lebih pendek; skema TIDAK dibalik. Gerbang
+  go-live tetap berjalan (`--allow-schema-ahead`: skema lebih baru dari image = peringatan, konfigurasi yang belum
+  disahkan tetap menolak di mode enforce). Rollback
   hanya aman bila migrasi rilis baru kompatibel mundur (expand/contract); bila tidak, pulihkan skema (di bawah).
   Job migrasi image lama juga menerapkan `roles.sql` versi lama (dari image itu): bila rilis baru menambah pencabutan
   hak (mis. tabel append-only baru), jalankan ulang `roles.sql` terbaru secara manual sesudah rollback
