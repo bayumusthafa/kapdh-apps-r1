@@ -62,14 +62,25 @@ class AppScaffold extends StatelessWidget {
   /// Sama dengan tombol kembali sistem: `PopScope` halaman (mis. "Buang perubahan?" di Ubah Profil) dihormati,
   /// tidak dilewati seperti `GoRouter.pop`, sehingga isian formulir tidak hilang diam-diam (PRD 4.5). Bila tidak ada
   /// halaman yang dapat ditutup, kembali ke [fallbackLocation].
+  ///
+  /// Bila halaman benar-benar tertutup (bukan ditahan `PopScope`), lokasi baru dilewatkan lagi ke redirect seperti
+  /// `GoRouter.pop`: halaman di bawahnya yang tidak diizinkan matriks rute untuk status sekarang (mis. daftar event
+  /// bagi anggota expired yang membuka detail event lewat deep link, PRD 2.2) diganti rute status, tanpa request ke
+  /// layar yang terlarang.
   Future<void> _back(BuildContext context) async {
     final router = GoRouter.maybeOf(context);
     if (router == null) {
       await Navigator.maybePop(context);
       return;
     }
+    final before = router.routerDelegate.currentConfiguration;
     final handled = await router.routerDelegate.popRoute();
-    if (!handled) router.go(fallbackLocation);
+    if (!handled) {
+      router.go(fallbackLocation);
+      return;
+    }
+    final after = router.routerDelegate.currentConfiguration;
+    if (!identical(before, after)) router.restore(after);
   }
 
   @override
