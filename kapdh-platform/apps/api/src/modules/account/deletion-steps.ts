@@ -96,6 +96,14 @@ export const DELETION_STEPS = [
 export type DeletionStep = (typeof DELETION_STEPS)[number];
 export const EMAIL_STEPS: ReadonlySet<DeletionStep> = new Set(["notify_requested", "notify_completed"]);
 
+/**
+ * Kunci pesan email penghapusan (Message-ID stabil, PRD 5.1): langkah email ditandai selesai SESUDAH server SMTP
+ * menerima pesan, sehingga worker yang mati atau balasan SMTP yang hilang di antaranya membuat langkah dijalankan
+ * ulang. Salinan ulang membawa Message-ID dan isi yang sama sehingga dikenali penerima sebagai pesan yang sama.
+ */
+export const deletionMailDedupKey = (deletionId: string, step: DeletionStep) =>
+  `account-deletion.${deletionId}.${step}`;
+
 export interface DeletionInventory {
   payment_ids: string[];
   ticket_ids: string[];
@@ -332,20 +340,25 @@ export class DeletionSteps {
    * Email dikirim hanya oleh pemegang klaim: klaim diperiksa dan sewanya diperpanjang 15 menit tepat sebelum
    * pengiriman, sehingga eksekusi yang klaimnya sudah direbut tidak pernah memulai pengiriman (alamat tidak dipakai
    * lagi setelah akun selesai dihapus, D2). Pengiriman yang sudah berjalan tidak dapat ditarik (paling banyak satu
-   * email ganda, tidak pernah sesudah email selesai).
+   * email ganda, tidak pernah sesudah email selesai); salinan ganda itu membawa Message-ID yang sama
+   * ({@link deletionMailDedupKey}) sehingga dikenali penerima sebagai pesan yang sama.
    */
-  private async sendMail(ctx: StepContext, mail: { to: string; subject: string; text: string }) {
+  private async sendMail(
+    ctx: StepContext,
+    step: DeletionStep,
+    mail: { to: string; subject: string; text: string },
+  ) {
     const send = this.mailer.sendTransactional?.bind(this.mailer);
     if (!send)
       throw new DeletionStepError("Mailer tidak mendukung email transaksional untuk job penghapusan akun");
     await this.fence(this.db, ctx);
-    await send(mail);
+    await send({ ...mail, dedupKey: deletionMailDedupKey(ctx.deletion.id, step) });
   }
 
   async notifyRequested(ctx: StepContext): Promise<void> {
     const email = await this.accountEmail(ctx.userId);
     if (email)
-      await this.sendMail(ctx, {
+      await this.sendMail(ctx, "notify_requested", {
         to: email,
         ...requestedMail(ctx.deletion.requestNumber, ctx.deletion.deadlineAt),
       });
@@ -354,7 +367,11 @@ export class DeletionSteps {
 
   async notifyCompleted(ctx: StepContext): Promise<void> {
     const email = await this.accountEmail(ctx.userId);
-    if (email) await this.sendMail(ctx, { to: email, ...completedMail(ctx.deletion.requestNumber) });
+    if (email)
+      await this.sendMail(ctx, "notify_completed", {
+        to: email,
+        ...completedMail(ctx.deletion.requestNumber),
+      });
     await this.finish(ctx, "notify_completed");
   }
 
