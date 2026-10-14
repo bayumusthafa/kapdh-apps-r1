@@ -27,8 +27,10 @@ import {
   tickets,
   users,
 } from "@kapdh/database";
-import type { StorageDriver } from "@kapdh/storage";
+import { type StorageDriver, StorageObjectNotFoundError } from "@kapdh/storage";
 import { and, asc, eq, gt, inArray, isNotNull, isNull, ne, or, type SQL, sql } from "drizzle-orm";
+import type { Readable } from "node:stream";
+import { StringDecoder } from "node:string_decoder";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../../core/adapters/clock.js";
 import type { Mailer } from "../../core/adapters/mailer.js";
@@ -122,6 +124,8 @@ export interface StepContext {
 }
 
 const ACTIVE_TICKETS = ["awaiting_payment", "awaiting_review", "paid"] as const;
+/** Id per pernyataan DELETE pemindaian respons idempotensi (predikat LIKE per id). */
+const IDEMPOTENCY_SCAN_CHUNK = 100;
 /** Batas event message.deleted per eksekusi; klien memuat ulang jendela pesan saat room dibuka (kontrak C6). */
 const MAX_DELETED_EVENTS = 500;
 /** Email pengganti non-identitas (users_email_normalized_chk; unik per akun karena memuat id baris). */
@@ -131,6 +135,40 @@ const INVALID_PASSWORD_HASH = "!deleted";
 
 const union = (a: readonly string[] | undefined, b: readonly string[]) =>
   [...new Set([...(a ?? []), ...b])].sort();
+
+/**
+ * true bila isi objek storage memuat salah satu `needles` (teks ASCII, mis. UUID). Dibaca sebagai stream dengan sisa
+ * ekor antar-chunk sehingga memori tetap kecil untuk ekspor besar. Objek yang sudah tidak ada = tidak cocok.
+ */
+export async function objectMentionsAny(
+  storage: StorageDriver,
+  key: string,
+  needles: readonly string[],
+): Promise<boolean> {
+  const wanted = needles.filter((needle) => needle.length > 0);
+  if (wanted.length === 0) return false;
+  let stream: Readable;
+  try {
+    stream = await storage.get(key);
+  } catch (error) {
+    if (error instanceof StorageObjectNotFoundError) return false;
+    throw error;
+  }
+  const keep = Math.max(...wanted.map((needle) => needle.length)) - 1;
+  const decoder = new StringDecoder("utf8");
+  let tail = "";
+  try {
+    for await (const chunk of stream) {
+      const text = tail + (typeof chunk === "string" ? chunk : decoder.write(chunk as Buffer));
+      if (wanted.some((needle) => text.includes(needle))) return true;
+      tail = keep > 0 ? text.slice(-keep) : "";
+    }
+    const rest = tail + decoder.end();
+    return wanted.some((needle) => rest.includes(needle));
+  } finally {
+    stream.destroy();
+  }
+}
 
 /** Galat langkah yang aman dicatat (tanpa data pribadi). */
 export class DeletionStepError extends Error {
@@ -275,6 +313,8 @@ export class DeletionSteps {
 
   async ledgerFinal(ctx: StepContext): Promise<void> {
     const storage = this.requireStorage();
+    // Ekspor audit yang selesai dibuat bersamaan dengan anonimisasi audit (lihat purgeAuditExports).
+    await this.purgeAuditExports(ctx);
     await this.fence(this.db, ctx);
     await writeLedgerEntryMonotonic(storage, this.ledgerEntry(ctx, "completed", this.now()));
     await this.finish(ctx, "ledger_final");
@@ -360,10 +400,45 @@ export class DeletionSteps {
   }
 
   /**
+   * Id yang dirujuk respons tersimpan pihak lain bila respons itu memuat identitas akun (D2): id akun dan id inventaris
+   * (payment, tiket, penyesuaian, laporan). Contoh: POST /admin/checkin menyimpan `ticket.holder.full_name` dan
+   * `member_number` bersama id tiket pada scope akun petugas.
+   */
+  private referencedIds(ctx: StepContext): string[] {
+    const inv = this.inv(ctx);
+    return union([ctx.userId, ...inv.payment_ids, ...inv.ticket_ids, ...inv.adjustment_ids], inv.report_ids);
+  }
+
+  /**
+   * Kunci idempotensi yang memuat data akun (temuan audit D5-02, D2): milik akun (scope = user id) DAN respons
+   * tersimpan aktor lain (pengurus, anggota lain) yang merujuk {@link referencedIds}, misalnya respons check-in yang
+   * memuat nama dan nomor anggota. Tanpa ini respons bertahan sampai 24-48 jam (TTL + job maintenance.cleanup harian).
+   * Menghapus baris setara dengan kedaluwarsa: permintaan ulang dengan key yang sama diproses lagi dan ditolak kunci
+   * domain (keputusan payment, check-in, client_message_id). Dijalankan di langkah revoke_access dan diulang di langkah
+   * credentials untuk respons yang tercatat selama jendela deletion_pending.
+   */
+  private async purgeIdempotency(tx: Tx, ctx: StepContext): Promise<void> {
+    await tx.delete(idempotencyKeys).where(eq(idempotencyKeys.scope, ctx.userId));
+    const ids = this.referencedIds(ctx);
+    for (let i = 0; i < ids.length; i += IDEMPOTENCY_SCAN_CHUNK) {
+      const chunk = ids.slice(i, i + IDEMPOTENCY_SCAN_CHUNK);
+      await tx
+        .delete(idempotencyKeys)
+        .where(
+          and(
+            isNotNull(idempotencyKeys.responseBody),
+            or(...chunk.map((id) => sql`${idempotencyKeys.responseBody}::text like ${`%${id}%`}`)),
+          ),
+        );
+    }
+  }
+
+  /**
    * Sesi dihapus (bukan hanya dicabut: nama perangkat termasuk data pribadi), token push dicabut beserta pengiriman
-   * pending, OTP dan kunci idempotensi (respons tersimpan dapat memuat data profil) dihapus, session_version naik,
-   * socket diputus setelah commit. Identitas pengurus tertaut TIDAK dihapus; tautannya diputus (PRD 3.14). Baris
-   * admins diperbarui sebelum users (handoff skema: hindari deadlock dengan penjaga Super Admin terakhir).
+   * pending, OTP dan kunci idempotensi (respons tersimpan dapat memuat data profil, {@link purgeIdempotency}) dihapus,
+   * session_version naik, socket diputus setelah commit. Identitas pengurus tertaut TIDAK dihapus; tautannya diputus
+   * (PRD 3.14). Baris admins diperbarui sebelum users (handoff skema: hindari deadlock dengan penjaga Super Admin
+   * terakhir).
    */
   async revokeAccess(ctx: StepContext): Promise<void> {
     const userId = ctx.userId;
@@ -385,7 +460,7 @@ export class DeletionSteps {
       await revokeDeviceTokens(tx, { userId }, now);
       await tx.delete(sessions).where(eq(sessions.userId, userId));
       await tx.delete(otpCodes).where(eq(otpCodes.userId, userId));
-      await tx.delete(idempotencyKeys).where(eq(idempotencyKeys.scope, userId));
+      await this.purgeIdempotency(tx, ctx);
       await tx
         .update(users)
         .set({ sessionVersion: sql`${users.sessionVersion} + 1`, updatedAt: now })
@@ -1171,8 +1246,35 @@ export class DeletionSteps {
         .set({ actorUserId: null, reason: null })
         .where(eq(paymentEvents.actorUserId, userId));
       await tx.execute(sql`set local role none`);
-      await this.markDone(tx, ctx, "audit");
     });
+    // Salinan audit di luar tabel: ekspor CSV yang dibuat sebelum anonimisasi di atas commit.
+    await this.purgeAuditExports(ctx);
+    await this.finish(ctx, "audit");
+  }
+
+  /**
+   * Ekspor audit CSV (purpose audit_export, AC F17-4) yang masih tersimpan dan memuat entri akun ini (temuan audit
+   * D5-02, D2): berkas adalah salinan titik waktu audit_logs SEBELUM anonimisasi, sehingga dapat memuat snapshot
+   * pribadi yang sudah dihapus dari tabel. Isi setiap ekspor yang belum dihapus dipindai terhadap
+   * {@link referencedIds} (kolom entity_id/actor_user_id CSV), dan ekspor yang cocok dihapus seketika (objek storage +
+   * baris `deleted`, status ekspor menjadi `expired`; pengurus dapat meminta ekspor baru yang sudah anonim).
+   * Dipanggil setelah anonimisasi audit commit dan diulang di langkah ledger_final untuk ekspor yang sedang dibuat
+   * bersamaan dengan anonimisasi. Kegagalan storage melempar galat sehingga langkah diulang.
+   */
+  private async purgeAuditExports(ctx: StepContext): Promise<void> {
+    const ids = this.referencedIds(ctx);
+    const exports = await this.db
+      .select({ id: files.id, objectKey: files.objectKey })
+      .from(files)
+      .where(and(eq(files.purpose, "audit_export"), ne(files.status, "deleted")))
+      .orderBy(asc(files.createdAt), asc(files.id));
+    if (exports.length === 0) return;
+    const storage = this.requireStorage();
+    for (const file of exports) {
+      if (!(await objectMentionsAny(storage, file.objectKey, ids))) continue;
+      await this.fence(this.db, ctx);
+      await this.fileService.deleteNow(file.id);
+    }
   }
 
   /** Profil alumni dihapus (alumni_professions/alumni_skills ikut CASCADE). N tidak didaur ulang (sequence). */
@@ -1194,6 +1296,8 @@ export class DeletionSteps {
     await this.tx(ctx, async (tx) => {
       const now = this.now();
       const user = await this.requests.lockUser(tx, ctx.userId);
+      // Respons idempotensi yang tercatat selama jendela deletion_pending (mis. pengurus memutus payment anggota).
+      await this.purgeIdempotency(tx, ctx);
       if (user && user.status !== "deleted") {
         await tx
           .update(users)
@@ -1275,8 +1379,17 @@ export async function remainingPersonalData(db: DbOrTx, userId: string) {
     adminLinks: await count(
       db.select({ value: c }).from(admins).where(eq(admins.linkedAlumniUserId, userId)),
     ),
+    // Kunci milik akun dan respons tersimpan aktor lain yang merujuk id akun (D5-02).
     idempotencyKeys: await count(
-      db.select({ value: c }).from(idempotencyKeys).where(eq(idempotencyKeys.scope, userId)),
+      db
+        .select({ value: c })
+        .from(idempotencyKeys)
+        .where(
+          or(
+            eq(idempotencyKeys.scope, userId),
+            sql`${idempotencyKeys.responseBody}::text like ${`%${userId}%`}`,
+          ),
+        ),
     ),
   };
 }

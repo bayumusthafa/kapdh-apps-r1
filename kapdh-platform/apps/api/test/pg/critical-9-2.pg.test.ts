@@ -1229,4 +1229,16 @@ describe("Invarian data sesudah seluruh skenario berkas ini (PRD 6.4, ARCHITECTU
       group by p.id, p.amount having sum(a.amount) > p.amount`;
     expect(refunds.map((r) => r.id)).toEqual([]);
   });
+
+  it("D4-02 (PRD 8.2 butir 4, AC F17-1): setiap payment iuran memakai versi `fees` tersimpan (>= 1), nominal > 0", async () => {
+    const [dues] = await sql<{ n: number }[]>`
+      select count(*)::int as n from app.payments where type in ('registration', 'renewal')`;
+    expect(dues!.n).toBeGreaterThan(0);
+    const unbacked = await sql<{ id: string }[]>`
+      select p.id from app.payments p
+      where p.type in ('registration', 'renewal')
+        and (p.settings_version is null or p.settings_version < 1 or p.amount <= 0
+             or p.settings_version > coalesce((select s.version from app.app_settings s where s.key = 'fees'), 0))`;
+    expect(unbacked.map((r) => r.id)).toEqual([]);
+  });
 });

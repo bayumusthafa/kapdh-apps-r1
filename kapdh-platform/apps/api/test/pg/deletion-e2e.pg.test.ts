@@ -21,8 +21,8 @@
  * masih ada dan GAGAL begitu diperbaiki (ubah menjadi `it` saat memperbaiki). `D5_REVEAL_GAPS=1` menjalankannya sebagai
  * `it` biasa untuk melihat kegagalan sebenarnya:
  *   D5-01 inbox anggota lain memuat nama anggota yang dihapus (notifikasi chat direct);
- *   D5-02 respons idempotensi pengurus (check-in) memuat nama/nomor anggota sampai 24 jam;
- *   D5-03 bukti refund yang diunggah SETELAH penghapusan tidak pernah dihapus;
+ *   D5-02 (DIPERBAIKI, kini `it`) respons idempotensi pengurus (check-in) memuat nama/nomor anggota sampai 24 jam;
+ *   D5-03 (DIPERBAIKI, kini `it`) bukti refund yang diunggah SETELAH penghapusan tidak pernah dihapus;
  *   D5-04 notifikasi yang dibuat selama jendela deletion_pending setelah langkah notifications tersisa;
  *   D5-05 N anggota yang dihapus setelah titik backup dialokasikan ulang setelah restore + ledger.
  */
@@ -1111,18 +1111,21 @@ describe("LENS D5: celah privasi yang ditemukan (it.fails = celah masih ada)", (
     },
   );
 
-  gap(
-    "D5-02 (D2): respons idempotensi pengurus yang memuat nama/nomor anggota ikut dihapus bersama akun",
-    async () => {
-      // POST /admin/checkin dengan Idempotency-Key menyimpan respons (holder.full_name, member_number) pada scope
-      // akun petugas; job hanya menghapus kunci ber-scope akun yang dihapus, sisanya bertahan sampai 24 jam.
-      const leftovers = await rt.owner.db
-        .select({ endpoint: idempotencyKeys.endpoint })
-        .from(idempotencyKeys)
-        .where(sql`${idempotencyKeys.responseBody}::text like ${`%${NAME}%`}`);
-      expect(leftovers).toEqual([]);
-    },
-  );
+  it("D5-02 (D2): respons idempotensi pengurus yang memuat nama/nomor anggota ikut dihapus bersama akun", async () => {
+    // POST /admin/checkin dengan Idempotency-Key menyimpan respons (holder.full_name, member_number) pada scope akun
+    // petugas. Diperbaiki: job juga menghapus respons tersimpan aktor lain yang merujuk id akun/inventaris
+    // (langkah revoke_access, diulang di langkah credentials).
+    const leftovers = await rt.owner.db
+      .select({ endpoint: idempotencyKeys.endpoint })
+      .from(idempotencyKeys)
+      .where(sql`${idempotencyKeys.responseBody}::text like ${`%${NAME}%`}`);
+    expect(leftovers).toEqual([]);
+    const byId = await rt.owner.db
+      .select({ endpoint: idempotencyKeys.endpoint })
+      .from(idempotencyKeys)
+      .where(sql`${idempotencyKeys.responseBody}::text like ${`%${S.budi.userId}%`}`);
+    expect(byId).toEqual([]);
+  });
 
   let lateEvidenceId = "";
   it("D5-03 persiapan: bendahara menyelesaikan refund pending SETELAH akun dihapus, dengan bukti transfer baru", async () => {
@@ -1150,17 +1153,33 @@ describe("LENS D5: celah privasi yang ditemukan (it.fails = celah masih ada)", (
     expect(payment!.userId).toBeNull();
   });
 
-  gap(
-    "D5-03 (D2, AC F14-4): bukti refund atas payment anggota yang sudah dihapus tidak tersimpan tanpa batas",
-    async () => {
-      // Celah: berkas tetap `ready` di storage, tertaut ke payment anonim; job penghapusan tidak pernah berjalan lagi.
-      const [file] = await rt.owner.db.select().from(files).where(eq(files.id, lateEvidenceId));
-      expect({ status: file!.status, stored: await rt.storage.exists(file!.objectKey) }).toEqual({
-        status: "deleted",
-        stored: false,
-      });
-    },
-  );
+  it("D5-03 (D2, AC F14-4): bukti refund atas payment anggota yang sudah dihapus tidak tersimpan tanpa batas", async () => {
+    // Diperbaiki: penyelesaian refund atas payment yang pemiliknya dihapus memutus rujukan bukti dan menghapus
+    // berkasnya setelah commit; audit hanya menyimpan sha256/ukuran.
+    const [file] = await rt.owner.db.select().from(files).where(eq(files.id, lateEvidenceId));
+    expect({ status: file!.status, stored: await rt.storage.exists(file!.objectKey) }).toEqual({
+      status: "deleted",
+      stored: false,
+    });
+    const [adjustment] = await rt.owner.db
+      .select()
+      .from(paymentAdjustments)
+      .where(eq(paymentAdjustments.id, S.adjustments.pendingRefund));
+    expect(adjustment).toMatchObject({ status: "completed", evidenceFileId: null, refundDestination: null });
+    const [audit] = await rt.owner.db
+      .select()
+      .from(auditLogs)
+      .where(
+        and(
+          eq(auditLogs.entityId, S.adjustments.pendingRefund),
+          eq(auditLogs.action, "payment_adjustment.completed"),
+        ),
+      );
+    expect(audit!.after).toMatchObject({
+      evidence_file_id: null,
+      evidence_erased: { file_id: lateEvidenceId, sha256: file!.sha256, bytes: file!.bytes },
+    });
+  });
 
   let windowUserId = "";
   it("D5-04 persiapan: job gagal di langkah files, bendahara memutus payment anggota selama deletion_pending, retry selesai", async () => {
@@ -1320,7 +1339,7 @@ async function registerNewMember(): Promise<number> {
 
 /**
  * Pemeriksaan per tabel setelah penghapusan (dipakai pada database live dan database pulihan). Celah yang sudah
- * didokumentasikan (D5-01, D5-02) dikecualikan di sini dan diuji terpisah dengan `it.fails`.
+ * didokumentasikan (D5-01) dikecualikan di sini dan diuji terpisah dengan `it.fails`.
  */
 async function expectErased(db: Db, storage: MemoryDriver, options: { restored?: boolean } = {}) {
   const userId = S.budi.userId;
@@ -1559,9 +1578,9 @@ async function expectErased(db: Db, storage: MemoryDriver, options: { restored?:
   if (options.restored) expect(deletion!.ledger).toMatchObject({ restored: true });
 
   // Pemindaian SEMUA tabel skema app: tidak ada teks pribadi Budi tersisa (D2, PRD 6.5), kecuali celah yang
-  // didokumentasikan terpisah (D5-01 inbox anggota lain, D5-02 respons idempotensi pengurus).
+  // didokumentasikan terpisah (D5-01 inbox anggota lain). D5-02 (respons idempotensi pengurus) sudah diperbaiki.
   const hits = await personalDataHits(db, personalTerms());
-  const knownGaps: Record<string, number> = { notifications: 1, idempotency_keys: 1 };
+  const knownGaps: Record<string, number> = { notifications: 1 };
   const unexpected = Object.fromEntries(
     Object.entries(hits).filter(([table, n]) => n > (knownGaps[table] ?? 0)),
   );
