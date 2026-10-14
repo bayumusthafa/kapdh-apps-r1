@@ -1,6 +1,6 @@
 import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
 import type { BaseEnv } from "@kapdh/config";
-import { admins, auditLogs, users } from "@kapdh/database";
+import { admins, auditLogs, outboxEvents, users } from "@kapdh/database";
 import { and, eq, gt } from "drizzle-orm";
 import type { Clock } from "../../core/adapters/clock.js";
 import type { MailMessage, Mailer } from "../../core/adapters/mailer.js";
@@ -22,6 +22,15 @@ import { adminInvitationLink, invitationMail, securityNoticeMail } from "./admin
  *   menerbitkan token baru, sehingga hanya tautan di email terakhir yang berlaku.
  * - `admin.security_notice`: pemberitahuan keamanan ke email login admin; `email_changed` ke alamat lama yang dibaca
  *   dari `before.email` entri audit perubahan (payload outbox tanpa PII, N-14).
+ *
+ * Pengiriman ulang (outbox at-least-once, PRD 5.1): worker yang mati setelah server SMTP menerima pesan tetapi sebelum
+ * event ditandai `dispatched`, atau balasan SMTP yang hilang setelah akhir DATA, membuat handler dijalankan lagi.
+ * Penanda "sudah terkirim" tidak menutup celah itu (penanda ditulis SESUDAH SMTP menerima, celahnya sama dengan
+ * finalisasi outbox), sehingga dedup dilakukan di sisi penerima seperti notifikasi F-13: pemberitahuan keamanan
+ * memakai Message-ID stabil per event outbox ({@link securityNoticeDedupKey}), isi sama, dan salinan ulang dikenali
+ * penerima sebagai pesan yang sama. Email undangan SENGAJA tanpa Message-ID stabil: setiap percobaan memuat token
+ * sekali pakai BARU dan token lama tidak berlaku lagi, sehingga Message-ID yang sama justru membuat penerima membuang
+ * salinan terbaru (satu-satunya tautan yang berlaku) dan menyimpan tautan yang sudah ditolak (410).
  */
 @Injectable()
 export class AdminMailJob implements OnModuleInit {
@@ -75,6 +84,7 @@ export class AdminMailJob implements OnModuleInit {
       .where(eq(users.id, admin.userId))
       .limit(1);
     if (!account) return;
+    // Tanpa dedupKey (lihat kepala kelas): isi berbeda setiap percobaan karena token baru.
     await this.deliver(
       invitationMail({
         to: account.email,
@@ -114,9 +124,18 @@ export class AdminMailJob implements OnModuleInit {
       to = previous;
       maskedNewEmail = maskEmail(admin.email);
     }
-    await this.deliver(
-      securityNoticeMail({ to, displayName: admin.displayName, kind, at: this.clock.now(), maskedNewEmail }),
-    );
+    // Waktu perubahan = waktu event outbox ditulis (transaksi yang sama dengan perubahan), bukan waktu percobaan kirim:
+    // tetap benar setelah backoff dan isi pengiriman ulang sama persis dengan salinan pertama.
+    const [origin] = await this.db
+      .select({ createdAt: outboxEvents.createdAt })
+      .from(outboxEvents)
+      .where(eq(outboxEvents.id, event.id))
+      .limit(1);
+    const at = origin?.createdAt ?? this.clock.now();
+    await this.deliver({
+      ...securityNoticeMail({ to, displayName: admin.displayName, kind, at, maskedNewEmail }),
+      dedupKey: securityNoticeDedupKey(event.id),
+    });
   }
 
   /**
@@ -129,4 +148,12 @@ export class AdminMailJob implements OnModuleInit {
       throw new Error("Mailer tidak mendukung email transaksional (Mailer.send)");
     await this.mailer.send(message);
   }
+}
+
+/**
+ * Kunci pesan pemberitahuan keamanan admin = id baris outbox (stabil di setiap pengiriman ulang event yang sama, unik
+ * antar-event karena dedup_key outbox UNIQUE). SmtpMailer menjadikannya Message-ID `<kunci.notifikasi@domain>`.
+ */
+export function securityNoticeDedupKey(outboxEventId: string): string {
+  return `admin-security-notice.${outboxEventId}`;
 }
