@@ -13,7 +13,8 @@
 //   6. actions/checkout menyatakan persist-credentials; `true` hanya untuk job dengan contents: write.
 //   7. Blok `run` tidak memuat ekspresi `${{ }}` (nilai lewat env: mencegah injeksi skrip); `if` tidak merujuk secrets.
 //   8. Ekspresi `${{ }}` seimbang; step `run` di composite action menyatakan `shell`.
-//   9. Versi Node CI (setup-platform) sama dengan base image node berversi lengkap di infra/Dockerfile.*.
+//   9. Base image infra/Dockerfile.* dipin versi patch DAN digest (`nama:x.y.z-...@sha256:<64 hex>`, PRD 7.1), tag yang
+//      sama memakai digest yang sama di semua Dockerfile, dan versi node sama dengan Node CI (setup-platform).
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative, resolve } from "node:path";
@@ -204,23 +205,56 @@ function checkAction(file, doc, errors) {
   checkSteps(file, "runs", doc?.runs?.steps, { composite: true, jobPermissions: {} }, errors);
 }
 
-/** Versi Node CI (default setup-platform) dibandingkan dengan FROM node:<x.y.z> di Dockerfile infra. */
-function checkNodeVersion(warnings, errors) {
+/** `repositori:tag@sha256:<64 hex>`; repositori boleh memuat namespace (`nginxinc/nginx-unprivileged`). */
+const DIGEST_PIN = /^([a-z0-9][a-z0-9._/-]*):([A-Za-z0-9][A-Za-z0-9._-]*)@sha256:[0-9a-f]{64}$/;
+const FROM_LINE = /^FROM\s+(?:--platform=\S+\s+)?(\S+)(?:\s+AS\s+(\S+))?\s*$/gim;
+const PATCH_VERSION = /^(\d+\.\d+\.\d+)/;
+
+/**
+ * Base image Dockerfile infra: versi patch + digest (PRD 7.1, D7), digest konsisten per tag, node = Node CI.
+ * Rujukan ke tahap sebelumnya (`FROM build`) dilewati.
+ */
+export function checkDockerfiles(files, ciNodeVersion, errors) {
+  const pinned = new Map();
+  for (const { name, text } of files) {
+    const stages = new Set();
+    for (const m of text.matchAll(FROM_LINE)) {
+      const [, ref, alias] = m;
+      const isStage = stages.has(ref.toLowerCase());
+      if (alias) stages.add(alias.toLowerCase());
+      if (isStage) continue;
+      const pin = DIGEST_PIN.exec(ref);
+      if (!pin) {
+        errors.push(`infra/${name}: base image ${ref} wajib dipin nama:versi@sha256:<digest> (PRD 7.1, D7)`);
+        continue;
+      }
+      const [, repo, tag] = pin;
+      const version = PATCH_VERSION.exec(tag)?.[1];
+      if (!version)
+        errors.push(`infra/${name}: base image ${repo}:${tag} wajib berversi patch lengkap (x.y.z)`);
+      const key = `${repo}:${tag}`;
+      const seen = pinned.get(key);
+      if (seen && seen.ref !== ref)
+        errors.push(`infra/${name}: ${key} dipin digest berbeda dengan ${seen.file}; samakan`);
+      else if (!seen) pinned.set(key, { ref, file: `infra/${name}` });
+      if (repo === "node" && version && version !== ciNodeVersion)
+        errors.push(
+          `infra/${name}: node ${version} berbeda dengan Node CI ${ciNodeVersion} (setup-platform)`,
+        );
+    }
+  }
+}
+
+function checkInfraDockerfiles(errors) {
   const action = parseDocument(
     readFileSync(join(ROOT, ".github/actions/setup-platform/action.yml"), "utf8"),
   ).toJS();
   const ci = action?.inputs?.["node-version"]?.default;
   const infra = join(ROOT, "kapdh-platform", "infra");
-  for (const name of readdirSync(infra).filter((f) => f.startsWith("Dockerfile"))) {
-    const text = readFileSync(join(infra, name), "utf8");
-    for (const m of text.matchAll(/^FROM\s+node:([^\s@]+)/gm)) {
-      const full = /^(\d+\.\d+\.\d+)/.exec(m[1])?.[1];
-      if (!full)
-        warnings.push(`infra/${name}: base image node:${m[1]} belum dipin versi patch (PRD 7.1, D7)`);
-      else if (full !== ci)
-        errors.push(`infra/${name}: node ${full} berbeda dengan Node CI ${ci} (setup-platform)`);
-    }
-  }
+  const files = readdirSync(infra)
+    .filter((f) => f.startsWith("Dockerfile"))
+    .map((name) => ({ name, text: readFileSync(join(infra, name), "utf8") }));
+  checkDockerfiles(files, ci, errors);
 }
 
 export function checkAll({ repoRoot = REPO_ROOT } = {}) {
@@ -250,7 +284,7 @@ export function checkAll({ repoRoot = REPO_ROOT } = {}) {
   }
   const dependabot = join(gh, "dependabot.yml");
   if (existsSync(dependabot)) parseYamlFile(dependabot, errors);
-  checkNodeVersion(warnings, errors);
+  checkInfraDockerfiles(errors);
   return { errors, warnings, files: workflows.length + actions.length };
 }
 

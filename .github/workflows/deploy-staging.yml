@@ -1,8 +1,11 @@
 # Deploy staging otomatis (PRD 5.5: "Push main yang lolos CI membangun staging"; PRD 5.3: image dibangun di CI, bukan
-# di VPS). Urutan: build + push image GHCR bertag sha-<commit> (sekali tulis) -> job migrasi tunggal -> kanal :staging
-# -> webhook Coolify -> uji asap -> status commit `kapdh/staging` (syarat promosi rilis di release.yml).
+# di VPS). Urutan: build + push image GHCR bertag sha-<commit> (sekali tulis) -> uji asap dan pindai kerentanan image
+# -> job migrasi tunggal -> kanal :staging -> deploy Coolify -> uji asap HTTP (termasuk commit image yang berjalan).
+# Run yang sukses dari main, berjudul "Deploy staging <sha>", adalah bukti staging yang diperiksa release.yml
+# (infra/ci/staging-evidence.mjs); status commit `kapdh/staging` hanya informasi untuk manusia.
 # Konfigurasi environment "staging" dan pemulihan: docs/runbooks/ci-cd.md.
 name: Deploy staging
+run-name: Deploy staging ${{ github.event.workflow_run.head_sha || inputs.sha || github.sha }}
 
 on:
   workflow_run:
@@ -12,7 +15,7 @@ on:
   workflow_dispatch:
     inputs:
       sha:
-        description: SHA commit main (40 heksadesimal) yang sudah lulus CI; kosong = HEAD main.
+        description: SHA commit main (40 heksadesimal) yang sudah lulus CI; kosong = commit terakhir main.
         required: false
         type: string
         default: ""
@@ -47,8 +50,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
           RUN_SHA: ${{ github.event.workflow_run.head_sha }}
           INPUT_SHA: ${{ inputs.sha }}
+          DISPATCH_SHA: ${{ github.sha }}
           REPO: ${{ github.repository }}
           OWNER: ${{ github.repository_owner }}
         run: |
@@ -56,7 +61,12 @@ jobs:
           if [ "$EVENT_NAME" = "workflow_run" ]; then
             sha="$RUN_SHA"
           else
-            sha="${INPUT_SHA:-$(gh api "repos/$REPO/commits/main" --jq .sha)}"
+            # Dispatch hanya dari main (berkas workflow versi main); SHA sama dengan judul run (run-name).
+            if [ "$REF" != "refs/heads/main" ]; then
+              echo "::error title=Deploy staging::jalankan dari branch main, bukan $REF"
+              exit 1
+            fi
+            sha="${INPUT_SHA:-$DISPATCH_SHA}"
             [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::SHA tidak valid"; exit 1; }
             passed=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$sha&event=push&status=success&per_page=1" \
               --jq '.total_count')
@@ -101,6 +111,8 @@ jobs:
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
       IMAGE_REF: ${{ needs.plan.outputs.registry }}/${{ matrix.image }}:sha-${{ needs.plan.outputs.sha }}${{ matrix.tag_suffix }}
+      KAPDH_SHA: ${{ needs.plan.outputs.sha }}
+      GRYPE_CHECK_FOR_APP_UPDATE: "false"
     defaults:
       run:
         shell: bash
@@ -110,12 +122,18 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.sha }}
           persist-credentials: false
+      - name: Siapkan Node.js (gerbang kerentanan tanpa dependensi)
+        uses: ./.github/actions/setup-platform
+        with:
+          install: "false"
+          cache: "false"
       - name: Pasang crane
         uses: ./.github/actions/install-tool
         with:
           tool: crane
       # Tag sha-<commit> sekali tulis: build ulang (re-run) tidak boleh mengganti digest yang mungkin sudah lulus
-      # staging atau dipromosikan (PRD 5.5 "image yang sama").
+      # staging atau dipromosikan (PRD 5.5 "image yang sama"). Hanya "manifest/repositori tidak dikenal" yang berarti
+      # belum ada; galat lain (auth, 5xx, rate limit) menghentikan job agar tag tidak ditimpa build baru.
       - name: Lewati bila image commit ini sudah ada
         id: exists
         env:
@@ -124,11 +142,17 @@ jobs:
         run: |
           set -euo pipefail
           crane auth login ghcr.io -u "$ACTOR" --password-stdin <<<"$GH_TOKEN"
-          if digest=$(crane digest "$IMAGE_REF" 2>/dev/null); then
+          err="$RUNNER_TEMP/crane-digest.err"
+          if digest=$(crane digest "$IMAGE_REF" 2>"$err"); then
             echo "Sudah ada: $IMAGE_REF -> $digest (tidak dibangun ulang)."
             echo "found=true" >>"$GITHUB_OUTPUT"
-          else
+          elif grep -Eq 'MANIFEST_UNKNOWN|NAME_UNKNOWN|status code 404|404 Not Found' "$err"; then
+            echo "Belum ada: $IMAGE_REF"
             echo "found=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "::error title=crane digest::registry tidak dapat dipastikan (bukan 'tidak ditemukan'); tag sekali tulis tidak ditimpa"
+            cat "$err"
+            exit 1
           fi
       - name: Siapkan Buildx
         if: steps.exists.outputs.found != 'true'
@@ -145,7 +169,9 @@ jobs:
         with:
           context: kapdh-platform
           file: kapdh-platform/${{ matrix.dockerfile }}
-          build-args: ${{ matrix.build_args }}
+          build-args: |
+            ${{ matrix.build_args }}
+            KAPDH_COMMIT=${{ needs.plan.outputs.sha }}
           platforms: linux/amd64
           push: true
           provenance: mode=max
@@ -161,7 +187,24 @@ jobs:
       - name: Uji asap image dari registry
         env:
           SMOKE: ${{ matrix.smoke }}
-        run: docker run --rm --pull always --platform linux/amd64 --entrypoint sh "$IMAGE_REF" -c "$SMOKE"
+          KAPDH_EXPECTED_COMMIT: ${{ needs.plan.outputs.sha }}
+        run: docker run --rm --pull always --platform linux/amd64 -e KAPDH_EXPECTED_COMMIT --entrypoint sh "$IMAGE_REF" -c "$SMOKE"
+      - name: Pasang grype
+        uses: ./.github/actions/install-tool
+        with:
+          tool: grype
+      # Dipindai setiap run (juga saat image sudah ada) sebelum deploy: kerentanan kritis yang terbit sesudah build
+      # tetap menghentikan deploy (N-16). Digest yang dipindai = digest yang akan dideploy.
+      - name: Pindai kerentanan image di registry (gerbang kritis + allowlist)
+        env:
+          LABEL: image ${{ matrix.id }}
+        run: |
+          set -euo pipefail
+          digest=$(crane digest "$IMAGE_REF")
+          repo="${IMAGE_REF%:*}"
+          grype "registry:$repo@$digest" --platform linux/amd64 --output json --file "$RUNNER_TEMP/grype.json"
+          node kapdh-platform/infra/ci/vuln-gate.mjs --source grype "$RUNNER_TEMP/grype.json" \
+            --fail-on critical --label "$LABEL"
 
   deploy:
     name: Deploy staging
@@ -185,7 +228,7 @@ jobs:
     permissions:
       statuses: write
     steps:
-      - name: Catat hasil staging pada commit
+      - name: Catat hasil staging pada commit (informasi; bukti rilis = run ini)
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -205,3 +248,5 @@ jobs:
           gh api -X POST "repos/$REPO/statuses/$SHA" \
             -f state="$state" -f context=kapdh/staging -f description="$description" -f target_url="$RUN_URL" >/dev/null
           echo "kapdh/staging = $state untuk $SHA"
+          # Run gagal bila staging gagal, sehingga conclusion run = bukti yang dibaca release.yml.
+          [ "$state" = "success" ]

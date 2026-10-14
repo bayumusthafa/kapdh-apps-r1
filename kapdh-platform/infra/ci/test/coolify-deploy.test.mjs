@@ -112,6 +112,32 @@ describe("deploy Coolify", () => {
     assert.match(r2.results.find((r) => !r.ok).status, /timeout/);
   });
 
+  it("deployment tanpa deployment_uuid (tidak dapat dipantau) -> GAGAL, bukan dianggap sukses", async () => {
+    const { apiBase } = parseDeployUrl(URL_OK);
+    const ok = fakeCoolify({ "dep-api-0001": ["finished"] });
+    const logs = [];
+    const r = await waitForDeployments({
+      apiBase,
+      token: TOKEN,
+      deployments: [
+        { message: "queued", resource_uuid: "aaaaaaaa1111", deployment_uuid: "dep-api-0001" },
+        { message: "Service deployed", resource_uuid: "bbbbbbbb2222" },
+      ],
+      fetchImpl: ok.fetchImpl,
+      sleep: noSleep,
+      log: (l) => logs.push(l),
+    });
+    assert.equal(r.ok, false);
+    assert.deepEqual(
+      r.results.map((x) => [x.status, x.ok]),
+      [
+        ["unmonitored", false],
+        ["finished", true],
+      ],
+    );
+    assert.ok(logs.some((l) => l.startsWith("::error::")));
+  });
+
   it("Coolify menolak (401) -> galat tanpa token; main --dry-run tidak mengirim permintaan", async () => {
     const { url } = parseDeployUrl(URL_OK);
     await assert.rejects(

@@ -1,11 +1,34 @@
-FROM node:24-alpine AS build
+# Image situs publik kapdh.or.id (apps/web, Astro static; D12, PRD 4.6). Dibangun di CI, bukan di VPS production
+# (PRD 5.3, 10.2). Konteks build = kapdh-platform/ (berkas lokal disaring .dockerignore):
+#   docker build -f infra/Dockerfile.web --build-arg PUBLIC_API_URL=https://api.kapdh.or.id/api/v1 \
+#     --build-arg KAPDH_COMMIT=$(git rev-parse HEAD) -t kapdh-web .
+# PUBLIC_API_URL dibakar Astro saat build: staging dan production adalah dua varian image dari commit yang sama
+# (infra/ci/images.json; docs/adr/ADR-010-pipeline-ci-cd.md). Base image dipin versi patch + digest (PRD 7.1).
+# nginx berjalan sebagai user nginx (uid 101) di port 8080 (infra/nginx-main.conf).
+
+# ------------------------------------------------------------------------------------------------ tahap build
+FROM node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS build
 WORKDIR /repo
+ENV CI=true
 RUN corepack enable
 COPY . .
 ARG PUBLIC_API_URL=https://api.kapdh.or.id/api/v1
 ENV PUBLIC_API_URL=$PUBLIC_API_URL
 RUN pnpm install --frozen-lockfile && pnpm --filter @kapdh/web... build
 
-FROM nginx:1.27-alpine
-COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
+# ---------------------------------------------------------------------------------------------- tahap runtime
+FROM nginx:1.30.5-alpine3.24@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94
+COPY infra/nginx-main.conf /etc/nginx/nginx.conf
 COPY infra/nginx-web.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
+# Commit sumber image di /version.json: uji asap deploy membuktikan kontainer yang melayani trafik adalah digest
+# yang dipromosikan (infra/ci/smoke.mjs). Bukan secret.
+ARG KAPDH_COMMIT=""
+RUN case "$KAPDH_COMMIT" in \
+      "") ;; \
+      *[!0-9a-f]*) echo "KAPDH_COMMIT wajib 40 heksadesimal huruf kecil" >&2; exit 1 ;; \
+      *) [ "${#KAPDH_COMMIT}" -eq 40 ] || { echo "KAPDH_COMMIT wajib 40 heksadesimal" >&2; exit 1; } ;; \
+    esac \
+  && printf '{"commit":"%s"}\n' "$KAPDH_COMMIT" > /usr/share/nginx/html/version.json
+USER nginx
+EXPOSE 8080
