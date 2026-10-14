@@ -55,11 +55,11 @@ yang sama, ADR-024); migrasi dijalankan satu job dengan lock sebelum image baru 
 
 Proteksi branch `main` cukup mewajibkan satu status: **CI lulus**.
 
-Versi dipin di satu tempat masing-masing: Node `24.19.0` di `.github/actions/setup-platform`, Flutter `3.47.2` di
+Versi dipin di satu tempat masing-masing: Node `24.21.0` di `.github/actions/setup-platform`, Flutter `3.47.2` di
 `.github/actions/setup-flutter`, alat CI (oasdiff 1.32.1, osv-scanner 2.6.0, actionlint 1.7.12, shellcheck 0.11.0,
 crane 0.22.1, grype 0.119.0) beserta SHA-256 di `.github/actions/install-tool`, action pihak ketiga dipin SHA commit
 dengan komentar versi, runner `ubuntu-24.04`. Base image Dockerfile dipin versi patch + digest
-(`node:24.19.0-alpine3.24@sha256:…`, `nginx:1.30.5-alpine3.24@sha256:…`); `check-workflows.mjs` GAGAL bila base image
+(`node:24.21.0-alpine3.24@sha256:…`, `nginx:1.30.5-alpine3.24@sha256:…`); `check-workflows.mjs` GAGAL bila base image
 tanpa digest/versi patch, digest berbeda untuk tag yang sama, atau versi Node image berbeda dengan Node CI. Dependabot
 (`.github/dependabot.yml`) mengusulkan pembaruan action dan digest/patch base image dengan jeda 14 hari; upgrade mayor
 (dan cabang minor nginx) diabaikan karena perlu ADR (PRD 7.1).
