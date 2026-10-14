@@ -11,6 +11,7 @@ import type { Db } from "../../core/db/types.js";
 import { AppException, forbidden, notFound } from "../../core/errors/app-exception.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
 import { generateOtp, otpHmac } from "../../core/identity/crypto.js";
+import { otpSendQuotaKey } from "../../core/identity/otp-quota.js";
 import { revokeDeviceTokens } from "../../core/notifications-kernel/device-tokens.js";
 import { NotificationService } from "../../core/notifications-kernel/notification.service.js";
 import { OutboxService } from "../../core/outbox/outbox.service.js";
@@ -25,7 +26,7 @@ const HOUR_MS = 3600_000;
 /** PRD 2.5: OTP 10 menit, kirim ulang paling cepat 60 detik (sama dengan challenge modul auth). */
 const OTP_TTL_MS = 10 * 60_000;
 const OTP_RESEND_MS = 60_000;
-/** PRD 2.5 (Usulan D1): 5 pengiriman OTP per jam per email; kunci yang SAMA dengan modul auth (`otp:<email>`). */
+/** PRD 2.5 (Usulan D1): 5 pengiriman OTP per jam per email; kunci yang SAMA dengan modul auth (otpSendQuotaKey). */
 const OTP_SENDS_PER_HOUR = 5;
 
 /**
@@ -75,7 +76,7 @@ export class MemberPasswordResetService {
           },
         );
       await this.limits.consumeOrThrow(
-        `otp:${user.email}`,
+        otpSendQuotaKey(this.env.OTP_HMAC_SECRET, user.email),
         OTP_SENDS_PER_HOUR,
         HOUR_MS,
         "Terlalu banyak permintaan kode untuk akun ini. Coba lagi nanti.",
