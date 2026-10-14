@@ -937,7 +937,11 @@ components:
           description: Waktu login perangkat (awal keluarga sesi); tidak berubah, kunci urutan daftar sesi.
         last_seen_at: { type: string, format: date-time, description: Aktivitas terakhir perangkat. }
         expires_at:
-          { type: string, format: date-time, description: Batas refresh token terakhir keluarga sesi. }
+          type: string
+          format: date-time
+          description: |
+            Batas umur keluarga sesi (login + TTL refresh D1: mobile 60 hari, admin 12 jam); rotasi refresh tidak
+            memperpanjangnya (PRD 5.2, N-08).
         current: { type: boolean, description: True untuk sesi pemanggil. }
 
     SessionPage:
