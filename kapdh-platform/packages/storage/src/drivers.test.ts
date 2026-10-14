@@ -249,6 +249,28 @@ describe("S3Driver ke server S3 tiruan", () => {
     });
   });
 
+  it("AC F14-6, D5-07: contentMd5 mengirim Content-MD5 yang diwajibkan bucket Object Lock; body stream ditolak", async () => {
+    const locked = { ...s3Config, bucket: "bucket-terkunci" };
+    await expect(
+      new S3Driver(locked).put("account-deletions/2026/10/a.json", Buffer.from("{}"), {
+        contentType: "application/json",
+      }),
+    ).rejects.toThrow();
+    const driver = new S3Driver({ ...locked, contentMd5: true });
+    const stored = await driver.put("account-deletions/2026/10/a.json", Buffer.from("{}"), {
+      contentType: "application/json",
+    });
+    expect(stored).toMatchObject({ bytes: 2, sha256: sha256Hex(Buffer.from("{}")) });
+    expect(fakeS3.objects.get("bucket-terkunci/account-deletions/2026/10/a.json")?.body.toString()).toBe(
+      "{}",
+    );
+    await expect(
+      driver.put("account-deletions/2026/10/b.json", Readable.from([Buffer.from("{}")]), {
+        contentType: "application/json",
+      }),
+    ).rejects.toBeInstanceOf(StorageConfigError);
+  });
+
   it("galat selain 404 diteruskan (bukan dianggap tidak ada)", async () => {
     const driver = new S3Driver({ ...s3Config, bucket: "bucket-rusak" });
     await expect(driver.stat("avatar/2026/10/x")).rejects.toThrow();

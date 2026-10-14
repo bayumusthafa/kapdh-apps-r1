@@ -22,6 +22,7 @@ import {
 } from "../../src/modules/account/deletion-processor.js";
 import { redactAuditSnapshot, scrubEvidence } from "../../src/modules/account/deletion-redaction.js";
 import { deletedEmailFor } from "../../src/modules/account/deletion-steps.js";
+import { OffsiteDeletionLedger } from "../../src/modules/account/offsite-deletion-ledger.js";
 import {
   createAlumni,
   DEFAULT_PASSWORD,
@@ -40,6 +41,7 @@ import {
   deletionRow,
   ensureAuditPurgeRole,
   exportLedger,
+  exportOffsiteLedger,
   personalDataHits,
   personalTerms,
   readLedger,
@@ -605,6 +607,110 @@ describe("Deletion ledger: penerapan ulang setelah restore (AC F14-6)", () => {
       await restored?.app.close();
       await source.app.close();
       if (ledgerDir) rmSync(ledgerDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("Deletion ledger luar VPS (AC F14-6, D5-07)", () => {
+  it("AC F14-6, D5-07: VPS hilang (DB dan /data/files dari backup harian sebelum penghapusan, ledger lokal ikut hilang) → ledger luar VPS append-only tetap menerapkan ulang penghapusan sebelum layanan dibuka", async () => {
+    const source = await createTestApp();
+    const offsite = new MemoryDriver();
+    source.app.get(OffsiteDeletionLedger).useDriver(offsite);
+    let restored: TestApp | undefined;
+    let ledgerDir: string | undefined;
+    try {
+      await ensureAuditPurgeRole(source.db);
+      const rich = await createRichMember(source);
+      // Backup harian terakhir (DB + berkas) dibuat SEBELUM permintaan penghapusan.
+      const dbBackup = await source.pg.dumpDataDir("none");
+      const fileBackup = snapshotStorage(source.storage);
+
+      const { id, requestNumber } = await requestDeletionViaApp(source, rich.session);
+      expect(await runDeletion(source, id)).toEqual({ outcome: "completed", requestNumber });
+      await expectFullyDeleted(source, rich, requestNumber);
+
+      // Store luar VPS: satu objek BARU per penulisan (requested lalu completed), tidak ada yang ditimpa; isinya
+      // hanya id dan object key.
+      const keys = offsite.keys();
+      expect(keys).toHaveLength(2);
+      for (const key of keys)
+        expect(key).toMatch(
+          new RegExp(
+            `^account-deletions/2026/10/${requestNumber.toLowerCase()}/(requested|completed)-[0-9a-f-]{36}\\.json$`,
+          ),
+        );
+      expect(keys.map((key) => readLedger(offsite, key).state).sort()).toEqual(["completed", "requested"]);
+      const raw = keys.map((key) => offsite.contents(key)!.toString("utf8")).join("");
+      for (const term of personalTerms(rich)) expect(raw).not.toContain(term);
+
+      // Bencana: VPS hilang. Database dan seluruh /data/files (termasuk ledger/account-deletions) hanya tersedia dari
+      // backup harian terakhir, yang belum memuat entri ledger permintaan ini.
+      expect([...fileBackup.keys()].some((key) => key.startsWith("ledger/"))).toBe(false);
+      restored = await appFromBackup(dbBackup, await restoreStorage(fileBackup), source.clock);
+      expect((await userRow(restored.db, rich.member.userId))!.status).toBe("active");
+      expect(await restored.storage.exists(rich.files.avatar.objectKey)).toBe(true);
+
+      // Runbook restore: salinan bucket ledger luar VPS (rclone copy) diberikan ke CLI ledger-reapply.
+      ledgerDir = exportOffsiteLedger(offsite);
+      const entries = readLedgerDirectory(ledgerDir);
+      expect(entries).toEqual([
+        expect.objectContaining({ deletion_id: id, request_number: requestNumber, state: "completed" }),
+      ]);
+      expect(entries[0]!.object_keys).toEqual(
+        expect.arrayContaining([rich.files.avatar.objectKey, rich.files.proofOld.objectKey]),
+      );
+      const summary = await runAsSystem(() => restored!.app.get(DeletionLedgerService).reapply(entries));
+      expect(summary).toMatchObject({ entries: 1, reapplied: [requestNumber], failed: [], absent: [] });
+      await expectFullyDeleted(restored, rich, requestNumber);
+      expect(await restored.storage.exists(rich.files.avatar.objectKey)).toBe(false);
+      expect(restored.mailer.mail).toEqual([]);
+    } finally {
+      await restored?.app.close();
+      await source.app.close();
+      if (ledgerDir) rmSync(ledgerDir, { recursive: true, force: true });
+    }
+  });
+
+  it("D5-07: penulisan ke ledger luar VPS gagal → langkah ledger gagal sebelum data dihapus (tidak dicatat selesai), dicoba ulang dengan backoff lalu selesai; last_error aman", async () => {
+    const offsite = new MemoryDriver();
+    const ledger = t.app.get(OffsiteDeletionLedger);
+    ledger.useDriver(offsite);
+    try {
+      const rich = await createRichMember(t);
+      const { id, requestNumber } = await requestDeletionViaApp(t, rich.session);
+
+      // ledger_open: store luar VPS menolak → tidak ada langkah selesai, tidak ada data yang dihapus, salinan lokal
+      // juga belum ditulis (urutan: luar VPS dahulu).
+      offsite.failNext("put", 1);
+      expect(await runDeletion(t, id)).toEqual({ outcome: "failed", requestNumber, step: "ledger_open" });
+      const failed = await deletionRow(t.db, id);
+      expect(failed).toMatchObject({ status: "failed", stepsDone: [] });
+      expect(failed.lastError).toBe("ledger_open:OffsiteLedgerWriteError");
+      expect(await t.storage.exists(ledgerObjectKey(requestNumber, failed.requestedAt))).toBe(false);
+      expect(await t.storage.exists(rich.files.avatar.objectKey)).toBe(true);
+      expect((await userRow(t.db, rich.member.userId))!.status).toBe("deletion_pending");
+      expect(offsite.keys()).toEqual([]);
+
+      // ledger_final: gagal setelah data dihapus → permintaan tidak selesai sampai entri completed ada di luar VPS.
+      t.clock.advance(deletionRetryBackoffMs(1));
+      t.app.get(AccountDeletionProcessor).setStepObserver(({ step }) => {
+        if (step === "credentials") offsite.failNext("put", 1);
+      });
+      expect(await runDeletion(t, id)).toEqual({ outcome: "failed", requestNumber, step: "ledger_final" });
+      t.app.get(AccountDeletionProcessor).setStepObserver(null);
+      expect((await deletionRow(t.db, id)).stepsDone).not.toContain("ledger_final");
+
+      t.clock.advance(deletionRetryBackoffMs(2));
+      expect(await runDeletion(t, id)).toEqual({ outcome: "completed", requestNumber });
+      await expectFullyDeleted(t, rich, requestNumber);
+      expect(
+        offsite
+          .keys()
+          .map((key) => readLedger(offsite, key).state)
+          .sort(),
+      ).toEqual(["completed", "requested"]);
+    } finally {
+      ledger.useDriver(null);
     }
   });
 });
