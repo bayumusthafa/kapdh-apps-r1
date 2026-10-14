@@ -1,5 +1,6 @@
 import type { Permission } from "@kapdh/contracts";
 import { mockHasPermission, requireAdmin } from "./auth";
+import { peekEventStatsForMocks } from "./events";
 import { error, json, type MockRequest, type MockRoute, type S } from "./http";
 import { moderationCounts } from "./moderation";
 import { notificationJobCounts } from "./notifications";
@@ -11,6 +12,8 @@ import { paymentRequests, routes as paymentRoutes } from "./payments";
  * - hitungan antrean pembayaran diambil dari ringkasan tiruan pembayaran (GET /admin/payments/summary) sehingga sama
  *   dengan pill menu dan antrean; transaksi lunas = payment paid tiruan pembayaran ditambah riwayat contoh lama;
  * - hitungan moderasi dan job memakai fungsi bersama area masing-masing (aturan visibilitas dan definisi yang sama);
+ * - bagian event (Tiket Terjual, Penjualan Tiket, Event mendatang) dibentuk dari tiruan area Event sehingga tautan
+ *   /events/$eventId membuka event yang sama (satu sumber event di dev:mock);
  * - /admin/dashboard/badges: reports_open dan failed_jobs saja (pill pembayaran bersumber dari ringkasan pembayaran).
  * Data contoh bukan bukti AC (PRD 7.3).
  */
@@ -36,6 +39,13 @@ export function reset(): void {
 export const mockDashboard = {
   setFailing(value: boolean): void {
     failing = value;
+  },
+  /**
+   * Riwayat transaksi contoh lama yang ikut dijumlah kartu Total Transaksi bersama payment paid tiruan pembayaran,
+   * agar uji menurunkan total dari sumbernya alih-alih menyalin nominal fixture. Hanya baca.
+   */
+  historicalTransactions(): S["DashboardTransaction"][] {
+    return historicalTransactions();
   },
 };
 
@@ -116,64 +126,55 @@ function members(): S["DashboardMembers"] {
   };
 }
 
-const EVENT_IDS = {
-  mancing: "0199e000-0000-7000-8000-0000000000e5",
-  bukber: "0199e000-0000-7000-8000-0000000000e6",
-  seminar: "0199e000-0000-7000-8000-0000000000e7",
-  reuni: "0199e000-0000-7000-8000-0000000000e8",
-  jalan: "0199e000-0000-7000-8000-0000000000e9",
-} as const;
-
-/** Penjualan tiket (guideline hlm. 12); urut starts_at menurun. */
-function ticketSales(): S["DashboardTicketSales"][] {
-  const sale = (
-    event_id: string,
-    title: string,
-    status: S["DashboardEventStatus"],
-    startsIn: number,
-    seats_total: number,
-    sold_count: number,
-    held_count: number,
-    awaiting_review_count: number,
-  ): S["DashboardTicketSales"] => ({
-    event_id,
-    title,
-    status,
-    starts_at: iso(startsIn),
-    timezone: "Asia/Jakarta",
-    seats_total,
-    sold_count,
-    held_count,
-    seats_available: seats_total - sold_count - held_count,
-    awaiting_review_count,
-  });
-  return [
-    sale(EVENT_IDS.reuni, "Reuni Akbar", "open", 25 * DAY, 300, 120, 14, 6),
-    sale(EVENT_IDS.seminar, "Seminar AI untuk Mahasiswa", "open", 9 * DAY, 80, 31, 4, 2),
-    sale(EVENT_IDS.mancing, "Mancing Bareng Alumni", "closed", 3 * DAY, 40, 40, 0, 0),
-    sale(EVENT_IDS.jalan, "Jalan bersama", "cancelled", -10 * DAY, 100, 0, 0, 0),
-    sale(EVENT_IDS.bukber, "Bukber", "done", -40 * DAY, 150, 142, 0, 0),
-  ];
+/**
+ * Bagian event dasbor dibentuk dari tiruan area Event (mocks/events.ts), bukan data contoh sendiri: setiap baris
+ * ditautkan ke /events/$eventId yang dijawab tiruan itu, sehingga id, judul dan hitungan kursi harus sama.
+ */
+function events(): S["DashboardEvents"] {
+  const all = peekEventStatsForMocks();
+  return {
+    // Kartu "Tiket Terjual" = tiket paid di semua event.
+    tickets_sold_count: all.reduce((n, e) => n + e.paid_quantity, 0),
+    // Penjualan Tiket (guideline hlm. 12): event selain draft, urut starts_at menurun, maksimal 10.
+    ticket_sales: all
+      .filter((e) => e.status !== "draft")
+      .sort((a, b) => b.starts_at.localeCompare(a.starts_at) || a.id.localeCompare(b.id))
+      .slice(0, 10)
+      .map((e) => ({
+        event_id: e.id,
+        title: e.title,
+        status: e.status,
+        starts_at: e.starts_at,
+        timezone: e.timezone,
+        seats_total: e.seats_total,
+        sold_count: e.paid_quantity,
+        held_count: e.held_quantity,
+        seats_available: e.seats_available,
+        awaiting_review_count: e.awaiting_review_quantity,
+      })),
+  };
 }
 
+/** Event open/closed yang mulai dalam 30 hari ke depan, urut starts_at naik, maksimal 10 (kontrak AdminDashboard). */
 function upcomingEvents(): S["DashboardUpcomingEvent"][] {
-  const sales = ticketSales();
-  return sales
-    .filter((s) => (s.status === "open" || s.status === "closed") && Date.parse(s.starts_at) > Date.now())
-    .filter((s) => Date.parse(s.starts_at) <= Date.now() + 30 * DAY)
-    .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-    .map((s) => ({
-      event_id: s.event_id,
-      title: s.title,
-      status: s.status,
-      starts_at: s.starts_at,
-      ends_at: new Date(Date.parse(s.starts_at) + 4 * 60 * 60_000).toISOString(),
-      timezone: s.timezone,
-      location_name: s.event_id === EVENT_IDS.mancing ? "Waduk Jatiluhur" : "Aula Ponpes Darel Hikmah",
-      seats_total: s.seats_total,
-      sold_count: s.sold_count,
-      held_count: s.held_count,
-      checked_in_count: 0,
+  const now = Date.now();
+  return peekEventStatsForMocks()
+    .filter((e) => e.status === "open" || e.status === "closed")
+    .filter((e) => Date.parse(e.starts_at) > now && Date.parse(e.starts_at) <= now + 30 * DAY)
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at) || a.id.localeCompare(b.id))
+    .slice(0, 10)
+    .map((e) => ({
+      event_id: e.id,
+      title: e.title,
+      status: e.status,
+      starts_at: e.starts_at,
+      ends_at: e.ends_at,
+      timezone: e.timezone,
+      location_name: e.location_name,
+      seats_total: e.seats_total,
+      sold_count: e.paid_quantity,
+      held_count: e.held_quantity,
+      checked_in_count: e.checked_in_count,
     }));
 }
 
@@ -323,13 +324,7 @@ export const routes: MockRoute[] = [
         if (p) body.payments = p;
       }
       if (has("members.read")) body.members = members();
-      if (has("events.manage")) {
-        const sales = ticketSales();
-        body.events = {
-          tickets_sold_count: sales.reduce((n, s) => n + s.sold_count, 0),
-          ticket_sales: sales,
-        };
-      }
+      if (has("events.manage")) body.events = events();
       if (has("events.manage") || has("events.checkin")) body.upcoming_events = upcomingEvents();
       if (has("moderation.read")) {
         const c = moderationCounts();

@@ -174,7 +174,8 @@ heavier lazily loaded check-in page. Verified after the merge: admin typecheck, 
   alphabetical file order, which is how the content/events event-category collision the two slices warned about would
   have hidden one side. The test fails when two area mocks register the same method + path template or when any route
   is shadowed by one loaded earlier (checked by adding a temporary duplicate file: both assertions failed and named
-  both files). Passes on the merged tree.
+  both files). Passes on the merged tree. (Review follow-up, section 9: the guard now reads the router's own table
+  instead of a copy of its loading logic.)
 
 ## 8. admin-governance
 
@@ -197,7 +198,8 @@ heavier lazily loaded check-in page. Verified after the merge: admin typecheck, 
   contract rule ("jumlah bruto seluruh payment paid, sebelum penyesuaian/refund"), so the displayed Rp505.224 is
   right. Kept each test's intent and adjusted only its setup/expectations: the totals are named constants with their
   derivation (Rp505.224, and Rp565.224 after the test approves Siti's Rp60.000), and the approve step reads the
-  payment's current `proof_version`/`version` from `GET /admin/payments/{id}` instead of assuming 1.
+  payment's current `proof_version`/`version` from `GET /admin/payments/{id}` instead of assuming 1. (Review
+  follow-up, section 9: the named constants were replaced by totals derived from the payments mock.)
 - Contract addition `GET /admin/reports/{reportId}/subject-candidates` (admin-moderation.yaml, owned by
   api-moderation) and its CHANGELOG subsection merged cleanly (subsection kept after the api-admin one, before
   `## 0.2.0`). `contracts:lint` valid (the 2 known warnings), contracts test 39/39, `contracts:test-dart` passes.
@@ -240,6 +242,70 @@ heavier lazily loaded check-in page. Verified after the merge: admin typecheck, 
 - `docs/ARCHITECTURE.md` §7 listed `/invite/$token`; the contract and both slices use `/invite#t=<token>` (token in
   the fragment, never sent to a server). The route list now says so (governance open issue).
 
+## 9. Review follow-up (fixer pass on the integrated tree)
+
+A review of the integrated tree raised four low-severity findings. All four were checked against the code and are
+real; all four are fixed. No finding was rejected.
+
+- **Dashboard event links led to a not-found page in dev:mock** (`apps/admin/src/api/mocks/{dashboard,events}.ts`).
+  This was the same cross-mock event-identity problem as the banner targets in section 7, but in the dashboard.
+  admin-governance's dashboard mock had its own five events (`0199e000-…-e5..e9`, e.g. "Seminar AI untuk
+  Mahasiswa"). admin-events' mock answers `GET /admin/events/{eventId}` only for `MOCK_EVENT_IDS`
+  (`0199e100-…-e1..e6`, e.g. "Seminar AI untuk Alumni"). `DashboardPage` links every "Event mendatang" and
+  "Penjualan Tiket" row to `/events/$eventId`, so in dev:mock each link opened a 404 detail page. The governance
+  side wanted dashboard-shaped data (ticket sales, upcoming events, tickets sold). The events side owns the events
+  and the seat-count rules (the read projection: expired holds are not counted as held). Chosen: the events mock
+  exports a read-only `peekEventStatsForMocks()`. It returns each event's id, title, status, schedule, location and
+  its paid, held, available, awaiting-review and checked-in counts, computed with the same `seatCounts` and
+  `projectedStatus` that its list and detail use. The dashboard mock builds `events` and `upcoming_events` from it
+  and applies the admin-dashboard.yaml rules itself:
+  - "Tiket Terjual" counts paid tickets in all events.
+  - "Penjualan Tiket" lists every event except drafts, ordered by `starts_at` descending, at most 10.
+  - "Event mendatang" lists open or closed events that start within the next 30 days, ordered by `starts_at`
+    ascending, at most 10.
+
+  The dashboard's own event fixtures are removed. The historical sample transactions keep their `event_title` text,
+  which is not linked. New test in `dashboard.test.tsx`, "F-15: setiap tautan event di dasbor menunjuk event yang
+  dikenal area Event dan membuka detailnya". For every `/events/<id>` link in both sections, it checks that the
+  events mock knows the id and that the title matches. It then clicks the first link and checks for the event
+  detail `h1` and the URL. Before the fix it failed on the first row ("Mancing Bareng Alumni (0199e000-…-e5):
+  expected undefined"); it passes after. The existing tests keep their intent, with event names taken from the events
+  mock (`mockEvents.event(MOCK_EVENT_IDS.seminar).title`) instead of the old dashboard titles:
+  - The super-admin test sees the seminar as a link under "Event mendatang", and the cancelled Pramuka event is not
+    listed there.
+  - The cancelled event is listed under "Penjualan Tiket", and the draft Mancing event is not.
+  - The check-in-only admin sees the seminar title without a link.
+
+- **Hard-coded "Total Transaksi" totals** (`apps/admin/src/routes/dashboard/dashboard.test.tsx`). Section 8 had
+  made `PAID_TOTAL = "Rp505.224"` and `PAID_TOTAL_AFTER_APPROVE = "Rp565.224"` named constants. Any change to an
+  admin-payments fixture would have broken three dashboard tests that do not own that data. Chosen: the test
+  derives the total from the contract rule (gross of all paid payments). The rule is
+  `sum(GET /admin/payments?status=paid&limit=100 amounts) + sum(mockDashboard.historicalTransactions())`, using
+  BigInt cents. The test asserts that the list has a single page, is not empty and contains only `paid` payments,
+  then formats the total with `formatRupiah`. `mockDashboard.historicalTransactions()` is a new read-only accessor
+  for the dashboard's legacy sample. The approval test also keeps its "total grows" intent explicitly: after it
+  approves Siti's payment, the gross equals the gross before approval plus that payment's `amount`. "Tiket Terjual"
+  is derived the same way, as the sum of `paid_quantity` over `GET /admin/events`, instead of the literal `"333"`.
+- **Router guard copied the router's loading logic** (`apps/admin/src/api/mocks/{index,routes.test}.ts`). The guard
+  repeated `index.ts`'s `import.meta.glob` patterns and its alphabetical sort. If the router changed, the guard
+  would have kept checking the old order. Chosen: `index.ts` now builds and exports `mockRouteTable` (each compiled
+  route with its source file, in match order) and `matchMockRoute(method, path)`. `mockFetch` uses the same
+  function. The guard imports both, so it checks the exact table and matcher that dev:mock uses. It also gained two
+  checks:
+  - no test file or router helper is loaded as an area;
+  - every route matches its own sample path, so a route that can never be reached is reported even when no other
+    route wins.
+
+  I confirmed it still catches collisions: a temporary `aaa-probe.ts` with `GET /admin/dashboard` and
+  `GET /admin/events/{anything}` made both the duplicate check and the shadowing check fail, and both failures named
+  the two files. The probe was then deleted.
+
+- **Duplicated deleted-account label** (`apps/admin/src/routes/events/{labels.ts,CheckinPage.tsx,EventTicketsTab.tsx}`).
+  The events area defined its own `ANONYMOUS_HOLDER = "Akun dihapus"`, while payments, dashboard, moderation and
+  notifications use `DELETED_ACCOUNT_LABEL` from `lib/labels.ts`. Chosen: `ANONYMOUS_HOLDER` is removed, and the
+  check-in page and ticket tab import `DELETED_ACCOUNT_LABEL`. The rendered text is unchanged and the events and
+  check-in tests pass unchanged.
+
 ## Breakages already on main before this track (fixed in a separate commit)
 
 Found by the first full API run after merge 1; neither involves an api-admin file.
@@ -257,21 +323,28 @@ Found by the first full API run after merge 1; neither involves an api-admin fil
   owner row before session rows; SHARE is compatible with refresh rotation and conflicts with revocation), so
   register and logout serialize: 204 then revoked, or 401.
 
-## Final verification (final tree, commit be6de01)
+## Final verification (final tree, after the section 9 review follow-up)
 
-Run from `kapdh-platform` after the last commit; every result below was observed in this session.
+Run from `kapdh-platform` on the tree with the section 9 fixes (the follow-up commit on top of `0b63b12`). Every
+result below was observed in this session. The test run used `--force`, so no turbo cache was replayed.
 
-| Command                                       | Result                                                                                                                                     |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pnpm build`                                  | pass, 10/10 tasks                                                                                                                          |
-| `pnpm typecheck`                              | pass, 16/16 tasks                                                                                                                          |
-| `pnpm lint`                                   | pass, 9/9 tasks (only the 2 known redocly `no-ambiguous-paths` warnings)                                                                   |
-| `pnpm exec turbo run test --concurrency=1`    | pass, 16/16 tasks: api 109 files 1351, admin 41 files 461, web 169, worker 54, contracts 39, config 24, storage 33, database 23, shared 16 |
-| `pnpm --filter @kapdh/api test:pg`            | pass, 23 files, 153 tests                                                                                                                  |
-| `pnpm contracts:lint`                         | pass, valid (2 known warnings); event schemas valid                                                                                        |
-| `pnpm contracts:test-dart`                    | pass, analyze clean and fixture tests pass                                                                                                 |
-| `pnpm format:check`                           | pass                                                                                                                                       |
-| `pnpm --filter @kapdh/worker test:pg` (extra) | pass, 3 files, 11 tests                                                                                                                    |
+| Command                                            | Result                                                                                                                                     |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm build`                                       | pass, 10/10 tasks                                                                                                                          |
+| `pnpm typecheck`                                   | pass, 16/16 tasks                                                                                                                          |
+| `pnpm lint`                                        | pass, 9/9 tasks (only the 2 known redocly `no-ambiguous-paths` warnings)                                                                   |
+| `pnpm exec turbo run test --concurrency=1 --force` | pass, 16/16 tasks: api 109 files 1351, admin 41 files 463, web 169, worker 54, contracts 39, config 24, storage 33, database 23, shared 16 |
+| `pnpm --filter @kapdh/api test:pg`                 | pass, 23 files, 153 tests (exit 0)                                                                                                         |
+| `pnpm contracts:lint`                              | pass, valid (2 known warnings); event schemas valid                                                                                        |
+| `pnpm contracts:test-dart`                         | pass, analyze clean and fixture tests pass                                                                                                 |
+| `pnpm format:check`                                | pass                                                                                                                                       |
+| `pnpm --filter @kapdh/worker test:pg` (extra)      | pass, 3 files, 11 tests (exit 0)                                                                                                           |
+
+Admin went from 461 to 463 tests: the new dashboard event-link test and the router guard's new check that test files
+and router helpers are not loaded as areas. Both PG lanes print `TypeError: done is not a function` from
+`embedded-postgres@17.6.0-beta.15` (`dist/index.js:349`) after the summary, while the embedded server shuts down.
+All tests have passed by then and the exit code is 0. None of the follow-up changes touch the API, the worker or
+their test harness.
 
 ## Still open after this track (carried from the slice reports, not integration conflicts)
 
@@ -280,6 +353,9 @@ Run from `kapdh-platform` after the last commit; every result below was observed
   test: enqueue/dedup, stalled jobs, backpressure across instances).
 - `test/core/worker-package.e2e.test.ts` has a 30 s timeout that the worker slice saw flake under heavy load (it
   passed in every run here).
+- The PG lanes (api, worker) print `TypeError: done is not a function` from `embedded-postgres@17.6.0-beta.15` while
+  shutting down. It appears after all tests pass and the exit code is 0. Worth checking when that pre-release
+  dependency is next upgraded.
 - Product decisions: admin-events allows ticket-price changes behind a confirmation (contract `adminUpdateEvent`)
   instead of the task text's price lock; check-in scanner lists only events whose window opens within 24 h.
 - Admin UI gaps: D13 `adminRecordPayment` has no screen; `nav.ts` labels `/payments` "Verifikasi Pembayaran" for a

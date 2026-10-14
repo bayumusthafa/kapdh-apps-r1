@@ -88,9 +88,6 @@ export const REFUND_STATUS_LABEL: Record<TicketRefundStatus, string> = {
   cancelled: "Refund dibatalkan",
 };
 
-/** Nama pemegang tiket; akun yang sudah dihapus tampil anonim (AC F14-4). */
-export const ANONYMOUS_HOLDER = "Akun dihapus";
-
 export type ResultTone = "success" | "warning" | "danger";
 
 export interface RejectionCopy {

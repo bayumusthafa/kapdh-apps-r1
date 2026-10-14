@@ -27,8 +27,9 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, ErrorState, Loading } from "../../components/ui/States";
 import { cn } from "../../lib/cn";
 import { formatDateTime, zoneLabel } from "../../lib/format";
+import { DELETED_ACCOUNT_LABEL } from "../../lib/labels";
 import { eventKeys } from "./api";
-import { ANONYMOUS_HOLDER, CHECKIN_REJECTION, formatRange, formatSchedule, type ResultTone } from "./labels";
+import { CHECKIN_REJECTION, formatRange, formatSchedule, type ResultTone } from "./labels";
 import { QrScanner } from "./QrScanner";
 import { checkinRoute } from "./routes";
 
@@ -106,14 +107,14 @@ function summarize(outcome: ScanOutcome): { tone: ResultTone; title: string; hol
       return {
         tone: "success",
         title: "Check-in berhasil",
-        holder: outcome.result.ticket.holder.full_name ?? ANONYMOUS_HOLDER,
+        holder: outcome.result.ticket.holder.full_name ?? DELETED_ACCOUNT_LABEL,
       };
     case "rejected": {
       const copy = CHECKIN_REJECTION[outcome.detail.rejection_reason];
       return {
         tone: copy.tone,
         title: copy.title,
-        holder: outcome.detail.ticket.holder.full_name ?? ANONYMOUS_HOLDER,
+        holder: outcome.detail.ticket.holder.full_name ?? DELETED_ACCOUNT_LABEL,
       };
     }
     case "not_found":
@@ -494,7 +495,7 @@ const TONE: Record<ResultTone | "neutral", { box: string; icon: ReactNode; iconC
 };
 
 function HolderBlock({ ticket }: { ticket: CheckinTicket }) {
-  const name = ticket.holder.full_name ?? ANONYMOUS_HOLDER;
+  const name = ticket.holder.full_name ?? DELETED_ACCOUNT_LABEL;
   return (
     <div className="flex items-center gap-3">
       <Avatar name={name} src={ticket.holder.avatar_url} size="lg" />
