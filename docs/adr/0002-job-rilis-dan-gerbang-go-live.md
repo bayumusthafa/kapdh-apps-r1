@@ -18,9 +18,10 @@ pada database tanpa pengurus dan tanpa biaya.
 ## Keputusan
 
 1. **Image `kapdh-release`** (target `release` di `infra/Dockerfile.api`) = runtime API yang sama + psql 17 + SQL role +
-   `infra/scripts/release-job.sh`. Urutan tetap: tunggu DB → `roles.sql` → sandi role dari env (`\getenv`) → migrasi
-   sebagai `kapdh_migrator` → `roles.sql` → seed referensi → gerbang go-live. Image API sendiri tidak memuat psql dan
-   tidak pernah memegang kredensial superuser atau migrator.
+   `infra/scripts/release-job.sh`. Urutan tetap: tunggu DB → cek versi skema → `roles.sql` → sandi role dari env
+   (`\getenv`) → gerbang pra-migrasi (mode `enforce`) → migrasi sebagai `kapdh_migrator` → `roles.sql` → seed referensi
+   → gerbang go-live penuh. Image API sendiri tidak memuat psql dan tidak pernah memegang kredensial superuser atau
+   migrator.
 2. Di jalur Coolify, job dijalankan operator di VPS lewat `infra/scripts/run-release.sh` (berkas env 600) sebelum
    redeploy API/worker; di Compose cadangan lewat service `release` ber-profile. CI tidak memerlukan akses SSH ke VPS
    (PRD 5.3: SSH hanya dari IP tepercaya/VPN).
@@ -28,26 +29,48 @@ pada database tanpa pengurus dan tanpa biaya.
    `/health/ready`. Konfigurasi yang belum disahkan adalah alasan menunda go-live atau promosi image (PRD 8.4), bukan
    alasan mengeluarkan API yang sedang melayani anggota dari load balancer; pemeriksaan kesehatan tetap murni
    dependensi. Job rilis menjalankan gerbang setiap rilis: `enforce` di production (job gagal, image tidak
-   dipromosikan), `report` di staging, dan `report` di production hanya untuk inisialisasi pertama sebelum bootstrap
-   Super Admin.
-4. Kriteria "tersahkan" yang dapat diperiksa mesin: nominal D4 (disahkan PRD v3.3) atau nominal yang ditetapkan pengurus
+   dipromosikan) dan `report` di staging.
+   - Pada `enforce`, pemeriksaan konfigurasi pengurus (semua kecuali `schema` dan `settings`, yang bergantung pada
+     migrasi dan seed rilis itu) dijalankan juga **sebelum migrasi** (`--preflight`), sehingga konfigurasi yang belum
+     disahkan menghentikan rilis tanpa mengubah skema production. Penolakan gerbang penuh setelah migrasi berarti
+     perbaikan maju (PRD 8.4).
+   - `report` di production adalah **pengecualian** (inisialisasi pertama, atau hotfix mendesak saat pemeriksaan yang
+     tidak terkait sedang merah) dan wajib `RELEASE_GATE_REASON` + `RELEASE_GATE_APPROVER`, yang dicetak di log job untuk
+     paket bukti dan log insiden.
+4. **Image lebih lama dari skema**: job rilis menolaknya di semua mode SEBELUM `roles.sql`, karena `roles.sql` image lama
+   dapat memberi ulang hak yang dicabut rilis baru. Rollback image (PRD 5.5, 8.4) karenanya tidak memakai job rilis:
+   redeploy tag lama setelah memastikan migrasi kompatibel mundur, dengan bukti gerbang baca-saja
+   `golive:check --allow-schema-ahead` (skema lebih baru dicatat sebagai peringatan).
+5. Kriteria "tersahkan" yang dapat diperiksa mesin: nominal D4 (disahkan PRD v3.3) atau nominal yang ditetapkan pengurus
    lewat web admin (`updated_by_admin_id` + audit), tidak ada Rp0; metode bayar aktif dibuat lewat web admin (audit
    `payment_method.created`) dan bukan contoh; >= 2 Super Admin aktif ber-TOTP dan >= 2 pemutus pembayaran (PRD 8.2
    langkah 3, 2.3); halaman legal/bantuan terbit tanpa kerangka DRAF dan sinkron dengan `app_settings.legal`; master
-   aktif; WhatsApp dukungan; tanpa fixture dev; skema sama dengan journal image. Tanda tangan manusia (bendahara, QA,
-   pengurus, infra; PRD 9.3) tetap di paket bukti: laporan gerbang mencetak nominal dan rekening tersamar untuk itu.
-5. Web admin dilayani nginx dengan CSP ketat (`script-src`/`style-src 'self'`, `frame-ancestors 'none'`); karenanya
+   aktif; WhatsApp dukungan; tanpa fixture dev; skema sama dengan journal image. Penanda fixture hanya yang tidak dapat
+   dipalsukan anggota (audit `seed.dev`, `DEV_IDS`, akun aktif ber-domain email cadangan, konten pengurus `[Contoh]`):
+   nama yang diisi pendaftar anonim saat registrasi hanya dicatat dan tidak pernah menahan rilis. Saran perbaikan
+   fixture membedakan "belum ada akun anggota nyata" (reset terkendali diizinkan PRD 8.4) dari "sudah ada" (jangan reset).
+   Tanda tangan manusia (bendahara, QA, pengurus, infra; PRD 9.3) tetap di paket bukti: laporan gerbang mencetak nominal
+   dan rekening tersamar untuk itu.
+6. Web admin dilayani nginx dengan CSP ketat (`script-src`/`style-src 'self'`, `frame-ancestors 'none'`); karenanya
    TipTap dijalankan dengan `injectCSS: false` dan aturan dasar ProseMirror dipindah ke `apps/admin/src/styles.css`.
    Origin API CSP dirender saat build dari `VITE_API_BASE_URL`, sehingga image web/admin dibangun per lingkungan dari
-   commit yang sama (varian `-staging`), sedangkan image api/worker/release identik untuk kedua lingkungan.
+   commit yang sama (varian `-staging`), sedangkan image api/worker/release identik untuk kedua lingkungan. Nilai cache
+   per path (aset hash `immutable`) hanya untuk respons 200/206/304; respons galat selalu `no-store` agar 404 aset
+   selama rolling deploy tidak tersimpan setahun di peramban.
+7. Compose cadangan memakai jaringan edge terpisah per lingkungan (`kapdh-edge`, `kapdh-edge-staging`, dipatok, bukan
+   dari env); hanya Traefik cadangan yang tersambung ke keduanya (D12).
 
 ## Konsekuensi
 
 - Satu langkah manual (atau otomatisasi di VPS) per rilis sebelum redeploy Coolify; dicatat di runbook rilis.
 - Superuser PostgreSQL hanya ada di berkas env job rilis. Dua job rilis bersamaan aman untuk migrasi (advisory lock)
   tetapi GRANT bersamaan dapat gagal dan harus diulang; operator menjalankan satu job pada satu waktu.
+- Gerbang pra-migrasi memakai kode image baru terhadap skema lama; bila kueri gerbang membutuhkan kolom dari migrasi
+  tertunda, pra-migrasi gagal teknis (kode 3), job mencetak peringatan dan gerbang penuh setelah migrasi yang menentukan.
+- Pengecualian gerbang bergantung pada disiplin manusia (alasan dan penyetuju tercetak di log job, bukan audit
+  database); dicatat di log insiden dan paket bukti.
 - Gerbang memeriksa keadaan data, bukan niat: misalnya metode bayar yang dibuat lewat web admin tetap memerlukan
   tanda tangan bendahara pada laporan. Aturan baru (mis. bila nominal Rp0 kelak disahkan) memerlukan perubahan PRD dan
   kode gerbang.
 - Belum terbukti tanpa Docker: build image, psql di image rilis, perilaku Coolify (nama jaringan/host DB, mount
-  direktori bersama), CSP admin di peramban nyata. Daftar lengkap: runbook rilis bagian 7.
+  direktori bersama, label HSTS, login registry), CSP admin di peramban nyata. Daftar lengkap: runbook rilis bagian 8.
