@@ -66,6 +66,13 @@ describe("loadApiEnv", () => {
     expect(loadApiEnv({ ...api, HSTS_ENABLED: "0" }).HSTS_ENABLED).toBe(false);
   });
 
+  it("KAPDH_COMMIT (commit sumber image dari build arg) opsional; bila diisi wajib 40 heksadesimal", () => {
+    expect(loadApiEnv({ ...api, KAPDH_COMMIT: "" }).KAPDH_COMMIT).toBeUndefined();
+    expect(loadWorkerEnv({ ...api, KAPDH_COMMIT: "a1".repeat(20) }).KAPDH_COMMIT).toBe("a1".repeat(20));
+    expect(() => loadApiEnv({ ...api, KAPDH_COMMIT: "A1".repeat(20) })).toThrow(/KAPDH_COMMIT/);
+    expect(() => loadApiEnv({ ...api, KAPDH_COMMIT: "abc123" })).toThrow(/KAPDH_COMMIT/);
+  });
+
   it("ADMIN_ORIGIN dinormalisasi tanpa garis miring penutup", () => {
     expect(loadApiEnv({ ...api, ADMIN_ORIGIN: "https://admin.kapdh.or.id/" }).ADMIN_ORIGIN).toBe(
       "https://admin.kapdh.or.id",

@@ -57,9 +57,10 @@ dapat login sudah ada; menjalankan ulang untuk email yang sama sebelum aktivasi 
 
 ## CI
 
-Workflow GitHub Actions ada di `infra/ci/github-actions-ci.yml` (lint, typecheck, test, build, format, jalur PostgreSQL 17) dan `infra/ci/github-actions-images.yml` (image, `nginx -t`, uji asap, stack Compose, publish GHCR). Saat repository
-dibuat di GitHub, salin ke `.github/workflows/ci.yml` dan `.github/workflows/images.yml` (folder `.github` tidak bisa
-ditulis langsung dari sesi ini). Keduanya berjalan dari root repository dengan `working-directory: kapdh-platform`.
+Workflow GitHub Actions ada di akar repo, `.github/workflows/` (`ci.yml`, `deploy-staging.yml`, `release.yml`,
+`mobile-android.yml`); skrip pendukungnya di `infra/ci/` (lihat `infra/ci/README.md`). Proteksi branch main cukup
+mewajibkan status "CI lulus". Secrets, environment staging/production, prosedur rilis dan gerbang kontrak N-13
+(`pnpm contracts:breaking`): `docs/runbooks/ci-cd.md`.
 
 ## Deploy dan go-live
 

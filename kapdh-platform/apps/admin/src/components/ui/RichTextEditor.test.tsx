@@ -118,7 +118,7 @@ describe("RichTextEditor (F-08, N-11)", () => {
     render(<RichTextEditor label="Isi CSP" value="<p>Teks</p>" onChange={vi.fn()} />);
     await screen.findByRole("textbox", { name: "Isi CSP" }, { timeout: 8000 });
     // TipTap bawaan menambahkan <style data-tiptap-style> ke <head>; CSP tanpa 'unsafe-inline' memblokirnya.
-    // Aturan dasar ProseMirror ada di src/styles.css (berkas CSS dari origin sendiri).
+    // Aturan dasar ProseMirror ada di components/ui/tiptap-base.css (berkas CSS dari origin sendiri).
     expect(document.querySelectorAll("style")).toHaveLength(0);
   });
 });

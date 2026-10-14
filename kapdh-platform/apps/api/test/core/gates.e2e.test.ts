@@ -159,6 +159,22 @@ describe("PRD 2.5: TRUST_PROXY_HOPS menentukan req.ip (X-Forwarded-For klien tid
     }
   });
 
+  it("TRUST_PROXY_HOPS=1: klien publik yang terhubung langsung (bukan lewat Traefik) tidak dapat memalsukan IP", async () => {
+    // GHSA-3m5p-2c4r-xxw2: hop-count tanpa memeriksa peer langsung. Peer langsung wajib alamat privat (trust-proxy.ts).
+    const t = await createTestApp({ extraModules: [ProbeModule], env: { TRUST_PROXY_HOPS: 1 } });
+    try {
+      const res = await t.app.inject({
+        method: "GET",
+        url: "/api/v1/__probe/public",
+        remoteAddress: "198.51.100.20",
+        headers: { "x-forwarded-for": "203.0.113.9" },
+      });
+      expect(res.json().ip).toBe("198.51.100.20");
+    } finally {
+      await t.app.close();
+    }
+  });
+
   it("rate limit IP login tidak dapat dilewati dengan memutar X-Forwarded-For (TRUST_PROXY_HOPS=0)", async () => {
     const t = await createTestApp();
     try {

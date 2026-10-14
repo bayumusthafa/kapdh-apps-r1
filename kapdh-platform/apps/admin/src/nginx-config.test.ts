@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import template from "../../../infra/nginx-admin.conf?raw";
+import editorSource from "./components/ui/RichTextEditorImpl.tsx?raw";
 
 /**
  * Regresi infra/nginx-admin.conf (N-07, PRD 5.2; temuan audit D3-07) terhadap kebutuhan web admin: CSP ketat yang
  * tetap mengizinkan apa yang dipakai aplikasi (API, QR data:, pratinjau blob:, kamera pemindai), tidak dapat
  * dibingkai, tanpa Referer untuk /invite#t=, dan cache index.html no-store. Hasil build diperiksa terpisah oleh
- * infra/scripts/admin-csp.mjs (Dockerfile.admin dan CI).
+ * infra/scripts/admin-csp.mjs (Dockerfile.admin dan CI). Editor TipTap tidak boleh menyisipkan <style> saat runtime
+ * (injectCSS: false; gaya dasar di tiptap-base.css), karena CSP ini akan menolaknya dan editor kehilangan
+ * white-space ProseMirror.
  */
 const API = "https://api.kapdh.or.id";
 const conf = template.split("__KAPDH_API_ORIGIN__").join(API);
@@ -44,6 +47,11 @@ describe("infra/nginx-admin.conf", () => {
     expect(csp.get("object-src")).toEqual(["'none'"]);
     expect(header("Content-Security-Policy")).not.toMatch(/unsafe-|\*|https:(\s|;|$)/);
     expect(header("X-Frame-Options")).toBe("DENY");
+  });
+
+  it("editor TipTap tidak menyisipkan <style> runtime; gaya dasar ProseMirror dibundel sebagai CSS", () => {
+    expect(editorSource).toMatch(/injectCSS: false/);
+    expect(editorSource).toMatch(/import "\.\/tiptap-base\.css";/);
   });
 
   it("CSP mengizinkan API (fetch, gambar berkas), QR data:, pratinjau unggahan blob: dan video pemindai", () => {

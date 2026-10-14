@@ -72,6 +72,7 @@ kapdh-mobile ikut diperbarui.
 | `pnpm contracts:lint`                 | Bundle, `redocly lint` aturan ketat, validasi `events/*.schema.json`, eslint skrip.            |
 | `pnpm contracts:gen`                  | Bundle, tipe TypeScript (`src/generated`), dan SDK Dart (`dart/kapdh_api/lib/src`).            |
 | `pnpm contracts:test-dart`            | SDK Dart: `dart analyze --fatal-infos` + `dart test` pada paket nyata dan paket fixture.       |
+| `pnpm contracts:breaking`             | Gerbang N-13: `oasdiff breaking` terhadap tag `contracts-v*` tertinggi (lihat "Gerbang N-13"). |
 | `pnpm contracts:release-sdk`          | Tag rilis `contracts-vX.Y.Z` berisi SDK terbangkit (lihat "Rilis SDK"); `-- --dry-run` dahulu. |
 | `pnpm --filter @kapdh/contracts test` | Uji skrip (penggabung, generator Dart, skema event).                                           |
 
@@ -114,15 +115,27 @@ jenis baru).
   galat terbangkit `errorUiFor` (sumber: `@kapdh/shared` ERROR_UI) serta `routeForStatus`/`membershipLabel`
   (sumber: `@kapdh/shared` status.ts).
 
+## Gerbang N-13 (perubahan yang memutus klien)
+
+`pnpm contracts:breaking` merakit kontrak kepala, mengambil kontrak rilis terakhir dari tag `contracts-v*` tertinggi
+(`dist/openapi.yaml` pada commit rilis, atau dirakit dari `openapi/` tag lama), lalu menjalankan
+`oasdiff breaking` (biner dari env `OASDIFF` atau `PATH`). Perubahan level ERR hanya lulus bila versi mayor
+`info.version` (di bawah 1.0.0: minor) DAN `info.x-kapdh-min-app-version` naik bersama; WARN hanya peringatan.
+`info.version`, `package.json` dan `pubspec.yaml` wajib sama. Sebelum tag rilis pertama gerbang lulus dengan
+pemberitahuan. Uji kering tanpa oasdiff: `node scripts/check-breaking.mjs --changes-json <keluaran oasdiff json>`;
+pembanding lain: `--base-ref <ref>`. Kebijakan lengkap: `docs/runbooks/ci-cd.md` bagian 3.
+
 ## Rilis SDK (ADR-001)
 
 Selama build, kapdh-mobile memakai SDK lewat dependensi path. `lib/src/**` tidak pernah di-commit ke branch, jadi
 dependensi git ke commit biasa tidak akan berisi kode SDK. Saat rilis:
 
-1. Naikkan versi yang SAMA di `package.json` dan `dart/kapdh_api/pubspec.yaml`, catat di `CHANGELOG.md`, commit.
+1. Naikkan versi yang SAMA di `openapi/root.yaml` (`info.version`), `package.json` dan `dart/kapdh_api/pubspec.yaml`,
+   catat di `CHANGELOG.md`, commit. Di CI rilis dijalankan workflow Release aksi `contracts-sdk` (docs/runbooks/ci-cd.md).
 2. `pnpm contracts:release-sdk -- --dry-run`, lalu `pnpm contracts:release-sdk`. Skrip menolak sumber kontrak yang
    belum di-commit, membangkitkan ulang SDK dari HEAD, membuat commit rilis terpisah (anak HEAD; branch, index dan
-   working tree tidak berubah) berisi pohon HEAD + `lib/src` terbangkit, lalu tag beranotasi `contracts-vX.Y.Z`.
+   working tree tidak berubah) berisi pohon HEAD + `lib/src` terbangkit + `dist/openapi.yaml` (kontrak rilis yang
+   menjadi pembanding gerbang N-13), lalu tag beranotasi `contracts-vX.Y.Z`.
 3. `git push origin contracts-vX.Y.Z`. Repo Flutter hasil `git subtree split` memakai:
 
    ```yaml

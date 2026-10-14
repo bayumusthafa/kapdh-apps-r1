@@ -1,0 +1,4 @@
+{
+  "$comment": "Kerentanan yang DITERIMA sementara setelah ditinjau (N-16, PRD 9.3), dibaca infra/ci/vuln-gate.mjs untuk pnpm audit, OSV pubspec.lock dan grype image. Setiap entri: id (GHSA/CVE/ALPINE-CVE yang dilaporkan pemindai), source (pnpm-audit | osv | grype | *), package (opsional), owner (penanggung jawab, D9), reason (dampak, mitigasi, rencana perbaikan; minimal 20 karakter), expires (YYYY-MM-DD, paling lama 90 hari). Entri kedaluwarsa tidak berlaku sehingga CI kembali gagal; entri yang tidak lagi cocok dilaporkan agar dihapus. Perubahan berkas ini wajib lewat pull request yang ditinjau pemilik produk atau pengelola infra.",
+  "entries": []
+}

@@ -1,0 +1,36 @@
+# Menyiapkan kapdh-platform di runner: pnpm dari `packageManager` (pnpm@10.28.0), Node.js terpin, cache store pnpm,
+# lalu `pnpm install --frozen-lockfile` (PRD 7.1: lockfile dan runtime dipin). Satu-satunya tempat versi Node CI;
+# samakan dengan base image node di kapdh-platform/infra/Dockerfile.* (D7 "pin versi runtime").
+name: Siapkan kapdh-platform
+description: pnpm + Node.js terpin, cache store pnpm, dan pnpm install --frozen-lockfile.
+inputs:
+  install:
+    description: Jalankan pnpm install --frozen-lockfile di kapdh-platform ("true"/"false").
+    default: "true"
+  cache:
+    description: Pulihkan/simpan cache store pnpm ("true"/"false"); matikan untuk job yang tidak memasang dependensi.
+    default: "true"
+  node-version:
+    description: Versi Node.js (ARCHITECTURE §1 Node 24.19).
+    default: "24.19.0"
+runs:
+  using: composite
+  steps:
+    - name: Siapkan pnpm (packageManager kapdh-platform/package.json)
+      uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      with:
+        package_json_file: kapdh-platform/package.json
+    - name: Siapkan Node.js ${{ inputs.node-version }}
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.cache == 'true' && 'pnpm' || '' }}
+        cache-dependency-path: kapdh-platform/pnpm-lock.yaml
+        package-manager-cache: false
+    - name: pnpm install --frozen-lockfile
+      if: inputs.install == 'true'
+      shell: bash
+      working-directory: kapdh-platform
+      env:
+        TURBO_TELEMETRY_DISABLED: "1"
+      run: pnpm install --frozen-lockfile
