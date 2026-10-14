@@ -218,7 +218,10 @@ void main() {
       expect(routeGroupOf('/account/sessions/x'), RouteGroup.account);
       expect(go(suspended, '/account/sessions/x'), '/restricted');
       // Ganti password tetap mutasi: ditunda selama pemeliharaan, sesi perangkat tetap dapat dibaca.
-      expect(go(suspended, '/account/password', gate: GateStatus.maintenance), '/maintenance?from=%2Faccount%2Fpassword');
+      expect(
+        go(suspended, '/account/password', gate: GateStatus.maintenance),
+        '/maintenance?from=%2Faccount%2Fpassword',
+      );
       expect(go(suspended, '/account/sessions', gate: GateStatus.maintenance), isNull);
       // pending_otp belum masuk aplikasi (PRD 2.2): hanya OTP.
       expect(go(authed('pending_otp'), '/account/sessions'), '/register/otp');
