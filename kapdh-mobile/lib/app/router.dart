@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../core/app_gate/app_gate.dart';
 import '../core/session/session_controller.dart';
 import '../core/ui/app_keys.dart';
+import '../core/ui/back_navigation.dart';
 import '../features/account/account_screen.dart';
 import '../features/account/blocked_users_screen.dart';
 import '../features/account/change_password_screen.dart';
@@ -84,6 +85,12 @@ final routerProvider = Provider<GoRouter>((ref) {
   });
   return router;
 });
+
+/// Konfigurasi `MaterialApp.router`: [routerProvider] dengan tombol kembali sistem yang menjalankan ulang redirect
+/// sesudah halaman tertutup, sama seperti panah kembali `AppScaffold` (PRD 2.2, PRD 4.5).
+final routerConfigProvider = Provider<RouterConfig<Object>>(
+  (ref) => redirectingRouterConfig(ref.watch(routerProvider)),
+);
 
 String _param(GoRouterState state, String name) => state.pathParameters[name] ?? '';
 

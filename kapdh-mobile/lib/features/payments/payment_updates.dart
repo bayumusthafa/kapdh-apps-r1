@@ -1,17 +1,9 @@
-import 'dart:async';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
 import '../../app/app_services.dart';
-import '../../core/realtime/realtime_client.dart';
-
-/// Notifikasi in-app baru yang tiba lewat realtime (`notification.created`, ARCHITECTURE §4.9; F-13). Diganti
-/// sumber tiruan pada uji.
-final realtimeNotificationsProvider = Provider<Stream<NotificationCreatedPayload>>(
-  (ref) => ref.watch(realtimeClientProvider).on<NotificationCreatedEvent>().map((event) => event.payload),
-);
+import '../../core/realtime/connection_transitions.dart';
+import '../notifications/notifications_repository.dart';
 
 /// Notifikasi kategori pembayaran atau keanggotaan: tanda status payment atau KTA berubah, mis. pengurus
 /// menyetujui/menolak bukti (PRD 4.1 "Worker mengirim hasil dan kartu menjadi Aktif").
@@ -21,8 +13,12 @@ bool isPaymentUpdate(NotificationCreatedPayload payload) =>
 
 /// Aliran petunjuk muat ulang layar pembayaran dan KTA. Event hanya petunjuk; status tetap dibaca dari API karena
 /// event realtime bukan sumber kebenaran (PRD 5.2).
+///
+/// Diturunkan dari [notificationCreatedEventsProvider], satu-satunya sumber `notification.created` (ARCHITECTURE
+/// §4.9; F-13), sehingga satu event yang sama memperbarui lencana belum dibaca dan memicu muat ulang pembayaran/KTA,
+/// juga pada uji yang mengganti sumber itu dengan aliran tiruan.
 final paymentUpdatesProvider = Provider<Stream<NotificationCreatedPayload>>(
-  (ref) => ref.watch(realtimeNotificationsProvider).where(isPaymentUpdate),
+  (ref) => ref.watch(notificationCreatedEventsProvider).where(isPaymentUpdate),
 );
 
 /// Koneksi realtime tersambung kembali (transisi ke `connected`): petunjuk bahwa server terjangkau lagi, sehingga
@@ -31,26 +27,3 @@ final paymentUpdatesProvider = Provider<Stream<NotificationCreatedPayload>>(
 final realtimeReconnectedProvider = Provider<Stream<void>>(
   (ref) => connectedTransitions(ref.watch(realtimeClientProvider).connectionState),
 );
-
-/// Satu event setiap kali [state] berpindah ke [RealtimeConnectionState.connected] dari keadaan lain. Pendengar
-/// dipasang selama ada pelanggan saja.
-Stream<void> connectedTransitions(ValueListenable<RealtimeConnectionState> state) {
-  late final StreamController<void> controller;
-  var previous = state.value;
-  void onChange() {
-    final next = state.value;
-    if (next == RealtimeConnectionState.connected && previous != RealtimeConnectionState.connected) {
-      controller.add(null);
-    }
-    previous = next;
-  }
-
-  controller = StreamController<void>.broadcast(
-    onListen: () {
-      previous = state.value;
-      state.addListener(onChange);
-    },
-    onCancel: () => state.removeListener(onChange),
-  );
-  return controller.stream;
-}

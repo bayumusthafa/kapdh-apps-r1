@@ -12,6 +12,7 @@ import '../../core/session/session_controller.dart';
 import '../../design/design.dart';
 import '../events/widgets/event_card.dart';
 import '../news/widgets/post_card.dart';
+import '../notifications/notification_unread_count.dart';
 import 'home_controller.dart';
 import 'shared/content_widgets.dart';
 import 'shared/member_gate.dart';
@@ -33,9 +34,15 @@ class HomeScreen extends ConsumerWidget {
     final status = session.effectiveStatus;
     final name = session.me?.profile.fullName ?? 'Anggota KAPDH';
     final active = isActiveMember(status);
-    final unread = active
+    // Satu penghitung belum dibaca untuk seluruh aplikasi (F-13): lonceng dan akses cepat Beranda memakai penghitung
+    // yang sama dengan menu Akun dan portal pembatasan, yang diperbarui realtime, kotak masuk dan tandai dibaca.
+    // Beranda tetap terpasang di tumpukan tab, jadi angka GET /home saja akan usang. Angka itu hanya cadangan selama
+    // penghitung belum diketahui (mis. offline dengan cache Beranda).
+    final homeUnread = active
         ? ref.watch(homeControllerProvider.select((state) => state.home?.quickAccess.unreadNotificationCount))
         : null;
+    final liveUnread = ref.watch(notificationUnreadCountProvider);
+    final unread = liveUnread ?? homeUnread;
     // Beranda tidak memakai AppScaffold; pita global Offline/Pemeliharaan dipasang sendiri tepat di bawah kepala.
     final banner = AppBannerScope.of(context);
     return Scaffold(
@@ -50,7 +57,10 @@ class HomeScreen extends ConsumerWidget {
         children: [
           ?banner,
           Expanded(
-            child: SafeArea(top: false, child: active ? const _ActiveHome() : _GatedHome(status: status)),
+            child: SafeArea(
+              top: false,
+              child: active ? const _ActiveHome() : _GatedHome(status: status, unread: liveUnread),
+            ),
           ),
         ],
       ),
@@ -89,6 +99,7 @@ class _ActiveHome extends ConsumerWidget {
     }
 
     final allEmpty = home.banners.isEmpty && home.upcomingEvents.isEmpty && home.posts.isEmpty;
+    final unread = ref.watch(notificationUnreadCountProvider) ?? home.quickAccess.unreadNotificationCount;
     return RefreshIndicator(
       onRefresh: controller.refresh,
       child: ListView(
@@ -113,7 +124,7 @@ class _ActiveHome extends ConsumerWidget {
             BannerCarousel(banners: home.banners),
             const SizedBox(height: KapdhSpace.s4),
           ],
-          _QuickAccess(quickAccess: home.quickAccess),
+          _QuickAccess(quickAccess: home.quickAccess, unread: unread),
           if (home.quickAccess.effectiveStatus == EffectiveStatus.expiring) ...[
             const SizedBox(height: KapdhSpace.s3),
             _RenewalReminder(expiresAt: home.quickAccess.expiresAt),
@@ -192,14 +203,19 @@ class _CacheNotice extends StatelessWidget {
   }
 }
 
+/// Keterangan jumlah belum dibaca pada akses cepat Notifikasi.
+String _unreadDetail(int unread) => unread > 0 ? '$unread belum dibaca' : 'Semua terbaca';
+
 class _QuickAccess extends StatelessWidget {
-  const _QuickAccess({required this.quickAccess});
+  const _QuickAccess({required this.quickAccess, required this.unread});
 
   final HomeQuickAccess quickAccess;
 
+  /// Jumlah belum dibaca dari penghitung bersama (cadangan: angka GET /home).
+  final int unread;
+
   @override
   Widget build(BuildContext context) {
-    final unread = quickAccess.unreadNotificationCount;
     return QuickAccessRow(
       actions: [
         QuickAction(
@@ -213,7 +229,7 @@ class _QuickAccess extends StatelessWidget {
           key: const ValueKey('quick-notifications'),
           icon: Icons.notifications_outlined,
           label: 'Notifikasi',
-          detail: unread > 0 ? '$unread belum dibaca' : 'Semua terbaca',
+          detail: _unreadDetail(unread),
           onTap: () => unawaited(context.push(AppRoutes.notifications)),
         ),
         QuickAction(
@@ -255,9 +271,13 @@ class _RenewalReminder extends StatelessWidget {
 /// Beranda untuk status yang belum membuka informasi anggota (PRD 2.2): unverified diajak menyelesaikan iuran,
 /// expired diajak memperpanjang dan tetap dapat membuka tiket lunasnya.
 class _GatedHome extends StatelessWidget {
-  const _GatedHome({required this.status});
+  const _GatedHome({required this.status, required this.unread});
 
   final EffectiveStatus? status;
+
+  /// Jumlah belum dibaca dari penghitung bersama; null bila belum diketahui (kotak masuk terbuka untuk semua status,
+  /// kontrak C7 `member_access: any`).
+  final int? unread;
 
   @override
   Widget build(BuildContext context) {
@@ -302,6 +322,10 @@ class _GatedHome extends StatelessWidget {
               key: const ValueKey('quick-notifications'),
               icon: Icons.notifications_outlined,
               label: 'Notifikasi',
+              detail: switch (unread) {
+                final count? => _unreadDetail(count),
+                null => null,
+              },
               onTap: () => unawaited(context.push(AppRoutes.notifications)),
             ),
             if (expired)

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/design/design.dart';
+import 'package:kapdh_mobile/features/payments/widgets/proof_upload_section.dart';
 
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
@@ -375,6 +376,9 @@ void main() {
               201,
               ticketDetailJson(status: 'awaiting_payment', holdExpiresAt: testNow.add(const Duration(hours: 24))),
             ),
+            // Layar pembayaran bersama (F-04) yang dibuka sesudah reservasi.
+            '/me/payments/payment-9': (_) =>
+                FakeResponse.json(200, ticketPaymentDetailJson(holdExpiresAt: testNow.add(const Duration(hours: 24)))),
           },
         ),
       );
@@ -401,6 +405,14 @@ void main() {
       expect(find.textContaining('Kursi Anda ditahan sampai 13 Okt 2026, 14.00 WIB'), findsOneWidget);
       // Kembali ke detail event: kuota dan tombol mengikuti keadaan server terbaru.
       expect(app.adapter.requestsTo('/events/event-1').length, greaterThanOrEqualTo(2));
+
+      // Serah terima ke pembayaran bersama (F-04): instruksi tiket dengan batas kirim bukti dan unggah bukti aktif.
+      expect(app.adapter.requestsTo('/me/payments/payment-9'), isNotEmpty);
+      expect(find.byType(ErrorState), findsNothing);
+      expect(find.text('Tiket Camping Alumni KAPDH'), findsWidgets);
+      expect(find.textContaining('Kirim bukti sebelum 13 Okt 2026, 14.00 WIB'), findsOneWidget);
+      expect(tester.widget<ProofUploadSection>(find.byType(ProofUploadSection)).onPick, isNotNull);
+      expect(find.byKey(const ValueKey('proof-submit')), findsOneWidget);
     });
 
     testWidgets('AC F09-1 kuota habis saat mendaftar (409 EVENT_SOLD_OUT): alasan dijelaskan, detail diperbarui', (
@@ -839,28 +851,34 @@ void main() {
       },
     );
 
+    /// Anggota expired membuka deep link detail event dibatalkan yang tiketnya ia pegang (di atas daftar event).
+    Future<AppHarness> openCancelledEventDeepLinkAsExpired(WidgetTester tester) async {
+      final app = await pumpMemberApp(
+        tester,
+        status: 'expired',
+        routes: {
+          '/events/event-1': (_) => FakeResponse.json(
+            200,
+            eventDetailJson(
+              status: 'cancelled',
+              registrationState: 'cancelled',
+              canReserve: false,
+              blockedReason: 'membership_required',
+              cancelReason: 'Cuaca buruk',
+              myTicket: ticketSummaryJson(status: 'cancelled', eventStatus: 'cancelled'),
+            ),
+          ),
+        },
+      );
+      app.router.go('/events/event-1');
+      await settle(tester);
+      return app;
+    }
+
     testWidgets(
       'AC F09-7 anggota expired membuka deep link event dibatalkan: detail terbuka, bukan halaman perpanjang',
       (tester) async {
-        final app = await pumpMemberApp(
-          tester,
-          status: 'expired',
-          routes: {
-            '/events/event-1': (_) => FakeResponse.json(
-              200,
-              eventDetailJson(
-                status: 'cancelled',
-                registrationState: 'cancelled',
-                canReserve: false,
-                blockedReason: 'membership_required',
-                cancelReason: 'Cuaca buruk',
-                myTicket: ticketSummaryJson(status: 'cancelled', eventStatus: 'cancelled'),
-              ),
-            ),
-          },
-        );
-        app.router.go('/events/event-1');
-        await settle(tester);
+        final app = await openCancelledEventDeepLinkAsExpired(tester);
         expect(app.location, '/events/event-1');
         expect(find.text('Event dibatalkan'), findsOneWidget);
         expect(find.textContaining('Alasan: Cuaca buruk.'), findsOneWidget);
@@ -873,6 +891,18 @@ void main() {
         expect(app.adapter.requestsTo('/events'), isEmpty);
       },
     );
+
+    testWidgets('AC F09-7, PRD 2.2: tombol kembali sistem dari deep link event juga melewati matriks rute (sama '
+        'dengan panah kembali app bar)', (tester) async {
+      final app = await openCancelledEventDeepLinkAsExpired(tester);
+      expect(app.location, '/events/event-1');
+
+      // Tombol kembali Android: WidgetsBinding -> BackButtonDispatcher router -> routerDelegate.popRoute().
+      expect(await tester.binding.handlePopRoute(), isTrue);
+      await settle(tester);
+      expect(app.location, '/renewal');
+      expect(app.adapter.requestsTo('/events'), isEmpty);
+    });
 
     testWidgets('PRD 2.2 anggota expired tanpa tiket di event itu (403 MEMBERSHIP_REQUIRED): ajakan perpanjang', (
       tester,

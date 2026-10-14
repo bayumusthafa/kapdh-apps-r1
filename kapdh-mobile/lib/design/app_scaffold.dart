@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../app/theme/kapdh_tokens.dart';
+import '../core/ui/back_navigation.dart';
 
 /// Pita status global (Offline, Pemeliharaan) yang dipasang aplikasi di atas Navigator (`MaterialApp.builder`).
 ///
@@ -66,21 +67,15 @@ class AppScaffold extends StatelessWidget {
   /// Bila halaman benar-benar tertutup (bukan ditahan `PopScope`), lokasi baru dilewatkan lagi ke redirect seperti
   /// `GoRouter.pop`: halaman di bawahnya yang tidak diizinkan matriks rute untuk status sekarang (mis. daftar event
   /// bagi anggota expired yang membuka detail event lewat deep link, PRD 2.2) diganti rute status, tanpa request ke
-  /// layar yang terlarang.
+  /// layar yang terlarang. Aturan yang sama ([popThenRedirect]) dipakai tombol kembali sistem aplikasi.
   Future<void> _back(BuildContext context) async {
     final router = GoRouter.maybeOf(context);
     if (router == null) {
       await Navigator.maybePop(context);
       return;
     }
-    final before = router.routerDelegate.currentConfiguration;
-    final handled = await router.routerDelegate.popRoute();
-    if (!handled) {
-      router.go(fallbackLocation);
-      return;
-    }
-    final after = router.routerDelegate.currentConfiguration;
-    if (!identical(before, after)) router.restore(after);
+    final handled = await popThenRedirect(router, router.routerDelegate.popRoute);
+    if (!handled) router.go(fallbackLocation);
   }
 
   @override

@@ -789,6 +789,58 @@ void main() {
       expect(tester.widget<TextField>(otpInput).controller!.text, isEmpty);
     });
 
+    testWidgets('AC F01-4, F-14: login pemulihan menjawab deletion_pending: portal status penghapusan langsung, tanpa '
+        'memasukkan sandi lagi', (tester) async {
+      final app = await openOtp(
+        tester,
+        lostThenGone(
+          loginBody: {
+            'next': 'deletion_pending',
+            'deletion': {
+              'request_number': 'DEL-2026-7K3Q9X',
+              'status': 'pending',
+              'source': 'app',
+              'requested_at': testNow.toIso8601String(),
+              'estimated_completion_at': DateTime.utc(2026, 10, 19, 3).toIso8601String(),
+              'completed_at': null,
+            },
+          },
+        ),
+        withCredentials: true,
+      );
+      await tester.enterText(otpInput, '482913');
+      await settle(tester);
+      await scrollAndTap(tester, verifyButton);
+      await settle(tester);
+
+      expect(app.adapter.requestsTo('/auth/login'), hasLength(1));
+      expect(app.location, '/deletion-status');
+      // Sama dengan hasil login dari layar masuk: nomor permintaan dan perkiraan selesai dari jawaban login.
+      expect(find.text('Penghapusan akun sedang diproses'), findsOneWidget);
+      expect(find.text('DEL-2026-7K3Q9X'), findsOneWidget);
+      expect(find.text('19 Okt 2026, 10.00 WIB'), findsOneWidget);
+      final session = app.container.read(sessionProvider);
+      expect(session.hasSession, isFalse);
+      expect(session.challenge, isNull);
+      expect(app.container.read(activationCredentialsProvider), isNull, reason: 'sandi dilepas dari memori');
+    });
+
+    testWidgets('AC F01-4, PRD 2.2: login pemulihan menjawab account_disabled: portal akun tidak aktif', (
+      tester,
+    ) async {
+      final app = await openOtp(tester, lostThenGone(loginBody: {'next': 'account_disabled'}), withCredentials: true);
+      await tester.enterText(otpInput, '482913');
+      await settle(tester);
+      await scrollAndTap(tester, verifyButton);
+      await settle(tester);
+
+      expect(app.location, '/deletion-status');
+      expect(find.text('Akun tidak aktif'), findsOneWidget);
+      expect(find.text('Hubungi pengurus'), findsOneWidget);
+      expect(app.container.read(sessionProvider).hasSession, isFalse);
+      expect(app.container.read(activationCredentialsProvider), isNull);
+    });
+
     testWidgets('AC F01-4: tanpa kredensial di memori: diminta masuk untuk memeriksa status', (tester) async {
       final app = await openOtp(tester, lostThenGone(loginBody: {'next': 'home', 'session': tokenPairJson()}));
       await tester.enterText(otpInput, '482913');

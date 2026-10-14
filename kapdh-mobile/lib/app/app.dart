@@ -61,7 +61,8 @@ class _KapdhAppState extends ConsumerState<KapdhApp> {
       title: 'KAPDH',
       debugShowCheckedModeBanner: false,
       theme: _theme,
-      routerConfig: ref.watch(routerProvider),
+      // Tombol kembali sistem melewati redirect lagi sesudah halaman tertutup (PRD 2.2).
+      routerConfig: ref.watch(routerConfigProvider),
       // Pita Offline/Pemeliharaan untuk semua layar AppScaffold, tepat di bawah app bar.
       builder: (context, child) => AppStatusBanners(child: child ?? const SizedBox.shrink()),
       scaffoldMessengerKey: ref.watch(scaffoldMessengerKeyProvider),

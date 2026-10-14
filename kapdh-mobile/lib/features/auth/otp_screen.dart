@@ -12,6 +12,7 @@ import '../../core/deep_link/deep_links.dart';
 import '../../core/session/repositories.dart';
 import '../../core/session/session_controller.dart';
 import '../../design/design.dart';
+import '../status/deletion_portal.dart';
 import 'auth_flow.dart';
 import 'auth_flow_repository.dart';
 import 'auth_widgets.dart';
@@ -303,11 +304,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               : 'Akun belum aktif. Masukkan kode terbaru yang dikirim ke email Anda.';
         });
       case LoginOutcome.deletionPending || LoginOutcome.accountDisabled:
-        ref
-            .read(loginNoticeProvider.notifier)
-            .show(const LoginNotice(message: 'Status akun berubah. Masuk kembali untuk melihat statusnya.'));
+        // Sama dengan layar masuk: tanpa sesi (kontrak C1), status akun ditampilkan portal status penghapusan yang
+        // bekerja tanpa sesi, dengan nomor permintaan dan perkiraan selesai dari jawaban login ini (PRD 2.2, F-14).
+        // Pengguna tidak diminta memasukkan sandi lagi; sandi dilepas dari memori.
+        ref.read(deletionPortalProvider.notifier).showLoginResult(result, email: account.email);
+        ref.read(activationCredentialsProvider.notifier).clear();
+        // Bila pengguna beralih ke layar masuk dari portal, emailnya tetap terisi.
         ref.read(authEmailHintProvider.notifier).set(account.email);
-        context.go(AppRoutes.login);
+        context.go(AppRoutes.deletionStatus);
         ref.read(sessionProvider.notifier).clearFlow();
     }
   }
