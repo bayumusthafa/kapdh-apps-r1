@@ -1,0 +1,6 @@
+#!/bin/sh
+# Tiruan rclone untuk uji kering (infra/backup/test/fake-tools.mjs).
+set -eu
+FT=$FAKE_TOOLS
+if command -v cygpath >/dev/null 2>&1; then FT=$(cygpath -m "$FT"); fi
+exec node "$FT" rclone "$@"

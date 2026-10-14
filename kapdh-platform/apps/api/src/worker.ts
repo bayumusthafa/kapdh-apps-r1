@@ -3,7 +3,7 @@ import { type DynamicModule, type INestApplicationContext, Module, type Type } f
 import { NestFactory } from "@nestjs/core";
 import type { WorkerEnv } from "@kapdh/config";
 import { createDb } from "@kapdh/database";
-import { createStorageDriver, S3Driver } from "@kapdh/storage";
+import { createStorageDriver, destroyStorageDriver } from "@kapdh/storage";
 import type { Logger } from "pino";
 import { WORKER_MODULES } from "./app.module.js";
 import { systemClock } from "./core/adapters/clock.js";
@@ -14,6 +14,7 @@ import { type CoreDeps, CoreModule } from "./core/core.module.js";
 import type { Db } from "./core/db/types.js";
 import { JobRegistry } from "./core/jobs/job-registry.js";
 import { JobRunner } from "./core/jobs/job-runner.js";
+import { errorTrackingFromEnv } from "./core/logging/error-tracker.js";
 import { createRootLogger, NestPinoLogger } from "./core/logging/logger.js";
 
 export type { JobContext, OutboxEvent, ScheduledJob, TopicHandler } from "./core/jobs/job-registry.js";
@@ -21,6 +22,7 @@ export { JobRegistry } from "./core/jobs/job-registry.js";
 export type { DispatchResult, OutboxClaim, OutboxClaimRef, OutboxOutcome } from "./core/jobs/job-runner.js";
 export { JobRunner, OUTBOX_LOCK_MS, OUTBOX_MAX_ATTEMPTS, outboxBackoffMs } from "./core/jobs/job-runner.js";
 export { safeError } from "./core/logging/safe-error.js";
+export { errorTrackingFromEnv } from "./core/logging/error-tracker.js";
 export type { Clock } from "./core/adapters/clock.js";
 export type { Db } from "./core/db/types.js";
 export { ADVISORY_LOCK_KEYS } from "./core/db/locks.js";
@@ -68,7 +70,13 @@ export async function createWorkerContext(
   deps: WorkerDeps,
   options: { logger?: Logger; extraModules?: (Type | DynamicModule)[] } = {},
 ): Promise<WorkerContext> {
-  const logger = options.logger ?? createRootLogger({ level: deps.env.LOG_LEVEL, service: "kapdh-worker" });
+  const logger =
+    options.logger ??
+    createRootLogger({
+      level: deps.env.LOG_LEVEL,
+      service: "kapdh-worker",
+      errorTracking: errorTrackingFromEnv(deps.env),
+    });
   const app = await NestFactory.createApplicationContext(
     WorkerModule.forRoot(deps, logger, options.extraModules ?? []),
     { logger: new NestPinoLogger(logger), abortOnError: false },
@@ -94,13 +102,17 @@ export interface WorkerRuntime {
  * PostgreSQL (`application_name` kapdh-worker), Redis bila REDIS_URL diisi, SMTP (DevLogMailer hanya bila SMTP_URL
  * kosong di development; config mewajibkannya di luar development), FCM (nonaktif bila belum dikonfigurasi di luar
  * production), driver berkas dari STORAGE_DRIVER (path lokal relatif diselesaikan dari cwd), dan jam sistem.
+ *
+ * `options.redis: false` dipakai CLI operator yang berjalan saat API/worker MATI (mis. `ledger-reapply` di tengah
+ * restore, sebelum Redis pulihan tersedia): tanpa klien Redis, event realtime menjadi no-op (belum ada klien
+ * tersambung) dan rate limit memakai memori, sehingga Redis yang belum menyala tidak pernah menghentikan CLI.
  */
-export function createWorkerDeps(env: WorkerEnv): WorkerRuntime {
+export function createWorkerDeps(env: WorkerEnv, options: { redis?: boolean } = {}): WorkerRuntime {
   const { db, sql } = createDb(env.DATABASE_URL, {
     applicationName: "kapdh-worker",
     max: Math.max(2, env.WORKER_CONCURRENCY + 1),
   });
-  const redis = env.REDIS_URL ? createRedis(env.REDIS_URL, "kapdh-worker") : null;
+  const redis = env.REDIS_URL && options.redis !== false ? createRedis(env.REDIS_URL, "kapdh-worker") : null;
   const smtp = env.SMTP_URL ? new SmtpMailer(env.SMTP_URL, env.MAIL_FROM) : null;
   const mailer: Mailer = smtp ?? new DevLogMailer();
   const storage = createStorageDriver(env);
@@ -116,7 +128,7 @@ export function createWorkerDeps(env: WorkerEnv): WorkerRuntime {
     },
     close: async () => {
       smtp?.close();
-      if (storage instanceof S3Driver) storage.destroy();
+      destroyStorageDriver(storage);
       await redis?.quit().catch(() => undefined);
       await sql.end({ timeout: 5 });
     },

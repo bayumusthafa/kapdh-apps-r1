@@ -116,6 +116,39 @@ const baseShape = {
   S3_ACCESS_KEY_ID: z.string().min(1).optional(),
   S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   S3_FORCE_PATH_STYLE: z.stringbool().default(false),
+  /**
+   * Baca-cadangan selama perpindahan local -> S3 (PRD 5.4, docs/runbooks/storage-migration.md): folder disk lama yang
+   * dibaca bila objek belum ada di bucket; tulisan ke S3, penghapusan ke keduanya. Hanya bersama STORAGE_DRIVER=s3.
+   */
+  STORAGE_FALLBACK_LOCAL_ROOT: z.string().min(1).optional(),
+  /**
+   * Deletion ledger DI LUAR VPS (AC F14-6, D2, D9, PRD 5.5; audit D5-07): bucket S3-compatible KHUSUS (versioning +
+   * object lock/retensi), terpisah dari bucket berkas STORAGE_DRIVER dan dari repositori backup, dengan kredensial
+   * sendiri (cukup hak tulis objek). Job penghapusan akun menambahkan setiap entri ledger ke sini secara sinkron dan
+   * gagal bila penulisan gagal, sehingga hilangnya VPS tidak menghidupkan kembali akun yang sudah dihapus. Wajib untuk
+   * worker di production; API tidak memakainya (least privilege, PRD 5.1).
+   */
+  DELETION_LEDGER_S3_ENDPOINT: z.string().url().optional(),
+  DELETION_LEDGER_S3_REGION: z.string().min(1).optional(),
+  DELETION_LEDGER_S3_BUCKET: z.string().min(3).optional(),
+  DELETION_LEDGER_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+  DELETION_LEDGER_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  DELETION_LEDGER_S3_FORCE_PATH_STYLE: z.stringbool().optional(),
+  /**
+   * Pelacakan galat GlitchTip/Sentry (PRD 7.1, 5.5; docs/runbooks/monitoring.md bagian 5). Kosong = nonaktif. Event hanya
+   * berisi field log yang sudah aman (tipe galat, kode, frame stack, request_id/job_id; N-14).
+   */
+  SENTRY_DSN: z
+    .string()
+    .regex(
+      /^https?:\/\/[^/@\s]+@[^/\s]+(\/[^\s]*)?\/\d+\/?$/,
+      "SENTRY_DSN harus berbentuk https://<kunci>@<host>/<id-proyek>",
+    )
+    .optional(),
+  /** Nama lingkungan di GlitchTip (bawaan NODE_ENV). */
+  SENTRY_ENVIRONMENT: z.string().min(1).max(64).optional(),
+  /** Rilis (tag image) untuk mengelompokkan galat per deploy. */
+  SENTRY_RELEASE: z.string().min(1).max(200).optional(),
   /** Kunci HMAC token URL berkas privat (maksimal 10 menit, terikat berkas dan tujuan; PRD 5.4). */
   FILE_URL_SECRET: z.string().min(32),
   /** Proyek FCM untuk push (Firebase hanya untuk FCM, ARCHITECTURE §2.4). Tanpa nilai: push nonaktif di luar production. */
@@ -133,6 +166,44 @@ const baseShape = {
 };
 
 type Issue = { path: string; message: string };
+
+const DELETION_LEDGER_REQUIRED = [
+  "DELETION_LEDGER_S3_REGION",
+  "DELETION_LEDGER_S3_BUCKET",
+  "DELETION_LEDGER_S3_ACCESS_KEY_ID",
+  "DELETION_LEDGER_S3_SECRET_ACCESS_KEY",
+] as const;
+
+/** true bila deletion ledger luar VPS dikonfigurasi (minimal bucket diisi). */
+export function deletionLedgerConfigured(env: Partial<Record<string, unknown>>): boolean {
+  return typeof env.DELETION_LEDGER_S3_BUCKET === "string" && env.DELETION_LEDGER_S3_BUCKET.length > 0;
+}
+
+/**
+ * Deletion ledger luar VPS (AC F14-6, D5-07): bila salah satu variabel diisi, semuanya wajib lengkap; bucket tidak
+ * boleh sama dengan bucket berkas pada endpoint yang sama (kehilangan atau penghapusan bucket berkas tidak boleh ikut
+ * menghapus ledger).
+ */
+function deletionLedgerRules(env: z.infer<z.ZodObject<typeof baseShape>>): Issue[] {
+  const issues: Issue[] = [];
+  const any =
+    DELETION_LEDGER_REQUIRED.some((key) => env[key] !== undefined) ||
+    env.DELETION_LEDGER_S3_ENDPOINT !== undefined;
+  if (!any) return issues;
+  for (const key of DELETION_LEDGER_REQUIRED)
+    if (!env[key]) issues.push({ path: key, message: "wajib bila deletion ledger luar VPS dikonfigurasi" });
+  if (
+    env.STORAGE_DRIVER === "s3" &&
+    env.S3_BUCKET !== undefined &&
+    env.S3_BUCKET === env.DELETION_LEDGER_S3_BUCKET &&
+    (env.S3_ENDPOINT ?? "") === (env.DELETION_LEDGER_S3_ENDPOINT ?? "")
+  )
+    issues.push({
+      path: "DELETION_LEDGER_S3_BUCKET",
+      message: "wajib bucket terpisah dari bucket berkas S3_BUCKET (AC F14-6)",
+    });
+  return issues;
+}
 
 /** Aturan lintas field yang berlaku untuk API dan worker. */
 function baseRules(env: z.infer<z.ZodObject<typeof baseShape>>): Issue[] {
@@ -152,7 +223,12 @@ function baseRules(env: z.infer<z.ZodObject<typeof baseShape>>): Issue[] {
   if (env.STORAGE_DRIVER === "s3") {
     for (const key of ["S3_REGION", "S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"] as const)
       if (!env[key]) issues.push({ path: key, message: "wajib bila STORAGE_DRIVER=s3" });
-  }
+  } else if (env.STORAGE_FALLBACK_LOCAL_ROOT)
+    issues.push({
+      path: "STORAGE_FALLBACK_LOCAL_ROOT",
+      message: "hanya berlaku bersama STORAGE_DRIVER=s3 (perpindahan storage, PRD 5.4)",
+    });
+  issues.push(...deletionLedgerRules(env));
   if (Boolean(env.FCM_PROJECT_ID) !== Boolean(env.FCM_SERVICE_ACCOUNT_JSON))
     issues.push({
       path: "FCM_SERVICE_ACCOUNT_JSON",
@@ -271,8 +347,22 @@ export const apiEnvSchema = z
       env.TRUST_PROXY_HOPS ?? (env.NODE_ENV === "production" || env.NODE_ENV === "staging" ? 1 : 0),
   }));
 
+/**
+ * Aturan khusus worker: job penghapusan akun berjalan di worker, sehingga deletion ledger luar VPS wajib di production
+ * (AC F14-6, D5-07). Staging sebaiknya juga mengisinya agar gladi restore (PRD 8.2 langkah 7) setara production.
+ */
+function workerRules(env: z.infer<z.ZodObject<typeof workerShape>>): Issue[] {
+  const issues = baseRules(env);
+  if (env.NODE_ENV === "production" && !deletionLedgerConfigured(env))
+    issues.push({
+      path: "DELETION_LEDGER_S3_BUCKET",
+      message: "wajib di production untuk worker (deletion ledger di luar VPS, AC F14-6)",
+    });
+  return issues;
+}
+
 export const workerEnvSchema = z.object(workerShape).superRefine((env, ctx) => {
-  for (const issue of baseRules(env))
+  for (const issue of workerRules(env))
     ctx.addIssue({ code: "custom", path: [issue.path], message: issue.message });
 });
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;

@@ -4,12 +4,13 @@ import { AccountDeletionProcessor } from "./deletion-processor.js";
 import { DeletionLedgerService } from "./deletion-ledger.service.js";
 import { DeletionRequestService } from "./deletion-request.service.js";
 import { DeletionSteps } from "./deletion-steps.js";
+import { OffsiteDeletionLedger } from "./offsite-deletion-ledger.js";
 
 /**
  * Bagian modul account yang DIMUAT WORKER (ARCHITECTURE §1, §4.8): job `account.deletion` (topik
  * `account.deletion.requested` + sapuan ulang 10 menit), langkah penghapusan, penerapan ulang deletion ledger
- * (AC F14-6), transisi permintaan yang juga dipakai controller modul utama, dan transisi status akun `disabled` untuk
- * CLI operator `account:status` (AccountStatusService, PRD 2.2).
+ * (AC F14-6), deletion ledger luar VPS (D5-07), transisi permintaan yang juga dipakai controller modul utama, dan
+ * transisi status akun `disabled` untuk CLI operator `account:status` (AccountStatusService, PRD 2.2).
  * Diimpor modul account (sehingga job juga terdaftar di aplikasi API/uji: `jobs.runScheduled(name)`) dan oleh
  * createWorkerContext lewat WORKER_MODULES. Tanpa controller. Provider di sini TIDAK BOLEH bergantung pada layanan
  * khusus API (TokenService, SessionIssuer, PasswordVerifier, QrTokenService, SessionValidator, AuthGuard, RequestGate,
@@ -23,7 +24,14 @@ import { DeletionSteps } from "./deletion-steps.js";
     AccountDeletionProcessor,
     DeletionLedgerService,
     AccountStatusService,
+    OffsiteDeletionLedger,
   ],
-  exports: [DeletionRequestService, AccountDeletionProcessor, DeletionLedgerService, AccountStatusService],
+  exports: [
+    DeletionRequestService,
+    AccountDeletionProcessor,
+    DeletionLedgerService,
+    AccountStatusService,
+    OffsiteDeletionLedger,
+  ],
 })
 export class AccountJobsModule {}
