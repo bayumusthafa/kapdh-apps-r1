@@ -1,0 +1,55 @@
+# syntax=docker/dockerfile:1.26.0@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
+# Image web admin admin.kapdh.or.id (apps/admin, React 19 + Vite SPA; PRD 5.2, 7.1; D12; N-07; temuan audit D3-07).
+# Dibangun di CI (PRD 5.3). Origin API dibakukan saat build (Vite), jadi image dibangun per lingkungan dari commit
+# yang sama:
+#
+#   docker build -f infra/Dockerfile.admin --build-arg VITE_API_BASE_URL=https://api.kapdh.or.id/api/v1 \
+#     -t kapdh-admin:<versi> .
+#   docker build -f infra/Dockerfile.admin --build-arg VITE_API_BASE_URL=https://staging-api.kapdh.or.id/api/v1 \
+#     -t kapdh-admin:<versi>-staging .
+#
+# CSP nginx memakai origin yang sama (infra/scripts/admin-csp.mjs render), lalu hasil build diperiksa gerbang CSP
+# sebelum image jadi. Tidak ada secret di image: token akses admin hanya di memori, refresh cookie HttpOnly milik API.
+
+ARG NODE_IMAGE=node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
+# nginx 1.30.5 stable (Alpine 3.24), digest dipin (PRD 7.1).
+ARG NGINX_IMAGE=nginx:1.30.5-alpine3.24@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94
+
+# ------------------------------------------------------------------------------------------------ tahap build
+FROM ${NODE_IMAGE} AS build
+WORKDIR /repo
+ENV CI=true \
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
+    pnpm fetch --frozen-lockfile --store-dir /pnpm/store
+COPY . .
+# Basis URL API produksi bawaan (D12); staging memberi build arg sendiri. Tidak boleh http kecuali localhost.
+ARG VITE_API_BASE_URL=https://api.kapdh.or.id/api/v1
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile --prefer-offline --store-dir /pnpm/store --filter "@kapdh/admin..." \
+  && pnpm --filter "@kapdh/admin..." build \
+  && mkdir -p /out \
+  && node infra/scripts/admin-csp.mjs render --api-base "$VITE_API_BASE_URL" --conf infra/nginx-admin.conf \
+       --out /out/default.conf \
+  && node infra/scripts/admin-csp.mjs check --dist apps/admin/dist --conf /out/default.conf \
+       --api-base "$VITE_API_BASE_URL" \
+  && grep -rqF "$VITE_API_BASE_URL" apps/admin/dist/assets \
+  && ! grep -rqE "undangan-contoh-7Kq2M9xD4fW8pL3z|admin@kapdh\.test" apps/admin/dist/assets
+
+# ---------------------------------------------------------------------------------------------- tahap runtime
+FROM ${NGINX_IMAGE}
+# Konteks utama non-root (pid dan direktori sementara di /tmp, log tanpa query/IP) dan server admin hasil render.
+COPY infra/nginx-main.conf /etc/nginx/nginx.conf
+COPY --from=build /out/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /repo/apps/admin/dist /usr/share/nginx/html
+# Pengguna non-root `nginx` (uid 101) dari image resmi; berkas situs milik root dan hanya-baca.
+USER 101
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+STOPSIGNAL SIGQUIT
+# Langsung nginx tanpa skrip docker-entrypoint.d (envsubst/IPv6 tidak dipakai; konfigurasi sudah final saat build).
+ENTRYPOINT ["nginx", "-g", "daemon off;"]
