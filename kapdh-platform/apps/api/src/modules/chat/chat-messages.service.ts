@@ -34,6 +34,7 @@ import {
   SEND_WINDOW_MS,
 } from "./chat.constants.js";
 import { ChatEvents } from "./chat.events.js";
+import { CHAT_MESSAGE_NOTIFICATION_TITLE, chatMessageNotificationBody } from "./chat.notifications.js";
 import { type ChatMessageDto, type ChatViewer, ChatPresenter, isActiveMember } from "./chat.presenter.js";
 import {
   alumniFacts,
@@ -412,15 +413,14 @@ export class ChatMessagesService {
           )
       ).map((row) => row.key),
     );
-    const sender = room.kind === "direct" ? await this.writer.displayName(tx, senderId) : null;
     for (const recipient of recipients) {
       if (existing.has(`u:${recipient.userId}:${dedupOf(recipient)}`)) continue;
       await this.notifications.notify(tx, {
         userId: recipient.userId,
         category: "chat",
-        title: "Pesan baru",
-        body:
-          room.kind === "group" ? `Ada pesan baru di grup "${room.name}".` : `Ada pesan baru dari ${sender}.`,
+        title: CHAT_MESSAGE_NOTIFICATION_TITLE,
+        // Tanpa nama pengirim: kotak masuk penerima bertahan setelah akun pengirim dihapus (D2, AC F14-3).
+        body: chatMessageNotificationBody(room),
         route: `/chat/${room.id}`,
         data: { room_id: room.id },
         dedupKey: dedupOf(recipient),

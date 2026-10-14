@@ -33,7 +33,8 @@ function appVersion(request: FastifyRequest): string | null {
  * 1. onRequest: konteks request (AsyncLocalStorage) dengan request_id server; klien X-Request-Id hanya ke log.
  * 2. onRequest: gerbang maintenance dan versi aplikasi minimum (sebelum guard dan sebelum body dibaca).
  * 3. preValidation: memulihkan konteks setelah parsing body (event stream body berjalan di luar konteks awal).
- * 4. onSend: header `x-request-id`; onResponse: satu baris log JSON per request tanpa query/header/body (N-14).
+ * 4. onSend: header `x-request-id` dan `Cache-Control: no-store` + `Pragma: no-cache` bila handler tidak menyatakan
+ *    kebijakan cache sendiri; onResponse: satu baris log JSON per request tanpa query/header/body (N-14).
  */
 export function installHttpHooks(fastify: FastifyInstance, gate: () => RequestGate): void {
   fastify.addHook("onRequest", (request: FastifyRequest, reply: FastifyReply, done) => {
@@ -66,6 +67,8 @@ export function installHttpHooks(fastify: FastifyInstance, gate: () => RequestGa
       url: request.routeOptions?.url ?? request.url,
       appPlatform: appPlatform(request),
       appVersion: header(request, "x-app-version"),
+      // Pengecualian maintenance khusus sesi admin (POST /auth/reauth, POST /files) memeriksa access token ini.
+      authorization: header(request, "authorization"),
     });
   });
 
@@ -77,6 +80,14 @@ export function installHttpHooks(fastify: FastifyInstance, gate: () => RequestGa
 
   fastify.addHook("onSend", async (request: FastifyRequest, reply: FastifyReply, payload: unknown) => {
     void reply.header("x-request-id", request.id);
+    // Kebijakan cache bawaan (PRD 5.2, N-07; RFC 6749 §5.1; ASVS 8.2.1): respons yang tidak menyatakan Cache-Control
+    // sendiri (token sesi/reauth/reset/mfa_token, data pribadi /me dan /admin/**, galat) tidak boleh disimpan browser
+    // maupun perantara. Cache publik hanya untuk rute yang menyatakannya eksplisit (/files/public/*, /public/config,
+    // /public/pages).
+    if (!reply.hasHeader("cache-control")) {
+      void reply.header("cache-control", "no-store");
+      void reply.header("pragma", "no-cache");
+    }
     return payload;
   });
 

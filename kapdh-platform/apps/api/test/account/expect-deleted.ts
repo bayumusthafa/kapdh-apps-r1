@@ -39,6 +39,7 @@ import {
   deletedEmailFor,
   remainingPersonalData,
 } from "../../src/modules/account/deletion-steps.js";
+import { DIRECT_MESSAGE_NOTIFICATION_BODY } from "../../src/modules/chat/chat.notifications.js";
 import type { TestApp } from "../support/test-app.js";
 import { personalDataHits, personalTerms, type RichMember, userRow } from "./support.js";
 
@@ -88,6 +89,20 @@ export async function expectFullyDeleted(
         .innerJoin(notifications, eq(notifications.id, notificationDeliveries.notificationId)),
     ),
   );
+  // Kotak masuk lawan bicara room direct tetap ada (riwayat resmi miliknya) tetapi tanpa nama anggota yang dihapus:
+  // notifikasi chat format lama ditulis ulang ke teks netral (D2, AC F14-3; temuan audit D5-01).
+  expect(
+    await db
+      .select({ body: notifications.body })
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, rich.peer.userId),
+          eq(notifications.category, "chat"),
+          sql`${notifications.data} ->> 'room_id' = ${rich.rooms.direct}`,
+        ),
+      ),
+  ).toEqual([{ body: DIRECT_MESSAGE_NOTIFICATION_BODY }]);
 
   // Berkas: avatar, unggahan chat, avatar grup, bukti transfer (termasuk versi lama dan bukti yang diunggah pengurus)
   // dan bukti penyesuaian dihapus dari storage dan barisnya `deleted` tanpa pemilik (AC F14-3, F14-4).

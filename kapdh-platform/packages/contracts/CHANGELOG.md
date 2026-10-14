@@ -6,6 +6,24 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 
 ## Belum dirilis
 
+### Hardening Fase D (chat, moderasi, maintenance)
+
+Tanpa perubahan skema; hanya aturan yang didokumentasikan pada deskripsi operasi.
+
+- `getFileAccess` dan aturan bersama admin-moderation: gambar chat/avatar yang dirujuk bukti laporan hanya dapat
+  dibuka pengurus `moderation.read` bila minimal satu laporan perujuk terlihat baginya (aturan konflik kepentingan
+  butir a; selain itu 404), dan setiap akses itu dicatat audit `moderation.evidence_viewed` (PRD 2.3, 3.12, AC F12-2,
+  F17-1; temuan audit D1-02, D3-02).
+- `createChatGroup`, `inviteChatMembers`, `ChatInviteSkipReason`: calon anggota yang tersembunyi dari direktori
+  hanya dapat diundang oleh anggota yang pernah satu grup dengannya (syarat yang sama dengan `openDirectRoom`; PRD
+  3.10, N-09); selain itu dilewati `not_invitable` tanpa notifikasi (temuan audit D1-03).
+- `sendChatMessage`: teks notifikasi kotak masuk room direct tidak lagi memuat nama pengirim ("Ada pesan baru di
+  percakapan langsung."); baris lama di kotak masuk lawan bicara ditulis ulang saat akun pengirim dihapus (D2, AC
+  F14-3; temuan audit D5-01).
+- `adminUpdateMaintenance`: selama maintenance, `POST /auth/reauth` dan `POST /files` dengan access token admin
+  tetap diproses, begitu pula `DELETE /auth/sessions/{sessionId}` untuk semua sesi, sehingga maintenance dapat
+  diakhiri lewat API setelah token reautentikasi awal kedaluwarsa (temuan audit D7-01).
+
 ### C2 Membership (me, public, admin-members, admin-masters)
 
 Semua operasi domain ini kini membawa `x-kapdh-access` (audience, member_access, permissions, permissions_any,
@@ -227,6 +245,13 @@ Keputusan perilaku yang perlu diikuti modul payments dan events:
   `AdminPaymentMethod.in_use` true juga untuk metode yang ditinggalkan saat pemilik mengganti rekening tujuan
   sebelum bukti, dan tidak pernah kembali false. `adminListPaymentAdjustments` tidak pernah memuat isi
   `refund_destination` (selalu null; penandanya `has_refund_destination`).
+- Hardening Tahap D (deskripsi saja, bentuk tetap; temuan audit D4-02, D5-03): `createPaymentInstruction` dan
+  `adminRecordPayment` (payment baru) menolak 403 FORBIDDEN bila pengaturan `fees` belum tersimpan (versi 0) atau
+  total jenis iuran 0.00; klien menampilkan pesan server seperti 403 FORBIDDEN yang sudah ada.
+  `MyFeeQuotes.settings_version` "0" menandai nominal yang belum tersimpan. `adminCompletePaymentAdjustment` dan
+  `adminCancelPaymentAdjustment` atas payment yang pemiliknya sudah dihapus atau deletion_pending tidak menyimpan
+  bukti penyelesaian (`evidence_file_id` null, berkas dihapus setelah commit, audit hanya id/sha256/ukuran) dan
+  mengunci baris users pemilik (FOR SHARE) sebelum payment.
 
 ### Konten: `content.yaml`, `admin-content.yaml` (penulis kontrak C4; F-08, F-15)
 

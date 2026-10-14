@@ -165,7 +165,9 @@ paths:
         peringatan pribadi kosong (akun pending_otp tidak dapat membayar, memesan tiket atau masuk grup).
         Akun `deletion_pending` -> `deletable` false, `blocked_reason: deletion_in_progress`, `deletion` terisi.
         Akun `disabled` -> `deletable` false, `blocked_reason: account_disabled` (pemulihan atau penghapusan melalui
-        kanal bantuan, PRD 2.2).
+        kanal bantuan, PRD 2.2): setelah identitas pemilik diverifikasi, operator memulai permintaan penghapusan
+        (sumber `web`, job dan deletion ledger yang sama) lewat CLI teraudit `account:status --action delete`
+        (runbook docs/runbooks/alumni-account-disabled.md), sehingga penghapusan tetap selalu tersedia (F-14).
         Challenge pengganti dari email tak terdaftar selalu diperlakukan sebagai kode salah sampai percobaan habis.
         Galat: 400 VALIDATION_ERROR kode salah dengan sisa percobaan di `field_errors.code`; 410 OTP_EXPIRED
         (kedaluwarsa, dipakai, diganti, percobaan habis, tujuan lain); 429 RATE_LIMITED.
@@ -569,7 +571,7 @@ components:
           enum: [deletion_in_progress, account_disabled, null]
           description: |
             Alasan tidak dapat membuat permintaan baru: `deletion_in_progress` (lihat `deletion`), `account_disabled`
-            (hubungi bantuan, PRD 2.2); null bila `deletable`.
+            (hubungi bantuan; penghapusan dimulai operator lewat kanal bantuan, PRD 2.2, F-14); null bila `deletable`.
         deletion:
           description: Permintaan penghapusan terbuka (status pending/processing/failed); null bila tidak ada.
           oneOf:

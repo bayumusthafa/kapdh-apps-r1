@@ -2,7 +2,9 @@ import { auditLogs, payments } from "@kapdh/database";
 import { and, desc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { expectOperation, expectSchema } from "../support/contract.js";
+import { totp } from "../../src/core/identity/crypto.js";
 import { createAlumni, createMembershipPayment, setSetting, signInAlumni } from "../support/factories.js";
+import { postFile } from "../support/files.js";
 import { httpClient, type HttpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
 import { type AdminActor, adminActor } from "./helpers.js";
@@ -342,6 +344,66 @@ describe("PUT /admin/settings/maintenance (PRD 4.5, 8.4)", () => {
       await manager.sensitive(Number(current) + 1),
     );
     expect(off.statusCode).toBe(200);
+    expect(
+      (await api.post("/auth/login", { email: member.email, password: member.password })).statusCode,
+    ).toBe(200);
+  });
+
+  it("D7-01 (PRD 4.5, AC F15-3): setelah token reauth awal kedaluwarsa, pengurus reautentikasi lewat POST /auth/reauth dan mematikan maintenance; unggahan pengurus diproses; anggota tetap 503", async () => {
+    const keeper = await adminActor(t, {
+      permissions: ["settings.manage", "payments.read", "payments.decide"],
+      displayName: "Pengurus Pemeliharaan",
+    });
+    const member = await createAlumni(t, { status: "verified" });
+    const memberToken = (await signInAlumni(t, member)).accessToken;
+    const current = await version("maintenance");
+    const on = await api.put(
+      "/admin/settings/maintenance",
+      { active: true, message: "Pemeliharaan server", until: null },
+      await keeper.sensitive(current),
+    );
+    expect(on.statusCode, on.body).toBe(200);
+    const onVersion = String(Number(current) + 1);
+
+    // Token reauth yang dipakai saat mengaktifkan berlaku <= 10 menit; tanpa reauth baru, mematikan ditolak 403.
+    t.clock.advance(11 * 60_000);
+    const stale = await api.put(
+      "/admin/settings/maintenance",
+      { active: false, message: null, until: null },
+      { token: keeper.token, headers: { "if-match": onVersion } },
+    );
+    expect(stale.statusCode).toBe(403);
+    expect(stale.json()).toMatchObject({ code: "REAUTH_REQUIRED" });
+
+    // Anggota tidak mendapat pengecualian: reautentikasi dan unggahan tetap 503 MAINTENANCE.
+    const memberReauth = await api.post(
+      "/auth/reauth",
+      { password: member.password },
+      { token: memberToken },
+    );
+    expect([memberReauth.statusCode, memberReauth.json().code]).toEqual([503, "MAINTENANCE"]);
+    const memberUpload = await postFile(t.app, memberToken, "payment_proof");
+    expect([memberUpload.statusCode, memberUpload.json().code]).toEqual([503, "MAINTENANCE"]);
+
+    // Pengurus: unggah bukti kerja (D13) dan reautentikasi sandi + TOTP diproses walau maintenance aktif.
+    const upload = await postFile(t.app, keeper.token, "payment_proof");
+    expect(upload.statusCode, upload.body).toBe(201);
+    t.clock.advance(30_000); // langkah TOTP baru (langkah login tidak dapat dipakai ulang)
+    const reauth = await api.post(
+      "/auth/reauth",
+      { password: keeper.admin.password, totp_code: totp(keeper.admin.totpSecret, t.clock.now()) },
+      { token: keeper.token },
+    );
+    expect(reauth.statusCode, reauth.body).toBe(200);
+    const reauthToken = (expectOperation("post", "/auth/reauth", reauth) as { reauth_token: string })
+      .reauth_token;
+    const off = await api.put(
+      "/admin/settings/maintenance",
+      { active: false, message: null, until: null },
+      { token: keeper.token, headers: { "x-reauth-token": reauthToken, "if-match": onVersion } },
+    );
+    expect(off.statusCode, off.body).toBe(200);
+    expect(off.json()).toMatchObject({ active: false });
     expect(
       (await api.post("/auth/login", { email: member.email, password: member.password })).statusCode,
     ).toBe(200);
