@@ -1692,6 +1692,9 @@ function recordDues(req: MockRequest): Ok | Response {
 
 const DECIDE: readonly Permission[] = ["payments.read", "payments.decide"];
 
+/** Pesan bawaan server untuk VERSION_CONFLICT (apps/api core/errors versionConflict). */
+const VERSION_CONFLICT_MESSAGE = "Data sudah diubah orang lain. Muat ulang untuk melihat versi terbaru.";
+
 const paymentRoutes: MockRoute[] = [
   {
     method: "GET",
@@ -1819,14 +1822,25 @@ const paymentRoutes: MockRoute[] = [
             "Pembayaran milik akun alumni yang tertaut ke Anda tidak dapat diputus.",
           );
         const current = present(p);
+        // Pesan galat sama dengan server (admin-payments.service decide), diperiksa jalur test:live.
         if (p.status !== "pending" || p.proof_version === 0)
-          return error(409, "PAYMENT_STATE_CONFLICT", "Pembayaran sudah diputus admin lain.", { current });
+          return error(
+            409,
+            "PAYMENT_STATE_CONFLICT",
+            p.status === "pending"
+              ? "Pembayaran belum memiliki bukti transfer sehingga belum dapat diputus."
+              : "Pembayaran ini sudah diputus atau dibatalkan. Muat ulang untuk melihat status terbaru.",
+            { current },
+          );
         if (body.expected_proof_version !== p.proof_version)
-          return error(409, "PROOF_VERSION_CONFLICT", "Bukti sudah diganti. Periksa bukti terbaru.", {
-            current,
-          });
+          return error(
+            409,
+            "PROOF_VERSION_CONFLICT",
+            "Bukti transfer sudah diganti anggota setelah layar dibuka. Periksa bukti versi terbaru.",
+            { current },
+          );
         if (body.expected_version !== p.version)
-          return error(409, "VERSION_CONFLICT", "Data pembayaran sudah berubah. Muat ulang.", { current });
+          return error(409, "VERSION_CONFLICT", VERSION_CONFLICT_MESSAGE, { current });
 
         const at = new Date().toISOString();
         const result = applyDecision(p, decision as "approve" | "reject", reason.trim(), at, mockAdminRef());
@@ -1858,15 +1872,13 @@ const paymentRoutes: MockRoute[] = [
           return error(
             409,
             "PAYMENT_STATE_CONFLICT",
-            "Pembayaran ini sudah berbukti atau tidak lagi menunggu.",
-            {
-              current: present(p),
-            },
+            p.status === "pending"
+              ? "Pembayaran yang sudah berbukti wajib diputus (setujui atau tolak), bukan dibatalkan."
+              : "Hanya pembayaran pending tanpa bukti yang dapat dibatalkan.",
+            { current: present(p) },
           );
         if (p.version !== expected.version)
-          return error(409, "VERSION_CONFLICT", "Data pembayaran sudah berubah. Muat ulang.", {
-            current: present(p),
-          });
+          return error(409, "VERSION_CONFLICT", VERSION_CONFLICT_MESSAGE, { current: present(p) });
         const at = new Date().toISOString();
         const reason = String(body.reason).trim();
         const cancelled: Detail = {
