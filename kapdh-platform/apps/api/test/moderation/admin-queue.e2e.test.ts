@@ -83,6 +83,7 @@ describe("x-kapdh-access modul moderation (ARCHITECTURE §4.3)", () => {
         "adminClaimReport",
         "adminGetReport",
         "adminListReports",
+        "adminListReportSubjectCandidates",
         "adminResolveReport",
         "blockMember",
         "createAppeal",

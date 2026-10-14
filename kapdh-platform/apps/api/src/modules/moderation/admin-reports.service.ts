@@ -49,6 +49,14 @@ type Priority = components["schemas"]["ModerationReportPriority"];
 type Category = components["schemas"]["ModerationReportCategory"];
 type TargetType = components["schemas"]["ModerationTargetType"];
 type Action = components["schemas"]["ModerationAction"];
+type SubjectCandidate = components["schemas"]["AdminModerationSubjectCandidate"];
+type SubjectCandidatePage = components["schemas"]["AdminModerationSubjectCandidatePage"];
+
+export interface SubjectCandidateQuery {
+  q?: string;
+  cursor?: string;
+  limit: number;
+}
 
 export interface QueueQuery {
   status: StatusFilter;
@@ -114,6 +122,21 @@ const cursorSchema = z.object({
 });
 
 const isActive = (status: string) => (ACTIVE_REPORT_STATUSES as readonly string[]).includes(status);
+
+/**
+ * Posisi cursor calon subjek laporan grup: kelompok (0 admin grup joined, 1 anggota joined, 2 mantan anggota), nama
+ * terurut (lower(full_name), dibandingkan byte seperti direktori) dan user_id; terikat `q` yang sama (kontrak
+ * adminListReportSubjectCandidates "cursor terikat q yang sama").
+ */
+const candidateCursorSchema = z.object({
+  q: z.string().max(100).nullable(),
+  g: z.number().int().min(0).max(2),
+  n: z
+    .string()
+    .max(1000)
+    .refine((value) => !value.includes("\u0000")),
+  id: z.uuid(),
+});
 
 /** Berkas bukti yang URL bertanda tangannya diterbitkan dalam respons (hanya rujukan id untuk audit, tanpa URL). */
 function evidenceImageIds(evidence: Evidence): string[] {
@@ -577,6 +600,114 @@ export class AdminReportsService {
     if (auth.linkedAlumniUserId && row.reporterId === auth.linkedAlumniUserId)
       throw forbidden("Anda tidak dapat menangani laporan yang Anda kirim sendiri (konflik kepentingan).");
     return row;
+  }
+
+  // -------------------------------------------------------------------------------- calon subjek laporan grup
+
+  /**
+   * GET /admin/reports/{reportId}/subject-candidates (AC F12-3, F12-4): sumber pilihan `subject_user_id` untuk warn/
+   * suspend laporan grup. Isinya memakai aturan yang SAMA dengan {@link validateDecision}: anggota yang pernah
+   * bergabung dengan grup itu ({@link everJoinedRoom}), tanpa akun terhapus (D2) dan tanpa akun alumni tertaut
+   * pemanggil. Konflik kepentingan sama dengan detail/keputusan: tertaut ke pihak terlapor (termasuk anggota joined
+   * grup) → 404 tanpa audit; tertaut ke pelapor → 403. Laporan selain grup atau yang sudah diputus → 400. Pembacaan
+   * dicatat `moderation.report_viewed` (tanpa daftar anggota) dalam transaksi yang sama sebelum respons dikirim.
+   */
+  async subjectCandidates(
+    auth: AuthContext,
+    reportId: string,
+    query: SubjectCandidateQuery,
+  ): Promise<SubjectCandidatePage> {
+    const q = query.q ?? null;
+    const after = query.cursor ? decodeCursor(query.cursor, candidateCursorSchema) : null;
+    if (after && after.q !== q)
+      throw fieldError("cursor", "Cursor tidak valid. Muat ulang daftar dari awal.");
+    const now = this.clock.now();
+
+    return this.db.transaction(async (tx) => {
+      const [report] = await tx
+        .select({
+          status: reports.status,
+          version: reports.version,
+          targetType: reports.targetType,
+          targetUserId: reports.targetUserId,
+          roomId: reports.roomId,
+          reporterId: reports.reporterId,
+        })
+        .from(reports)
+        .where(eq(reports.id, reportId))
+        .limit(1);
+      if (!report || (await this.visibility.isReportedParty(report, auth.linkedAlumniUserId, tx)))
+        throw notFound("Laporan tidak ditemukan.");
+      if (auth.linkedAlumniUserId && report.reporterId === auth.linkedAlumniUserId)
+        throw forbidden("Anda tidak dapat menangani laporan yang Anda kirim sendiri (konflik kepentingan).");
+      if (report.targetType !== "room" || report.roomId === null || !isActive(report.status))
+        throw fieldError(
+          "reportId",
+          "Calon subjek hanya tersedia untuk laporan grup yang masih aktif (terbuka atau ditinjau).",
+        );
+
+      const group = sql<number>`case when ${roomMembers.status} = 'joined' and ${roomMembers.role} = 'admin' then 0 when ${roomMembers.status} = 'joined' then 1 else 2 end`;
+      const sortName = sql<string>`lower(${alumni.fullName})`;
+      const escaped = q?.replace(/[\\%_]/g, (c) => `\\${c}`);
+      const rows = await tx
+        .select({
+          userId: users.id,
+          accountStatus: users.status,
+          fullName: alumni.fullName,
+          memberNumber: alumni.memberNumber,
+          cohort: alumni.cohort,
+          expiresAt: alumni.expiresAt,
+          suspendedAt: alumni.suspendedAt,
+          suspensionMessage: alumni.suspensionMessage,
+          avatarFileId: alumni.avatarFileId,
+          roomStatus: roomMembers.status,
+          roomRole: roomMembers.role,
+          group: group.mapWith(Number),
+          sortName,
+        })
+        .from(roomMembers)
+        .innerJoin(users, eq(users.id, roomMembers.userId))
+        .innerJoin(alumni, eq(alumni.userId, roomMembers.userId))
+        .where(
+          and(
+            eq(roomMembers.roomId, report.roomId),
+            everJoinedRoom(roomMembers.status, roomMembers.joinedAt),
+            eq(users.kind, "alumni"),
+            ne(users.status, "deleted"),
+            auth.linkedAlumniUserId ? ne(roomMembers.userId, auth.linkedAlumniUserId) : undefined,
+            escaped
+              ? or(ilike(alumni.fullName, `%${escaped}%`), ilike(alumni.memberNumber, `${escaped}%`))
+              : undefined,
+            after
+              ? sql`(${group} > ${after.g} or (${group} = ${after.g} and (${sortName} ~>~ ${after.n} or (${sortName} = ${after.n} and ${users.id} > ${after.id}))))`
+              : undefined,
+          ),
+        )
+        .orderBy(asc(group), sql`${sortName} using ~<~`, asc(users.id))
+        .limit(query.limit + 1);
+
+      const page = pageOf(rows, query.limit, {
+        cursorOf: (row) => ({ q, g: row.group, n: row.sortName, id: row.userId }),
+        toItem: (row): SubjectCandidate => ({
+          ...toTargetMember({ ...row, accountStatus: row.accountStatus as AccountStatus }, now)!,
+          room_status: row.roomStatus as SubjectCandidate["room_status"],
+          room_role: row.roomRole,
+        }),
+      });
+      await this.audit.write(tx, {
+        action: "moderation.report_viewed",
+        entityType: "report",
+        entityId: reportId,
+        after: {
+          via: "subject_candidates",
+          status: report.status,
+          version: String(report.version),
+          searched: q !== null,
+          candidate_count: page.items.length,
+        },
+      });
+      return page;
+    });
   }
 
   // ------------------------------------------------------------------------------------------------------ klaim
