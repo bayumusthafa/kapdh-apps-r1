@@ -42,7 +42,8 @@ published as a tagged git dependency (`contracts-vX.Y.Z`).
 
 Toolchain on the build machine (Windows 11, Git Bash):
 
-- Node 24.19, pnpm 10.28 (pinned by `packageManager`), turbo 2.
+- Node 24.19 locally; CI and the container images use Node 24.21.0 (pinned in `.github/actions/setup-platform` and
+  `kapdh-platform/infra/Dockerfile.*`). pnpm 10.28 (pinned by `packageManager`), turbo 2.
 - Flutter 3.47.2 / Dart 3.13.2 at `C:\flutter\flutter\bin`. In bash: `export PATH="/c/flutter/flutter/bin:$PATH"`,
   then call `flutter.bat` / `dart.bat`.
 - No Docker, no Java, no Python, no local Redis. Real PostgreSQL 17.6 is available through the `embedded-postgres`

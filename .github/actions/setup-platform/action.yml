@@ -11,8 +11,8 @@ inputs:
     description: Pulihkan/simpan cache store pnpm ("true"/"false"); matikan untuk job yang tidak memasang dependensi.
     default: "true"
   node-version:
-    description: Versi Node.js (ARCHITECTURE §1 Node 24.19).
-    default: "24.19.0"
+    description: Versi Node.js (ARCHITECTURE §1 Node 24.21).
+    default: "24.21.0"
 runs:
   using: composite
   steps:

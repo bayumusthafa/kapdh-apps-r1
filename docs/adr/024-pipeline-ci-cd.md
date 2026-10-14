@@ -65,7 +65,7 @@ production terpisah; build tidak boleh membebani VPS (PRD 10.2).
    Dart toleran terhadap enum/event baru. Commit rilis SDK (`pnpm contracts:release-sdk`) kini juga membekukan
    `dist/openapi.yaml` sebagai pembanding.
 8. **Pin rantai pasok**: action pihak ketiga dipin SHA commit (komentar versi), alat CI dipin versi + SHA-256 di satu
-   composite action, runner `ubuntu-24.04`, Node 24.19.0 dan Flutter 3.47.2 masing-masing di satu composite action,
+   composite action, runner `ubuntu-24.04`, Node 24.21.0 dan Flutter 3.47.2 masing-masing di satu composite action,
    semua base image Dockerfile dipin versi patch + digest (pemeriksaan statis GAGAL bila tidak). Versi yang dipilih
    minimal berumur dua minggu saat dipin. Job yang menjalankan `pnpm install` (skrip dependensi pihak ketiga) tidak
    pernah memegang token tulis: rilis SDK dipecah menjadi job baca-saja yang membuat tag dan job tulis tanpa dependensi
