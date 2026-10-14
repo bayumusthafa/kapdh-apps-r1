@@ -145,6 +145,15 @@ admin build, typecheck and lint; `@kapdh/admin` test 20 files 241/241 (190 + the
 had one timeout in the foundation `flow.test.tsx` "keluar membersihkan seluruh cache" (the lazily loaded /payments
 page under parallel load); it passed alone (25/25) and in a full re-run.
 
+## 6. admin-content
+
+No textual conflicts. The one cross-slice decision this slice handed to the integrator, event-category ownership, is
+kept as the slice chose it: the events page owns the event-category UI (guideline p14, C4 handoff F8), so
+`mocks/content.ts` registers no `/admin/content/event-categories*` route and `mocks/events.ts` (merged next) is
+their only mock. `/content` manages post categories (`/admin/content/post-categories`) only. Both paths are in
+`admin-content.yaml`, and the API serves them from the content module. Verified after the merge: admin typecheck,
+lint and build; `@kapdh/admin` test 28 files 294/294.
+
 ## Breakages already on main before this track (fixed in a separate commit)
 
 Found by the first full API run after merge 1; neither involves an api-admin file.
