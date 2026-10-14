@@ -6,6 +6,7 @@ import 'package:kapdh_api/kapdh_api.dart';
 
 import '../api/api_providers.dart';
 import '../api/api_signals.dart';
+import '../cache/decoded_image_memory.dart';
 import '../cache/home_cache_store.dart';
 import '../cache/kta_avatar_cache.dart';
 import '../cache/kta_cache_store.dart';
@@ -60,8 +61,8 @@ class LoginResult {
 ///   [SessionPhase.offlineLastKnown]; tanpa snapshot tetap [SessionPhase.unknown] dengan masalah `offline` agar splash
 ///   menampilkan "Tanpa koneksi" dan tombol coba lagi.
 /// - Token hanya dihapus koordinator refresh (UNAUTHENTICATED dari /auth/refresh) atau saat pengguna keluar.
-/// - Logout dan pergantian akun menghapus cache KTA, cache Beranda, snapshot /me dan key idempotensi (PRD 5.2,
-///   AC F05-3, AC F08-4).
+/// - Logout dan pergantian akun menghapus cache KTA, cache Beranda, snapshot /me, key idempotensi dan gambar privat
+///   yang sudah didekode di memori (foto anggota lain, bukti bayar) (PRD 5.2, AC F05-3, AC F08-4).
 class SessionController extends Notifier<SessionState> {
   Future<void>? _loading;
 
@@ -170,6 +171,7 @@ class SessionController extends Notifier<SessionState> {
       await _ktaCache.clear();
       await _homeCache.clear();
       await ref.read(idempotencyStoreProvider).clear();
+      ref.read(decodedImageEvictorProvider)();
     }
     if (me.effectiveStatus
         case EffectiveStatus.suspended || EffectiveStatus.disabled || EffectiveStatus.deletionPending) {
@@ -288,6 +290,9 @@ class SessionController extends Notifier<SessionState> {
     // dibuka atau sedang tidak aktif (PRD 5.2).
     await _homeCache.clear();
     await ref.read(idempotencyStoreProvider).clear();
+    // Foto anggota lain (direktori, chat, peserta event) dan bukti bayar sendiri tidak pernah ditulis ke cache disk
+    // (URL bertanda tangan, PRD 5.4); salinan terdekodenya di memori ikut dibuang (PRD 5.2, N-09).
+    ref.read(decodedImageEvictorProvider)();
   }
 
   static ApiException _invalidResponse(String operation) =>

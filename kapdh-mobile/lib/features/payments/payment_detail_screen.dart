@@ -23,6 +23,7 @@ import 'proof_file.dart';
 import 'proof_submission.dart';
 import 'widgets/adjustment_card.dart';
 import 'widgets/payment_layout.dart';
+import 'widgets/proof_preview.dart';
 import 'widgets/proof_upload_section.dart';
 
 /// Status dan tindakan satu pembayaran milik sendiri (F-03, F-07; deep link `/payments/{id}`, ARCHITECTURE §4.7).
@@ -30,8 +31,10 @@ import 'widgets/proof_upload_section.dart';
 /// Tampilan mengikuti `stage` dari server (klien tidak menurunkan aturan sendiri):
 /// - awaiting_transfer: instruksi bayar dan unggah bukti (prototipe layar 3; AC F03-1), rekening tujuan dapat
 ///   diganti sebelum bukti pertama (PRD 4.3);
-/// - awaiting_review: menunggu verifikasi dengan riwayat dan "Ganti bukti" (prototipe layar 4; AC F03-2);
-/// - needs_fix: catatan pengurus dan unggah ulang pada payment yang sama (prototipe layar 5; AC F03-3, F04-2);
+/// - awaiting_review: menunggu verifikasi dengan riwayat, "Lihat bukti" dan "Ganti bukti" (prototipe layar 4;
+///   AC F03-2);
+/// - needs_fix: catatan pengurus, "Lihat bukti" yang ditolak dan unggah ulang pada payment yang sama (prototipe
+///   layar 5; AC F03-3, F04-2);
 /// - paid, cancelled, rejected_final: hasil akhir beserta riwayat dan penyesuaian/refund (D6).
 ///
 /// Kirim bukti memakai `expected_proof_version` dan Idempotency-Key tersimpan; bila jaringan putus, status payment
@@ -638,6 +641,18 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
     Timeline(entries: paymentTimeline(payment, cardIssuedAt: _cardIssuedAt)),
   ];
 
+  /// "Lihat bukti yang dikirim": bukti aktif milik sendiri (`proof_file_id`; tidak dikirim server bila bukti dicatat
+  /// pengurus) agar anggota dapat memastikan berkas yang diperiksa atau ditolak sebelum menggantinya (AC F03-2,
+  /// F03-3; PRD 5.4).
+  List<Widget> _proofPreview(PaymentDetail payment) {
+    final fileId = payment.proofFileId;
+    if (fileId == null || fileId.isEmpty) return const [];
+    return [
+      const SizedBox(height: KapdhSpace.s2),
+      ProofPreviewLink(fileId: fileId, proofVersion: payment.proofVersion),
+    ];
+  }
+
   List<Widget> _adjustmentsSection(PaymentDetail payment) => [
     for (final adjustment in payment.adjustments) ...[
       const SizedBox(height: KapdhSpace.s4),
@@ -685,6 +700,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
           ),
           const SizedBox(height: 18),
           paymentSummaryCard(payment),
+          ..._proofPreview(payment),
           ..._adjustmentsSection(payment),
           ..._historySection(payment),
         ],
@@ -725,6 +741,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
           _rejectionNote(payment),
           const SizedBox(height: 18),
           paymentSummaryCard(payment, showMethod: false, showStage: true),
+          ..._proofPreview(payment),
           ..._historySection(payment),
         ],
       ),
@@ -811,6 +828,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
             ],
             const SizedBox(height: KapdhSpace.s4),
             paymentSummaryCard(payment, showStage: payment.stage != PaymentStage.paid),
+            ..._proofPreview(payment),
             ..._adjustmentsSection(payment),
             const SizedBox(height: KapdhSpace.s5),
             if (payment.stage == PaymentStage.paid && membership)
