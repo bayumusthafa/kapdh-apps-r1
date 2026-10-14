@@ -7,7 +7,9 @@ import { normalizeEmail } from "./email.js";
  * memuat email mentah orang yang tidak terdaftar.
  */
 export function otpEmailKey(secret: string, email: string): string {
-  return createHmac("sha256", secret).update(`otp-email:${normalizeEmail(email)}`).digest("hex");
+  return createHmac("sha256", secret)
+    .update(`otp-email:${normalizeEmail(email)}`)
+    .digest("hex");
 }
 
 /**
