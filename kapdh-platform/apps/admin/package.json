@@ -9,8 +9,9 @@
     "dev:mock": "vite --mode mock",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src",
-    "test": "vitest run"
+    "lint": "eslint src live vitest.live.config.ts",
+    "test": "vitest run",
+    "test:live": "vitest run --config vitest.live.config.ts --mode live"
   },
   "dependencies": {
     "@fontsource/poppins": "5.3.0",
