@@ -12,6 +12,7 @@ import { FILE_TOKEN_MAX_LENGTH } from "./core/files/file-token.js";
 import { MAX_UPLOAD_BYTES } from "./core/files/purposes.js";
 import { installHttpHooks, installMultipartGate } from "./core/http/fastify-hooks.js";
 import { RequestGate } from "./core/http/request-gate.js";
+import { errorTrackingFromEnv } from "./core/logging/error-tracker.js";
 import { createRootLogger, NestPinoLogger } from "./core/logging/logger.js";
 import type { RateLimitStore } from "./core/rate-limit/store.js";
 import { KapdhIoAdapter } from "./core/realtime/io-adapter.js";
@@ -44,6 +45,8 @@ export async function createApp(
     level: options.logger === false ? "silent" : deps.env.LOG_LEVEL,
     service: "kapdh-api",
     destination: options.logDestination,
+    // GlitchTip/Sentry bila SENTRY_DSN diisi (docs/runbooks/monitoring.md bagian 5).
+    errorTracking: options.logger === false ? undefined : errorTrackingFromEnv(deps.env),
   });
   const adapter = new FastifyAdapter({
     loggerInstance: logger,

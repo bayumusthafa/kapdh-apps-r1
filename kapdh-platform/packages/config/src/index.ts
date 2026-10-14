@@ -134,6 +134,21 @@ const baseShape = {
   DELETION_LEDGER_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
   DELETION_LEDGER_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   DELETION_LEDGER_S3_FORCE_PATH_STYLE: z.stringbool().optional(),
+  /**
+   * Pelacakan galat GlitchTip/Sentry (PRD 7.1, 5.5; docs/runbooks/monitoring.md bagian 5). Kosong = nonaktif. Event hanya
+   * berisi field log yang sudah aman (tipe galat, kode, frame stack, request_id/job_id; N-14).
+   */
+  SENTRY_DSN: z
+    .string()
+    .regex(
+      /^https?:\/\/[^/@\s]+@[^/\s]+(\/[^\s]*)?\/\d+\/?$/,
+      "SENTRY_DSN harus berbentuk https://<kunci>@<host>/<id-proyek>",
+    )
+    .optional(),
+  /** Nama lingkungan di GlitchTip (bawaan NODE_ENV). */
+  SENTRY_ENVIRONMENT: z.string().min(1).max(64).optional(),
+  /** Rilis (tag image) untuk mengelompokkan galat per deploy. */
+  SENTRY_RELEASE: z.string().min(1).max(200).optional(),
   /** Kunci HMAC token URL berkas privat (maksimal 10 menit, terikat berkas dan tujuan; PRD 5.4). */
   FILE_URL_SECRET: z.string().min(32),
   /** Proyek FCM untuk push (Firebase hanya untuk FCM, ARCHITECTURE §2.4). Tanpa nilai: push nonaktif di luar production. */

@@ -14,6 +14,7 @@ import { type CoreDeps, CoreModule } from "./core/core.module.js";
 import type { Db } from "./core/db/types.js";
 import { JobRegistry } from "./core/jobs/job-registry.js";
 import { JobRunner } from "./core/jobs/job-runner.js";
+import { errorTrackingFromEnv } from "./core/logging/error-tracker.js";
 import { createRootLogger, NestPinoLogger } from "./core/logging/logger.js";
 
 export type { JobContext, OutboxEvent, ScheduledJob, TopicHandler } from "./core/jobs/job-registry.js";
@@ -21,6 +22,7 @@ export { JobRegistry } from "./core/jobs/job-registry.js";
 export type { DispatchResult, OutboxClaim, OutboxClaimRef, OutboxOutcome } from "./core/jobs/job-runner.js";
 export { JobRunner, OUTBOX_LOCK_MS, OUTBOX_MAX_ATTEMPTS, outboxBackoffMs } from "./core/jobs/job-runner.js";
 export { safeError } from "./core/logging/safe-error.js";
+export { errorTrackingFromEnv } from "./core/logging/error-tracker.js";
 export type { Clock } from "./core/adapters/clock.js";
 export type { Db } from "./core/db/types.js";
 export { ADVISORY_LOCK_KEYS } from "./core/db/locks.js";
@@ -68,7 +70,13 @@ export async function createWorkerContext(
   deps: WorkerDeps,
   options: { logger?: Logger; extraModules?: (Type | DynamicModule)[] } = {},
 ): Promise<WorkerContext> {
-  const logger = options.logger ?? createRootLogger({ level: deps.env.LOG_LEVEL, service: "kapdh-worker" });
+  const logger =
+    options.logger ??
+    createRootLogger({
+      level: deps.env.LOG_LEVEL,
+      service: "kapdh-worker",
+      errorTracking: errorTrackingFromEnv(deps.env),
+    });
   const app = await NestFactory.createApplicationContext(
     WorkerModule.forRoot(deps, logger, options.extraModules ?? []),
     { logger: new NestPinoLogger(logger), abortOnError: false },
