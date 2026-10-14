@@ -1,7 +1,8 @@
 # KAPDH Mobile
 
 Aplikasi anggota KAPDH Apps untuk Android dan iOS (Flutter 3.47, Riverpod 3, go_router 16, Dio 5 + SDK terbangkit
-`kapdh_api`). PRD v3.5; aturan rekayasa di `docs/ARCHITECTURE.md` §8.
+`kapdh_api`). PRD v3.5; aturan rekayasa di `docs/ARCHITECTURE.md` §8; gambaran seluruh repo di `../README.md`.
+Seluruh fitur anggota R1.0 sudah ada; bukti uji per AC di `../docs/qa/traceability.md`.
 
 ## Menyiapkan
 
@@ -57,16 +58,26 @@ lib/
                 perangkat)
     app_gate/   GET /public/config: wajib update (semver) dan maintenance
     session/    SessionController (unknown, anonymous, authenticated, offlineLastKnown), AuthRepository, MeRepository
-    cache/      KtaCacheStore (aturan offline 7 hari, AC F05-2..F05-4)
+    cache/      KtaCacheStore (aturan offline 7 hari, AC F05-2..F05-4), KtaAvatarCache dan HomeCacheStore (dihapus saat
+                logout/ganti akun), decoded_image_memory (gambar privat terdekode dibuang dari memori saat
+                logout/ganti akun, D3-08)
     storage/    TokenStore (satu nilai JSON atomik), SecureStore
-    realtime/   RealtimeClient Socket.IO /realtime (backoff, deduplikasi event_id, RealtimeEvent.fromJson)
+    realtime/   RealtimeClient Socket.IO /realtime (backoff, deduplikasi event_id, RealtimeEvent.fromJson),
+                connection_transitions (satu sumber deteksi tersambung ulang)
     push/       PushService + FirebasePushPlatform (izin, PUT /devices, notifikasi latar depan, ketukan → router)
     format/     Rupiah dari Money string, WIB/WITA/WIT, waktu relatif, hitung mundur
     deep_link/  normalisasi kapdh://app/... dan https://kapdh.or.id/app/...
-    ui/         kunci navigator/messenger global, dialog reautentikasi, kontak dukungan
+    ui/         kunci navigator/messenger global, dialog reautentikasi, kontak dukungan, back_navigation (tombol kembali
+                app bar dan sistem menjalankan ulang matriks redirect)
+    validation/ aturan sandi (8-72 byte UTF-8, PRD 2.5)
   design/       design system (prototipe layar 1 sampai 7, guideline hal. 4 sampai 8); impor lewat design.dart
-  features/<f>/ layar per fitur. Nyata: system (splash, wajib update, maintenance), auth (login, daftar, OTP),
-                status (portal pembatasan, status penghapusan). Lainnya penanda "Sedang dibangun" (fase C).
+  features/<f>/ layar, controller, repositori per fitur:
+                system (splash, wajib update, maintenance, galat konfigurasi), auth (login, daftar, OTP, koreksi email,
+                lupa sandi), onboarding (Biaya KTA), payments (instruksi, bukti, status, riwayat, perpanjangan),
+                kta (kartu + QR + offline), home, news, events (detail, reservasi), tickets, network (direktori,
+                profil, blokir, laporan), chat (direct, grup, undangan, info), notifications (inbox, ketukan push),
+                account (profil, privasi, preferensi notifikasi, sesi, sandi, diblokir, laporan saya, hapus akun),
+                legal, membership (aturan tahun akademik), status (portal pembatasan + banding, status penghapusan)
 ```
 
 Aturan yang wajib diikuti fitur:
@@ -95,10 +106,19 @@ Aturan yang wajib diikuti fitur:
 
 `flutter test` menjalankan uji unit dan widget tanpa jaringan (`test/support/fakes.dart`: adapter HTTP palsu, jam uji,
 secure storage memori; `test/support/app_harness.dart`: aplikasi lengkap dari splash). Font runtime dimatikan di
-`test/flutter_test_config.dart`.
+`test/flutter_test_config.dart`. Jumlah berkas/uji terakhir yang tercatat: `../docs/qa/traceability.md` bagian 2.
+
+```bash
+flutter analyze
+flutter test
+dart format --output=none --set-exit-if-changed lib test   # lib/app/theme/kapdh_tokens.dart masih dilaporkan (lama)
+```
+
+Uji widget memakai HTTP palsu; bukti AC utama ada di API (PRD 7.3). Alur nyata terhadap API staging termasuk UAT
+(`../docs/qa/uat-checklist.md`).
 
 `integration_test/critical_flows_test.dart` menjalankan smoke alur kritis (masuk dengan Keystore/Keychain asli, KTA,
-kirim bukti bayar) dan pengukuran N-03 di perangkat/emulator matriks D7 (`docs/qa/device-matrix.md`):
+kirim bukti bayar) dan pengukuran N-03 di perangkat/emulator matriks D7 (`../docs/qa/device-matrix.md`):
 
 ```bash
 flutter test integration_test/critical_flows_test.dart -d <perangkat>          # smoke, build debug
@@ -106,19 +126,47 @@ flutter drive --profile --driver=test_driver/integration_test.dart \
   --target=integration_test/critical_flows_test.dart -d <perangkat>          # smoke + p95 N-03
 ```
 
+## Rilis
+
+1. Naikkan `version` di `pubspec.yaml` (`x.y.z+build`); `min_app_version` di web admin dinaikkan hanya setelah versi
+   itu dapat diunduh di toko (PRD 8.4). Versi saat ini `0.1.0+1` berada di bawah `min_app_version` seed (`1.0.0`),
+   sehingga setiap mutasi dari build ini ditolak 426 `UPGRADE_REQUIRED` di staging/production; build UAT dan rilis
+   memakai `1.0.0+n` atau lebih.
+2. Build rilis di CI (signing dan secret hanya di CI; rincian di [`docs/BUILD.md`](docs/BUILD.md); IPA perlu macOS +
+   Xcode):
+   `flutter build appbundle --dart-define-from-file=<production.json dari secret CI>` dan
+   `flutter build ipa --dart-define-from-file=<...>`. Berkas memuat `KAPDH_ENV=production`,
+   `API_BASE_URL=https://api.kapdh.or.id/api/v1`, `PUSH_ENABLED=true` dan `FIREBASE_*` production (ADR-016).
+3. Repo Flutter terpisah (PRD 7.2, ADR-001): pisahkan riwayat folder ini dengan subtree split dari akar repo
+   (`-P kapdh-mobile`), lalu ganti dependensi path `kapdh_api` dengan dependensi git bertag `contracts-vX.Y.Z`
+   (dibuat `pnpm contracts:release-sdk` di `kapdh-platform`; contoh blok ada di komentar `pubspec.yaml`).
+4. Pengajuan toko, akun demo reviewer, formulir privasi, dan rencana cadangan iOS:
+   `../docs/runbooks/app-store-submission.md`.
+
 ## Tindak lanjut rilis
 
+- **Pemblokir submit (D13 mitigasi 1):** beberapa teks masih mengaitkan iuran/perpanjangan dengan membuka fitur
+  ("`<tab>` terkunci", "Perpanjang KTA untuk membuka kembali fitur ini", "mengaktifkan KTA dan fitur alumni"). Daftar
+  berkas, arah penulisan ulang, dan perintah pemeriksaan ada di `../docs/runbooks/app-store-submission.md` bagian 2;
+  uji widget yang memeriksa teks itu ikut diperbarui.
 - Bundel TTF Poppins sebagai aset dan matikan `GoogleFonts.config.allowRuntimeFetching` (saat ini Poppins diunduh
-  saat runtime dengan font sistem sebagai cadangan; ARCHITECTURE §8.1).
-- Android: kunci rilis (`android/key.properties`), `assetlinks.json` di kapdh.or.id untuk App Links, ikon notifikasi
+  saat runtime dari server Google dengan font sistem sebagai cadangan; ARCHITECTURE §8.1). Selama belum dibundel,
+  permintaan itu harus diungkap di formulir privasi toko.
+- Android: kunci rilis (`android/key.properties`), `assetlinks.json` di kapdh.or.id untuk App Links (berkas belum ada
+  di `apps/web/public`, dan `infra/nginx-web.conf` saat ini menolak semua path berawalan titik sehingga
+  `/.well-known/` harus dikecualikan), ikon notifikasi
   monokrom dan ikon tema monokrom Android 13 (`<monochrome>` pada `mipmap-anydpi-v26/ic_launcher.xml`). Ikon
   peluncur Android/iOS saat ini dibangkitkan dari `assets/logo-kapdh.png` di atas hijau gelap surface-dark
   (`tool/generate_launcher_icons.ps1`); ganti dengan berkas desain resmi bila tersedia.
 - iOS: tim Apple, entitlement Push Notifications (`aps-environment`) dan Associated Domains `applinks:kapdh.or.id`
-  untuk Universal Links; kunci APNs di proyek Firebase.
-- Build APK debug/profile Android sudah diverifikasi lokal (Phase D, emulator Android 15); IPA belum (perlu macOS +
-  Xcode). `android/build.gradle.kts` menambal compileSdk dan target Java plugin file_picker 10.x; hapus tambalan itu
-  setelah file_picker dinaikkan (naik mayor, perlu ADR).
+  untuk Universal Links (`apple-app-site-association` di `/.well-known/`); kunci APNs di proyek Firebase.
+- Pelaporan galat (GlitchTip, PRD 5.5) belum terpasang (`lib/bootstrap.dart`); bila ditambahkan, perbarui formulir
+  privasi toko.
+- Predictive back Android belum diaktifkan; bila diaktifkan, jalurnya wajib lewat `RedirectingBackButtonDispatcher`
+  (`lib/core/ui/back_navigation.dart`).
+- Build APK debug/profile Android sudah diverifikasi lokal (Phase D, emulator Android 15; `../docs/qa/device-matrix.md`);
+  IPA belum (perlu macOS + Xcode). `android/build.gradle.kts` menambal compileSdk dan target Java plugin file_picker
+  10.x; hapus tambalan itu setelah file_picker dinaikkan (naik mayor, perlu ADR).
 
 Build staging/production, penandatanganan Android (`android/key.properties`, tidak di-commit), catatan iOS,
 penempatan konfigurasi Firebase dan APK debug di CI: [`docs/BUILD.md`](docs/BUILD.md). CI (`.github/workflows/ci.yml`
