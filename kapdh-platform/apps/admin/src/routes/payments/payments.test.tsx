@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { api } from "../../api/client";
 import { mockAuth, mockPayments, paymentRequests } from "../../api/mocks";
 import { findToast, type User } from "../../test/utils";
 import { IDS, openPayments, requestsTo } from "./testing";
@@ -79,6 +80,31 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
     expect(sent.map((r) => r.query.q)).toEqual(["Siti"]);
     // Pencarian adalah tindakan admin: bukan permintaan latar (AC F02-5).
     expect(sent.every((r) => !r.background)).toBe(true);
+  });
+
+  it("F-15: ?stage=awaiting_review&overdue=true (tautan dasbor) menyaring antrean lewat batas review; pilihan admin menggantinya", async () => {
+    const user = userEvent.setup();
+    await openPayments(user, { search: "stage=awaiting_review&overdue=true" });
+    // Permintaan pertama sudah tersaring (tanpa memuat antrean penuh lebih dahulu).
+    await waitFor(() => expect(listRequests().length).toBeGreaterThan(0));
+    expect(listRequests()[0]?.query).toMatchObject({ stage: "awaiting_review", overdue: "true" });
+    const summary = await api.GET("/admin/payments/summary");
+    const count = summary.data!.overdue_count;
+    expect(count).toBeGreaterThan(0);
+    expect(await screen.findByText(`Menampilkan ${count} dari ${count}`)).toBeInTheDocument();
+    const filter = screen.getByRole("combobox", { name: "Batas review" });
+    expect(filter).toHaveValue("overdue");
+
+    await user.selectOptions(filter, "all");
+    expect(await screen.findByText("Menampilkan 20 dari 23")).toBeInTheDocument();
+    expect(listRequests().at(-1)?.query).not.toHaveProperty("overdue");
+    // Status selain "Menunggu" tidak memiliki batas review: saringan disembunyikan dan tidak dikirim.
+    await user.selectOptions(filter, "on_time");
+    await waitFor(() => expect(listRequests().at(-1)?.query).toMatchObject({ overdue: "false" }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Status" }), "paid");
+    await waitFor(() => expect(listRequests().at(-1)?.query).toMatchObject({ status: "paid" }));
+    expect(listRequests().at(-1)?.query).not.toHaveProperty("overdue");
+    expect(screen.queryByRole("combobox", { name: "Batas review" })).toBeNull();
   });
 
   it("filter jenis tiket dan status Semua menampilkan kolom status", async () => {
