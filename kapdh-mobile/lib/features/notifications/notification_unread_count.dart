@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
 import '../../app/app_services.dart';
-import '../../core/realtime/realtime_client.dart';
+import '../../core/realtime/connection_transitions.dart';
 import '../../core/session/session_controller.dart';
 import '../../core/session/session_state.dart';
 import 'notifications_repository.dart';
@@ -28,16 +28,9 @@ class NotificationUnreadCountController extends Notifier<int?> {
 
     // Event yang terbit selama soket terputus (latar belakang, jaringan putus) tidak diputar ulang server, jadi
     // jumlah dimuat ulang setiap kali koneksi realtime berpindah ke tersambung.
-    final connection = ref.watch(realtimeClientProvider).connectionState;
-    var connected = connection.value == RealtimeConnectionState.connected;
-    void onConnection() {
-      final now = connection.value == RealtimeConnectionState.connected;
-      if (now && !connected) unawaited(refresh());
-      connected = now;
-    }
-
-    connection.addListener(onConnection);
-    ref.onDispose(() => connection.removeListener(onConnection));
+    ref.onDispose(
+      listenConnectedTransitions(ref.watch(realtimeClientProvider).connectionState, () => unawaited(refresh())),
+    );
 
     unawaited(Future<void>.microtask(refresh));
     return null;

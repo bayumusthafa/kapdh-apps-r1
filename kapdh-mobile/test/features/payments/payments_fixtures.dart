@@ -290,13 +290,16 @@ List<String> captureClipboard(WidgetTester tester) {
 }
 
 /// Notifikasi realtime `notification.created` (kontrak events/notification.created.schema.json).
-NotificationCreatedPayload notificationOf(String category, {String title = 'Iuran pendaftaran disetujui'}) =>
-    NotificationCreatedPayload.fromJson({
-      'id': 'notif-1',
-      'category': category,
-      'title': title,
-      'body': null,
-      'deep_link': 'kapdh://app/payments/pay-1',
-      'created_at': iso(testNow),
-      'unread_count': 1,
-    });
+NotificationCreatedPayload notificationOf(
+  String category, {
+  String title = 'Iuran pendaftaran disetujui',
+  int unreadCount = 1,
+}) => NotificationCreatedPayload.fromJson({
+  'id': 'notif-1',
+  'category': category,
+  'title': title,
+  'body': null,
+  'deep_link': 'kapdh://app/payments/pay-1',
+  'created_at': iso(testNow),
+  'unread_count': unreadCount,
+});

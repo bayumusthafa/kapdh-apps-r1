@@ -6,8 +6,9 @@ import 'package:kapdh_api/kapdh_api.dart';
 import 'package:kapdh_mobile/core/api/idempotency_store.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/design/design.dart';
+import 'package:kapdh_mobile/features/notifications/notification_unread_count.dart';
+import 'package:kapdh_mobile/features/notifications/notifications_repository.dart';
 import 'package:kapdh_mobile/features/payments/payment_presentation.dart';
-import 'package:kapdh_mobile/features/payments/payment_updates.dart';
 import 'package:kapdh_mobile/features/payments/proof_file.dart';
 import 'package:kapdh_mobile/features/payments/widgets/proof_upload_section.dart';
 
@@ -34,7 +35,7 @@ Future<AppHarness> openPayment(
     textScale: textScale,
     overrides: [
       proofPickerProvider.overrideWithValue(picker ?? FakeProofPicker()),
-      realtimeNotificationsProvider.overrideWithValue(updates ?? const Stream.empty()),
+      notificationCreatedEventsProvider.overrideWithValue(updates ?? const Stream.empty()),
     ],
     handler: apiRoutes({
       '/me': (_) => FakeResponse.json(200, me ?? meJson(status: status)),
@@ -461,6 +462,30 @@ void main() {
       expect(tester.widget<KapdhButton>(submitButton).onPressed, isNotNull);
     });
 
+    testWidgets('F-13, ARCHITECTURE §4.9: satu event notification.created memuat ulang pembayaran dan memperbarui '
+        'lencana belum dibaca bersama', (tester) async {
+      final updates = StreamController<NotificationCreatedPayload>.broadcast();
+      addTearDown(updates.close);
+      var approved = false;
+      final app = await openPayment(tester, {
+        '/me/payments/pay-1': (_) =>
+            FakeResponse.json(200, approved ? paymentJson(status: 'paid', stage: 'paid') : awaitingReviewJson()),
+        '/notifications/unread-count': (_) => FakeResponse.json(200, {'unread_count': 0}),
+      }, updates: updates.stream);
+      final badge = app.container.listen(notificationUnreadCountProvider, (_, _) {});
+      addTearDown(badge.close);
+      await settle(tester);
+      expect(badge.read(), 0);
+      final loads = app.adapter.requestsTo('/me/payments/pay-1').length;
+
+      approved = true;
+      updates.add(notificationOf('payment', title: 'Pembayaran disetujui', unreadCount: 3));
+      await settle(tester);
+
+      expect(app.adapter.requestsTo('/me/payments/pay-1').length, loads + 1);
+      expect(badge.read(), 3);
+    });
+
     testWidgets(
       'PRD 2.2: ACCOUNT_SUSPENDED saat kirim bukti: status dimuat ulang dan diarahkan ke portal pembatasan (PRD 2.2)',
       (tester) async {
@@ -723,7 +748,7 @@ void main() {
         tokens: savedTokens(),
         overrides: [
           proofPickerProvider.overrideWithValue(FakeProofPicker()),
-          realtimeNotificationsProvider.overrideWithValue(const Stream.empty()),
+          notificationCreatedEventsProvider.overrideWithValue(const Stream.empty()),
         ],
         handler: apiRoutes({
           '/me': (_) => FakeResponse.json(200, meJson(status: 'unverified')),

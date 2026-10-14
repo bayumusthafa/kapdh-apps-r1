@@ -1,55 +1,37 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kapdh_mobile/core/realtime/realtime_client.dart';
+import 'package:kapdh_api/kapdh_api.dart';
+import 'package:kapdh_mobile/features/notifications/notifications_repository.dart';
 import 'package:kapdh_mobile/features/payments/payment_updates.dart';
 
 import 'payments_fixtures.dart';
 
 void main() {
-  test('AC F05-4: sambungan realtime pulih memberi satu petunjuk per transisi ke connected', () async {
-    final state = ValueNotifier(RealtimeConnectionState.connected);
-    addTearDown(state.dispose);
-    final events = <void>[];
-    final subscription = connectedTransitions(state).listen(events.add);
-    addTearDown(subscription.cancel);
-
-    // Sudah tersambung saat mulai mendengar: bukan transisi.
-    await pumpEventQueue();
-    expect(events, isEmpty);
-
-    state.value = RealtimeConnectionState.waitingRetry;
-    state.value = RealtimeConnectionState.connecting;
-    await pumpEventQueue();
-    expect(events, isEmpty);
-
-    state.value = RealtimeConnectionState.connected;
-    await pumpEventQueue();
-    expect(events, hasLength(1));
-
-    state.value = RealtimeConnectionState.disconnected;
-    state.value = RealtimeConnectionState.connected;
-    await pumpEventQueue();
-    expect(events, hasLength(2));
-  });
-
-  test('pendengar keadaan dilepas setelah pelanggan terakhir berhenti', () async {
-    final state = _State(RealtimeConnectionState.disconnected);
-    addTearDown(state.dispose);
-    final subscription = connectedTransitions(state).listen((_) {});
-    expect(state.listening, isTrue);
-    await subscription.cancel();
-    expect(state.listening, isFalse);
-  });
-
   test('hanya notifikasi kategori pembayaran dan keanggotaan yang memicu muat ulang', () {
     expect(isPaymentUpdate(notificationOf('payment')), isTrue);
     expect(isPaymentUpdate(notificationOf('membership')), isTrue);
     expect(isPaymentUpdate(notificationOf('news', title: 'Berita baru')), isFalse);
   });
-}
 
-class _State extends ValueNotifier<RealtimeConnectionState> {
-  _State(super.value);
+  test('F-13: petunjuk muat ulang pembayaran diturunkan dari satu sumber notification.created', () async {
+    final events = StreamController<NotificationCreatedPayload>.broadcast();
+    addTearDown(events.close);
+    final container = ProviderContainer(
+      overrides: [notificationCreatedEventsProvider.overrideWithValue(events.stream)],
+    );
+    addTearDown(container.dispose);
+    final received = <String>[];
+    final subscription = container.read(paymentUpdatesProvider).listen((payload) => received.add(payload.title));
+    addTearDown(subscription.cancel);
 
-  bool get listening => hasListeners;
+    events
+      ..add(notificationOf('payment'))
+      ..add(notificationOf('news', title: 'Berita baru'))
+      ..add(notificationOf('membership', title: 'KTA aktif'));
+    await pumpEventQueue();
+
+    expect(received, ['Iuran pendaftaran disetujui', 'KTA aktif']);
+  });
 }
