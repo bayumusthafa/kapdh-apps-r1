@@ -154,6 +154,11 @@ export function mockHasPermission(permission: Permission): boolean {
   return effectivePermissions().includes(permission);
 }
 
+/** Peran admin tiruan yang sedang masuk, untuk operasi khusus Super Admin (mis. AC F16-4, `role: super_admin`). */
+export function mockAdminRole(): AdminRole {
+  return profile.role;
+}
+
 /** Identitas admin tiruan yang sedang masuk sebagai pelaku (decided_by, actor_admin, updated_by; F-17). */
 export function mockAdminRef(): { admin_id: string; display_name: string } {
   return { admin_id: ADMIN_ID, display_name: profile.display_name };
