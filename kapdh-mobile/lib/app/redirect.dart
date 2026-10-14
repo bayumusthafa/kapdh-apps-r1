@@ -36,6 +36,13 @@ enum RouteGroup {
   notifications,
   account,
 
+  /// Keamanan akun: sesi perangkat (`/account/sessions`) dan ganti password (`/account/password`). Pemulihan akun
+  /// untuk setiap status anggota yang memegang sesi, termasuk suspended (PRD 2.2 "pemulihan akun"; auth.yaml
+  /// listSessions/revokeSession/logoutAll member_access `any`, changePassword `mobile, any`). Tujuan deep link
+  /// notifikasi keamanan (password_changed, password_reset, logout_all) sehingga anggota suspended dapat meninjau dan
+  /// mencabut perangkat lain tanpa keluar dulu (AC F02-6).
+  accountSecurity,
+
   /// Daftar blokir milik sendiri: tindakan komunitas, hanya anggota aktif (moderation.yaml listBlocks
   /// member_access active).
   accountCommunity,
@@ -95,6 +102,8 @@ RouteGroup routeGroupOf(String path) {
     // Gerbang ketukan push /notifications/<id> (AC F13-3): akses sama dengan kotak masuk.
     'notifications' when segments.length == 2 => RouteGroup.notifications,
     'account' when single => RouteGroup.account,
+    'account' when (second == 'sessions' || second == 'password') && segments.length == 2 =>
+      RouteGroup.accountSecurity,
     'account' when second == 'blocked' => RouteGroup.accountCommunity,
     'account' when second == 'reports' => RouteGroup.accountReports,
     'account' when second == 'delete' => RouteGroup.accountDelete,
@@ -106,8 +115,8 @@ RouteGroup routeGroupOf(String path) {
 }
 
 /// Fitur anggota yang tersedia untuk unverified, verified, expiring dan expired: beranda/berita (informasi resmi),
-/// KTA (dengan label status), riwayat pembayaran sendiri, kotak masuk, pengaturan akun, laporan sendiri dan hapus
-/// akun.
+/// KTA (dengan label status), riwayat pembayaran sendiri, kotak masuk, pengaturan akun (termasuk sesi perangkat dan
+/// ganti password), laporan sendiri dan hapus akun.
 const Set<RouteGroup> _memberBase = {
   RouteGroup.home,
   RouteGroup.news,
@@ -115,6 +124,7 @@ const Set<RouteGroup> _memberBase = {
   RouteGroup.payments,
   RouteGroup.notifications,
   RouteGroup.account,
+  RouteGroup.accountSecurity,
   RouteGroup.accountReports,
   RouteGroup.accountDelete,
 };
@@ -155,9 +165,11 @@ const Map<EffectiveStatus, Set<RouteGroup>> _allowed = {
   // Portal pembatasan, bantuan (legal), status laporan/banding sendiri (moderation.yaml member_access any),
   // penghapusan setelah verifikasi identitas, dan kotak masuk resmi: kontrak C7 memberi semua operasi notifikasi
   // member_access `any` agar anggota suspended tetap dapat membaca notifikasi keamanan dan pengurus (AC F13-2).
-  // Tujuan deep link notifikasi tetap melewati matriks ini.
+  // Pemulihan akun (PRD 2.2): sesi perangkat dan ganti password (auth.yaml member_access `any`), tujuan deep link
+  // notifikasi keamanan. Tujuan deep link notifikasi lain tetap melewati matriks ini.
   EffectiveStatus.suspended: {
     RouteGroup.restricted,
+    RouteGroup.accountSecurity,
     RouteGroup.accountReports,
     RouteGroup.accountDelete,
     RouteGroup.notifications,

@@ -11,6 +11,7 @@ import 'package:kapdh_mobile/features/auth/email_correction_sheet.dart';
 import 'package:kapdh_mobile/features/auth/otp_screen.dart';
 import 'package:kapdh_mobile/features/auth/registration_draft.dart';
 
+import '../../support/a11y.dart';
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
 
@@ -282,6 +283,11 @@ void main() {
     app.router.go('/register/otp');
     await settle(tester);
     expect(app.location, '/login');
+  });
+
+  testWidgets('N-11: pedoman aksesibilitas otomatis (target sentuh, label, kontras) pada layar OTP', (tester) async {
+    await openOtp(tester, apiRoutes({}));
+    await expectMeetsAccessibilityGuidelines(tester);
   });
 
   testWidgets('teks 200 %: tidak meluap, tombol Verifikasi tetap terlihat (N-11)', (tester) async {

@@ -171,6 +171,37 @@ void main() {
       },
     );
 
+    testWidgets('PRD 5.2, 5.4, N-09: foto peserta (URL bertanda tangan) dimuat di memori saja, tidak lewat cache disk '
+        'gambar publik yang bertahan setelah logout', (tester) async {
+      const avatar = 'https://api.kapdh.or.id/api/v1/files/content/token-avatar-ahmad';
+      await pumpMemberApp(
+        tester,
+        location: '/events/event-1',
+        routes: _detailRoutes(
+          eventDetailJson(),
+          extra: {
+            '/events/event-1/participants': (_) => FakeResponse.json(
+              200,
+              eventPageJson([
+                {...participantJson(), 'avatar_url': avatar},
+                participantJson(userId: 'user-3', fullName: 'Siti Aminah', cohort: 2),
+              ]),
+            ),
+          },
+        ),
+      );
+      await scrollUntil(tester, find.text('Siti Aminah'));
+      expect(find.text('Ahmad Yusiana'), findsOneWidget);
+      // Cover event publik tetap lewat RemoteImage (cache disk untuk Beranda offline, AC F08-4) ...
+      expect(requestedImages, contains('https://files.kapdh.or.id/events/event-1.jpg'));
+      // ... tetapi foto anggota lain tidak pernah masuk pembuat gambar ber-cache disk.
+      expect(requestedImages, isNot(contains(avatar)));
+      final images = tester.widgetList<Image>(find.byType(Image)).map((image) => image.image);
+      expect(images.whereType<NetworkImage>().map((provider) => provider.url), contains(avatar));
+      // Peserta tanpa foto memakai inisial.
+      expect(find.text('SA'), findsOneWidget);
+    });
+
     testWidgets('N-03 memuat: kerangka daftar dan detail event selagi request berjalan', (tester) async {
       final list = Completer<FakeResponse>();
       final detail = Completer<FakeResponse>();
