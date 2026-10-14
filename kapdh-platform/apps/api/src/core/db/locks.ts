@@ -40,6 +40,8 @@ export const ADVISORY_LOCK_NAMESPACES = {
    * penerbit bersamaan berurutan seperti penerbit challenge nyata yang mengunci baris users.
    */
   otpDecoy: 47_110_003,
+  /** Satu entri terminal per ekspor audit (completed/failed), kunci = id ekspor (kontrak C7 AuditExport, AC F17-4). */
+  auditExport: 47_110_004,
 } as const;
 
 /**

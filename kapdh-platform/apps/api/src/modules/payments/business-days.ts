@@ -33,9 +33,15 @@ export function addBusinessDaysJakarta(instant: Date, days: number): Date {
   return new Date(instant.getTime() + businessDayOffset(jakartaIsoDow(instant), days) * DAY_MS);
 }
 
-/** Ekspresi SQL timestamptz: `column` + `days` hari kerja, rumus sama dengan {@link addBusinessDaysJakarta}. */
+/**
+ * Ekspresi SQL timestamptz: `column` + `days` hari kerja, rumus sama dengan {@link addBusinessDaysJakarta}. Satu-satunya
+ * implementasi SQL hari kerja (dipakai juga dasbor C7 lewat modul admin). Aritmetika hari dilakukan pada timestamp
+ * LOKAL Jakarta lalu dikembalikan ke timestamptz, sehingga hasilnya tidak bergantung TimeZone sesi database
+ * (`timestamptz + interval 'n day'` mengikuti DST zona sesi).
+ */
 export function addBusinessDaysSql(column: AnyColumn | SQL, days: number): SQL {
   if (!Number.isInteger(days) || days < 0) throw new Error("Jumlah hari kerja tidak valid");
-  const dow = sql`extract(isodow from (${column} at time zone 'Asia/Jakarta'))::int`;
-  return sql`(${column} + make_interval(days => (${days}::int + 2 * ((least(${dow}, 5) - 1 + ${days}::int) / 5) - greatest(${dow} - 5, 0))))`;
+  const local = sql`(${column} at time zone 'Asia/Jakarta')`;
+  const dow = sql`extract(isodow from ${local})::int`;
+  return sql`((${local} + make_interval(days => (${days}::int + 2 * ((least(${dow}, 5) - 1 + ${days}::int) / 5) - greatest(${dow} - 5, 0)))) at time zone 'Asia/Jakarta')`;
 }

@@ -34,11 +34,12 @@ export interface TransactionalMail {
   text: string;
 }
 
-
 /**
- * Email transaksional generik (F-13: notifikasi email per kategori; pemberitahuan lain dari worker). Isi disusun
- * pemanggil dari templat Bahasa Indonesia; tidak pernah memuat sandi, OTP, token, isi chat, atau bukti bayar
- * (ARCHITECTURE §2 butir 3).
+ * Email transaksional generik yang dikirim worker dari outbox (ARCHITECTURE §4.7): notifikasi email per kategori
+ * (F-13), undangan admin dan pemberitahuan keamanan pengurus (F-16). Isi disusun pemanggil dari templat Bahasa
+ * Indonesia; tidak pernah memuat sandi, OTP, isi chat, atau bukti bayar (ARCHITECTURE §2 butir 3) dan tidak pernah
+ * dicatat di log lingkungan nyata (N-14). Satu-satunya token yang boleh ada adalah tautan undangan admin sekali pakai
+ * di fragmen URL (`/invite#t=`), yang hanya dikirim ke email login admin.
  */
 export interface MailMessage {
   to: string;
@@ -68,7 +69,8 @@ export interface MailSendResult {
 
 /**
  * Pengirim email. OTP dikirim sinkron oleh API karena kritis waktu dan pengguna dapat mengirim ulang (ADR-004);
- * email transaksional lain melalui outbox dan worker (ARCHITECTURE §4.7).
+ * email transaksional lain melalui outbox dan worker (ARCHITECTURE §4.7) lewat `send` (notifikasi F-13, email
+ * pengurus F-16) atau `sendTransactional` (penghapusan akun F-14).
  */
 export interface Mailer {
   sendOtp(to: string, code: string, purpose: OtpPurpose, options?: OtpMailOptions): Promise<void>;
@@ -133,7 +135,6 @@ export function otpMailText(code: string, options: OtpMailOptions = {}): string 
     'Bila tautan tidak dapat dibuka, gunakan menu "Lupa sandi" pada aplikasi. Bila Anda tidak meminta pemulihan ini, hubungi bantuan KAPDH.',
   ].join("\n");
 }
-
 
 /** Subjek satu baris: CR/LF dibuang agar tidak dapat menyisipkan header (injeksi header email). */
 function singleLine(value: string): string {
@@ -265,8 +266,9 @@ export class DevLogMailer implements Mailer {
     this.logger.warn(`[DEV] email "${singleLine(mail.subject)}" untuk ${mail.to}`);
   }
   async send(message: MailMessage): Promise<MailSendResult> {
-    // Hanya subjek dan penerima (development); isi email tidak dicetak.
-    this.logger.warn(`[DEV] email "${singleLine(message.subject)}" untuk ${message.to}`);
+    // Development saja (main.ts/worker menolak mailer ini di luar development, N-14): isi teks ikut dicetak agar
+    // tautan undangan admin (F-16) dapat dipakai tanpa SMTP, sama seperti kode OTP di atas. HTML tidak dicetak.
+    this.logger.warn(`[DEV] email "${singleLine(message.subject)}" untuk ${message.to}\n${message.text}`);
     return { messageId: null };
   }
 }
@@ -354,5 +356,9 @@ export class MemoryMailer implements Mailer {
   /** Email transaksional untuk alamat tertentu. */
   messagesTo(to: string): MailMessage[] {
     return this.messages.filter((m) => m.to === to);
+  }
+  /** Email transaksional terakhir ke alamat ini. */
+  lastMessage(to: string): MailMessage | undefined {
+    return [...this.messages].reverse().find((m) => m.to === to);
   }
 }
