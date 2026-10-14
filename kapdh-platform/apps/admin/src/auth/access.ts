@@ -41,5 +41,6 @@ export function accessFor(path: GuardedPath): Access {
  * izin pada enum Permission memiliki permukaan UI yang jelas (diuji di nav.test.ts).
  */
 export const IN_PAGE_PERMISSIONS: Partial<Record<Permission, string>> = {
-  "payments.decide": "Tombol Setujui/Tolak pada /payments (antrean memerlukan payments.read).",
+  "payments.decide":
+    "Tombol Setujui/Tolak dan Catat iuran (D13) pada /payments (antrean memerlukan payments.read).",
 };
