@@ -23,6 +23,13 @@ export interface PaymentsSearch {
    * Pengaturan), atau user_id alumni (tautan dari detail anggota). Parameter dihapus setelah dialog dibuka.
    */
   record?: true | string;
+  /**
+   * Batasi daftar ke payment satu anggota (filter `user_id` adminListPayments), dari "Semua pembayaran" di detail
+   * anggota. Daftar terbatas menampilkan seluruh status.
+   */
+  user?: string;
+  /** Batasi daftar ke payment tiket satu event (filter `event_id` adminListPayments), dari tab Tiket event. */
+  event?: string;
 }
 
 /** `?overdue=true|false` (parser URL router menghasilkan boolean; string juga diterima). */
@@ -46,6 +53,8 @@ export function validatePaymentsSearch(search: Record<string, unknown>): Payment
   if (overdue !== undefined) out.overdue = overdue;
   if (parseBool(search.record) === true) out.record = true;
   else if (typeof search.record === "string" && UUID.test(search.record)) out.record = search.record;
+  if (typeof search.user === "string" && UUID.test(search.user)) out.user = search.user;
+  if (typeof search.event === "string" && UUID.test(search.event)) out.event = search.event;
   return out;
 }
 

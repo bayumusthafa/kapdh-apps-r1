@@ -4,7 +4,12 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { mockAuth, mockPayments } from "../../api/mocks";
 import { MOCK_MEMBER } from "../../api/mocks/members";
 import { findToast, renderApp, signIn, type User } from "../../test/utils";
-import { canRecordDuesFor, duesUnavailableReason, recordBlockReason } from "./recordEligibility";
+import {
+  canRecordDuesFor,
+  duesUnavailableReason,
+  feesUnconfigured,
+  recordBlockReason,
+} from "./recordEligibility";
 import { IDS, openPayments, requestsTo } from "./testing";
 
 /**
@@ -120,6 +125,19 @@ describe("kelayakan Catat iuran (recordEligibility, sama dengan GET /me/fees dan
     expect(canRecordDuesFor({ ...base, effective_status: "verified" }, admin)).toBe(false);
     expect(canRecordDuesFor({ ...base, effective_status: "unverified" }, admin)).toBe(true);
   });
+
+  it("PRD 8.2: nominal iuran belum tersimpan (versi 0) atau total 0.00 menghalangi payment baru, per jenis", () => {
+    const fees = { version: "3", registration_total: "60000.00", renewal_fee: "10000.00" };
+    expect(feesUnconfigured(fees, "registration")).toBe(false);
+    expect(feesUnconfigured(fees, "renewal")).toBe(false);
+    expect(feesUnconfigured({ ...fees, version: "0" }, "registration")).toBe(true);
+    expect(feesUnconfigured({ ...fees, version: "0" }, "renewal")).toBe(true);
+    expect(feesUnconfigured({ ...fees, renewal_fee: "0.00" }, "renewal")).toBe(true);
+    expect(feesUnconfigured({ ...fees, renewal_fee: "0.00" }, "registration")).toBe(false);
+    expect(feesUnconfigured({ ...fees, registration_total: "0.00" }, "registration")).toBe(true);
+    // Nilai yang tidak dapat dibaca klien tidak menghalangi; server tetap penentu.
+    expect(feesUnconfigured({ ...fees, renewal_fee: "?" }, "renewal")).toBe(false);
+  });
 });
 
 describe("Catat iuran di Verifikasi Pembayaran (D13, adminRecordPayment; server tiruan)", FLOW, () => {
@@ -233,6 +251,58 @@ describe("Catat iuran di Verifikasi Pembayaran (D13, adminRecordPayment; server 
     expect(await within(panel).findByRole("button", { name: "Setujui" })).toBeInTheDocument();
   });
 
+  it("PRD 8.2: tagihan terbuka memakai snapshot-nya sendiri → tetap dapat diselesaikan walaupun nominal iuran belum tersimpan", async () => {
+    mockPayments.unsetFees();
+    const user = userEvent.setup();
+    await openPayments(user);
+    const dialog = await openRecordDialog(user);
+    await pickMember(user, dialog, "Hasan", /Hasan Basri/);
+    await within(dialog).findByText(/Belum ada bukti dari anggota/);
+    expect(within(dialog).queryByText(/Nominal iuran ini belum ditetapkan/)).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Catat iuran" })).toBeEnabled();
+  });
+
+  it("PRD 8.2: nominal iuran belum ditetapkan → iuran baru tidak dapat dicatat dan dialog menunjuk tab Biaya", async () => {
+    mockPayments.unsetFees();
+    mockPayments.cancelAsOtherAdmin(IDS.hasan);
+    const user = userEvent.setup();
+    await openPayments(user);
+    const dialog = await openRecordDialog(user);
+    // Tanpa tagihan terbuka: payment baru akan ditolak server (403), jadi formulir tidak ditawarkan.
+    await pickMember(user, dialog, "Hasan", /Hasan Basri/);
+    const note = await within(dialog).findByText(/Nominal iuran ini belum ditetapkan atau bernilai nol/);
+    expect(within(dialog).getByRole("button", { name: "Catat iuran" })).toBeDisabled();
+    expect(within(dialog).queryByTestId("file-input")).toBeNull();
+    const toFees = within(note.parentElement!).getByRole("link", { name: "Buka tab Biaya" });
+    expect(toFees).toHaveAttribute("href", "/payments?tab=fees");
+    await user.click(toFees);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: DIALOG })).toBeNull());
+    expect(await screen.findByRole("tabpanel")).toHaveAttribute("id", expect.stringMatching(/fees/));
+    expect(requestsTo("POST", "/admin/payments")).toHaveLength(0);
+  });
+
+  it("PRD 8.2: biaya diubah menjadi nol saat dialog terbuka → server menolak 403, pesannya tampil dan dialog mengikuti", async () => {
+    mockPayments.cancelAsOtherAdmin(IDS.hasan);
+    const user = userEvent.setup();
+    await openPayments(user);
+    const dialog = await openRecordDialog(user);
+    await pickMember(user, dialog, "Hasan", /Hasan Basri/);
+    await within(dialog).findByText(/Belum ada tagihan terbuka untuk iuran ini/);
+    await fillVerification(user, dialog, { method: /\[Nama bank 1\]/ });
+    mockPayments.updateFeesAsOtherAdmin("50000.00", "10000.00", "0.00");
+    await submit(user, dialog);
+
+    expect(
+      await within(dialog).findByText(/Nominal iuran belum ditetapkan atau bernilai nol\. Simpan nominal/),
+    ).toBeInTheDocument();
+    // Biaya dimuat ulang: catatan nominal nol menggantikan formulir.
+    expect(
+      await within(dialog).findByText(/Nominal iuran ini belum ditetapkan atau bernilai nol/),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Catat iuran" })).toBeDisabled();
+    expect(requestsTo("POST", "/admin/payments")).toHaveLength(1);
+  });
+
   it("PRD 2.3: akun alumni tertaut admin pemanggil dan akun dibatasi tidak dapat dicatat iurannya", async () => {
     const user = userEvent.setup();
     await openPayments(user);
@@ -298,7 +368,41 @@ describe("pintu masuk Catat iuran dan tautan payment (D6-01, D6-02; server tirua
     // Ahmad verified di luar jendela perpanjangan; Bayu tertaut ke admin pemanggil (PRD 2.3).
     const { card: ahmad } = await openMember(user, MOCK_MEMBER.ahmad, "Ahmad Zulhadi");
     expect(within(ahmad).queryByRole("link", { name: "Catat iuran" })).toBeNull();
-    expect(within(ahmad).getByRole("link", { name: "Verifikasi Pembayaran" })).toBeInTheDocument();
+    expect(within(ahmad).getByRole("link", { name: "Semua pembayaran" })).toHaveAttribute(
+      "href",
+      `/payments?tab=verify&user=${MOCK_MEMBER.ahmad}`,
+    );
+  });
+
+  it("D6-02: Semua pembayaran membuka daftar yang dibatasi ke anggota itu dengan seluruh status; cakupan dapat dihapus", async () => {
+    const user = userEvent.setup();
+    const { card, router } = await openMember(user, MOCK_MEMBER.siti, "Siti Rahmawati");
+    await user.click(within(card).getByRole("link", { name: "Semua pembayaran" }));
+
+    const scope = await screen.findByRole("note", { name: "Cakupan daftar pembayaran" });
+    await waitFor(() =>
+      expect(scope).toHaveTextContent("Hanya menampilkan pembayaran milik Siti Rahmawati."),
+    );
+    expect(screen.getByRole("combobox", { name: "Status" })).toHaveValue("all");
+    // Filter kontrak adminListPayments: user_id, tanpa stage (seluruh status).
+    await waitFor(() => {
+      const last = requestsTo("GET", "/admin/payments").at(-1);
+      expect(last?.query).toMatchObject({ user_id: MOCK_MEMBER.siti });
+      expect(last?.query).not.toHaveProperty("stage");
+    });
+    const table = await screen.findByRole("table", { name: "Antrean pembayaran" });
+    const names = within(table)
+      .getAllByRole("rowheader")
+      .map((cell) => cell.textContent ?? "");
+    expect(names.length).toBeGreaterThan(0);
+    expect(names.every((n) => n.includes("Siti Rahmawati"))).toBe(true);
+
+    await user.click(within(scope).getByRole("button", { name: "Tampilkan semua pembayaran" }));
+    await waitFor(() => expect(router.state.location.search).not.toHaveProperty("user"));
+    expect(screen.queryByRole("note", { name: "Cakupan daftar pembayaran" })).toBeNull();
+    await waitFor(() =>
+      expect(requestsTo("GET", "/admin/payments").at(-1)?.query).not.toHaveProperty("user_id"),
+    );
   });
 
   it("D6-02: baris pembayaran terbaru menaut ke payment itu; panel keputusan membukanya langsung", async () => {
@@ -325,6 +429,8 @@ describe("pintu masuk Catat iuran dan tautan payment (D6-01, D6-02; server tirua
     await signIn(user);
     const note = await screen.findByRole("note", { name: "Pencatatan iuran di luar aplikasi" });
     expect(note).toHaveTextContent("dicatat pengurus lewat Catat iuran di Verifikasi Pembayaran");
+    // Super Admin memegang seluruh izin formulir: tanpa daftar izin.
+    expect(note).not.toHaveTextContent("members.read");
     expect(within(note).getByRole("link", { name: "Catat iuran" })).toHaveAttribute(
       "href",
       "/payments?tab=verify&record=true",
@@ -342,5 +448,19 @@ describe("pintu masuk Catat iuran dan tautan payment (D6-01, D6-02; server tirua
     const note = await screen.findByRole("note", { name: "Pencatatan iuran di luar aplikasi" });
     expect(note).toHaveTextContent("payments.read dan payments.decide");
     expect(within(note).queryByRole("link")).toBeNull();
+  });
+
+  it("D6-01: pemutus pembayaran tanpa members.read tetap ditautkan, tetapi diberi tahu seluruh izin formulir pencatatan", async () => {
+    mockAuth.setAdmin({
+      role: "admin",
+      permissions: ["settings.manage", "payments.read", "payments.decide"],
+    });
+    const user = userEvent.setup();
+    renderApp("/settings");
+    await signIn(user);
+    const note = await screen.findByRole("note", { name: "Pencatatan iuran di luar aplikasi" });
+    expect(note).toHaveTextContent("melihat data anggota (members.read)");
+    expect(note).toHaveTextContent("kelola pengaturan (settings.manage)");
+    expect(within(note).getByRole("link", { name: "Catat iuran" })).toBeInTheDocument();
   });
 });

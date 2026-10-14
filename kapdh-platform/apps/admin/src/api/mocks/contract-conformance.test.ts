@@ -1628,6 +1628,26 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
     expect(current.get("POST /admin/payments") ?? []).toEqual([]);
   });
 
+  it("POST /admin/payments: nominal iuran belum ditetapkan → payment baru 403 FORBIDDEN (gagal tertutup); tagihan terbuka tetap diselesaikan", async () => {
+    const renewals = async () =>
+      (await payments({ user_id: MOCK_MEMBER.hasan, type: "renewal" })).map((p) => p.id).sort();
+    mockPayments.unsetFees();
+    mockPayments.cancelAsOtherAdmin(HASAN_RENEWAL);
+    const before = await renewals();
+    const refused = await record(await recordBody(MOCK_MEMBER.hasan, "renewal"));
+    expect(refused.status).toBe(403);
+    expect(refused.body).toMatchObject({ code: "FORBIDDEN", message: /Nominal iuran belum ditetapkan/ });
+    expect(await renewals()).toEqual(before);
+    // Total 0.00 juga ditolak walaupun versi sudah tersimpan.
+    mockPayments.updateFeesAsOtherAdmin("50000.00", "10000.00", "0.00");
+    expect(mockPayments.fees().version).not.toBe("0");
+    expect((await record(await recordBody(MOCK_MEMBER.hasan, "renewal"))).status).toBe(403);
+    // Tagihan terbuka memakai snapshot-nya sendiri: tetap diselesaikan di tempat (200).
+    mockPayments.unsetFees();
+    expect((await record(await recordBody(ANDI, "registration"))).status).toBe(200);
+    expect(current.get("POST /admin/payments") ?? []).toEqual([]);
+  });
+
   async function newAdjustment(kind: "refund" | "correction"): Promise<S["AdminPaymentAdjustment"]> {
     for (const s of await payments({ status: "paid" })) {
       const p = await payment(s.id);

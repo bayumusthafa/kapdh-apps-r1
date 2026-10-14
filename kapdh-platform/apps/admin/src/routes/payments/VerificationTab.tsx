@@ -139,7 +139,14 @@ export function VerificationTab() {
   const navigate = useNavigate({ from: "/payments" });
   const [q, setQ] = useState("");
   const [type, setType] = useState<PaymentType | "all">("all");
-  const [status, setStatus] = useState<StatusFilter>("awaiting_review");
+  /**
+   * Cakupan dari tautan (`?user=` detail anggota, `?event=` tab Tiket event): filter `user_id`/`event_id`
+   * adminListPayments. Daftar terbatas dibuka dengan status "Semua" agar payment lunas dan ditolak ikut tampil.
+   */
+  const scopeUser = search.user;
+  const scopeEvent = search.event;
+  const scoped = scopeUser !== undefined || scopeEvent !== undefined;
+  const [status, setStatus] = useState<StatusFilter>(scoped ? "all" : "awaiting_review");
   const [overdue, setOverdue] = useState<OverdueFilter>(overdueFilterOf(search.overdue));
   const [queueSort, setQueueSort] = useState<QueueSort>("submitted_at_asc");
   const [selectedId, setSelectedId] = useState<string | null>(search.payment ?? null);
@@ -149,7 +156,7 @@ export function VerificationTab() {
   const sort = sortFor(status, queueSort);
   /** Saringan batas review hanya bermakna untuk antrean "Menunggu" (pending berbukti). */
   const overdueQuery = status === "awaiting_review" && overdue !== "all" ? overdue === "overdue" : undefined;
-  const filters = { q, type, status, sort, overdue: overdueQuery };
+  const filters = { q, type, status, sort, overdue: overdueQuery, user: scopeUser, event: scopeEvent };
   const paging = useCursorPaging(filters, PAYMENT_PAGE_SIZE);
 
   // Tautan URL dari dasbor (`?stage=awaiting_review&overdue=true`) menyetel saringan yang sama dengan filter
@@ -162,6 +169,16 @@ export function VerificationTab() {
   useEffect(() => {
     if (linkedOverdue !== undefined) setOverdue(overdueFilterOf(linkedOverdue));
   }, [linkedOverdue]);
+
+  // Cakupan baru dari tautan (juga saat halaman ini sudah terbuka) menampilkan seluruh status payment itu.
+  useEffect(() => {
+    if (scopeUser !== undefined || scopeEvent !== undefined) setStatus("all");
+  }, [scopeUser, scopeEvent]);
+
+  /** Hapus cakupan anggota/event: kembali ke antrean seluruh anggota dengan saringan yang sedang dipilih. */
+  function clearScope() {
+    void navigate({ search: (prev) => ({ ...prev, user: undefined, event: undefined }), replace: true });
+  }
 
   /** Pilihan pengguna mengganti saringan dari tautan; URL dibersihkan agar muat ulang tidak menimpanya. */
   function clearLinkedFilters() {
@@ -224,6 +241,8 @@ export function VerificationTab() {
             ...(overdueQuery !== undefined ? { overdue: overdueQuery } : {}),
             ...(type !== "all" ? { type } : {}),
             ...(q ? { q } : {}),
+            ...(scopeUser ? { user_id: scopeUser } : {}),
+            ...(scopeEvent ? { event_id: scopeEvent } : {}),
             ...(sort ? { sort } : {}),
             ...(paging.cursor ? { cursor: paging.cursor } : {}),
             limit: PAYMENT_PAGE_SIZE,
@@ -324,6 +343,11 @@ export function VerificationTab() {
   );
 
   const selectedItem = list.data?.items.find((i) => i.id === selectedId);
+  /** Nama cakupan dari baris hasil (nama anggota atau judul event); umum bila daftar kosong atau akun dihapus. */
+  const scopedItem = list.data?.items[0];
+  const scopeLabel = scopeUser
+    ? `milik ${scopedItem?.member?.full_name ?? "satu anggota"}`
+    : `tiket ${scopedItem?.event_title ? `event ${scopedItem.event_title}` : "satu event"}`;
 
   return (
     <div className="flex flex-col gap-5">
@@ -395,6 +419,18 @@ export function VerificationTab() {
           </Button>
         ) : null}
       </div>
+      {scoped ? (
+        <div
+          role="note"
+          aria-label="Cakupan daftar pembayaran"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-info-bg px-3 py-2 text-sm text-info"
+        >
+          <span>Hanya menampilkan pembayaran {scopeLabel}.</span>
+          <Button variant="ghost" size="sm" onClick={clearScope}>
+            Tampilkan semua pembayaran
+          </Button>
+        </div>
+      ) : null}
       <RecordDuesDialog
         open={recording !== null}
         initialUserId={recording?.userId ?? null}
@@ -430,9 +466,13 @@ export function VerificationTab() {
             emptyState={
               <EmptyState
                 compact
-                title={q ? "Tidak ada pembayaran yang cocok" : "Antrean kosong"}
+                title={q || scoped ? "Tidak ada pembayaran yang cocok" : "Antrean kosong"}
                 description={
-                  q ? "Ubah kata kunci atau filter." : "Tidak ada pembayaran dengan jenis dan status ini."
+                  q
+                    ? "Ubah kata kunci atau filter."
+                    : scoped
+                      ? `Tidak ada pembayaran ${scopeLabel} dengan jenis dan status ini.`
+                      : "Tidak ada pembayaran dengan jenis dan status ini."
                 }
               />
             }
