@@ -72,8 +72,9 @@ command (`infra/ci/remote-migrate.sh`) yang diikat ke satu lingkungan di sisi se
   migrasi → `roles.sql` → seed referensi → gerbang penuh `--allow-schema-ahead`), dengan mode `KAPDH_RELEASE_GATE*`
   dari berkas konfigurasi server. `run-release.sh` + image `kapdh-release` tetap jalur manual dan Compose cadangan.
   Perbedaan yang disengaja: jalur otomatis tidak menolak image yang lebih lama dari skema (aksi `deploy-tag` = rollback
-  image lewat pipeline), sehingga `roles.sql` terbaru wajib diterapkan ulang manual sesudah rollback; dan sandi role
-  LOGIN diatur pengelola secrets, bukan dari env job.
+  image lewat pipeline), tetapi mendeteksinya dari journal migrasi image dan hanya menjalankan gerbang go-live
+  (`roles.sql`, migrasi dan seed referensi image lama dilewati, sehingga hak tabel rilis terbaru tidak dilonggarkan
+  `roles.sql` lama); dan sandi role LOGIN diatur pengelola secrets, bukan dari env job.
 - Image `kapdh-release` masuk katalog image CI (`infra/ci/images.json`) dan dipromosikan dengan digest yang sama.
 - Keputusan 6: aturan dasar ProseMirror kini satu salinan di `apps/admin/src/components/ui/tiptap-base.css`
   (bukan `styles.css`).

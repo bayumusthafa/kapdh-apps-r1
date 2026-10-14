@@ -1,22 +1,23 @@
 /**
  * PRD 9.2 "Skenario kritis yang wajib lulus" pada PostgreSQL 17 nyata (audit D4, ARCHITECTURE §9.2). Berkas ini
- * melengkapi skenario yang belum dibuktikan berkas jalur PG lain; skenario yang sudah terbukti dirujuk:
+ * melengkapi skenario yang belum dibuktikan berkas jalur PG lain; skenario yang sudah terbukti dirujuk. Nomor = urutan
+ * butir PRD v3.5 9.2 (sama dengan docs/qa/traceability.md bagian 5.2):
  *
- *   1. kursi terakhir ............................ events-module.pg (AC F09-1), events-inventory.pg
- *   2. reservasi ganda satu anggota .............. events-module.pg, events-inventory.pg
- *   3. dua pengurus menyetujui bukti yang sama ... payments-module.pg (iuran) + DI SINI (tiket)
- *   4. bukti diganti saat keputusan .............. payments-module.pg (AC F04-4)
- *   5. worker mati setelah commit payment ........ DI SINI (kartu benar, outbox → inbox/push/email tepat sekali)
- *   6. JWT/socket dicabut ........................ DI SINI (logout semua, suspend, pencabutan izin) + auth-races.pg
- *   7. IDOR ...................................... DI SINI (bukti bayar, gambar chat, profil privat, audit)
- *   8. job dijalankan ulang ...................... DI SINI (reservations.expire, events.reminders, events.lifecycle,
- *                                                  event.cancelled, semua job terjadwal) + membership.pg (pengingat
- *                                                  renewal), kernels.pg (renewal diterapkan ulang 8x), content.pg
- *   9. akun dihapus lalu backup dipulihkan ....... DI SINI (ledger diterapkan ulang, total keuangan cocok)
- *                                                  + account-deletion.pg (CLI ledger-reapply)
- *  10. gerbang go-live konfigurasi produksi ...... DI SINI (golive:check menolak lalu meloloskan) + golive-gate.pg
- *                                                  (satu uji per kondisi) + release-job.pg (urutan job rilis)
- *  11. dua Super Admin diturunkan bersamaan ...... last-super-admin.pg, admin-governance.pg
+ *   1. kursi terakhir + reservasi ganda satu anggota  events-module.pg (AC F09-1), events-inventory.pg
+ *   2. dua pengurus menyetujui bukti yang sama ...... payments-module.pg (iuran), ticket-double-approval.pg + DI SINI
+ *                                                     (tiket)
+ *   3. bukti diganti saat keputusan ................. payments-module.pg (AC F04-4)
+ *   4. worker mati setelah commit payment ........... DI SINI (kartu benar, outbox → inbox/push/email tepat sekali)
+ *   5. JWT/socket dicabut ........................... DI SINI (logout semua, suspend, pencabutan izin) + auth-races.pg
+ *   6. IDOR ......................................... DI SINI (bukti bayar, gambar chat, profil privat, audit)
+ *   7. job dijalankan ulang ......................... DI SINI (reservations.expire, events.reminders, events.lifecycle,
+ *                                                     event.cancelled, semua job terjadwal) + membership.pg (pengingat
+ *                                                     renewal), kernels.pg (renewal diterapkan ulang 8x), content.pg
+ *   8. akun dihapus lalu backup dipulihkan .......... DI SINI (ledger diterapkan ulang, total keuangan cocok)
+ *                                                     + account-deletion.pg (CLI ledger-reapply)
+ *   9. gerbang go-live konfigurasi produksi ......... DI SINI (golive:check menolak lalu meloloskan) + golive-gate.pg
+ *                                                     (satu uji per kondisi) + release-job.pg (urutan job rilis)
+ *  10. dua Super Admin diturunkan bersamaan ......... last-super-admin.pg, admin-governance.pg
  *
  * Diakhiri invarian global atas seluruh data berkas ini: penghitung kursi = jumlah tiket per status, nominal payment =
  * jumlah baris snapshot (ARCHITECTURE §2.5). API berjalan sebagai login role kapdh_app (mendengarkan port nyata untuk
@@ -310,9 +311,9 @@ function disconnected(socket: Socket, timeoutMs = 5000): Promise<void> {
   });
 }
 
-// ------------------------------------------------------------------------------------------- skenario 3 (tiket)
+// ------------------------------------------------------------------------------------------- skenario 2 (tiket)
 
-describe("PRD 9.2 #3 / AC F04-3: dua pengurus menyetujui bukti TIKET yang sama bersamaan (PostgreSQL 17)", () => {
+describe("PRD 9.2 #2 / AC F04-3: dua pengurus menyetujui bukti TIKET yang sama bersamaan (PostgreSQL 17)", () => {
   it("satu keputusan berlaku, yang lain 409 PAYMENT_STATE_CONFLICT; satu tiket paid, held→paid tepat sekali, satu audit ticket.paid", async () => {
     const eventId = await insertEvent({ seats: 2, price: "75000.00" });
     const owner = await member();
@@ -425,9 +426,9 @@ describe("PRD 9.2 #3 / AC F04-3: dua pengurus menyetujui bukti TIKET yang sama b
   });
 });
 
-// ------------------------------------------------------------------------------------------------ skenario 5
+// ------------------------------------------------------------------------------------------------ skenario 4
 
-describe("PRD 9.2 #5 / AC F04-1, PRD 5.1: worker mati setelah commit payment (PostgreSQL 17)", () => {
+describe("PRD 9.2 #4 / AC F04-1, PRD 5.1: worker mati setelah commit payment (PostgreSQL 17)", () => {
   it("kartu dan periode benar sejak commit; event outbox milik worker yang mati diklaim ulang setelah lease habis; inbox, push dan email tepat sekali", async () => {
     const owner = await member("unverified");
     const deviceToken = `pg-kritis-${uuidv7()}`;
@@ -526,9 +527,9 @@ describe("PRD 9.2 #5 / AC F04-1, PRD 5.1: worker mati setelah commit payment (Po
   });
 });
 
-// ------------------------------------------------------------------------------------------------ skenario 6
+// ------------------------------------------------------------------------------------------------ skenario 5
 
-describe("PRD 9.2 #6 / AC F02-6, F12-3, F16-3: JWT dan socket yang sudah dicabut (PostgreSQL 17)", () => {
+describe("PRD 9.2 #5 / AC F02-6, F12-3, F16-3: JWT dan socket yang sudah dicabut (PostgreSQL 17)", () => {
   it("logout semua: socket perangkat lain diputus; access/refresh token lama dan handshake socket baru ditolak 401 UNAUTHENTICATED", async () => {
     const owner = await createAlumni(fx, { status: "verified" });
     const peer = await createAlumni(fx, { status: "verified" });
@@ -650,9 +651,9 @@ describe("PRD 9.2 #6 / AC F02-6, F12-3, F16-3: JWT dan socket yang sudah dicabut
   });
 });
 
-// ------------------------------------------------------------------------------------------------ skenario 7
+// ------------------------------------------------------------------------------------------------ skenario 6
 
-describe("PRD 9.2 #7 / N-09: mengganti object ID tidak memaparkan data pihak lain (PostgreSQL 17)", () => {
+describe("PRD 9.2 #6 / N-09: mengganti object ID tidak memaparkan data pihak lain (PostgreSQL 17)", () => {
   it("bukti bayar: anggota lain dan pengurus tanpa payments.read ditolak tanpa membedakan alasan; pemilik dan payments.read dapat membuka", async () => {
     const owner = await member("unverified");
     const intruder = await member("unverified");
@@ -771,9 +772,9 @@ describe("PRD 9.2 #7 / N-09: mengganti object ID tidak memaparkan data pihak lai
   });
 });
 
-// ------------------------------------------------------------------------------------------------ skenario 8
+// ------------------------------------------------------------------------------------------------ skenario 7
 
-describe("PRD 9.2 #8 / AC F09-2, F13-6, PRD 5.1: job dijalankan ulang tidak menggandakan efek (PostgreSQL 17)", () => {
+describe("PRD 9.2 #7 / AC F09-2, F13-6, PRD 5.1: job dijalankan ulang tidak menggandakan efek (PostgreSQL 17)", () => {
   it("reservations.expire: 4 eksekusi bersamaan pada 2 worker + ulangan → setiap hold dilepas, dibatalkan, diaudit dan diberitahukan tepat sekali", async () => {
     const eventA = await insertEvent({ seats: 5 });
     const eventB = await insertEvent({ seats: 5 });
@@ -987,7 +988,7 @@ describe("PRD 9.2 #8 / AC F09-2, F13-6, PRD 5.1: job dijalankan ulang tidak meng
   });
 });
 
-// ------------------------------------------------------------------------------------------------ skenario 9
+// ------------------------------------------------------------------------------------------------ skenario 8
 
 /** Ringkasan keuangan dan inventori yang wajib sama antara database sumber dan database pulihan (D2, PRD 9.2). */
 async function financeSnapshot(s: Sql) {
@@ -1041,7 +1042,7 @@ async function likeMismatches(s: Sql) {
     where p.like_count <> (select count(*) from app.post_likes l where l.post_id = p.id)`;
 }
 
-describe("PRD 9.2 #9 / AC F14-6, D2: akun dihapus lalu backup dipulihkan (PostgreSQL 17)", () => {
+describe("PRD 9.2 #8 / AC F14-6, D2: akun dihapus lalu backup dipulihkan (PostgreSQL 17)", () => {
   it("ledger diterapkan ulang ke database pulihan: data terhapus tidak aktif kembali; total keuangan, penyesuaian, histori payment dan penghitung kursi sama dengan database sumber", async () => {
     const lane = inject("kapdhPg");
     const base = `postgres://${lane.user}:${lane.password}@${lane.host}:${lane.port}`;
@@ -1201,9 +1202,9 @@ describe("PRD 9.2 #9 / AC F14-6, D2: akun dihapus lalu backup dipulihkan (Postgr
   }, 240_000);
 });
 
-// ----------------------------------------------------------------------------------------------- skenario 10
+// ------------------------------------------------------------------------------------------------ skenario 9
 
-describe("PRD 9.2 #10 / PRD 8.2 butir 3-4, 9.3: gerbang go-live menolak konfigurasi produksi yang belum disahkan", () => {
+describe("PRD 9.2 #9 / PRD 8.2 butir 3-4, 9.3: gerbang go-live menolak konfigurasi produksi yang belum disahkan", () => {
   // Gerbang go-live (temuan audit D4, perintah golive:check) menolak sebelum rilis. Perbaikan D4-02 melengkapinya saat
   // berjalan: nominal iuran yang belum tersimpan (versi 0) atau bertotal 0.00 juga ditolak saat instruksi iuran dibuat
   // (fail closed, test/payments/dues-configuration.e2e.test.ts dan invarian D4-02 di bawah).

@@ -16,7 +16,9 @@ No Docker, nginx, psql, actionlint, physical devices or GitHub Actions runner on
 | 5 | `worktree-wf_7d813f46-21c-8` (`3cca104`) | E3 backup/restore/monitoring/load-test tooling and runbooks | `edc3e08` | 3 | `5bd66e4` |
 | 6 | `worktree-wf_7d813f46-21c-9` (`aa76651`) | E4 docs: READMEs, ADR 001-017, production-init/go-live/app-store runbooks, UAT checklist | `c22e74d` | 2 | `5e01db7` |
 
-The traceability update and this report are the last commit on the branch.
+The traceability update and this report were committed in `0ad6028`. An independent review of that tree raised 11
+findings; all 11 were verified as real and fixed in one fix-round commit on the same branch (section 10), followed by
+a full re-run of the verification (section 8 shows the fix-round run).
 
 ## 1. Phase D admin hardening (merge 1)
 
@@ -37,7 +39,8 @@ E1 was branched before the Phase D API hardening (`fccd56e`), so it met that wor
 
 - `apps/api/package.json` scripts: E1 added `golive:check`, main (Phase D api-identity) added `account:status`. Both
   kept.
-- `apps/api/test/pg/critical-9-2.pg.test.ts` scenario #10: main had an `it.todo` (no go-live gate existed) with a note
+- `apps/api/test/pg/critical-9-2.pg.test.ts` go-live gate scenario (PRD v3.5 9.2 #9; the file labelled it #10 until the
+  fix round, section 10): main had an `it.todo` (no go-live gate existed) with a note
   that D4-02 already fails closed at runtime when dues are unset or 0.00; E1 replaced it with the real gate test.
   Chosen: E1's test, main's D4-02 note kept as a comment (runtime fail-closed and pre-release gate complement each
   other). The test file's imports (golive CLI, `approveProductionConfig`, seeds) merged cleanly.
@@ -98,8 +101,9 @@ published images with its own template workflow and another tag scheme (`sha-<12
   command. A refusal exits 1, so channels and Coolify are not touched. Tests (`infra/ci/test/remote-migrate.test.mjs`,
   fake `docker`): sequences updated, 5 new (preflight refusal, post-migration refusal + image/env assertions,
   technical error handling, staging report + seed failure, server-only exception). Deliberate remaining difference:
-  the CI path does not refuse an image older than the schema (that is how `deploy-tag` rolls back), so the latest
-  `roles.sql` must be re-applied by hand after a rollback (already in `ci-cd.md` section 9).
+  the CI path does not refuse an image older than the schema (that is how `deploy-tag` rolls back). Since the fix round
+  (section 10) it detects that case from the image migration journal and runs only the go-live gate, skipping the old
+  image's `roles.sql`, migrations and seed, so no manual `roles.sql` re-apply is needed after a rollback.
 - **Image catalog**: `release` (Dockerfile.api target `release`) added to `infra/ci/images.json`, with `target`
   support in `images.mjs` (validated against the Dockerfile stages) and `target: ${{ matrix.target }}` in both build
   steps, so the release image is built, scanned, smoke-tested and promoted with the same digest as the others and
@@ -170,7 +174,9 @@ remaining blocker is the drill), `go-live.md` (gate `golive:check` closes D2-02;
 `app-store-submission.md` (the D13 "Catat iuran" screen exists), `uat-checklist.md` (U-11/U-12/U-13), ARCHITECTURE
 §10 (CI/CD and release job + gate). One contradiction resolved: E1's runbook set the Coolify API healthcheck to `/api/v1/health`,
 E4 and the Phase D ledger gate require `/api/v1/health/ready` (a restored replica must not take traffic before the
-ledger is re-applied). Chosen: readiness for Coolify; the image `HEALTHCHECK` stays liveness.
+ledger is re-applied). Chosen: readiness for Coolify; the image `HEALTHCHECK` stays liveness. The review found that
+the Compose fallback Traefik still health-checked liveness; fixed in the fix round (section 10, R1), so both deploy
+paths now route on readiness.
 
 ## 7. Traceability
 
@@ -190,34 +196,36 @@ ledger is re-applied). Chosen: readiness for Coolify; the image `HEALTHCHECK` st
 
 ## 8. Final verification
 
-Run on the final tree (after `5e01db7`; the last commit only adds this report and the traceability update). Every
-result was observed in this session. turbo test runs used `--force`.
+Re-run on the fix-round tree (section 10; the first run on `0ad6028` had the same results except where noted). Every
+result was observed in the fix-round session. turbo build/typecheck/lint/test runs used `--force`; the `test:pg` and
+`test:live` tasks are never cached.
 
 | Command | Result |
 | ------- | ------ |
 | `kapdh-platform`: `pnpm install` | pass, no tracked file changed (`pnpm-lock.yaml` already contains E2's fastify override resolution) |
 | `pnpm build --force` | pass, 10/10 tasks (0 cached) |
-| `pnpm typecheck` | pass, 16/16 tasks |
-| `pnpm lint` | pass, 9/9 tasks (2 known redocly `no-ambiguous-paths` warnings in contracts) |
+| `pnpm typecheck --force` | pass, 16/16 tasks (0 cached) |
+| `pnpm lint --force` | pass, 9/9 tasks (2 known redocly `no-ambiguous-paths` warnings in contracts) |
 | `pnpm format:check` | pass ("All matched files use Prettier code style!") |
 | `pnpm contracts:lint` | pass, valid (2 known warnings); 17 event schemas valid, 20 examples |
 | `pnpm exec turbo run test --concurrency=1 --force` | pass, 16/16 tasks: api 126 files / 2718 tests, admin 44 / 628, web 14 / 170, worker 9 / 54, contracts 59 node tests, config 28, storage 41, database 23, shared 16 |
 | `pnpm exec turbo run test:pg --concurrency=1` | pass, 9/9 tasks: api 31 files / 257 tests, worker 3 / 11; exit 0 (the known `embedded-postgres` "done is not a function" teardown message prints after both summaries) |
 | `pnpm contracts:test-dart` (Flutter on PATH) | pass: `kapdh_api` `dart analyze --fatal-infos` "No issues found!" + 40 tests; fixture package analyze clean + 7 tests |
 | `pnpm audit --prod` | "No known vulnerabilities found" (fastify 5.12.5 override) |
-| `pnpm test:live` | pass, 8/8 tasks; `admin.live.test.tsx` 5/5 |
+| `pnpm test:live` | pass, 8/8 tasks; `admin.live.test.tsx` 5/5 (now also a CI step, R2) |
 | `kapdh-mobile`: `flutter.bat pub get` | pass, `pubspec.lock` unchanged |
 | `flutter.bat analyze` | "No issues found!" |
 | `flutter.bat test --concurrency=4` | 912 tests, "All tests passed!" |
-| `dart.bat format --output=none --set-exit-if-changed lib test integration_test test_driver` (extra) | only the pre-existing generated `lib/app/theme/kapdh_tokens.dart` is reported (CI excludes it) |
+| CI `dart format` command with the R10 pathspec (`lib`, `test`, `integration_test`, `test_driver`, minus the generated token copy), batched with `xargs -n 60` for the Windows command-line limit | 279 files, 0 changed |
 | `node infra/scripts/validate-infra.mjs` | "Validasi infra lulus." |
 | `node infra/ci/check-workflows.mjs` | 8 files pass, 0 warnings |
 | `node infra/ci/images.mjs validate` (extra) | api, release, worker, web, admin valid |
-| `node --test 'infra/ci/test/*.test.mjs'` | 58 tests, 9 suites, 58 pass, 0 fail, 0 skipped |
+| `node --test 'infra/ci/test/*.test.mjs'` | 65 tests, 10 suites, 65 pass, 0 fail, 0 skipped (first run 58; R6, R7, R11 tests) |
 | `sh infra/backup/test/dry-run.sh` | 60 pass, 0 fail |
 | `sh infra/monitoring/test/dry-run.sh` | 37 pass, 0 fail |
 | `sh infra/scripts/release-job.test.sh` | all 19 scenarios pass (25 checks) |
-| `shellcheck --severity=style` on the 18 `infra/**/*.sh` (extra, same as the CI job) | clean, exit 0 |
+| `shellcheck --severity=style` on the 18 `infra/**/*.sh` (extra, same as the CI job) and `sh -n` on every infra script | clean, exit 0 |
+| Traceability citation check (extra, scratchpad script) | 599 citations, 0 missing |
 
 The brief for this round gave `main` at API 2674 tests and PG lane 235 (not re-measured here); the merged tree has
 2718 and 257 (E1 go-live gate and release job, E2 trust proxy/health/gate tests, E3 ops, account, logging and backup
@@ -258,3 +266,31 @@ or GitHub runner). Each is an explicit go-live gate item in `docs/runbooks/go-li
 - Carried over: BullMQ Lua paths against a real Redis; the `embedded-postgres@17.6.0-beta.15` teardown message
   ("done is not a function", exit code 0); Flutter against the merged API (the device smoke uses an in-process fake
   API).
+- Fix round leftovers (section 10): the readiness healthcheck in the Compose fallback Traefik, the schema-ahead skip
+  in `remote-migrate.sh` and the `PG_EXEC`/`FILES_ROOT` example defaults are tested only with fakes and static
+  validation here; they need the same first real runs as above (Compose stack on the VPS, a `deploy-tag` rollback on
+  staging, the first backup run). `restore-backup.md` and `storage-migration.md` still write `/data/files` for host
+  commands; `backup-restore.md` section 3 now states that on the host this is `FILES_ROOT`
+  (`/srv/kapdh/<env>/files`).
+
+## 10. Review fix round
+
+An independent review of `0ad6028` raised 2 medium and 9 low findings. Each was checked against the tree; all 11 are
+real and were fixed. None was rejected.
+
+| # | Severity | Finding | Verified | Fix |
+| - | -------- | ------- | -------- | --- |
+| R1 | medium | The Compose fallback Traefik (`infra/traefik/render-dynamic.sh`) health-checked the API on liveness `/api/v1/health`, so the readiness ledger gate (503 `deletion_ledger: fail`, ADR-014) never took a restored API out of rotation on that path. | yes: lines 121/125, `compose.production.yml` comment, ADR-014:55 | Production and staging API services now use `/api/v1/health/ready`; web/admin stay `/healthz`; the image `HEALTHCHECK` stays liveness. `validate-infra.mjs` asserts the rendered health path per service (checked by reverting the path: 2 failures). Comment in `compose.production.yml`, `compose-cadangan.md` 2a step 4 and the AC F14-6 traceability note cover the Compose path. |
+| R2 | medium | No CI job ran `pnpm test:live`, so "CI lulus" did not gate the admin-against-API evidence that D2-14 relies on. | yes: no `test:live` in `.github/workflows` | New step `pnpm test:live` in the `test` job (in `ci-ok.needs`). `validate-infra.mjs` now requires every infra/live needle to sit in a job that `ci-ok` needs (checked by removing the step and by dropping `test` from `ci-ok.needs`). `ci-cd.md` job table, ARCHITECTURE §9.3, D2-14 row updated. |
+| R3 | low | PRD 9.2 numbering differed between files: `critical-9-2.pg.test.ts` split PRD bullet 1 in two, so restore was "#9" and the gate "#10" there, in E3's backup docs and in this report, while traceability and the PRD use #8 restore, #9 gate, #10 two Super Admins. | yes: PRD v3.5 9.2 list has 10 bullets | Renumbered to PRD v3.5 order: `critical-9-2.pg.test.ts` header and describe labels (#2, #4-#9), `backup-ops.e2e.test.ts` (#8), ADR-018, `backup-restore.md`, `verify-restore.sh`, `infra/README.md`, `ci.yml` comment, this report. The changed `it` name is updated in traceability; the citation check (599 citations, 0 missing) passes. Remaining "#9" references all mean the go-live gate. |
+| R4 | low | ADR-003 still pointed at the deleted `infra/ci/github-actions-ci.yml` and said CI skips the PG lane, Flutter, Dart SDK and format. | yes | Bullet replaced: `.github/workflows/ci.yml` (ADR-024) runs `test` (+ live lane), `test-pg`, format, Dart SDK and Flutter. |
+| R5 | low | `infra/ci/README.md` described `remote-migrate.sh` with the old E2 sequence (no gate, no seed). | yes | Row lists the full sequence, the schema-ahead behaviour (R11) and the config file. |
+| R6 | low | `.env.production.example` header pointed the Coolify path only at `run-release.sh`/`release.env` with `RELEASE_GATE`; the CI forced command reads `KAPDH_RELEASE_GATE*` from `/etc/kapdh/ci-migrate/<env>.env`, so `RELEASE_GATE=report` there was silently ignored (fail-closed). | yes: `remote-migrate.sh` reads only `KAPDH_RELEASE_GATE*` | Both env examples name both executors, their files and variable names. `remote-migrate.sh` now rejects `RELEASE_GATE`, `RELEASE_GATE_REASON`, `RELEASE_GATE_APPROVER` (config or environment) with an error naming the `KAPDH_` variable; new fake-docker test. `ci-cd.md` section 5 updated. |
+| R7 | low | `Dockerfile.admin` accepted only `https://*/api/v1`, while `admin-csp.mjs` also allowed `http://localhost`, a branch that could never run in the image build. | yes | One policy, the strict one: `admin-csp.mjs` accepts only `https://<host>/api/v1` (same as the Dockerfile `case` and `images.json`). New `infra/ci/test/admin-csp.test.mjs` (4 tests) pins the accepted/rejected set and that the Dockerfile check runs before the render. |
+| R8 | low | `backup.env.example` assumed Postgres on `127.0.0.1:5432` and files at `/data/files`; in the merged infra Postgres is only on an internal Docker network and files live at `/srv/kapdh/production/files`. `production-init.md` 2.2 set no passwords for `kapdh_backup`/`kapdh_monitor`. | yes: `compose.production.yml` `data` network internal, no ports; `files` bind to `KAPDH_FILES_DIR` | `backup.env.example` and `monitoring.env.example` (same defect) default to `PG_EXEC` into the Postgres container and `FILES_ROOT=/srv/kapdh/production/files` (loopback `PGHOST` kept as a commented alternative); restore section and `LEDGER_REAPPLY_CMD` mount aligned. `backup-restore.md` section 3 explains the topology; `production-init.md` 2.2 sets both role passwords. |
+| R9 | low | `kapdh-mobile/docs/BUILD.md` said the Windows build machine has no JDK and Android builds happen elsewhere; Phase D built and ran debug/profile APKs here. | yes: `flutter doctor -v` shows Temurin 21.0.12 configured via `flutter config --jdk-dir` | Row now states the Phase D local APK builds; signed release builds and IPA stay on trusted/macOS machines. |
+| R10 | low | The CI `dart format` gate covered only `lib/` and `test/`, not `integration_test/` and `test_driver/`. | yes | Pathspec extended in `ci.yml` and `ci-cd.md`; the same command run locally over 279 files: 0 changed. |
+| R11 | low | On a `deploy-tag` rollback `remote-migrate.sh` applied the OLD image's `roles.sql` (twice) to the newer schema, loosening grants on tables that newer releases restrict until someone re-applied the latest file by hand. | yes: `roles.sql` revokes and re-grants DML on all tables, then applies only the restrictions it knows | `remote-migrate.sh` copies the image migration journal, compares it with `drizzle.__drizzle_migrations` (read-only, via the psql image) and, when the database is ahead, skips `roles.sql` (both), migrate and seed with a loud warning; the go-live gate still runs (preflight in enforce, then full `--allow-schema-ahead`). The manual re-apply step is gone from `ci-cd.md` 9, `rilis-dan-gerbang-go-live.md` 6.1 and ADR-023. Tests: sequences now include the schema check; new tests for rollback (skips, gate still refuses), schema unreadable/invalid, journal missing/empty. |
+
+Fix-round test changes: `infra/ci/test` 58 → 65 tests (remote-migrate 15 → 18, admin-csp 4 new); API and PG lanes keep
+their counts (only labels changed).

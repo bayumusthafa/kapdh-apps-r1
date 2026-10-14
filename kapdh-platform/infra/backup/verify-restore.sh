@@ -1,6 +1,6 @@
 #!/bin/sh
 # Verifikasi hasil restore KAPDH sebelum layanan dibuka (PRD 5.5 "memeriksa login/MFA, anggota, total uang, tiket, chat,
-# berkas dan penghapusan terdahulu", PRD 8.4, PRD 9.2 #9, N-06, AC F14-6). Dipanggil restore.sh; dapat dijalankan
+# berkas dan penghapusan terdahulu", PRD 8.4, PRD 9.2 #8, N-06, AC F14-6). Dipanggil restore.sh; dapat dijalankan
 # ulang sendiri:
 #
 #   infra/backup/verify-restore.sh --manifest <manifest.json> [--db kapdh] [--files-root /data/files]

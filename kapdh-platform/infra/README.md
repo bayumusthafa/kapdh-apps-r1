@@ -94,7 +94,7 @@ pengurus berjudul `[Contoh]`; nama yang diisi pendaftar tidak pernah menahan ril
 Kode keluar: 0 lulus, 1 ditolak, 2 argumen salah, 3 galat teknis. Jalankan dengan role `kapdh_migrator` (atau
 `kapdh_app`; versi skema lalu tercatat "tidak terbaca"); role `kapdh_worker` tidak dapat membaca `mfa_totp` → kode 3.
 Bukti uji: `apps/api/test/core/golive-gate.e2e.test.ts` (PGlite), `apps/api/test/pg/golive-gate.pg.test.ts` (satu uji per
-kondisi, PostgreSQL 17), `apps/api/test/pg/critical-9-2.pg.test.ts` skenario 10, `apps/api/test/pg/release-job.pg.test.ts`.
+kondisi, PostgreSQL 17), `apps/api/test/pg/critical-9-2.pg.test.ts` skenario 9, `apps/api/test/pg/release-job.pg.test.ts`.
 
 ## Jaringan, port, sumber daya
 

@@ -509,13 +509,14 @@ Admin: vitest + Testing Library on mock mode per page; Flutter: unit tests for p
 screen state, interceptor/session tests with http_mock_adapter, 200% text scale on critical flows.
 
 Admin live lane (`pnpm test:live` from `kapdh-platform/`, or `pnpm build` then `pnpm --filter @kapdh/admin
-test:live`; not part of `pnpm test`): `apps/admin/live/api-server.mjs` boots `apps/api/dist` on a local TCP port with
-PGlite migrated by the production migrator, seed dev data, two TOTP-enrolled admins and a member proof, plus a
-127.0.0.1-only control port (server clock, TOTP codes). `apps/admin/src/live/*.live.test.tsx` drives the shipped React
-pages and openapi-fetch client over real HTTP (cookies, multipart uploads): login + TOTP and session restore, refresh
-rotation, the idle warning whose "Tetap masuk" extends the server idle, 30-min idle revocation, concurrent payment
-decision, D13 "Catat iuran" and payment deep links. Scenarios whose UI clause is only proven against mocks belong
-here once they touch a server rule.
+test:live`; not part of `pnpm test`, but a step of the CI `test` job, so "CI lulus" gates it):
+`apps/admin/live/api-server.mjs` boots `apps/api/dist` on a local TCP port with PGlite migrated by the production
+migrator, seed dev data, two TOTP-enrolled admins and a member proof, plus a 127.0.0.1-only control port (server
+clock, TOTP codes). `apps/admin/src/live/*.live.test.tsx` drives the shipped React pages and openapi-fetch client
+over real HTTP (cookies, multipart uploads): login + TOTP and session restore, refresh rotation, the idle warning
+whose "Tetap masuk" extends the server idle, 30-min idle revocation, concurrent payment decision, D13 "Catat iuran"
+and payment deep links. Scenarios whose UI clause is only proven against mocks belong here once they touch a server
+rule.
 
 ## 10. Operations (summary; details in docs/runbooks)
 

@@ -168,7 +168,10 @@ services:
     networks:
       - data
       - edge
-    # HEALTHCHECK dari image (GET /api/v1/health). Kesiapan dependensi: /api/v1/health/ready (Uptime Kuma).
+    # HEALTHCHECK dari image = liveness (GET /api/v1/health; kontainer tidak di-restart saat dependensi turun). Trafik
+    # diatur readiness: Traefik cadangan (infra/traefik/render-dynamic.sh) dan Coolify memeriksa /api/v1/health/ready,
+    # sehingga database pulihan yang belum menjalankan ledger-reapply (503 deletion_ledger: fail) tidak menerima trafik
+    # (AC F14-6, ADR-014). Uptime Kuma memantau keduanya.
     stop_grace_period: 30s
     deploy:
       resources:

@@ -46,6 +46,8 @@ endpoint (ratusan berkas) juga harus cepat dan dapat dijalankan setiap commit ta
   (`migrationsUpTo(...)`), bukan oleh database baru.
 - `embedded-postgres@17.6.0-beta.15` mencetak `TypeError: done is not a function` saat teardown setelah ringkasan uji;
   kode keluar tetap 0. Periksa lagi saat dependensi pra-rilis itu diperbarui.
-- Workflow CI di `infra/ci/github-actions-ci.yml` (main) belum menjalankan jalur PG, Flutter, `contracts:test-dart`
-  maupun `format:check` (temuan audit D2-09); itu tanggung jawab paket infra Fase E.
+- CI: `.github/workflows/ci.yml` (ADR-024) menjalankan kedua jalur pada setiap pull request: job `test` (PGlite,
+  `turbo run test`, ditambah jalur live admin `pnpm test:live`) dan job `test-pg` (`turbo run test:pg`, `@kapdh/api`
+  dan `@kapdh/worker` pada embedded-postgres 17), juga `format:check`, `contracts:test-dart` dan Flutter. Templat lama
+  `infra/ci/github-actions-ci.yml` yang tidak menjalankan jalur PG (temuan audit D2-09) sudah dihapus.
 - Uji tidak menggantikan UAT di staging yang menyerupai target (PRD 9.3); lihat `docs/qa/uat-checklist.md`.
