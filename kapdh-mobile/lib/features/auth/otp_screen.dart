@@ -246,9 +246,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       for (final candidate in candidates) {
         final LoginResult result;
         try {
-          result = await ref
-              .read(sessionProvider.notifier)
-              .login(email: candidate.email, password: candidate.password);
+          result = await ref.read(sessionProvider.notifier).login(email: candidate.email, password: candidate.password);
         } on ApiException catch (error) {
           if (!mounted) return null;
           if (error.code == ErrorCode.unauthenticated) {
@@ -449,8 +447,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     }
   }
 
-  void _showSnack(String message) =>
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(message)));
+  void _showSnack(String message) => ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(message)));
 
   void _back() {
     final draft = ref.read(registrationDraftProvider);
@@ -464,7 +461,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
   void _restart() {
     final toRegister = ref.read(registrationDraftProvider) != null && !_needsSignIn;
-    final email = ref.read(activationCredentialsProvider)?.email;
+    // Koreksi yang jawabannya hilang dan belum terbantah: email barunya yang kemungkinan besar berlaku.
+    final email = _unknownCorrections.isNotEmpty
+        ? _unknownCorrections.last.email
+        : ref.read(activationCredentialsProvider)?.email;
     if (email != null) ref.read(authEmailHintProvider.notifier).set(email);
     context.go(toRegister ? AppRoutes.register : AppRoutes.login);
     ref.read(sessionProvider.notifier).clearFlow();
