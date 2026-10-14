@@ -53,7 +53,7 @@ import { TokenService } from "../../src/core/identity/token.service.js";
 import { JobRunner } from "../../src/core/jobs/job-runner.js";
 import { MemoryRateLimitStore } from "../../src/core/rate-limit/store.js";
 import { SettingsService } from "../../src/core/settings/settings.service.js";
-import { LEDGER_PREFIX } from "../../src/modules/account/deletion-ledger.js";
+import { LEDGER_PREFIX, OFFSITE_LEDGER_PREFIX } from "../../src/modules/account/deletion-ledger.js";
 import { AccountDeletionProcessor } from "../../src/modules/account/deletion-processor.js";
 import { DELETION_STEPS } from "../../src/modules/account/deletion-steps.js";
 import {
@@ -1070,14 +1070,22 @@ export async function restoreStorage(snapshot: Map<string, Buffer>): Promise<Mem
 }
 
 /** Menyalin objek ledger eksternal ke folder disk seperti salinan ledger terbaru pada manifest backup (PRD 5.5). */
-export function exportLedger(storage: MemoryDriver): string {
+export function exportLedger(storage: MemoryDriver, prefix: string = LEDGER_PREFIX): string {
   const dir = mkdtempSync(join(tmpdir(), "kapdh-ledger-"));
-  for (const key of storage.keys().filter((k) => k.startsWith(`${LEDGER_PREFIX}/`))) {
-    const target = join(dir, ...key.slice(LEDGER_PREFIX.length + 1).split("/"));
+  for (const key of storage.keys().filter((k) => k.startsWith(`${prefix}/`))) {
+    const target = join(dir, ...key.slice(prefix.length + 1).split("/"));
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, storage.contents(key)!);
   }
   return dir;
+}
+
+/**
+ * Menyalin bucket deletion ledger luar VPS ke folder disk, seperti `rclone copy` oleh infra/backup/restore.sh
+ * (AC F14-6, D5-07).
+ */
+export function exportOffsiteLedger(storage: MemoryDriver): string {
+  return exportLedger(storage, OFFSITE_LEDGER_PREFIX);
 }
 
 export function readLedger(storage: MemoryDriver, key: string): Record<string, unknown> {
