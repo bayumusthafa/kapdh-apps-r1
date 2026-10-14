@@ -18,6 +18,7 @@ import { SearchInput } from "../../components/ui/SearchInput";
 import { EmptyState } from "../../components/ui/States";
 import { useToast } from "../../components/ui/Toast";
 import { formatDateTime, formatRupiah, formatShortDateTime } from "../../lib/format";
+import { DELETED_ACCOUNT_LABEL } from "../../lib/labels";
 import {
   type AdminEventDetail,
   type AdminEventTicket,
@@ -30,7 +31,6 @@ import {
 } from "./api";
 import { CANCEL_REASON_MAX, CANCEL_REASON_MIN, errorText } from "./EventActions";
 import {
-  ANONYMOUS_HOLDER,
   CANCELLED_BY_LABEL,
   REFUND_STATUS_LABEL,
   TICKET_PAYMENT_STATUS_LABEL,
@@ -69,7 +69,7 @@ function CellDateTime({ iso }: { iso: string }) {
 }
 
 function holderName(t: AdminEventTicket): string {
-  return t.holder.full_name ?? ANONYMOUS_HOLDER;
+  return t.holder.full_name ?? DELETED_ACCOUNT_LABEL;
 }
 
 /**

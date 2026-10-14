@@ -4,8 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api/client";
 import { mockAuth, paymentRequests } from "../../api/mocks";
 import { dashboardRequests, mockDashboard } from "../../api/mocks/dashboard";
+import { MOCK_EVENT_IDS, mockEvents } from "../../api/mocks/events";
 import { moderationCounts } from "../../api/mocks/moderation";
 import { notificationJobCounts } from "../../api/mocks/notifications";
+import { formatRupiah } from "../../lib/format";
 import { openPage, section } from "../../test/governance";
 import { renderApp, signInViaApi } from "../../test/utils";
 import { DASHBOARD_POLL_MS, typeBreakdown } from "./DashboardPage";
@@ -29,13 +31,42 @@ async function queueValue(card: string, label: string): Promise<string> {
 
 const dashboardCalls = () => dashboardRequests.filter((r) => r.path === "/admin/dashboard");
 
+/** Jumlah Money desimal lewat BigInt sen, tanpa floating point (ARCHITECTURE §2 butir 5). */
+function sumMoney(values: string[]): string {
+  const cents = values.reduce((acc, v) => {
+    const [whole = "0", frac = "00"] = v.split(".");
+    return acc + BigInt(whole) * 100n + BigInt(frac.padEnd(2, "0").slice(0, 2));
+  }, 0n);
+  return `${cents / 100n}.${String(cents % 100n).padStart(2, "0")}`;
+}
+
 /**
- * Kartu "Total Transaksi" = bruto seluruh payment paid sebelum penyesuaian/refund (kontrak DashboardPayments): empat
- * payment paid fixture final area pembayaran (Rp50.000 + Rp75.000 + Rp10.000 + Rp75.000) ditambah riwayat contoh lama
- * dasbor (Rp295.224). Setelah uji menyetujui pembayaran Siti (Rp60.000) totalnya bertambah.
+ * Nilai kartu "Total Transaksi" yang diharapkan = bruto seluruh payment paid sebelum penyesuaian/refund (kontrak
+ * DashboardPayments). Di server tiruan "seluruh payment paid" = payment paid area pembayaran (GET /admin/payments
+ * status=paid) ditambah riwayat contoh lama dasbor. Total dihitung dari kedua sumber itu, bukan disalin dari nominal
+ * fixture, sehingga perubahan fixture area pembayaran tidak mematahkan uji dasbor.
  */
-const PAID_TOTAL = "Rp505.224";
-const PAID_TOTAL_AFTER_APPROVE = "Rp565.224";
+async function paidGross(): Promise<string> {
+  const paid = await api.GET("/admin/payments", { params: { query: { status: "paid", limit: 100 } } });
+  expect(paid.data!.next_cursor).toBeNull();
+  expect(paid.data!.items.length).toBeGreaterThan(0);
+  expect(paid.data!.items.every((p) => p.status === "paid")).toBe(true);
+  return sumMoney([
+    ...paid.data!.items.map((p) => p.amount),
+    ...mockDashboard.historicalTransactions().map((t) => t.amount),
+  ]);
+}
+
+async function expectedPaidTotal(): Promise<string> {
+  return formatRupiah(await paidGross());
+}
+
+/** Kartu "Tiket Terjual" yang diharapkan = tiket paid di semua event menurut area Event (paid_quantity). */
+async function expectedTicketsSold(): Promise<string> {
+  const list = await api.GET("/admin/events", { params: { query: { limit: 100 } } });
+  expect(list.data!.next_cursor).toBeNull();
+  return String(list.data!.items.reduce((n, e) => n + e.paid_quantity, 0));
+}
 
 describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
   it("typeBreakdown meringkas jenis pembayaran tanpa jenis bernilai nol", () => {
@@ -49,8 +80,8 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
     await screen.findByRole("region", { name: "Statistik" });
     expect(statValue("Pengguna Aktif")).toBe("4");
     expect(screen.getByText("dari 6 total alumni")).toBeInTheDocument();
-    expect(statValue("Total Transaksi")).toBe(PAID_TOTAL);
-    expect(statValue("Tiket Terjual")).toBe("333");
+    expect(statValue("Total Transaksi")).toBe(await expectedPaidTotal());
+    expect(statValue("Tiket Terjual")).toBe(await expectedTicketsSold());
 
     // Antrean pembayaran sama dengan ringkasan pembayaran (sumber pill menu).
     const summary = await api.GET("/admin/payments/summary");
@@ -74,15 +105,23 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
     const failed = within(await section("Job gagal")).getByRole("link", { name: "Lihat pengiriman gagal" });
     expect(failed.getAttribute("href")).toContain("since=");
     const upcoming = await section("Event mendatang");
-    expect(within(upcoming).getByRole("link", { name: "Seminar AI untuk Mahasiswa" })).toBeInTheDocument();
+    const seminar = mockEvents.event(MOCK_EVENT_IDS.seminar)!;
+    expect(within(upcoming).getByRole("link", { name: seminar.title })).toBeInTheDocument();
+    // Event dibatalkan tidak termasuk event mendatang.
+    const pramuka = mockEvents.event(MOCK_EVENT_IDS.pramuka)!;
+    expect(within(upcoming).queryByText(pramuka.title)).toBeNull();
 
     const users = await section("Pengguna");
     const usersTable = within(users).getByRole("table", { name: "Pengguna terbaru" });
     const bayu = within(usersTable).getByText("Bayu Musthafa Arief").closest("tr")!;
     expect(within(bayu).getByText("Admin")).toBeInTheDocument();
     expect(within(bayu).getByText("09.02.01.5")).toBeInTheDocument();
+    // Penjualan Tiket memuat event selain draft (termasuk yang dibatalkan), tanpa event draft.
     const tickets = await section("Penjualan Tiket");
-    expect(within(tickets).getByRole("link", { name: "Mancing Bareng Alumni" })).toBeInTheDocument();
+    expect(within(tickets).getByRole("link", { name: pramuka.title })).toBeInTheDocument();
+    const draft = mockEvents.event(MOCK_EVENT_IDS.mancing)!;
+    expect(draft.status).toBe("draft");
+    expect(within(tickets).queryByText(draft.title)).toBeNull();
     const transactions = await section("Riwayat Transaksi");
     expect(within(transactions).getByPlaceholderText("Cari nama atau nomor KTA...")).toBeInTheDocument();
     expect(within(transactions).getByText("Rp15.224")).toBeInTheDocument();
@@ -94,7 +133,7 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
     const user = userEvent.setup();
     await openPage(user, "/", "Dashboard");
     await screen.findByRole("region", { name: "Statistik" });
-    expect(statValue("Total Transaksi")).toBe(PAID_TOTAL);
+    expect(statValue("Total Transaksi")).toBe(await expectedPaidTotal());
     expect(screen.queryByText("Pengguna Aktif")).toBeNull();
     expect(screen.queryByText("Tiket Terjual")).toBeNull();
     expect(await section("Pembayaran")).toBeInTheDocument();
@@ -132,13 +171,35 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
     expect(dashboardRequests.find((r) => r.path === "/admin/dashboard/badges")?.background).toBe(false);
   });
 
+  it("F-15: setiap tautan event di dasbor menunjuk event yang dikenal area Event dan membuka detailnya", async () => {
+    const user = userEvent.setup();
+    const { router } = await openPage(user, "/", "Dashboard");
+    const links = [
+      ...within(await section("Event mendatang")).getAllByRole("link"),
+      ...within(await section("Penjualan Tiket")).getAllByRole("link"),
+    ].filter((a) => /^\/events\/[0-9a-f-]{36}$/.test(a.getAttribute("href") ?? ""));
+    expect(links.length).toBeGreaterThan(0);
+    // Satu sumber event di dev:mock: id dan judul setiap baris dasbor sama dengan tiruan area Event.
+    for (const a of links) {
+      const id = a.getAttribute("href")!.slice("/events/".length);
+      expect(mockEvents.event(id)?.title, `${a.textContent} (${id})`).toBe(a.textContent);
+    }
+    const first = links[0]!;
+    await user.click(first);
+    expect(
+      await screen.findByRole("heading", { level: 1, name: first.textContent! }, { timeout: 5_000 }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(first.getAttribute("href"));
+  });
+
   it("admin dengan izin check-in saja melihat event mendatang dan tautan check-in tanpa tautan kelola event", async () => {
     mockAuth.setAdmin({ role: "admin", permissions: ["events.checkin"] });
     const user = userEvent.setup();
     await openPage(user, "/", "Dashboard");
     const upcoming = await section("Event mendatang");
-    expect(within(upcoming).getByText("Seminar AI untuk Mahasiswa")).toBeInTheDocument();
-    expect(within(upcoming).queryByRole("link", { name: "Seminar AI untuk Mahasiswa" })).toBeNull();
+    const seminar = mockEvents.event(MOCK_EVENT_IDS.seminar)!.title;
+    expect(within(upcoming).getByText(seminar)).toBeInTheDocument();
+    expect(within(upcoming).queryByRole("link", { name: seminar })).toBeNull();
     expect(within(upcoming).getByRole("link", { name: "Buka check-in tiket" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Statistik" })).toBeNull();
   });
@@ -157,6 +218,7 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
     const paymentId = "0199e000-0000-7000-8000-0000000000a1";
     const pending = await api.GET("/admin/payments/{paymentId}", { params: { path: { paymentId } } });
     expect(pending.data?.status).toBe("pending");
+    const grossBefore = await paidGross();
     const approved = await api.POST("/admin/payments/{paymentId}/decision", {
       params: { path: { paymentId } },
       body: {
@@ -173,7 +235,10 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
     const card = await section("Riwayat Transaksi");
     const rows = within(card).getAllByRole("row");
     expect(within(rows[1]!).getByText("Siti Rahmawati")).toBeInTheDocument();
-    expect(statValue("Total Transaksi")).toBe(PAID_TOTAL_AFTER_APPROVE);
+    // Persetujuan menambah bruto sebesar nominal pembayaran yang disetujui.
+    const grossAfter = await paidGross();
+    expect(grossAfter).toBe(sumMoney([grossBefore, pending.data!.amount]));
+    expect(statValue("Total Transaksi")).toBe(formatRupiah(grossAfter));
 
     paymentRequests.length = 0;
     await user.type(within(card).getByLabelText("Cari transaksi"), "ridwan");
