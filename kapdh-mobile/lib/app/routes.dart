@@ -41,6 +41,10 @@ abstract final class AppRoutes {
   static const chatNewGroup = '/chat/new-group';
   static const chatInvitations = '/chat/invitations';
   static const notifications = '/notifications';
+
+  /// Gerbang ketukan push (AC F13-3): notifikasi diperiksa ulang ke server (GET /notifications/{id}) sebelum objek
+  /// tujuannya dibuka.
+  static String notification(String notificationId) => '/notifications/${Uri.encodeComponent(notificationId)}';
   static const accountProfile = '/account/profile';
   static const accountPrivacy = '/account/privacy';
   static const accountNotifications = '/account/notifications';

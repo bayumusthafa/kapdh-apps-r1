@@ -84,7 +84,15 @@ final expectedAllowed = <String, Set<RouteGroup>>{
     RouteGroup.accountCommunity,
   },
   'expired': {...memberBase, RouteGroup.renewal, RouteGroup.tickets, RouteGroup.eventDetail},
-  'suspended': {RouteGroup.restricted, RouteGroup.accountReports, RouteGroup.accountDelete, RouteGroup.legal},
+  // Laporan/banding sendiri (moderation.yaml member_access any) dan kotak masuk resmi: kontrak C7 member_access
+  // `any` (AC F13-2).
+  'suspended': {
+    RouteGroup.restricted,
+    RouteGroup.accountReports,
+    RouteGroup.accountDelete,
+    RouteGroup.notifications,
+    RouteGroup.legal,
+  },
   'disabled': {RouteGroup.deletionStatus, RouteGroup.legal},
   'deletion_pending': {RouteGroup.deletionStatus, RouteGroup.legal},
 };
@@ -177,7 +185,8 @@ void main() {
       expect(go(unverified, '/network/members/user-2'), '/onboarding/fees');
     });
 
-    test('suspended hanya portal pembatasan, legal, laporan/banding sendiri dan hapus akun', () {
+    test('suspended hanya portal pembatasan, legal, laporan/banding sendiri, hapus akun dan kotak masuk resmi '
+        '(AC F13-2)', () {
       final suspended = authed('suspended');
       expect(go(suspended, '/kta'), '/restricted');
       // moderation.yaml listMyReports/getMyReport member_access any: hasil banding tampil di Laporan Saya.
@@ -186,6 +195,10 @@ void main() {
       expect(go(suspended, '/payments/new/renewal'), '/restricted');
       expect(go(suspended, '/account/delete'), isNull);
       expect(go(suspended, '/legal/ketentuan-komunitas'), isNull);
+      expect(go(suspended, '/notifications'), isNull);
+      // Pengaturan akun lain dan tujuan deep link notifikasi tetap ditolak.
+      expect(go(suspended, '/account/notifications'), '/restricted');
+      expect(go(suspended, '/network/members/user-2'), '/restricted');
     });
 
     test('status baru yang belum dikenal aplikasi diarahkan ke wajib update', () {
@@ -379,6 +392,26 @@ void main() {
       );
       expect(go(const SessionState.anonymous(), '/forgot/reset'), '/forgot');
       expect(go(const SessionState.anonymous(resetToken: 'reset-1'), '/forgot/reset'), isNull);
+    });
+
+    test('F-14 kontrak C1: portal status penghapusan bekerja tanpa sesi, juga saat pemeliharaan', () {
+      const anon = SessionState.anonymous();
+      expect(go(anon, '/deletion-status'), isNull);
+      expect(go(anon, '/deletion-status', gate: GateStatus.maintenance), isNull);
+      // Gerbang lain tetap didahulukan.
+      expect(go(anon, '/deletion-status', gate: GateStatus.updateRequired), '/update-required?from=%2Fdeletion-status');
+      // Sesi aktif dengan status lain tidak membuka portal.
+      expect(go(authed('verified'), '/deletion-status'), '/home');
+    });
+
+    test('AC F13-3: gerbang ketukan push /notifications/<id> memerlukan login lalu kembali ke gerbang', () {
+      const path = '/notifications/0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e01';
+      expect(routeGroupOf(path), RouteGroup.notifications);
+      expect(go(const SessionState.anonymous(), path), '/login?from=${Uri.encodeComponent(path)}');
+      expect(go(authed('unverified'), path), isNull);
+      // Suspended tetap membuka kotak masuk (kontrak C7); tujuan deep link-nya diperiksa lagi saat dibuka.
+      expect(go(authed('suspended'), path), isNull);
+      expect(go(authed('verified'), '/login?from=${Uri.encodeComponent(path)}'), path);
     });
   });
 

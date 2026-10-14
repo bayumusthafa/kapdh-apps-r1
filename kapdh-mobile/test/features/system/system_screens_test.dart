@@ -276,7 +276,9 @@ void main() {
     await tester.tap(find.text('Kebijakan Privasi'));
     await settle(tester);
     expect(app.location, '/legal/kebijakan-privasi');
-    expect(find.text('Sedang dibangun'), findsOneWidget);
+    // Versi tayang dari GET /public/pages/{slug} (penangan uji: judul = slug).
+    expect(find.text('kebijakan-privasi'), findsWidgets);
+    expect(find.textContaining('Versi 1'), findsOneWidget);
     await tester.tap(find.byTooltip('Kembali'));
     await settle(tester);
     expect(app.location, '/login');
