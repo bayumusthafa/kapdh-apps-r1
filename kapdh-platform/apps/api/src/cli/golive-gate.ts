@@ -18,7 +18,7 @@ import {
 } from "@kapdh/database";
 import { DEV_IDS } from "@kapdh/database/seeds/dev";
 import { REFERENCE_SETTINGS } from "@kapdh/database/seeds/reference";
-import { and, count, eq, inArray, like, ne, notInArray, or, sql } from "drizzle-orm";
+import { and, count, eq, inArray, like, notInArray, or, sql } from "drizzle-orm";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { SETTING_KEYS, SETTING_SCHEMAS, type SettingKey, type SettingValue } from "../core/settings/keys.js";
@@ -29,8 +29,13 @@ import type { Db, DbOrTx } from "../core/db/types.js";
  * Gerbang go-live / rilis production (PRD 9.2 skenario "production dideploy dengan konfigurasi yang belum disahkan
  * ... gerbang menolak go-live", PRD 9.3, PRD 8.2 langkah 2-4, PRD 10.2 "Konfigurasi produksi belum disahkan", U-12;
  * temuan audit D2-02 dan D4-01). Hanya MEMBACA database (transaksi read only, snapshot repeatable read) dan tidak
- * pernah mengubah apa pun; dijalankan job rilis (infra/scripts/release-job.sh) setelah migrasi dan seed referensi,
- * dan oleh operator sebelum go-live (docs/runbooks/rilis-dan-gerbang-go-live.md).
+ * pernah mengubah apa pun; dijalankan oleh operator sebelum go-live (docs/runbooks/rilis-dan-gerbang-go-live.md) dan
+ * dua kali oleh job rilis (infra/scripts/release-job.sh):
+ *
+ * - fase `preflight` (mode enforce, SEBELUM migrasi): pemeriksaan konfigurasi yang tidak bergantung pada migrasi
+ *   tertunda (semua kecuali `schema` dan `settings`), sehingga konfigurasi yang belum disahkan menghentikan rilis
+ *   sebelum skema production berubah. Skema aplikasi yang belum ada (inisialisasi pertama) membuat fase ini dilewati.
+ * - fase `full` (setelah migrasi dan seed referensi): seluruh pemeriksaan.
  *
  * Gerbang TIDAK dipasang di /health/ready: konfigurasi yang belum disahkan adalah alasan menunda go-live atau
  * promosi image, bukan alasan mengeluarkan API yang sedang melayani dari load balancer (PRD 8.4).
@@ -63,8 +68,26 @@ export interface GateCheck {
   details: string[];
 }
 
+/**
+ * `full`: seluruh pemeriksaan. `preflight`: tanpa `schema` dan `settings` (bergantung pada migrasi dan seed referensi
+ * rilis yang sedang berjalan), dijalankan job rilis sebelum migrasi.
+ */
+export type GatePhase = "full" | "preflight";
+
+export interface GateOptions {
+  now?: Date;
+  phase?: GatePhase;
+  /**
+   * Skema lebih baru dari journal image (image lama di atas skema baru, mis. bukti gerbang saat rollback image
+   * PRD 5.5/8.4) dicatat sebagai peringatan alih-alih penolakan. Hanya untuk pemeriksaan baca-saja oleh operator;
+   * job rilis tidak pernah dijalankan dengan image yang lebih lama dari skema.
+   */
+  allowSchemaAhead?: boolean;
+}
+
 export interface GateReport {
   ok: boolean;
+  phase: GatePhase;
   checkedAt: string;
   database: { name: string; role: string };
   checks: GateCheck[];
@@ -161,7 +184,7 @@ async function appliedMigrations(db: Db): Promise<number | null> {
   }
 }
 
-async function checkSchema(db: Db): Promise<GateCheck> {
+async function checkSchema(db: Db, allowSchemaAhead: boolean): Promise<GateCheck> {
   const c = check("schema", "Skema database pada versi rilis", "PRD 5.5, 8.2 langkah 2");
   const expected = journalEntries();
   const applied = await appliedMigrations(db);
@@ -175,13 +198,37 @@ async function checkSchema(db: Db): Promise<GateCheck> {
   c.details.push(`Migrasi tercatat ${applied}, journal image ${expected}.`);
   if (applied < expected)
     fail(c, `Skema tertinggal: ${expected - applied} migrasi belum diterapkan. Jalankan job migrasi dahulu.`);
-  if (applied > expected)
-    fail(
-      c,
-      `Database memuat ${applied - expected} migrasi yang tidak dikenal image ini (image lebih lama dari skema). ` +
-        "Jangan mempromosikan image lama ke skema baru (PRD 8.4).",
-    );
+  if (applied > expected) {
+    const ahead = `Database memuat ${applied - expected} migrasi yang tidak dikenal image ini (image lebih lama dari skema).`;
+    if (allowSchemaAhead)
+      c.details.push(
+        `PERINGATAN: ${ahead} Diizinkan --allow-schema-ahead (rollback image): pastikan migrasi tersebut kompatibel ` +
+          "dengan image ini (PRD 5.5) dan JANGAN menjalankan job rilis image ini (roles.sql lama, PRD 8.4).",
+      );
+    else
+      fail(
+        c,
+        `${ahead} Jangan menjalankan job rilis atau mempromosikan image lama ke skema baru; rollback image ` +
+          "mengikuti runbook rilis bagian 6 (PRD 5.5, 8.4).",
+      );
+  }
   return c;
+}
+
+/**
+ * Skema aplikasi sudah dibuat migrasi? Dibaca dari katalog sistem (tanpa hak atas skema `app`), sehingga aman
+ * dijalankan role mana pun sebelum migrasi pertama.
+ */
+async function appSchemaPresent(db: Db): Promise<boolean> {
+  const [row] = rows<{ present: boolean }>(
+    await db.execute(sql`
+      select exists (
+        select 1 from pg_catalog.pg_class c
+        join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'app' and c.relname = 'app_settings'
+      ) as present`),
+  );
+  return row?.present === true;
 }
 
 interface SettingRow {
@@ -506,8 +553,9 @@ async function checkDevFixtures(tx: DbOrTx): Promise<GateCheck> {
     "baris dengan id tetap seed dev (DEV_IDS)",
     fixtureIdCounts.reduce((sum, [row]) => sum + (row?.n ?? 0), 0),
   );
-  // Akun pending_otp dikecualikan: siapa pun dapat mendaftar dengan email palsu tanpa pernah lolos OTP, jadi akun itu
-  // tidak boleh dapat menahan rilis; fixture seed dev selalu berstatus aktif.
+  // Hanya penanda yang TIDAK dapat dipalsukan anggota yang menahan rilis. Akun pending_otp dikecualikan: siapa pun
+  // dapat mendaftar dengan email palsu tanpa pernah lolos OTP; akun aktif ber-domain uji tidak mungkin lolos OTP
+  // (domain cadangan tidak menerima email) sehingga hanya berasal dari fixture atau penulisan langsung ke database.
   const [fixtureEmails] = await tx
     .select({ n: count() })
     .from(users)
@@ -518,12 +566,7 @@ async function checkDevFixtures(tx: DbOrTx): Promise<GateCheck> {
       ),
     );
   add("akun dengan domain email uji (.test/.example/.invalid/.localhost)", fixtureEmails?.n);
-  const [fixtureAlumni] = await tx
-    .select({ n: count() })
-    .from(alumni)
-    .innerJoin(users, eq(users.id, alumni.userId))
-    .where(and(ne(users.status, "deleted"), like(alumni.fullName, marker)));
-  add(`alumni bernama ${FIXTURE_TITLE_MARKER}`, fixtureAlumni?.n);
+  // Konten pengurus (berita, event, banner, kategori, metode bayar) hanya ditulis pengurus lewat web admin.
   const [fixturePosts] = await tx.select({ n: count() }).from(posts).where(like(posts.title, marker));
   add(`berita berjudul ${FIXTURE_TITLE_MARKER}`, fixturePosts?.n);
   const [fixtureEvents] = await tx.select({ n: count() }).from(events).where(like(events.title, marker));
@@ -548,11 +591,49 @@ async function checkDevFixtures(tx: DbOrTx): Promise<GateCheck> {
   add(`kategori berlabel ${FIXTURE_TITLE_MARKER}`, fixtureCategories?.n);
 
   for (const [label, n] of counts) fail(c, `Fixture dev terdeteksi: ${n} ${label}.`);
-  if (c.ok) c.details.push("Tidak ada penanda fixture dev.");
+
+  // Nama alumni diisi anggota sendiri saat registrasi (bebas karakter), jadi "[Contoh]" pada nama anggota hanya
+  // dicatat untuk ditinjau dan tidak pernah menahan rilis: fixture seed dev sudah tertangkap lewat audit seed.dev,
+  // DEV_IDS dan domain email uji di atas.
+  const [namedAlumni] = await tx
+    .select({ n: count() })
+    .from(alumni)
+    .innerJoin(users, eq(users.id, alumni.userId))
+    .where(and(notInArray(users.status, ["deleted", "pending_otp"]), like(alumni.fullName, marker)));
+  if ((namedAlumni?.n ?? 0) > 0)
+    c.details.push(
+      `Catatan (tidak memblokir): ${namedAlumni!.n} akun anggota bernama ${FIXTURE_TITLE_MARKER}; nama diisi ` +
+        "anggota sendiri, tinjau bila perlu.",
+    );
+
+  if (c.ok) {
+    c.details.push("Tidak ada penanda fixture dev.");
+    return c;
+  }
+  // Saran perbaikan bergantung pada ada tidaknya data pengguna nyata (PRD 8.4): reset hanya sebelum ada data nyata.
+  const [realMembers] = await tx
+    .select({ n: count() })
+    .from(users)
+    .where(
+      and(
+        eq(users.kind, "alumni"),
+        inArray(users.status, ["active", "disabled", "deletion_pending"]),
+        notInArray(users.id, devIds),
+        sql`${users.email} !~* ${FIXTURE_EMAIL_PATTERN}`,
+      ),
+    );
+  const real = realMembers?.n ?? 0;
+  if (real === 0)
+    c.details.push(
+      "Belum ada akun anggota nyata: production dimulai dari database kosong (PRD 8.2); reset lingkungan production " +
+        "secara terkendali lalu inisialisasi ulang, jangan menghapus baris satu per satu (PRD 8.4).",
+    );
   else
     c.details.push(
-      "Production dimulai dari database kosong (PRD 8.2); hapus lingkungan lalu inisialisasi ulang, jangan menghapus " +
-        "baris satu per satu (PRD 8.4).",
+      `Sudah ada ${real} akun anggota nyata: JANGAN reset atau restore untuk membuang fixture (PRD 8.4 forward-fix). ` +
+        "Ganti judul atau nonaktifkan konten pengurus yang ditandai lewat web admin; jejak seed:dev, DEV_IDS atau " +
+        "akun ber-domain uji di production ditangani sebagai insiden (hapus akun lewat alur penghapusan resmi). " +
+        "Rilis mendesak sementara itu memakai pengecualian gerbang beralasan dan disetujui (runbook rilis bagian 5.3).",
     );
   return c;
 }
@@ -576,22 +657,39 @@ function notesFor(settings: SettingRows): string[] {
 }
 
 /**
- * Menjalankan seluruh pemeriksaan gerbang. Tidak pernah menulis: pemeriksaan data berjalan dalam satu transaksi
- * `repeatable read, read only` sehingga hasilnya konsisten dan aman dijalankan dengan role pemilik skema.
+ * Menjalankan pemeriksaan gerbang fase `full` (bawaan) atau `preflight`. Tidak pernah menulis: pemeriksaan data
+ * berjalan dalam satu transaksi `repeatable read, read only` sehingga hasilnya konsisten dan aman dijalankan dengan
+ * role pemilik skema.
  */
-export async function runGoLiveGate(db: Db, options: { now?: Date } = {}): Promise<GateReport> {
+export async function runGoLiveGate(db: Db, options: GateOptions = {}): Promise<GateReport> {
   const now = options.now ?? new Date();
+  const phase = options.phase ?? "full";
   const [identity] = rows<{ name: string; role: string }>(
     await db.execute(sql`select current_database() as name, current_user as role`),
   );
-  const schema = await checkSchema(db);
+  const base = {
+    phase,
+    checkedAt: now.toISOString(),
+    database: { name: identity?.name ?? "?", role: identity?.role ?? "?" },
+  };
+  if (phase === "preflight" && !(await appSchemaPresent(db)))
+    return {
+      ...base,
+      ok: true,
+      checks: [],
+      notes: [
+        "Skema aplikasi belum ada (inisialisasi pertama): pemeriksaan pra-migrasi dilewati; gerbang penuh berjalan " +
+          "setelah migrasi dan seed referensi.",
+      ],
+    };
+  const schema = phase === "full" ? [await checkSchema(db, options.allowSchemaAhead === true)] : [];
   const { checks, notes } = await db.transaction(
     async (tx) => {
       const settings = await loadSettings(tx);
       const usable = await usableAdmins(tx);
       return {
         checks: [
-          checkSettings(settings),
+          ...(phase === "full" ? [checkSettings(settings)] : []),
           await checkFees(tx, settings),
           await checkPaymentMethods(tx),
           await checkSuperAdmins(tx, usable),
@@ -606,12 +704,6 @@ export async function runGoLiveGate(db: Db, options: { now?: Date } = {}): Promi
     },
     { isolationLevel: "repeatable read", accessMode: "read only" },
   );
-  const all = [schema, ...checks];
-  return {
-    ok: all.every((c) => c.ok),
-    checkedAt: now.toISOString(),
-    database: { name: identity?.name ?? "?", role: identity?.role ?? "?" },
-    checks: all,
-    notes,
-  };
+  const all = [...schema, ...checks];
+  return { ...base, ok: all.every((c) => c.ok), checks: all, notes };
 }

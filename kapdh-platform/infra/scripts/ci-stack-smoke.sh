@@ -1,9 +1,11 @@
 #!/bin/sh
 # Uji asap stack Compose production lengkap di CI (Linux + Docker), memakai image yang baru dibangun dengan tag
 # kapdh-ci/kapdh-<layanan>:ci (infra/ci/github-actions-images.yml). Membuktikan tanpa VPS: `docker compose config`
-# untuk production dan staging, job rilis (roles.sql via psql → migrasi kapdh_migrator → seed → gerbang mode laporan),
-# healthcheck semua kontainer, header web/admin, kesiapan API, gerbang go-live menolak database baru (PRD 9.2), dan
-# PostgreSQL/Redis tidak terjangkau dari jaringan edge (N-07). Secret dibuat acak per run dan dibuang di akhir.
+# untuk production dan staging, job rilis (cek versi skema + roles.sql via psql → migrasi kapdh_migrator → seed →
+# gerbang mode laporan dengan pengecualian beralasan), penolakan image yang lebih lama dari skema, gerbang pra-migrasi
+# mode enforce menolak database baru (PRD 9.2) sebelum migrasi, healthcheck semua kontainer, header web/admin,
+# kesiapan API, PostgreSQL/Redis tidak terjangkau dari jaringan edge (N-07) dan jaringan edge staging tidak menjangkau
+# API production (D12). Secret dibuat acak per run dan dibuang di akhir.
 #
 #   sh infra/scripts/ci-stack-smoke.sh
 set -eu
@@ -23,7 +25,7 @@ cleanup() {
   compose logs --no-color >"$work/compose.log" 2>&1 || true
   if [ "${KEEP_STACK:-0}" != "1" ]; then
     compose --profile release down -v --remove-orphans >/dev/null 2>&1 || true
-    docker network rm kapdh-edge >/dev/null 2>&1 || true
+    docker network rm kapdh-edge kapdh-edge-staging >/dev/null 2>&1 || true
   fi
   if [ -n "${CI_ARTIFACT_DIR:-}" ]; then cp "$work/compose.log" "$CI_ARTIFACT_DIR/" 2>/dev/null || true; fi
   rm -rf "$work"
@@ -56,6 +58,8 @@ while IFS= read -r line; do
       echo "FCM_SERVICE_ACCOUNT_JSON='{\"client_email\":\"ci@kapdh-ci.iam.gserviceaccount.com\",\"private_key\":\"bukan-kunci-nyata\"}'"
       ;;
     RELEASE_GATE=*) echo "RELEASE_GATE=report" ;;
+    RELEASE_GATE_REASON=*) echo "RELEASE_GATE_REASON=uji-ci-stack-compose" ;;
+    RELEASE_GATE_APPROVER=*) echo "RELEASE_GATE_APPROVER=ci" ;;
     KAPDH_FILES_DIR=*) echo "KAPDH_FILES_DIR=$work/files" ;;
     *) echo "$line" ;;
   esac
@@ -71,6 +75,7 @@ docker compose --env-file "$env_file" -f infra/compose.production.yml -f infra/c
 ACME_EMAIL=ci@kapdh.or.id docker compose -f infra/compose.proxy.yml config -q
 
 docker network create kapdh-edge >/dev/null 2>&1 || true
+docker network create kapdh-edge-staging >/dev/null 2>&1 || true
 
 step "job rilis (mode laporan: database baru belum disahkan)"
 compose --profile release run --rm release >"$work/release.out" 2>&1 || {
@@ -78,7 +83,8 @@ compose --profile release run --rm release >"$work/release.out" 2>&1 || {
   die "job rilis gagal"
 }
 cat "$work/release.out"
-grep -q "7/7 gerbang go-live" "$work/release.out" || die "job rilis tidak mencapai gerbang"
+grep -q "9/9 gerbang go-live penuh" "$work/release.out" || die "job rilis tidak mencapai gerbang"
+grep -q "alasan: uji-ci-stack-compose" "$work/release.out" || die "pengecualian gerbang production tidak tercatat"
 grep -q "gerbang menolak, tetapi mode laporan" "$work/release.out" || die "gerbang seharusnya menolak database baru"
 
 step "job rilis kedua idempoten (tidak ada migrasi baru)"
@@ -88,7 +94,21 @@ compose --profile release run --rm release >"$work/release2.out" 2>&1 || {
 }
 grep -q "Diterapkan: 0" "$work/release2.out" || die "job rilis kedua seharusnya tidak menerapkan migrasi"
 
-step "gerbang go-live mode enforce menolak (PRD 9.2)"
+step "image lebih lama dari skema ditolak sebelum roles.sql (PRD 5.5, 8.4)"
+compose exec -T postgres psql -U postgres -d kapdh -X -q -v ON_ERROR_STOP=1   -c "insert into drizzle.__drizzle_migrations (hash, created_at) values ('ci-skema-lebih-baru', 9999999999999)"
+set +e
+compose --profile release run --rm release >"$work/ahead.out" 2>&1
+ahead_code=$?
+set -e
+compose exec -T postgres psql -U postgres -d kapdh -X -q -v ON_ERROR_STOP=1   -c "delete from drizzle.__drizzle_migrations where hash = 'ci-skema-lebih-baru'"
+[ "$ahead_code" -eq 1 ] || {
+  cat "$work/ahead.out"
+  die "job rilis pada skema lebih baru seharusnya keluar 1, ditemukan $ahead_code"
+}
+grep -q "1 migrasi yang tidak dikenal image ini" "$work/ahead.out" || die "alasan skema lebih baru tidak tercetak"
+if grep -q "3/9 roles.sql" "$work/ahead.out"; then die "roles.sql berjalan pada skema lebih baru"; fi
+
+step "gerbang go-live mode enforce menolak SEBELUM migrasi (PRD 9.2)"
 set +e
 compose --profile release run --rm -e RELEASE_GATE=enforce release >"$work/gate.out" 2>&1
 gate_code=$?
@@ -98,6 +118,8 @@ set -e
   die "gerbang enforce seharusnya keluar 1, ditemukan $gate_code"
 }
 grep -q "Super Admin aktif ber-TOTP: 0 dari minimal 2" "$work/gate.out" || die "alasan penolakan Super Admin tidak tercetak"
+grep -q "pra-migrasi MENOLAK" "$work/gate.out" || die "penolakan seharusnya terjadi pada gerbang pra-migrasi"
+if grep -q "6/9 migrasi" "$work/gate.out"; then die "migrasi berjalan walau gerbang pra-migrasi menolak"; fi
 
 step "stack naik dan sehat"
 compose up -d
@@ -143,5 +165,11 @@ if compose port postgres 5432 >/dev/null 2>&1 || compose port redis 6379 >/dev/n
   die "PostgreSQL/Redis mempublikasikan port ke host"
 fi
 echo "lulus  DB/Redis privat"
+
+step "jaringan edge staging tidak menjangkau API production (D12)"
+if docker run --rm --network kapdh-edge-staging "$CURL_IMAGE" -s --connect-timeout 3   http://kapdh-production-api-1:3000/api/v1/health >/dev/null 2>&1; then
+  die "API production terjangkau dari jaringan edge staging"
+fi
+echo "lulus  edge staging terpisah"
 
 step "selesai: stack Compose cadangan lulus uji asap"

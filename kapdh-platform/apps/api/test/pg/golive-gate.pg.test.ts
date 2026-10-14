@@ -3,13 +3,17 @@
  * belum disahkan (nominal kosong, fixture dev, atau tanpa Super Admin ber-TOTP); gerbang menolak go-live", PRD 9.3,
  * 8.2 langkah 2-4, 2.3, 10.2; U-12; temuan audit D2-02 dan D4-01). Setiap uji memakai database klon sendiri yang diisi
  * seed referensi production lalu konfigurasi tersahkan (test/support/golive.ts), kemudian merusak SATU kondisi.
+ * Termasuk: penanda yang dapat dipalsukan anggota (nama saat registrasi) tidak menahan rilis, skema lebih baru dari image
+ * (rollback), dan fase pra-migrasi job rilis.
  */
+import "reflect-metadata";
 import {
   adminPermissions,
   appSettings,
   masterProfessions,
   pages,
   paymentMethods,
+  posts,
   users,
 } from "@kapdh/database";
 import { seedDev } from "@kapdh/database/seeds/dev";
@@ -17,8 +21,10 @@ import { seedReference } from "@kapdh/database/seeds/reference";
 import { eq, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { describe, expect, it } from "vitest";
+import { createApp } from "../../src/bootstrap.js";
 import { GOLIVE_EXIT, runGoLiveCheckCommand } from "../../src/cli/golive-check-command.js";
 import { type GateCheckId, type GateReport, runGoLiveGate } from "../../src/cli/golive-gate.js";
+import { MemoryMailer } from "../../src/core/adapters/mailer.js";
 import type { Db } from "../../src/core/db/types.js";
 import {
   approveProductionConfig,
@@ -26,7 +32,8 @@ import {
   insertAuditedPaymentMethod,
   insertGateAdmin,
 } from "../support/golive.js";
-import { connectAs, createPgTestDatabase, type PgTestDatabase } from "./support.js";
+import { FakePush, TestClock, testEnv } from "../support/test-app.js";
+import { connectAs, createPgTestDatabase, PG_CONSENT_VERSION, type PgTestDatabase } from "./support.js";
 
 interface GateDb {
   tdb: PgTestDatabase;
@@ -139,12 +146,104 @@ describe("PRD 9.2/9.3: gerbang go-live pada PostgreSQL 17 (satu kondisi per uji)
       expect(found).toContain("eksekusi seed:dev (audit seed.dev)");
       expect(found).toContain("id tetap seed dev (DEV_IDS)");
       expect(found).toContain("domain email uji");
-      expect(found).toContain("alumni bernama [Contoh]");
       expect(found).toContain("berita berjudul [Contoh]");
       expect(found).toContain("event berjudul [Contoh]");
       expect(found).toContain("metode bayar contoh");
+      // Nama alumni diisi anggota sendiri: hanya catatan, bukan alasan penolakan.
+      expect(found).not.toContain("alumni");
+      const details = report.checks.find((c) => c.id === "dev_fixtures")!.details.join("\n");
+      expect(details).toMatch(/Catatan \(tidak memblokir\): \d+ akun anggota bernama \[Contoh\]/);
+      // Hanya akun fixture (.test, DEV_IDS): belum ada data nyata, reset terkendali masih diizinkan PRD 8.4.
+      expect(details).toContain("Belum ada akun anggota nyata");
+      expect(details).not.toContain("JANGAN reset");
       // Metode "[Bank Contoh]" juga bukan rekening organisasi.
       expect(problems(report, "payment_methods").join("\n")).toContain("[Bank Contoh]");
+    });
+  });
+
+  it("PRD 2.5/8.4: pendaftar anonim bernama [Contoh] (POST /auth/register, pending_otp) dan anggota terverifikasi bernama [Contoh] tidak menahan rilis; konten pengurus [Contoh] menolak tanpa saran reset", async () => {
+    await withDatabase("fixtures_member_names", true, async ({ tdb, db, superAdmins }) => {
+      const api = connectAs(tdb, "kapdh_app", 4);
+      const mailer = new MemoryMailer();
+      const app = await createApp(
+        {
+          env: testEnv,
+          db: api.db as unknown as Db,
+          mailer,
+          clock: new TestClock(),
+          push: new FakePush(),
+          redis: null,
+        },
+        { logger: false },
+      );
+      try {
+        await app.init();
+        await app.getHttpAdapter().getInstance().ready();
+        const register = (fullName: string, email: string) =>
+          app.inject({
+            method: "POST",
+            url: "/api/v1/auth/register",
+            payload: {
+              full_name: fullName,
+              gender: "male",
+              email,
+              password: "Kapdh#2026",
+              cohort: 20,
+              class_in: 1,
+              class_out: 6,
+              accept_policy_version: PG_CONSENT_VERSION,
+            },
+          });
+
+        // Siapa pun dapat mendaftar dengan nama dan email bebas lalu tidak pernah memverifikasi OTP.
+        const anonymous = await register("[Contoh] Pendaftar Iseng", "iseng@contoh.test");
+        expect(anonymous.statusCode, anonymous.body).toBe(201);
+        const [pending] = await tdb.sql<{ status: string; full_name: string }[]>`
+          select u.status, a.full_name from app.users u join app.alumni a on a.user_id = u.id
+          where u.email = 'iseng@contoh.test'`;
+        expect(pending).toEqual({ status: "pending_otp", full_name: "[Contoh] Pendaftar Iseng" });
+        let report = await runGoLiveGate(db);
+        expect(failed(report)).toEqual([]);
+
+        // Anggota nyata yang lolos OTP boleh menamai dirinya "[Contoh] ...": dicatat, tidak menolak.
+        const email = "budi.anggota@kapdh-uji.id";
+        const member = await register("[Contoh] Budi Anggota", email);
+        expect(member.statusCode, member.body).toBe(201);
+        const verify = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/otp/verify",
+          payload: { challenge_id: member.json().challenge_id, code: mailer.last(email)! },
+        });
+        expect(verify.statusCode, verify.body).toBe(200);
+        report = await runGoLiveGate(db);
+        expect(failed(report)).toEqual([]);
+        expect(report.checks.find((c) => c.id === "dev_fixtures")?.details).toContain(
+          "Catatan (tidak memblokir): 1 akun anggota bernama [Contoh]; nama diisi anggota sendiri, tinjau bila perlu.",
+        );
+
+        // Konten pengurus berjudul [Contoh] tetap menolak; ada data nyata → saran tanpa reset (PRD 8.4).
+        await db.insert(posts).values({
+          id: uuidv7(),
+          slug: "contoh-berita-uji-pengurus",
+          title: "[Contoh] Berita uji pengurus",
+          bodyHtml: "<p>uji</p>",
+          authorAdminId: superAdmins[0]!.adminId,
+        });
+        report = await runGoLiveGate(db);
+        expect(failed(report)).toEqual(["dev_fixtures"]);
+        expect(problems(report, "dev_fixtures")).toEqual([
+          "Fixture dev terdeteksi: 1 berita berjudul [Contoh].",
+        ]);
+        const details = report.checks.find((c) => c.id === "dev_fixtures")!.details.join("\n");
+        expect(details).toContain("Sudah ada 1 akun anggota nyata: JANGAN reset");
+        expect(details).not.toContain("Belum ada akun anggota nyata");
+        // Tanpa data pribadi: email dan nama anggota tidak pernah dicetak.
+        expect(JSON.stringify(report)).not.toContain(email);
+        expect(JSON.stringify(report)).not.toContain("Budi Anggota");
+      } finally {
+        await app.close();
+        await api.sql.end({ timeout: 5 });
+      }
     });
   });
 
@@ -296,6 +395,66 @@ describe("PRD 9.2/9.3: gerbang go-live pada PostgreSQL 17 (satu kondisi per uji)
       const report = await runGoLiveGate(db);
       expect(failed(report)).toEqual(["schema"]);
       expect(problems(report, "schema")[0]).toContain("1 migrasi belum diterapkan");
+    });
+  });
+
+  it("PRD 5.5/8.4: skema lebih baru dari image → ditolak; --allow-schema-ahead (bukti rollback, baca saja) → peringatan", async () => {
+    await withDatabase("schema_ahead", true, async ({ tdb, db }) => {
+      await tdb.sql.unsafe(
+        "insert into drizzle.__drizzle_migrations (hash, created_at) values ('migrasi-rilis-berikutnya', 9999999999999)",
+      );
+      let report = await runGoLiveGate(db);
+      expect(failed(report)).toEqual(["schema"]);
+      expect(problems(report, "schema")[0]).toContain("1 migrasi yang tidak dikenal image ini");
+      expect(problems(report, "schema")[0]).toContain("runbook rilis bagian 6");
+
+      report = await runGoLiveGate(db, { allowSchemaAhead: true });
+      expect(failed(report)).toEqual([]);
+      expect(report.checks.find((c) => c.id === "schema")?.details.join("\n")).toContain(
+        "PERINGATAN: Database memuat 1 migrasi yang tidak dikenal image ini",
+      );
+      const out: string[] = [];
+      const code = await runGoLiveCheckCommand(["--allow-schema-ahead"], {
+        db,
+        now: new Date(),
+        stdout: { write: (t: string) => out.push(t) },
+        stderr: { write: (t: string) => out.push(t) },
+      });
+      expect(code, out.join("")).toBe(GOLIVE_EXIT.passed);
+    });
+  });
+
+  it("job rilis fase pra-migrasi: tanpa schema/settings; konfigurasi belum disahkan → ditolak SEBELUM migrasi", async () => {
+    await withDatabase("preflight", false, async ({ tdb, db }) => {
+      // Rilis baru: satu migrasi dan satu kunci app_settings belum diterapkan job ini (keadaan sebelum langkah 6-8).
+      await tdb.sql.unsafe(
+        "delete from drizzle.__drizzle_migrations where id = (select max(id) from drizzle.__drizzle_migrations)",
+      );
+      await db.delete(appSettings).where(eq(appSettings.key, "store_links"));
+      const full = await runGoLiveGate(db);
+      expect(failed(full)).toEqual(expect.arrayContaining(["schema", "settings", "super_admins"]));
+
+      let report = await runGoLiveGate(db, { phase: "preflight" });
+      expect(report.phase).toBe("preflight");
+      expect(report.checks.map((c) => c.id)).not.toContain("schema");
+      expect(report.checks.map((c) => c.id)).not.toContain("settings");
+      expect(failed(report)).toContain("super_admins");
+      const out: string[] = [];
+      const code = await runGoLiveCheckCommand(["--preflight"], {
+        db,
+        now: new Date(),
+        stdout: { write: (t: string) => out.push(t) },
+        stderr: { write: (t: string) => out.push(t) },
+      });
+      expect(code).toBe(GOLIVE_EXIT.refused);
+      expect(out.join("")).toContain("HASIL PRA-MIGRASI: DITOLAK");
+      expect(out.join("")).toContain("Skema belum diubah");
+
+      // Konfigurasi disahkan: pra-migrasi lulus walau skema/settings menunggu langkah migrasi dan seed.
+      await approveProductionConfig(db);
+      report = await runGoLiveGate(db, { phase: "preflight" });
+      expect(failed(report)).toEqual([]);
+      expect(report.ok).toBe(true);
     });
   });
 
