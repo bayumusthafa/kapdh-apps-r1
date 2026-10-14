@@ -1,0 +1,39 @@
+# Konteks build image KAPDH = kapdh-platform/ (PRD 5.3: image dibangun di CI). Hanya sumber yang dibutuhkan build
+# yang dikirim ke daemon; keluaran build, dependensi terpasang, secret lokal, dan data uji tidak pernah masuk layer.
+
+# Dependensi dan keluaran build: selalu dibangun ulang di dalam image dari lockfile.
+**/node_modules
+**/dist
+**/.turbo
+**/.astro
+**/coverage
+**/*.tsbuildinfo
+packages/contracts/src/generated
+packages/contracts/dart/kapdh_api/lib/src
+packages/contracts/dart/kapdh_api/.dart_tool
+**/.dart_tool
+
+# Secret dan konfigurasi lokal (PRD 5.3: secret tidak masuk source atau image layer). Berkas contoh tetap ikut.
+**/.env
+**/.env.*
+!**/.env.example
+!infra/.env.production.example
+!infra/.env.staging.example
+**/*.pem
+**/*.key
+**/acme.json
+
+# Data lokal: berkas unggahan dev, dump database, laporan uji.
+**/.data
+**/*.dump
+**/*.sql.gz
+**/*.log
+
+# Alat dan sistem operasi.
+**/.git
+**/.gitignore
+**/.github
+**/.vscode
+**/.idea
+**/.DS_Store
+**/Thumbs.db

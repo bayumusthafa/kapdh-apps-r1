@@ -14,7 +14,8 @@
  *                                                  renewal), kernels.pg (renewal diterapkan ulang 8x), content.pg
  *   9. akun dihapus lalu backup dipulihkan ....... DI SINI (ledger diterapkan ulang, total keuangan cocok)
  *                                                  + account-deletion.pg (CLI ledger-reapply)
- *  10. gerbang go-live konfigurasi produksi ...... BELUM ADA IMPLEMENTASI (it.todo; temuan audit D4)
+ *  10. gerbang go-live konfigurasi produksi ...... DI SINI (golive:check menolak lalu meloloskan) + golive-gate.pg
+ *                                                  (satu uji per kondisi) + release-job.pg (urutan job rilis)
  *  11. dua Super Admin diturunkan bersamaan ...... last-super-admin.pg, admin-governance.pg
  *
  * Diakhiri invarian global atas seluruh data berkas ini: penghitung kursi = jumlah tiket per status, nominal payment =
@@ -24,15 +25,19 @@
 import "reflect-metadata";
 import type { WorkerEnv } from "@kapdh/config";
 import type { Permission } from "@kapdh/contracts";
-import { createDb } from "@kapdh/database";
+import { appSettings, createDb } from "@kapdh/database";
+import { seedDev } from "@kapdh/database/seeds/dev";
+import { seedReference } from "@kapdh/database/seeds/reference";
 import { MemoryDriver } from "@kapdh/storage";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
+import { eq } from "drizzle-orm";
 import { rmSync } from "node:fs";
 import { decodeJwt } from "jose";
 import { io, type Socket } from "socket.io-client";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 import { createApp } from "../../src/bootstrap.js";
+import { GOLIVE_EXIT, runGoLiveCheckCommand } from "../../src/cli/golive-check-command.js";
 import { MemoryMailer } from "../../src/core/adapters/mailer.js";
 import { runAsSystem } from "../../src/core/context/request-context.js";
 import type { Db } from "../../src/core/db/types.js";
@@ -62,6 +67,7 @@ import {
   signInAlumni,
 } from "../support/factories.js";
 import { uploadTestFile } from "../support/files.js";
+import { approveProductionConfig } from "../support/golive.js";
 import { httpClient } from "../support/http.js";
 import { FakePush, TestClock, testEnv } from "../support/test-app.js";
 import { connectAs, createPgTestDatabase, type PgTestDatabase, sleep, type Sql } from "./support.js";
@@ -1198,14 +1204,56 @@ describe("PRD 9.2 #9 / AC F14-6, D2: akun dihapus lalu backup dipulihkan (Postgr
 // ----------------------------------------------------------------------------------------------- skenario 10
 
 describe("PRD 9.2 #10 / PRD 8.2 butir 3-4, 9.3: gerbang go-live menolak konfigurasi produksi yang belum disahkan", () => {
-  // Tidak ada gerbang (CLI/endpoint/health/boot) yang memeriksa app_settings.fees belum disahkan, fixture dev
-  // ([Contoh], domain .test) di database produksi, maupun minimal dua Super Admin aktif ber-TOTP. Temuan audit D4;
-  // uji ditulis saat gerbang ada. Sejak perbaikan D4-02, nominal iuran yang belum tersimpan (versi 0) atau bertotal
-  // 0.00 sudah ditolak saat instruksi iuran dibuat (fail closed, test/payments/dues-configuration.e2e.test.ts dan
-  // invarian D4-02 di bawah), tetapi itu bukan gerbang go-live: aplikasi tetap dapat berjalan dengan konfigurasi itu.
-  it.todo(
-    "production dengan nominal kosong/nol, fixture dev, atau kurang dari dua Super Admin ber-TOTP → gerbang go-live menolak",
-  );
+  // Gerbang go-live (temuan audit D4, perintah golive:check) menolak sebelum rilis. Perbaikan D4-02 melengkapinya saat
+  // berjalan: nominal iuran yang belum tersimpan (versi 0) atau bertotal 0.00 juga ditolak saat instruksi iuran dibuat
+  // (fail closed, test/payments/dues-configuration.e2e.test.ts dan invarian D4-02 di bawah).
+
+  /** Perintah golive:check yang sama dengan job rilis (infra/scripts/release-job.sh): kode keluar + laporan teks. */
+  async function gate(db: Db): Promise<{ code: number; out: string }> {
+    const out: string[] = [];
+    const code = await runGoLiveCheckCommand([], {
+      db,
+      now: new Date(),
+      stdout: { write: (t: string) => out.push(t) },
+      stderr: { write: (t: string) => out.push(t) },
+    });
+    return { code, out: out.join("") };
+  }
+
+  it("production dengan nominal kosong, fixture dev, atau tanpa Super Admin ber-TOTP → gerbang menolak; konfigurasi tersahkan → lolos", async () => {
+    // Database production baru (migrasi + seed referensi, PRD 8.2 butir 2 dan 4), terpisah dari data skenario lain.
+    const fresh = await createPgTestDatabase("c92_golive", 4);
+    try {
+      const db = fresh.db as unknown as Db;
+      await seedReference(fresh.db);
+
+      // Tanpa Super Admin ber-TOTP (bootstrap belum diaktifkan): ditolak.
+      let result = await gate(db);
+      expect(result.code).toBe(GOLIVE_EXIT.refused);
+      expect(result.out).toContain("Super Admin aktif ber-TOTP: 0 dari minimal 2");
+
+      // Seluruh konfigurasi disahkan (dua Super Admin ber-TOTP, metode bayar, legal, master, kontak): lolos.
+      await approveProductionConfig(db);
+      result = await gate(db);
+      expect(result.code, result.out).toBe(GOLIVE_EXIT.passed);
+
+      // Nominal kosong (baris fees hilang → API diam-diam memakai bawaan versi 0): ditolak; seed ulang memulihkan.
+      await db.delete(appSettings).where(eq(appSettings.key, "fees"));
+      result = await gate(db);
+      expect(result.code).toBe(GOLIVE_EXIT.refused);
+      expect(result.out).toContain("Nominal kosong");
+      await seedReference(fresh.db);
+      expect((await gate(db)).code).toBe(GOLIVE_EXIT.passed);
+
+      // Fixture dev di database production: ditolak.
+      await seedDev(fresh.db);
+      result = await gate(db);
+      expect(result.code).toBe(GOLIVE_EXIT.refused);
+      expect(result.out).toContain("[GAGAL] Tanpa fixture dev atau data sintetis");
+    } finally {
+      await fresh.drop();
+    }
+  });
 });
 
 // ------------------------------------------------------------------------------------------- invarian akhir

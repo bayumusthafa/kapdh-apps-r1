@@ -7,6 +7,9 @@ coverage/
 .env
 .env.*
 !.env.example
+# Contoh environment staging/production tanpa secret (infra/); berkas terisi tetap diabaikan.
+!.env.production.example
+!.env.staging.example
 .DS_Store
 # Keluaran generator kontrak (ARCHITECTURE §6): dibangkitkan `pnpm contracts:gen` / build, tidak di-commit.
 packages/contracts/src/generated/

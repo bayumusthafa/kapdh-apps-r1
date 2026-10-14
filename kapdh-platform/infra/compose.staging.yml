@@ -1,0 +1,112 @@
+# Overlay STAGING untuk Compose cadangan (D12; PRD 5.3: staging dan production memiliki database, user DB, Redis,
+# volume berkas, secret, domain dan proyek push terpisah). Selalu dipakai bersama berkas production:
+#
+#   docker compose --env-file /etc/kapdh/staging.env \
+#     -f infra/compose.production.yml -f infra/compose.staging.yml --profile release run --rm release
+#   docker compose --env-file /etc/kapdh/staging.env -f infra/compose.production.yml -f infra/compose.staging.yml up -d
+#
+# Project `kapdh-staging` (kontainer kapdh-staging-<layanan>-1, jaringan/volume sendiri). Nama volume dan jaringan edge
+# (kapdh-edge-staging) DIPATOK di sini dan tidak dapat diarahkan lewat env, sehingga berkas env production yang
+# tertukar tidak pernah memasang volume production ke kontainer staging, dan kontainer staging tidak berbagi jaringan
+# dengan API production. Batas sumber daya lebih kecil: staging tidak boleh mengganggu production pada VPS
+# yang sama (PRD 5.3); uji beban dilakukan di luar jam layanan atau di VPS terpisah.
+name: kapdh-staging
+
+services:
+  postgres:
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=384MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - max_connections=60
+      - -c
+      - password_encryption=scram-sha-256
+      - -c
+      - log_statement=none
+    shm_size: 128mb
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m
+
+  redis:
+    command:
+      - sh
+      - -c
+      - >-
+        exec docker-entrypoint.sh redis-server --appendonly yes --appendfsync everysec --maxmemory 64mb
+        --maxmemory-policy noeviction --requirepass "$$REDIS_PASSWORD"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128m
+
+  api:
+    environment:
+      NODE_ENV: staging
+      NODE_OPTIONS: --max-old-space-size=320
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 448m
+
+  worker:
+    environment:
+      NODE_ENV: staging
+      NODE_OPTIONS: --max-old-space-size=256
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 384m
+
+  # Situs dan admin staging dibangun dengan URL API staging (build arg), sehingga tag-nya berakhiran -staging.
+  web:
+    image: ${KAPDH_REGISTRY:?KAPDH_REGISTRY wajib}/kapdh-web:${KAPDH_IMAGE_TAG:?KAPDH_IMAGE_TAG wajib}-staging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 48m
+
+  admin:
+    image: ${KAPDH_REGISTRY:?KAPDH_REGISTRY wajib}/kapdh-admin:${KAPDH_IMAGE_TAG:?KAPDH_IMAGE_TAG wajib}-staging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 48m
+
+  release:
+    environment:
+      KAPDH_ENV: staging
+
+networks:
+  # Jaringan edge staging sendiri (dipatok): kontainer staging tidak dapat menjangkau kapdh-production-* tanpa Traefik.
+  # Hanya Traefik cadangan yang tersambung ke kapdh-edge dan kapdh-edge-staging (infra/compose.proxy.yml).
+  edge:
+    external: true
+    name: kapdh-edge-staging
+
+volumes:
+  pgdata:
+    name: kapdh-staging-pgdata
+  redisdata:
+    name: kapdh-staging-redisdata
+  files:
+    name: kapdh-staging-files
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/kapdh/staging/files
