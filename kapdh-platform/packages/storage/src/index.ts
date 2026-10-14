@@ -4,10 +4,12 @@
  */
 import { resolve } from "node:path";
 import { StorageConfigError, type StorageDriver } from "./driver.js";
+import { FallbackReadDriver } from "./fallback-driver.js";
 import { LocalDriver } from "./local-driver.js";
 import { S3Driver } from "./s3-driver.js";
 
 export * from "./driver.js";
+export { FallbackReadDriver } from "./fallback-driver.js";
 export { LocalDriver } from "./local-driver.js";
 export { MemoryDriver } from "./memory-driver.js";
 export { S3Driver, type S3DriverConfig } from "./s3-driver.js";
@@ -22,10 +24,15 @@ export interface StorageEnv {
   S3_ACCESS_KEY_ID?: string;
   S3_SECRET_ACCESS_KEY?: string;
   S3_FORCE_PATH_STYLE: boolean;
+  /**
+   * Folder disk lama sebagai baca-cadangan selama perpindahan local -> S3 (PRD 5.4, docs/runbooks/storage-migration.md).
+   * Hanya berlaku bersama STORAGE_DRIVER=s3; kosongkan setelah seluruh objek tersalin dan terverifikasi.
+   */
+  STORAGE_FALLBACK_LOCAL_ROOT?: string;
 }
 
 /**
- * Driver sesuai STORAGE_DRIVER. Validasi kelengkapan S3 sudah dilakukan packages/config; dicek ulang di sini.
+ * Driver sesuai STORAGE_DRIVER (S3 dengan baca-cadangan disk lama bila STORAGE_FALLBACK_LOCAL_ROOT diisi). Validasi kelengkapan S3 sudah dilakukan packages/config; dicek ulang di sini.
  * STORAGE_LOCAL_ROOT relatif (mis. `./.data/files` di .env.example) diselesaikan dari folder kerja proses (`cwd`,
  * bawaan process.cwd()) di SATU tempat ini, sehingga API, worker dan CLI memakai folder yang sama; LocalDriver sendiri
  * tetap hanya menerima path absolut.
@@ -38,7 +45,7 @@ export function createStorageDriver(env: StorageEnv, options: { cwd?: string } =
   }
   if (!env.S3_BUCKET || !env.S3_REGION || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY)
     throw new StorageConfigError("STORAGE_DRIVER=s3 membutuhkan S3_BUCKET, S3_REGION dan kredensial");
-  return new S3Driver({
+  const s3 = new S3Driver({
     bucket: env.S3_BUCKET,
     region: env.S3_REGION,
     endpoint: env.S3_ENDPOINT,
@@ -46,4 +53,8 @@ export function createStorageDriver(env: StorageEnv, options: { cwd?: string } =
     accessKeyId: env.S3_ACCESS_KEY_ID,
     secretAccessKey: env.S3_SECRET_ACCESS_KEY,
   });
+  const fallbackRoot = env.STORAGE_FALLBACK_LOCAL_ROOT?.trim();
+  return fallbackRoot
+    ? new FallbackReadDriver(s3, new LocalDriver(resolve(options.cwd ?? process.cwd(), fallbackRoot)))
+    : s3;
 }

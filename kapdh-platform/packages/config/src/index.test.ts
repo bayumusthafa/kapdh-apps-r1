@@ -118,6 +118,30 @@ describe("loadApiEnv", () => {
     expect(env.S3_FORCE_PATH_STYLE).toBe(true);
   });
 
+  it("PRD 5.4: STORAGE_FALLBACK_LOCAL_ROOT (baca-cadangan perpindahan storage) hanya bersama STORAGE_DRIVER=s3", () => {
+    expect(() => loadApiEnv({ ...api, STORAGE_FALLBACK_LOCAL_ROOT: "/data/files" })).toThrow(
+      /STORAGE_FALLBACK_LOCAL_ROOT/,
+    );
+    const s3 = {
+      ...api,
+      STORAGE_DRIVER: "s3",
+      S3_REGION: "ap-southeast-1",
+      S3_BUCKET: "kapdh-files",
+      S3_ACCESS_KEY_ID: "akses",
+      S3_SECRET_ACCESS_KEY: "rahasia",
+    };
+    expect(
+      loadApiEnv({ ...s3, STORAGE_FALLBACK_LOCAL_ROOT: "/data/files" }).STORAGE_FALLBACK_LOCAL_ROOT,
+    ).toBe("/data/files");
+    // Nilai kosong (variabel Coolify dikosongkan setelah perpindahan) = tidak diisi.
+    expect(
+      loadApiEnv({ ...s3, STORAGE_FALLBACK_LOCAL_ROOT: "" }).STORAGE_FALLBACK_LOCAL_ROOT,
+    ).toBeUndefined();
+    expect(
+      loadApiEnv({ ...api, STORAGE_FALLBACK_LOCAL_ROOT: "" }).STORAGE_FALLBACK_LOCAL_ROOT,
+    ).toBeUndefined();
+  });
+
   it("FCM opsional di luar production tetapi diisi berpasangan dan JSON valid", () => {
     expect(() => loadApiEnv({ ...api, FCM_PROJECT_ID: "kapdh-dev" })).toThrow(/FCM_SERVICE_ACCOUNT_JSON/);
     expect(() =>
