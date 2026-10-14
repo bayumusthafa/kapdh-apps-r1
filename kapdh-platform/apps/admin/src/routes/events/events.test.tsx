@@ -465,9 +465,12 @@ describe("peserta dan tiket (F-09)", () => {
     const dewi = rowOf(table, /Dewi Lestari/);
     expect(within(dewi).getByText("Menunggu verifikasi")).toBeInTheDocument();
     expect(within(dewi).getByText("Lewat batas review")).toBeInTheDocument();
+    // D6-02: tautan membuka payment tiket ini langsung di panel keputusan, bukan antrean bawaan.
+    const paymentId = within(dewi).getByText(/^ID /).getAttribute("title");
+    expect(paymentId).toMatch(/^[0-9a-f-]{36}$/);
     expect(within(dewi).getByRole("link", { name: "Putuskan di Verifikasi Pembayaran" })).toHaveAttribute(
       "href",
-      "/payments",
+      `/payments?tab=verify&payment=${paymentId}`,
     );
     expect(within(dewi).getByText("Putuskan pembayaran dahulu")).toBeInTheDocument();
     expect(within(dewi).queryByRole("button", { name: /Batalkan tiket/ })).toBeNull();

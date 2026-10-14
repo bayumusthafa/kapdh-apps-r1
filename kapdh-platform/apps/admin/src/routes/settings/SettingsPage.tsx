@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { components } from "@kapdh/contracts";
 import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { RefreshCw, TriangleAlert } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { type DefaultValues, type FieldValues, useForm, type UseFormReturn } from "react-hook-form";
@@ -8,8 +9,9 @@ import { z } from "zod";
 import { api } from "../../api/client";
 import type { ApiError } from "../../api/errors";
 import { useApiMutation, useApiQuery } from "../../api/query";
+import { useAuth } from "../../auth/session";
 import { Badge } from "../../components/ui/Badge";
-import { Button } from "../../components/ui/Button";
+import { Button, buttonClass } from "../../components/ui/Button";
 import { Card, CardHeader } from "../../components/ui/Card";
 import { Checkbox, Switch } from "../../components/ui/Choice";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
@@ -20,7 +22,9 @@ import { Input, Textarea } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { PermissionGate } from "../../components/ui/PermissionGate";
 import { ErrorState, Loading } from "../../components/ui/States";
+import { cn } from "../../lib/cn";
 import { formatDateTime } from "../../lib/format";
+import { RECORD_PERMISSIONS } from "../payments/recordEligibility";
 
 type Settings = components["schemas"]["AdminAppSettings"];
 type Meta = components["schemas"]["AdminSettingMeta"];
@@ -648,7 +652,7 @@ function PaymentInstructionsCard({ setting }: { setting: PaymentInstructions }) 
     <SettingCard
       id="pengaturan-instruksi"
       title="Instruksi bayar iuran per platform"
-      description="Rencana cadangan D13: bila review toko menolak alur iuran, sembunyikan rekening tujuan dan unggah bukti iuran di platform itu; pengurus mencatat iuran yang diverifikasi di luar aplikasi. Pembayaran tiket tidak terpengaruh."
+      description="Rencana cadangan D13: bila review toko menolak alur iuran, sembunyikan rekening tujuan dan unggah bukti iuran di platform itu; pengurus mencatat iuran yang diverifikasi di luar aplikasi lewat Catat iuran di Verifikasi Pembayaran. Pembayaran tiket tidak terpengaruh."
       meta={state.base}
       conflict={state.conflict}
       onReloadLatest={state.reloadLatest}
@@ -663,6 +667,7 @@ function PaymentInstructionsCard({ setting }: { setting: PaymentInstructions }) 
           ? "semua platform menampilkan instruksi iuran."
           : `disembunyikan di ${hidden.map((p) => PLATFORM_LABEL[p]).join(" dan ")}.`}
       </p>
+      <RecordDuesNote hidden={hidden.length > 0} />
       <fieldset className="flex flex-col gap-1">
         <legend className="mb-1 text-sm font-medium">Sembunyikan instruksi iuran di</legend>
         {(["android", "ios"] as const).map((p) => (
@@ -683,6 +688,44 @@ function PaymentInstructionsCard({ setting }: { setting: PaymentInstructions }) 
         {(field, a11y) => <Textarea {...field} {...a11y} rows={2} maxLength={500} />}
       </FormField>
     </SettingCard>
+  );
+}
+
+/**
+ * Jalur pencatatan iuran D13 (adminRecordPayment). Anggota di platform yang instruksinya disembunyikan tidak dapat
+ * mengunggah bukti iuran, sehingga aktivasi dan perpanjangannya hanya dapat dicatat pengurus berizin payments.read +
+ * payments.decide lewat "Catat iuran". Bila instruksi sedang disembunyikan, catatan ditampilkan sebagai peringatan.
+ */
+function RecordDuesNote({ hidden }: { hidden: boolean }) {
+  const auth = useAuth();
+  const canRecord = RECORD_PERMISSIONS.every((p) => auth.can(p));
+  return (
+    <div
+      role="note"
+      aria-label="Pencatatan iuran di luar aplikasi"
+      className={cn(
+        "flex flex-col gap-2 rounded-md p-3 text-sm",
+        hidden ? "bg-warning-bg text-warning" : "bg-neutral-bg text-text-muted",
+      )}
+    >
+      <p>
+        Anggota di platform yang instruksinya disembunyikan tidak dapat mengunggah bukti iuran. Aktivasi dan
+        perpanjangan mereka dicatat pengurus lewat Catat iuran di Verifikasi Pembayaran setelah dana
+        dicocokkan dengan mutasi rekening penerima.
+        {canRecord
+          ? ""
+          : " Pencatatan memerlukan izin melihat dan memutus pembayaran (payments.read dan payments.decide); pastikan ada pengurus dengan izin itu sebelum menyembunyikan instruksi."}
+      </p>
+      {canRecord ? (
+        <Link
+          to="/payments"
+          search={{ tab: "verify", record: true }}
+          className={cn(buttonClass({ variant: "outline", size: "sm" }), "self-start")}
+        >
+          Catat iuran
+        </Link>
+      ) : null}
+    </div>
   );
 }
 
