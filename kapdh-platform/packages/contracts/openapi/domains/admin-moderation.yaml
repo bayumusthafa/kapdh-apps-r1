@@ -28,6 +28,11 @@
 # - Setiap pembacaan bukti, klaim dan keputusan dicatat di audit dalam transaksi yang sama (AC F12-3, F17-1); isi
 #   bukti tidak disalin ke audit (ARCHITECTURE §2 butir 3). Setiap respons yang memuat bukti (detail, klaim termasuk
 #   klaim ulang idempoten, keputusan, dan `current` pada 409) menulis `moderation.report_viewed` sebelum dikirim.
+# - Berkas bukti (gambar chat, avatar) yang dibuka di luar respons itu lewat GET /files/{fileId}/access (files.yaml)
+#   hanya diizinkan bila minimal satu laporan perujuk terlihat bagi pemanggil menurut butir a (404 bila tidak, sama
+#   dengan detail laporan), sehingga akses berkas tidak menjadi oracle laporan tersembunyi; setiap akses itu menulis
+#   `moderation.evidence_viewed` (entity file, report_ids yang terlihat) sebelum URL diterbitkan. URL bukti yang
+#   beredar dievaluasi ulang saat dibuka dengan izin dan akun tertaut terbaru.
 tags:
   - name: Admin Moderation
     description: Antrean laporan, bukti terminimalkan dan penyelesaian moderasi oleh pengurus (F-12, F-15).

@@ -6,10 +6,14 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 
 ## Belum dirilis
 
-### Hardening Fase D (chat, maintenance)
+### Hardening Fase D (chat, moderasi, maintenance)
 
 Tanpa perubahan skema; hanya aturan yang didokumentasikan pada deskripsi operasi.
 
+- `getFileAccess` dan aturan bersama admin-moderation: gambar chat/avatar yang dirujuk bukti laporan hanya dapat
+  dibuka pengurus `moderation.read` bila minimal satu laporan perujuk terlihat baginya (aturan konflik kepentingan
+  butir a; selain itu 404), dan setiap akses itu dicatat audit `moderation.evidence_viewed` (PRD 2.3, 3.12, AC F12-2,
+  F17-1; temuan audit D1-02, D3-02).
 - `createChatGroup`, `inviteChatMembers`, `ChatInviteSkipReason`: calon anggota yang tersembunyi dari direktori
   hanya dapat diundang oleh anggota yang pernah satu grup dengannya (syarat yang sama dengan `openDirectRoom`; PRD
   3.10, N-09); selain itu dilewati `not_invitable` tanpa notifikasi (temuan audit D1-03).
