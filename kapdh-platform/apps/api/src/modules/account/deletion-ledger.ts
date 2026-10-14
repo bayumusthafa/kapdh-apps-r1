@@ -13,6 +13,10 @@ import { z } from "zod";
  * `node dist/modules/account/ledger-reapply.cli.js --dir <salinan ledger terbaru>` SEBELUM layanan dibuka; setiap
  * entri diterapkan ulang oleh {@link DeletionLedgerService.reapply}.
  *
+ * Karena salinan di StorageDriver ikut hilang bersama VPS (volume /data/files), setiap entri JUGA ditambahkan secara
+ * sinkron ke bucket deletion ledger luar VPS yang append-only ({@link appendLedgerEntry}, `OffsiteDeletionLedger`;
+ * audit D5-07). Runbook restore menyalin bucket itu (rclone) lalu memberikannya ke CLI sebagai `--dir` tambahan.
+ *
  * `account_deletions.ledger` hanyalah salinan kerja job (inventaris id untuk melanjutkan langkah), bukan sumber
  * pemulihan, karena backup yang lebih tua dari permintaan tidak memuat baris itu.
  */
@@ -100,14 +104,65 @@ export function readLedgerDirectory(dir: string): LedgerEntry[] {
   return mergeLedgerEntries(files.map((file) => parseLedgerEntry(readFileSync(file, "utf8"))));
 }
 
+/**
+ * Menggabungkan entri per deletion_id: entri `completed` mengalahkan `requested`, dan object key dari SEMUA entri
+ * permintaan yang sama digabung (salinan ledger dari beberapa sumber, mis. store luar VPS yang append-only berisi
+ * beberapa versi entri, ditambah salinan ledger di backup berkas). Entri dengan deletion_id sama tetapi akun/nomor
+ * permintaan berbeda berarti ledger rusak: dilempar, tidak pernah dipilih diam-diam (AC F14-6).
+ */
 export function mergeLedgerEntries(entries: LedgerEntry[]): LedgerEntry[] {
   const byId = new Map<string, LedgerEntry>();
   for (const entry of entries) {
     const current = byId.get(entry.deletion_id);
-    if (!current || (current.state === "requested" && entry.state === "completed"))
+    if (!current) {
       byId.set(entry.deletion_id, entry);
+      continue;
+    }
+    if (current.user_id !== entry.user_id || current.request_number !== entry.request_number)
+      throw new Error("Entri deletion ledger bertentangan untuk deletion_id yang sama");
+    const base = current.state === "requested" && entry.state === "completed" ? entry : current;
+    byId.set(entry.deletion_id, {
+      ...base,
+      object_keys: [...new Set([...current.object_keys, ...entry.object_keys])].sort(),
+    });
   }
   return [...byId.values()].sort(
     (a, b) => a.requested_at.localeCompare(b.requested_at) || a.deletion_id.localeCompare(b.deletion_id),
   );
+}
+
+// ------------------------------------------------------------------------------------ store luar VPS (D5-07)
+
+/**
+ * Prefix entri pada bucket deletion ledger LUAR VPS (DELETION_LEDGER_S3_*, AC F14-6, PRD 5.5, D9). Bucket khusus ini
+ * terpisah dari STORAGE_DRIVER (volume /data/files di VPS) sehingga kehilangan VPS tidak ikut menghilangkan ledger.
+ */
+export const OFFSITE_LEDGER_PREFIX = "account-deletions";
+
+/**
+ * Object key APPEND-ONLY di store luar VPS: setiap penulisan memakai key baru
+ * `account-deletions/<yyyy>/<mm>/<nomor-permintaan>/<state>-<uuidv7>.json`, tidak pernah menimpa atau menghapus objek
+ * lain (cocok dengan bucket versioning + object lock). Pembaca menggabungkan semua versi lewat
+ * {@link mergeLedgerEntries}.
+ */
+export function offsiteLedgerObjectKey(entry: LedgerEntry, writeId: string): string {
+  if (!/^[0-9a-f-]{36}$/.test(writeId)) throw new Error("writeId ledger harus UUID huruf kecil");
+  const requestedAt = new Date(entry.requested_at);
+  const year = requestedAt.getUTCFullYear().toString().padStart(4, "0");
+  const month = String(requestedAt.getUTCMonth() + 1).padStart(2, "0");
+  return `${OFFSITE_LEDGER_PREFIX}/${year}/${month}/${entry.request_number.toLowerCase()}/${entry.state}-${writeId}.json`;
+}
+
+/** Menambahkan satu entri tervalidasi ke store luar VPS dengan key baru; mengembalikan key. */
+export async function appendLedgerEntry(
+  storage: StorageDriver,
+  entry: LedgerEntry,
+  writeId: string,
+): Promise<string> {
+  const parsed = ledgerEntrySchema.parse(entry);
+  const key = offsiteLedgerObjectKey(parsed, writeId);
+  await storage.put(key, Buffer.from(`${JSON.stringify(parsed, null, 2)}\n`, "utf8"), {
+    contentType: "application/json",
+  });
+  return key;
 }
