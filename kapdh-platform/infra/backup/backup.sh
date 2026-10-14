@@ -190,6 +190,7 @@ psql_error_hint() {
 log "1/6 database: snapshot REPEATABLE READ diekspor; pg_dump dan statistik manifest memakai snapshot yang sama"
 mkfifo "$TMP/psql.in"
 : >"$TMP/psql.out"
+# shellcheck disable=SC2119 # tanpa argumen disengaja: kueri dibaca psql dari FIFO stdin
 psql_q <"$TMP/psql.in" >"$TMP/psql.out" 2>"$TMP/psql.err" &
 SNAP_PID=$!
 exec 7>"$TMP/psql.in"
@@ -406,7 +407,7 @@ restic_backup_pairs "$TMP/files-snapshots.json" >"$TMP/files-pairs"
 # Pengaman: run ini sendiri wajib terbaca di kedua daftar; bila tidak (format JSON restic berubah), tidak ada snapshot
 # berkas yang dilupakan.
 grep -qx "$BACKUP_ID" "$TMP/keep-backup-ids" || die "retensi dibatalkan: snapshot dump run ini tidak terbaca"
-grep -q "^$FILES_SNAPSHOT[0-9a-f]* $BACKUP_ID\$" "$TMP/files-pairs" ||
+grep -q "^${FILES_SNAPSHOT}[0-9a-f]* ${BACKUP_ID}\$" "$TMP/files-pairs" ||
   die "retensi dibatalkan: snapshot berkas run ini tidak terbaca beserta backup_id-nya"
 : >"$TMP/forget-files"
 while read -r _id _bid; do

@@ -6,7 +6,8 @@ Perkakas: `kapdh-platform/infra/backup/` (skrip), `kapdh-platform/infra/db/roles
 `ledger-reapply` di image API. Urutan sisi aplikasi (kepala ledger, gerbang readiness `deletion_ledger`, floor
 nomor anggota) dijelaskan juga di `docs/runbooks/restore-backup.md`; keputusan desain: ADR-014, ADR-018, ADR-019.
 Urutan deployment Compose cadangan (bila Coolify tidak tersedia) dan daftar secret yang wajib sama:
-`docs/runbooks/compose-cadangan.md` (cabang E1, berlaku setelah digabung).
+`docs/runbooks/compose-cadangan.md`. Sandi role `kapdh_backup`/`kapdh_monitor` dapat diterapkan job rilis
+(`KAPDH_BACKUP_DB_PASSWORD`/`KAPDH_MONITOR_DB_PASSWORD`, `infra/db/role-passwords.sql`) atau manual (bagian 3).
 
 > **Status bukti.** Skrip, SQL dan alurnya sudah diuji di repositori: uji kering dengan alat tiruan
 > (`infra/backup/test/dry-run.sh`, 60 pemeriksaan: retensi berpasangan, pemilik salinan ledger, mode `--post-start`
@@ -18,13 +19,13 @@ Urutan deployment Compose cadangan (bila Coolify tidak tersedia) dan daftar secr
 
 ## 1. Sasaran
 
-| Sasaran | Nilai | Cara membuktikan |
-| ------- | ----- | ---------------- |
-| RPO (data hilang maksimal) | ≤ 24 jam (N-06) | Backup harian 02:15 WIB + alert umur backup > 26 jam; drill mencatat umur backup saat restore dimulai |
-| RTO (waktu pulih maksimal) | ≤ 4 jam (N-06) | Drill mencatat waktu dari keputusan restore sampai layanan siap dibuka (bagian 8.4) |
-| Retensi | 30 hari, tidak lebih (D2) | Setiap run: dump di luar 30 hari dilupakan, snapshot berkas dilupakan berpasangan, `restic prune --max-unused 0`; backup.sh menolak `RETENTION_DAYS + BUCKET_NONCURRENT_DAYS` > 30 (bagian 10) |
-| Penghapusan akun tidak hidup kembali | AC F14-6, PRD 9.2 #9 | Deletion ledger di luar VPS diterapkan ulang sebelum layanan dibuka; verify-restore.sh |
-| Total uang tetap cocok | PRD 9.2 #9 | Statistik invariant di manifest = database pulihan (verify-restore.sh) |
+| Sasaran                              | Nilai                     | Cara membuktikan                                                                                                                                                                               |
+| ------------------------------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RPO (data hilang maksimal)           | ≤ 24 jam (N-06)           | Backup harian 02:15 WIB + alert umur backup > 26 jam; drill mencatat umur backup saat restore dimulai                                                                                          |
+| RTO (waktu pulih maksimal)           | ≤ 4 jam (N-06)            | Drill mencatat waktu dari keputusan restore sampai layanan siap dibuka (bagian 8.4)                                                                                                            |
+| Retensi                              | 30 hari, tidak lebih (D2) | Setiap run: dump di luar 30 hari dilupakan, snapshot berkas dilupakan berpasangan, `restic prune --max-unused 0`; backup.sh menolak `RETENTION_DAYS + BUCKET_NONCURRENT_DAYS` > 30 (bagian 10) |
+| Penghapusan akun tidak hidup kembali | AC F14-6, PRD 9.2 #9      | Deletion ledger di luar VPS diterapkan ulang sebelum layanan dibuka; verify-restore.sh                                                                                                         |
+| Total uang tetap cocok               | PRD 9.2 #9                | Statistik invariant di manifest = database pulihan (verify-restore.sh)                                                                                                                         |
 
 ## 2. Arsitektur backup
 
@@ -41,13 +42,13 @@ backup.sh --(rclone copy, kunci hanya-baca)--> salinan ledger ikut snapshot kapd
 
 Pemisahan kunci (PRD 5.5 "kunci backup disimpan terpisah dari salinan backup"):
 
-| Kredensial | Dipegang | Hak |
-| ---------- | -------- | --- |
-| Kata sandi repositori restic | password manager pemilik + cadangan, satu salinan cetak di brankas (D9); berkas `/etc/kapdh/restic-password` (0600) di VPS | Membuka seluruh backup |
-| Kunci S3 bucket backup | `/etc/kapdh/backup.secrets.env` di VPS | Baca/tulis/hapus bucket backup (prune) |
-| Kunci S3 bucket ledger (tulis) | env worker `DELETION_LEDGER_S3_*` (Coolify) | Tulis objek saja (bila penyedia mendukung) |
-| Kunci S3 bucket ledger (baca) | `backup.secrets.env` (rclone) dan host restore | Baca/list saja |
-| Sandi `kapdh_backup` | `backup.secrets.env` / PGPASSFILE | `pg_read_all_data`, tanpa tulis |
+| Kredensial                     | Dipegang                                                                                                                   | Hak                                        |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Kata sandi repositori restic   | password manager pemilik + cadangan, satu salinan cetak di brankas (D9); berkas `/etc/kapdh/restic-password` (0600) di VPS | Membuka seluruh backup                     |
+| Kunci S3 bucket backup         | `/etc/kapdh/backup.secrets.env` di VPS                                                                                     | Baca/tulis/hapus bucket backup (prune)     |
+| Kunci S3 bucket ledger (tulis) | env worker `DELETION_LEDGER_S3_*` (Coolify)                                                                                | Tulis objek saja (bila penyedia mendukung) |
+| Kunci S3 bucket ledger (baca)  | `backup.secrets.env` (rclone) dan host restore                                                                             | Baca/list saja                             |
+| Sandi `kapdh_backup`           | `backup.secrets.env` / PGPASSFILE                                                                                          | `pg_read_all_data`, tanpa tulis            |
 
 ## 3. Penyiapan awal (sekali per lingkungan; staging lebih dahulu, PRD 8.2)
 
@@ -83,6 +84,7 @@ Pemisahan kunci (PRD 5.5 "kunci backup disimpan terpisah dari salinan backup"):
 
    Bila kunci tulis worker tidak memiliki hak list (B2 `writeFiles` saja), unggahan tetap berhasil; pembacaan ulang
    memakai kunci hanya-baca seperti di atas.
+
 4. **Role database.** Jalankan `infra/db/roles.sql` (membuat `kapdh_backup` dan `kapdh_monitor`), lalu beri sandi dari
    password manager: `ALTER ROLE kapdh_backup PASSWORD '...'` (lewat psql interaktif, jangan di riwayat shell).
 5. **Alat di host VPS** (Ubuntu): `postgresql-client-17` dari repositori PGDG (atau `PG_EXEC` ke kontainer PostgreSQL),
@@ -107,25 +109,25 @@ Pemisahan kunci (PRD 5.5 "kunci backup disimpan terpisah dari salinan backup"):
 9. **Monitor Push** Uptime Kuma: `KUMA_PUSH_BACKUP` (interval heartbeat 26 jam), `KUMA_PUSH_BACKUP_AGE` (1 jam),
    `KUMA_PUSH_BACKUP_CHECK` (8 hari), `KUMA_PUSH_RESTORE` (opsional). Lihat docs/runbooks/monitoring.md.
 10. **Bukti awal (PRD 8.2 langkah 1, 8.3 langkah 2), dua tahap:**
-    - *Baseline kosong* (PRD 8.2 langkah 1, "dari database kosong"): sesudah migrasi skema (PRD 8.2 langkah 2;
+    - _Baseline kosong_ (PRD 8.2 langkah 1, "dari database kosong"): sesudah migrasi skema (PRD 8.2 langkah 2;
       `stats.sql` butuh skema `app`) dan SEBELUM bootstrap Super Admin (PRD 8.2 langkah 3). Jalankan backup, lalu restore ke lingkungan
       bersih dengan `restore.sh --target-kind drill --baseline-empty`: nol Super Admin menjadi WARN, `DRILL_ADMIN_*`
       dikosongkan (login/MFA admin WARN). Lulus = 0 FAIL, `http.health` dan `http.ready` PASS.
-    - *Drill penuh pertama* (U-12, PRD 8.3 langkah 2): sesudah bootstrap Super Admin dan akun admin drill (bagian 8.2),
+    - _Drill penuh pertama_ (U-12, PRD 8.3 langkah 2): sesudah bootstrap Super Admin dan akun admin drill (bagian 8.2),
       SEBELUM data pengguna pertama masuk: drill bagian 8 tanpa `--baseline-empty`, termasuk login/MFA admin drill.
 
 ## 4. Isi backup dan manifest
 
 Setiap run `backup.sh` (urutan dan alasannya ada di kepala skrip):
 
-| Langkah | Hasil | Catatan |
-| ------- | ----- | ------- |
-| 1. Database | `db.dump` (pg_dump format custom), `db.toc` | Snapshot diekspor transaksi REPEATABLE READ READ ONLY; pg_dump `--snapshot` dan statistik manifest memakai snapshot yang sama |
-| 2. Berkas | snapshot restic tag `kapdh-files` dari `/data/files` | `.tmp/` dikecualikan (unggahan setengah jadi) |
-| 3. Ledger | `ledger-offsite/account-deletions/**` + `ledger-offsite.sha256` | Salinan bucket ledger saat backup (bukti), restore tetap membaca bucket terbaru |
-| 4. Manifest | `manifest.json` (skema `infra/backup/manifest.schema.json`) | backup_id, sha256 dan ukuran dump, id snapshot berkas, statistik DB, versi skema (journal Drizzle), image, versi alat, objek ledger |
-| 5. Unggah | snapshot restic tag `kapdh-db` (dump + manifest + ledger) | Baca-balik `restic dump` manifest dicocokkan sha256 |
-| 6. Retensi | `restic forget --tag kapdh-db --keep-within 30d`, snapshot berkas tanpa pasangan dump dilupakan, `restic prune --max-unused 0` | Berpasangan per `backup_id` agar manifest tertua selalu punya snapshot berkasnya; run gagal (berkas tanpa dump) ikut dibuang |
+| Langkah     | Hasil                                                                                                                          | Catatan                                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Database | `db.dump` (pg_dump format custom), `db.toc`                                                                                    | Snapshot diekspor transaksi REPEATABLE READ READ ONLY; pg_dump `--snapshot` dan statistik manifest memakai snapshot yang sama       |
+| 2. Berkas   | snapshot restic tag `kapdh-files` dari `/data/files`                                                                           | `.tmp/` dikecualikan (unggahan setengah jadi)                                                                                       |
+| 3. Ledger   | `ledger-offsite/account-deletions/**` + `ledger-offsite.sha256`                                                                | Salinan bucket ledger saat backup (bukti), restore tetap membaca bucket terbaru                                                     |
+| 4. Manifest | `manifest.json` (skema `infra/backup/manifest.schema.json`)                                                                    | backup_id, sha256 dan ukuran dump, id snapshot berkas, statistik DB, versi skema (journal Drizzle), image, versi alat, objek ledger |
+| 5. Unggah   | snapshot restic tag `kapdh-db` (dump + manifest + ledger)                                                                      | Baca-balik `restic dump` manifest dicocokkan sha256                                                                                 |
+| 6. Retensi  | `restic forget --tag kapdh-db --keep-within 30d`, snapshot berkas tanpa pasangan dump dilupakan, `restic prune --max-unused 0` | Berpasangan per `backup_id` agar manifest tertua selalu punya snapshot berkasnya; run gagal (berkas tanpa dump) ikut dibuang        |
 
 Statistik manifest (`infra/backup/sql/stats.sql`) dibagi `invariant` (jumlah akun, payment, payment paid, total uang per
 jenis, penyesuaian, tiket, event, room, admin aktif: tidak berubah oleh penerapan ulang ledger), `info` (boleh berubah:
@@ -173,14 +175,14 @@ sebagai pemilik database dengan daftar id dari laporan, setelah dikonfirmasi pen
   `/var/backups/kapdh/status/last-success`.
 - Daftar snapshot: `restic snapshots --host kapdh-production --tag kapdh-db`.
 
-| Gejala | Penyebab umum | Tindakan |
-| ------ | ------------- | -------- |
-| `snapshot database gagal diekspor` | sandi/role `kapdh_backup`, PostgreSQL mati | Periksa `psql` sebagai kapdh_backup; roles.sql |
-| `pg_dump gagal` | versi klien < server, disk WORK_DIR penuh | Pakai klien 17 atau `PG_EXEC`; kosongkan disk |
-| `restic backup ... gagal` | kunci S3, kuota bucket, jaringan | Uji `restic snapshots`; periksa token penyedia |
-| `salinan deletion ledger luar VPS gagal` | kunci baca rclone, bucket salah | `rclone lsf kapdhledger:<bucket>/account-deletions` |
-| `manifest di repositori tidak cocok` | unggahan rusak | Jalankan ulang; bila berulang `restic check --read-data` |
-| Heartbeat tidak datang | timer mati, VPS mati | `systemctl list-timers kapdh-backup.timer` |
+| Gejala                                   | Penyebab umum                              | Tindakan                                                 |
+| ---------------------------------------- | ------------------------------------------ | -------------------------------------------------------- |
+| `snapshot database gagal diekspor`       | sandi/role `kapdh_backup`, PostgreSQL mati | Periksa `psql` sebagai kapdh_backup; roles.sql           |
+| `pg_dump gagal`                          | versi klien < server, disk WORK_DIR penuh  | Pakai klien 17 atau `PG_EXEC`; kosongkan disk            |
+| `restic backup ... gagal`                | kunci S3, kuota bucket, jaringan           | Uji `restic snapshots`; periksa token penyedia           |
+| `salinan deletion ledger luar VPS gagal` | kunci baca rclone, bucket salah            | `rclone lsf kapdhledger:<bucket>/account-deletions`      |
+| `manifest di repositori tidak cocok`     | unggahan rusak                             | Jalankan ulang; bila berulang `restic check --read-data` |
+| Heartbeat tidak datang                   | timer mati, VPS mati                       | `systemctl list-timers kapdh-backup.timer`               |
 
 Backup yang gagal TIDAK meninggalkan dump di VPS (stage dihapus oleh trap) dan tidak membuat snapshot `kapdh-db`.
 
@@ -205,7 +207,7 @@ pengguna terdampak harus dihubungi (PRD 8.4).
    RESTORE" di `backup.env.example`): koneksi superuser cluster baru (atau `PG_EXEC` ke kontainernya), `RESTIC_*`,
    kunci baca bucket ledger (`LEDGER_RCLONE_REMOTE`), `FILES_OWNER=1000:1000`, `LEDGER_REAPPLY_CMD` dengan **image API
    dari manifest** (bidang `images.api`, dibaca sebelum restore: `restic dump --host kapdh-production --tag kapdh-db
-   latest /var/backups/kapdh/stage/manifest.json | grep -A 5 '"images"'`) dan env worker
+latest /var/backups/kapdh/stage/manifest.json | grep -A 5 '"images"'`) dan env worker
    (`/etc/kapdh/worker.env`, `DATABASE_URL` kapdh_worker ke database baru).
 5. **Sandi role**: tulis `/etc/kapdh/role-passwords.sql` (0600, dihapus setelah selesai) berisi
    `ALTER ROLE kapdh_app PASSWORD '...';` dan seterusnya untuk `kapdh_worker`, `kapdh_migrator`, `kapdh_backup`,
@@ -227,7 +229,7 @@ pengguna terdampak harus dihubungi (PRD 8.4).
    3. Worker (memproses outbox `pending/failed`, sapuan penghapusan), lalu replika API lainnya.
    4. Verifikasi ulang sesudah layanan menyala (lease outbox milik worker baru dicatat INFO, bukan FAIL):
       `sudo VERIFY_API_URL=http://127.0.0.1:3000 KAPDH_BACKUP_ENV=/etc/kapdh/restore.env
-      /opt/kapdh/infra/backup/verify-restore.sh --post-start --manifest <bukti>/manifest.json --ledger-dir <bukti>/ledger`
+/opt/kapdh/infra/backup/verify-restore.sh --post-start --manifest <bukti>/manifest.json --ledger-dir <bukti>/ledger`
       (plus `DRILL_ADMIN_*` bila akun admin drill dipakai). Laporan bawaan: `<bukti>/verify-report-post-start-<waktu>.txt`.
    5. Web/admin.
 8. **Smoke test** PRD 8.3 langkah 3 (login/MFA, payment/period, kartu/public verify, tiket/scan, chat, file, push,
@@ -262,16 +264,16 @@ ditulis ke berkas 0600 di host drill (`DRILL_ADMIN_PASSWORD_FILE`, `DRILL_ADMIN_
 
 ### 8.3 Langkah
 
-| # | Langkah | Catat |
-| - | ------- | ----- |
-| 1 | Mulai stopwatch: **T0** = mulai drill (dianggap waktu bencana) | waktu |
-| 2 | Siapkan host bersih (bagian 7 langkah 2-5; secret drill sesuai 8.1) | waktu selesai |
-| 3 | `sudo ... restore.sh --target-kind drill` (root; baseline PRD 8.2 langkah 1: tambah `--baseline-empty`) | `restore_seconds`, folder bukti |
-| 4 | Nyalakan sesuai bagian 7 langkah 7: Redis, API drill satu replika di 127.0.0.1 (readiness `deletion_ledger: ok`), worker, lalu `VERIFY_API_URL=http://127.0.0.1:3000 verify-restore.sh --post-start --manifest <bukti>/manifest.json --ledger-dir <bukti>/ledger` dengan `DRILL_ADMIN_*` | `verify-report-post-start-*.txt` (http.* PASS) |
-| 5 | Pemeriksaan manual PRD 5.5: buka web admin drill lewat tunnel SSH, lihat 3 anggota acak, 1 payment paid, 1 tiket, 1 room chat (riwayat dari bergabung), 1 berkas bukti | daftar id yang diperiksa (tanpa nama) |
-| 6 | Penghapusan terdahulu: ambil 1-3 nomor permintaan dari `ledger-reapply.log`; akun berstatus deleted, tidak dapat login | nomor permintaan |
-| 7 | **T1** = semua pemeriksaan lulus (layanan siap dibuka) | waktu |
-| 8 | Musnahkan lingkungan drill | waktu |
+| #   | Langkah                                                                                                                                                                                                                                                                                  | Catat                                          |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| 1   | Mulai stopwatch: **T0** = mulai drill (dianggap waktu bencana)                                                                                                                                                                                                                           | waktu                                          |
+| 2   | Siapkan host bersih (bagian 7 langkah 2-5; secret drill sesuai 8.1)                                                                                                                                                                                                                      | waktu selesai                                  |
+| 3   | `sudo ... restore.sh --target-kind drill` (root; baseline PRD 8.2 langkah 1: tambah `--baseline-empty`)                                                                                                                                                                                  | `restore_seconds`, folder bukti                |
+| 4   | Nyalakan sesuai bagian 7 langkah 7: Redis, API drill satu replika di 127.0.0.1 (readiness `deletion_ledger: ok`), worker, lalu `VERIFY_API_URL=http://127.0.0.1:3000 verify-restore.sh --post-start --manifest <bukti>/manifest.json --ledger-dir <bukti>/ledger` dengan `DRILL_ADMIN_*` | `verify-report-post-start-*.txt` (http.* PASS) |
+| 5   | Pemeriksaan manual PRD 5.5: buka web admin drill lewat tunnel SSH, lihat 3 anggota acak, 1 payment paid, 1 tiket, 1 room chat (riwayat dari bergabung), 1 berkas bukti                                                                                                                   | daftar id yang diperiksa (tanpa nama)          |
+| 6   | Penghapusan terdahulu: ambil 1-3 nomor permintaan dari `ledger-reapply.log`; akun berstatus deleted, tidak dapat login                                                                                                                                                                   | nomor permintaan                               |
+| 7   | **T1** = semua pemeriksaan lulus (layanan siap dibuka)                                                                                                                                                                                                                                   | waktu                                          |
+| 8   | Musnahkan lingkungan drill                                                                                                                                                                                                                                                               | waktu                                          |
 
 ### 8.4 Mengukur RPO dan RTO
 
@@ -328,7 +330,7 @@ key) TIDAK disalin ke repo; ia ikut dimusnahkan bersama lingkungan drill:
 
 - Belum dijalankan terhadap layanan sungguhan (lihat Status bukti). Drill staging pertama wajib membuktikan: restore
   `pg_restore` dari stdin (jalur `PG_EXEC`) untuk dump yang dibuat `pg_dump` lewat `docker exec`, perilaku `restic
-  restore <id>:<path>`, filter rclone `--include`, object lock penyedia dengan header Content-MD5, bentuk `snapshot_id`
+restore <id>:<path>`, filter rclone `--include`, object lock penyedia dengan header Content-MD5, bentuk `snapshot_id`
   pada `restic backup --json` (penuh atau pendek; retensi menerima keduanya) dan urutan kunci `restic snapshots --json`
   yang dibaca retensi berpasangan (bila tidak terbaca, retensi dibatalkan dan run gagal, bukan membuang snapshot),
   `CONTAINER_*` berlabel lewat Docker sungguhan, serta CLI ledger-reapply di kontainer membaca `<bukti>/ledger`
