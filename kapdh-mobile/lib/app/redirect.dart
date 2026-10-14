@@ -141,13 +141,17 @@ const Map<EffectiveStatus, Set<RouteGroup>> _allowed = {
 };
 
 /// Rute yang tujuannya HANYA mutasi, sehingga tidak berguna selama maintenance (server menolak mutasi dengan 503
-/// MAINTENANCE, PRD 4.5): seluruh alur auth (login, daftar, OTP, pemulihan sandi), pembayaran baru, perpanjangan,
-/// ganti sandi, membuat grup chat dan hapus akun. Rute lain tetap dapat dibaca dalam mode baca terkendali; simpan
-/// yang ditolak ditampilkan ErrorPresenter.
+/// MAINTENANCE, PRD 4.5): seluruh alur auth (login, daftar, OTP, pemulihan sandi), pembuatan instruksi pembayaran
+/// baru (termasuk perpanjangan, `/payments/new/renewal`), ganti sandi, membuat grup chat dan hapus akun. Rute lain
+/// tetap dapat dibaca dalam mode baca terkendali; simpan yang ditolak ditampilkan ErrorPresenter.
+///
+/// `/renewal` adalah layar baca (masa keanggotaan, iuran, riwayat periode; F-07) dan rute awal anggota expired,
+/// sehingga tetap terbuka: tanpa itu anggota expired tidak mendapat mode baca sama sekali selama maintenance
+/// (PRD 2.2, 4.5; AC F07-2). Tombol bayarnya menuju `/payments/new/renewal` yang tetap hanya mutasi.
 bool isMutationOnlyRoute(String path) {
   final group = routeGroupOf(path);
   if (_authGroups.contains(group)) return true;
-  if (group == RouteGroup.renewal || group == RouteGroup.accountDelete) return true;
+  if (group == RouteGroup.accountDelete) return true;
   return path == AppRoutes.accountPassword ||
       path == AppRoutes.chatNewGroup ||
       path.startsWith('${AppRoutes.payments}/new/');

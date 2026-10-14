@@ -250,7 +250,7 @@ void main() {
       test('alur khusus mutasi diarahkan ke layar maintenance dengan tujuan tertunda', () {
         for (final path in [
           '/payments/new/registration',
-          '/renewal',
+          '/payments/new/renewal',
           '/account/delete',
           '/account/password',
           '/chat/new-group',
@@ -264,6 +264,24 @@ void main() {
         expect(isMutationOnlyRoute('/payments/pay-1'), isFalse);
         expect(isMutationOnlyRoute('/login'), isTrue);
       });
+
+      test(
+        'AC F07-2, PRD 4.5: anggota expired tetap mendapat mode baca: Perpanjang KTA (masa berakhir, iuran, riwayat) '
+        'terbuka, pembuatan instruksi perpanjangan tetap ditunda',
+        () {
+          expect(isMutationOnlyRoute('/renewal'), isFalse);
+          expect(go(authed('expired'), '/renewal', gate: m), isNull);
+          expect(go(authed('expired'), '/kta', gate: m), isNull);
+          expect(go(authed('expired'), '/payments', gate: m), isNull);
+          expect(
+            go(authed('expired'), '/payments/new/renewal', gate: m),
+            '/maintenance?from=%2Fpayments%2Fnew%2Frenewal',
+          );
+          final state = RedirectState(gate: m, session: authed('expired'));
+          expect(readOnlyLanding(state, Uri.parse('/maintenance')), '/renewal');
+          expect(readOnlyLanding(state, Uri.parse('/maintenance?from=%2Fpayments%2Fnew%2Frenewal')), '/renewal');
+        },
+      );
 
       test('matriks status tetap berlaku: rute yang ditolak status tidak dibuka', () {
         expect(go(authed('suspended'), '/kta', gate: m), '/maintenance?from=%2Fkta');
@@ -289,7 +307,11 @@ void main() {
           readOnlyLanding(state(authed('verified')), Uri.parse('/maintenance?from=%2Ftickets%2Ftk-1')),
           '/tickets/tk-1',
         );
-        expect(readOnlyLanding(state(authed('verified')), Uri.parse('/maintenance?from=%2Frenewal')), '/home');
+        expect(
+          readOnlyLanding(state(authed('verified')), Uri.parse('/maintenance?from=%2Faccount%2Fpassword')),
+          '/home',
+        );
+        expect(readOnlyLanding(state(authed('expired')), Uri.parse('/maintenance')), '/renewal');
         expect(readOnlyLanding(state(authed('verified')), Uri.parse('/maintenance')), '/home');
         expect(readOnlyLanding(state(authed('unverified')), Uri.parse('/maintenance')), '/onboarding/fees');
         expect(readOnlyLanding(state(authed('suspended')), Uri.parse('/maintenance')), '/restricted');
