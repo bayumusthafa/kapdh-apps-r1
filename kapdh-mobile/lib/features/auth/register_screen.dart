@@ -8,32 +8,44 @@ import 'package:kapdh_api/kapdh_api.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
+import '../../core/app_gate/app_gate.dart';
 import '../../core/format/formatters.dart';
 import '../../core/session/repositories.dart';
 import '../../core/session/session_controller.dart';
 import '../../core/validation/password.dart';
 import '../../design/design.dart';
 import '../membership/academic.dart';
+import 'auth_flow.dart';
+import 'auth_widgets.dart';
 import 'registration_draft.dart';
 
-/// Versi persetujuan pendaftaran (F-01, kontrak C4 `LegalConsentVersions`): `consent.policy_version` dari
-/// GET /public/pages, gabungan kanonis `privacy:<v>;terms:<v>` yang disusun server dan dikirim apa adanya sebagai
-/// `accept_policy_version`. Null berarti Kebijakan Privasi atau Ketentuan belum pernah terbit sehingga pendaftaran
-/// belum dibuka (PRD 8.2); klien tidak pernah menyusun nilai ini sendiri.
-final policyVersionProvider = FutureProvider.autoDispose<String?>((ref) async {
-  final consent = await ref.watch(publicRepositoryProvider).getConsentVersions();
-  return consent.policyVersion;
-}, retry: (retryCount, error) => null);
+/// Versi persetujuan pendaftaran (F-01, kontrak C4 `LegalConsentVersions`): `consent` dari GET /public/pages.
+/// `policy_version` adalah gabungan kanonis `privacy:<v>;terms:<v>` yang disusun server dan dikirim apa adanya
+/// sebagai `accept_policy_version`; klien tidak pernah menyusunnya sendiri (kontrak C1 register). Null berarti
+/// Kebijakan Privasi atau Ketentuan belum pernah terbit sehingga pendaftaran belum dibuka (PRD 8.2).
+final consentVersionsProvider = FutureProvider.autoDispose<LegalConsentVersions>(
+  (ref) => ref.watch(publicRepositoryProvider).getConsentVersions(),
+  retry: (retryCount, error) => null,
+);
 
 /// Pesan bila dokumen legal belum terbit (`policy_version` null).
 const String registrationClosedMessage =
     'Pendaftaran belum dibuka karena Kebijakan Privasi atau Ketentuan belum diterbitkan pengurus. Coba lagi nanti.';
 
+/// Pesan bila versi dokumen legal berubah setelah pengguna menyetujuinya (F-01).
+const String policyChangedMessage =
+    'Kebijakan Privasi atau Ketentuan baru saja diperbarui. Baca ulang lalu setujui kembali.';
+
 /// Langkah 1 pendaftaran: Data Diri (F-01, AC F01-1, F01-4; guideline hal. 5). Tanpa Nomor KTP (v3.3).
 ///
 /// Tahun masuk/keluar/lulus hanya pratinjau rumus server (PRD 3.5); nomor anggota dihitung server saat OTP
-/// terverifikasi. Idempotency-Key disimpan sampai hasil diketahui sehingga kirim ulang setelah jaringan putus tidak
-/// membuat akun ganda; payload berubah membuat key baru (PRD 4.3).
+/// terverifikasi. Idempotency-Key disimpan (secure storage) sampai hasil diketahui sehingga kirim ulang setelah
+/// jaringan putus atau aplikasi dimulai ulang memakai key yang sama dan tidak membuat akun ganda; payload berubah
+/// membuat key baru (PRD 4.3, AC F01-4).
+///
+/// Persetujuan terikat versi yang ditampilkan: centang berlaku untuk `policy_version` saat dicentang. Bila versi
+/// terbit di /public/config (`legal`) berubah, versi persetujuan dimuat ulang dan centang dilepas sehingga pengguna
+/// menyetujui teks terbaru sebelum mengirim (F-01, N-15).
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -50,7 +62,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   int? _cohort;
   int? _classIn;
   int? _classOut;
-  bool _agree = false;
+
+  /// `policy_version` yang disetujui pengguna (centang); null bila belum menyetujui.
+  String? _agreedTo;
   bool _busy = false;
   String? _error;
   String? _consentError;
@@ -103,20 +117,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         );
   }
 
+  /// Versi persetujuan terkini yang sudah dimuat; null bila belum dimuat atau pendaftaran belum dibuka.
+  String? get _currentPolicy => ref.read(consentVersionsProvider).value?.policyVersion;
+
+  bool get _agreed => _agreedTo != null && _agreedTo == _currentPolicy;
+
   Future<void> _submit() async {
     final formValid = _form.currentState?.validate() ?? false;
-    setState(() => _consentError = _agree ? null : 'Setujui Kebijakan Privasi dan Ketentuan untuk melanjutkan.');
-    if (!formValid || !_agree || _busy || _blockedFor > Duration.zero) return;
-    final consent = ref.read(policyVersionProvider);
+    final consent = ref.read(consentVersionsProvider);
+    if (consent.hasValue && consent.value!.policyVersion == null) {
+      setState(() => _error = registrationClosedMessage);
+      return;
+    }
+    setState(() => _consentError = _agreed ? null : 'Setujui Kebijakan Privasi dan Ketentuan untuk melanjutkan.');
     if (!consent.hasValue) {
       setState(() => _error = 'Kebijakan privasi belum dimuat. Periksa koneksi lalu coba lagi.');
       return;
     }
-    final policy = consent.value;
-    if (policy == null) {
-      setState(() => _error = registrationClosedMessage);
-      return;
-    }
+    if (!formValid || !_agreed || _busy || _blockedFor > Duration.zero) return;
+    final policy = _agreedTo!;
     _saveDraft();
     final body = RegisterRequest(
       fullName: _name.text.trim(),
@@ -144,17 +163,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           );
       ref.read(registrationDraftProvider.notifier).markSubmitted();
       ref.read(sessionProvider.notifier).setChallenge(challenge);
+      // Hanya di memori: pemulihan bila jawaban verifikasi OTP hilang (kontrak C1 verifyOtp, AC F01-4).
+      ref.read(activationCredentialsProvider.notifier).remember(email: body.email, password: body.password);
+      ref.read(authEmailHintProvider.notifier).set(body.email);
       if (mounted) context.go(AppRoutes.registerOtp);
     } on ApiException catch (error) {
       if (!mounted) return;
       if (error.code == ErrorCode.versionConflict) {
         // 409 VERSION_CONFLICT (kontrak C1 register): Kebijakan Privasi atau Ketentuan baru diterbitkan setelah
         // layar dibuka. Muat ulang versinya dan minta persetujuan ulang atas teks terbaru (F-01).
-        ref.invalidate(policyVersionProvider);
+        ref.invalidate(consentVersionsProvider);
         setState(() {
-          _agree = false;
+          _agreedTo = null;
           _fieldErrors = const {};
-          _error = 'Kebijakan Privasi atau Ketentuan baru saja diperbarui. Baca ulang lalu setujui kembali.';
+          _error = policyChangedMessage;
         });
         return;
       }
@@ -180,11 +202,35 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   String? _fieldError(String key) => _fieldErrors[key]?.join(' ');
 
+  /// Versi persetujuan dimuat ulang (409, atau versi terbit di /public/config berubah): persetujuan atas versi lama
+  /// tidak berlaku lagi (F-01).
+  void _onConsentChanged(LegalConsentVersions? next) {
+    final agreed = _agreedTo;
+    if (next == null || agreed == null || agreed == next.policyVersion) return;
+    setState(() {
+      _agreedTo = null;
+      _error = policyChangedMessage;
+    });
+  }
+
+  /// Versi terbit di /public/config (`legal`, dibaca ulang gerbang aplikasi saat aplikasi kembali aktif) berbeda
+  /// dengan versi persetujuan yang tampil: muat ulang `consent` dari GET /public/pages.
+  void _onPublishedLegalChanged(LegalVersions? published) {
+    final shown = ref.read(consentVersionsProvider).value;
+    if (published == null || shown == null) return;
+    if (published.privacyVersion != shown.privacyVersion || published.termsVersion != shown.termsVersion) {
+      ref.invalidate(consentVersionsProvider);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref
+      ..listen(consentVersionsProvider, (_, next) => _onConsentChanged(next.value))
+      ..listen(appGateProvider.select((gate) => gate.config?.legal), (_, next) => _onPublishedLegalChanged(next));
     final check = checkPassword(_password.text);
     final counter = passwordCounter(check);
-    final policy = ref.watch(policyVersionProvider);
+    final consent = ref.watch(consentVersionsProvider);
     final maxCohort = latestCohort(_now().toUtc());
     final years = (_cohort != null && _classIn != null && _classOut != null && classesValid(_classIn!, _classOut!))
         ? academicYears(_cohort!, _classIn!, _classOut!)
@@ -200,7 +246,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _SheetTitle(title: 'Daftar Alumni', onBack: () => context.go(AppRoutes.login)),
+              AuthSheetTitle(title: 'Daftar Alumni', onBack: () => context.go(AppRoutes.login)),
               const SizedBox(height: KapdhSpace.s4),
               const RegisterStepper(current: 0),
               const SizedBox(height: KapdhSpace.s6),
@@ -260,7 +306,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 onChanged: (_) => setState(() {}),
                 validator: (v) => checkPassword(v ?? '').valid ? null : 'Belum memenuhi aturan password',
               ),
-              _PasswordRules(check: check),
+              PasswordRules(check: check),
               const SizedBox(height: KapdhSpace.s4),
               KapdhDropdownField<int>(
                 key: const ValueKey('register-cohort'),
@@ -305,14 +351,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               if (years != null) ...[const SizedBox(height: KapdhSpace.s4), _AcademicYearsCard(years: years)],
               const SizedBox(height: KapdhSpace.s4),
               _ConsentField(
-                value: _agree,
+                value: _agreed,
                 errorText: _consentError ?? _fieldError('accept_policy_version'),
-                policy: policy,
+                consent: consent,
                 onChanged: (v) => setState(() {
-                  _agree = v;
-                  if (v) _consentError = null;
+                  _agreedTo = v ? _currentPolicy : null;
+                  if (v) {
+                    _consentError = null;
+                    if (_error == policyChangedMessage) _error = null;
+                  }
                 }),
-                onRetryPolicy: () => ref.invalidate(policyVersionProvider),
+                onRetryPolicy: () => ref.invalidate(consentVersionsProvider),
               ),
               if (_error != null) ...[
                 const SizedBox(height: KapdhSpace.s3),
@@ -348,33 +397,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 }
 
-/// Baris judul di dalam lembar: tombol kembali + judul (prototipe layar 1 sampai 3).
-class _SheetTitle extends StatelessWidget {
-  const _SheetTitle({required this.title, required this.onBack});
-
-  final String title;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(tooltip: 'Kembali', icon: const Icon(Icons.chevron_left, size: 28), onPressed: onBack),
-        const SizedBox(width: KapdhSpace.s1),
-        Expanded(
-          child: Semantics(
-            header: true,
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// Kelas masuk dan keluar berdampingan; bertumpuk saat teks diperbesar (N-11).
 class _ClassFields extends StatelessWidget {
   const _ClassFields({required this.classIn, required this.classOut});
@@ -401,54 +423,6 @@ class _ClassFields extends StatelessWidget {
         const SizedBox(width: KapdhSpace.s3),
         Expanded(child: classOut),
       ],
-    );
-  }
-}
-
-class _PasswordRules extends StatelessWidget {
-  const _PasswordRules({required this.check});
-
-  final PasswordCheck check;
-
-  @override
-  Widget build(BuildContext context) {
-    // Ikon sebagai WidgetSpan agar label membungkus saat teks diperbesar 200 % (N-11).
-    Widget rule(bool ok, String label) => Semantics(
-      label: '$label, ${ok ? 'terpenuhi' : 'belum terpenuhi'}',
-      excludeSemantics: true,
-      child: Text.rich(
-        TextSpan(
-          children: [
-            WidgetSpan(
-              alignment: PlaceholderAlignment.middle,
-              child: Padding(
-                padding: const EdgeInsets.only(right: KapdhSpace.s1),
-                child: Icon(
-                  ok ? Icons.check_circle : Icons.radio_button_unchecked,
-                  size: 16,
-                  color: ok ? KapdhColors.success : KapdhColors.textMuted,
-                ),
-              ),
-            ),
-            TextSpan(text: label),
-          ],
-        ),
-        style: const TextStyle(fontSize: KapdhFontSize.caption),
-      ),
-    );
-    return Padding(
-      padding: const EdgeInsets.only(top: KapdhSpace.s2),
-      child: Wrap(
-        spacing: KapdhSpace.s4,
-        runSpacing: KapdhSpace.s1,
-        children: [
-          rule(check.lengthOk, '8 sampai 72 byte'),
-          rule(check.hasUpper, 'Huruf besar'),
-          rule(check.hasLower, 'Huruf kecil'),
-          rule(check.hasDigit, 'Angka'),
-          rule(check.hasSymbol, 'Simbol'),
-        ],
-      ),
     );
   }
 }
@@ -519,13 +493,14 @@ class _AcademicYearsCard extends StatelessWidget {
   }
 }
 
-/// Persetujuan Kebijakan Privasi dan Ketentuan beserta tautan bacaannya (F-01, N-15: penggunaan dan retensi data
-/// dijelaskan sebelum pengguna setuju).
+/// Persetujuan Kebijakan Privasi dan Ketentuan beserta tautan bacaannya dan versi yang disetujui (F-01, N-15:
+/// penggunaan dan retensi data dijelaskan sebelum pengguna setuju). Centang hanya aktif setelah versi persetujuan
+/// dimuat, sehingga persetujuan selalu terikat versi yang sedang terbit.
 class _ConsentField extends StatelessWidget {
   const _ConsentField({
     required this.value,
     required this.onChanged,
-    required this.policy,
+    required this.consent,
     required this.onRetryPolicy,
     this.errorText,
   });
@@ -533,13 +508,15 @@ class _ConsentField extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
 
-  /// `consent.policy_version`; nilai null berarti pendaftaran belum dibuka.
-  final AsyncValue<String?> policy;
+  /// `consent` GET /public/pages; `policy_version` null berarti pendaftaran belum dibuka.
+  final AsyncValue<LegalConsentVersions> consent;
   final VoidCallback onRetryPolicy;
   final String? errorText;
 
   @override
   Widget build(BuildContext context) {
+    final versions = consent.isLoading ? null : consent.value;
+    final open = versions?.policyVersion != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -548,7 +525,7 @@ class _ConsentField extends StatelessWidget {
           value: value,
           contentPadding: EdgeInsets.zero,
           controlAffinity: ListTileControlAffinity.leading,
-          onChanged: (v) => onChanged(v ?? false),
+          onChanged: open ? (v) => onChanged(v ?? false) : null,
           title: const Text(
             'Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH',
             style: TextStyle(fontSize: 13),
@@ -558,22 +535,34 @@ class _ConsentField extends StatelessWidget {
           spacing: KapdhSpace.s2,
           children: [
             KapdhLinkButton(
+              key: const ValueKey('register-read-privacy'),
               label: 'Baca Kebijakan Privasi',
               onPressed: () => context.push(AppRoutes.legal(AppRoutes.privacySlug)),
             ),
             KapdhLinkButton(
+              key: const ValueKey('register-read-terms'),
               label: 'Baca Ketentuan',
               onPressed: () => context.push(AppRoutes.legal(AppRoutes.termsSlug)),
             ),
           ],
         ),
-        if (policy.hasError && !policy.isLoading)
+        // Sebelum dicentang hanya versi yang berlaku; "disetujui" baru setelah pengguna menyetujuinya (F-01).
+        if (open)
+          Padding(
+            padding: const EdgeInsets.only(bottom: KapdhSpace.s1),
+            child: Text(
+              '${value ? 'Versi yang disetujui' : 'Versi berlaku'}: Kebijakan Privasi versi '
+              '${versions!.privacyVersion} · Ketentuan versi ${versions.termsVersion}',
+              style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+            ),
+          ),
+        if (consent.hasError && !consent.isLoading)
           InfoBox(
             tone: InfoBoxTone.warning,
             message: 'Versi kebijakan belum dapat dimuat. Periksa koneksi Anda.',
             trailing: TextButton(onPressed: onRetryPolicy, child: const Text('Coba lagi')),
           )
-        else if (policy.hasValue && policy.value == null && !policy.isLoading)
+        else if (versions != null && !open)
           InfoBox(
             tone: InfoBoxTone.warning,
             message: registrationClosedMessage,
