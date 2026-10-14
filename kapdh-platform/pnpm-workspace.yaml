@@ -11,3 +11,9 @@ onlyBuiltDependencies:
   - "@swc/core"
   - esbuild
   - sharp
+# Keamanan (N-16, PRD 9.3; review E2): @nestjs/platform-fastify 11.2.x mengunci fastify 5.11.3, yang memiliki empat
+# advisory tinggi (GHSA-p68q-wchp-6fh7 bypass autentikasi lewat URL cacat, GHSA-667r-xxjv-c9mm, GHSA-hwr6-493r-vm6h,
+# GHSA-9q9j-q6p8-xq58) dan tiga sedang (diperbaiki di >= 5.12.5). Override memaksa SATU fastify untuk API dan adapter
+# Nest (adapter yang membuat instans fastify). Hapus bila adapter Nest sudah memakai fastify >= 5.12.5.
+overrides:
+  fastify: 5.12.5
