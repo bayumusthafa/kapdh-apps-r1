@@ -18,6 +18,9 @@ import {
 } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { cn } from "../../lib/cn";
+// Gaya dasar ProseMirror dari berkas CSS origin sendiri (bukan <style> runtime TipTap): CSP admin tanpa
+// style-src 'unsafe-inline' (infra/nginx-admin.conf, N-07).
+import "./tiptap-base.css";
 import { Button } from "./Button";
 import { Dialog } from "./Dialog";
 import { Field } from "./FormField";
@@ -87,6 +90,8 @@ export default function RichTextEditorImpl({
 
   const editor = useEditor({
     editable: !disabled,
+    // Tanpa elemen <style> yang disisipkan saat runtime (ditolak CSP admin); gaya dasar ada di tiptap-base.css.
+    injectCSS: false,
     immediatelyRender: true,
     shouldRerenderOnTransaction: false,
     extensions: [
