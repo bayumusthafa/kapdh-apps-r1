@@ -7,7 +7,7 @@ Jalur cadangan saat panel Coolify tidak tersedia: **Compose cadangan** (`compose
 - `docs/runbooks/rilis-dan-gerbang-go-live.md` — rilis staging/production, inisialisasi production (PRD 8.2), gerbang
   go-live (PRD 9.2, 9.3), bukti tanda tangan.
 - `docs/runbooks/compose-cadangan.md` — menjalankan stack tanpa panel Coolify, termasuk Traefik cadangan.
-- `docs/adr/0002-job-rilis-dan-gerbang-go-live.md` — alasan desain job rilis dan gerbang.
+- `docs/adr/023-job-rilis-dan-gerbang-go-live.md` — alasan desain job rilis dan gerbang.
 
 ## Isi folder
 

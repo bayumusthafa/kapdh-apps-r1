@@ -44,15 +44,19 @@ yang disetujui, dan tidak boleh dipakai untuk mengecualikan keamanan atau integr
 - [ ] Seluruh AC wajib lulus pada staging yang menyerupai target: bukti otomatis (`traceability.md`: AC 86 covered,
       1 partial per audit Fase D) + UAT U-01..U-13 di `uat-checklist.md` berstatus Lulus dengan bukti.
 - [ ] Tidak ada bug kritis/tinggi terbuka yang mengganggu identitas, uang, kuota, data privat, atau akses admin.
-- [ ] Target N yang disahkan terbukti (D8). Status saat dokumen ini ditulis: belum ada laporan uji beban (N-01, N-04),
-      latensi realtime (N-02), ketersediaan/monitor eksternal (N-05), dan drill backup/restore RPO/RTO (N-06)
-      (temuan audit D2-03..D2-06, D2-08). Ini **memblokir** gerbang sampai laporan U-11 tersedia. N-06 lulus hanya bila
-      drill restore membuktikan RPO <= 24 jam dan RTO <= 4 jam.
-- [ ] Image API dapat dibangun dan dijalankan dari tag rilis (`production-init.md` 1.3: `infra/Dockerfile.api` di
-      `main` gagal pada `pnpm deploy` tanpa `--legacy`).
+- [ ] Target N yang disahkan terbukti (D8). Alatnya sudah ada (uji beban/realtime `infra/loadtest/` +
+      `docs/runbooks/load-test.md`, monitor `infra/monitoring/` + `docs/runbooks/monitoring.md`, backup/restore
+      `infra/backup/` + `docs/runbooks/backup-restore.md`), tetapi belum ada laporan uji beban (N-01, N-04), latensi
+      realtime (N-02), ketersediaan bulanan (N-05) maupun drill backup/restore RPO/RTO (N-06) dari staging/VPS nyata
+      (temuan audit D2-03..D2-06, D2-08; templat bukti di `docs/qa/{load,availability,restore-drills}/`). Ini
+      **memblokir** gerbang sampai laporan U-11 tersedia. N-06 lulus hanya bila drill restore membuktikan RPO <= 24 jam
+      dan RTO <= 4 jam.
+- [ ] Image API, release, worker, web dan admin dibangun CI dari tag rilis dan lulus uji asap image serta job
+      `compose-stack` (`production-init.md` 1.3; `docs/runbooks/ci-cd.md`). Belum pernah dijalankan di GitHub.
 - [ ] Teks aplikasi memenuhi D13 mitigasi 1 (`app-store-submission.md` bagian 2; per 14 Oktober 2026 belum).
-- [ ] Skenario kritis PRD 9.2 nomor 1-10 lulus (`traceability.md` bagian 5.2); nomor 8 (restore + ledger) dan 9
-      (konfigurasi belum disahkan) dibuktikan manual pada gladi dan bagian 2.3 di bawah.
+- [ ] Skenario kritis PRD 9.2 nomor 1-10 lulus (`traceability.md` bagian 5.2); nomor 8 (restore + ledger) dibuktikan
+      pada drill restore gladi, nomor 9 (konfigurasi belum disahkan) oleh gerbang `golive:check` mode enforce di job
+      rilis (bagian 2.3).
 - [ ] Penghapusan akun [R1]/[R2], moderasi UGC [R6], dan klasifikasi kanal iuran [R6]/[R7] diperiksa
       (`app-store-submission.md` bagian 7).
 
@@ -61,10 +65,10 @@ yang disetujui, dan tidak boleh dipakai untuk mengecualikan keamanan atau integr
 - [ ] Build Flutter Android/iOS; image API/worker/web (+ admin); OpenAPI (`dist/openapi.yaml` dari tag) dan SDK
       (`contracts-vX.Y.Z`); skema/migrasi (journal).
 - [ ] Runbook: deploy/rilis, backup, restore, Compose cadangan (PRD 5.5), inisialisasi (`production-init.md`),
-      rollback (bagian 5 di bawah), status akun `disabled` (`alumni-account-disabled.md`). Di `main` sudah ada sisi
-      aplikasi restore (`restore-backup.md`, dengan `account:ledger-reapply` sebagai langkah pemblokir); alat dan
-      runbook backup, deploy/rilis, dan Compose cadangan milik paket infra/backup-ops Fase E **belum ada** dan
-      memblokir gerbang ini (`production-init.md` 1.5).
+      rollback (bagian 5 di bawah), status akun `disabled` (`alumni-account-disabled.md`): `ci-cd.md`,
+      `rilis-dan-gerbang-go-live.md`, `backup-restore.md`, `restore-backup.md` (sisi aplikasi, `account:ledger-reapply`
+      sebagai langkah pemblokir), `compose-cadangan.md`, `monitoring.md`, `incident-response.md`. Semua tersedia;
+      yang memblokir gerbang ini adalah gladinya (run CI/deploy pertama, drill restore, `production-init.md` 1.5).
 - [ ] Laporan: UAT, uji beban/realtime, security (audit Fase D), restore (gladi).
 - [ ] Halaman legal terbit dan `https://kapdh.or.id/delete-account` berfungsi.
 - [ ] Akun pengurus dengan MFA: >= 2 Super Admin, >= 2 pemutus pembayaran.
@@ -73,9 +77,11 @@ yang disetujui, dan tidak boleh dipakai untuk mengecualikan keamanan atau integr
 
 ### 2.3 Gerbang konfigurasi production (PRD 8.2 langkah 4, 9.2 skenario 9; U-12)
 
-Pada `main` belum ada CLI gerbang otomatis (temuan audit D2-02); jalankan blok berikut terhadap database production
-setelah langkah 4 inisialisasi dan lampirkan keluarannya **[bukti]**. Blok ini diuji terhadap PostgreSQL 17 pada
-14 Oktober 2026 (database dengan fixture dev, sehingga butir A terdeteksi).
+Gerbang otomatis `golive:check` (ADR-023; temuan audit D2-02 ditutup) dijalankan job rilis di setiap deploy
+production dengan mode `enforce` dan menolak bila salah satu pemeriksaannya gagal (daftar dan perbaikannya:
+`rilis-dan-gerbang-go-live.md` bagian 4). Lampirkan laporan JSON-nya (`node dist/cli/golive-check.js --json`) sebagai
+**[bukti]**. Blok SQL berikut tetap dipakai sebagai pemeriksaan silang manual setelah langkah 4 inisialisasi; blok ini
+diuji terhadap PostgreSQL 17 pada 14 Oktober 2026 (database dengan fixture dev, sehingga butir A terdeteksi).
 
 ```sh
 docker exec -i <kontainer-postgres> psql -U postgres -d kapdh -X <<'SQL'

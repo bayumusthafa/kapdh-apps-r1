@@ -1,7 +1,7 @@
 # ADR-014: Deletion ledger eksternal di storage dan penerapan ulang setelah restore
 
 - Status: Diterima (Fase C, api-account); diperkuat hardening Fase D (kepala ledger, gerbang readiness, floor nomor
-  anggota; D2-01, D5-05)
+  anggota; D2-01, D5-05); diperbarui oleh ADR-019 (ledger juga ditulis ke bucket luar VPS, D5-07)
 - Tanggal dicatat: 14 Oktober 2026
 - Rujukan: PRD 3.14, 5.5, 8.4, 9.2 (skenario akun dihapus lalu backup direstore); F-14; AC F14-6; D2; N-09
 - Bukti di kode (di `kapdh-platform/apps/api/src/modules/account/`): `deletion-ledger.ts`,

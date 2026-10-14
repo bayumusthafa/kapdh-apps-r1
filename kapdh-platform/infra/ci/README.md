@@ -1,18 +1,19 @@
 # infra/ci — skrip pendukung CI/CD
 
 Workflow GitHub Actions ada di akar repo, `.github/workflows/` (bukan di folder ini). Template lama
-`infra/ci/github-actions-ci.yml` sudah dihapus dan digantikan workflow berikut (temuan audit D2-09):
+`infra/ci/github-actions-ci.yml` dan templat image `infra/ci/github-actions-images.yml` sudah dihapus dan digantikan
+workflow berikut (temuan audit D2-09); pemeriksaan stack Compose dari templat image kini job `compose-stack` di `ci.yml`:
 
-| Workflow                               | Pemicu                                    | Isi                                                                                                              |
-| -------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `.github/workflows/ci.yml`             | pull request ke main, push main, manual   | Gerbang N-16 dan N-13: build, typecheck, lint, format, uji, jalur PG17, kontrak, SDK Dart, Flutter, audit, image |
-| `.github/workflows/deploy-staging.yml` | CI sukses pada push main, manual          | Build + push + pindai image GHCR, job migrasi, kanal `:staging`, Coolify, uji asap commit (bukti rilis)          |
-| `.github/workflows/release.yml`        | tag `v*`, tag `contracts-v*`, manual      | Promosi digest sama, Release draf, deploy production bergerbang; deploy ulang tag (rollback); rilis SDK kontrak  |
-| `.github/workflows/_deploy.yml`        | dipanggil dua workflow di atas            | Satu lingkungan: migrasi -> retag kanal -> Coolify -> uji asap                                                   |
-| `.github/workflows/mobile-android.yml` | manual, perubahan Android/pubspec di main | APK debug kapdh-mobile (opsional)                                                                                |
+| Workflow                               | Pemicu                                    | Isi                                                                                                                                    |
+| -------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `.github/workflows/ci.yml`             | pull request ke main, push main, manual   | Gerbang N-16 dan N-13: build, typecheck, lint, format, uji, jalur PG17, kontrak, SDK Dart, Flutter, audit, image, stack Compose, infra |
+| `.github/workflows/deploy-staging.yml` | CI sukses pada push main, manual          | Build + push + pindai image GHCR, job migrasi, kanal `:staging`, Coolify, uji asap commit (bukti rilis)                                |
+| `.github/workflows/release.yml`        | tag `v*`, tag `contracts-v*`, manual      | Promosi digest sama, Release draf, deploy production bergerbang; deploy ulang tag (rollback); rilis SDK kontrak                        |
+| `.github/workflows/_deploy.yml`        | dipanggil dua workflow di atas            | Satu lingkungan: migrasi + gerbang go-live -> retag kanal -> Coolify -> uji asap                                                       |
+| `.github/workflows/mobile-android.yml` | manual, perubahan Android/pubspec di main | APK debug kapdh-mobile (opsional)                                                                                                      |
 
 Penjelasan lengkap, daftar secrets dan prosedur rilis: [`docs/runbooks/ci-cd.md`](../../../docs/runbooks/ci-cd.md).
-Keputusan desain: [`docs/adr/ADR-010-pipeline-ci-cd.md`](../../../docs/adr/ADR-010-pipeline-ci-cd.md).
+Keputusan desain: [`docs/adr/024-pipeline-ci-cd.md`](../../../docs/adr/024-pipeline-ci-cd.md) (ADR-024).
 
 ## Isi folder
 

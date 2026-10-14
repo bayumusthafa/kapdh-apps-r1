@@ -19,14 +19,17 @@ hanya dipakai untuk push FCM.
 ```
 KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobile dipisah saat rilis
   README.md                        dokumen ini
+  .github/                         workflow GitHub Actions (ci, deploy-staging, release, mobile-android) + action lokal
   docs/
     PRD_KAPDH_Apps_v3.5.pdf        sumber kebenaran produk
     ARCHITECTURE.md                kontrak rekayasa (mengikat untuk kontributor dan agen AI)
     BUILD_PLAN.md                  fase build dan peta kepemilikan path
-    adr/                           catatan keputusan arsitektur 001-017
-    runbooks/                      production-init, go-live (+ rollback), app-store-submission, restore-backup,
-                                   alumni-account-disabled
-    qa/                            traceability.md (bukti otomatis per AC/N/U), uat-checklist.md (UAT manual)
+    adr/                           catatan keputusan arsitektur 001-024
+    runbooks/                      production-init, go-live (+ rollback), rilis-dan-gerbang-go-live, ci-cd,
+                                   compose-cadangan, backup-restore, restore-backup, monitoring, incident-response,
+                                   load-test, storage-migration, app-store-submission, alumni-account-disabled
+    qa/                            traceability.md (bukti otomatis per AC/N/U), uat-checklist.md (UAT manual),
+                                   device-matrix.md (D7), templat bukti restore-drills/, availability/, load/
     handoff/                       laporan serah terima per fase/irisan (fakta, keputusan, isu terbuka)
     reference/                     teks PRD, guideline KAPDH (PNG), prototipe layar (HTML)
   kapdh-platform/                  monorepo pnpm 10 + turbo (Node 24)
@@ -40,7 +43,9 @@ KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobil
     packages/config                validasi environment API/worker
     packages/storage               StorageDriver (disk lokal, S3-compatible)
     packages/design-tokens         token Guidelines KAPDH → CSS Tailwind + Dart
-    infra/                         Dockerfile api/worker/web, compose dev, nginx situs publik, roles.sql, templat CI
+    infra/                         Dockerfile api(+release)/worker/web/admin, nginx, compose dev/production/staging/
+                                   proxy, roles.sql, job rilis + gerbang go-live, skrip CI (ci/), backup/,
+                                   monitoring/, loadtest/ (infra/README.md)
   kapdh-mobile/                    Flutter 3.47 (Android/iOS), SDK `kapdh_api` lewat path dependency
 ```
 
@@ -53,7 +58,9 @@ KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobil
 | Alasan keputusan teknis | `docs/adr/README.md` |
 | Menjalankan dan mengembangkan platform | `kapdh-platform/README.md`, README per paket (`apps/worker`, `packages/{database,contracts,design-tokens}`) |
 | Menjalankan dan mengembangkan aplikasi | `kapdh-mobile/README.md` |
-| Inisialisasi production, go-live, rollback | `docs/runbooks/production-init.md`, `docs/runbooks/go-live.md` |
+| Inisialisasi production, go-live, rollback | `docs/runbooks/production-init.md`, `docs/runbooks/go-live.md`, `docs/runbooks/rilis-dan-gerbang-go-live.md` |
+| CI/CD, image, deploy staging/production, Compose cadangan | `docs/runbooks/ci-cd.md`, `docs/runbooks/compose-cadangan.md`, `kapdh-platform/infra/README.md` |
+| Backup, restore drill, monitoring, insiden, uji beban | `docs/runbooks/backup-restore.md`, `monitoring.md`, `incident-response.md`, `load-test.md`, `storage-migration.md` |
 | Restore backup tanpa menghidupkan akun terhapus; status akun `disabled` | `docs/runbooks/restore-backup.md`, `docs/runbooks/alumni-account-disabled.md` (Bahasa Inggris, dari hardening Fase D) |
 | Pengajuan toko aplikasi | `docs/runbooks/app-store-submission.md` |
 | Bukti penerimaan | `docs/qa/traceability.md`, `docs/qa/uat-checklist.md` |
@@ -175,11 +182,12 @@ Jalankan dari `kapdh-platform/` kecuali disebut lain.
 
 | Paket | Perintah |
 | ----- | -------- |
-| Root | `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:pg`, `pnpm format`, `pnpm format:check`, `pnpm dev`, `pnpm tokens:gen` |
-| Kontrak | `pnpm contracts:bundle`, `pnpm contracts:lint`, `pnpm contracts:gen`, `pnpm contracts:test-dart` (butuh Dart), `pnpm contracts:release-sdk [-- --dry-run]` |
-| `@kapdh/api` | `dev`, `build`, `start`, `test`, `test:pg`, `typecheck`, `lint`, `admin:bootstrap --email <e> --name "<n>"`, `account:ledger-reapply --dir <folder>`, `account:status -- --action <disable/enable/delete> --email <e> --reason "<r>" --approved-by "<n>"` (ketiganya menjalankan `dist/`, jadi build dulu) |
+| Root | `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:pg`, `pnpm test:live`, `pnpm format`, `pnpm format:check`, `pnpm dev`, `pnpm tokens:gen` |
+| Kontrak | `pnpm contracts:bundle`, `pnpm contracts:lint`, `pnpm contracts:gen`, `pnpm contracts:test-dart` (butuh Dart), `pnpm contracts:breaking` (gerbang N-13, butuh oasdiff), `pnpm contracts:release-sdk [-- --dry-run]` |
+| `@kapdh/api` | `dev`, `build`, `start`, `test`, `test:pg`, `typecheck`, `lint`, `admin:bootstrap --email <e> --name "<n>"`, `golive:check [--preflight] [--json]` (gerbang go-live, ADR-023), `account:ledger-reapply --dir <folder> [--dir ...]`, `account:status -- --action <disable/enable/delete> --email <e> --reason "<r>" --approved-by "<n>"`, `loadtest:seed` (dataset sintetis staging; menolak production) (semua CLI menjalankan `dist/`, jadi build dulu) |
 | `@kapdh/worker` | `build`, `start`, `test`, `test:pg`, `typecheck`, `lint` |
-| `@kapdh/admin` | `dev`, `dev:mock`, `build` (butuh `VITE_API_BASE_URL` untuk production), `test`, `typecheck`, `lint` |
+| `@kapdh/admin` | `dev`, `dev:mock`, `build` (butuh `VITE_API_BASE_URL` untuk production), `test`, `test:live` (klien admin terhadap API nyata yang dibangun lokal, D2-14), `typecheck`, `lint` |
+| Infra (tanpa Docker) | `node infra/scripts/validate-infra.mjs`, `node infra/ci/check-workflows.mjs`, `node --test 'infra/ci/test/*.test.mjs'`, `sh infra/scripts/release-job.test.sh`, `sh infra/backup/test/dry-run.sh`, `sh infra/monitoring/test/dry-run.sh` |
 | `@kapdh/web` | `dev`, `build` (env build `PUBLIC_API_URL`; gerbang CSP `scripts/assert-csp-safe.mjs`), `preview`, `test`, `typecheck`, `lint` |
 | `@kapdh/database` | `migrate`, `seed:reference`, `seed:dev`, `db:generate`, `db:generate:custom --name=<x>`, `db:check`, `test` (CLI butuh `DATABASE_URL` di environment) |
 | `kapdh-mobile` | `flutter pub get`, `flutter analyze`, `flutter test`, `flutter run --dart-define-from-file=config/<lingkungan>.json` (juga `flutter build appbundle` / `flutter build ipa`), `dart format --output=none --set-exit-if-changed lib test` |
@@ -194,9 +202,12 @@ Format perintah paket: `pnpm --filter <paket> <skrip>`.
 | API PostgreSQL 17 | `pnpm --filter @kapdh/api test:pg` | skenario PRD 9.2, kunci/race, role nyata, migrasi + seed | Ya |
 | Worker | `pnpm --filter @kapdh/worker test` / `test:pg` | dispatcher, lease, leader, BullMQ vs server RESP tiruan | Ya (runtime) |
 | Paket | `pnpm test` | database, shared, config, storage, kontrak | Ya (unit) |
-| Admin | `pnpm --filter @kapdh/admin test` | Vitest + Testing Library pada server tiruan | Perilaku klien saja |
+| Admin | `pnpm --filter @kapdh/admin test` | Vitest + Testing Library pada server tiruan (respons tiruan divalidasi terhadap kontrak) | Perilaku klien saja |
+| Admin live | `pnpm test:live` | web admin terhadap API nyata (build lokal, PGlite): login + TOTP, konflik keputusan, catat iuran D13, idle | Ya (klausul UI, D2-14) |
 | Web | `pnpm --filter @kapdh/web test` | Vitest + jsdom | Perilaku klien saja |
 | Mobile | `flutter test` | unit + widget, HTTP palsu | Perilaku klien saja |
+| Mobile perangkat | `integration_test/critical_flows_test.dart` (`kapdh-mobile/README.md`) | smoke alur kritis + p95 N-03 di perangkat matriks D7 | Ya untuk N-03/N-12 bila dijalankan di perangkat (`docs/qa/device-matrix.md`) |
+| Infra | perintah baris "Infra" di atas; CI juga build image + stack Compose (`.github/workflows/ci.yml`) | statis + uji kering dengan alat palsu | Konfigurasi saja; staging nyata wajib |
 | UAT staging | `docs/qa/uat-checklist.md` | manual per peran | Ya (PRD 9.3) |
 
 Status terakhir per AC/N/U: `docs/qa/traceability.md`.
@@ -205,8 +216,10 @@ Status terakhir per AC/N/U: `docs/qa/traceability.md`.
 
 - Skema dan aturan validasi API/worker: `kapdh-platform/packages/config/src/index.ts`; contoh berkomentar:
   `kapdh-platform/.env.example`. Berkas `.env` hanya dibaca saat `NODE_ENV=development`.
-- Nilai staging/production dan aturan wajibnya: `docs/runbooks/production-init.md` bagian 1.4.
-- Build-time: `PUBLIC_API_URL` (situs publik), `VITE_API_BASE_URL` (web admin).
+- Nilai staging/production dan aturan wajibnya: `docs/runbooks/production-init.md` bagian 1.4; contoh lengkap per
+  lingkungan (tanpa secret) yang divalidasi `validate-infra.mjs`: `kapdh-platform/infra/.env.{production,staging}.example`.
+- Build-time: `PUBLIC_API_URL` (situs publik), `VITE_API_BASE_URL` (web admin, juga origin CSP admin), `KAPDH_COMMIT`
+  (dibakar CI ke image, dilaporkan `GET /api/v1/health` dan `/version.json`; tidak diisi di env runtime).
 - Aplikasi Flutter: `kapdh-mobile/config/{development,staging,production}.json` (`KAPDH_ENV`, `API_BASE_URL`,
   `PUSH_ENABLED`, `FIREBASE_*`; ADR-016).
 - Versi minimum aplikasi, maintenance, tautan toko, kontak bantuan, nominal iuran, dan instruksi bayar per platform

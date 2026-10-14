@@ -209,9 +209,10 @@ Pemicu: Apple menolak build dengan alasan 3.1.1 (pembayaran membuka fitur) dan b
 Prasyarat (cek semua sebelum mengaktifkan):
 
 - [ ] Web admin yang dirilis memiliki layar pencatatan iuran di luar aplikasi (`POST /admin/payments`,
-      `adminRecordPayment`). **Pada `main` 14 Oktober 2026 layar ini belum ada** (uji kontrak admin masih mencatat
-      "D6-01: adminRecordPayment ... belum memiliki layar"); cabang hardening admin Fase D (`D6-01`, "Catat iuran")
-      menambahkannya tetapi belum digabung. Tanpa layar itu fallback tidak dapat dioperasikan pengurus.
+      `adminRecordPayment`): dialog "Catat iuran" di halaman Pembayaran dan detail anggota (hardening admin Fase D,
+      D6-01/D6-02, `apps/admin/src/routes/payments/RecordDuesDialog.tsx`; menolak bila nominal iuran belum disahkan).
+      Diuji pada mock (`record.test.tsx`) dan terhadap API nyata (`pnpm test:live`, "D6-01, D6-02, AC F07-5: Catat
+      iuran ..."). Latih alurnya di staging sebelum fallback diaktifkan.
 - [ ] BD dan pengurus pembayaran memahami alur: anggota iOS membayar lewat instruksi yang dikirim pengurus (WhatsApp
       atau email), pengurus memverifikasi, lalu mencatat iuran dengan bukti yang diterima (kuota 10 bukti per admin
       per hari, ADR-011).

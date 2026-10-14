@@ -1,7 +1,7 @@
 # Runbook: rilis, inisialisasi production, dan gerbang go-live
 
 Rujukan: PRD 5.3, 5.5, 7.1, 8.2, 8.3, 8.4, 9.2, 9.3, 10.2; D1, D4, D7, D9, D10, D12, D13, D16; U-12; N-07.
-Artefak: `kapdh-platform/infra/` (lihat `infra/README.md`). Keputusan desain: `docs/adr/0002-job-rilis-dan-gerbang-go-live.md`.
+Artefak: `kapdh-platform/infra/` (lihat `infra/README.md`). Keputusan desain: `docs/adr/023-job-rilis-dan-gerbang-go-live.md`.
 Jalur saat panel Coolify mati: `docs/runbooks/compose-cadangan.md`.
 
 > Tidak ada tanda tangan yang dianggap sudah diberikan oleh dokumen ini (PRD 9.3). Setiap langkah bertanda **[bukti]**
@@ -54,8 +54,10 @@ user DB, Redis, direktori berkas, secret, domain dan proyek FCM.
      port publik.
    - Redis 7 (`redis:7.4.11-alpine3.21`) dengan sandi, `appendonly yes`, `maxmemory-policy noeviction`. Tanpa port
      publik.
-   - Aplikasi dari image registry: `kapdh-api` (domain `api.` / `staging-api.`, port 3000, healthcheck
-     `/api/v1/health`), `kapdh-worker` (tanpa domain, healthcheck `/healthz` port 3001), `kapdh-web` (domain
+   - Aplikasi dari image registry: `kapdh-api` (domain `api.` / `staging-api.`, port 3000, healthcheck Coolify
+     `/api/v1/health/ready`: 503 sampai deletion ledger diterapkan setelah restore, ADR-014, sehingga replika itu tidak
+     menerima trafik; `HEALTHCHECK` image sendiri hanya liveness `/api/v1/health`), `kapdh-worker` (tanpa domain,
+     healthcheck `/healthz` port 3001), `kapdh-web` (domain
      `kapdh.or.id` + `www` / `staging.`, port 8080), `kapdh-admin` (domain `admin.` / `staging-admin.`, port 8080).
    - Environment variable dari `infra/.env.<lingkungan>.example` bagian A (API) dan worker; `DATABASE_URL`/`REDIS_URL`
      ditulis lengkap per resource (bagian B): API memakai login `kapdh_app`, worker `kapdh_worker`. Worker TIDAK diberi
