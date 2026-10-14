@@ -70,8 +70,8 @@ for host in "$web" "$admin"; do
   status "https://$host/" >/dev/null
   csp="$(header Content-Security-Policy)"
   case "$csp" in *"frame-ancestors 'none'"*) pass "$host CSP frame-ancestors 'none'" ;; *) bad "$host CSP: '$csp'" ;; esac
-  [ "$(header X-Frame-Options)" = "DENY" ] && pass "$host X-Frame-Options DENY" || bad "$host X-Frame-Options"
-  [ "$(header Referrer-Policy)" = "no-referrer" ] && pass "$host Referrer-Policy" || bad "$host Referrer-Policy"
+  if [ "$(header X-Frame-Options)" = "DENY" ]; then pass "$host X-Frame-Options DENY"; else bad "$host X-Frame-Options"; fi
+  if [ "$(header Referrer-Policy)" = "no-referrer" ]; then pass "$host Referrer-Policy"; else bad "$host Referrer-Policy"; fi
 done
 
 # HSTS (N-07): hanya diwajibkan setelah diaktifkan untuk SELURUH subdomain (runbook rilis bagian 7). Web dan admin
@@ -98,7 +98,7 @@ if [ "$code" = "200" ] && grep -q '"status":"ok"' "$work/b"; then
 else
   bad "API /health/ready → $code $(cat "$work/b" 2>/dev/null | head -c 300)"
 fi
-[ "$(header X-Content-Type-Options)" = "nosniff" ] && pass "API nosniff (helmet)" || bad "API nosniff"
+if [ "$(header X-Content-Type-Options)" = "nosniff" ]; then pass "API nosniff (helmet)"; else bad "API nosniff"; fi
 
 # WSS: handshake upgrade Socket.IO (ARCHITECTURE §4.9; transport websocket saja, Origin web admin diizinkan).
 key="$(openssl rand -base64 16)"

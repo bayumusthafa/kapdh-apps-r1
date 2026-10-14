@@ -51,7 +51,19 @@ const keys = configKeys();
 // Dibakar ke image dari build arg CI (infra/Dockerfile.*, infra/ci/images.json), bukan dari env runtime: contoh env dan
 // compose TIDAK boleh mengisinya karena nilai runtime akan menutupi commit image yang dilaporkan GET /health.
 const IMAGE_BAKED = new Set(["KAPDH_COMMIT"]);
-const apiKeys = new Set([...keys.base, ...keys.api].filter((k) => !IMAGE_BAKED.has(k)));
+// Deletion ledger luar VPS (AC F14-6, D5-07): ditulis job penghapusan di worker saja; API tidak menerima kredensialnya
+// walau kuncinya ada di skema bersama packages/config (least privilege, PRD 5.1).
+const WORKER_ONLY_SECRETS = [
+  "DELETION_LEDGER_S3_ENDPOINT",
+  "DELETION_LEDGER_S3_REGION",
+  "DELETION_LEDGER_S3_BUCKET",
+  "DELETION_LEDGER_S3_ACCESS_KEY_ID",
+  "DELETION_LEDGER_S3_SECRET_ACCESS_KEY",
+  "DELETION_LEDGER_S3_FORCE_PATH_STYLE",
+];
+const apiKeys = new Set(
+  [...keys.base, ...keys.api].filter((k) => !IMAGE_BAKED.has(k) && !WORKER_ONLY_SECRETS.includes(k)),
+);
 const workerKeys = new Set([...keys.base, ...keys.worker].filter((k) => !IMAGE_BAKED.has(k)));
 const API_ONLY_SECRETS = [
   "JWT_ACCESS_SECRET",
@@ -178,8 +190,11 @@ if (prod) {
   for (const key of workerKeys) if (!workerEnv.includes(key)) fail(path, `worker tidak menerima ${key}`);
   for (const key of API_ONLY_SECRETS)
     if (workerEnv.includes(key)) fail(path, `worker menerima ${key} (least privilege PRD 5.1)`);
+  for (const key of WORKER_ONLY_SECRETS)
+    if (apiEnv.includes(key)) fail(path, `api menerima ${key} (ledger luar VPS hanya worker, PRD 5.1)`);
   for (const key of apiEnv)
-    if (!apiKeys.has(key) && key !== "NODE_OPTIONS") fail(path, `api menerima variabel tak dikenal ${key}`);
+    if (!apiKeys.has(key) && key !== "NODE_OPTIONS" && !WORKER_ONLY_SECRETS.includes(key))
+      fail(path, `api menerima variabel tak dikenal ${key}`);
   for (const key of workerEnv)
     if (!workerKeys.has(key) && key !== "NODE_OPTIONS")
       fail(path, `worker menerima variabel tak dikenal ${key}`);
@@ -250,6 +265,8 @@ if (dev) {
     for (const needle of [
       "node infra/scripts/validate-infra.mjs",
       "sh infra/scripts/release-job.test.sh",
+      "sh infra/backup/test/dry-run.sh",
+      "sh infra/monitoring/test/dry-run.sh",
       "sh infra/scripts/smoke-static.sh web",
       "sh infra/scripts/smoke-static.sh admin",
       "sh infra/scripts/ci-stack-smoke.sh",

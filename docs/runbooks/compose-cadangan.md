@@ -9,11 +9,11 @@ tag image, dan hasil pemeriksaan di log insiden.
 
 ## 0. Tentukan skenario
 
-| Skenario | Gejala | Tindakan |
-| -------- | ------ | -------- |
-| A. Panel mati, kontainer aplikasi masih berjalan | situs/API normal, panel tidak dapat dibuka | Tidak memindahkan apa pun. Pulihkan panel (`docker ps` untuk kontainer coolify, log, restart). Kontainer aplikasi dapat di-restart dengan `docker restart <nama>`. Lanjut ke B hanya bila perlu deploy/restart yang tidak bisa ditunggu. |
-| B. Panel mati dan harus deploy atau menjalankan ulang stack | perbaikan mendesak, kontainer aplikasi mati | Jalankan stack Compose cadangan memakai data yang SAMA (bagian 2-4). |
-| C. VPS hilang/rusak | semua layanan berhenti | VPS baru → bagian 1 → restore dan buka layanan dengan urutan bagian 2a (RTO N-06 <= 4 jam). |
+| Skenario                                                    | Gejala                                      | Tindakan                                                                                                                                                                                                                                 |
+| ----------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A. Panel mati, kontainer aplikasi masih berjalan            | situs/API normal, panel tidak dapat dibuka  | Tidak memindahkan apa pun. Pulihkan panel (`docker ps` untuk kontainer coolify, log, restart). Kontainer aplikasi dapat di-restart dengan `docker restart <nama>`. Lanjut ke B hanya bila perlu deploy/restart yang tidak bisa ditunggu. |
+| B. Panel mati dan harus deploy atau menjalankan ulang stack | perbaikan mendesak, kontainer aplikasi mati | Jalankan stack Compose cadangan memakai data yang SAMA (bagian 2-4).                                                                                                                                                                     |
+| C. VPS hilang/rusak                                         | semua layanan berhenti                      | VPS baru → bagian 1 → restore dan buka layanan dengan urutan bagian 2a (RTO N-06 <= 4 jam).                                                                                                                                              |
 
 ## 1. Siapkan host (sekali; skenario B/C)
 
@@ -36,9 +36,10 @@ docker network create kapdh-edge-staging
 
 Isi `/etc/kapdh/production.env` dari pengelola secret (D9). Nilai **wajib sama** dengan yang dipakai resource Coolify:
 `POSTGRES_PASSWORD`, `KAPDH_*_DB_PASSWORD`, `REDIS_PASSWORD`, seluruh secret API (`JWT_ACCESS_SECRET`,
-`OTP_HMAC_SECRET`, `TOTP_ENC_KEY`, `QR_SIGNING_KEYS`, `FILE_URL_SECRET`), FCM, SMTP. `TOTP_ENC_KEY` atau
-`QR_SIGNING_KEYS` yang berbeda membuat TOTP admin dan QR KTA tidak dapat diverifikasi. `KAPDH_IMAGE_TAG` = tag yang
-terakhir lulus gerbang.
+`OTP_HMAC_SECRET`, `TOTP_ENC_KEY`, `QR_SIGNING_KEYS`, `FILE_URL_SECRET`), FCM, SMTP, kredensial deletion ledger luar
+VPS milik worker (`DELETION_LEDGER_S3_*`, wajib di production, AC F14-6) dan DSN GlitchTip (`SENTRY_DSN` API,
+`SENTRY_DSN_WORKER`). `TOTP_ENC_KEY` atau `QR_SIGNING_KEYS` yang berbeda membuat TOTP admin dan QR KTA tidak dapat
+diverifikasi. `KAPDH_IMAGE_TAG` = tag yang terakhir lulus gerbang (`vX.Y.Z`; staging: `sha-<commit>`).
 
 ## 2. Pakai ulang data yang ada (skenario B)
 
@@ -58,9 +59,10 @@ Superuser di volume lama harus `postgres` dengan `POSTGRES_PASSWORD` yang sama; 
 
 ## 2a. Pulihkan dari backup (skenario C)
 
-Runbook backup/restore (manifest, restic, dump) belum ada di repo ini dan menjadi dependensi terbuka; langkah berikut
-hanya urutan yang wajib dari sisi deployment (PRD 5.5, 8.4; AC F14-6). Gunakan `KAPDH_IMAGE_TAG` yang tercatat di
-manifest backup.
+Prosedur restore lengkap (manifest, restic, dump, `infra/backup/restore.sh` dan `verify-restore.sh`, bukti RTO/RPO):
+`docs/runbooks/backup-restore.md` bagian 7. Langkah berikut adalah urutan wajib dari sisi deployment Compose (PRD 5.5,
+8.4; AC F14-6) yang dijalankan restore.sh dengan cara yang sama. Gunakan `KAPDH_IMAGE_TAG` yang tercatat di manifest
+backup (`images.api`).
 
 1. Pulihkan volume PostgreSQL dan direktori `/srv/kapdh/production/files` dari backup (manifest yang sama). Isi
    `KAPDH_PGDATA_VOLUME`/`KAPDH_REDISDATA_VOLUME` bila nama volume hasil restore berbeda. Redis boleh kosong
@@ -72,8 +74,9 @@ manifest backup.
    docker compose --env-file /etc/kapdh/production.env -f infra/compose.production.yml --profile release run --rm release
    ```
 
-3. Terapkan ulang deletion ledger dari salinan ledger **terbaru** (bukan salinan di dalam backup) dengan image dan env
-   worker (login `kapdh_worker`), SEBELUM layanan dibuka. Kode keluar 1 = ada entri gagal: jangan lanjut.
+3. Terapkan ulang deletion ledger dari salinan ledger **terbaru** (bucket ledger luar VPS `DELETION_LEDGER_S3_*`
+   disalin `rclone copy`, ditambah salinan di backup; `--dir` boleh diulang, ADR-019) dengan image dan env worker (login
+   `kapdh_worker`), SEBELUM layanan dibuka. Kode keluar 1 = ada entri gagal: jangan lanjut.
 
    ```bash
    docker compose --env-file /etc/kapdh/production.env -f infra/compose.production.yml run --rm \
@@ -146,17 +149,17 @@ Outbox yang tertunda selama gangguan dikirim ulang otomatis oleh worker (PRD 5.1
 
 ## 6. Perintah operasional
 
-| Keperluan | Perintah (dari `kapdh-platform/`, tambahkan `--env-file /etc/kapdh/production.env -f infra/compose.production.yml`) |
-| --------- | ------ |
-| Log satu layanan | `docker compose ... logs -f --tail 200 api` |
-| Restart | `docker compose ... restart worker` |
-| Bootstrap Super Admin (PRD 8.2 langkah 3) | `docker compose ... exec api node dist/cli/bootstrap-admin.js --email <email> --name "<nama>"` |
-| Gerbang go-live saja | `docker compose ... --profile release run --rm --entrypoint sh release -c 'DATABASE_URL="$MIGRATOR_DATABASE_URL" node dist/cli/golive-check.js'` |
-| Seed referensi saja (idempoten) | `docker compose ... --profile release run --rm --entrypoint sh release -c 'DATABASE_URL="$MIGRATOR_DATABASE_URL" node node_modules/@kapdh/database/dist/bin/seed-reference.js'` |
-| Rilis tag baru (maju) | ubah `KAPDH_IMAGE_TAG`, lalu `pull`, job rilis, `up -d` |
-| Rollback image ke tag lama | pastikan migrasi kompatibel mundur; ubah `KAPDH_IMAGE_TAG`, `pull`, `up -d api worker web admin` TANPA job rilis (job menolak image yang lebih lama dari skema; runbook rilis bagian 6.1) |
-| Gerbang dengan image lama (bukti rollback, baca saja) | `docker compose ... --profile release run --rm --entrypoint sh release -c 'DATABASE_URL="$MIGRATOR_DATABASE_URL" node dist/cli/golive-check.js --allow-schema-ahead'` |
-| Hentikan tanpa menghapus data | `docker compose ... down` (JANGAN `down -v`: menghapus volume database) |
+| Keperluan                                             | Perintah (dari `kapdh-platform/`, tambahkan `--env-file /etc/kapdh/production.env -f infra/compose.production.yml`)                                                                       |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Log satu layanan                                      | `docker compose ... logs -f --tail 200 api`                                                                                                                                               |
+| Restart                                               | `docker compose ... restart worker`                                                                                                                                                       |
+| Bootstrap Super Admin (PRD 8.2 langkah 3)             | `docker compose ... exec api node dist/cli/bootstrap-admin.js --email <email> --name "<nama>"`                                                                                            |
+| Gerbang go-live saja                                  | `docker compose ... --profile release run --rm --entrypoint sh release -c 'DATABASE_URL="$MIGRATOR_DATABASE_URL" node dist/cli/golive-check.js'`                                          |
+| Seed referensi saja (idempoten)                       | `docker compose ... --profile release run --rm --entrypoint sh release -c 'DATABASE_URL="$MIGRATOR_DATABASE_URL" node node_modules/@kapdh/database/dist/bin/seed-reference.js'`           |
+| Rilis tag baru (maju)                                 | ubah `KAPDH_IMAGE_TAG`, lalu `pull`, job rilis, `up -d`                                                                                                                                   |
+| Rollback image ke tag lama                            | pastikan migrasi kompatibel mundur; ubah `KAPDH_IMAGE_TAG`, `pull`, `up -d api worker web admin` TANPA job rilis (job menolak image yang lebih lama dari skema; runbook rilis bagian 6.1) |
+| Gerbang dengan image lama (bukti rollback, baca saja) | `docker compose ... --profile release run --rm --entrypoint sh release -c 'DATABASE_URL="$MIGRATOR_DATABASE_URL" node dist/cli/golive-check.js --allow-schema-ahead'`                     |
+| Hentikan tanpa menghapus data                         | `docker compose ... down` (JANGAN `down -v`: menghapus volume database)                                                                                                                   |
 
 ## 7. Kembali ke Coolify
 

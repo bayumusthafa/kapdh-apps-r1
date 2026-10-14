@@ -80,6 +80,7 @@ service() {
 }
 
 host() {
+  # shellcheck disable=SC2016 # backtick literal: sintaks aturan Traefik Host(`domain`), bukan substitusi perintah
   printf 'Host(`%s`)' "$1"
 }
 
@@ -90,6 +91,7 @@ if [ "$www" = "true" ]; then
   printf '    kapdh-www-to-apex:\n'
   printf '      redirectRegex:\n'
   printf '        regex: "^https?://www\\\\.%s(.*)"\n' "$(regex_escape "$prod_web")"
+  # shellcheck disable=SC2016 # ${1} literal = grup tangkap regex Traefik, bukan variabel shell
   printf '        replacement: "https://%s${1}"\n' "$prod_web"
   printf '        permanent: true\n'
 fi

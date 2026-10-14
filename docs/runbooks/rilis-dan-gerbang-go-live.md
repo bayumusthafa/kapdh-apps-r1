@@ -78,8 +78,8 @@ user DB, Redis, direktori berkas, secret, domain dan proyek FCM.
 5. **DNS** (D12): A/AAAA untuk `kapdh.or.id`, `www`, `admin`, `api` (dan `staging`, `staging-admin`,
    `staging-api`) ke VPS. SPF/DKIM/DMARC untuk `noreply@kapdh.or.id` (D10).
 6. **Backup** sebelum data pengguna pertama: backup dan restore dari database kosong dibuktikan (PRD 8.2 langkah 1).
-   Runbook backup/restore belum ada di repo ini (item kerja backup Fase E); sampai tersedia, langkah ini **belum dapat
-   ditandatangani**.
+   Ikuti `docs/runbooks/backup-restore.md` bagian 3 (penyiapan) dan bagian 8 (drill restore dengan bukti RTO/RPO);
+   langkah ini baru dapat ditandatangani setelah drill pertama tercatat (`docs/qa/restore-drills/TEMPLATE.md`).
 7. **Akses registry image** (GHCR privat; workflow `deploy-staging.yml` menerbitkan dengan `GITHUB_TOKEN`, paket privat
    bawaan repo privat). Satu kali per VPS, oleh pengelola infra (D9):
    - Buat token **hanya-baca** milik akun mesin/organisasi: personal access token (classic) dengan scope
@@ -282,8 +282,8 @@ otomatis (`release.yml` aksi `deploy-tag`) menjalankan job migrasi image lama (m
 
 - Bug kritis setelah ada data: forward-fix; mode maintenance read-only (`app_settings.maintenance`) bila integritas data
   terancam.
-- Restore DB + berkas memakai manifest yang sama (runbook backup/restore, dependensi terbuka), dengan tag image yang
-  tercatat di manifest. Urutan sebelum layanan dibuka:
+- Restore DB + berkas memakai manifest yang sama (`docs/runbooks/backup-restore.md` bagian 7, `infra/backup/restore.sh`),
+  dengan tag image yang tercatat di manifest. Urutan sebelum layanan dibuka:
   1. restore volume PostgreSQL dan direktori berkas; jalankan PostgreSQL dan Redis saja;
   2. job rilis dengan tag image manifest (`roles.sql` dan sandi role diterapkan pada cluster hasil restore; migrasi 0);
   3. terapkan ulang deletion ledger dari salinan ledger **terbaru** (bukan dari backup) dengan image worker dan env

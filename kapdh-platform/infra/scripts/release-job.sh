@@ -23,6 +23,8 @@
 #   KAPDH_MIGRATOR_DB_PASSWORD   opsional: sandi role (langkah 4); kosong = tidak diubah
 #   KAPDH_APP_DB_PASSWORD        opsional: idem untuk kapdh_app
 #   KAPDH_WORKER_DB_PASSWORD     opsional: idem untuk kapdh_worker
+#   KAPDH_BACKUP_DB_PASSWORD     opsional: idem untuk kapdh_backup (backup harian, infra/backup)
+#   KAPDH_MONITOR_DB_PASSWORD    opsional: idem untuk kapdh_monitor (pemeriksa kesehatan, infra/monitoring)
 #   RELEASE_GATE                 enforce | report. Bawaan: enforce untuk production, report untuk staging.
 #   RELEASE_GATE_REASON          wajib bila production + report (pengecualian gerbang): alasan tertulis, mis.
 #                                "inisialisasi pertama PRD 8.2" atau "hotfix keamanan <id insiden>".
@@ -143,7 +145,8 @@ run_psql "$DB_DIR/roles.sql" || die "roles.sql gagal sebelum migrasi."
 
 log "4/9 sandi role LOGIN dari environment"
 # Variabel kosong diperlakukan tidak diisi agar \getenv tidak menetapkan sandi kosong.
-for name in KAPDH_MIGRATOR_DB_PASSWORD KAPDH_APP_DB_PASSWORD KAPDH_WORKER_DB_PASSWORD; do
+for name in KAPDH_MIGRATOR_DB_PASSWORD KAPDH_APP_DB_PASSWORD KAPDH_WORKER_DB_PASSWORD KAPDH_BACKUP_DB_PASSWORD \
+  KAPDH_MONITOR_DB_PASSWORD; do
   eval "value=\${$name:-}"
   if [ -z "$value" ]; then unset "$name"; fi
 done

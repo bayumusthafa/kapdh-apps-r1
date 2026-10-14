@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # Pustaka bersama skrip backup, restore dan verifikasi KAPDH (POSIX sh; PRD 5.5, N-06, D9).
 # Disertakan dengan `. "$KAPDH_BACKUP_DIR/lib.sh"`; tidak dijalankan langsung.
 #

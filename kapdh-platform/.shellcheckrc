@@ -1,0 +1,5 @@
+# ShellCheck untuk skrip infra/**/*.sh (job "Workflow dan skrip ops" di .github/workflows/ci.yml, --severity=style).
+# Ikuti berkas yang di-source lewat direktif `# shellcheck source=<path relatif skrip>` (pustaka bersama
+# infra/backup/lib.sh), sehingga variabel yang dipakai pustaka tidak dilaporkan tak terpakai.
+external-sources=true
+source-path=SCRIPTDIR
