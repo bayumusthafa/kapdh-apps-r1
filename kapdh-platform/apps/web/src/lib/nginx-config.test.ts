@@ -78,7 +78,28 @@ describe("infra/nginx-web.conf", () => {
     expect(conf).toMatch(/~\^\/kta\(\/\|\$\)\s+"no-store";/);
     expect(conf).toMatch(/~\^\/delete-account\(\/\|\$\)\s+"no-store";/);
     expect(conf).toMatch(/default\s+"no-cache";/);
-    expect(conf).toContain("add_header Cache-Control $kapdh_cache_control always;");
+  });
+
+  it("cache: nilai per path hanya untuk respons sukses; 404 /_astro/ saat rolling deploy selalu no-store", () => {
+    const m = /map \$status \$kapdh_cache_control_final \{([^}]*)\}/.exec(conf);
+    expect(m, "map $status tidak ada").not.toBeNull();
+    const entries = new Map(
+      m![1]!
+        .split(";")
+        .map((line) => line.trim().split(/\s+/))
+        .filter((parts) => parts.length === 2)
+        .map(([key, value]) => [key!, value!]),
+    );
+    expect(entries).toEqual(
+      new Map([
+        ["default", '"no-store"'],
+        ["200", "$kapdh_cache_control"],
+        ["206", "$kapdh_cache_control"],
+        ["304", "$kapdh_cache_control"],
+      ]),
+    );
+    expect(conf).toContain("add_header Cache-Control $kapdh_cache_control_final always;");
+    expect(conf).not.toContain("add_header Cache-Control $kapdh_cache_control always;");
   });
 
   it("add_header hanya di tingkat server (tidak hilang karena add_header di location)", () => {

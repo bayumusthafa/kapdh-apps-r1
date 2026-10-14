@@ -1,11 +1,45 @@
-FROM node:24-alpine AS build
-WORKDIR /repo
-RUN corepack enable
-COPY . .
-ARG PUBLIC_API_URL=https://api.kapdh.or.id/api/v1
-ENV PUBLIC_API_URL=$PUBLIC_API_URL
-RUN pnpm install --frozen-lockfile && pnpm --filter @kapdh/web... build
+# syntax=docker/dockerfile:1.26.0@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
+# Image situs publik kapdh.or.id (apps/web, Astro static; D12, PRD 4.6, 7.1; N-07). Dibangun di CI (PRD 5.3). URL API
+# dibakukan saat build, jadi image dibangun per lingkungan dari commit yang sama:
+#
+#   docker build -f infra/Dockerfile.web -t kapdh-web:<versi> .
+#   docker build -f infra/Dockerfile.web --build-arg PUBLIC_API_URL=https://staging-api.kapdh.or.id/api/v1 \
+#     -t kapdh-web:<versi>-staging .
+#
+# Build menjalankan gerbang CSP situs (apps/web/scripts/assert-csp-safe.mjs); header ada di infra/nginx-web.conf.
 
-FROM nginx:1.27-alpine
-COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
+ARG NODE_IMAGE=node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
+ARG NGINX_IMAGE=nginx:1.30.5-alpine3.24@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94
+
+# ------------------------------------------------------------------------------------------------ tahap build
+FROM ${NODE_IMAGE} AS build
+WORKDIR /repo
+ENV CI=true \
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
+    pnpm fetch --frozen-lockfile --store-dir /pnpm/store
+COPY . .
+# D12: production api.kapdh.or.id; build menolak URL non-https selain localhost (apps/web/src/lib/site.ts).
+ARG PUBLIC_API_URL=https://api.kapdh.or.id/api/v1
+ENV PUBLIC_API_URL=${PUBLIC_API_URL}
+RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile --prefer-offline --store-dir /pnpm/store --filter "@kapdh/web..." \
+  && pnpm --filter "@kapdh/web..." build \
+  && test -f apps/web/dist/index.html \
+  && test -f apps/web/dist/kta/index.html \
+  && test -f apps/web/dist/404.html
+
+# ---------------------------------------------------------------------------------------------- tahap runtime
+FROM ${NGINX_IMAGE}
+COPY infra/nginx-main.conf /etc/nginx/nginx.conf
 COPY infra/nginx-web.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
+# Pengguna non-root `nginx` (uid 101) dari image resmi; berkas situs milik root dan hanya-baca.
+USER 101
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+STOPSIGNAL SIGQUIT
+ENTRYPOINT ["nginx", "-g", "daemon off;"]
