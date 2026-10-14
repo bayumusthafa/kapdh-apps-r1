@@ -108,3 +108,8 @@ secure storage memori; `test/support/app_harness.dart`: aplikasi lengkap dari sp
 - iOS: tim Apple, entitlement Push Notifications (`aps-environment`) dan Associated Domains `applinks:kapdh.or.id`
   untuk Universal Links; kunci APNs di proyek Firebase.
 - Tidak ada build APK/IPA di mesin pengembang ini (tanpa Java/Xcode); verifikasi build dilakukan CI.
+
+Build staging/production, penandatanganan Android (`android/key.properties`, tidak di-commit), catatan iOS,
+penempatan konfigurasi Firebase dan APK debug di CI: [`docs/BUILD.md`](docs/BUILD.md). CI (`.github/workflows/ci.yml`
+di akar repo) menjalankan `flutter pub get --enforce-lockfile`, `dart format`, `flutter analyze` dan `flutter test`
+dengan Flutter 3.47.2 pada setiap pull request.
