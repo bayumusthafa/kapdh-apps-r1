@@ -1,0 +1,21 @@
+---
+import Base from "../layouts/Base.astro";
+// Dilayani nginx untuk setiap path yang tidak ada (error_page 404, infra/nginx-web.conf).
+---
+
+<Base title="Halaman tidak ditemukan" noindex>
+  <section class="mx-auto flex max-w-xl flex-col items-center gap-5 px-4 py-20 text-center sm:px-6">
+    <p class="font-heading text-7xl font-bold text-primary">
+      404<span class="ml-1 inline-block size-4 bg-accent align-top" aria-hidden="true"></span>
+    </p>
+    <h1 class="font-heading text-2xl font-semibold text-green-950">Halaman tidak ditemukan</h1>
+    <p class="text-text-muted">
+      Alamat yang Anda buka tidak ada atau sudah dipindahkan. Bila Anda memindai QR KTA, pastikan memindai QR langsung
+      dari aplikasi KAPDH.
+    </p>
+    <div class="flex flex-col gap-3 sm:flex-row">
+      <a href="/" class="btn-primary">Ke beranda</a>
+      <a href="/bantuan" class="btn-outline">Buka bantuan</a>
+    </div>
+  </section>
+</Base>
