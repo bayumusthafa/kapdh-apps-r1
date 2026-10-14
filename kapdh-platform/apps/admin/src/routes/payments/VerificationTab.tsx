@@ -2,10 +2,13 @@ import type { components } from "@kapdh/contracts";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
 import { useApiQuery } from "../../api/query";
+import { useAuth } from "../../auth/session";
 import { Badge, PaymentStageBadge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
 import { DataTable, useCursorPaging } from "../../components/ui/DataTable";
 import { Field } from "../../components/ui/FormField";
 import { Select } from "../../components/ui/Input";
@@ -16,6 +19,7 @@ import { useNow } from "../../lib/hooks";
 import { memberName, memberSubtitle, paymentTypeText as typeText } from "./labels";
 import { PaymentDecisionPanel } from "./PaymentDecisionPanel";
 import { PAYMENTS_KEY } from "./queries";
+import { RecordDuesDialog } from "./RecordDuesDialog";
 
 type Item = components["schemas"]["AdminPaymentItem"];
 type PaymentStatus = components["schemas"]["PaymentStatus"];
@@ -177,6 +181,35 @@ export function VerificationTab() {
     setSelectedId(linked);
     setFocusRequest((n) => n + 1);
   }, [linked]);
+
+  // "Catat iuran" (D13, adminRecordPayment): payments.read + payments.decide sesuai x-kapdh-access kontrak.
+  const auth = useAuth();
+  const canRecord = auth.can("payments.read") && auth.can("payments.decide");
+  /** Dialog pencatatan iuran yang terbuka; `userId` alumni terpilih dari tautan detail anggota. */
+  const [recording, setRecording] = useState<{ userId: string | null } | null>(null);
+  // Tautan `?record=` (detail anggota, Pengaturan) membuka dialog sekali; parameter dihapus agar muat ulang tidak
+  // membukanya lagi.
+  const recordRequest = search.record;
+  useEffect(() => {
+    if (recordRequest === undefined) return;
+    if (canRecord) setRecording({ userId: recordRequest === true ? null : recordRequest });
+    void navigate({ search: (prev) => ({ ...prev, record: undefined }), replace: true });
+  }, [recordRequest, canRecord, navigate]);
+
+  /**
+   * Panel dipasang ulang setelah pencatatan, agar payment yang sedang terbuka lalu diselesaikan di tempat oleh admin
+   * ini sendiri tidak diumumkan sebagai "diputus admin lain".
+   */
+  const [panelEpoch, setPanelEpoch] = useState(0);
+
+  /** Tutup dialog lalu buka payment hasil (atau payment yang perlu diputus) di panel keputusan. */
+  function openFromRecord(paymentId: string) {
+    setRecording(null);
+    setPanelEpoch((n) => n + 1);
+    setSelectedId(paymentId);
+    setFocusRequest((n) => n + 1);
+    void navigate({ search: (prev) => ({ ...prev, record: undefined, payment: paymentId }), replace: true });
+  }
 
   const list = useApiQuery({
     queryKey: [...PAYMENTS_KEY, "list", { ...filters, cursor: paging.cursor }],
@@ -349,7 +382,25 @@ export function VerificationTab() {
             )}
           </Field>
         ) : null}
+        {canRecord ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto"
+            leftIcon={<Plus aria-hidden="true" className="size-4" />}
+            onClick={() => setRecording({ userId: null })}
+          >
+            Catat iuran
+          </Button>
+        ) : null}
       </div>
+      <RecordDuesDialog
+        open={recording !== null}
+        initialUserId={recording?.userId ?? null}
+        onClose={() => setRecording(null)}
+        onRecorded={(payment) => openFromRecord(payment.id)}
+        onOpenPayment={openFromRecord}
+      />
 
       <div className="flex flex-wrap items-start gap-5">
         <section aria-label="Antrean pembayaran" className="min-w-0 flex-[3_1_520px]">
@@ -389,7 +440,7 @@ export function VerificationTab() {
         <div className="min-w-0 flex-[2_1_340px]">
           {selectedId ? (
             <PaymentDecisionPanel
-              key={selectedId}
+              key={`${selectedId}:${panelEpoch}`}
               paymentId={selectedId}
               listProofVersion={selectedItem?.proof_version}
               focusRequest={focusRequest}

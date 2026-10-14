@@ -1,10 +1,11 @@
-import { requireAdmin, requirePermission } from "./auth";
+import { mockAdminRef, requireAdmin, requirePermission } from "./auth";
 import { error, json, type MockFile, type MockRoute, readMultipart, type S } from "./http";
 import {
   MOCK_EVIDENCE_FILE_ID,
   MOCK_PROOF_FILE_ID,
   MOCK_PROOF_FILE_ID_PDF,
   MOCK_PROOF_FILE_ID_V2,
+  registerFileLookupForMocks,
 } from "./payments";
 
 /**
@@ -33,10 +34,20 @@ function fileRef(id: string, purpose: S["FilePurpose"], mime: string, bytes: num
 interface StoredFile {
   ref: S["FileRef"];
   dataUrl: string;
+  /** Admin pengunggah (berkas milik akun login pemanggil); null untuk berkas contoh milik anggota. */
+  ownerAdminId: string | null;
 }
 
 const files = new Map<string, StoredFile>();
 let seq = 0;
+
+// Pencatatan iuran D13 hanya menerima bukti payment_proof unggahan admin pemanggil (kontrak adminRecordPayment).
+registerFileLookupForMocks((id) => {
+  const f = files.get(id);
+  return f
+    ? { purpose: f.ref.purpose, mime: f.ref.mime, bytes: f.ref.bytes, owner_admin_id: f.ownerAdminId }
+    : undefined;
+});
 
 function placeholderSvg(label: string): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320"><rect width="480" height="320" fill="#F1F8F0"/><rect x="24" y="24" width="432" height="272" rx="14" fill="#fff" stroke="#E3E3E6"/><text x="240" y="150" font-family="Poppins, sans-serif" font-size="20" text-anchor="middle" fill="#1A4B17">${label}</text><text x="240" y="186" font-family="Poppins, sans-serif" font-size="14" text-anchor="middle" fill="#6B6B6B">Data contoh mode mock</text></svg>`;
@@ -49,19 +60,23 @@ export function reset(): void {
   files.set(MOCK_PROOF_FILE_ID, {
     ref: fileRef(MOCK_PROOF_FILE_ID, "payment_proof", "image/svg+xml", 2048),
     dataUrl: placeholderSvg("Bukti transfer versi 1"),
+    ownerAdminId: null,
   });
   files.set(MOCK_PROOF_FILE_ID_V2, {
     ref: fileRef(MOCK_PROOF_FILE_ID_V2, "payment_proof", "image/svg+xml", 2048),
     dataUrl: placeholderSvg("Bukti transfer versi 2"),
+    ownerAdminId: null,
   });
   // Bukti bayar PDF (N-10) dan bukti penyelesaian refund (D6) untuk data contoh pembayaran.
   files.set(MOCK_PROOF_FILE_ID_PDF, {
     ref: fileRef(MOCK_PROOF_FILE_ID_PDF, "payment_proof", "application/pdf", 48_213),
     dataUrl: placeholderSvg("Dokumen PDF"),
+    ownerAdminId: null,
   });
   files.set(MOCK_EVIDENCE_FILE_ID, {
     ref: fileRef(MOCK_EVIDENCE_FILE_ID, "adjustment_evidence", "image/svg+xml", 2048),
     dataUrl: placeholderSvg("Bukti transfer refund"),
+    ownerAdminId: null,
   });
 }
 reset();
@@ -102,7 +117,11 @@ export const routes: MockRoute[] = [
       seq += 1;
       const id = `0199e000-0000-7000-8000-${String(seq).padStart(12, "0")}`;
       const ref = fileRef(id, purpose as S["FilePurpose"], file.type, file.size);
-      files.set(id, { ref, dataUrl: isImage ? toDataUrl(file) : placeholderSvg("Dokumen PDF") });
+      files.set(id, {
+        ref,
+        dataUrl: isImage ? toDataUrl(file) : placeholderSvg("Dokumen PDF"),
+        ownerAdminId: mockAdminRef().admin_id,
+      });
       return json(201, ref);
     },
   },
