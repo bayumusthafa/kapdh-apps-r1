@@ -49,8 +49,10 @@ belum disahkan) selalu SEV-1.
 ### 4.1 Mode maintenance (app_settings `maintenance`)
 
 Efek (ARCHITECTURE §4.3, PRD 4.5): semua mutasi anggota (POST/PUT/PATCH/DELETE) ditolak `503 MAINTENANCE` dengan pesan
-dan `Retry-After` dari `until`, KECUALI `/auth/refresh`, `/auth/logout`, `/auth/logout-all`, seluruh `/admin/**`, dan
-`POST /public/kta/verify`. Baca (GET) tetap jalan, aplikasi menampilkan layar maintenance dari `GET /public/config`.
+dan `Retry-After` dari `until`, KECUALI `/auth/refresh`, `/auth/logout`, `/auth/logout-all`,
+`DELETE /auth/sessions/{id}`, seluruh `/admin/**`, dan `POST /public/kta/verify`; untuk access token admin yang sah juga
+`POST /auth/reauth` (reautentikasi untuk mematikan maintenance) dan `POST /files` (unggahan bukti pengurus). Baca (GET)
+tetap jalan, aplikasi menampilkan layar maintenance dari `GET /public/config`.
 Worker tetap berjalan (job terjadwal, outbox, penghapusan akun) kecuali dihentikan.
 
 **Cara utama (teraudit):** web admin → Pengaturan → Maintenance (Super Admin atau admin `settings.manage`, wajib
@@ -100,6 +102,7 @@ Bertingkat, gunakan yang paling ringan yang cukup:
 | Ledger penghapusan luar VPS gagal | Permintaan `failed` dengan `ledger_*:OffsiteLedgerWriteError`: periksa kunci/kuota/object lock bucket ledger; job mengulang otomatis. Data belum dihapus sebelum entri luar VPS ada (D5-07) |
 | Paparan berkas privat (SEV-1) | Maintenance; identifikasi berkas dan pengakses dari log (`request_id`); rotasi `FILE_URL_SECRET` (semua URL bertanda tangan ≤ 10 menit batal); perbaiki; nilai kewajiban pemberitahuan (bagian 7.4) |
 | Akun admin diduga dibobol | Super Admin lain menonaktifkan admin itu (web admin); cabut sesi (bagian 5.1); periksa audit tindakan admin itu; reset TOTP lewat undangan ulang |
+| Akun alumni disalahgunakan / investigasi keamanan | Atas keputusan tertulis Super Admin: status `disabled` lewat CLI `account:status` (docs/runbooks/alumni-account-disabled.md); pelanggaran perilaku memakai suspend di web admin, bukan `disabled` |
 | Kebocoran secret | Rotasi sesuai bagian 5.2; cabut sesi bila JWT/OTP terdampak |
 | Oversell/salah nominal/status | Maintenance; hentikan worker bila job ikut memperburuk; koreksi hanya lewat payment_adjustments (status paid tidak diubah, ARCHITECTURE §2.13); forward-fix |
 | Konfigurasi produksi belum disahkan terdeteksi | Maintenance; perbaiki app_settings lewat web admin; catat (PRD 8.4) |
