@@ -5,9 +5,10 @@
 #     -f infra/compose.production.yml -f infra/compose.staging.yml --profile release run --rm release
 #   docker compose --env-file /etc/kapdh/staging.env -f infra/compose.production.yml -f infra/compose.staging.yml up -d
 #
-# Project `kapdh-staging` (kontainer kapdh-staging-<layanan>-1, jaringan/volume sendiri). Nama volume DIPATOK di sini
-# dan tidak dapat diarahkan lewat env, sehingga berkas env production yang tertukar tidak pernah memasang volume
-# production ke kontainer staging. Batas sumber daya lebih kecil: staging tidak boleh mengganggu production pada VPS
+# Project `kapdh-staging` (kontainer kapdh-staging-<layanan>-1, jaringan/volume sendiri). Nama volume dan jaringan edge
+# (kapdh-edge-staging) DIPATOK di sini dan tidak dapat diarahkan lewat env, sehingga berkas env production yang
+# tertukar tidak pernah memasang volume production ke kontainer staging, dan kontainer staging tidak berbagi jaringan
+# dengan API production. Batas sumber daya lebih kecil: staging tidak boleh mengganggu production pada VPS
 # yang sama (PRD 5.3); uji beban dilakukan di luar jam layanan atau di VPS terpisah.
 name: kapdh-staging
 
@@ -89,6 +90,13 @@ services:
   release:
     environment:
       KAPDH_ENV: staging
+
+networks:
+  # Jaringan edge staging sendiri (dipatok): kontainer staging tidak dapat menjangkau kapdh-production-* tanpa Traefik.
+  # Hanya Traefik cadangan yang tersambung ke kapdh-edge dan kapdh-edge-staging (infra/compose.proxy.yml).
+  edge:
+    external: true
+    name: kapdh-edge-staging
 
 volumes:
   pgdata:

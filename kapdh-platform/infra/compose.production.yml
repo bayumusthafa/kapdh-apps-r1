@@ -2,7 +2,7 @@
 # 7.1; D7, D9, D12). Jalur utama tetap Coolify; berkas ini menjalankan stack yang sama dengan image yang sama dari CI
 # ketika panel tidak tersedia atau VPS dibangun ulang dari backup. Langkah lengkap: docs/runbooks/compose-cadangan.md.
 #
-#   docker network create kapdh-edge                                              # sekali, jaringan proxy
+#   docker network create kapdh-edge && docker network create kapdh-edge-staging   # sekali, jaringan proxy
 #   docker compose --env-file /etc/kapdh/production.env -f infra/compose.production.yml \
 #     --profile release run --rm release                                         # job rilis (migrasi + gerbang)
 #   docker compose --env-file /etc/kapdh/production.env -f infra/compose.production.yml up -d
@@ -255,6 +255,9 @@ services:
       KAPDH_APP_DB_PASSWORD: ${KAPDH_APP_DB_PASSWORD:?KAPDH_APP_DB_PASSWORD wajib}
       KAPDH_WORKER_DB_PASSWORD: ${KAPDH_WORKER_DB_PASSWORD:?KAPDH_WORKER_DB_PASSWORD wajib}
       RELEASE_GATE: ${RELEASE_GATE:-}
+      # Pengecualian gerbang production (RELEASE_GATE=report): wajib alasan dan penyetuju (runbook rilis 5.3).
+      RELEASE_GATE_REASON: ${RELEASE_GATE_REASON:-}
+      RELEASE_GATE_APPROVER: ${RELEASE_GATE_APPROVER:-}
     networks:
       - data
     deploy:
@@ -270,10 +273,12 @@ networks:
     internal: true
   # Egress worker (SMTP provider D10, FCM).
   egress: {}
-  # Jaringan bersama dengan Traefik cadangan (infra/compose.proxy.yml); API juga memakai jaringan ini untuk egress.
+  # Jaringan dengan Traefik cadangan (infra/compose.proxy.yml); API juga memakai jaringan ini untuk egress. Nama
+  # DIPATOK per lingkungan (staging: kapdh-edge-staging di overlay), tidak dari env: kontainer staging tidak boleh
+  # menjangkau API production langsung tanpa Traefik (X-Forwarded-For palsu terhadap TRUST_PROXY_HOPS=1; D12, PRD 5.3).
   edge:
     external: true
-    name: ${KAPDH_EDGE_NETWORK:-kapdh-edge}
+    name: kapdh-edge
 
 volumes:
   # Nama dapat diarahkan ke volume yang sudah ada (mis. volume Coolify atau hasil restore) lewat env.

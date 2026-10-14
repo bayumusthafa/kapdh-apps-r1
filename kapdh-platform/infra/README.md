@@ -22,11 +22,11 @@ Jalur cadangan saat panel Coolify tidak tersedia: **Compose cadangan** (`compose
 | `nginx-admin.conf`                                | Server web admin (D3-07): CSP `script-src/style-src 'self'`, `frame-ancestors 'none'`, `X-Frame-Options DENY`, `Referrer-Policy no-referrer` (alur `/invite#t=`), `index.html` no-store, `/assets/` immutable, fallback SPA `try_files`.                                                                                                                                                     |
 | `db/roles.sql`                                    | Role dan grant (`kapdh_migrator`, `kapdh_app`, `kapdh_worker`, `kapdh_audit_purge`).                                                                                                                                                                                                                                                                                                         |
 | `db/role-passwords.sql`                           | Sandi role LOGIN dari env lewat `\getenv` psql (tidak di argumen proses).                                                                                                                                                                                                                                                                                                                    |
-| `scripts/release-job.sh`                          | Entry image rilis: tunggu DB → `roles.sql` → sandi role → migrasi (`kapdh_migrator`, advisory lock) → `roles.sql` → seed referensi → gerbang go-live.                                                                                                                                                                                                                                        |
+| `scripts/release-job.sh`                          | Entry image rilis: tunggu DB → cek versi skema (image lebih lama dari skema ditolak) → `roles.sql` → sandi role → gerbang pra-migrasi (enforce) → migrasi (`kapdh_migrator`, advisory lock) → `roles.sql` → seed referensi → gerbang go-live penuh.                                                                                                                                          |
 | `scripts/run-release.sh`                          | Menjalankan image rilis di VPS (jalur Coolify) dengan berkas env `/etc/kapdh/<lingkungan>/release.env`.                                                                                                                                                                                                                                                                                      |
 | `compose.production.yml`                          | Compose cadangan production: postgres 17, redis 7, api, worker, web, admin, job `release` (profile).                                                                                                                                                                                                                                                                                         |
-| `compose.staging.yml`                             | Overlay staging (D12): project, NODE_ENV, volume dan batas sumber daya sendiri.                                                                                                                                                                                                                                                                                                              |
-| `compose.proxy.yml`, `traefik/`                   | Traefik cadangan tanpa socket Docker; rute dirender dari env (`traefik/render-dynamic.sh`).                                                                                                                                                                                                                                                                                                  |
+| `compose.staging.yml`                             | Overlay staging (D12): project, NODE_ENV, volume, jaringan edge `kapdh-edge-staging` dan batas sumber daya sendiri.                                                                                                                                                                                                                                                                          |
+| `compose.proxy.yml`, `traefik/`                   | Traefik cadangan tanpa socket Docker, satu-satunya yang tersambung ke `kapdh-edge` dan `kapdh-edge-staging`; rute dirender dari env (`traefik/render-dynamic.sh`).                                                                                                                                                                                                                           |
 | `docker-compose.yml`                              | Dev lokal (PostgreSQL 17, Redis 7, Mailpit; port hanya 127.0.0.1).                                                                                                                                                                                                                                                                                                                           |
 | `.env.production.example`, `.env.staging.example` | Seluruh variabel `packages/config` + variabel Compose, tanpa secret.                                                                                                                                                                                                                                                                                                                         |
 | `ci/github-actions-ci.yml`                        | Lint/typecheck/test/build/format + jalur PostgreSQL 17 (`test:pg`).                                                                                                                                                                                                                                                                                                                          |
@@ -35,7 +35,7 @@ Jalur cadangan saat panel Coolify tidak tersedia: **Compose cadangan** (`compose
 | `scripts/release-job.test.sh`                     | Uji kering `release-job.sh` dengan shim psql/node (urutan, mode gerbang, kode keluar).                                                                                                                                                                                                                                                                                                       |
 | `scripts/smoke-static.sh`                         | Uji asap header/cache/fallback kontainer web dan admin.                                                                                                                                                                                                                                                                                                                                      |
 | `scripts/ci-stack-smoke.sh`                       | Stack Compose production lengkap di CI (job rilis nyata, healthcheck, gerbang, DB/Redis privat).                                                                                                                                                                                                                                                                                             |
-| `scripts/staging-smoke.sh`                        | Dari luar VPS: HTTPS/redirect, TLS >= 1.2, header, `/health/ready`, upgrade WSS, port DB/Redis tertutup.                                                                                                                                                                                                                                                                                     |
+| `scripts/staging-smoke.sh`                        | Dari luar VPS: HTTPS/redirect, TLS >= 1.2, header, HSTS (`KAPDH_EXPECT_HSTS=true`), `/health/ready`, upgrade WSS, port DB/Redis tertutup.                                                                                                                                                                                                                                                    |
 | `scripts/admin-csp.mjs`                           | Render CSP admin dan gerbang CSP hasil build admin.                                                                                                                                                                                                                                                                                                                                          |
 
 ## Image dan tag
@@ -49,8 +49,10 @@ Jalur cadangan saat panel Coolify tidak tersedia: **Compose cadangan** (`compose
 | `kapdh-admin`   | `Dockerfile.admin`           | 8080                    | nginx (101) | URL API dibakukan saat build → varian `-staging`.  |
 
 Push `main` yang lolos CI menerbitkan `ghcr.io/<org>/kapdh-<image>:sha-<commit12>` (web/admin juga
-`sha-<commit12>-staging`) dan dideploy ke staging. Tag `vX.Y.Z` yang disetujui gerbang rilis memberi tag versi pada
-**digest yang sama** (`docker buildx imagetools create`), tanpa build ulang (PRD 5.5). Semua base image dipin digest
+`sha-<commit12>-staging`) dan dideploy ke staging; run main tidak pernah dibatalkan run berikutnya (hanya PR). Tag
+`vX.Y.Z` yang disetujui gerbang rilis memberi tag versi pada **digest yang sama** (`docker buildx imagetools create`),
+tanpa build ulang (PRD 5.5); promosi gagal dengan pesan jelas bila salah satu image `sha-<commit>` belum ada. Paket GHCR
+privat: VPS dan Coolify menarik image setelah `docker login ghcr.io` (token `read:packages`; runbook rilis bagian 2). Semua base image dipin digest
 (Node 24.19.0/Alpine 3.24, nginx 1.30.5, PostgreSQL 17.11, Redis 7.4.11, Traefik 3.7.13; PRD 7.1).
 
 ## Job rilis (PRD 5.5) dan gerbang go-live (PRD 9.2, 9.3)
@@ -58,9 +60,14 @@ Push `main` yang lolos CI menerbitkan `ghcr.io/<org>/kapdh-<image>:sha-<commit12
 Satu job per rilis per lingkungan, **sebelum** API dan worker baru dijalankan; migrasi tidak pernah berjalan saat
 startup replica. Urutan dan env ada di kepala `scripts/release-job.sh`. Mode gerbang:
 
-- `enforce` (bawaan production): job gagal (kode 1) bila `golive:check` menolak → image tidak boleh dipromosikan.
-- `report` (bawaan staging): laporan dicetak, job lanjut. Di production hanya untuk **inisialisasi pertama** sebelum
-  bootstrap Super Admin dan konfigurasi pengurus; go-live wajib lulus mode `enforce`.
+- `enforce` (bawaan production): `golive:check --preflight` SEBELUM migrasi (konfigurasi pengurus; ditolak → skema dan
+  API yang berjalan tidak tersentuh) dan `golive:check` penuh setelah seed; job gagal (kode 1) bila salah satunya
+  menolak → image tidak boleh dipromosikan. Penolakan setelah migrasi = perbaikan maju (PRD 8.4).
+- `report` (bawaan staging): laporan dicetak, job lanjut. Di production adalah **pengecualian** (inisialisasi pertama
+  atau hotfix mendesak) dan wajib `RELEASE_GATE_REASON` + `RELEASE_GATE_APPROVER` (dicetak ke log job); go-live wajib
+  lulus mode `enforce`.
+- Di semua mode, database yang memuat migrasi lebih banyak dari journal image ditolak sebelum `roles.sql`. Rollback image
+  tidak memakai job rilis (runbook rilis bagian 6.1; bukti baca-saja `golive:check --allow-schema-ahead`).
 
 `golive:check` (`node dist/cli/golive-check.js`, `pnpm --filter @kapdh/api golive:check`) hanya membaca database
 (transaksi read only) dan menolak bila: skema tertinggal dari journal image; kunci `app_settings` belum tersimpan atau
@@ -68,7 +75,8 @@ tidak valid; nominal iuran kosong/Rp0 atau berbeda dari D4 tanpa jejak perubahan
 aktif yang dibuat lewat web admin (atau metode contoh); kurang dari 2 Super Admin aktif ber-TOTP; kurang dari 2 pengurus
 ber-TOTP dengan `payments.read` + `payments.decide`; halaman kebijakan privasi, ketentuan, ketentuan komunitas dan
 bantuan belum terbit, masih kerangka DRAF, atau `app_settings.legal` tidak sinkron; master profesi/keahlian belum
-diaktifkan; WhatsApp dukungan kosong; atau ada fixture dev (`seed.dev`, `DEV_IDS`, email `.test`, judul `[Contoh]`).
+diaktifkan; WhatsApp dukungan kosong; atau ada fixture dev (`seed.dev`, `DEV_IDS`, akun aktif ber-email `.test`, konten
+pengurus berjudul `[Contoh]`; nama yang diisi pendaftar tidak pernah menahan rilis).
 Kode keluar: 0 lulus, 1 ditolak, 2 argumen salah, 3 galat teknis. Jalankan dengan role `kapdh_migrator` (atau
 `kapdh_app`; versi skema lalu tercatat "tidak terbaca"); role `kapdh_worker` tidak dapat membaca `mfa_totp` → kode 3.
 Bukti uji: `apps/api/test/core/golive-gate.e2e.test.ts` (PGlite), `apps/api/test/pg/golive-gate.pg.test.ts` (satu uji per
@@ -78,6 +86,10 @@ kondisi, PostgreSQL 17), `apps/api/test/pg/critical-9-2.pg.test.ts` skenario 10,
 
 - Hanya Traefik mempublikasikan 80/443. PostgreSQL dan Redis hanya di jaringan `data` (`internal: true`, tanpa port host,
   tanpa egress); API/worker/job rilis yang tersambung (N-07, PRD 5.3). Worker `/healthz` tidak dirutekan.
+- Jaringan edge per lingkungan dipatok: production `kapdh-edge`, staging `kapdh-edge-staging`; hanya Traefik cadangan
+  tersambung ke keduanya, sehingga kontainer staging tidak menjangkau API production tanpa proxy (D12).
+- Cache web/admin: nilai per path (aset hash `immutable`) hanya untuk respons 200/206/304; respons galat selalu
+  `no-store` (404 aset saat rolling deploy tidak tersimpan setahun). HSTS ditambahkan di proxy (runbook rilis bagian 7).
 - Batas Compose untuk VPS 4 vCPU / 8 GB: postgres 2 GB, redis 384 MB (maxmemory 256 MB, `noeviction` untuk BullMQ),
   api 1 GB (heap 768 MB), worker 768 MB (heap 512 MB), web/admin 64 MB, Traefik 256 MB. Staging lebih kecil. Angka awal;
   diukur ulang dengan uji beban N-01..N-04 (PRD 10.2).

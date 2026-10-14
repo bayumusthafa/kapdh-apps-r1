@@ -1,6 +1,7 @@
 /**
  * Urutan job rilis production (infra/scripts/release-job.sh; PRD 5.5, 8.2 langkah 2-4) pada PostgreSQL 17 nyata dengan
- * role production, bukan superuser: roles.sql (sebelum migrasi) → migrasi sebagai LOGIN kapdh_migrator →
+ * role production, bukan superuser: roles.sql (sebelum migrasi) → gerbang pra-migrasi (dilewati pada database kosong)
+ * → migrasi sebagai LOGIN kapdh_migrator →
  * roles.sql (sesudah migrasi) → seed referensi sebagai kapdh_migrator → gerbang go-live sebagai kapdh_migrator.
  * Template jalur PG lain dimigrasi superuser; berkas ini membuktikan migrasi dan grant juga berjalan bila pemilik objek
  * adalah kapdh_migrator seperti di VPS. psql sendiri tidak dipakai di sini (tidak ada di mesin build); roles.sql
@@ -38,6 +39,11 @@ describe("PRD 5.5/8.2: job rilis dengan role production pada PostgreSQL 17", () 
       // 1. Sebelum migrasi pertama: role dan hak tingkat database.
       await superuser.file(ROLES_SQL);
       await superuser.unsafe(`alter role kapdh_migrator password '${password}'`);
+      // 1b. Gerbang pra-migrasi (mode enforce) pada database kosong: skema aplikasi belum ada → dilewati, lulus.
+      const preflight = await runGoLiveGate(migrator.db as unknown as Db, { phase: "preflight" });
+      expect(preflight).toMatchObject({ ok: true, phase: "preflight", checks: [] });
+      expect(preflight.database.role).toBe("kapdh_migrator");
+      expect(preflight.notes[0]).toContain("Skema aplikasi belum ada");
       // 2. Migrasi oleh pemilik skema non-superuser.
       expect((await runMigrations({ url: migratorUrl })).applied).toBe(JOURNAL.entries.length);
       // 3. Grant objek (append-only, mfa_totp, sequence) diterapkan ulang setelah migrasi.

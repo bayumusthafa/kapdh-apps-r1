@@ -16,9 +16,11 @@ on:
   pull_request:
 permissions:
   contents: read
+# Hanya PR yang dibatalkan oleh push berikutnya. Run push main TIDAK pernah dibatalkan: setiap commit main harus
+# menerbitkan image sha-<commit> karena tag versi dipromosikan dari image itu (job promote).
 concurrency:
   group: images-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
   REGISTRY: ghcr.io/${{ github.repository_owner }}
 jobs:
@@ -143,6 +145,20 @@ jobs:
           REGISTRY="$(printf '%s' "$REGISTRY" | tr '[:upper:]' '[:lower:]')"
           source_tag="sha-$(git rev-parse --short=12 HEAD)"
           version="${GITHUB_REF_NAME}"
+          # Semua sumber wajib ada SEBELUM satu tag pun dibuat (tidak ada promosi setengah jadi).
+          missing=""
+          for ref in api release worker web admin web:-staging admin:-staging; do
+            name="${ref%%:*}"
+            suffix=""
+            case "$ref" in *:*) suffix="${ref#*:}" ;; esac
+            if ! docker buildx imagetools inspect "$REGISTRY/kapdh-$name:$source_tag$suffix" >/dev/null 2>&1; then
+              missing="$missing kapdh-$name:$source_tag$suffix"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Image sumber tidak ada:$missing. Tag $version menunjuk commit yang belum diterbitkan workflow Images di main (run dibatalkan/gagal atau commit bukan dari main). Jalankan ulang workflow Images untuk commit itu di main, lalu jalankan ulang job promote."
+            exit 1
+          fi
           for name in api release worker web admin; do
             docker buildx imagetools create -t "$REGISTRY/kapdh-$name:$version" "$REGISTRY/kapdh-$name:$source_tag"
           done

@@ -113,6 +113,24 @@ describe("PRD 9.2/9.3, U-12: gerbang go-live (golive:check)", () => {
     );
   });
 
+  it("job rilis --preflight: tanpa schema/settings, laporan pra-migrasi; --json memuat fase", async () => {
+    let result = await run(db, ["--preflight"]);
+    expect(result.code).toBe(GOLIVE_EXIT.refused);
+    expect(result.out).toContain("— pra-migrasi —");
+    expect(result.out).not.toContain("Skema database pada versi rilis");
+    expect(result.out).not.toContain("Seluruh app_settings tersimpan");
+    expect(result.out).toContain("HASIL PRA-MIGRASI: DITOLAK (6 pemeriksaan gagal). Skema belum diubah");
+
+    await approveProductionConfig(db);
+    result = await run(db, ["--preflight", "--json"]);
+    expect(result.code, result.out).toBe(GOLIVE_EXIT.passed);
+    const report = JSON.parse(result.out) as GateReport;
+    expect(report.phase).toBe("preflight");
+    expect(report.checks.map((c) => c.id)).not.toContain("schema");
+    expect(report.checks.map((c) => c.id)).not.toContain("settings");
+    expect((await run(db)).out).toContain("HASIL: LULUS");
+  });
+
   it("argumen tidak dikenal → kode 2; galat database → kode 3 tanpa pesan mentah", async () => {
     const usage = await run(db, ["--report"]);
     expect(usage.code).toBe(GOLIVE_EXIT.usage);
