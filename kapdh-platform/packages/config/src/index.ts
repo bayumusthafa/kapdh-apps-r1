@@ -117,6 +117,11 @@ const baseShape = {
   S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   S3_FORCE_PATH_STYLE: z.stringbool().default(false),
   /**
+   * Baca-cadangan selama perpindahan local -> S3 (PRD 5.4, docs/runbooks/storage-migration.md): folder disk lama yang
+   * dibaca bila objek belum ada di bucket; tulisan ke S3, penghapusan ke keduanya. Hanya bersama STORAGE_DRIVER=s3.
+   */
+  STORAGE_FALLBACK_LOCAL_ROOT: z.string().min(1).optional(),
+  /**
    * Deletion ledger DI LUAR VPS (AC F14-6, D2, D9, PRD 5.5; audit D5-07): bucket S3-compatible KHUSUS (versioning +
    * object lock/retensi), terpisah dari bucket berkas STORAGE_DRIVER dan dari repositori backup, dengan kredensial
    * sendiri (cukup hak tulis objek). Job penghapusan akun menambahkan setiap entri ledger ke sini secara sinkron dan
@@ -194,7 +199,11 @@ function baseRules(env: z.infer<z.ZodObject<typeof baseShape>>): Issue[] {
   if (env.STORAGE_DRIVER === "s3") {
     for (const key of ["S3_REGION", "S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"] as const)
       if (!env[key]) issues.push({ path: key, message: "wajib bila STORAGE_DRIVER=s3" });
-  }
+  } else if (env.STORAGE_FALLBACK_LOCAL_ROOT)
+    issues.push({
+      path: "STORAGE_FALLBACK_LOCAL_ROOT",
+      message: "hanya berlaku bersama STORAGE_DRIVER=s3 (perpindahan storage, PRD 5.4)",
+    });
   issues.push(...deletionLedgerRules(env));
   if (Boolean(env.FCM_PROJECT_ID) !== Boolean(env.FCM_SERVICE_ACCOUNT_JSON))
     issues.push({
