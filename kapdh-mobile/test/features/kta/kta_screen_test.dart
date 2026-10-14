@@ -11,6 +11,7 @@ import 'package:kapdh_mobile/features/notifications/notifications_repository.dar
 import 'package:kapdh_mobile/features/payments/payment_updates.dart';
 import 'package:kapdh_mobile/features/status/restricted_screen.dart';
 
+import '../../support/a11y.dart';
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
 import '../payments/payments_fixtures.dart';
@@ -504,6 +505,22 @@ void main() {
       expect(avatars.requests.last.url, 'https://files.test/avatar.jpg?sig=1');
       expect(avatars.requests.last.cacheKey, 'kta-avatar-user-1-file-avatar-1');
       expect(shownCard(tester).avatar, isA<MemoryImage>());
+    });
+
+    testWidgets('N-11: pedoman aksesibilitas otomatis (target sentuh, label, kontras) pada KTA aktif', (tester) async {
+      await openKta(tester, card: () => FakeResponse.json(200, memberCardJson(expiresAt: expiresAt)));
+      expect(find.byType(KtaCard), findsOneWidget);
+      await expectMeetsAccessibilityGuidelines(tester);
+    });
+
+    testWidgets('N-11: pedoman aksesibilitas otomatis pada KTA Tidak Aktif', (tester) async {
+      await openKta(
+        tester,
+        status: 'unverified',
+        card: () => FakeResponse.json(200, memberCardJson(status: 'inactive', withQr: false)),
+      );
+      expect(find.byType(KtaCard), findsOneWidget);
+      await expectMeetsAccessibilityGuidelines(tester);
     });
 
     testWidgets('N-11: teks 200 % pada KTA aktif tanpa meluap', (tester) async {

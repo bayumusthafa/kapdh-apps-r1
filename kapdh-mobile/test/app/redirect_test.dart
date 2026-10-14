@@ -37,8 +37,8 @@ const representative = <String, RouteGroup>{
   '/account/profile': RouteGroup.account,
   '/account/privacy': RouteGroup.account,
   '/account/notifications': RouteGroup.account,
-  '/account/sessions': RouteGroup.account,
-  '/account/password': RouteGroup.account,
+  '/account/sessions': RouteGroup.accountSecurity,
+  '/account/password': RouteGroup.accountSecurity,
   '/account/blocked': RouteGroup.accountCommunity,
   '/account/reports': RouteGroup.accountReports,
   '/account/delete': RouteGroup.accountDelete,
@@ -54,6 +54,7 @@ const memberBase = {
   RouteGroup.payments,
   RouteGroup.notifications,
   RouteGroup.account,
+  RouteGroup.accountSecurity,
   RouteGroup.accountReports,
   RouteGroup.accountDelete,
   RouteGroup.legal,
@@ -84,10 +85,12 @@ final expectedAllowed = <String, Set<RouteGroup>>{
     RouteGroup.accountCommunity,
   },
   'expired': {...memberBase, RouteGroup.renewal, RouteGroup.tickets, RouteGroup.eventDetail},
-  // Laporan/banding sendiri (moderation.yaml member_access any) dan kotak masuk resmi: kontrak C7 member_access
-  // `any` (AC F13-2).
+  // Laporan/banding sendiri (moderation.yaml member_access any), kotak masuk resmi (kontrak C7 member_access `any`,
+  // AC F13-2) dan pemulihan akun: sesi perangkat dan ganti password (auth.yaml listSessions/revokeSession/logoutAll
+  // member_access `any`, changePassword `mobile, any`; PRD 2.2).
   'suspended': {
     RouteGroup.restricted,
+    RouteGroup.accountSecurity,
     RouteGroup.accountReports,
     RouteGroup.accountDelete,
     RouteGroup.notifications,
@@ -198,7 +201,27 @@ void main() {
       expect(go(suspended, '/notifications'), isNull);
       // Pengaturan akun lain dan tujuan deep link notifikasi tetap ditolak.
       expect(go(suspended, '/account/notifications'), '/restricted');
+      expect(go(suspended, '/account'), '/restricted');
       expect(go(suspended, '/network/members/user-2'), '/restricted');
+    });
+
+    test('PRD 2.2 "pemulihan akun", AC F02-6: suspended membuka sesi perangkat dan ganti password (auth.yaml '
+        'member_access any), juga dari tujuan notifikasi keamanan', () {
+      final suspended = authed('suspended');
+      expect(go(suspended, '/account/sessions'), isNull);
+      expect(go(suspended, '/account/password'), isNull);
+      // Notifikasi keamanan (password_changed, password_reset, logout_all) membuka /account/sessions; ketukan push
+      // yang ditunda selama login kembali ke tujuan itu, bukan ke portal.
+      expect(go(suspended, '/login?from=%2Faccount%2Fsessions'), '/account/sessions');
+      expect(go(suspended, '/app/account/sessions'), '/account/sessions');
+      // Bentuk menyimpang tidak ikut terbuka.
+      expect(routeGroupOf('/account/sessions/x'), RouteGroup.account);
+      expect(go(suspended, '/account/sessions/x'), '/restricted');
+      // Ganti password tetap mutasi: ditunda selama pemeliharaan, sesi perangkat tetap dapat dibaca.
+      expect(go(suspended, '/account/password', gate: GateStatus.maintenance), '/maintenance?from=%2Faccount%2Fpassword');
+      expect(go(suspended, '/account/sessions', gate: GateStatus.maintenance), isNull);
+      // pending_otp belum masuk aplikasi (PRD 2.2): hanya OTP.
+      expect(go(authed('pending_otp'), '/account/sessions'), '/register/otp');
     });
 
     test('status baru yang belum dikenal aplikasi diarahkan ke wajib update', () {

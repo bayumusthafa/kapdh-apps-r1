@@ -15,6 +15,7 @@ import '../home/shared/content_widgets.dart';
 import '../home/shared/links.dart';
 import '../home/shared/member_gate.dart';
 import '../home/shared/remote_image.dart';
+import '../network/widgets/alumni_avatar.dart';
 import 'event_format.dart';
 import 'events_controllers.dart';
 import 'reservation.dart';
@@ -494,25 +495,10 @@ class _ParticipantTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s3, vertical: KapdhSpace.s2),
         child: Row(
           children: [
-            SizedBox(
-              width: 40,
-              height: 40,
-              child: participant.avatarUrl == null
-                  ? CircleAvatar(
-                      backgroundColor: KapdhColors.green100,
-                      child: Text(
-                        initialsOf(participant.fullName),
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: KapdhColors.primary),
-                      ),
-                    )
-                  : RemoteImage(
-                      url: participant.avatarUrl,
-                      width: 40,
-                      height: 40,
-                      borderRadius: BorderRadius.circular(20),
-                      placeholderIcon: Icons.person,
-                    ),
-            ),
+            // Foto peserta adalah berkas privat anggota lain (URL bertanda tangan <= 10 menit, PRD 5.4): dimuat
+            // lewat AlumniAvatar (Image.network, cache memori saja) seperti direktori dan chat, bukan RemoteImage
+            // yang menyimpan gambar publik ke cache disk 30 hari yang tidak dihapus saat logout (PRD 5.2, N-09).
+            AlumniAvatar(name: participant.fullName, url: participant.avatarUrl, size: 40),
             const SizedBox(width: KapdhSpace.s3),
             Expanded(
               child: Column(
