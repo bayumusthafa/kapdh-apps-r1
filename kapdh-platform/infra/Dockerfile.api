@@ -1,14 +1,87 @@
-# Image API dibangun di CI, bukan di VPS production (PRD 5.3).
-FROM node:24-alpine AS build
-WORKDIR /repo
-RUN corepack enable
-COPY . .
-RUN pnpm install --frozen-lockfile && pnpm --filter @kapdh/api... build && pnpm deploy --filter @kapdh/api --prod /out
+# syntax=docker/dockerfile:1.26.0@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
+# Image API KAPDH (NestJS 11 + Fastify) dan image job rilis (PRD 5.3, 5.5, 7.1; D7, D12). Dibangun di CI, bukan di VPS
+# production (PRD 5.3, 10.2 "build di CI"). Konteks build = kapdh-platform/:
+#
+#   docker build -f infra/Dockerfile.api --target api     -t kapdh-api:<versi> .
+#   docker build -f infra/Dockerfile.api --target release -t kapdh-release:<versi> .
+#
+# - target `api`     : runtime API (`node dist/main.js`), juga memuat CLI satu kali pakai: bootstrap Super Admin
+#                      (`node dist/cli/bootstrap-admin.js`), gerbang go-live (`node dist/cli/golive-check.js`),
+#                      ledger penghapusan (`node dist/modules/account/ledger-reapply.cli.js`), dan CLI paket database
+#                      (`node node_modules/@kapdh/database/dist/bin/{migrate,seed-reference}.js`).
+# - target `release` : runtime yang sama + psql 17 + infra/db/*.sql + infra/scripts/release-job.sh. Satu job deployment
+#                      dengan advisory lock (PRD 5.5): roles.sql → migrasi → roles.sql → seed referensi → gerbang
+#                      go-live. Migrasi TIDAK pernah dijalankan saat startup replica API/worker.
+#
+# Secret hanya dari environment saat runtime (Coolify/berkas env), tidak pernah di layer image (PRD 5.3).
 
-FROM node:24-alpine
+# Node 24.19.0 (ARCHITECTURE §1, .nvmrc) di Alpine 3.24; digest manifest list multi-arsitektur dipin (PRD 7.1).
+ARG NODE_IMAGE=node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
+
+# ------------------------------------------------------------------------------------------------ tahap build
+FROM ${NODE_IMAGE} AS build
+WORKDIR /repo
+ENV CI=true \
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# pnpm dipin field packageManager (pnpm@10.28.0) lewat corepack.
+RUN corepack enable
+# Store pnpm diisi dari lockfile saja agar layer ini tetap di-cache selama lockfile tidak berubah.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
+    pnpm fetch --frozen-lockfile --store-dir /pnpm/store
+COPY . .
+# Hanya API dan dependensi workspace-nya (config, contracts, database, shared, storage).
+RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile --prefer-offline --store-dir /pnpm/store --filter "@kapdh/api..." \
+  && pnpm --filter "@kapdh/api..." build
+# pnpm 10: `pnpm deploy` menolak workspace tanpa inject-workspace-packages=true (ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE,
+# dibuktikan di mesin build). `--legacy` menyalin paket workspace (termasuk dist/ dan migrations/ @kapdh/database) ke
+# node_modules produksi yang mandiri di /out tanpa mengubah workspace pengembang. Sumber TypeScript dan uji dibuang.
+RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
+    pnpm --filter @kapdh/api deploy --prod --legacy --store-dir /pnpm/store /out \
+  && cd /out \
+  && rm -rf src test nest-cli.json tsconfig.json tsconfig.build.json tsconfig.test.json vitest.config.ts vitest.pg.config.ts \
+  && test -f dist/main.js \
+  && test -f dist/cli/golive-check.js \
+  && test -f dist/cli/bootstrap-admin.js \
+  && test -f node_modules/@kapdh/database/dist/bin/migrate.js \
+  && test -f node_modules/@kapdh/database/dist/bin/seed-reference.js \
+  && test -f node_modules/@kapdh/database/migrations/meta/_journal.json
+
+# --------------------------------------------------------------------------------------------- tahap runtime
+FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
-COPY --from=build /out .
+# Berkas aplikasi milik root dan hanya-baca bagi proses. Satu-satunya lokasi tulis: volume berkas lokal
+# (STORAGE_LOCAL_ROOT bawaan /data/files, PRD 5.4) yang dipakai bersama worker.
+COPY --from=build /out ./
+RUN mkdir -p /data/files && chown node:node /data/files
+# Pengguna non-root bawaan image node (uid 1000).
 USER node
 EXPOSE 3000
+STOPSIGNAL SIGTERM
+
+# ----------------------------------------------------------------------------------------------- job rilis
+FROM runtime AS release
+USER root
+# psql 17 untuk infra/db/roles.sql dan role-passwords.sql (meta-command \getenv dan \if; PostgreSQL 16+ untuk
+# GRANT ... WITH INHERIT FALSE, SET TRUE). Versi paket mengikuti repositori Alpine 3.24 dari base image yang dipin.
+RUN apk add --no-cache postgresql17-client \
+  && psql --version
+COPY infra/db/roles.sql infra/db/role-passwords.sql /app/infra/db/
+COPY infra/scripts/release-job.sh /app/infra/scripts/release-job.sh
+RUN chmod 0644 /app/infra/db/roles.sql /app/infra/db/role-passwords.sql \
+  && chmod 0755 /app/infra/scripts/release-job.sh
+USER node
+# Job sekali jalan; tidak ada proses jangka panjang yang perlu diperiksa.
+HEALTHCHECK NONE
+ENTRYPOINT ["/app/infra/scripts/release-job.sh"]
+
+# ------------------------------------------------------------------------------------------- runtime API
+# Tahap terakhir = target bawaan (`docker build` tanpa --target menghasilkan image API).
+FROM runtime AS api
+# Liveness tanpa dependensi (GET /api/v1/health); kesiapan DB/Redis/storage ada di /api/v1/health/ready untuk monitor.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/v1/health',{signal:AbortSignal.timeout(4000)}).then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+# SIGTERM → Nest menutup HTTP lalu pool PostgreSQL, Redis, SMTP (main.ts). stop_grace_period >= 30 detik.
 CMD ["node", "dist/main.js"]

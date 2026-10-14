@@ -1,0 +1,293 @@
+# "Compose cadangan" KAPDH (PRD 5.5: panel Coolify mati tidak boleh menghilangkan runbook Compose cadangan; PRD 5.3,
+# 7.1; D7, D9, D12). Jalur utama tetap Coolify; berkas ini menjalankan stack yang sama dengan image yang sama dari CI
+# ketika panel tidak tersedia atau VPS dibangun ulang dari backup. Langkah lengkap: docs/runbooks/compose-cadangan.md.
+#
+#   docker network create kapdh-edge                                              # sekali, jaringan proxy
+#   docker compose --env-file /etc/kapdh/production.env -f infra/compose.production.yml \
+#     --profile release run --rm release                                         # job rilis (migrasi + gerbang)
+#   docker compose --env-file /etc/kapdh/production.env -f infra/compose.production.yml up -d
+#   docker compose --env-file /etc/kapdh/proxy.env -f infra/compose.proxy.yml up -d   # Traefik cadangan
+#
+# Nama project dipatok `kapdh-production` (jangan memakai -p): nama kontainer kapdh-production-<layanan>-1 menjadi
+# tujuan rute Traefik cadangan. Staging (D12) = berkas ini + infra/compose.staging.yml (project kapdh-staging,
+# NODE_ENV staging, volume dan berkas env sendiri).
+# Batas sumber daya untuk VPS 4 vCPU / 8 GB (D7, PRD 10.2), menyisakan ~3 GB untuk OS, Coolify, monitor dan cache:
+#   postgres 2 GB, redis 384 MB, api 1 GB, worker 768 MB, web 64 MB, admin 64 MB (+ proxy 256 MB).
+# PostgreSQL dan Redis hanya di jaringan `data` (internal, tanpa port host, tanpa egress): N-07 "DB/Redis privat".
+name: kapdh-production
+
+# Rotasi log kontainer (retensi diagnostik ~30 hari dikelola agregator; PRD 5.5). Log aplikasi tanpa PII (N-14).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+x-app-env: &app-env
+  # Bersama API dan worker (packages/config baseEnvSchema). DATABASE_URL/REDIS_URL disusun per layanan di bawah.
+  # NODE_ENV ditetapkan berkas compose (production di sini, staging di overlay), bukan berkas env, agar berkas env
+  # yang tertukar tidak menurunkan aturan production (packages/config).
+  NODE_ENV: production
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:?PUBLIC_WEB_URL wajib}
+  API_PUBLIC_URL: ${API_PUBLIC_URL:?API_PUBLIC_URL wajib}
+  ADMIN_ORIGIN: ${ADMIN_ORIGIN:?ADMIN_ORIGIN wajib}
+  SMTP_URL: ${SMTP_URL:?SMTP_URL wajib}
+  MAIL_FROM: ${MAIL_FROM:-KAPDH <noreply@kapdh.or.id>}
+  STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+  STORAGE_LOCAL_ROOT: /data/files
+  S3_ENDPOINT: ${S3_ENDPOINT:-}
+  S3_REGION: ${S3_REGION:-}
+  S3_BUCKET: ${S3_BUCKET:-}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+  S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+  FILE_URL_SECRET: ${FILE_URL_SECRET:?FILE_URL_SECRET wajib}
+  FCM_PROJECT_ID: ${FCM_PROJECT_ID:-}
+  FCM_SERVICE_ACCOUNT_JSON: ${FCM_SERVICE_ACCOUNT_JSON:-}
+  REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD wajib}@redis:6379/0
+
+services:
+  postgres:
+    # PostgreSQL 17 (PRD 7.1; roles.sql butuh 16+). Digest manifest list dipin.
+    image: postgres:17.11-alpine3.24@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kapdh
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD wajib}
+    # Tuning awal untuk 2 GB (diukur ulang lewat uji beban N-01/N-04). Tanpa log_statement/log durasi berparameter:
+    # parameter kueri dapat memuat data pribadi (N-14).
+    command:
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - max_connections=100
+      - -c
+      - password_encryption=scram-sha-256
+      - -c
+      - log_statement=none
+    shm_size: 256mb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kapdh"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    stop_grace_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 2g
+    logging: *logging
+
+  redis:
+    # Redis 7 (PRD 5.1, 7.1): BullMQ, rate limit lintas replica, adapter Socket.IO. AOF everysec; noeviction wajib
+    # untuk BullMQ (kunci antrean tidak boleh dibuang). Redis dapat dibangun ulang dari outbox (PRD 5.5).
+    # Sandi dari env (tidak tertulis di definisi kontainer); docker-entrypoint.sh tetap menurunkan hak ke user redis.
+    image: redis:7.4.11-alpine3.21@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD wajib}
+    command:
+      - sh
+      - -c
+      - >-
+        exec docker-entrypoint.sh redis-server --appendonly yes --appendfsync everysec --maxmemory 256mb
+        --maxmemory-policy noeviction --requirepass "$$REDIS_PASSWORD"
+    volumes:
+      - redisdata:/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 384m
+    logging: *logging
+
+  api:
+    image: ${KAPDH_REGISTRY:?KAPDH_REGISTRY wajib}/kapdh-api:${KAPDH_IMAGE_TAG:?KAPDH_IMAGE_TAG wajib}
+    restart: unless-stopped
+    init: true
+    <<: *hardening
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *app-env
+      DATABASE_URL: postgres://kapdh_app:${KAPDH_APP_DB_PASSWORD:?KAPDH_APP_DB_PASSWORD wajib}@postgres:5432/kapdh
+      PORT: "3000"
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      HSTS_ENABLED: ${HSTS_ENABLED:-false}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET wajib}
+      JWT_ISSUER: ${JWT_ISSUER:?JWT_ISSUER wajib}
+      QR_SIGNING_KEYS: ${QR_SIGNING_KEYS:?QR_SIGNING_KEYS wajib}
+      OTP_HMAC_SECRET: ${OTP_HMAC_SECRET:?OTP_HMAC_SECRET wajib}
+      TOTP_ENC_KEY: ${TOTP_ENC_KEY:?TOTP_ENC_KEY wajib}
+      BCRYPT_COST: ${BCRYPT_COST:-12}
+      NODE_OPTIONS: --max-old-space-size=768
+    volumes:
+      - files:/data/files
+    # Traefik cadangan merutekan ke nama kontainer <project>-api-1 (kapdh-production-api-1) di jaringan edge.
+    networks:
+      - data
+      - edge
+    # HEALTHCHECK dari image (GET /api/v1/health). Kesiapan dependensi: /api/v1/health/ready (Uptime Kuma).
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1g
+    logging: *logging
+
+  worker:
+    image: ${KAPDH_REGISTRY:?KAPDH_REGISTRY wajib}/kapdh-worker:${KAPDH_IMAGE_TAG:?KAPDH_IMAGE_TAG wajib}
+    restart: unless-stopped
+    init: true
+    <<: *hardening
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Least privilege (PRD 5.1): tanpa secret JWT/OTP/TOTP/QR; login kapdh_worker tanpa akses mfa_totp.
+    environment:
+      <<: *app-env
+      DATABASE_URL: postgres://kapdh_worker:${KAPDH_WORKER_DB_PASSWORD:?KAPDH_WORKER_DB_PASSWORD wajib}@postgres:5432/kapdh
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+      WORKER_HEALTH_PORT: "3001"
+      WORKER_HEALTH_HOST: 0.0.0.0
+      OUTBOX_POLL_INTERVAL_MS: ${OUTBOX_POLL_INTERVAL_MS:-2000}
+      WORKER_SHUTDOWN_TIMEOUT_MS: ${WORKER_SHUTDOWN_TIMEOUT_MS:-25000}
+      NODE_OPTIONS: --max-old-space-size=512
+    volumes:
+      - files:/data/files
+    # Jaringan `egress` untuk SMTP/FCM; /healthz tidak pernah dirutekan publik.
+    networks:
+      - data
+      - egress
+    stop_grace_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768m
+    logging: *logging
+
+  web:
+    image: ${KAPDH_REGISTRY:?KAPDH_REGISTRY wajib}/kapdh-web:${KAPDH_WEB_TAG:-${KAPDH_IMAGE_TAG}}
+    restart: unless-stopped
+    <<: *hardening
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    networks:
+      - edge
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64m
+    logging: *logging
+
+  admin:
+    image: ${KAPDH_REGISTRY:?KAPDH_REGISTRY wajib}/kapdh-admin:${KAPDH_ADMIN_TAG:-${KAPDH_IMAGE_TAG}}
+    restart: unless-stopped
+    <<: *hardening
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    networks:
+      - edge
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64m
+    logging: *logging
+
+  # Job rilis sekali jalan (PRD 5.5): `--profile release run --rm release`. Tidak pernah ikut `up`.
+  release:
+    profiles:
+      - release
+    image: ${KAPDH_REGISTRY:?KAPDH_REGISTRY wajib}/kapdh-release:${KAPDH_IMAGE_TAG:?KAPDH_IMAGE_TAG wajib}
+    restart: "no"
+    <<: *hardening
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KAPDH_ENV: production
+      ADMIN_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD wajib}@postgres:5432/kapdh
+      MIGRATOR_DATABASE_URL: postgres://kapdh_migrator:${KAPDH_MIGRATOR_DB_PASSWORD:?KAPDH_MIGRATOR_DB_PASSWORD wajib}@postgres:5432/kapdh
+      KAPDH_MIGRATOR_DB_PASSWORD: ${KAPDH_MIGRATOR_DB_PASSWORD}
+      KAPDH_APP_DB_PASSWORD: ${KAPDH_APP_DB_PASSWORD:?KAPDH_APP_DB_PASSWORD wajib}
+      KAPDH_WORKER_DB_PASSWORD: ${KAPDH_WORKER_DB_PASSWORD:?KAPDH_WORKER_DB_PASSWORD wajib}
+      RELEASE_GATE: ${RELEASE_GATE:-}
+    networks:
+      - data
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512m
+    logging: *logging
+
+networks:
+  # Internal: tanpa gateway ke luar, tanpa port host. Hanya API, worker, job rilis yang tersambung ke DB/Redis.
+  data:
+    internal: true
+  # Egress worker (SMTP provider D10, FCM).
+  egress: {}
+  # Jaringan bersama dengan Traefik cadangan (infra/compose.proxy.yml); API juga memakai jaringan ini untuk egress.
+  edge:
+    external: true
+    name: ${KAPDH_EDGE_NETWORK:-kapdh-edge}
+
+volumes:
+  # Nama dapat diarahkan ke volume yang sudah ada (mis. volume Coolify atau hasil restore) lewat env.
+  pgdata:
+    name: ${KAPDH_PGDATA_VOLUME:-kapdh-production-pgdata}
+  redisdata:
+    name: ${KAPDH_REDISDATA_VOLUME:-kapdh-production-redisdata}
+  # PRD 5.4: berkas lokal /data/files dipakai bersama API dan worker, berupa direktori host yang SAMA dengan mount
+  # resource Coolify (/srv/kapdh/production/files, milik uid 1000, mode 750) sehingga pindah jalur tidak memindahkan data
+  # dan restic harian mencadangkan satu path (PRD 5.5). Direktori wajib sudah ada sebelum `up`.
+  files:
+    name: kapdh-production-files
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${KAPDH_FILES_DIR:-/srv/kapdh/production/files}

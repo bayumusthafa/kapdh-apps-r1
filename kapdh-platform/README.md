@@ -23,7 +23,8 @@ Butuh Node 24 (`.nvmrc`), pnpm 10 (`corepack enable`), dan Docker Desktop.
 pnpm install
 cp .env.example .env
 docker compose -f infra/docker-compose.yml up -d   # PostgreSQL 17, Redis, Mailpit
-pnpm --filter @kapdh/database db:migrate          # dengan DATABASE_URL dari .env
+pnpm build
+pnpm --filter @kapdh/database migrate             # dengan DATABASE_URL dari .env
 pnpm build && pnpm test
 pnpm --filter @kapdh/api dev                      # http://localhost:3000/api/v1/health
 pnpm --filter @kapdh/admin dev:mock               # http://localhost:5173 tanpa backend
@@ -56,8 +57,20 @@ dapat login sudah ada; menjalankan ulang untuk email yang sama sebelum aktivasi 
 
 ## CI
 
-Workflow GitHub Actions ada di `infra/ci/github-actions-ci.yml`. Saat repository dibuat di GitHub, salin ke
-`.github/workflows/ci.yml` (folder `.github` tidak bisa ditulis langsung dari sesi ini).
+Workflow GitHub Actions ada di `infra/ci/github-actions-ci.yml` (lint, typecheck, test, build, format, jalur PostgreSQL 17) dan `infra/ci/github-actions-images.yml` (image, `nginx -t`, uji asap, stack Compose, publish GHCR). Saat repository
+dibuat di GitHub, salin ke `.github/workflows/ci.yml` dan `.github/workflows/images.yml` (folder `.github` tidak bisa
+ditulis langsung dari sesi ini). Keduanya berjalan dari root repository dengan `working-directory: kapdh-platform`.
+
+## Deploy dan go-live
+
+Image dibangun CI dan dideploy lewat Coolify; migrasi, grant, seed referensi dan gerbang go-live dijalankan satu job
+rilis (`kapdh-release`) per rilis. Compose cadangan tersedia bila panel Coolify mati. Lihat `infra/README.md`,
+`docs/runbooks/rilis-dan-gerbang-go-live.md` dan `docs/runbooks/compose-cadangan.md`. Gerbang go-live dapat dijalankan
+lokal terhadap database mana pun:
+
+```bash
+DATABASE_URL=postgres://... pnpm --filter @kapdh/api golive:check   # 0 lulus, 1 ditolak (PRD 9.2, 9.3)
+```
 
 ## Aturan kerja (PRD 7.2 dan 7.3)
 
