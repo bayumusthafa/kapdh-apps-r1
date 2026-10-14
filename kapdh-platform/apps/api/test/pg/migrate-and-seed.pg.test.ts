@@ -213,8 +213,10 @@ describe("PRD 5.5: CLI migrasi dan seed dipanggil lewat symlink pnpm (tata letak
 
 describe("PRD 8.2: seed referensi dan seed dev idempoten", () => {
   it("seed referensi: semua kunci app_settings, master usulan nonaktif, halaman legal draf, tercatat di audit", async () => {
-    const tdb = await createPgTestDatabase("seed_reference");
+    // Database kosong yang baru dimigrasi (template jalur ini sudah berisi seed referensi, lihat global-setup.ts).
+    const tdb = await createEmptyPgDatabase("seed_reference");
     databases.push(tdb);
+    await runMigrations({ url: tdb.url });
     const first = await seedReference(tdb.db);
     expect(first.settings_inserted).toBe(Object.keys(REFERENCE_SETTINGS).length);
     expect(first.professions_inserted).toBeGreaterThan(0);

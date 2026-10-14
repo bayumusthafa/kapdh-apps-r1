@@ -31,9 +31,10 @@ paths:
       summary: Readiness; memeriksa PostgreSQL, Redis (bila dikonfigurasi) dan storage (PRD 5.5, N-05).
       description: |
         Dipakai orkestrator (Coolify/Traefik) dan Uptime Kuma. 200 bila semua dependensi wajib siap, 503 bila
-        ada yang gagal. Hanya nama komponen dan status ok/fail/skipped, ditambah umur event outbox pending tertua
-        sebagai sinyal worker macet (PRD 5.5); tidak memuat pesan galat, host, versi atau data lain (N-14).
-        Tidak dicache.
+        ada yang gagal, termasuk deletion ledger yang belum diterapkan ulang setelah restore database (AC F14-6:
+        layanan tidak dibuka sebelum `account:ledger-reapply`, runbook docs/runbooks/restore-backup.md). Hanya
+        nama komponen dan status ok/fail/skipped, ditambah umur event outbox pending tertua sebagai sinyal worker
+        macet (PRD 5.5); tidak memuat pesan galat, host, versi atau data lain (N-14). Tidak dicache.
       security: []
       x-kapdh-access: { audience: public }
       responses:
@@ -161,11 +162,18 @@ components:
 
     HealthReadinessChecks:
       type: object
+      description: |
+        `deletion_ledger` (opsional bagi klien lama, selalu dikirim server): deletion ledger sudah diterapkan ke
+        database (AC F14-6, PRD 9.2 skenario 8). `fail` bila database belum mengenal permintaan penghapusan terbaru di
+        kepala ledger storage (database dipulihkan dari backup tanpa menjalankan `account:ledger-reapply`) atau kepala
+        ledger rusak; `skipped` bila storage tidak dipasang atau database/storage tidak terjangkau. `fail` membuat
+        readiness 503.
       required: [database, redis, storage]
       properties:
         database: { $ref: "#/components/schemas/HealthCheckState" }
         redis: { $ref: "#/components/schemas/HealthCheckState" }
         storage: { $ref: "#/components/schemas/HealthCheckState" }
+        deletion_ledger: { $ref: "#/components/schemas/HealthCheckState" }
         outbox_oldest_pending_seconds:
           type: [integer, "null"]
           minimum: 0
