@@ -24,7 +24,8 @@ KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobil
     ARCHITECTURE.md                kontrak rekayasa (mengikat untuk kontributor dan agen AI)
     BUILD_PLAN.md                  fase build dan peta kepemilikan path
     adr/                           catatan keputusan arsitektur 001-017
-    runbooks/                      production-init, go-live (+ rollback), app-store-submission
+    runbooks/                      production-init, go-live (+ rollback), app-store-submission, restore-backup,
+                                   alumni-account-disabled
     qa/                            traceability.md (bukti otomatis per AC/N/U), uat-checklist.md (UAT manual)
     handoff/                       laporan serah terima per fase/irisan (fakta, keputusan, isu terbuka)
     reference/                     teks PRD, guideline KAPDH (PNG), prototipe layar (HTML)
@@ -53,6 +54,7 @@ KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobil
 | Menjalankan dan mengembangkan platform | `kapdh-platform/README.md`, README per paket (`apps/worker`, `packages/{database,contracts,design-tokens}`) |
 | Menjalankan dan mengembangkan aplikasi | `kapdh-mobile/README.md` |
 | Inisialisasi production, go-live, rollback | `docs/runbooks/production-init.md`, `docs/runbooks/go-live.md` |
+| Restore backup tanpa menghidupkan akun terhapus; status akun `disabled` | `docs/runbooks/restore-backup.md`, `docs/runbooks/alumni-account-disabled.md` (Bahasa Inggris, dari hardening Fase D) |
 | Pengajuan toko aplikasi | `docs/runbooks/app-store-submission.md` |
 | Bukti penerimaan | `docs/qa/traceability.md`, `docs/qa/uat-checklist.md` |
 
@@ -113,6 +115,8 @@ psql -U postgres -c "create database kapdh owner kapdh"
 cd kapdh-platform
 cp .env.example .env
 # Di .env: kosongkan REDIS_URL= dan SMTP_URL= bila Redis/Mailpit tidak berjalan (OTP dan email undangan admin tercetak di log).
+# STORAGE_LOCAL_ROOT wajib absolut agar API, worker dan CLI memakai folder berkas yang sama (lihat catatan di bawah).
+sed -i "s|^STORAGE_LOCAL_ROOT=.*|STORAGE_LOCAL_ROOT=$(pwd)/.data/files|" .env   # Git Bash di Windows: $(pwd -W)
 export DATABASE_URL=postgres://kapdh:kapdh-dev-only@localhost:5432/kapdh     # PowerShell: $env:DATABASE_URL="..."
 pnpm install && pnpm build
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/db/roles.sql                # role kapdh_audit_purge dkk. (ADR-007)
@@ -135,6 +139,12 @@ flutter run --dart-define-from-file=config/development.json   # emulator Android
 - Akun anggota fixture: `contoh1@kapdh.test` (belum bayar), `contoh2@kapdh.test` (aktif), `contoh3@kapdh.test`
   (menunggu verifikasi), sandi `Kapdh#Dev2026`. `seed:dev` menolak `NODE_ENV=production`.
 - Tanpa `roles.sql`, job penghapusan akun gagal dengan "Role kapdh_audit_purge belum ada".
+- `STORAGE_LOCAL_ROOT` relatif (bawaan `.env.example`: `./.data/files`) diselesaikan dari folder kerja proses
+  (`packages/storage`). `pnpm --filter` menjalankan API di `apps/api` dan worker di `apps/worker`, sehingga keduanya
+  menulis ke folder berbeda: berkas ekspor audit buatan worker tidak ditemukan API, dan job penghapusan tidak
+  menghapus berkas unggahan API. Karena itu path dibuat absolut dengan perintah `sed` di atas (Linux `$(pwd)`, Git
+  Bash `$(pwd -W)` agar Node menerima `C:/...`; PowerShell: tulis path absolut secara manual). Perintah `sed` diuji
+  di Git Bash pada salinan `.env.example`.
 - Urutan migrasi → `roles.sql` → seed, CLI bootstrap, health API/worker, dan worker tanpa Redis diuji pada 14 Oktober
   2026 terhadap PostgreSQL 17.6 sementara (biner `embedded-postgres`) dengan role terpisah; varian superuser `kapdh`
   dan instalasi PostgreSQL native belum diuji di mesin build.
@@ -147,6 +157,7 @@ Belum diuji di mesin build (tanpa Docker).
 ```bash
 cd kapdh-platform
 cp .env.example .env
+sed -i "s|^STORAGE_LOCAL_ROOT=.*|STORAGE_LOCAL_ROOT=$(pwd)/.data/files|" .env   # path absolut (jalur C); Git Bash: $(pwd -W)
 docker compose -f infra/docker-compose.yml up -d
 export DATABASE_URL=postgres://kapdh:kapdh-dev-only@localhost:5432/kapdh
 pnpm install && pnpm build
@@ -166,7 +177,7 @@ Jalankan dari `kapdh-platform/` kecuali disebut lain.
 | ----- | -------- |
 | Root | `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:pg`, `pnpm format`, `pnpm format:check`, `pnpm dev`, `pnpm tokens:gen` |
 | Kontrak | `pnpm contracts:bundle`, `pnpm contracts:lint`, `pnpm contracts:gen`, `pnpm contracts:test-dart` (butuh Dart), `pnpm contracts:release-sdk [-- --dry-run]` |
-| `@kapdh/api` | `dev`, `build`, `start`, `test`, `test:pg`, `typecheck`, `lint`, `admin:bootstrap --email <e> --name "<n>"`, `account:ledger-reapply --dir <folder>` (keduanya menjalankan `dist/`, jadi build dulu) |
+| `@kapdh/api` | `dev`, `build`, `start`, `test`, `test:pg`, `typecheck`, `lint`, `admin:bootstrap --email <e> --name "<n>"`, `account:ledger-reapply --dir <folder>`, `account:status -- --action <disable/enable/delete> --email <e> --reason "<r>" --approved-by "<n>"` (ketiganya menjalankan `dist/`, jadi build dulu) |
 | `@kapdh/worker` | `build`, `start`, `test`, `test:pg`, `typecheck`, `lint` |
 | `@kapdh/admin` | `dev`, `dev:mock`, `build` (butuh `VITE_API_BASE_URL` untuk production), `test`, `typecheck`, `lint` |
 | `@kapdh/web` | `dev`, `build` (env build `PUBLIC_API_URL`; gerbang CSP `scripts/assert-csp-safe.mjs`), `preview`, `test`, `typecheck`, `lint` |
