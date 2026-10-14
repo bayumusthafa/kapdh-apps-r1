@@ -134,8 +134,13 @@ List<RouteBase> buildAppRoutes(GlobalKey<NavigatorState> rootKey) => [
     ],
   ),
 
-  // Hapus akun di luar shell: juga dibuka anggota suspended dari portal pembatasan (PRD 2.2).
+  // Hapus akun, sesi perangkat dan ganti password di luar shell: juga dibuka anggota suspended dari portal
+  // pembatasan dan dari notifikasi keamanan (PRD 2.2 "pemulihan akun dan penghapusan"), tanpa membangun cangkang tab
+  // anggota di bawahnya. Kembali dari layar ini memakai `fallbackLocation` /account, yang dialihkan redirect ke rute
+  // awal status bila tab Akun tidak tersedia.
   GoRoute(path: AppRoutes.accountDelete, builder: (_, _) => const DeleteAccountScreen()),
+  GoRoute(path: AppRoutes.accountSessions, builder: (_, _) => const SessionsScreen()),
+  GoRoute(path: AppRoutes.accountPassword, builder: (_, _) => const ChangePasswordScreen()),
 
   // Shell tab bawah: Beranda, Event, KTA, Jejaring, Akun.
   StatefulShellRoute.indexedStack(
@@ -190,8 +195,6 @@ List<RouteBase> buildAppRoutes(GlobalKey<NavigatorState> rootKey) => [
                 parentNavigatorKey: rootKey,
                 builder: (_, _) => const NotificationPreferencesScreen(),
               ),
-              GoRoute(path: 'sessions', parentNavigatorKey: rootKey, builder: (_, _) => const SessionsScreen()),
-              GoRoute(path: 'password', parentNavigatorKey: rootKey, builder: (_, _) => const ChangePasswordScreen()),
               GoRoute(path: 'blocked', parentNavigatorKey: rootKey, builder: (_, _) => const BlockedUsersScreen()),
               GoRoute(path: 'reports', parentNavigatorKey: rootKey, builder: (_, _) => const MyReportsScreen()),
             ],

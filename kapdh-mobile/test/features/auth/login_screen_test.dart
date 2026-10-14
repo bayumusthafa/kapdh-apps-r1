@@ -6,6 +6,7 @@ import 'package:kapdh_mobile/design/design.dart';
 import 'package:kapdh_mobile/features/auth/auth_flow.dart';
 import 'package:kapdh_mobile/features/auth/login_screen.dart';
 
+import '../../support/a11y.dart';
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
 
@@ -241,6 +242,11 @@ void main() {
     expect(find.text('Akun tidak aktif'), findsOneWidget);
     expect(find.text('Hubungi pengurus'), findsOneWidget);
     expect(app.container.read(sessionProvider).hasSession, isFalse);
+  });
+
+  testWidgets('N-11: pedoman aksesibilitas otomatis (target sentuh, label, kontras) pada layar Masuk', (tester) async {
+    await pumpApp(tester, handler: apiRoutes({}));
+    await expectMeetsAccessibilityGuidelines(tester);
   });
 
   testWidgets('teks 200 %: tidak meluap dan tombol tetap dapat dijangkau (N-11)', (tester) async {

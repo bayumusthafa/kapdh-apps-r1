@@ -4,11 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/kapdh_tokens.dart';
 
-/// Pembuat [ImageProvider] untuk gambar dari server (cover berita/event, banner, avatar peserta).
+/// Pembuat [ImageProvider] untuk gambar PUBLIK dari server (cover berita/event, banner, gambar isi berita).
 typedef RemoteImageProviderFactory = ImageProvider<Object> Function(String url);
 
 /// Produksi memakai cache disk (cached_network_image, ARCHITECTURE §8.1) agar Beranda yang dibuka dari cache saat
 /// offline tetap bergambar bila gambarnya pernah dimuat (AC F08-4). Uji menggantinya dengan gambar memori.
+///
+/// Hanya untuk berkas publik (`/files/public/...`). Cache bawaan berumur 30 hari dan tidak dihapus saat logout, jadi
+/// berkas privat (foto anggota, bukti bayar, gambar chat; URL bertanda tangan, PRD 5.4) tidak pernah dimuat lewat
+/// sini: foto anggota memakai `AlumniAvatar` (memori saja), foto KTA sendiri memakai `KtaAvatarCache` yang
+/// dikosongkan saat logout (PRD 5.2, N-09).
 final remoteImageProviderFactoryProvider = Provider<RemoteImageProviderFactory>(
   (ref) =>
       (url) => CachedNetworkImageProvider(url),
@@ -23,7 +28,8 @@ Uri? remoteImageUri(String? url) {
   return uri.scheme == 'https' || uri.scheme == 'http' ? uri : null;
 }
 
-/// Gambar jaringan dengan tempat kosong yang rapi saat URL kosong, memuat, atau gagal dimuat (N-03). Label
+/// Gambar jaringan PUBLIK (lihat [remoteImageProviderFactoryProvider]) dengan tempat kosong yang rapi saat URL kosong,
+/// memuat, atau gagal dimuat (N-03). Label
 /// [semanticLabel] dibacakan pembaca layar; tanpa label gambar dianggap dekoratif (N-11).
 class RemoteImage extends ConsumerWidget {
   const RemoteImage({

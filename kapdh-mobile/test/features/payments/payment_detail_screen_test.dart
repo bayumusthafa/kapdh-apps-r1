@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 import 'package:kapdh_mobile/core/api/idempotency_store.dart';
@@ -10,8 +12,10 @@ import 'package:kapdh_mobile/features/notifications/notification_unread_count.da
 import 'package:kapdh_mobile/features/notifications/notifications_repository.dart';
 import 'package:kapdh_mobile/features/payments/payment_presentation.dart';
 import 'package:kapdh_mobile/features/payments/proof_file.dart';
+import 'package:kapdh_mobile/features/payments/widgets/proof_preview.dart';
 import 'package:kapdh_mobile/features/payments/widgets/proof_upload_section.dart';
 
+import '../../support/a11y.dart';
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
 import 'payments_fixtures.dart';
@@ -27,6 +31,7 @@ Future<AppHarness> openPayment(
   bool settleAfter = true,
   Stream<NotificationCreatedPayload>? updates,
   MemorySecureStore? store,
+  List<Override> overrides = const [],
 }) async {
   final app = await pumpApp(
     tester,
@@ -36,6 +41,7 @@ Future<AppHarness> openPayment(
     overrides: [
       proofPickerProvider.overrideWithValue(picker ?? FakeProofPicker()),
       notificationCreatedEventsProvider.overrideWithValue(updates ?? const Stream.empty()),
+      ...overrides,
     ],
     handler: apiRoutes({
       '/me': (_) => FakeResponse.json(200, me ?? meJson(status: status)),
@@ -849,6 +855,27 @@ void main() {
       expect(find.bySemanticsLabel('Status: Menunggu Verifikasi'), findsOneWidget);
     });
 
+    testWidgets('N-11: pedoman aksesibilitas otomatis (target sentuh, label, kontras) pada instruksi bayar dan unggah '
+        'bukti', (tester) async {
+      await openPayment(tester, {'/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingTransferJson())});
+      await expectMeetsAccessibilityGuidelines(tester);
+      await pickFromGallery(tester);
+      expect(submitButton, findsOneWidget);
+      await expectMeetsAccessibilityGuidelines(tester);
+    });
+
+    testWidgets('N-11: pedoman aksesibilitas otomatis pada menunggu verifikasi', (tester) async {
+      await openPayment(tester, {'/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingReviewJson())});
+      expect(find.text('Bukti pembayaran sedang diperiksa'), findsOneWidget);
+      await expectMeetsAccessibilityGuidelines(tester);
+    });
+
+    testWidgets('N-11: pedoman aksesibilitas otomatis pada bukti ditolak (unggah ulang)', (tester) async {
+      await openPayment(tester, {'/me/payments/pay-1': (_) => FakeResponse.json(200, needsFixJson())});
+      expect(find.byKey(const ValueKey('rejection-note')), findsOneWidget);
+      await expectMeetsAccessibilityGuidelines(tester);
+    });
+
     testWidgets('N-11: teks 200 % pada instruksi bayar tanpa meluap', (tester) async {
       await openPayment(
         tester,
@@ -871,4 +898,172 @@ void main() {
       expect(find.text('Bukti pembayaran sedang diperiksa'), findsOneWidget);
     });
   });
+
+  group('Lihat bukti yang dikirim (payments.yaml proof_file_id, files.yaml getFileAccess; AC F03-2, F03-3)', () {
+    const accessPath = '/files/file-1/access';
+    const freshUrl = 'https://api.kapdh.or.id/api/v1/files/content/token-bukti-baru';
+    const expiredUrl = 'https://api.kapdh.or.id/api/v1/files/content/token-bukti-expired';
+
+    Map<String, Object?> accessJson({String url = freshUrl, String mime = 'image/jpeg'}) => {
+      'url': url,
+      'expires_at': iso(testNow.add(const Duration(minutes: 10))),
+      'mime': mime,
+    };
+
+    /// URL bertanda tangan yang sudah kedaluwarsa gagal dimuat; URL lain menjadi gambar memori.
+    final images = privateImageProviderFactoryProvider.overrideWithValue(
+      (url) => url == expiredUrl ? _BrokenImage(url) : MemoryImage(_transparentPng),
+    );
+
+    Finder proofImage(String url) => find.byKey(ValueKey('proof-image-$url'));
+
+    testWidgets('AC F03-2: bukti yang sedang diperiksa dibuka layar penuh; URL baca diminta baru setiap dibuka', (
+      tester,
+    ) async {
+      final app = await openPayment(tester, {
+        '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingReviewJson()),
+        accessPath: (_) => FakeResponse.json(200, accessJson()),
+      }, overrides: [images]);
+      expect(app.adapter.requestsTo(accessPath), isEmpty, reason: 'URL baca hanya diminta saat anggota membukanya');
+      await scrollAndTap(tester, find.byKey(const ValueKey('proof-view')));
+      await settle(tester);
+      expect(find.byType(ProofImageViewer), findsOneWidget);
+      expect(proofImage(freshUrl), findsOneWidget);
+      expect(find.text('Bukti transfer ke-1'), findsOneWidget);
+      expect(app.adapter.requestsTo(accessPath), hasLength(1));
+      await expectMeetsAccessibilityGuidelines(tester);
+
+      await tester.tap(find.byKey(const ValueKey('proof-viewer-close')));
+      await settle(tester);
+      expect(find.byType(ProofImageViewer), findsNothing);
+      expect(app.location, '/payments/pay-1');
+      await scrollAndTap(tester, find.byKey(const ValueKey('proof-view')));
+      await settle(tester);
+      expect(app.adapter.requestsTo(accessPath), hasLength(2));
+    });
+
+    testWidgets('AC F03-3: bukti yang ditolak dapat dilihat sebelum unggah ulang; URL kedaluwarsa dimuat ulang', (
+      tester,
+    ) async {
+      var calls = 0;
+      final app = await openPayment(tester, {
+        '/me/payments/pay-1': (_) => FakeResponse.json(200, needsFixJson()),
+        accessPath: (_) => FakeResponse.json(200, accessJson(url: calls++ == 0 ? expiredUrl : freshUrl)),
+      }, overrides: [images]);
+      expect(find.byKey(const ValueKey('proof-reupload')), findsOneWidget);
+      await scrollAndTap(tester, find.byKey(const ValueKey('proof-view')));
+      await settle(tester);
+      expect(find.textContaining('Bukti tidak dapat dimuat'), findsOneWidget);
+      await expectMeetsAccessibilityGuidelines(tester);
+      await tester.tap(find.byKey(const ValueKey('proof-viewer-reload')));
+      await settle(tester);
+      expect(app.adapter.requestsTo(accessPath), hasLength(2));
+      expect(proofImage(freshUrl), findsOneWidget);
+      expect(find.textContaining('Bukti tidak dapat dimuat'), findsNothing);
+    });
+
+    testWidgets('bukti PDF dibuka aplikasi penampil perangkat sesuai mime', (tester) async {
+      final app = await openPayment(tester, {
+        '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingReviewJson()),
+        accessPath: (_) => FakeResponse.json(200, accessJson(mime: 'application/pdf')),
+      }, overrides: [images]);
+      await scrollAndTap(tester, find.byKey(const ValueKey('proof-view')));
+      await settle(tester);
+      expect(find.byType(ProofImageViewer), findsNothing);
+      expect(app.launched, [Uri.parse(freshUrl)]);
+    });
+
+    testWidgets('N-09: berkas yang tidak tersedia lagi (404) dijelaskan tanpa membedakan alasan', (tester) async {
+      await openPayment(tester, {
+        '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingReviewJson()),
+        accessPath: (_) => FakeResponse.json(404, errorJson('NOT_FOUND', 'Berkas tidak ditemukan.')),
+      }, overrides: [images]);
+      await scrollAndTap(tester, find.byKey(const ValueKey('proof-view')));
+      await settle(tester);
+      expect(find.byType(ProofImageViewer), findsNothing);
+      expect(find.text(proofUnavailableMessage), findsOneWidget);
+    });
+
+    testWidgets('tanpa proof_file_id (belum ada bukti, atau bukti dicatat pengurus) tautan tidak tampil', (
+      tester,
+    ) async {
+      final app = await openPayment(tester, {
+        '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingTransferJson()),
+        // Bukti dicatat pengurus (POST /admin/payments, D13): server tidak mengirim proof_file_id (N-09).
+        '/me/payments/pay-2': (_) => FakeResponse.json(
+          200,
+          paymentJson(
+            id: 'pay-2',
+            stage: 'awaiting_review',
+            proofVersion: 1,
+            submittedAt: testNow,
+            canChangeMethod: false,
+            canCancel: false,
+          ),
+        ),
+      }, overrides: [images]);
+      expect(find.text('Transfer tepat sebesar'), findsOneWidget);
+      expect(find.byKey(const ValueKey('proof-view')), findsNothing);
+
+      unawaited(app.router.push('/payments/pay-2'));
+      await settle(tester);
+      expect(find.text('Bukti pembayaran sedang diperiksa'), findsOneWidget);
+      expect(find.byKey(const ValueKey('proof-view')), findsNothing);
+      expect(app.adapter.requestsTo('/files/file-1/access'), isEmpty);
+    });
+
+    testWidgets('N-11: teks 200 % pada layar menunggu dengan tautan bukti tanpa meluap', (tester) async {
+      await openPayment(
+        tester,
+        {
+          '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingReviewJson()),
+          accessPath: (_) => FakeResponse.json(200, accessJson()),
+        },
+        overrides: [images],
+        textScale: 2,
+        tall: false,
+      );
+      // Daftar dibangun malas: gulir sampai tautan dibangun dan terlihat.
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('proof-view')),
+        200,
+        scrollable: find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first,
+      );
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.byKey(const ValueKey('proof-view')));
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(find.byType(ProofImageViewer), findsOneWidget);
+    });
+  });
+}
+
+/// PNG transparan 1×1 pengganti gambar bukti.
+final Uint8List _transparentPng = Uint8List.fromList(const [
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, //
+  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, //
+  0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, //
+  0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, //
+  0x42, 0x60, 0x82,
+]);
+
+/// Gambar yang selalu gagal dimuat (URL bertanda tangan kedaluwarsa: server menjawab 404).
+class _BrokenImage extends ImageProvider<_BrokenImage> {
+  const _BrokenImage(this.url);
+
+  final String url;
+
+  @override
+  Future<_BrokenImage> obtainKey(ImageConfiguration configuration) => SynchronousFuture(this);
+
+  @override
+  ImageStreamCompleter loadImage(_BrokenImage key, ImageDecoderCallback decode) =>
+      OneFrameImageStreamCompleter(Future<ImageInfo>.error(StateError('URL bukti kedaluwarsa (uji)')));
+
+  @override
+  bool operator ==(Object other) => other is _BrokenImage && other.url == url;
+
+  @override
+  int get hashCode => url.hashCode;
 }

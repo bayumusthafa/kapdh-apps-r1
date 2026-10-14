@@ -100,6 +100,11 @@ class PaymentsRepository {
     );
   }
 
+  /// URL baca bukti aktif milik sendiri (`PaymentDetail.proof_file_id`) lewat GET /files/{fileId}/access: URL
+  /// bertanda tangan <= 10 menit dan `mime` untuk memilih pratinjau (files.yaml getFileAccess, PRD 5.4). Selalu
+  /// diminta baru setiap kali dibuka; berkas yang tidak ada atau tidak boleh dibuka → 404 NOT_FOUND (N-09).
+  Future<FileAccess> proofAccess(String fileId) => _files.getFileAccess(fileId);
+
   /// Kirim/ganti bukti dengan `expected_proof_version` (AC F03-2, F03-3, F04-4). Key yang sama dipakai ulang selama
   /// payload sama dan hasil belum diketahui (AC F03-4).
   Future<PaymentDetail> submitProof(String paymentId, SubmitPaymentProofRequest body) => _idempotency.run(
