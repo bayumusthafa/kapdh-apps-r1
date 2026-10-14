@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { accountDeletions, users } from "@kapdh/database";
 import type { StorageDriver } from "@kapdh/storage";
-import { eq, or, sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import type { Logger } from "pino";
 import { AuditService } from "../../core/audit/audit.service.js";
 import type { Db } from "../../core/db/types.js";
@@ -9,15 +9,17 @@ import { CLOCK, DB, ROOT_LOGGER, STORAGE } from "../../core/tokens.js";
 import type { Clock } from "../../core/adapters/clock.js";
 import { safeError } from "../../core/logging/safe-error.js";
 import {
+  advanceLedgerHead,
   type LedgerEntry,
   ledgerObjectKey,
   mergeLedgerEntries,
   readLedgerObject,
   writeLedgerEntry,
 } from "./deletion-ledger.js";
+import { deletionDeadline } from "./deletion-policy.js";
 import { AccountDeletionProcessor } from "./deletion-processor.js";
 import { DeletionRequestService } from "./deletion-request.service.js";
-import { type DeletionStep, remainingPersonalData } from "./deletion-steps.js";
+import { DELETION_STEPS, type DeletionStep, remainingPersonalData } from "./deletion-steps.js";
 
 export interface ReapplySummary {
   entries: number;
@@ -50,6 +52,13 @@ function preDoneSteps(entry: LedgerEntry): DeletionStep[] {
  * 3. hasilnya diperiksa: tidak boleh ada sisa data pribadi.
  * Entri untuk permintaan yang belum selesai sebelum bencana (`requested`) diselesaikan sekarang termasuk email
  * penyelesaian dan entri ledger `completed`.
+ *
+ * Akun yang TIDAK ADA di database pulihan (mendaftar setelah titik backup) tetap dicatat: baris account_deletions
+ * `completed` dengan id/nomor yang sama (tanpa data pribadi, `ledger.absent`) dibuat agar database mengenal
+ * permintaan itu (readiness API, AC F14-6) dan membawa `member_seq_floor`. Floor N dari entri ledger disimpan di baris
+ * permintaan yang dipulihkan; MembershipKernel.allocateMemberNumber melompati N sampai di atas floor itu, sehingga N
+ * anggota yang dihapus tidak pernah dialokasikan ulang (PRD 3.5, 6.4) walau worker tidak memegang hak sequence.
+ * Kepala ledger di storage dimajukan untuk setiap entri.
  */
 @Injectable()
 export class DeletionLedgerService {
@@ -106,10 +115,12 @@ export class DeletionLedgerService {
       .from(users)
       .where(eq(users.id, entry.user_id));
     if (!user) {
+      await this.recordAbsent(entry);
       summary.absent.push(entry.request_number);
       return;
     }
     if (user.status === "deleted") {
+      await this.recordFloor(entry);
       summary.alreadyDeleted.push(entry.request_number);
       return;
     }
@@ -125,7 +136,10 @@ export class DeletionLedgerService {
     } else summary.reapplied.push(entry.request_number);
   }
 
-  /** Menulis entri ke storage bila belum ada atau yang tersimpan kurang lengkap (requested < completed). */
+  /**
+   * Menulis entri ke storage bila belum ada atau yang tersimpan kurang lengkap (requested < completed), lalu memajukan
+   * kepala ledger (permintaan terbaru dan floor N) agar readiness dan restore berikutnya melihat ledger lengkap.
+   */
   private async restoreLedgerObject(storage: StorageDriver, entry: LedgerEntry): Promise<void> {
     const key = ledgerObjectKey(entry.request_number, new Date(entry.requested_at));
     const stored = (await storage.exists(key))
@@ -133,6 +147,79 @@ export class DeletionLedgerService {
       : null;
     if (!stored || (stored.state === "requested" && entry.state === "completed"))
       await writeLedgerEntry(storage, entry);
+    await advanceLedgerHead(storage, entry, this.clock.now());
+  }
+
+  /**
+   * Akun tidak ada di database pulihan (mendaftar setelah titik backup): tidak ada data untuk dihapus, tetapi permintaan
+   * dicatat sebagai baris account_deletions `completed` (id dan nomor dari ledger; account_deletions.user_id tanpa FK)
+   * agar database mengenal permintaan itu dan floor N-nya. Idempoten: baris yang sudah ada hanya dilengkapi floor-nya.
+   */
+  private async recordAbsent(entry: LedgerEntry): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select({ id: accountDeletions.id })
+        .from(accountDeletions)
+        .where(
+          or(
+            eq(accountDeletions.id, entry.deletion_id),
+            eq(accountDeletions.requestNumber, entry.request_number),
+          ),
+        );
+      if (existing) return;
+      const now = this.clock.now();
+      const requestedAt = new Date(entry.requested_at);
+      await tx.insert(accountDeletions).values({
+        id: entry.deletion_id,
+        requestNumber: entry.request_number,
+        userId: entry.user_id,
+        source: entry.source,
+        status: "completed",
+        stepsDone: [...DELETION_STEPS],
+        requestedAt,
+        deadlineAt: deletionDeadline(requestedAt),
+        completedAt: entry.completed_at ? new Date(entry.completed_at) : now,
+        ledger: {
+          v: 1,
+          restored: true,
+          absent: true,
+          ...(entry.member_seq_floor === undefined ? {} : { member_seq_floor: entry.member_seq_floor }),
+        },
+        createdAt: now,
+        updatedAt: now,
+      });
+      await this.audit.write(tx, {
+        action: "account.deletion_reapplied",
+        entityType: "user",
+        entityId: entry.user_id,
+        after: { request_number: entry.request_number, status: "absent" },
+      });
+    });
+    await this.recordFloor(entry);
+  }
+
+  /**
+   * Menyimpan floor N entri ledger pada baris permintaannya (PRD 3.5, 6.4) bila lebih tinggi dari yang tersimpan;
+   * MembershipKernel.allocateMemberNumber memperhitungkan floor tertinggi semua baris account_deletions.
+   */
+  private async recordFloor(entry: LedgerEntry): Promise<void> {
+    if (entry.member_seq_floor === undefined) return;
+    const floor = entry.member_seq_floor;
+    await this.db
+      .update(accountDeletions)
+      .set({
+        ledger: sql`${accountDeletions.ledger} || jsonb_build_object('member_seq_floor', ${floor}::bigint)`,
+        updatedAt: this.clock.now(),
+      })
+      .where(
+        and(
+          or(
+            eq(accountDeletions.id, entry.deletion_id),
+            eq(accountDeletions.requestNumber, entry.request_number),
+          ),
+          sql`(coalesce((${accountDeletions.ledger}->>'member_seq_floor')::bigint, -1) < ${floor}::bigint)`,
+        ),
+      );
   }
 
   /** Mengembalikan akun ke deletion_pending dan menyiapkan baris permintaan yang sama dengan entri ledger. */
@@ -161,6 +248,13 @@ export class DeletionLedgerService {
       const stepsDone = [
         ...new Set([...(row.stepsDone ?? []).filter((step) => step !== "files"), ...preDoneSteps(entry)]),
       ];
+      const previous = row.ledger ?? {};
+      const storedFloor =
+        typeof previous.member_seq_floor === "number" ? previous.member_seq_floor : undefined;
+      const floor =
+        entry.member_seq_floor === undefined
+          ? storedFloor
+          : Math.max(storedFloor ?? 0, entry.member_seq_floor);
       await tx
         .update(accountDeletions)
         .set({
@@ -169,7 +263,13 @@ export class DeletionLedgerService {
           nextAttemptAt: null,
           lastError: null,
           stepsDone,
-          ledger: { ...(row.ledger ?? {}), v: 1, restored: true },
+          // Floor N dari ledger eksternal ikut disimpan (PRD 3.5, 6.4; lihat MembershipKernel.allocateMemberNumber).
+          ledger: {
+            ...previous,
+            v: 1,
+            restored: true,
+            ...(floor === undefined ? {} : { member_seq_floor: floor }),
+          },
           updatedAt: now,
         })
         .where(eq(accountDeletions.id, row.id));
