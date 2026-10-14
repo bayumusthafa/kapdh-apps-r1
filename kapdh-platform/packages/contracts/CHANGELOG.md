@@ -641,8 +641,8 @@ dari database setiap request dan dicocokkan uji kontrak (`accessMismatches`).
 
 ### admin-governance: calon subjek laporan grup (`admin-moderation.yaml`; F-12, AC F12-3, F12-4)
 
-Perubahan aditif oleh klien web admin (pemilik domain: api-moderation, belum diimplementasikan server; tercatat
-sebagai ketergantungan integrasi). `adminResolveReport` mewajibkan `subject_user_id` (anggota atau mantan anggota
+Perubahan aditif oleh klien web admin (pemilik domain: api-moderation; server diimplementasikan saat integrasi Fase
+C, lihat butir terakhir). `adminResolveReport` mewajibkan `subject_user_id` (anggota atau mantan anggota
 grup) untuk warn/suspend laporan grup, tetapi bukti laporan grup menurut `createReport` hanya memuat nama, avatar dan
 jumlah anggota tanpa pesan, sehingga pengurus tidak memiliki sumber pilihan subjek tanpa menjelajah chat.
 
@@ -654,6 +654,9 @@ jumlah anggota tanpa pesan, sehingga pengurus tidak memiliki sumber pilihan subj
 - Skema baru `AdminModerationSubjectCandidatePage`, `AdminModerationSubjectCandidate`
   (`AdminModerationTargetMember` + `room_status`, `room_role`) dan enum `AdminModerationRoomMemberStatus`
   (`joined`, `left`, `removed`). Tidak ada operasi atau field lama yang berubah.
+- Implementasi server (integrasi Fase C): `AdminReportsService.subjectCandidates` di modul moderation, satu transaksi
+  dengan audit `moderation.report_viewed` (`via: subject_candidates`, tanpa daftar anggota); cursor keyset
+  (kelompok, `lower(full_name)`, `user_id`) terikat `q`. Uji `test/moderation/admin-reports.e2e.test.ts`.
 
 ## 0.2.0
 
