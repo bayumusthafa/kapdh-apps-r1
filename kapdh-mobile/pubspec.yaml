@@ -66,6 +66,10 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Smoke alur kritis di perangkat/emulator nyata (N-12, matriks D7; N-03 diukur di perangkat). Lihat
+  # integration_test/ dan docs/qa/device-matrix.md.
+  integration_test:
+    sdk: flutter
   flutter_lints: ^6.0.0
   mocktail: ^1.0.5
   http_mock_adapter: ^0.6.1
