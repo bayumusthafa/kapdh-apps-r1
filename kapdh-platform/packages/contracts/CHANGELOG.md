@@ -6,6 +6,24 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 
 ## Belum dirilis
 
+### Hardening Fase D (chat, moderasi, maintenance)
+
+Tanpa perubahan skema; hanya aturan yang didokumentasikan pada deskripsi operasi.
+
+- `getFileAccess` dan aturan bersama admin-moderation: gambar chat/avatar yang dirujuk bukti laporan hanya dapat
+  dibuka pengurus `moderation.read` bila minimal satu laporan perujuk terlihat baginya (aturan konflik kepentingan
+  butir a; selain itu 404), dan setiap akses itu dicatat audit `moderation.evidence_viewed` (PRD 2.3, 3.12, AC F12-2,
+  F17-1; temuan audit D1-02, D3-02).
+- `createChatGroup`, `inviteChatMembers`, `ChatInviteSkipReason`: calon anggota yang tersembunyi dari direktori
+  hanya dapat diundang oleh anggota yang pernah satu grup dengannya (syarat yang sama dengan `openDirectRoom`; PRD
+  3.10, N-09); selain itu dilewati `not_invitable` tanpa notifikasi (temuan audit D1-03).
+- `sendChatMessage`: teks notifikasi kotak masuk room direct tidak lagi memuat nama pengirim ("Ada pesan baru di
+  percakapan langsung."); baris lama di kotak masuk lawan bicara ditulis ulang saat akun pengirim dihapus (D2, AC
+  F14-3; temuan audit D5-01).
+- `adminUpdateMaintenance`: selama maintenance, `POST /auth/reauth` dan `POST /files` dengan access token admin
+  tetap diproses, begitu pula `DELETE /auth/sessions/{sessionId}` untuk semua sesi, sehingga maintenance dapat
+  diakhiri lewat API setelah token reautentikasi awal kedaluwarsa (temuan audit D7-01).
+
 ### C2 Membership (me, public, admin-members, admin-masters)
 
 Semua operasi domain ini kini membawa `x-kapdh-access` (audience, member_access, permissions, permissions_any,

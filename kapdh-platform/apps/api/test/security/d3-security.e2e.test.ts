@@ -93,84 +93,87 @@ describe("D3-01 enumerasi email terdaftar tanpa batas laju (PRD 2.5, ASVS 2.2.1)
   }, 120_000);
 });
 
-describe("D3-02 akses berkas bukti moderasi melewati aturan konflik kepentingan dan audit (PRD 2.3, 3.12, AC F12-2)", () => {
-  it.fails(
-    "pengurus moderation.read yang tertaut ke terlapor tidak dapat melihat laporannya, tetapi GET /files/{id}/access membuka gambar buktinya tanpa audit",
-    async () => {
-      const reporter = await createAlumni(t, { status: "verified", fullName: "Pelapor D3" });
-      const reporterToken = (await signInAlumni(t, reporter)).accessToken;
-      const linked = await createAlumni(t, { status: "verified", fullName: "Alumni Tertaut D3" });
-      const linkedToken = (await signInAlumni(t, linked)).accessToken;
-      const group = await createGroupRoom(t, { name: "Grup D3", adminId: reporter.userId });
-      await addRoomMember(t, group, linked.userId);
-      // Akun alumni tertaut mengunggah gambar chat (id berkas diketahui pemiliknya sendiri).
-      const image = await uploadTestFile(t, linkedToken, "chat_image");
-      const message = await createMessage(t, group, linked.userId, { imageFileId: image.id, body: "foto" });
+describe("D3-02 akses berkas bukti moderasi mengikuti aturan konflik kepentingan dan diaudit (PRD 2.3, 3.12, AC F12-2)", () => {
+  // Diperbaiki: kebijakan berkas bukti (moderation/evidence-file-policy.ts) hanya mengizinkan bila ada laporan perujuk
+  // yang terlihat bagi pengurus (ModerationVisibility), dan GET /files/{id}/access atas bukti menulis audit
+  // `moderation.evidence_viewed` sebelum URL diterbitkan.
+  it("pengurus moderation.read yang tertaut ke terlapor tidak dapat melihat laporannya maupun membuka gambar buktinya lewat GET /files/{id}/access", async () => {
+    const reporter = await createAlumni(t, { status: "verified", fullName: "Pelapor D3" });
+    const reporterToken = (await signInAlumni(t, reporter)).accessToken;
+    const linked = await createAlumni(t, { status: "verified", fullName: "Alumni Tertaut D3" });
+    const linkedToken = (await signInAlumni(t, linked)).accessToken;
+    const group = await createGroupRoom(t, { name: "Grup D3", adminId: reporter.userId });
+    await addRoomMember(t, group, linked.userId);
+    // Akun alumni tertaut mengunggah gambar chat (id berkas diketahui pemiliknya sendiri).
+    const image = await uploadTestFile(t, linkedToken, "chat_image");
+    const message = await createMessage(t, group, linked.userId, { imageFileId: image.id, body: "foto" });
 
-      const moderator = await createAdmin(t, {
-        permissions: ["moderation.read", "moderation.resolve"],
-        linkedAlumniUserId: linked.userId,
-      });
-      const adminToken = (await signInAdmin(t, moderator)).accessToken;
+    const moderator = await createAdmin(t, {
+      permissions: ["moderation.read", "moderation.resolve"],
+      linkedAlumniUserId: linked.userId,
+    });
+    const adminToken = (await signInAdmin(t, moderator)).accessToken;
 
-      // Sebelum dilaporkan: sesi admin tidak dapat membuka gambar chat.
-      const before = await api().get(`/files/${image.id}/access`, { token: adminToken });
-      expect(before.statusCode).toBe(404);
+    // Sebelum dilaporkan: sesi admin tidak dapat membuka gambar chat.
+    const before = await api().get(`/files/${image.id}/access`, { token: adminToken });
+    expect(before.statusCode).toBe(404);
 
-      const reportId = await reportOk(t.app, reporterToken, {
-        target_type: "message",
-        message_id: message,
-        category: "harassment",
-        description: "Laporan tersembunyi dari pengurus tertaut.",
-      });
-      // Laporan terhadap akun tertautnya disembunyikan (konflik kepentingan).
-      const hidden = await api().get(`/admin/reports/${reportId}`, { token: adminToken });
-      expect(hidden.statusCode).toBe(404);
+    const reportId = await reportOk(t.app, reporterToken, {
+      target_type: "message",
+      message_id: message,
+      category: "harassment",
+      description: "Laporan tersembunyi dari pengurus tertaut.",
+    });
+    // Laporan terhadap akun tertautnya disembunyikan (konflik kepentingan).
+    const hidden = await api().get(`/admin/reports/${reportId}`, { token: adminToken });
+    expect(hidden.statusCode).toBe(404);
 
-      const auditBefore = await t.db
-        .select()
-        .from(auditLogs)
-        .where(and(eq(auditLogs.actorAdminId, moderator.adminId), like(auditLogs.action, "moderation.%")));
-      const after = await api().get(`/files/${image.id}/access`, { token: adminToken });
-      const auditAfter = await t.db
-        .select()
-        .from(auditLogs)
-        .where(and(eq(auditLogs.actorAdminId, moderator.adminId), like(auditLogs.action, "moderation.%")));
-      // Aman: tetap 404 (laporan tersembunyi tidak boleh dapat disimpulkan dan buktinya tidak boleh dibuka), atau
-      // setidaknya setiap akses bukti tercatat di audit (PRD 3.12 "akses bukti dibatasi dan diaudit").
-      expect(after.statusCode).toBe(404);
-      expect(auditAfter.length).toBeGreaterThan(auditBefore.length);
-    },
-  );
+    const auditBefore = await t.db
+      .select()
+      .from(auditLogs)
+      .where(and(eq(auditLogs.actorAdminId, moderator.adminId), like(auditLogs.action, "moderation.%")));
+    const after = await api().get(`/files/${image.id}/access`, { token: adminToken });
+    const auditAfter = await t.db
+      .select()
+      .from(auditLogs)
+      .where(and(eq(auditLogs.actorAdminId, moderator.adminId), like(auditLogs.action, "moderation.%")));
+    // Aman: tetap 404 (laporan tersembunyi tidak dapat disimpulkan dan buktinya tidak dapat dibuka). Tidak ada bukti
+    // yang dibuka sehingga tidak ada audit moderation.* baru (sama seperti detail laporan tersembunyi: 404 tanpa audit).
+    expect(after.statusCode).toBe(404);
+    expect(auditAfter.length).toBe(auditBefore.length);
+  });
 
-  it.fails(
-    "pengurus moderation.read tanpa konflik membuka bukti lewat GET /files/{id}/access tanpa jejak audit apa pun",
-    async () => {
-      const reporter = await createAlumni(t, { status: "verified" });
-      const reporterToken = (await signInAlumni(t, reporter)).accessToken;
-      const sender = await createAlumni(t, { status: "verified" });
-      const senderToken = (await signInAlumni(t, sender)).accessToken;
-      const group = await createGroupRoom(t, { adminId: reporter.userId });
-      await addRoomMember(t, group, sender.userId);
-      const image = await uploadTestFile(t, senderToken, "chat_image");
-      const message = await createMessage(t, group, sender.userId, { imageFileId: image.id });
-      await reportOk(t.app, reporterToken, {
-        target_type: "message",
-        message_id: message,
-        category: "sexual",
-      });
-      const moderator = await createAdmin(t, { permissions: ["moderation.read", "moderation.resolve"] });
-      const adminToken = (await signInAdmin(t, moderator)).accessToken;
+  it("pengurus moderation.read tanpa konflik membuka bukti lewat GET /files/{id}/access dengan jejak audit moderation.evidence_viewed", async () => {
+    const reporter = await createAlumni(t, { status: "verified" });
+    const reporterToken = (await signInAlumni(t, reporter)).accessToken;
+    const sender = await createAlumni(t, { status: "verified" });
+    const senderToken = (await signInAlumni(t, sender)).accessToken;
+    const group = await createGroupRoom(t, { adminId: reporter.userId });
+    await addRoomMember(t, group, sender.userId);
+    const image = await uploadTestFile(t, senderToken, "chat_image");
+    const message = await createMessage(t, group, sender.userId, { imageFileId: image.id });
+    const reportId = await reportOk(t.app, reporterToken, {
+      target_type: "message",
+      message_id: message,
+      category: "sexual",
+    });
+    const moderator = await createAdmin(t, { permissions: ["moderation.read", "moderation.resolve"] });
+    const adminToken = (await signInAdmin(t, moderator)).accessToken;
 
-      const res = await api().get(`/files/${image.id}/access`, { token: adminToken });
-      expect(res.statusCode).toBe(200);
-      const rows = await t.db.select().from(auditLogs).where(eq(auditLogs.actorAdminId, moderator.adminId));
-      // Aman: akses bukti tercatat (sama seperti GET /admin/reports/{id} → moderation.report_viewed).
-      expect(rows.some((row) => row.entityId === image.id || row.action.startsWith("moderation."))).toBe(
-        true,
-      );
-    },
-  );
+    const res = await api().get(`/files/${image.id}/access`, { token: adminToken });
+    expect(res.statusCode).toBe(200);
+    const rows = await t.db.select().from(auditLogs).where(eq(auditLogs.actorAdminId, moderator.adminId));
+    // Aman: akses bukti tercatat (sama seperti GET /admin/reports/{id} → moderation.report_viewed).
+    expect(rows.some((row) => row.entityId === image.id || row.action.startsWith("moderation."))).toBe(true);
+    const viewed = rows.filter((row) => row.action === "moderation.evidence_viewed");
+    expect(viewed).toHaveLength(1);
+    expect(viewed[0]).toMatchObject({ entityType: "file", entityId: image.id });
+    expect(viewed[0]!.after).toMatchObject({
+      via: "file_access",
+      purpose: "chat_image",
+      report_ids: [reportId],
+    });
+  });
 });
 
 describe("D3-03 mfa_token admin tidak terikat keadaan kredensial (N-08, AC F02-4, F02-6; ASVS 3.3.1)", () => {

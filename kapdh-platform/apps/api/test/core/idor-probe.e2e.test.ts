@@ -278,55 +278,64 @@ describe("D1 IDOR chat (F-11, AC F11-4)", () => {
 
 describe("D1 anggota tersembunyi dari direktori (PRD 3.10, N-09, N-15; kontrak openDirectRoom)", () => {
   // openDirectRoom hanya membuat room bila lawan bicara terlihat di direktori bagi pemanggil atau pernah satu grup,
-  // dengan 404 seragam untuk semua alasan. inviteChatMembers/createChatGroup tidak memakai syarat itu: siapa pun yang
-  // mengetahui user_id anggota tersembunyi (mis. dari klaim `sub` QR KTA yang pernah dipindai) dapat mengirim undangan
-  // berisi nama grup bebas ke kotak masuknya, dan hasil `invited` vs `not_invitable` membocorkan status keanggotaannya.
-  it.fails(
-    "[D1-03] undangan grup tidak dapat dipakai menghubungi atau memeriksa status anggota tersembunyi",
-    async () => {
-      const hidden = await member(t, "verified", { showInDirectory: false });
-      const direct = await api().post("/chat/direct", { user_id: hidden.userId }, as(attacker));
-      expect(direct.statusCode, direct.body).toBe(404);
-      const created = await api().post(
-        "/chat/rooms",
-        { name: "Hubungi saya di 0812", invitee_user_ids: [hidden.userId] },
-        as(attacker),
-      );
-      expect(created.statusCode, created.body).toBe(201);
-      const outcome = (created.json() as { invitations: { invited_user_ids: string[] } }).invitations;
-      expect(outcome.invited_user_ids).not.toContain(hidden.userId);
-    },
-  );
+  // dengan 404 seragam untuk semua alasan. Diperbaiki: inviteChatMembers/createChatGroup memakai syarat yang sama, sehingga
+  // user_id anggota tersembunyi (mis. dari klaim `sub` QR KTA yang pernah dipindai) tidak dapat dipakai mengirim undangan
+  // berisi nama grup bebas ke kotak masuknya, dan hasilnya (not_invitable) sama dengan akun yang tidak aktif/tidak ada.
+  it("[D1-03] undangan grup tidak dapat dipakai menghubungi atau memeriksa status anggota tersembunyi", async () => {
+    const hidden = await member(t, "verified", { showInDirectory: false });
+    const hiddenSuspended = await member(t, "suspended", { showInDirectory: false });
+    const direct = await api().post("/chat/direct", { user_id: hidden.userId }, as(attacker));
+    expect(direct.statusCode, direct.body).toBe(404);
+    const created = await api().post(
+      "/chat/rooms",
+      { name: "Hubungi saya di 0812", invitee_user_ids: [hidden.userId, hiddenSuspended.userId] },
+      as(attacker),
+    );
+    expect(created.statusCode, created.body).toBe(201);
+    const outcome = (
+      created.json() as {
+        invitations: { invited_user_ids: string[]; skipped: { user_id: string; reason: string }[] };
+      }
+    ).invitations;
+    expect(outcome.invited_user_ids).not.toContain(hidden.userId);
+    // Status keanggotaan tidak dapat dibedakan: aktif dan suspended sama-sama not_invitable.
+    expect(outcome.skipped).toEqual([
+      { user_id: hidden.userId, reason: "not_invitable" },
+      { user_id: hiddenSuspended.userId, reason: "not_invitable" },
+    ]);
+    const inbox = await t.db.select().from(notifications).where(eq(notifications.userId, hidden.userId));
+    expect(inbox.map((n) => n.body ?? "").join(" ")).not.toContain("0812");
+  });
 });
 
 describe("D1 berkas bukti moderasi dan konflik kepentingan (kontrak admin-moderation butir a/c)", () => {
   // Laporan terhadap akun alumni tertaut pengurus tidak pernah terlihat olehnya dan tidak boleh dapat disimpulkan
-  // (ModerationVisibility). Kebijakan berkas bukti (moderation/evidence-file-policy.ts) mengizinkan SETIAP admin
-  // moderation.read membuka berkas yang dirujuk laporan mana pun, tanpa aturan visibilitas itu: respons GET
-  // /files/{avatar}/access berubah 404 → 200 begitu ada laporan tersembunyi terhadap akun tertautnya.
-  it.fails(
-    "[D1-02] keberadaan laporan tersembunyi tidak dapat disimpulkan lewat akses berkas bukti",
-    async () => {
-      const linked = await member(t, "verified", { fullName: "Alumni Pengurus" });
-      const avatarId = await setAvatar(t, linked);
-      const moderator = await adminWith({
-        permissions: ["moderation.read"],
-        linkedAlumniUserId: linked.userId,
-      });
-      const before = await api().get(`/files/${avatarId}/access`, as(moderator));
-      expect(before.statusCode).toBe(404);
-      const reportId = await reportOk(t.app, third.token, {
-        target_type: "user",
-        target_user_id: linked.userId,
-        category: "spam",
-      });
-      // Laporan memang tersembunyi bagi pengurus itu (404) ...
-      expect((await api().get(`/admin/reports/${reportId}`, as(moderator))).statusCode).toBe(404);
-      // ... tetapi akses berkas bukti berubah menjadi 200: oracle keberadaan laporan.
-      const after = await api().get(`/files/${avatarId}/access`, as(moderator));
-      expect(after.statusCode, after.body).toBe(404);
-    },
-  );
+  // (ModerationVisibility). Diperbaiki: kebijakan berkas bukti (moderation/evidence-file-policy.ts) hanya mengizinkan
+  // bila ada laporan perujuk yang TERLIHAT bagi pengurus, sehingga GET /files/{avatar}/access tidak lagi berubah
+  // 404 → 200 begitu ada laporan tersembunyi terhadap akun tertautnya.
+  it("[D1-02] keberadaan laporan tersembunyi tidak dapat disimpulkan lewat akses berkas bukti", async () => {
+    const linked = await member(t, "verified", { fullName: "Alumni Pengurus" });
+    const avatarId = await setAvatar(t, linked);
+    const moderator = await adminWith({
+      permissions: ["moderation.read"],
+      linkedAlumniUserId: linked.userId,
+    });
+    const colleague = await adminWith({ permissions: ["moderation.read"] });
+    const before = await api().get(`/files/${avatarId}/access`, as(moderator));
+    expect(before.statusCode).toBe(404);
+    const reportId = await reportOk(t.app, third.token, {
+      target_type: "user",
+      target_user_id: linked.userId,
+      category: "spam",
+    });
+    // Laporan memang tersembunyi bagi pengurus itu (404) ...
+    expect((await api().get(`/admin/reports/${reportId}`, as(moderator))).statusCode).toBe(404);
+    // ... dan akses berkas bukti tetap 404: tidak ada oracle keberadaan laporan.
+    const after = await api().get(`/files/${avatarId}/access`, as(moderator));
+    expect(after.statusCode, after.body).toBe(404);
+    // Pengurus lain tanpa konflik tetap dapat membuka bukti laporan yang terlihat baginya.
+    expect((await api().get(`/files/${avatarId}/access`, as(colleague))).statusCode).toBe(200);
+  });
 });
 
 describe("D1 IDOR moderasi, notifikasi, sesi, perangkat, direktori, konten", () => {
