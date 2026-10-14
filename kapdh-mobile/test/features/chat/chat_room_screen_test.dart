@@ -10,6 +10,7 @@ import 'package:kapdh_mobile/features/chat/chat_realtime.dart';
 import 'package:kapdh_mobile/features/chat/chat_room_screen.dart';
 import 'package:kapdh_mobile/features/chat/outgoing_message.dart';
 
+import '../../support/a11y.dart';
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
 import 'chat_fixtures.dart';
@@ -549,6 +550,16 @@ void main() {
       await settle(tester);
       expect(find.text('Hapus pesan?'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('N-11: pedoman aksesibilitas otomatis (target sentuh, label, kontras) pada percakapan', (tester) async {
+      final server = _directRoom(messages: 0);
+      server
+        ..commit(body: 'Assalamualaikum')
+        ..commit(senderId: 'user-1', body: 'Waalaikumsalam');
+      await _openRoom(tester, server: server, realtime: FakeChatRealtime());
+      expect(find.text('Assalamualaikum'), findsOneWidget);
+      await expectMeetsAccessibilityGuidelines(tester);
     });
 
     testWidgets('N-11, AC F11-2: status kirim milik sendiri pada teks 200 % tidak meluap', (tester) async {

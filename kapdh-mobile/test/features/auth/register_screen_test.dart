@@ -7,6 +7,7 @@ import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/features/auth/auth_flow.dart';
 import 'package:kapdh_mobile/features/auth/register_screen.dart';
 
+import '../../support/a11y.dart';
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
 
@@ -43,6 +44,13 @@ Future<void> fillForm(WidgetTester tester, {String email = 'ahmad.islam@email.co
 }
 
 void main() {
+  testWidgets('N-11: pedoman aksesibilitas otomatis (target sentuh, label, kontras) pada Data Diri', (tester) async {
+    await openRegister(tester, apiRoutes({}));
+    await expectMeetsAccessibilityGuidelines(tester);
+    await fillForm(tester);
+    await expectMeetsAccessibilityGuidelines(tester);
+  });
+
   testWidgets('Data Diri tanpa Nomor KTP; pratinjau tahun akademik; kirim membuat challenge OTP (AC F01-1)', (
     tester,
   ) async {
