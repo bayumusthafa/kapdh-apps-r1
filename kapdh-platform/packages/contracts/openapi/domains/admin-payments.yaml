@@ -175,7 +175,9 @@ paths:
           akun tidak ada, bukan alumni, sudah dihapus atau deletion_pending, atau disuspend
           (field_errors.user_id); renewal di luar jendela perpanjangan atau sebelum iuran pendaftaran paid
           (field_errors.type).
-        - 403 FORBIDDEN: tanpa izin payments.decide atau berkonflik kepentingan.
+        - 403 FORBIDDEN: tanpa izin payments.decide atau berkonflik kepentingan; atau (payment baru) nominal iuran
+          belum ditetapkan: pengaturan `fees` belum tersimpan (versi 0) atau total jenis iuran itu 0.00 (gagal
+          tertutup, PRD 8.2 butir 4, 9.3). Tidak ada payment yang dibuat dan bukti pengurus tidak terlampir.
         - 409 PAYMENT_STATE_CONFLICT: registration padahal iuran pendaftaran sudah paid; atau payment terbuka jenis
           yang sama sudah berbukti dari anggota (awaiting_review), dengan `current` berisi AdminPaymentDetail
           payment itu untuk diputus lewat adminDecidePayment.
@@ -629,9 +631,12 @@ paths:
         completed, `completed_at`/`completed_by` diisi dan `refund_destination` dikosongkan (D2); payment_event
         `adjusted` dicatat pada payment asal, audit tanpa rekening tujuan, dan notifikasi kategori payment ke
         pemilik dengan deep link `/payments/{paymentId}` (PRD 10.2: adjustment, notifikasi dan bukti
-        penyelesaian; tanpa notifikasi bila akun pemilik sudah dihapus). Kunci: baris payment asal lalu baris
-        penyesuaian (URUTAN KUNCI payments.yaml). Galat 409 PAYMENT_STATE_CONFLICT/VERSION_CONFLICT dengan
-        `current`.
+        penyelesaian; tanpa notifikasi bila akun pemilik sudah dihapus). Bila akun pemilik sudah dihapus atau
+        sedang deletion_pending (F-14, AC F14-4, D2), bukti tetap wajib dilampirkan sebagai syarat penyelesaian
+        tetapi tidak disimpan: respons memuat `evidence_file_id` null, berkasnya dihapus setelah commit, dan audit
+        hanya mencatat id, sha256 dan ukuran berkas (`evidence_erased`). Kunci: baris users pemilik (FOR SHARE),
+        baris payment asal, lalu baris penyesuaian (URUTAN KUNCI payments.yaml). Galat 409
+        PAYMENT_STATE_CONFLICT/VERSION_CONFLICT dengan `current`.
       x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide], idempotent: true }
       parameters:
         - $ref: "#/components/parameters/AdjustmentId"
@@ -676,7 +681,9 @@ paths:
         jejak akuntabilitas (F-17) dan dicatat dalam transaksi yang sama. Untuk refund, pemilik menerima notifikasi
         kategori payment dengan deep link `/payments/{paymentId}` berisi teks baku bahwa refund dibatalkan dan
         arahan ke kontak dukungan; `cancel_reason` internal tidak dikirim kepada anggota (tanpa notifikasi bila
-        akun pemilik sudah dihapus). Kunci: baris payment asal lalu baris penyesuaian. Galat 409
+        akun pemilik sudah dihapus). Bukti yang sempat dilampirkan atas payment yang pemiliknya sudah dihapus atau
+        sedang deletion_pending ikut dihapus setelah commit (`evidence_file_id` null, D2). Kunci: baris users
+        pemilik (FOR SHARE), baris payment asal, lalu baris penyesuaian. Galat 409
         PAYMENT_STATE_CONFLICT/VERSION_CONFLICT dengan `current`.
       x-kapdh-access: { audience: admin, permissions: [payments.read, payments.decide], idempotent: true }
       parameters:
