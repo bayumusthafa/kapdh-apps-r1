@@ -17,7 +17,7 @@ const representative = <String, RouteGroup>{
   '/news': RouteGroup.news,
   '/news/silaturahmi-akbar': RouteGroup.news,
   '/events': RouteGroup.events,
-  '/events/ev-1': RouteGroup.events,
+  '/events/ev-1': RouteGroup.eventDetail,
   '/tickets': RouteGroup.tickets,
   '/tickets/tk-1': RouteGroup.tickets,
   '/kta': RouteGroup.kta,
@@ -65,6 +65,7 @@ final expectedAllowed = <String, Set<RouteGroup>>{
   'verified': {
     ...memberBase,
     RouteGroup.events,
+    RouteGroup.eventDetail,
     RouteGroup.tickets,
     RouteGroup.network,
     RouteGroup.chat,
@@ -74,13 +75,14 @@ final expectedAllowed = <String, Set<RouteGroup>>{
   'expiring': {
     ...memberBase,
     RouteGroup.events,
+    RouteGroup.eventDetail,
     RouteGroup.tickets,
     RouteGroup.network,
     RouteGroup.chat,
     RouteGroup.renewal,
     RouteGroup.accountCommunity,
   },
-  'expired': {...memberBase, RouteGroup.renewal, RouteGroup.tickets},
+  'expired': {...memberBase, RouteGroup.renewal, RouteGroup.tickets, RouteGroup.eventDetail},
   'suspended': {RouteGroup.restricted, RouteGroup.accountDelete, RouteGroup.legal},
   'disabled': {RouteGroup.deletionStatus, RouteGroup.legal},
   'deletion_pending': {RouteGroup.deletionStatus, RouteGroup.legal},
@@ -157,6 +159,8 @@ void main() {
     test('expired tetap melihat tiket yang sudah lunas, tetapi tidak event/direktori/chat (PRD 2.2)', () {
       final expired = authed('expired');
       expect(go(expired, '/tickets/tk-1'), isNull);
+      // Detail event yang pernah dipesan (kontrak C5 getEvent `nonsuspended`; server menolak event lain).
+      expect(go(expired, '/events/ev-1'), isNull);
       expect(go(expired, '/events'), '/renewal');
       expect(go(expired, '/network'), '/renewal');
       expect(go(expired, '/chat/room-1'), '/renewal');

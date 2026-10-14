@@ -206,15 +206,30 @@ void main() {
     });
 
     testWidgets('503 MAINTENANCE dari request mana pun memasang mode baca terkendali', (tester) async {
+      // Beranda memuat GET /home saat dibuka (F-08); pemeliharaan mendadak baru berlaku untuk request berikutnya.
+      var suddenMaintenance = false;
       final app = await pumpApp(
         tester,
         tokens: savedTokens(),
         handler: apiRoutes({
           '/me': (_) => FakeResponse.json(200, meJson()),
-          '/home': (_) =>
-              FakeResponse.json(503, errorJson('MAINTENANCE', 'Pemeliharaan mendadak.', retryAfterSeconds: 600)),
+          '/home': (_) => suddenMaintenance
+              ? FakeResponse.json(503, errorJson('MAINTENANCE', 'Pemeliharaan mendadak.', retryAfterSeconds: 600))
+              : FakeResponse.json(200, {
+                  'banners': <Object?>[],
+                  'upcoming_events': <Object?>[],
+                  'posts': <Object?>[],
+                  'quick_access': {
+                    'unread_notification_count': 0,
+                    'effective_status': 'verified',
+                    'member_number': '29.01.01.7',
+                    'expires_at': null,
+                  },
+                  'generated_at': testNow.toIso8601String(),
+                }),
         }),
       );
+      suddenMaintenance = true;
       expect(app.location, '/home');
       expect(find.byType(MaintenanceBanner), findsNothing);
       unawaited(app.container.read(kapdhApiProvider).content.getHome().then<void>((_) {}, onError: (Object _) {}));
