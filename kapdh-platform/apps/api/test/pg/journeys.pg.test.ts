@@ -3947,33 +3947,11 @@ describe("D7 (r): pengaturan admin berlaku ke klien (F-15)", () => {
       );
 
       // Pengurus mematikan maintenance dari web admin (/admin/** dikecualikan, request-gate.ts). Endpoint itu
-      // mewajibkan X-Reauth-Token, sedangkan POST /auth/reauth tidak dikecualikan dari maintenance.
+      // mewajibkan X-Reauth-Token; POST /auth/reauth dikecualikan dari maintenance untuk access token admin (D7-01).
       clock.advance(11 * 60_000); // token reauth saat mengaktifkan sudah lewat 10 menit
       const relogged = await loginAdmin(admin.fixture, admin.lastStep);
       admin.token = relogged.token;
       admin.lastStep = relogged.lastStep;
-      const reauthStep = nextTotp(admin.fixture.totpSecret!, admin.lastStep);
-      const reauthBody = { password: admin.fixture.password, totp_code: reauthStep.code };
-      const reauth = await call("post", "/auth/reauth", reauthBody, { token: admin.token });
-      admin.lastStep = reauthStep.step;
-      // D7-01: reautentikasi ditolak 503 MAINTENANCE → maintenance tidak dapat dimatikan lewat API (terkunci).
-      await expectDefect("D7-01", () => {
-        expect(reauth.statusCode, show("post", "/auth/reauth (pemeliharaan)", reauth, reauthBody)).toBe(200);
-      });
-      expect(reauth.statusCode).toBe(503);
-      expect(expectOperation("post", "/auth/reauth", reauth)).toMatchObject({ code: "MAINTENANCE" });
-      // Unggahan kerja pengurus (bukti D13, bukti refund) lewat POST /files juga tertolak walau /admin/** bebas.
-      const upload = multipartBody([
-        { name: "purpose", value: "adjustment_evidence" },
-        { name: "file", filename: "refund.jpg", contentType: "image/jpeg", data: await testJpeg() },
-      ]);
-      const adminUpload = (await app.inject({
-        method: "POST",
-        url: "/api/v1/files",
-        payload: upload.payload,
-        headers: { ...upload.headers, authorization: `Bearer ${admin.token}` },
-      })) as unknown as InjectResponse;
-      expect(adminUpload.statusCode).toBe(503);
       const stuck = await call(
         "put",
         "/admin/settings/maintenance",
@@ -3984,13 +3962,61 @@ describe("D7 (r): pengaturan admin berlaku ke klien (F-15)", () => {
       expect(expectOperation("put", "/admin/settings/maintenance", stuck)).toMatchObject({
         code: "REAUTH_REQUIRED",
       });
+      // Anggota tidak mendapat pengecualian reautentikasi.
+      const memberReauth = await call(
+        "post",
+        "/auth/reauth",
+        { password: newMember.password },
+        { token: newMember.token, headers: APP },
+      );
+      expect(memberReauth.statusCode, show("post", "/auth/reauth (anggota)", memberReauth)).toBe(503);
+      expect(expectOperation("post", "/auth/reauth", memberReauth)).toMatchObject({ code: "MAINTENANCE" });
+      const reauthStep = nextTotp(admin.fixture.totpSecret!, admin.lastStep);
+      const reauthBody = { password: admin.fixture.password, totp_code: reauthStep.code };
+      const reauth = await call("post", "/auth/reauth", reauthBody, { token: admin.token });
+      admin.lastStep = reauthStep.step;
+      expect(reauth.statusCode, show("post", "/auth/reauth (pemeliharaan)", reauth, reauthBody)).toBe(200);
+      const reauthToken = (expectOperation("post", "/auth/reauth", reauth) as Json).reauth_token as string;
+      // Unggahan kerja pengurus (bukti D13, bukti refund) lewat POST /files tetap diproses.
+      const upload = multipartBody([
+        { name: "purpose", value: "adjustment_evidence" },
+        { name: "file", filename: "refund.jpg", contentType: "image/jpeg", data: await testJpeg() },
+      ]);
+      const adminUpload = (await app.inject({
+        method: "POST",
+        url: "/api/v1/files",
+        payload: upload.payload,
+        headers: { ...upload.headers, authorization: `Bearer ${admin.token}` },
+      })) as unknown as InjectResponse;
+      expect(adminUpload.statusCode, show("post", "/files (pemeliharaan)", adminUpload)).toBe(201);
+      expectOperation("post", "/files", adminUpload);
+      // Maintenance dimatikan lewat API dengan reautentikasi baru.
+      const off = await step(
+        "put",
+        "/admin/settings/maintenance",
+        "/admin/settings/maintenance",
+        200,
+        { active: false, message: null, until: null },
+        {
+          token: admin.token,
+          headers: { "x-reauth-token": reauthToken, "if-match": maintenanceOn.json.version },
+        },
+      );
+      expect(off.json).toMatchObject({ active: false });
+      const resumed = await step("get", "/public/config", "/public/config", 200);
+      expect(resumed.json.maintenance).toMatchObject({ active: false });
     } finally {
-      // Pemulihan hanya lewat database (inilah dampak D7-01).
-      await sql`
-        update app.app_settings set value = '{"active": false, "message": null, "until": null}'::jsonb,
-               version = version + 1 where key = 'maintenance'`;
-      app.get(SettingsService).invalidate("maintenance");
-      worker.app.get(SettingsService).invalidate("maintenance");
+      // Jaring pengaman bila langkah di atas gagal sebelum maintenance dimatikan lewat API: perjalanan lain tidak
+      // boleh ikut terkena 503.
+      const [current] = await sql<{ active: boolean }[]>`
+        select (value ->> 'active')::boolean as active from app.app_settings where key = 'maintenance'`;
+      if (current?.active) {
+        await sql`
+          update app.app_settings set value = '{"active": false, "message": null, "until": null}'::jsonb,
+                 version = version + 1 where key = 'maintenance'`;
+        app.get(SettingsService).invalidate("maintenance");
+        worker.app.get(SettingsService).invalidate("maintenance");
+      }
     }
   });
 });
