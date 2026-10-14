@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kapdh_mobile/app/theme/kapdh_tokens.dart';
 import 'package:kapdh_mobile/core/session/session_controller.dart';
 import 'package:kapdh_mobile/design/design.dart';
+import 'package:kapdh_mobile/features/auth/auth_flow.dart';
 import 'package:kapdh_mobile/features/auth/login_screen.dart';
 
 import '../../support/app_harness.dart';
@@ -127,6 +129,62 @@ void main() {
     await fillAndSubmit(tester);
     expect(app.location, '/payments/pay-1');
     expect(find.text('Status Pembayaran'), findsWidgets);
+  });
+
+  testWidgets('F-02, guideline hal. 5: pita hijau bermotif dengan logo, "Datang kembali !!!" emas, toggle password', (
+    tester,
+  ) async {
+    await pumpApp(tester, handler: apiRoutes({}));
+    final header = tester.widget<BrandHeader>(find.byType(BrandHeader));
+    expect(header.pattern, isTrue);
+    expect(find.bySemanticsLabel('Logo KAPDH'), findsOneWidget);
+
+    final greeting = tester.widget<Text>(find.textContaining('Datang kembali !!!'));
+    final spans = (greeting.textSpan! as TextSpan).children!.cast<TextSpan>();
+    expect(spans.firstWhere((s) => s.text == 'Datang kembali !!!').style!.color, KapdhColors.accent);
+    expect(spans.firstWhere((s) => s.text!.startsWith('Selamat')).style!.color, KapdhColors.textOnDark);
+
+    TextField password() => tester.widget<TextField>(
+      find.descendant(of: find.byKey(const ValueKey('login-password')), matching: find.byType(TextField)),
+    );
+    expect(password().obscureText, isTrue);
+    await tester.tap(find.byTooltip('Tampilkan password'));
+    await tester.pump();
+    expect(password().obscureText, isFalse);
+    await tester.tap(find.byTooltip('Sembunyikan password'));
+    await tester.pump();
+    expect(password().obscureText, isTrue);
+
+    final forgot = tester.widget<TextButton>(find.byKey(const ValueKey('login-forgot')));
+    expect(forgot.style!.textStyle!.resolve({})!.decoration, TextDecoration.underline);
+    expect(tester.getSize(find.byKey(const ValueKey('login-forgot'))).height, greaterThanOrEqualTo(48));
+  });
+
+  testWidgets('F-02: Lupa Password membuka pemulihan dengan email yang sudah diketik', (tester) async {
+    final app = await pumpApp(tester, handler: apiRoutes({}));
+    await tester.enterText(emailField, 'ahmad@email.com');
+    await tester.pump();
+    await scrollAndTap(tester, find.byKey(const ValueKey('login-forgot')));
+    await settle(tester);
+    expect(app.location, '/forgot');
+    expect(find.text('ahmad@email.com'), findsOneWidget);
+  });
+
+  testWidgets('AC F02-1: login akun pending_otp yang emailnya pernah dikoreksi membuka OTP email_change', (
+    tester,
+  ) async {
+    final app = await pumpApp(
+      tester,
+      handler: apiRoutes({
+        '/auth/login': (_) =>
+            FakeResponse.json(200, {'next': 'verify_otp', 'challenge': otpChallengeJson(purpose: 'email_change')}),
+      }),
+    );
+    await fillAndSubmit(tester, email: 'ahmad.benar@email.com');
+    expect(app.location, '/register/otp');
+    expect(find.textContaining('dikirim ke email baru ahmad.benar@email.com'), findsOneWidget);
+    // Kredensial hanya di memori untuk pemulihan hasil verifikasi yang tidak diketahui (kontrak C1).
+    expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.benar@email.com');
   });
 
   testWidgets('akun pending_otp diarahkan ke OTP dengan challenge baru (AC F02-1)', (tester) async {
