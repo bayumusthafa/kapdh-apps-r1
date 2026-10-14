@@ -119,7 +119,9 @@ Uji widget memakai HTTP palsu; bukti AC utama ada di API (PRD 7.3). Alur nyata t
 ## Rilis
 
 1. Naikkan `version` di `pubspec.yaml` (`x.y.z+build`); `min_app_version` di web admin dinaikkan hanya setelah versi
-   itu dapat diunduh di toko (PRD 8.4).
+   itu dapat diunduh di toko (PRD 8.4). Versi saat ini `0.1.0+1` berada di bawah `min_app_version` seed (`1.0.0`),
+   sehingga setiap mutasi dari build ini ditolak 426 `UPGRADE_REQUIRED` di staging/production; build UAT dan rilis
+   memakai `1.0.0+n` atau lebih.
 2. Build rilis di CI (tidak ada Java/Xcode di mesin pengembang):
    `flutter build appbundle --dart-define-from-file=<production.json dari secret CI>` dan
    `flutter build ipa --dart-define-from-file=<...>`. Berkas memuat `KAPDH_ENV=production`,
@@ -132,6 +134,10 @@ Uji widget memakai HTTP palsu; bukti AC utama ada di API (PRD 7.3). Alur nyata t
 
 ## Tindak lanjut rilis
 
+- **Pemblokir submit (D13 mitigasi 1):** beberapa teks masih mengaitkan iuran/perpanjangan dengan membuka fitur
+  ("`<tab>` terkunci", "Perpanjang KTA untuk membuka kembali fitur ini", "mengaktifkan KTA dan fitur alumni"). Daftar
+  berkas, arah penulisan ulang, dan perintah pemeriksaan ada di `../docs/runbooks/app-store-submission.md` bagian 2;
+  uji widget yang memeriksa teks itu ikut diperbarui.
 - Bundel TTF Poppins sebagai aset dan matikan `GoogleFonts.config.allowRuntimeFetching` (saat ini Poppins diunduh
   saat runtime dari server Google dengan font sistem sebagai cadangan; ARCHITECTURE §8.1). Selama belum dibundel,
   permintaan itu harus diungkap di formulir privasi toko.

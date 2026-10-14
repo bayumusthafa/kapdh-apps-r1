@@ -4,19 +4,19 @@ Monorepo KAPDH Apps sesuai PRD v3.5: API, worker, web admin, situs publik, dan p
 Node 24). Aplikasi anggota Flutter ada di `../kapdh-mobile` (dipisah ke repo sendiri saat rilis, ADR-001). Gambaran
 seluruh repo, jalur mulai cepat tanpa Docker/dengan Docker, dan aturan kontribusi: `../README.md`.
 
-| Path                     | Isi                                                                                                                               | Keadaan R1.0                                                                             |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `apps/api`               | NestJS 11 + Fastify, REST `/api/v1`, Socket.IO `/realtime`, 14 modul domain, prosesor job                                         | F-01..F-17 lengkap; uji PGlite + PostgreSQL 17 (`docs/qa/traceability.md`)               |
-| `apps/worker`            | Runtime outbox, BullMQ/inline, penjadwal dengan leader, `/healthz` (`apps/worker/README.md`)                                      | Lengkap; jalur BullMQ belum diuji terhadap Redis nyata                                   |
-| `apps/admin`             | React 19, Vite 8, TanStack Router/Query/Table, Tailwind 4                                                                         | Semua area ARCHITECTURE §7 tersambung API nyata; mode mock untuk pengembangan/uji        |
-| `apps/web`               | Astro static `kapdh.or.id`: beranda, `/kta/<nomor>#t=`, `/delete-account`, halaman legal, kontak, unduh                           | Lengkap; gerbang CSP saat build                                                          |
-| `packages/contracts`     | OpenAPI 3.1 (24 domain), skema event realtime, tipe TS, SDK Dart `kapdh_api` (ADR-002)                                            | Versi 0.2.0                                                                              |
-| `packages/database`      | Skema Drizzle (skema `app`), migrasi `0000`-`0007`, CLI migrasi, seed (`packages/database/README.md`)                             | Lengkap                                                                                  |
-| `packages/shared`        | Katalog galat → UI, rute per status, aturan sandi                                                                                 | Lengkap                                                                                  |
-| `packages/config`        | Validasi environment API/worker (aturan production)                                                                               | Lengkap                                                                                  |
-| `packages/storage`       | StorageDriver disk lokal dan S3-compatible                                                                                        | Lengkap                                                                                  |
-| `packages/design-tokens` | Token Guidelines KAPDH → CSS dan Dart                                                                                             | Lengkap                                                                                  |
-| `infra/`                 | `Dockerfile.{api,worker,web}`, `docker-compose.yml` (dev), `nginx-web.conf`, `db/roles.sql`, `ci/github-actions-ci.yml` (templat) | Image belum pernah dibangun di mesin build (tanpa Docker); paket infra Fase E melengkapi |
+| Path                     | Isi                                                                                                                               | Keadaan R1.0                                                                                                                                                                 |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api`               | NestJS 11 + Fastify, REST `/api/v1`, Socket.IO `/realtime`, 14 modul domain, prosesor job                                         | F-01..F-17 lengkap; uji PGlite + PostgreSQL 17 (`docs/qa/traceability.md`)                                                                                                   |
+| `apps/worker`            | Runtime outbox, BullMQ/inline, penjadwal dengan leader, `/healthz` (`apps/worker/README.md`)                                      | Lengkap; jalur BullMQ belum diuji terhadap Redis nyata                                                                                                                       |
+| `apps/admin`             | React 19, Vite 8, TanStack Router/Query/Table, Tailwind 4                                                                         | Semua area ARCHITECTURE §7 tersambung API nyata; mode mock untuk pengembangan/uji                                                                                            |
+| `apps/web`               | Astro static `kapdh.or.id`: beranda, `/kta/<nomor>#t=`, `/delete-account`, halaman legal, kontak, unduh                           | Lengkap; gerbang CSP saat build                                                                                                                                              |
+| `packages/contracts`     | OpenAPI 3.1 (24 domain), skema event realtime, tipe TS, SDK Dart `kapdh_api` (ADR-002)                                            | Versi 0.2.0                                                                                                                                                                  |
+| `packages/database`      | Skema Drizzle (skema `app`), migrasi `0000`-`0007`, CLI migrasi, seed (`packages/database/README.md`)                             | Lengkap                                                                                                                                                                      |
+| `packages/shared`        | Katalog galat → UI, rute per status, aturan sandi                                                                                 | Lengkap                                                                                                                                                                      |
+| `packages/config`        | Validasi environment API/worker (aturan production)                                                                               | Lengkap                                                                                                                                                                      |
+| `packages/storage`       | StorageDriver disk lokal dan S3-compatible                                                                                        | Lengkap                                                                                                                                                                      |
+| `packages/design-tokens` | Token Guidelines KAPDH → CSS dan Dart                                                                                             | Lengkap                                                                                                                                                                      |
+| `infra/`                 | `Dockerfile.{api,worker,web}`, `docker-compose.yml` (dev), `nginx-web.conf`, `db/roles.sql`, `ci/github-actions-ci.yml` (templat) | Image belum pernah dibangun di mesin build (tanpa Docker); `Dockerfile.api` gagal di `pnpm deploy` tanpa `--legacy` (pnpm 10); paket infra Fase E memperbaiki dan melengkapi |
 
 ## Menjalankan di lokal
 
@@ -34,6 +34,8 @@ Stack lengkap butuh PostgreSQL 17 (native atau `docker compose -f infra/docker-c
 
 ```bash
 cp .env.example .env                                   # kosongkan REDIS_URL/SMTP_URL bila tanpa Redis/Mailpit
+# STORAGE_LOCAL_ROOT absolut: API (apps/api) dan worker (apps/worker) harus memakai folder berkas yang sama
+sed -i "s|^STORAGE_LOCAL_ROOT=.*|STORAGE_LOCAL_ROOT=$(pwd)/.data/files|" .env   # Git Bash: $(pwd -W)
 export DATABASE_URL=postgres://kapdh:kapdh-dev-only@localhost:5432/kapdh
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/db/roles.sql
 pnpm --filter @kapdh/database migrate                  # CLI database membaca DATABASE_URL dari environment, bukan .env
@@ -69,13 +71,14 @@ Super Admin berikutnya diundang dari web admin (Manajemen Admin). Prosedur produ
 
 ### CLI operasional lain
 
-| Perintah                                                                                                             | Kegunaan                                                                                               |
-| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `pnpm --filter @kapdh/database migrate` / `node node_modules/@kapdh/database/dist/bin/migrate.js` (image)            | Job migrasi tunggal dengan advisory lock (PRD 5.5); login `kapdh_migrator`                             |
-| `pnpm --filter @kapdh/database seed:reference` / `.../dist/bin/seed-reference.js`                                    | Seed referensi aman production (idempoten, tanpa fixture)                                              |
-| `pnpm --filter @kapdh/database seed:dev`                                                                             | Fixture `[Contoh]` untuk dev/staging; menolak `NODE_ENV=production`                                    |
-| `pnpm --filter @kapdh/api account:ledger-reapply --dir <folder>` / `node dist/modules/account/ledger-reapply.cli.js` | Terapkan ulang deletion ledger setelah restore, sebelum layanan dibuka (AC F14-6, ADR-014); env worker |
-| `psql "$ADMIN_DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/db/roles.sql`                                                | Role dan grant; sebelum migrasi pertama dan setelah setiap migrasi (ADR-007)                           |
+| Perintah                                                                                                             | Kegunaan                                                                                                                                     |
+| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter @kapdh/database migrate` / `node node_modules/@kapdh/database/dist/bin/migrate.js` (image)            | Job migrasi tunggal dengan advisory lock (PRD 5.5); login `kapdh_migrator`                                                                   |
+| `pnpm --filter @kapdh/database seed:reference` / `.../dist/bin/seed-reference.js`                                    | Seed referensi aman production (idempoten, tanpa fixture)                                                                                    |
+| `pnpm --filter @kapdh/database seed:dev`                                                                             | Fixture `[Contoh]` untuk dev/staging; menolak `NODE_ENV=production`                                                                          |
+| `pnpm --filter @kapdh/api account:ledger-reapply --dir <folder>` / `node dist/modules/account/ledger-reapply.cli.js` | Terapkan ulang deletion ledger setelah restore, sebelum layanan dibuka (AC F14-6, ADR-014, `../docs/runbooks/restore-backup.md`); env worker |
+| `pnpm --filter @kapdh/api account:status -- --action disable --email <e> --reason "<r>" --approved-by "<n>"`         | Status akun alumni `disabled` (`disable`/`enable`/`delete`), diaudit (`../docs/runbooks/alumni-account-disabled.md`); env worker             |
+| `psql "$ADMIN_DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/db/roles.sql`                                                | Role dan grant; sebelum migrasi pertama dan setelah setiap migrasi (ADR-007)                                                                 |
 
 ## Environment
 
@@ -95,12 +98,12 @@ Skema dan aturan: `packages/config/src/index.ts`; contoh berkomentar: `.env.exam
 
 ## Endpoint operasional
 
-| Endpoint                                    | Fungsi                                                                                                                      |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/v1/health`                        | Liveness API (tanpa dependensi)                                                                                             |
-| `GET /api/v1/health/ready`                  | Kesiapan: PostgreSQL, Redis (bila dikonfigurasi), storage; `outbox_oldest_pending_seconds`; 503 bila dependensi wajib gagal |
-| `GET /api/v1/public/config`                 | Versi minimum, maintenance, tautan toko, kontak, versi legal (dibaca aplikasi saat splash)                                  |
-| Worker `GET /healthz` (port 3001, internal) | DB, antrean, dispatcher, penjadwal; `status` `ok`/`degraded`/`error`/`stopping`                                             |
+| Endpoint                                    | Fungsi                                                                                                                                                                                                                                          |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/health`                        | Liveness API (tanpa dependensi)                                                                                                                                                                                                                 |
+| `GET /api/v1/health/ready`                  | Kesiapan: PostgreSQL, Redis (bila dikonfigurasi), storage, `deletion_ledger` (503 sampai ledger diterapkan setelah restore); `outbox_oldest_pending_seconds`; 503 bila dependensi wajib gagal. Healthcheck orkestrator API memakai endpoint ini |
+| `GET /api/v1/public/config`                 | Versi minimum, maintenance, tautan toko, kontak, versi legal (dibaca aplikasi saat splash)                                                                                                                                                      |
+| Worker `GET /healthz` (port 3001, internal) | DB, antrean, dispatcher, penjadwal; `status` `ok`/`degraded`/`error`/`stopping`                                                                                                                                                                 |
 
 ## CI
 

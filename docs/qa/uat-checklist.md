@@ -22,10 +22,17 @@ untuk AC (PRD 7.3). Smoke test production (`docs/runbooks/go-live.md` 3.1) memak
 | --- | ----- |
 | Lingkungan | `https://staging-api.kapdh.or.id`, `https://staging-admin.kapdh.or.id`, `https://staging.kapdh.or.id` |
 | Tag rilis / image (digest) | |
-| Build Android / iOS | |
+| Build Android / iOS (versi wajib >= `min_app_version` staging) | |
+| `min_app_version` staging (Pengaturan) | |
 | SDK kontrak | `contracts-v` |
 | Perangkat (D7: Android 8.0+, iOS 15+) | minimal 1 Android lama (API 26-28), 1 Android baru, 1 iPhone iOS 15/16, 1 iPhone terbaru |
 | Peramban (dua versi terakhir) | Chrome, Edge, Firefox, Safari desktop |
+
+Sebelum langkah mobile mana pun: versi build (`pubspec.yaml` `version`, dikirim sebagai `X-App-Version`) harus >=
+`min_app_version` lingkungan. Seed referensi mengisi `1.0.0`, sedangkan pubspec saat ini `0.1.0+1`, sehingga semua
+mutasi dari build itu ditolak 426 `UPGRADE_REQUIRED`. Pakai build `1.0.0+n` atau lebih, atau (staging saja) samakan
+`min_app_version` dengan versi build lewat Pengaturan dan catat nilainya di tabel ini. U-13 13.7 menguji penolakan ini
+secara sengaja.
 
 ### Peran dan akun uji
 
@@ -40,7 +47,7 @@ untuk AC (PRD 7.3). Smoke test production (`docs/runbooks/go-live.md` 3.1) memak
 | AK | Admin konten (`content.manage`) | Undangan SA |
 | AE | Admin event (`events.manage`, `events.checkin`) | Undangan SA |
 | CI | Petugas check-in (`events.checkin` saja) | Undangan SA |
-| MD | Moderator (`moderation.read`, `moderation.resolve`) | Undangan SA |
+| MD | Moderator (`moderation.read`, `moderation.resolve`, `members.read`) | Undangan SA. `members.read` diperlukan untuk suspend/unsuspend dari Detail anggota (`adminSuspendMember`/`adminUnsuspendMember` meminta ketiga izin); tanpa itu hanya jalur laporan (6.9) yang tersedia |
 | AU | Auditor (`audit.read`, `audit.export`) | Undangan SA |
 | PUB | Pemeriksa KTA publik (tanpa akun) | Peramban/ponsel lain |
 | PI | Pengelola infra | - |
@@ -57,9 +64,9 @@ untuk AC (PRD 7.3). Smoke test production (`docs/runbooks/go-live.md` 3.1) memak
 | U-06 Jejaring | F-10, F-12 | covered | | |
 | U-07 Chat | F-11, F-12; N-02 | partial (latensi N-02 belum diukur) | | |
 | U-08 Notifikasi | F-13 | covered | | |
-| U-09 Data pribadi | F-14; N-09, N-10, N-15 | partial (urutan ledger sebelum layanan dibuka, D2-01) | | |
+| U-09 Data pribadi | F-14; N-09, N-10, N-15 | partial per `traceability.md` (D2-01); sejak hardening Fase D readiness menahan API sampai ledger diterapkan (ADR-014), drill restore staging belum | | |
 | U-10 Pengurus | F-15, F-16, F-17 | covered | | |
-| U-11 Operasi | N-01..N-06; N-14 | partial (tanpa beban, restore, alert) | | |
+| U-11 Operasi | N-01..N-06; N-14 | partial (tanpa beban, restore, alert; alat backup belum di `main`) | | |
 | U-12 Inisialisasi produksi | PRD 8.2, 8.3 | partial (tanpa gerbang otomatis, D2-02) | | |
 | U-13 Klien | N-03, N-11, N-12, N-13 | partial (tanpa matriks perangkat/a11y) | | |
 
@@ -91,7 +98,7 @@ terakhir.
 | 1.17 | SA | Cabut izin `payments.decide` dari AP saat AP membuka antrean | Request AP berikutnya ditolak 403 tanpa menunggu token habis (AC F16-3) | | | |
 | 1.18 | SA, SA2 | Pada staging dengan tepat dua Super Admin: keduanya saling menurunkan peran bersamaan (dua peramban) | Tepat satu berhasil; minimal satu Super Admin tersisa (AC F16-2, PRD 9.2) | | | |
 | 1.19 | SA | Detail anggota AG-A → reset sandi | Sesi AG-A dicabut, notifikasi keamanan, email kode + tautan `kapdh://app/forgot/otp?...`; pengurus tidak melihat sandi (AC F16-4) | | | |
-| 1.20 | PI | `curl -sI https://staging-api.kapdh.or.id/api/v1/health`; uji WSS; pindai port 5432/6379 dari luar | HTTPS + header keamanan; WSS berfungsi; DB/Redis tertutup (N-07) | | | |
+| 1.20 | PI | Jalankan blok gerbang transport `go-live.md` 2.4 dengan host staging (`staging.kapdh.or.id`, `staging-admin.kapdh.or.id`, `staging-api.kapdh.or.id`); pindai port 5432/6379 dari luar | Semua host HTTPS dengan header sesuai tabel 2.4 (CSP + `frame-ancestors 'none'`/`X-Frame-Options` di situs publik dan admin, HSTS setelah diaktifkan); WSS `101`; DB/Redis tertutup (N-07) | | | |
 
 ## U-02 Iuran (F-03, F-04, F-07)
 
@@ -112,7 +119,7 @@ Bukti: approve/reject/resubmit; bukti versi sebelumnya; double approval; periode
 | 2.11 | BD/SA | Ubah nominal `fees` setelah AG-B membuat instruksi; AP memutus payment AG-B | Nominal snapshot lama tetap (AC F03-5, F15-3) | | | |
 | 2.12 | AG-E | Perpanjangan → bayar → disetujui | Periode baru mulai dari `expires_at` lama; sisa masa tidak hilang (AC F07-1) | | | |
 | 2.13 | AG-X | Perpanjangan → bayar → disetujui | Periode dari waktu persetujuan; akses aktif kembali (AC F07-2) | | | |
-| 2.14 | MD, AP | Suspend AG-A; AG-A punya renewal pending; AP menyetujui | Periode boleh diperbarui, status tetap suspended (AC F07-4, PRD 2.2) | | | |
+| 2.14 | MD, AP | MD: Manajemen Users → Data Alumni → detail AG-A → "Batasi akun" (butuh `members.read` + `moderation.read` + `moderation.resolve`); AG-A punya renewal pending; AP menyetujui | Periode boleh diperbarui, status tetap suspended (AC F07-4, PRD 2.2) | | | |
 | 2.15 | AP | Notifikasi push/email dimatikan atau provider gagal (staging: SMTP salah sementara) lalu putuskan | Keputusan tetap tersimpan, inbox tersedia, worker mengulang tanpa perpanjangan ganda (AC F04-5) | | | |
 | 2.16 | AP | Payment paid → Penyesuaian → buat koreksi | Paid tidak berubah; penyesuaian tercatat terpisah dengan audit (PRD 3.4, ARCHITECTURE §2 butir 13) | | | |
 
@@ -129,7 +136,7 @@ Bukti: cache 7 hari, logout/expiry, signature tamper, status online terkini, dat
 | 3.5 | PUB | Pindai QR AG-E | Aktif dengan tanggal habis (AC F06-1) | | | |
 | 3.6 | PUB | Pindai QR AG-U, AG-X, akun suspended, nomor yang tidak ada / akun dihapus | Masing-masing Tidak aktif / Kedaluwarsa / Tidak ditemukan tanpa alasan privat (AC F06-2) | | | |
 | 3.7 | PUB | Ubah satu karakter token di fragmen `#t=` | "QR tidak valid atau perlu diperbarui"; tidak pernah Aktif (AC F06-3) | | | |
-| 3.8 | MD | Suspend AG-A; AG-A online lagi dengan kartu offline | Kartu tidak lagi tampil aktif; verifikasi publik Tidak aktif (AC F05-4, F12-4) | | | |
+| 3.8 | MD | Suspend AG-A dari Detail anggota (izin seperti 2.14) atau lewat keputusan laporan; AG-A online lagi dengan kartu offline | Kartu tidak lagi tampil aktif; verifikasi publik Tidak aktif (AC F05-4, F12-4) | | | |
 | 3.9 | SA | Detail anggota → koreksi kelas keluar sehingga SS berubah | Nomor berubah prefiks, N tetap, audit nomor lama/baru, QR lama "perlu diperbarui" (AC F05-6) | | | |
 | 3.10 | PUB | Matikan jaringan setelah halaman `/kta` terbuka, pindai | "Tidak dapat memverifikasi" + coba lagi, bukan Tidak ditemukan (AC F06-4) | | | |
 
@@ -231,7 +238,7 @@ Bukti: deletion parsial/retry, anonimisasi snapshot/log, konten user, web reques
 | 9.3 | PI | Hentikan worker di tengah job penghapusan, jalankan lagi | Langkah dilanjutkan tanpa menyentuh data pengguna lain (AC F14-2) | | | |
 | 9.4 | SA | Setelah selesai: periksa anggota terhapus di web admin dan basis data staging | Kredensial, profil, kontak, token, avatar, unggahan dihapus; pesan chat placeholder; payment/tiket tersisa anonim dengan jumlah tetap; bukti transfer dihapus (AC F14-3, F14-4) | | | |
 | 9.5 | AG-A | Hapus akun saat menjadi admin grup terakhir | Grup dialihkan atau ditutup tanpa menunggu anggota lain (AC F14-5) | | | |
-| 9.6 | PI | Restore backup sebelum penghapusan ke lingkungan bersih → `ledger-reapply` → baru buka layanan | Akun terhapus tidak aktif kembali; total keuangan cocok (AC F14-6, PRD 9.2). Urutan "sebelum dibuka" dijaga runbook (D2-01) | | | |
+| 9.6 | PI | Restore backup sebelum penghapusan ke lingkungan bersih mengikuti `docs/runbooks/restore-backup.md`; hanya database yang dipulihkan, storage tetap terkini; untuk menguji gerbang, nyalakan satu replika API staging sebelum `ledger-reapply` dan amati `GET /api/v1/health/ready` (replika tidak menerima trafik karena healthcheck memakai readiness) → `ledger-reapply` → readiness lagi | Sebelum penerapan ulang: 503 dengan `"deletion_ledger": "fail"`; sesudahnya 200 dengan `"ok"`. Akun terhapus tidak aktif kembali; nomor anggota sesudah titik backup tidak terbit ulang; total keuangan cocok (AC F14-6, PRD 9.2) | | | |
 | 9.7 | QA | Cari NIK/KTP di formulir registrasi, ekspor CSV audit, log API/worker | Tidak ada (N-09) | | | |
 | 9.8 | AG-A | Unggah gambar > 5 MB, PDF > 10 MB, PDF sebagai avatar, berkas `.jpg` berisi teks, 11 unggahan bukti dalam 24 jam | Semua ditolak `FILE_INVALID`/429 sesuai aturan; EXIF foto dibuang (N-10) | | | |
 | 9.9 | AG-B | Registrasi baru: periksa bawaan privasi | Telepon, email, sosial tersembunyi secara bawaan (N-15) | | | |
@@ -264,7 +271,7 @@ kondisi PRD 2.4 (VPS sasaran, 100 sesi anggota, 5 sesi admin, 5.000 profil, 100.
 | 11.2 | PI | Uji realtime 100 sesi | p95 commit → tampil <= 2 detik; reconnect tanpa kehilangan/duplikasi (N-02) | | | |
 | 11.3 | PI | Naikkan beban bertahap sampai target gagal | Titik jenuh dan rencana kapasitas tercatat (N-04, D7) | | | |
 | 11.4 | PI | Monitor eksternal aktif 30 hari staging/production | Laporan ketersediaan; target usulan 99,5 % (N-05) | | | |
-| 11.5 | PI | Backup harian → restore ke lingkungan bersih, ukur waktu | RPO <= 24 jam, RTO <= 4 jam terbukti (N-06); ledger diterapkan sebelum dibuka | | | |
+| 11.5 | PI | Backup harian (alat paket backup-ops Fase E; belum di `main`) → restore ke lingkungan bersih mengikuti `restore-backup.md`, ukur waktu | RPO <= 24 jam dan RTO <= 4 jam terbukti (N-06; melebihi = Gagal); ledger diterapkan sebelum dibuka; pemeriksaan PRD 5.5 (login/MFA, anggota, total uang, tiket, chat, berkas, penghapusan terdahulu) lulus | | | |
 | 11.6 | PI | Matikan worker 10 menit lalu nyalakan; matikan Redis 1 menit | Alert terkirim (worker `/healthz`, readiness); outbox diproses ulang sekali (PRD 9.2, 5.1) | | | |
 | 11.7 | PI | Ambil `request_id` dari galat aplikasi; telusuri log API, worker, audit | Terhubung dengan `request_id`/`job_id`; tidak ada sandi/OTP/token/isi chat/bukti di log (N-14) | | | |
 | 11.8 | PI | Isi disk sampai 60 %/80 % (atau ubah ambang monitor sementara) | Alert warning/critical (PRD 5.4) | | | |
@@ -283,7 +290,7 @@ akun reviewer toko, restore dari backup pertama.
 | 12.5 | SA, BD, PP | Langkah 4 (master, legal, nominal, metode, kontak, versi minimum) | Blok SQL `go-live.md` 2.3 memenuhi semua target | | | |
 | 12.6 | QA | Registrasi sebelum legal terbit | Ditolak (409) sampai kebijakan privasi + ketentuan terbit | | | |
 | 12.7 | PP | Akun demo reviewer (`app-store-submission.md` bagian 3) | Akun aktif dan belum bayar dapat login di build rilis | | | |
-| 12.8 | PI | Backup pertama → restore bersih | Readiness 200, login admin + MFA berhasil | | | |
+| 12.8 | PI | Backup pertama → restore bersih mengikuti `restore-backup.md` | Readiness 200 dengan `"deletion_ledger": "ok"`, login admin + MFA berhasil | | | |
 | 12.9 | QA | PRD 9.2 skenario 9: ubah data staging agar satu butir gerbang gagal (mis. metode bayar contoh) | Gerbang `go-live.md` 2.3 menunjukkan butir gagal dan go-live ditolak | | | |
 
 ## U-13 Klien (N-03, N-11, N-12, N-13)

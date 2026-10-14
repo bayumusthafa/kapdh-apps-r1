@@ -9,7 +9,7 @@ Payments. Keputusan teknis: ADR-015 (fallback iOS), ADR-016 (konfigurasi build),
 
 ## 1. Akun, identitas aplikasi, dan prasyarat build
 
-| Hal | Nilai | Status di repo (`main` fccd56e) |
+| Hal | Nilai | Status di repo (`main` 14 Oktober 2026, setelah hardening API Fase D) |
 | --- | ----- | ------------------------------- |
 | Akun | Apple Developer Program (USD 99/tahun) dan Google Play Console (USD 25 sekali) atas nama organisasi dengan D-U-N-S (D10) | Di luar repo; PP |
 | ID aplikasi | `id.or.kapdh.app` (Android `applicationId`, iOS `PRODUCT_BUNDLE_IDENTIFIER`) | Ada |
@@ -41,13 +41,47 @@ langsung. Keduanya dibayar lewat transfer manual ke rekening organisasi di luar 
 Aturan teks (aplikasi, listing, catatan reviewer, tangkapan layar):
 
 - Pakai "iuran keanggotaan", "iuran pendaftaran", "iuran perpanjangan", "KTA (Kartu Tanda Anggota)", "tiket acara".
-- **Jangan** pakai "upgrade", "premium", "langganan", "buka fitur", "berlangganan", "pro", atau harga yang
-  dibandingkan dengan fitur. Teks aplikasi sudah mengikuti aturan ini
-  (`kapdh-mobile/lib/features/payments/payment_presentation.dart`).
+- **Jangan** pakai "upgrade", "premium", "langganan", "buka fitur", "berlangganan", "pro", "terkunci", "membuka
+  (kembali) fitur", "mengaktifkan fitur", atau harga yang dibandingkan dengan fitur. Status keanggotaan ditulis sebagai
+  status organisasi ("anggota aktif", "keanggotaan diperbarui pengurus setelah iuran organisasi diverifikasi"), bukan
+  sebagai kunci fitur aplikasi.
 - Jelaskan bahwa status anggota diverifikasi pengurus organisasi dari bukti transfer (bukan pembelian otomatis), dan
   bahwa direktori, chat, dan reservasi event adalah layanan bagi anggota organisasi yang terverifikasi (PRD 2.2).
 - Risiko yang tersisa (D13): Apple 3.1.1 dapat menilai bahwa pembayaran membuka fitur di aplikasi. Rencana cadangan
   ada di bagian 6.
+
+**Status teks aplikasi: BELUM sesuai (pemblokir submit, pemilik: mobile).** Judul jenis pembayaran sudah memakai
+istilah iuran keanggotaan (`kapdh-mobile/lib/features/payments/payment_presentation.dart`), tetapi teks lain
+mengaitkan iuran/perpanjangan dengan "membuka" atau "mengaktifkan" fitur aplikasi, persis pemicu 3.1.1 yang hendak
+dihindari mitigasi D13 butir 1. Ditemukan 14 Oktober 2026 dengan pemeriksaan di bawah:
+
+| Berkas (`kapdh-mobile/lib/`) | Teks yang bermasalah |
+| ---------------------------- | -------------------- |
+| `app/app_shell.dart:55`, `:156` | label semantik "`<tab>`, terkunci" dan judul lembar "`<tab>` terkunci" |
+| `app/app_shell.dart:131` | "... hanya untuk anggota aktif. Perpanjang KTA untuk membuka kembali fitur ini." |
+| `features/kta/kta_presentation.dart:51`, `:54`, `:56` | "Seluruh fitur alumni aktif ..." |
+| `features/kta/kta_presentation.dart:70` | "Selesaikan iuran pendaftaran untuk mengaktifkan KTA dan fitur alumni." |
+| `features/kta/kta_presentation.dart:76-77` | "Perpanjang untuk mengaktifkan kembali KTA dan fitur alumni" |
+| `features/home/home_screen.dart:296` | "Perpanjang KTA untuk kembali membuka berita, event, jejaring dan chat" |
+| `features/home/shared/member_gate.dart:35` | "Perpanjang KTA untuk membukanya kembali" |
+| `features/chat/chat_room_screen.dart:842` | "Perpanjang KTA untuk membuka kembali percakapan" |
+| `features/account/widgets/account_section.dart:103` | label semantik "terkunci" pada menu akun |
+
+Arah perbaikan (disahkan PP sebelum diubah): tulis sebagai status keanggotaan, mis. "Layanan untuk anggota
+terverifikasi. Status keanggotaan diperbarui pengurus setelah iuran organisasi diverifikasi." dan "Masa keanggotaan
+berakhir. Hubungi pengurus atau perpanjang keanggotaan organisasi.", tanpa "terkunci", "membuka", atau "mengaktifkan
+fitur". Uji widget yang memeriksa teks ini ikut diperbarui.
+
+Pemeriksaan sebelum setiap submit (dari root repo; hasil yang diharapkan: kosong, atau hanya baris yang sudah ditinjau
+PP dan dicatat bukan soal akses berbayar):
+
+```sh
+grep -rniE "'[^']*(terkunci|membuka (kembali )?fitur|membuka kembali percakapan|membukanya kembali|kembali membuka|fitur alumni|mengaktifkan (kembali )?KTA|upgrade|premium|langganan)[^']*'" \
+  kapdh-mobile/lib --include='*.dart' | grep -vE '^[^:]+:[0-9]+:[[:space:]]*//'
+```
+
+Pada 14 Oktober 2026 perintah ini mengembalikan 13 baris, tepat baris-baris pada tabel di atas. Pola ini hanya
+menangkap literal string berkutip tunggal; tinjau juga tangkapan layar toko dan teks listing secara manual.
 
 Deskripsi listing (draf, Bahasa Indonesia; disahkan PP):
 
@@ -138,7 +172,11 @@ Login needs only email and password. No one-time code is needed for these accoun
 Membership dues and event tickets:
 - Dues are the yearly membership fee of the real-world association (registration Rp50,000 + member card Rp10,000,
   renewal Rp10,000 per year). Members pay by bank transfer to the association's account outside the app and upload
-  the transfer receipt; the association's treasurer verifies it manually. No digital content or subscription is sold.
+  the transfer receipt; the association's treasurer verifies it manually and then records the person as an active
+  member of the association.
+- The member directory, member chat and event registration are services of the association for its verified
+  members, in the same way as a physical member card. They follow the membership status kept by the association;
+  the app itself does not sell digital content, credits or subscriptions.
 - Event tickets are for in-person alumni events and are paid the same way.
 - The app does not offer in-app purchases or any payment processing.
 
@@ -161,7 +199,8 @@ notifications are used for payment, membership, event and chat updates.
 ```
 
 Sebelum dikirim: ganti placeholder, pastikan nominal sama dengan `app_settings.fees` production, dan bahwa teks tidak
-menyebut fitur yang belum ada di build.
+menyebut fitur yang belum ada di build. Catatan ini hanya jujur bila teks aplikasi di bagian 2 sudah diperbaiki;
+selama build masih menampilkan "terkunci"/"membuka kembali fitur", reviewer melihat kontradiksi dengan catatan ini.
 
 ## 6. Rencana cadangan iOS (D13, ADR-015)
 
@@ -170,8 +209,9 @@ Pemicu: Apple menolak build dengan alasan 3.1.1 (pembayaran membuka fitur) dan b
 Prasyarat (cek semua sebelum mengaktifkan):
 
 - [ ] Web admin yang dirilis memiliki layar pencatatan iuran di luar aplikasi (`POST /admin/payments`,
-      `adminRecordPayment`). **Pada `main` fccd56e layar ini belum ada**; cabang hardening Fase D `D6-01`
-      ("Catat iuran") menambahkannya. Tanpa layar itu fallback tidak dapat dioperasikan pengurus.
+      `adminRecordPayment`). **Pada `main` 14 Oktober 2026 layar ini belum ada** (uji kontrak admin masih mencatat
+      "D6-01: adminRecordPayment ... belum memiliki layar"); cabang hardening admin Fase D (`D6-01`, "Catat iuran")
+      menambahkannya tetapi belum digabung. Tanpa layar itu fallback tidak dapat dioperasikan pengurus.
 - [ ] BD dan pengurus pembayaran memahami alur: anggota iOS membayar lewat instruksi yang dikirim pengurus (WhatsApp
       atau email), pengurus memverifikasi, lalu mencatat iuran dengan bukti yang diterima (kuota 10 bukti per admin
       per hari, ADR-011).
@@ -201,10 +241,26 @@ hanya pemilik yang dapat mengirim ulang bukti (PRD 4.3); keputusan PP masih terb
 | [R6] 1.2 UGC | Filter konten tidak pantas, laporan + respons tepat waktu, blokir, kontak | Laporkan pengguna/pesan/grup (`POST /reports`), blokir (`/blocks`), banding (`/appeals`), antrean moderasi web admin (`/moderation`, urgent 24 jam, lainnya 2 hari kerja), tindakan dismiss/warn/suspend + hapus pesan, `ketentuan-komunitas`, kontak `bantuan@kapdh.or.id`. Filter dasar (PRD 3.12, `apps/api/src/modules/chat/content-filter.ts`) menolak karakter kendali, pengubah arah teks, dan tautan `javascript:`/`vbscript:`/`data:` berbahaya pada pesan dan nama grup; **tidak ada** daftar kata kasar atau pemindaian gambar (sengaja, menunggu keputusan pengurus). Chat hanya untuk anggota terverifikasi. Keputusan PP apakah daftar kata ditambahkan sebelum submit | |
 | [R6] 1.2 persetujuan ketentuan | Pengguna menyetujui ketentuan yang menyatakan tidak ada toleransi terhadap konten tidak pantas/pengguna kasar | Registrasi wajib menyetujui `kebijakan-privasi` + `ketentuan` (`accept_policy_version`); naskah `ketentuan` wajib memuat pernyataan itu dan merujuk `ketentuan-komunitas` | |
 | [R6] 3.1 / [R7] | Pembayaran di luar sistem toko hanya untuk layanan/barang di dunia nyata | Bagian 2; tidak ada IAP atau pemrosesan pembayaran di aplikasi; fallback bagian 6 | |
+| D13 mitigasi 1 | Teks aplikasi tidak mengaitkan iuran dengan membuka fitur | Perintah `grep` bagian 2 kosong (atau sisa baris disahkan PP) pada commit build yang diajukan; tangkapan layar toko diperiksa manual. **Gagal per 14 Oktober 2026 (13 baris)** | |
 | [R6] 5.1.1 | Kebijakan privasi, izin dengan alasan jelas, data minimum | Bagian 4; teks izin kamera/galeri di `Info.plist` | |
+| Kebijakan privasi dapat dibaca tanpa JavaScript | URL kebijakan privasi yang diisi di kedua toko menampilkan naskah, bukan hanya kerangka | Lihat pemeriksaan di bawah tabel. **Gagal pada `main`**: halaman legal adalah kerangka statis yang memuat isi lewat JavaScript | |
 | [R6] 2.1 | Aplikasi lengkap dan backend aktif saat review | Production aktif (go-live langkah 4), akun demo bagian 3 | |
 | Google Play Data safety | Formulir lengkap dan konsisten dengan kebijakan privasi | Bagian 4 | |
 | Google Play target API | Target SDK sesuai persyaratan Play saat submit | Ditentukan Flutter 3.47 (`flutter.targetSdkVersion`); periksa saat build | |
+
+Kebijakan privasi tanpa JavaScript. `apps/web/src/pages/[slug].astro` hanya membangun kerangka halaman; isi dibaca saat
+runtime dari `GET /public/pages/{slug}`, dan tanpa JavaScript halaman hanya menampilkan "Aktifkan JavaScript untuk
+membaca versi terbaru halaman ini". Perayap review atau pemeriksaan otomatis yang tidak menjalankan JavaScript dapat
+menilai URL kebijakan privasi kosong. Periksa dengan kalimat yang pasti ada di naskah yang disahkan:
+
+```sh
+curl -s https://kapdh.or.id/kebijakan-privasi | grep -c "<kalimat dari naskah kebijakan privasi>"   # harus >= 1
+```
+
+Pada `main` hasilnya pasti 0: hasil build `apps/web/dist/kebijakan-privasi/index.html` (diperiksa 14 Oktober 2026)
+hanya memuat judul, kerangka `#info-body`, dan teks `noscript` di atas. Sebelum submit, pemilik situs publik dan PP memilih salah satu: render statis halaman legal saat
+build (build ulang setiap kali naskah terbit), atau salinan statis naskah yang disahkan di URL yang diisi ke toko dan
+diperbarui bersama setiap terbitan. Ulangi pemeriksaan pada URL final.
 
 ## 8. Bila ditolak
 

@@ -1,6 +1,7 @@
 # ADR-015: Rencana cadangan iOS untuk iuran (D13) lewat `app_settings.payment_instructions`
 
-- Status: Diterima (kontrak C3 Fase B, diterapkan Fase C); layar web admin "Catat iuran" belum ada di `main`
+- Status: Diterima (kontrak C3 Fase B, diterapkan Fase C); layar web admin "Catat iuran" belum ada di `main`, dan
+  teks aplikasi belum memenuhi mitigasi D13 butir 1 (Keputusan 4)
 - Tanggal dicatat: 14 Oktober 2026
 - Rujukan: PRD 3.3, 4.3, 9.3, 10.1 (D13), 10.2; [R6] Apple App Review Guidelines 3.1; [R7] Google Play Payments;
   handoff `docs/handoff/phase-b-contract-C3-finance.md`
@@ -31,8 +32,10 @@ waktu) dan tanpa memengaruhi tiket.
    (`adminRecordPayment`, izin `payments.read` + `payments.decide`, Idempotency-Key, pemeriksaan konflik kepentingan):
    satu transaksi membuat payment dari nominal `fees` saat ini, melampirkan bukti admin sebagai versi 1, menyetujui,
    menerapkan periode keanggotaan, audit, notifikasi dan outbox.
-4. Teks aplikasi menyebut "iuran keanggotaan organisasi"; tidak ada istilah upgrade, premium, atau buka fitur
-   (D13 mitigasi 1).
+4. Teks aplikasi menyebut "iuran keanggotaan organisasi" dan tidak memakai istilah upgrade, premium, langganan, atau
+   buka/aktifkan fitur (D13 mitigasi 1). **Belum terpenuhi di `main`**: judul jenis pembayaran sudah sesuai, tetapi
+   beberapa teks masih menulis tab "terkunci" dan "perpanjang KTA untuk membuka kembali fitur"; daftar lengkap dan
+   pemeriksaan `grep` ada di `docs/runbooks/app-store-submission.md` bagian 2 (pemblokir submit, pemilik mobile).
 
 ## Alternatif yang dipertimbangkan
 
@@ -43,9 +46,13 @@ waktu) dan tanpa memengaruhi tiket.
 
 ## Konsekuensi
 
-- Pada `main` (fccd56e) **belum ada layar web admin** untuk `adminRecordPayment` (catatan integrasi Fase C). Cabang
-  hardening Fase D (`D6-01`, "Catat iuran") menambahkannya. Fallback iOS **tidak boleh diaktifkan** di production
-  sebelum layar itu tersedia di build web admin yang dirilis, atau pengurus tidak dapat mengaktifkan anggota iOS.
+- Pada `main` (14 Oktober 2026, setelah hardening API Fase D) **belum ada layar web admin** untuk
+  `adminRecordPayment` (catatan integrasi Fase C; `apps/admin/src/api/mocks/contract-conformance.test.ts` mencatatnya
+  sebagai D6-01). Cabang hardening admin Fase D (`D6-01`, "Catat iuran") menambahkannya tetapi belum digabung.
+  Fallback iOS **tidak boleh diaktifkan** di production sebelum layar itu tersedia di build web admin yang dirilis,
+  atau pengurus tidak dapat mengaktifkan anggota iOS.
+- Mitigasi butir 4 belum terpenuhi (lihat Keputusan 4). Selama teks itu tersisa, risiko 3.1.1 lebih tinggi daripada
+  yang diasumsikan D13, dan catatan reviewer tidak boleh menyatakan bahwa tidak ada fitur yang dikunci.
 - Keputusan produk terbuka (handoff C3): anggota iOS dengan payment iuran `rejected` memblokir `adminRecordPayment`
   (409 dengan `current`) karena hanya pemilik yang dapat membuka ulang payment yang ditolak (PRD 4.3).
 - Kuota unggah N-10 membatasi admin pencatat pada 10 bukti per hari (ADR-011).

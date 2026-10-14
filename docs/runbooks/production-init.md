@@ -27,11 +27,11 @@ Langkah berikutnya: `docs/runbooks/go-live.md`. Persiapan toko aplikasi: `docs/r
 
 | Langkah PRD 8.2 | Isi | Pelaksana | Gerbang keluar |
 | --------------- | --- | --------- | -------------- |
-| 1 Infrastruktur | VPS, Coolify, DNS, TLS, secrets, firewall, backup luar VPS, monitoring | PI | Backup + restore database kosong terbukti |
+| 1 Infrastruktur | VPS, Coolify, DNS, TLS, header/HSTS, secrets, firewall, backup luar VPS, monitoring | PI | Image API/worker terbangun di CI; backup + restore database kosong terbukti |
 | 2 Skema | `roles.sql` → migrasi → `roles.sql` → seed referensi | PI | Migrasi tercatat sama dengan journal image; tanpa fixture dev |
-| 3 Bootstrap Super Admin | CLI sekali pakai, undangan + TOTP; Super Admin kedua lewat web admin | PI, SA | >= 2 Super Admin aktif ber-TOTP |
+| 3 Bootstrap Super Admin | CLI sekali pakai, undangan + TOTP; Super Admin kedua lewat web admin (butuh 5.1-5.2) | PI, SA | >= 2 Super Admin aktif ber-TOTP |
 | 4 Data referensi | Master, legal, nominal D4, metode bayar, kontak, versi minimum | SA, BD, PP | Semua nilai disahkan; tidak ada DRAF |
-| 5 Layanan eksternal | FCM/APNs, SPF/DKIM/DMARC `noreply@kapdh.or.id`, provider email (D10) | PI, DEV | Email dan push terkirim di smoke test |
+| 5 Layanan eksternal | Provider email (D10) + SPF/DKIM/DMARC `noreply@kapdh.or.id` (sebelum 3.4), FCM/APNs | PI, DEV | Email dan push terkirim di smoke test |
 | 6 Toko aplikasi | Akun Apple/Google organisasi, signing, listing, formulir privasi, akun demo | PP, DEV | Lihat `app-store-submission.md` |
 | 7 Gladi | Seluruh langkah dari nol di staging + smoke test semua peran + restore bersih | PI, QA | Laporan gladi disetujui |
 
@@ -47,19 +47,46 @@ Langkah berikutnya: `docs/runbooks/go-live.md`. Persiapan toko aplikasi: `docs/r
       (PRD 5.3). **[bukti]** keluaran pemindaian port dari luar VPS (mis. `nmap -Pn -p 22,80,443,5432,6379 <ip>`).
 - [ ] Panel Coolify di subdomain tersendiri dengan 2FA dan daftar pengelola yang tercatat.
 
-### 1.2 DNS dan TLS (D12)
+### 1.2 DNS, TLS, dan header keamanan (D12; N-07)
 
 | Nama | Isi | Staging |
 | ---- | --- | ------- |
-| `kapdh.or.id`, `www.kapdh.or.id` | situs publik (`apps/web`) | `staging.kapdh.or.id` |
+| `kapdh.or.id` | situs publik (`apps/web`) | `staging.kapdh.or.id` |
+| `www.kapdh.or.id` | **hanya** pengalihan permanen 301 ke `https://kapdh.or.id` (path dipertahankan) | tidak dipakai |
 | `admin.kapdh.or.id` | web admin (`apps/admin`) | `staging-admin.kapdh.or.id` |
 | `api.kapdh.or.id` | API + Socket.IO (`apps/api`) | `staging-api.kapdh.or.id` |
 
 - [ ] Record A/AAAA ke VPS; sertifikat TLS diterbitkan Traefik (Coolify). **[bukti]** `curl -sI https://api.kapdh.or.id/api/v1/health`.
+- [ ] `www.kapdh.or.id` **tidak** melayani situs; Traefik mengalihkannya 301 ke apex. Alasannya: API hanya menerima
+      Origin `new URL(PUBLIC_WEB_URL).origin` untuk CORS dan Socket.IO (`apps/api/src/bootstrap.ts`), jadi di `www`
+      halaman legal (isinya dibaca dari `GET /public/pages/{slug}`), verifikasi KTA dan `/delete-account` gagal CORS.
+      Pada API lokal (14 Oktober 2026) permintaan ber-Origin `https://www.kapdh.or.id` tidak menerima
+      `access-control-allow-origin`. **[bukti]** `curl -sI https://www.kapdh.or.id/kebijakan-privasi` → `301` dengan
+      `location: https://kapdh.or.id/kebijakan-privasi`.
 - [ ] Admin dan API berada pada site yang sama (`*.kapdh.or.id`); cookie refresh admin SameSite=Strict bergantung pada
       ini (ADR-013).
-- [ ] `HSTS_ENABLED=true` baru diaktifkan setelah **semua** subdomain yang dicakup sudah HTTPS (N-07).
-- [ ] Traefik meneruskan upgrade WebSocket ke API (`/socket.io/`, namespace `/realtime`; ADR-009).
+- [ ] Traefik meneruskan upgrade WebSocket ke API (`/socket.io/`, namespace `/realtime`; ADR-009). **[bukti]** cek WSS
+      di 1.6.
+- [ ] **Header keamanan web admin.** `apps/admin/index.html` tidak memuat CSP dan mengandalkan proxy; tanpa header,
+      konsol pengurus (termasuk tombol setuju pembayaran) dapat dibingkai situs lain (clickjacking). Hosting admin
+      wajib mengirim minimal:
+  - `Content-Security-Policy` yang memuat `default-src 'self'`, `connect-src 'self' https://api.kapdh.or.id`,
+    `img-src 'self' blob: data: https://api.kapdh.or.id`, `object-src 'none'`, `base-uri 'none'`,
+    `form-action 'self'`, `frame-ancestors 'none'`;
+  - `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, dan
+    `Permissions-Policy` yang hanya mengizinkan `camera=(self)` (pemindai check-in).
+
+  `style-src 'self'` tanpa `'unsafe-inline'` baru dapat dipakai setelah editor TipTap tidak lagi menyuntikkan `<style>`
+  (`injectCSS: false`); perubahan itu dan konfigurasi nginx admin ada di paket infra Fase E yang belum digabung ke
+  `main`. Sampai itu digabung, pakai `style-src 'self' 'unsafe-inline'`. **[bukti]** di staging: login + MFA, detail
+  pembayaran dengan pratinjau bukti, editor konten, dan check-in kamera berjalan tanpa pelanggaran CSP di konsol
+  peramban; keluaran `curl -sI https://staging-admin.kapdh.or.id/`.
+- [ ] **HSTS (N-07)**, diaktifkan setelah semua host yang dicakup melayani HTTPS dan **sebelum** go-live:
+  - Traefik: header `Strict-Transport-Security` `max-age=31536000` untuk `kapdh.or.id`, `www.kapdh.or.id` dan
+    `admin.kapdh.or.id` (`infra/nginx-web.conf` menyerahkan HSTS ke Traefik). `includeSubDomains` hanya bila setiap
+    subdomain `kapdh.or.id` (termasuk staging dan panel Coolify) sudah HTTPS.
+  - API: `HSTS_ENABLED=true` (helmet, `max-age=31536000; includeSubDomains`).
+  - **[bukti]** keluaran `curl -sI` empat host pada gerbang transport `go-live.md` bagian 2.4.
 
 ### 1.3 Resource per lingkungan (staging dan production terpisah penuh, PRD 5.3)
 
@@ -68,41 +95,59 @@ Langkah berikutnya: `docs/runbooks/go-live.md`. Persiapan toko aplikasi: `docs/r
 - [ ] Direktori berkas host dipasang di `/data/files` pada **API dan worker** (volume yang sama; `STORAGE_LOCAL_ROOT`
       bawaan `/data/files`, PRD 5.4). Pemilik uid 1000 (`node` di image).
 - [ ] Aplikasi dari image yang dibangun CI (bukan di VPS, PRD 5.3):
-  - API: `infra/Dockerfile.api`, port 3000, liveness `GET /api/v1/health`, readiness `GET /api/v1/health/ready`.
+  - API: `infra/Dockerfile.api`, port 3000. Healthcheck Coolify **wajib** `GET /api/v1/health/ready` (bukan
+    `/api/v1/health`), agar replika yang database-nya belum menerapkan deletion ledger (503
+    `deletion_ledger: "fail"`, ADR-014) atau kehilangan dependensi tidak menerima trafik
+    (`docs/runbooks/restore-backup.md` langkah 1). `GET /api/v1/health` hanya liveness proses.
   - Worker: `infra/Dockerfile.worker`, tanpa domain, health internal `GET /healthz` port 3001 (tidak dirutekan publik).
   - Situs publik: `infra/Dockerfile.web` (nginx port 80), `--build-arg PUBLIC_API_URL=https://api.kapdh.or.id/api/v1`.
   - Web admin: berkas statis `apps/admin/dist` hasil
     `VITE_API_BASE_URL=https://api.kapdh.or.id/api/v1 pnpm --filter @kapdh/admin build`; `main` belum memuat
-    Dockerfile admin, jadi hosting mengikuti paket infra Fase E.
+    Dockerfile admin, jadi hosting mengikuti paket infra Fase E dan wajib mengirim header di 1.2.
+- [ ] **PEMBLOKIR: image API belum dapat dibangun dari `main`.** `infra/Dockerfile.api` menjalankan
+      `pnpm deploy --filter @kapdh/api --prod /out` tanpa `--legacy`; pnpm 10.28 (versi `packageManager`) menolaknya
+      dengan `ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE` karena `inject-workspace-packages` tidak diset (direproduksi di
+      mesin build 14 Oktober 2026). Akibatnya langkah 2.3, 2.5, 3.1 dan `ledger-reapply` pada rollback, yang semuanya
+      berjalan di image API, belum dapat dieksekusi. Perbaikan (milik paket infra Fase E, yang sudah memuatnya tetapi
+      belum digabung): `pnpm --filter @kapdh/api deploy --prod --legacy /out`, sama dengan `infra/Dockerfile.worker`.
+      Runbook ini baru dianggap dapat dieksekusi setelah CI membangun **kedua** image dan memeriksa bahwa image API
+      memuat `dist/main.js`, `dist/cli/bootstrap-admin.js`, `dist/modules/account/ledger-reapply.cli.js`,
+      `node_modules/@kapdh/database/dist/bin/{migrate,seed-reference}.js` dan
+      `node_modules/@kapdh/database/migrations/meta/_journal.json` (keluaran `deploy --prod --legacy` di mesin build
+      memuat semuanya; image Docker sendiri belum pernah dibangun). **[bukti]** log build CI kedua image.
 - [ ] Stop grace period: API >= 30 detik; worker > `WORKER_SHUTDOWN_TIMEOUT_MS` + 10 detik (bawaan 25 s → >= 35 s).
 
 ### 1.4 Secrets dan environment
 
 Nilai disimpan di Coolify/GitHub Secrets, tidak pernah di repo, image, log, atau frontend (PRD 5.3). Setiap
 lingkungan punya nilai **berbeda**. Skema dan aturan: `kapdh-platform/packages/config/src/index.ts`; contoh berkomentar:
-`kapdh-platform/.env.example`. API dan worker menolak start bila aturan production dilanggar.
+`kapdh-platform/.env.example`. Kolom "Ditegakkan saat start" hanya memuat aturan yang membuat API/worker **menolak
+start** (`packages/config`); kolom "Nilai production" adalah keputusan operasional yang tidak diperiksa kode dan harus
+diperiksa manusia.
 
-| Variabel | API | Worker | Nilai production / aturan |
-| -------- | --- | ------ | ------------------------- |
-| `NODE_ENV` | ya | ya | `production` (staging: `staging`) |
-| `DATABASE_URL` | ya | ya | API: login `kapdh_app`; worker: login `kapdh_worker` |
-| `REDIS_URL` | ya | ya | wajib di production |
-| `SMTP_URL`, `MAIL_FROM` | ya | ya | wajib di staging/production; `MAIL_FROM="KAPDH <noreply@kapdh.or.id>"` (D10) |
-| `PUBLIC_WEB_URL` | ya | ya | `https://kapdh.or.id` |
-| `API_PUBLIC_URL` | ya | ya | `https://api.kapdh.or.id` (wajib https) |
-| `ADMIN_ORIGIN` | ya | ya | `https://admin.kapdh.or.id` (Origin cookie admin dan tautan undangan) |
-| `STORAGE_DRIVER`, `STORAGE_LOCAL_ROOT` | ya | ya | `local`, `/data/files` (S3 setelah migrasi storage, PRD 5.4) |
-| `FILE_URL_SECRET` | ya | ya | >= 32 karakter acak, bukan placeholder |
-| `FCM_PROJECT_ID`, `FCM_SERVICE_ACCOUNT_JSON` | ya | ya | wajib di production, diisi berpasangan (JSON satu baris) |
-| `LOG_LEVEL` | ya | ya | `info` |
-| `PORT`, `TRUST_PROXY_HOPS`, `HSTS_ENABLED` | ya | - | `3000`, `1` (bawaan production), `false` sampai 1.2 terpenuhi |
-| `JWT_ACCESS_SECRET`, `OTP_HMAC_SECRET` | ya | **tidak** | >= 32 karakter acak |
-| `JWT_ISSUER` | ya | - | `https://api.kapdh.or.id` (staging: URL API staging) |
-| `QR_SIGNING_KEYS` | ya | **tidak** | `k2026a:<secret>`; `key_id` tidak boleh berawalan `dev` (ADR-017) |
-| `TOTP_ENC_KEY` | ya | **tidak** | 64 hex, bukan nol semua; hilang = semua TOTP admin tidak dapat dibaca |
-| `BCRYPT_COST` | ya | - | >= 10 (bawaan 12) |
-| `WORKER_CONCURRENCY` | - | ya | >= 2 (bawaan 4) |
-| `WORKER_HEALTH_PORT`, `WORKER_HEALTH_HOST`, `OUTBOX_POLL_INTERVAL_MS`, `WORKER_SHUTDOWN_TIMEOUT_MS` | - | ya | bawaan 3001, 0.0.0.0, 2000, 25000 |
+| Variabel | API | Worker | Ditegakkan saat start | Nilai production (diperiksa manual) |
+| -------- | --- | ------ | --------------------- | ----------------------------------- |
+| `NODE_ENV` | ya | ya | salah satu `development`/`test`/`staging`/`production` | `production` (staging: `staging`) |
+| `DATABASE_URL` | ya | ya | wajib, URL | API: login `kapdh_app`; worker: login `kapdh_worker` |
+| `REDIS_URL` | ya | ya | wajib bila `production` | Redis internal bersandi |
+| `SMTP_URL` | ya | ya | wajib bila `staging`/`production` | kredensial provider D10 |
+| `MAIL_FROM` | ya | ya | bawaan `KAPDH <noreply@kapdh.or.id>` | biarkan bawaan (D10) |
+| `PUBLIC_WEB_URL` | ya | ya | URL; bawaan `https://kapdh.or.id` | `https://kapdh.or.id` (Origin CORS situs publik) |
+| `API_PUBLIC_URL` | ya | ya | wajib `https://` bila `staging`/`production` | `https://api.kapdh.or.id` |
+| `ADMIN_ORIGIN` | ya | ya | origin; bawaan `https://admin.kapdh.or.id` | `https://admin.kapdh.or.id` (Origin cookie admin dan tautan undangan) |
+| `STORAGE_DRIVER`, `STORAGE_LOCAL_ROOT` | ya | ya | `S3_*` wajib bila `s3` | `local`, `/data/files` (S3 setelah migrasi storage, PRD 5.4) |
+| `FILE_URL_SECRET` | ya | ya | >= 32 karakter; bukan placeholder `.env.example` bila `staging`/`production` | acak, berbeda per lingkungan |
+| `FCM_PROJECT_ID`, `FCM_SERVICE_ACCOUNT_JSON` | ya | ya | diisi berpasangan; wajib bila `production`; JSON memuat `client_email` dan `private_key` | JSON satu baris dari proyek Firebase production |
+| `LOG_LEVEL` | ya | ya | enum; bawaan `info` | `info` |
+| `PORT`, `TRUST_PROXY_HOPS` | ya | - | bawaan `3000`; hop bawaan `1` bila `staging`/`production` | `3000`, `1` (satu Traefik) |
+| `HSTS_ENABLED` | ya | - | bawaan `false` | `true` sebelum go-live, setelah 1.2 terpenuhi |
+| `JWT_ACCESS_SECRET`, `OTP_HMAC_SECRET` | ya | **tidak** | >= 32 karakter; bukan placeholder bila `staging`/`production` | acak |
+| `JWT_ISSUER` | ya | - | bawaan `https://api.kapdh.or.id` | staging: URL API staging |
+| `QR_SIGNING_KEYS` | ya | **tidak** | format `key_id:secret`, secret >= 32; bila `production` `key_id` tidak berawalan `dev` | `k2026a:<secret>` (ADR-017) |
+| `TOTP_ENC_KEY` | ya | **tidak** | 64 hex; bukan nol semua bila `staging`/`production` | hilang = semua TOTP admin tidak dapat dibaca |
+| `BCRYPT_COST` | ya | - | 4-15; >= 10 bila `production` | bawaan 12 |
+| `WORKER_CONCURRENCY` | - | ya | 1-64, bawaan 4 (nilai 1 hanya memberi peringatan log) | >= 2 (lease outbox butuh koneksi cadangan) |
+| `WORKER_HEALTH_PORT`, `WORKER_HEALTH_HOST`, `OUTBOX_POLL_INTERVAL_MS`, `WORKER_SHUTDOWN_TIMEOUT_MS` | - | ya | rentang angka | bawaan 3001, 0.0.0.0, 2000, 25000 |
 
 Build-time (bukan secret): `PUBLIC_API_URL` (situs publik), `VITE_API_BASE_URL` (web admin). Versi aplikasi minimum,
 maintenance, tautan toko, dan kontak dukungan **tidak** diatur lewat env, tetapi lewat `app_settings` (langkah 4).
@@ -114,15 +159,40 @@ maintenance, tautan toko, dan kontak dukungan **tidak** diatur lewat env, tetapi
 - [ ] `TOTP_ENC_KEY`, `QR_SIGNING_KEYS` dan kunci backup juga disimpan di password manager dengan salinan cetak terpisah
       (D9); kehilangan `TOTP_ENC_KEY` memaksa reset MFA semua admin.
 
-### 1.5 Backup di luar VPS (PRD 5.5; D2, D9)
+### 1.5 Backup di luar VPS dan restore (PRD 5.5; N-06; D2, D9)
 
-- [ ] Tujuan backup object storage di luar VPS (mis. Cloudflare R2, Backblaze B2, atau penyedia VPS), retensi 30 hari.
-- [ ] Backup harian terenkripsi: dump PostgreSQL + `/data/files` **termasuk** `ledger/account-deletions/` (ADR-014),
-      dengan manifest (waktu, schema version, image version, checksum berkas, deletion ledger).
+> **PEMBLOKIR GO-LIVE.** `main` belum memuat alat backup (dump terenkripsi, sinkron berkas, manifest, jeda mutasi atau
+> snapshot) maupun runbook Compose cadangan (PRD 5.5). Keduanya milik paket backup-ops dan infra Fase E yang belum
+> digabung. Yang sudah ada di `main` hanya sisi aplikasi restore: `docs/runbooks/restore-backup.md` (urutan aman agar
+> akun terhapus tidak hidup kembali) dan CLI `account:ledger-reapply`. Go-live ditunda sampai alat backup digabung,
+> runbook backup/restore operasional tersedia di `docs/runbooks/`, dan drill di bawah lulus.
+
+Kriteria penerimaan alat backup (PRD 5.5), diperiksa PI saat paket itu digabung:
+
+- [ ] Tujuan object storage di luar VPS (mis. Cloudflare R2, Backblaze B2, atau penyedia VPS), retensi 30 hari.
+- [ ] Backup harian **terenkripsi**: dump PostgreSQL + `/data/files` termasuk seluruh awalan `ledger/` (folder
+      `ledger/account-deletions/` dan objek kepala `ledger/account-deletions-head.json`, ADR-014).
+- [ ] Manifest menghubungkan dump DB, daftar/checksum berkas, waktu, schema version (migrasi terakhir), image version,
+      dan salinan deletion ledger.
+- [ ] Konsistensi DB dan berkas: snapshot filesystem atau jeda mutasi selama backup bila konsistensi rujukan tidak
+      dapat dijamin.
 - [ ] Kunci backup disimpan terpisah dari salinan backup (password manager + salinan cetak, D9).
-- [ ] **Gerbang langkah 1** **[bukti]**: backup database kosong (setelah langkah 2) direstore ke lingkungan bersih;
-      `GET /api/v1/health/ready` = 200 pada hasil restore; jumlah migrasi tercatat sama. Prosedur restore lengkap
-      (termasuk `account:ledger-reapply` sebelum layanan dibuka) mengikuti runbook backup/restore paket infra.
+- [ ] Umur backup terakhir dipantau (1.6).
+
+Restore selalu mengikuti `docs/runbooks/restore-backup.md`: API dan worker diskala 0 (bukan mode maintenance, karena
+flag maintenance ada di database yang direstore), salinan ledger terbaru diamankan **sebelum** berkas direstore,
+`account:ledger-reapply` keluar 0, baru API dinyalakan dan readiness 200 dengan `"deletion_ledger": "ok"`.
+
+- [ ] **Gerbang langkah 1** **[bukti]**: backup database kosong (setelah langkah 2) direstore ke lingkungan bersih
+      mengikuti `restore-backup.md`; `GET /api/v1/health/ready` = 200; jumlah migrasi tercatat sama.
+- [ ] **Kriteria lulus N-06** untuk setiap drill (gladi langkah 7, drill bulanan, UAT U-11 11.5): RPO <= 24 jam
+      (umur backup yang direstore terhadap waktu "bencana" simulasi) dan RTO <= 4 jam (dari keputusan restore sampai
+      layanan dibuka kembali dan pemeriksaan pasca-restore lulus). Melebihi salah satu = drill gagal.
+- [ ] **Drill restore bulanan** (PRD 5.5, D9), pemilik PI, dijadwalkan tetap (mis. minggu pertama setiap bulan),
+      ke lingkungan bersih yang terpisah dari production. Pemeriksaan wajib setelah restore: login + MFA admin, jumlah
+      anggota per status, total uang (`paid` per jenis) sama dengan sumber, tiket, chat, berkas privat sampel dapat
+      dibuka, dan penghapusan terdahulu tetap terhapus (kueri `restore-backup.md` langkah 8). Catat RPO/RTO teramati dan
+      hasil per butir di laporan drill; drill yang gagal dicatat sebagai insiden.
 
 ### 1.6 Monitoring (PRD 5.5; D9)
 
@@ -132,10 +202,36 @@ maintenance, tautan toko, dan kontak dukungan **tidak** diatur lewat env, tetapi
   - `https://kapdh.or.id/`, `https://admin.kapdh.or.id/`;
   - worker `GET /healthz` dari jaringan internal: alert bila `status != "ok"` (isu `dispatcher_failing`,
     `scheduler_failing`, `queue_unreachable`, `outbox_lagging`, ...), bukan hanya kode HTTP;
-  - disk VPS: warning 60 %, critical 80 % (PRD 5.4); umur backup terakhir; umur job/outbox tertua; kegagalan provider
-    (web admin, menu Notifikasi → Pengiriman).
+  - disk VPS: warning 60 %, critical 80 % (PRD 5.4); umur backup terakhir (alert bila > 26 jam); umur job/outbox
+    tertua (worker `issues` `outbox_lagging`, `outbox_dead_events`; readiness `outbox_oldest_pending_seconds`).
+- [ ] **Koneksi WS (PRD 5.5)**: cek sintetis upgrade WebSocket lewat Traefik, tiap 5 menit (cron VPS yang mengirim ke
+      monitor push, atau tipe monitor WebSocket bila versi Uptime Kuma yang dipakai menyediakannya). Klien tanpa
+      header Origin diterima server (seperti aplikasi), jadi cek ini tidak butuh akun:
+
+  ```sh
+  curl -si --max-time 5 --http1.1 -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" \
+    -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" "https://api.kapdh.or.id/socket.io/?EIO=4&transport=websocket" | head -1
+  # sehat: HTTP/1.1 101 Switching Protocols
+  ```
+
+  Diuji 14 Oktober 2026 terhadap API lokal tanpa TLS (`http://127.0.0.1`): keluar `101 Switching Protocols`. Lewat
+  Traefik/TLS belum diuji.
+- [ ] **Kegagalan provider (PRD 5.5)** sebagai alert, bukan hanya tampilan web admin (Notifikasi → Pengiriman). Cron
+      VPS tiap 15 menit yang hanya mengirim "sehat" ke monitor push (mis. Uptime Kuma Push; tidak ada kiriman dalam
+      interval = alert):
+
+  ```sh
+  n=$(docker exec -i <kontainer-postgres> psql -U postgres -d kapdh -X -At -c \
+    "select count(*) from app.notification_deliveries where status = 'failed' and updated_at > now() - interval '1 hour'")
+  [ "$n" -le <ambang, mis. 10> ] && curl -fsS "<url-monitor-push>" > /dev/null
+  ```
+
+  Kueri diuji pada PostgreSQL 17 lokal; skrip cron dan monitor push belum diuji. Event outbox `dead` sudah tercakup
+  oleh isu worker `outbox_dead_events`. Lonjakan bounce/complaint email dipantau di dasbor provider D10.
 - [ ] Log diagnostik retensi 30 hari tanpa PII (PRD 5.5). Error tracking (GlitchTip) belum terpasang di kode; bila
       ditambahkan, perbarui formulir privasi toko (`app-store-submission.md`).
+- [ ] Runbook Compose cadangan (PRD 5.5: panel Coolify mati tidak boleh menghilangkan jalur deploy) belum ada di
+      `main`; termasuk pemblokir 1.5.
 
 ---
 
@@ -207,7 +303,8 @@ DATABASE_URL=postgres://kapdh_migrator:<sandi-migrator>@<host-postgres-internal>
   `seed-dev.js` di production (CLI menolak `NODE_ENV=production`, PRD 8.2).
 
 - [ ] **2.6 Deploy API dan worker** (Coolify) dengan image yang sama; periksa **[bukti]**:
-  - `curl -s https://api.kapdh.or.id/api/v1/health/ready` → `{"status":"ok",...,"checks":{"database":"ok","redis":"ok","storage":"ok",...}}`;
+  - `curl -s https://api.kapdh.or.id/api/v1/health/ready` → `{"status":"ok",...,"checks":{"database":"ok","redis":"ok","storage":"ok","deletion_ledger":"ok",...}}`
+    (pada storage kosong belum ada kepala ledger, jadi `deletion_ledger` = `ok`);
   - worker `GET /healthz` → `"status":"ok"`, `"queue":{"ok":true,"driver":"bullmq"}`, scheduler `role: leader` pada
     satu instance;
   - `curl -s https://api.kapdh.or.id/api/v1/public/config` → `legal` masih `null` (halaman belum terbit).
@@ -264,7 +361,11 @@ Super Admin pertama: **Bayu Musthafa** (D1). Super Admin kedua ditunjuk PP sebel
       password manager pribadi. Akun menjadi `active`. **[bukti]** tangkapan layar dasbor setelah login (tanpa kode).
 - [ ] **3.3 Verifikasi penolakan bootstrap kedua** **[bukti]**: menjalankan ulang CLI kini keluar 1 dengan
       "Super Admin aktif sudah ada".
-- [ ] **3.4 Pastikan worker dan SMTP berjalan** (undangan berikutnya dikirim email lewat outbox).
+- [ ] **3.4 Prasyarat email sebelum undangan pertama**: langkah **5.1 dan 5.2** (provider email D10 dan
+      SPF/DKIM/DMARC `noreply@kapdh.or.id`) sudah selesai dengan bukti `spf=pass`, `dkim=pass`, `dmarc=pass`; worker
+      berjalan (`GET /healthz` `status` = `ok`) dan `SMTP_URL` terisi. Undangan 3.5 dan seterusnya dikirim email
+      lewat outbox; tanpa autentikasi domain email itu dapat ditolak atau masuk spam. Bootstrap 3.1 tidak terdampak
+      karena tautannya dicetak CLI.
 - [ ] **3.5 Super Admin kedua**: Super Admin pertama login → Manajemen Admin → Daftar Admin → undang dengan peran
       Super Admin (reautentikasi TOTP diminta). Penerima membuka tautan dari email `noreply@kapdh.or.id` dan
       menjalankan 3.2. Bila email tidak datang: web admin Notifikasi → Pengiriman → tab Outbox (event `failed`/`dead`,
@@ -300,11 +401,11 @@ go-live** (PRD 8.2, 10.2).
       `app_settings.legal`; registrasi anggota ditolak (409) sampai kebijakan privasi dan ketentuan terbit.
       Kebijakan privasi wajib memuat isi yang dipakai formulir privasi toko (`app-store-submission.md` bagian 4) dan
       retensi D2 (data keuangan/tiket/laporan/audit tersisa anonim; backup berotasi 30 hari).
-- [ ] **4.3 Nominal iuran D4** (Verifikasi Pembayaran → tab Biaya; `settings.manage` +
+- [ ] **4.3 Nominal iuran D4** (Verifikasi Pembayaran → tab "Biaya Pembayaran"; `settings.manage` +
       reautentikasi): seed = registrasi Rp50.000, pembuatan KTA Rp10.000, perpanjangan Rp10.000. **BD** memeriksa dan
       menandatangani nilai yang tampil; bila berubah, ubah lewat web admin (versi `fees` naik, payment lama tetap
       memakai snapshot; ADR-006).
-- [ ] **4.4 Metode bayar** (Verifikasi Pembayaran → tab Metode, `settings.manage` + reautentikasi): **BD** membuat
+- [ ] **4.4 Metode bayar** (Verifikasi Pembayaran → tab "Kelola Metode", `settings.manage` + reautentikasi): **BD** membuat
       rekening organisasi yang sah (bank, nomor, atas nama, instruksi). Tidak ada metode bayar di seed.
 - [ ] **4.5 Kontak dukungan** (Pengaturan): email `bantuan@kapdh.or.id` (seed) dan **satu nomor WhatsApp admin**
       (PRD 8.3; seed `null`).
@@ -322,6 +423,9 @@ go-live** (PRD 8.2, 10.2).
 ---
 
 ## Langkah 5. Layanan eksternal (PRD 8.2 langkah 5; D10)
+
+Urutan: 5.1 dan 5.2 dikerjakan **sebelum** langkah 3.4-3.6 (undangan admin dikirim email); butir lain boleh
+setelah langkah 4.
 
 - [ ] **5.1 Provider email transaksional** dipilih DEV dari Amazon SES, Brevo, Mailgun, Resend atau Postmark (D10);
       kredensial SMTP di `SMTP_URL` (`smtp://user:pass@host:port` atau `smtps://...`).
@@ -348,16 +452,34 @@ Ikuti `docs/runbooks/app-store-submission.md` bagian 1-5. Ringkas:
 - [ ] Listing, URL kebijakan privasi `https://kapdh.or.id/kebijakan-privasi`, formulir privasi/keamanan data,
       URL hapus akun `https://kapdh.or.id/delete-account`, kontak moderasi `bantuan@kapdh.or.id`.
 - [ ] Akun demo reviewer (D16): aktif terverifikasi dan belum bayar, dibuat lewat alur resmi.
+- [ ] Pemblokir submit yang diketahui per 14 Oktober 2026: teks aplikasi yang mengaitkan iuran dengan membuka fitur
+      (bagian 2, D13 mitigasi 1) dan kebijakan privasi yang hanya terbaca dengan JavaScript (bagian 7).
 
 ## Langkah 7. Gladi di staging (PRD 8.2 langkah 7; U-12)
 
-- [ ] Hapus lingkungan staging (database, volume berkas, Redis) secara terkendali; catat waktu mulai.
+- [ ] Hapus lingkungan staging (database, volume berkas, Redis) secara terkendali; catat waktu mulai. Database dibuat
+      ulang kosong (role tingkat cluster tetap ada; grant diterapkan ulang oleh `roles.sql` di langkah 2):
+
+  ```sh
+  # API dan worker staging sudah diskala 0 di Coolify
+  docker exec -i <kontainer-postgres-staging> psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 \
+    -c 'drop database if exists kapdh with (force)' -c 'create database kapdh'
+  ```
+
 - [ ] Jalankan langkah 1.3-5 dari nol dengan nilai staging (D12: `staging`, `staging-admin`, `staging-api`; proyek
       FCM staging). Seed dev **boleh** di staging hanya bila gladi ini tidak sedang membuktikan "tanpa fixture"; untuk
       U-12 jalankan tanpa seed dev.
-- [ ] Smoke test semua peran memakai `docs/qa/uat-checklist.md` (minimal U-01, U-02, U-03, U-05, U-07, U-09, U-12).
-- [ ] Backup pertama staging → restore ke lingkungan bersih → `account:ledger-reapply` → readiness 200 → login
-      admin + MFA dan akun uji berhasil. Catat RPO/RTO yang teramati.
+- [ ] Build Flutter yang dipakai gladi/UAT ber-versi >= `min_app_version` lingkungan itu. Seed referensi mengisi
+      `min_app_version` `1.0.0` untuk Android dan iOS, sedangkan `kapdh-mobile/pubspec.yaml` saat ini `0.1.0+1`;
+      aplikasi mengirim versi pubspec sebagai `X-App-Version`, sehingga setiap mutasi dari build `0.1.0` ditolak
+      426 `UPGRADE_REQUIRED`. Naikkan versi build ke `1.0.0+n`, atau (staging saja) turunkan `min_app_version` ke versi
+      build lewat Pengaturan dan catat di laporan gladi.
+- [ ] Smoke test semua peran memakai `docs/qa/uat-checklist.md`: U-01, U-02, U-03, U-05, U-07, U-08, U-09 (set yang
+      sama dengan smoke test production `go-live.md` 3.1) ditambah U-12.
+- [ ] Backup pertama staging → restore ke lingkungan bersih mengikuti `docs/runbooks/restore-backup.md` (API/worker
+      skala 0, ledger terbaru diamankan, `account:ledger-reapply` keluar 0, readiness 200 dengan
+      `"deletion_ledger": "ok"`) → login admin + MFA dan akun uji berhasil. **Lulus hanya bila RPO <= 24 jam dan RTO
+      <= 4 jam** (N-06, 1.5); catat keduanya. Selama alat backup belum digabung (1.5), butir ini tidak dapat lulus.
 - [ ] **[bukti]** Laporan gladi: durasi tiap langkah, masalah dan perbaikannya, versi image/SDK/build Flutter.
 - [ ] Sign-off gladi oleh PI (operasional, restore) dan QA (smoke test) di tabel `go-live.md` bagian 4.
 
@@ -368,6 +490,12 @@ Pada mesin build (Windows, tanpa Docker) perintah langkah 2 dan 3 diuji terhadap
 `pnpm build`: migrasi (8 diterapkan, ulang 0), `roles.sql` ulang, seed referensi (10/24/22/5, ulang 0), penolakan
 `seed-dev.js` pada `NODE_ENV=production` (keluar 1), API `GET /api/v1/health`, `/health/ready` (200 tanpa Redis),
 `/public/config`, worker `/healthz` (driver inline), CLI bootstrap (buat, terbit ulang, email lain, tanpa argumen →
-keluar 2), CLI `ledger-reapply` pada folder kosong, dan blok SQL gerbang konfigurasi. **Belum diuji**: image Docker,
-`psql` di kontainer, Coolify, Traefik/TLS/WSS, Redis/BullMQ nyata, SMTP/FCM nyata, backup/restore. Semuanya wajib
-dibuktikan pada gladi staging (langkah 7).
+keluar 2), CLI `ledger-reapply` pada folder kosong, dan blok SQL gerbang konfigurasi. Setelah `main` memuat hardening
+API Fase D, diuji ulang: migrasi (tetap 8), seed referensi, readiness dengan `deletion_ledger` `ok`, flag maintenance
+yang diaktifkan lewat SQL menolak login 503 `MAINTENANCE`, cek WebSocket 1.6 (`101`), kueri kegagalan pengiriman
+1.6, penolakan CORS untuk Origin `www`, mutasi ber-`X-App-Version: 0.1.0` ditolak 426 `UPGRADE_REQUIRED` (versi
+`1.0.0` lolos gerbang versi), reset database (`drop database ... with (force)` saat API masih tersambung,
+`create database`, `roles.sql`, migrasi 8, `roles.sql`), dan keluaran `pnpm --filter @kapdh/api deploy --prod --legacy`
+(semua CLI ada). SQL dijalankan lewat klien Node pengganti `psql`, bukan `psql` di kontainer. **Belum diuji**: image Docker (`Dockerfile.api` di `main` gagal dibangun, 1.3), `psql` di kontainer, Coolify,
+Traefik/TLS/WSS, header admin dan HSTS, Redis/BullMQ nyata, SMTP/FCM nyata, backup/restore, cron monitor. Semuanya
+wajib dibuktikan pada gladi staging (langkah 7).
