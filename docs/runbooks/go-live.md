@@ -46,7 +46,11 @@ yang disetujui, dan tidak boleh dipakai untuk mengecualikan keamanan atau integr
 - [ ] Tidak ada bug kritis/tinggi terbuka yang mengganggu identitas, uang, kuota, data privat, atau akses admin.
 - [ ] Target N yang disahkan terbukti (D8). Status saat dokumen ini ditulis: belum ada laporan uji beban (N-01, N-04),
       latensi realtime (N-02), ketersediaan/monitor eksternal (N-05), dan drill backup/restore RPO/RTO (N-06)
-      (temuan audit D2-03..D2-06, D2-08). Ini **memblokir** gerbang sampai laporan U-11 tersedia.
+      (temuan audit D2-03..D2-06, D2-08). Ini **memblokir** gerbang sampai laporan U-11 tersedia. N-06 lulus hanya bila
+      drill restore membuktikan RPO <= 24 jam dan RTO <= 4 jam.
+- [ ] Image API dapat dibangun dan dijalankan dari tag rilis (`production-init.md` 1.3: `infra/Dockerfile.api` di
+      `main` gagal pada `pnpm deploy` tanpa `--legacy`).
+- [ ] Teks aplikasi memenuhi D13 mitigasi 1 (`app-store-submission.md` bagian 2; per 14 Oktober 2026 belum).
 - [ ] Skenario kritis PRD 9.2 nomor 1-10 lulus (`traceability.md` bagian 5.2); nomor 8 (restore + ledger) dan 9
       (konfigurasi belum disahkan) dibuktikan manual pada gladi dan bagian 2.3 di bawah.
 - [ ] Penghapusan akun [R1]/[R2], moderasi UGC [R6], dan klasifikasi kanal iuran [R6]/[R7] diperiksa
@@ -56,8 +60,11 @@ yang disetujui, dan tidak boleh dipakai untuk mengecualikan keamanan atau integr
 
 - [ ] Build Flutter Android/iOS; image API/worker/web (+ admin); OpenAPI (`dist/openapi.yaml` dari tag) dan SDK
       (`contracts-vX.Y.Z`); skema/migrasi (journal).
-- [ ] Runbook: deploy/rilis, backup, restore (dengan `account:ledger-reapply` sebagai langkah pemblokir), inisialisasi
-      (`production-init.md`), rollback (bagian 5 di bawah).
+- [ ] Runbook: deploy/rilis, backup, restore, Compose cadangan (PRD 5.5), inisialisasi (`production-init.md`),
+      rollback (bagian 5 di bawah), status akun `disabled` (`alumni-account-disabled.md`). Di `main` sudah ada sisi
+      aplikasi restore (`restore-backup.md`, dengan `account:ledger-reapply` sebagai langkah pemblokir); alat dan
+      runbook backup, deploy/rilis, dan Compose cadangan milik paket infra/backup-ops Fase E **belum ada** dan
+      memblokir gerbang ini (`production-init.md` 1.5).
 - [ ] Laporan: UAT, uji beban/realtime, security (audit Fase D), restore (gladi).
 - [ ] Halaman legal terbit dan `https://kapdh.or.id/delete-account` berfungsi.
 - [ ] Akun pengurus dengan MFA: >= 2 Super Admin, >= 2 pemutus pembayaran.
@@ -122,12 +129,37 @@ SQL
 
 Satu butir tidak memenuhi target = go-live ditunda (PRD 8.4).
 
+### 2.4 Gerbang transport dan header (N-07; `production-init.md` 1.2)
+
+Dijalankan PI dari luar VPS setelah langkah 1-5 inisialisasi; lampirkan keluaran lengkap **[bukti]**:
+
+```sh
+for u in https://kapdh.or.id/ https://www.kapdh.or.id/kebijakan-privasi https://admin.kapdh.or.id/ \
+         https://api.kapdh.or.id/api/v1/health; do
+  echo "== $u"; curl -sI "$u" | tr -d '\r' | grep -iE '^(HTTP/|location:|strict-transport-security:|content-security-policy:|x-frame-options:|x-content-type-options:|referrer-policy:|permissions-policy:)'
+done
+curl -si --max-time 5 --http1.1 -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" \
+  -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" "https://api.kapdh.or.id/socket.io/?EIO=4&transport=websocket" | head -1
+```
+
+Perintah ini diuji 14 Oktober 2026 hanya terhadap API lokal tanpa TLS (penyaring header dan cek WebSocket `101`);
+hasil pada host production/staging belum pernah diamati.
+
+| Host | Target | Hasil | Diperiksa |
+| ---- | ------ | ----- | --------- |
+| `kapdh.or.id` | 200; `strict-transport-security` (max-age >= 31536000); CSP dengan `frame-ancestors 'none'`; `x-content-type-options: nosniff`; `referrer-policy: no-referrer` | | PI |
+| `www.kapdh.or.id` | 301, `location: https://kapdh.or.id/kebijakan-privasi` | | PI |
+| `admin.kapdh.or.id` | 200; `strict-transport-security`; CSP dengan `frame-ancestors 'none'` dan `connect-src` ke API; `x-frame-options: DENY`; `nosniff`; `referrer-policy: no-referrer` | | PI |
+| `api.kapdh.or.id` | 200; `strict-transport-security` (`HSTS_ENABLED=true`); `nosniff`; `referrer-policy: no-referrer` | | PI |
+| WSS `api.kapdh.or.id/socket.io/` | `HTTP/1.1 101 Switching Protocols` | | PI |
+| Port 5432/6379 dari luar | tertutup (`production-init.md` 1.1) | | PI |
+
 ## 3. Urutan go-live (PRD 8.3)
 
 | No | Langkah PRD 8.3 | Tindakan | Pelaksana | Bukti |
 | -- | --------------- | -------- | --------- | ----- |
 | 1 | Bekukan tag image, SDK, build Flutter | Tabel bagian 1 lengkap; gerbang bagian 2 lulus | DEV, QA | tabel + keluaran verifikasi |
-| 2 | Inisialisasi production + backup pertama dapat direstore | `production-init.md` langkah 1-5; backup pertama direstore ke lingkungan bersih, `account:ledger-reapply` (folder ledger kosong = 0 entri), readiness 200 | PI | log restore |
+| 2 | Inisialisasi production + backup pertama dapat direstore | `production-init.md` langkah 1-5; backup pertama direstore ke lingkungan bersih mengikuti `restore-backup.md` (`account:ledger-reapply` pada folder ledger kosong = 0 entri), readiness 200 dengan `"deletion_ledger": "ok"`; gerbang 2.4 lulus | PI | log restore, keluaran 2.4 |
 | 3 | Smoke test production dengan akun uji | Lihat 3.1; data uji dihapus lewat alur penghapusan resmi atau ditandai dan dikecualikan dari metrik | QA, SA, BD | daftar periksa 3.1 bertanda tangan |
 | 4 | Kirim build ke review toko terhadap backend production aktif | `app-store-submission.md` bagian 5; pendaftaran boleh terbuka, **pengumuman menunggu persetujuan toko** | DEV, PP | ID submission |
 | 5 | Rilis bertahap, buka web admin, umumkan | Staged rollout Google Play, phased release App Store; isi Pengaturan → Tautan toko (`store_links`); akun pengurus dibagikan; pengumuman lewat grup WhatsApp alumni, `kapdh.or.id`, media sosial resmi; kanal dukungan `bantuan@kapdh.or.id` + satu WhatsApp admin | PP, SA | tangkapan layar pengumuman |
@@ -174,7 +206,7 @@ mencatat ID, alasan, dampak pada AC/data/jadwal, dan versi PRD baru.
 | Pemilik produk | | Cakupan R1.0, kebijakan (legal, privasi, komunitas), sisa teknis D1 (ADR-011), positioning iuran D13, jadwal D16 | Paket penerimaan, `uat-checklist.md`, `app-store-submission.md` | | | |
 | Bendahara | | Nominal `fees` (D4), metode bayar dan rekening, prosedur refund D6 | Gerbang 2.3 butir F, layar Biaya/Metode | | | |
 | QA | | Hasil UAT U-01..U-13, smoke test production 3.1 | `uat-checklist.md`, `traceability.md` | | | |
-| Pengelola infra | | Restore dan operasional: backup harian, restore teruji (RPO/RTO), monitor dan alert, akses (D9) | Laporan gladi, laporan restore, U-11 | | | |
+| Pengelola infra | | Restore dan operasional: backup harian terenkripsi di luar VPS, restore teruji dengan RPO <= 24 jam dan RTO <= 4 jam (N-06), drill restore bulanan terjadwal, monitor dan alert (HTTP, WS, DB, disk, umur backup, outbox, kegagalan provider), header/HSTS (2.4), Compose cadangan, akses (D9) | Laporan gladi, laporan restore, U-11, keluaran 2.4 | | | |
 | Super Admin (D1) | | Akun pengurus ber-MFA, izin, Super Admin kedua | Gerbang 2.3 butir B/C | | | |
 | Pengembang | | Verifikasi otomatis tag rilis, artefak bagian 1 | Keluaran bagian 1 | | | |
 
@@ -185,10 +217,10 @@ menghilangkan data sesudah titik backup; perlu pemeriksaan dan komunikasi kepada
 
 | Titik kegagalan | Tindakan yang diperbolehkan | Langkah konkret | Keputusan oleh |
 | --------------- | --------------------------- | --------------- | -------------- |
-| Gagal sebelum ada data pengguna nyata | Hentikan layanan, perbaiki, reset production terkendali, jalankan ulang inisialisasi | Hentikan API/worker; hapus database `kapdh`, isi `/data/files` dan Redis production (catat siapa/kapan); perbaiki; `production-init.md` langkah 2-4 dari nol; bootstrap Super Admin diulang | PP + PI |
-| Bug kritis setelah ada data pengguna | Forward-fix dan hotfix; maintenance read-only bila integritas data terancam | (1) Pengaturan → Maintenance: aktif + pesan + perkiraan selesai (mutasi anggota ditolak 503 `MAINTENANCE`; `/auth/refresh`, `/auth/logout*`, `/admin/**` dan baca `/public/**` tetap jalan). (2) Hotfix dari tag rilis → CI → staging → production (job migrasi bila ada migrasi aditif). (3) Bug Flutter: rilis versi perbaikan; naikkan `min_app_version` **hanya setelah** versi baru dapat diunduh di kedua toko | PP + DEV |
+| Gagal sebelum ada data pengguna nyata | Hentikan layanan, perbaiki, reset production terkendali, jalankan ulang inisialisasi | Skala API/worker ke 0; hapus lalu buat ulang database kosong `docker exec -i <kontainer-postgres> psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 -c 'drop database if exists kapdh with (force)' -c 'create database kapdh'` (role tingkat cluster tetap; grant diterapkan ulang `roles.sql` di langkah 2); kosongkan `/data/files` (termasuk `ledger/`) dan Redis production (catat siapa/kapan); perbaiki; `production-init.md` langkah 2-4 dari nol; bootstrap Super Admin diulang | PP + PI |
+| Bug kritis setelah ada data pengguna | Forward-fix dan hotfix; maintenance read-only bila integritas data terancam | (1) Pengaturan → Maintenance: aktif + pesan + perkiraan selesai. Semua mutasi ditolak 503 `MAINTENANCE`, **termasuk login dan registrasi anggota**, kecuali `/auth/refresh`, `/auth/logout`, `/auth/logout-all`, `DELETE /auth/sessions/{id}`, `/admin/**`, `POST /public/kta/verify`, serta `POST /auth/reauth` dan `POST /files` dengan token admin (`apps/api/src/core/http/request-gate.ts`); semua GET tetap jalan. (2) Hotfix dari tag rilis → CI → staging → production (job migrasi bila ada migrasi aditif). (3) Bug Flutter: rilis versi perbaikan; naikkan `min_app_version` **hanya setelah** versi baru dapat diunduh di kedua toko | PP + DEV |
 | Perubahan skema tidak kompatibel dengan image sebelumnya | Jangan menganggap rollback image memulihkan skema; gunakan runbook kompatibilitas/restore dan pertimbangkan RPO nyata | Migrasi bersifat aditif dan kompatibel ke belakang bila memungkinkan; bila image baru harus ditarik, perbaiki maju (migrasi baru) atau restore ke backup sebelum migrasi dengan menerima kehilangan data sejak backup itu | PP + PI + DEV |
-| Data/berkas hilang atau rusak | Restore DB + berkas dengan manifest yang sama, terapkan deletion ledger dan replay outbox, periksa konsistensi sebelum dibuka | (1) Maintenance aktif / layanan ditutup. (2) Restore dump + `/data/files` dari manifest yang sama. (3) Terapkan ulang deletion ledger dari image API dengan env **worker** (login `kapdh_worker`) dan volume berkas terpasang: `docker run --rm --network <jaringan> --env-file <env-worker> -v <dir-berkas-host>:/data/files -v <salinan-ledger-TERBARU>:/restore/ledger:ro <registry>/kapdh-api:<tag> node dist/modules/account/ledger-reapply.cli.js --dir /restore/ledger`; lanjut hanya bila baris `Gagal` bernilai 0 (keluar 0; ADR-014). (4) Jalankan worker; event outbox `pending`/`failed` diproses ulang otomatis; `dead` dicoba lagi dari web admin Notifikasi → tab Outbox. (5) Periksa: login + MFA admin, jumlah anggota aktif, total payment `paid`, tiket, chat, berkas sampel, penghapusan terdahulu tetap terhapus. (6) Buka layanan; komunikasikan ke pengguna terdampak | PI + PP |
+| Data/berkas hilang atau rusak | Restore DB + berkas dengan manifest yang sama, terapkan deletion ledger dan replay outbox, periksa konsistensi sebelum dibuka | Ikuti `docs/runbooks/restore-backup.md` secara berurutan. Ringkas: (1) Skala API **dan** worker ke 0 di Coolify selama seluruh restore. Jangan mengandalkan mode maintenance: flag-nya ada di `app_settings` dan ikut tertimpa nilai backup (biasanya `active=false`), sehingga API yang tetap hidup akan menerima login dan mutasi pada database pulihan sebelum ledger diterapkan. (2) **Sebelum menyentuh storage**, salin seluruh awalan `ledger/` dari `/data/files` yang berjalan ke folder terpisah hanya-baca, mis. `cp -a /data/files/ledger /restore/ledger-latest/` (bila storage hilang: salinan ledger dari manifest backup terbaru yang tidak lebih tua dari dump). (3) Restore dump, jalankan job migrasi, terapkan ulang `roles.sql`; Redis boleh dikosongkan. (4) Restore `/data/files` dari manifest yang sama, lalu kembalikan salinan ledger langkah 2 ke atasnya. (5) Opsional tetapi dianjurkan: aktifkan maintenance lewat SQL sebelum API dinyalakan agar pemeriksaan pasca-restore dilakukan sebelum anggota dapat mutasi: `update app.app_settings set value = jsonb_set(value, '{active}', 'true'), version = version + 1, updated_at = now() where key = 'maintenance';` (catat di laporan; tidak membuat entri audit). (6) Terapkan ulang deletion ledger dari image API dengan env **worker** (login `kapdh_worker`): `docker run --rm --network <jaringan> --env-file <env-worker> -v <dir-berkas-host>:/data/files -v /restore/ledger-latest/ledger/account-deletions:/restore/ledger:ro <registry>/kapdh-api:<tag> node dist/modules/account/ledger-reapply.cli.js --dir /restore/ledger`; lanjut hanya bila baris `Gagal` bernilai 0 (keluar 0; ADR-014). (7) Nyalakan satu replika API; `GET /api/v1/health/ready` harus 200 dengan `"deletion_ledger": "ok"`. (8) Nyalakan worker dan replika lain; event outbox `pending`/`failed` diproses ulang otomatis; `dead` dicoba lagi dari web admin Notifikasi → tab Outbox. (9) Periksa: login + MFA admin, jumlah anggota per status, total payment `paid`, tiket, chat, berkas sampel, penghapusan terdahulu tetap terhapus (kueri `restore-backup.md` langkah 8). (10) Matikan maintenance dari web admin, buka layanan, komunikasikan ke pengguna terdampak. Diuji di mesin build: flag maintenance yang diaktifkan lewat SQL menolak login 503 `MAINTENANCE`; urutan restore lengkap belum pernah dijalankan pada image/VPS | PI + PP |
 | Redis atau worker gagal | Status/notifikasi tertunda, bukan hilang (PRD 5.1) | Pulihkan Redis/worker; worker keluar bila Redis tidak siap 30 detik dan dijalankan ulang orkestrator; antrean dibangun ulang dari outbox | PI |
 | Toko menolak (pembayaran/UGC/penghapusan) | Perbaiki listing/catatan reviewer atau aktifkan rencana cadangan iOS D13 | `app-store-submission.md` bagian 6 dan 8 | PP |
 
