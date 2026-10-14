@@ -147,17 +147,20 @@ export class AuthService {
    * Persetujuan (F-01): `accept_policy_version` dibandingkan dengan versi persetujuan yang disusun ulang dari
    * app_settings.legal SEBELUM email diperiksa, lalu sekali lagi di dalam transaksi dengan baris pengaturan dikunci
    * FOR SHARE; berbeda atau dokumen belum terbit → 409 VERSION_CONFLICT dengan `current` LegalConsentVersions.
-   * Sebelum bcrypt pertama, satu jatah anggaran registrasi per IP dicadangkan atomik (429 bila habis), sehingga
-   * permintaan anonim tidak dapat menghabiskan CPU tanpa batas (PRD 2.5, 5.1); untuk akun pending_otp yang sudah ada,
+   * Sebelum keberadaan email dinilai (dan sebelum bcrypt pertama), satu jatah anggaran registrasi per IP dicadangkan
+   * atomik (429 bila habis), sehingga permintaan anonim tidak dapat menghabiskan CPU tanpa batas dan jawaban 409 email
+   * terdaftar tidak dapat dipakai sebagai oracle tanpa batas (PRD 2.5, 5.1); untuk akun pending_otp yang sudah ada,
    * perbandingan sandi juga memakai jatah batas kegagalan login (lihat {@link beginReRegisterAttempt}). Idempotency-Key
    * ditangani interceptor @Idempotent (PRD 4.3).
    */
   async register(input: RegisterInput, attempt = 0): Promise<OtpChallenge> {
     await this.assertConsent(this.db, input.accept_policy_version, false);
     const email = normalizeEmail(input.email);
+    // Anggaran per IP dicadangkan SEBELUM keberadaan email dinilai: jawaban 409 "Email sudah terdaftar" ikut memakai
+    // anggaran yang sama sehingga registrasi bukan oracle email terdaftar tanpa batas (PRD 2.5, ASVS 2.2.1).
+    if (attempt === 0) await this.consumeRegisterBudget();
     const existing = await this.passwords.findAccount(this.db, email, "alumni");
     if (existing && existing.status !== "pending_otp") throw emailTaken();
-    if (attempt === 0) await this.consumeRegisterBudget();
     // Registrasi ulang akun pending_otp MENILAI sandi tersimpan (challenge dipakai ulang hanya bila sandi sama), jadi
     // respons membedakan sandi benar dan salah. Agar tidak menjadi oracle sandi di luar batas PRD 2.5, satu jatah
     // kegagalan login `login:<email>` (+ IP) dicadangkan atomik SEBELUM bcrypt: sandi sama → penghitung direset;
@@ -412,9 +415,12 @@ export class AuthService {
           throw new AppException(400, "VALIDATION_ERROR", "Email baru sama dengan email saat ini.", {
             fieldErrors: { new_email: ["Email baru sama dengan email saat ini"] },
           });
+        // Kuota kirim OTP (per IP lalu per email baru) dipakai SEBELUM keberadaan email baru dinilai: jawaban 409
+        // "Email baru sudah terdaftar" ikut terbatas, sehingga akun pending milik penyerang (sandinya diketahui) tidak
+        // menjadi oracle email terdaftar tanpa batas (PRD 2.5).
+        await this.otp.consumeSendQuota(this.otp.emailKey(newEmail));
         const taken = await this.passwords.findAccount(tx, newEmail, "alumni");
         if (taken && taken.id !== locked.id) throw newEmailTaken();
-        await this.otp.consumeSendQuota(this.otp.emailKey(newEmail));
         const updated = await tx
           .update(users)
           .set({ email: newEmail, updatedAt: now })
@@ -602,6 +608,8 @@ export class AuthService {
           mfaLevel: current.mfaLevel,
           deviceName: current.deviceName ?? undefined,
           familyId: current.familyId,
+          // Umur absolut keluarga (PRD 5.2, N-08): baris baru mewarisi batas baris yang dirotasi.
+          familyExpiresAt: current.expiresAt,
         });
         const rotated = await tx
           .update(sessions)

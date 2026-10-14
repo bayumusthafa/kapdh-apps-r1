@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { RealtimePayloads } from "@kapdh/contracts";
-import { notifications } from "@kapdh/database";
+import { notifications, users } from "@kapdh/database";
 import { and, count, eq, isNull } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../adapters/clock.js";
@@ -54,10 +54,21 @@ export interface NotifyInput {
 }
 
 export interface NotifyResult {
+  /** Id notifikasi baru atau yang sudah ada (dedup); string kosong bila penerima dilewati (lihat `skipped`). */
   id: string;
-  /** false bila notifikasi dengan kunci dedup yang sama sudah ada (tidak ada outbox/realtime baru). */
+  /** false bila notifikasi dengan kunci dedup yang sama sudah ada atau penerima dilewati (tanpa outbox/realtime). */
   created: boolean;
+  /** `account_closed`: akun penerima deletion_pending/deleted, tidak ada inbox, outbox maupun realtime (F-14, D2). */
+  skipped?: "account_closed";
 }
+
+/**
+ * Keadaan akun yang tidak lagi menerima notifikasi (F-14 AC F14-2/F14-3, D2): sejak permintaan penghapusan, data
+ * pribadi baru tidak boleh ditambahkan ke akun yang sedang dihapus. Langkah `notifications` job penghapusan tidak
+ * diulang saat retry, sehingga inbox yang dibuat sesudahnya (mis. keputusan payment oleh pengurus selama jendela
+ * retry) akan tertinggal pada tombstone.
+ */
+const CLOSED_ACCOUNT_STATES = ["deletion_pending", "deleted"] as const;
 
 export class NotificationInputError extends Error {
   override name = "NotificationInputError";
@@ -98,7 +109,8 @@ function validate(input: NotifyInput): void {
  *      preferensi; kegagalan kanal tidak membatalkan keputusan), kecuali `externalDelivery: false` (hanya inbox),
  *   3. setelah commit: event realtime `notification.created` ke `user:<id>` beserta jumlah belum dibaca.
  * Preferensi push/email TIDAK diperiksa di sini (inbox selalu ditulis, AC F13-2); prosesor `notifications.deliver`
- * yang memilih kanal.
+ * yang memilih kanal. Pengecualian: penerima berstatus deletion_pending/deleted dilewati seluruhnya (F-14, D2;
+ * hasil `skipped: "account_closed"`).
  *
  *   await withTx(db, (tx) => notifications.notify(tx, {
  *     userId, category: "payment", title: "Pembayaran disetujui", body: "...",
@@ -117,6 +129,15 @@ export class NotificationService {
   async notify(tx: DbOrTx, input: NotifyInput): Promise<NotifyResult> {
     assertCommitAware(tx, "NotificationService.notify");
     validate(input);
+    // Akun yang sedang/sudah dihapus tidak menerima inbox, push maupun email baru (F-14, D2). Job penghapusan juga
+    // menyapu ulang inbox pada langkah credentials untuk notifikasi yang lolos pemeriksaan ini secara bersamaan.
+    const [recipient] = await tx
+      .select({ status: users.status })
+      .from(users)
+      .where(eq(users.id, input.userId))
+      .limit(1);
+    if (recipient && (CLOSED_ACCOUNT_STATES as readonly string[]).includes(recipient.status))
+      return { id: "", created: false, skipped: "account_closed" };
     const dedupKey = `u:${input.userId}:${input.dedupKey}`;
     const now = this.clock.now();
     const id = uuidv7();

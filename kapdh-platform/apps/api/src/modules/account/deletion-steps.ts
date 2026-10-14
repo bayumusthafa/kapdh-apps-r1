@@ -86,7 +86,10 @@ export const DELETION_STEPS = [
   "profile",
   /** Email pemberitahuan selesai, dikirim sebelum alamat dihapus (F-14). */
   "notify_completed",
-  /** Baris users dianonimkan: status deleted, email pengganti, sandi tidak sah (AC F14-3). */
+  /**
+   * Sapuan akhir inbox/preferensi/token perangkat yang dibuat sesudah langkah notifications, lalu baris users
+   * dianonimkan: status deleted, email pengganti, sandi tidak sah (AC F14-2, F14-3).
+   */
   "credentials",
   /** Entri ledger eksternal `completed` beserta object key berkas yang dihapus (AC F14-6). */
   "ledger_final",
@@ -117,6 +120,14 @@ export interface WorkingLedger {
   object_keys?: string[];
   /** Diterapkan ulang dari deletion ledger eksternal setelah restore (AC F14-6). */
   restored?: boolean;
+  /**
+   * N tertinggi yang sudah dialokasikan saat entri ledger pertama ditulis (PRD 3.5, 6.4). Setelah restore, nilai dari
+   * entri ledger eksternal disimpan di baris permintaan sehingga MembershipKernel tidak mengalokasikan ulang N anggota
+   * yang dihapus setelah titik backup.
+   */
+  member_seq_floor?: number;
+  /** Baris permintaan dibuat penerapan ulang ledger untuk akun yang tidak ada di backup (tanpa data untuk dihapus). */
+  absent?: boolean;
   email_failures?: Partial<Record<DeletionStep, number>>;
   /** Langkah email yang dilewati setelah gagal berulang agar penghapusan tidak tertahan (≤ 7 hari). */
   skipped?: DeletionStep[];
@@ -266,16 +277,31 @@ export class DeletionSteps {
       state,
       completed_at: completedAt?.toISOString() ?? null,
       object_keys: [...(ctx.ledger.object_keys ?? [])].sort(),
+      ...(ctx.ledger.member_seq_floor === undefined ? {} : { member_seq_floor: ctx.ledger.member_seq_floor }),
       written_at: this.now().toISOString(),
     };
   }
 
   /**
+   * Floor N untuk ledger (PRD 3.5, 6.4): N tertinggi yang sudah dialokasikan, dibaca sebelum profil akun dihapus
+   * sehingga mencakup N akun ini. Tidak pernah turun antarpercobaan (salinan kerja ledger).
+   */
+  private async refreshMemberSeqFloor(ctx: StepContext): Promise<void> {
+    const [row] = await this.db
+      .select({ floor: sql<string>`coalesce(max(${alumni.memberSeq}), 0)::text` })
+      .from(alumni);
+    const floor = Number(row?.floor ?? 0);
+    ctx.ledger.member_seq_floor = Math.max(ctx.ledger.member_seq_floor ?? 0, floor);
+  }
+
+  /**
    * Entri ledger eksternal ditulis hanya oleh pemegang klaim (fencing tepat sebelum menulis) dan secara monoton
    * ({@link writeLedgerEntryMonotonic}): entri `completed` tidak pernah diturunkan dan object key tidak pernah hilang.
+   * Kepala ledger dimajukan setiap kali (readiness API setelah restore, AC F14-6).
    */
   async ledgerOpen(ctx: StepContext): Promise<void> {
     const storage = this.requireStorage();
+    await this.refreshMemberSeqFloor(ctx);
     await this.fence(this.db, ctx);
     await writeLedgerEntryMonotonic(storage, this.ledgerEntry(ctx, "requested", null));
     await this.finish(ctx, "ledger_open");
@@ -283,6 +309,7 @@ export class DeletionSteps {
 
   async ledgerFinal(ctx: StepContext): Promise<void> {
     const storage = this.requireStorage();
+    await this.refreshMemberSeqFloor(ctx);
     await this.fence(this.db, ctx);
     await writeLedgerEntryMonotonic(storage, this.ledgerEntry(ctx, "completed", this.now()));
     await this.finish(ctx, "ledger_final");
@@ -1211,6 +1238,22 @@ export class DeletionSteps {
     await this.tx(ctx, async (tx) => {
       const now = this.now();
       const user = await this.requests.lockUser(tx, ctx.userId);
+      // Sapuan akhir idempoten (AC F14-2, F14-3): langkah `notifications` tidak diulang saat retry, jadi inbox,
+      // preferensi atau token perangkat yang sempat dibuat pihak lain setelah langkah itu (mis. keputusan payment oleh
+      // pengurus selama jendela retry) dihapus di transaksi yang sama dengan perubahan status ke `deleted`.
+      // NotificationService.notify sudah melewati akun deletion_pending; sapuan ini menutup notifikasi yang lolos
+      // pemeriksaan itu secara bersamaan. Histori keanggotaan yang ditulis sesudah langkah `finance` (mis. aktivasi
+      // dari payment yang diputus selama jendela retry) dianonimkan dengan aturan yang sama dengan langkah itu.
+      await tx.delete(notifications).where(eq(notifications.userId, ctx.userId));
+      await tx.delete(notificationPreferences).where(eq(notificationPreferences.userId, ctx.userId));
+      await tx.delete(deviceTokens).where(eq(deviceTokens.userId, ctx.userId));
+      await tx
+        .delete(membershipEvents)
+        .where(and(eq(membershipEvents.userId, ctx.userId), eq(membershipEvents.kind, "number_correction")));
+      await tx
+        .update(membershipEvents)
+        .set({ userId: null, reason: null, beforeMemberNumber: null, afterMemberNumber: null })
+        .where(eq(membershipEvents.userId, ctx.userId));
       if (user && user.status !== "deleted") {
         await tx
           .update(users)

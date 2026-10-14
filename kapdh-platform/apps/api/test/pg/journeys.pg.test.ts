@@ -4616,21 +4616,27 @@ describe("D7 (h2): ganti sandi admin saat ada login tahap sandi yang belum seles
       password: fixture.password,
     });
     expect(oldPassword.statusCode).toBe(401);
-    const { code } = nextTotp(fixture.totpSecret!, session.lastStep);
+    const { code, step: lateStep } = nextTotp(fixture.totpSecret!, session.lastStep);
     const late = await call("post", "/admin/auth/mfa", {
       mfa_token: pending.json.mfa_token,
       totp_code: code,
     });
-    // D7-02: mfa_token sandi lama masih menghasilkan sesi admin baru setelah sandi diganti.
-    await expectDefect("D7-02", () => {
-      expect(late.statusCode, show("post", "/admin/auth/mfa (mfa_token sebelum ganti sandi)", late)).toBe(
-        401,
-      );
-    });
-    expect(late.statusCode).toBe(200);
+    // D7-02 (diperbaiki): mfa_token terikat sandi dan session_version yang dinilai di tahap sandi; setelah sandi
+    // diganti token itu ditolak 401 tanpa sesi, walau kode TOTP benar.
+    expect(late.statusCode, show("post", "/admin/auth/mfa (mfa_token sebelum ganti sandi)", late)).toBe(401);
     expectOperation("post", "/admin/auth/mfa", late);
-    const me = await call("get", "/admin/me", undefined, { token: (late.json() as Json).access_token });
-    expect(me.statusCode).toBe(200);
+    expect(String(late.headers["set-cookie"] ?? "")).not.toContain("kapdh_admin_rt=");
+    // Login baru dengan sandi baru tetap berhasil (sandi + TOTP).
+    const fresh = await call("post", "/admin/auth/login", { email: fixture.email, password: newPassword });
+    expect(fresh.statusCode).toBe(200);
+    expect(
+      (
+        await call("post", "/admin/auth/mfa", {
+          mfa_token: (fresh.json() as Json).mfa_token,
+          totp_code: nextTotp(fixture.totpSecret!, lateStep).code,
+        })
+      ).statusCode,
+    ).toBe(200);
   });
 });
 

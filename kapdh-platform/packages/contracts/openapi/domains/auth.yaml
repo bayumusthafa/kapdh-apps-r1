@@ -15,6 +15,11 @@
 # - Maksimal 5 pengiriman OTP per jam per email ditambah pembatasan per IP.
 # - 10 kegagalan login dalam 15 menit -> cooldown 15 menit (per email dan per IP); jalur pemulihan tetap tersedia.
 # - Respons lupa sandi dan hapus akun web tidak mengungkap apakah email terdaftar.
+# - Kuota 5 kirim per jam per email dipakai BERSAMA semua tujuan dan modul (pendaftaran, koreksi email, lupa sandi,
+#   hapus akun web, pemulihan sandi oleh Super Admin): satu kunci HMAC email, bukan satu kuota per alur.
+#
+# Cache (RFC 6749 §5.1, PRD 5.2): setiap respons API yang tidak menyatakan Cache-Control sendiri dikirim dengan
+# `Cache-Control: no-store` dan `Pragma: no-cache` (token sesi/reauth/reset, mfa_token, data pribadi, galat).
 #
 # Challenge aktivasi (PRD 2.2, AC F01-3): `signup` dan `email_change` diperlakukan sebagai SATU slot aktivasi.
 # Penerbitan salah satunya (register ulang, koreksi email, login akun pending_otp, resend) membatalkan challenge aktif
@@ -79,6 +84,9 @@ paths:
         membandingkan sandi dengan sandi tersimpan, sehingga setiap perbandingan memakai jatah batas kegagalan login
         email itu (PRD 2.5: 10 kegagalan per 15 menit, bersama login): sandi sama mereset penghitung, sandi berbeda
         tercatat sebagai kegagalan; setelah habis setiap registrasi ulang email itu ditolak 429 tanpa penulisan.
+        Setiap registrasi (termasuk yang dijawab 409 email sudah terdaftar) memakai satu jatah anggaran registrasi
+        per IP (120 per jam) SEBELUM keberadaan email dinilai, sehingga jawaban 409 tidak dapat dipakai sebagai oracle
+        email terdaftar tanpa batas (PRD 2.5); anggaran habis -> 429 tanpa menilai email.
       security: []
       x-kapdh-access: { audience: public, idempotent: true }
       parameters:
@@ -276,7 +284,9 @@ paths:
         Galat: 400 VALIDATION_ERROR (`field_errors.new_email` tidak valid atau sama dengan email sekarang;
         `field_errors.password` sandi salah); 409 VALIDATION_ERROR `field_errors.new_email` bila email baru sudah
         terdaftar; 410 OTP_EXPIRED bila challenge tidak dikenal/sudah dipakai atau akun tidak lagi `pending_otp`;
-        429 RATE_LIMITED (cooldown kegagalan login atau batas kirim OTP ke email baru).
+        429 RATE_LIMITED (cooldown kegagalan login atau batas kirim OTP ke email baru). Kuota kirim OTP (per IP dan
+        per email baru) dipakai SEBELUM keberadaan email baru dinilai, sehingga jawaban 409 ikut terbatas dan akun
+        pending milik pemanggil tidak menjadi oracle email terdaftar tanpa batas (PRD 2.5).
       security: []
       x-kapdh-access: { audience: public }
       requestBody:
@@ -325,7 +335,9 @@ paths:
         - `deletion_pending` -> `next: deletion_pending` dan `deletion` (status permintaan penghapusan), tanpa
           sesi; sandi yang benar adalah challenge terbatas untuk pemeriksaan status (PRD 2.2, F-14).
         - `disabled` -> `next: account_disabled` tanpa sesi; klien menampilkan kontak bantuan (pemulihan hanya
-          melalui pengurus, PRD 2.2).
+          melalui pengurus, PRD 2.2). Status ini tidak memiliki operasi API: masuk (`disable`), pemulihan yang
+          disetujui (`enable`) dan permintaan penghapusan (`delete`) dijalankan operator lewat CLI teraudit
+          `account:status` atas keputusan pengurus (runbook docs/runbooks/alumni-account-disabled.md).
         Sesi mencatat `device_name` dari body serta platform dan versi aplikasi dari header
         X-App-Platform/X-App-Version, dan memperbarui `users.last_login_at`. Sesi hanya diterbitkan bila sandi
         yang dinilai masih sandi akun dan akun masih `active` di bawah kunci baris users: login yang sedang
@@ -379,6 +391,9 @@ paths:
         `reauthenticated_at`, `last_activity_at`, `mfa_level` dan `device_name` (kepala berkas), sehingga
         X-Reauth-Token yang masih berlaku tetap diterima setelah refresh. Refresh tidak dihitung
         sebagai aktivitas: sesi admin yang menganggur lebih dari 30 menit ditolak 401 (AC F02-5, N-08). Akun `disabled`, `deletion_pending` atau `deleted` ditolak 401.
+        TTL refresh (D1: mobile 60 hari, admin 12 jam) adalah umur ABSOLUT keluarga sesi sejak login (PRD 5.2,
+        terpisah dari idle timeout): baris hasil rotasi mewarisi `expires_at` keluarga dan rotasi tidak pernah
+        memperpanjangnya. Setelah batas itu refresh ditolak 401 dan pengguna masuk ulang (admin: sandi + TOTP).
         Refresh mobile memperbarui `app_version`/`platform` sesi dari header X-App-Version/X-App-Platform.
         Rotasi yang sedang berjalan diserialkan dengan pencabutan sesi (logout, logout-all, revokeSession,
         deteksi pemakaian ulang, reset/ganti sandi) lewat kunci baris users: pencabutan selalu ikut mencabut baris
@@ -922,7 +937,11 @@ components:
           description: Waktu login perangkat (awal keluarga sesi); tidak berubah, kunci urutan daftar sesi.
         last_seen_at: { type: string, format: date-time, description: Aktivitas terakhir perangkat. }
         expires_at:
-          { type: string, format: date-time, description: Batas refresh token terakhir keluarga sesi. }
+          type: string
+          format: date-time
+          description: |
+            Batas umur keluarga sesi (login + TTL refresh D1: mobile 60 hari, admin 12 jam); rotasi refresh tidak
+            memperpanjangnya (PRD 5.2, N-08).
         current: { type: boolean, description: True untuk sesi pemanggil. }
 
     SessionPage:
