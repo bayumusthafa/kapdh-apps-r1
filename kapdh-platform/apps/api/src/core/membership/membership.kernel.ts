@@ -235,6 +235,11 @@ export class MembershipKernel {
    * Mengalokasikan nomor AA.SS.JK.N sekali (AC F05-1): baris alumni dikunci, N dari `nextval` di transaksi dan sesi
    * yang sama lalu nomor ditulis dalam satu UPDATE (alumni_member_seq_source_chk). Bila sudah ada, nomor lama
    * dikembalikan tanpa memakai sequence. null bila profil alumni tidak ada. Nilai dari klien tidak pernah dipakai.
+   *
+   * N tidak pernah dipakai ulang (PRD 3.5, 6.4) termasuk setelah restore backup: penerapan ulang deletion ledger
+   * (AC F14-6) menyimpan floor N (`account_deletions.ledger.member_seq_floor`) untuk penghapusan setelah titik backup.
+   * Bila `nextval` belum melewati floor itu (sequence pulihan lebih tua), sequence dimajukan dengan `nextval` berulang
+   * sampai di atas floor (API memegang USAGE, bukan UPDATE/setval); `currval` sesi tetap N yang ditulis.
    */
   async allocateMemberNumber(tx: Tx, userId: string): Promise<string | null> {
     const [profile] = await tx.select().from(alumni).where(eq(alumni.userId, userId)).for("update");
@@ -243,7 +248,24 @@ export class MembershipKernel {
     const [next] = rows<{ seq: string }>(
       await tx.execute(sql`select nextval('app.membership_no_seq')::text as seq`),
     );
-    const seq = Number(next!.seq);
+    let seq = Number(next!.seq);
+    const [retired] = rows<{ floor: string }>(
+      await tx.execute(
+        sql`select coalesce(max((ledger->>'member_seq_floor')::bigint), 0)::text as floor
+            from app.account_deletions where ledger ? 'member_seq_floor'`,
+      ),
+    );
+    const floor = Number(retired?.floor ?? 0);
+    if (seq <= floor) {
+      // Nilai terakhir yang diambil sesi ini adalah yang terbesar (nextval monoton), sama dengan currval.
+      const [jumped] = rows<{ seq: string }>(
+        await tx.execute(
+          sql`select max(n)::text as seq
+              from (select nextval('app.membership_no_seq') as n from generate_series(1, ${floor - seq + 1}::int)) s`,
+        ),
+      );
+      seq = Number(jumped!.seq);
+    }
     const number = memberNumber({
       cohort: profile.cohort,
       classIn: profile.classIn,

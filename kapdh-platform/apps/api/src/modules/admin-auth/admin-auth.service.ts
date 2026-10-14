@@ -22,6 +22,8 @@ import {
   auditMfaLockout,
   MFA_FAILS_LIMIT,
   MFA_WINDOW_MS,
+  mfaTokenBinding,
+  safeEqualText,
   WrongMfaCode,
   wrongCodeError,
 } from "./admin-auth.shared.js";
@@ -115,7 +117,12 @@ export class AdminAuthService {
       if (error instanceof AppException && error.status === 401) await this.auditPasswordFailure(emailRaw);
       throw error;
     }
-    const mfa = await this.tokens.signMfa(user.id);
+    // Token diikat ke kredensial yang BARU dinilai (baris users yang dibaca sebelum bcrypt): ganti/reset sandi atau
+    // logout semua yang commit sesudahnya membuat tahap TOTP menolak token ini (AC F02-4, F02-6, N-08).
+    const mfa = await this.tokens.signMfa(user.id, {
+      sessionVersion: user.sessionVersion,
+      credential: mfaTokenBinding(this.env.OTP_HMAC_SECRET, user.passwordHash),
+    });
     return {
       mfa_token: mfa.token,
       mfa_expires_at: mfa.expiresAt.toISOString(),
@@ -170,13 +177,18 @@ export class AdminAuthService {
         const [admin] = await tx.select().from(admins).where(eq(admins.userId, userId)).for("share");
         const [user] = await tx.select().from(users).where(eq(users.id, userId)).for("no key update");
         const [totpRow] = await tx.select().from(mfaTotp).where(eq(mfaTotp.userId, userId)).for("update");
-        // Keadaan token/admin tidak sah → 401 (kembali ke login), bukan galat kode.
+        // Keadaan token/admin tidak sah → 401 (kembali ke login), bukan galat kode. Kredensial yang dinilai di tahap
+        // sandi wajib masih berlaku di bawah kunci baris users (AC F02-4, F02-6, N-08): sandi diganti/direset (`bnd`)
+        // atau session_version naik (logout semua, pemulihan) sejak mfa_token terbit → 401 tanpa sesi. Ganti sandi
+        // yang berlomba menunggu kunci ini (UPDATE users) atau sudah commit sehingga terlihat di sini.
         if (
           !totpRow?.verifiedAt ||
           !user ||
           user.status !== "active" ||
           user.kind !== "admin" ||
-          admin?.status !== "active"
+          admin?.status !== "active" ||
+          user.sessionVersion !== claims.sessionVersion ||
+          !safeEqualText(mfaTokenBinding(this.env.OTP_HMAC_SECRET, user.passwordHash), claims.credential)
         )
           throw unauth;
 
