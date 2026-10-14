@@ -54,6 +54,17 @@ export class FallbackReadDriver implements StorageDriver {
     await this.fallback.delete(key);
   }
 
+  /**
+   * Menutup klien kedua driver saat shutdown (mis. soket keep-alive S3Driver), sehingga API/worker keluar halus selama
+   * masa perpindahan dan tidak menunggu SIGKILL kontainer.
+   */
+  destroy(): void {
+    for (const driver of [this.primary, this.fallback]) {
+      const closable = driver as Partial<{ destroy: () => void }>;
+      if (typeof closable.destroy === "function") closable.destroy();
+    }
+  }
+
   /** Salinan selalu ditulis ke driver utama; sumber yang belum tersalin dibaca dari cadangan. */
   async copy(sourceKey: string, targetKey: string): Promise<StoredObjectInfo> {
     if (await this.primary.exists(sourceKey)) return this.primary.copy(sourceKey, targetKey);

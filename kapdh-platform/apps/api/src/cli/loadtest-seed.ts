@@ -3,11 +3,14 @@
  * Dijalankan pengelola infra di kontainer API staging, dengan env API (DATABASE_URL kapdh_app, BCRYPT_COST,
  * TOTP_ENC_KEY):
  *
- *   node dist/cli/loadtest-seed.js --confirm-database kapdh_staging --out /tmp/kapdh-loadtest.json
+ *   node dist/cli/loadtest-seed.js --confirm-database kapdh --out /tmp/kapdh-loadtest.json
  *   (atau: pnpm --filter @kapdh/api loadtest:seed -- --confirm-database ... --out ...)
  *
- * Menolak NODE_ENV=production sebelum membuka koneksi. Berkas kredensial (sandi akun uji dan secret TOTP admin uji)
- * ditulis 0600 dan dipakai infra/loadtest/*.mjs; hapus setelah uji dan reset database staging.
+ * Prasyarat sekali di database staging (sebagai pemilik; JANGAN di production): ALTER DATABASE kapdh SET
+ * kapdh.environment = 'staging'. Menolak NODE_ENV=production sebelum membuka koneksi, nama database yang tidak cocok,
+ * dan database tanpa penanda itu (nama database staging dan production sama-sama `kapdh`). Berkas kredensial (sandi
+ * akun uji dan secret TOTP admin uji) ditulis 0600 dan dipakai infra/loadtest/*.mjs; hapus setelah uji dan reset
+ * database staging.
  */
 import "reflect-metadata";
 import { EnvValidationError, loadApiEnv, loadDevelopmentEnvFile } from "@kapdh/config";

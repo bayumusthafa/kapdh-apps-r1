@@ -209,7 +209,7 @@ const cliPath = join(
 
 describe("CLI ledger-reapply (AC F14-6, runbook restore)", () => {
   it.skipIf(!existsSync(cliPath))(
-    "AC F14-6, D5-07: CLI sebagai kapdh_worker menggabungkan salinan ledger luar VPS dan ledger backup (--dir berulang), menerapkan ulang ke database pulihan, menghapus ulang objek berkas, keluar 0; ledger rusak → keluar 1 tanpa data pribadi di keluaran",
+    "AC F14-6, D5-07: CLI sebagai kapdh_worker menggabungkan salinan ledger luar VPS dan ledger backup (--dir berulang), menerapkan ulang ke database pulihan, menghapus ulang objek berkas, keluar 0 walau Redis pulihan belum menyala; ledger rusak → keluar 1 tanpa data pribadi di keluaran",
     async () => {
       const lane = inject("kapdhPg")!;
       const workerUrl = `postgres://kapdh_worker:${lane.rolePassword}@${lane.host}:${lane.port}/${tdb.name}`;
@@ -251,6 +251,9 @@ describe("CLI ledger-reapply (AC F14-6, runbook restore)", () => {
           FILE_URL_SECRET: testEnv.FILE_URL_SECRET,
           STORAGE_DRIVER: "local",
           STORAGE_LOCAL_ROOT: root,
+          // Env worker production memuat REDIS_URL, tetapi saat restore Redis pulihan belum menyala: CLI tidak boleh
+          // bergantung padanya (penerapan ulang akun yang masih ada memicu event realtime). Port 9 = tidak terjangkau.
+          REDIS_URL: "redis://127.0.0.1:9",
         };
         // Salinan bucket luar VPS (layout append-only, hasil rclone copy): versi requested dari permintaan yang sama.
         const offsiteFolder = join(offsiteDir, "2026", "10", requestNumber.toLowerCase());

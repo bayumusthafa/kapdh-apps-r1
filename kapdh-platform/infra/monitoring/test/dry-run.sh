@@ -59,6 +59,14 @@ printf '%s' '{"status":"ok","service":"kapdh-worker","time":"2026-10-14T10:00:00
 if sh "$MON_DIR/check-worker.sh" >"$ROOT/worker-ok.log" 2>&1; then pass "worker ok -> keluar 0"; else fail "worker ok -> keluar 0"; fi
 expect "worker ok -> heartbeat up" sh -c "printf '%s' '$(kuma worker)' | grep -q ' status=up msg=worker ok'"
 
+# URL Push yang disalin apa adanya dari Kuma membawa query bawaan; tanpa dibuang, `status` terkirim dua kali dan Kuma
+# mencatat DOWN untuk setiap heartbeat.
+reset_state
+KUMA_PUSH_WORKER='https://kuma.test/api/push/worker?status=up&msg=OK&ping=' sh "$MON_DIR/check-worker.sh" \
+  >"$ROOT/worker-query.log" 2>&1 || true
+expect "URL Push berisi ?status=up&msg=OK&ping= -> query bawaan dibuang, satu status" \
+  sh -c "printf '%s' '$(kuma worker)' | grep -q ' status=up msg=worker ok' && ! grep -q '?' '$FAKE_STATE_DIR/kuma.log'"
+
 reset_state
 printf '%s' '{"status":"degraded","service":"kapdh-worker","time":"2026-10-14T10:00:00.000Z","issues":["outbox_lagging","outbox_dead_events"],"checks":{}}' >"$FAKE_WORKER_JSON"
 if sh "$MON_DIR/check-worker.sh" >"$ROOT/worker-degraded.log" 2>&1; then fail "worker degraded -> keluar 1"; else pass "worker degraded -> keluar 1"; fi

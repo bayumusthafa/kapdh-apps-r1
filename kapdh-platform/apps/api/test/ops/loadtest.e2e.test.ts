@@ -74,7 +74,7 @@ async function databaseName(): Promise<string> {
 }
 
 describe("loadtest:seed (dataset sintetis PRD 2.4, staging saja)", () => {
-  it("PRD 5.3, 8.2: menolak production dan nama database yang tidak cocok tanpa menulis data", async () => {
+  it("PRD 5.3, 8.2: menolak production, nama database yang tidak cocok dan database tanpa penanda staging tanpa menulis data", async () => {
     const deps = { db: t.db, now: t.clock.now(), stdout: sink(out), stderr: sink(err) };
     const prod = await runLoadtestSeedCommand(
       ["--confirm-database", await databaseName(), "--out", join(work, "x.json")],
@@ -93,6 +93,27 @@ describe("loadtest:seed (dataset sintetis PRD 2.4, staging saja)", () => {
     );
     expect(wrong).toBe(1);
     expect(err.join("")).toMatch(/berbeda dari database tujuan/);
+    // Nama database benar (staging dan production sama-sama `kapdh`) tetapi tanpa penanda staging: ditolak.
+    const unmarked = await runLoadtestSeedCommand(
+      ["--confirm-database", await databaseName(), "--out", join(work, "z.json")],
+      {
+        ...deps,
+        env: { NODE_ENV: "staging", BCRYPT_COST: 4, TOTP_ENC_KEY: testEnv.TOTP_ENC_KEY },
+      },
+    );
+    expect(unmarked).toBe(1);
+    expect(err.join("")).toMatch(/tidak bertanda staging \(kapdh\.environment\)/);
+    await t.pg.query("set kapdh.environment = 'production'");
+    const prodMarked = await runLoadtestSeedCommand(
+      ["--confirm-database", await databaseName(), "--out", join(work, "w.json")],
+      {
+        ...deps,
+        env: { NODE_ENV: "staging", BCRYPT_COST: 4, TOTP_ENC_KEY: testEnv.TOTP_ENC_KEY },
+      },
+    );
+    expect(prodMarked).toBe(1);
+    // Setara `ALTER DATABASE <db> SET kapdh.environment = 'staging'` untuk sesi PGlite tunggal ini.
+    await t.pg.query("set kapdh.environment = 'staging'");
     const [row] = await t.db
       .select({ n: count() })
       .from(users)

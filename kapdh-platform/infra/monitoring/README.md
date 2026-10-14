@@ -11,9 +11,11 @@ Pemeriksa yang berjalan di VPS (cron/systemd) dan mengirim heartbeat ke monitor 
 | `check-backup.sh`                     | umur snapshot restic terbaru (> 26 jam = down, RPO N-06) dan `restic check` mingguan                                            | setiap jam    |
 | `realtime-probe.mjs`                  | WebSocket Socket.IO `/realtime` (Node ≥ 22)                                                                                     | 2 menit       |
 | `monitoring.env.example`              | contoh `/etc/kapdh/monitoring.env` (URL Push berisi token: 0600)                                                                |               |
-| `test/dry-run.sh`                     | uji kering keputusan up/down dengan curl/restic/psql/docker tiruan (36 pemeriksaan)                                             |               |
+| `test/dry-run.sh`                     | uji kering keputusan up/down dengan curl/restic/psql/docker tiruan (37 pemeriksaan)                                             |               |
 
-Jadwal cron siap pakai: `infra/backup/cron/kapdh-backup`. Pesan heartbeat hanya angka dan kode isu (N-14).
+Jadwal cron siap pakai: `infra/monitoring/cron/kapdh-monitoring` (selalu dipasang; backup harian dijadwalkan terpisah,
+systemd timer ATAU `infra/backup/cron/kapdh-backup`). URL Push boleh disalin dari Kuma beserta `?status=up&msg=OK&ping=`:
+query itu dibuang skrip. Pesan heartbeat hanya angka dan kode isu (N-14).
 
 ```sh
 sh infra/monitoring/test/dry-run.sh
