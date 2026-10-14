@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../app/theme/kapdh_tokens.dart';
+import '../core/ui/back_navigation.dart';
 
 /// Pita status global (Offline, Pemeliharaan) yang dipasang aplikasi di atas Navigator (`MaterialApp.builder`).
 ///
@@ -57,17 +60,22 @@ class AppScaffold extends StatelessWidget {
   final Widget? floatingActionButton;
   final Color backgroundColor;
 
-  void _back(BuildContext context) {
+  /// Sama dengan tombol kembali sistem: `PopScope` halaman (mis. "Buang perubahan?" di Ubah Profil) dihormati,
+  /// tidak dilewati seperti `GoRouter.pop`, sehingga isian formulir tidak hilang diam-diam (PRD 4.5). Bila tidak ada
+  /// halaman yang dapat ditutup, kembali ke [fallbackLocation].
+  ///
+  /// Bila halaman benar-benar tertutup (bukan ditahan `PopScope`), lokasi baru dilewatkan lagi ke redirect seperti
+  /// `GoRouter.pop`: halaman di bawahnya yang tidak diizinkan matriks rute untuk status sekarang (mis. daftar event
+  /// bagi anggota expired yang membuka detail event lewat deep link, PRD 2.2) diganti rute status, tanpa request ke
+  /// layar yang terlarang. Aturan yang sama ([popThenRedirect]) dipakai tombol kembali sistem aplikasi.
+  Future<void> _back(BuildContext context) async {
     final router = GoRouter.maybeOf(context);
-    if (router != null) {
-      if (router.canPop()) {
-        router.pop();
-      } else {
-        router.go(fallbackLocation);
-      }
+    if (router == null) {
+      await Navigator.maybePop(context);
       return;
     }
-    Navigator.maybePop(context);
+    final handled = await popThenRedirect(router, router.routerDelegate.popRoute);
+    if (!handled) router.go(fallbackLocation);
   }
 
   @override
@@ -84,7 +92,7 @@ class AppScaffold extends StatelessWidget {
                 // Panah kiri di app bar (prototipe layar 6, 7; guideline hal. 6). Chevron hanya untuk baris judul di
                 // dalam lembar (prototipe layar 1, 3).
                 icon: const Icon(Icons.arrow_back, size: 24),
-                onPressed: () => _back(context),
+                onPressed: () => unawaited(_back(context)),
               )
             : null,
         actions: actions,

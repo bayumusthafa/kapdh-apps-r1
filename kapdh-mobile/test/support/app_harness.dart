@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart' show ObjectKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -70,8 +71,15 @@ Future<AppHarness> pumpApp(
   );
   if (tokens != null) await container.read(tokenStoreProvider).save(tokens);
   if (beforeStart != null) await beforeStart(container);
+  // Kunci per container: pumpApp berulang dalam satu uji memasang pohon dan scope baru. Tanpa kunci Flutter hanya
+  // memperbarui scope lama sehingga container baru tidak mendapat vsync Flutter dan penghapusan provider autoDispose
+  // saat pohon dibongkar memakai Timer yang tertinggal sesudah uji selesai.
   await tester.pumpWidget(
-    UncontrolledProviderScope(container: container, child: const KapdhApp(enableSessionServices: false)),
+    UncontrolledProviderScope(
+      key: ObjectKey(container),
+      container: container,
+      child: const KapdhApp(enableSessionServices: false),
+    ),
   );
   if (settle) await _settle(tester);
   return AppHarness._(container, adapter, testClock, launched);

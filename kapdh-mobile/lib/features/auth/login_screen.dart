@@ -10,13 +10,16 @@ import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/format/formatters.dart';
 import '../../core/session/session_controller.dart';
-import '../../core/ui/support_section.dart';
 import '../../design/design.dart';
+import '../status/deletion_portal.dart';
+import 'auth_flow.dart';
 
-/// Login alumni (F-02, AC F02-1; guideline hal. 5). Setelah token terbit, router mengarahkan sesuai effective_status
-/// (atau ke tujuan tertunda `?from=`); akun pending_otp diarahkan ke OTP dengan challenge baru. Akun yang sedang
-/// dihapus atau dinonaktifkan tidak mendapat sesi (kontrak C1, PRD 2.2): statusnya ditampilkan di layar ini
-/// beserta kontak pengurus.
+/// Login alumni (F-02, AC F02-1; guideline hal. 5: pita hijau bermotif dengan logo, "Selamat" putih dan
+/// "Datang kembali !!!" emas, tombol tampil/sembunyikan password, tautan Lupa Password). Setelah token terbit, router
+/// mengarahkan sesuai effective_status (atau ke tujuan tertunda `?from=`); akun pending_otp diarahkan ke OTP dengan
+/// challenge aktivasi dari server. Akun yang sedang dihapus atau dinonaktifkan tidak mendapat sesi (kontrak C1,
+/// PRD 2.2): statusnya ditampilkan portal status penghapusan tanpa sesi (/deletion-status) beserta kontak pengurus.
+/// Cooldown kegagalan login tidak menutup Lupa Password (PRD 2.5).
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -25,13 +28,26 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _email = TextEditingController();
+  late final TextEditingController _email = TextEditingController(text: ref.read(authEmailHintProvider));
   final _password = TextEditingController();
   bool _busy = false;
   String? _error;
 
-  /// Akun tanpa sesi (deletion_pending/disabled) dari login terakhir; null bila tidak ada.
-  LoginResult? _restricted;
+  /// Pemberitahuan sekali tampil setelah alur pemulihan (mis. password baru tersimpan).
+  LoginNotice? _notice;
+
+  @override
+  void initState() {
+    super.initState();
+    _notice = ref.read(loginNoticeProvider);
+    if (_notice != null) {
+      // Dikonsumsi sekali; provider tidak boleh diubah selama pohon widget sedang dibangun.
+      Future.microtask(() {
+        if (mounted) ref.read(loginNoticeProvider.notifier).clear();
+      });
+    }
+  }
+
   Map<String, List<String>> _fieldErrors = const {};
   DateTime? _blockedUntil;
   Timer? _ticker;
@@ -72,20 +88,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _busy = true;
       _error = null;
-      _restricted = null;
+      _notice = null;
       _fieldErrors = const {};
     });
+    final email = _email.text;
+    final password = _password.text;
     try {
-      final result = await ref.read(sessionProvider.notifier).login(email: _email.text, password: _password.text);
+      final result = await ref.read(sessionProvider.notifier).login(email: email, password: password);
       if (!mounted) return;
       switch (result.outcome) {
         case LoginOutcome.verifyOtp:
+          // Hanya di memori, untuk pemulihan hasil verifikasi OTP yang tidak diketahui (kontrak C1 verifyOtp).
+          ref.read(activationCredentialsProvider.notifier).remember(email: email, password: password);
+          ref.read(authEmailHintProvider.notifier).set(email);
           context.go(AppRoutes.registerOtp);
         case LoginOutcome.deletionPending || LoginOutcome.accountDisabled:
-          setState(() {
-            _restricted = result;
-            _password.clear();
-          });
+          // Tanpa sesi (kontrak C1): status ditampilkan portal status penghapusan yang bekerja tanpa sesi
+          // (PRD 2.2, F-14); sandi tidak disimpan.
+          ref.read(deletionPortalProvider.notifier).showLoginResult(result, email: email);
+          _password.clear();
+          context.go(AppRoutes.deletionStatus);
         case LoginOutcome.signedIn:
           break;
       }
@@ -181,8 +203,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               Align(
                 alignment: Alignment.centerRight,
-                child: KapdhLinkButton(label: 'Lupa Password', onPressed: () => context.go(AppRoutes.forgot)),
+                child: _ForgotPasswordLink(
+                  onPressed: () {
+                    ref.read(authEmailHintProvider.notifier).set(_email.text);
+                    context.go(AppRoutes.forgot);
+                  },
+                ),
               ),
+              if (_notice case final notice?) ...[
+                const SizedBox(height: KapdhSpace.s2),
+                Semantics(
+                  liveRegion: true,
+                  child: InfoBox(
+                    key: const ValueKey('login-notice'),
+                    tone: notice.success ? InfoBoxTone.info : InfoBoxTone.warning,
+                    icon: notice.success ? Icons.check_circle_outline : null,
+                    title: notice.title,
+                    message: notice.message,
+                  ),
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: KapdhSpace.s2),
                 Semantics(
@@ -190,11 +230,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: InfoBox(tone: InfoBoxTone.danger, message: _error!),
                 ),
               ],
-              if (_restricted case final restricted?) ...[
+              if (blocked > Duration.zero) ...[
                 const SizedBox(height: KapdhSpace.s2),
-                Semantics(liveRegion: true, child: _RestrictedAccountNotice(result: restricted)),
-                const SizedBox(height: KapdhSpace.s3),
-                const SupportSection(subject: 'Status Akun KAPDH', title: 'Hubungi pengurus'),
+                // PRD 2.5: cooldown kegagalan login tidak menutup jalur pemulihan.
+                const Text(
+                  'Sambil menunggu, Anda tetap dapat memulihkan akun lewat Lupa Password.',
+                  style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                ),
               ],
               const SizedBox(height: KapdhSpace.s5),
               KapdhButton(
@@ -232,33 +274,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 }
 
-/// Status akun tanpa sesi setelah sandi benar (kontrak C1 `LoginNext`, PRD 2.2): permintaan penghapusan yang sedang
-/// diproses (nomor permintaan dan batas penyelesaian, AC F14-1) atau akun yang dinonaktifkan pengurus.
-class _RestrictedAccountNotice extends StatelessWidget {
-  const _RestrictedAccountNotice({required this.result});
+/// Tautan "Lupa Password" bergaris bawah di kanan bawah field password (guideline hal. 5), target sentuh 48 px.
+class _ForgotPasswordLink extends StatelessWidget {
+  const _ForgotPasswordLink({required this.onPressed});
 
-  final LoginResult result;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    if (result.outcome == LoginOutcome.accountDisabled) {
-      return const InfoBox(
-        tone: InfoBoxTone.warning,
-        title: 'Akun tidak aktif',
-        message:
-            'Akun ini sedang dinonaktifkan sehingga tidak dapat dipakai masuk. Pemulihan hanya dapat dilakukan '
-            'pengurus setelah verifikasi identitas.',
-      );
-    }
-    final deletion = result.deletion;
-    final detail = deletion == null
-        ? 'Anda akan menerima email setelah penghapusan selesai.'
-        : 'Nomor permintaan ${deletion.requestNumber} (${StatusStyles.deletion(deletion.status).label}). '
-              'Selesai paling lambat ${formatDateTime(deletion.estimatedCompletionAt)}.';
-    return InfoBox(
-      tone: InfoBoxTone.warning,
-      title: 'Penghapusan akun sedang diproses',
-      message: 'Akun ini tidak dapat dipakai masuk selama penghapusan berjalan. $detail',
+    return TextButton(
+      key: const ValueKey('login-forgot'),
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: KapdhColors.primary,
+        padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s1),
+        minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
+        textStyle: const TextStyle(
+          fontSize: KapdhFontSize.caption,
+          fontWeight: FontWeight.w600,
+          decoration: TextDecoration.underline,
+          decorationColor: KapdhColors.primary,
+        ),
+      ),
+      child: const Text('Lupa Password'),
     );
   }
 }
