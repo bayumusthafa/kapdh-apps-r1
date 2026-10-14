@@ -335,7 +335,9 @@ paths:
         - `deletion_pending` -> `next: deletion_pending` dan `deletion` (status permintaan penghapusan), tanpa
           sesi; sandi yang benar adalah challenge terbatas untuk pemeriksaan status (PRD 2.2, F-14).
         - `disabled` -> `next: account_disabled` tanpa sesi; klien menampilkan kontak bantuan (pemulihan hanya
-          melalui pengurus, PRD 2.2).
+          melalui pengurus, PRD 2.2). Status ini tidak memiliki operasi API: masuk (`disable`), pemulihan yang
+          disetujui (`enable`) dan permintaan penghapusan (`delete`) dijalankan operator lewat CLI teraudit
+          `account:status` atas keputusan pengurus (runbook docs/runbooks/alumni-account-disabled.md).
         Sesi mencatat `device_name` dari body serta platform dan versi aplikasi dari header
         X-App-Platform/X-App-Version, dan memperbarui `users.last_login_at`. Sesi hanya diterbitkan bila sandi
         yang dinilai masih sandi akun dan akun masih `active` di bawah kunci baris users: login yang sedang

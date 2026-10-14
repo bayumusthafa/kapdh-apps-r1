@@ -1242,10 +1242,18 @@ export class DeletionSteps {
       // preferensi atau token perangkat yang sempat dibuat pihak lain setelah langkah itu (mis. keputusan payment oleh
       // pengurus selama jendela retry) dihapus di transaksi yang sama dengan perubahan status ke `deleted`.
       // NotificationService.notify sudah melewati akun deletion_pending; sapuan ini menutup notifikasi yang lolos
-      // pemeriksaan itu secara bersamaan.
+      // pemeriksaan itu secara bersamaan. Histori keanggotaan yang ditulis sesudah langkah `finance` (mis. aktivasi
+      // dari payment yang diputus selama jendela retry) dianonimkan dengan aturan yang sama dengan langkah itu.
       await tx.delete(notifications).where(eq(notifications.userId, ctx.userId));
       await tx.delete(notificationPreferences).where(eq(notificationPreferences.userId, ctx.userId));
       await tx.delete(deviceTokens).where(eq(deviceTokens.userId, ctx.userId));
+      await tx
+        .delete(membershipEvents)
+        .where(and(eq(membershipEvents.userId, ctx.userId), eq(membershipEvents.kind, "number_correction")));
+      await tx
+        .update(membershipEvents)
+        .set({ userId: null, reason: null, beforeMemberNumber: null, afterMemberNumber: null })
+        .where(eq(membershipEvents.userId, ctx.userId));
       if (user && user.status !== "deleted") {
         await tx
           .update(users)

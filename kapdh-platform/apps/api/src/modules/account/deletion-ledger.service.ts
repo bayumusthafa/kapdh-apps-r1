@@ -249,7 +249,8 @@ export class DeletionLedgerService {
         ...new Set([...(row.stepsDone ?? []).filter((step) => step !== "files"), ...preDoneSteps(entry)]),
       ];
       const previous = row.ledger ?? {};
-      const storedFloor = typeof previous.member_seq_floor === "number" ? previous.member_seq_floor : undefined;
+      const storedFloor =
+        typeof previous.member_seq_floor === "number" ? previous.member_seq_floor : undefined;
       const floor =
         entry.member_seq_floor === undefined
           ? storedFloor
@@ -263,7 +264,12 @@ export class DeletionLedgerService {
           lastError: null,
           stepsDone,
           // Floor N dari ledger eksternal ikut disimpan (PRD 3.5, 6.4; lihat MembershipKernel.allocateMemberNumber).
-          ledger: { ...previous, v: 1, restored: true, ...(floor === undefined ? {} : { member_seq_floor: floor }) },
+          ledger: {
+            ...previous,
+            v: 1,
+            restored: true,
+            ...(floor === undefined ? {} : { member_seq_floor: floor }),
+          },
           updatedAt: now,
         })
         .where(eq(accountDeletions.id, row.id));
