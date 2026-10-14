@@ -1,7 +1,8 @@
 import type { components } from "@kapdh/contracts";
 import { keepPreviousData } from "@tanstack/react-query";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
 import { useApiQuery } from "../../api/query";
 import { Badge, PaymentStageBadge } from "../../components/ui/Badge";
@@ -12,12 +13,14 @@ import { SearchInput } from "../../components/ui/SearchInput";
 import { EmptyState } from "../../components/ui/States";
 import { formatRelativeAge, formatRupiah, formatShortDateTime } from "../../lib/format";
 import { useNow } from "../../lib/hooks";
-import { DELETED_ACCOUNT_LABEL, PAYMENT_TYPE_LABEL } from "../../lib/labels";
+import { memberName, memberSubtitle, paymentTypeText as typeText } from "./labels";
 import { PaymentDecisionPanel } from "./PaymentDecisionPanel";
+import { PAYMENTS_KEY } from "./queries";
 
 type Item = components["schemas"]["AdminPaymentItem"];
 type PaymentStatus = components["schemas"]["PaymentStatus"];
 type PaymentType = components["schemas"]["PaymentType"];
+type PaymentSort = components["schemas"]["AdminPaymentSort"];
 
 /** Ukuran halaman antrean (server: bawaan 30, maks 100). */
 export const PAYMENT_PAGE_SIZE = 20;
@@ -46,16 +49,40 @@ const STATUS_OPTIONS = [
   { value: "all", label: "Semua" },
 ] as const satisfies readonly { value: StatusFilter; label: string }[];
 
+/** Urutan antrean "Menunggu" (kontrak AdminPaymentSort). Tiket mendekati hari H naik dengan batas review (PRD 4.4). */
+type QueueSort = Extract<PaymentSort, "submitted_at_asc" | "review_due_at_asc">;
+const SORT_OPTIONS = [
+  { value: "submitted_at_asc", label: "Paling lama menunggu" },
+  { value: "review_due_at_asc", label: "Batas review terdekat" },
+] as const satisfies readonly { value: QueueSort; label: string }[];
+
 function statusQuery(filter: StatusFilter): { stage?: "awaiting_review"; status?: PaymentStatus } {
   if (filter === "awaiting_review") return { stage: "awaiting_review" };
   if (filter === "all") return {};
   return { status: filter };
 }
 
+/**
+ * Urutan per pilihan status: antrean menurut usia atau batas review; Disetujui/Ditolak keputusan terbaru dahulu
+ * (`decided_at_desc`); Dibatalkan instruksi terbaru dahulu; Semua memakai urutan antrean bawaan.
+ */
+function sortFor(filter: StatusFilter, queueSort: QueueSort): PaymentSort | undefined {
+  if (filter === "awaiting_review") return queueSort === "submitted_at_asc" ? undefined : queueSort;
+  if (filter === "paid" || filter === "rejected") return "decided_at_desc";
+  if (filter === "cancelled") return "created_at_desc";
+  return undefined;
+}
+
+/** Kolom waktu pertama mengikuti pilihan status: waktu kirim bukti, waktu keputusan, atau waktu dibuat. */
+function timeColumn(filter: StatusFilter): { header: string; value: (i: Item) => string | null } {
+  if (filter === "paid" || filter === "rejected")
+    return { header: "Diputus (WIB)", value: (i) => i.decided_at };
+  if (filter === "cancelled") return { header: "Dibuat (WIB)", value: (i) => i.created_at };
+  return { header: "Dikirim (WIB)", value: (i) => i.submitted_at };
+}
+
 export function paymentTypeText(item: Pick<Item, "type" | "event_title">): string {
-  return item.type === "ticket" && item.event_title
-    ? `Tiket: ${item.event_title}`
-    : PAYMENT_TYPE_LABEL[item.type];
+  return typeText(item);
 }
 
 /**
@@ -80,24 +107,41 @@ export function ticketMarker(item: Pick<Item, "event_cancelled" | "ticket_status
 }
 
 /**
- * Antrean verifikasi pembayaran (F-04, prototipe screen_8): cari (debounce), filter jenis & status, paging kursor
- * server, usia antrean, penanda lewat batas review, dan panel keputusan di samping (menyusun ke bawah di layar
- * sempit). Antrean diurutkan server berdasarkan waktu kirim bukti, terlama dulu (PRD 3.4). Pemilik yang akunnya
- * sudah dihapus tampil sebagai "Akun dihapus" (AC F14-4).
+ * Antrean verifikasi pembayaran (F-04, prototipe screen_8): cari (debounce), filter jenis & status (termasuk
+ * Semua), urutan, paging kursor server dengan ringkasan "Menampilkan x dari y", usia antrean, penanda lewat batas
+ * review, baris terpilih bergaris hijau, dan panel keputusan di samping (menyusun ke bawah di layar sempit).
+ * Antrean diurutkan server berdasarkan waktu kirim bukti, terlama dulu (PRD 3.4). Pemilik yang akunnya sudah
+ * dihapus tampil sebagai "Akun dihapus" (AC F14-4). Pilihan payment disimpan di URL (?payment=) sehingga tautan
+ * dari tab Penyesuaian membuka panel yang sama.
  */
 export function VerificationTab() {
+  const search = useSearch({ from: "/app/payments" });
+  const navigate = useNavigate({ from: "/payments" });
   const [q, setQ] = useState("");
   const [type, setType] = useState<PaymentType | "all">("all");
   const [status, setStatus] = useState<StatusFilter>("awaiting_review");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [queueSort, setQueueSort] = useState<QueueSort>("submitted_at_asc");
+  const [selectedId, setSelectedId] = useState<string | null>(search.payment ?? null);
   /** Naik setiap admin memilih baris; panel memindah fokus ke judul detail setelah detail termuat. */
   const [focusRequest, setFocusRequest] = useState(0);
   const now = useNow();
-  const filters = { q, type, status };
+  const sort = sortFor(status, queueSort);
+  const filters = { q, type, status, sort };
   const paging = useCursorPaging(filters, PAYMENT_PAGE_SIZE);
 
+  // Tautan URL (mis. "Buka pembayaran asal" di tab Penyesuaian) mengganti pilihan. Tombol pemicunya ikut hilang
+  // bersama tab asal sehingga fokus jatuh ke <body>; panel diminta memindah fokus ke judul detail setelah termuat
+  // (N-11, PRD 4.5). Pilihan baris juga memperbarui URL; permintaan fokus yang berulang hanya memfokus judul yang
+  // sama.
+  const linked = search.payment;
+  useEffect(() => {
+    if (!linked) return;
+    setSelectedId(linked);
+    setFocusRequest((n) => n + 1);
+  }, [linked]);
+
   const list = useApiQuery({
-    queryKey: ["admin-payments", "list", { ...filters, cursor: paging.cursor }],
+    queryKey: [...PAYMENTS_KEY, "list", { ...filters, cursor: paging.cursor }],
     pollMs: PAYMENT_POLL_MS,
     placeholderData: keepPreviousData,
     request: ({ signal, headers }) =>
@@ -107,6 +151,7 @@ export function VerificationTab() {
             ...statusQuery(status),
             ...(type !== "all" ? { type } : {}),
             ...(q ? { q } : {}),
+            ...(sort ? { sort } : {}),
             ...(paging.cursor ? { cursor: paging.cursor } : {}),
             limit: PAYMENT_PAGE_SIZE,
           },
@@ -118,18 +163,20 @@ export function VerificationTab() {
 
   function select(id: string) {
     setSelectedId(id);
+    void navigate({ search: (prev) => ({ ...prev, payment: id }), replace: true });
     // Fokus dipindah ke judul detail oleh panel SETELAH detail termuat (judul belum ada selama memuat), agar
     // pengguna keyboard/pembaca layar langsung berada di panel keputusan (N-11).
     setFocusRequest((n) => n + 1);
   }
 
   const showAge = status === "awaiting_review";
+  const time = timeColumn(status);
   const columns = useMemo<ColumnDef<Item>[]>(
     () => [
       {
-        id: "submitted_at",
-        header: "Dikirim (WIB)",
-        cell: ({ row }) => formatShortDateTime(row.original.submitted_at),
+        id: "time",
+        header: time.header,
+        cell: ({ row }) => formatShortDateTime(time.value(row.original)),
         meta: { cellClassName: "whitespace-nowrap" },
       },
       {
@@ -147,11 +194,9 @@ export function VerificationTab() {
               className="flex min-h-11 flex-col items-start justify-center text-left"
             >
               <span className="font-semibold text-primary underline-offset-2 hover:underline">
-                {p.member?.full_name ?? DELETED_ACCOUNT_LABEL}
+                {memberName(p.member)}
               </span>
-              <span className="text-xs font-normal text-text-muted">
-                {p.member ? (p.member.member_number ?? "Belum bernomor") : "Data pemilik sudah dihapus"}
-              </span>
+              <span className="text-xs font-normal text-text-muted">{memberSubtitle(p.member)}</span>
             </button>
           );
         },
@@ -200,9 +245,9 @@ export function VerificationTab() {
             ),
           },
     ],
-    // `select` hanya memakai setState sehingga aman tidak dijadikan dependensi. Definisi kolom yang dibuat ulang
-    // (baris aktif, jam) tidak memasang ulang sel karena DataTable merender templat lewat komponen stabil.
-    [selectedId, showAge, now],
+    // `select` hanya memakai setState/navigate sehingga aman tidak dijadikan dependensi. Definisi kolom yang dibuat
+    // ulang (baris aktif, jam) tidak memasang ulang sel karena DataTable merender templat lewat komponen stabil.
+    [selectedId, showAge, now, status],
   );
 
   const selectedItem = list.data?.items.find((i) => i.id === selectedId);
@@ -227,6 +272,19 @@ export function VerificationTab() {
             <Select {...a11y} size="sm" options={STATUS_OPTIONS} value={status} onValueChange={setStatus} />
           )}
         </Field>
+        {status === "awaiting_review" ? (
+          <Field label="Urutan" className="flex-[0_0_230px]">
+            {(a11y) => (
+              <Select
+                {...a11y}
+                size="sm"
+                options={SORT_OPTIONS}
+                value={queueSort}
+                onValueChange={setQueueSort}
+              />
+            )}
+          </Field>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-start gap-5">
