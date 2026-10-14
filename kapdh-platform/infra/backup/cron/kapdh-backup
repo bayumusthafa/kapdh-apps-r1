@@ -1,14 +1,15 @@
 # Alternatif systemd timer (pakai SALAH SATU): /etc/cron.d/kapdh-backup, milik root, mode 0644.
-# Backup harian 02:15 WIB; cek umur backup setiap jam; cek host (disk) setiap 5 menit; cek aplikasi setiap 5 menit.
+# Backup harian 02:15 WIB; umur backup setiap jam; disk, aplikasi, worker dan realtime setiap beberapa menit.
 # Konfigurasi dibaca skrip dari KAPDH_BACKUP_ENV/KAPDH_BACKUP_SECRETS (lib.sh menolak berkas yang dapat ditulis
-# grup/lainnya). Keluaran ke syslog lewat logger; tidak ada secret yang dicetak skrip.
+# grup/lainnya): backup memakai backup.env, pemeriksa memakai monitoring.env. Keluaran ke syslog lewat logger; skrip
+# tidak mencetak secret. docs/runbooks/backup-restore.md dan docs/runbooks/monitoring.md.
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 CRON_TZ=Asia/Jakarta
-KAPDH_BACKUP_ENV=/etc/kapdh/backup.env
-KAPDH_BACKUP_SECRETS=/etc/kapdh/backup.secrets.env
 
-15 2 * * *   root  nice -n 10 /opt/kapdh/infra/backup/backup.sh 2>&1 | logger -t kapdh-backup
-40 * * * *   root  /opt/kapdh/infra/monitoring/check-backup.sh 2>&1 | logger -t kapdh-check-backup
-*/5 * * * *  root  /opt/kapdh/infra/monitoring/check-host.sh 2>&1 | logger -t kapdh-check-host
-*/5 * * * *  root  /opt/kapdh/infra/monitoring/check-app.sh 2>&1 | logger -t kapdh-check-app
+15 2 * * *   root  KAPDH_BACKUP_ENV=/etc/kapdh/backup.env KAPDH_BACKUP_SECRETS=/etc/kapdh/backup.secrets.env nice -n 10 /opt/kapdh/infra/backup/backup.sh 2>&1 | logger -t kapdh-backup
+40 * * * *   root  KAPDH_BACKUP_ENV=/etc/kapdh/backup.env KAPDH_BACKUP_SECRETS=/etc/kapdh/backup.secrets.env /opt/kapdh/infra/monitoring/check-backup.sh 2>&1 | logger -t kapdh-check-backup
+*/5 * * * *  root  KAPDH_BACKUP_ENV=/etc/kapdh/monitoring.env KAPDH_BACKUP_SECRETS=/dev/null /opt/kapdh/infra/monitoring/check-host.sh 2>&1 | logger -t kapdh-check-host
+*/5 * * * *  root  KAPDH_BACKUP_ENV=/etc/kapdh/monitoring.env KAPDH_BACKUP_SECRETS=/dev/null /opt/kapdh/infra/monitoring/check-app.sh 2>&1 | logger -t kapdh-check-app
+*/2 * * * *  root  KAPDH_BACKUP_ENV=/etc/kapdh/monitoring.env KAPDH_BACKUP_SECRETS=/dev/null /opt/kapdh/infra/monitoring/check-worker.sh 2>&1 | logger -t kapdh-check-worker
+*/2 * * * *  root  sh -c 'set -a; . /etc/kapdh/monitoring.env; exec node /opt/kapdh/infra/monitoring/realtime-probe.mjs' 2>&1 | logger -t kapdh-check-realtime
