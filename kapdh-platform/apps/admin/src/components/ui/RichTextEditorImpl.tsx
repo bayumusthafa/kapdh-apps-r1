@@ -87,6 +87,9 @@ export default function RichTextEditorImpl({
 
   const editor = useEditor({
     editable: !disabled,
+    // CSP admin `style-src 'self'` tanpa 'unsafe-inline' (N-07, infra/nginx-admin.conf) memblokir <style> yang
+    // disuntikkan TipTap; aturan dasar ProseMirror yang sama ada di src/styles.css.
+    injectCSS: false,
     immediatelyRender: true,
     shouldRerenderOnTransaction: false,
     extensions: [

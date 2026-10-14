@@ -1,37 +1,54 @@
+# syntax=docker/dockerfile:1.26.0@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 # Image worker KAPDH (PRD 5.1, 5.5; ARCHITECTURE §4.8). Dibangun di CI, bukan di VPS production (PRD 5.3).
 # Konteks build = kapdh-platform/:
-#   docker build -f infra/Dockerfile.worker -t kapdh-worker .
-# Migrasi TIDAK dijalankan image ini (job deployment tunggal dengan lock, PRD 5.5). Secrets hanya dari environment
-# Coolify saat runtime, tidak pernah di layer image. Worker tidak menerima secret JWT/OTP/TOTP/QR (least privilege).
+#   docker build -f infra/Dockerfile.worker -t kapdh-worker:<versi> .
+# Migrasi TIDAK dijalankan image ini (job rilis tunggal dengan lock, infra/Dockerfile.api target `release`, PRD 5.5).
+# Secrets hanya dari environment saat runtime, tidak pernah di layer image. Worker tidak menerima secret
+# JWT/OTP/TOTP/QR dan login database-nya kapdh_worker tanpa akses mfa_totp (least privilege, PRD 5.1).
+
+# Node 24.19.0 (ARCHITECTURE §1, .nvmrc) di Alpine 3.24; digest dipin sama dengan Dockerfile.api (PRD 7.1).
+ARG NODE_IMAGE=node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
 
 # ------------------------------------------------------------------------------------------------ tahap build
-FROM node:24-alpine AS build
+FROM ${NODE_IMAGE} AS build
 WORKDIR /repo
-ENV CI=true
+ENV CI=true \
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
+    pnpm fetch --frozen-lockfile --store-dir /pnpm/store
 COPY . .
 # Hanya worker dan dependensi workspace-nya (API core + modul job, database, config, storage, contracts, shared).
-# `pnpm deploy` pnpm 10 mewajibkan inject-workspace-packages; tanpa itu dipakai implementasi `--legacy` yang menyalin
-# paket workspace (sesuai field "files") ke node_modules produksi yang mandiri di /out.
-RUN pnpm install --frozen-lockfile --filter "@kapdh/worker..." \
-  && pnpm --filter "@kapdh/worker..." build \
-  && pnpm --filter @kapdh/worker deploy --prod --legacy /out
+RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile --prefer-offline --store-dir /pnpm/store --filter "@kapdh/worker..." \
+  && pnpm --filter "@kapdh/worker..." build
+# pnpm 10 mewajibkan inject-workspace-packages untuk `pnpm deploy`; `--legacy` menyalin paket workspace (sesuai field
+# "files", tanpa field itu seluruh folder) ke node_modules produksi yang mandiri di /out. Sumber dan uji paket API yang
+# ikut tersalin dibuang (worker hanya memakai dist/ lewat @kapdh/api/worker).
+RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
+    pnpm --filter @kapdh/worker deploy --prod --legacy --store-dir /pnpm/store /out \
+  && cd /out \
+  && api_dir="$(readlink -f node_modules/@kapdh/api)" \
+  && rm -rf "$api_dir/src" "$api_dir/test" \
+  && test -f dist/main.js \
+  && test -f "$api_dir/dist/worker.js"
 
 # ---------------------------------------------------------------------------------------------- tahap runtime
-FROM node:24-alpine
+FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 # Berkas aplikasi milik root dan hanya-baca untuk proses; satu-satunya lokasi tulis adalah volume berkas lokal
-# (STORAGE_LOCAL_ROOT bawaan /data/files, dipasang sebagai volume yang sama dengan API untuk cleanup/ekspor).
+# (STORAGE_LOCAL_ROOT bawaan /data/files, volume yang sama dengan API untuk cleanup/ekspor).
 COPY --from=build /out ./
 RUN mkdir -p /data/files && chown node:node /data/files
 # Pengguna non-root bawaan image node (uid 1000).
 USER node
 # Endpoint health internal (GET /healthz); tidak dirutekan publik oleh Traefik.
 EXPOSE 3001
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.WORKER_HEALTH_PORT||3001)+'/healthz',{signal:AbortSignal.timeout(4000)}).then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
 # SIGTERM → shutdown halus (berhenti poll, selesaikan job berjalan sampai WORKER_SHUTDOWN_TIMEOUT_MS, lepas leader).
-# Atur stop_grace_period container > WORKER_SHUTDOWN_TIMEOUT_MS + 10 detik.
+# Atur stop_grace_period container > WORKER_SHUTDOWN_TIMEOUT_MS + 10 detik (bawaan 25 s → 40 s).
 STOPSIGNAL SIGTERM
 CMD ["node", "dist/main.js"]
