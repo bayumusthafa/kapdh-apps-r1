@@ -132,7 +132,7 @@ sebagai pemilik database dengan daftar id dari laporan, setelah dikonfirmasi pen
 ## 6. Operasi harian
 
 - Monitor Push "backup harian" hijau setiap hari; "umur backup" hijau setiap jam (`check-backup.sh`); "restic check"
-  mingguan (Minggu 04:00 WIB, sampel 5% data).
+  mingguan (Minggu 04.00 WIB = `CHECK_WEEKDAY=6`, `CHECK_HOUR_UTC=21`, sampel 5 % data).
 - Log: `journalctl -u kapdh-backup --since today` (atau syslog tag `kapdh-backup`). Status terakhir:
   `/var/backups/kapdh/status/last-success`.
 - Daftar snapshot: `restic snapshots --host kapdh-production --tag kapdh-db`.

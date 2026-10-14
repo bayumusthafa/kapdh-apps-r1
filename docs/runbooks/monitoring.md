@@ -4,7 +4,9 @@ Pemilik: pengelola infra (PRD 5.5, D9). Rujukan: PRD 2.4 N-01..N-06 dan N-14, 5.
 10.1 D8/D9; ARCHITECTURE §4.8, §10. Perkakas: `kapdh-platform/infra/monitoring/`, `infra/backup/` (heartbeat backup).
 
 > **Status bukti.** Probe realtime dan pemeriksaan HTTP restore diuji terhadap API uji yang benar-benar mendengar
-> (`apps/api/test/ops`); SQL pemeriksa diuji di PostgreSQL 17 dengan role `kapdh_monitor`. Uptime Kuma, GlitchTip dan
+> (`apps/api/test/ops`); SQL pemeriksa diuji di PostgreSQL 17 dengan role `kapdh_monitor`; keputusan up/down skrip
+> `check-*.sh` diuji kering dengan curl/restic/psql/docker tiruan (`sh infra/monitoring/test/dry-run.sh`, 36
+> pemeriksaan; df/du/date sungguhan). Uptime Kuma, GlitchTip dan
 > kanal alert belum dipasang; monitor di bawah adalah konfigurasi yang harus dibuat dan diuji di staging lalu production
 > (U-11). Pengirim galat GlitchTip di API/worker diuji terhadap server envelope tiruan
 > (`apps/api/src/core/logging/error-tracker.test.ts`), belum terhadap GlitchTip sungguhan; web admin belum memiliki
