@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,7 +29,7 @@ class _StatusPortalActionsState extends ConsumerState<StatusPortalActions> {
     try {
       await ref.read(sessionProvider.notifier).refreshMe();
     } on ApiException catch (error) {
-      await ref.read(errorPresenterProvider).present(error, onRetry: _refresh);
+      unawaited(ref.read(errorPresenterProvider).present(error, onRetry: _refresh));
     } finally {
       if (mounted) setState(() => _refreshing = false);
     }

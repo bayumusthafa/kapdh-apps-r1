@@ -17,7 +17,7 @@ const representative = <String, RouteGroup>{
   '/news': RouteGroup.news,
   '/news/silaturahmi-akbar': RouteGroup.news,
   '/events': RouteGroup.events,
-  '/events/ev-1': RouteGroup.events,
+  '/events/ev-1': RouteGroup.eventDetail,
   '/tickets': RouteGroup.tickets,
   '/tickets/tk-1': RouteGroup.tickets,
   '/kta': RouteGroup.kta,
@@ -40,7 +40,7 @@ const representative = <String, RouteGroup>{
   '/account/sessions': RouteGroup.account,
   '/account/password': RouteGroup.account,
   '/account/blocked': RouteGroup.accountCommunity,
-  '/account/reports': RouteGroup.accountCommunity,
+  '/account/reports': RouteGroup.accountReports,
   '/account/delete': RouteGroup.accountDelete,
   '/restricted': RouteGroup.restricted,
   '/deletion-status': RouteGroup.deletionStatus,
@@ -54,6 +54,7 @@ const memberBase = {
   RouteGroup.payments,
   RouteGroup.notifications,
   RouteGroup.account,
+  RouteGroup.accountReports,
   RouteGroup.accountDelete,
   RouteGroup.legal,
 };
@@ -65,6 +66,7 @@ final expectedAllowed = <String, Set<RouteGroup>>{
   'verified': {
     ...memberBase,
     RouteGroup.events,
+    RouteGroup.eventDetail,
     RouteGroup.tickets,
     RouteGroup.network,
     RouteGroup.chat,
@@ -74,14 +76,23 @@ final expectedAllowed = <String, Set<RouteGroup>>{
   'expiring': {
     ...memberBase,
     RouteGroup.events,
+    RouteGroup.eventDetail,
     RouteGroup.tickets,
     RouteGroup.network,
     RouteGroup.chat,
     RouteGroup.renewal,
     RouteGroup.accountCommunity,
   },
-  'expired': {...memberBase, RouteGroup.renewal, RouteGroup.tickets},
-  'suspended': {RouteGroup.restricted, RouteGroup.accountDelete, RouteGroup.legal},
+  'expired': {...memberBase, RouteGroup.renewal, RouteGroup.tickets, RouteGroup.eventDetail},
+  // Laporan/banding sendiri (moderation.yaml member_access any) dan kotak masuk resmi: kontrak C7 member_access
+  // `any` (AC F13-2).
+  'suspended': {
+    RouteGroup.restricted,
+    RouteGroup.accountReports,
+    RouteGroup.accountDelete,
+    RouteGroup.notifications,
+    RouteGroup.legal,
+  },
   'disabled': {RouteGroup.deletionStatus, RouteGroup.legal},
   'deletion_pending': {RouteGroup.deletionStatus, RouteGroup.legal},
 };
@@ -157,9 +168,14 @@ void main() {
     test('expired tetap melihat tiket yang sudah lunas, tetapi tidak event/direktori/chat (PRD 2.2)', () {
       final expired = authed('expired');
       expect(go(expired, '/tickets/tk-1'), isNull);
+      // Detail event yang pernah dipesan (kontrak C5 getEvent `nonsuspended`; server menolak event lain).
+      expect(go(expired, '/events/ev-1'), isNull);
       expect(go(expired, '/events'), '/renewal');
       expect(go(expired, '/network'), '/renewal');
       expect(go(expired, '/chat/room-1'), '/renewal');
+      // Riwayat laporan sendiri tetap terbuka (member_access any); daftar blokir hanya anggota aktif.
+      expect(go(expired, '/account/reports'), isNull);
+      expect(go(expired, '/account/blocked'), '/renewal');
     });
 
     test('unverified tidak membuka KTA aktif lewat rute komunitas, tetapi melihat KTA berlabel Tidak Aktif', () {
@@ -169,12 +185,20 @@ void main() {
       expect(go(unverified, '/network/members/user-2'), '/onboarding/fees');
     });
 
-    test('suspended hanya portal pembatasan, legal dan hapus akun', () {
+    test('suspended hanya portal pembatasan, legal, laporan/banding sendiri, hapus akun dan kotak masuk resmi '
+        '(AC F13-2)', () {
       final suspended = authed('suspended');
       expect(go(suspended, '/kta'), '/restricted');
+      // moderation.yaml listMyReports/getMyReport member_access any: hasil banding tampil di Laporan Saya.
+      expect(go(suspended, '/account/reports'), isNull);
+      expect(go(suspended, '/account/blocked'), '/restricted');
       expect(go(suspended, '/payments/new/renewal'), '/restricted');
       expect(go(suspended, '/account/delete'), isNull);
       expect(go(suspended, '/legal/ketentuan-komunitas'), isNull);
+      expect(go(suspended, '/notifications'), isNull);
+      // Pengaturan akun lain dan tujuan deep link notifikasi tetap ditolak.
+      expect(go(suspended, '/account/notifications'), '/restricted');
+      expect(go(suspended, '/network/members/user-2'), '/restricted');
     });
 
     test('status baru yang belum dikenal aplikasi diarahkan ke wajib update', () {
@@ -250,7 +274,7 @@ void main() {
       test('alur khusus mutasi diarahkan ke layar maintenance dengan tujuan tertunda', () {
         for (final path in [
           '/payments/new/registration',
-          '/renewal',
+          '/payments/new/renewal',
           '/account/delete',
           '/account/password',
           '/chat/new-group',
@@ -264,6 +288,24 @@ void main() {
         expect(isMutationOnlyRoute('/payments/pay-1'), isFalse);
         expect(isMutationOnlyRoute('/login'), isTrue);
       });
+
+      test(
+        'AC F07-2, PRD 4.5: anggota expired tetap mendapat mode baca: Perpanjang KTA (masa berakhir, iuran, riwayat) '
+        'terbuka, pembuatan instruksi perpanjangan tetap ditunda',
+        () {
+          expect(isMutationOnlyRoute('/renewal'), isFalse);
+          expect(go(authed('expired'), '/renewal', gate: m), isNull);
+          expect(go(authed('expired'), '/kta', gate: m), isNull);
+          expect(go(authed('expired'), '/payments', gate: m), isNull);
+          expect(
+            go(authed('expired'), '/payments/new/renewal', gate: m),
+            '/maintenance?from=%2Fpayments%2Fnew%2Frenewal',
+          );
+          final state = RedirectState(gate: m, session: authed('expired'));
+          expect(readOnlyLanding(state, Uri.parse('/maintenance')), '/renewal');
+          expect(readOnlyLanding(state, Uri.parse('/maintenance?from=%2Fpayments%2Fnew%2Frenewal')), '/renewal');
+        },
+      );
 
       test('matriks status tetap berlaku: rute yang ditolak status tidak dibuka', () {
         expect(go(authed('suspended'), '/kta', gate: m), '/maintenance?from=%2Fkta');
@@ -289,7 +331,11 @@ void main() {
           readOnlyLanding(state(authed('verified')), Uri.parse('/maintenance?from=%2Ftickets%2Ftk-1')),
           '/tickets/tk-1',
         );
-        expect(readOnlyLanding(state(authed('verified')), Uri.parse('/maintenance?from=%2Frenewal')), '/home');
+        expect(
+          readOnlyLanding(state(authed('verified')), Uri.parse('/maintenance?from=%2Faccount%2Fpassword')),
+          '/home',
+        );
+        expect(readOnlyLanding(state(authed('expired')), Uri.parse('/maintenance')), '/renewal');
         expect(readOnlyLanding(state(authed('verified')), Uri.parse('/maintenance')), '/home');
         expect(readOnlyLanding(state(authed('unverified')), Uri.parse('/maintenance')), '/onboarding/fees');
         expect(readOnlyLanding(state(authed('suspended')), Uri.parse('/maintenance')), '/restricted');
@@ -346,6 +392,26 @@ void main() {
       );
       expect(go(const SessionState.anonymous(), '/forgot/reset'), '/forgot');
       expect(go(const SessionState.anonymous(resetToken: 'reset-1'), '/forgot/reset'), isNull);
+    });
+
+    test('F-14 kontrak C1: portal status penghapusan bekerja tanpa sesi, juga saat pemeliharaan', () {
+      const anon = SessionState.anonymous();
+      expect(go(anon, '/deletion-status'), isNull);
+      expect(go(anon, '/deletion-status', gate: GateStatus.maintenance), isNull);
+      // Gerbang lain tetap didahulukan.
+      expect(go(anon, '/deletion-status', gate: GateStatus.updateRequired), '/update-required?from=%2Fdeletion-status');
+      // Sesi aktif dengan status lain tidak membuka portal.
+      expect(go(authed('verified'), '/deletion-status'), '/home');
+    });
+
+    test('AC F13-3: gerbang ketukan push /notifications/<id> memerlukan login lalu kembali ke gerbang', () {
+      const path = '/notifications/0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e01';
+      expect(routeGroupOf(path), RouteGroup.notifications);
+      expect(go(const SessionState.anonymous(), path), '/login?from=${Uri.encodeComponent(path)}');
+      expect(go(authed('unverified'), path), isNull);
+      // Suspended tetap membuka kotak masuk (kontrak C7); tujuan deep link-nya diperiksa lagi saat dibuka.
+      expect(go(authed('suspended'), path), isNull);
+      expect(go(authed('verified'), '/login?from=${Uri.encodeComponent(path)}'), path);
     });
   });
 

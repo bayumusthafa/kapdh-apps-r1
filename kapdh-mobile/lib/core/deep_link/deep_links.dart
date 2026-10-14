@@ -41,6 +41,19 @@ abstract final class DeepLinks {
     return Uri(path: path, query: uri.hasQuery && uri.query.isNotEmpty ? uri.query : null);
   }
 
+  /// challenge_id OTP yang dibawa tautan email (kontrak C1 forgotPassword, AC F16-4):
+  /// `kapdh://app/forgot/otp?challenge=<uuid>` atau `https://kapdh.or.id/app/forgot/otp?challenge=<uuid>`. Bentuk
+  /// lama `challenge_id=` juga diterima. Hanya UUID yang sah; nilai lain diabaikan (null). Tautan tidak pernah
+  /// membawa kode OTP, sehingga kode dari email tetap wajib dimasukkan.
+  static String? challengeId(Uri location) {
+    final raw = location.queryParameters['challenge'] ?? location.queryParameters['challenge_id'];
+    if (raw == null) return null;
+    final value = raw.trim().toLowerCase();
+    return _uuid.hasMatch(value) ? value : null;
+  }
+
+  static final _uuid = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
+
   /// Dari string mentah (payload notifikasi `data.route` / `deep_link`, `InboxNotification.deep_link`).
   static Uri? parse(String? raw) {
     if (raw == null) return null;
