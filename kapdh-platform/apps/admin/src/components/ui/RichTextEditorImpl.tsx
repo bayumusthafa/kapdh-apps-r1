@@ -63,6 +63,11 @@ export function sanitizePastedHtml(html: string): string {
   return doc.body.innerHTML;
 }
 
+/** Editor.destroy() mengosongkan schema; instans seperti itu tidak boleh dipakai lagi (getHTML akan gagal). */
+function isAlive(editor: Editor): boolean {
+  return (editor as { schema: Editor["schema"] | null }).schema !== null;
+}
+
 export default function RichTextEditorImpl({
   value,
   onChange,
@@ -116,14 +121,20 @@ export default function RichTextEditorImpl({
   });
 
   // Nilai dari luar (reset formulir, muat ulang versi terbaru setelah konflik) menggantikan isi editor.
+  // Instans yang sudah dihancurkan (schema null) dilewati: StrictMode (dev) memutus lalu menyambung ulang efek dan
+  // useEditor dapat mengganti instans editor; efek berjalan lagi dengan instans baru begitu tersedia. Instans yang
+  // hanya dilepas dari DOM (view belum terpasang) tetap disinkronkan lewat state-nya.
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || !isAlive(editor)) return;
     const current = editor.isEmpty ? "" : editor.getHTML();
     if (value !== current) editor.commands.setContent(value || "", { emitUpdate: false });
   }, [editor, value]);
 
   useEffect(() => {
-    editor?.setEditable(!disabled);
+    if (!editor || !isAlive(editor)) return;
+    // emitUpdate false: setEditable bawaan memancarkan "update", yang membuat onChange mengirim HTML hasil
+    // normalisasi TipTap (mis. urutan atribut tautan) sehingga formulir dianggap berubah tanpa disentuh admin.
+    editor.setEditable(!disabled, false);
   }, [editor, disabled]);
 
   return (
