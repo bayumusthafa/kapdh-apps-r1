@@ -254,6 +254,8 @@ describe("verify-http.mjs: smoke test HTTP lingkungan pulihan (PRD 5.5 login/MFA
     expect(ok.code, ok.out).toBe(0);
     for (const name of ["health", "ready", "admin.login", "admin.mfa", "admin.me", "berkas.publik"])
       expect(ok.out).toMatch(new RegExp(`^PASS ${name.replace(".", "\\.")} `, "m"));
+    // Gerbang deletion ledger readiness (AC F14-6) ikut dilaporkan di bukti restore.
+    expect(ok.out).toMatch(/^PASS ready HTTP 200 .*deletion_ledger=ok/m);
     expect(ok.out).not.toContain(admin.password);
     expect(ok.out).not.toContain(admin.totpSecret!);
 

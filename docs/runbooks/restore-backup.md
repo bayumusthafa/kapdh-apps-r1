@@ -4,7 +4,10 @@ Owner: infrastructure operator (PRD 5.5). Business sign-off and user communicati
 Requirements: AC F14-6, PRD 9.2 scenario 8, PRD 3.5/6.4 (member number N is never reused), N-06, U-09.
 
 This runbook covers the application side of a restore: the order of steps that keeps accounts deleted after the
-backup point deleted. It does not replace the backup tooling and the timed restore drill (separate ops item D2-03).
+backup point deleted. The full operator procedure, in Indonesian, is `docs/runbooks/backup-restore.md`: there
+`infra/backup/restore.sh` performs steps 2 to 5 automatically on a clean environment (it refuses a non-empty database
+or files volume), then `verify-restore.sh` checks money totals, counts, the applied ledger, files and readiness. It
+also contains the monthly restore drill with RPO/RTO measurement (N-06, D2-03).
 Follow every step in order. **Step 5 is blocking: the service is not opened until it exits 0 and readiness is 200.**
 
 ## Background
@@ -12,6 +15,10 @@ Follow every step in order. **Step 5 is blocking: the service is not opened unti
 - Every account deletion writes an entry to the external **deletion ledger** in object storage:
   `ledger/account-deletions/<yyyy>/<mm>/<request-number>.json` (state `requested`, later `completed`). Entries hold
   only ids, object keys and `member_seq_floor` (the highest member number N already issued). No personal data.
+- Every entry is ALSO appended synchronously, before any data is deleted, to a dedicated **off-VPS bucket**
+  (`DELETION_LEDGER_S3_*`, append-only keys `account-deletions/<yyyy>/<mm>/<request>/<state>-<uuid>.json`,
+  versioning + object lock; ADR-019, audit D5-07). After a VPS loss this bucket is the newest ledger, because the
+  `ledger/` prefix on `/data/files` is only as new as the last daily backup.
 - The ledger also keeps a **head** object, `ledger/account-deletions-head.json`, that points to the newest request.
 - `GET /api/v1/health/ready` returns **503** with `checks.deletion_ledger: "fail"` while the database does not know
   the newest request in the head (a restored database that has not had the ledger re-applied), or while the head is
@@ -22,7 +29,8 @@ Follow every step in order. **Step 5 is blocking: the service is not opened unti
 
 Limitation: the readiness check can only detect a stale database while storage still holds a newer ledger head. If
 the database AND the object storage both come from the same backup, the head is as old as the database and the check
-passes. That is why steps 2 and 5 are mandatory in every restore, whatever readiness says.
+passes. That is why steps 2 and 5 are mandatory in every restore, whatever readiness says, and why step 2 always
+starts from the off-VPS bucket.
 
 ## Steps
 
@@ -30,13 +38,16 @@ passes. That is why steps 2 and 5 are mandatory in every restore, whatever readi
    with the fallback Compose file). Leave PostgreSQL and Redis running. Confirm that the Coolify health check for the
    API uses `/api/v1/health/ready` (not `/api/v1/health`), so that a 503 keeps the container out of rotation.
 
-2. **Save the newest deletion ledger before touching storage.** Copy the whole `ledger/` prefix out of the current
-   object storage to a folder on the operator host, for example `/restore/ledger-latest/`:
+2. **Save the newest deletion ledger before touching storage.** First copy the off-VPS bucket with its read-only
+   key: `rclone copy kapdhledger:<DELETION_LEDGER_S3_BUCKET> /restore/ledger-offsite --include "/account-deletions/**"`.
+   Then, if the live storage still exists, copy its whole `ledger/` prefix too, for example to
+   `/restore/ledger-latest/`:
    - `STORAGE_DRIVER=local`: `cp -a "$STORAGE_LOCAL_ROOT/ledger" /restore/ledger-latest/`
    - `STORAGE_DRIVER=s3`: `rclone copy <remote>:<S3_BUCKET>/ledger /restore/ledger-latest/ledger`
 
-   If the live storage is lost, use the ledger copy from the newest backup manifest. It must be at least as new as
-   the database dump you are about to restore. Never take the ledger from an older backup than the one you have.
+   If the live storage is lost, use the bucket copy plus the ledger copy from the newest backup manifest (snapshot
+   `kapdh-db`, folder `ledger-offsite/`). Only when the bucket itself is permanently lost may a restore continue
+   without it (`restore.sh --allow-missing-offsite-ledger`), and that must be recorded and reported (AC F14-6).
 
 3. **Restore the database.** Restore the chosen dump with the owner/migration role, run the migration job once
    (`pnpm --filter @kapdh/database migrate`), then re-apply `infra/db/roles.sql` so that `kapdh_app`, `kapdh_worker`
@@ -52,10 +63,14 @@ passes. That is why steps 2 and 5 are mandatory in every restore, whatever readi
    member of `kapdh_audit_purge`), run:
 
    ```sh
-   pnpm --filter @kapdh/api account:ledger-reapply -- --dir /restore/ledger-latest/ledger/account-deletions
+   pnpm --filter @kapdh/api account:ledger-reapply -- \
+     --dir /restore/ledger-offsite/account-deletions --dir /restore/ledger-latest/ledger/account-deletions
    ```
 
-   Without `--dir` and with `STORAGE_DRIVER=local`, the CLI reads `$STORAGE_LOCAL_ROOT/ledger/account-deletions`.
+   `--dir` may be repeated: entries from all copies are merged per request (`completed` wins, object keys are
+   united, the N floor never goes down, conflicting copies are refused). Without `--dir` and with
+   `STORAGE_DRIVER=local`, the CLI reads `$STORAGE_LOCAL_ROOT/ledger/account-deletions`. Re-applying also rewrites
+   the entries and the head in the StorageDriver, so readiness recognises the newest request.
    The output lists only request numbers and counts:
 
    | Line | Meaning |
@@ -91,3 +106,8 @@ passes. That is why steps 2 and 5 are mandatory in every restore, whatever readi
   restore test that checks the N floor for an account that is absent from the backup (D5-05).
 - `kapdh-platform/apps/api/test/pg/account-deletion.pg.test.ts`: the CLI `ledger-reapply` on PostgreSQL 17.
 - `kapdh-platform/apps/api/test/pg/deletion-e2e.pg.test.ts`: D5-05 on PostgreSQL 17.
+- `kapdh-platform/apps/api/test/account/deletion-job.e2e.test.ts`: "AC F14-6, D5-07: VPS hilang ..." (database and
+  files from a backup older than the deletion, ledger re-applied from the off-VPS bucket copy, readiness 200) and
+  "D5-07: penulisan ke ledger luar VPS gagal ..." (no data deleted before the off-VPS entry exists).
+- `kapdh-platform/infra/backup/test/dry-run.sh`: `restore.sh` passes the bucket copy, the backup copy and the restored
+  files ledger to the CLI and refuses to continue when it exits non-zero (fake tools; a staging drill is still due).
