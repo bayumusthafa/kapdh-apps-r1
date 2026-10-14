@@ -62,10 +62,18 @@ item.
 
 | Date | Target | Result | N-03 p95 (Home / KTA / News) | Notes |
 | --- | --- | --- | --- | --- |
-| RUN_RECORD_PLACEHOLDER |
+| 2026-10-14 | Android latest: emulator (AVD Pixel 8, Android 15 / API 35, x86_64, 2 GB RAM) | pass: smoke (login with Keystore, session restore, logout wipe; KTA; payment proof) and N-03, `flutter drive --profile`, n=20 per screen | 1888 / 1928 / 1963 ms (p50 1796 / 1784 / 1787 ms) | commit 4cdcc67 (logout also evicts decoded private images); Windows build host |
+| 2026-10-14 | Android latest: same emulator | pass: smoke and N-03, `flutter drive --profile`, n=20 per screen | 2245 / 2070 / 2073 ms (p50 2038 / 1946 / 1856 ms) | commit eb2547f |
 | pending | Android min (8.0 physical) | not run | - | no API 26 device or system image on the build machine |
 | pending | iOS min / latest | not run | - | needs macOS + Xcode; run on the Mac build host before sign-off |
 | pending | Admin/web browsers | not run | - | Playwright smoke not yet added (admin/web area, see section 5) |
+
+Emulator figures are indicative only. The x86_64 emulator runs on a desktop CPU, so it does not stand for a low-end
+Android 8 phone, and the build machine is shared, so host load moves the numbers. A development run on the same
+emulator before commit eb2547f measured Home p95 4.6 s (KTA 3.9 s, News 2.8 s); its cause was not recorded. On
+2026-10-14 one attempt also stopped during the payment smoke because the emulator process exited (`adb: device
+offline`); the retry on a fresh boot is the passing row above. The N-03 sign-off number comes from the Android min
+physical device.
 
 ## 5. Open items for U-13
 
@@ -78,5 +86,7 @@ item.
   targets, text contrast) on login, register, OTP, KTA, payment proof (instructions, awaiting review, rejected,
   proof viewer), chat and the restricted portal (`test/support/a11y.dart`, tests named
   "N-11: pedoman aksesibilitas otomatis ...").
+- **Automated a11y audit in admin (N-11).** Admin page tests have no axe (`vitest-axe`) check yet. This belongs to
+  the admin area.
 - **N-03 on staging.** p95 with real network shaping (10 Mbps / 100 ms) against the staging API on the Android min
   target.
