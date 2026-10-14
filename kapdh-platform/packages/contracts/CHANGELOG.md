@@ -227,6 +227,13 @@ Keputusan perilaku yang perlu diikuti modul payments dan events:
   `AdminPaymentMethod.in_use` true juga untuk metode yang ditinggalkan saat pemilik mengganti rekening tujuan
   sebelum bukti, dan tidak pernah kembali false. `adminListPaymentAdjustments` tidak pernah memuat isi
   `refund_destination` (selalu null; penandanya `has_refund_destination`).
+- Hardening Tahap D (deskripsi saja, bentuk tetap; temuan audit D4-02, D5-03): `createPaymentInstruction` dan
+  `adminRecordPayment` (payment baru) menolak 403 FORBIDDEN bila pengaturan `fees` belum tersimpan (versi 0) atau
+  total jenis iuran 0.00; klien menampilkan pesan server seperti 403 FORBIDDEN yang sudah ada.
+  `MyFeeQuotes.settings_version` "0" menandai nominal yang belum tersimpan. `adminCompletePaymentAdjustment` dan
+  `adminCancelPaymentAdjustment` atas payment yang pemiliknya sudah dihapus atau deletion_pending tidak menyimpan
+  bukti penyelesaian (`evidence_file_id` null, berkas dihapus setelah commit, audit hanya id/sha256/ukuran) dan
+  mengunci baris users pemilik (FOR SHARE) sebelum payment.
 
 ### Konten: `content.yaml`, `admin-content.yaml` (penulis kontrak C4; F-08, F-15)
 
