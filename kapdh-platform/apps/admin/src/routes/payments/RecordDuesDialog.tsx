@@ -24,6 +24,7 @@ import { requiredText } from "../../lib/validation";
 import { memberKeys } from "../members/queries";
 import { METHOD_KIND_LABEL } from "./labels";
 import { FEES_KEY, METHODS_KEY, PAYMENTS_KEY, paymentDetailKey } from "./queries";
+import { DUES_TYPES, duesUnavailableReason, recordBlockReason } from "./recordEligibility";
 
 type S = components["schemas"];
 type Detail = S["AdminPaymentDetail"];
@@ -49,7 +50,9 @@ const schema = z.object({
     .string()
     .nullable()
     .refine((v) => Boolean(v), { message: "Unggah bukti verifikasi dana." }),
-  transfer_note: z.string().max(TRANSFER_NOTE_MAX, `Catatan transfer maksimal ${TRANSFER_NOTE_MAX} karakter.`),
+  transfer_note: z
+    .string()
+    .max(TRANSFER_NOTE_MAX, `Catatan transfer maksimal ${TRANSFER_NOTE_MAX} karakter.`),
   funds_verified: z
     .boolean()
     .refine((v) => v, { message: "Centang setelah dana dicocokkan dengan mutasi rekening penerima." }),
@@ -66,50 +69,6 @@ const EMPTY: Values = {
   funds_verified: false,
   reason: "",
 };
-
-/**
- * Alasan iuran tidak dapat dicatat untuk akun ini sama sekali (kontrak adminRecordPayment: akun alumni aktif, tidak
- * disuspend, bukan akun yang tertaut ke admin pemanggil, PRD 2.3). Null bila akun dapat dicatat iurannya.
- */
-export function recordBlockReason(
-  m: Pick<MemberDetail, "account_status" | "effective_status" | "linked_admin">,
-  adminId: string | null | undefined,
-): string | null {
-  if (m.linked_admin && adminId && m.linked_admin.admin_id === adminId)
-    return "Akun alumni ini tertaut ke akun admin Anda. Mintalah pengurus lain mencatat iurannya (konflik kepentingan, PRD 2.3).";
-  if (m.effective_status === "suspended")
-    return "Akun ini sedang dibatasi pengurus, sehingga iuran tidak dapat dicatat selama pembatasan berlaku.";
-  if (
-    m.account_status !== "active" ||
-    m.effective_status === "pending_otp" ||
-    m.effective_status === "disabled" ||
-    m.effective_status === "deletion_pending"
-  )
-    return "Akun ini belum aktif, dinonaktifkan, atau sedang dalam proses penghapusan, sehingga iuran tidak dapat dicatat.";
-  return null;
-}
-
-/**
- * Kelayakan per jenis iuran, sama dengan instruksi anggota GET /me/fees (AC F07-5): pendaftaran hanya bila iuran
- * pendaftaran belum pernah disetujui (unverified), perpanjangan hanya bila status expiring atau expired. Nilai null
- * berarti jenis itu dapat dipilih; selain itu alasannya.
- */
-export function duesUnavailableReason(
-  m: Pick<MemberDetail, "effective_status" | "renewal_opens_at">,
-): Record<DuesType, string | null> {
-  const registration = m.effective_status === "unverified" ? null : "Iuran pendaftaran anggota ini sudah disetujui.";
-  const renewal =
-    m.effective_status === "expiring" || m.effective_status === "expired"
-      ? null
-      : m.effective_status === "unverified"
-        ? "Perpanjangan tersedia setelah iuran pendaftaran disetujui."
-        : m.renewal_opens_at
-          ? `Jendela perpanjangan dibuka ${formatDate(m.renewal_opens_at)} (30 hari sebelum masa aktif habis).`
-          : "Jendela perpanjangan belum dibuka.";
-  return { registration, renewal };
-}
-
-const DUES_TYPES: DuesType[] = ["registration", "renewal"];
 
 /** Payment terbuka jenis sama milik anggota (indeks payments_user_id_type_open_key): pending atau iuran ditolak. */
 function isOpen(p: Pick<S["AdminPaymentItem"], "status">): boolean {
@@ -254,7 +213,8 @@ export function RecordDuesDialog({
         form.setValue("proof_file_id", null);
         form.setError("proof_file_id", { type: "server", message: error.message });
       }
-      if (error.code === "FORBIDDEN") form.setError("root.server", { type: "server", message: error.message });
+      if (error.code === "FORBIDDEN")
+        form.setError("root.server", { type: "server", message: error.message });
       // Status akun atau kelayakan berubah sejak dimuat (400 user_id/type): muat ulang data anggota.
       if (error.fieldErrors.user_id || error.fieldErrors.type)
         void queryClient.invalidateQueries({ queryKey: memberKeys.detail(userId) });
@@ -330,7 +290,10 @@ export function RecordDuesDialog({
         >
           <FormError message={errors.root?.server?.message} />
           {conflict ? (
-            <div role="alert" className="flex flex-col gap-2 rounded-md bg-warning-bg p-3 text-sm text-warning">
+            <div
+              role="alert"
+              className="flex flex-col gap-2 rounded-md bg-warning-bg p-3 text-sm text-warning"
+            >
               <p>{conflict.message}</p>
               {conflict.paymentId ? (
                 <Button
@@ -347,8 +310,8 @@ export function RecordDuesDialog({
 
           {!canMembers ? (
             <p role="note" className="rounded-md bg-neutral-bg p-3 text-sm text-text-muted">
-              Memilih alumni memerlukan izin melihat data anggota (members.read). Mintalah Super Admin menambah izin
-              itu, atau mintalah pengurus lain mencatat iuran ini.
+              Memilih alumni memerlukan izin melihat data anggota (members.read). Mintalah Super Admin
+              menambah izin itu, atau mintalah pengurus lain mencatat iuran ini.
             </p>
           ) : userId === "" ? (
             <Combobox
@@ -410,8 +373,8 @@ export function RecordDuesDialog({
             <>
               {!canMethods ? (
                 <p role="note" className="rounded-md bg-neutral-bg p-3 text-sm text-text-muted">
-                  Daftar rekening penerima hanya dapat dibaca admin berizin kelola pengaturan (settings.manage).
-                  Mintalah pengurus dengan izin itu mencatat iuran ini.
+                  Daftar rekening penerima hanya dapat dibaca admin berizin kelola pengaturan
+                  (settings.manage). Mintalah pengurus dengan izin itu mencatat iuran ini.
                 </p>
               ) : methods.isPending ? (
                 <Loading label="Memuat rekening penerima..." rows={2} />
@@ -525,7 +488,10 @@ function MemberSummary({
   disabled: boolean;
 }) {
   return (
-    <section aria-label="Alumni terpilih" className="flex flex-col gap-2 rounded-md border border-divider p-3">
+    <section
+      aria-label="Alumni terpilih"
+      className="flex flex-col gap-2 rounded-md border border-divider p-3"
+    >
       {member ? (
         <div className="flex flex-wrap items-start justify-between gap-3 text-sm">
           <div className="flex min-w-0 flex-col gap-0.5">
@@ -599,8 +565,8 @@ function OpenPaymentNote({
       <div role="note" className="flex flex-col gap-2 rounded-md bg-warning-bg p-3 text-sm text-warning">
         <p>
           Anggota sudah mengirim bukti untuk iuran ini ({formatRupiah(current.amount)}, dikirim{" "}
-          {formatDateTime(current.submitted_at)}). Putuskan bukti itu dari antrean verifikasi; iuran tidak dapat
-          dicatat dua kali.
+          {formatDateTime(current.submitted_at)}). Putuskan bukti itu dari antrean verifikasi; iuran tidak
+          dapat dicatat dua kali.
         </p>
         <Button variant="outline" size="sm" className="self-start" onClick={() => onOpenPayment(current.id)}>
           Buka bukti anggota

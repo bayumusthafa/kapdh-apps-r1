@@ -19,6 +19,7 @@ import { useNow } from "../../lib/hooks";
 import { memberName, memberSubtitle, paymentTypeText as typeText } from "./labels";
 import { PaymentDecisionPanel } from "./PaymentDecisionPanel";
 import { PAYMENTS_KEY } from "./queries";
+import { RECORD_PERMISSIONS } from "./recordEligibility";
 import { RecordDuesDialog } from "./RecordDuesDialog";
 
 type Item = components["schemas"]["AdminPaymentItem"];
@@ -184,7 +185,7 @@ export function VerificationTab() {
 
   // "Catat iuran" (D13, adminRecordPayment): payments.read + payments.decide sesuai x-kapdh-access kontrak.
   const auth = useAuth();
-  const canRecord = auth.can("payments.read") && auth.can("payments.decide");
+  const canRecord = RECORD_PERMISSIONS.every((p) => auth.can(p));
   /** Dialog pencatatan iuran yang terbuka; `userId` alumni terpilih dari tautan detail anggota. */
   const [recording, setRecording] = useState<{ userId: string | null } | null>(null);
   // Tautan `?record=` (detail anggota, Pengaturan) membuka dialog sekali; parameter dihapus agar muat ulang tidak

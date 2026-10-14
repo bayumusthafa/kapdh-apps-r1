@@ -1484,7 +1484,9 @@ function recordEligibility(type: "registration" | "renewal", status: S["Effectiv
       ? null
       : error(409, "PAYMENT_STATE_CONFLICT", "Iuran pendaftaran anggota ini sudah disetujui.");
   if (status === "unverified")
-    return validationError({ type: ["Perpanjangan hanya dapat dicatat setelah iuran pendaftaran disetujui."] });
+    return validationError({
+      type: ["Perpanjangan hanya dapat dicatat setelah iuran pendaftaran disetujui."],
+    });
   if (status === "verified")
     return validationError({
       type: ["Jendela perpanjangan anggota ini belum dibuka (30 hari sebelum masa aktif habis)."],
@@ -1573,9 +1575,7 @@ function recordDues(req: MockRequest): Ok | Response {
 
   const open = [...payments.values()].find(
     (p) =>
-      p.member?.user_id === userId &&
-      p.type === type &&
-      (p.status === "pending" || p.status === "rejected"),
+      p.member?.user_id === userId && p.type === type && (p.status === "pending" || p.status === "rejected"),
   );
   if (open && open.status === "pending" && open.proof_version >= 1)
     return error(

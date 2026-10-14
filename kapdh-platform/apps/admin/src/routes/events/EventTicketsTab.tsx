@@ -167,7 +167,12 @@ export function EventTicketsTab({ event }: { event: AdminEventDetail }) {
               </span>
               {t.review_overdue ? <Badge tone="warning">Lewat batas review</Badge> : null}
               {p.status === "pending" && p.submitted_at && canSeePayments ? (
-                <Link to="/payments" className="text-xs font-semibold text-primary hover:underline">
+                // Tautan membuka payment ini langsung di panel keputusan (?payment=), bukan antrean bawaan.
+                <Link
+                  to="/payments"
+                  search={{ tab: "verify", payment: p.id }}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
                   Putuskan di Verifikasi Pembayaran
                 </Link>
               ) : null}
