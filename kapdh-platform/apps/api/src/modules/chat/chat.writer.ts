@@ -4,13 +4,11 @@ import { and, eq, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../../core/adapters/clock.js";
 import { rows } from "../../core/db/rows.js";
-import type { DbOrTx, Tx } from "../../core/db/types.js";
+import type { Tx } from "../../core/db/types.js";
 import { FilesService } from "../../core/files/files.service.js";
 import { CLOCK } from "../../core/tokens.js";
-import { DELETED_ACCOUNT_NAME } from "./chat.constants.js";
 import { ChatEvents } from "./chat.events.js";
 import {
-  alumniFacts,
   insertMessageLocked,
   joinedAdminIds,
   joinedCount,
@@ -30,12 +28,6 @@ export class ChatWriter {
     private readonly events: ChatEvents,
     private readonly files: FilesService,
   ) {}
-
-  /** Nama tampilan anggota untuk teks notifikasi ("Akun dihapus" bila tidak ada). */
-  async displayName(db: DbOrTx, userId: string): Promise<string> {
-    const facts = (await alumniFacts(db, [userId])).get(userId);
-    return facts && facts.account_status !== "deleted" ? facts.full_name : DELETED_ACCOUNT_NAME;
-  }
 
   /**
    * Pesan sistem (mis. anggota bergabung/keluar). Pemanggil WAJIB sudah mengunci baris room sebagai kunci pertama

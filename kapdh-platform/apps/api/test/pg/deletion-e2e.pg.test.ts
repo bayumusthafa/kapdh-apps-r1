@@ -20,11 +20,11 @@
  * Celah yang ditemukan audit didokumentasikan sebagai `it.fails` dengan id temuan (D5-xx): uji itu LULUS selama celah
  * masih ada dan GAGAL begitu diperbaiki (ubah menjadi `it` saat memperbaiki). `D5_REVEAL_GAPS=1` menjalankannya sebagai
  * `it` biasa untuk melihat kegagalan sebenarnya:
- *   D5-01 inbox anggota lain memuat nama anggota yang dihapus (notifikasi chat direct);
- *   D5-02 respons idempotensi pengurus (check-in) memuat nama/nomor anggota sampai 24 jam;
- *   D5-03 bukti refund yang diunggah SETELAH penghapusan tidak pernah dihapus;
- *   D5-04 notifikasi yang dibuat selama jendela deletion_pending setelah langkah notifications tersisa;
- *   D5-05 N anggota yang dihapus setelah titik backup dialokasikan ulang setelah restore + ledger.
+ *   D5-01 (DIPERBAIKI, kini `it`) inbox anggota lain memuat nama anggota yang dihapus (notifikasi chat direct);
+ *   D5-02 (DIPERBAIKI, kini `it`) respons idempotensi pengurus (check-in) memuat nama/nomor anggota sampai 24 jam;
+ *   D5-03 (DIPERBAIKI, kini `it`) bukti refund yang diunggah SETELAH penghapusan tidak pernah dihapus;
+ *   D5-04 (DIPERBAIKI, kini `it`) notifikasi yang dibuat selama jendela deletion_pending setelah langkah notifications;
+ *   D5-05 (DIPERBAIKI, kini `it`) N anggota yang dihapus setelah titik backup dialokasikan ulang setelah restore + ledger.
  */
 import "reflect-metadata";
 import type { Permission } from "@kapdh/contracts";
@@ -1101,28 +1101,28 @@ describe("LENS D5: penghapusan akun ujung ke ujung lewat alur API nyata (F-14, D
 const gap = process.env.D5_REVEAL_GAPS ? it : it.fails;
 
 describe("LENS D5: celah privasi yang ditemukan (it.fails = celah masih ada)", () => {
-  gap(
-    "D5-01 (D2, AC F14-3): kotak masuk anggota lain tidak lagi memuat nama anggota yang sudah dihapus",
-    async () => {
-      // Notifikasi chat direct ke Ahmad: "Ada pesan baru dari <nama pengirim>." disimpan di inbox Ahmad dan tidak
-      // disentuh job penghapusan (langkah notifications hanya menghapus inbox milik akun yang dihapus).
-      const hits = await notificationsMentioning(NAME);
-      expect(hits).toEqual([]);
-    },
-  );
+  // Diperbaiki: notifikasi chat direct tidak lagi memuat nama pengirim (chat.notifications.ts), dan langkah
+  // notifications menulis ulang baris format lama di kotak masuk lawan bicara ke teks netral.
+  it("D5-01 (D2, AC F14-3): kotak masuk anggota lain tidak lagi memuat nama anggota yang sudah dihapus", async () => {
+    const hits = await notificationsMentioning(NAME);
+    expect(hits).toEqual([]);
+  });
 
-  gap(
-    "D5-02 (D2): respons idempotensi pengurus yang memuat nama/nomor anggota ikut dihapus bersama akun",
-    async () => {
-      // POST /admin/checkin dengan Idempotency-Key menyimpan respons (holder.full_name, member_number) pada scope
-      // akun petugas; job hanya menghapus kunci ber-scope akun yang dihapus, sisanya bertahan sampai 24 jam.
-      const leftovers = await rt.owner.db
-        .select({ endpoint: idempotencyKeys.endpoint })
-        .from(idempotencyKeys)
-        .where(sql`${idempotencyKeys.responseBody}::text like ${`%${NAME}%`}`);
-      expect(leftovers).toEqual([]);
-    },
-  );
+  it("D5-02 (D2): respons idempotensi pengurus yang memuat nama/nomor anggota ikut dihapus bersama akun", async () => {
+    // POST /admin/checkin dengan Idempotency-Key menyimpan respons (holder.full_name, member_number) pada scope akun
+    // petugas. Diperbaiki: job juga menghapus respons tersimpan aktor lain yang merujuk id akun/inventaris
+    // (langkah revoke_access, diulang di langkah credentials).
+    const leftovers = await rt.owner.db
+      .select({ endpoint: idempotencyKeys.endpoint })
+      .from(idempotencyKeys)
+      .where(sql`${idempotencyKeys.responseBody}::text like ${`%${NAME}%`}`);
+    expect(leftovers).toEqual([]);
+    const byId = await rt.owner.db
+      .select({ endpoint: idempotencyKeys.endpoint })
+      .from(idempotencyKeys)
+      .where(sql`${idempotencyKeys.responseBody}::text like ${`%${S.budi.userId}%`}`);
+    expect(byId).toEqual([]);
+  });
 
   let lateEvidenceId = "";
   it("D5-03 persiapan: bendahara menyelesaikan refund pending SETELAH akun dihapus, dengan bukti transfer baru", async () => {
@@ -1150,17 +1150,33 @@ describe("LENS D5: celah privasi yang ditemukan (it.fails = celah masih ada)", (
     expect(payment!.userId).toBeNull();
   });
 
-  gap(
-    "D5-03 (D2, AC F14-4): bukti refund atas payment anggota yang sudah dihapus tidak tersimpan tanpa batas",
-    async () => {
-      // Celah: berkas tetap `ready` di storage, tertaut ke payment anonim; job penghapusan tidak pernah berjalan lagi.
-      const [file] = await rt.owner.db.select().from(files).where(eq(files.id, lateEvidenceId));
-      expect({ status: file!.status, stored: await rt.storage.exists(file!.objectKey) }).toEqual({
-        status: "deleted",
-        stored: false,
-      });
-    },
-  );
+  it("D5-03 (D2, AC F14-4): bukti refund atas payment anggota yang sudah dihapus tidak tersimpan tanpa batas", async () => {
+    // Diperbaiki: penyelesaian refund atas payment yang pemiliknya dihapus memutus rujukan bukti dan menghapus
+    // berkasnya setelah commit; audit hanya menyimpan sha256/ukuran.
+    const [file] = await rt.owner.db.select().from(files).where(eq(files.id, lateEvidenceId));
+    expect({ status: file!.status, stored: await rt.storage.exists(file!.objectKey) }).toEqual({
+      status: "deleted",
+      stored: false,
+    });
+    const [adjustment] = await rt.owner.db
+      .select()
+      .from(paymentAdjustments)
+      .where(eq(paymentAdjustments.id, S.adjustments.pendingRefund));
+    expect(adjustment).toMatchObject({ status: "completed", evidenceFileId: null, refundDestination: null });
+    const [audit] = await rt.owner.db
+      .select()
+      .from(auditLogs)
+      .where(
+        and(
+          eq(auditLogs.entityId, S.adjustments.pendingRefund),
+          eq(auditLogs.action, "payment_adjustment.completed"),
+        ),
+      );
+    expect(audit!.after).toMatchObject({
+      evidence_file_id: null,
+      evidence_erased: { file_id: lateEvidenceId, sha256: file!.sha256, bytes: file!.bytes },
+    });
+  });
 
   let windowUserId = "";
   it("D5-04 persiapan: job gagal di langkah files, bendahara memutus payment anggota selama deletion_pending, retry selesai", async () => {
@@ -1206,26 +1222,35 @@ describe("LENS D5: celah privasi yang ditemukan (it.fails = celah masih ada)", (
     expect(first).toMatchObject({ outcome: "failed", step: "files" });
     await relogin(S.treasurer);
     await approve(ticket.payment.id);
+    // Perbaikan D5-04: keputusan payment untuk akun deletion_pending tidak menulis inbox (tanpa outbox/email).
     const created = await rt.owner.db
       .select()
       .from(notifications)
       .where(eq(notifications.userId, fixture.userId));
-    expect(created.length).toBeGreaterThan(0);
+    expect(created).toEqual([]);
+    // Notifikasi yang lolos pemeriksaan status secara bersamaan (disimulasikan langsung) disapu langkah credentials.
+    await rt.owner.db.insert(notifications).values({
+      id: uuidv7(),
+      userId: fixture.userId,
+      category: "payment",
+      title: "Pembayaran disetujui",
+      body: "Notifikasi yang lolos bersamaan selama jendela retry.",
+      data: {},
+      dedupKey: `u:${fixture.userId}:uji-d5-04:${uuidv7()}`,
+      createdAt: clock.now(),
+    });
     clock.advance(HOUR);
     const second = await runAsSystem(() => processor.run(row!.id), { jobId: `account.deletion:${uuidv7()}` });
     expect(second).toMatchObject({ outcome: "completed" });
   });
 
-  gap(
-    "D5-04 (D2, AC F14-2/F14-3): inbox yang dibuat selama jendela deletion_pending ikut dihapus saat retry",
-    async () => {
-      // Celah: retry melanjutkan dari steps_done (notifications sudah selesai), sehingga notifikasi baru itu tetap ada
-      // pada akun `deleted` (judul/isi keputusan pembayaran) selamanya.
-      expect(await remainingPersonalData(rt.owner.db as unknown as Db, windowUserId)).toMatchObject({
-        notifications: 0,
-      });
-    },
-  );
+  it("D5-04 (D2, AC F14-2/F14-3): inbox yang dibuat selama jendela deletion_pending ikut dihapus saat retry", async () => {
+    // Celah: retry melanjutkan dari steps_done (notifications sudah selesai), sehingga notifikasi baru itu tetap ada
+    // pada akun `deleted` (judul/isi keputusan pembayaran) selamanya.
+    expect(await remainingPersonalData(rt.owner.db as unknown as Db, windowUserId)).toMatchObject({
+      notifications: 0,
+    });
+  });
   const reuse = { deletedSeq: 0, nextSeq: 0 };
   it("D5-05 persiapan: anggota mendaftar SETELAH backup lalu menghapus akun; backup dipulihkan, ledger diterapkan ulang", async () => {
     await rt.close();
@@ -1266,14 +1291,11 @@ describe("LENS D5: celah privasi yang ditemukan (it.fails = celah masih ada)", (
     rt = await openRuntime(liveDb, liveStorage);
   });
 
-  gap(
-    "D5-05 (PRD 6.4, AC F14-6): setelah restore + ledger, N anggota yang sudah dihapus tidak dialokasikan ulang",
-    () => {
-      // Celah: entri ledger tidak memuat N dan penerapan ulang tidak memajukan membership_no_seq, sehingga N milik
-      // akun yang dihapus setelah titik backup diberikan lagi kepada pendaftar berikutnya.
-      expect(reuse.nextSeq).toBeGreaterThan(reuse.deletedSeq);
-    },
-  );
+  it("D5-05 (PRD 6.4, AC F14-6): setelah restore + ledger, N anggota yang sudah dihapus tidak dialokasikan ulang", () => {
+    // Celah: entri ledger tidak memuat N dan penerapan ulang tidak memajukan membership_no_seq, sehingga N milik
+    // akun yang dihapus setelah titik backup diberikan lagi kepada pendaftar berikutnya.
+    expect(reuse.nextSeq).toBeGreaterThan(reuse.deletedSeq);
+  });
 });
 
 // ----------------------------------------------------------------------------------------------- pemeriksaan
@@ -1320,7 +1342,7 @@ async function registerNewMember(): Promise<number> {
 
 /**
  * Pemeriksaan per tabel setelah penghapusan (dipakai pada database live dan database pulihan). Celah yang sudah
- * didokumentasikan (D5-01, D5-02) dikecualikan di sini dan diuji terpisah dengan `it.fails`.
+ * didokumentasikan sudah diperbaiki seluruhnya; tidak ada pengecualian tersisa.
  */
 async function expectErased(db: Db, storage: MemoryDriver, options: { restored?: boolean } = {}) {
   const userId = S.budi.userId;
@@ -1559,9 +1581,9 @@ async function expectErased(db: Db, storage: MemoryDriver, options: { restored?:
   if (options.restored) expect(deletion!.ledger).toMatchObject({ restored: true });
 
   // Pemindaian SEMUA tabel skema app: tidak ada teks pribadi Budi tersisa (D2, PRD 6.5), kecuali celah yang
-  // didokumentasikan terpisah (D5-01 inbox anggota lain, D5-02 respons idempotensi pengurus).
+  // Seluruh celah D5-01..D5-05 sudah diperbaiki: tidak ada data pribadi tersisa di tabel mana pun.
   const hits = await personalDataHits(db, personalTerms());
-  const knownGaps: Record<string, number> = { notifications: 1, idempotency_keys: 1 };
+  const knownGaps: Record<string, number> = {};
   const unexpected = Object.fromEntries(
     Object.entries(hits).filter(([table, n]) => n > (knownGaps[table] ?? 0)),
   );
