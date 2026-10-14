@@ -2178,6 +2178,40 @@ describe("D7 (i): ekspor audit CSV", () => {
     expect(header!.join(",").toLowerCase()).not.toMatch(/password|token|secret/);
     expect(file.body).not.toContain(member.email);
 
+    // AC F17-4: filter gabungan (nama aktor, peran, aksi, rentang waktu) memberi jumlah yang sama di pencarian
+    // dan ekspor.
+    // Aktor = bendahara (bukan auditor, karena permintaan ekspor auditor sendiri juga tercatat di audit).
+    const filters = {
+      actor_admin_id: treasurer.fixture.adminId,
+      effective_role: "admin",
+      from: new Date(clock.now().getTime() - 400 * DAY).toISOString(),
+      to: new Date(clock.now().getTime() + HOUR).toISOString(),
+    };
+    const extras: Record<string, string>[] = [{}, { action: "payment.rejected" }, { entity_type: "payment" }];
+    for (const extra of extras) {
+      const query: Record<string, string> = { ...filters, ...extra };
+      const counted = await step("get", "/admin/audit/entries", "/admin/audit/entries", 200, undefined, {
+        token: auditor.token,
+        query,
+      });
+      expect(counted.json.total, JSON.stringify(query)).toBeGreaterThan(0);
+      const exported = await step("post", "/admin/audit/exports", "/admin/audit/exports", 202, query, {
+        token: auditor.token,
+        idem: true,
+      });
+      await drain();
+      const result = await step(
+        "get",
+        `/admin/audit/exports/${exported.json.id}`,
+        "/admin/audit/exports/{exportId}",
+        200,
+        undefined,
+        { token: auditor.token },
+      );
+      expect(result.json.status, JSON.stringify(result.json)).toBe("ready");
+      expect(result.json.row_count, JSON.stringify(query)).toBe(counted.json.total);
+    }
+
     // AC F17-2: tanpa audit.export ditolak walaupun id ekspor diketahui.
     const reader = await adminFixture({ permissions: ["audit.read"] });
     for (const [method, path, op] of [
@@ -2786,6 +2820,126 @@ describe("D7 (e+): blokir dua arah pada chat langsung dan undangan grup", () => 
       token: blocker.token,
     });
     expect(JSON.stringify(invites.json.items)).not.toContain(created.room.id);
+  });
+});
+
+describe("D7 (e2): reaksi, balasan, hapus pesan dan mute pada grup (F-11)", () => {
+  it("PRD 3.11: reaksi & hapus tersiar realtime; balasan merujuk pesan asal; room di-mute tetap menulis inbox tanpa push", async () => {
+    const host = await memberFixture({ status: "verified", fullName: "Dewa Tuan Rumah" });
+    const guest = await memberFixture({ status: "verified", fullName: "Elsa Tamu" });
+    const fcm = `fcm-mute-${guest.userId}`;
+    await step(
+      "put",
+      "/devices",
+      "/devices",
+      204,
+      { platform: "android", token: fcm, app_version: "1.0.0" },
+      {
+        token: guest.token,
+      },
+    );
+    const group = await step(
+      "post",
+      "/chat/rooms",
+      "/chat/rooms",
+      201,
+      { name: "Grup Reaksi", invitee_user_ids: [guest.userId] },
+      { token: host.token, idem: true, headers: APP },
+    );
+    const groupId = group.json.room.id as string;
+    await step(
+      "post",
+      `/chat/invitations/${groupId}/accept`,
+      "/chat/invitations/{roomId}/accept",
+      200,
+      undefined,
+      {
+        token: guest.token,
+        idem: true,
+        headers: APP,
+      },
+    );
+    const hostSocket = await connectSocket(host);
+    try {
+      const first = expectOperation(
+        "post",
+        "/chat/rooms/{roomId}/messages",
+        await sendText(host, groupId, "Siapa ikut futsal?"),
+      ) as Json;
+      const reply = await call(
+        "post",
+        `/chat/rooms/${groupId}/messages`,
+        { client_message_id: uuidv7(), kind: "text", body: "Saya ikut", reply_to_id: first.id },
+        { token: guest.token, headers: APP },
+      );
+      expect(reply.statusCode, show("post", "messages (balasan)", reply)).toBe(201);
+      const replyMsg = expectOperation("post", "/chat/rooms/{roomId}/messages", reply) as Json;
+      expect(JSON.stringify(replyMsg.reply_to)).toContain(first.id);
+      const reacted = await step(
+        "put",
+        `/chat/rooms/${groupId}/messages/${first.id}/reactions/${encodeURIComponent("👍")}`,
+        "/chat/rooms/{roomId}/messages/{messageId}/reactions/{emoji}",
+        200,
+        undefined,
+        { token: guest.token, headers: APP },
+      );
+      expect(reacted.json.reactions).toEqual([{ emoji: "👍", count: 1, reacted_by_me: true }]);
+      await hostSocket.waitFor("reaction.updated", (e) => e.entity_id === first.id);
+      const removed = await step(
+        "delete",
+        `/chat/rooms/${groupId}/messages/${replyMsg.id}`,
+        "/chat/rooms/{roomId}/messages/{messageId}",
+        200,
+        undefined,
+        { token: guest.token, headers: APP },
+      );
+      expect(removed.json).toMatchObject({ body: null, deleted_at: expect.any(String) });
+      await hostSocket.waitFor("message.deleted", (e) => e.entity_id === replyMsg.id);
+      // Pengirim lain tidak dapat menghapus pesan orang lain.
+      const foreign = await call("delete", `/chat/rooms/${groupId}/messages/${first.id}`, undefined, {
+        token: guest.token,
+        headers: APP,
+      });
+      expect(foreign.statusCode).toBe(403);
+    } finally {
+      hostSocket.close();
+    }
+    // Mute: episode belum dibaca baru tetap masuk inbox, tanpa push (kontrak setChatRoomMute).
+    await drain();
+    const pushesBefore = push.to(fcm).length;
+    const muted = await call(
+      "put",
+      `/chat/rooms/${groupId}/mute`,
+      { muted: true },
+      { token: guest.token, headers: APP },
+    );
+    expect(muted.statusCode, show("put", "mute", muted)).toBe(204);
+    const history = await step(
+      "get",
+      `/chat/rooms/${groupId}/messages`,
+      "/chat/rooms/{roomId}/messages",
+      200,
+      undefined,
+      { token: guest.token },
+    );
+    await step(
+      "put",
+      `/chat/rooms/${groupId}/read`,
+      "/chat/rooms/{roomId}/read",
+      200,
+      { message_id: history.json.items.at(-1).id },
+      { token: guest.token, headers: APP },
+    );
+    await sendText(host, groupId, "Lapangan jam 7 malam");
+    await drain();
+    expect(push.to(fcm)).toHaveLength(pushesBefore);
+    const inbox = await step("get", "/notifications", "/notifications", 200, undefined, {
+      token: guest.token,
+      query: { category: "chat" },
+    });
+    expect(
+      inbox.json.items.filter((n: Json) => n.deep_link === `kapdh://app/chat/${groupId}`).length,
+    ).toBeGreaterThanOrEqual(2);
   });
 });
 
