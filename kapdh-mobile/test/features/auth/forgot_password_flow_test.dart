@@ -193,7 +193,9 @@ void main() {
       expect(app.location, '/forgot/otp');
     });
 
-    testWidgets('PRD 2.5: kembali dari kode ke email melanjutkan kode yang sudah dikirim tanpa kirim ulang', (tester) async {
+    testWidgets('PRD 2.5: kembali dari kode ke email melanjutkan kode yang sudah dikirim tanpa kirim ulang', (
+      tester,
+    ) async {
       final app = await openForgot(tester, recoveryRoutes());
       await requestCode(tester);
       await tester.tap(find.byTooltip('Kembali'));
@@ -297,34 +299,37 @@ void main() {
       expect(app.container.read(sessionProvider).challenge, isNull);
     });
 
-    testWidgets('AC F02-4, kontrak C1: respons verifikasi hilang lalu 410 berarti kode sudah terpakai; minta kode baru', (
+    testWidgets(
+      'AC F02-4, kontrak C1: respons verifikasi hilang lalu 410 berarti kode sudah terpakai; minta kode baru',
+      (tester) async {
+        var attempts = 0;
+        final app = await openForgot(
+          tester,
+          recoveryRoutes({
+            '/auth/password/forgot/verify': (_) => ++attempts == 1
+                ? FakeResponse.network()
+                : FakeResponse.json(410, errorJson('OTP_EXPIRED', 'Kode tidak berlaku lagi.')),
+          }),
+        );
+        await requestCode(tester);
+        await tester.enterText(otpInput, '482913');
+        await settle(tester);
+        expect(find.textContaining('Koneksi terputus sebelum hasil verifikasi diterima'), findsOneWidget);
+        expect(tester.widget<TextField>(otpInput).controller!.text, '482913', reason: 'kode dipertahankan');
+
+        await scrollAndTap(tester, verifyButton);
+        await settle(tester);
+        expect(find.text('Kode sudah terpakai'), findsOneWidget);
+        expect(app.adapter.requestsTo('/auth/otp/resend'), isEmpty, reason: 'tidak langsung meminta kode baru');
+        await scrollAndTap(tester, find.byKey(const ValueKey('otp-restart')));
+        await settle(tester);
+        expect(app.location, '/forgot');
+      },
+    );
+
+    testWidgets('PRD 2.5: verifikasi ditolak RATE_LIMITED: tombol Verifikasi nonaktif sampai jeda selesai', (
       tester,
     ) async {
-      var attempts = 0;
-      final app = await openForgot(
-        tester,
-        recoveryRoutes({
-          '/auth/password/forgot/verify': (_) => ++attempts == 1
-              ? FakeResponse.network()
-              : FakeResponse.json(410, errorJson('OTP_EXPIRED', 'Kode tidak berlaku lagi.')),
-        }),
-      );
-      await requestCode(tester);
-      await tester.enterText(otpInput, '482913');
-      await settle(tester);
-      expect(find.textContaining('Koneksi terputus sebelum hasil verifikasi diterima'), findsOneWidget);
-      expect(tester.widget<TextField>(otpInput).controller!.text, '482913', reason: 'kode dipertahankan');
-
-      await scrollAndTap(tester, verifyButton);
-      await settle(tester);
-      expect(find.text('Kode sudah terpakai'), findsOneWidget);
-      expect(app.adapter.requestsTo('/auth/otp/resend'), isEmpty, reason: 'tidak langsung meminta kode baru');
-      await scrollAndTap(tester, find.byKey(const ValueKey('otp-restart')));
-      await settle(tester);
-      expect(app.location, '/forgot');
-    });
-
-    testWidgets('PRD 2.5: verifikasi ditolak RATE_LIMITED: tombol Verifikasi nonaktif sampai jeda selesai', (tester) async {
       final app = await openForgot(
         tester,
         recoveryRoutes({
@@ -467,7 +472,9 @@ void main() {
       expect(app.container.read(sessionProvider).resetToken, isNull);
     });
 
-    testWidgets('AC F02-4, kontrak C1, PRD 4.5: respons hilang lalu 410, arahkan masuk dengan sandi baru dahulu', (tester) async {
+    testWidgets('AC F02-4, kontrak C1, PRD 4.5: respons hilang lalu 410, arahkan masuk dengan sandi baru dahulu', (
+      tester,
+    ) async {
       var attempts = 0;
       final app = await openReset(
         tester,

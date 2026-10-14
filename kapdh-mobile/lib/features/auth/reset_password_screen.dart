@@ -146,7 +146,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   /// Izin membuat password baru masih dapat dipakai: kodenya sudah dikonsumsi, sehingga meninggalkan layar berarti
   /// meminta kode baru (dihitung ke batas 5 kirim per jam, PRD 2.5).
   bool get _grantUsable =>
-      _outcome == _ResetOutcome.editing && ref.read(sessionProvider).resetToken != null && _remaining() != Duration.zero;
+      _outcome == _ResetOutcome.editing &&
+      ref.read(sessionProvider).resetToken != null &&
+      _remaining() != Duration.zero;
 
   /// Tombol kembali di judul dan tombol kembali sistem (PopScope) berperilaku sama.
   void _onBack() {
