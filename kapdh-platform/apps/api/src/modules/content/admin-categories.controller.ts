@@ -102,11 +102,13 @@ export class AdminPostCategoriesController extends CategoryEndpoints {
 /**
  * Kategori event (guideline p14 "Manajemen Kategori" di halaman Event dan Tiket): izin events.manage sehingga
  * pengurus event tidak membutuhkan izin konten dan sebaliknya (PRD 2.3, AC F15-1). Id kategori berita -> 404.
+ * Nama kelas berbeda dari AdminEventCategoriesController modul events (GET /admin/event-categories, baca saja) agar
+ * nama rute `<Controller>.<method>` unik di aplikasi (uji akses per controller, ARCHITECTURE §4.3).
  */
 @Controller("admin/content/event-categories")
 @Audience("admin")
 @RequirePermission("events.manage")
-export class AdminEventCategoriesController extends CategoryEndpoints {
+export class AdminManagedEventCategoriesController extends CategoryEndpoints {
   protected readonly kind = "event" as const;
 
   constructor(categories: CategoriesService) {

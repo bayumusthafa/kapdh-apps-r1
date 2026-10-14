@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { deviceTokens, notificationDeliveries, sessions } from "@kapdh/database";
+import { deviceTokens, notificationDeliveries, sessions, users } from "@kapdh/database";
 import { and, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import type { Clock } from "../../core/adapters/clock.js";
@@ -43,8 +43,9 @@ export const DEVICE_SWEEP_EVERY_MS = 60 * 60_000;
  * Token perangkat FCM (F-13, AC F13-4, F13-5; kontrak notifications.yaml registerDevice/unregisterDevice). Token tidak
  * pernah dicatat di log/audit dan tidak pernah dikembalikan API (ARCHITECTURE §2 butir 3).
  *
- * Urutan kunci (bebas deadlock dengan logout, rotasi refresh, worker dan retry admin): baris sesi aktif keluarga
- * pemanggil → baris device_tokens → baris notification_deliveries. Logout/pencabutan sesi (modul auth) juga mengunci
+ * Urutan kunci (bebas deadlock dengan logout, rotasi refresh, worker dan retry admin): baris users pemilik (FOR SHARE,
+ * aturan session-locks modul auth) → baris sesi aktif keluarga pemanggil → baris device_tokens → baris
+ * notification_deliveries. Logout/pencabutan sesi (modul auth) juga mengunci
  * baris sesi lebih dulu lalu memanggil core `revokeDeviceTokens`; worker mengunci token sebelum pengiriman.
  *
  * Pencabutan saat sesi berakhir/berganti akun (AC F13-5): modul auth memanggil core `revokeDeviceTokens` di transaksi
@@ -73,6 +74,11 @@ export class DevicesService {
   async register(session: DeviceSessionRef, input: RegisterDeviceInput): Promise<void> {
     const now = this.clock.now();
     await this.db.transaction(async (tx) => {
+      // Urutan kunci sesi modul auth (session-locks.ts): baris users pemilik dikunci SEBELUM baris sesi. FOR SHARE
+      // kompatibel dengan rotasi refresh tetapi bentrok dengan FOR UPDATE logout/pencabutan, sehingga keduanya
+      // berurutan. Tanpa ini, INSERT device_tokens (pemeriksaan FK users FOR KEY SHARE) menunggu logout yang
+      // memegang users FOR UPDATE sementara logout menunggu baris sesi yang dikunci di sini → deadlock 40P01.
+      await tx.select({ id: users.id }).from(users).where(eq(users.id, session.userId)).for("share");
       const sessionRowId = await this.lockActiveFamilySession(tx, session, now);
       let tokenId: string;
       const existing = await this.lockToken(tx, input.token);

@@ -31,7 +31,7 @@ const CONTROLLERS = [
   "AdminBannersController",
   "AdminPagesController",
   "AdminPostCategoriesController",
-  "AdminEventCategoriesController",
+  "AdminManagedEventCategoriesController",
   "AdminContentMediaController",
 ] as const;
 
