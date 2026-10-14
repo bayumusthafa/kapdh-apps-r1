@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/app_gate/app_gate.dart';
 import '../core/session/session_controller.dart';
+import '../core/session/session_state.dart';
 import '../core/ui/app_keys.dart';
+import '../features/notifications/notification_unread_count.dart';
 import 'app_banners.dart';
 import 'app_services.dart';
 import 'router.dart';
@@ -45,6 +47,11 @@ class _KapdhAppState extends ConsumerState<KapdhApp> {
     final session = ref.read(sessionProvider);
     // Kembali online: snapshot offline diganti status terbaru dari server (AC F05-4).
     if (session.isOffline) unawaited(ref.read(sessionProvider.notifier).refreshQuietly());
+    // Notifikasi yang tiba saat aplikasi di latar belakang tidak diputar ulang realtime: lencana belum dibaca dimuat
+    // ulang (kontrak C7 getNotificationUnreadCount, F-13). Hanya bila lencana sedang dipakai.
+    if (session.phase == SessionPhase.authenticated && ref.exists(notificationUnreadCountProvider)) {
+      unawaited(ref.read(notificationUnreadCountProvider.notifier).refresh());
+    }
   }
 
   @override
@@ -54,7 +61,8 @@ class _KapdhAppState extends ConsumerState<KapdhApp> {
       title: 'KAPDH',
       debugShowCheckedModeBanner: false,
       theme: _theme,
-      routerConfig: ref.watch(routerProvider),
+      // Tombol kembali sistem melewati redirect lagi sesudah halaman tertutup (PRD 2.2).
+      routerConfig: ref.watch(routerConfigProvider),
       // Pita Offline/Pemeliharaan untuk semua layar AppScaffold, tepat di bawah app bar.
       builder: (context, child) => AppStatusBanners(child: child ?? const SizedBox.shrink()),
       scaffoldMessengerKey: ref.watch(scaffoldMessengerKeyProvider),

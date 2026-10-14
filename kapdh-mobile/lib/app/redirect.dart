@@ -23,6 +23,11 @@ enum RouteGroup {
   home,
   news,
   events,
+
+  /// Detail satu event `/events/:eventId`: juga dibuka anggota expired untuk event yang pernah ia pesan (tiket lunas
+  /// tetap berlaku, deep link notifikasi event; kontrak C5 getEvent `nonsuspended`). Server menjawab 403
+  /// MEMBERSHIP_REQUIRED untuk event lain dan layar menjelaskannya.
+  eventDetail,
   tickets,
   kta,
   renewal,
@@ -31,8 +36,13 @@ enum RouteGroup {
   notifications,
   account,
 
-  /// Blokir dan laporan milik sendiri: tindakan komunitas, hanya anggota aktif.
+  /// Daftar blokir milik sendiri: tindakan komunitas, hanya anggota aktif (moderation.yaml listBlocks
+  /// member_access active).
   accountCommunity,
+
+  /// Laporan dan banding milik sendiri: riwayat sendiri untuk semua status anggota, termasuk expired dan suspended
+  /// (moderation.yaml listMyReports/getMyReport member_access any; tujuan notifikasi hasil moderasi dan banding).
+  accountReports,
   accountDelete,
   restricted,
   deletionStatus,
@@ -74,6 +84,7 @@ RouteGroup routeGroupOf(String path) {
     'payments' => RouteGroup.payments,
     'home' when single => RouteGroup.home,
     'news' => RouteGroup.news,
+    'events' when segments.length == 2 => RouteGroup.eventDetail,
     'events' => RouteGroup.events,
     'tickets' => RouteGroup.tickets,
     'kta' when single => RouteGroup.kta,
@@ -81,8 +92,11 @@ RouteGroup routeGroupOf(String path) {
     'network' => RouteGroup.network,
     'chat' when !single => RouteGroup.chat,
     'notifications' when single => RouteGroup.notifications,
+    // Gerbang ketukan push /notifications/<id> (AC F13-3): akses sama dengan kotak masuk.
+    'notifications' when segments.length == 2 => RouteGroup.notifications,
     'account' when single => RouteGroup.account,
-    'account' when second == 'blocked' || second == 'reports' => RouteGroup.accountCommunity,
+    'account' when second == 'blocked' => RouteGroup.accountCommunity,
+    'account' when second == 'reports' => RouteGroup.accountReports,
     'account' when second == 'delete' => RouteGroup.accountDelete,
     'account' => RouteGroup.account,
     'restricted' when single => RouteGroup.restricted,
@@ -92,7 +106,8 @@ RouteGroup routeGroupOf(String path) {
 }
 
 /// Fitur anggota yang tersedia untuk unverified, verified, expiring dan expired: beranda/berita (informasi resmi),
-/// KTA (dengan label status), riwayat pembayaran sendiri, kotak masuk, pengaturan akun dan hapus akun.
+/// KTA (dengan label status), riwayat pembayaran sendiri, kotak masuk, pengaturan akun, laporan sendiri dan hapus
+/// akun.
 const Set<RouteGroup> _memberBase = {
   RouteGroup.home,
   RouteGroup.news,
@@ -100,6 +115,7 @@ const Set<RouteGroup> _memberBase = {
   RouteGroup.payments,
   RouteGroup.notifications,
   RouteGroup.account,
+  RouteGroup.accountReports,
   RouteGroup.accountDelete,
 };
 
@@ -115,6 +131,7 @@ const Map<EffectiveStatus, Set<RouteGroup>> _allowed = {
   EffectiveStatus.verified: {
     ..._memberBase,
     RouteGroup.events,
+    RouteGroup.eventDetail,
     RouteGroup.tickets,
     RouteGroup.network,
     RouteGroup.chat,
@@ -124,6 +141,7 @@ const Map<EffectiveStatus, Set<RouteGroup>> _allowed = {
   EffectiveStatus.expiring: {
     ..._memberBase,
     RouteGroup.events,
+    RouteGroup.eventDetail,
     RouteGroup.tickets,
     RouteGroup.network,
     RouteGroup.chat,
@@ -131,23 +149,36 @@ const Map<EffectiveStatus, Set<RouteGroup>> _allowed = {
     RouteGroup.accountCommunity,
   },
   // Riwayat sendiri, kartu kedaluwarsa, perpanjangan, pengaturan akun, hapus akun; tiket yang sudah paid sebelum
-  // kedaluwarsa tetap dapat dilihat dan dipakai. Ditolak: pemesanan baru, direktori, chat.
-  EffectiveStatus.expired: {..._memberBase, RouteGroup.renewal, RouteGroup.tickets},
-  // Portal pembatasan, bantuan (legal) dan penghapusan setelah verifikasi identitas.
-  EffectiveStatus.suspended: {RouteGroup.restricted, RouteGroup.accountDelete},
+  // kedaluwarsa tetap dapat dilihat dan dipakai, beserta detail event yang pernah dipesan (kontrak C5 getEvent).
+  // Ditolak: daftar event dan pemesanan baru, direktori, chat.
+  EffectiveStatus.expired: {..._memberBase, RouteGroup.renewal, RouteGroup.tickets, RouteGroup.eventDetail},
+  // Portal pembatasan, bantuan (legal), status laporan/banding sendiri (moderation.yaml member_access any),
+  // penghapusan setelah verifikasi identitas, dan kotak masuk resmi: kontrak C7 memberi semua operasi notifikasi
+  // member_access `any` agar anggota suspended tetap dapat membaca notifikasi keamanan dan pengurus (AC F13-2).
+  // Tujuan deep link notifikasi tetap melewati matriks ini.
+  EffectiveStatus.suspended: {
+    RouteGroup.restricted,
+    RouteGroup.accountReports,
+    RouteGroup.accountDelete,
+    RouteGroup.notifications,
+  },
   // Pemeriksaan status penghapusan/pemulihan dengan challenge terbatas.
   EffectiveStatus.disabled: {RouteGroup.deletionStatus},
   EffectiveStatus.deletionPending: {RouteGroup.deletionStatus},
 };
 
 /// Rute yang tujuannya HANYA mutasi, sehingga tidak berguna selama maintenance (server menolak mutasi dengan 503
-/// MAINTENANCE, PRD 4.5): seluruh alur auth (login, daftar, OTP, pemulihan sandi), pembayaran baru, perpanjangan,
-/// ganti sandi, membuat grup chat dan hapus akun. Rute lain tetap dapat dibaca dalam mode baca terkendali; simpan
-/// yang ditolak ditampilkan ErrorPresenter.
+/// MAINTENANCE, PRD 4.5): seluruh alur auth (login, daftar, OTP, pemulihan sandi), pembuatan instruksi pembayaran
+/// baru (termasuk perpanjangan, `/payments/new/renewal`), ganti sandi, membuat grup chat dan hapus akun. Rute lain
+/// tetap dapat dibaca dalam mode baca terkendali; simpan yang ditolak ditampilkan ErrorPresenter.
+///
+/// `/renewal` adalah layar baca (masa keanggotaan, iuran, riwayat periode; F-07) dan rute awal anggota expired,
+/// sehingga tetap terbuka: tanpa itu anggota expired tidak mendapat mode baca sama sekali selama maintenance
+/// (PRD 2.2, 4.5; AC F07-2). Tombol bayarnya menuju `/payments/new/renewal` yang tetap hanya mutasi.
 bool isMutationOnlyRoute(String path) {
   final group = routeGroupOf(path);
   if (_authGroups.contains(group)) return true;
-  if (group == RouteGroup.renewal || group == RouteGroup.accountDelete) return true;
+  if (group == RouteGroup.accountDelete) return true;
   return path == AppRoutes.accountPassword ||
       path == AppRoutes.chatNewGroup ||
       path.startsWith('${AppRoutes.payments}/new/');
@@ -226,12 +257,18 @@ String? resolveRedirect(RedirectState state, Uri location) {
     case SessionPhase.offlineLastKnown:
       final current = status ?? EffectiveStatus.unknown;
       if (isRouteAllowed(current, group)) return null;
+      // Tautan reset dari pengurus dibuka saat masih masuk (AC F16-4): reset itu mencabut seluruh sesi, jadi tautan
+      // tidak dibuang. Layar pemulihan menjelaskannya dan menawarkan keluar lalu melanjutkan tautan yang sama.
+      if (group == RouteGroup.forgotOtp && _isChallengeLink(location)) return null;
       if (group == RouteGroup.splash || _authGroups.contains(group)) return _landing(state, _fromParam(location));
       return homeFor(current);
   }
 }
 
 bool _readableDuringMaintenance(SessionState session, RouteGroup group, String path) {
+  // Portal status penghapusan tanpa sesi hanya menampilkan status yang sudah diketahui (nomor permintaan dari login
+  // atau dari permintaan hapus akun); pemeriksaan ulang yang ditolak MAINTENANCE dijelaskan di layar (PRD 4.5).
+  if (group == RouteGroup.deletionStatus && session.phase == SessionPhase.anonymous) return true;
   final status = session.effectiveStatus;
   if (!session.hasSession || status == null || routeForStatus(status) == null) return false;
   return isRouteAllowed(status, group) && !isMutationOnlyRoute(path);
@@ -252,17 +289,31 @@ String? readOnlyLanding(RedirectState state, Uri location) {
 bool isLocationAllowed(RedirectState state, String location) => resolveRedirect(state, Uri.parse(location)) == null;
 
 String? _anonymous(SessionState session, Uri location, RouteGroup group) {
+  // Tautan challenge OTP yang ditunda selama splash (tautan email dibuka saat aplikasi belum berjalan, AC F16-4)
+  // langsung dilanjutkan ke layar OTP-nya, bukan ke login.
+  if (group == RouteGroup.splash) {
+    final link = _fromParam(location);
+    if (link != null && _isChallengeLink(link)) return _locationString(link);
+  }
   switch (group) {
     case RouteGroup.login:
     case RouteGroup.register:
     case RouteGroup.forgot:
       return null;
     case RouteGroup.registerOtp:
-      return session.challenge?.purpose == OtpPurpose.signup ? null : AppRoutes.login;
+      // signup dan email_change berbagi satu slot aktivasi (kontrak C1); `?challenge=` dibaca lewat /auth/otp/status.
+      return _isActivation(session.challenge?.purpose) || _isChallengeLink(location) ? null : AppRoutes.login;
     case RouteGroup.forgotOtp:
-      return session.challenge?.purpose == OtpPurpose.passwordReset ? null : AppRoutes.forgot;
+      return session.challenge?.purpose == OtpPurpose.passwordReset || _isChallengeLink(location)
+          ? null
+          : AppRoutes.forgot;
     case RouteGroup.forgotReset:
       return session.resetToken != null ? null : AppRoutes.forgot;
+    case RouteGroup.deletionStatus:
+      // Kontrak C1: akun deletion_pending/disabled tidak pernah mendapat sesi (login mengembalikan
+      // next=deletion_pending/account_disabled). Portal status bekerja tanpa sesi dengan challenge terbatas
+      // (PRD 2.2, F-14): status dari login atau permintaan hapus, dan pemeriksaan ulang lewat OTP email.
+      return null;
     case RouteGroup.splash:
       return _withFrom(AppRoutes.login, _fromParam(location));
     default:
@@ -278,6 +329,7 @@ String _landing(RedirectState state, Uri? from) {
     case SessionPhase.unknown:
       return _withFrom(AppRoutes.splash, from);
     case SessionPhase.anonymous:
+      if (from != null && _isChallengeLink(from)) return _locationString(from);
       return _withFrom(AppRoutes.login, from);
     case SessionPhase.authenticated:
     case SessionPhase.offlineLastKnown:
@@ -289,6 +341,7 @@ String _landing(RedirectState state, Uri? from) {
 /// Lokasi yang ditunda saat dialihkan dari [location]: layar sistem/auth meneruskan `from` miliknya sendiri; rute
 /// lain menjadi tujuan yang ditunda.
 Uri? _pending(Uri location, RouteGroup group) {
+  if (_isChallengeLink(location)) return _sanitize(location);
   if (_systemGroups.contains(group) || _authGroups.contains(group)) return _fromParam(location);
   if (group == RouteGroup.unknown) return null;
   return _sanitize(location);
@@ -301,9 +354,21 @@ Uri? _sanitize(Uri? candidate) {
   if (candidate == null) return null;
   final normalized = DeepLinks.normalize(candidate);
   if (normalized == null) return null;
+  if (_isChallengeLink(normalized)) return normalized;
   final group = routeGroupOf(normalized.path);
   if (_systemGroups.contains(group) || _authGroups.contains(group) || group == RouteGroup.unknown) return null;
   return normalized;
+}
+
+/// Challenge aktivasi (kontrak C1: signup dan email_change berbagi satu slot aktivasi).
+bool _isActivation(OtpPurpose? purpose) => purpose == OtpPurpose.signup || purpose == OtpPurpose.emailChange;
+
+/// Layar OTP yang dibuka dari tautan berisi challenge_id (`/forgot/otp?challenge=<uuid>`, AC F16-4, atau
+/// `/register/otp?challenge=<uuid>` saat challenge dipulihkan). Layar membaca keadaannya lewat POST /auth/otp/status
+/// tanpa mengirim kode baru; satu-satunya rute auth yang boleh menjadi tujuan tertunda.
+bool _isChallengeLink(Uri location) {
+  final group = routeGroupOf(location.path);
+  return (group == RouteGroup.registerOtp || group == RouteGroup.forgotOtp) && DeepLinks.challengeId(location) != null;
 }
 
 String _withFrom(String path, Uri? from) =>

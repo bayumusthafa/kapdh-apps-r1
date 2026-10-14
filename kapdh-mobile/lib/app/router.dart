@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../core/app_gate/app_gate.dart';
 import '../core/session/session_controller.dart';
 import '../core/ui/app_keys.dart';
+import '../core/ui/back_navigation.dart';
 import '../features/account/account_screen.dart';
 import '../features/account/blocked_users_screen.dart';
 import '../features/account/change_password_screen.dart';
@@ -34,6 +35,7 @@ import '../features/network/member_profile_screen.dart';
 import '../features/network/network_screen.dart';
 import '../features/news/news_detail_screen.dart';
 import '../features/news/news_list_screen.dart';
+import '../features/notifications/notification_open_screen.dart';
 import '../features/notifications/notifications_screen.dart';
 import '../features/onboarding/onboarding_fees_screen.dart';
 import '../features/payments/new_payment_screen.dart';
@@ -83,6 +85,12 @@ final routerProvider = Provider<GoRouter>((ref) {
   });
   return router;
 });
+
+/// Konfigurasi `MaterialApp.router`: [routerProvider] dengan tombol kembali sistem yang menjalankan ulang redirect
+/// sesudah halaman tertutup, sama seperti panah kembali `AppScaffold` (PRD 2.2, PRD 4.5).
+final routerConfigProvider = Provider<RouterConfig<Object>>(
+  (ref) => redirectingRouterConfig(ref.watch(routerProvider)),
+);
 
 String _param(GoRouterState state, String name) => state.pathParameters[name] ?? '';
 
@@ -227,7 +235,18 @@ List<RouteBase> buildAppRoutes(GlobalKey<NavigatorState> rootKey) => [
       ),
     ],
   ),
-  GoRoute(path: AppRoutes.notifications, builder: (_, _) => const NotificationsScreen()),
+  GoRoute(
+    path: AppRoutes.notifications,
+    builder: (_, _) => const NotificationsScreen(),
+    routes: [
+      // Ketukan push membuka gerbang ini; objek tujuan baru dibuka setelah server mengonfirmasi notifikasi milik
+      // akun yang sedang masuk (AC F13-3, F13-5).
+      GoRoute(
+        path: ':notificationId',
+        builder: (_, state) => NotificationOpenScreen(notificationId: _param(state, 'notificationId')),
+      ),
+    ],
+  ),
   GoRoute(
     path: '/legal/:slug',
     builder: (_, state) => LegalPageScreen(slug: _param(state, 'slug')),

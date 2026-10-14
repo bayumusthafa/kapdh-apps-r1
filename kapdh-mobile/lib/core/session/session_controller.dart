@@ -6,6 +6,8 @@ import 'package:kapdh_api/kapdh_api.dart';
 
 import '../api/api_providers.dart';
 import '../api/api_signals.dart';
+import '../cache/home_cache_store.dart';
+import '../cache/kta_avatar_cache.dart';
 import '../cache/kta_cache_store.dart';
 import '../storage/token_store.dart';
 import 'me_snapshot_store.dart';
@@ -14,8 +16,14 @@ import 'session_state.dart';
 
 final meSnapshotStoreProvider = Provider<MeSnapshotStore>((ref) => MeSnapshotStore(ref.watch(secureStoreProvider)));
 
+/// Cache KTA offline; foto KTA (cache disk tersendiri) ikut dihapus setiap kali cache kartu dihapus: logout, sesi
+/// dicabut, berganti akun, status dibatasi, atau kartu tidak sah lagi untuk tampil offline (PRD 5.2, AC F05-3).
 final ktaCacheStoreProvider = Provider<KtaCacheStore>(
-  (ref) => KtaCacheStore(ref.watch(secureStoreProvider), clock: ref.watch(clockProvider)),
+  (ref) => KtaCacheStore(
+    ref.watch(secureStoreProvider),
+    clock: ref.watch(clockProvider),
+    onClear: () => ref.read(ktaAvatarCacheProvider).clear(),
+  ),
 );
 
 final sessionProvider = NotifierProvider<SessionController, SessionState>(SessionController.new);
@@ -52,7 +60,8 @@ class LoginResult {
 ///   [SessionPhase.offlineLastKnown]; tanpa snapshot tetap [SessionPhase.unknown] dengan masalah `offline` agar splash
 ///   menampilkan "Tanpa koneksi" dan tombol coba lagi.
 /// - Token hanya dihapus koordinator refresh (UNAUTHENTICATED dari /auth/refresh) atau saat pengguna keluar.
-/// - Logout dan pergantian akun menghapus cache KTA, snapshot /me dan key idempotensi (PRD 5.2, AC F05-3).
+/// - Logout dan pergantian akun menghapus cache KTA, cache Beranda, snapshot /me dan key idempotensi (PRD 5.2,
+///   AC F05-3, AC F08-4).
 class SessionController extends Notifier<SessionState> {
   Future<void>? _loading;
 
@@ -72,6 +81,7 @@ class SessionController extends Notifier<SessionState> {
   TokenStore get _tokens => ref.read(tokenStoreProvider);
   MeSnapshotStore get _snapshots => ref.read(meSnapshotStoreProvider);
   KtaCacheStore get _ktaCache => ref.read(ktaCacheStoreProvider);
+  HomeCacheStore get _homeCache => ref.read(homeCacheStoreProvider);
   AuthRepository get _auth => ref.read(authRepositoryProvider);
   MeRepository get _meRepo => ref.read(meRepositoryProvider);
   DateTime _now() => ref.read(clockProvider)().toUtc();
@@ -158,6 +168,7 @@ class SessionController extends Notifier<SessionState> {
     if (previous != null && previous != me.userId) {
       // Berganti akun: data privat akun sebelumnya tidak boleh tampil (AC F05-3, F13-5).
       await _ktaCache.clear();
+      await _homeCache.clear();
       await ref.read(idempotencyStoreProvider).clear();
     }
     if (me.effectiveStatus
@@ -273,6 +284,9 @@ class SessionController extends Notifier<SessionState> {
   Future<void> _wipePrivateData() async {
     await _snapshots.clear();
     await _ktaCache.clear();
+    // Cache Beranda memuat nomor anggota dan jumlah notifikasi (AC F08-4); dihapus walau Beranda tidak pernah
+    // dibuka atau sedang tidak aktif (PRD 5.2).
+    await _homeCache.clear();
     await ref.read(idempotencyStoreProvider).clear();
   }
 
