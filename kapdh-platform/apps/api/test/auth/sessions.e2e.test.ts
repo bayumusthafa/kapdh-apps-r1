@@ -172,7 +172,8 @@ describe("F-02: daftar sesi perangkat (kontrak listSessions)", () => {
     const again = await listSessions(rotated.json().access_token as string);
     const phoneAgain = again.items.find((item) => item.id === oldest!.id)!;
     expect(phoneAgain).toMatchObject({ current: true, created_at: oldest!.created_at });
-    expect(new Date(phoneAgain.expires_at).getTime()).toBeGreaterThan(new Date(oldest!.expires_at).getTime());
+    // TTL refresh adalah umur absolut keluarga sejak login (PRD 5.2, N-08; D3-06): rotasi tidak memperpanjangnya.
+    expect(phoneAgain.expires_at).toBe(oldest!.expires_at);
   });
 
   it("paging keyset limit + cursor tanpa duplikasi atau item terlewat; cursor rusak → 400", async () => {

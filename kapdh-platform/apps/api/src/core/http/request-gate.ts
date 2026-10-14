@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import semver from "semver";
 import type { Clock } from "../adapters/clock.js";
 import { AppException } from "../errors/app-exception.js";
+import { TokenService } from "../identity/token.service.js";
 import { SettingsService } from "../settings/settings.service.js";
 import { CLOCK } from "../tokens.js";
 
@@ -9,19 +10,32 @@ export const API_PREFIX = "/api/v1";
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 /**
- * Mutasi yang tetap diproses saat maintenance (ARCHITECTURE §4.3): refresh/logout agar sesi tetap terkendali, seluruh
- * /admin/** agar pengurus dapat bekerja dan mematikan maintenance, serta verifikasi KTA publik (POST tetapi hanya
- * membaca, F-06).
+ * Mutasi yang tetap diproses saat maintenance untuk SEMUA pemanggil (ARCHITECTURE §4.3): refresh/logout dan pencabutan
+ * sesi perangkat agar sesi tetap terkendali, seluruh /admin/** agar pengurus dapat bekerja dan mematikan maintenance,
+ * serta verifikasi KTA publik (POST tetapi hanya membaca, F-06). `path` adalah pola rute yang cocok (mis.
+ * `/auth/sessions/:sessionId`), bukan URL mentah.
  */
-function maintenanceAllowed(path: string): boolean {
+function maintenanceAllowed(method: string, path: string): boolean {
   return (
     path === "/auth/refresh" ||
     path === "/auth/logout" ||
     path === "/auth/logout-all" ||
+    (method === "DELETE" && path === "/auth/sessions/:sessionId") ||
     path === "/admin" ||
     path.startsWith("/admin/") ||
     path === "/public/kta/verify"
   );
+}
+
+/**
+ * Mutasi bersama (bukan /admin/**) yang dipakai web admin dan tetap diproses saat maintenance HANYA untuk access token
+ * ber-audience admin yang sah (ARCHITECTURE §4.3): reautentikasi (X-Reauth-Token wajib untuk mematikan maintenance dan
+ * perubahan sensitif lain, AC F15-3; tanpa pengecualian ini maintenance terkunci begitu token reauth 10 menit
+ * kedaluwarsa) dan unggahan berkas pengurus (bukti pembayaran tercatat D13, bukti refund). Mutasi anggota yang sama
+ * tetap 503.
+ */
+function maintenanceAllowedForAdmin(method: string, path: string): boolean {
+  return method === "POST" && (path === "/auth/reauth" || path === "/files");
 }
 
 /** Logout selalu diizinkan dari versi lama agar pengguna dapat mengakhiri sesi (keamanan). */
@@ -42,6 +56,8 @@ export interface GateRequest {
   appPlatform: "android" | "ios" | null;
   /** Nilai mentah header X-App-Version (bisa tidak valid). */
   appVersion: string | undefined;
+  /** Nilai mentah header Authorization (Bearer access token), untuk pengecualian maintenance khusus sesi admin. */
+  authorization?: string | undefined;
 }
 
 /**
@@ -54,16 +70,18 @@ export class RequestGate {
   constructor(
     private readonly settings: SettingsService,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly tokens: TokenService,
   ) {}
 
   async check(request: GateRequest): Promise<void> {
-    if (!MUTATING.has(request.method.toUpperCase())) return;
+    const method = request.method.toUpperCase();
+    if (!MUTATING.has(method)) return;
     const path = apiPath(request.url);
     if (path === null) return;
 
-    if (!maintenanceAllowed(path)) {
+    if (!maintenanceAllowed(method, path)) {
       const maintenance = await this.settings.get("maintenance");
-      if (maintenance.active) {
+      if (maintenance.active && !(await this.adminExempt(method, path, request.authorization))) {
         const until = maintenance.until ? new Date(maintenance.until).getTime() : null;
         const wait = until ? Math.ceil((until - this.clock.now().getTime()) / 1000) : 0;
         throw new AppException(
@@ -95,5 +113,22 @@ export class RequestGate {
         );
       }
     }
+  }
+
+  /**
+   * true bila mutasi bersama ini dikecualikan untuk pemanggil admin: tanda tangan, masa berlaku, dan audience access
+   * token diverifikasi (sama dengan AuthGuard), sehingga token anggota atau token palsu tetap 503. Keadaan sesi (dicabut,
+   * admin nonaktif, izin) tetap diperiksa AuthGuard sesudah gerbang ini.
+   */
+  private async adminExempt(
+    method: string,
+    path: string,
+    authorization: string | undefined,
+  ): Promise<boolean> {
+    if (!maintenanceAllowedForAdmin(method, path)) return false;
+    const header = authorization ?? "";
+    const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+    if (!token) return false;
+    return (await this.tokens.verifyAccess(token))?.audience === "admin";
   }
 }
