@@ -546,6 +546,40 @@ Perbaikan tinjauan kedua C7 (belum ada klien atau controller, dicatat untuk penu
   MFA_REQUIRED) untuk `adminGetDashboard`, `adminGetDashboardBadges`, `adminListPermissions`; 400 ValidationError
   untuk `getNotification`, `adminGetAdmin`, `adminGetAuditEntry`, `adminGetAuditExport`, `adminGetAuditExportAccess`.
 
+### api-notifications: implementasi F-13 (`notifications.yaml`, `admin-notifications.yaml`; tidak memutus)
+
+Semua 12 operasi kedua domain kini dilayani modul API `notifications` (tanpa perubahan operasi, field, atau skema).
+Perubahan hanya pada deskripsi, mencatat perilaku server yang perlu diketahui klien dan web admin:
+
+- `InboxNotification`: payload data FCM membawa `notification_id`, `category`, `deep_link` dan juga `route` (path
+  yang sama; dibaca klien Flutter sebagai `data.route`). Bagian `notification` push hanya judul dan isi ringkas
+  (alamat email/nomor telepon disamarkan), collapse key = id notifikasi. Rute tersimpan yang bukan rute §8.4
+  menjadi `deep_link` null.
+- `registerDevice`: baris sesi aktif keluarga pemanggil dikunci lebih dulu (urutan kunci sama dengan logout); bila
+  keluarga sudah dicabut, 401 UNAUTHENTICATED dan token tidak pernah aktif untuk sesi yang sudah keluar (AC F13-5).
+  Sesi yang berakhir tanpa logout (refresh kedaluwarsa) juga berarti keluar: job worker `notifications.device-sweep`
+  (setiap jam) mencabut token keluarga sesi yang tidak lagi aktif atau token tanpa ikatan sesi, beserta pengiriman
+  `pending`-nya; PUT /devices dari keluarga yang sudah kedaluwarsa ditolak 401.
+- `adminListNotificationDeliveries`: daftar `error_class` dilengkapi (FCM `NETWORK`, `AUTH_ERROR`; email `network`,
+  `auth_error`, `unknown`; pembatalan sisi server `recipient_unavailable`, `push_disabled`); INVALID_ARGUMENT yang
+  menunjuk token registrasi juga menonaktifkan token. `AUTH_ERROR` karena token akses OAuth FCM ditolak (401 tanpa
+  THIRD_PARTY_AUTH_ERROR) atau gagal ditukar dicoba ulang; THIRD_PARTY_AUTH_ERROR dan 403 gagal tanpa retry otomatis.
+  Jadwal retry otomatis: 1, 2, 4, 8, 16 menit (Retry-After
+  dihormati, maksimal 1 jam), paling banyak 6 percobaan, lalu `failed`; selama retry status tetap `pending` dengan
+  `error_class` terakhir. `from` harus sebelum `to` (400). Urutan `updated_at_desc` dapat melewatkan/mengulang baris
+  yang berubah selama penelusuran.
+  Satu percobaan provider dibatasi 60 detik dan DIBATALKAN saat batas habis (koneksi SMTP ditutup sebelum akhir
+  DATA, permintaan FCM diputus) lalu dicoba ulang; batas waktu saja tidak mencegah kiriman ganda, pembatalan itulah
+  yang mencegahnya. Email memakai Message-ID stabil per pengiriman, push memakai collapse key = id notifikasi.
+- `registerDevice` / `adminRetryNotificationDeliveries`: syarat target push (token belum dicabut dan masih milik
+  penerima) serta preferensi diperiksa ulang untuk setiap pengiriman tepat sebelum provider dipanggil, bukan hanya
+  saat klaim batch; pencabutan yang commit sebelum giliran sebuah pengiriman selalu mencegah pengiriman itu (AC
+  F13-5). Pengiriman yang diterima provider padahal dibatalkan selama percobaan berjalan dicatat `sent` apa adanya.
+- `AdminNotificationDelivery.retryable`: "akun aktif" = users.status bukan `disabled`/`deleted`.
+- `adminRetryNotificationDeliveries` / `adminRetryOutboxEvents`: batas 20 permintaan per menit per admin;
+  attempt/attempts tidak direset sehingga pengiriman/event yang sudah mencapai batas mendapat satu percobaan per retry
+  pengurus; pengiriman dikirim job `notifications.retry` (setiap menit).
+
 ### core-api: Files (`files.yaml`; PRD 2.5, 5.4, N-10)
 
 Pemilik `files.yaml` adalah core-api (`apps/api/src/core/files` + controller tipis `modules/files`).

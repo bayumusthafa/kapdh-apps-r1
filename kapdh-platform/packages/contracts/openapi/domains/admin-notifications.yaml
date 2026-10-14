@@ -18,10 +18,22 @@ paths:
         Kegagalan kanal ditampilkan ke pengurus untuk retry yang terkendali (F-13, PRD 4.5). Status `sent` berarti
         diterima provider (misalnya FCM accepted), bukan jaminan dibaca perangkat (F-13). `error_class` memakai
         klasifikasi worker (FCM: UNREGISTERED, INVALID_ARGUMENT, SENDER_ID_MISMATCH, QUOTA_EXCEEDED, UNAVAILABLE,
-        INTERNAL; email: bounce_hard, bounce_soft, rejected, timeout; pembatalan sisi server: token_revoked,
-        token_reassigned, preference_disabled). UNREGISTERED menonaktifkan token, sedangkan
-        429/5xx memakai retry dengan backoff otomatis (AC F13-4). `from` inklusif dan `to` eksklusif terhadap
-        created_at. `total` mengikuti filter. Tanpa notifications.manage ditolak 403 (AC F15-1).
+        INTERNAL, NETWORK (jaringan/batas waktu), AUTH_ERROR (kredensial FCM/APNs); email: bounce_hard, bounce_soft,
+        rejected, timeout, network, auth_error (kredensial SMTP), unknown; pembatalan sisi server: token_revoked,
+        token_reassigned, preference_disabled, recipient_unavailable, push_disabled). UNREGISTERED,
+        SENDER_ID_MISMATCH dan INVALID_ARGUMENT yang menunjuk token registrasi menonaktifkan token, sedangkan
+        429/5xx/jaringan (serta AUTH_ERROR karena token akses OAuth FCM ditolak/gagal ditukar; 401 tanpa
+        THIRD_PARTY_AUTH_ERROR) memakai retry dengan backoff otomatis tanpa menonaktifkan token (AC F13-4): jeda 1, 2, 4,
+        8, 16 menit (Retry-After provider dihormati, maksimal 1 jam), paling banyak 6 percobaan otomatis lalu
+        `failed`. Selama retry otomatis status tetap `pending` dengan `error_class` percobaan terakhir. Satu
+        percobaan ke provider dibatasi 60 detik; saat batas habis percobaan DIBATALKAN (koneksi SMTP ditutup
+        sebelum akhir DATA, permintaan FCM diputus), dicatat `timeout`/NETWORK lalu dicoba ulang dengan backoff.
+        Email memakai Message-ID stabil per pengiriman dan push memakai collapse key = id notifikasi, untuk
+        meredam sisa ambiguitas jaringan (balasan provider hilang tepat setelah pesan diterima). `from`
+        inklusif dan `to` eksklusif terhadap created_at; `from` harus sebelum `to` (selain itu 400). Urutan
+        `updated_at_desc` memakai kolom yang dapat berubah, jadi halaman berikutnya dapat melewatkan atau
+        mengulang baris yang berubah selama penelusuran. `total` mengikuti filter. Tanpa notifications.manage
+        ditolak 403 (AC F15-1).
 
         `retryable=true` hanya mengembalikan kegagalan yang masih dapat ditindak (definisi
         AdminNotificationDelivery.retryable); kombinasi `status=failed&retryable=true&from=<failed_delivery_since>`
@@ -106,9 +118,13 @@ paths:
         lama tidak boleh dikirim ke perangkat itu (`token_reassigned`, AC F13-5; perpindahan keluarga sesi milik
         pengguna yang sama tidak menghalangi retry, lihat registerDevice), penerima sudah
         dihapus/dinonaktifkan, atau preferensi kategori/kanal kini dimatikan (F-13). Worker memeriksa ulang syarat
-        kepemilikan token yang sama saat mengklaim pengiriman. Kotak masuk tidak pernah diduplikasi (AC F13-1). Retry
+        kepemilikan token yang sama saat mengklaim pengiriman dan sekali lagi tepat sebelum provider dipanggil.
+        Kotak masuk tidak pernah diduplikasi (AC F13-1). Retry
         diaudit `notification.delivery.retried` dalam transaksi yang sama (AC F17-1) dan dibatasi per admin
-        (RATE_LIMITED). Idempotency-Key mencegah penjadwalan ganda saat klik ulang.
+        (RATE_LIMITED, 20 permintaan per menit). Idempotency-Key mencegah penjadwalan ganda saat klik ulang.
+        Pengiriman dikirim job worker `notifications.retry` (setiap menit), bukan oleh request ini; karena attempt
+        tidak direset, pengiriman yang sudah mencapai batas percobaan otomatis mendapat satu percobaan per retry
+        pengurus (gangguan sementara berikutnya langsung `failed` lagi).
       x-kapdh-access: { audience: admin, permissions: [notifications.manage], idempotent: true }
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -193,7 +209,9 @@ paths:
         dan setiap konsumen idempoten per domain, sehingga retry tidak menggandakan uang, periode, nomor, kursi
         atau notifikasi (PRD 5.1). Event yang tidak lolos predikat dilewati dengan alasan: `not_found`,
         `in_progress` (sedang diklaim dispatcher; coba lagi setelah klaim selesai) atau `not_retryable` (status
-        pending atau dispatched). Diaudit `outbox.retried` (AC F17-1); dibatasi per admin (RATE_LIMITED).
+        pending atau dispatched). Diaudit `outbox.retried` (AC F17-1); dibatasi per admin (RATE_LIMITED, 20
+        permintaan per menit). attempts tidak direset, sehingga event `dead` mendapat satu percobaan per retry
+        pengurus.
       x-kapdh-access: { audience: admin, permissions: [notifications.manage], idempotent: true }
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -238,7 +256,8 @@ components:
       description: |
         Status per kanal/perangkat (enum DB delivery_status): `pending` menunggu kirim atau retry terjadwal,
         `sent` diterima provider (bukan bukti dibaca), `failed` gagal permanen atau melewati batas retry,
-        `cancelled` dibatalkan (preferensi dimatikan, token dicabut, token berpindah ke akun lain, akun dihapus).
+        `cancelled` dibatalkan (preferensi dimatikan, token dicabut, token berpindah ke akun lain, akun dihapus atau
+        dinonaktifkan, push tidak dikonfigurasi; alasan di `error_class`).
         Label UI: Menunggu, Terkirim, Gagal, Dibatalkan.
 
     AdminDeliverySort:
@@ -300,7 +319,8 @@ components:
         retryable:
           type: boolean
           description: |
-            True bila status failed dan target masih sah: penerima ada dan akunnya aktif, preferensi kategori/kanal
+            True bila status failed dan target masih sah: penerima ada dan akunnya aktif (users.status bukan
+            disabled atau deleted), preferensi kategori/kanal
             aktif, dan untuk push token belum dicabut serta masih milik penerima notifikasi
             (device_tokens.user_id = notifications.user_id, AC F13-5; keluarga sesi tidak diperiksa). Definisi
             yang sama dipakai filter `retryable`, predikat retry, dan hitungan dasbor/lencana job gagal.
