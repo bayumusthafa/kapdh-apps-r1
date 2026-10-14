@@ -118,6 +118,24 @@ describe("loadApiEnv", () => {
     expect(env.S3_FORCE_PATH_STYLE).toBe(true);
   });
 
+  it("PRD 7.1: SENTRY_DSN opsional, berbentuk DSN GlitchTip/Sentry; kosong = nonaktif", () => {
+    expect(loadApiEnv({ ...api, SENTRY_DSN: "" }).SENTRY_DSN).toBeUndefined();
+    const env = loadApiEnv({
+      ...api,
+      SENTRY_DSN: "https://kuncipublik@glitchtip.kapdh.or.id/3",
+      SENTRY_ENVIRONMENT: "staging",
+      SENTRY_RELEASE: "api:v1.0.0",
+    });
+    expect(env.SENTRY_DSN).toBe("https://kuncipublik@glitchtip.kapdh.or.id/3");
+    expect(loadWorkerEnv({ ...base, SENTRY_DSN: "https://k@host.test/sub/12" }).SENTRY_DSN).toBe(
+      "https://k@host.test/sub/12",
+    );
+    expect(() => loadApiEnv({ ...api, SENTRY_DSN: "https://glitchtip.kapdh.or.id/3" })).toThrow(/SENTRY_DSN/);
+    expect(() => loadApiEnv({ ...api, SENTRY_DSN: "https://k@glitchtip.kapdh.or.id/proyek" })).toThrow(
+      /SENTRY_DSN/,
+    );
+  });
+
   it("PRD 5.4: STORAGE_FALLBACK_LOCAL_ROOT (baca-cadangan perpindahan storage) hanya bersama STORAGE_DRIVER=s3", () => {
     expect(() => loadApiEnv({ ...api, STORAGE_FALLBACK_LOCAL_ROOT: "/data/files" })).toThrow(
       /STORAGE_FALLBACK_LOCAL_ROOT/,

@@ -2,6 +2,7 @@ import { Inject, Injectable, type LoggerService } from "@nestjs/common";
 import { type DestinationStream, type Logger, pino } from "pino";
 import { tryCtx } from "../context/request-context.js";
 import { ROOT_LOGGER } from "../tokens.js";
+import { type ErrorTrackingOptions, ErrorTrackerStream } from "./error-tracker.js";
 import { safeError, serializeError } from "./safe-error.js";
 
 /**
@@ -135,9 +136,26 @@ export interface RootLoggerOptions {
   service: "kapdh-api" | "kapdh-worker" | "kapdh-cli";
   /** Tujuan tulis (default stdout). Uji memakai stream memori untuk memeriksa redaksi. */
   destination?: DestinationStream;
+  /**
+   * Pelacakan galat GlitchTip/Sentry (SENTRY_DSN): baris level error/fatal yang SUDAH aman juga dikirim sebagai event
+   * (error-tracker.ts). undefined = nonaktif.
+   */
+  errorTracking?: ErrorTrackingOptions | ErrorTrackerStream;
 }
 
 export function createRootLogger(options: RootLoggerOptions): Logger {
+  const tracker =
+    options.errorTracking instanceof ErrorTrackerStream
+      ? options.errorTracking
+      : options.errorTracking
+        ? new ErrorTrackerStream(options.errorTracking)
+        : undefined;
+  const destination = tracker
+    ? pino.multistream([
+        { level: "trace", stream: options.destination ?? pino.destination(1) },
+        { level: "error", stream: tracker },
+      ])
+    : options.destination;
   return pino(
     {
       level: options.level,
@@ -152,7 +170,7 @@ export function createRootLogger(options: RootLoggerOptions): Logger {
         error: serializeError,
       },
     },
-    options.destination,
+    destination,
   );
 }
 

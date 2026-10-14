@@ -6,7 +6,9 @@ Pemilik: pengelola infra (PRD 5.5, D9). Rujukan: PRD 2.4 N-01..N-06 dan N-14, 5.
 > **Status bukti.** Probe realtime dan pemeriksaan HTTP restore diuji terhadap API uji yang benar-benar mendengar
 > (`apps/api/test/ops`); SQL pemeriksa diuji di PostgreSQL 17 dengan role `kapdh_monitor`. Uptime Kuma, GlitchTip dan
 > kanal alert belum dipasang; monitor di bawah adalah konfigurasi yang harus dibuat dan diuji di staging lalu production
-> (U-11). Error tracking ke GlitchTip BELUM terpasang di kode aplikasi (bagian 5).
+> (U-11). Pengirim galat GlitchTip di API/worker diuji terhadap server envelope tiruan
+> (`apps/api/src/core/logging/error-tracker.test.ts`), belum terhadap GlitchTip sungguhan; web admin belum memiliki
+> pelacakan galat (bagian 5).
 
 ## 1. Prinsip
 
@@ -91,17 +93,37 @@ staging tidak boleh menjalankan uji beban yang mengganggu production (PRD 5.3).
 
 ## 5. Error tracking (GlitchTip, kompatibel Sentry)
 
-PRD 7.1 menetapkan GlitchTip/Uptime Kuma sebagai kandidat observabilitas. Rencana:
+PRD 7.1 menetapkan GlitchTip/Uptime Kuma sebagai kandidat observabilitas.
 
-- GlitchTip self-host di host monitoring (bukan VPS production) atau GlitchTip hosted; proyek terpisah `kapdh-api`,
-  `kapdh-worker`, `kapdh-admin` per lingkungan; retensi event 30 hari (PRD 5.5).
-- Env yang dicadangkan: `SENTRY_DSN` (API dan worker), `VITE_SENTRY_DSN` (build web admin), `SENTRY_ENVIRONMENT`
-  (`production`/`staging`), `SENTRY_RELEASE` (= tag image).
-- Wajib sebelum diaktifkan: scrubber yang sama dengan logger (N-14): tanpa header Authorization/Cookie, body request,
-  query string, sandi, OTP, token, isi chat, bukti bayar; hanya `request_id`/`job_id`, kode galat dan frame stack.
-- **Belum diimplementasikan di kode**: tidak ada SDK atau pengirim event di API/worker/admin. Sampai terpasang, galat
-  tak terduga dideteksi lewat log JSON pino (level `error`/`fatal`) di log kontainer Coolify; tinjau harian selama
-  minggu pertama go-live (PRD 8.3 langkah 6): `docker logs --since 24h <kontainer-api> 2>&1 | grep -c '"level":50'`.
+**Yang terpasang di kode (API dan worker).** Bila `SENTRY_DSN` diisi, logger pino memasang stream tambahan
+(`apps/api/src/core/logging/error-tracker.ts`) yang mengirim setiap baris log level `error`/`fatal` sebagai event ke
+endpoint envelope GlitchTip/Sentry (`/api/<id-proyek>/envelope/`). Tidak ada SDK pihak ketiga.
+
+- **Isi event (daftar putih, N-14):** pesan log (teks statis, mis. `galat tak tertangani`, `job terjadwal gagal`), tipe
+  galat, kode (SQLSTATE, kode Node, kode AppException), constraint, tabel, status, frame stack TANPA baris pesan galat,
+  service, module, route, `request_id`/`job_id`, lingkungan dan rilis. Field lain di baris log (email, body, token,
+  apa pun yang lolos redaksi) tidak pernah dikirim; pesan galat mentah (SQL + parameter, alamat SMTP) juga tidak.
+- **Pengelompokan:** tipe + kode + pesan log + rute. Galat yang sama di request berbeda menjadi satu isu.
+- **Batas:** maksimal 30 event per menit per proses dan 5 pengiriman bersamaan; kelebihan dibuang (log stdout tetap
+  lengkap). Kegagalan kirim (GlitchTip mati) tidak memengaruhi request maupun job.
+- **Env** (API dan worker, Coolify): `SENTRY_DSN` (`https://<kunci>@<host>/<id-proyek>`, divalidasi packages/config;
+  kosong = nonaktif), `SENTRY_ENVIRONMENT` (bawaan `NODE_ENV`: `production`/`staging`), `SENTRY_RELEASE` (= tag image,
+  mis. `api:v1.0.3`). DSN berisi kunci publik proyek; simpan sebagai secret Coolify.
+
+**Penyiapan GlitchTip.**
+
+1. GlitchTip self-host di host monitoring (bukan VPS production) atau GlitchTip hosted; organisasi `kapdh`, proyek
+   terpisah `kapdh-api` dan `kapdh-worker` per lingkungan (staging dan production); retensi event 30 hari (PRD 5.5).
+2. Isi `SENTRY_DSN` per proyek di env service Coolify, deploy ulang, lalu uji di staging: hentikan Redis staging
+   sebentar (API mencatat galat readiness) atau picu galat 500; event muncul di GlitchTip dengan `request_id` yang sama
+   dengan log kontainer.
+3. Notifikasi GlitchTip (email/webhook) untuk isu BARU ke kanal "Tinggi" (bagian 3); isu berulang dipantau harian
+   selama minggu pertama go-live (PRD 8.3 langkah 6).
+
+**Belum terpasang:** web admin (`VITE_SENTRY_DSN` dicadangkan; galat klien admin hanya terlihat di konsol peramban) dan
+aplikasi Flutter (crash reporting diputuskan terpisah, tanpa PII). Tanpa `SENTRY_DSN`, galat tak terduga dideteksi
+lewat log JSON pino di log kontainer Coolify:
+`docker logs --since 24h <kontainer-api> 2>&1 | grep -c '"level":"error"'`.
 
 ## 6. Log
 
