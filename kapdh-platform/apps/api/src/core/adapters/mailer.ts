@@ -32,6 +32,11 @@ export interface TransactionalMail {
   to: string;
   subject: string;
   text: string;
+  /**
+   * Kunci stabil pesan (lihat {@link MailMessage.dedupKey}), mis. `account-deletion.<id>.<langkah>`: job yang mengirim
+   * ulang email yang sama setelah crash atau balasan SMTP yang hilang memakai Message-ID yang sama (PRD 5.1).
+   */
+  dedupKey?: string;
 }
 
 /**
@@ -176,7 +181,12 @@ export class SmtpMailer implements Mailer {
     });
   }
   async sendTransactional(mail: TransactionalMail): Promise<void> {
-    await this.send({ to: mail.to, subject: mail.subject, text: mail.text });
+    await this.send({
+      to: mail.to,
+      subject: mail.subject,
+      text: mail.text,
+      ...(mail.dedupKey ? { dedupKey: mail.dedupKey } : {}),
+    });
   }
   /**
    * Satu koneksi SMTP per pesan (seperti transport nodemailer tanpa pool), tetapi koneksinya dipegang di sini agar
