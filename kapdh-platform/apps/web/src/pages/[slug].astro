@@ -1,0 +1,53 @@
+---
+import type { GetStaticPaths } from "astro";
+import Base from "../layouts/Base.astro";
+import { INFO_PAGES } from "../lib/site";
+
+/**
+ * Halaman informasi/legal (F-08, PRD 3.8, 4.6): shell statis per slug baku; isi, versi dan tanggal terbit dibaca
+ * saat runtime dari GET /public/pages/{slug} sehingga terbitan pengurus langsung tampil tanpa build ulang.
+ */
+export const getStaticPaths = (() =>
+  INFO_PAGES.map((page) => ({ params: { slug: page.slug }, props: { page } }))) satisfies GetStaticPaths;
+
+const { page } = Astro.props;
+---
+
+<Base title={page.title} description={page.description}>
+  <section class="border-b border-divider bg-surface">
+    <div class="mx-auto flex max-w-3xl flex-col gap-2 px-4 py-10 sm:px-6">
+      <p class="text-sm font-semibold tracking-wide text-primary uppercase">
+        {page.legal ? "Dokumen legal" : "Informasi"}
+      </p>
+      <h1 id="info-title" class="font-heading text-3xl font-bold text-green-950 sm:text-4xl">{page.title}</h1>
+      <p id="info-meta" class="min-h-5 text-sm text-text-muted"></p>
+    </div>
+  </section>
+  <article
+    id="info-body"
+    data-slug={page.slug}
+    aria-labelledby="info-title"
+    class="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6"
+  >
+    <noscript>
+      <p class="rounded-lg bg-neutral-bg p-5 text-sm">
+        Aktifkan JavaScript untuk membaca versi terbaru halaman ini, atau hubungi bantuan@kapdh.or.id.
+      </p>
+    </noscript>
+  </article>
+</Base>
+
+<script>
+  import { readApiBase } from "../scripts/api";
+  import { byId } from "../scripts/dom";
+  import { mountInfoPage } from "../scripts/info-page";
+
+  const root = byId(document, "info-body");
+  void mountInfoPage({
+    doc: document,
+    root,
+    apiBase: readApiBase(),
+    slug: root.dataset.slug ?? "",
+    siteOrigin: location.origin,
+  }).load();
+</script>

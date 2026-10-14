@@ -1,0 +1,87 @@
+---
+import StoreButtons from "../components/StoreButtons.astro";
+import Base from "../layouts/Base.astro";
+
+// Alur bergabung ringkas (PRD 3.1-3.5, 4.1): daftar -> OTP -> iuran -> keputusan pengurus -> KTA aktif.
+const steps = [
+  {
+    title: "Pasang aplikasi",
+    body: "Unduh KAPDH dari Google Play atau App Store lewat tombol di halaman ini.",
+  },
+  {
+    title: "Daftar dan verifikasi email",
+    body: "Isi data alumni (nama, angkatan, kelas masuk dan keluar) lalu masukkan kode 6 digit yang dikirim ke email Anda.",
+  },
+  {
+    title: "Bayar iuran pendaftaran",
+    body: "Transfer sesuai nominal dan metode yang tampil di aplikasi, lalu unggah bukti transfer.",
+  },
+  {
+    title: "KTA aktif",
+    body: "Setelah pengurus menyetujui pembayaran, KTA digital Anda aktif selama 12 bulan dan dapat diverifikasi lewat QR.",
+  },
+];
+---
+
+<Base
+  title="Unduh Aplikasi"
+  description="Unduh aplikasi KAPDH untuk Android dan iOS: daftar, bayar iuran, dan dapatkan KTA digital."
+  maintenanceBanner
+>
+  <section class="bg-surface-dark text-text-on-dark">
+    <div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-12 sm:px-6 md:flex-row md:items-end md:justify-between">
+      <div class="flex max-w-2xl flex-col gap-3">
+        <h1 class="font-heading text-3xl font-bold text-accent sm:text-4xl">Unduh Aplikasi KAPDH</h1>
+        <p class="text-green-100">
+          Aplikasi resmi Keluarga Alumni Pondok Pesantren Darel Hikmah. Anggota memakai aplikasi Android atau iOS; tidak
+          ada versi web untuk anggota.
+        </p>
+      </div>
+      <StoreButtons tone="dark" />
+    </div>
+  </section>
+
+  <div class="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.5fr_1fr]">
+    <section aria-labelledby="langkah-h" class="flex flex-col gap-6">
+      <h2 id="langkah-h" class="font-heading text-2xl font-semibold text-green-950">Cara bergabung</h2>
+      <ol class="flex flex-col gap-4">
+        {
+          steps.map((s, i) => (
+            <li class="card flex gap-4 p-5">
+              <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary font-semibold text-on-primary" aria-hidden="true">
+                {i + 1}
+              </span>
+              <span class="flex flex-col gap-1">
+                <span class="font-semibold text-green-950">{s.title}</span>
+                <span class="text-sm text-text-muted">{s.body}</span>
+              </span>
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+    <aside aria-labelledby="syarat-h" class="flex flex-col gap-4">
+      <h2 id="syarat-h" class="font-heading text-2xl font-semibold text-green-950">Persyaratan perangkat</h2>
+      <ul class="card flex flex-col divide-y divide-divider px-5 text-sm">
+        <li class="flex justify-between gap-4 py-3"><span class="text-text-muted">Android</span><span class="font-semibold">8.0 ke atas</span></li>
+        <li class="flex justify-between gap-4 py-3"><span class="text-text-muted">iPhone (iOS)</span><span class="font-semibold">15 ke atas</span></li>
+        <li class="flex justify-between gap-4 py-3"><span class="text-text-muted">Koneksi</span><span class="font-semibold text-right">Internet untuk mendaftar dan memperbarui KTA</span></li>
+      </ul>
+      <div class="info-box flex flex-col gap-2 text-sm">
+        <p class="font-semibold text-green-950">Keamanan akun</p>
+        <p>Pengurus KAPDH tidak pernah meminta sandi atau kode verifikasi Anda. Unduh aplikasi hanya dari tautan resmi di halaman ini.</p>
+      </div>
+      <p class="text-sm text-text-muted">
+        Butuh bantuan? Buka <a href="/bantuan" class="font-semibold text-primary underline">Bantuan</a> atau
+        <a href="/kontak" class="font-semibold text-primary underline">hubungi kami</a>.
+      </p>
+    </aside>
+  </div>
+</Base>
+
+<script>
+  import { readApiBase } from "../scripts/api";
+  import { mountConfigConsumers } from "../scripts/config-page";
+
+  void mountConfigConsumers(document, readApiBase());
+</script>
