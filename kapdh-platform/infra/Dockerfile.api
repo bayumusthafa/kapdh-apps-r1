@@ -54,6 +54,13 @@ RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
 FROM node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
+# Patch keamanan Alpine di atas digest yang dipin (mis. libssl3/libcrypto3 OpenSSL dan zlib; gerbang grype N-16), lalu
+# buang npm, corepack dan yarn bawaan image: runtime hanya menjalankan `node`, sedangkan npm bawaan membawa dependensi
+# rentan (tar, undici, brace-expansion) yang tidak pernah dipakai aplikasi.
+RUN apk upgrade --no-cache \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-v* \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg \
+  && node --version
 # Berkas aplikasi milik root dan hanya-baca bagi proses. Satu-satunya lokasi tulis: volume berkas lokal
 # (STORAGE_LOCAL_ROOT bawaan /data/files, PRD 5.4) yang dipakai bersama worker.
 COPY --from=build /out ./

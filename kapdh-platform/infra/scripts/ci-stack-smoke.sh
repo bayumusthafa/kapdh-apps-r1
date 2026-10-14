@@ -28,6 +28,11 @@ cleanup() {
     docker network rm kapdh-edge kapdh-edge-staging >/dev/null 2>&1 || true
   fi
   if [ -n "${CI_ARTIFACT_DIR:-}" ]; then cp "$work/compose.log" "$CI_ARTIFACT_DIR/" 2>/dev/null || true; fi
+  # Isi direktori berkas dibuat kontainer (uid 1000, mis. files/.tmp mode 700) sehingga pengguna runner (uid 1001) tidak
+  # dapat menghapusnya; hapus lewat kontainer root dari image yang sudah dipin, lalu sisanya oleh pengguna runner.
+  if [ -d "$work/files" ]; then
+    docker run --rm --user 0:0 --entrypoint rm -v "$work:/work" "$CURL_IMAGE" -rf /work/files >/dev/null 2>&1 || true
+  fi
   rm -rf "$work"
 }
 trap cleanup EXIT INT TERM
