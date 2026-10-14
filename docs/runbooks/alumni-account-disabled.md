@@ -57,3 +57,5 @@ required state (`disable` needs `active`; `enable` and `delete` need `disabled`)
 - `kapdh-platform/apps/api/test/account/account-status.e2e.test.ts` (D1-01): disable revokes sessions and login
   answers `account_disabled`; enable lets the owner sign in again; delete creates a web deletion request and the job
   removes all personal data; refusals; CLI exit codes and output without the email.
+- `kapdh-platform/apps/api/test/pg/account-status.pg.test.ts`: the built CLI as `kapdh_worker` on PostgreSQL 17
+  (disable, enable, disable, delete; every step audited with role `system`; refusal exits 1 without a change).
