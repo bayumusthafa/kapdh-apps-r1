@@ -6,6 +6,15 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 
 ## Belum dirilis
 
+### Gerbang N-13 dan versi aplikasi minimum (Tahap E, tidak memutus)
+
+`info.x-kapdh-min-app-version: 1.0.0` ditambahkan di `openapi/root.yaml`: versi aplikasi anggota terendah yang
+didukung kontrak ini (sama dengan seed `app_settings.min_app_version`). CI (`pnpm contracts:breaking`, job
+"Kontrak tidak memutus klien") membandingkan kontrak dengan tag `contracts-v*` terakhir memakai oasdiff; perubahan
+yang memutus hanya diterima bila versi mayor `info.version` dan nilai ini naik bersama (temuan audit D2-12). Commit
+rilis `pnpm contracts:release-sdk` kini juga membawa `dist/openapi.yaml` sebagai pembanding. Tidak ada perubahan
+skema, path atau kode terbangkit.
+
 ### C2 Membership (me, public, admin-members, admin-masters)
 
 Semua operasi domain ini kini membawa `x-kapdh-access` (audience, member_access, permissions, permissions_any,
