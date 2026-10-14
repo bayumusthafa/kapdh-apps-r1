@@ -82,8 +82,8 @@ Every non-trivial resolution is listed below: the file, what each side wanted, w
     Jakarta local time (results unchanged in UTC sessions); `modules/admin/business-days.ts` re-exports it so the
     admin unit/TZ tests exercise the one implementation (both formulas were proven equal: 7q + r + 2·[w+r>5] − back).
     `queue-rules.ts` keeps only `tsLiteral` and `FAILED_DELIVERY_WINDOW_MS`.
-  - New test `test/admin/queue-consistency.e2e.test.ts`: for the same caller, dashboard payments = `/admin/payments/
-summary` = total of `stage=awaiting_review&overdue=true`, moderation/badge = `/admin/reports` counts (linked
+  - New test `test/admin/queue-consistency.e2e.test.ts`: for the same caller, dashboard payments = the payments
+    summary endpoint = total of `stage=awaiting_review&overdue=true`, moderation/badge = `/admin/reports` counts (linked
     alumni and joined-group exclusions), jobs = deliveries list total; data includes the boundary cases above. With
     api-admin's old formulas restored temporarily, the payments and deliveries tests failed (overdue 1 vs 3, failed
     deliveries 1 vs 2); with the unified code all pass. Existing `dashboard.e2e` expectations are unchanged.
@@ -204,6 +204,41 @@ heavier lazily loaded check-in page. Verified after the merge: admin typecheck, 
 - `mocks/dashboard.ts` reads the payments mock through its exported `routes` (no route of its own under
   `/admin/payments*`); the new mock-router guard confirms no collisions across the 14 area mocks.
 - Verified after the merge: `pnpm build` 10/10, admin typecheck and lint, `@kapdh/admin` test 41 files 459/459.
+
+### Integration blockers the slice handed over (fixed in follow-up commits)
+
+- **API `GET /admin/reports/{reportId}/subject-candidates`** (`apps/api/src/modules/moderation`). The contract
+  operation merged without a server, which broke the merged tree: the moderation access test
+  (`test/moderation/admin-queue.e2e.test.ts`, every moderation operation has exactly one handler with matching
+  `x-kapdh-access`) failed with `adminListReportSubjectCandidates` missing (checked by running the pre-fix test
+  against the merged contract), and in production every group report could only be dismissed. admin-governance
+  wanted the list as the only way to pick `subject_user_id`; api-moderation owns the rules it must follow. Chosen:
+  implemented in `AdminReportsService.subjectCandidates` with api-moderation's own rules rather than new ones:
+  `everJoinedRoom` (the predicate `validateDecision` uses), deleted accounts and the caller's linked alumni left out,
+  `ModerationVisibility.isReportedParty` → 404, reporter conflict → 403 (same checks and order as `resolve`), not an
+  active group report → 400 `VALIDATION_ERROR`; ordering group admins, joined members, former members, then
+  `lower(full_name)` with the byte-wise `~<~` comparison the network directory uses, keyset cursor bound to `q`;
+  items built with the module's `toTargetMember`. The read and its `moderation.report_viewed` audit (via
+  `subject_candidates`, counts only, no member ids) run in one transaction before the response; refusals write no
+  audit, as for detail. Controller: admin audience, permissions `moderation.read` + `moderation.resolve`. Tests (`admin-reports.e2e.test.ts`, 3 new): membership/role/order and exclusions, a
+  listed former member accepted by `resolve`, audit without the list; `q` by name and member-number prefix, paging,
+  cursor bound to `q`, 101-char `q` → 400; 404/403/400/permission cases with no audit. The access test lists the
+  new operation. CHANGELOG subsection updated (no longer "belum diimplementasikan").
+- **Dashboard "Lewat batas review" link** (`apps/admin/src/routes/payments/{routes.tsx,VerificationTab.tsx}`,
+  `routes/dashboard/DashboardPage.tsx`). admin-dashboard.yaml requires the overdue row to open
+  `/payments?stage=awaiting_review&overdue=true` with the same count; the payments page (admin-payments) accepted
+  only `tab`, `payment`, `adjustment`, so governance linked to `?tab=verify` and explained the badges instead.
+  Chosen: additive `stage`/`overdue` search params on `/payments` (validated like the others; unknown values
+  ignored) that initialise the verification queue's filters; a new "Batas review" select (Semua / Lewat batas review
+  / Belum lewat batas) shown for the "Menunggu" status sends adminListPayments' `overdue` filter, which the payments
+  mock already implements; a user change of status or this filter drops the link params from the URL. The dashboard
+  row now carries "Lihat yang lewat batas" to exactly `/payments?stage=awaiting_review&overdue=true`; the existing
+  "Buka antrean verifikasi" footer link (`?tab=verify`) and its test are unchanged. Tests: dashboard "F-15, AC
+  F15-1: 'Lihat yang lewat batas' ..." (href, navigation, the list request filters, "Menampilkan N dari N" with N =
+  the card's value) and payments "F-15: ?stage=awaiting_review&overdue=true ..." (first request already filtered,
+  N = summary `overdue_count`, switching back, `on_time`, and the filter hidden and not sent for other statuses).
+- `docs/ARCHITECTURE.md` §7 listed `/invite/$token`; the contract and both slices use `/invite#t=<token>` (token in
+  the fragment, never sent to a server). The route list now says so (governance open issue).
 
 ## Breakages already on main before this track (fixed in a separate commit)
 

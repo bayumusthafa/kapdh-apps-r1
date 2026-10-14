@@ -56,6 +56,21 @@ const SORT_OPTIONS = [
   { value: "review_due_at_asc", label: "Batas review terdekat" },
 ] as const satisfies readonly { value: QueueSort; label: string }[];
 
+/**
+ * Saring batas review antrean "Menunggu" (filter `overdue` adminListPayments): lewat = waktu server melewati
+ * `review_due_at`, sama dengan `overdue_count` ringkasan dan kartu dasbor. Dibuka langsung oleh tautan dasbor
+ * `/payments?stage=awaiting_review&overdue=true`.
+ */
+type OverdueFilter = "all" | "overdue" | "on_time";
+const OVERDUE_OPTIONS = [
+  { value: "all", label: "Semua" },
+  { value: "overdue", label: "Lewat batas review" },
+  { value: "on_time", label: "Belum lewat batas" },
+] as const satisfies readonly { value: OverdueFilter; label: string }[];
+
+const overdueFilterOf = (value: boolean | undefined): OverdueFilter =>
+  value === undefined ? "all" : value ? "overdue" : "on_time";
+
 function statusQuery(filter: StatusFilter): { stage?: "awaiting_review"; status?: PaymentStatus } {
   if (filter === "awaiting_review") return { stage: "awaiting_review" };
   if (filter === "all") return {};
@@ -120,14 +135,37 @@ export function VerificationTab() {
   const [q, setQ] = useState("");
   const [type, setType] = useState<PaymentType | "all">("all");
   const [status, setStatus] = useState<StatusFilter>("awaiting_review");
+  const [overdue, setOverdue] = useState<OverdueFilter>(overdueFilterOf(search.overdue));
   const [queueSort, setQueueSort] = useState<QueueSort>("submitted_at_asc");
   const [selectedId, setSelectedId] = useState<string | null>(search.payment ?? null);
   /** Naik setiap admin memilih baris; panel memindah fokus ke judul detail setelah detail termuat. */
   const [focusRequest, setFocusRequest] = useState(0);
   const now = useNow();
   const sort = sortFor(status, queueSort);
-  const filters = { q, type, status, sort };
+  /** Saringan batas review hanya bermakna untuk antrean "Menunggu" (pending berbukti). */
+  const overdueQuery = status === "awaiting_review" && overdue !== "all" ? overdue === "overdue" : undefined;
+  const filters = { q, type, status, sort, overdue: overdueQuery };
   const paging = useCursorPaging(filters, PAYMENT_PAGE_SIZE);
+
+  // Tautan URL dari dasbor (`?stage=awaiting_review&overdue=true`) menyetel saringan yang sama dengan filter
+  // adminListPayments, juga saat halaman ini sudah terbuka.
+  const linkedStage = search.stage;
+  const linkedOverdue = search.overdue;
+  useEffect(() => {
+    if (linkedStage === "awaiting_review") setStatus("awaiting_review");
+  }, [linkedStage]);
+  useEffect(() => {
+    if (linkedOverdue !== undefined) setOverdue(overdueFilterOf(linkedOverdue));
+  }, [linkedOverdue]);
+
+  /** Pilihan pengguna mengganti saringan dari tautan; URL dibersihkan agar muat ulang tidak menimpanya. */
+  function clearLinkedFilters() {
+    if (linkedStage === undefined && linkedOverdue === undefined) return;
+    void navigate({
+      search: (prev) => ({ ...prev, stage: undefined, overdue: undefined }),
+      replace: true,
+    });
+  }
 
   // Tautan URL (mis. "Buka pembayaran asal" di tab Penyesuaian) mengganti pilihan. Tombol pemicunya ikut hilang
   // bersama tab asal sehingga fokus jatuh ke <body>; panel diminta memindah fokus ke judul detail setelah termuat
@@ -149,6 +187,7 @@ export function VerificationTab() {
         params: {
           query: {
             ...statusQuery(status),
+            ...(overdueQuery !== undefined ? { overdue: overdueQuery } : {}),
             ...(type !== "all" ? { type } : {}),
             ...(q ? { q } : {}),
             ...(sort ? { sort } : {}),
@@ -269,9 +308,34 @@ export function VerificationTab() {
         </Field>
         <Field label="Status" className="flex-[0_1_180px]">
           {(a11y) => (
-            <Select {...a11y} size="sm" options={STATUS_OPTIONS} value={status} onValueChange={setStatus} />
+            <Select
+              {...a11y}
+              size="sm"
+              options={STATUS_OPTIONS}
+              value={status}
+              onValueChange={(next) => {
+                setStatus(next);
+                clearLinkedFilters();
+              }}
+            />
           )}
         </Field>
+        {status === "awaiting_review" ? (
+          <Field label="Batas review" className="flex-[0_1_200px]">
+            {(a11y) => (
+              <Select
+                {...a11y}
+                size="sm"
+                options={OVERDUE_OPTIONS}
+                value={overdue}
+                onValueChange={(next) => {
+                  setOverdue(next);
+                  clearLinkedFilters();
+                }}
+              />
+            )}
+          </Field>
+        ) : null}
         {status === "awaiting_review" ? (
           <Field label="Urutan" className="flex-[0_0_230px]">
             {(a11y) => (

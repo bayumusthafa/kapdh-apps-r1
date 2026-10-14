@@ -11,6 +11,20 @@ export interface PaymentsSearch {
   payment?: string;
   /** Penyesuaian yang dibuka di panel penyesuaian (tautan dari detail pembayaran). */
   adjustment?: string;
+  /**
+   * Filter awal antrean verifikasi dengan nama yang sama dengan filter adminListPayments, untuk tautan "Lewat batas
+   * review" dasbor `/payments?stage=awaiting_review&overdue=true` (kontrak admin-dashboard: jumlahnya sama dengan
+   * kartu dasbor dan ringkasan pembayaran).
+   */
+  stage?: "awaiting_review";
+  overdue?: boolean;
+}
+
+/** `?overdue=true|false` (parser URL router menghasilkan boolean; string juga diterima). */
+function parseBool(value: unknown): boolean | undefined {
+  if (value === true || value === "true") return true;
+  if (value === false || value === "false") return false;
+  return undefined;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -22,6 +36,9 @@ export function validatePaymentsSearch(search: Record<string, unknown>): Payment
   if (typeof search.payment === "string" && UUID.test(search.payment)) out.payment = search.payment;
   if (typeof search.adjustment === "string" && UUID.test(search.adjustment))
     out.adjustment = search.adjustment;
+  if (search.stage === "awaiting_review") out.stage = "awaiting_review";
+  const overdue = parseBool(search.overdue);
+  if (overdue !== undefined) out.overdue = overdue;
   return out;
 }
 

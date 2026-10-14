@@ -286,4 +286,23 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
       "/payments?tab=verify",
     );
   });
+
+  it("F-15, AC F15-1: 'Lihat yang lewat batas' membuka /payments?stage=awaiting_review&overdue=true dengan jumlah yang sama dengan kartu", async () => {
+    const user = userEvent.setup();
+    const { router } = await openPage(user, "/", "Dashboard");
+    const payments = await section("Pembayaran");
+    const overdue = Number(await queueValue("Pembayaran", "Lewat batas review"));
+    expect(overdue).toBeGreaterThan(0);
+    const link = within(payments).getByRole("link", { name: "Lihat yang lewat batas" });
+    expect(link).toHaveAttribute("href", "/payments?stage=awaiting_review&overdue=true");
+
+    paymentRequests.length = 0;
+    await user.click(link);
+    await screen.findByRole("heading", { level: 1, name: "Verifikasi Pembayaran" }, { timeout: 5_000 });
+    expect(router.state.location.search).toMatchObject({ stage: "awaiting_review", overdue: true });
+    expect(await screen.findByText(`Menampilkan ${overdue} dari ${overdue}`)).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Batas review" })).toHaveValue("overdue");
+    const lists = paymentRequests.filter((r) => r.method === "GET" && r.path === "/admin/payments");
+    expect(lists.at(-1)?.query).toMatchObject({ stage: "awaiting_review", overdue: "true" });
+  });
 });

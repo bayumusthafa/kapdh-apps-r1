@@ -324,16 +324,21 @@ function PaymentsQueue({ payments: p, now }: { payments: DashboardPayments; now:
           label: "Lewat batas review",
           value: p.overdue_count,
           attention: p.overdue_count > 0,
-          // Halaman pembayaran belum menerima filter URL stage/overdue (area payments); sampai itu tersedia, baris
-          // lewat batas dikenali dari penandanya di antrean verifikasi, bukan dari daftar tersaring.
-          detail: [
-            typeBreakdown(p.overdue_by_type),
-            p.overdue_count > 0
-              ? "berpenanda Lewat 1 hari kerja/Lewat batas review di antrean verifikasi"
-              : null,
-          ]
-            .filter(Boolean)
-            .join("; "),
+          // Kontrak admin-dashboard: tautan ke /payments?stage=awaiting_review&overdue=true menampilkan jumlah yang
+          // sama dengan kartu ini (filter adminListPayments yang sama dengan ringkasan pembayaran).
+          detail:
+            p.overdue_count > 0 ? (
+              <>
+                {typeBreakdown(p.overdue_by_type) ? `${typeBreakdown(p.overdue_by_type)}; ` : null}
+                <Link
+                  to="/payments"
+                  search={{ stage: "awaiting_review", overdue: true }}
+                  className="font-semibold text-primary underline underline-offset-2"
+                >
+                  Lihat yang lewat batas
+                </Link>
+              </>
+            ) : null,
         },
         {
           label: "Penyesuaian/refund tertunda",
