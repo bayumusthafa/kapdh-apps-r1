@@ -1,47 +1,34 @@
-import { PlaceholderPage } from "../../components/layout/PlaceholderPage";
+import { useNavigate } from "@tanstack/react-router";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { EventDetailPage } from "./EventDetailPage";
+import { EventForm } from "./EventForm";
+import { EventListPage } from "./EventListPage";
 
-/** Placeholder area events; diganti agen halaman admin `events` (Phase C). */
+/**
+ * Halaman area events (dimuat lazy oleh routes.tsx): tabel event (guideline p14), buat event, dan detail event.
+ * Pemindai check-in ada di CheckinPage.tsx (potongan kode terpisah).
+ */
 export function EventsPage() {
+  return <EventListPage />;
+}
+
+/** Buat event baru (F-15): selalu tersimpan sebagai draf, lalu diterbitkan dari halaman detail. */
+export function EventCreatePage() {
+  const navigate = useNavigate();
   return (
-    <PlaceholderPage
-      title="Event dan Tiket"
-      description="Kegiatan alumni, periode pendaftaran, kuota dan tiket terjual."
-      feature="Pengelolaan event dan tiket"
-      items={[
-        "Pencarian event, kategori dan lokasi",
-        "Periode pendaftaran, total tiket dan sisa tiket",
-        "Kuota tidak dapat diturunkan di bawah tiket yang ditahan/terbayar (AC F15-2)",
-        "Pembatalan event dengan notifikasi dan pengembalian dana",
-      ]}
-    />
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        title="Buat Event Baru"
+        description="Event tersimpan sebagai draf dan baru terlihat oleh anggota setelah diterbitkan."
+        breadcrumbs={[{ label: "Event dan Tiket", to: "/events" }, { label: "Buat Event Baru" }]}
+      />
+      <EventForm
+        mode="create"
+        onSaved={(saved) => void navigate({ to: "/events/$eventId", params: { eventId: saved.id } })}
+        onCancel={() => void navigate({ to: "/events" })}
+      />
+    </div>
   );
 }
 
-export function EventEditorPage() {
-  return (
-    <PlaceholderPage
-      title="Detail Event"
-      breadcrumbs={[{ label: "Event dan Tiket", to: "/events" }, { label: "Detail Event" }]}
-      feature="Pembuatan dan pengubahan event"
-      items={[
-        "Informasi, kategori, lokasi dan zona waktu event",
-        "Harga, kuota dan periode pendaftaran",
-        "Daftar tiket peserta",
-      ]}
-    />
-  );
-}
-
-export function CheckinPage() {
-  return (
-    <PlaceholderPage
-      title="Check-in Tiket"
-      description="Pindai QR tiket peserta pada hari kegiatan."
-      feature="Pemindai check-in tiket"
-      items={[
-        "Pindai QR dengan kamera atau ketik kode",
-        "Tiket yang sudah dipakai menampilkan waktu dan petugas sebelumnya",
-      ]}
-    />
-  );
-}
+export { EventDetailPage };

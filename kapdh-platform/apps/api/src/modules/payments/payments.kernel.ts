@@ -9,7 +9,12 @@ import { SettingsService } from "../../core/settings/settings.service.js";
 import { DB } from "../../core/tokens.js";
 import { MONEY_INPUT_PATTERN, sumMoney, toCents } from "./money.js";
 import { PaymentLedger } from "./payment-ledger.js";
-import { type PaymentQueueSummary, paymentQueueSummary } from "./payment-sql.js";
+import {
+  type PaymentQueueDetail,
+  paymentQueueDetail,
+  type PaymentQueueSummary,
+  paymentQueueSummary,
+} from "./payment-sql.js";
 import {
   type AdjustmentRow,
   LINE_LABELS,
@@ -196,6 +201,14 @@ export class PaymentsKernel implements OnModuleInit {
    */
   async summary(): Promise<PaymentQueueSummary> {
     return paymentQueueSummary(this.db, reviewRulesOf(await this.settings.get("events")), this.ledger.now());
+  }
+
+  /**
+   * Ringkasan yang sama dengan {@link summary} ditambah rincian dasbor (DashboardPayments.oldest_submitted_at,
+   * overdue_by_type) dari satu kueri bersama, pada waktu `now` pemanggil (generated_at dasbor).
+   */
+  async dashboardSummary(now: Date = this.ledger.now()): Promise<PaymentQueueDetail> {
+    return paymentQueueDetail(this.db, reviewRulesOf(await this.settings.get("events")), now);
   }
 
   /** Baca payment (tanpa kunci) untuk modul lain, mis. ringkasan tiket. */

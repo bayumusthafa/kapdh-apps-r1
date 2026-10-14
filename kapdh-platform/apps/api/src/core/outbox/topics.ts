@@ -19,6 +19,8 @@ export const OUTBOX_TOPICS = {
   /**
    * Pemberitahuan keamanan ke email admin (undangan, perubahan izin, reset; AC F16-1, F16-4). `activated` (TOTP
    * terdaftar dan akun admin aktif) dan `backup_codes_regenerated` ditulis modul admin-auth (kontrak C1 F-02, F-16).
+   * `email_changed` dikirim ke alamat LAMA yang dibaca worker dari `before.email` entri audit `audit_id` (payload
+   * tidak memuat PII, N-14). Satu handler untuk semua kind: AdminMailJob (modul admin).
    */
   "admin.security_notice": z
     .object({
@@ -32,9 +34,19 @@ export const OUTBOX_TOPICS = {
         "password_changed",
         "activated",
         "backup_codes_regenerated",
+        "email_changed",
       ]),
+      audit_id: id.optional(),
     })
     .strict(),
+  /**
+   * Email undangan/pemulihan admin berisi tautan sekali pakai `${ADMIN_ORIGIN}/invite#t=<token>` (token di fragmen,
+   * kontrak admin-auth C1; F-16, PRD 3.16). Token TIDAK pernah ada di outbox: worker membuat token baru, menyimpan
+   * hash-nya hanya bila undangan masih ronde yang sama
+   * (`invite_expires_at` sama persis; undangan baru selalu menggeser nilainya), lalu mengirim email ke alamat login
+   * yang berlaku. Event usang (undangan sudah diganti, dibatalkan, atau diterima) tidak melakukan apa pun.
+   */
+  "admin.invitation.requested": z.object({ admin_id: id, invite_expires_at: z.iso.datetime() }).strict(),
   /** Super Admin memulai pemulihan sandi alumni → notifikasi keamanan ke kanal terverifikasi (AC F16-4). */
   "member.password_reset_initiated": z.object({ user_id: id, initiated_by_admin_id: id }).strict(),
 } as const;

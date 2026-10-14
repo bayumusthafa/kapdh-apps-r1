@@ -135,6 +135,33 @@ describe("loadWorkerEnv", () => {
   it("menerapkan aturan production yang sama dengan API", () => {
     expect(() => loadWorkerEnv({ ...base, NODE_ENV: "production" })).toThrow(/SMTP_URL/);
   });
+
+  it("variabel runtime worker opsional (health, poll outbox, shutdown) divalidasi rentangnya", () => {
+    const empty = loadWorkerEnv(base);
+    expect(empty.WORKER_HEALTH_PORT).toBeUndefined();
+    expect(empty.OUTBOX_POLL_INTERVAL_MS).toBeUndefined();
+    const env = loadWorkerEnv({
+      ...base,
+      WORKER_HEALTH_PORT: "3001",
+      WORKER_HEALTH_HOST: "127.0.0.1",
+      OUTBOX_POLL_INTERVAL_MS: "2000",
+      WORKER_SHUTDOWN_TIMEOUT_MS: "25000",
+    });
+    expect(env).toMatchObject({
+      WORKER_HEALTH_PORT: 3001,
+      WORKER_HEALTH_HOST: "127.0.0.1",
+      OUTBOX_POLL_INTERVAL_MS: 2000,
+      WORKER_SHUTDOWN_TIMEOUT_MS: 25000,
+    });
+    expect(() => loadWorkerEnv({ ...base, WORKER_HEALTH_PORT: "70000" })).toThrow(/WORKER_HEALTH_PORT/);
+    expect(() => loadWorkerEnv({ ...base, OUTBOX_POLL_INTERVAL_MS: "10" })).toThrow(
+      /OUTBOX_POLL_INTERVAL_MS/,
+    );
+    // Secret API yang ikut di environment proses tidak pernah masuk WorkerEnv (least privilege, PRD 5.1).
+    const leaked = loadWorkerEnv({ ...base, ...api }) as Record<string, unknown>;
+    for (const key of ["JWT_ACCESS_SECRET", "OTP_HMAC_SECRET", "QR_SIGNING_KEYS", "TOTP_ENC_KEY"])
+      expect(key in leaked).toBe(false);
+  });
 });
 
 describe("parseSigningKeys", () => {
