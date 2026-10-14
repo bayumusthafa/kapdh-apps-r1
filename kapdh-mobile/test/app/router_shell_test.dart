@@ -32,15 +32,16 @@ const memberRoutes = {
   '/chat/new-group': 'Grup Baru',
   '/chat/invitations': 'Undangan Grup',
   '/notifications': 'Notifikasi',
-  '/account/profile': 'Profil',
-  '/account/privacy': 'Privasi',
+  '/account/profile': 'Ubah Profil',
+  '/account/privacy': 'Privasi Profil',
   '/account/notifications': 'Preferensi Notifikasi',
   '/account/sessions': 'Sesi Perangkat',
   '/account/password': 'Ganti Password',
   '/account/blocked': 'Pengguna Diblokir',
   '/account/reports': 'Laporan Saya',
   '/account/delete': 'Hapus Akun',
-  '/legal/ketentuan': 'Informasi',
+  // Judul halaman legal dari GET /public/pages/{slug} (penangan uji: judul = slug).
+  '/legal/ketentuan': 'ketentuan',
 };
 
 void main() {

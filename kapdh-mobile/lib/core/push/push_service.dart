@@ -236,7 +236,7 @@ class PushService {
     _registeredToken = token;
   }
 
-  void _open(PushMessage message) => _openRoute(message.route);
+  void _open(PushMessage message) => _openRoute(message.openRoute);
 
   void _openRoute(String? route) {
     final location = DeepLinks.parse(route);
