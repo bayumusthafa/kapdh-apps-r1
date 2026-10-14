@@ -18,6 +18,11 @@ export interface PaymentsSearch {
    */
   stage?: "awaiting_review";
   overdue?: boolean;
+  /**
+   * Buka dialog "Catat iuran" (rencana cadangan D13, adminRecordPayment): `true` tanpa alumni terpilih (tautan dari
+   * Pengaturan), atau user_id alumni (tautan dari detail anggota). Parameter dihapus setelah dialog dibuka.
+   */
+  record?: true | string;
 }
 
 /** `?overdue=true|false` (parser URL router menghasilkan boolean; string juga diterima). */
@@ -39,6 +44,8 @@ export function validatePaymentsSearch(search: Record<string, unknown>): Payment
   if (search.stage === "awaiting_review") out.stage = "awaiting_review";
   const overdue = parseBool(search.overdue);
   if (overdue !== undefined) out.overdue = overdue;
+  if (parseBool(search.record) === true) out.record = true;
+  else if (typeof search.record === "string" && UUID.test(search.record)) out.record = search.record;
   return out;
 }
 

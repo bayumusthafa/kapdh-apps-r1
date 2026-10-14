@@ -72,6 +72,7 @@ const USED_BY_UI = [
   "adminGetPayment",
   "adminDecidePayment",
   "adminCancelPayment",
+  "adminRecordPayment",
   "adminCreatePaymentAdjustment",
   "adminListPaymentAdjustments",
   "adminGetPaymentAdjustment",
