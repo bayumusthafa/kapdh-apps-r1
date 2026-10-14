@@ -597,7 +597,7 @@ export class ChatRoomsService {
     const acquainted = await sharedGroupHistoryAmong(
       tx,
       inviterId,
-      lockable.filter((id) => facts.get(id)?.show_in_directory === false),
+      lockable.filter((id) => facts.get(id)?.show_in_directory !== true),
     );
     let seats = await seatCount(tx, room.id);
     const admins = await joinedAdminIds(tx, room.id);
