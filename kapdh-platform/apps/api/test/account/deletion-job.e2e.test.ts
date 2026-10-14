@@ -1,13 +1,25 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { accountDeletions, alumni, auditLogs, roomMembers, rooms } from "@kapdh/database";
+import {
+  accountDeletions,
+  alumni,
+  auditLogs,
+  membershipEvents,
+  notifications,
+  roomMembers,
+  rooms,
+  users,
+} from "@kapdh/database";
 import { and, eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { runAsSystem } from "../../src/core/context/request-context.js";
+import { withTx } from "../../src/core/db/tx.js";
+import { NotificationService } from "../../src/core/notifications-kernel/notification.service.js";
 import { RealtimeService } from "../../src/core/realtime/realtime.service.js";
 import { MemoryDriver } from "@kapdh/storage";
 import {
+  LEDGER_HEAD_KEY,
   ledgerObjectKey,
   readLedgerDirectory,
   writeLedgerEntryMonotonic,
@@ -30,7 +42,7 @@ import {
   signInAlumni,
   TEST_CONSENT_VERSION,
 } from "../support/factories.js";
-import { expectRealtimeEnvelope } from "../support/contract.js";
+import { expectOperation, expectRealtimeEnvelope } from "../support/contract.js";
 import { httpClient } from "../support/http.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
 import { expectFullyDeleted } from "./expect-deleted.js";
@@ -335,6 +347,72 @@ describe("Job account.deletion: kegagalan dan retry (AC F14-2)", () => {
     await expectFullyDeleted(t, rich, requestNumber);
   });
 
+  it("D5-04 (AC F14-2, F14-3): akun deletion_pending tidak menerima inbox baru; inbox yang lolos bersamaan setelah langkah notifications disapu saat retry", async () => {
+    const member = await createAlumni(t, { status: "verified" });
+    const session = await signInAlumni(t, member);
+    const { id } = await requestDeletionViaApp(t, session);
+    const notifier = t.app.get(NotificationService);
+    const notice = (dedupKey: string) =>
+      runAsSystem(() =>
+        withTx(t.db, (tx) =>
+          notifier.notify(tx, {
+            userId: member.userId,
+            category: "payment",
+            title: "Pembayaran disetujui",
+            body: "Iuran Anda telah disetujui pengurus.",
+            dedupKey,
+          }),
+        ),
+      );
+    // Kernel notifikasi melewati penerima deletion_pending: tanpa inbox, outbox maupun realtime.
+    expect(await notice(`uji:${uuidv7()}`)).toEqual({ id: "", created: false, skipped: "account_closed" });
+    expect(await t.db.select().from(notifications).where(eq(notifications.userId, member.userId))).toEqual(
+      [],
+    );
+
+    // Job gagal sesudah langkah notifications dan finance (keduanya tidak diulang saat retry); notifikasi yang lolos
+    // pemeriksaan secara bersamaan dan histori keanggotaan baru (disimulasikan langsung) tertulis selama jendela retry,
+    // lalu disapu langkah credentials.
+    const processor = t.app.get(AccountDeletionProcessor);
+    processor.setStepObserver(({ step }) => {
+      if (step === "finance") throw new Error("storage mati");
+    });
+    expect(await runDeletion(t, id)).toMatchObject({ outcome: "failed" });
+    expect((await deletionRow(t.db, id)).stepsDone).toEqual(
+      expect.arrayContaining(["notifications", "finance"]),
+    );
+    processor.setStepObserver(null);
+    await t.db.insert(notifications).values({
+      id: uuidv7(),
+      userId: member.userId,
+      category: "payment",
+      title: "Pembayaran disetujui",
+      body: "Lolos bersamaan",
+      data: {},
+      dedupKey: `u:${member.userId}:uji-sapuan:${uuidv7()}`,
+      createdAt: t.clock.now(),
+    });
+    // Histori keanggotaan yang ditulis pihak lain selama jendela retry juga disapu (tautan akun dan alasan dibuang).
+    const lateEvent = uuidv7();
+    await t.db.insert(membershipEvents).values({
+      id: lateEvent,
+      userId: member.userId,
+      kind: "warn",
+      reason: "Peringatan tertulis untuk anggota ini",
+      createdAt: t.clock.now(),
+    });
+    t.clock.advance(deletionRetryBackoffMs(1));
+    expect(await runDeletion(t, id)).toMatchObject({ outcome: "completed" });
+    expect(await t.db.select().from(notifications).where(eq(notifications.userId, member.userId))).toEqual(
+      [],
+    );
+    expect(await t.db.select().from(membershipEvents).where(eq(membershipEvents.id, lateEvent))).toEqual([
+      expect.objectContaining({ userId: null, reason: null, kind: "warn" }),
+    ]);
+    // Akun deleted juga dilewati.
+    expect(await notice(`uji:${uuidv7()}`)).toMatchObject({ created: false, skipped: "account_closed" });
+  });
+
   it("F-14, D2: email konfirmasi gagal → diulang; setelah gagal berulang langkah email dilewati agar data pribadi tidak tertahan", async () => {
     const rich = await createRichMember(t);
     const { id, requestNumber } = await requestDeletionViaApp(t, rich.session);
@@ -601,8 +679,97 @@ describe("Deletion ledger: penerapan ulang setelah restore (AC F14-6)", () => {
         state: "completed",
       });
 
+      // D5-05 (PRD 3.5, 6.4): akun yang tidak ada di backup tetap dicatat (baris completed dengan floor N), sehingga
+      // pendaftar berikutnya di database pulihan tidak menerima N milik akun yang sudah dihapus.
+      const lateSeq = late.memberSeq!;
+      expect(lateEntry.member_seq_floor).toBeGreaterThanOrEqual(lateSeq);
+      const [absentRow] = await restored.db
+        .select()
+        .from(accountDeletions)
+        .where(eq(accountDeletions.id, lateEntry.deletion_id));
+      expect(absentRow).toMatchObject({
+        requestNumber: lateRequest.requestNumber,
+        userId: late.userId,
+        status: "completed",
+      });
+      expect(absentRow!.ledger).toMatchObject({
+        restored: true,
+        absent: true,
+        member_seq_floor: lateEntry.member_seq_floor,
+      });
+      await publishLegalVersions(restored);
+      const nextSeq = await registerAndActivate(restored, `pasca-pulih-${uuidv7().slice(-8)}@contoh.test`);
+      expect(nextSeq).toBeGreaterThan(lateSeq);
+
       writeFileSync(join(ledgerDir, "rusak.json"), JSON.stringify({ kind: "lain" }));
       expect(() => readLedgerDirectory(ledgerDir!)).toThrow();
+    } finally {
+      await restored?.app.close();
+      await source.app.close();
+      if (ledgerDir) rmSync(ledgerDir, { recursive: true, force: true });
+    }
+  });
+
+  it("AC F14-6, PRD 9.2 #8: database dipulihkan (storage tetap terkini) → GET /health/ready 503 deletion_ledger fail sampai ledger-reapply; sesudahnya 200", async () => {
+    const source = await createTestApp();
+    let restored: TestApp | undefined;
+    let ledgerDir: string | undefined;
+    try {
+      await ensureAuditPurgeRole(source.db);
+      const member = await createAlumni(source, { status: "verified", fullName: "Eka Pulih" });
+      const session = await signInAlumni(source, member);
+      const before = await httpClient(source.app).get("/health/ready");
+      expect(before.statusCode).toBe(200);
+      expect(expectOperation("get", "/health/ready", before)).toMatchObject({
+        checks: { deletion_ledger: "ok" },
+      });
+      const dbBackup = await source.pg.dumpDataDir("none");
+
+      const { id, requestNumber } = await requestDeletionViaApp(source, session);
+      expect(await runDeletion(source, id)).toMatchObject({ outcome: "completed" });
+      expect(readLedger(source.storage, LEDGER_HEAD_KEY)).toMatchObject({
+        kind: "kapdh.account_deletion_ledger_head",
+        deletion_id: id,
+        request_number: requestNumber,
+        user_id: member.userId,
+      });
+      expect((await httpClient(source.app).get("/health/ready")).statusCode).toBe(200);
+
+      // Hanya database yang dipulihkan; storage (berkas dan ledger) tetap yang terkini.
+      restored = await appFromBackup(dbBackup, source.storage, source.clock);
+      expect((await userRow(restored.db, member.userId))!.status).toBe("active");
+      const blocked = await httpClient(restored.app).get("/health/ready");
+      expect(blocked.statusCode).toBe(503);
+      expect(expectOperation("get", "/health/ready", blocked)).toMatchObject({
+        status: "unavailable",
+        checks: { database: "ok", storage: "ok", deletion_ledger: "fail" },
+      });
+
+      ledgerDir = exportLedger(source.storage);
+      const summary = await runAsSystem(() =>
+        restored!.app.get(DeletionLedgerService).reapply(readLedgerDirectory(ledgerDir!)),
+      );
+      expect(summary).toMatchObject({ reapplied: [requestNumber], failed: [] });
+      const open = await httpClient(restored.app).get("/health/ready");
+      expect(open.statusCode).toBe(200);
+      expect(expectOperation("get", "/health/ready", open)).toMatchObject({
+        status: "ok",
+        checks: { deletion_ledger: "ok" },
+      });
+      expect((await userRow(restored.db, member.userId))!.status).toBe("deleted");
+
+      // Kepala ledger rusak → readiness gagal tertutup sampai penerapan ulang menulisnya kembali.
+      const fresh = await appFromBackup(await restored.pg.dumpDataDir("none"), source.storage, source.clock);
+      try {
+        await source.storage.put(LEDGER_HEAD_KEY, Buffer.from("{rusak"), { contentType: "application/json" });
+        expect((await httpClient(fresh.app).get("/health/ready")).statusCode).toBe(503);
+        await runAsSystem(() =>
+          fresh.app.get(DeletionLedgerService).reapply(readLedgerDirectory(ledgerDir!)),
+        );
+        expect((await httpClient(fresh.app).get("/health/ready")).statusCode).toBe(200);
+      } finally {
+        await fresh.app.close();
+      }
     } finally {
       await restored?.app.close();
       await source.app.close();
@@ -664,6 +831,12 @@ describe("Deletion ledger luar VPS (AC F14-6, D5-07)", () => {
       await expectFullyDeleted(restored, rich, requestNumber);
       expect(await restored.storage.exists(rich.files.avatar.objectKey)).toBe(false);
       expect(restored.mailer.mail).toEqual([]);
+      // Penerapan ulang dari bucket luar VPS juga memulihkan entri dan kepala ledger di StorageDriver, sehingga
+      // gerbang readiness (ADR-014) mengenal permintaan ini pada restore berikutnya.
+      expect(readLedger(restored.storage, LEDGER_HEAD_KEY)).toMatchObject({ request_number: requestNumber });
+      const ready = await httpClient(restored.app).get("/health/ready");
+      expect(ready.statusCode, ready.body).toBe(200);
+      expect(ready.json()).toMatchObject({ checks: { deletion_ledger: "ok" } });
     } finally {
       await restored?.app.close();
       await source.app.close();
@@ -714,6 +887,33 @@ describe("Deletion ledger luar VPS (AC F14-6, D5-07)", () => {
     }
   });
 });
+
+/** Registrasi + OTP lewat API (F-01) pada aplikasi uji; mengembalikan N yang dialokasikan saat aktivasi. */
+async function registerAndActivate(app: TestApp, email: string): Promise<number> {
+  const api = httpClient(app.app);
+  const reg = await api.post("/auth/register", {
+    full_name: "Pendaftar Pasca Pemulihan",
+    gender: "female",
+    email,
+    password: DEFAULT_PASSWORD,
+    cohort: 22,
+    class_in: 1,
+    class_out: 6,
+    accept_policy_version: TEST_CONSENT_VERSION,
+  });
+  expect(reg.statusCode, reg.body).toBe(201);
+  const verify = await api.post("/auth/otp/verify", {
+    challenge_id: reg.json().challenge_id,
+    code: app.mailer.last(email)!,
+  });
+  expect(verify.statusCode, verify.body).toBe(200);
+  const [user] = await app.db
+    .select({ seq: alumni.memberSeq })
+    .from(alumni)
+    .innerJoin(users, eq(users.id, alumni.userId))
+    .where(eq(users.email, email));
+  return user!.seq!;
+}
 
 describe("Redaksi snapshot (D2, AC F14-4)", () => {
   it("AC F14-4: snapshot audit hanya mempertahankan angka, waktu, Money, UUID rujukan dan kode; UUID akun dan teks bebas dibuang", () => {

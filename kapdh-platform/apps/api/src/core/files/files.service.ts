@@ -452,6 +452,34 @@ export class FilesService implements OnModuleInit {
   }
 
   /**
+   * Penghapusan TERJAMIN tanpa periode retensi (D2) untuk berkas yang tidak boleh disimpan lagi, mis. bukti
+   * penyelesaian refund atas payment yang pemiliknya sudah/sedang dihapus (F-14, AC F14-4): di transaksi pemanggil
+   * baris diberi `expires_at = now` (rujukan domain diputus pemanggil di transaksi yang sama), lalu setelah commit objek
+   * storage + baris dihapus lewat {@link deleteNow}. Bila storage gagal, baris tetap kedaluwarsa dan job
+   * `files.cleanup-temp` mengulang sampai terhapus (berbeda dengan {@link discard} yang hanya mencatat kegagalan).
+   * Mengembalikan baris berkas (sha256/bytes untuk audit) atau null bila sudah dihapus. Wajib tx commit-aware.
+   */
+  async eraseAfterCommit(tx: Tx, fileId: string): Promise<FileRow | null> {
+    assertCommitAware(tx, "FilesService.eraseAfterCommit");
+    const now = this.clock.now();
+    const [row] = await tx
+      .update(files)
+      .set({ expiresAt: now, updatedAt: now })
+      .where(and(eq(files.id, fileId), ne(files.status, "deleted")))
+      .returning();
+    if (!row) return null;
+    afterCommit(() =>
+      this.deleteNow(fileId, "expired").catch((error: unknown) => {
+        this.logger.warn(
+          { error: safeError(error), file_id: fileId },
+          "berkas wajib hapus gagal dihapus setelah commit; diulang job files.cleanup-temp",
+        );
+      }),
+    );
+    return row;
+  }
+
+  /**
    * true bila berkas dirujuk bukti laporan moderasi (`reports.evidence.file_ids`, ditulis modul moderation saat laporan
    * dibuat) DAN pemiliknya masih ada serta tidak sedang/sudah dihapus. D2: unggahan pengguna yang akunnya dihapus
    * tetap dihapus (job penghapusan akun), sehingga retensi tidak pernah menahan data pribadi setelah penghapusan.

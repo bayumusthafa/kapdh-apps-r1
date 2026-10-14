@@ -36,7 +36,14 @@ describe("API dasar (PRD 5.2, 5.5, N-14)", () => {
     expect(expectOperation("get", "/health/ready", empty)).toEqual({
       status: "ok",
       time: t.clock.now().toISOString(),
-      checks: { database: "ok", redis: "skipped", storage: "ok", outbox_oldest_pending_seconds: null },
+      checks: {
+        database: "ok",
+        redis: "skipped",
+        storage: "ok",
+        // Deletion ledger sudah diterapkan (tanpa kepala ledger di storage: belum ada penghapusan, AC F14-6).
+        deletion_ledger: "ok",
+        outbox_oldest_pending_seconds: null,
+      },
     });
     const created = new Date(t.clock.now().getTime() - 90_000);
     await t.db.insert(outboxEvents).values({
