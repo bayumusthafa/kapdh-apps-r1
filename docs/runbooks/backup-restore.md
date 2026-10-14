@@ -228,7 +228,8 @@ ditulis ke berkas 0600 di host drill (`DRILL_ADMIN_PASSWORD_FILE`, `DRILL_ADMIN_
 
 ### 8.5 Daftar bukti drill (paket penerimaan PRD 9.3, U-11)
 
-Simpan di folder `docs/qa/restore-drills/<yyyy-mm>/` (tanpa data pribadi) atau arsip terkendali yang dirujuk dari sana:
+Simpan di folder `docs/qa/restore-drills/<yyyy-mm>/` (templat `docs/qa/restore-drills/TEMPLATE.md`; tanpa data
+pribadi) atau arsip terkendali yang dirujuk dari sana:
 
 - [ ] `summary.txt`, `timeline.txt`, `restore.log` dari folder bukti
 - [ ] `manifest.json` (salinan; tanpa data pribadi) dan id snapshot `kapdh-db`/`kapdh-files`

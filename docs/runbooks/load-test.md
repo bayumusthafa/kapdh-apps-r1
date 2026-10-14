@@ -163,7 +163,8 @@ Laporan tidak memuat sandi, token, kode TOTP, isi pesan atau data pribadi (data 
 
 ## 7. Bukti untuk paket penerimaan (U-11)
 
-Simpan di `docs/qa/load/<yyyy-mm-dd>/` (atau arsip terkendali yang dirujuk dari sana):
+Simpan di `docs/qa/load/<yyyy-mm-dd>/` (templat `docs/qa/load/TEMPLATE.md`; atau arsip terkendali yang dirujuk dari
+sana):
 
 - [ ] Laporan JSON dan TXT N-01 (LULUS), N-02 (LULUS) dan N-04 (SELESAI dengan kapasitas dan titik gagal)
 - [ ] Versi image API/worker (tag + digest), commit, versi skema (journal migrasi)

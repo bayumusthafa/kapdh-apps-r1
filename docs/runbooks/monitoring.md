@@ -140,7 +140,7 @@ lewat log JSON pino di log kontainer Coolify:
   ukuran API dan auth (readiness gagal = API tidak dapat melayani login), dilengkapi monitor 3.
 - Setiap awal bulan pengelola infra mengekspor persentase uptime 30 hari monitor 1-6 dari Kuma (halaman status atau
   ekspor CSV), mencatat setiap insiden (mulai, selesai, durasi, penyebab, tautan post-mortem) dan deployment yang
-  menimbulkan downtime, lalu menyimpan laporan di paket penerimaan (`docs/qa/availability/<yyyy-mm>.md`, U-11).
+  menimbulkan downtime, lalu menyimpan laporan di paket penerimaan (`docs/qa/availability/<yyyy-mm>.md`, templat `docs/qa/availability/TEMPLATE.md`, U-11).
 - Bila < 99,5 %: tindakan perbaikan dengan pemilik dan tenggat pada laporan.
 
 ## 8. Kapasitas
