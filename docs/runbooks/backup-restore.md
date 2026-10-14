@@ -3,7 +3,8 @@
 Pemilik: pengelola infra (PRD 5.5, D9). Saksi drill: QA. Persetujuan operasional: pengelola infra (PRD 9.3).
 Rujukan: PRD 2.4 N-06, 3.14 AC F14-6 dan D2, 5.5, 8.2, 8.3, 8.4, 9.1 U-11/U-12, 9.2 #9, 10.1 D9; ARCHITECTURE §10.
 Perkakas: `kapdh-platform/infra/backup/` (skrip), `kapdh-platform/infra/db/roles.sql` (role), CLI
-`ledger-reapply` di image API.
+`ledger-reapply` di image API. Urutan sisi aplikasi (kepala ledger, gerbang readiness `deletion_ledger`, floor
+nomor anggota) dijelaskan juga di `docs/runbooks/restore-backup.md`; keputusan desain: ADR-014, ADR-018, ADR-019.
 
 > **Status bukti.** Skrip, SQL dan alurnya sudah diuji di repositori: uji kering dengan alat tiruan
 > (`infra/backup/test/dry-run.sh`, 37 pemeriksaan), SQL pada PGlite dan PostgreSQL 17 (`apps/api/test/ops`,
@@ -169,9 +170,10 @@ pengguna terdampak harus dihubungi (PRD 8.4).
    Pilih `--snapshot <id>` bila backup terbaru diduga rusak/terdampak insiden. Keluar ≠ 0 = jangan buka layanan; baca
    `restore.log`, `verify-report.txt` di folder bukti.
 6. **Nyalakan berurutan**: Redis (kosong) → worker (memproses outbox `pending/failed`, sapuan penghapusan) → API
-   (readiness 200) → web/admin. Jalankan ulang verifikasi HTTP: `VERIFY_API_URL=http://127.0.0.1:3000
-   infra/backup/verify-restore.sh --manifest <bukti>/manifest.json --ledger-dir <salinan ledger>` (atau langsung dengan
-   `DRILL_ADMIN_*`).
+   (readiness 200 dengan `checks.deletion_ledger: "ok"`; 503 `fail` berarti ledger yang diterapkan lebih tua dari
+   kepala ledger di storage: ulangi langkah 5 dengan salinan bucket terbaru) → web/admin. Jalankan ulang verifikasi
+   HTTP: `VERIFY_API_URL=http://127.0.0.1:3000 infra/backup/verify-restore.sh --manifest <bukti>/manifest.json
+   --ledger-dir <salinan ledger>` (atau langsung dengan `DRILL_ADMIN_*`).
 7. **Smoke test** PRD 8.3 langkah 3 (login/MFA, payment/period, kartu/public verify, tiket/scan, chat, file, push,
    deletion) lalu nonaktifkan mode maintenance.
 8. **Komunikasi**: umumkan titik data (`db_snapshot_captured_at`) kepada pengurus; transaksi sesudah titik itu (bukti
