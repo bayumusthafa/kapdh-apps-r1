@@ -580,6 +580,49 @@ Perubahan hanya pada deskripsi, mencatat perilaku server yang perlu diketahui kl
   attempt/attempts tidak direset sehingga pengiriman/event yang sudah mencapai batas mendapat satu percobaan per retry
   pengurus; pengiriman dikirim job `notifications.retry` (setiap menit).
 
+### Fase C api-admin: implementasi admin-dashboard, admin-admins, admin-audit, admin-settings (F-15, F-16, F-17)
+
+Tidak ada perubahan bentuk operasi atau skema. Komentar kepala `admin-settings.yaml` kini menyatakan bahwa SEMUA
+operasi domain itu (termasuk `adminGetFees`/`adminUpdateFees` dan `adminUpdatePaymentInstructions`) dilayani modul
+`apps/api/src/modules/admin`; modul payments hanya membaca nilai `fees` lewat SettingsService untuk snapshot payment
+baru (AC F03-5). Nilai konfigurasi server yang kontrak C7 serahkan ke implementasi (usulan, final mengikuti D1/D8):
+
+| Nilai                                            | Implementasi                                                                  |
+| ------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Masa berlaku token undangan/pemulihan admin      | 72 jam (`ADMIN_INVITE_TTL_MS`); setiap ronde undangan menggeser batasnya      |
+| Batas undangan + kirim ulang + pemulihan         | 20 per Super Admin per jam (429 RATE_LIMITED); hapus identitas 20 per jam     |
+| Batas waktu job ekspor audit                     | 1 jam sejak diminta, lalu `failed`/`timed_out`                                |
+| Masa simpan berkas ekspor audit                  | 24 jam (`expires_at`), dihapus `maintenance.cleanup` dan `files.cleanup-temp` |
+| Batas baris ekspor audit                         | 50.000 baris, melebihi = `failed`/`row_limit_exceeded`                        |
+| Percobaan job ekspor sebelum `processing_failed` | 3 (retry outbox)                                                              |
+| Batas pembuatan ekspor                           | 10 per admin per jam (429 RATE_LIMITED)                                       |
+| Jendela `DashboardJobs.failed_delivery_since`    | 7 hari                                                                        |
+
+Email undangan/pemulihan admin berisi tautan `${ADMIN_ORIGIN}/invite#t=<token>` (token di fragmen URL sesuai kepala
+`admin-auth.yaml`; bentuk `/invite/<token>` tidak pernah dikirim); token dibuat worker saat email dikirim (topik outbox
+internal `admin.invitation.requested`) sehingga token tidak pernah ada di respons, outbox, audit, maupun log; hanya
+hash yang disimpan. Pemberitahuan keamanan admin memakai topik `admin.security_notice`.
+
+Catatan perilaku untuk integrasi (tanpa perubahan bentuk kontrak):
+
+- Setiap URL berkas `audit_export` yang diterbitkan diaudit `audit.export.downloaded` (PRD 3.17), baik lewat
+  `adminGetAuditExportAccess` maupun `getFileAccess` (GET /files/{fileId}/access), melalui kait core baru
+  `FilesService.registerAccessHook(purpose, hook)` yang dijalankan setelah kebijakan akses lolos dan sebelum URL dibuat;
+  berkas `audit_export` tanpa entri `audit.export.completed` tidak pernah diberi URL (404).
+- Dua undangan bersamaan untuk alumni yang sama diserialkan pada baris akun alumni (`FOR NO KEY UPDATE`), sehingga
+  pihak yang kalah selalu menerima 409 pada `alumni_user_id`, juga saat email login memakai email alumni bawaan.
+- Perubahan peran/izin admin tidak mengirim event realtime `session.revoked` (C6: "sesi ini dicabut"), karena sesi
+  tidak dicabut; izin dibaca ulang dari database setiap request dan `permissions_version` naik (AC F16-3). Gateway
+  realtime hanya menerima audience mobile. Penonaktifan dan pemulihan tetap mencabut semua sesi.
+- Rumus hitungan antrean dasbor dan lencana (integrasi Fase C): satu rumus milik modul domain, tanpa rumus kedua di
+  modul admin. Pembayaran = `PaymentsKernel.dashboardSummary` (kueri yang sama dengan `GET /admin/payments/summary`;
+  `review_due_at` dan filter `overdue` `adminListPayments` memakai `reviewDueSql`; lewat batas = waktu server >=
+  `review_due_at`); laporan = `ModerationVisibility.dashboardSummary` (= `AdminModerationQueueCounts`); kegagalan
+  pengiriman = `countActionableFailedDeliveries` (= total daftar `status=failed&retryable=true&from=`). Hari kerja
+  (`modules/payments/business-days.ts`): Senin sampai Jumat Asia/Jakarta, jam lokal dipertahankan, titik awal
+  Sabtu/Minggu diperlakukan seperti Jumat jam yang sama (Jumat 15.00 + 1 = Senin 15.00; Sabtu 10.00 + 1 = Senin
+  10.00), dan hasil SQL tidak bergantung zona waktu sesi database.
+
 ### core-api: Files (`files.yaml`; PRD 2.5, 5.4, N-10)
 
 Pemilik `files.yaml` adalah core-api (`apps/api/src/core/files` + controller tipis `modules/files`).
