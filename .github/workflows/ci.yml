@@ -78,6 +78,14 @@ jobs:
         run: pnpm contracts:lint
       - name: Build
         run: pnpm build
+      # Compose/env/Dockerfile/Traefik (butuh @kapdh/config hasil build) dan uji kering job rilis dengan psql/node
+      # palsu (PRD 5.5, 9.2 #9; temuan audit D2-07, D3-07).
+      - name: Validasi statis infra dan uji kering job rilis
+        run: |
+          set -euo pipefail
+          node infra/scripts/validate-infra.mjs
+          for f in infra/scripts/*.sh infra/traefik/*.sh; do sh -n "$f"; done
+          sh infra/scripts/release-job.test.sh
       - name: Typecheck
         run: pnpm typecheck
       - name: Lint
@@ -312,6 +320,7 @@ jobs:
         with:
           context: kapdh-platform
           file: kapdh-platform/${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
           build-args: |
             ${{ matrix.build_args }}
             KAPDH_COMMIT=${{ github.sha }}
@@ -342,10 +351,77 @@ jobs:
           grype "docker:$IMAGE" --output json --file "$RUNNER_TEMP/grype.json"
           node infra/ci/vuln-gate.mjs --source grype "$RUNNER_TEMP/grype.json" --fail-on critical --label "$LABEL"
 
+  # Stack Compose production lengkap dengan image commit ini (PRD 5.5, 9.2 #9; N-07; temuan audit D2-07, D3-07):
+  # dry-run entry image, `nginx -t` varian production dan staging, uji asap header web/admin, job rilis nyata dengan
+  # psql (cek versi skema, gerbang pra-migrasi menolak database baru), healthcheck, DB/Redis privat, edge staging
+  # terpisah (infra/scripts/ci-stack-smoke.sh). Image hanya dimuat lokal; publish dan promosi ada di
+  # deploy-staging.yml dan release.yml (infra/ci/images.json).
+  compose-stack:
+    name: Stack Compose production (job rilis, gerbang, header, jaringan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      DOCKER_BUILDKIT: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Siapkan Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build image (tag lokal kapdh-ci/kapdh-<layanan>:ci)
+        run: |
+          set -euo pipefail
+          build() { docker buildx build --load --progress=plain "$@" .; }
+          build -f infra/Dockerfile.api --target api -t kapdh-ci/kapdh-api:ci
+          build -f infra/Dockerfile.api --target release -t kapdh-ci/kapdh-release:ci
+          build -f infra/Dockerfile.worker -t kapdh-ci/kapdh-worker:ci
+          build -f infra/Dockerfile.web -t kapdh-ci/kapdh-web:ci
+          build -f infra/Dockerfile.admin -t kapdh-ci/kapdh-admin:ci
+          build -f infra/Dockerfile.web --build-arg PUBLIC_API_URL=https://staging-api.kapdh.or.id/api/v1 \
+            -t kapdh-ci/kapdh-web:ci-staging
+          build -f infra/Dockerfile.admin --build-arg VITE_API_BASE_URL=https://staging-api.kapdh.or.id/api/v1 \
+            -t kapdh-ci/kapdh-admin:ci-staging
+      - name: Entry image dapat dimuat (tanpa env -> galat konfigurasi, bukan modul hilang)
+        run: |
+          set -euo pipefail
+          expect_fail() { # <pola> <perintah...>
+            pattern="$1"; shift
+            if out="$("$@" 2>&1)"; then echo "$out"; echo "seharusnya gagal: $*"; exit 1; fi
+            echo "$out" | grep -q "$pattern" || { echo "$out"; echo "pola '$pattern' tidak ada"; exit 1; }
+          }
+          expect_fail EnvValidationError docker run --rm kapdh-ci/kapdh-api:ci
+          expect_fail EnvValidationError docker run --rm kapdh-ci/kapdh-worker:ci
+          expect_fail "DATABASE_URL wajib" docker run --rm kapdh-ci/kapdh-api:ci node node_modules/@kapdh/database/dist/bin/migrate.js
+          expect_fail "DATABASE_URL wajib" docker run --rm kapdh-ci/kapdh-api:ci node dist/cli/golive-check.js
+          expect_fail "KAPDH_ENV wajib" docker run --rm kapdh-ci/kapdh-release:ci
+          docker run --rm --entrypoint psql kapdh-ci/kapdh-release:ci --version | grep -q "psql (PostgreSQL) 17"
+          test "$(docker run --rm --entrypoint id kapdh-ci/kapdh-api:ci -u)" = "1000"
+          test "$(docker run --rm --entrypoint id kapdh-ci/kapdh-web:ci -u)" = "101"
+      - name: nginx -t (web dan admin, production dan staging)
+        run: |
+          set -euo pipefail
+          for image in kapdh-web:ci kapdh-web:ci-staging kapdh-admin:ci kapdh-admin:ci-staging; do
+            docker run --rm --entrypoint nginx "kapdh-ci/$image" -t
+          done
+          docker run --rm --entrypoint cat kapdh-ci/kapdh-admin:ci-staging /etc/nginx/conf.d/default.conf \
+            | grep -q "connect-src 'self' https://staging-api.kapdh.or.id"
+      - name: Uji asap header (kontainer terisolasi, port lokal)
+        run: |
+          set -euo pipefail
+          docker run -d --name web --read-only --tmpfs /tmp -p 127.0.0.1:18080:8080 kapdh-ci/kapdh-web:ci
+          docker run -d --name admin --read-only --tmpfs /tmp -p 127.0.0.1:18081:8080 kapdh-ci/kapdh-admin:ci
+          sleep 3
+          sh infra/scripts/smoke-static.sh web http://127.0.0.1:18080
+          sh infra/scripts/smoke-static.sh admin http://127.0.0.1:18081
+          docker rm -f web admin
+      - name: Stack Compose production (job rilis, healthcheck, gerbang, DB privat)
+        run: sh infra/scripts/ci-stack-smoke.sh
+
   ci-ok:
     name: CI lulus
     if: always()
-    needs: [workflows, verify, test, test-pg, contracts-compat, dart-sdk, mobile, audit, docker]
+    needs: [workflows, verify, test, test-pg, contracts-compat, dart-sdk, mobile, audit, docker, compose-stack]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

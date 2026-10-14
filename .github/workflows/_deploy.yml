@@ -186,9 +186,12 @@ jobs:
           printf '%s\n' "$SSH_KNOWN_HOSTS" >"$RUNNER_TEMP/kapdh-ssh/known_hosts"
 
       # Forced command di server (kapdh-platform/infra/ci/remote-migrate.sh), terikat ke lingkungan kunci ini:
-      # [production: dump pra-migrasi] -> roles.sql dari image -> migrate.js sebagai kapdh_migrator (advisory lock)
-      # -> roles.sql. Production menyertakan tag rilis; server memastikan digest = image bertag. Tanpa stdin.
-      - name: Job migrasi tunggal (sebelum image baru dideploy)
+      # [production: dump pra-migrasi] -> roles.sql dari image -> [enforce: gerbang go-live pra-migrasi] -> migrate.js
+      # sebagai kapdh_migrator (advisory lock) -> roles.sql -> seed referensi -> gerbang go-live penuh (PRD 9.2 #9).
+      # Mode gerbang hanya dari konfigurasi server (bawaan enforce di production); penolakan = kode bukan nol, sehingga
+      # kanal dan Coolify di bawah tidak dijalankan. Production menyertakan tag rilis; server memastikan digest = image
+      # bertag. Tanpa stdin.
+      - name: Job migrasi tunggal dan gerbang go-live (sebelum image baru dideploy)
         env:
           SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
           SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}

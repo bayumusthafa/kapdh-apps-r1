@@ -32,8 +32,12 @@ production terpisah; build tidak boleh membebani VPS (PRD 10.2).
    Alternatif ditolak untuk R1.0: konfigurasi runtime (`/config.json` atau substitusi saat start) memerlukan perubahan
    aplikasi web/admin dan CSP; dicatat sebagai tindak lanjut agar satu digest berlaku untuk semua image.
 4. **Job migrasi tunggal lewat SSH forced command** (`infra/ci/remote-migrate.sh`) dijalankan CI sebelum Coolify
-   men-deploy: [dump pra-migrasi] -> `roles.sql` -> `migrate.js` di image API yang sama (digest) sebagai
-   `kapdh_migrator` dengan advisory lock -> `roles.sql`. Lingkungan diikat di sisi server (argumen forced command,
+   men-deploy: [dump pra-migrasi] -> `roles.sql` -> [enforce: gerbang go-live pra-migrasi] -> `migrate.js` di image
+   API yang sama (digest) sebagai `kapdh_migrator` dengan advisory lock -> `roles.sql` -> seed referensi idempoten ->
+   gerbang go-live penuh (`golive-check.js --allow-schema-ahead`; urutan dan kebijakan mode sama dengan job rilis
+   Compose, ADR job rilis dan gerbang go-live). Mode gerbang (`enforce` bawaan production, `report` bawaan staging;
+   pengecualian production wajib alasan + penyetuju) hanya dari berkas konfigurasi server. Penolakan menghentikan
+   deploy sebelum kanal dan Coolify (integrasi akhir R1.0). Lingkungan diikat di sisi server (argumen forced command,
    satu user Unix dan satu kunci per lingkungan); perintah klien untuk lingkungan lain ditolak. `roles.sql` diambil
    dari image API yang dipin digest, bukan dari klien, sehingga pemegang kunci tidak dapat menjalankan SQL bebas sebagai
    pemilik database. Production hanya menerima digest yang sama dengan image bertag rilis dan wajib membuat dump
@@ -69,8 +73,12 @@ production terpisah; build tidak boleh membebani VPS (PRD 10.2).
    rilis), kecuali tercatat di allowlist yang ditinjau (pemilik, alasan, kedaluwarsa <= 90 hari). Grype dipilih untuk
    image karena skor keparahan paket OS Alpine tersedia; Trivy tidak dipakai.
 10. **Image web/admin non-root**: nginx resmi (dipin digest) dengan `nginx.conf` sendiri (pid dan direktori sementara
-    di /tmp, tanpa direktif `user`), `USER nginx`, port 8080; CSP admin tanpa `style-src 'unsafe-inline'` (gaya dasar
-    TipTap dibundel, `injectCSS: false`).
+    di /tmp, tanpa direktif `user`), `USER 101` (user `nginx`), port 8080; CSP admin tanpa `style-src 'unsafe-inline'`
+    (gaya dasar TipTap dibundel, `injectCSS: false`) dan dengan `connect-src`/`img-src` = origin API persis yang
+    dirender saat build (`infra/scripts/admin-csp.mjs`), bukan wildcard `*.kapdh.or.id` (integrasi akhir R1.0).
+11. **Image `release` ikut katalog** (`infra/ci/images.json`, `Dockerfile.api` target `release`): dibangun, dipindai,
+    diuji asap dan dipromosikan bersama image lain sehingga job rilis manual dan Compose cadangan memakai digest rilis
+    yang sama. Job CI `compose-stack` menjalankan stack Compose production lengkap dengan image commit itu.
 
 ## Konsekuensi
 

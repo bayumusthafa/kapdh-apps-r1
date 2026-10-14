@@ -16,10 +16,16 @@
 # dapat memigrasi production. Pengelola infra dapat menjalankan manual dengan argumen yang sama:
 #   kapdh-ci-migrate production migrate production ghcr.io/<owner>/kapdh-api@sha256:<digest> v1.2.0
 #
-# Urutan (docs/handoff/phase-a-schema.md "Ops order"):
+# Urutan (docs/handoff/phase-a-schema.md "Ops order"; sama dengan job rilis infra/scripts/release-job.sh di jalur
+# Compose cadangan, docs/adr/0002-job-rilis-dan-gerbang-go-live.md):
 #   [production, atau bila KAPDH_BACKUP_DIR diisi] dump pg_dump -Fc sebelum migrasi (gagal = berhenti, PRD 5.5/8.4)
-#   -> roles.sql -> migrate.js sebagai kapdh_migrator (advisory lock MIGRATION_LOCK_KEY, semua migrasi tertunda dalam
-#   satu transaksi) -> roles.sql lagi (grant objek baru). Tidak ada seed (PRD 8.2 langkah 4).
+#   -> roles.sql -> [mode enforce] gerbang go-live pra-migrasi (`golive-check.js --preflight`; ditolak = skema tidak
+#   diubah) -> migrate.js sebagai kapdh_migrator (advisory lock MIGRATION_LOCK_KEY, semua migrasi tertunda dalam satu
+#   transaksi) -> roles.sql lagi (grant objek baru) -> seed referensi idempoten (PRD 8.2 langkah 4; nilai pengurus tidak
+#   ditimpa, fixture ditolak) -> gerbang go-live penuh (PRD 9.2 #9, 9.3). Gerbang dijalankan dari image API yang sama
+#   sebagai kapdh_migrator dengan `--allow-schema-ahead` (deploy ulang tag lama = rollback image; skema lebih baru
+#   dicatat sebagai peringatan, PRD 8.4). Mode `enforce` (bawaan production) menggagalkan job pada penolakan sehingga
+#   CI tidak men-deploy image; mode `report` (bawaan staging) hanya mencetak laporan.
 # roles.sql DIAMBIL DARI IMAGE API yang dipin digest (/app/db/roles.sql, infra/Dockerfile.api), bukan dari klien:
 # SQL yang dijalankan sebagai pemilik database hanya berasal dari artefak CI yang sama dengan kode migrasi.
 # Production hanya menerima digest yang sama dengan image bertag rilis vX.Y.Z di registry (dibuat release.yml).
@@ -35,6 +41,11 @@
 #   KAPDH_BACKUP_KEEP=3                               (opsional; jumlah dump pra-migrasi yang disimpan)
 #   KAPDH_BACKUP_MAX_AGE_DAYS=7                       (opsional; dump lebih tua dihapus, data pribadi D2)
 #   KAPDH_BACKUP_OFFSITE_HOOK=/usr/local/bin/...      (opsional; salin dump terenkripsi ke luar VPS, gagal = berhenti)
+#   KAPDH_RELEASE_GATE=enforce|report                 (opsional; bawaan enforce di production, report di staging)
+#   KAPDH_RELEASE_GATE_REASON=<alasan>                (wajib bila production + report: pengecualian gerbang, mis.
+#                                                      "inisialisasi pertama PRD 8.2"; dicetak ke log CI sebagai bukti)
+#   KAPDH_RELEASE_GATE_APPROVER=<nama>                (wajib bila production + report: penyetuju, D9)
+# Mode gerbang hanya dari berkas konfigurasi server (pengelola infra), tidak pernah dari perintah klien CI.
 # URL database tidak pernah dicetak dan tidak muncul di argumen proses (diteruskan lewat environment docker -e NAMA).
 set -eu
 
@@ -122,6 +133,21 @@ esac
 case "$BACKUP_MAX_AGE_DAYS" in
   "" | *[!0-9]*) die "KAPDH_BACKUP_MAX_AGE_DAYS harus bilangan bulat" ;;
 esac
+# Gerbang go-live (PRD 9.2 #9, 9.3): kebijakan sama dengan RELEASE_GATE job rilis (infra/scripts/release-job.sh).
+GATE_MODE=${KAPDH_RELEASE_GATE:-}
+if [ -z "$GATE_MODE" ]; then
+  if [ "$ENV_NAME" = "production" ]; then GATE_MODE=enforce; else GATE_MODE=report; fi
+fi
+case "$GATE_MODE" in
+  enforce | report) ;;
+  *) die "KAPDH_RELEASE_GATE harus enforce atau report" ;;
+esac
+GATE_REASON=${KAPDH_RELEASE_GATE_REASON:-}
+GATE_APPROVER=${KAPDH_RELEASE_GATE_APPROVER:-}
+if [ "$ENV_NAME" = "production" ] && [ "$GATE_MODE" = "report" ]; then
+  [ -n "$GATE_REASON" ] && [ -n "$GATE_APPROVER" ] ||
+    die "KAPDH_RELEASE_GATE=report di production wajib disertai KAPDH_RELEASE_GATE_REASON dan KAPDH_RELEASE_GATE_APPROVER"
+fi
 
 # Hanya image API dari repositori yang diizinkan, dirujuk dengan digest (image yang sama dengan yang dideploy).
 DIGEST=${IMAGE#"${KAPDH_API_REPOSITORY}@sha256:"}
@@ -226,20 +252,70 @@ backup_before_migration() {
   fi
 }
 
+run_in_image() {
+  # Perintah node di image API yang sama (digest), sebagai kapdh_migrator; URL hanya lewat environment.
+  DATABASE_URL=$KAPDH_MIGRATOR_DATABASE_URL docker run --rm --network "$KAPDH_DOCKER_NETWORK" \
+    -e DATABASE_URL -e NODE_ENV=production "$IMAGE" "$@"
+}
+
+log "mode gerbang go-live $GATE_MODE"
+if [ "$ENV_NAME" = "production" ] && [ "$GATE_MODE" = "report" ]; then
+  log "PERINGATAN: PENGECUALIAN GERBANG go-live di production (mode laporan; PRD 9.2, 9.3)."
+  log "PERINGATAN: alasan: $GATE_REASON"
+  log "PERINGATAN: disetujui: $GATE_APPROVER"
+  log "PERINGATAN: catat di log insiden/paket bukti; pemeriksaan merah wajib punya pemilik dan tenggat."
+fi
+
 if [ -n "$BACKUP_DIR" ]; then
-  log "0/3 dump database sebelum migrasi"
+  log "0/6 dump database sebelum migrasi"
   backup_before_migration
 fi
 
-log "1/3 roles.sql (sebelum migrasi)"
+log "1/6 roles.sql (sebelum migrasi)"
 apply_roles || die "roles.sql sebelum migrasi gagal"
 
-log "2/3 migrasi skema sebagai kapdh_migrator (advisory lock)"
-DATABASE_URL=$KAPDH_MIGRATOR_DATABASE_URL docker run --rm --network "$KAPDH_DOCKER_NETWORK" \
-  -e DATABASE_URL -e NODE_ENV=production "$IMAGE" \
-  node node_modules/@kapdh/database/dist/bin/migrate.js || die "migrasi gagal; image baru JANGAN dideploy"
+if [ "$GATE_MODE" = "enforce" ]; then
+  log "2/6 gerbang go-live pra-migrasi (konfigurasi pengurus; skema belum diubah)"
+  set +e
+  run_in_image node dist/cli/golive-check.js --preflight
+  preflight_code=$?
+  set -e
+  case "$preflight_code" in
+    0) log "pra-migrasi LULUS" ;;
+    1) die "gerbang go-live pra-migrasi MENOLAK konfigurasi; migrasi TIDAK dijalankan dan image JANGAN dideploy (PRD 9.2, 9.3)" ;;
+    *)
+      log "PERINGATAN: pra-migrasi tidak dapat dijalankan (kode $preflight_code; mis. skema lama belum memuat kolom yang"
+      log "PERINGATAN: dibaca gerbang image baru). Gerbang penuh setelah migrasi tetap menentukan."
+      ;;
+  esac
+else
+  log "2/6 gerbang pra-migrasi dilewati (mode laporan)"
+fi
 
-log "3/3 roles.sql (grant objek skema terbaru)"
+log "3/6 migrasi skema sebagai kapdh_migrator (advisory lock)"
+run_in_image node node_modules/@kapdh/database/dist/bin/migrate.js || die "migrasi gagal; image baru JANGAN dideploy"
+
+log "4/6 roles.sql (grant objek skema terbaru)"
 apply_roles || die "roles.sql sesudah migrasi gagal"
+
+log "5/6 seed referensi (idempoten, tanpa fixture)"
+run_in_image node node_modules/@kapdh/database/dist/bin/seed-reference.js ||
+  die "seed referensi gagal; image baru JANGAN dideploy"
+
+log "6/6 gerbang go-live penuh (mode $GATE_MODE)"
+set +e
+run_in_image node dist/cli/golive-check.js --allow-schema-ahead
+gate_code=$?
+set -e
+case "$gate_code" in
+  0) log "gerbang LULUS" ;;
+  1)
+    if [ "$GATE_MODE" = "enforce" ]; then
+      die "gerbang go-live MENOLAK setelah migrasi; image JANGAN dideploy. Skema sudah naik: perbaiki maju, jangan rollback skema (PRD 8.4, 9.2, 9.3)"
+    fi
+    log "gerbang menolak, tetapi mode laporan: job dilanjutkan. Belum boleh go-live."
+    ;;
+  *) die "gerbang go-live tidak dapat dijalankan (kode $gate_code); image JANGAN dideploy" ;;
+esac
 
 log "selesai"
