@@ -20,6 +20,7 @@ import { ErrorState, ForbiddenState, Loading, NotFoundState } from "../../compon
 import { cn } from "../../lib/cn";
 import { formatDate, formatDateTime, formatRupiah } from "../../lib/format";
 import { PAYMENT_TYPE_LABEL } from "../../lib/labels";
+import { canRecordDuesFor, RECORD_PERMISSIONS } from "../payments/recordEligibility";
 import {
   ACCOUNT_STATUS_LABEL,
   classLabel,
@@ -280,7 +281,7 @@ function MemberDetailView() {
         <div className="flex min-w-0 flex-[2_1_320px] flex-col gap-5">
           {member.suspension ? <SuspensionCard suspension={member.suspension} /> : null}
           {member.linked_admin ? <LinkedAdminCard linked={member.linked_admin} self={selfLinked} /> : null}
-          <PaymentsCard payments={member.recent_payments} />
+          <PaymentsCard member={member} />
           <TicketsCard tickets={member.recent_tickets} />
           <ModerationCard moderation={member.moderation} />
         </div>
@@ -637,17 +638,46 @@ function PermissionNote({ children }: { children: ReactNode }) {
   );
 }
 
-function PaymentsCard({ payments }: { payments: S["AdminMemberPaymentSummary"][] | null }) {
+/**
+ * Pembayaran terbaru anggota. Setiap baris menaut ke payment itu di Verifikasi Pembayaran (`?payment=`), sehingga
+ * panel keputusan langsung membuka payment yang dimaksud apa pun statusnya (F-04, PRD 4.5); "Semua pembayaran"
+ * membuka daftar yang dibatasi ke anggota ini (`?user=`), termasuk payment di luar ringkasan terbaru. "Catat iuran"
+ * membuka pencatatan iuran di luar aplikasi (rencana cadangan D13, adminRecordPayment) dengan alumni ini sudah
+ * terpilih, hanya bila iurannya dapat dicatat sekarang.
+ */
+function PaymentsCard({ member }: { member: MemberDetail }) {
   const auth = useAuth();
+  const payments = member.recent_payments;
+  const canOpen = payments !== null && auth.can("payments.read");
+  const canRecord =
+    payments !== null &&
+    RECORD_PERMISSIONS.every((p) => auth.can(p)) &&
+    canRecordDuesFor(member, auth.profile?.admin_id);
   return (
     <Section
       title="Pembayaran terbaru"
       titleId="pembayaran-anggota"
       actions={
-        payments && auth.can("payments.read") ? (
-          <Link to="/payments" className={buttonClass({ variant: "ghost", size: "sm" })}>
-            Verifikasi Pembayaran
-          </Link>
+        canOpen ? (
+          <>
+            {canRecord ? (
+              <Link
+                to="/payments"
+                search={{ tab: "verify", record: member.user_id }}
+                className={buttonClass({ variant: "outline", size: "sm" })}
+              >
+                Catat iuran
+              </Link>
+            ) : null}
+            {/* Seluruh payment anggota ini (filter user_id adminListPayments, semua status), bukan antrean bawaan. */}
+            <Link
+              to="/payments"
+              search={{ tab: "verify", user: member.user_id }}
+              className={buttonClass({ variant: "ghost", size: "sm" })}
+            >
+              Semua pembayaran
+            </Link>
+          </>
         ) : null
       }
     >
@@ -659,25 +689,39 @@ function PaymentsCard({ payments }: { payments: S["AdminMemberPaymentSummary"][]
         <p className="text-sm text-text-muted">Belum ada pembayaran.</p>
       ) : (
         <ul aria-label="Pembayaran terbaru" className="flex flex-col divide-y divide-divider">
-          {payments.map((p) => (
-            <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-              <span className="flex min-w-0 flex-col">
-                <span className="font-medium">
-                  {PAYMENT_TYPE_LABEL[p.type]} {formatRupiah(p.amount)}
+          {payments.map((p) => {
+            const title = `${PAYMENT_TYPE_LABEL[p.type]} ${formatRupiah(p.amount)}`;
+            return (
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                <span className="flex min-w-0 flex-col">
+                  {canOpen ? (
+                    <Link
+                      to="/payments"
+                      search={{ tab: "verify", payment: p.id }}
+                      aria-label={`${title}, dibuat ${formatDateTime(p.created_at)}`}
+                      className="font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      {title}
+                    </Link>
+                  ) : (
+                    <span className="font-medium">{title}</span>
+                  )}
+                  <span className="text-xs text-text-muted">
+                    Dibuat {formatDateTime(p.created_at)}
+                    {p.decided_at ? ` | Diputus ${formatDateTime(p.decided_at)}` : ""}
+                  </span>
                 </span>
-                <span className="text-xs text-text-muted">
-                  Dibuat {formatDateTime(p.created_at)}
-                  {p.decided_at ? ` | Diputus ${formatDateTime(p.decided_at)}` : ""}
-                </span>
-              </span>
-              <PaymentStatusBadge status={p.status} />
-            </li>
-          ))}
+                <PaymentStatusBadge status={p.status} />
+              </li>
+            );
+          })}
         </ul>
       )}
       {payments !== null ? (
         <p className="text-xs text-text-muted">
-          Bukti transfer hanya dapat dibuka di menu Verifikasi Pembayaran.
+          {canOpen
+            ? "Pilih pembayaran untuk membuka bukti transfer dan histori di menu Verifikasi Pembayaran."
+            : "Bukti transfer hanya dapat dibuka di menu Verifikasi Pembayaran."}
         </p>
       ) : null}
     </Section>

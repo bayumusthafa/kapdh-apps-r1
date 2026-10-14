@@ -11,9 +11,10 @@ import { MOCK_EVENT_IDS, MOCK_TICKET_QR } from "./events";
 import type { S } from "./http";
 import { matchMockRoute, mockFetch, mockRouteTable } from "./index";
 import { MOCK_INVITE_TOKEN, MOCK_EXPIRED_INVITE_TOKEN } from "./invitations";
+import { MOCK_MEMBER } from "./members";
 import { MOCK_REPORT_IDS } from "./moderation";
 import { MOCK_DELIVERY_IDS, MOCK_OUTBOX_IDS } from "./notifications";
-import { MOCK_PROOF_FILE_ID } from "./payments";
+import { MOCK_PROOF_FILE_ID, mockPayments } from "./payments";
 
 /**
  * Kesesuaian server tiruan web admin dengan kontrak (audit D6, ARCHITECTURE §6, §7). Setiap rute tiruan dipanggil
@@ -179,8 +180,6 @@ const KNOWN_NONCONFORMING: Record<string, string> = {};
  * Halaman yang kelak memakai operasi ini wajib menambah tiruannya lebih dahulu (ARCHITECTURE §7).
  */
 const KNOWN_WITHOUT_MOCK: Record<string, string> = {
-  "POST /admin/payments":
-    "D6-01: adminRecordPayment (rencana cadangan D13) belum memiliki layar maupun tiruan di web admin",
   "GET /admin/content/event-categories/{categoryId}":
     "adminGetEventCategory tidak dipakai UI (lembar kategori event membaca daftar)",
 };
@@ -1537,6 +1536,116 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
       });
       expect([200, 403]).toContain(res.status);
     }
+  });
+
+  // Rencana cadangan D13 (adminRecordPayment): setiap cabang respons kontrak (201, 200, 400, 403, 409, 422).
+  const HASAN_RENEWAL = "0199e000-0000-7000-8000-0000000000a7";
+  const FIKRI_RENEWAL = "0199e000-0000-7000-8000-0000000000a3";
+  /** Pemilik payment iuran ditolak yang hanya dikenal tiruan pembayaran (Andi Saputra). */
+  const ANDI = "0199e000-0000-7000-8000-0000000002a5";
+  const INACTIVE_METHOD = "0199e000-0000-7000-8000-000000000003";
+  const uploadProof = async () =>
+    (
+      await call<S["FileRef"]>("POST", "/files", {
+        multipart: {
+          fields: { purpose: "payment_proof" },
+          file: { name: "mutasi.png", type: "image/png", bytes: pngBytes() },
+        },
+      })
+    ).body.id;
+  const record = (body: Record<string, unknown>, headers: Record<string, string> = idem()) =>
+    call<S["AdminPaymentDetail"] & S["Error"]>("POST", "/admin/payments", { headers, body });
+  const recordBody = async (userId: string, type: "registration" | "renewal") => ({
+    user_id: userId,
+    type,
+    // Rekening nonaktif tetap boleh dipilih sebagai rekening penerima (disnapshot).
+    payment_method_id: INACTIVE_METHOD,
+    proof_file_id: await uploadProof(),
+    transfer_note: "Mutasi 13 Okt",
+    funds_verified: true,
+    reason: "Dana cocok dengan mutasi rekening 13 Okt.",
+  });
+
+  route("POST /admin/payments", async () => {
+    expect((await record({})).status).toBe(400);
+    const unchecked = { ...(await recordBody(MOCK_MEMBER.hasan, "renewal")), funds_verified: false };
+    expect((await record(unchecked)).status).toBe(400);
+    // Instruksi tanpa bukti diselesaikan di tempat: 200, rekening diganti, bukti v1, paid.
+    const settled = await record(await recordBody(MOCK_MEMBER.hasan, "renewal"));
+    expect(settled.status).toBe(200);
+    expect(settled.body).toMatchObject({ id: HASAN_RENEWAL, status: "paid", proof_version: 1 });
+    expect(settled.body.events.map((e) => e.kind)).toEqual(
+      expect.arrayContaining(["method_changed", "proof_submitted", "approved"]),
+    );
+    // Bukti anggota menunggu verifikasi → 409 dengan `current`; setelah ditolak (needs_fix) → 200.
+    const pending = await record(await recordBody(MOCK_MEMBER.fikri, "renewal"));
+    expect(pending.status).toBe(409);
+    expect(pending.body).toMatchObject({ code: "PAYMENT_STATE_CONFLICT", current: { id: FIKRI_RENEWAL } });
+    mockPayments.decideAsOtherAdmin(FIKRI_RENEWAL, "reject");
+    const fixed = await record(await recordBody(MOCK_MEMBER.fikri, "renewal"));
+    expect(fixed.status).toBe(200);
+    expect(fixed.body.events.at(-2)?.kind).toBe("proof_replaced");
+    // Kelayakan, akun dan konflik kepentingan.
+    expect((await record(await recordBody(MOCK_MEMBER.ahmad, "registration"))).status).toBe(409);
+    expect((await record(await recordBody(MOCK_MEMBER.ahmad, "renewal"))).status).toBe(400);
+    expect((await record(await recordBody(MOCK_MEMBER.rizky, "renewal"))).status).toBe(400);
+    expect((await record(await recordBody(MOCK_MEMBER.fatimah, "registration"))).status).toBe(400);
+    expect((await record(await recordBody(MOCK_MEMBER.bayu, "renewal"))).status).toBe(403);
+    // Bukti bukan unggahan pemanggil (bukti anggota) → 422 FILE_INVALID.
+    const foreign = { ...(await recordBody(ANDI, "registration")), proof_file_id: MOCK_PROOF_FILE_ID };
+    expect((await record(foreign)).status).toBe(422);
+    expect((await record(await recordBody(ANDI, "registration"))).status).toBe(200);
+  });
+
+  it("POST /admin/payments: tanpa payment terbuka → payment baru 201 dari biaya aktif; Idempotency-Key diputar ulang", async () => {
+    mockPayments.cancelAsOtherAdmin(HASAN_RENEWAL);
+    const key = idem();
+    const body = await recordBody(MOCK_MEMBER.hasan, "renewal");
+    const created = await record(body, key);
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({
+      type: "renewal",
+      status: "paid",
+      amount: "10000.00",
+      settings_version: "1",
+      method_id: INACTIVE_METHOD,
+      method_active: false,
+      proof_version: 1,
+      transfer_note: "Mutasi 13 Okt",
+    });
+    expect(created.body.id).not.toBe(HASAN_RENEWAL);
+    expect(created.body.events.map((e) => [e.kind, e.actor])).toEqual([
+      ["created", "admin"],
+      ["proof_submitted", "admin"],
+      ["approved", "admin"],
+    ]);
+    const replay = await record(body, key);
+    expect([replay.status, replay.body.id]).toEqual([201, created.body.id]);
+    expect((await record({ ...body, reason: "Catatan lain" }, key)).body.code).toBe("IDEMPOTENCY_CONFLICT");
+    // Berkas bukti yang sudah terpakai tidak dapat dipakai lagi (422).
+    const reused = { ...(await recordBody(ANDI, "registration")), proof_file_id: body.proof_file_id };
+    expect((await record(reused)).status).toBe(422);
+    expect(current.get("POST /admin/payments") ?? []).toEqual([]);
+  });
+
+  it("POST /admin/payments: nominal iuran belum ditetapkan → payment baru 403 FORBIDDEN (gagal tertutup); tagihan terbuka tetap diselesaikan", async () => {
+    const renewals = async () =>
+      (await payments({ user_id: MOCK_MEMBER.hasan, type: "renewal" })).map((p) => p.id).sort();
+    mockPayments.unsetFees();
+    mockPayments.cancelAsOtherAdmin(HASAN_RENEWAL);
+    const before = await renewals();
+    const refused = await record(await recordBody(MOCK_MEMBER.hasan, "renewal"));
+    expect(refused.status).toBe(403);
+    expect(refused.body).toMatchObject({ code: "FORBIDDEN", message: /Nominal iuran belum ditetapkan/ });
+    expect(await renewals()).toEqual(before);
+    // Total 0.00 juga ditolak walaupun versi sudah tersimpan.
+    mockPayments.updateFeesAsOtherAdmin("50000.00", "10000.00", "0.00");
+    expect(mockPayments.fees().version).not.toBe("0");
+    expect((await record(await recordBody(MOCK_MEMBER.hasan, "renewal"))).status).toBe(403);
+    // Tagihan terbuka memakai snapshot-nya sendiri: tetap diselesaikan di tempat (200).
+    mockPayments.unsetFees();
+    expect((await record(await recordBody(ANDI, "registration"))).status).toBe(200);
+    expect(current.get("POST /admin/payments") ?? []).toEqual([]);
   });
 
   async function newAdjustment(kind: "refund" | "correction"): Promise<S["AdminPaymentAdjustment"]> {

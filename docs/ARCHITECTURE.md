@@ -47,8 +47,8 @@ Toolchain on the build machine (Windows 11, Git Bash):
 - No Docker, no Java, no Python, no local Redis. Real PostgreSQL 17.6 is available through the `embedded-postgres`
   npm package (used by the concurrency test lane, §9.2). Redis-dependent code must have an in-memory implementation.
 - Verification commands (run from `kapdh-platform/`): `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm test`,
-  `pnpm format:check`, `pnpm contracts:lint`, `pnpm test:pg` (real Postgres lane). Mobile (from `kapdh-mobile/`):
-  `flutter.bat analyze`, `flutter.bat test`.
+  `pnpm format:check`, `pnpm contracts:lint`, `pnpm test:pg` (real Postgres lane), `pnpm test:live` (admin client
+  against the merged API, §9.3). Mobile (from `kapdh-mobile/`): `flutter.bat analyze`, `flutter.bat test`.
 
 ## 2. Global rules (non-negotiable, from PRD 7.3 plus build decisions)
 
@@ -433,7 +433,10 @@ to run fixture data; dev seed (`seeds/dev.ts`) adds clearly marked synthetic fix
   confirmation dialogs for reject/suspend/cancel/delete/permission changes (PRD 4.5), reauth dialog for sensitive
   changes, keyboard + screen-reader operable (N-11).
 - Mock mode (`pnpm --filter @kapdh/admin dev:mock`, and tests) uses per-domain handlers in `src/api/mocks/<area>.ts`;
-  mock evidence never counts as AC proof.
+  mock evidence never counts as AC proof. Every mock route is exercised by `src/api/mocks/contract-conformance.test.ts`
+  and each response body is validated against the bundled contract (Ajv, same rules as `expectOperation`), with the
+  contract's `x-kapdh-access` permissions and reauth enforced; a page that starts using a new admin operation adds
+  its mock first (the test fails on an admin operation without a mock unless `KNOWN_WITHOUT_MOCK` lists it).
 
 ## 8. Flutter app (kapdh-mobile)
 
@@ -503,6 +506,15 @@ duplicate registration, idempotent replay under concurrency.
 
 Admin: vitest + Testing Library on mock mode per page; Flutter: unit tests for pure logic, widget tests for every
 screen state, interceptor/session tests with http_mock_adapter, 200% text scale on critical flows.
+
+Admin live lane (`pnpm test:live` from `kapdh-platform/`, or `pnpm build` then `pnpm --filter @kapdh/admin
+test:live`; not part of `pnpm test`): `apps/admin/live/api-server.mjs` boots `apps/api/dist` on a local TCP port with
+PGlite migrated by the production migrator, seed dev data, two TOTP-enrolled admins and a member proof, plus a
+127.0.0.1-only control port (server clock, TOTP codes). `apps/admin/src/live/*.live.test.tsx` drives the shipped React
+pages and openapi-fetch client over real HTTP (cookies, multipart uploads): login + TOTP and session restore, refresh
+rotation, the idle warning whose "Tetap masuk" extends the server idle, 30-min idle revocation, concurrent payment
+decision, D13 "Catat iuran" and payment deep links. Scenarios whose UI clause is only proven against mocks belong
+here once they touch a server rule.
 
 ## 10. Operations (summary; details in docs/runbooks)
 

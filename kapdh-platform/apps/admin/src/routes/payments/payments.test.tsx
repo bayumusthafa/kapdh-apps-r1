@@ -264,7 +264,8 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
     mockPayments.decideAsOtherAdmin(IDS.ahmad, "approve");
     await user.click(within(panel).getByRole("button", { name: "Setujui" }));
 
-    expect(await findToast("error", "Pembayaran sudah diputus admin lain")).toBeInTheDocument();
+    // Pesan server (sama dengan API nyata, diperiksa jalur test:live).
+    expect(await findToast("error", "Pembayaran ini sudah diputus atau dibatalkan.")).toBeInTheDocument();
     const refreshed = await screen.findByRole("article", { name: "Ahmad Islam" });
     await waitFor(() =>
       expect(within(refreshed).getByRole("status")).toHaveTextContent(
@@ -287,7 +288,7 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
     mockPayments.replaceProof(IDS.ahmad);
     await user.click(within(panel).getByRole("button", { name: "Setujui" }));
 
-    expect(await findToast("error", "Bukti sudah diganti")).toBeInTheDocument();
+    expect(await findToast("error", "Bukti transfer sudah diganti anggota")).toBeInTheDocument();
     const refreshed = await screen.findByRole("article", { name: "Ahmad Islam" });
     expect(await within(refreshed).findByText(/versi bukti 2/)).toBeInTheDocument();
     const checkbox = within(refreshed).getByRole("checkbox", { name: /dana Rp60\.000 sudah masuk/ });
@@ -309,7 +310,7 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
     mockPayments.touch(IDS.ahmad);
     await user.click(within(panel).getByRole("button", { name: "Setujui" }));
 
-    expect(await findToast("error", "Data pembayaran sudah berubah")).toBeInTheDocument();
+    expect(await findToast("error", "Data sudah diubah orang lain")).toBeInTheDocument();
     const refreshed = await screen.findByRole("article", { name: "Ahmad Islam" });
     await waitFor(() =>
       expect(within(refreshed).getByRole("status")).toHaveTextContent(
