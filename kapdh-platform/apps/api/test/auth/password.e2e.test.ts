@@ -182,7 +182,8 @@ describe("AC F02-4: pemulihan sandi dengan OTP", () => {
     const member = await createAlumni(t, { status: "verified" });
     const { grant } = await resetGrant(member);
     const [header, payload, signature] = grant.reset_token.split(".");
-    const tampered = `${header}.${payload}.${signature!.slice(0, -2)}xx`;
+    // Karakter pertama tanda tangan (6 bit bermakna); akhiran base64url memuat bit pengisi yang diabaikan.
+    const tampered = `${header}.${payload}.${signature!.startsWith("A") ? "B" : "A"}${signature!.slice(1)}`;
     expect(
       (await api.post("/auth/password/reset", { reset_token: tampered, new_password: NEW_PASSWORD }))
         .statusCode,
