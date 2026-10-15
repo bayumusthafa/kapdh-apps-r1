@@ -331,6 +331,19 @@ expect "--post-start: laporan bawaan ditulis di folder bukti (samping manifest),
   sh -c "test -n '$POST_REPORT' && test -s '$POST_REPORT' && grep -q '^PASS paid_total' '$EVID/verify-report.txt'"
 expect "--post-start: lease outbox INFO, ledger tetap memeriksa 2 akun dari salinan bukti" \
   sh -c "grep -q '^INFO outbox.lease' '$POST_REPORT' && grep -q '2 akun pada ledger' '$POST_REPORT' && ! grep -q '^FAIL' '$POST_REPORT'"
+# FILES_ROOT hanya di berkas konfigurasi (KAPDH_BACKUP_ENV, seperti restore.env drill) tanpa --files-root: verifikasi
+# wajib memakai nilai berkas itu, bukan bawaan /data/files (bawaan dulu diisi sebelum load_config).
+printf 'FILES_ROOT=%s\n' "$FILES_ROOT" >"$ROOT/verify-config.env"
+chmod 600 "$ROOT/verify-config.env"
+if env -u FILES_ROOT KAPDH_BACKUP_ENV="$ROOT/verify-config.env" FAKE_OUTBOX_LEASED=2 "$BACKUP_DIR/verify-restore.sh" \
+  --manifest "$EVID/manifest.json" --ledger-dir "$EVID/ledger" --post-start \
+  --report "$ROOT/verify-post-config.txt" >"$ROOT/verify-post-config.log" 2>&1; then
+  expect "FILES_ROOT dari berkas konfigurasi dipakai tanpa --files-root (berkas.ready PASS)" \
+    sh -c "grep -q '^PASS berkas.ready' '$ROOT/verify-post-config.txt' && ! grep -q '^FAIL' '$ROOT/verify-post-config.txt'"
+else
+  fail "verify-restore.sh dengan FILES_ROOT hanya di berkas konfigurasi keluar 0 (lihat $ROOT/verify-post-config.log)"
+  cat "$ROOT/verify-post-config.log"
+fi
 if FAKE_OUTBOX_LEASED=2 "$BACKUP_DIR/verify-restore.sh" --manifest "$EVID/manifest.json" --files-root "$FILES_ROOT" \
   --post-start --report "$ROOT/verify-post-noledger.txt" >"$ROOT/verify-post-noledger.log" 2>&1; then
   fail "--post-start tanpa --ledger-dir ditolak"

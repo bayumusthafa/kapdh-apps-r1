@@ -31,8 +31,10 @@ KAPDH_SCRIPT=kapdh-verify
 . "$KAPDH_BACKUP_DIR/lib.sh"
 
 MANIFEST=''
-DB=${RESTORE_DB:-kapdh}
-FILES=${FILES_ROOT:-/data/files}
+# DB/FILES bawaan diisi SESUDAH load_config: RESTORE_DB dan FILES_ROOT dapat datang dari berkas konfigurasi
+# (KAPDH_BACKUP_ENV), bukan hanya dari environment pemanggil. Argumen --db/--files-root tetap menang.
+DB=''
+FILES=''
 LEDGER_DIR=''
 REPORT=''
 SAMPLE=${VERIFY_SAMPLE:-50}
@@ -63,6 +65,8 @@ while [ $# -gt 0 ]; do
 done
 
 load_config
+DB=${DB:-${RESTORE_DB:-kapdh}}
+FILES=${FILES:-${FILES_ROOT:-/data/files}}
 [ -n "$MANIFEST" ] && [ -f "$MANIFEST" ] || die "--manifest wajib menunjuk manifest.json backup"
 case $DB in '' | *[!a-z0-9_]*) die "--db hanya huruf kecil, angka, garis bawah" ;; esac
 case $SAMPLE in '' | *[!0-9]*) die "--sample harus bilangan bulat" ;; esac
