@@ -465,6 +465,8 @@ Ikuti `docs/runbooks/app-store-submission.md` bagian 1-5. Ringkas:
 
 ## Langkah 7. Gladi di staging (PRD 8.2 langkah 7; U-12)
 
+Penyiapan staging pertama (VPS, Coolify, Tailscale, secrets GitHub): `docs/runbooks/staging-setup.md`.
+
 - [ ] Hapus lingkungan staging (database, volume berkas, Redis) secara terkendali; catat waktu mulai. Database dibuat
       ulang kosong (role tingkat cluster tetap ada; grant diterapkan ulang oleh `roles.sql` di langkah 2):
 

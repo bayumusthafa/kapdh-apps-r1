@@ -14,8 +14,11 @@ function response(status, body) {
 function fakeCoolify(statuses) {
   const calls = [];
   const fetchImpl = async (url, init) => {
-    calls.push({ url: String(url), auth: init?.headers?.Authorization });
+    calls.push({ url: String(url), auth: init?.headers?.Authorization, method: init?.method ?? "GET" });
     const u = new URL(String(url));
+    // Coolify >= 4.2.0: GET /api/v1/deploy dijawab 405, hanya POST yang memicu deploy.
+    if (u.pathname.endsWith("/deploy") && (init?.method ?? "GET") !== "POST")
+      return response(405, { message: "This endpoint has changed to a POST request." });
     if (u.pathname.endsWith("/deploy"))
       return response(200, {
         deployments: [
@@ -76,6 +79,11 @@ describe("deploy Coolify", () => {
     );
     assert.ok(calls.every((c) => c.auth === `Bearer ${TOKEN}`));
     assert.ok(calls.some((c) => c.url === "https://coolify.kapdh.or.id/api/v1/deployments/dep-api-0001"));
+    assert.deepEqual(
+      calls.filter((c) => new URL(c.url).pathname.endsWith("/deploy")).map((c) => c.method),
+      ["POST"],
+    );
+    assert.ok(calls.filter((c) => c.url.includes("/deployments/")).every((c) => c.method === "GET"));
     assert.ok(logs.every((l) => !l.includes(TOKEN)));
   });
 
