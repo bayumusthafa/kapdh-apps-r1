@@ -11,14 +11,19 @@ import {
   adminPermissions,
   appSettings,
   masterProfessions,
+  MIGRATIONS_FOLDER,
   pages,
   paymentMethods,
   posts,
+  runMigrations,
   users,
 } from "@kapdh/database";
 import { seedDev } from "@kapdh/database/seeds/dev";
 import { seedReference } from "@kapdh/database/seeds/reference";
 import { eq, sql } from "drizzle-orm";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { v7 as uuidv7 } from "uuid";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../../src/bootstrap.js";
@@ -31,9 +36,17 @@ import {
   type GoLiveAdmin,
   insertAuditedPaymentMethod,
   insertGateAdmin,
+  QRIS_TEST_SHA256,
+  seedQrisMethod,
 } from "../support/golive.js";
 import { FakePush, TestClock, testEnv } from "../support/test-app.js";
-import { connectAs, createPgTestDatabase, PG_CONSENT_VERSION, type PgTestDatabase } from "./support.js";
+import {
+  connectAs,
+  createEmptyPgDatabase,
+  createPgTestDatabase,
+  PG_CONSENT_VERSION,
+  type PgTestDatabase,
+} from "./support.js";
 
 interface GateDb {
   tdb: PgTestDatabase;
@@ -55,6 +68,22 @@ async function withDatabase(
   } finally {
     await tdb.drop();
   }
+}
+
+const journal = JSON.parse(readFileSync(join(MIGRATIONS_FOLDER, "meta", "_journal.json"), "utf8")) as {
+  entries: { tag: string }[];
+};
+
+/** Salinan folder migrasi yang journal-nya berhenti di `lastTag` (database rilis sebelumnya). */
+function migrationsUpTo(lastTag: string): { dir: string; count: number } {
+  const cut = journal.entries.findIndex((e) => e.tag === lastTag);
+  if (cut < 0) throw new Error(`Tag migrasi tidak ada di journal: ${lastTag}`);
+  const entries = journal.entries.slice(0, cut + 1);
+  const dir = mkdtempSync(join(tmpdir(), "kapdh-migrations-"));
+  mkdirSync(join(dir, "meta"));
+  for (const e of entries) copyFileSync(join(MIGRATIONS_FOLDER, `${e.tag}.sql`), join(dir, `${e.tag}.sql`));
+  writeFileSync(join(dir, "meta", "_journal.json"), JSON.stringify({ ...journal, entries }));
+  return { dir, count: entries.length };
 }
 
 function failed(report: GateReport): GateCheckId[] {
@@ -456,6 +485,93 @@ describe("PRD 9.2/9.3: gerbang go-live pada PostgreSQL 17 (satu kondisi per uji)
       expect(failed(report)).toEqual([]);
       expect(report.ok).toBe(true);
     });
+  });
+
+  it("ADR-026: metode QRIS bergambar lulus dengan sidik jari; gambar dibuang → ditolak; metode lama bernama QRIS → ditolak", async () => {
+    await withDatabase("qris", true, async ({ db, superAdmins }) => {
+      const { fileId } = await seedQrisMethod(db, superAdmins[0]!);
+      let report = await runGoLiveGate(db);
+      expect(failed(report)).toEqual([]);
+      expect(report.checks.find((c) => c.id === "payment_methods")?.details).toContain(
+        `QRIS (qris) ****0607 a.n. KAPDH Pusat; gambar 1024x1024 px, sha256 ${QRIS_TEST_SHA256.slice(0, 12)}…`,
+      );
+      await db.execute(sql`update app.files set status = 'deleted', deleted_at = now() where id = ${fileId}`);
+      report = await runGoLiveGate(db);
+      expect(problems(report, "payment_methods")).toEqual([
+        'Metode QRIS "QRIS" tidak memiliki gambar QR yang siap ditampilkan (berkas payment_qr publik berstatus ' +
+          "ready). Unggah ulang gambar QRIS lewat web admin.",
+      ]);
+      await db.execute(sql`update app.files set status = 'ready', deleted_at = null where id = ${fileId}`);
+      await insertAuditedPaymentMethod(db, superAdmins[0]!, { kind: "ewallet", provider: "QRIS Lama" });
+      report = await runGoLiveGate(db);
+      expect(problems(report, "payment_methods")).toEqual([
+        'Metode "QRIS Lama" bernama QRIS tetapi berjenis ewallet tanpa gambar QR. Nonaktifkan metode ini lalu buat ' +
+          "ulang sebagai metode QRIS dengan gambar QRIS statis resmi lewat web admin (ADR-026).",
+      ]);
+    });
+  });
+
+  it("ADR-026: gerbang pra-migrasi image baru berjalan di skema 0007 (tanpa enum qris/kolom gambar); metode lama bernama QRIS ditolak SEBELUM migrasi 0008", async () => {
+    const tdb = await createEmptyPgDatabase("golive_preflight_0007");
+    try {
+      const upTo0007 = migrationsUpTo("0007_auth_otp_decoys");
+      try {
+        await runMigrations({ url: tdb.url, migrationsFolder: upTo0007.dir });
+      } finally {
+        rmSync(upTo0007.dir, { recursive: true, force: true });
+      }
+      const db = tdb.db as unknown as Db;
+      await seedReference(tdb.db);
+      // Insert Drizzle payment_methods memuat kolom 0008, sehingga metode lama ditulis dengan SQL mentah.
+      const { superAdmins } = await approveProductionConfig(db, { paymentMethod: false });
+      const actor = superAdmins[0]!;
+      const insertLegacy = async (kind: string, provider: string, accountNumber: string) => {
+        const methodId = uuidv7();
+        await tdb.sql`
+          insert into app.payment_methods (id, kind, provider, account_number, account_holder, active, sort_order)
+          values (${methodId}, ${kind}::app.payment_method_kind, ${provider}, ${accountNumber}, 'KAPDH', true, 1)`;
+        await tdb.sql`
+          insert into app.audit_logs (id, actor_user_id, actor_admin_id, effective_role, action, entity_type, entity_id,
+                                      request_id)
+          values (${uuidv7()}, ${actor.userId}, ${actor.adminId}, 'super_admin', 'payment_method.created',
+                  'payment_method', ${methodId}, ${`uji-${uuidv7()}`})`;
+        return methodId;
+      };
+      const legacy = await insertLegacy("ewallet", "QRIS", "ID1020304050607");
+      await insertLegacy("bank", "Bank Syariah Indonesia", "7123456789");
+
+      let report = await runGoLiveGate(db, { phase: "preflight" });
+      expect(report.phase).toBe("preflight");
+      expect(failed(report)).toEqual(["payment_methods"]);
+      expect(problems(report, "payment_methods")[0]).toContain(
+        'Metode "QRIS" bernama QRIS tetapi berjenis ewallet',
+      );
+      const out: string[] = [];
+      const code = await runGoLiveCheckCommand(["--preflight"], {
+        db,
+        now: new Date(),
+        stdout: { write: (t: string) => out.push(t) },
+        stderr: { write: (t: string) => out.push(t) },
+      });
+      expect(code, out.join("")).toBe(GOLIVE_EXIT.refused);
+
+      // Langkah rollout 1: nonaktifkan metode lama lewat web admin, lalu pra-migrasi lulus dan migrasi 0008 berjalan.
+      await tdb.sql`update app.payment_methods set active = false where id = ${legacy}`;
+      report = await runGoLiveGate(db, { phase: "preflight" });
+      expect(report.ok).toBe(true);
+      expect((await runMigrations({ url: tdb.url })).applied).toBe(journal.entries.length - upTo0007.count);
+      report = await runGoLiveGate(db);
+      expect(failed(report)).toEqual([]);
+      // Bendahara membuat metode QRIS bergambar setelah migrasi: gerbang penuh tetap lulus dengan sidik jari.
+      await seedQrisMethod(db, actor);
+      report = await runGoLiveGate(db);
+      expect(failed(report)).toEqual([]);
+      expect(report.checks.find((c) => c.id === "payment_methods")?.details.join(" | ")).toContain(
+        "gambar 1024x1024 px",
+      );
+    } finally {
+      await tdb.drop();
+    }
   });
 
   it("role production: kapdh_app dapat menjalankan gerbang (versi skema dicatat tidak terbaca); kapdh_worker → galat teknis 3", async () => {

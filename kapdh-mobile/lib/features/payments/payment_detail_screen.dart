@@ -16,6 +16,7 @@ import '../../core/session/session_controller.dart';
 import '../../core/ui/external_links.dart';
 import '../../core/ui/support_section.dart';
 import '../../design/design.dart';
+import '../home/shared/remote_image.dart';
 import 'payment_presentation.dart';
 import 'payment_updates.dart';
 import 'payments_repository.dart';
@@ -40,6 +41,10 @@ import 'widgets/proof_upload_section.dart';
 /// Kirim bukti memakai `expected_proof_version` dan Idempotency-Key tersimpan; bila jaringan putus, status payment
 /// diperiksa lebih dahulu sebelum mutasi diulang dan pengguna tidak diminta transfer ulang (PRD 4.3, 4.5;
 /// AC F03-4). Instruksi iuran yang disembunyikan untuk platform ini (D13) hanya menampilkan status dan kontak.
+///
+/// Metode QRIS (ADR-026): kartu tujuan menampilkan NMID dan merchant tanpa tombol salin, gambar QRIS statis
+/// (`method.qr_image_url`, berkas publik lewat cache disk gambar publik) dan pengingat memasukkan nominal persis.
+/// Gambar hanya tampil di tampilan instruksi, yang tidak pernah dibangun saat instruksi iuran disembunyikan (D13).
 class PaymentDetailScreen extends ConsumerStatefulWidget {
   const PaymentDetailScreen({super.key, required this.paymentId});
 
@@ -61,6 +66,9 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
   List<PaymentMethod>? _methods;
   String? _changingMethodId;
   bool _cancelling = false;
+
+  /// URL gambar QRIS yang sudah dimuat lebih dahulu (sekali per URL).
+  String? _precachedQris;
 
   // Bukti transfer.
   bool _editingProof = false;
@@ -168,6 +176,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
     if (changedWhileEditing) {
       _announce('Status pembayaran berubah menjadi ${paymentBadge(payment).label}. Periksa status terbaru.');
     }
+    _precacheQris(payment);
     // Iuran yang baru diputus atau dibatalkan: status keanggotaan dan penunjuk iuran di /me ikut diperbarui
     // (perutean PRD 2.2, kartu KTA AC F05-1).
     final me = ref.read(sessionProvider).me;
@@ -186,6 +195,35 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
     final view = View.maybeOf(context);
     if (view == null) return;
     unawaited(SemanticsService.sendAnnouncement(view, message, Directionality.of(context)));
+  }
+
+  /// Gambar QRIS metode [method] dari penyedia gambar PUBLIK (cache disk; berkas `payment_qr` bervisibilitas publik,
+  /// ADR-026). Null untuk jenis lain atau URL yang tidak boleh dimuat (hanya http/https).
+  ImageProvider<Object>? _qrisImageOf(PaymentMethod method) {
+    if (method.kind != PaymentMethodKind.qris) return null;
+    final uri = remoteImageUri(method.qrImageUrl);
+    return uri == null ? null : ref.read(remoteImageProviderFactoryProvider)(uri.toString());
+  }
+
+  /// Gambar QRIS pada instruksi yang menunggu transfer dimuat lebih dahulu agar langsung tampil dan tersimpan di
+  /// cache sebelum anggota berpindah ke aplikasi bank/e-wallet. Instruksi iuran yang disembunyikan untuk platform
+  /// ini tidak memuatnya (D13).
+  void _precacheQris(PaymentDetail payment) {
+    if (payment.instructionsHidden || payment.stage != PaymentStage.awaitingTransfer) return;
+    final image = _qrisImageOf(payment.method);
+    final url = payment.method.qrImageUrl;
+    if (image == null || url == _precachedQris) return;
+    _precachedQris = url;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Gambar yang gagal dimuat ditangani kartu QRIS (tempat kosong dengan muat ulang), tidak dilaporkan di sini.
+      if (mounted) unawaited(precacheImage(image, context, onError: (_, _) {}));
+    });
+  }
+
+  void _openQris(PaymentMethod method) {
+    final image = _qrisImageOf(method);
+    if (image == null) return;
+    unawaited(QrisImageViewer.show(context, image: image, merchantName: method.accountHolder));
   }
 
   Future<void> _present(ApiException error, {VoidCallback? onRetry}) =>
@@ -569,7 +607,8 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
   }
 
   /// Pilihan rekening tujuan (prototipe layar 3 "Rekening tujuan"): rekening snapshot terpilih dengan tombol Salin;
-  /// rekening aktif lain dapat dipilih sebelum bukti pertama (PUT method, PRD 4.3).
+  /// rekening aktif lain dapat dipilih sebelum bukti pertama (PUT method, PRD 4.3). QRIS terpilih (ADR-026): NMID
+  /// dan merchant tanpa Salin, gambar QRIS, dan pengingat nominal karena QRIS statis tidak memuat nominal.
   List<Widget> _methodChoices(PaymentDetail payment) {
     final selected = payment.method;
     final others = [
@@ -578,6 +617,9 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
     ];
     final canChange = payment.actions.canChangeMethod && !_busy;
     final instructions = selected.instructions?.trim();
+    final qris = selected.kind == PaymentMethodKind.qris;
+    final labels = methodFieldLabels(selected.kind);
+    final qrisImage = _qrisImageOf(selected);
     return [
       const PaymentSectionTitle('Rekening tujuan'),
       const SizedBox(height: KapdhSpace.s2),
@@ -595,8 +637,30 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
         onSelected: null,
         accountNumber: selected.accountNumber,
         accountHolder: selected.accountHolder,
-        onCopy: () => unawaited(_copyAccount(selected)),
+        accountNumberLabel: qris ? labels.number : null,
+        accountHolderLabel: qris ? labels.holder : null,
+        // NMID bukan nomor tujuan transfer: tidak ada yang perlu disalin untuk QRIS.
+        onCopy: qris ? null : () => unawaited(_copyAccount(selected)),
       ),
+      if (qris) ...[
+        const SizedBox(height: KapdhSpace.s3),
+        if (qrisImage != null)
+          QrisImageCard(image: qrisImage, merchantName: selected.accountHolder)
+        else
+          const InfoBox(
+            key: ValueKey('qris-missing'),
+            tone: InfoBoxTone.warning,
+            message: 'Gambar QRIS belum tersedia. Pilih rekening lain atau hubungi pengurus.',
+          ),
+        const SizedBox(height: KapdhSpace.s2),
+        InfoBox(
+          key: const ValueKey('qris-amount'),
+          icon: Icons.payments_outlined,
+          message:
+              'QRIS ini tanpa nominal. Masukkan nominal ${formatRupiah(payment.amount)} persis saat membayar agar '
+              'pengurus dapat mencocokkannya.',
+        ),
+      ],
       if (instructions != null && instructions.isNotEmpty) ...[
         const SizedBox(height: KapdhSpace.s2),
         InfoBox(message: instructions),
@@ -607,21 +671,49 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
           key: ValueKey('method-${method.id}'),
           title: method.provider,
           selected: false,
-          hint: _changingMethodId == method.id ? 'Mengganti rekening tujuan...' : 'Ketuk untuk melihat nomor tujuan',
+          hint: _changingMethodId == method.id
+              ? 'Mengganti rekening tujuan...'
+              : (method.kind == PaymentMethodKind.qris
+                    ? 'Ketuk untuk menampilkan kode QRIS'
+                    : 'Ketuk untuk melihat nomor tujuan'),
           onSelected: canChange ? () => unawaited(_changeMethod(method)) : null,
         ),
       ],
     ];
   }
 
-  Widget _methodReadOnly(PaymentDetail payment) => SummaryCard(
-    title: 'Rekening tujuan',
-    rows: [
-      SummaryRow('Bank', payment.method.provider),
-      SummaryRow('Nomor', payment.method.accountNumber),
-      SummaryRow('Atas nama', payment.method.accountHolder),
-    ],
-  );
+  /// Tujuan bayar saat mengganti atau mengunggah ulang bukti (tidak dapat diganti lagi, PRD 4.3) dengan label sesuai
+  /// jenis; QRIS dapat dibuka lagi lewat "Lihat QRIS" (ADR-026).
+  Widget _methodReadOnly(PaymentDetail payment) {
+    final method = payment.method;
+    final labels = methodFieldLabels(method.kind);
+    final qris = method.kind == PaymentMethodKind.qris;
+    final card = SummaryCard(
+      title: qris ? 'Tujuan pembayaran' : 'Rekening tujuan',
+      rows: [
+        SummaryRow(labels.provider, method.provider),
+        SummaryRow(labels.number, method.accountNumber),
+        SummaryRow(labels.holder, method.accountHolder),
+      ],
+    );
+    // Gambar baru dibuat (dan dimuat) saat anggota membukanya.
+    if (!qris || remoteImageUri(method.qrImageUrl) == null) return card;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        card,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: KapdhLinkButton(
+            key: const ValueKey('qris-view'),
+            label: 'Lihat QRIS',
+            icon: Icons.qr_code_2,
+            onPressed: () => _openQris(method),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _greetingScaffold({required Widget body, required Widget bottomBar}) {
     final name = ref.watch(sessionProvider.select((s) => s.me?.profile.fullName)) ?? '';

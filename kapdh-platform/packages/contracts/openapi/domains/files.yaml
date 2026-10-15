@@ -40,8 +40,9 @@ paths:
 
         Gambar publik konten TIDAK diunggah lewat endpoint ini (purpose lain → 400 pada `purpose`): `post_cover` dan
         `banner_image` lewat POST /admin/content/media (`content.manage`), `event_cover` lewat
-        POST /admin/event-covers (`events.manage`), sehingga izin area itu yang diperiksa; pemeriksaan isi, kuota dan
-        pembersihan berkas sama.
+        POST /admin/event-covers (`events.manage`), dan gambar QRIS `payment_qr` lewat POST /admin/payment-qr-images
+        (`settings.manage`, ADR-026), sehingga izin area itu yang diperiksa; pemeriksaan isi, kuota dan pembersihan
+        berkas sama.
 
         Berkas baru belum terkait objek; endpoint domain melampirkannya lewat `file_id`. Berkas yang tidak dilampirkan
         dalam 24 jam dihapus job `files.cleanup-temp` (PRD 2.5).
@@ -204,24 +205,27 @@ components:
           payment_proof,
           adjustment_evidence,
           audit_export,
+          payment_qr,
         ]
       description: |
         Purpose berkas (sama dengan files.purpose). `audit_export` hanya dibangkitkan sistem (ekspor audit, AC F17-4)
-        dan tidak dapat diunggah.
+        dan tidak dapat diunggah. `payment_qr` (ADR-026) adalah gambar QRIS statis organisasi untuk metode bayar
+        qris, publik, dan hanya diunggah lewat POST /admin/payment-qr-images (settings.manage).
 
     FileUploadPurpose:
       type: string
       enum: [avatar, chat_image, payment_proof, adjustment_evidence]
       description: |
         Purpose yang dapat diunggah lewat POST /files; hak unggah per purpose dijelaskan di operasi. Cover berita,
-        banner dan cover event diunggah lewat endpoint domainnya (POST /admin/content/media, POST /admin/event-covers).
+        banner, cover event dan gambar QRIS diunggah lewat endpoint domainnya (POST /admin/content/media,
+        POST /admin/event-covers, POST /admin/payment-qr-images).
 
     FileVisibility:
       type: string
       enum: [public, private]
       description: |
-        Publik untuk post_cover, banner_image, event_cover, dan avatar yang dijadikan publik sesuai pengaturan
-        privasi pemiliknya; lainnya selalu privat (PRD 5.4).
+        Publik untuk post_cover, banner_image, event_cover, payment_qr (gambar QRIS organisasi, ADR-026), dan avatar
+        yang dijadikan publik sesuai pengaturan privasi pemiliknya; lainnya selalu privat (PRD 5.4).
 
     FileUploadRequest:
       type: object

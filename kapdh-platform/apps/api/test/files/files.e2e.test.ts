@@ -247,12 +247,16 @@ describe("POST /files (PRD 2.5, N-10)", () => {
 
     const treasurer = await admin(["payments.read", "payments.decide"]);
 
-    // Gambar publik konten bukan purpose unggahan umum (kontrak C4/C5: endpoint domain) → 400 untuk siapa pun.
+    // Gambar publik konten bukan purpose unggahan umum (kontrak C4/C5: endpoint domain) → 400 untuk siapa pun,
+    // termasuk gambar QRIS metode bayar (ADR-026: POST /admin/payment-qr-images, settings.manage).
+    const settings = await admin(["settings.manage"]);
     for (const [who, purpose] of [
       [verified, "post_cover"],
       [content, "post_cover"],
       [content, "banner_image"],
       [await admin(["events.manage"]), "event_cover"],
+      [settings, "payment_qr"],
+      [verified, "payment_qr"],
     ] as const) {
       const res = await postFile(t.app, who.token, purpose);
       expect(res.statusCode, purpose).toBe(400);
@@ -291,6 +295,27 @@ describe("POST /files (PRD 2.5, N-10)", () => {
     const cover = await uploadDomainFile(t, content, "post_cover");
     expect(cover.visibility).toBe("public");
     await expect(uploadDomainFile(t, finance, "post_cover")).rejects.toMatchObject({ status: 403 });
+    // payment_qr (ADR-026): settings.manage, publik, hanya PNG/JPG minimal 512 piksel.
+    const qr = await uploadDomainFile(t, settings, "payment_qr", {
+      data: await testPng(512, 512),
+      filename: "qris.png",
+      contentType: "image/png",
+    });
+    expect(qr).toMatchObject({ purpose: "payment_qr", visibility: "public", width: 512, height: 512 });
+    await expect(
+      uploadDomainFile(t, finance, "payment_qr", {
+        data: await testPng(512, 512),
+        filename: "qris.png",
+        contentType: "image/png",
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(
+      uploadDomainFile(t, settings, "payment_qr", {
+        data: await testPng(511, 800),
+        filename: "qris.png",
+        contentType: "image/png",
+      }),
+    ).rejects.toMatchObject({ status: 422 });
   });
 
   it("kontrak FileUploadPurpose = purpose unggahan umum server (GENERAL_UPLOAD_PURPOSES)", () => {

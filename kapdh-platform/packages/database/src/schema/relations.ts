@@ -114,8 +114,9 @@ export const membershipEventsRelations = relations(membershipEvents, ({ one }) =
 }));
 
 // ------------------------------------------------------------------ Keuangan dan konfigurasi
-export const paymentMethodsRelations = relations(paymentMethods, ({ many }) => ({
+export const paymentMethodsRelations = relations(paymentMethods, ({ one, many }) => ({
   payments: many(payments),
+  qrImageFile: one(files, { fields: [paymentMethods.qrImageFileId], references: [files.id] }),
 }));
 
 export const paymentsRelations = relations(payments, ({ one, many }) => ({

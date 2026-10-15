@@ -57,6 +57,13 @@
       "when": 1791858084534,
       "tag": "0007_auth_otp_decoys",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792062113847,
+      "tag": "0008_qris_payment_method",
+      "breakpoints": true
     }
   ]
 }

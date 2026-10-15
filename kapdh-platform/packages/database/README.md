@@ -77,6 +77,13 @@ Modul skema baru wajib didaftarkan di `src/client.ts` (objek `schema`) dan `src/
     dijaga layanan (POST /appeals), belum oleh CHECK.
 - app_settings `payment_instructions` = `{dues_hidden_platforms: ("android"|"ios")[]}` (D13, rencana cadangan iOS);
   skema zod dan nilai bawaan ada di `apps/api/src/core/settings/keys.ts`.
+- `payment_methods` jenis `qris` (migrasi 0008, ADR-026): `account_number` = NMID, `account_holder` = nama merchant,
+  `qr_image_file_id` = berkas `payment_qr` publik yang dilampirkan (`FilesService.attach`) di transaksi yang sama
+  dengan INSERT/UPDATE metode. Gambar wajib untuk qris dan harus null untuk jenis lain (`payment_methods_qr_image_chk`).
+  Gambar yang diganti/dihapus di-`discard` layanan; baris berkas yang masih dirujuk tidak dapat dihapus (FK RESTRICT).
+  Gambar termasuk identitas metode: setelah metode dirujuk payment (`in_use`) gambar tidak dapat diganti, dan snapshot
+  `payments.method_snapshot` menyimpan `qr_image_file_id`. Kode yang harus berjalan pada skema sebelum 0008 (gerbang
+  go-live fase pra-migrasi) tidak boleh memakai literal enum `'qris'` maupun kolom `qr_image_file_id`.
 
 ## Migrasi
 
@@ -117,9 +124,11 @@ Migrasi kustom yang ada:
 
 Migrasi aditif hasil `drizzle-kit generate` setelah fondasi:
 
-| Migrasi                     | Isi                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `0006_final_contract_delta` | Delta kontrak final C3/C6: `payment_adjustments.cancel_reason`, `cancelled_by_admin_id` (FK admins SET NULL, indeks parsial) dan `payment_adjustments_cancelled_chk` yang mewajibkan alasan tidak kosong; enum `app.report_category` + `appeal`; `reports.claimed_by_admin_id` (FK admins SET NULL, indeks parsial), `claimed_at`, `member_message` (`reports_member_message_chk` <= 500), `message_removed_at`, `reports_claimed_chk`, dan `due_at` NOT NULL. |
+| Migrasi                     | Isi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0006_final_contract_delta` | Delta kontrak final C3/C6: `payment_adjustments.cancel_reason`, `cancelled_by_admin_id` (FK admins SET NULL, indeks parsial) dan `payment_adjustments_cancelled_chk` yang mewajibkan alasan tidak kosong; enum `app.report_category` + `appeal`; `reports.claimed_by_admin_id` (FK admins SET NULL, indeks parsial), `claimed_at`, `member_message` (`reports_member_message_chk` <= 500), `message_removed_at`, `reports_claimed_chk`, dan `due_at` NOT NULL.                                  |
+| `0007_auth_otp_decoys`      | Tabel `otp_decoys` (challenge pengganti non-enumerasi untuk `password_reset`/`deletion`): satu challenge aktif per email_key/purpose (`otp_decoys_active_key`), percobaan 0-5, email_key HMAC 64 karakter.                                                                                                                                                                                                                                                                                      |
+| `0008_qris_payment_method`  | Metode bayar QRIS (ADR-026): enum `app.payment_method_kind` + `qris`; `payment_methods.qr_image_file_id` (FK files RESTRICT, indeks parsial `payment_methods_qr_image_file_id_idx`); `payment_methods_qr_image_chk` = gambar wajib untuk qris dan dilarang untuk jenis lain, ditulis `kind::text = 'qris'` agar nilai enum baru tidak dipakai sebagai literal di job migrasi yang sama; purpose berkas `payment_qr` di `files_purpose_chk` dan daftar boleh-publik `files_private_purpose_chk`. |
 
 ### Job migrasi deployment (PRD 5.5)
 
@@ -195,8 +204,8 @@ NODE_ENV=development DATABASE_URL=... pnpm --filter @kapdh/database seed:dev    
 ## Pengujian
 
 - `pnpm --filter @kapdh/database test`: PGlite, migrasi journal yang sama, trigger, constraint, seed, dan jalur
-  upgrade (database sampai 0005 di-commit lalu 0006 diterapkan terpisah). Jalur upgrade yang sama diuji di
-  PostgreSQL 17 pada `apps/api/test/pg/migrate-and-seed.pg.test.ts`.
+  upgrade (database sampai 0005 di-commit lalu sisa journal diterapkan dalam satu job; database sampai 0007 lalu
+  0008 terpisah). Jalur upgrade yang sama diuji di PostgreSQL 17 pada `apps/api/test/pg/migrate-and-seed.pg.test.ts`.
 - `pnpm --filter @kapdh/api test`: harness `test/support/test-app.ts` memigrasi sekali per run ke template PGlite
   (globalSetup) lalu setiap `createTestApp()` memuat dump template.
 - `pnpm test:pg` (root) atau `pnpm --filter @kapdh/api test:pg`: PostgreSQL 17.6 nyata lewat `embedded-postgres`,

@@ -4,6 +4,8 @@ Rujukan: PRD 9.1 (kelompok UAT), 9.2 (skenario kritis), 9.3 (gerbang), 3 (AC), 2
 Bukti otomatis per AC/N/U: [`docs/qa/traceability.md`](traceability.md) (audit Fase D). Daftar ini adalah bukti
 **manual** di staging yang menyerupai target (PRD 9.3); bukti mode mock atau tangkapan layar saja tidak dihitung lulus
 untuk AC (PRD 7.3). Smoke test production (`docs/runbooks/go-live.md` 3.1) memakai sebagian langkah di sini.
+Skenario metode bayar QRIS (ADR-026) ada di 2.17-2.21, 5.13, 10.11-10.16, 12.10 dan 13.10-13.11. Gladi peluncurannya
+ada di `docs/runbooks/rilis-dan-gerbang-go-live.md` bagian 5.4.
 
 ## Cara memakai
 
@@ -44,6 +46,7 @@ secara sengaja.
 | AG-X | Anggota expired | Lampiran A |
 | SA, SA2 | Super Admin | Bootstrap CLI + undangan (`production-init.md` langkah 3) |
 | AP, AP2 | Admin pembayaran (`payments.read`, `payments.decide`) | Undangan SA; AP2 ditautkan ke akun alumni AG-B (konflik kepentingan) |
+| BD | Bendahara: nominal dan metode bayar (`settings.manage`) | Undangan SA; di staging boleh diperankan SA |
 | AK | Admin konten (`content.manage`) | Undangan SA |
 | AE | Admin event (`events.manage`, `events.checkin`) | Undangan SA |
 | CI | Petugas check-in (`events.checkin` saja) | Undangan SA |
@@ -122,6 +125,11 @@ Bukti: approve/reject/resubmit; bukti versi sebelumnya; double approval; periode
 | 2.14 | MD, AP | MD: Manajemen Users → Data Alumni → detail AG-A → "Batasi akun" (butuh `members.read` + `moderation.read` + `moderation.resolve`); AG-A punya renewal pending; AP menyetujui | Periode boleh diperbarui, status tetap suspended (AC F07-4, PRD 2.2) | | | |
 | 2.15 | AP | Notifikasi push/email dimatikan atau provider gagal (staging: SMTP salah sementara) lalu putuskan | Keputusan tetap tersimpan, inbox tersedia, worker mengulang tanpa perpanjangan ganda (AC F04-5) | | | |
 | 2.16 | AP | Payment paid → Penyesuaian → buat koreksi | Paid tidak berubah; penyesuaian tercatat terpisah dengan audit (PRD 3.4, ARCHITECTURE §2 butir 13) | | | |
+| 2.17 | BD/SA, AG-U | Prasyarat: metode QRIS aktif (10.11, 10.12). AG-U: Biaya KTA → pilih tujuan "QRIS" → buat instruksi | Kartu tujuan berlabel QRIS menampilkan nama merchant dan NMID tanpa tombol "Salin"; gambar QR tampil tajam (tidak buram) di kartu berlatar putih; kotak info meminta nominal diketik persis; nominal tetap dari server (AC F03-1, ADR-026) | | | |
+| 2.18 | AG-U | Ketuk gambar atau "Perbesar QRIS". Pindai dari ponsel kedua dengan aplikasi bank/e-wallet. Lalu dari ponsel yang sama: tangkapan layar → menu unggah QR dari galeri di aplikasi bank/e-wallet | Tampilan layar penuh berlatar putih, dapat diperbesar, dengan tombol "Tutup" dan petunjuk memindai; aplikasi bank menampilkan nama merchant dan NMID yang sama dengan yang ditandatangani BD dan meminta nominal diketik; catat aplikasi yang tidak mendukung unggah dari galeri (risiko 2 ADR-026) | | | |
+| 2.19 | AG-U | Dengan instruksi QRIS terbuka: matikan jaringan atau buat URL gambar gagal dimuat, buka instruksi, lalu nyalakan lagi dan ketuk muat ulang | Tempat kosong "Gambar QRIS belum dapat dimuat" dengan tombol muat ulang; NMID dan nama merchant tetap terbaca; gambar tampil setelah dimuat ulang | | | |
+| 2.20 | SA, AG-U | Pengaturan → sembunyikan instruksi iuran untuk platform perangkat AG-U (D13); AG-U membuka instruksi QRIS; kembalikan pengaturan | Instruksi, termasuk gambar QR, tidak tampil; yang tampil kontak pengurus. Setelah pengaturan dikembalikan, QR tampil lagi (D13, ADR-015, ADR-026) | | | |
+| 2.21 | AG-U, AP | Bayar nominal persis lewat QRIS, unggah bukti; AP membuka payment lalu menyetujui | Alur bukti dan keputusan sama dengan transfer (F-03, F-04); detail payment di web admin menampilkan snapshot QRIS (NMID, merchant, gambar) (AC F15-3, ADR-026) | | | |
 
 ## U-03 Kartu (F-05, F-06)
 
@@ -174,6 +182,7 @@ Bukti: race kuota, satu tiket per anggota/event, hold expiry, review, gratis, QR
 | 5.10 | AE | Batalkan event berbayar bertiket | QR tidak berlaku, notifikasi peserta, penyesuaian refund penuh tercatat untuk BD (7 hari kerja) (AC F09-7, D6) | | | |
 | 5.11 | AG-A | Batalkan tiket sendiri > H-3 dan <= H-3 | > H-3 refund penuh; <= H-3 tanpa refund (D6) | | | |
 | 5.12 | AG-X | Tiket paid sebelum expired | Tetap dapat dilihat dan dipakai check-in; tidak membuka chat/direktori (PRD 2.2) | | | |
+| 5.13 | AG-A | Reservasi event berbayar dengan tujuan QRIS; buka detail tiket lalu instruksi pembayarannya; ulangi saat instruksi iuran disembunyikan untuk platform AG-A (D13) | Pilihan tujuan dan ringkasan tiket berlabel "QRIS"; instruksi pembayaran tiket menampilkan gambar QR; tiket tidak pernah disembunyikan D13 (ADR-026) | | | |
 
 ## U-06 Jejaring (F-10, F-12)
 
@@ -260,6 +269,12 @@ Bukti: setiap izin positif/negatif, version conflict, conflict of interest, eksp
 | 10.8 | SA | Setiap tindakan kritis U-02..U-09 | Satu entri audit berkorelasi `request_id` per perubahan (AC F17-1) | | | |
 | 10.9 | AP2 | Putuskan payment akun alumni tertaut | Ditolak (PRD 2.3) | | | |
 | 10.10 | SA | Tindakan kredensial (ADR-025): detail admin berstatus `invited` → "Kirim ulang undangan" lalu "Koreksi email login"; detail admin uji CI → "Pulihkan akun" (CI lalu menyelesaikan undangan ulang + TOTP); Akun → "Buat ulang backup code"; detail anggota AG-B → reset sandi. Pada dialog "Konfirmasi identitas" pertama, batalkan sekali lalu ulangi dengan sandi + kode TOTP | Kelima tindakan meminta sandi + kode TOTP sebelum dikirim; batal tidak mengubah apa pun; setelah konfirmasi tindakan berhasil dan tercatat di audit (ADR-025, AC F16-4) | | | |
+| 10.11 | BD/SA | Verifikasi Pembayaran → Kelola Metode → Tambah metode → jenis QRIS. Coba simpan tanpa gambar, lalu unggah gambar QRIS statis resmi staging (PNG/JPG, sisi terpendek >= 512 px) dan simpan dengan "Tampilkan ke alumni" mati; setelah 10.12 aktifkan | Label "Nama metode" (terisi "QRIS"), "NMID" dan "Nama merchant"; tanpa gambar ditolak "Gambar QRIS wajib diunggah."; tombol simpan nonaktif selama mengunggah; pratinjau gambar tampil; tersimpan tanpa dialog "Konfirmasi identitas" (ADR-025); tabel berlabel QRIS dengan NMID; audit `payment_method.created` memuat `qr_image_file_id` dan `qr_image_sha256` (ADR-026, AC F17-1) | | | |
+| 10.12 | BD | Pindai pratinjau gambar QRIS dengan minimal dua aplikasi bank/e-wallet berbeda; unduh gambar dari URL pratinjau lalu hitung `sha256sum` | Nama merchant dan NMID sama dengan isian; nominal tidak terisi otomatis (QRIS statis); 12 karakter awal sha256 sama dengan audit dan laporan gerbang (12.10). Server tidak memeriksa isi QR, jadi butir ini wajib sebelum metode diaktifkan (risiko 5 ADR-026) | | | |
+| 10.13 | BD/SA | Unggah sebagai gambar QRIS: WebP, SVG, PDF, PNG 300 x 300 px, gambar > 5 MB, berkas `.png` berisi teks; lalu foto JPG 4000 px ber-EXIF lokasi | Yang tidak sah ditolak dengan pesan jelas (pemeriksaan klien, atau `FILE_INVALID` server: 415 "Gunakan gambar PNG atau JPG.", 422 "Gambar QRIS terlalu kecil (minimal 512 piksel) sehingga sulit dipindai.", 413); foto besar diterima, diperkecil ke sisi terpanjang 2048 px, tanpa EXIF (N-10, ADR-026) | | | |
+| 10.14 | BD/SA | Metode QRIS yang belum dipakai pembayaran: ganti gambar; ubah jenis menjadi Bank; hapus metode QRIS lain yang belum dipakai | Gambar baru tampil; URL gambar lama menjawab 404 (salinan cache dapat bertahan paling lama 24 jam); audit before/after mencatat sha256 lama dan baru; ganti ke Bank menghapus gambar; hapus metode ikut membuang gambarnya (ADR-026) | | | |
+| 10.15 | BD/SA | Metode QRIS yang sudah dipakai payment (2.21): coba ganti atau hapus gambar dan ubah NMID; lalu nonaktifkan; lalu coba hapus metode | "Ganti gambar"/"Hapus gambar" nonaktif; perubahan identitas ditolak "Metode ini sudah dipakai pembayaran sehingga rekeningnya tidak dapat diubah. Nonaktifkan lalu buat metode baru."; nonaktifkan berhasil; hapus ditolak; snapshot payment 2.21 tetap memakai gambar yang sama (AC F15-3, ADR-026) | | | |
+| 10.16 | AP, AG-A, SA | Panggil `POST /admin/payment-qr-images` dengan sesi AP (tanpa `settings.manage`) dan sesi anggota AG-A; sebagai SA panggil `POST /files` dengan `purpose=payment_qr` | AP dan sesi anggota ditolak 403; `POST /files` menolak 400 pada `purpose`; tidak ada berkas tersimpan (ADR-026) | | | |
 
 ## U-11 Operasi (N-01..N-06; N-14)
 
@@ -293,6 +308,7 @@ akun reviewer toko, restore dari backup pertama.
 | 12.7 | PP | Akun demo reviewer (`app-store-submission.md` bagian 3) | Akun aktif dan belum bayar dapat login di build rilis | | | |
 | 12.8 | PI | Backup pertama → restore bersih mengikuti `restore-backup.md` | Readiness 200 dengan `"deletion_ledger": "ok"`, login admin + MFA berhasil | | | |
 | 12.9 | QA | PRD 9.2 skenario 9: ubah data staging agar satu butir gerbang gagal (mis. metode bayar contoh) | Gerbang `go-live.md` 2.3 menunjukkan butir gagal dan go-live ditolak | | | |
+| 12.10 | PI, BD | Gladi `rilis-dan-gerbang-go-live.md` bagian 5.4 di staging. Sebelum job rilis yang memuat migrasi 0008: buat metode aktif bernama "QRIS" berjenis bank tanpa gambar, lalu jalankan job dengan `RELEASE_GATE=enforce`. Ikuti langkah 1-4 bagian 5.4, lalu jalankan `golive:check` lagi | Run pertama: laporan gerbang pra-migrasi menandai `payment_methods` dengan pesan metode bernama QRIS tanpa gambar, dan job berhenti sebelum migrasi (skema tetap 0007). Setelah langkah 1-4: butir itu tidak lagi menolak metode tersebut, dan untuk metode QRIS aktif laporan mencetak `gambar <lebar>x<tinggi> px, sha256 <12 karakter>…` yang ditandatangani BD (ADR-026) | | | |
 
 ## U-13 Klien (N-03, N-11, N-12, N-13)
 
@@ -309,6 +325,8 @@ Bukti: perangkat/browser sasaran, keyboard/semantics/text scaling, kontrak, deep
 | 13.7 | SA | Pengaturan → versi minimum di atas versi terpasang | Aplikasi menampilkan wajib update dengan tautan toko; mutasi dari versi lama ditolak `UPGRADE_REQUIRED` | | | |
 | 13.8 | SA | Pengaturan → Maintenance aktif dengan pesan dan perkiraan | Aplikasi: mode baca + layar maintenance untuk alur mutasi; situs publik menampilkan banner; admin tetap berfungsi | | | |
 | 13.9 | DEV | Bandingkan `dist/openapi.yaml` rilis dengan rilis sebelumnya; build aplikasi versi sebelumnya terhadap API baru | Tidak ada perubahan yang memutus klien yang didukung, atau tercatat di `CHANGELOG.md` dengan rencana (N-13; gerbang otomatis `pnpm contracts:breaking` di CI, ADR-024, aktif setelah tag `contracts-v*` pertama, D2-12) | | | |
+| 13.10 | QA | Build aplikasi sebelum dukungan QRIS terhadap API staging dengan metode QRIS aktif: daftar metode, instruksi iuran, reservasi tiket | Tidak crash; metode tampil sebagai transfer bank dengan NMID tanpa gambar (risiko 1 ADR-026). Hasil ini menjadi dasar menunda "Tampilkan ke alumni" di production sampai build yang mendukung QRIS tersebar | | | |
+| 13.11 | QA | Teks 200 % dan TalkBack/VoiceOver pada instruksi QRIS dan tampilan layar penuh; web admin hanya keyboard + pembaca layar pada formulir metode QRIS | Gambar berlabel "Kode QRIS <nama merchant>, ketuk untuk memperbesar"; "Perbesar QRIS" dan "Tutup" terbaca dengan target sentuh >= 48 dp; teks tidak terpotong; di web admin, kolom gambar QRIS (pilih, ganti, hapus) dapat dioperasikan dengan keyboard dan pratinjaunya memiliki teks alternatif (N-11, ADR-026) | | | |
 
 ## Lampiran A. Menyiapkan anggota expiring/expired di staging
 

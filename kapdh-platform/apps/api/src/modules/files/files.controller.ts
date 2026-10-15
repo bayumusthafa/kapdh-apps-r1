@@ -3,11 +3,11 @@ import { Controller, Get, Header, HttpCode, Param, Post, Req, Res, StreamableFil
 import { RouteConfig } from "@nestjs/platform-fastify";
 import type { components } from "@kapdh/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import type { Readable } from "node:stream";
-import { AppException, fieldError } from "../../core/errors/app-exception.js";
+import { fieldError } from "../../core/errors/app-exception.js";
 import type { FileRow } from "../../core/files/access-policy.js";
 import { FilesService, type UploadContent, type UploadTicket } from "../../core/files/files.service.js";
 import { CANONICAL_EXTENSION } from "../../core/files/inspect.js";
+import { multipartError, type MultipartMessages, readLimited } from "../../core/files/multipart-upload.js";
 import { GENERAL_UPLOAD_PURPOSES } from "../../core/files/purposes.js";
 import type { MultipartRouteConfig } from "../../core/http/fastify-hooks.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
@@ -20,64 +20,15 @@ type FileAccess = components["schemas"]["FileAccess"];
 /** Cache gambar publik: isi tidak pernah berubah untuk id yang sama (berkas baru = id baru). */
 const PUBLIC_MAX_AGE_SECONDS = 86_400;
 
-/** Galat dari parser multipart/busboy → galat baku (PRD 5.2); AppException diteruskan apa adanya. */
-function multipartError(error: unknown): AppException {
-  if (error instanceof AppException) return error;
-  const code = (error as { code?: unknown } | null)?.code;
-  switch (code) {
-    case "FST_REQ_FILE_TOO_LARGE":
-      return new AppException(
-        413,
-        "FILE_INVALID",
-        "Berkas terlalu besar. Gambar maksimal 5 MB, PDF maksimal 10 MB.",
-      );
-    case "FST_FILES_LIMIT":
-      return new AppException(413, "FILE_INVALID", "Kirim satu berkas per unggahan.");
-    case "FST_PARTS_LIMIT":
-    case "FST_FIELDS_LIMIT":
-      return new AppException(
-        413,
-        "FILE_INVALID",
-        "Isian unggahan terlalu banyak. Kirim purpose dan satu berkas.",
-      );
-    case "FST_INVALID_MULTIPART_CONTENT_TYPE":
-      return new AppException(415, "FILE_INVALID", "Kirim berkas sebagai multipart/form-data.");
-    default:
-      // Bentuk multipart rusak, unggahan terputus, atau nama field terlarang.
-      return new AppException(
-        400,
-        "VALIDATION_ERROR",
-        "Format unggahan tidak valid. Pilih berkas lalu coba lagi.",
-      );
-  }
-}
-
-function tooLarge(): AppException {
-  return new AppException(
-    413,
-    "FILE_INVALID",
-    "Berkas terlalu besar untuk keperluan ini. Gambar maksimal 5 MB, PDF maksimal 10 MB.",
-  );
-}
-
-/** Membaca stream berkas sampai batas byte purpose; berhenti (dan menolak) begitu batas terlampaui (N-10). */
-async function readLimited(stream: Readable & { truncated?: boolean }, maxBytes: number): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  let total = 0;
-  try {
-    for await (const chunk of stream) {
-      const buffer = chunk as Buffer;
-      total += buffer.byteLength;
-      if (total > maxBytes) throw tooLarge();
-      chunks.push(buffer);
-    }
-  } catch (error) {
-    throw multipartError(error);
-  }
-  // Batas busboy global (10 MB) memotong stream tanpa galat pada iterasi; dianggap terlalu besar.
-  if (stream.truncated) throw tooLarge();
-  return Buffer.concat(chunks, total);
-}
+/** Pesan unggah umum: gambar atau PDF (khusus payment_proof), purpose dikirim bersama satu berkas. */
+const FILE_MESSAGES: MultipartMessages = {
+  tooLarge: "Berkas terlalu besar untuk keperluan ini. Gambar maksimal 5 MB, PDF maksimal 10 MB.",
+  parserTooLarge: "Berkas terlalu besar. Gambar maksimal 5 MB, PDF maksimal 10 MB.",
+  filesLimit: "Kirim satu berkas per unggahan.",
+  partsLimit: "Isian unggahan terlalu banyak. Kirim purpose dan satu berkas.",
+  notMultipart: "Kirim berkas sebagai multipart/form-data.",
+  invalid: "Format unggahan tidak valid. Pilih berkas lalu coba lagi.",
+};
 
 /** If-None-Match (daftar, `*`, atau ETag lemah `W/"..."`) cocok dengan ETag kuat berkas. */
 export function etagMatches(header: string | string[] | undefined, etag: string): boolean {
@@ -117,14 +68,15 @@ export class FilesController {
     let ticket: UploadTicket | null = null;
     let content: UploadContent | null = null;
     try {
-      if (!request.isMultipart()) throw multipartError({ code: "FST_INVALID_MULTIPART_CONTENT_TYPE" });
+      if (!request.isMultipart())
+        throw multipartError({ code: "FST_INVALID_MULTIPART_CONTENT_TYPE" }, FILE_MESSAGES);
       const parts = request.parts()[Symbol.asyncIterator]();
       for (;;) {
         let step: IteratorResult<Multipart>;
         try {
           step = await parts.next();
         } catch (error) {
-          throw multipartError(error);
+          throw multipartError(error, FILE_MESSAGES);
         }
         if (step.done) break;
         const part = step.value;
@@ -139,7 +91,7 @@ export class FilesController {
         if (part.fieldname !== "file") throw fieldError("file", "Kirim berkas pada field file.");
         if (!ticket) throw fieldError("purpose", "Kirim field purpose sebelum berkas.");
         content = {
-          data: await readLimited(part.file, ticket.maxBytes),
+          data: await readLimited(part.file, ticket.maxBytes, FILE_MESSAGES),
           filename: part.filename,
           declaredMime: part.mimetype,
         };

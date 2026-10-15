@@ -128,7 +128,7 @@ SQL
 | D halaman DRAF/belum terbit | 0 baris; `legal` tiga versi terisi | | PP |
 | E master aktif | > 0 dan sesuai daftar yang disahkan | | SA |
 | F `fees` | sama dengan nilai yang ditandatangani BD; tidak ada Rp0 kecuali disahkan | | BD |
-| F metode bayar | >= 1, rekening organisasi yang ditandatangani BD | | BD |
+| F metode bayar | >= 1, rekening organisasi yang ditandatangani BD; untuk metode QRIS aktif juga sidik jari gambar QR dari laporan `golive:check` setelah dipindai uji (ADR-026) | | BD |
 | F `support.whatsapp` | terisi nomor admin (PRD 8.3) | | SA |
 | F `payment_instructions` | `[]` (fallback iOS belum aktif) | | PP |
 | F `maintenance.active` | `false` saat dibuka | | SA |
@@ -210,7 +210,7 @@ mencatat ID, alasan, dampak pada AC/data/jadwal, dan versi PRD baru.
 | Peran | Nama | Yang disetujui | Bukti yang ditinjau | Keputusan (setuju/tolak + catatan) | Tanggal | Tanda tangan |
 | ----- | ---- | -------------- | ------------------- | ---------------------------------- | ------- | ------------ |
 | Pemilik produk | | Cakupan R1.0, kebijakan (legal, privasi, komunitas), sisa teknis D1 (ADR-011), positioning iuran D13, jadwal D16 | Paket penerimaan, `uat-checklist.md`, `app-store-submission.md` | | | |
-| Bendahara | | Nominal `fees` (D4), metode bayar dan rekening, prosedur refund D6 | Gerbang 2.3 butir F, layar Biaya/Metode | | | |
+| Bendahara | | Nominal `fees` (D4), metode bayar dan rekening (termasuk sidik jari gambar QRIS, ADR-026), prosedur refund D6 | Gerbang 2.3 butir F, layar Biaya/Metode | | | |
 | QA | | Hasil UAT U-01..U-13, smoke test production 3.1 | `uat-checklist.md`, `traceability.md` | | | |
 | Pengelola infra | | Restore dan operasional: backup harian terenkripsi di luar VPS, restore teruji dengan RPO <= 24 jam dan RTO <= 4 jam (N-06), drill restore bulanan terjadwal, monitor dan alert (HTTP, WS, DB, disk, umur backup, outbox, kegagalan provider), header/HSTS (2.4), Compose cadangan, akses (D9) | Laporan gladi, laporan restore, U-11, keluaran 2.4 | | | |
 | Super Admin (D1) | | Akun pengurus ber-MFA, izin, Super Admin kedua | Gerbang 2.3 butir B/C | | | |

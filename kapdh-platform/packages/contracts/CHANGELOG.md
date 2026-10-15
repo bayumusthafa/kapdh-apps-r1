@@ -6,6 +6,34 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 
 ## Belum dirilis
 
+### Metode bayar QRIS dengan gambar QR (permintaan PO 2026-10-15, ADR-026; aditif, tidak memutus)
+
+- `PaymentMethodKind` (payments) dan `TicketPaymentMethodKind` (events) mendapat nilai `qris`: QRIS statis resmi
+  organisasi tanpa nominal. Untuk qris `provider` = nama metode, `account_number` = NMID, `account_holder` = nama
+  merchant (semua tetap wajib, tidak menjadi nullable).
+- `PaymentMethod.qr_image_url` (opsional, `string | null`, format uri): URL publik tetap gambar QRIS, hanya terisi
+  untuk qris. Ikut snapshot `Payment.method`/`AdminPaymentDetail.method` dan daftar `listPaymentMethods`; gambar
+  metode yang sudah dipakai payment tidak dapat diganti, sama seperti nomor rekening. Instruksi yang disembunyikan
+  D13 tetap menyembunyikannya (aturan klien tidak berubah).
+- `AdminPaymentMethod.qr_image_file_id` (wajib, `uuid | null`) dan `PaymentMethodInput.qr_image_file_id` (opsional,
+  `uuid | null`: tidak dikirim = tetap, null = tanpa gambar, UUID = ganti). 400 VALIDATION_ERROR pada field ini bila
+  qris tanpa gambar, jenis lain dengan gambar, berkas tidak sah, atau gambar metode `in_use` diubah.
+- Operasi baru `adminUploadPaymentQrImage` (`POST /admin/payment-qr-images`, multipart `file`, settings.manage, tanpa
+  reautentikasi dan tanpa Idempotency-Key) mengembalikan `AdminPaymentQrImage`; skema baru
+  `AdminPaymentQrImageUploadRequest`. Hanya PNG/JPG <= 5 MB dengan sisi terpendek >= 512 piksel (415/422
+  FILE_INVALID); gambar > 2048 piksel diperkecil.
+- `FilePurpose` mendapat `payment_qr` (publik; tidak termasuk `FileUploadPurpose`, sehingga POST /files tetap
+  menolaknya 400).
+
+oasdiff hanya melaporkan INFO/WARN (nilai enum respons bertambah, properti respons opsional baru), sehingga
+`info.version` dan `x-kapdh-min-app-version` tidak dinaikkan. Klien lama: SDK Dart memetakan nilai enum yang tidak
+dikenal ke `unknown` dan mengabaikan properti baru; aplikasi tanpa dukungan QRIS menampilkan metode qris sebagai
+rekening biasa (NMID + nama merchant), karena itu pengurus baru menampilkan metode qris ke alumni setelah build
+aplikasi yang mendukungnya tersebar (runbook rilis). SDK Dart: `PaymentMethodKind.qris`,
+`TicketPaymentMethodKind.qris`, `FilePurpose.paymentQr`, `PaymentMethod.qrImageUrl`,
+`AdminPaymentMethod.qrImageFileId`, `PaymentMethodInput.qrImageFileId` (`Optional`), model `AdminPaymentQrImage`, dan
+metode `AdminPaymentsApi.adminUploadPaymentQrImage`.
+
 ### Reautentikasi hanya untuk tindakan kredensial (keputusan PO 2026-10-15, ADR-025; tidak memutus HTTP)
 
 Dua belas operasi admin kehilangan `x-kapdh-access.reauth` dan parameter header `X-Reauth-Token`, beserta

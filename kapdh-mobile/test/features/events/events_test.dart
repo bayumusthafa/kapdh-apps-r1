@@ -677,6 +677,51 @@ void main() {
       expect(_button(tester, 'reservation-submit').onPressed, isNull);
     });
 
+    testWidgets('ADR-026 metode QRIS: jenis tiap metode berlabel; QRIS terpilih menampilkan NMID dan merchant, '
+        'gambarnya tampil di instruksi pembayaran sesudah reservasi', (tester) async {
+      final hold = testNow.add(const Duration(hours: 24));
+      final app = await pumpMemberApp(
+        tester,
+        location: '/events/event-1',
+        routes: _detailRoutes(
+          eventDetailJson(),
+          extra: {
+            '/payment-methods': (_) => FakeResponse.json(200, {
+              'items': [
+                paymentMethodJson(),
+                paymentMethodJson(id: 'method-dana', kind: 'ewallet', provider: 'DANA', accountNumber: '081234567890'),
+                qrisMethodJson(),
+              ],
+            }),
+            '/events/event-1/reservations': (_) =>
+                FakeResponse.json(201, ticketDetailJson(status: 'awaiting_payment', holdExpiresAt: hold)),
+            '/me/payments/payment-9': (_) =>
+                FakeResponse.json(200, ticketPaymentDetailJson(holdExpiresAt: hold, method: qrisMethodJson())),
+          },
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('event-reserve')));
+      await settle(tester);
+      expect(find.text('Transfer bank'), findsOneWidget);
+      expect(find.text('E-wallet'), findsOneWidget);
+      // Jenis tidak diulang di bawah metode yang bernama "QRIS".
+      expect(find.text('QRIS'), findsOneWidget);
+      expect(find.text('NMID: ID1020200012345'), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('method-method-qris')));
+      await settle(tester);
+      expect(find.text('NMID: ID1020200012345'), findsOneWidget);
+      expect(find.text('Merchant: KAPDH Pusat'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('reservation-submit')));
+      await settle(tester);
+
+      final request = app.adapter.requestsTo('/events/event-1/reservations').single;
+      expect(request.data, {'expected_price': '200000.00', 'payment_method_id': 'method-qris'});
+      expect(app.location, '/payments/payment-9');
+      expect(find.byType(QrisImageCard), findsOneWidget);
+      expect(requestedImages, contains('https://api.kapdh.or.id/api/v1/files/public/file-qr-1'));
+    });
+
     testWidgets('PRD 4.5 pendaftaran ditutup saat mengirim (409 RESERVATION_EXPIRED): alasan dari server', (
       tester,
     ) async {

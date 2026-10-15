@@ -8,6 +8,7 @@ import {
   admins,
   appSettings,
   auditLogs,
+  files,
   masterProfessions,
   masterSkills,
   mfaTotp,
@@ -69,22 +70,8 @@ export async function insertGateAdmin(
   return { adminId, userId };
 }
 
-/** Metode bayar yang dibuat lewat web admin (baris + audit payment_method.created dalam satu langkah). */
-export async function insertAuditedPaymentMethod(
-  db: DbOrTx,
-  actor: GoLiveAdmin,
-  opts: { provider?: string; accountNumber?: string; accountHolder?: string } = {},
-): Promise<string> {
-  const id = uuidv7();
-  await db.insert(paymentMethods).values({
-    id,
-    kind: "bank",
-    provider: opts.provider ?? "Bank Syariah Indonesia",
-    accountNumber: opts.accountNumber ?? "7123456789",
-    accountHolder: opts.accountHolder ?? "Keluarga Alumni PDH",
-    active: true,
-    sortOrder: 1,
-  });
+/** Audit payment_method.created seperti alur web admin (dipakai bersama helper metode di bawah). */
+async function auditMethodCreated(db: DbOrTx, actor: GoLiveAdmin, id: string): Promise<void> {
   await db.insert(auditLogs).values({
     id: uuidv7(),
     actorUserId: actor.userId,
@@ -95,7 +82,70 @@ export async function insertAuditedPaymentMethod(
     entityId: id,
     requestId: `uji-${uuidv7()}`,
   });
+}
+
+/** Metode bayar yang dibuat lewat web admin (baris + audit payment_method.created dalam satu langkah). */
+export async function insertAuditedPaymentMethod(
+  db: DbOrTx,
+  actor: GoLiveAdmin,
+  opts: { provider?: string; accountNumber?: string; accountHolder?: string; kind?: "bank" | "ewallet" } = {},
+): Promise<string> {
+  const id = uuidv7();
+  await db.insert(paymentMethods).values({
+    id,
+    kind: opts.kind ?? "bank",
+    provider: opts.provider ?? "Bank Syariah Indonesia",
+    accountNumber: opts.accountNumber ?? "7123456789",
+    accountHolder: opts.accountHolder ?? "Keluarga Alumni PDH",
+    active: true,
+    sortOrder: 1,
+  });
+  await auditMethodCreated(db, actor, id);
   return id;
+}
+
+/** sha256 tetap berkas gambar QRIS uji (sidik jari yang ditandatangani bendahara: 12 karakter awal). */
+export const QRIS_TEST_SHA256 = `0123456789ab${"c".repeat(52)}`;
+
+/**
+ * Metode QRIS lewat web admin (ADR-026): berkas `payment_qr` publik ready 1024x1024 (objek storage tidak dibuat; gerbang
+ * hanya membaca metadata), metode `qris` yang merujuknya, dan audit payment_method.created. Mengembalikan id metode
+ * dan id berkas. Hanya untuk skema 0008 ke atas.
+ */
+export async function seedQrisMethod(
+  db: DbOrTx,
+  actor: GoLiveAdmin,
+  opts: { provider?: string; nmid?: string; merchant?: string } = {},
+): Promise<{ methodId: string; fileId: string }> {
+  const fileId = uuidv7();
+  await db.insert(files).values({
+    id: fileId,
+    ownerUserId: actor.userId,
+    purpose: "payment_qr",
+    storageDriver: "local",
+    objectKey: `payment_qr/2026/10/${fileId}`,
+    mime: "image/png",
+    bytes: 20_480,
+    sha256: QRIS_TEST_SHA256,
+    visibility: "public",
+    status: "ready",
+    width: 1024,
+    height: 1024,
+    attachedAt: new Date(),
+  });
+  const methodId = uuidv7();
+  await db.insert(paymentMethods).values({
+    id: methodId,
+    kind: "qris",
+    provider: opts.provider ?? "QRIS",
+    accountNumber: opts.nmid ?? "ID1020304050607",
+    accountHolder: opts.merchant ?? "KAPDH Pusat",
+    active: true,
+    sortOrder: 2,
+    qrImageFileId: fileId,
+  });
+  await auditMethodCreated(db, actor, methodId);
+  return { methodId, fileId };
 }
 
 /** Menerbitkan naskah resmi halaman wajib dan menyelaraskan app_settings legal (alur publish F-01). */
@@ -129,13 +179,18 @@ export async function publishOfficialPages(db: DbOrTx): Promise<void> {
 /**
  * Seluruh langkah PRD 8.2 butir 3-4 yang disahkan: dua Super Admin ber-TOTP, metode bayar resmi, halaman legal dan
  * bantuan terbit, master ditinjau dan diaktifkan, nomor WhatsApp dukungan. Nominal tetap nilai D4 dari seed.
+ * `paymentMethod: false` melewati metode bayar (skema lama sebelum 0008: insert Drizzle memuat kolom baru, sehingga
+ * pemanggil menyisipkan metode dengan SQL mentah).
  */
-export async function approveProductionConfig(db: DbOrTx): Promise<{ superAdmins: GoLiveAdmin[] }> {
+export async function approveProductionConfig(
+  db: DbOrTx,
+  opts: { paymentMethod?: boolean } = {},
+): Promise<{ superAdmins: GoLiveAdmin[] }> {
   const superAdmins = [
     await insertGateAdmin(db, { displayName: "Super Admin Satu" }),
     await insertGateAdmin(db, { displayName: "Super Admin Dua" }),
   ];
-  await insertAuditedPaymentMethod(db, superAdmins[0]!);
+  if (opts.paymentMethod !== false) await insertAuditedPaymentMethod(db, superAdmins[0]!);
   await publishOfficialPages(db);
   await db.update(masterProfessions).set({ active: true }).where(eq(masterProfessions.label, "Guru"));
   await db.update(masterSkills).set({ active: true }).where(eq(masterSkills.label, "Bahasa Arab"));

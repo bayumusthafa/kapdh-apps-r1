@@ -14,6 +14,7 @@ export 'kta_card.dart';
 export 'method_radio_card.dart';
 export 'offline_banner.dart';
 export 'otp_boxes.dart';
+export 'qris_image_card.dart';
 export 'states.dart';
 export 'status_badge.dart';
 export 'status_hero.dart';

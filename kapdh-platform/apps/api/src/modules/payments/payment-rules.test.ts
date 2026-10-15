@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { previousMethodIdsAfterChange, readMethodSnapshot } from "./payment-rules.js";
+import {
+  methodSnapshotOf,
+  type PaymentMethodRow,
+  previousMethodIdsAfterChange,
+  readMethodSnapshot,
+} from "./payment-rules.js";
 
 const A = "0190a000-0000-7000-8000-00000000000a";
 const B = "0190a000-0000-7000-8000-00000000000b";
@@ -55,6 +60,97 @@ describe("previousMethodIdsAfterChange", () => {
       account_number: "7000123456",
       account_holder: "KAPDH",
       instructions: null,
+      qr_image_file_id: null,
+    });
+  });
+});
+
+const QR = "0190a000-0000-7000-8000-0000000000f1";
+
+function methodRow(overrides: Partial<PaymentMethodRow> = {}): PaymentMethodRow {
+  const at = new Date("2026-10-15T03:00:00Z");
+  return {
+    id: A,
+    kind: "qris",
+    provider: "QRIS",
+    accountNumber: "ID1020304050607",
+    accountHolder: "KAPDH Pusat",
+    instructions: null,
+    active: true,
+    sortOrder: 0,
+    qrImageFileId: QR,
+    version: 1,
+    createdAt: at,
+    updatedAt: at,
+    ...overrides,
+  };
+}
+
+/** Snapshot metode QRIS (ADR-026): gambar QR ikut identitas metode yang disalin ke payment. */
+describe("snapshot metode QRIS", () => {
+  it("ADR-026: methodSnapshotOf menyalin jenis qris dan id gambar QR; metode lain tanpa gambar", () => {
+    expect(methodSnapshotOf(methodRow())).toEqual({
+      id: A,
+      kind: "qris",
+      provider: "QRIS",
+      account_number: "ID1020304050607",
+      account_holder: "KAPDH Pusat",
+      instructions: null,
+      qr_image_file_id: QR,
+    });
+    expect(methodSnapshotOf(methodRow({ kind: "bank", qrImageFileId: null })).qr_image_file_id).toBeNull();
+  });
+
+  it("ADR-026: readMethodSnapshot mempertahankan bank/ewallet/qris dan id gambar; jenis tak dikenal menjadi bank", () => {
+    const stored = { ...methodSnapshotOf(methodRow()), previous_method_ids: [B] };
+    expect(readMethodSnapshot({ methodSnapshot: stored, paymentMethodId: A })).toEqual(
+      methodSnapshotOf(methodRow()),
+    );
+    expect(
+      readMethodSnapshot({
+        methodSnapshot: { ...stored, kind: "ewallet", qr_image_file_id: null },
+        paymentMethodId: A,
+      }).kind,
+    ).toBe("ewallet");
+    // Nilai rusak/asing tidak pernah lolos ke kontrak.
+    const odd = readMethodSnapshot({
+      methodSnapshot: { id: A, kind: "virtual_account", provider: 7, qr_image_file_id: 42 },
+      paymentMethodId: A,
+    });
+    expect(odd).toMatchObject({ kind: "bank", provider: "", qr_image_file_id: null });
+  });
+
+  it("ADR-026: snapshot sebelum QRIS (tanpa qr_image_file_id) tetap terbaca dengan gambar null", () => {
+    expect(
+      readMethodSnapshot({
+        methodSnapshot: {
+          id: C,
+          kind: "ewallet",
+          provider: "GoPay",
+          account_number: "0812",
+          account_holder: "KAPDH",
+          instructions: "Tulis nama",
+        },
+        paymentMethodId: C,
+      }),
+    ).toEqual({
+      id: C,
+      kind: "ewallet",
+      provider: "GoPay",
+      account_number: "0812",
+      account_holder: "KAPDH",
+      instructions: "Tulis nama",
+      qr_image_file_id: null,
+    });
+    // Snapshot kosong (data sangat lama) memakai metode tertaut dan nilai aman.
+    expect(readMethodSnapshot({ methodSnapshot: null, paymentMethodId: C })).toEqual({
+      id: C,
+      kind: "bank",
+      provider: "",
+      account_number: "",
+      account_holder: "",
+      instructions: null,
+      qr_image_file_id: null,
     });
   });
 });

@@ -188,6 +188,85 @@ describe("migrasi journal pada PGlite", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("0008 sebagai migrasi aditif pada database yang sudah sampai 0007: enum qris, kolom gambar QR, CHECK teks (ADR-026)", async () => {
+    const dir = migrationsUpTo("0007_auth_otp_decoys");
+    const existing = new PGlite();
+    try {
+      // Lingkungan production saat ini: 0000-0007 sudah di-commit dan sudah ada metode bayar lama (termasuk metode
+      // bernama "QRIS" berjenis ewallet tanpa gambar). Job migrasi berikutnya hanya menerapkan 0008 dalam
+      // transaksinya sendiri: ADD VALUE dan CHECK teks berjalan bersama tanpa 55P04.
+      await migrate(drizzle(existing), { migrationsFolder: dir });
+      const legacy = uuidv7();
+      await existing.query(
+        `insert into app.payment_methods (id, kind, provider, account_number, account_holder)
+         values ($1, 'ewallet', 'QRIS', 'ID1020304050607', 'KAPDH')`,
+        [legacy],
+      );
+      await migrate(drizzle(existing), { migrationsFolder: MIGRATIONS_FOLDER });
+      const recorded = await existing.query<{ n: number }>(
+        "select count(*)::int as n from drizzle.__drizzle_migrations",
+      );
+      expect(recorded.rows[0]!.n).toBe(journal.entries.length);
+      const labels = await existing.query<{ label: string }>(
+        `select e.enumlabel as label from pg_enum e join pg_type t on t.oid = e.enumtypid
+         join pg_namespace n on n.oid = t.typnamespace
+         where n.nspname = 'app' and t.typname = 'payment_method_kind' order by e.enumsortorder`,
+      );
+      expect(labels.rows.map((r) => r.label)).toEqual(["bank", "ewallet", "qris"]);
+      // Baris lama tetap sah (bukan qris, tanpa gambar) dan kolom baru kosong.
+      const old = await existing.query<{ kind: string; qr_image_file_id: string | null }>(
+        "select kind, qr_image_file_id from app.payment_methods where id = $1",
+        [legacy],
+      );
+      expect(old.rows).toEqual([{ kind: "ewallet", qr_image_file_id: null }]);
+      // Nilai enum baru dapat dipakai setelah transaksi migrasi di-commit.
+      const fileId = uuidv7();
+      await existing.query(
+        `insert into app.files (id, purpose, storage_driver, object_key, mime, bytes, sha256, visibility, status)
+         values ($1, 'payment_qr', 'local', $2, 'image/png', 10, $3, 'public', 'ready')`,
+        [fileId, `payment_qr/2026/10/${fileId}`, "a".repeat(64)],
+      );
+      await existing.query(
+        `insert into app.payment_methods (id, kind, provider, account_number, account_holder, qr_image_file_id)
+         values ($1, 'qris', 'QRIS', 'ID1020304050607', 'KAPDH', $2)`,
+        [uuidv7(), fileId],
+      );
+      const constraints = await existing.query<{ conname: string }>(
+        `select conname from pg_constraint
+         where conrelid in ('app.payment_methods'::regclass, 'app.files'::regclass)
+           and conname in ('payment_methods_qr_image_chk', 'payment_methods_qr_image_file_id_files_id_fk',
+                           'files_purpose_chk', 'files_private_purpose_chk')
+         order by conname`,
+      );
+      expect(constraints.rows.map((r) => r.conname)).toEqual([
+        "files_private_purpose_chk",
+        "files_purpose_chk",
+        "payment_methods_qr_image_chk",
+        "payment_methods_qr_image_file_id_files_id_fk",
+      ]);
+      // CHECK memakai perbandingan teks (bukan literal enum) sehingga aman di job migrasi yang sama dengan ADD VALUE.
+      const definition = await existing.query<{ def: string }>(
+        `select pg_get_constraintdef(oid) as def from pg_constraint where conname = 'payment_methods_qr_image_chk'`,
+      );
+      expect(definition.rows[0]!.def).toContain("::text = 'qris'::text");
+      expect(definition.rows[0]!.def).not.toContain("payment_method_kind");
+    } finally {
+      await existing.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("migrasi 0008 tidak memakai nilai enum qris sebagai literal enum (README: aturan nilai enum baru)", () => {
+    const text = readFileSync(join(MIGRATIONS_FOLDER, "0008_qris_payment_method.sql"), "utf8");
+    const statements = text.split("--> statement-breakpoint").map((s) => s.trim());
+    expect(statements[0]).toBe(`ALTER TYPE "app"."payment_method_kind" ADD VALUE 'qris';`);
+    for (const statement of statements.slice(1)) {
+      expect(statement).not.toMatch(/'qris'::/);
+      expect(statement).not.toMatch(/payment_method_kind/);
+      if (statement.includes("'qris'")) expect(statement).toContain(`"kind"::text = 'qris'`);
+    }
+  });
 });
 
 describe("AC F16-2: penjaga Super Admin terakhir yang dapat login (PGlite)", () => {
@@ -637,6 +716,49 @@ describe("constraint data pada PGlite", () => {
       cancel_reason: "Dana sudah dikembalikan lewat jalur lain.",
       cancelled_by_admin_id: null,
     });
+  });
+
+  it("ADR-026 (migrasi 0008): gambar QR wajib untuk qris dan dilarang untuk jenis lain; payment_qr boleh publik; FK RESTRICT", async () => {
+    const insertFile = async (purpose: string, visibility: "public" | "private") => {
+      const fileId = uuidv7();
+      await pg.query(
+        `insert into app.files (id, purpose, storage_driver, object_key, mime, bytes, sha256, visibility, status)
+         values ($1, $2, 'local', $3, 'image/png', 10, $4, $5, 'ready')`,
+        [fileId, purpose, `${purpose}/2026/10/${fileId}`, "b".repeat(64), visibility],
+      );
+      return fileId;
+    };
+    // Purpose baru diterima files_purpose_chk dan boleh publik (files_private_purpose_chk).
+    const qr = await insertFile("payment_qr", "public");
+    await expect(insertFile("purpose_lain", "private")).rejects.toMatchObject({
+      code: "23514",
+      constraint: "files_purpose_chk",
+    });
+    await expect(insertFile("payment_proof", "public")).rejects.toMatchObject({
+      code: "23514",
+      constraint: "files_private_purpose_chk",
+    });
+
+    const insertMethod = (kind: string, qrImageFileId: string | null) =>
+      pg.query(
+        `insert into app.payment_methods (id, kind, provider, account_number, account_holder, qr_image_file_id)
+         values ($1, $2, 'QRIS', 'ID1020304050607', 'KAPDH', $3)`,
+        [uuidv7(), kind, qrImageFileId],
+      );
+    const qrCheck = { code: "23514", constraint: "payment_methods_qr_image_chk" };
+    await expect(insertMethod("qris", null)).rejects.toMatchObject(qrCheck);
+    await expect(insertMethod("bank", qr)).rejects.toMatchObject(qrCheck);
+    await expect(insertMethod("ewallet", qr)).rejects.toMatchObject(qrCheck);
+    await insertMethod("bank", null);
+    await insertMethod("qris", qr);
+    // Ganti jenis tanpa gambar juga ditolak.
+    await expect(
+      pg.query("update app.payment_methods set kind = 'bank' where qr_image_file_id = $1", [qr]),
+    ).rejects.toMatchObject(qrCheck);
+    // Baris berkas yang masih dirujuk metode tidak dapat dihapus (ON DELETE RESTRICT; 23503 di PG17, 23001 di PG18).
+    const deleted = await errorOf("delete from app.files where id = $1", [qr]);
+    expect(["23503", "23001"]).toContain(deleted.code);
+    expect(deleted.constraint).toBe("payment_methods_qr_image_file_id_files_id_fk");
   });
 
   it("F-01 / PRD 6.2: salinan tayang halaman legal lengkap dan versi legal terpisah dari version draf", async () => {

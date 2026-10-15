@@ -35,7 +35,7 @@ function contractOperations(): [string, string][] {
 describe("ARCHITECTURE §4.3: dekorator controller payments = x-kapdh-access kontrak", () => {
   it("setiap operasi payments.yaml dan admin-payments.yaml diimplementasikan dengan dekorator yang sama persis", () => {
     const operations = contractOperations();
-    expect(operations).toHaveLength(26);
+    expect(operations).toHaveLength(27);
     const routes = routeAccessList(t.app);
     const paymentRoutes = routes.filter((route) =>
       operations.some(
@@ -47,7 +47,7 @@ describe("ARCHITECTURE §4.3: dekorator controller payments = x-kapdh-access kon
         paymentRoutes.some((route) => route.method === method && normalize(route.path) === normalize(path)),
         `${method.toUpperCase()} ${path} belum diimplementasikan`,
       ).toBe(true);
-    expect(paymentRoutes).toHaveLength(26);
+    expect(paymentRoutes).toHaveLength(27);
     for (const route of paymentRoutes) expect(route.meta.problems, route.name).toEqual([]);
     expect(accessMismatches(paymentRoutes)).toEqual([]);
     for (const [method, path] of operations) {
