@@ -37,7 +37,13 @@ import type { Clock } from "../../core/adapters/clock.js";
 import { AuditService } from "../../core/audit/audit.service.js";
 import { isCheckViolation, isUniqueViolation } from "../../core/db/errors.js";
 import type { Db, DbOrTx, Tx } from "../../core/db/types.js";
-import { AppException, fieldError, notFound, versionConflict } from "../../core/errors/app-exception.js";
+import {
+  AppException,
+  fieldError,
+  notFound,
+  reauthRequired,
+  versionConflict,
+} from "../../core/errors/app-exception.js";
 import { FilesService } from "../../core/files/files.service.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
 import {
@@ -148,7 +154,8 @@ type AdminView = Awaited<ReturnType<ReturnType<typeof adminRowsQuery>["execute"]
 
 /**
  * Administrasi admin dan izin (F-16, AC F16-1..F16-3, PRD 2.3, 3.16, 8.2; kontrak C7 admin-admins). Hanya Super Admin
- * (admins.manage tidak dapat ditugaskan) dengan MFA dan reautentikasi untuk perubahan. Setiap perubahan peran, izin
+ * (admins.manage tidak dapat ditugaskan) dengan sesi MFA; reautentikasi hanya untuk tindakan kredensial (kirim ulang
+ * undangan, pemulihan; keputusan PO 2026-10-15, ADR-025). Setiap perubahan peran, izin
  * atau status menaikkan permissions_version; izin dievaluasi dari database setiap request sehingga pencabutan berlaku
  * seketika, dan socket admin diputus agar tersambung ulang dengan hak terbaru (AC F16-3). Super Admin aktif terakhir
  * dijaga trigger transaksi admins_last_super_admin_chk (AC F16-2) yang dipetakan ke 409. Undangan membuat identitas
@@ -696,7 +703,10 @@ export class AdminsService {
   /**
    * PATCH admin (AC F16-1..F16-3, F15-4): nama, peran, izin, status, atau email login identitas tanpa kredensial
    * terpakai. Baris admins dikunci lebih dulu lalu UPDATE bersyarat versi; penurunan/penonaktifan Super Admin terakhir
-   * ditolak trigger (23514) dan dipetakan ke 409 VALIDATION_ERROR dengan `current` (AC F16-2).
+   * ditolak trigger (23514) dan dipetakan ke 409 VALIDATION_ERROR dengan `current` (AC F16-2). Koreksi email login
+   * adalah tindakan kredensial (ADR-025): alamat baru menjadi tujuan tautan pengaturan sandi + TOTP, termasuk undangan
+   * pemulihan admin pernah aktif. Tanpa X-Reauth-Token sah (@ConditionalReauth) ditolak 403 REAUTH_REQUIRED sebelum
+   * pemeriksaan email lain; nama, peran, izin dan status tidak memintanya.
    */
   async update(
     auth: AuthContext,
@@ -764,6 +774,7 @@ export class AdminsService {
         // ---- email login (hanya selama tidak ada kredensial yang dapat dipakai)
         const emailChanged = newEmail !== undefined && newEmail !== facts.email;
         if (emailChanged) {
+          if (!auth.reauthenticated) throw reauthRequired();
           const credentialless =
             current.status === "invited" || (current.status === "disabled" && !current.activatedAt);
           if (!credentialless)

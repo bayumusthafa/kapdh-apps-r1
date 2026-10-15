@@ -2,8 +2,9 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { mockAuth, mockPayments, paymentRequests } from "../../api/mocks";
+import { expectNoReauthDialog } from "../../test/governance";
 import { findToast, toasts } from "../../test/utils";
-import { confirmReauth, IDS, openPayments, requestsTo } from "./testing";
+import { IDS, openPayments, requestsTo } from "./testing";
 
 const methodRequests = (method: string) => requestsTo(method, /^\/admin\/payment-methods/);
 
@@ -46,7 +47,7 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     expect(methodRequests("GET").at(-1)?.query).toMatchObject({ active: "false" });
   });
 
-  it("AC F15-3: tambah metode meminta reautentikasi lebih dahulu; batal reautentikasi tidak mengirim apa pun", async () => {
+  it("AC F15-3, ADR-025: tambah metode langsung tersimpan tanpa dialog Konfirmasi identitas dan tanpa X-Reauth-Token", async () => {
     const user = userEvent.setup();
     await openPayments(user, { tab: "methods" });
     await methodsTable();
@@ -63,19 +64,12 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
       "Bendahara KAPDH",
     );
     await user.click(within(dialog).getByRole("button", { name: "Simpan metode" }));
-
-    const reauth = await screen.findByRole("dialog", { name: "Konfirmasi identitas" });
-    expect(reauth).toHaveAccessibleDescription(/Menambah rekening tujuan pembayaran/);
-    await user.click(within(reauth).getByRole("button", { name: "Batal" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Konfirmasi identitas" })).toBeNull());
-    expect(methodRequests("POST")).toHaveLength(0);
-    expect(toasts("error")).toHaveLength(0);
-
-    await user.click(within(dialog).getByRole("button", { name: "Simpan metode" }));
-    await confirmReauth(user, /Menambah rekening tujuan pembayaran/);
     expect(await findToast("success", "Metode pembayaran ditambahkan.")).toBeInTheDocument();
+    expectNoReauthDialog();
+    expect(toasts("error")).toHaveLength(0);
+    expect(methodRequests("POST")).toHaveLength(1);
     const post = methodRequests("POST")[0];
-    expect(post?.reauthToken).toMatch(/^mock-reauth-/);
+    expect(post?.reauthToken).toBeNull();
     expect(post?.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
     expect(post?.body).toEqual({
       kind: "bank",
@@ -90,7 +84,7 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     expect(screen.queryByRole("dialog", { name: "Tambah metode pembayaran" })).toBeNull();
   });
 
-  it("validasi isian wajib di klien sebelum reautentikasi", async () => {
+  it("validasi isian wajib di klien sebelum permintaan dikirim", async () => {
     const user = userEvent.setup();
     await openPayments(user, { tab: "methods" });
     await methodsTable();
@@ -104,11 +98,11 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     expect(within(dialog).getByRole("textbox", { name: /Petunjuk tambahan/ })).toHaveAccessibleDescription(
       /teks polos tanpa HTML/,
     );
-    expect(screen.queryByRole("dialog", { name: "Konfirmasi identitas" })).toBeNull();
+    expectNoReauthDialog();
     expect(methodRequests("POST")).toHaveLength(0);
   });
 
-  it("AC F15-3: metode yang sudah dipakai hanya dapat diubah petunjuk, status dan urutan; dikirim dengan If-Match", async () => {
+  it("AC F15-3: metode yang sudah dipakai hanya dapat diubah petunjuk, status dan urutan; dikirim dengan If-Match tanpa reautentikasi", async () => {
     const user = userEvent.setup();
     await openPayments(user, { tab: "methods" });
     await methodsTable();
@@ -123,13 +117,13 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     await user.type(within(dialog).getByRole("textbox", { name: /Petunjuk tambahan/ }), "Kode bank 451.");
     await user.click(within(dialog).getByRole("switch", { name: "Tampilkan ke alumni" }));
     await user.click(within(dialog).getByRole("button", { name: "Simpan metode" }));
-    await confirmReauth(user, /Mengubah rekening tujuan pembayaran/);
     expect(await findToast("success", "Metode pembayaran diperbarui.")).toBeInTheDocument();
+    expectNoReauthDialog();
 
     const put = methodRequests("PUT")[0];
     expect(put?.path).toBe(`/admin/payment-methods/${IDS.methodInUse}`);
     expect(put?.ifMatch).toBe("1");
-    expect(put?.reauthToken).toMatch(/^mock-reauth-/);
+    expect(put?.reauthToken).toBeNull();
     expect(put?.body).toMatchObject({
       provider: "[Nama bank 1]",
       account_number: "[Nomor rekening]",
@@ -154,7 +148,6 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     await user.type(provider, "[[E-wallet baru]");
     mockPayments.updateMethodAsOtherAdmin(IDS.methodEwallet, { account_holder: "Bendahara Baru" });
     await user.click(within(dialog).getByRole("button", { name: "Simpan metode" }));
-    await confirmReauth(user);
 
     const alert = await within(dialog).findByRole("alert");
     expect(alert).toHaveTextContent("Metode ini sudah diubah admin lain. Perubahan Anda belum disimpan.");
@@ -177,10 +170,10 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     await user.clear(provider);
     await user.type(provider, "[[E-wallet baru]");
     await user.click(within(dialog).getByRole("button", { name: "Simpan metode" }));
-    await confirmReauth(user);
     expect(await findToast("success", "Metode pembayaran diperbarui.")).toBeInTheDocument();
     const puts = methodRequests("PUT");
     expect(puts.map((r) => r.ifMatch)).toEqual(["1", "2"]);
+    expect(puts.every((r) => r.reauthToken === null)).toBe(true);
     expect(mockPayments.method(IDS.methodEwallet)).toMatchObject({
       provider: "[E-wallet baru]",
       account_holder: "Bendahara Baru",
@@ -188,7 +181,7 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     });
   });
 
-  it("F-15, PRD 4.5: hapus metode belum dipakai dengan konfirmasi dua langkah, reautentikasi dan If-Match", async () => {
+  it("F-15, PRD 4.5: hapus metode belum dipakai dengan konfirmasi dua langkah dan If-Match, tanpa reautentikasi", async () => {
     const user = userEvent.setup();
     await openPayments(user, { tab: "methods" });
     const table = await methodsTable();
@@ -201,11 +194,12 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     expect(within(dialog).getByRole("button", { name: "Batal" })).toHaveFocus();
     await user.click(within(dialog).getByRole("checkbox"));
     await user.click(confirm);
-    await confirmReauth(user, /Menghapus rekening tujuan pembayaran/);
     expect(await findToast("success", "Metode [Nama bank 2] dihapus.")).toBeInTheDocument();
+    expectNoReauthDialog();
     const del = methodRequests("DELETE")[0];
     expect(del?.path).toBe(`/admin/payment-methods/${IDS.methodInactive}`);
     expect(del?.ifMatch).toBe("2");
+    expect(del?.reauthToken).toBeNull();
     expect(mockPayments.method(IDS.methodInactive)).toBeUndefined();
     await screen.findByText("Menampilkan 2 dari 2");
     // N-11: tombol hapus pemicu ikut hilang; fokus pindah ke tombol "Tambah metode", tidak jatuh ke <body>.
@@ -213,7 +207,7 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     await waitFor(() => expect(screen.getByRole("button", { name: "Tambah metode" })).toHaveFocus());
   });
 
-  it("AC F15-3: ubah tanpa perubahan tidak meminta reautentikasi dan tidak mengirim PUT", async () => {
+  it("AC F15-3: ubah tanpa perubahan tidak mengirim PUT", async () => {
     const user = userEvent.setup();
     await openPayments(user, { tab: "methods" });
     await methodsTable();
@@ -222,7 +216,7 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
     const save = within(dialog).getByRole("button", { name: "Simpan metode" });
     expect(save).toBeDisabled();
     await user.click(save);
-    expect(screen.queryByRole("dialog", { name: "Konfirmasi identitas" })).toBeNull();
+    expectNoReauthDialog();
 
     // Spasi di ujung isian dipangkas server sehingga tetap bukan perubahan.
     const holder = within(dialog).getByRole("textbox", { name: /Nama pemilik rekening/ });
@@ -237,8 +231,8 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
 
     await user.click(within(dialog).getByRole("switch", { name: "Tampilkan ke alumni" }));
     await user.click(save);
-    await confirmReauth(user, /Mengubah rekening tujuan pembayaran/);
     expect(await findToast("success", "Metode pembayaran diperbarui.")).toBeInTheDocument();
+    expectNoReauthDialog();
     expect(methodRequests("PUT")).toHaveLength(1);
     expect(methodRequests("PUT")[0]?.body).toMatchObject({
       account_holder: "[Nama pemilik akun]",

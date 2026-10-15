@@ -22,7 +22,8 @@ waktu) dan tanpa memengaruhi tiket.
 ## Keputusan
 
 1. Kunci `app_settings.payment_instructions = {dues_hidden_platforms: ("android"|"ios")[]}`, seed `[]`. Diubah lewat
-   `PUT /admin/settings/payment-instructions` (`settings.manage` + reautentikasi), di web admin halaman Pengaturan.
+   `PUT /admin/settings/payment-instructions` (`settings.manage` + `If-Match`; syarat reautentikasi dicabut oleh
+   ADR-025), di web admin halaman Pengaturan.
 2. Platform pemanggil dibaca dari header `X-App-Platform`. Untuk platform tersembunyi:
    - `GET /me/fees` dan `GET /me/payments/{id}` mengembalikan `instructions_hidden: true` untuk iuran
      (registration/renewal); aplikasi menyembunyikan rekening dan unggah bukti lalu menampilkan kontak pengurus;

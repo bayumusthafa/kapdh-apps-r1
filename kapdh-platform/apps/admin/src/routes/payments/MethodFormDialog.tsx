@@ -83,8 +83,8 @@ function requestBody(v: Values) {
 }
 
 /**
- * Isian sama persis dengan versi dasar: menyimpan tidak mengubah apa pun, sehingga tidak boleh meminta
- * reautentikasi atau membuat versi dan entri audit baru tanpa perubahan (AC F15-3).
+ * Isian sama persis dengan versi dasar: menyimpan tidak mengubah apa pun, sehingga tidak boleh membuat versi dan
+ * entri audit baru tanpa perubahan (AC F15-3).
  */
 function sameAsBase(v: Values, base: Method): boolean {
   const body = requestBody(v);
@@ -101,7 +101,8 @@ function sameAsBase(v: Values, base: Method): boolean {
 
 /**
  * Tambah/ubah rekening tujuan transfer (F-15, AC F15-3, F15-4, D13). Rekening menentukan ke mana anggota
- * mentransfer dana, sehingga setiap penyimpanan meminta reautentikasi lebih dahulu dan diaudit server.
+ * mentransfer dana, sehingga setiap penyimpanan diaudit server; reautentikasi tidak diminta (keputusan PO
+ * 2026-10-15, ADR-025: reautentikasi hanya untuk tindakan kredensial).
  * - Metode yang sudah dipakai payment (`in_use`): jenis, penyedia, nomor dan nama pemilik terkunci; hanya
  *   petunjuk, status aktif dan urutan yang dapat diubah. Untuk rekening baru: nonaktifkan lalu buat metode baru,
  *   agar snapshot pada tagihan lama tidak pernah berbeda diam-diam dari rekening yang berlaku.
@@ -141,20 +142,17 @@ export function MethodFormDialog({
   const locked = base?.in_use ?? false;
 
   const save = useApiMutation<Method, SaveVars, Values>({
-    requiresReauth: true,
-    reauthReason: editing ? "Mengubah rekening tujuan pembayaran" : "Menambah rekening tujuan pembayaran",
     setError: form.setError,
     successMessage: editing ? "Metode pembayaran diperbarui." : "Metode pembayaran ditambahkan.",
     request: (v, ctx) => {
       const body = requestBody(v.values);
-      const reauth = ctx.reauthToken ?? "";
       if (v.version === null || !base)
         return api.POST("/admin/payment-methods", {
-          params: { header: { "X-Reauth-Token": reauth, "Idempotency-Key": ctx.idempotencyKey } },
+          params: { header: { "Idempotency-Key": ctx.idempotencyKey } },
           body,
         });
       return api.PUT("/admin/payment-methods/{methodId}", {
-        params: { path: { methodId: base.id }, header: { "If-Match": v.version, "X-Reauth-Token": reauth } },
+        params: { path: { methodId: base.id }, header: { "If-Match": v.version } },
         body,
       });
     },
@@ -186,7 +184,7 @@ export function MethodFormDialog({
   const watched = form.watch();
   const kind = watched.kind;
   const active = watched.active;
-  // Ubah tanpa perubahan apa pun: Simpan nonaktif (seperti tab Biaya), tidak ada reautentikasi atau PUT.
+  // Ubah tanpa perubahan apa pun: Simpan nonaktif (seperti tab Biaya), tidak ada PUT.
   const unchanged = base !== null && sameAsBase(watched, base);
   const errors = form.formState.errors;
 
@@ -204,7 +202,7 @@ export function MethodFormDialog({
       onClose={onClose}
       dismissable={!save.isPending}
       title={editing ? "Ubah metode pembayaran" : "Tambah metode pembayaran"}
-      description="Rekening tujuan transfer milik organisasi yang ditampilkan ke alumni. Penyimpanan meminta konfirmasi identitas."
+      description="Rekening tujuan transfer milik organisasi yang ditampilkan ke alumni. Penyimpanan tercatat di audit."
       footer={
         <>
           <Button variant="outline" onClick={onClose} disabled={save.isPending}>

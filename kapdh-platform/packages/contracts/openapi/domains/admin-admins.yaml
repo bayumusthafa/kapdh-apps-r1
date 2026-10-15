@@ -1,7 +1,10 @@
 # Domain admin-admins (C7 Admin & notifications): daftar admin, undangan ("Delegasi User jadi Admin"), peran, izin,
 # status dan pemulihan akun admin (F-16, guideline hlm. 15). Modul API: apps/api/src/modules/admin.
 #
-# Akses (PRD 2.3, ARCHITECTURE §4.5): mengelola admin dan izin hanya untuk Super Admin dengan MFA dan reautentikasi.
+# Akses (PRD 2.3, ARCHITECTURE §4.5): mengelola admin dan izin hanya untuk Super Admin dengan sesi MFA. Reautentikasi
+# (X-Reauth-Token) hanya untuk tindakan kredensial, yaitu kirim ulang undangan, pemulihan, dan koreksi email login
+# lewat PATCH (bersyarat); undang, ubah nama/peran/izin/status dan hapus admin tidak memintanya (keputusan PO
+# 2026-10-15, ADR-025).
 # Izin `admins.manage` tidak dapat ditugaskan ke peran `admin` (katalog: assignable=false) sehingga dalam praktik
 # hanya melekat pada `super_admin`, yang memiliki semua izin. Setiap perubahan ditulis ke audit dalam transaksi yang
 # sama (AC F16-1, F17-1). Penerimaan undangan, ganti sandi awal dan pendaftaran TOTP ada di domain admin-auth (C1).
@@ -22,8 +25,9 @@
 tags:
   - name: Admin Admins
     description: |
-      Undangan admin, penugasan peran dan izin, serta pemulihan akun admin oleh Super Admin dengan MFA dan
-      reautentikasi (F-16, AC F16-1..F16-3).
+      Undangan admin, penugasan peran dan izin, serta pemulihan akun admin oleh Super Admin dengan sesi MFA;
+      reautentikasi hanya untuk kirim ulang undangan, pemulihan, dan koreksi email login (F-16, AC F16-1..F16-3,
+      ADR-025).
 
 paths:
   /admin/admins:
@@ -75,7 +79,7 @@ paths:
     post:
       tags: [Admin Admins]
       operationId: adminInviteAdmin
-      summary: Undang admin baru dari alumni terpilih atau email (Super Admin + reautentikasi, F-16, AC F16-1).
+      summary: Undang admin baru dari alumni terpilih atau email (Super Admin, F-16, AC F16-1).
       description: |
         "Delegasi User jadi Admin" (PRD 3.16): sistem membuat identitas login admin BARU (users.kind=admin) yang
         terpisah dari akun alumni dan tidak memberi hak admin pada sesi aplikasi alumni. Dua bentuk:
@@ -101,9 +105,8 @@ paths:
         users_kind_email_key) menghasilkan 409 VALIDATION_ERROR pada `email`. Ringkasnya: 400 untuk input atau
         keadaan alumni yang tidak memenuhi syarat, 409 untuk bentrok unique (email login, tautan alumni). Audit
         `admin.invited` dan perubahan izin tercatat dalam transaksi yang sama (AC F16-1, F17-1).
-      x-kapdh-access: { audience: admin, permissions: [admins.manage], reauth: true, idempotent: true }
+      x-kapdh-access: { audience: admin, permissions: [admins.manage], idempotent: true }
       parameters:
-        - $ref: "#/components/parameters/ReauthToken"
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
@@ -118,7 +121,7 @@ paths:
               schema: { $ref: "#/components/schemas/AdminInvitationResult" }
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/AdminAdminsSensitiveForbidden" }
+        "403": { $ref: "#/components/responses/AdminAdminsForbidden" }
         "409": { $ref: "#/components/responses/AdminAdminsConflict" }
         "429": { $ref: "#/components/responses/RateLimited" }
         default: { $ref: "#/components/responses/Error" }
@@ -181,10 +184,17 @@ paths:
     patch:
       tags: [Admin Admins]
       operationId: adminUpdateAdmin
-      summary: Ubah nama, peran, izin, status, atau email login admin yang belum pernah aktif (Super Admin + reautentikasi, AC F16-1..F16-3).
+      summary: Ubah nama, peran, izin, status, atau email login admin tanpa kredensial terpakai (Super Admin; reautentikasi hanya untuk email, AC F16-1..F16-3).
       description: |
         Hanya field yang dikirim yang berubah; minimal satu field. Wajib `If-Match` = `version` terakhir; versi
         berbeda menghasilkan 409 VERSION_CONFLICT dengan `current` = AdminAccountDetail terbaru (AC F15-4).
+
+        Reautentikasi bersyarat (ADR-025): `X-Reauth-Token` (`ReauthTokenConditional`) wajib HANYA bila `email`
+        berbeda dari email login sekarang, karena alamat baru menjadi tujuan tautan pengaturan sandi + TOTP (tindakan
+        kredensial, setara kirim ulang undangan dan pemulihan). Tanpa token yang sah, permintaan itu ditolak 403
+        REAUTH_REQUIRED tanpa efek; diperiksa setelah validasi isian dan If-Match, sebelum aturan email lainnya
+        (status yang diizinkan, email terpakai). Nama, peran, izin dan status tidak memerlukannya; token yang dikirim
+        tetapi tidak sah tidak menolak perubahan tersebut.
 
         - `permissions` mengganti seluruh himpunan izin (hanya untuk peran `admin`, aturan sama dengan undangan).
           Mengubah peran ke `super_admin` mengosongkan izin tersimpan; mengubah ke `admin` wajib menyertakan
@@ -201,13 +211,14 @@ paths:
           dan saat dua request bersamaan: penjaga transaksi database (admins_last_super_admin_chk) menolak dan API
           mengembalikan 409 VALIDATION_ERROR dengan field_errors pada `role`/`status` serta `current` (AC F16-2).
           Penurunan memakai UPDATE bersyarat ... RETURNING, bukan hitungan tanpa kunci.
-        - `email` (koreksi email login, misalnya salah ketik saat undangan atau pemulihan): hanya selama tidak ada
-          kredensial yang dapat dipakai, yaitu status `invited` (undangan pertama, atau pemulihan yang sandi dan
-          MFA-nya sudah direset) atau `disabled` yang belum pernah aktif; tidak boleh digabung dengan `status` (400
-          VALIDATION_ERROR). Admin `active`, atau `disabled` yang pernah aktif, ditolak 409 VALIDATION_ERROR pada
-          `email`; alamat barunya ditetapkan lewat POST /admin/admins/{adminId}/recovery (`email`) karena alamat
-          baru harus disertai reset sandi dan MFA. Bila identitas pernah aktif (sedang dipulihkan), pemberitahuan
-          keamanan `admin.security_notice` juga dikirim ke alamat lama. Server menormalisasi (lower, trim) dan mengubah users.email akun login admin dalam
+        - `email` (koreksi email login, misalnya salah ketik saat undangan atau pemulihan; wajib X-Reauth-Token,
+          lihat di atas): hanya selama tidak ada kredensial yang dapat dipakai, yaitu status `invited` (undangan
+          pertama, atau pemulihan yang sandi dan MFA-nya sudah direset) atau `disabled` yang belum pernah aktif;
+          tidak boleh digabung dengan `status` (400 VALIDATION_ERROR). Admin `active`, atau `disabled` yang pernah
+          aktif, ditolak 409 VALIDATION_ERROR pada `email`; alamat barunya ditetapkan lewat POST
+          /admin/admins/{adminId}/recovery (`email`) karena alamat baru harus disertai reset sandi dan MFA. Bila
+          identitas pernah aktif (sedang dipulihkan), pemberitahuan keamanan `admin.security_notice` juga dikirim ke
+          alamat lama. Server menormalisasi (lower, trim) dan mengubah users.email akun login admin dalam
           transaksi yang sama (baris admins lebih dahulu, lalu users); bentrok users_kind_email_key menghasilkan
           409 VALIDATION_ERROR pada `email`. Untuk status `invited`, token undangan lama langsung tidak berlaku,
           pendaftaran TOTP yang sedang berjalan dibatalkan (baris mfa_totp yang belum terverifikasi dihapus,
@@ -219,11 +230,11 @@ paths:
 
         Audit `admin.updated` berisi sebelum/sesudah peran, izin, status dan email login beserta alasan (AC F16-1,
         F17-1); email adalah kolom privat yang dimasking pada ekspor CSV audit (AC F17-3).
-      x-kapdh-access: { audience: admin, permissions: [admins.manage], reauth: true }
+      x-kapdh-access: { audience: admin, permissions: [admins.manage] }
       parameters:
         - $ref: "#/components/parameters/AdminId"
         - $ref: "#/components/parameters/IfMatch"
-        - $ref: "#/components/parameters/ReauthToken"
+        - $ref: "#/components/parameters/ReauthTokenConditional"
       requestBody:
         required: true
         content:
@@ -244,7 +255,7 @@ paths:
     delete:
       tags: [Admin Admins]
       operationId: adminDeleteAdmin
-      summary: Hapus identitas admin yang belum pernah aktif dan batalkan undangannya (Super Admin + reautentikasi, F-16).
+      summary: Hapus identitas admin yang belum pernah aktif dan batalkan undangannya (Super Admin, F-16).
       description: |
         Membatalkan undangan secara permanen dan membebaskan email login serta tautan alumninya, misalnya undangan
         ke alamat yang salah atau alumni yang keliru dipilih (F-16, PRD 3.16). Hanya untuk identitas yang belum
@@ -264,16 +275,15 @@ paths:
         peran, izin, status dan linked_alumni_user_id; riwayat `admin.invited` tetap ada karena audit append-only
         (AC F16-1, F17-1). If-Match tidak ada atau tidak sah: 400 VALIDATION_ERROR; usang: 409 VERSION_CONFLICT
         dengan `current`; identitas yang tidak ada atau sudah dihapus: 404 NOT_FOUND.
-      x-kapdh-access: { audience: admin, permissions: [admins.manage], reauth: true }
+      x-kapdh-access: { audience: admin, permissions: [admins.manage] }
       parameters:
         - $ref: "#/components/parameters/AdminId"
         - $ref: "#/components/parameters/IfMatch"
-        - $ref: "#/components/parameters/ReauthToken"
       responses:
         "204": { description: Identitas admin yang belum pernah aktif dihapus dan undangannya dibatalkan. }
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/AdminAdminsSensitiveForbidden" }
+        "403": { $ref: "#/components/responses/AdminAdminsForbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/AdminAdminsConflict" }
         "429": { $ref: "#/components/responses/RateLimited" }
@@ -410,8 +420,8 @@ paths:
         | admins.manage          | Kelola admin dan izin              | admins        | -               | tidak      |
         | notifications.manage   | Kelola pengiriman notifikasi       | notifications | -               | ya         |
 
-        Peran: `super_admin` "Super Admin" (semua izin, mengelola admin, MFA dan reautentikasi untuk perubahan
-        sensitif); `admin` "Admin" (hanya izin yang ditugaskan) (PRD 2.3).
+        Peran: `super_admin` "Super Admin" (semua izin, mengelola admin dan izin dengan sesi MFA; reautentikasi
+        untuk tindakan kredensial); `admin` "Admin" (hanya izin yang ditugaskan) (PRD 2.3).
       x-kapdh-access: { audience: admin }
       responses:
         "200":
@@ -444,7 +454,8 @@ components:
       description: |
         FORBIDDEN tanpa izin admins.manage (hanya Super Admin), bila token bukan audience admin, atau bila
         identitas admin pemanggil tidak `active`; MFA_REQUIRED bila sesi belum TOTP; REAUTH_REQUIRED bila
-        X-Reauth-Token tidak ada/kedaluwarsa (lebih dari 10 menit) (PRD 2.3, AC F16-1).
+        X-Reauth-Token tidak ada/kedaluwarsa (lebih dari 10 menit). Hanya untuk tindakan kredensial: kirim ulang
+        undangan, pemulihan, dan koreksi email login lewat PATCH (bersyarat) (PRD 2.3, AC F16-1, ADR-025).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -657,7 +668,8 @@ components:
           maxLength: 254
           description: |
             Koreksi email login; hanya untuk status invited atau disabled yang belum pernah aktif, dan tidak bersama
-            `status`. Dinormalisasi server; untuk status invited token undangan diterbitkan ulang ke alamat ini.
+            `status`. Alamat yang berbeda dari sekarang wajib X-Reauth-Token (tindakan kredensial, ADR-025).
+            Dinormalisasi server; untuk status invited token undangan diterbitkan ulang ke alamat ini.
         role: { $ref: "#/components/schemas/AdminRole" }
         permissions:
           type: array

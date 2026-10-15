@@ -60,7 +60,8 @@ function statusNote(a: Account, now: number): string | null {
 /**
  * Manajemen Admin (F-16, guideline hlm. 15, izin admins.manage): kartu jumlah admin, Daftar Admin dengan pencarian,
  * filter peran/status dan paging server, chip Role & Akses, serta "Delegasi User jadi Admin". Perubahan peran,
- * izin, status dan pemulihan ada di halaman detail; semuanya wajib reautentikasi (AC F16-1).
+ * izin, status dan pemulihan ada di halaman detail; reautentikasi hanya diminta untuk kirim ulang undangan, koreksi
+ * email login dan pemulihan (tindakan kredensial, ADR-025).
  */
 export function AdminsPage() {
   const [inviteOpen, setInviteOpen] = useState(false);

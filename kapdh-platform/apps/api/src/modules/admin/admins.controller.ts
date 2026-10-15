@@ -2,7 +2,13 @@ import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post, Q
 import type { components } from "@kapdh/contracts";
 import { parseIfMatch } from "../../core/concurrency/if-match.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
-import { Audience, CurrentAuth, RequirePermission, RequireReauth } from "../../core/guards/decorators.js";
+import {
+  Audience,
+  ConditionalReauth,
+  CurrentAuth,
+  RequirePermission,
+  RequireReauth,
+} from "../../core/guards/decorators.js";
 import { Idempotent } from "../../core/idempotency/idempotent.js";
 import { UuidParamOrValidationError } from "../../core/validation/uuid-param.pipe.js";
 import { AdminsService } from "./admins.service.js";
@@ -12,7 +18,10 @@ type Schemas = components["schemas"];
 
 /**
  * Domain admin-admins (kontrak C7, F-16, AC F16-1..F16-3): admins.manage hanya melekat pada Super Admin; setiap
- * perubahan wajib X-Reauth-Token (sesi TOTP, AC F16-1) dan If-Match pada objek yang sudah ada (AC F15-4).
+ * perubahan wajib If-Match pada objek yang sudah ada (AC F15-4) dan tercatat di audit. X-Reauth-Token (sesi TOTP)
+ * hanya diwajibkan untuk tindakan kredensial: kirim ulang undangan dan pemulihan admin (keputusan PO 2026-10-15,
+ * ADR-025), serta koreksi email login lewat PATCH (reautentikasi bersyarat, ditegakkan AdminsService.update). Undang,
+ * ubah nama/peran/izin/status, dan hapus admin tidak lagi meminta reautentikasi.
  */
 @Controller("admin/admins")
 @Audience("admin")
@@ -27,11 +36,10 @@ export class AdminsController {
     return this.admins.list(auth, query);
   }
 
-  /** adminInviteAdmin: { audience: admin, permissions: [admins.manage], reauth: true, idempotent: true } */
+  /** adminInviteAdmin: { audience: admin, permissions: [admins.manage], idempotent: true } */
   @Post()
   @HttpCode(201)
   @RequirePermission("admins.manage")
-  @RequireReauth()
   @Idempotent()
   invite(@CurrentAuth() auth: AuthContext, @Body() body: unknown): Promise<Schemas["AdminInvitationResult"]> {
     return this.admins.invite(auth, body);
@@ -59,11 +67,14 @@ export class AdminsController {
     return this.admins.get(auth, adminId);
   }
 
-  /** adminUpdateAdmin: { audience: admin, permissions: [admins.manage], reauth: true } */
+  /**
+   * adminUpdateAdmin: { audience: admin, permissions: [admins.manage] }; X-Reauth-Token wajib hanya bila email login
+   * berubah (ReauthTokenConditional, ADR-025).
+   */
   @Patch(":adminId")
   @HttpCode(200)
   @RequirePermission("admins.manage")
-  @RequireReauth()
+  @ConditionalReauth()
   update(
     @CurrentAuth() auth: AuthContext,
     @Param("adminId", UuidParamOrValidationError) adminId: string,
@@ -73,11 +84,10 @@ export class AdminsController {
     return this.admins.update(auth, adminId, body, parseIfMatch(ifMatch));
   }
 
-  /** adminDeleteAdmin: { audience: admin, permissions: [admins.manage], reauth: true } */
+  /** adminDeleteAdmin: { audience: admin, permissions: [admins.manage] } */
   @Delete(":adminId")
   @HttpCode(204)
   @RequirePermission("admins.manage")
-  @RequireReauth()
   async remove(
     @CurrentAuth() auth: AuthContext,
     @Param("adminId", UuidParamOrValidationError) adminId: string,

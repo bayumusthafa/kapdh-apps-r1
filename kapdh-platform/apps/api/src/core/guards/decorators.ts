@@ -17,6 +17,7 @@ export const PERMISSIONS_KEY = "kapdh:permissions";
 export const PERMISSIONS_ANY_KEY = "kapdh:permissions-any";
 export const ROLE_KEY = "kapdh:role";
 export const REAUTH_KEY = "kapdh:reauth";
+export const REAUTH_CONDITIONAL_KEY = "kapdh:reauth-conditional";
 
 /** Peran admin yang dapat diwajibkan rute (kontrak `x-kapdh-access.role`): hanya tindakan khusus Super Admin. */
 export type RequiredRole = "super_admin";
@@ -59,8 +60,22 @@ export const RequireAnyPermission = (...permissions: [Permission, ...Permission[
  */
 export const RequireRole = (role: RequiredRole) => SetMetadata(ROLE_KEY, role);
 
-/** Tindakan sensitif: header X-Reauth-Token (aud kapdh-reauth, terikat sesi, <= 10 menit; AC F15-3, F16-1). */
+/**
+ * Tindakan kredensial: header X-Reauth-Token (aud kapdh-reauth, terikat sesi, <= 10 menit). Sejak keputusan PO
+ * 2026-10-15 (ADR-025) hanya dipakai untuk kirim ulang undangan dan pemulihan admin, buat ulang backup code admin,
+ * reset sandi anggota, dan hapus akun anggota (F-14). Perubahan pengaturan, metode bayar dan admin tidak memakainya;
+ * koreksi email login admin memakai @ConditionalReauth.
+ */
 export const RequireReauth = () => SetMetadata(REAUTH_KEY, true);
+
+/**
+ * Reautentikasi BERSYARAT (ADR-025): rute yang hanya sebagian isinya tindakan kredensial, yaitu adminUpdateAdmin
+ * (koreksi email login, yang mengalihkan tujuan tautan pengaturan kredensial). AuthGuard memverifikasi X-Reauth-Token
+ * bila dikirim dan mengisi `auth.reauthenticated` tanpa menolak permintaan; layanan yang menolak 403 REAUTH_REQUIRED
+ * (`reauthRequired()`) saat isi kredensial dikirim tanpa token sah. Kontrak: parameter `ReauthTokenConditional`
+ * (tidak wajib) dan uraian operasinya, bukan `x-kapdh-access.reauth`.
+ */
+export const ConditionalReauth = () => SetMetadata(REAUTH_CONDITIONAL_KEY, true);
 
 /** Parameter `AuthContext` request terautentikasi. Melempar 401 bila dipakai di rute tanpa autentikasi. */
 export const CurrentAuth = createParamDecorator((_data: unknown, context: ExecutionContext): AuthContext => {
@@ -78,6 +93,8 @@ export interface RouteAuthMeta {
   permissionsAny: Permission[];
   role: RequiredRole | null;
   reauth: boolean;
+  /** @ConditionalReauth: X-Reauth-Token diverifikasi bila ada, ditegakkan layanan untuk isi kredensial. */
+  reauthConditional: boolean;
   /** Kesalahan deklarasi; rute dengan masalah selalu ditolak (fail closed) dan diuji per rute. */
   problems: string[];
 }
@@ -103,14 +120,26 @@ export function routeAuthMeta(
   ];
   const role = reflector.getAllAndOverride<RequiredRole | undefined>(ROLE_KEY, scopes) ?? null;
   const reauth = reflector.getAllAndOverride<boolean | undefined>(REAUTH_KEY, scopes) === true;
+  const reauthConditional =
+    reflector.getAllAndOverride<boolean | undefined>(REAUTH_CONDITIONAL_KEY, scopes) === true;
 
   const problems: string[] = [];
   if (isPublic && audience) problems.push("@Public dan @Audience tidak boleh bersamaan");
   if (!isPublic && !audience) problems.push("rute tanpa @Public atau @Audience");
-  if (isPublic && (memberAccess || permissions.length > 0 || permissionsAny.length > 0 || role || reauth))
+  if (
+    isPublic &&
+    (memberAccess ||
+      permissions.length > 0 ||
+      permissionsAny.length > 0 ||
+      role ||
+      reauth ||
+      reauthConditional)
+  )
     problems.push(
-      "@Public tidak boleh memakai @MemberAccess/@RequirePermission/@RequireAnyPermission/@RequireRole/@RequireReauth",
+      "@Public tidak boleh memakai @MemberAccess/@RequirePermission/@RequireAnyPermission/@RequireRole/@RequireReauth/@ConditionalReauth",
     );
+  if (reauth && reauthConditional)
+    problems.push("@RequireReauth dan @ConditionalReauth tidak boleh bersamaan");
   if (memberAccess && audience !== "mobile" && audience !== "any")
     problems.push("@MemberAccess hanya untuk @Audience('mobile') atau @Audience('any')");
   if (permissions.length > 0 && audience !== "admin")
@@ -118,5 +147,15 @@ export function routeAuthMeta(
   if (permissionsAny.length > 0 && audience !== "admin")
     problems.push("@RequireAnyPermission hanya untuk @Audience('admin')");
   if (role && audience !== "admin") problems.push("@RequireRole hanya untuk @Audience('admin')");
-  return { isPublic, audience, memberAccess, permissions, permissionsAny, role, reauth, problems };
+  return {
+    isPublic,
+    audience,
+    memberAccess,
+    permissions,
+    permissionsAny,
+    role,
+    reauth,
+    reauthConditional,
+    problems,
+  };
 }

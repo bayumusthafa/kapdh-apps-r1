@@ -31,7 +31,7 @@ export interface AuthContext {
   linkedAlumniUserId: string | null;
   /** effective_status anggota (PRD 2.2); terisi pada rute @MemberAccess. */
   effectiveStatus: EffectiveStatus | null;
-  /** true bila X-Reauth-Token valid untuk sesi ini (rute @RequireReauth). */
+  /** true bila X-Reauth-Token valid untuk sesi ini (rute @RequireReauth, atau @ConditionalReauth bila dikirim). */
   reauthenticated: boolean;
 }
 

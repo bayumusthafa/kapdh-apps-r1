@@ -375,10 +375,11 @@ Super Admin pertama: **Bayu Musthafa** (D1). Super Admin kedua ditunjuk PP sebel
       lewat outbox; tanpa autentikasi domain email itu dapat ditolak atau masuk spam. Bootstrap 3.1 tidak terdampak
       karena tautannya dicetak CLI.
 - [ ] **3.5 Super Admin kedua**: Super Admin pertama login → Manajemen Admin → Daftar Admin → undang dengan peran
-      Super Admin (reautentikasi TOTP diminta). Penerima membuka tautan dari email `noreply@kapdh.or.id` dan
-      menjalankan 3.2. Bila email tidak datang: web admin Notifikasi → Pengiriman → tab Outbox (event `failed`/`dead`,
-      izin `notifications.manage`), worker `GET /healthz` dan log worker, lalu "Kirim ulang undangan" di halaman
-      detail admin.
+      Super Admin (tanpa reautentikasi sejak ADR-025; sesi sudah ber-TOTP dan undangan tercatat di audit
+      `admin.invited`). Penerima membuka tautan dari email `noreply@kapdh.or.id` dan menjalankan 3.2. Bila email tidak
+      datang: web admin Notifikasi → Pengiriman → tab Outbox (event `failed`/`dead`, izin `notifications.manage`),
+      worker `GET /healthz` dan log worker, lalu "Kirim ulang undangan" di halaman detail admin (tindakan kredensial:
+      meminta sandi + kode TOTP).
 - [ ] **3.6 Pengurus pembayaran**: undang minimal dua admin yang memegang `payments.decide` (PRD 10.2), atau pastikan
       Super Admin yang berperan sebagai pemutus. Admin yang juga alumni ditautkan ke akun alumninya
       (konflik kepentingan PRD 2.3).
@@ -409,12 +410,15 @@ go-live** (PRD 8.2, 10.2).
       `app_settings.legal`; registrasi anggota ditolak (409) sampai kebijakan privasi dan ketentuan terbit.
       Kebijakan privasi wajib memuat isi yang dipakai formulir privasi toko (`app-store-submission.md` bagian 4) dan
       retensi D2 (data keuangan/tiket/laporan/audit tersisa anonim; backup berotasi 30 hari).
-- [ ] **4.3 Nominal iuran D4** (Verifikasi Pembayaran → tab "Biaya Pembayaran"; `settings.manage` +
-      reautentikasi): seed = registrasi Rp50.000, pembuatan KTA Rp10.000, perpanjangan Rp10.000. **BD** memeriksa dan
-      menandatangani nilai yang tampil; bila berubah, ubah lewat web admin (versi `fees` naik, payment lama tetap
-      memakai snapshot; ADR-006).
-- [ ] **4.4 Metode bayar** (Verifikasi Pembayaran → tab "Kelola Metode", `settings.manage` + reautentikasi): **BD** membuat
-      rekening organisasi yang sah (bank, nomor, atas nama, instruksi). Tidak ada metode bayar di seed.
+- [ ] **4.3 Nominal iuran D4** (Verifikasi Pembayaran → tab "Biaya Pembayaran"; `settings.manage`, tanpa
+      reautentikasi sejak ADR-025, tercatat di audit `settings.updated`): seed = registrasi Rp50.000, pembuatan KTA
+      Rp10.000, perpanjangan Rp10.000. **BD** memeriksa dan menandatangani nilai yang tampil; bila berubah, ubah lewat
+      web admin (versi `fees` naik, payment lama tetap memakai snapshot; ADR-006).
+- [ ] **4.4 Metode bayar** (Verifikasi Pembayaran → tab "Kelola Metode", `settings.manage`, tanpa reautentikasi
+      sejak ADR-025, tercatat di audit `payment_method.*`): **BD** membuat rekening organisasi yang sah (bank, nomor,
+      atas nama, instruksi). Tidak ada metode bayar di seed. Karena simpan tidak lagi meminta sandi + TOTP, **BD**
+      mencocokkan rekening aktif dengan daftar yang ditandatangani saat sign-off go-live dan setelah setiap perubahan
+      metode (risiko yang diterima ADR-025).
 - [ ] **4.5 Kontak dukungan** (Pengaturan): email `bantuan@kapdh.or.id` (seed) dan **satu nomor WhatsApp admin**
       (PRD 8.3; seed `null`).
 - [ ] **4.6 Versi aplikasi minimum** (Pengaturan): `android`/`ios` = versi build rilis pertama (bawaan `1.0.0`).

@@ -8,6 +8,8 @@
 # Setiap kunci memiliki `version` sendiri (app_settings.version). Pembaruan memakai If-Match versi kunci tersebut;
 # versi berbeda menghasilkan 409 VERSION_CONFLICT dengan `current` berisi objek pengaturan terbaru (AC F15-4).
 # Setiap perubahan menaikkan versi dan menulis audit before/after dalam transaksi yang sama (AC F15-3, F17-1).
+# Perubahan tidak meminta reautentikasi (X-Reauth-Token) sejak keputusan PO 2026-10-15 (ADR-025): cukup izin
+# settings.manage pada sesi admin ber-MFA, If-Match dan audit.
 tags:
   - name: Admin Settings
     description: |
@@ -65,17 +67,16 @@ paths:
     put:
       tags: [Admin Settings]
       operationId: adminUpdateFees
-      summary: Ubah nominal iuran; hanya berlaku untuk payment baru (settings.manage + reautentikasi, AC F15-3).
+      summary: Ubah nominal iuran; hanya berlaku untuk payment baru (settings.manage, AC F15-3).
       description: |
         Nominal baru menjadi versi `fees` berikutnya dan hanya dipakai instruksi yang dibuat sesudahnya; payment
         yang sudah dibuat tetap memakai snapshot baris dan `settings_version` lamanya, termasuk saat diputus
-        (AC F03-5, F15-3). Setiap nominal >= 0 dan <= 999999999999.99 (numeric(14,2)). Wajib X-Reauth-Token dan
-        audit before/after dalam transaksi yang sama. If-Match usang menghasilkan 409 VERSION_CONFLICT dengan
-        `current` FeeSettings (AC F15-4).
-      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+        (AC F03-5, F15-3). Setiap nominal >= 0 dan <= 999999999999.99 (numeric(14,2)). Audit before/after dalam
+        transaksi yang sama. If-Match usang menghasilkan 409 VERSION_CONFLICT dengan `current` FeeSettings
+        (AC F15-4).
+      x-kapdh-access: { audience: admin, permissions: [settings.manage] }
       parameters:
         - $ref: "#/components/parameters/IfMatch"
-        - $ref: "#/components/parameters/ReauthToken"
       requestBody:
         required: true
         content:
@@ -90,9 +91,7 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: |
-            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
-            MFA_REQUIRED bila sesi admin belum TOTP.
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -107,16 +106,15 @@ paths:
     put:
       tags: [Admin Settings]
       operationId: adminUpdateMinAppVersion
-      summary: Ubah versi aplikasi minimum per platform (settings.manage + reautentikasi, AC F15-3, PRD 4.5).
+      summary: Ubah versi aplikasi minimum per platform (settings.manage, AC F15-3, PRD 4.5).
       description: |
         Mutasi dari aplikasi di bawah versi ini ditolak 426 UPGRADE_REQUIRED dan klien menampilkan layar wajib
         update dengan tautan toko (PRD 4.5). Naikkan versi minimum hanya setelah versi baru dapat diunduh
         (PRD 8.4): server menolak (400 VALIDATION_ERROR) menaikkan versi platform yang tautan tokonya masih kosong.
         Nilai tampil di GET /public/config. Audit before/after; If-Match usang menghasilkan 409 VERSION_CONFLICT.
-      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+      x-kapdh-access: { audience: admin, permissions: [settings.manage] }
       parameters:
         - $ref: "#/components/parameters/IfMatch"
-        - $ref: "#/components/parameters/ReauthToken"
       requestBody:
         required: true
         content:
@@ -131,9 +129,7 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: |
-            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
-            MFA_REQUIRED bila sesi admin belum TOTP.
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -148,18 +144,18 @@ paths:
     put:
       tags: [Admin Settings]
       operationId: adminUpdateMaintenance
-      summary: Aktifkan atau akhiri mode maintenance (settings.manage + reautentikasi, PRD 4.5, 8.4).
+      summary: Aktifkan atau akhiri mode maintenance (settings.manage, PRD 4.5, 8.4).
       description: |
         Selama `active` true, mutasi anggota ditolak 503 MAINTENANCE kecuali refresh/logout dan pencabutan sesi; baca
-        tetap terkendali dan API admin tetap berjalan (ARCHITECTURE §4.3), termasuk POST /auth/reauth dan POST /files
-        dengan access token admin, sehingga maintenance tetap dapat diakhiri lewat API setelah token reautentikasi
-        yang dipakai saat mengaktifkan kedaluwarsa. Saat mengaktifkan, `message` wajib diisi (rentang
-        estimasi dan kanal dukungan, PRD 4.5) dan `until` (perkiraan selesai) bila diisi harus di masa depan.
+        tetap terkendali dan API admin tetap berjalan (ARCHITECTURE §4.3), sehingga maintenance dapat diakhiri lewat
+        endpoint ini cukup dengan If-Match. POST /auth/reauth dan POST /files dengan access token admin tetap
+        dikecualikan agar tindakan kredensial admin dan unggahan pengurus tetap berjalan. Saat mengaktifkan,
+        `message` wajib diisi (rentang estimasi dan kanal dukungan, PRD 4.5) dan `until` (perkiraan selesai) bila
+        diisi harus di masa depan.
         Status tampil di GET /public/config. Audit before/after; If-Match usang menghasilkan 409 VERSION_CONFLICT.
-      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+      x-kapdh-access: { audience: admin, permissions: [settings.manage] }
       parameters:
         - $ref: "#/components/parameters/IfMatch"
-        - $ref: "#/components/parameters/ReauthToken"
       requestBody:
         required: true
         content:
@@ -174,9 +170,7 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: |
-            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
-            MFA_REQUIRED bila sesi admin belum TOTP.
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -191,15 +185,14 @@ paths:
     put:
       tags: [Admin Settings]
       operationId: adminUpdateStoreLinks
-      summary: Ubah tautan aplikasi di toko (settings.manage + reautentikasi, PRD 4.5, 5.2).
+      summary: Ubah tautan aplikasi di toko (settings.manage, PRD 4.5, 5.2).
       description: |
         Tautan dipakai layar wajib update dan situs publik (unduh aplikasi). Hanya https ke Google Play
         (play.google.com) dan App Store (apps.apple.com) agar tautan aman (PRD 5.2); null mengosongkan.
         Audit before/after; If-Match usang menghasilkan 409 VERSION_CONFLICT.
-      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+      x-kapdh-access: { audience: admin, permissions: [settings.manage] }
       parameters:
         - $ref: "#/components/parameters/IfMatch"
-        - $ref: "#/components/parameters/ReauthToken"
       requestBody:
         required: true
         content:
@@ -214,9 +207,7 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: |
-            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
-            MFA_REQUIRED bila sesi admin belum TOTP.
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -231,7 +222,7 @@ paths:
     put:
       tags: [Admin Settings]
       operationId: adminUpdatePaymentInstructions
-      summary: Sembunyikan atau tampilkan instruksi bayar iuran per platform (settings.manage + reautentikasi, D13).
+      summary: Sembunyikan atau tampilkan instruksi bayar iuran per platform (settings.manage, D13).
       description: |
         Rencana cadangan D13 (PRD 10.1, 10.2): bila review toko menolak alur iuran (misalnya Apple 3.1.1), platform
         tersebut dimasukkan ke `dues_hidden_platforms`. Untuk request dengan header `X-App-Platform` platform itu:
@@ -247,10 +238,9 @@ paths:
         ini dipaksa memperbarui lewat versi aplikasi minimum (PUT /admin/settings/min-app-version). Audit
         before/after dalam transaksi yang sama; If-Match usang menghasilkan 409 VERSION_CONFLICT dengan `current`
         AdminPaymentInstructionsSetting terbaru (AC F15-4).
-      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+      x-kapdh-access: { audience: admin, permissions: [settings.manage] }
       parameters:
         - $ref: "#/components/parameters/IfMatch"
-        - $ref: "#/components/parameters/ReauthToken"
       requestBody:
         required: true
         content:
@@ -265,9 +255,7 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: |
-            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
-            MFA_REQUIRED bila sesi admin belum TOTP.
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -282,16 +270,15 @@ paths:
     put:
       tags: [Admin Settings]
       operationId: adminUpdateSupportContact
-      summary: Ubah kontak dukungan anggota (settings.manage + reautentikasi, PRD 8.3).
+      summary: Ubah kontak dukungan anggota (settings.manage, PRD 8.3).
       description: |
         Kontak tampil di aplikasi ("Hubungi pengurus", prototipe screen_5), portal pembatasan dan situs publik.
-        Karena anggota dapat diarahkan ke kontak ini untuk urusan iuran, perubahan wajib reautentikasi. Awal
-        go-live: bantuan@kapdh.or.id dan satu nomor WhatsApp admin (PRD 8.3). Audit before/after; If-Match usang
-        menghasilkan 409 VERSION_CONFLICT.
-      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+        Karena anggota dapat diarahkan ke kontak ini untuk urusan iuran, setiap perubahan diaudit. Awal go-live:
+        bantuan@kapdh.or.id dan satu nomor WhatsApp admin (PRD 8.3). Audit before/after; If-Match usang menghasilkan
+        409 VERSION_CONFLICT.
+      x-kapdh-access: { audience: admin, permissions: [settings.manage] }
       parameters:
         - $ref: "#/components/parameters/IfMatch"
-        - $ref: "#/components/parameters/ReauthToken"
       requestBody:
         required: true
         content:
@@ -306,9 +293,7 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: |
-            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
-            MFA_REQUIRED bila sesi admin belum TOTP.
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

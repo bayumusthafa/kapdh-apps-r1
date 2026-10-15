@@ -11,7 +11,8 @@ import { cookieNames, cookieValue, rawFetch } from "./http";
  * (PGlite + seed dev, live/api-server.mjs). Uji ini membuktikan bahwa klausa UI yang di jalur bawaan hanya diuji
  * terhadap server tiruan (src/api/mocks) juga berlaku terhadap server sungguhan: login dua tahap dan pemulihan sesi
  * (AC F02-1, F02-2), peringatan idle dan "Tetap masuk" serta idle 30 menit (AC F02-5), keputusan bersamaan
- * (AC F04-3), serta pencatatan iuran D13 dan tautan payment dari detail anggota (temuan D6-01, D6-02).
+ * (AC F04-3), pencatatan iuran D13 dan tautan payment dari detail anggota (temuan D6-01, D6-02), serta
+ * reautentikasi yang hanya diminta untuk tindakan kredensial (keputusan PO 2026-10-15, ADR-025).
  *
  * Satu API dan satu database untuk seluruh berkas: urutan uji di bawah disengaja (idle terakhir).
  */
@@ -180,6 +181,43 @@ describe("web admin x API nyata (D2-14)", () => {
       expect(owners.every((name) => name.includes(unverified.name))).toBe(true);
     });
     expect(screen.getByRole("combobox", { name: "Status" })).toHaveValue("all");
+  });
+
+  it("ADR-025: pengaturan disimpan tanpa dialog Konfirmasi identitas; buat ulang backup code (tindakan kredensial) tetap meminta reautentikasi", async () => {
+    const admin = live().admins.super;
+    const user = userEvent.setup();
+    const { router } = renderApp("/settings");
+    await signInLive(user);
+    await screen.findByRole("heading", { level: 1, name: "Pengaturan" }, { timeout: 30_000 });
+    // Perubahan non-kredensial (keputusan PO 2026-10-15): API nyata menerima PUT tanpa X-Reauth-Token.
+    const support = await screen.findByRole("region", { name: "Kontak dukungan" });
+    const email = within(support).getByLabelText(/^Email dukungan/);
+    await user.clear(email);
+    await user.type(email, "dukungan.live@kapdh.test");
+    await user.click(within(support).getByRole("button", { name: "Simpan kontak dukungan" }));
+    await findToast("success", "Kontak dukungan disimpan.");
+    expect(screen.queryByRole("dialog", { name: /Konfirmasi identitas/ })).toBeNull();
+    await waitFor(() =>
+      expect(within(support).getByText(new RegExp(`oleh ${escape(admin.name)}`))).toBeInTheDocument(),
+    );
+
+    // Tindakan kredensial: dialog dibuka sebelum permintaan dan API nyata menerima X-Reauth-Token hasilnya.
+    await act(() => router.navigate({ to: "/account" }));
+    await screen.findByRole("heading", { level: 1, name: "Akun saya" });
+    const card = await screen.findByRole("region", { name: "Backup code" });
+    await user.click(within(card).getByRole("button", { name: "Buat ulang backup code" }));
+    const confirm = await screen.findByRole("alertdialog", { name: /Buat ulang backup code/ });
+    await user.click(within(confirm).getByLabelText("Saya memahami backup code lama tidak berlaku lagi."));
+    await user.click(within(confirm).getByRole("button", { name: "Buat kode baru" }));
+    const reauth = await screen.findByRole("dialog", { name: /Konfirmasi identitas/ });
+    expect(reauth).toHaveAccessibleDescription(/Membuat ulang backup code/);
+    await user.type(within(reauth).getByLabelText(/^Sandi/), admin.password);
+    await user.type(within(reauth).getByLabelText(/^Kode autentikator/), await totpCode("super"));
+    await user.click(within(reauth).getByRole("button", { name: "Konfirmasi" }));
+    const result = await screen.findByRole("dialog", { name: "Backup code baru" }, { timeout: 30_000 });
+    expect(
+      within(within(result).getByRole("list", { name: "Daftar backup code" })).getAllByRole("listitem"),
+    ).toHaveLength(10);
   });
 
   it("AC F02-5: peringatan 2 menit sebelum idle; 'Tetap masuk' menyentuh API sehingga idle server ikut diperpanjang", async () => {

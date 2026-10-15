@@ -8,7 +8,8 @@ import { routes } from "./payments";
 
 /**
  * Server tiruan pembayaran wajib mengikuti `x-kapdh-access` kontrak final (ARCHITECTURE §4.3): setiap izin yang
- * tercantum diperiksa, reautentikasi hanya untuk operasi `reauth: true`. Uji ini membaca berkas domain kontrak
+ * tercantum diperiksa, reautentikasi hanya untuk operasi `reauth: true` (sejak keputusan PO 2026-10-15, ADR-025,
+ * tidak ada operasi seperti itu di area pembayaran/biaya). Uji ini membaca berkas domain kontrak
  * sehingga perubahan akses di kontrak langsung terlihat sebagai kegagalan di sini (mock bukan bukti AC, PRD 7.3).
  */
 interface ContractOperation {
@@ -170,7 +171,7 @@ describe("server tiruan pembayaran mengikuti x-kapdh-access kontrak (ARCHITECTUR
     }
   });
 
-  it("AC F15-3: operasi reauth menolak tanpa X-Reauth-Token; operasi lain tidak meminta reautentikasi", async () => {
+  it("ADR-025: tidak ada operasi pembayaran/biaya yang meminta reautentikasi; tanpa X-Reauth-Token tidak pernah REAUTH_REQUIRED", async () => {
     mockAuth.setAdmin({ role: "super_admin", permissions: [] });
     for (const op of implemented) {
       const res = await call(op);
@@ -181,14 +182,14 @@ describe("server tiruan pembayaran mengikuti x-kapdh-access kontrak (ARCHITECTUR
         });
       else expect({ op: op.operationId, code: res.code }).not.toMatchObject({ code: "REAUTH_REQUIRED" });
     }
-    // Operasi sensitif F-15 menurut kontrak: metode bayar dan biaya.
-    expect(implemented.filter((op) => op.reauth).map((op) => op.operationId)).toEqual(
-      expect.arrayContaining([
-        "adminCreatePaymentMethod",
-        "adminUpdatePaymentMethod",
-        "adminDeletePaymentMethod",
-        "adminUpdateFees",
-      ]),
-    );
+    // Keputusan PO 2026-10-15 (ADR-025): metode bayar dan biaya tidak lagi `reauth: true` di kontrak.
+    expect(implemented.filter((op) => op.reauth).map((op) => op.operationId)).toEqual([]);
+    for (const id of [
+      "adminCreatePaymentMethod",
+      "adminUpdatePaymentMethod",
+      "adminDeletePaymentMethod",
+      "adminUpdateFees",
+    ])
+      expect(implemented.map((op) => op.operationId)).toContain(id);
   });
 });

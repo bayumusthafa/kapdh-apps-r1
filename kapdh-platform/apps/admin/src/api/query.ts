@@ -222,9 +222,14 @@ export interface UseApiMutationOptions<T, V, TFieldValues extends FieldValues = 
   request: (vars: V, ctx: MutationRequestContext) => Promise<FetchResult<T>>;
   /** Sidik jari niat; bawaan seluruh variabel. Sertakan versi objek agar keputusan setelah muat ulang memakai key baru. */
   intent?: (vars: V) => unknown;
-  /** Minta reautentikasi sebelum percobaan pertama untuk operasi yang selalu sensitif (AC F15-3, F16-1). */
+  /**
+   * Minta reautentikasi sebelum percobaan pertama. Hanya untuk tindakan kredensial yang kontraknya `reauth: true`
+   * (backup code, kirim ulang undangan/pemulihan admin, reset sandi anggota) atau yang isinya kredensial menurut
+   * `ReauthTokenConditional` (koreksi email login admin; ADR-025). Operasi lain tidak memakainya; REAUTH_REQUIRED
+   * dari server tetap ditangani generik (dialog lalu ulang sekali).
+   */
   requiresReauth?: boolean;
-  /** Penjelasan pada dialog reautentikasi, mis. "Mengubah biaya iuran". */
+  /** Penjelasan pada dialog reautentikasi, mis. "Membuat ulang backup code". */
   reauthReason?: string;
   /** show_field_errors: field_errors dipasang ke form ini. */
   setError?: UseFormSetError<TFieldValues>;

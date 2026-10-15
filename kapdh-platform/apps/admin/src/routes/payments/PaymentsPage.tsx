@@ -26,7 +26,7 @@ const HEADER = {
   },
   settings: {
     title: "Metode & Biaya Pembayaran",
-    description: "Atur rekening tujuan transfer dan biaya iuran. Perubahan meminta konfirmasi identitas.",
+    description: "Atur rekening tujuan transfer dan biaya iuran. Setiap perubahan tercatat di audit.",
   },
 } as const;
 

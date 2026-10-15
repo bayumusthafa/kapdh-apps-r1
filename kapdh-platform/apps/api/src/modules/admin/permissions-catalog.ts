@@ -138,7 +138,7 @@ export const ROLE_CATALOG: readonly AdminRoleInfo[] = [
     role: "super_admin",
     label: "Super Admin",
     description:
-      "Memiliki semua izin, mengelola admin dan izin; perubahan sensitif wajib MFA dan reautentikasi (PRD 2.3).",
+      "Memiliki semua izin, mengelola admin dan izin dengan sesi MFA; reautentikasi untuk tindakan kredensial (PRD 2.3).",
   },
   {
     role: "admin",
