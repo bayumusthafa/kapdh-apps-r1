@@ -83,7 +83,29 @@ function assertNotDisguised(mime: string, filename?: string | null, declaredMime
     throw new FileRejectedError(415, "Tipe berkas yang dikirim tidak sesuai dengan isinya.");
 }
 
-async function processImage(data: Buffer, mime: ImageMime): Promise<ProcessedFile> {
+/** Pesan 415 untuk purpose yang membatasi tipe (`spec.mimes`), mis. "Gunakan gambar PNG atau JPG." (ADR-026). */
+const MIME_LABELS: Record<string, string> = {
+  "image/png": "PNG",
+  "image/jpeg": "JPG",
+  "image/webp": "WebP",
+  "application/pdf": "PDF",
+};
+
+function allowedMimesMessage(mimes: readonly string[]): string {
+  const labels = mimes.map((mime) => MIME_LABELS[mime] ?? mime);
+  const list =
+    labels.length <= 1 ? (labels[0] ?? "") : `${labels.slice(0, -1).join(", ")} atau ${labels.at(-1)}`;
+  return `Gunakan gambar ${list}.`;
+}
+
+function tooSmall(spec: FilePurposeSpec): FileRejectedError {
+  return new FileRejectedError(
+    422,
+    `${spec.imageLabel ?? "Gambar"} terlalu kecil (minimal ${spec.minImageDimension} piksel) sehingga sulit dipindai.`,
+  );
+}
+
+async function processImage(data: Buffer, mime: ImageMime, spec: FilePurposeSpec): Promise<ProcessedFile> {
   const options = { limitInputPixels: MAX_INPUT_PIXELS, failOn: "error" as const, pages: 1 };
   let width: number | undefined;
   let height: number | undefined;
@@ -100,10 +122,21 @@ async function processImage(data: Buffer, mime: ImageMime): Promise<ProcessedFil
     width * height > MAX_INPUT_PIXELS
   )
     throw new FileRejectedError(422, "Dimensi gambar terlalu besar atau tidak valid.");
+  // Sisi terpendek tidak berubah oleh rotasi EXIF, sehingga dapat diperiksa sebelum dekode piksel.
+  if (spec.minImageDimension && Math.min(width, height) < spec.minImageDimension) throw tooSmall(spec);
+  let processed: ProcessedFile;
   try {
     // rotate() tanpa argumen = orientasi EXIF diterapkan ke piksel; tanpa keepMetadata/withMetadata, sharp tidak
     // menyalin EXIF (termasuk GPS), XMP, IPTC, maupun ICC ke keluaran.
     let pipeline = sharp(data, options).rotate();
+    // Batas sisi keluaran (mis. QRIS 2048 piksel): diperkecil proporsional, tidak pernah diperbesar.
+    if (spec.maxOutputDimension)
+      pipeline = pipeline.resize({
+        width: spec.maxOutputDimension,
+        height: spec.maxOutputDimension,
+        fit: "inside",
+        withoutEnlargement: true,
+      });
     pipeline =
       mime === "image/jpeg"
         ? pipeline.jpeg({ quality: 85, mozjpeg: true })
@@ -111,10 +144,14 @@ async function processImage(data: Buffer, mime: ImageMime): Promise<ProcessedFil
           ? pipeline.png({ compressionLevel: 9 })
           : pipeline.webp({ quality: 85 });
     const { data: output, info } = await pipeline.toBuffer({ resolveWithObject: true });
-    return { data: output, mime, kind: "image", width: info.width, height: info.height };
+    processed = { data: output, mime, kind: "image", width: info.width, height: info.height };
   } catch {
     throw new FileRejectedError(422, "Gambar rusak atau tidak dapat diproses.");
   }
+  // Gambar sangat memanjang dapat menjadi lebih kecil dari batas minimum setelah diperkecil.
+  if (spec.minImageDimension && Math.min(processed.width!, processed.height!) < spec.minImageDimension)
+    throw tooSmall(spec);
+  return processed;
 }
 
 /** Nama PDF yang menandai konten aktif/tersemat (setelah escape `#xx` pada nama dinormalkan). */
@@ -184,7 +221,15 @@ export async function inspectUpload(input: InspectInput): Promise<ProcessedFile>
   const detected = await fileTypeFromBuffer(data);
   const kind = detected ? kindOf(detected.mime) : null;
   if (!detected || !kind)
-    throw new FileRejectedError(415, "Tipe berkas tidak didukung. Gunakan JPG, PNG, atau WebP.");
+    throw new FileRejectedError(
+      415,
+      spec.mimes
+        ? allowedMimesMessage(spec.mimes)
+        : "Tipe berkas tidak didukung. Gunakan JPG, PNG, atau WebP.",
+    );
+  // Purpose dengan daftar tipe sempit (gambar QRIS: PNG/JPG saja; WebP, SVG, PDF ditolak, ADR-026).
+  if (spec.mimes && !spec.mimes.includes(detected.mime))
+    throw new FileRejectedError(415, allowedMimesMessage(spec.mimes));
   if (!spec.kinds.includes(kind))
     throw new FileRejectedError(
       415,
@@ -195,5 +240,5 @@ export async function inspectUpload(input: InspectInput): Promise<ProcessedFile>
   if (data.length > maxBytesFor(kind))
     throw new FileRejectedError(413, kind === "pdf" ? "PDF maksimal 10 MB." : "Gambar maksimal 5 MB.");
   assertNotDisguised(detected.mime, input.filename, input.declaredMime);
-  return kind === "image" ? processImage(data, detected.mime as ImageMime) : inspectPdf(data);
+  return kind === "image" ? processImage(data, detected.mime as ImageMime, spec) : inspectPdf(data);
 }

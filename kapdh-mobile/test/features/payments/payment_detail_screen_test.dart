@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_api/kapdh_api.dart';
+import 'package:kapdh_mobile/app/theme/kapdh_tokens.dart';
 import 'package:kapdh_mobile/core/api/idempotency_store.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/design/design.dart';
+import 'package:kapdh_mobile/features/home/shared/remote_image.dart';
 import 'package:kapdh_mobile/features/notifications/notification_unread_count.dart';
 import 'package:kapdh_mobile/features/notifications/notifications_repository.dart';
 import 'package:kapdh_mobile/features/payments/payment_presentation.dart';
@@ -18,6 +20,7 @@ import 'package:kapdh_mobile/features/payments/widgets/proof_upload_section.dart
 import '../../support/a11y.dart';
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
+import '../../support/test_images.dart';
 import 'payments_fixtures.dart';
 
 Future<AppHarness> openPayment(
@@ -1055,6 +1058,302 @@ void main() {
       await settle(tester);
       expect(tester.takeException(), isNull);
       expect(find.byType(ProofImageViewer), findsOneWidget);
+    });
+  });
+
+  group('Metode QRIS (ADR-026; payments.yaml PaymentMethod.qr_image_url)', () {
+    /// URL yang diminta layar dari penyedia gambar PUBLIK (cache disk) dan pemuatan gambar sebenarnya.
+    final requested = <String>[];
+    final loads = <String>[];
+
+    Override publicImages({int failures = 0}) => remoteImageProviderFactoryProvider.overrideWithValue((url) {
+      requested.add(url);
+      return failures == 0 ? MemoryImage(_transparentPng) : FlakyImage(url, loads: loads, failures: failures);
+    });
+
+    Map<String, Object?> ticketRef() => {
+      'ticket_id': 'tk-1',
+      'event_id': 'ev-1',
+      'event_title': 'Silaturahmi Akbar',
+      'event_starts_at': iso(testNow.add(const Duration(days: 10))),
+      'event_timezone': 'Asia/Jakarta',
+      'ticket_status': 'awaiting_payment',
+      'hold_expires_at': iso(testNow.add(const Duration(hours: 5))),
+      'event_status': 'open',
+      'ticket_cancelled_by': null,
+    };
+
+    Finder qrisAmountNote(String amount) => find.descendant(
+      of: find.byKey(const ValueKey('qris-amount')),
+      matching: find.text(
+        'QRIS ini tanpa nominal. Masukkan nominal $amount persis saat membayar agar pengurus dapat mencocokkannya.',
+      ),
+    );
+
+    setUp(() {
+      requested.clear();
+      loads.clear();
+    });
+    tearDown(() {
+      PaintingBinding.instance.imageCache
+        ..clear()
+        ..clearLiveImages();
+    });
+
+    testWidgets('kartu QRIS terpilih: NMID dan merchant tanpa Salin, gambar tajam dari URL publik, pengingat nominal '
+        'persis; rekening lain tetap dapat dipilih', (tester) async {
+      await openPayment(
+        tester,
+        {
+          '/me/payments/pay-1': (_) => FakeResponse.json(200, paymentJson(method: methodQris)),
+          '/payment-methods': (_) => FakeResponse.json(200, methodsJson([methodQris, methodBsi])),
+        },
+        overrides: [publicImages()],
+      );
+
+      expect(find.text('QRIS'), findsOneWidget);
+      expect(find.text('NMID: ID1020200012345'), findsOneWidget);
+      expect(find.text('Merchant: KAPDH Pusat'), findsOneWidget);
+      expect(find.bySemanticsLabel('QRIS, NMID ID1020200012345, merchant KAPDH Pusat'), findsOneWidget);
+      // NMID bukan nomor tujuan transfer: tidak ada tombol Salin rekening.
+      expect(find.bySemanticsLabel(RegExp('^Salin nomor rekening')), findsNothing);
+      expect(find.byType(QrisImageCard), findsOneWidget);
+      expect(find.bySemanticsLabel('Kode QRIS KAPDH Pusat, ketuk untuk memperbesar'), findsOneWidget);
+      expect(find.text('Perbesar QRIS'), findsOneWidget);
+      final image = tester.widget<Image>(find.descendant(of: find.byType(QrisImageCard), matching: find.byType(Image)));
+      expect(image.fit, BoxFit.contain);
+      expect(image.filterQuality, FilterQuality.none);
+      expect(image.isAntiAlias, isFalse);
+      expect(tester.getSize(find.byKey(const ValueKey('qris-image'))), const Size(280, 280));
+      expect(requested.toSet(), {qrisImageUrl});
+      expect(qrisAmountNote('Rp60.000'), findsOneWidget);
+      // Nominal tetap dapat disalin untuk diketik di aplikasi bank/e-wallet; rekening lain tetap dapat dipilih.
+      expect(find.text('Transfer tepat sebesar'), findsOneWidget);
+      expect(find.text('BSI'), findsOneWidget);
+      expect(find.text('Ketuk untuk melihat nomor tujuan'), findsOneWidget);
+    });
+
+    testWidgets('QRIS sebagai rekening lain: petunjuk menampilkan kode QRIS; setelah dipilih gambar QRIS tampil', (
+      tester,
+    ) async {
+      await openPayment(
+        tester,
+        {
+          '/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingTransferJson()),
+          '/payment-methods': (_) => FakeResponse.json(200, methodsJson([methodBsi, methodQris])),
+          '/me/payments/pay-1/method': (_) =>
+              FakeResponse.json(200, paymentJson(method: methodQris, version: '2', events: null)),
+        },
+        overrides: [publicImages()],
+      );
+      expect(find.text('Ketuk untuk menampilkan kode QRIS'), findsOneWidget);
+      expect(find.byType(QrisImageCard), findsNothing);
+      expect(requested, isEmpty);
+
+      await tester.tap(find.text('QRIS'));
+      await settle(tester);
+
+      expect(find.byType(QrisImageCard), findsOneWidget);
+      expect(find.text('NMID: ID1020200012345'), findsOneWidget);
+      expect(find.text('7123456789'), findsNothing);
+      expect(requested.toSet(), {qrisImageUrl});
+    });
+
+    testWidgets('penampil QRIS layar penuh putih: dibuka dari gambar dan "Perbesar QRIS", petunjuk pindai, Tutup '
+        'kembali ke instruksi', (tester) async {
+      final app = await openPayment(
+        tester,
+        {'/me/payments/pay-1': (_) => FakeResponse.json(200, paymentJson(method: methodQris))},
+        overrides: [publicImages()],
+      );
+
+      await scrollAndTap(tester, find.byKey(const ValueKey('qris-image')));
+      await settle(tester);
+      expect(find.byType(QrisImageViewer), findsOneWidget);
+      expect(tester.widget<Dialog>(find.byType(Dialog)).backgroundColor, KapdhColors.surface);
+      expect(find.text('QRIS KAPDH Pusat'), findsOneWidget);
+      expect(find.text(QrisImageViewer.scanHint), findsOneWidget);
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+      expect(find.bySemanticsLabel('Kode QRIS KAPDH Pusat'), findsOneWidget);
+      final image = tester.widget<Image>(
+        find.descendant(of: find.byType(QrisImageViewer), matching: find.byType(Image)),
+      );
+      expect(image.filterQuality, FilterQuality.none);
+      expect(image.fit, BoxFit.contain);
+
+      await tester.tap(find.byKey(const ValueKey('qris-viewer-close')));
+      await settle(tester);
+      expect(find.byType(QrisImageViewer), findsNothing);
+      expect(app.location, '/payments/pay-1');
+      expect(find.text('Transfer tepat sebesar'), findsOneWidget);
+
+      await scrollAndTap(tester, find.byKey(const ValueKey('qris-enlarge')));
+      await settle(tester);
+      expect(find.byType(QrisImageViewer), findsOneWidget);
+      await tester.tap(find.text('Tutup'));
+      await settle(tester);
+      expect(find.byType(QrisImageViewer), findsNothing);
+      expect(app.location, '/payments/pay-1');
+    });
+
+    testWidgets('D13: instruksi iuran QRIS disembunyikan untuk platform ini: tanpa gambar, NMID, maupun memuat URL '
+        'gambarnya, juga saat bukti sedang diperiksa', (tester) async {
+      final app = await openPayment(
+        tester,
+        {
+          '/me/payments/pay-1': (_) => FakeResponse.json(
+            200,
+            paymentJson(method: methodQris, instructionsHidden: true, canSubmitProof: false, canChangeMethod: false),
+          ),
+          '/me/payments/pay-2': (_) => FakeResponse.json(200, {
+            ...awaitingReviewJson(),
+            'id': 'pay-2',
+            'method': methodQris,
+            'instructions_hidden': true,
+          }),
+        },
+        overrides: [publicImages()],
+      );
+
+      expect(find.byKey(const ValueKey('dues-hidden')), findsOneWidget);
+      expect(find.byType(QrisImageCard), findsNothing);
+      expect(find.text('NMID: ID1020200012345'), findsNothing);
+      expect(find.byKey(const ValueKey('qris-view')), findsNothing);
+
+      unawaited(app.router.push('/payments/pay-2'));
+      await settle(tester);
+      expect(find.text('Bukti pembayaran sedang diperiksa'), findsOneWidget);
+      expect(find.byKey(const ValueKey('proof-replace')), findsNothing);
+      expect(find.byType(QrisImageCard), findsNothing);
+      expect(find.byKey(const ValueKey('qris-view')), findsNothing);
+      expect(requested, isEmpty, reason: 'gambar QRIS tidak dibuat maupun dimuat lebih dahulu');
+    });
+
+    testWidgets('D13 tidak berlaku untuk tiket: instruksi tiket QRIS menampilkan gambar, nominal dan batas kirim '
+        'bukti', (tester) async {
+      await openPayment(
+        tester,
+        status: 'verified',
+        {
+          '/me/payments/pay-1': (_) => FakeResponse.json(
+            200,
+            paymentJson(type: 'ticket', ticket: ticketRef(), method: methodQris, canCancel: false),
+          ),
+        },
+        overrides: [publicImages()],
+      );
+
+      expect(find.text('Tiket Silaturahmi Akbar'), findsOneWidget);
+      expect(find.textContaining('Kirim bukti sebelum 12 Okt 2026, 19.00 WIB'), findsOneWidget);
+      expect(find.byType(QrisImageCard), findsOneWidget);
+      expect(qrisAmountNote('Rp75.000'), findsOneWidget);
+      expect(requested.toSet(), {qrisImageUrl});
+    });
+
+    testWidgets('ganti bukti QRIS: tujuan baca saja berlabel Metode, NMID dan Merchant; "Lihat QRIS" baru memuat '
+        'gambar saat dibuka', (tester) async {
+      await openPayment(
+        tester,
+        {
+          '/me/payments/pay-1': (_) => FakeResponse.json(200, {...awaitingReviewJson(), 'method': methodQris}),
+        },
+        overrides: [publicImages()],
+      );
+      expect(find.text('Bukti pembayaran sedang diperiksa'), findsOneWidget);
+      expect(find.byType(QrisImageCard), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('proof-replace')));
+      await settle(tester);
+      expect(find.text('Bukti transfer pengganti'), findsOneWidget);
+      expect(find.text('Tujuan pembayaran'), findsOneWidget);
+      expect(find.text('Metode'), findsOneWidget);
+      expect(find.text('NMID'), findsOneWidget);
+      expect(find.text('ID1020200012345'), findsOneWidget);
+      expect(find.text('Merchant'), findsOneWidget);
+      expect(find.text('Bank'), findsNothing);
+      // Tujuan tidak dapat diganti lagi dan gambar tidak dipasang di tampilan ini.
+      expect(find.byType(QrisImageCard), findsNothing);
+      expect(requested, isEmpty);
+
+      await scrollAndTap(tester, find.byKey(const ValueKey('qris-view')));
+      await settle(tester);
+      expect(find.byType(QrisImageViewer), findsOneWidget);
+      expect(requested, [qrisImageUrl]);
+      await tester.tap(find.byKey(const ValueKey('qris-viewer-close')));
+      await settle(tester);
+      expect(find.byType(QrisImageViewer), findsNothing);
+      expect(find.text('Bukti transfer pengganti'), findsOneWidget);
+    });
+
+    testWidgets('ganti bukti rekening bank: label tetap Bank, Nomor dan Atas nama tanpa "Lihat QRIS"', (tester) async {
+      await openPayment(tester, {'/me/payments/pay-1': (_) => FakeResponse.json(200, awaitingReviewJson())});
+      await tester.tap(find.byKey(const ValueKey('proof-replace')));
+      await settle(tester);
+      expect(find.text('Rekening tujuan'), findsOneWidget);
+      expect(find.text('Bank'), findsOneWidget);
+      expect(find.text('Nomor'), findsOneWidget);
+      expect(find.text('Atas nama'), findsOneWidget);
+      expect(find.byKey(const ValueKey('qris-view')), findsNothing);
+    });
+
+    testWidgets('PRD 4.5: gambar QRIS gagal dimuat: "Gambar QRIS belum dapat dimuat" dengan Muat ulang yang memuat '
+        'lagi', (tester) async {
+      await openPayment(
+        tester,
+        {'/me/payments/pay-1': (_) => FakeResponse.json(200, paymentJson(method: methodQris))},
+        overrides: [publicImages(failures: 1)],
+      );
+
+      expect(find.text('Gambar QRIS belum dapat dimuat'), findsOneWidget);
+      expect(find.byKey(const ValueKey('qris-enlarge')), findsNothing);
+      // Pemuatan lebih dahulu dan kartu berbagi satu pemuatan (kunci cache yang sama).
+      expect(loads, [qrisImageUrl]);
+      await expectMeetsAccessibilityGuidelines(tester);
+
+      await scrollAndTap(tester, find.byKey(const ValueKey('qris-retry')));
+      await settle(tester);
+
+      expect(loads, [qrisImageUrl, qrisImageUrl]);
+      expect(find.text('Gambar QRIS belum dapat dimuat'), findsNothing);
+      expect(find.byKey(const ValueKey('qris-enlarge')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('N-11: pedoman aksesibilitas otomatis pada instruksi QRIS dan penampilnya', (tester) async {
+      await openPayment(
+        tester,
+        {'/me/payments/pay-1': (_) => FakeResponse.json(200, paymentJson(method: methodQris))},
+        overrides: [publicImages()],
+      );
+      expect(find.byType(QrisImageCard), findsOneWidget);
+      await expectMeetsAccessibilityGuidelines(tester);
+
+      await scrollAndTap(tester, find.byKey(const ValueKey('qris-enlarge')));
+      await settle(tester);
+      expect(find.byType(QrisImageViewer), findsOneWidget);
+      await expectMeetsAccessibilityGuidelines(tester);
+    });
+
+    testWidgets('N-11: teks 200 % pada instruksi QRIS dan penampilnya tanpa meluap', (tester) async {
+      await openPayment(
+        tester,
+        {'/me/payments/pay-1': (_) => FakeResponse.json(200, paymentJson(method: methodQris))},
+        overrides: [publicImages()],
+        textScale: 2,
+        tall: false,
+      );
+      final list = find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first;
+      await tester.scrollUntilVisible(find.byKey(const ValueKey('qris-amount')), 200, scrollable: list);
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(qrisAmountNote('Rp60.000'), findsOneWidget);
+
+      await tester.scrollUntilVisible(find.byKey(const ValueKey('qris-enlarge')), -200, scrollable: list);
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('qris-enlarge')));
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(find.text(QrisImageViewer.scanHint), findsOneWidget);
     });
   });
 }

@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../app/theme/kapdh_tokens.dart';
 
 /// Kartu pilihan rekening/metode bayar (prototipe layar 3 "Rekening tujuan"): indikator radio, nama bank,
-/// nomor rekening, nama pemilik dan tombol "Salin" saat terpilih. Terpilih bergaris hijau 2 px.
+/// nomor rekening, nama pemilik dan tombol "Salin" saat terpilih. Terpilih bergaris hijau 2 px. Metode QRIS
+/// (ADR-026) memberi [accountNumberLabel] "NMID" dan [accountHolderLabel] "Merchant" tanpa tombol salin.
 class MethodRadioCard extends StatelessWidget {
   const MethodRadioCard({
     super.key,
@@ -12,6 +13,8 @@ class MethodRadioCard extends StatelessWidget {
     required this.onSelected,
     this.accountNumber,
     this.accountHolder,
+    this.accountNumberLabel,
+    this.accountHolderLabel,
     this.hint,
     this.onCopy,
   });
@@ -22,8 +25,15 @@ class MethodRadioCard extends StatelessWidget {
   final VoidCallback? onSelected;
   final String? accountNumber;
 
-  /// Ditampilkan sebagai `a.n. <nama>`.
+  /// Ditampilkan sebagai `a.n. <nama>`, atau `<accountHolderLabel>: <nama>` bila label diberikan.
   final String? accountHolder;
+
+  /// Label nomor tujuan (mis. "NMID" untuk QRIS): tampil `<label>: <nomor>`. Tanpa label nomor tampil apa adanya
+  /// dan dibacakan `nomor <nomor>`.
+  final String? accountNumberLabel;
+
+  /// Label pemilik (mis. "Merchant" untuk QRIS) menggantikan "a.n.".
+  final String? accountHolderLabel;
 
   /// Teks bantu saat belum terpilih, mis. "Ketuk untuk melihat nomor tujuan".
   final String? hint;
@@ -35,6 +45,10 @@ class MethodRadioCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final showDetail = selected && accountNumber != null;
     final radius = BorderRadius.circular(12);
+    final numberLabel = accountNumberLabel;
+    final holderLabel = accountHolderLabel;
+    final numberText = numberLabel == null ? accountNumber : '$numberLabel: $accountNumber';
+    final holderText = holderLabel == null ? 'a.n. $accountHolder' : '$holderLabel: $accountHolder';
     return Container(
       decoration: BoxDecoration(
         color: KapdhColors.surface,
@@ -52,8 +66,9 @@ class MethodRadioCard extends StatelessWidget {
                 button: true,
                 label: [
                   title,
-                  if (showDetail) 'nomor $accountNumber',
-                  if (showDetail && accountHolder != null) 'atas nama $accountHolder',
+                  if (showDetail) '${numberLabel ?? 'nomor'} $accountNumber',
+                  if (showDetail && accountHolder != null)
+                    holderLabel == null ? 'atas nama $accountHolder' : '${holderLabel.toLowerCase()} $accountHolder',
                 ].join(', '),
                 excludeSemantics: true,
                 onTap: onSelected,
@@ -78,10 +93,10 @@ class MethodRadioCard extends StatelessWidget {
                                 ),
                                 if (showDetail) ...[
                                   const SizedBox(height: 2),
-                                  Text(accountNumber!, style: const TextStyle(fontSize: 13)),
+                                  Text(numberText!, style: const TextStyle(fontSize: 13)),
                                   if (accountHolder != null)
                                     Text(
-                                      'a.n. $accountHolder',
+                                      holderText,
                                       style: const TextStyle(
                                         fontSize: KapdhFontSize.caption,
                                         color: KapdhColors.textMuted,

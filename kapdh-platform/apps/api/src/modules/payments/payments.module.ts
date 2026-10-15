@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AdminAdjustmentsService } from "./admin-adjustments.service.js";
+import { AdminPaymentQrImagesController } from "./admin-payment-qr.controller.js";
 import { AdminPaymentMethodsService } from "./admin-payment-methods.service.js";
 import {
   AdminAdjustmentsController,
@@ -14,8 +15,9 @@ import { PaymentsJobsModule } from "./payments-jobs.module.js";
 
 /**
  * F-03, F-04 (ARCHITECTURE §4.1, §3.3): metode bayar, kutipan biaya, pembayaran anggota, bukti, antrean dan keputusan
- * admin, pencatatan iuran D13, penyesuaian. Modul tidak pernah menulis `tickets`/`alumni` langsung; efek per tipe lewat
- * PaymentHandlerRegistry (ARCHITECTURE §4.6). Pengaturan biaya (`/admin/settings/fees`) dimiliki modul admin.
+ * admin, pencatatan iuran D13, penyesuaian, dan gambar QRIS metode qris (ADR-026). Modul tidak pernah menulis
+ * `tickets`/`alumni` langsung; efek per tipe lewat PaymentHandlerRegistry (ARCHITECTURE §4.6). Pengaturan biaya
+ * (`/admin/settings/fees`) dimiliki modul admin.
  */
 @Module({
   imports: [PaymentsJobsModule],
@@ -25,6 +27,7 @@ import { PaymentsJobsModule } from "./payments-jobs.module.js";
     AdminPaymentsController,
     AdminAdjustmentsController,
     AdminPaymentMethodsController,
+    AdminPaymentQrImagesController,
   ],
   providers: [
     PaymentViews,

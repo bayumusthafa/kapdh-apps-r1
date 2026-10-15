@@ -1,6 +1,7 @@
+import type { components } from "@kapdh/contracts";
 import { type QueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { useApiQuery } from "../../api/query";
+import { unwrap, useApiQuery } from "../../api/query";
 import { useAuth } from "../../auth/session";
 
 /**
@@ -44,4 +45,23 @@ export function invalidateAdjustments(queryClient: QueryClient, paymentId?: stri
   void queryClient.invalidateQueries({ queryKey: ADJUSTMENTS_KEY });
   void queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
   if (paymentId) void queryClient.invalidateQueries({ queryKey: paymentDetailKey(paymentId) });
+}
+
+export type PaymentQrImage = components["schemas"]["AdminPaymentQrImage"];
+
+/**
+ * POST /admin/payment-qr-images multipart (adminUploadPaymentQrImage, settings.manage, ADR-026, N-10). Berkas baru
+ * belum terlampir; dipasang lewat `qr_image_file_id` saat metode disimpan. Melempar ApiError (FILE_INVALID,
+ * RATE_LIMITED, FORBIDDEN, ...). Tanpa Idempotency-Key: setiap unggahan membuat berkas baru.
+ */
+export function uploadPaymentQrImage(file: File, signal?: AbortSignal): Promise<PaymentQrImage> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  return unwrap(
+    api.POST("/admin/payment-qr-images", {
+      // openapi-fetch meneruskan FormData apa adanya; peramban menetapkan boundary multipart.
+      body: form as unknown as components["schemas"]["AdminPaymentQrImageUploadRequest"],
+      signal,
+    }),
+  );
 }

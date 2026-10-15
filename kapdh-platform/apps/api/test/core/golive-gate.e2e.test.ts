@@ -4,7 +4,7 @@
  * keluar. Bukti per kondisi di PostgreSQL 17 nyata ada di test/pg/golive-gate.pg.test.ts.
  */
 import type { PGlite } from "@electric-sql/pglite";
-import { appSettings } from "@kapdh/database";
+import { appSettings, files, paymentMethods } from "@kapdh/database";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { GOLIVE_EXIT, runGoLiveCheckCommand } from "../../src/cli/golive-check-command.js";
@@ -12,10 +12,16 @@ import {
   formatRupiah,
   type GateReport,
   maskAccountNumber,
+  qrImageFingerprint,
   runGoLiveGate,
 } from "../../src/cli/golive-gate.js";
 import type { Db } from "../../src/core/db/types.js";
-import { approveProductionConfig } from "../support/golive.js";
+import {
+  approveProductionConfig,
+  insertAuditedPaymentMethod,
+  QRIS_TEST_SHA256,
+  seedQrisMethod,
+} from "../support/golive.js";
 import { createTestDatabase } from "../support/test-app.js";
 
 function capture() {
@@ -148,7 +154,73 @@ describe("PRD 9.2/9.3, U-12: gerbang go-live (golive:check)", () => {
     expect(failed.out).toBe("");
   });
 
+  it("ADR-026: metode QRIS bergambar lulus; laporan memuat NMID tersamar dan sidik jari gambar untuk ditandatangani", async () => {
+    const { superAdmins } = await approveProductionConfig(db);
+    await seedQrisMethod(db, superAdmins[0]!);
+    const result = await run(db);
+    expect(result.code, result.out).toBe(GOLIVE_EXIT.passed);
+    expect(result.out).toContain(
+      `QRIS (qris) ****0607 a.n. KAPDH Pusat; gambar 1024x1024 px, sha256 ${QRIS_TEST_SHA256.slice(0, 12)}…`,
+    );
+    expect(result.out).toContain("termasuk sidik jari gambar QRIS");
+    expect(result.out).not.toContain("ID1020304050607");
+    expect(result.out).not.toContain(QRIS_TEST_SHA256);
+  });
+
+  it("ADR-026: metode lama bernama QRIS tanpa gambar (bank/e-wallet) ditolak di fase penuh DAN pra-migrasi", async () => {
+    const { superAdmins } = await approveProductionConfig(db);
+    const legacy = await insertAuditedPaymentMethod(db, superAdmins[0]!, {
+      kind: "ewallet",
+      provider: "QRIS KAPDH",
+      accountNumber: "ID1020304050607",
+    });
+    const problem =
+      'Metode "QRIS KAPDH" bernama QRIS tetapi berjenis ewallet tanpa gambar QR. Nonaktifkan metode ini lalu buat ' +
+      "ulang sebagai metode QRIS dengan gambar QRIS statis resmi lewat web admin (ADR-026).";
+    for (const phase of ["full", "preflight"] as const) {
+      const report = await runGoLiveGate(db, { phase });
+      expect(failedIds(report), phase).toEqual(["payment_methods"]);
+      expect(report.checks.find((c) => c.id === "payment_methods")?.problems).toEqual([problem]);
+    }
+    // Nama yang hanya memuat kata lain (bukan kata utuh QRIS) tidak ditandai.
+    await insertAuditedPaymentMethod(db, superAdmins[0]!, { provider: "Bank Qrisindo" });
+    await db.update(paymentMethods).set({ active: false }).where(eq(paymentMethods.id, legacy));
+    expect((await runGoLiveGate(db)).ok).toBe(true);
+    expect((await runGoLiveGate(db, { phase: "preflight" })).ok).toBe(true);
+  });
+
+  it("ADR-026: gambar QRIS tidak siap (dibuang, privat, atau bukan payment_qr) ditolak fase penuh; pra-migrasi tidak membaca kolom 0008", async () => {
+    const { superAdmins } = await approveProductionConfig(db);
+    const { fileId } = await seedQrisMethod(db, superAdmins[0]!);
+    const problem =
+      'Metode QRIS "QRIS" tidak memiliki gambar QR yang siap ditampilkan (berkas payment_qr publik berstatus ' +
+      "ready). Unggah ulang gambar QRIS lewat web admin.";
+    await db.update(files).set({ status: "deleted", deletedAt: new Date() }).where(eq(files.id, fileId));
+    let report = await runGoLiveGate(db);
+    expect(failedIds(report)).toEqual(["payment_methods"]);
+    expect(report.checks.find((c) => c.id === "payment_methods")?.problems).toEqual([problem]);
+    // Pra-migrasi: gambar baru diperiksa gerbang penuh (kolom qr_image_file_id belum tentu ada).
+    report = await runGoLiveGate(db, { phase: "preflight" });
+    expect(report.ok).toBe(true);
+    expect(report.checks.find((c) => c.id === "payment_methods")?.details).toContain(
+      "QRIS (qris) ****0607 a.n. KAPDH Pusat; gambar QRIS diperiksa pada gerbang penuh setelah migrasi",
+    );
+
+    await db
+      .update(files)
+      .set({ status: "ready", deletedAt: null, visibility: "private" })
+      .where(eq(files.id, fileId));
+    expect(failedIds(await runGoLiveGate(db))).toEqual(["payment_methods"]);
+    await db.update(files).set({ visibility: "public", purpose: "event_cover" }).where(eq(files.id, fileId));
+    expect(failedIds(await runGoLiveGate(db))).toEqual(["payment_methods"]);
+    await db.update(files).set({ purpose: "payment_qr" }).where(eq(files.id, fileId));
+    expect((await runGoLiveGate(db)).ok).toBe(true);
+  });
+
   it("format nominal Rupiah dan penyamaran nomor rekening (ARCHITECTURE §2.5, N-14)", () => {
+    expect(qrImageFingerprint({ width: 800, height: 600, sha256: "f".repeat(64) })).toBe(
+      `gambar 800x600 px, sha256 ${"f".repeat(12)}…`,
+    );
     expect(formatRupiah("50000.00")).toBe("Rp50.000");
     expect(formatRupiah("1250000.50")).toBe("Rp1.250.000,50");
     expect(formatRupiah("0.00")).toBe("Rp0");

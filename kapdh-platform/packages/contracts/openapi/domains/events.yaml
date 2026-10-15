@@ -487,7 +487,10 @@ components:
 
     TicketPaymentMethodKind:
       type: string
-      enum: [bank, ewallet]
+      enum: [bank, ewallet, qris]
+      description: |
+        Sama dengan PaymentMethodKind. `qris` (ADR-026): gambar QRIS dibuka dari instruksi pembayaran
+        (GET /me/payments/{id}, `method.qr_image_url`); ringkasan tiket tidak memuat gambarnya.
 
     TicketRefundStatus:
       type: string

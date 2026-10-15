@@ -229,6 +229,130 @@ void main() {
     });
   });
 
+  group('metode bayar QRIS (ADR-026)', () {
+    const qrUrl = 'https://api.kapdh.or.id/api/v1/files/public/0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e70';
+    Map<String, Object?> qrisMethod() => <String, Object?>{
+          'id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e60',
+          'kind': 'qris',
+          'provider': 'QRIS',
+          'account_number': 'ID1020304050607',
+          'account_holder': 'KAPDH Pusat',
+          'instructions': null,
+          'qr_image_url': qrUrl,
+        };
+
+    test('enum qris dan purpose payment_qr dikenal; klien lama memetakan nilai baru ke unknown', () {
+      expect(PaymentMethodKind.fromJson('qris'), PaymentMethodKind.qris);
+      expect(PaymentMethodKind.qris.toJson(), 'qris');
+      expect(TicketPaymentMethodKind.fromJson('qris'), TicketPaymentMethodKind.qris);
+      expect(FilePurpose.fromJson('payment_qr'), FilePurpose.paymentQr);
+      expect(FilePurpose.paymentQr.value, 'payment_qr');
+      // FileUploadPurpose (POST /files) sengaja tidak memuat payment_qr.
+      expect(FileUploadPurpose.fromJson('payment_qr'), FileUploadPurpose.unknown);
+      expect(PaymentMethodKind.fromJson('va_bank'), PaymentMethodKind.unknown);
+    });
+
+    test('Payment.method qris membawa qr_image_url; snapshot lama tanpa field tetap terdekode', () {
+      final payment = Payment.fromJson(<String, Object?>{...paymentJson(), 'method': qrisMethod()});
+      expect(payment.method.kind, PaymentMethodKind.qris);
+      expect(payment.method.accountNumber, 'ID1020304050607');
+      expect(payment.method.qrImageUrl, qrUrl);
+      expect((payment.toJson()['method'] as Map<String, Object?>)['qr_image_url'], qrUrl);
+      expect(Payment.fromJson(payment.toJson()), payment);
+
+      final legacy = Payment.fromJson(paymentJson());
+      expect(legacy.method.qrImageUrl, isNull);
+      expect((legacy.toJson()['method'] as Map<String, Object?>).containsKey('qr_image_url'), isFalse);
+      final explicitNull = PaymentMethod.fromJson(<String, Object?>{...qrisMethod(), 'kind': 'bank', 'qr_image_url': null});
+      expect(explicitNull.qrImageUrl, isNull);
+    });
+
+    test('AdminPaymentMethod.qr_image_file_id wajib ada (boleh null) dan AdminPaymentQrImage terdekode', () {
+      Map<String, Object?> admin(Object? fileId) => <String, Object?>{
+            ...qrisMethod(),
+            'active': true,
+            'sort_order': 0,
+            'in_use': false,
+            'qr_image_file_id': fileId,
+            'version': '1',
+            'created_at': '2026-10-15T03:00:00.000Z',
+            'updated_at': '2026-10-15T03:00:00.000Z',
+          };
+      final method = AdminPaymentMethod.fromJson(admin('0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e70'));
+      expect(method.kind, PaymentMethodKind.qris);
+      expect(method.qrImageFileId, '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e70');
+      expect(method.qrImageUrl, qrUrl);
+      final bank = AdminPaymentMethod.fromJson(admin(null));
+      expect(bank.qrImageFileId, isNull);
+      // Field wajib-nullable selalu dikirim ulang (null eksplisit), berbeda dengan qr_image_url yang opsional.
+      expect(bank.toJson(), containsPair('qr_image_file_id', null));
+      expect(AdminPaymentMethod.fromJson(method.toJson()), method);
+
+      final image = AdminPaymentQrImage.fromJson(<String, Object?>{
+        'file_id': '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e70',
+        'url': qrUrl,
+        'mime': 'image/png',
+        'bytes': 20480,
+        'width': 1024,
+        'height': 1024,
+      });
+      expect(image.fileId, '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e70');
+      expect(image.width, 1024);
+    });
+
+    test('PaymentMethodInput membedakan gambar tidak dikirim (tetap), null (tanpa gambar) dan UUID (ganti)', () {
+      Map<String, Object?> base(PaymentMethodKind kind) => <String, Object?>{
+            'kind': kind.toJson(),
+            'provider': 'QRIS',
+            'account_number': 'ID1020304050607',
+            'account_holder': 'KAPDH Pusat',
+            'instructions': null,
+            'active': true,
+            'sort_order': 0,
+          };
+      const keep = PaymentMethodInput(
+        kind: PaymentMethodKind.qris,
+        provider: 'QRIS',
+        accountNumber: 'ID1020304050607',
+        accountHolder: 'KAPDH Pusat',
+        instructions: null,
+        active: true,
+        sortOrder: 0,
+      );
+      expect(keep.toJson(), base(PaymentMethodKind.qris));
+      expect(keep.toJson().containsKey('qr_image_file_id'), isFalse);
+
+      const none = PaymentMethodInput(
+        kind: PaymentMethodKind.bank,
+        provider: 'QRIS',
+        accountNumber: 'ID1020304050607',
+        accountHolder: 'KAPDH Pusat',
+        instructions: null,
+        active: true,
+        sortOrder: 0,
+        qrImageFileId: Optional<String?>(null),
+      );
+      expect(none.toJson(), <String, Object?>{...base(PaymentMethodKind.bank), 'qr_image_file_id': null});
+
+      const replace = PaymentMethodInput(
+        kind: PaymentMethodKind.qris,
+        provider: 'QRIS',
+        accountNumber: 'ID1020304050607',
+        accountHolder: 'KAPDH Pusat',
+        instructions: null,
+        active: true,
+        sortOrder: 0,
+        qrImageFileId: Optional<String?>('0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e70'),
+      );
+      expect(replace.toJson()['qr_image_file_id'], '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e70');
+
+      final parsed = PaymentMethodInput.fromJson(<String, Object?>{...base(PaymentMethodKind.qris), 'qr_image_file_id': null});
+      expect(parsed.qrImageFileId.isPresent, isTrue);
+      expect(parsed.qrImageFileId.value, isNull);
+      expect(PaymentMethodInput.fromJson(base(PaymentMethodKind.qris)).qrImageFileId.isPresent, isFalse);
+    });
+  });
+
   test('amplop realtime (events/envelope.schema.json) terdekode dengan jenis event', () {
     final envelope = RealtimeEnvelope.fromJson(<String, Object?>{
       'v': 1,

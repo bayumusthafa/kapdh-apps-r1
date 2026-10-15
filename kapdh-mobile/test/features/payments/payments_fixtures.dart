@@ -29,6 +29,20 @@ const methodDana = <String, Object?>{
   'instructions': null,
 };
 
+/// URL publik tetap gambar QRIS (`GET /files/public/{fileId}`, berkas purpose `payment_qr`).
+const qrisImageUrl = 'https://api.kapdh.or.id/api/v1/files/public/file-qr-1';
+
+/// QRIS statis organisasi (ADR-026): `provider` nama metode, `account_number` NMID, `account_holder` merchant.
+const methodQris = <String, Object?>{
+  'id': 'method-3',
+  'kind': 'qris',
+  'provider': 'QRIS',
+  'account_number': 'ID1020200012345',
+  'account_holder': 'KAPDH Pusat',
+  'instructions': null,
+  'qr_image_url': qrisImageUrl,
+};
+
 List<Map<String, Object?>> linesFor(String type) => switch (type) {
   'registration' => [
     {'code': 'registration_fee', 'label': 'Register alumni baru', 'amount': '50000.00'},

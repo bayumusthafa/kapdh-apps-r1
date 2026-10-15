@@ -18,7 +18,7 @@ import { ErrorState, Loading } from "../../components/ui/States";
 import { cn } from "../../lib/cn";
 import { formatDate, formatDateTime, formatRupiah } from "../../lib/format";
 import { PAYMENT_TYPE_LABEL } from "../../lib/labels";
-import { memberName, memberSubtitle, METHOD_KIND_LABEL } from "./labels";
+import { memberName, memberSubtitle, methodSubtitle, methodTitle } from "./labels";
 import { PaymentAdjustmentsSection } from "./PaymentAdjustmentsSection";
 import { PaymentHistory } from "./PaymentHistory";
 import { PAYMENTS_KEY, paymentDetailKey } from "./queries";
@@ -291,10 +291,20 @@ function detailItems(p: Detail): KeyValueItem[] {
       label: "Rekening tujuan",
       value: (
         <>
-          {METHOD_KIND_LABEL[p.method.kind]} {p.method.provider}
-          <span className="block text-xs font-normal text-text-muted">
-            {p.method.account_number} a.n. {p.method.account_holder}
-          </span>
+          {methodTitle(p.method)}
+          <span className="block text-xs font-normal text-text-muted">{methodSubtitle(p.method)}</span>
+          {p.method.kind === "qris" && p.method.qr_image_url ? (
+            // Gambar QRIS snapshot yang dipindai anggota (ADR-026), untuk mencocokkan merchant penerima dana.
+            <a
+              href={p.method.qr_image_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              referrerPolicy="no-referrer"
+              className="block text-xs font-semibold text-primary hover:underline"
+            >
+              Lihat QRIS<span className="sr-only"> (tab baru)</span>
+            </a>
+          ) : null}
           {!p.method_active ? (
             <span className="block text-xs font-normal text-text-muted">
               Metode asal sudah nonaktif; snapshot ini tetap berlaku untuk pembayaran ini.

@@ -3,7 +3,10 @@ import { bigint, check, index, integer, jsonb, text, uniqueIndex, uuid } from "d
 import { app, createdAt, id, sqlInList, tstz, updatedAt } from "./_common.js";
 import { users } from "./identity.js";
 
-/** Purpose berkas menentukan batas ukuran, tipe, dan izin akses (PRD 2.5, N-10). PDF hanya untuk bukti bayar. */
+/**
+ * Purpose berkas menentukan batas ukuran, tipe, dan izin akses (PRD 2.5, N-10). PDF hanya untuk bukti bayar.
+ * `payment_qr` (migrasi 0008, ADR-026): gambar QRIS statis resmi organisasi untuk metode bayar `qris`, publik.
+ */
 export const FILE_PURPOSES = [
   "avatar",
   "chat_image",
@@ -13,6 +16,7 @@ export const FILE_PURPOSES = [
   "payment_proof",
   "adjustment_evidence",
   "audit_export",
+  "payment_qr",
 ] as const;
 export type FilePurpose = (typeof FILE_PURPOSES)[number];
 
@@ -63,10 +67,11 @@ export const files = app.table(
       sql`(${t.width} is null or ${t.width} > 0) and (${t.height} is null or ${t.height} > 0)`,
     ),
     check("files_deleted_chk", sql`${t.status} <> 'deleted' or ${t.deletedAt} is not null`),
-    // Bukti bayar, bukti penyesuaian, dan ekspor audit tidak pernah publik (PRD 5.4).
+    // Bukti bayar, bukti penyesuaian, dan ekspor audit tidak pernah publik (PRD 5.4). Gambar QRIS organisasi
+    // (payment_qr, ADR-026) memang ditampilkan ke anggota sehingga boleh publik.
     check(
       "files_private_purpose_chk",
-      sql`${t.visibility} = 'private' or ${t.purpose} in ('avatar','post_cover','banner_image','event_cover')`,
+      sql`${t.visibility} = 'private' or ${t.purpose} in ('avatar','post_cover','banner_image','event_cover','payment_qr')`,
     ),
   ],
 );

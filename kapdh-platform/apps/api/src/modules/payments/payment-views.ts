@@ -18,6 +18,7 @@ import { alias } from "drizzle-orm/pg-core";
 import type { Clock } from "../../core/adapters/clock.js";
 import type { DbOrTx } from "../../core/db/types.js";
 import { notFound } from "../../core/errors/app-exception.js";
+import { FilesService } from "../../core/files/files.service.js";
 import {
   type AccountStatus,
   effectiveStatus,
@@ -35,6 +36,7 @@ import {
   type EventRow,
   fullRefundOnApprove,
   holdActive,
+  type MethodSnapshot,
   memberActions,
   type PaymentRow,
   paymentStage,
@@ -53,6 +55,7 @@ export type AdminPaymentItemDto = Schemas["AdminPaymentItem"];
 export type AdminPaymentDetailDto = Schemas["AdminPaymentDetail"];
 export type AdminPaymentAdjustmentDto = Schemas["AdminPaymentAdjustment"];
 type PaymentTicketRef = Schemas["PaymentTicketRef"];
+type PaymentMethodDto = Schemas["PaymentMethod"];
 type AdminPaymentMember = Schemas["AdminPaymentMember"];
 
 /** Pemanggil anggota: pemilik payment, effective_status saat ini (dari guard) dan platform X-App-Platform (D13). */
@@ -158,10 +161,33 @@ export class PaymentViews {
   constructor(
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly settings: SettingsService,
+    private readonly files: FilesService,
   ) {}
 
   now(): Date {
     return this.clock.now();
+  }
+
+  /**
+   * Snapshot metode (internal, payment-rules) → PaymentMethod kontrak: id berkas gambar QRIS tidak pernah dikirim,
+   * diganti `qr_image_url` publik untuk qris (ADR-026); null untuk jenis lain. Instruksi yang disembunyikan D13 tetap
+   * mengirim objek ini; aplikasi tidak membuka tampilan instruksi (termasuk QR) bila `instructions_hidden`.
+   */
+  methodView(snapshot: MethodSnapshot): PaymentMethodDto {
+    return {
+      id: snapshot.id,
+      kind: snapshot.kind,
+      provider: snapshot.provider,
+      account_number: snapshot.account_number,
+      account_holder: snapshot.account_holder,
+      instructions: snapshot.instructions,
+      qr_image_url: this.qrImageUrl(snapshot.kind, snapshot.qr_image_file_id),
+    };
+  }
+
+  /** URL publik gambar QRIS; hanya untuk jenis qris yang bergambar. */
+  qrImageUrl(kind: MethodSnapshot["kind"], fileId: string | null): string | null {
+    return kind === "qris" && fileId ? this.files.publicUrl(fileId) : null;
   }
 
   async reviewRules(db?: DbOrTx): Promise<ReviewRules> {
@@ -207,7 +233,7 @@ export class PaymentViews {
         stage: paymentStage(row),
         amount: money(row.amount),
         lines: readLineSnapshot(row),
-        method: readMethodSnapshot(row),
+        method: this.methodView(readMethodSnapshot(row)),
         proof_version: row.proofVersion,
         proof_file_id: adminProof ? null : row.proofFileId,
         transfer_note: adminProof ? null : row.transferNote,
@@ -431,7 +457,7 @@ export class PaymentViews {
     return {
       ...item,
       lines: readLineSnapshot(payment),
-      method: readMethodSnapshot(payment),
+      method: this.methodView(readMethodSnapshot(payment)),
       method_id: payment.paymentMethodId,
       method_active: await this.methodActive(db, payment.paymentMethodId),
       proof:

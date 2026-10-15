@@ -18,7 +18,11 @@ import { files } from "./platform.js";
 export const paymentType = app.enum("payment_type", ["registration", "renewal", "ticket"]);
 /** pending -> paid | rejected | cancelled; rejected -> pending hanya untuk iuran (PRD 4.3). paid tidak pernah diubah. */
 export const paymentStatus = app.enum("payment_status", ["pending", "paid", "rejected", "cancelled"]);
-export const paymentMethodKind = app.enum("payment_method_kind", ["bank", "ewallet"]);
+/**
+ * `qris` (migrasi 0008, ADR-026): QRIS statis organisasi. Nilai enum baru TIDAK pernah dipakai sebagai literal enum di
+ * migrasi (lihat README, aturan nilai enum baru); CHECK memakai perbandingan teks `kind::text = 'qris'`.
+ */
+export const paymentMethodKind = app.enum("payment_method_kind", ["bank", "ewallet", "qris"]);
 export const paymentEventKind = app.enum("payment_event_kind", [
   "created",
   "method_changed",
@@ -36,7 +40,13 @@ export const paymentAdjustmentStatus = app.enum("payment_adjustment_status", [
   "cancelled",
 ]);
 
-/** Metode bayar transfer manual (D13). Disalin sebagai snapshot pada payment sehingga perubahan tidak merusak histori. */
+/**
+ * Metode bayar transfer manual (D13). Disalin sebagai snapshot pada payment sehingga perubahan tidak merusak histori.
+ * Metode `qris` (ADR-026): `account_number` = NMID, `account_holder` = nama merchant, dan `qr_image_file_id` = gambar
+ * QRIS statis (berkas `payment_qr` publik). Gambar wajib untuk qris dan dilarang untuk jenis lain
+ * (`payment_methods_qr_image_chk`, perbandingan teks agar migrasi tidak memakai nilai enum baru). FK RESTRICT:
+ * berkas yang masih dirujuk metode tidak dapat dihapus barisnya.
+ */
 export const paymentMethods = app.table(
   "payment_methods",
   {
@@ -48,6 +58,7 @@ export const paymentMethods = app.table(
     instructions: text("instructions"),
     active: boolean("active").notNull().default(true),
     sortOrder: smallint("sort_order").notNull().default(0),
+    qrImageFileId: uuid("qr_image_file_id").references(() => files.id, { onDelete: "restrict" }),
     version: version(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -59,6 +70,12 @@ export const paymentMethods = app.table(
       "payment_methods_account_holder_chk",
       sql`char_length(btrim(${t.accountHolder})) between 1 and 120`,
     ),
+    // Gambar QR hanya dan selalu untuk qris (ADR-026). `::text` wajib: nilai enum qris ditambahkan di migrasi yang
+    // sama (0008) dan tidak boleh dipakai sebagai literal enum di job migrasi yang sama (SQLSTATE 55P04).
+    check("payment_methods_qr_image_chk", sql`(${t.kind}::text = 'qris') = (${t.qrImageFileId} is not null)`),
+    index("payment_methods_qr_image_file_id_idx")
+      .on(t.qrImageFileId)
+      .where(sql`${t.qrImageFileId} is not null`),
   ],
 );
 

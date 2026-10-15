@@ -9,7 +9,9 @@ import 'package:kapdh_mobile/app/theme/kapdh_tokens.dart';
 import 'package:kapdh_mobile/design/design.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../support/a11y.dart';
 import '../support/fakes.dart';
+import '../support/test_images.dart';
 import '../support/widget_harness.dart';
 
 void main() {
@@ -212,6 +214,146 @@ void main() {
     expect(copied, 1);
     final semantics = tester.getSemantics(find.text('Bank Syariah Indonesia'));
     expect(semantics.label, contains('nomor 7123456789'));
+  });
+
+  testWidgets('MethodRadioCard QRIS (ADR-026): NMID dan merchant berlabel, tanpa Salin', (tester) async {
+    await pumpDesign(
+      tester,
+      const MethodRadioCard(
+        title: 'QRIS',
+        accountNumber: 'ID1020200012345',
+        accountHolder: 'KAPDH Pusat',
+        accountNumberLabel: 'NMID',
+        accountHolderLabel: 'Merchant',
+        selected: true,
+        onSelected: null,
+      ),
+    );
+    expect(find.text('NMID: ID1020200012345'), findsOneWidget);
+    expect(find.text('Merchant: KAPDH Pusat'), findsOneWidget);
+    expect(find.text('a.n. KAPDH Pusat'), findsNothing);
+    expect(find.text('Salin'), findsNothing);
+    expect(find.bySemanticsLabel('QRIS, NMID ID1020200012345, merchant KAPDH Pusat'), findsOneWidget);
+  });
+
+  group('QrisImageCard dan QrisImageViewer (ADR-026)', () {
+    tearDown(() {
+      PaintingBinding.instance.imageCache
+        ..clear()
+        ..clearLiveImages();
+    });
+
+    testWidgets('gambar tajam tidak dipotong (maks. 280 lp), label pembaca layar; ketuk gambar atau "Perbesar QRIS" '
+        'membuka penampil putih dengan petunjuk pindai, "Tutup" menutupnya', (tester) async {
+      await pumpDesign(tester, QrisImageCard(image: MemoryImage(onePixelPng), merchantName: 'KAPDH Pusat'));
+
+      final image = tester.widget<Image>(find.descendant(of: find.byType(QrisImageCard), matching: find.byType(Image)));
+      expect(image.fit, BoxFit.contain);
+      expect(image.filterQuality, FilterQuality.none);
+      expect(image.isAntiAlias, isFalse);
+      expect(tester.getSize(find.byKey(const ValueKey('qris-image'))), const Size(280, 280));
+      expect(find.bySemanticsLabel('Kode QRIS KAPDH Pusat, ketuk untuk memperbesar'), findsOneWidget);
+      expect(tester.getSize(find.byKey(const ValueKey('qris-enlarge'))).height, greaterThanOrEqualTo(48));
+
+      await tester.tap(find.byKey(const ValueKey('qris-image')));
+      await tester.pumpAndSettle();
+      expect(find.byType(QrisImageViewer), findsOneWidget);
+      expect(tester.widget<Dialog>(find.byType(Dialog)).backgroundColor, KapdhColors.surface);
+      expect(find.text('QRIS KAPDH Pusat'), findsOneWidget);
+      expect(find.text(QrisImageViewer.scanHint), findsOneWidget);
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+      final full = tester.widget<Image>(
+        find.descendant(of: find.byType(QrisImageViewer), matching: find.byType(Image)),
+      );
+      expect(full.filterQuality, FilterQuality.none);
+      expect(full.isAntiAlias, isFalse);
+      await tester.tap(find.text('Tutup'));
+      await tester.pumpAndSettle();
+      expect(find.byType(QrisImageViewer), findsNothing);
+
+      await tester.tap(find.text('Perbesar QRIS'));
+      await tester.pumpAndSettle();
+      expect(find.byType(QrisImageViewer), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('qris-viewer-close')));
+      await tester.pumpAndSettle();
+      expect(find.byType(QrisImageViewer), findsNothing);
+    });
+
+    testWidgets('gagal dimuat: tempat kosong berpesan tanpa "Perbesar QRIS"; "Muat ulang" memuat lagi', (tester) async {
+      final loads = <String>[];
+      await pumpDesign(
+        tester,
+        QrisImageCard(
+          image: FlakyImage('https://api.test/files/public/qr-kartu', loads: loads),
+          merchantName: 'KAPDH Pusat',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Gambar QRIS belum dapat dimuat'), findsOneWidget);
+      expect(find.byKey(const ValueKey('qris-enlarge')), findsNothing);
+      expect(loads, hasLength(1));
+
+      await tester.tap(find.byKey(const ValueKey('qris-retry')));
+      await tester.pumpAndSettle();
+      expect(loads, hasLength(2));
+      expect(find.text('Gambar QRIS belum dapat dimuat'), findsNothing);
+      expect(find.byKey(const ValueKey('qris-enlarge')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('penampil yang gagal memuat menampilkan pesan dan dapat memuat ulang', (tester) async {
+      final loads = <String>[];
+      await pumpDesign(
+        tester,
+        QrisImageViewer(
+          image: FlakyImage('https://api.test/files/public/qr-penampil', loads: loads),
+          merchantName: 'KAPDH Pusat',
+        ),
+        scaffold: false,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Gambar QRIS belum dapat dimuat'), findsOneWidget);
+      expect(find.text(QrisImageViewer.scanHint), findsOneWidget);
+      await expectMeetsAccessibilityGuidelines(tester);
+
+      await tester.tap(find.byKey(const ValueKey('qris-retry')));
+      await tester.pumpAndSettle();
+      expect(loads, hasLength(2));
+      expect(find.text('Gambar QRIS belum dapat dimuat'), findsNothing);
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+    });
+
+    testWidgets('pedoman aksesibilitas otomatis pada kartu dan penampil', (tester) async {
+      await pumpDesign(tester, QrisImageCard(image: MemoryImage(onePixelPng), merchantName: 'KAPDH Pusat'));
+      await expectMeetsAccessibilityGuidelines(tester);
+      await tester.tap(find.text('Perbesar QRIS'));
+      await tester.pumpAndSettle();
+      await expectMeetsAccessibilityGuidelines(tester);
+    });
+
+    testWidgets('teks 200 % tanpa meluap pada kartu, tempat kosong galat dan penampil', (tester) async {
+      await pumpDesign(
+        tester,
+        Column(
+          children: [
+            QrisImageCard(image: MemoryImage(onePixelPng), merchantName: 'KAPDH Pusat'),
+            QrisImageCard(
+              image: FlakyImage('https://api.test/files/public/qr-200', loads: <String>[]),
+              merchantName: 'KAPDH Pusat',
+            ),
+          ],
+        ),
+        textScale: 2,
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Gambar QRIS belum dapat dimuat'), findsOneWidget);
+
+      await tester.tap(find.text('Perbesar QRIS'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text(QrisImageViewer.scanHint), findsOneWidget);
+    });
   });
 
   testWidgets('AmountCopyBox: nominal Rupiah dan salin digit ke clipboard', (tester) async {

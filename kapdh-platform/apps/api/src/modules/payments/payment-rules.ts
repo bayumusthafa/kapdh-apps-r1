@@ -24,14 +24,22 @@ export type DevicePlatform = "android" | "ios";
 
 const DAY_MS = 24 * 3600_000;
 
-/** Snapshot metode (rekening tujuan organisasi) yang disimpan di payments.method_snapshot (AC F15-3). */
+export type PaymentMethodKind = PaymentMethodRow["kind"];
+
+/**
+ * Snapshot metode (rekening tujuan organisasi) yang disimpan di payments.method_snapshot (AC F15-3). Untuk qris
+ * (ADR-026) `qr_image_file_id` = berkas gambar QRIS saat instruksi dibuat; gambar itu ikut identitas metode sehingga
+ * tidak pernah diganti selama metode dirujuk payment. Bentuk internal: klien menerima `PaymentViews.methodView`
+ * (id berkas diganti `qr_image_url`).
+ */
 export interface MethodSnapshot {
   id: string;
-  kind: "bank" | "ewallet";
+  kind: PaymentMethodKind;
   provider: string;
   account_number: string;
   account_holder: string;
   instructions: string | null;
+  qr_image_file_id: string | null;
 }
 
 /** Baris rincian nominal yang disimpan di payments.lines_snapshot (AC F03-5). */
@@ -62,8 +70,11 @@ export function methodSnapshotOf(row: PaymentMethodRow): MethodSnapshot {
     account_number: row.accountNumber,
     account_holder: row.accountHolder,
     instructions: row.instructions,
+    qr_image_file_id: row.qrImageFileId,
   };
 }
+
+const SNAPSHOT_KINDS: ReadonlySet<string> = new Set<PaymentMethodKind>(["bank", "ewallet", "qris"]);
 
 /**
  * Bentuk tersimpan payments.method_snapshot: snapshot rekening tujuan yang berlaku ditambah `previous_method_ids`,
@@ -90,18 +101,24 @@ export function previousMethodIdsAfterChange(
   return [...new Set([...earlier, ...current])];
 }
 
-/** Membaca snapshot metode tersimpan; data lama tanpa `id` memakai metode asal payment. */
+/**
+ * Membaca snapshot metode tersimpan; data lama tanpa `id` memakai metode asal payment. Jenis yang dikenal (bank,
+ * ewallet, qris) dipertahankan, selain itu bank. Snapshot sebelum ADR-026 tidak memiliki `qr_image_file_id` (null).
+ */
 export function readMethodSnapshot(
   payment: Pick<PaymentRow, "methodSnapshot" | "paymentMethodId">,
 ): MethodSnapshot {
-  const raw = (payment.methodSnapshot ?? {}) as Partial<MethodSnapshot>;
+  const raw = (payment.methodSnapshot ?? {}) as Partial<Record<keyof MethodSnapshot, unknown>>;
+  const text = (value: unknown, fallback: string) => (typeof value === "string" ? value : fallback);
   return {
-    id: raw.id ?? payment.paymentMethodId ?? "00000000-0000-0000-0000-000000000000",
-    kind: raw.kind === "ewallet" ? "ewallet" : "bank",
-    provider: raw.provider ?? "",
-    account_number: raw.account_number ?? "",
-    account_holder: raw.account_holder ?? "",
-    instructions: raw.instructions ?? null,
+    id: text(raw.id, payment.paymentMethodId ?? "00000000-0000-0000-0000-000000000000"),
+    kind:
+      typeof raw.kind === "string" && SNAPSHOT_KINDS.has(raw.kind) ? (raw.kind as PaymentMethodKind) : "bank",
+    provider: text(raw.provider, ""),
+    account_number: text(raw.account_number, ""),
+    account_holder: text(raw.account_holder, ""),
+    instructions: typeof raw.instructions === "string" ? raw.instructions : null,
+    qr_image_file_id: typeof raw.qr_image_file_id === "string" ? raw.qr_image_file_id : null,
   };
 }
 

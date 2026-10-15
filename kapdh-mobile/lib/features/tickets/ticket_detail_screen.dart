@@ -22,6 +22,7 @@ import '../home/shared/content_widgets.dart';
 import '../home/shared/links.dart';
 import '../home/shared/member_gate.dart';
 import '../home/shared/remote_image.dart';
+import '../payments/payment_presentation.dart';
 import 'widgets/hold_countdown.dart';
 
 /// Tenggat bendahara memproses refund sejak pembatalan (D6, PRD 3.9).
@@ -188,14 +189,18 @@ class _TicketContent extends ConsumerWidget {
             ),
           ];
         }
+        final qris = payment?.method.kind == TicketPaymentMethodKind.qris;
         return [
           ?countdown,
           const SizedBox(height: KapdhSpace.s3),
-          const InfoBox(
-            icon: Icons.account_balance_outlined,
-            message:
-                'Transfer sesuai nominal ke rekening tujuan, lalu unggah bukti transfer. Kursi Anda dilepas otomatis '
-                'bila bukti tidak dikirim sebelum batas waktu.',
+          InfoBox(
+            icon: qris ? Icons.qr_code_2 : Icons.account_balance_outlined,
+            message: qris
+                // QRIS statis tanpa nominal (ADR-026): gambarnya ada di instruksi pembayaran ("Bayar Sekarang").
+                ? 'Pindai QRIS di halaman pembayaran dan masukkan nominal persis, lalu unggah bukti pembayaran. Kursi '
+                      'Anda dilepas otomatis bila bukti tidak dikirim sebelum batas waktu.'
+                : 'Transfer sesuai nominal ke rekening tujuan, lalu unggah bukti transfer. Kursi Anda dilepas otomatis '
+                      'bila bukti tidak dikirim sebelum batas waktu.',
           ),
           if (payment != null) ...[
             const SizedBox(height: KapdhSpace.s3),
@@ -582,6 +587,7 @@ class _PaymentCard extends StatelessWidget {
       correctable: false,
     );
     final method = payment.method;
+    final methodKind = PaymentMethodKind.fromJson(method.kind.value);
     final rejection = payment.rejectionReason;
     return Container(
       padding: const EdgeInsets.all(KapdhSpace.s4),
@@ -606,9 +612,15 @@ class _PaymentCard extends StatelessWidget {
           ),
           const SizedBox(height: KapdhSpace.s3),
           _Row(label: 'Nominal', value: formatRupiah(payment.amount), emphasis: true),
+          // QRIS (ADR-026): merchant dan NMID; gambarnya dibuka dari "Lihat pembayaran" (instruksi pembayaran).
           _Row(
-            label: 'Rekening tujuan',
-            value: '${method.provider} ${method.accountNumber}\na.n. ${method.accountHolder}',
+            label: methodKind == PaymentMethodKind.qris ? 'Tujuan pembayaran' : 'Rekening tujuan',
+            value: methodDestinationText(
+              methodKind,
+              provider: method.provider,
+              accountNumber: method.accountNumber,
+              accountHolder: method.accountHolder,
+            ),
           ),
           if (payment.submittedAt != null) _Row(label: 'Bukti dikirim', value: formatDateTime(payment.submittedAt!)),
           if (payment.decidedAt != null) _Row(label: 'Diputus', value: formatDateTime(payment.decidedAt!)),

@@ -175,7 +175,8 @@ Sesi admin yang dibajak (misalnya komputer tak terkunci dalam jendela idle 30 me
 atau XSS yang lolos CSP) kini dapat melakukan perubahan berikut tanpa sandi dan TOTP:
 
 1. **Metode bayar (risiko penipuan keuangan).** Penyerang dapat membuat metode bayar baru dengan rekening bank atau
-   e-wallet miliknya (R1.0 hanya mengenal jenis `bank` dan `ewallet`, tanpa QRIS), lalu menonaktifkan atau
+   e-wallet miliknya (saat keputusan ini dicatat hanya jenis `bank` dan `ewallet`; sejak ADR-026 juga metode QRIS
+   dengan gambar QRIS milik penyerang, lihat risiko 6 ADR-026), lalu menonaktifkan atau
    menghapus rekening organisasi yang sah. Instruksi bayar baru untuk iuran dan tiket kemudian mengarahkan transfer
    anggota ke rekening penyerang. Identitas rekening pada metode yang sudah `in_use` tidak dapat diubah, dan payment
    lama tetap memakai snapshot (AC F15-3), tetapi metode baru tetap dapat dibuat. Izin `settings.manage` dapat

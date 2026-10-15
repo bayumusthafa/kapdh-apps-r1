@@ -716,6 +716,55 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         default: { $ref: "#/components/responses/Error" }
 
+  /admin/payment-qr-images:
+    post:
+      tags: [Admin Payments]
+      operationId: adminUploadPaymentQrImage
+      summary: Unggah gambar QRIS statis organisasi untuk metode bayar qris (settings.manage, ADR-026, N-10).
+      description: |
+        Membuat berkas purpose `payment_qr` milik akun login pemanggil (`files.owner_user_id`) untuk dirujuk
+        `qr_image_file_id` pada adminCreatePaymentMethod/adminUpdatePaymentMethod. Unggahan berkas umum POST /files
+        tidak menerima purpose ini; gambar QRIS selalu lewat operasi ini agar izin settings.manage yang diperiksa.
+        Gunakan QRIS statis resmi organisasi tanpa nominal: anggota memasukkan nominal sendiri saat membayar.
+        - Hanya PNG atau JPG <= 5 MB (WebP, SVG, PDF dan tipe lain -> 415); magic bytes diperiksa, ekstensi atau
+          Content-Type yang menyamarkan isi -> 415, gambar rusak atau dimensi/piksel berlebihan (decompression bomb)
+          -> 422. Sisi terpendek minimal 512 piksel agar mudah dipindai -> 422 bila kurang. EXIF dibuang dan gambar
+          di-encode ulang dengan format yang sama; gambar yang lebih besar dari 2048 piksel diperkecil tanpa
+          pembesaran (N-10). Pelanggaran -> 413/415/422 FILE_INVALID.
+        - Berkas bervisibilitas publik (files_private_purpose_chk mengizinkan payment_qr) karena ditampilkan ke
+          anggota pada instruksi bayar; URL publik tetap dengan cache publik + ETag.
+        - Status `ready` sesudah diproses. Berkas yang tidak dilampirkan ke metode dalam 24 jam (`attached_at` null)
+          dihapus job `files.cleanup-temp` (PRD 2.5). Hanya pengunggah yang dapat melampirkan berkasnya.
+        - Batas 10 unggahan berhasil per purpose per akun per 24 jam bergulir (N-10) -> 429 RATE_LIMITED dengan
+          `retry_after_seconds`.
+        Tanpa reautentikasi dan tanpa Idempotency-Key (setiap unggahan membuat berkas baru yang belum terlampir).
+        Pemasangan gambar tercatat pada audit `payment_method.created`/`payment_method.updated` beserta id dan
+        sha256 berkas (F-17), bukan saat unggah.
+      x-kapdh-access: { audience: admin, permissions: [settings.manage] }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/AdminPaymentQrImageUploadRequest" }
+      responses:
+        "201":
+          description: Gambar diterima dan diproses.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPaymentQrImage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/FileInvalid" }
+        "415": { $ref: "#/components/responses/FileInvalid" }
+        "422": { $ref: "#/components/responses/FileInvalid" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
   /admin/payment-methods:
     get:
       tags: [Admin Payments]
@@ -755,6 +804,12 @@ paths:
       description: |
         Rekening tujuan menentukan ke mana anggota mentransfer dana, sehingga setiap perubahan diaudit dalam
         transaksi yang sama (AC F17-1). Tidak meminta reautentikasi sejak keputusan PO 2026-10-15 (ADR-025).
+
+        Metode `qris` (ADR-026) wajib `qr_image_file_id`: berkas `payment_qr` berstatus ready hasil
+        adminUploadPaymentQrImage yang diunggah pemanggil sendiri dan belum dipakai metode lain. Berkas dilampirkan
+        dalam transaksi yang sama; selain itu 400 VALIDATION_ERROR pada `qr_image_file_id` ("Gambar QRIS wajib
+        diunggah." bila kosong). Jenis lain tidak boleh membawa gambar ("Gambar QR hanya untuk metode QRIS.").
+        Audit `payment_method.created` mencatat id dan sha256 gambar.
       x-kapdh-access: { audience: admin, permissions: [settings.manage], idempotent: true }
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -815,10 +870,16 @@ paths:
 
         Identitas rekening metode yang sudah dipakai payment (`in_use` true) tidak dapat diubah. Untuk metode
         seperti ini hanya `instructions`, `active` dan `sort_order` yang boleh berubah. Perubahan `kind`,
-        `provider`, `account_number` atau `account_holder` ditolak 400 VALIDATION_ERROR (field_errors per field);
-        pengurus menonaktifkan metode lama lalu membuat metode baru. Dengan aturan ini, snapshot pada instruksi
-        yang belum dibayar tidak pernah diam-diam berbeda dari rekening yang berlaku. Anggota yang instruksinya
-        belum berbukti melihat `method_active` false dan diarahkan mengganti rekening tujuan sebelum transfer.
+        `provider`, `account_number`, `account_holder` atau gambar QRIS (`qr_image_file_id`) ditolak 400
+        VALIDATION_ERROR (field_errors per field); pengurus menonaktifkan metode lama lalu membuat metode baru.
+        Dengan aturan ini, snapshot pada instruksi yang belum dibayar tidak pernah diam-diam berbeda dari rekening
+        yang berlaku. Anggota yang instruksinya belum berbukti melihat `method_active` false dan diarahkan mengganti
+        rekening tujuan sebelum transfer.
+
+        Gambar QRIS (ADR-026): `qr_image_file_id` tidak dikirim = gambar tetap; null = tanpa gambar; UUID = ganti
+        dengan berkas `payment_qr` baru (aturan sama dengan adminCreatePaymentMethod). Hasil akhirnya wajib
+        konsisten dengan `kind`: qris wajib bergambar, jenis lain tanpa gambar (ganti qris ke bank berarti mengirim
+        `qr_image_file_id` null). Gambar lama yang diganti atau dihapus dibuang (status deleted) setelah commit.
 
         Pemeriksaan `in_use` dan pembaruan berjalan dalam satu transaksi dengan lock baris metode (FOR UPDATE).
         Pembuatan payment dan ganti metode mengunci baris metode yang sama (FOR SHARE), sehingga tidak ada payment
@@ -862,7 +923,8 @@ paths:
         sudah dipakai ditolak 400 VALIDATION_ERROR (field_errors._ "metode sudah dipakai, nonaktifkan saja") dan
         harus dinonaktifkan lewat PUT (`active` false) agar histori dan snapshot tetap utuh. Pemeriksaan dan
         penghapusan berjalan dalam satu transaksi dengan lock baris metode. If-Match usang menghasilkan 409
-        VERSION_CONFLICT. Audit dicatat dalam transaksi yang sama.
+        VERSION_CONFLICT. Audit dicatat dalam transaksi yang sama. Gambar QRIS metode yang dihapus ikut dibuang
+        (ADR-026).
       x-kapdh-access: { audience: admin, permissions: [settings.manage] }
       parameters:
         - $ref: "#/components/parameters/PaymentMethodId"
@@ -1443,7 +1505,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/PaymentMethod"
         - type: object
-          required: [active, sort_order, in_use, version, created_at, updated_at]
+          required: [active, sort_order, in_use, qr_image_file_id, version, created_at, updated_at]
           properties:
             active:
               { type: boolean, description: Ditampilkan ke anggota dan dapat dipilih untuk payment baru. }
@@ -1454,7 +1516,13 @@ components:
                 Pernah dirujuk payment, termasuk metode yang kemudian ditinggalkan karena pemilik mengganti rekening
                 tujuan sebelum bukti (PRD 4.3); nilai true tidak pernah kembali false. Metode seperti ini hanya dapat
                 dinonaktifkan (tidak dihapus), dan identitas rekeningnya (kind, provider, account_number,
-                account_holder) tidak dapat diubah.
+                account_holder, gambar QRIS) tidak dapat diubah.
+            qr_image_file_id:
+              type: [string, "null"]
+              format: uuid
+              description: |
+                Berkas `payment_qr` gambar QRIS (ADR-026); terisi hanya untuk `kind` qris. Pratinjaunya di
+                `qr_image_url`.
             version: { type: string }
             created_at: { type: string, format: date-time }
             updated_at: { type: string, format: date-time }
@@ -1473,7 +1541,9 @@ components:
       type: object
       description: |
         Isi lengkap metode bayar (POST dan PUT penggantian penuh). Spasi di awal/akhir dipangkas server. Pada
-        metode `in_use`, `kind`, `provider`, `account_number` dan `account_holder` wajib sama dengan nilai saat ini.
+        metode `in_use`, `kind`, `provider`, `account_number`, `account_holder` dan gambar QRIS wajib sama dengan
+        nilai saat ini. Untuk qris: `provider` nama metode (mis. "QRIS"), `account_number` NMID, `account_holder`
+        nama merchant.
       required: [kind, provider, account_number, account_holder, instructions, active, sort_order]
       properties:
         kind: { $ref: "#/components/schemas/PaymentMethodKind" }
@@ -1483,3 +1553,34 @@ components:
         instructions: { type: [string, "null"], maxLength: 1000, description: Teks polos tanpa HTML. }
         active: { type: boolean }
         sort_order: { type: integer, minimum: 0, maximum: 32767 }
+        qr_image_file_id:
+          type: [string, "null"]
+          format: uuid
+          description: |
+            Gambar QRIS (ADR-026): `file_id` hasil adminUploadPaymentQrImage. Wajib untuk `kind` qris dan harus null
+            atau tidak dikirim untuk jenis lain. Pada PUT: tidak dikirim = gambar tetap, null = tanpa gambar, UUID =
+            ganti gambar. Opsional agar klien lama tetap sah.
+
+    AdminPaymentQrImageUploadRequest:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Gambar QRIS statis PNG/JPG maksimal 5 MB, sisi terpendek minimal 512 piksel (N-10, ADR-026).
+
+    AdminPaymentQrImage:
+      type: object
+      description: Gambar QRIS publik yang sudah diproses server (purpose payment_qr, ADR-026).
+      required: [file_id, url, mime, bytes, width, height]
+      properties:
+        file_id:
+          type: string
+          format: uuid
+          description: Nilai untuk `qr_image_file_id` pada adminCreatePaymentMethod/adminUpdatePaymentMethod.
+        url: { type: string, format: uri, description: URL publik gambar hasil proses untuk pratinjau. }
+        mime: { type: string, enum: [image/png, image/jpeg] }
+        bytes: { type: integer, minimum: 0 }
+        width: { type: integer, minimum: 512 }
+        height: { type: integer, minimum: 512 }

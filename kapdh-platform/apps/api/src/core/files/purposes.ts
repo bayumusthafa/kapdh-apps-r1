@@ -41,6 +41,17 @@ export interface FilePurposeSpec {
    * dicatat pengurus, D13 rencana cadangan iOS / adminRecordPayment). Berkas menjadi milik akun login admin.
    */
   adminPermissions?: readonly Permission[];
+  /**
+   * Tipe isi (hasil deteksi magic bytes) yang diterima bila lebih sempit dari `kinds`, mis. gambar QRIS hanya PNG/JPG
+   * (ADR-026). Tipe lain → 415.
+   */
+  mimes?: readonly string[];
+  /** Sisi terpendek gambar minimum dalam piksel (QR yang terlalu kecil sulit dipindai) → 422 bila kurang. */
+  minImageDimension?: number;
+  /** Sisi terpanjang gambar keluaran; gambar lebih besar diperkecil proporsional, tidak pernah diperbesar. */
+  maxOutputDimension?: number;
+  /** Nama gambar pada pesan galat (bawaan "Gambar"), mis. "Gambar QRIS". */
+  imageLabel?: string;
 }
 
 export const FILE_PURPOSE_SPECS: Readonly<Record<FilePurpose, FilePurposeSpec>> = {
@@ -115,6 +126,21 @@ export const FILE_PURPOSE_SPECS: Readonly<Record<FilePurpose, FilePurposeSpec>> 
     publicAllowed: false,
     uploader: "system",
   },
+  // Gambar QRIS statis resmi organisasi untuk metode bayar qris (ADR-026): publik karena ditampilkan ke anggota pada
+  // instruksi bayar; hanya lewat POST /admin/payment-qr-images (settings.manage). PNG/JPG saja (bukan WebP/SVG/PDF)
+  // agar dapat disimpan dan dipindai aplikasi bank/e-wallet; minimal 512 piksel, keluaran maksimal 2048 piksel.
+  payment_qr: {
+    purpose: "payment_qr",
+    kinds: ["image"],
+    visibility: "public",
+    publicAllowed: true,
+    uploader: "admin",
+    permissions: ["settings.manage"],
+    mimes: ["image/png", "image/jpeg"],
+    minImageDimension: 512,
+    maxOutputDimension: 2048,
+    imageLabel: "Gambar QRIS",
+  },
 };
 
 /** Purpose yang dapat diunggah pengguna (bukan buatan sistem), lewat POST /files atau endpoint unggah domain. */
@@ -123,8 +149,9 @@ export const UPLOADABLE_PURPOSES = FILE_PURPOSES.filter((p) => FILE_PURPOSE_SPEC
 /**
  * Purpose yang diterima unggahan umum POST /files (kontrak files.yaml `FileUploadPurpose`). Gambar publik konten
  * diunggah lewat endpoint domainnya sendiri sehingga izin area itu yang diperiksa: `post_cover`/`banner_image` lewat
- * POST /admin/content/media (content.manage, kontrak C4) dan `event_cover` lewat POST /admin/event-covers
- * (events.manage, kontrak C5); keduanya memakai FilesService.beginUpload/completeUpload yang sama.
+ * POST /admin/content/media (content.manage, kontrak C4), `event_cover` lewat POST /admin/event-covers
+ * (events.manage, kontrak C5), dan `payment_qr` lewat POST /admin/payment-qr-images (settings.manage, ADR-026);
+ * semuanya memakai FilesService.beginUpload/completeUpload yang sama.
  */
 export const GENERAL_UPLOAD_PURPOSES = [
   "avatar",

@@ -132,6 +132,68 @@ describe("PRD 5.5: job migrasi tunggal dengan advisory lock pada PostgreSQL 17",
     expect(dueAt!.attnotnull).toBe(true);
   });
 
+  it("ADR-026: migrasi 0008 pada database yang sudah sampai 0007 berjalan di job tersendiri tanpa 55P04; literal enum baru akan gagal", async () => {
+    const existing = await createEmptyPgDatabase("upgrade_0008");
+    databases.push(existing);
+    const upTo0007 = migrationsUpTo("0007_auth_otp_decoys");
+    try {
+      expect((await runMigrations({ url: existing.url, migrationsFolder: upTo0007.dir })).applied).toBe(
+        upTo0007.count,
+      );
+    } finally {
+      rmSync(upTo0007.dir, { recursive: true, force: true });
+    }
+    // Production saat ini: metode lama bernama QRIS berjenis e-wallet tanpa gambar (tetap sah setelah CHECK baru).
+    const legacy = id();
+    await existing.sql`
+      insert into app.payment_methods (id, kind, provider, account_number, account_holder)
+      values (${legacy}, 'ewallet', 'QRIS', 'ID1020304050607', 'KAPDH')`;
+
+    // Bukti bahwa aturan README nyata di PostgreSQL 17: nilai enum yang ditambahkan di transaksi yang sama tidak boleh
+    // dipakai sebagai literal enum (inilah alasan payment_methods_qr_image_chk memakai kind::text).
+    await expect(
+      existing.sql.begin(async (tx) => {
+        await tx.unsafe("alter type app.payment_method_kind add value 'uji_nilai_baru'");
+        await tx.unsafe("select 'uji_nilai_baru'::app.payment_method_kind");
+      }),
+    ).rejects.toMatchObject({ code: "55P04" });
+
+    expect((await runMigrations({ url: existing.url })).applied).toBe(
+      journal.entries.length - upTo0007.count,
+    );
+    const labels = await existing.sql<{ label: string }[]>`
+      select e.enumlabel as label from pg_enum e join pg_type t on t.oid = e.enumtypid
+      join pg_namespace n on n.oid = t.typnamespace
+      where n.nspname = 'app' and t.typname = 'payment_method_kind' order by e.enumsortorder`;
+    expect(labels.map((l) => l.label)).toEqual(["bank", "ewallet", "qris"]);
+    const [old] = await existing.sql<{ kind: string; qr_image_file_id: string | null }[]>`
+      select kind, qr_image_file_id from app.payment_methods where id = ${legacy}`;
+    expect(old).toEqual({ kind: "ewallet", qr_image_file_id: null });
+
+    // Setelah commit: qris dengan berkas payment_qr publik diterima; tanpa gambar ditolak CHECK teks.
+    const fileId = id();
+    await existing.sql`
+      insert into app.files (id, purpose, storage_driver, object_key, mime, bytes, sha256, visibility, status)
+      values (${fileId}, 'payment_qr', 'local', ${`payment_qr/2026/10/${fileId}`}, 'image/png', 10, ${"d".repeat(64)},
+              'public', 'ready')`;
+    await existing.sql`
+      insert into app.payment_methods (id, kind, provider, account_number, account_holder, qr_image_file_id)
+      values (${id()}, 'qris', 'QRIS', 'ID1020304050607', 'KAPDH', ${fileId})`;
+    await expect(
+      existing.sql`
+        insert into app.payment_methods (id, kind, provider, account_number, account_holder)
+        values (${id()}, 'qris', 'QRIS', 'ID1020304050607', 'KAPDH')`,
+    ).rejects.toMatchObject({ code: "23514", constraint_name: "payment_methods_qr_image_chk" });
+    // FK RESTRICT pada PostgreSQL 17 melapor 23503.
+    await expect(existing.sql`delete from app.files where id = ${fileId}`).rejects.toMatchObject({
+      code: "23503",
+      constraint_name: "payment_methods_qr_image_file_id_files_id_fk",
+    });
+    const [tables] = await existing.sql<{ n: number }[]>`
+      select count(*)::int as n from pg_tables where schemaname = 'app'`;
+    expect(tables!.n).toBe(40);
+  });
+
   it("skema hasil migrasi lengkap: 40 tabel (39 + otp_decoys 0007), sequence nomor anggota, trigger penjaga", async () => {
     const tdb = await createPgTestDatabase("schema_shape");
     databases.push(tdb);
