@@ -58,10 +58,10 @@ sehingga drill ini membuktikan jalur pemulihan lengkap, belum kinerja pada volum
 
 ## Temuan dan tindak lanjut
 
-| Temuan                                                                                                                                                                                           | Pemilik         | Tenggat                               | Tiket |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- | ------------------------------------- | ----- |
-| 1. Akun admin drill (`drill-admin@kapdh.or.id`, TOTP) belum ada, sehingga `http.admin.login`/`http.admin.mfa` tidak diuji. Buat akun drill berizin minimum dan uji pada drill bulanan berikutnya | pengelola infra | drill November 2026                   |       |
-| 2. Ulangi drill setelah ada data anggota nyata (pembayaran, tiket, chat) agar pemeriksaan manual dan RTO bermakna                                                                                | pengelola infra | drill bulanan pertama setelah go-live |       |
-| 3. Pemantauan backup (Uptime Kuma, `KUMA_PUSH_*`) belum terpasang; kegagalan backup belum membunyikan alarm                                                                                      | pengelola infra | sebelum go-live                       |       |
+| Temuan                                                                                                                                                                                                                                                             | Pemilik         | Tenggat                               | Tiket |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- | ------------------------------------- | ----- |
+| 1. Akun admin drill (`drill-admin@kapdh.or.id`, TOTP) belum ada, sehingga `http.admin.login`/`http.admin.mfa` tidak diuji. Buat akun drill berizin minimum dan uji pada drill bulanan berikutnya                                                                   | pengelola infra | drill November 2026                   |       |
+| 2. Ulangi drill setelah ada data anggota nyata (pembayaran, tiket, chat) agar pemeriksaan manual dan RTO bermakna                                                                                                                                                  | pengelola infra | drill bulanan pertama setelah go-live |       |
+| 3. Pemantauan backup belum terpasang saat drill. **Selesai 15 Oktober 2026**: heartbeat Healthchecks.io (`backup-harian`, `umur-backup`, `integritas-backup` + 7 cek host/aplikasi) dan UptimeRobot (API, situs, admin, Coolify); uji alarm terkirim ke notifikasi | pengelola infra | selesai                               |       |
 
 Tanda tangan: pengelola infra …… Super Admin …… saksi QA ……
