@@ -12,13 +12,13 @@ dan Apple App Store. Setiap pernyataan tentang cara kerja aplikasi sudah dicocok
 
 ## Daftar halaman
 
-| Judul di web admin  | Slug                  | Berkas                     | Alamat publik                              |
-| ------------------- | --------------------- | -------------------------- | ------------------------------------------ |
-| Kebijakan Privasi   | `kebijakan-privasi`   | `kebijakan-privasi.html`   | https://kapdh.or.id/kebijakan-privasi      |
-| Ketentuan Layanan   | `ketentuan`           | `ketentuan.html`           | https://kapdh.or.id/ketentuan              |
-| Ketentuan Komunitas | `ketentuan-komunitas` | `ketentuan-komunitas.html` | https://kapdh.or.id/ketentuan-komunitas    |
-| Bantuan             | `bantuan`             | `bantuan.html`             | https://kapdh.or.id/bantuan                |
-| Tentang KAPDH       | `tentang`             | `tentang.html`             | https://kapdh.or.id/tentang                |
+| Judul di web admin  | Slug                  | Berkas                     | Alamat publik                           |
+| ------------------- | --------------------- | -------------------------- | --------------------------------------- |
+| Kebijakan Privasi   | `kebijakan-privasi`   | `kebijakan-privasi.html`   | https://kapdh.or.id/kebijakan-privasi   |
+| Ketentuan Layanan   | `ketentuan`           | `ketentuan.html`           | https://kapdh.or.id/ketentuan           |
+| Ketentuan Komunitas | `ketentuan-komunitas` | `ketentuan-komunitas.html` | https://kapdh.or.id/ketentuan-komunitas |
+| Bantuan             | `bantuan`             | `bantuan.html`             | https://kapdh.or.id/bantuan             |
+| Tentang KAPDH       | `tentang`             | `tentang.html`             | https://kapdh.or.id/tentang             |
 
 Isi berkas hanya memakai tag yang diterima sanitizer web admin (`p`, `br`, `h2`, `h3`, `strong`, `em`,
 `blockquote`, `ul`, `ol`, `li`, `a` dengan tautan `https:` atau `mailto:`). Judul halaman diisi terpisah di kolom
@@ -67,14 +67,14 @@ Butir berikut harus benar pada saat naskah diterbitkan. Bila belum, sebagian kal
 3. **Bucket deletion ledger di luar VPS sudah dikonfigurasi** (`DELETION_LEDGER_S3_*`). Tanpa bucket ini worker
    production menolak berjalan dan penghapusan akun tertunda, sehingga janji "penghapusan selesai paling lambat 7 hari
    kalender" tidak terpenuhi.
-4. **Backup harian sudah berjalan** ke object storage di luar VPS (Cloudflare R2 atau Backblaze B2, belum dipilih),
+4. **Backup harian sudah berjalan** ke object storage di luar VPS (IDCloudHost IS3 di Indonesia, bucket kapdh-prod-backup; berjalan sejak 15 Oktober 2026),
    dengan rotasi 30 hari, dan **satu uji restore sudah berhasil** (ADR-018 masih mencatat belum ada restore drill).
    Kebijakan Privasi bagian 8, 10, dan 11.5 serta Bantuan menyebut cadangan harian terenkripsi yang dihapus paling lama
    30 hari.
 5. **Ketentuan pemrosesan data (DPA) dengan setiap pemroses sudah ada dan diperiksa:** PT Cloud Hosting Indonesia
    (IDCloudHost, pemilik IP VPS menurut data APNIC), Resend, Google Firebase (setujui Data Processing and Security
    Terms di konsol Firebase), Cloudflare, Amazon Web Services (penerima email masuk kapdh.or.id menurut catatan MX),
-   dan penyedia object storage yang dipilih. Kebijakan Privasi bagian 8 menyatakan para pemroses terikat ketentuan
+   dan penyedia object storage (IS3 IDCloudHost, ketentuan layanan yang sama dengan VPS). Kebijakan Privasi bagian 8 menyatakan para pemroses terikat ketentuan
    pemrosesan data dengan pelindungan yang sama atau setara (syarat Apple 5.1.1).
 6. **Identitas organisasi dikonfirmasi:** nama badan hukum "Perkumpulan Keluarga Alumni Pesantren Darel Hikmah"
    sesuai SK AHU, lokasi pesantren (Pekanbaru, Riau), visi, misi, dan semboyan di halaman Tentang (bersumber dari
