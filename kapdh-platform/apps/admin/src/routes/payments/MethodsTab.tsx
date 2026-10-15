@@ -32,9 +32,9 @@ type FormState = { method: Method | null; nextSortOrder: number } | null;
 
 /**
  * Tab Kelola Metode (guidelines hlm. 17, F-15, D13): rekening bank dan e-wallet tujuan transfer manual. Tabel
- * server-side dengan total dan paging kursor, urutan tampil yang diatur pengurus. Tambah, ubah dan hapus meminta
- * reautentikasi (AC F15-3) dan memakai If-Match (AC F15-4). Metode yang sudah dipakai pembayaran tidak dapat
- * dihapus, hanya dinonaktifkan, agar histori dan snapshot tagihan tetap utuh.
+ * server-side dengan total dan paging kursor, urutan tampil yang diatur pengurus. Tambah, ubah dan hapus diaudit,
+ * memakai If-Match (AC F15-4) dan tidak meminta reautentikasi (keputusan PO 2026-10-15, ADR-025). Metode yang sudah
+ * dipakai pembayaran tidak dapat dihapus, hanya dinonaktifkan, agar histori dan snapshot tagihan tetap utuh.
  */
 export function MethodsTab() {
   const queryClient = useQueryClient();
@@ -72,14 +72,12 @@ export function MethodsTab() {
   });
 
   const remove = useApiMutation<unknown, Method>({
-    requiresReauth: true,
-    reauthReason: "Menghapus rekening tujuan pembayaran",
     toastErrors: false,
-    request: (m, ctx) =>
+    request: (m) =>
       api.DELETE("/admin/payment-methods/{methodId}", {
         params: {
           path: { methodId: m.id },
-          header: { "If-Match": m.version, "X-Reauth-Token": ctx.reauthToken ?? "" },
+          header: { "If-Match": m.version },
         },
       }),
     onSuccess: (_d, m) => {
@@ -89,6 +87,8 @@ export function MethodsTab() {
       void queryClient.invalidateQueries({ queryKey: METHODS_KEY });
     },
     onError: (error) => {
+      // Dialog reautentikasi hanya muncul bila server memintanya (penanganan generik useApiMutation); batal = tidak
+      // ada yang berubah.
       if (error.reauthCancelled) return;
       setDeleting(null);
       // Metode sudah dihapus admin lain: barisnya hilang setelah dimuat ulang, fokus tidak dikembalikan ke sana.

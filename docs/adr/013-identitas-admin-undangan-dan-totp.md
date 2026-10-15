@@ -1,6 +1,6 @@
 # ADR-013: Identitas admin terpisah, aktivasi lewat undangan + TOTP wajib, sesi admin cookie pada site yang sama
 
-- Status: Diterima (kontrak C1/C7 Fase B, diterapkan Fase C)
+- Status: Diterima (kontrak C1/C7 Fase B, diterapkan Fase C); butir 6 digantikan oleh ADR-025 (15 Oktober 2026)
 - Tanggal dicatat: 14 Oktober 2026
 - Rujukan: PRD 2.3, 3.2, 3.16, 5.2, 8.2 langkah 3; F-02, F-16; AC F02-2, F02-5, F16-1..F16-4; D1, D12;
   handoff `docs/handoff/phase-b-contract-C1-identity.md`
@@ -33,8 +33,11 @@ cookie, tanpa token di `localStorage`.
 5. Sesi web admin: access token di memori; refresh token di cookie `kapdh_admin_rt` (HttpOnly, SameSite=Strict, Secure
    di luar development/test, `path=/api/v1/auth`, 12 jam); endpoint berbasis cookie memeriksa Origin terhadap
    `ADMIN_ORIGIN`. Idle 30 menit (ADR-011).
-6. Tindakan sensitif (undang/ubah admin, nominal, metode bayar, pengaturan) butuh reautentikasi level 2
-   (`X-Reauth-Token`).
+6. ~~Tindakan sensitif (undang/ubah admin, nominal, metode bayar, pengaturan) butuh reautentikasi level 2
+   (`X-Reauth-Token`).~~ **Digantikan oleh ADR-025** (keputusan pemilik produk, 15 Oktober 2026): reautentikasi
+   level 2 kini hanya untuk tindakan kredensial, yaitu kirim ulang undangan dan pemulihan admin, koreksi email login
+   admin (bersyarat pada PATCH), buat ulang backup code, reset sandi anggota, serta penghapusan akun anggota. Undang,
+   ubah nama/peran/izin/status dan hapus admin, nominal, metode bayar dan pengaturan cukup dengan sesi admin ber-MFA.
 
 ## Alternatif yang dipertimbangkan
 

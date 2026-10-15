@@ -16,6 +16,7 @@ import {
   PERMISSIONS_ANY_KEY,
   PERMISSIONS_KEY,
   PUBLIC_KEY,
+  REAUTH_CONDITIONAL_KEY,
   REAUTH_KEY,
   ROLE_KEY,
   type RouteAuthMeta,
@@ -34,7 +35,8 @@ import { createTestApp, type TestApp } from "../support/test-app.js";
  *   2. metadata dekorator handler (kunci di src/core/guards: Public/Audience/MemberAccess/RequirePermission/
  *      RequireAnyPermission/RequireRole/RequireReauth, ditambah Idempotent) SAMA PERSIS dengan `x-kapdh-access`;
  *   3. header yang wajib dikirim klien (Idempotency-Key, X-Reauth-Token, If-Match) dan `security: []` dideklarasikan
- *      kontrak sesuai perilaku server, karena SDK Dart/TS dibangkitkan dari kontrak;
+ *      kontrak sesuai perilaku server, karena SDK Dart/TS dibangkitkan dari kontrak; X-Reauth-Token bersyarat
+ *      (@ConditionalReauth, ADR-025) dideklarasikan sebagai parameter ReauthTokenConditional yang tidak wajib;
  *   4. status sukses bawaan handler dideklarasikan kontrak;
  *   5. saat berjalan (app.inject), setiap operasi non-publik menolak permintaan anonim (401) dan sesi audience lain
  *      (403), termasuk rute HEAD otomatis Fastify untuk setiap GET;
@@ -93,6 +95,7 @@ interface Handler {
     permissionsAny: string[];
     role: string | null;
     reauth: boolean;
+    reauthConditional: boolean;
   };
   idempotent: boolean;
   /** Handler membaca header If-Match (@Headers("if-match")). */
@@ -177,6 +180,7 @@ function handlerInventory(app: NestFastifyApplication): Handler[] {
           permissionsAny: [...new Set(pick<string[]>(PERMISSIONS_ANY_KEY) ?? [])],
           role: pick<string>(ROLE_KEY) ?? null,
           reauth: pick<boolean>(REAUTH_KEY) === true,
+          reauthConditional: pick<boolean>(REAUTH_CONDITIONAL_KEY) === true,
         };
         const args =
           (Reflect.getMetadata(ROUTE_ARGS_METADATA, controller, name) as
@@ -307,6 +311,7 @@ describe("D1 kelengkapan kontrak (dist/openapi.yaml)", () => {
           permissionsAny: [...effective.permissionsAny].sort(),
           role: effective.role,
           reauth: effective.reauth,
+          reauthConditional: effective.reauthConditional,
         },
         handler.name,
       ).toEqual({
@@ -345,6 +350,7 @@ describe("D1 kelengkapan kontrak (dist/openapi.yaml)", () => {
       permissionsAny: [],
       role: null,
       reauth: false,
+      reauthConditional: false,
     };
     const contract: ContractAccess = {
       audience: "admin",
@@ -421,6 +427,11 @@ describe("D1 header wajib dan keamanan dideklarasikan kontrak sesuai server (SDK
       if (handler!.meta.reauth !== has("ReauthToken", "x-reauth-token"))
         problems.push(
           `X-Reauth-Token: server @RequireReauth ${handler!.meta.reauth}, parameter kontrak ${has("ReauthToken", "x-reauth-token")}`,
+        );
+      // Reautentikasi bersyarat (ADR-025): parameter tidak wajib ReauthTokenConditional tepat pada @ConditionalReauth.
+      if (handler!.meta.reauthConditional !== operation.headerParams.has("ReauthTokenConditional"))
+        problems.push(
+          `X-Reauth-Token bersyarat: server @ConditionalReauth ${handler!.meta.reauthConditional}, parameter kontrak ReauthTokenConditional ${operation.headerParams.has("ReauthTokenConditional")}`,
         );
       if (handler!.readsIfMatch !== has("IfMatch", "if-match"))
         problems.push(

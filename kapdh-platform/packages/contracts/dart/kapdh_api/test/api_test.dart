@@ -1,6 +1,6 @@
-// Uji kelas API terbangkit di atas Dio yang diinjeksi: path/query/header (Idempotency-Key, If-Match,
-// X-Reauth-Token), body JSON dan multipart (termasuk kirim ulang), respons bertipe, 204 -> void, serta pemetaan
-// galat ke ApiException (server, jaringan, dan kegagalan tak terduga).
+// Uji kelas API terbangkit di atas Dio yang diinjeksi: path/query/header (Idempotency-Key, If-Match, dan
+// X-Reauth-Token khusus tindakan kredensial, ADR-025), body JSON dan multipart (termasuk kirim ulang), respons
+// bertipe, 204 -> void, serta pemetaan galat ke ApiException (server, jaringan, dan kegagalan tak terduga).
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -146,7 +146,7 @@ void main() {
     expect(adapter.requests.single.queryParameters, <String, Object?>{'status': 'pending', 'limit': 50});
   });
 
-  test('If-Match dan X-Reauth-Token dikirim sebagai header (AC F15-3)', () async {
+  test('If-Match dikirim sebagai header; ubah biaya tanpa X-Reauth-Token (AC F15-4, ADR-025)', () async {
     final (dio, adapter) = dioWith(
       (_) => jsonBody(<String, Object?>{
         'registration_fee': '50000.00',
@@ -160,12 +160,52 @@ void main() {
     final fees = await AdminSettingsApi(dio).adminUpdateFees(
       const FeeSettingsInput(registrationFee: '50000.00', cardFee: '10000.00', renewalFee: '15000.00'),
       ifMatch: '1',
-      reauthToken: 'reauth-xyz',
     );
     expect(fees.renewalFee, '15000.00');
     final headers = adapter.requests.single.headers;
     expect(headers['If-Match'], '1');
-    expect(headers['X-Reauth-Token'], 'reauth-xyz');
+    expect(headers.containsKey('X-Reauth-Token'), isFalse);
+  });
+
+  test('X-Reauth-Token dikirim sebagai header pada tindakan kredensial (buat ulang backup code, ADR-025)', () async {
+    final codes = List<String>.generate(10, (i) => '7KQ2-M9X$i');
+    final (dio, adapter) = dioWith(
+      (_) => jsonBody(<String, Object?>{'backup_codes': codes, 'generated_at': '2026-10-15T03:00:00.000Z'}, 200),
+    );
+    final result = await AdminAuthApi(dio).adminRegenerateBackupCodes(reauthToken: 'reauth-xyz');
+    expect(result.backupCodes, codes);
+    final request = adapter.requests.single;
+    expect(request.method, 'POST');
+    expect(request.path, '/admin/auth/backup-codes');
+    expect(request.headers['X-Reauth-Token'], 'reauth-xyz');
+  });
+
+  test('X-Reauth-Token bersyarat: adminUpdateAdmin mengirimnya hanya bila diberikan (koreksi email login, ADR-025)',
+      () async {
+    final (dio, adapter) = dioWith((_) => jsonBody(errorJson('REAUTH_REQUIRED'), 403));
+    final api = AdminAdminsApi(dio);
+    const adminId = '0192f0c2-7c1e-7d5a-9a51-1f1c2b3d4e70';
+    await expectLater(
+      api.adminUpdateAdmin(adminId, const AdminUpdateRequest(email: 'baru@kapdh.test'), ifMatch: '3'),
+      throwsA(isA<ApiException>()
+          .having((e) => e.code, 'code', ErrorCode.reauthRequired)
+          .having((e) => e.ui.action, 'action', ErrorUiAction.reauthenticate)),
+    );
+    await expectLater(
+      api.adminUpdateAdmin(
+        adminId,
+        const AdminUpdateRequest(email: 'baru@kapdh.test'),
+        ifMatch: '3',
+        reauthToken: 'reauth-xyz',
+      ),
+      throwsA(isA<ApiException>()),
+    );
+    final [withoutToken, withToken] = adapter.requests;
+    expect(withoutToken.method, 'PATCH');
+    expect(withoutToken.path, '/admin/admins/$adminId');
+    expect(withoutToken.headers['If-Match'], '3');
+    expect(withoutToken.headers.containsKey('X-Reauth-Token'), isFalse);
+    expect(withToken.headers['X-Reauth-Token'], 'reauth-xyz');
   });
 
   test('parameter path enum dan unggah multipart/form-data', () async {

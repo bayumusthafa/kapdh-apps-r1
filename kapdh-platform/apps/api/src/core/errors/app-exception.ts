@@ -33,6 +33,19 @@ export function unauthenticated(message = "Sesi berakhir. Silakan masuk kembali.
   return new AppException(401, "UNAUTHENTICATED", message);
 }
 
+/**
+ * 403 REAUTH_REQUIRED: X-Reauth-Token tidak ada, tidak sah, atau kedaluwarsa untuk tindakan kredensial (kontrak C1
+ * reauthenticate, ADR-025). Dipakai AuthGuard (@RequireReauth) dan layanan dengan reautentikasi bersyarat
+ * (@ConditionalReauth, mis. koreksi email login admin).
+ */
+export function reauthRequired(): AppException {
+  return new AppException(
+    403,
+    "REAUTH_REQUIRED",
+    "Konfirmasi ulang identitas Anda untuk melanjutkan tindakan ini.",
+  );
+}
+
 /** 409 VERSION_CONFLICT dengan keadaan terbaru (AC F15-4, PRD 4.5). */
 export function versionConflict(
   current: unknown,

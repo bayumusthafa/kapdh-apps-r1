@@ -220,8 +220,8 @@ Prasyarat (cek semua sebelum mengaktifkan):
 
 Langkah:
 
-1. Web admin → Pengaturan → "Sembunyikan instruksi iuran di" → centang **iOS** → simpan (reautentikasi). Audit
-   tercatat; `app_settings.payment_instructions.dues_hidden_platforms = ["ios"]`.
+1. Web admin → Pengaturan → "Sembunyikan instruksi iuran di" → centang **iOS** → simpan (tanpa reautentikasi sejak
+   ADR-025). Audit tercatat; `app_settings.payment_instructions.dues_hidden_platforms = ["ios"]`.
 2. Verifikasi dengan akun uji di iPhone: layar Biaya KTA/Perpanjangan tidak menampilkan rekening maupun unggah bukti
    dan menampilkan kontak pengurus; Android tidak berubah; tiket tetap dapat dibayar di kedua platform.
 3. Kirim ulang build/banding ke Apple dengan catatan: "On iOS the app does not show payment instructions for

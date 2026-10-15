@@ -1936,7 +1936,8 @@ describe("D7 (h): undangan admin → terima → daftar TOTP → perubahan izin b
     const listed = candidates.json.items.find((c: Json) => c.user_id === candidate.userId);
     expect(listed, JSON.stringify(candidates.json.items)).toMatchObject({ eligible: true });
 
-    // Tanpa reautentikasi ditolak (PRD 2.3).
+    // Undangan tidak memerlukan reautentikasi sejak keputusan PO 2026-10-15 (ADR-025); cukup sesi Super Admin
+    // ber-MFA, Idempotency-Key dan audit.
     const adminEmail = freshEmail("pengurus");
     const inviteBody = {
       alumni_user_id: candidate.userId,
@@ -1945,13 +1946,9 @@ describe("D7 (h): undangan admin → terima → daftar TOTP → perubahan izin b
       role: "admin",
       permissions: ["payments.read"],
     };
-    const noReauth = await call("post", "/admin/admins", inviteBody, { token: superAdmin.token });
-    expect(noReauth.statusCode, show("post", "/admin/admins", noReauth)).toBe(403);
-    expect(expectOperation("post", "/admin/admins", noReauth)).toMatchObject({ code: "REAUTH_REQUIRED" });
     const invited = await step("post", "/admin/admins", "/admin/admins", 201, inviteBody, {
       token: superAdmin.token,
       idem: true,
-      headers: await adminReauth(superAdmin),
     });
     const adminId = invited.json.admin.id as string;
     expect(invited.json.admin).toMatchObject({
@@ -2043,7 +2040,7 @@ describe("D7 (h): undangan admin → terima → daftar TOTP → perubahan izin b
       { permissions: ["events.manage"], reason: "Pindah ke seksi acara" },
       {
         token: superAdmin.token,
-        headers: { ...(await adminReauth(superAdmin)), "if-match": current.json.version },
+        headers: { "if-match": current.json.version },
       },
     );
     expect(updated.json.permissions).toEqual(["events.manage"]);
@@ -2066,7 +2063,7 @@ describe("D7 (h): undangan admin → terima → daftar TOTP → perubahan izin b
       { status: "disabled", reason: "Masa bakti selesai" },
       {
         token: superAdmin.token,
-        headers: { ...(await adminReauth(superAdmin)), "if-match": latest.json.version },
+        headers: { "if-match": latest.json.version },
       },
     );
     const disabled = await call("get", "/admin/me", undefined, { token: treasurer });
@@ -3890,7 +3887,7 @@ describe("D7 (r): pengaturan admin berlaku ke klien (F-15)", () => {
         renewal_fee: "12000.00",
         reason: "Rapat pengurus",
       },
-      { token: admin.token, headers: { ...(await adminReauth(admin)), "if-match": fees.json.version } },
+      { token: admin.token, headers: { "if-match": fees.json.version } },
     );
     expect(updated.json.registration_total).toBe("70000.00");
     const newMember = await memberFixture({ status: "unverified", fullName: "Dina Harga Baru" });
@@ -3914,7 +3911,7 @@ describe("D7 (r): pengaturan admin berlaku ke klien (F-15)", () => {
       { active: true, message: "Pemeliharaan server", until: null },
       {
         token: admin.token,
-        headers: { ...(await adminReauth(admin)), "if-match": settings.json.maintenance.version },
+        headers: { "if-match": settings.json.maintenance.version },
       },
     );
     try {
@@ -3947,22 +3944,13 @@ describe("D7 (r): pengaturan admin berlaku ke klien (F-15)", () => {
         },
       );
 
-      // Pengurus mematikan maintenance dari web admin (/admin/** dikecualikan, request-gate.ts). Endpoint itu
-      // mewajibkan X-Reauth-Token; POST /auth/reauth dikecualikan dari maintenance untuk access token admin (D7-01).
-      clock.advance(11 * 60_000); // token reauth saat mengaktifkan sudah lewat 10 menit
+      // Pengurus mematikan maintenance dari web admin (/admin/** dikecualikan, request-gate.ts) cukup dengan
+      // If-Match (ADR-025). POST /auth/reauth tetap dikecualikan dari maintenance untuk access token admin agar
+      // tindakan kredensial (pemulihan admin, backup code, reset sandi anggota) tetap dapat dilakukan (D7-01).
+      clock.advance(11 * 60_000);
       const relogged = await loginAdmin(admin.fixture, admin.lastStep);
       admin.token = relogged.token;
       admin.lastStep = relogged.lastStep;
-      const stuck = await call(
-        "put",
-        "/admin/settings/maintenance",
-        { active: false, message: null, until: null },
-        { token: admin.token, headers: { "if-match": maintenanceOn.json.version } },
-      );
-      expect(stuck.statusCode, show("put", "/admin/settings/maintenance", stuck)).toBe(403);
-      expect(expectOperation("put", "/admin/settings/maintenance", stuck)).toMatchObject({
-        code: "REAUTH_REQUIRED",
-      });
       // Anggota tidak mendapat pengecualian reautentikasi.
       const memberReauth = await call(
         "post",
@@ -3977,7 +3965,7 @@ describe("D7 (r): pengaturan admin berlaku ke klien (F-15)", () => {
       const reauth = await call("post", "/auth/reauth", reauthBody, { token: admin.token });
       admin.lastStep = reauthStep.step;
       expect(reauth.statusCode, show("post", "/auth/reauth (pemeliharaan)", reauth, reauthBody)).toBe(200);
-      const reauthToken = (expectOperation("post", "/auth/reauth", reauth) as Json).reauth_token as string;
+      expectOperation("post", "/auth/reauth", reauth);
       // Unggahan kerja pengurus (bukti D13, bukti refund) lewat POST /files tetap diproses.
       const upload = multipartBody([
         { name: "purpose", value: "adjustment_evidence" },
@@ -3991,17 +3979,14 @@ describe("D7 (r): pengaturan admin berlaku ke klien (F-15)", () => {
       })) as unknown as InjectResponse;
       expect(adminUpload.statusCode, show("post", "/files (pemeliharaan)", adminUpload)).toBe(201);
       expectOperation("post", "/files", adminUpload);
-      // Maintenance dimatikan lewat API dengan reautentikasi baru.
+      // Maintenance dimatikan lewat API tanpa X-Reauth-Token (ADR-025).
       const off = await step(
         "put",
         "/admin/settings/maintenance",
         "/admin/settings/maintenance",
         200,
         { active: false, message: null, until: null },
-        {
-          token: admin.token,
-          headers: { "x-reauth-token": reauthToken, "if-match": maintenanceOn.json.version },
-        },
+        { token: admin.token, headers: { "if-match": maintenanceOn.json.version } },
       );
       expect(off.json).toMatchObject({ active: false });
       const resumed = await step("get", "/public/config", "/public/config", 200);
@@ -4285,7 +4270,7 @@ async function inviteAndActivate(
       role: "admin",
       permissions,
     },
-    { token: superAdmin.token, idem: true, headers: await adminReauth(superAdmin) },
+    { token: superAdmin.token, idem: true },
   );
   await drain();
   const mail = mailer.lastMessage(adminEmail)!;
@@ -4758,7 +4743,7 @@ describe("D7 (a+): rencana cadangan iOS (D13) — instruksi iuran disembunyikan,
       { dues_hidden_platforms: ["ios"], reason: "Peninjauan App Store" },
       {
         token: admin.token,
-        headers: { ...(await adminReauth(admin)), "if-match": settings.json.payment_instructions.version },
+        headers: { "if-match": settings.json.payment_instructions.version },
       },
     );
     const IOS = { "x-app-platform": "ios", "x-app-version": "1.0.0" };
@@ -4837,7 +4822,7 @@ describe("D7 (a+): rencana cadangan iOS (D13) — instruksi iuran disembunyikan,
         "/admin/settings/payment-instructions",
         200,
         { dues_hidden_platforms: [] },
-        { token: admin.token, headers: { ...(await adminReauth(admin)), "if-match": hidden.json.version } },
+        { token: admin.token, headers: { "if-match": hidden.json.version } },
       );
     }
   });

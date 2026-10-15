@@ -57,6 +57,12 @@ All checks in the verification list passed. I did not run test:pg or flutter ana
 - x-kapdh-access is still not validated by lint. A rule in scripts/lib/assemble.mjs would enforce it across all domains.
 
 ## handoff
+> Note (15 October 2026, ADR-025): `reauth` no longer applies to adminInviteAdmin and adminUpdateAdmin, nor to
+> adminDeleteAdmin (`DELETE /admin/admins/{adminId}`). adminResendAdminInvitation and adminRecoverAdmin keep it as
+> credential actions, and adminUpdateAdmin still requires `X-Reauth-Token` when it changes the login `email`
+> (conditional, parameter `ReauthTokenConditional`) (`docs/adr/025-reautentikasi-hanya-tindakan-kredensial.md`). The list is kept as the Phase B
+> record.
+
 OPERATIONS (METHOD path operationId access). New or changed by this fix are marked *.
 Notifications (tag Notifications):
 - GET /notifications listNotifications mobile/any -> NotificationPage {items: InboxNotification[], next_cursor, unread_count}

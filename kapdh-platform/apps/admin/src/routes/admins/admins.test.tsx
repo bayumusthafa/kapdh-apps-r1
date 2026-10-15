@@ -9,7 +9,7 @@ import {
   mockAdmins,
   PERMISSION_CATALOG,
 } from "../../api/mocks/admins";
-import { confirmReauth, openPage, section } from "../../test/governance";
+import { confirmReauth, expectNoReauthDialog, openPage, section } from "../../test/governance";
 import { findToast, renderApp, signIn, type User } from "../../test/utils";
 import { togglePermission } from "./shared";
 
@@ -24,7 +24,6 @@ async function saveAccess(user: User) {
   await user.click(within(card).getByRole("button", { name: "Simpan perubahan" }));
   const confirm = await screen.findByRole("alertdialog", { name: /Simpan perubahan izin/ });
   await user.click(within(confirm).getByRole("button", { name: "Simpan perubahan" }));
-  await confirmReauth(user);
   return card;
 }
 
@@ -79,7 +78,7 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     expect(last?.query).toMatchObject({ status: "invited", sort: "display_name_asc" });
   });
 
-  it("AC F16-1: delegasi alumni menjadi admin — kandidat tak layak ditandai, izin berlabel, reautentikasi, Idempotency-Key", async () => {
+  it("AC F16-1, ADR-025: delegasi alumni menjadi admin — kandidat tak layak ditandai, izin berlabel, Idempotency-Key, tanpa reautentikasi", async () => {
     const user = userEvent.setup();
     await openPage(user, "/admins", "Manajemen Admin");
     await user.click(screen.getByRole("button", { name: "Delegasi User jadi Admin" }));
@@ -98,8 +97,8 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     // admins.manage tidak dapat ditugaskan ke peran Admin.
     expect(within(dialog).getByLabelText(/^Kelola admin dan izin/)).toBeDisabled();
     await user.click(within(dialog).getByRole("button", { name: "Kirim undangan" }));
-    await confirmReauth(user);
     expect(await within(dialog).findByText("Undangan dijadwalkan")).toBeInTheDocument();
+    expectNoReauthDialog();
     expect(within(dialog).getByText("info.kapdh@gmail.com")).toBeInTheDocument();
     const post = writes().find((r) => r.method === "POST" && r.path === "/admin/admins");
     expect(post?.body).toEqual({
@@ -107,7 +106,7 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
       role: "admin",
       permissions: ["payments.read", "payments.decide"],
     });
-    expect(post?.reauth).toBe(true);
+    expect(post?.reauth).toBe(false);
     expect(post?.idempotencyKey).toBeTruthy();
     expect(mockAdmins.count()).toBe(6);
     await user.click(within(dialog).getByRole("link", { name: "Lihat detail admin" }));
@@ -128,12 +127,12 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     await user.type(within(dialog).getByLabelText(/^Nama tampilan admin/), "Rina Dua");
     await user.click(within(dialog).getByLabelText(/^Check-in tiket/));
     await user.click(within(dialog).getByRole("button", { name: "Kirim undangan" }));
-    await confirmReauth(user);
     await waitFor(() => expect(email).toHaveAccessibleDescription(/sudah dipakai identitas admin lain/));
+    expectNoReauthDialog();
     expect(mockAdmins.count()).toBe(5);
   });
 
-  it("AC F16-1: ubah izin admin — ringkasan perubahan dikonfirmasi, reautentikasi, If-Match, versi izin naik", async () => {
+  it("AC F16-1, ADR-025: ubah izin admin — ringkasan perubahan dikonfirmasi, If-Match, versi izin naik, tanpa reautentikasi", async () => {
     const user = userEvent.setup();
     await openDetail(user, MOCK_ADMIN_IDS.ahmad, "Ahmad Zulhadi");
     const card = await section("Peran & izin");
@@ -144,10 +143,10 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
       "Izin dicabut: Kelola konten",
     );
     await user.click(within(confirm).getByRole("button", { name: "Simpan perubahan" }));
-    await confirmReauth(user);
     expect(await screen.findByText(/Perubahan Ahmad Zulhadi tersimpan \(versi izin 2\)/)).toBeInTheDocument();
+    expectNoReauthDialog();
     const patch = writes().find((r) => r.method === "PATCH");
-    expect(patch).toMatchObject({ ifMatch: "1", reauth: true });
+    expect(patch).toMatchObject({ ifMatch: "1", reauth: false });
     expect(patch?.body).toEqual({ permissions: ["payments.read", "payments.decide", "events.manage"] });
     expect(mockAdmins.get(MOCK_ADMIN_IDS.ahmad)?.permissions).not.toContain("content.manage");
   });
@@ -196,14 +195,15 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     await user.type(reason, "Masa jabatan pengurus berakhir");
     await user.click(within(dialog).getByLabelText(/Saya memahami admin ini langsung keluar/));
     await user.click(within(dialog).getByRole("button", { name: "Nonaktifkan" }));
-    await confirmReauth(user);
     expect(await screen.findByText(/Ahmad Zulhadi dinonaktifkan; semua sesinya dicabut/)).toBeInTheDocument();
+    expectNoReauthDialog();
     expect(within(status).getByRole("button", { name: "Aktifkan kembali" })).toBeInTheDocument();
     expect(within(status).getByRole("button", { name: /Pulihkan akun/ })).toBeInTheDocument();
     expect(writes().at(-1)?.body).toEqual({ status: "disabled", reason: "Masa jabatan pengurus berakhir" });
+    expect(writes().at(-1)).toMatchObject({ method: "PATCH", ifMatch: "1", reauth: false });
   });
 
-  it("F-16 pemulihan: admin pernah aktif direset sandi & autentikator lewat undangan ulang, sesi dicabut", async () => {
+  it("F-16 pemulihan (tindakan kredensial, ADR-025): reautentikasi tetap diminta; sandi & autentikator direset lewat undangan ulang, sesi dicabut", async () => {
     const user = userEvent.setup();
     await openDetail(user, MOCK_ADMIN_IDS.ahmad, "Ahmad Zulhadi");
     const status = await section("Status & pemulihan");
@@ -212,6 +212,10 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     await user.type(within(dialog).getByLabelText(/^Alasan pemulihan/), "Ponsel autentikator hilang");
     await user.click(within(dialog).getByLabelText(/Saya sudah memverifikasi identitas/));
     await user.click(within(dialog).getByRole("button", { name: "Pulihkan akun" }));
+    expect(await screen.findByRole("dialog", { name: /Konfirmasi identitas/ })).toHaveAccessibleDescription(
+      /Memulihkan akun Ahmad Zulhadi/,
+    );
+    expect(writes().filter((r) => r.path.endsWith("/recovery"))).toHaveLength(0);
     await confirmReauth(user);
     expect(await screen.findByText(/direset, 1 sesi dicabut/)).toBeInTheDocument();
     const recovery = writes().find((r) => r.path.endsWith("/recovery"));
@@ -231,7 +235,7 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     expect(within(status).getByText(/Akun sendiri tidak dapat dipulihkan dari sini/)).toBeInTheDocument();
   });
 
-  it("F-16: kirim ulang undangan lalu hapus identitas yang belum pernah aktif (ketik nama untuk konfirmasi)", async () => {
+  it("F-16, ADR-025: kirim ulang undangan (dengan reautentikasi) lalu hapus identitas yang belum pernah aktif (ketik nama, tanpa reautentikasi)", async () => {
     const user = userEvent.setup();
     const { router } = await openDetail(user, MOCK_ADMIN_IDS.rina, "Rina Kartika");
     const status = await section("Status & pemulihan");
@@ -239,8 +243,15 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     await user.click(within(status).getByRole("button", { name: "Kirim ulang undangan" }));
     const resend = await screen.findByRole("dialog", { name: "Kirim ulang undangan?" });
     await user.click(within(resend).getByRole("button", { name: "Kirim ulang undangan" }));
+    expect(await screen.findByRole("dialog", { name: /Konfirmasi identitas/ })).toHaveAccessibleDescription(
+      /Mengirim ulang undangan Rina Kartika/,
+    );
     await confirmReauth(user);
     expect(await screen.findByText(/Undangan baru dikirim ke rina@kapdh.test/)).toBeInTheDocument();
+    expect(writes().find((r) => r.path.endsWith("/invitation"))).toMatchObject({
+      ifMatch: "1",
+      reauth: true,
+    });
 
     await user.click(within(status).getByRole("button", { name: "Hapus identitas admin" }));
     const del = await screen.findByRole("alertdialog", { name: /Hapus identitas admin/ });
@@ -248,12 +259,88 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     expect(confirm).toBeDisabled();
     await user.type(within(del).getByLabelText(/Ketik/), "Rina Kartika");
     await user.click(confirm);
-    await confirmReauth(user);
     expect(await findToast("success", "Identitas admin Rina Kartika dihapus")).toBeInTheDocument();
+    expectNoReauthDialog();
     await waitFor(() => expect(router.state.location.pathname).toBe("/admins"));
     expect(mockAdmins.get(MOCK_ADMIN_IDS.rina)).toBeUndefined();
     // If-Match versi terbaru (setelah kirim ulang versi naik menjadi 2).
-    expect(writes().find((r) => r.method === "DELETE")?.ifMatch).toBe("2");
+    expect(writes().find((r) => r.method === "DELETE")).toMatchObject({ ifMatch: "2", reauth: false });
+  });
+
+  it("ADR-025: kirim ulang undangan tetap membuka dialog Konfirmasi identitas; batal = undangan tidak dikirim", async () => {
+    const user = userEvent.setup();
+    await openDetail(user, MOCK_ADMIN_IDS.rina, "Rina Kartika");
+    const status = await section("Status & pemulihan");
+    await user.click(within(status).getByRole("button", { name: "Kirim ulang undangan" }));
+    const resend = await screen.findByRole("dialog", { name: "Kirim ulang undangan?" });
+    await user.click(within(resend).getByRole("button", { name: "Kirim ulang undangan" }));
+    const reauth = await screen.findByRole("dialog", { name: /Konfirmasi identitas/ });
+    expect(reauth).toHaveAccessibleDescription(/Mengirim ulang undangan Rina Kartika/);
+    await user.click(within(reauth).getByRole("button", { name: "Batal" }));
+    await waitFor(() => expectNoReauthDialog());
+    expect(writes()).toHaveLength(0);
+    expect(screen.queryByText(/Undangan baru dikirim/)).toBeNull();
+    expect(mockAdmins.get(MOCK_ADMIN_IDS.rina)?.version).toBe("1");
+  });
+
+  it("ADR-025: aktifkan kembali admin tersimpan tanpa dialog Konfirmasi identitas dan tanpa X-Reauth-Token", async () => {
+    const user = userEvent.setup();
+    await openDetail(user, MOCK_ADMIN_IDS.dedi, "Dedi Pratama");
+    const status = await section("Status & pemulihan");
+    await user.click(within(status).getByRole("button", { name: "Aktifkan kembali" }));
+    const dialog = await screen.findByRole("dialog", { name: "Aktifkan kembali admin?" });
+    await user.click(within(dialog).getByRole("button", { name: "Aktifkan kembali" }));
+    expect(
+      await screen.findByText(/Dedi Pratama aktif kembali dengan sandi dan autentikator lamanya/),
+    ).toBeInTheDocument();
+    expectNoReauthDialog();
+    expect(writes()).toEqual([
+      expect.objectContaining({ method: "PATCH", ifMatch: "1", reauth: false, body: { status: "active" } }),
+    ]);
+    expect(mockAdmins.get(MOCK_ADMIN_IDS.dedi)?.status).toBe("active");
+  });
+
+  it("ADR-025: koreksi email login adalah tindakan kredensial: dialog Konfirmasi identitas lalu PATCH dengan X-Reauth-Token", async () => {
+    const user = userEvent.setup();
+    await openDetail(user, MOCK_ADMIN_IDS.rina, "Rina Kartika");
+    const status = await section("Status & pemulihan");
+    await user.click(within(status).getByRole("button", { name: "Koreksi email login" }));
+    const dialog = await screen.findByRole("dialog", { name: "Koreksi email login" });
+    const email = within(dialog).getByLabelText(/^Email login baru/);
+    await user.clear(email);
+    await user.type(email, "rina.baru@kapdh.test");
+    await user.click(within(dialog).getByRole("button", { name: "Simpan email" }));
+    expect(await screen.findByRole("dialog", { name: /Konfirmasi identitas/ })).toHaveAccessibleDescription(
+      /Mengoreksi email login Rina Kartika/,
+    );
+    await confirmReauth(user);
+    expect(await screen.findByText(/Email login diganti ke rina\.baru@kapdh\.test/)).toBeInTheDocument();
+    expect(writes()).toEqual([
+      expect.objectContaining({
+        method: "PATCH",
+        ifMatch: "1",
+        reauth: true,
+        body: { email: "rina.baru@kapdh.test" },
+      }),
+    ]);
+    expect(mockAdmins.get(MOCK_ADMIN_IDS.rina)?.email).toBe("rina.baru@kapdh.test");
+  });
+
+  it("ADR-025: batal di dialog Konfirmasi identitas = email login tidak dikoreksi", async () => {
+    const user = userEvent.setup();
+    await openDetail(user, MOCK_ADMIN_IDS.rina, "Rina Kartika");
+    const status = await section("Status & pemulihan");
+    await user.click(within(status).getByRole("button", { name: "Koreksi email login" }));
+    const dialog = await screen.findByRole("dialog", { name: "Koreksi email login" });
+    const email = within(dialog).getByLabelText(/^Email login baru/);
+    await user.clear(email);
+    await user.type(email, "penyerang@contoh.test");
+    await user.click(within(dialog).getByRole("button", { name: "Simpan email" }));
+    const reauth = await screen.findByRole("dialog", { name: /Konfirmasi identitas/ });
+    await user.click(within(reauth).getByRole("button", { name: "Batal" }));
+    await waitFor(() => expectNoReauthDialog());
+    expect(writes()).toHaveLength(0);
+    expect(mockAdmins.get(MOCK_ADMIN_IDS.rina)?.email).toBe("rina@kapdh.test");
   });
 
   it("detail admin yang tidak ada menampilkan Data tidak ditemukan", async () => {

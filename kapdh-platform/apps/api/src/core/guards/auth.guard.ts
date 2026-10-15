@@ -7,7 +7,7 @@ import type { Logger } from "pino";
 import type { Clock } from "../adapters/clock.js";
 import { setActor } from "../context/request-context.js";
 import type { Db } from "../db/types.js";
-import { AppException, forbidden, unauthenticated } from "../errors/app-exception.js";
+import { AppException, forbidden, reauthRequired, unauthenticated } from "../errors/app-exception.js";
 import { TokenService } from "../identity/token.service.js";
 import type { MemberAccessLevel } from "../membership/access.js";
 import { MembershipKernel } from "../membership/membership.kernel.js";
@@ -34,7 +34,8 @@ const REAUTH_HEADER = "x-reauth-token";
  *   3. keadaan database terbaru: sesi belum dicabut/kedaluwarsa, session_version, akun `active`, jenis akun,
  *      admin aktif + idle 30 menit (AC F02-5, F02-6), izin admin dari database (AC F15-1, F16-3),
  *   4. @MemberAccess (effective_status, PRD 2.2), @RequirePermission (semua), @RequireAnyPermission (salah satu),
- *      @RequireRole (Super Admin), @RequireReauth.
+ *      @RequireRole (Super Admin), @RequireReauth (X-Reauth-Token wajib) dan @ConditionalReauth (diverifikasi bila
+ *      dikirim; layanan yang menegakkan untuk isi kredensial, ADR-025).
  * Konteks request (aktor) diisi untuk audit dan log.
  */
 @Injectable()
@@ -168,7 +169,14 @@ export class AuthGuard implements CanActivate {
     // Peran dari database pada request ini (x-kapdh-access.role; AC F16-1, F16-4).
     if (meta.role && auth.adminRole !== meta.role)
       throw forbidden("Tindakan ini hanya dapat dilakukan Super Admin.");
-    if (meta.reauth) await this.checkReauth(request, auth);
+    if (meta.reauth) {
+      if (!(await this.reauthValid(request, auth))) throw reauthRequired();
+      auth.reauthenticated = true;
+    } else if (meta.reauthConditional && request.headers[REAUTH_HEADER] !== undefined) {
+      // @ConditionalReauth (ADR-025): token yang dikirim diverifikasi tetapi tidak menolak permintaan; layanan
+      // menolak REAUTH_REQUIRED hanya bila isi kredensial (mis. email login admin) diubah tanpa token sah.
+      auth.reauthenticated = await this.reauthValid(request, auth);
+    }
     return true;
   }
 
@@ -202,15 +210,10 @@ export class AuthGuard implements CanActivate {
    * = pengguna access token, `sid` = KELUARGA sesi access token (bukan id baris, sehingga rotasi refresh di tengah
    * alur sensitif tidak membatalkan reautentikasi), dan sesi admin wajib tingkat 2 (TOTP/backup code, F-16).
    */
-  private async checkReauth(request: AuthedRequest, auth: AuthContext) {
+  private async reauthValid(request: AuthedRequest, auth: AuthContext): Promise<boolean> {
     const raw = request.headers[REAUTH_HEADER];
     const token = typeof raw === "string" ? raw.trim() : "";
-    const reauthRequired = new AppException(
-      403,
-      "REAUTH_REQUIRED",
-      "Konfirmasi ulang identitas Anda untuk melanjutkan tindakan ini.",
-    );
-    if (!token || token.length > 2048) throw reauthRequired;
+    if (!token || token.length > 2048) return false;
     const claims = await this.tokens.verifyReauth(token);
     if (
       !claims ||
@@ -219,8 +222,8 @@ export class AuthGuard implements CanActivate {
       (auth.audience === "admin" && claims.level < 2)
     ) {
       this.logger.debug({ request_id: String(request.id) }, "X-Reauth-Token ditolak");
-      throw reauthRequired;
+      return false;
     }
-    auth.reauthenticated = true;
+    return true;
   }
 }

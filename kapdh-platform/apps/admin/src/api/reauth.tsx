@@ -12,7 +12,10 @@ import { useOptionalAuth } from "../auth/session";
 import { ReauthDialog } from "../components/ui/ReauthDialog";
 
 /**
- * Reautentikasi untuk tindakan sensitif (ubah biaya/metode bayar, izin admin; AC F15-3, F16-1, ARCHITECTURE §4.3).
+ * Reautentikasi untuk tindakan kredensial (buat ulang backup code, kirim ulang undangan, koreksi email login dan
+ * pemulihan admin, reset sandi anggota; ARCHITECTURE §4.3, ADR-025). Perubahan pengaturan, biaya, metode bayar dan
+ * admin/izin lainnya tidak memintanya lagi (keputusan PO 2026-10-15), tetapi REAUTH_REQUIRED dari server tetap
+ * ditangani generik.
  * `request()` membuka satu ReauthDialog; permintaan serentak berbagi dialog yang sama. Token hasil POST
  * /auth/reauth dikembalikan ke pemanggil untuk dikirim sebagai X-Reauth-Token pada permintaan berikutnya, lalu
  * tidak disimpan di mana pun. Bila sesi berakhir (idle, kedaluwarsa, keluar di tab lain) selagi dialog terbuka,

@@ -6,6 +6,37 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 
 ## Belum dirilis
 
+### Reautentikasi hanya untuk tindakan kredensial (keputusan PO 2026-10-15, ADR-025; tidak memutus HTTP)
+
+Dua belas operasi admin kehilangan `x-kapdh-access.reauth` dan parameter header `X-Reauth-Token`, beserta
+REAUTH_REQUIRED di deskripsi 403-nya:
+
+- admin-settings: `adminUpdateFees`, `adminUpdateMinAppVersion`, `adminUpdateMaintenance`, `adminUpdateStoreLinks`,
+  `adminUpdatePaymentInstructions`, `adminUpdateSupportContact`;
+- admin-payments: `adminCreatePaymentMethod`, `adminUpdatePaymentMethod`, `adminDeletePaymentMethod`;
+- admin-admins: `adminInviteAdmin`, `adminDeleteAdmin` (403 kini `AdminAdminsForbidden`) dan `adminUpdateAdmin`
+  (lihat di bawah).
+
+`adminUpdateAdmin` kini memakai reautentikasi BERSYARAT: parameter baru `ReauthTokenConditional` (`X-Reauth-Token`,
+`required: false`) menggantikan `ReauthToken`. Token hanya wajib bila `email` berbeda dari email login sekarang,
+karena alamat baru menjadi tujuan tautan pengaturan sandi + TOTP (tindakan kredensial, termasuk undangan pemulihan
+admin yang pernah aktif); tanpa token sah permintaan itu 403 REAUTH_REQUIRED tanpa efek. Ubah nama, peran, izin dan
+status tidak memerlukannya. 403 tetap `AdminAdminsSensitiveForbidden`; `x-kapdh-access.reauth` dihapus karena
+operasinya tidak selalu wajib reautentikasi.
+
+Izin, If-Match, Idempotency-Key, validasi dan audit tidak berubah. Reautentikasi tetap wajib untuk tindakan
+kredensial: `adminResendAdminInvitation`, `adminRecoverAdmin`, `adminRegenerateBackupCodes`,
+`adminInitiateMemberPasswordReset` dan `requestAccountDeletion`, serta koreksi email login lewat `adminUpdateAdmin`.
+`adminUpdateMaintenance` kini dapat mengakhiri maintenance hanya dengan If-Match; pengecualian maintenance
+`POST /auth/reauth` dan `POST /files` untuk token admin tetap ada agar tindakan kredensial dan unggahan pengurus
+berjalan.
+
+Klien HTTP tidak putus: header berlebih diabaikan server, sehingga `info.version` tidak dinaikkan (oasdiff
+melaporkan penghapusan parameter sebagai peringatan). SDK Dart: metode terkait di `AdminSettingsApi`,
+`AdminPaymentsApi` dan `AdminAdminsApi` kehilangan argumen `required String reauthToken` (`adminUpdateAdmin` kini
+menerima `String? reauthToken` opsional); ini source-breaking hanya untuk pemanggil Dart API admin (aplikasi mobile
+tidak memakainya).
+
 ### Gerbang N-13 dan versi aplikasi minimum (Tahap E, tidak memutus)
 
 `info.x-kapdh-min-app-version: 1.0.0` ditambahkan di `openapi/root.yaml`: versi aplikasi anggota terendah yang

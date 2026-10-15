@@ -52,9 +52,10 @@ function sameAmounts(v: Pick<Values, "registration_fee" | "card_fee" | "renewal_
 /**
  * Tab Biaya Pembayaran (guidelines hlm. 17, PRD 3.3, D4): komponen iuran register alumni baru, pembuatan KTA dan
  * perpanjangan per tahun. Nominal baru menjadi versi `fees` berikutnya dan HANYA berlaku untuk tagihan yang
- * dibuat sesudahnya; tagihan lama tetap memakai snapshot dan versi biayanya (AC F03-5, F15-3). Penyimpanan meminta
- * reautentikasi dan memakai If-Match versi yang dibaca; bila admin lain menyimpan lebih dulu, versi terbaru
- * ditampilkan dan admin memilih memuat ulang, bukan menimpa diam-diam (AC F15-4).
+ * dibuat sesudahnya; tagihan lama tetap memakai snapshot dan versi biayanya (AC F03-5, F15-3). Penyimpanan memakai
+ * If-Match versi yang dibaca dan tidak meminta reautentikasi (keputusan PO 2026-10-15, ADR-025); bila admin lain
+ * menyimpan lebih dulu, versi terbaru ditampilkan dan admin memilih memuat ulang, bukan menimpa diam-diam
+ * (AC F15-4).
  */
 export function FeesTab() {
   const fees = useApiQuery({
@@ -96,12 +97,10 @@ function FeesEditor({ latest }: { latest: Fees }) {
   const conflict = outdated && dirty;
 
   const save = useApiMutation<Fees, { values: Values; version: string }, Values>({
-    requiresReauth: true,
-    reauthReason: "Mengubah biaya iuran",
     setError: form.setError,
-    request: (v, ctx) =>
+    request: (v) =>
       api.PUT("/admin/settings/fees", {
-        params: { header: { "If-Match": v.version, "X-Reauth-Token": ctx.reauthToken ?? "" } },
+        params: { header: { "If-Match": v.version } },
         body: {
           registration_fee: v.values.registration_fee,
           card_fee: v.values.card_fee,
@@ -170,11 +169,7 @@ function FeesEditor({ latest }: { latest: Fees }) {
       </Card>
 
       <Card aria-labelledby="ubah-biaya" className="flex min-w-0 flex-[1_1_360px] flex-col gap-4 pb-5">
-        <CardHeader
-          titleId="ubah-biaya"
-          title="Ubah biaya"
-          description="Penyimpanan meminta konfirmasi identitas dan tercatat di audit."
-        />
+        <CardHeader titleId="ubah-biaya" title="Ubah biaya" description="Penyimpanan tercatat di audit." />
         <FormProvider {...form}>
           <form
             noValidate

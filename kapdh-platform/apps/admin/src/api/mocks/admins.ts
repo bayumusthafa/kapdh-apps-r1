@@ -4,11 +4,13 @@ import { error, json, type MockRequest, type MockRoute, noContent, paginate, typ
 
 /**
  * Tiruan Manajemen Admin (kontrak admin-admins C7, F-16, AC F16-1..F16-3, guideline hlm. 15). Aturan server yang
- * ditiru: izin admins.manage di setiap operasi; perubahan wajib X-Reauth-Token; If-Match untuk PATCH/DELETE/kirim
- * ulang/pemulihan (usang = 409 VERSION_CONFLICT dengan `current`); Super Admin aktif terakhir tidak dapat
- * diturunkan/dinonaktifkan/dipulihkan (409 VALIDATION_ERROR `role`/`status` + `current`, AC F16-2); admins.manage
- * tidak dapat ditugaskan; izin wajib beserta prasyaratnya; bentrok email/tautan alumni = 409; Idempotency-Key
- * memutar ulang hasil pertama. Token undangan tidak pernah ada di respons. Data contoh bukan bukti AC (PRD 7.3).
+ * ditiru: izin admins.manage di setiap operasi; X-Reauth-Token hanya untuk tindakan kredensial (kirim ulang undangan,
+ * pemulihan, dan koreksi email login lewat PATCH secara bersyarat; undang, ubah nama/peran/izin/status dan hapus tidak
+ * memintanya, keputusan PO 2026-10-15, ADR-025); If-Match untuk PATCH/DELETE/kirim ulang/pemulihan (usang = 409
+ * VERSION_CONFLICT dengan `current`); Super Admin aktif terakhir tidak dapat diturunkan/dinonaktifkan/dipulihkan
+ * (409 VALIDATION_ERROR `role`/`status` + `current`, AC F16-2); admins.manage tidak dapat ditugaskan; izin wajib
+ * beserta prasyaratnya; bentrok email/tautan alumni = 409; Idempotency-Key memutar ulang hasil pertama. Token
+ * undangan tidak pernah ada di respons. Data contoh bukan bukti AC (PRD 7.3).
  */
 type Detail = S["AdminAccountDetail"];
 type Candidate = S["AdminCandidate"];
@@ -94,7 +96,8 @@ const ROLES: S["AdminRoleInfo"][] = [
   {
     role: "super_admin",
     label: "Super Admin",
-    description: "Semua izin, mengelola admin dan izin; perubahan sensitif dengan MFA dan reautentikasi.",
+    description:
+      "Memiliki semua izin, mengelola admin dan izin dengan sesi MFA; reautentikasi untuk tindakan kredensial (PRD 2.3).",
   },
   { role: "admin", label: "Admin", description: "Hanya izin yang ditugaskan." },
 ];
@@ -551,7 +554,7 @@ export const routes: MockRoute[] = [
     method: "POST",
     path: "/admin/admins",
     handler: (req) => {
-      const denied = guard(req, { reauth: true });
+      const denied = guard(req);
       if (denied) return denied;
       const idem = replay(req);
       if (idem.response) return idem.response;
@@ -633,7 +636,7 @@ export const routes: MockRoute[] = [
     method: "PATCH",
     path: "/admin/admins/{adminId}",
     handler: (req) => {
-      const denied = guard(req, { reauth: true });
+      const denied = guard(req);
       if (denied) return denied;
       const found = find(req);
       if ("response" in found) return found.response;
@@ -683,6 +686,9 @@ export const routes: MockRoute[] = [
       if (b.status === "disabled" && d.status === "disabled")
         return bad({ status: ["Admin sudah nonaktif."] }, 409, d);
       if (email !== null && email !== d.email) {
+        // Reautentikasi bersyarat (kontrak adminUpdateAdmin, ADR-025): email baru menjadi tujuan tautan kredensial.
+        const reauthDenied = requireReauth(req);
+        if (reauthDenied) return reauthDenied;
         const neverActive = d.activated_at === null;
         if (!(d.status === "invited" || (d.status === "disabled" && neverActive)))
           return bad(
@@ -739,7 +745,7 @@ export const routes: MockRoute[] = [
     method: "DELETE",
     path: "/admin/admins/{adminId}",
     handler: (req) => {
-      const denied = guard(req, { reauth: true });
+      const denied = guard(req);
       if (denied) return denied;
       const found = find(req);
       if ("response" in found) return found.response;

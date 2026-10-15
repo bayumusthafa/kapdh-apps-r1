@@ -49,8 +49,11 @@ interface Notice {
 /**
  * Detail admin (F-16, AC F16-1..F16-3; izin admins.manage). Ubah nama/peran/izin, nonaktifkan, aktifkan kembali,
  * kirim ulang undangan, koreksi email login, pulihkan akun (reset sandi + MFA lewat undangan ulang) dan hapus
- * identitas yang belum pernah aktif. Semua perubahan wajib reautentikasi dan If-Match; versi usang memuat data
- * terbaru tanpa menimpa (AC F15-4); penjaga Super Admin aktif terakhir ditampilkan dari galat server (AC F16-2).
+ * identitas yang belum pernah aktif. Semua perubahan memakai If-Match; versi usang memuat data terbaru tanpa
+ * menimpa (AC F15-4); penjaga Super Admin aktif terakhir ditampilkan dari galat server (AC F16-2). Reautentikasi
+ * hanya diminta untuk tindakan kredensial, yaitu kirim ulang undangan, koreksi email login (alamat baru menjadi tujuan
+ * tautan pengaturan sandi + TOTP) dan pemulihan akun; ubah nama/peran/izin, status dan hapus tidak memintanya
+ * (keputusan PO 2026-10-15, ADR-025).
  */
 export function AdminDetailPage() {
   const { adminId } = useParams({ from: "/app/admins/$adminId" });
@@ -195,9 +198,10 @@ function IdentityCard({ admin: a, self }: { admin: Detail; self: boolean }) {
 }
 
 /**
- * Mutasi detail admin bersama: reautentikasi, If-Match dari versi yang dibaca, versi usang memuat data terbaru
- * (AC F15-4), dan galat server ditampilkan di formulir/dialog yang memicu (termasuk penjaga Super Admin terakhir,
- * AC F16-2). Galat isian yang tidak ada di formulir ditampilkan sebagai galat formulir.
+ * Mutasi detail admin bersama: reautentikasi hanya untuk tindakan kredensial (lihat `reauthReason`), If-Match dari
+ * versi yang dibaca, versi usang memuat data terbaru (AC F15-4), dan galat server ditampilkan di formulir/dialog
+ * yang memicu (termasuk penjaga Super Admin terakhir, AC F16-2). Galat isian yang tidak ada di formulir ditampilkan
+ * sebagai galat formulir.
  */
 function useDetailMutation<T, V extends FieldValues>({
   admin,
@@ -211,7 +215,12 @@ function useDetailMutation<T, V extends FieldValues>({
   notify,
 }: {
   admin: Detail;
-  reauthReason: string;
+  /**
+   * Isi HANYA untuk tindakan kredensial (kirim ulang undangan, koreksi email login, pemulihan akun): dialog
+   * reautentikasi dibuka sebelum percobaan pertama dan tokennya dikirim sebagai X-Reauth-Token. Tanpa ini tidak ada
+   * dialog proaktif; bila server tetap menjawab REAUTH_REQUIRED, useApiMutation menanganinya secara generik (ADR-025).
+   */
+  reauthReason?: string;
   form: UseFormReturn<V>;
   fields: readonly Path<V>[];
   request: (vars: V, ctx: MutationRequestContext) => Promise<FetchResult<T>>;
@@ -233,7 +242,7 @@ function useDetailMutation<T, V extends FieldValues>({
     void queryClient.invalidateQueries({ queryKey: [...ADMINS_KEY, "list"] });
   };
   return useApiMutation<T, V>({
-    requiresReauth: true,
+    requiresReauth: reauthReason !== undefined,
     reauthReason,
     toastErrors: false,
     request,
@@ -314,10 +323,9 @@ function AccessCard({
 
   const save = useDetailMutation<Detail, AccessValues>({
     admin: a,
-    reauthReason: `Mengubah peran dan izin ${a.display_name}`,
     form,
     fields: ["display_name", "role", "permissions", "reason"],
-    request: (v, ctx) => {
+    request: (v) => {
       const body: components["schemas"]["AdminUpdateRequest"] = {};
       if (v.display_name.trim() !== a.display_name) body.display_name = v.display_name.trim();
       if (v.role !== a.role) body.role = v.role;
@@ -329,7 +337,7 @@ function AccessCard({
       return api.PATCH("/admin/admins/{adminId}", {
         params: {
           path: { adminId: a.id },
-          header: { "If-Match": a.version, "X-Reauth-Token": ctx.reauthToken ?? "" },
+          header: { "If-Match": a.version },
         },
         body,
       });
@@ -605,14 +613,13 @@ function DisableDialog({ admin: a, onClose, notify }: DialogProps) {
   });
   const disable = useDetailMutation<Detail, DisableValues>({
     admin: a,
-    reauthReason: `Menonaktifkan ${a.display_name}`,
     form,
     fields: ["reason"],
-    request: (v, ctx) =>
+    request: (v) =>
       api.PATCH("/admin/admins/{adminId}", {
         params: {
           path: { adminId: a.id },
-          header: { "If-Match": a.version, "X-Reauth-Token": ctx.reauthToken ?? "" },
+          header: { "If-Match": a.version },
         },
         body: { status: "disabled", reason: v.reason.trim() },
       }),
@@ -689,14 +696,13 @@ function ActivateDialog({ admin: a, onClose, notify }: DialogProps) {
   const form = useForm<PlainValues>({ resolver: zodResolver(plainSchema), defaultValues: {} });
   const activate = useDetailMutation<Detail, PlainValues>({
     admin: a,
-    reauthReason: `Mengaktifkan kembali ${a.display_name}`,
     form,
     fields: [],
-    request: (_v, ctx) =>
+    request: () =>
       api.PATCH("/admin/admins/{adminId}", {
         params: {
           path: { adminId: a.id },
-          header: { "If-Match": a.version, "X-Reauth-Token": ctx.reauthToken ?? "" },
+          header: { "If-Match": a.version },
         },
         body: { status: "active" },
       }),
@@ -796,6 +802,8 @@ function EmailDialog({ admin: a, onClose, notify }: DialogProps) {
     resolver: zodResolver(emailSchema),
     defaultValues: { email: a.email },
   });
+  // Koreksi email login adalah tindakan kredensial (reautentikasi bersyarat adminUpdateAdmin, ADR-025): alamat baru
+  // menerima tautan pengaturan sandi + TOTP, termasuk undangan pemulihan admin yang pernah aktif.
   const correct = useDetailMutation<Detail, EmailValues>({
     admin: a,
     reauthReason: `Mengoreksi email login ${a.display_name}`,
@@ -952,14 +960,12 @@ function DeleteDialog({ admin: a, onClose }: { admin: Detail; onClose: () => voi
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
   const remove = useApiMutation<void, void>({
-    requiresReauth: true,
-    reauthReason: `Menghapus identitas admin ${a.display_name}`,
     toastErrors: false,
-    request: (_v, ctx) =>
+    request: () =>
       api.DELETE("/admin/admins/{adminId}", {
         params: {
           path: { adminId: a.id },
-          header: { "If-Match": a.version, "X-Reauth-Token": ctx.reauthToken ?? "" },
+          header: { "If-Match": a.version },
         },
       }),
     onSuccess: async () => {

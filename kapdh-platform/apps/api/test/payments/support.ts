@@ -1,20 +1,18 @@
 /**
  * Fixture uji modul payments (ARCHITECTURE §9.1): aplikasi uji dengan handler tiket penguji (bila modul events belum
  * mendaftarkan handler `ticket`), sesi anggota/pengurus, unggah bukti, event + tiket + payment tiket lewat
- * PaymentsKernel, dan token reautentikasi pengurus.
+ * PaymentsKernel.
  */
 import type { Permission } from "@kapdh/contracts";
-import { events, sessions, tickets } from "@kapdh/database";
+import { events, tickets } from "@kapdh/database";
 import { Injectable, Module, type OnApplicationBootstrap } from "@nestjs/common";
 import { and, eq, sql } from "drizzle-orm";
-import { decodeJwt } from "jose";
 import { randomBytes } from "node:crypto";
 import { v7 as uuidv7 } from "uuid";
 import { expect } from "vitest";
 import { type Actor, runInContext, SYSTEM_ACTOR } from "../../src/core/context/request-context.js";
 import type { Tx } from "../../src/core/db/types.js";
 import { AppException } from "../../src/core/errors/app-exception.js";
-import { TokenService } from "../../src/core/identity/token.service.js";
 import {
   type PaymentApprovalOutcome,
   PaymentHandlerRegistry,
@@ -220,20 +218,6 @@ export async function adminSession(
   });
   const session = await signInAdmin(t, admin);
   return { adminId: admin.adminId, userId: admin.userId, token: session.accessToken };
-}
-
-/** Token X-Reauth-Token seperti POST /auth/reauth (level 2 untuk sesi admin). */
-export async function reauthToken(t: TestApp, accessToken: string): Promise<string> {
-  const claims = decodeJwt(accessToken);
-  const [row] = await t.db
-    .select({ familyId: sessions.familyId })
-    .from(sessions)
-    .where(eq(sessions.id, String(claims.sid)));
-  return (
-    await t.app
-      .get(TokenService)
-      .signReauth({ userId: String(claims.sub), familyId: row!.familyId, level: 2 })
-  ).token;
 }
 
 export async function uploadProof(t: TestApp, token: string): Promise<string> {

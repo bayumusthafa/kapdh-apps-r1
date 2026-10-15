@@ -58,17 +58,18 @@ function metaText(meta: Meta): string {
 
 /**
  * Halaman Pengaturan (F-15, AC F15-3, F15-4, PRD 4.5, 8.3, D13; izin settings.manage). Setiap kunci app_settings
- * disimpan terpisah dengan If-Match versinya sendiri dan wajib reautentikasi (sandi + kode autentikator). Bila
- * pengurus lain mengubah kunci yang sama lebih dulu, server menjawab 409 VERSION_CONFLICT: isian admin tidak
- * dikirim ulang dan UI menawarkan muat versi terbaru, bukan menimpa diam-diam (AC F15-4). Biaya iuran dikelola di
- * menu Verifikasi Pembayaran (tab Biaya); nilai kebijakan PRD hanya dapat dibaca.
+ * disimpan terpisah dengan If-Match versinya sendiri, teraudit, dan tanpa reautentikasi (keputusan PO 2026-10-15,
+ * ADR-025: reautentikasi hanya untuk tindakan kredensial). Bila pengurus lain mengubah kunci yang sama lebih dulu,
+ * server menjawab 409 VERSION_CONFLICT: isian admin tidak dikirim ulang dan UI menawarkan muat versi terbaru, bukan
+ * menimpa diam-diam (AC F15-4). Biaya iuran dikelola di menu Verifikasi Pembayaran (tab Biaya); nilai kebijakan PRD
+ * hanya dapat dibaca.
  */
 export function SettingsPage() {
   return (
     <>
       <PageHeader
         title="Pengaturan"
-        description="Konfigurasi aplikasi yang berversi dan teraudit. Setiap perubahan meminta konfirmasi identitas."
+        description="Konfigurasi aplikasi yang berversi. Setiap perubahan tercatat di audit."
       />
       <PermissionGate anyOf={["settings.manage"]}>
         <SettingsContent />
@@ -283,12 +284,10 @@ function MaintenanceCard({ setting }: { setting: Maintenance }) {
   const [confirmOn, setConfirmOn] = useState(false);
   const { form } = state;
   const save = useApiMutation<Maintenance, MaintenanceValues & { version: string }, MaintenanceValues>({
-    requiresReauth: true,
-    reauthReason: "Mengubah mode pemeliharaan",
     setError: form.setError,
-    request: (v, ctx) =>
+    request: (v) =>
       api.PUT("/admin/settings/maintenance", {
-        params: { header: { "If-Match": v.version, "X-Reauth-Token": ctx.reauthToken ?? "" } },
+        params: { header: { "If-Match": v.version } },
         body: {
           active: v.active,
           message: v.message.trim() === "" ? null : v.message.trim(),
@@ -395,12 +394,10 @@ function MinVersionCard({ setting, storeLinks }: { setting: MinVersion; storeLin
   const state = useSettingForm("min_app_version", setting, minVersionValues, minVersionSchema);
   const { form } = state;
   const save = useApiMutation<MinVersion, MinVersionValues & { version: string }, MinVersionValues>({
-    requiresReauth: true,
-    reauthReason: "Mengubah versi aplikasi minimum",
     setError: form.setError,
-    request: (v, ctx) =>
+    request: (v) =>
       api.PUT("/admin/settings/min-app-version", {
-        params: { header: { "If-Match": v.version, "X-Reauth-Token": ctx.reauthToken ?? "" } },
+        params: { header: { "If-Match": v.version } },
         body: { android: v.android.trim(), ios: v.ios.trim() },
       }),
     onSuccess: (data) => {
@@ -492,12 +489,10 @@ function StoreLinksCard({ setting }: { setting: StoreLinks }) {
   const state = useSettingForm("store_links", setting, storeLinksValues, storeLinksSchema);
   const { form } = state;
   const save = useApiMutation<StoreLinks, StoreLinksValues & { version: string }, StoreLinksValues>({
-    requiresReauth: true,
-    reauthReason: "Mengubah tautan toko aplikasi",
     setError: form.setError,
-    request: (v, ctx) =>
+    request: (v) =>
       api.PUT("/admin/settings/store-links", {
-        params: { header: { "If-Match": v.version, "X-Reauth-Token": ctx.reauthToken ?? "" } },
+        params: { header: { "If-Match": v.version } },
         body: { android: v.android.trim() || null, ios: v.ios.trim() || null },
       }),
     onSuccess: (data) => {
@@ -566,12 +561,10 @@ function SupportCard({ setting }: { setting: Support }) {
   const state = useSettingForm("support", setting, supportValues, supportSchema);
   const { form } = state;
   const save = useApiMutation<Support, SupportValues & { version: string }, SupportValues>({
-    requiresReauth: true,
-    reauthReason: "Mengubah kontak dukungan anggota",
     setError: form.setError,
-    request: (v, ctx) =>
+    request: (v) =>
       api.PUT("/admin/settings/support", {
-        params: { header: { "If-Match": v.version, "X-Reauth-Token": ctx.reauthToken ?? "" } },
+        params: { header: { "If-Match": v.version } },
         body: { email: v.email.trim(), whatsapp: v.whatsapp.trim() || null },
       }),
     onSuccess: (data) => {
@@ -630,12 +623,10 @@ function PaymentInstructionsCard({ setting }: { setting: PaymentInstructions }) 
     InstructionsValues & { version: string },
     InstructionsValues
   >({
-    requiresReauth: true,
-    reauthReason: "Mengubah instruksi bayar iuran per platform",
     setError: form.setError,
-    request: (v, ctx) =>
+    request: (v) =>
       api.PUT("/admin/settings/payment-instructions", {
-        params: { header: { "If-Match": v.version, "X-Reauth-Token": ctx.reauthToken ?? "" } },
+        params: { header: { "If-Match": v.version } },
         body: {
           dues_hidden_platforms: (["android", "ios"] as const).filter((p) => v[p]),
           ...(v.reason.trim() ? { reason: v.reason.trim() } : {}),

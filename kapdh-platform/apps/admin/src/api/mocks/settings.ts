@@ -1,11 +1,12 @@
-import { mockAdminRef, requirePermission, requireReauth } from "./auth";
+import { mockAdminRef, requirePermission } from "./auth";
 import { error, json, type MockRequest, type MockRoute, type S } from "./http";
 import { routes as paymentRoutes } from "./payments";
 
 /**
  * Tiruan pengaturan aplikasi (kontrak admin-settings C3, F-15, AC F15-3, F15-4, PRD 4.5, 8.3, D13): setiap kunci
- * app_settings punya `version` sendiri; PUT wajib izin settings.manage, X-Reauth-Token dan If-Match versi kunci itu
- * (usang = 409 VERSION_CONFLICT dengan `current`); validasi mengikuti skema input kontrak (400 field_errors).
+ * app_settings punya `version` sendiri; PUT wajib izin settings.manage dan If-Match versi kunci itu (usang = 409
+ * VERSION_CONFLICT dengan `current`), tanpa X-Reauth-Token (keputusan PO 2026-10-15, ADR-025); validasi mengikuti
+ * skema input kontrak (400 field_errors).
  * Biaya (`fees`) dimiliki tiruan pembayaran; GET /admin/settings membacanya dari sana agar konsisten.
  * Data contoh bukan bukti AC (PRD 7.3).
  */
@@ -21,7 +22,7 @@ export interface SettingsRequestLog {
   body: Record<string, unknown> | null;
 }
 
-/** Log permintaan pengaturan (uji: If-Match, reautentikasi, header latar). */
+/** Log permintaan pengaturan (uji: If-Match, tidak ada X-Reauth-Token, header latar). */
 export const settingsRequests: SettingsRequestLog[] = [];
 
 const SEED_AT = "2026-10-01T00:00:00Z";
@@ -103,10 +104,10 @@ function invalid(fieldErrors: Record<string, string[]>): Response | null {
     : null;
 }
 
-/** Penjaga bersama PUT pengaturan: izin, reautentikasi, lalu If-Match versi kunci (AC F15-3, F15-4). */
+/** Penjaga bersama PUT pengaturan: izin lalu If-Match versi kunci (AC F15-3, F15-4); tanpa reautentikasi. */
 function guardPut(req: MockRequest, key: SettingKey): Response | null {
   log(req);
-  const denied = requirePermission(req, "settings.manage") ?? requireReauth(req);
+  const denied = requirePermission(req, "settings.manage");
   if (denied) return denied;
   const ifMatch = req.headers.get("If-Match");
   if (!ifMatch)

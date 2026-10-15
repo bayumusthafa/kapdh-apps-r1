@@ -558,7 +558,7 @@ describe("tiruan manajemen admin (admin-admins)", () => {
   });
 
   route("POST /admin/admins", async () => {
-    const headers = { ...(await reauth()), ...idem() };
+    const headers = idem();
     const ok = await call("POST", "/admin/admins", {
       headers,
       body: {
@@ -573,13 +573,13 @@ describe("tiruan manajemen admin (admin-admins)", () => {
     const eligible = candidates.body.items.find((c) => c.eligible);
     if (eligible) {
       const linked = await call("POST", "/admin/admins", {
-        headers: { ...(await reauth()), ...idem() },
+        headers: { ...idem() },
         body: { role: "super_admin", permissions: [], alumni_user_id: eligible.user_id },
       });
       expect(linked.status).toBe(201);
     }
     const dup = await call("POST", "/admin/admins", {
-      headers: { ...(await reauth()), ...idem() },
+      headers: { ...idem() },
       body: {
         role: "admin",
         permissions: ["members.read"],
@@ -595,34 +595,49 @@ describe("tiruan manajemen admin (admin-admins)", () => {
     const target = list.find((a) => a.status === "active" && a.role === "admin")!;
     const d = await detail(target.id);
     const ok = await call("PATCH", `/admin/admins/${d.id}`, {
-      headers: { ...(await reauth()), ...ifMatch(d.version) },
+      headers: { ...ifMatch(d.version) },
       body: { display_name: "Nama Baru" },
     });
     expect(ok.status).toBe(200);
     const stale = await call("PATCH", `/admin/admins/${d.id}`, {
-      headers: { ...(await reauth()), ...ifMatch(d.version) },
+      headers: { ...ifMatch(d.version) },
       body: { display_name: "Nama Lagi" },
     });
     expect(stale.status).toBe(409);
     const fresh = await detail(d.id);
     const disabled = await call("PATCH", `/admin/admins/${d.id}`, {
-      headers: { ...(await reauth()), ...ifMatch(fresh.version) },
+      headers: { ...ifMatch(fresh.version) },
       body: { status: "disabled", reason: "Uji kontrak" },
     });
     expect(disabled.status).toBe(200);
+    // ADR-025: koreksi email login (tindakan kredensial) wajib X-Reauth-Token; tanpa token 403 tanpa efek.
+    const invited = await detail(list.find((a) => a.status === "invited")!.id);
+    const noToken = await call<S["Error"]>("PATCH", `/admin/admins/${invited.id}`, {
+      headers: { ...ifMatch(invited.version) },
+      body: { email: "koreksi.kontrak@kapdh.test" },
+    });
+    expect(noToken.status).toBe(403);
+    expect(noToken.body.code).toBe("REAUTH_REQUIRED");
+    expect((await detail(invited.id)).email).toBe(invited.email);
+    const corrected = await call<S["AdminAccountDetail"]>("PATCH", `/admin/admins/${invited.id}`, {
+      headers: { ...(await reauth()), ...ifMatch(invited.version) },
+      body: { email: "koreksi.kontrak@kapdh.test" },
+    });
+    expect(corrected.status).toBe(200);
+    expect(corrected.body.email).toBe("koreksi.kontrak@kapdh.test");
   });
 
   route("DELETE /admin/admins/{adminId}", async () => {
     const invited = (await admins()).find((a) => a.status === "invited")!;
     const d = await detail(invited.id);
     const ok = await call("DELETE", `/admin/admins/${d.id}`, {
-      headers: { ...(await reauth()), ...ifMatch(d.version) },
+      headers: { ...ifMatch(d.version) },
     });
     expect(ok.status).toBe(204);
     const activeOnce = (await admins()).find((a) => a.status === "active" && a.role === "admin")!;
     const active = await detail(activeOnce.id);
     const refused = await call("DELETE", `/admin/admins/${active.id}`, {
-      headers: { ...(await reauth()), ...ifMatch(active.version) },
+      headers: { ...ifMatch(active.version) },
     });
     expect(refused.status).toBe(409);
   });
@@ -1731,7 +1746,7 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
 
   async function newMethod(): Promise<S["AdminPaymentMethod"]> {
     const res = await call<S["AdminPaymentMethod"]>("POST", "/admin/payment-methods", {
-      headers: { ...(await reauth()), ...idem() },
+      headers: { ...idem() },
       body: {
         kind: "bank",
         provider: "Bank Uji",
@@ -1765,7 +1780,7 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
   route("PUT /admin/payment-methods/{methodId}", async () => {
     const m = await newMethod();
     const ok = await call("PUT", `/admin/payment-methods/${m.id}`, {
-      headers: { ...(await reauth()), ...ifMatch(m.version) },
+      headers: { ...ifMatch(m.version) },
       body: {
         kind: "ewallet",
         provider: "Dompet Uji",
@@ -1782,7 +1797,7 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
   route("DELETE /admin/payment-methods/{methodId}", async () => {
     const m = await newMethod();
     const ok = await call("DELETE", `/admin/payment-methods/${m.id}`, {
-      headers: { ...(await reauth()), ...ifMatch(m.version) },
+      headers: { ...ifMatch(m.version) },
     });
     expect(ok.status).toBe(204);
   });
@@ -1794,7 +1809,7 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
   route("PUT /admin/settings/fees", async () => {
     const fees = await call<S["FeeSettings"]>("GET", "/admin/settings/fees");
     const ok = await call("PUT", "/admin/settings/fees", {
-      headers: { ...(await reauth()), ...ifMatch(fees.body.version) },
+      headers: { ...ifMatch(fees.body.version) },
       body: { registration_fee: "55000.00", card_fee: "10000.00", renewal_fee: "15000.00", reason: "Rapat" },
     });
     expect(ok.status).toBe(200);
@@ -1813,7 +1828,7 @@ describe("tiruan pengaturan aplikasi (admin-settings)", () => {
   route("PUT /admin/settings/min-app-version", async () => {
     const s = await settings();
     const ok = await call("PUT", "/admin/settings/min-app-version", {
-      headers: { ...(await reauth()), ...ifMatch(s.min_app_version.version) },
+      headers: { ...ifMatch(s.min_app_version.version) },
       body: { android: s.min_app_version.android, ios: s.min_app_version.ios },
     });
     expect(ok.status).toBe(200);
@@ -1822,7 +1837,7 @@ describe("tiruan pengaturan aplikasi (admin-settings)", () => {
   route("PUT /admin/settings/maintenance", async () => {
     const s = await settings();
     const ok = await call("PUT", "/admin/settings/maintenance", {
-      headers: { ...(await reauth()), ...ifMatch(s.maintenance.version) },
+      headers: { ...ifMatch(s.maintenance.version) },
       body: { active: true, message: "Pemeliharaan terjadwal.", until: future(1) },
     });
     expect(ok.status).toBe(200);
@@ -1831,7 +1846,7 @@ describe("tiruan pengaturan aplikasi (admin-settings)", () => {
   route("PUT /admin/settings/store-links", async () => {
     const s = await settings();
     const ok = await call("PUT", "/admin/settings/store-links", {
-      headers: { ...(await reauth()), ...ifMatch(s.store_links.version) },
+      headers: { ...ifMatch(s.store_links.version) },
       body: { android: "https://play.google.com/store/apps/details?id=id.or.kapdh", ios: null },
     });
     expect(ok.status).toBe(200);
@@ -1840,7 +1855,7 @@ describe("tiruan pengaturan aplikasi (admin-settings)", () => {
   route("PUT /admin/settings/support", async () => {
     const s = await settings();
     const ok = await call("PUT", "/admin/settings/support", {
-      headers: { ...(await reauth()), ...ifMatch(s.support.version) },
+      headers: { ...ifMatch(s.support.version) },
       body: { email: "bantuan@kapdh.or.id", whatsapp: "+6281234567890" },
     });
     expect(ok.status).toBe(200);
@@ -1849,7 +1864,7 @@ describe("tiruan pengaturan aplikasi (admin-settings)", () => {
   route("PUT /admin/settings/payment-instructions", async () => {
     const s = await settings();
     const ok = await call("PUT", "/admin/settings/payment-instructions", {
-      headers: { ...(await reauth()), ...ifMatch(s.payment_instructions.version) },
+      headers: { ...ifMatch(s.payment_instructions.version) },
       body: { dues_hidden_platforms: ["ios"] },
     });
     expect(ok.status).toBe(200);
@@ -2028,11 +2043,13 @@ describe("tiruan admin: galat dan cakupan", () => {
     expect(problems).toEqual([]);
   });
 
-  it("tiruan meminta X-Reauth-Token tepat pada operasi kontrak ber-reauth (AC F15-3, F16-1)", async () => {
+  it("tiruan meminta X-Reauth-Token tepat pada operasi kontrak ber-reauth (tindakan kredensial, ADR-025)", async () => {
     const problems: string[] = [];
+    const reauthRoutes: string[] = [];
     for (const { route: r } of mockRouteTable) {
       const access = accessOf(r.method, r.path);
       if (access.audience !== "admin") continue;
+      if (access.reauth) reauthRoutes.push(`${r.method} ${r.path}`);
       const body = r.method === "GET" || r.method === "DELETE" ? undefined : {};
       const res = await call<S["Error"]>(r.method, sample(r.path), {
         body,
@@ -2046,6 +2063,15 @@ describe("tiruan admin: galat dan cakupan", () => {
       current.delete(`${r.method} ${r.path}`);
     }
     expect(problems).toEqual([]);
+    // Keputusan PO 2026-10-15 (ADR-025): di web admin hanya tindakan kredensial yang ber-reauth. Pengaturan,
+    // biaya, metode bayar serta undang/ubah/hapus admin tidak lagi meminta X-Reauth-Token; koreksi email login lewat
+    // PATCH admin tetap memintanya secara bersyarat (diuji di skenario "PATCH /admin/admins/{adminId}").
+    expect(reauthRoutes.sort()).toEqual([
+      "POST /admin/admins/{adminId}/invitation",
+      "POST /admin/admins/{adminId}/recovery",
+      "POST /admin/auth/backup-codes",
+      "POST /admin/members/{userId}/password-reset",
+    ]);
   });
 
   afterAll(() => {
