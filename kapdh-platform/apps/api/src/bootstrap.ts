@@ -109,9 +109,12 @@ export async function createApp(
     hsts: deps.env.HSTS_ENABLED ? { maxAge: HSTS_MAX_AGE_SECONDS, includeSubDomains: true } : false,
   });
   await app.register(cookie);
-  // Web admin memakai cookie (credentials); situs publik hanya memanggil endpoint publik.
+  // Web admin memakai cookie (credentials); situs publik hanya memanggil endpoint publik. `methods` wajib eksplisit:
+  // bawaan @fastify/cors hanya GET,HEAD,POST sehingga browser menolak preflight PATCH/PUT/DELETE web admin
+  // (pengaturan, master, admin, konten) dengan galat jaringan.
   app.enableCors({
     origin: [deps.env.ADMIN_ORIGIN, new URL(deps.env.PUBLIC_WEB_URL).origin],
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
     exposedHeaders: ["x-request-id", "retry-after", "idempotent-replayed"],
   });
