@@ -12,7 +12,7 @@ import { Input } from "./Input";
 import { PasswordInput } from "./PasswordInput";
 
 /**
- * Reautentikasi untuk tindakan sensitif (AC F15-3, F16-1; ARCHITECTURE §4.3): admin memasukkan sandi dan kode
+ * Reautentikasi untuk tindakan kredensial (ARCHITECTURE §4.3, ADR-025): admin memasukkan sandi dan kode
  * TOTP, POST /auth/reauth menerbitkan X-Reauth-Token (<= 10 menit, terikat sesi) yang dipakai untuk mengulang
  * permintaan yang tertunda. Sandi dan kode tidak disimpan; formulir dikosongkan setiap kali dialog ditutup.
  * Kredensial salah dijawab server 400 VALIDATION_ERROR per isian (`field_errors.password`/`totp_code`) dan

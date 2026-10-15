@@ -29,10 +29,10 @@ function maintenanceAllowed(method: string, path: string): boolean {
 
 /**
  * Mutasi bersama (bukan /admin/**) yang dipakai web admin dan tetap diproses saat maintenance HANYA untuk access token
- * ber-audience admin yang sah (ARCHITECTURE §4.3): reautentikasi (X-Reauth-Token wajib untuk mematikan maintenance dan
- * perubahan sensitif lain, AC F15-3; tanpa pengecualian ini maintenance terkunci begitu token reauth 10 menit
- * kedaluwarsa) dan unggahan berkas pengurus (bukti pembayaran tercatat D13, bukti refund). Mutasi anggota yang sama
- * tetap 503.
+ * ber-audience admin yang sah (ARCHITECTURE §4.3): reautentikasi (X-Reauth-Token untuk tindakan kredensial admin
+ * seperti pemulihan admin, backup code, dan reset sandi anggota, agar tetap dapat dilakukan selama maintenance;
+ * mematikan maintenance sendiri cukup dengan If-Match sejak ADR-025) dan unggahan berkas pengurus (bukti pembayaran
+ * tercatat D13, bukti refund). Mutasi anggota yang sama tetap 503.
  */
 function maintenanceAllowedForAdmin(method: string, path: string): boolean {
   return method === "POST" && (path === "/auth/reauth" || path === "/files");

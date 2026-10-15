@@ -31,15 +31,29 @@ async function detail(adminId: string) {
   return expectOperation("get", ADMIN_PATH, res) as JsonBody;
 }
 
-/** Header sensitif Super Admin pemanggil + Idempotency-Key opsional. */
+/**
+ * Header tindakan kredensial Super Admin pemanggil (kirim ulang undangan, pemulihan, koreksi email login lewat PATCH):
+ * X-Reauth-Token + If-Match dan Idempotency-Key opsional.
+ */
 async function sensitive(ifMatch?: string | number, idempotencyKey?: string) {
   const options = await root.sensitive(ifMatch);
   if (idempotencyKey) options.headers["idempotency-key"] = idempotencyKey;
   return options;
 }
 
+/**
+ * Header Super Admin pemanggil TANPA X-Reauth-Token untuk undang, ubah nama/peran/izin/status dan hapus admin
+ * (ADR-025): If-Match dan Idempotency-Key opsional.
+ */
+async function plain(ifMatch?: string | number, idempotencyKey?: string) {
+  const headers: Record<string, string> = {};
+  if (ifMatch !== undefined) headers["if-match"] = String(ifMatch);
+  if (idempotencyKey) headers["idempotency-key"] = idempotencyKey;
+  return Promise.resolve({ token: root.token, headers });
+}
+
 async function invite(body: Record<string, unknown>, idempotencyKey = uuidv7()) {
-  return api.post("/admin/admins", body, await sensitive(undefined, idempotencyKey));
+  return api.post("/admin/admins", body, await plain(undefined, idempotencyKey));
 }
 
 async function lastAudit(action: string, entityId: string) {
@@ -283,14 +297,18 @@ describe("POST /admin/admins: undangan dari alumni (AC F16-1, PRD 3.16)", () => 
     });
   });
 
-  it("AC F16-1: tanpa X-Reauth-Token 403 REAUTH_REQUIRED; admin tanpa admins.manage 403 FORBIDDEN", async () => {
+  it("ADR-025: undangan tanpa X-Reauth-Token diterima 201 dan diaudit; admin tanpa admins.manage 403 FORBIDDEN", async () => {
     const noReauth = await api.post(
       "/admin/admins",
-      { email: uniqueEmail("x"), display_name: "X", role: "admin", permissions: [] },
+      { email: uniqueEmail("tanpa-reauth"), display_name: "Tanpa Reauth", role: "admin", permissions: [] },
       { token: root.token },
     );
-    expect(noReauth.statusCode).toBe(403);
-    expect(expectOperation("post", "/admin/admins", noReauth)).toMatchObject({ code: "REAUTH_REQUIRED" });
+    expect(noReauth.statusCode, noReauth.body).toBe(201);
+    const invited = expectOperation("post", "/admin/admins", noReauth) as JsonBody;
+    expect(invited.admin).toMatchObject({ status: "invited", display_name: "Tanpa Reauth" });
+    expect(await lastAudit("admin.invited", invited.admin.id as string)).toMatchObject({
+      actorAdminId: root.admin.adminId,
+    });
 
     // Admin dengan seluruh izin yang dapat ditugaskan tetap bukan Super Admin (PRD 2.3).
     const strong = await adminActor(t, {
@@ -317,7 +335,7 @@ describe("POST /admin/admins: undangan dari alumni (AC F16-1, PRD 3.16)", () => 
     }
   });
 
-  it("AC F16-1: Super Admin yang belum menyelesaikan TOTP ditolak 403 MFA_REQUIRED; reautentikasi level 1 ditolak", async () => {
+  it("AC F16-1: Super Admin yang belum menyelesaikan TOTP ditolak 403 MFA_REQUIRED", async () => {
     const pending = await createAdmin(t, { role: "super_admin" });
     const login = await api.post("/admin/auth/login", { email: pending.email, password: pending.password });
     expect(login.statusCode).toBe(200);
@@ -325,16 +343,13 @@ describe("POST /admin/admins: undangan dari alumni (AC F16-1, PRD 3.16)", () => 
     const list = await api.get("/admin/admins", { token: mfaToken });
     expect(list.statusCode).toBe(403);
     expect(expectOperation("get", "/admin/admins", list)).toMatchObject({ code: "MFA_REQUIRED" });
-
-    // Token reautentikasi tingkat sandi (level 1) tidak cukup untuk sesi admin (ARCHITECTURE §4.3).
-    const weak = await reauthTokenFor(t, root.token, 1);
-    const res = await api.post(
+    const created = await api.post(
       "/admin/admins",
       { email: uniqueEmail("x"), display_name: "X", role: "admin", permissions: [] },
-      { token: root.token, headers: { "x-reauth-token": weak } },
+      { token: mfaToken },
     );
-    expect(res.statusCode).toBe(403);
-    expect(res.json()).toMatchObject({ code: "REAUTH_REQUIRED" });
+    expect(created.statusCode).toBe(403);
+    expect(created.json()).toMatchObject({ code: "MFA_REQUIRED" });
   });
 });
 
@@ -564,7 +579,7 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
     const res = await api.patch(
       `/admin/admins/${auditor.admin.adminId}`,
       { permissions: ["payments.read"], reason: "Rotasi tugas" },
-      await sensitive(before.version),
+      await plain(before.version),
     );
     const body = expectOperation("patch", ADMIN_PATH, res) as JsonBody;
     expect(res.statusCode, res.body).toBe(200);
@@ -608,7 +623,7 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
     const promoted = await api.patch(
       `/admin/admins/${target.adminId}`,
       { role: "super_admin" },
-      await sensitive(current.version),
+      await plain(current.version),
     );
     expect(promoted.statusCode, promoted.body).toBe(200);
     expect(promoted.json().permissions).toHaveLength(15);
@@ -619,14 +634,14 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
     const missing = await api.patch(
       `/admin/admins/${target.adminId}`,
       { role: "admin" },
-      await sensitive(current.version),
+      await plain(current.version),
     );
     expect(missing.statusCode).toBe(400);
     expect(missing.json()).toMatchObject({ field_errors: { permissions: expect.any(Array) } });
     const demoted = await api.patch(
       `/admin/admins/${target.adminId}`,
       { role: "admin", permissions: [] },
-      await sensitive(current.version),
+      await plain(current.version),
     );
     expect(expectOperation("patch", ADMIN_PATH, demoted)).toMatchObject({ role: "admin", permissions: [] });
   });
@@ -637,13 +652,13 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
     const first = await api.patch(
       `/admin/admins/${target.adminId}`,
       { display_name: "Versi Baru" },
-      await sensitive(current.version),
+      await plain(current.version),
     );
     expect(first.statusCode).toBe(200);
     const stale = await api.patch(
       `/admin/admins/${target.adminId}`,
       { display_name: "Menimpa" },
-      await sensitive(current.version),
+      await plain(current.version),
     );
     const body = expectOperation("patch", ADMIN_PATH, stale) as JsonBody;
     expect(stale.statusCode).toBe(409);
@@ -651,16 +666,16 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
     const noIfMatch = await api.patch(
       `/admin/admins/${target.adminId}`,
       { display_name: "X" },
-      await sensitive(),
+      await plain(),
     );
     expect(noIfMatch.statusCode).toBe(400);
     const empty = await api.patch(
       `/admin/admins/${target.adminId}`,
       {},
-      await sensitive(Number(current.version) + 1),
+      await plain(Number(current.version) + 1),
     );
     expect(empty.statusCode).toBe(400);
-    const unknown = await api.patch(`/admin/admins/${uuidv7()}`, { display_name: "X" }, await sensitive(1));
+    const unknown = await api.patch(`/admin/admins/${uuidv7()}`, { display_name: "X" }, await plain(1));
     expect(unknown.statusCode).toBe(404);
   });
 
@@ -670,7 +685,7 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
     const noReason = await api.patch(
       `/admin/admins/${target.admin.adminId}`,
       { status: "disabled" },
-      await sensitive(current.version),
+      await plain(current.version),
     );
     expect(noReason.statusCode).toBe(400);
     expect(noReason.json()).toMatchObject({ field_errors: { reason: expect.any(Array) } });
@@ -678,7 +693,7 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
     const res = await api.patch(
       `/admin/admins/${target.admin.adminId}`,
       { status: "disabled", reason: "Masa jabatan berakhir" },
-      await sensitive(current.version),
+      await plain(current.version),
     );
     const body = expectOperation("patch", ADMIN_PATH, res) as JsonBody;
     expect(res.statusCode, res.body).toBe(200);
@@ -702,7 +717,7 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
     const reactivated = await api.patch(
       `/admin/admins/${target.admin.adminId}`,
       { status: "active", reason: "Dilantik kembali" },
-      await sensitive(body.version),
+      await plain(body.version),
     );
     expect(expectOperation("patch", ADMIN_PATH, reactivated)).toMatchObject({
       status: "active",
@@ -718,7 +733,7 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
     const fromInvited = await api.patch(
       `/admin/admins/${invited.adminId}`,
       { status: "active" },
-      await sensitive(invitedDetail.version),
+      await plain(invitedDetail.version),
     );
     expect(fromInvited.statusCode).toBe(409);
     expect(expectOperation("patch", ADMIN_PATH, fromInvited)).toMatchObject({
@@ -733,13 +748,13 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
     const res = await api.patch(
       `/admin/admins/${noTotp.adminId}`,
       { status: "active" },
-      await sensitive(noTotpDetail.version),
+      await plain(noTotpDetail.version),
     );
     expect(res.statusCode).toBe(409);
     expect(res.json()).toMatchObject({ field_errors: { status: expect.any(Array) } });
   });
 
-  it("koreksi email admin invited: token lama batal, undangan baru ke alamat baru; admin aktif 409; email+status 400", async () => {
+  it("koreksi email admin invited (dengan X-Reauth-Token): token lama batal, undangan baru ke alamat baru; admin aktif 409; email+status 400", async () => {
     const created = await invite({
       email: uniqueEmail("salah-ketik"),
       display_name: "Calon Admin",
@@ -771,7 +786,7 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
     const both = await api.patch(
       `/admin/admins/${adminId}`,
       { email: uniqueEmail("x"), status: "disabled", reason: "uji" },
-      await sensitive(body.version),
+      await plain(body.version),
     );
     expect(both.statusCode).toBe(400);
 
@@ -797,13 +812,95 @@ describe("PATCH /admin/admins/{adminId} (AC F16-1, F16-3, F15-4)", () => {
     expect(taken.json()).toMatchObject({ field_errors: { email: expect.any(Array) } });
   });
 
+  it("ADR-025: koreksi email login tetap wajib X-Reauth-Token (tindakan kredensial): tanpa token dan token level 1 ditolak 403 REAUTH_REQUIRED tanpa efek", async () => {
+    const created = await invite({
+      email: uniqueEmail("email-reauth"),
+      display_name: "Email Reauth",
+      role: "admin",
+      permissions: [],
+    });
+    const adminId = created.json().admin.id as string;
+    const version = created.json().admin.version as string;
+    const before = await adminRow(adminId);
+    const target = uniqueEmail("penyerang");
+
+    const missing = await api.patch(`/admin/admins/${adminId}`, { email: target }, await plain(version));
+    expect(missing.statusCode, missing.body).toBe(403);
+    expect(expectOperation("patch", ADMIN_PATH, missing)).toMatchObject({ code: "REAUTH_REQUIRED" });
+    const weak = await api.patch(
+      `/admin/admins/${adminId}`,
+      { email: target },
+      {
+        token: root.token,
+        headers: { "x-reauth-token": await reauthTokenFor(t, root.token, 1), "if-match": version },
+      },
+    );
+    expect(weak.statusCode).toBe(403);
+    expect(weak.json()).toMatchObject({ code: "REAUTH_REQUIRED" });
+    const after = await adminRow(adminId);
+    expect(after).toMatchObject({ version: before.version, inviteTokenHash: before.inviteTokenHash });
+    expect((await detail(adminId)).email).toBe(created.json().admin.email);
+    expect(await lastAudit("admin.updated", adminId)).toBeUndefined();
+
+    // Email yang sama dengan sekarang bukan perubahan kredensial; nama dan izin tidak memerlukan token, dan token
+    // yang dikirim tetapi tidak sah tidak menolak perubahan tersebut.
+    const same = await api.patch(
+      `/admin/admins/${adminId}`,
+      { email: created.json().admin.email, display_name: "Email Reauth Baru" },
+      { token: root.token, headers: { "x-reauth-token": "bukan-token", "if-match": version } },
+    );
+    expect(same.statusCode, same.body).toBe(200);
+    expect(same.json()).toMatchObject({
+      display_name: "Email Reauth Baru",
+      email: created.json().admin.email,
+    });
+  });
+
+  it("ADR-025: koreksi email admin pernah aktif yang sedang dipulihkan wajib X-Reauth-Token; tautan pemulihan tidak dapat dialihkan tanpanya", async () => {
+    const target = await adminActor(t, { permissions: ["payments.read"], displayName: "Admin Dipulihkan" });
+    const recovered = await api.post(
+      `/admin/admins/${target.admin.adminId}/recovery`,
+      { reason: "Perangkat TOTP hilang, diverifikasi lewat telepon" },
+      await sensitive((await detail(target.admin.adminId)).version, uuidv7()),
+    );
+    expect(recovered.statusCode, recovered.body).toBe(200);
+    const pending = recovered.json().admin as {
+      status: string;
+      version: string;
+      activated_at: string | null;
+    };
+    expect(pending.status).toBe("invited");
+    expect(pending.activated_at).not.toBeNull();
+    const hash = (await adminRow(target.admin.adminId)).inviteTokenHash;
+
+    const redirect = uniqueEmail("alih");
+    const refused = await api.patch(
+      `/admin/admins/${target.admin.adminId}`,
+      { email: redirect },
+      await plain(pending.version),
+    );
+    expect(refused.statusCode, refused.body).toBe(403);
+    expect(refused.json()).toMatchObject({ code: "REAUTH_REQUIRED" });
+    expect((await adminRow(target.admin.adminId)).inviteTokenHash).toBe(hash);
+    expect((await detail(target.admin.adminId)).email).toBe(target.admin.email);
+
+    const corrected = await api.patch(
+      `/admin/admins/${target.admin.adminId}`,
+      { email: redirect },
+      await sensitive(pending.version),
+    );
+    expect(corrected.statusCode, corrected.body).toBe(200);
+    expect(corrected.json()).toMatchObject({ status: "invited", email: redirect });
+    expect((await adminRow(target.admin.adminId)).inviteTokenHash).not.toBe(hash);
+  });
+
   it("nilai yang sama dengan keadaan sekarang tidak menaikkan versi dan tidak diaudit", async () => {
     const target = await createAdmin(t, { displayName: "Tetap", permissions: ["members.read"] });
     const current = await detail(target.adminId);
     const res = await api.patch(
       `/admin/admins/${target.adminId}`,
       { display_name: "Tetap", permissions: ["members.read"] },
-      await sensitive(current.version),
+      await plain(current.version),
     );
     expect(res.statusCode).toBe(200);
     expect(res.json().version).toBe(current.version);
@@ -822,7 +919,7 @@ describe("DELETE /admin/admins/{adminId} (F-16)", () => {
     expect(created.statusCode).toBe(201);
     const { id: adminId, version } = created.json().admin as { id: string; version: string };
     const userId = (await adminRow(adminId)).userId;
-    const res = await api.delete(`/admin/admins/${adminId}`, await sensitive(version));
+    const res = await api.delete(`/admin/admins/${adminId}`, await plain(version));
     expect(res.statusCode, res.body).toBe(204);
     expectOperation("delete", ADMIN_PATH, res);
     expect(await t.db.select().from(admins).where(eq(admins.id, adminId))).toEqual([]);
@@ -842,27 +939,57 @@ describe("DELETE /admin/admins/{adminId} (F-16)", () => {
   it("identitas yang pernah aktif ditolak 409; If-Match usang 409 VERSION_CONFLICT; tidak ada 404", async () => {
     const active = await createAdmin(t, { status: "disabled" });
     const activeDetail = await detail(active.adminId);
-    const refused = await api.delete(
-      `/admin/admins/${active.adminId}`,
-      await sensitive(activeDetail.version),
-    );
+    const refused = await api.delete(`/admin/admins/${active.adminId}`, await plain(activeDetail.version));
     expect(refused.statusCode).toBe(409);
     expect(expectOperation("delete", ADMIN_PATH, refused)).toMatchObject({
       code: "VALIDATION_ERROR",
       field_errors: { _: expect.any(Array) },
     });
     const invited = await createAdmin(t, { status: "invited" });
-    const stale = await api.delete(`/admin/admins/${invited.adminId}`, await sensitive(99));
+    const stale = await api.delete(`/admin/admins/${invited.adminId}`, await plain(99));
     expect(stale.statusCode).toBe(409);
     expect(stale.json()).toMatchObject({ code: "VERSION_CONFLICT" });
-    const missing = await api.delete(`/admin/admins/${uuidv7()}`, await sensitive(1));
+    const missing = await api.delete(`/admin/admins/${uuidv7()}`, await plain(1));
     expect(missing.statusCode).toBe(404);
-    const noIfMatch = await api.delete(`/admin/admins/${invited.adminId}`, await sensitive());
+    const noIfMatch = await api.delete(`/admin/admins/${invited.adminId}`, await plain());
     expect(noIfMatch.statusCode).toBe(400);
   });
 });
 
 describe("POST /admin/admins/{adminId}/invitation (F-16)", () => {
+  it("ADR-025: kirim ulang undangan tetap wajib X-Reauth-Token: tanpa token dan token level 1 ditolak 403 REAUTH_REQUIRED tanpa efek", async () => {
+    const created = await invite({
+      email: uniqueEmail("ulang-reauth"),
+      display_name: "Ulang Reauth",
+      role: "admin",
+      permissions: [],
+    });
+    const { id: adminId, version } = created.json().admin as { id: string; version: string };
+    const hashBefore = (await adminRow(adminId)).inviteTokenHash;
+    const path = `/admin/admins/${adminId}/invitation`;
+    const missing = await api.post(path, {}, await plain(version, uuidv7()));
+    expect(missing.statusCode).toBe(403);
+    expect(expectOperation("post", "/admin/admins/{adminId}/invitation", missing)).toMatchObject({
+      code: "REAUTH_REQUIRED",
+    });
+    // Token reautentikasi tingkat sandi (level 1) tidak cukup untuk sesi admin (ARCHITECTURE §4.3).
+    const weak = await reauthTokenFor(t, root.token, 1);
+    const levelOne = await api.post(
+      path,
+      {},
+      {
+        token: root.token,
+        headers: { "x-reauth-token": weak, "if-match": version, "idempotency-key": uuidv7() },
+      },
+    );
+    expect(levelOne.statusCode).toBe(403);
+    expect(levelOne.json()).toMatchObject({ code: "REAUTH_REQUIRED" });
+    const row = await adminRow(adminId);
+    expect(row.inviteTokenHash).toBe(hashBefore);
+    expect(String(row.version)).toBe(version);
+    expect(await lastAudit("admin.invitation_resent", adminId)).toBeUndefined();
+  });
+
   it("F-16: kirim ulang menerbitkan token baru (token lama tidak berlaku), menaikkan versi, diaudit", async () => {
     const created = await invite({
       email: uniqueEmail("ulang"),
@@ -901,7 +1028,7 @@ describe("POST /admin/admins/{adminId}/invitation (F-16)", () => {
     const disabled = await api.patch(
       `/admin/admins/${adminId}`,
       { status: "disabled", reason: "Undangan ditunda" },
-      await sensitive(created.json().admin.version),
+      await plain(created.json().admin.version),
     );
     expect(disabled.json()).toMatchObject({ status: "disabled", invite_expires_at: null });
     const resent = await api.post(
@@ -934,7 +1061,7 @@ describe("POST /admin/admins/{adminId}/invitation (F-16)", () => {
     await api.patch(
       `/admin/admins/${adminId}`,
       { status: "disabled", reason: "Dibatalkan sebelum terkirim" },
-      await sensitive(created.json().admin.version),
+      await plain(created.json().admin.version),
     );
     const before = t.mailer.messages.length;
     await t.jobs.drainOutbox();
@@ -944,6 +1071,29 @@ describe("POST /admin/admins/{adminId}/invitation (F-16)", () => {
 });
 
 describe("POST /admin/admins/{adminId}/recovery (F-16, PRD 3.16)", () => {
+  it("ADR-025: pemulihan tetap wajib X-Reauth-Token: tanpa token dan token level 1 ditolak 403 REAUTH_REQUIRED tanpa efek", async () => {
+    const target = await adminActor(t, { permissions: ["payments.read"], displayName: "Admin Pulih Reauth" });
+    const before = await detail(target.admin.adminId);
+    const path = `/admin/admins/${target.admin.adminId}/recovery`;
+    const body = { reason: "Perangkat TOTP hilang, diverifikasi lewat telepon" };
+    const missing = await api.post(path, body, await plain(before.version, uuidv7()));
+    expect(missing.statusCode).toBe(403);
+    expect(expectOperation("post", "/admin/admins/{adminId}/recovery", missing)).toMatchObject({
+      code: "REAUTH_REQUIRED",
+    });
+    const weak = await reauthTokenFor(t, root.token, 1);
+    const levelOne = await api.post(path, body, {
+      token: root.token,
+      headers: { "x-reauth-token": weak, "if-match": String(before.version), "idempotency-key": uuidv7() },
+    });
+    expect(levelOne.statusCode).toBe(403);
+    expect(levelOne.json()).toMatchObject({ code: "REAUTH_REQUIRED" });
+    // Tidak ada efek: status, versi dan sesi target tetap; token target masih berlaku.
+    expect(await detail(target.admin.adminId)).toMatchObject({ status: "active", version: before.version });
+    expect((await api.get("/admin/permissions", { token: target.token })).statusCode).toBe(200);
+    expect(await lastAudit("admin.recovery_initiated", target.admin.adminId)).toBeUndefined();
+  });
+
   it("F-16: sandi dan MFA direset, sesi dicabut, email dialihkan, undangan pemulihan + pemberitahuan ke alamat lama", async () => {
     const target = await adminActor(t, { permissions: ["payments.read"], displayName: "Admin Lupa" });
     const before = await detail(target.admin.adminId);

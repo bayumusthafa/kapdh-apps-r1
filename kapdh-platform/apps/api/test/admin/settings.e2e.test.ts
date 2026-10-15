@@ -175,22 +175,11 @@ describe("PUT /admin/settings/fees (AC F15-3, F03-5, F15-4)", () => {
     expect((await t.settings.getEntry("fees")).value.registration_fee).toBe("55000.00");
   });
 
-  it("AC F15-3: tanpa X-Reauth-Token ditolak 403 REAUTH_REQUIRED; tanpa If-Match 400", async () => {
-    const current = await version("fees");
-    const noReauth = await api.put(
-      "/admin/settings/fees",
-      { registration_fee: "1.00", card_fee: "1.00", renewal_fee: "1.00" },
-      { token: manager.token, headers: { "if-match": current } },
-    );
-    expect(noReauth.statusCode).toBe(403);
-    expect(expectOperation("put", "/admin/settings/fees", noReauth)).toMatchObject({
-      code: "REAUTH_REQUIRED",
-    });
-
+  it("ADR-025: ubah biaya tanpa X-Reauth-Token diterima dengan If-Match dan diaudit; tanpa If-Match tetap 400", async () => {
     const noIfMatch = await api.put(
       "/admin/settings/fees",
       { registration_fee: "1.00", card_fee: "1.00", renewal_fee: "1.00" },
-      await manager.sensitive(),
+      { token: manager.token },
     );
     expect(noIfMatch.statusCode).toBe(400);
     expect(expectOperation("put", "/admin/settings/fees", noIfMatch)).toMatchObject({
@@ -198,7 +187,57 @@ describe("PUT /admin/settings/fees (AC F15-3, F03-5, F15-4)", () => {
       field_errors: { "If-Match": expect.any(Array) },
     });
     expect((await t.settings.getEntry("fees")).value.registration_fee).toBe("50000.00");
+
+    const current = await version("fees");
+    const noReauth = await api.put(
+      "/admin/settings/fees",
+      { registration_fee: "1.00", card_fee: "1.00", renewal_fee: "1.00" },
+      { token: manager.token, headers: { "if-match": current } },
+    );
+    expect(noReauth.statusCode).toBe(200);
+    expect(expectOperation("put", "/admin/settings/fees", noReauth)).toMatchObject({
+      registration_fee: "1.00",
+      version: String(Number(current) + 1),
+    });
+    expect((await t.settings.getEntry("fees")).value.registration_fee).toBe("1.00");
+    const audit = await lastSettingsAudit("fees");
+    expect(audit).toMatchObject({ entityType: "app_setting", actorAdminId: manager.admin.adminId });
+    expect(audit.after).toEqual({
+      value: { registration_fee: "1.00", card_fee: "1.00", renewal_fee: "1.00" },
+      version: Number(current) + 1,
+    });
   });
+
+  it.each([
+    ["min-app-version", "min_app_version", { android: "1.0.0", ios: "1.0.0" }],
+    [
+      "maintenance",
+      "maintenance",
+      { active: true, message: "Pemeliharaan terjadwal 30 menit.", until: null },
+    ],
+    [
+      "store-links",
+      "store_links",
+      { android: "https://play.google.com/store/apps/details?id=id.kapdh.app", ios: null },
+    ],
+    ["payment-instructions", "payment_instructions", { dues_hidden_platforms: ["ios"] }],
+    ["support", "support", { email: "pengurus@kapdh.or.id", whatsapp: null }],
+  ])(
+    "ADR-025: PUT /admin/settings/%s tanpa X-Reauth-Token diterima dengan If-Match dan diaudit",
+    async (path, key, input) => {
+      const current = await version(key);
+      const res = await api.put(`/admin/settings/${path}`, input, {
+        token: manager.token,
+        headers: { "if-match": current },
+      });
+      const body = expectOperation("put", `/admin/settings/${path}`, res) as Record<string, unknown>;
+      expect(res.statusCode, JSON.stringify(body)).toBe(200);
+      expect(body.version).toBe(String(Number(current) + 1));
+      const audit = await lastSettingsAudit(key);
+      expect(audit).toMatchObject({ entityType: "app_setting", actorAdminId: manager.admin.adminId });
+      expect(audit.after).toMatchObject({ version: Number(current) + 1 });
+    },
+  );
 
   it.each([
     ["registration_fee", "50000"],
@@ -349,7 +388,7 @@ describe("PUT /admin/settings/maintenance (PRD 4.5, 8.4)", () => {
     ).toBe(200);
   });
 
-  it("D7-01 (PRD 4.5, AC F15-3): setelah token reauth awal kedaluwarsa, pengurus reautentikasi lewat POST /auth/reauth dan mematikan maintenance; unggahan pengurus diproses; anggota tetap 503", async () => {
+  it("D7-01 (PRD 4.5, ADR-025): maintenance diaktifkan dan diakhiri cukup dengan If-Match tanpa X-Reauth-Token; POST /auth/reauth (tindakan kredensial) dan unggahan pengurus tetap diproses; anggota tetap 503", async () => {
     const keeper = await adminActor(t, {
       permissions: ["settings.manage", "payments.read", "payments.decide"],
       displayName: "Pengurus Pemeliharaan",
@@ -360,20 +399,11 @@ describe("PUT /admin/settings/maintenance (PRD 4.5, 8.4)", () => {
     const on = await api.put(
       "/admin/settings/maintenance",
       { active: true, message: "Pemeliharaan server", until: null },
-      await keeper.sensitive(current),
+      { token: keeper.token, headers: { "if-match": current } },
     );
     expect(on.statusCode, on.body).toBe(200);
     const onVersion = String(Number(current) + 1);
-
-    // Token reauth yang dipakai saat mengaktifkan berlaku <= 10 menit; tanpa reauth baru, mematikan ditolak 403.
     t.clock.advance(11 * 60_000);
-    const stale = await api.put(
-      "/admin/settings/maintenance",
-      { active: false, message: null, until: null },
-      { token: keeper.token, headers: { "if-match": onVersion } },
-    );
-    expect(stale.statusCode).toBe(403);
-    expect(stale.json()).toMatchObject({ code: "REAUTH_REQUIRED" });
 
     // Anggota tidak mendapat pengecualian: reautentikasi dan unggahan tetap 503 MAINTENANCE.
     const memberReauth = await api.post(
@@ -385,7 +415,8 @@ describe("PUT /admin/settings/maintenance (PRD 4.5, 8.4)", () => {
     const memberUpload = await postFile(t.app, memberToken, "payment_proof");
     expect([memberUpload.statusCode, memberUpload.json().code]).toEqual([503, "MAINTENANCE"]);
 
-    // Pengurus: unggah bukti kerja (D13) dan reautentikasi sandi + TOTP diproses walau maintenance aktif.
+    // Pengurus: unggah bukti kerja (D13) dan reautentikasi sandi + TOTP (untuk tindakan kredensial seperti
+    // pemulihan admin) diproses walau maintenance aktif.
     const upload = await postFile(t.app, keeper.token, "payment_proof");
     expect(upload.statusCode, upload.body).toBe(201);
     t.clock.advance(30_000); // langkah TOTP baru (langkah login tidak dapat dipakai ulang)
@@ -395,12 +426,13 @@ describe("PUT /admin/settings/maintenance (PRD 4.5, 8.4)", () => {
       { token: keeper.token },
     );
     expect(reauth.statusCode, reauth.body).toBe(200);
-    const reauthToken = (expectOperation("post", "/auth/reauth", reauth) as { reauth_token: string })
-      .reauth_token;
+    expectOperation("post", "/auth/reauth", reauth);
+
+    // Mengakhiri maintenance tidak memerlukan X-Reauth-Token (ADR-025), cukup If-Match.
     const off = await api.put(
       "/admin/settings/maintenance",
       { active: false, message: null, until: null },
-      { token: keeper.token, headers: { "x-reauth-token": reauthToken, "if-match": onVersion } },
+      { token: keeper.token, headers: { "if-match": onVersion } },
     );
     expect(off.statusCode, off.body).toBe(200);
     expect(off.json()).toMatchObject({ active: false });

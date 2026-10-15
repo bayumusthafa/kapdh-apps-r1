@@ -54,8 +54,8 @@ const methodCursorSchema = z.object({
 const IDENTITY_FIELDS = ["kind", "provider", "account_number", "account_holder"] as const;
 
 /**
- * Metode bayar oleh pengurus settings.manage (F-15, AC F15-3, F15-4, D13): perubahan wajib reautentikasi (dekorator),
- * diaudit di transaksi yang sama, If-Match untuk ubah/hapus. Metode yang sudah dirujuk payment hanya dapat
+ * Metode bayar oleh pengurus settings.manage (F-15, AC F15-3, F15-4, D13): perubahan diaudit di transaksi yang sama,
+ * If-Match untuk ubah/hapus; tanpa reautentikasi sejak keputusan PO 2026-10-15 (ADR-025). Metode yang sudah dirujuk payment hanya dapat
  * dinonaktifkan dan identitas rekeningnya tetap; baris metode dikunci FOR UPDATE sehingga tidak ada payment baru yang
  * menyalin isi lama (pembuatan payment mengunci FOR SHARE).
  */

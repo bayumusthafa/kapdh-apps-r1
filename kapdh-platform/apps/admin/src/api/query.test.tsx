@@ -12,9 +12,11 @@ import { findToast, renderWithProviders, signInViaApi, toasts } from "../test/ut
 import { api } from "./client";
 import type { ApiError } from "./errors";
 import { authRequests, MOCK_CREDENTIALS, mockAuth, mockPayments, paymentRequests } from "./mocks";
+import { accountRequests } from "./mocks/account";
 import { useApiMutation, useApiQuery } from "./query";
 
 type Fees = components["schemas"]["FeeSettings"];
+type BackupCodes = components["schemas"]["AdminBackupCodes"];
 const AHMAD = "0199e000-0000-7000-8000-0000000000a2";
 
 afterEach(() => {
@@ -240,24 +242,41 @@ describe("useApiMutation", () => {
   });
 });
 
-function FeesHarness({ preAuth }: { preAuth: boolean }) {
+/**
+ * Tindakan kredensial yang kontraknya `reauth: true` (POST /admin/auth/backup-codes, ADR-025). `preAuth` = dialog
+ * proaktif sebelum percobaan pertama; tanpa itu percobaan pertama dikirim tanpa token sehingga server menjawab
+ * REAUTH_REQUIRED dan penanganan generik useApiMutation membuka dialog lalu mengulang sekali.
+ */
+function BackupCodesHarness({ preAuth }: { preAuth: boolean }) {
+  const regenerate = useApiMutation<BackupCodes, void>({
+    requiresReauth: preAuth,
+    reauthReason: "Membuat ulang backup code",
+    successMessage: "Backup code dibuat ulang.",
+    request: (_v, ctx) =>
+      api.POST("/admin/auth/backup-codes", {
+        // Tanpa token pada percobaan pertama: server menjawab REAUTH_REQUIRED lalu dialog dibuka.
+        params: { header: { "X-Reauth-Token": ctx.reauthToken ?? "" } },
+      }),
+  });
+  return (
+    <div>
+      <p>status {regenerate.status}</p>
+      <Button onClick={() => regenerate.mutate()}>Buat ulang backup code</Button>
+    </div>
+  );
+}
+
+/** Perubahan non-kredensial (PUT /admin/settings/fees): tanpa requiresReauth dan tanpa X-Reauth-Token (ADR-025). */
+function FeesHarness() {
   const fees = useApiQuery({
     queryKey: ["fees"],
     request: ({ signal, headers }) => api.GET("/admin/settings/fees", { signal, headers }),
   });
   const save = useApiMutation<Fees, Fees>({
-    requiresReauth: preAuth,
-    reauthReason: "Mengubah biaya iuran",
     successMessage: "Biaya tersimpan.",
-    request: (v, ctx) =>
+    request: (v) =>
       api.PUT("/admin/settings/fees", {
-        params: {
-          header: {
-            "If-Match": v.version,
-            // Tanpa token pada percobaan pertama: server menjawab REAUTH_REQUIRED lalu dialog dibuka.
-            "X-Reauth-Token": ctx.reauthToken ?? "",
-          },
-        },
+        params: { header: { "If-Match": v.version } },
         body: { registration_fee: v.registration_fee, card_fee: v.card_fee, renewal_fee: "15000.00" },
       }),
   });
@@ -271,15 +290,32 @@ function FeesHarness({ preAuth }: { preAuth: boolean }) {
   );
 }
 
-describe("ReauthDialog + useApiMutation (AC F15-3, ARCHITECTURE §4.3)", () => {
+const backupCodePosts = () => accountRequests.filter((r) => r.path === "/admin/auth/backup-codes");
+
+describe("ReauthDialog + useApiMutation (ARCHITECTURE §4.3, ADR-025)", () => {
+  it("ADR-025: perubahan non-kredensial tersimpan tanpa dialog Konfirmasi identitas dan tanpa X-Reauth-Token", async () => {
+    await signInViaApi();
+    const user = userEvent.setup();
+    renderWithProviders(<FeesHarness />);
+    await user.click(await screen.findByRole("button", { name: "Simpan biaya" }));
+    expect(await screen.findByText("status success")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Konfirmasi identitas" })).toBeNull();
+    const puts = paymentRequests.filter((r) => r.method === "PUT" && r.path === "/admin/settings/fees");
+    expect(puts).toHaveLength(1);
+    expect(puts[0]?.reauthToken).toBeNull();
+    expect(authRequests.filter((r) => r.path === "/auth/reauth")).toHaveLength(0);
+  });
+
   it("REAUTH_REQUIRED membuka dialog; setelah sandi+TOTP, permintaan diulang sekali dengan X-Reauth-Token", async () => {
     await signInViaApi();
     const user = userEvent.setup();
-    renderWithProviders(<FeesHarness preAuth={false} />);
-    await user.click(await screen.findByRole("button", { name: "Simpan biaya" }));
+    renderWithProviders(<BackupCodesHarness preAuth={false} />);
+    await user.click(await screen.findByRole("button", { name: "Buat ulang backup code" }));
 
     const dialog = await screen.findByRole("dialog", { name: "Konfirmasi identitas" });
-    expect(dialog).toHaveAccessibleDescription(/Mengubah biaya iuran/);
+    expect(dialog).toHaveAccessibleDescription(/Membuat ulang backup code/);
+    // Percobaan pertama tanpa token sudah ditolak server sebelum dialog dibuka.
+    expect(backupCodePosts()).toHaveLength(1);
     const password = within(dialog).getByLabelText(/^Sandi/);
     expect(password).toHaveFocus();
 
@@ -297,15 +333,17 @@ describe("ReauthDialog + useApiMutation (AC F15-3, ARCHITECTURE §4.3)", () => {
     await user.click(within(dialog).getByRole("button", { name: "Konfirmasi" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(await screen.findByText("status success")).toBeInTheDocument();
-    expect(await screen.findByText("Biaya tersimpan.")).toBeInTheDocument();
+    expect(await screen.findByText("Backup code dibuat ulang.")).toBeInTheDocument();
     expect(authRequests.filter((r) => r.path === "/auth/reauth")).toHaveLength(2);
+    // Diulang tepat sekali, kali ini dengan X-Reauth-Token.
+    expect(backupCodePosts()).toHaveLength(2);
   });
 
   it("401 dari /auth/reauth karena token sudah diganti (bukan sandi salah): sesi diperiksa lalu dikirim ulang", async () => {
     await signInViaApi();
     const user = userEvent.setup();
-    renderWithProviders(<FeesHarness preAuth />);
-    await user.click(await screen.findByRole("button", { name: "Simpan biaya" }));
+    renderWithProviders(<BackupCodesHarness preAuth />);
+    await user.click(await screen.findByRole("button", { name: "Buat ulang backup code" }));
     const dialog = await screen.findByRole("dialog", { name: "Konfirmasi identitas" });
     // Access token ditolak server (mis. sesi diputar tab lain) padahal cookie refresh masih berlaku.
     mockAuth.expireAccessTokens();
@@ -323,13 +361,12 @@ describe("ReauthDialog + useApiMutation (AC F15-3, ARCHITECTURE §4.3)", () => {
     const user = userEvent.setup();
     function SaveOnly() {
       // Tidak bergantung pada data query: cache dibersihkan saat sesi berakhir.
-      const save = useApiMutation<Fees, void>({
+      const save = useApiMutation<BackupCodes, void>({
         requiresReauth: true,
-        reauthReason: "Mengubah biaya iuran",
+        reauthReason: "Membuat ulang backup code",
         request: (_v, ctx) =>
-          api.PUT("/admin/settings/fees", {
-            params: { header: { "If-Match": "1", "X-Reauth-Token": ctx.reauthToken ?? "" } },
-            body: { registration_fee: "50000.00", card_fee: "10000.00", renewal_fee: "15000.00" },
+          api.POST("/admin/auth/backup-codes", {
+            params: { header: { "X-Reauth-Token": ctx.reauthToken ?? "" } },
           }),
       });
       const auth = useAuth();
@@ -337,13 +374,13 @@ describe("ReauthDialog + useApiMutation (AC F15-3, ARCHITECTURE §4.3)", () => {
         <div>
           <p>sesi {auth.state.status}</p>
           <p>status {save.status}</p>
-          <Button onClick={() => save.mutate()}>Simpan biaya</Button>
+          <Button onClick={() => save.mutate()}>Buat ulang backup code</Button>
         </div>
       );
     }
     renderWithProviders(<SaveOnly />);
     await screen.findByText("sesi authenticated");
-    await user.click(screen.getByRole("button", { name: "Simpan biaya" }));
+    await user.click(screen.getByRole("button", { name: "Buat ulang backup code" }));
     const dialog = await screen.findByRole("dialog", { name: "Konfirmasi identitas" });
     mockAuth.revokeSession();
     await user.type(within(dialog).getByLabelText(/^Sandi/), MOCK_CREDENTIALS.password);
@@ -360,13 +397,14 @@ describe("ReauthDialog + useApiMutation (AC F15-3, ARCHITECTURE §4.3)", () => {
   it("requiresReauth: dialog muncul sebelum percobaan pertama; batal = tidak ada permintaan dan tanpa toast galat", async () => {
     await signInViaApi();
     const user = userEvent.setup();
-    renderWithProviders(<FeesHarness preAuth />);
-    await user.click(await screen.findByRole("button", { name: "Simpan biaya" }));
+    renderWithProviders(<BackupCodesHarness preAuth />);
+    await user.click(await screen.findByRole("button", { name: "Buat ulang backup code" }));
     const dialog = await screen.findByRole("dialog", { name: "Konfirmasi identitas" });
     await user.click(within(dialog).getByRole("button", { name: "Batal" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(await screen.findByText("status error")).toBeInTheDocument();
     expect(toasts("error")).toHaveLength(0);
-    expect(screen.getByRole("button", { name: "Simpan biaya" })).toHaveFocus();
+    expect(backupCodePosts()).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Buat ulang backup code" })).toHaveFocus();
   });
 });

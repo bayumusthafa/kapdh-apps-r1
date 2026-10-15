@@ -88,11 +88,30 @@ describe("Akses modul admin cocok dengan kontrak (ARCHITECTURE §4.3)", () => {
       ).toBe(true);
   });
 
-  it("AC F15-3, F16-1: perubahan admin, izin dan pengaturan wajib reautentikasi; pembacaan dan permintaan ekspor tidak", () => {
-    for (const route of routes.filter((r) => r.name.split(".")[0]! in CONTROLLERS)) {
-      const mutating = route.method !== "get";
-      const exportRequest = route.path === "/admin/audit/exports";
-      expect(route.meta.reauth, route.name).toBe(mutating && !exportRequest);
-    }
+  it("ADR-025: di modul admin hanya kirim ulang undangan dan pemulihan admin yang wajib reautentikasi; undang, ubah, hapus admin dan pengaturan tidak", () => {
+    const credential = new Set(["AdminsController.resend", "AdminsController.recover"]);
+    for (const route of routes.filter((r) => r.name.split(".")[0]! in CONTROLLERS))
+      expect(route.meta.reauth, route.name).toBe(credential.has(route.name));
+  });
+
+  it("ADR-025: di seluruh API reautentikasi hanya untuk tindakan kredensial (tepat 5 rute)", () => {
+    const reauth = routes
+      .filter((route) => route.meta.reauth)
+      .map((route) => `${route.method.toUpperCase()} ${route.path}`)
+      .sort();
+    expect(reauth).toEqual([
+      "POST /admin/admins/{adminId}/invitation",
+      "POST /admin/admins/{adminId}/recovery",
+      "POST /admin/auth/backup-codes",
+      "POST /admin/members/{userId}/password-reset",
+      "POST /me/deletion",
+    ]);
+  });
+
+  it("ADR-025: reautentikasi bersyarat (@ConditionalReauth) hanya pada PATCH admin untuk koreksi email login", () => {
+    const conditional = routes
+      .filter((route) => route.meta.reauthConditional)
+      .map((route) => `${route.method.toUpperCase()} ${route.path} (${route.name})`);
+    expect(conditional).toEqual(["PATCH /admin/admins/{adminId} (AdminsController.update)"]);
   });
 });

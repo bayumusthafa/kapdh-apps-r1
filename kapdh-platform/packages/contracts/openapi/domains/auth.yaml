@@ -6,7 +6,8 @@
 #   audience       public | mobile | admin | any   (public = @Public(), tanpa bearer; selain itu @Audience)
 #   member_access  any | nonsuspended | active      (@MemberAccess, hanya berlaku untuk sesi mobile)
 #   permissions    [Permission]                     (@RequirePermission, hanya admin)
-#   reauth         true bila wajib header X-Reauth-Token (@RequireReauth)
+#   reauth         true bila wajib header X-Reauth-Token (@RequireReauth); reautentikasi bersyarat per isi
+#                  (@ConditionalReauth) tidak memakai kunci ini, melainkan parameter ReauthTokenConditional
 #   idempotent     true bila Idempotency-Key dihormati (@Idempotent)
 #
 # Kebijakan baseline PRD 2.5 (nilai "Usulan", final D1) yang berlaku di seluruh domain ini:
@@ -37,7 +38,7 @@
 # yang terlihat klien (`Session.id`) dan semua keadaan yang harus bertahan selama rotasi melekat pada KELUARGA, bukan
 # pada baris: `reauthenticated_at` dan `last_activity_at` disalin ke baris baru saat rotasi, dan `reauth_token`
 # (POST /auth/reauth) terikat `family_id`, sehingga refresh di tengah alur sensitif tidak membatalkan reautentikasi
-# yang masih di bawah 10 menit (F-14, AC F15-3, F16-1). Mencabut keluarga membatalkan semuanya sekaligus.
+# yang masih di bawah 10 menit (F-14, F-16, ADR-025). Mencabut keluarga membatalkan semuanya sekaligus.
 tags:
   - name: Auth
     description: |
@@ -688,24 +689,28 @@ paths:
     post:
       tags: [Auth]
       operationId: reauthenticate
-      summary: Reautentikasi untuk tindakan sensitif; token berlaku maksimal 10 menit (F-14, AC F15-3, F16-1).
+      summary: Reautentikasi untuk tindakan kredensial; token berlaku maksimal 10 menit (F-14, F-16, ADR-025).
       description: |
-        Membuktikan ulang identitas pemilik sesi sebelum tindakan sensitif (hapus akun F-14, ubah biaya/metode/versi
-        minimum AC F15-3, admin dan izin AC F16-1). Alumni: sandi. Admin: sandi DAN salah satu `totp_code`
+        Membuktikan ulang identitas pemilik sesi sebelum tindakan kredensial: hapus akun anggota (F-14), buat ulang
+        backup code admin (F-02), kirim ulang undangan, pemulihan dan koreksi email login admin (F-16; koreksi email
+        bersyarat lewat PATCH /admin/admins/{adminId}), serta reset sandi anggota (AC F16-4). Sejak keputusan PO
+        2026-10-15 (ADR-025) perubahan pengaturan, biaya, metode bayar, serta undang/ubah nama-peran-izin-status/hapus
+        admin tidak lagi memintanya. Alumni: sandi. Admin: sandi DAN salah satu `totp_code`
         (kode yang sama tidak dapat dipakai dua kali, `mfa_totp.last_used_step`) atau `backup_code` (sekali pakai,
-        dikonsumsi atomik). `reauth_token` dikirim lewat header X-Reauth-Token pada operasi sensitif dan berlaku
-        maksimal 10 menit (ARCHITECTURE §4.3); boleh dipakai berulang dalam jendela itu (mis. beberapa perubahan
-        pengaturan berturut-turut).
+        dikonsumsi atomik). `reauth_token` dikirim lewat header X-Reauth-Token pada operasi kredensial dan berlaku
+        maksimal 10 menit (ARCHITECTURE §4.3); boleh dipakai berulang dalam jendela itu (mis. beberapa pemulihan
+        admin berturut-turut).
 
         Pengikatan ke KELUARGA sesi, bukan baris sesi (kepala berkas): token adalah JWT audience `kapdh-reauth`
         dengan `sub` = pengguna, `sid` = `family_id` sesi pemanggil (sama dengan `Session.id` di GET
         /auth/sessions), `lvl` = tingkat MFA saat reautentikasi (2 bila TOTP/backup code dipakai) dan `iat` =
         waktu reautentikasi; `sessions.reauthenticated_at` keluarga diperbarui ke waktu yang sama dan diwarisi
-        baris baru setiap rotasi refresh. Operasi `reauth: true` menerima token bila tanda tangan dan audience
-        sah, umur `iat` paling lama 10 menit, `sub` sama dengan pengguna access token, `sid` sama dengan
+        baris baru setiap rotasi refresh. Operasi `reauth: true` (dan operasi ber-ReauthTokenConditional untuk isi
+        kredensialnya) menerima token bila tanda tangan dan audience sah, umur `iat` paling lama 10 menit, `sub`
+        sama dengan pengguna access token, `sid` sama dengan
         `family_id` sesi yang membawa access token (bukan id baris), dan untuk sesi admin `lvl` 2; selain itu 403
         REAUTH_REQUIRED. Dengan demikian refresh access token 15 menit di tengah alur sensitif (mis. membaca
-        pengungkapan lalu POST /me/deletion, atau dialog reautentikasi Super Admin, AC F15-3, F16-1) tidak
+        pengungkapan lalu POST /me/deletion, atau dialog reautentikasi Super Admin untuk tindakan kredensial) tidak
         memaksa reautentikasi ulang, sedangkan token dari keluarga lain (perangkat lain) selalu ditolak. Mencabut
         keluarga (logout, revokeSession, logout-all, reset sandi, penghapusan akun) membuat access token keluarga
         itu ditolak 401 sehingga reauth_token-nya tidak dapat dipakai lagi.

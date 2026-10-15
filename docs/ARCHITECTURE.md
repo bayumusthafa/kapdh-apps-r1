@@ -241,13 +241,29 @@ Additional decorators (evaluated after authentication, server-side, every reques
 - `@RequireRole("super_admin")` — admin only; Super Admin role from DB each request (contract `x-kapdh-access.role`).
 - `@RequireReauth()` — needs header `X-Reauth-Token` (JWT aud `kapdh-reauth`, `sid` = session FAMILY id
   `AuthContext.familyId`, so a refresh rotation does not cancel it; ≤10 min; admin sessions need level 2).
+  Used ONLY for credential actions (ADR-025, product-owner decision 2026-10-15): resend admin invitation
+  (`POST /admin/admins/{adminId}/invitation`), admin recovery (`.../recovery`), regenerate own backup codes
+  (`POST /admin/auth/backup-codes`), member password reset (`POST /admin/members/{userId}/password-reset`) and member
+  account deletion (`POST /me/deletion`). Settings, payment-method and admin create/update/delete operations rely on
+  the MFA session, permissions, `If-Match`/`Idempotency-Key` and audit instead.
+- `@ConditionalReauth()` — conditional step-up for an operation where only part of the body is a credential action:
+  only `PATCH /admin/admins/{adminId}` (adminUpdateAdmin), where a changed login `email` redirects the password +
+  TOTP setup link (including a recovery invitation). The guard verifies an `X-Reauth-Token` when sent and sets
+  `AuthContext.reauthenticated` without rejecting; `AdminsService.update` throws 403 `REAUTH_REQUIRED` for an
+  email change without a valid token. Name/role/permission/status changes stay free. Contract: optional parameter
+  `ReauthTokenConditional` (no `x-kapdh-access.reauth`), kept equal by `core/contract-parity.e2e.test.ts`.
+  A new operation gets `@RequireReauth()` (and contract `x-kapdh-access.reauth: true` + `ReauthToken`) only if it
+  creates, resets or issues a login factor (or redirects where its setup link goes) or deletes the member's own
+  account; when only some fields of an operation do that, use `@ConditionalReauth()`. This deliberately deviates from
+  the PRD v3.5 text of AC F15-3 and AC F16-1 (PRD 2.3 table); see ADR-025.
 - `@Idempotent()` — honours `Idempotency-Key`.
 - `@CurrentAuth()` param decorator → `AuthContext`.
 
 Global request hooks (before guards): maintenance mode rejects mutating methods with `503 MAINTENANCE` except
 `/auth/refresh`, `/auth/logout*`, `DELETE /auth/sessions/{id}`, `/admin/**`, `/public/**` reads (GET, plus
 `POST /public/kta/verify`), and — only when the bearer is a valid admin-audience access token — `POST /auth/reauth`
-(so an admin can obtain a fresh `X-Reauth-Token` and switch maintenance off) and `POST /files` (admin work uploads:
+(so admin credential actions such as admin recovery, backup codes and member password reset keep working during
+maintenance; switching maintenance off needs only `If-Match` since ADR-025) and `POST /files` (admin work uploads:
 recorded-payment proof, refund evidence); app-version gate rejects mutations from
 `X-App-Platform: android|ios` with `X-App-Version` below `min_app_version` → `426 UPGRADE_REQUIRED`.
 
@@ -266,8 +282,8 @@ Error body: `{code, message, request_id, field_errors?, retry_after_seconds?, cu
 
 `payments.read, payments.decide, members.read, members.manage, content.manage, master.manage, events.manage,
 events.checkin, moderation.read, moderation.resolve, audit.read, audit.export, settings.manage, admins.manage,
-notifications.manage`. Roles: `super_admin` (all, plus admin management, MFA+reauth for sensitive changes) and
-`admin` (assigned permissions only).
+notifications.manage`. Roles: `super_admin` (all, plus admin management with an MFA session; reauth only for
+credential actions, ADR-025) and `admin` (assigned permissions only).
 
 ### 4.6 Payment type handlers
 
@@ -432,8 +448,10 @@ to run fixture data; dev seed (`seeds/dev.ts`) adds clearly marked synthetic fix
   `/events/checkin` · `/moderation`, `/moderation/$reportId` · `/admins`, `/admins/$adminId` · `/audit` ·
   `/notifications` · `/settings` · `/account`.
 - Every page: permission-gated route + API checks, loading/empty/error/forbidden states, version-conflict reload,
-  confirmation dialogs for reject/suspend/cancel/delete/permission changes (PRD 4.5), reauth dialog for sensitive
-  changes, keyboard + screen-reader operable (N-11).
+  confirmation dialogs for reject/suspend/cancel/delete/permission changes (PRD 4.5), reauth dialog for credential
+  actions only (resend invitation, admin login-email correction, admin recovery, backup codes, member password
+  reset; ADR-025), keyboard +
+  screen-reader operable (N-11).
 - Mock mode (`pnpm --filter @kapdh/admin dev:mock`, and tests) uses per-domain handlers in `src/api/mocks/<area>.ts`;
   mock evidence never counts as AC proof. Every mock route is exercised by `src/api/mocks/contract-conformance.test.ts`
   and each response body is validated against the bundled contract (Ajv, same rules as `expectOperation`), with the

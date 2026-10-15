@@ -94,7 +94,7 @@ terakhir.
 | 1.13 | SA | Web admin: login sandi benar lalu panggil halaman admin sebelum TOTP (buka URL langsung) | Tetap di `/login/mfa`; API admin menolak (AC F02-2) | | | |
 | 1.14 | SA | Login dengan backup code; pakai backup code yang sama lagi | Pertama berhasil, kedua ditolak (F-02) | | | |
 | 1.15 | AP | Diam 28 menit (hanya polling dasbor) | Peringatan idle muncul ~2 menit sebelum; setelah 30 menit sesi berakhir dan request berikutnya ditolak (AC F02-5) | | | |
-| 1.16 | SA | Manajemen Admin → undang admin baru dengan izin `payments.read`; penerima menyelesaikan undangan + TOTP | Reautentikasi diminta; audit `admin.invited` tercatat; admin aktif hanya setelah TOTP (AC F16-1) | | | |
+| 1.16 | SA | Manajemen Admin → undang admin baru dengan izin `payments.read`; penerima menyelesaikan undangan + TOTP | Tersimpan tanpa dialog "Konfirmasi identitas" (ADR-025); audit `admin.invited` tercatat; admin aktif hanya setelah TOTP (AC F16-1) | | | |
 | 1.17 | SA | Cabut izin `payments.decide` dari AP saat AP membuka antrean | Request AP berikutnya ditolak 403 tanpa menunggu token habis (AC F16-3) | | | |
 | 1.18 | SA, SA2 | Pada staging dengan tepat dua Super Admin: keduanya saling menurunkan peran bersamaan (dua peramban) | Tepat satu berhasil; minimal satu Super Admin tersisa (AC F16-2, PRD 9.2) | | | |
 | 1.19 | SA | Detail anggota AG-A → reset sandi | Sesi AG-A dicabut, notifikasi keamanan, email kode + tautan `kapdh://app/forgot/otp?...`; pengurus tidak melihat sandi (AC F16-4) | | | |
@@ -252,13 +252,14 @@ Bukti: setiap izin positif/negatif, version conflict, conflict of interest, eksp
 | -- | ----- | ------- | --------------------- | ----- | ----- | ---------------- |
 | 10.1 | AP, AK, AE, CI, MD, AU | Masing-masing login dan buka setiap menu | Menu sesuai izin; menu lain tidak tampil dan API menolak 403 (AC F15-1) | | | |
 | 10.2 | AP | Dasbor | Hanya bagian pembayaran; tautan "Lihat yang lewat batas" membuka `/payments?stage=awaiting_review&overdue=true` dengan jumlah sama (F-15) | | | |
-| 10.3 | SA | Ubah metode bayar, nominal, versi minimum | Reautentikasi; audit before/after; transaksi lama tidak berubah (AC F15-3) | | | |
+| 10.3 | SA | Ubah metode bayar, nominal, versi minimum | Tersimpan tanpa dialog "Konfirmasi identitas" (ADR-025); audit before/after; transaksi lama tidak berubah (AC F15-3) | | | |
 | 10.4 | SA, SA2 | Ubah pengaturan yang sama dari dua peramban | Konflik versi + muat ulang (AC F15-4) | | | |
 | 10.5 | AU | Audit: filter aktor/entitas/waktu, ekspor CSV | Hasil dan ekspor memakai filter sama; berkas kedaluwarsa otomatis (AC F17-4) | | | |
 | 10.6 | AU | Buat entitas dengan nilai diawali `=`, `+`, `-`, `@` lalu ekspor | Formula dinetralkan; tanpa kolom privat/secret (AC F17-3) | | | |
 | 10.7 | AP | Buka URL berkas ekspor audit / `/audit` | Ditolak walaupun URL diketahui (AC F17-2) | | | |
 | 10.8 | SA | Setiap tindakan kritis U-02..U-09 | Satu entri audit berkorelasi `request_id` per perubahan (AC F17-1) | | | |
 | 10.9 | AP2 | Putuskan payment akun alumni tertaut | Ditolak (PRD 2.3) | | | |
+| 10.10 | SA | Tindakan kredensial (ADR-025): detail admin berstatus `invited` → "Kirim ulang undangan" lalu "Koreksi email login"; detail admin uji CI → "Pulihkan akun" (CI lalu menyelesaikan undangan ulang + TOTP); Akun → "Buat ulang backup code"; detail anggota AG-B → reset sandi. Pada dialog "Konfirmasi identitas" pertama, batalkan sekali lalu ulangi dengan sandi + kode TOTP | Kelima tindakan meminta sandi + kode TOTP sebelum dikirim; batal tidak mengubah apa pun; setelah konfirmasi tindakan berhasil dan tercatat di audit (ADR-025, AC F16-4) | | | |
 
 ## U-11 Operasi (N-01..N-06; N-14)
 

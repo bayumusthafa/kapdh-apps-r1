@@ -44,6 +44,12 @@ The CHANGELOG is updated under "Belum dirilis". Outside my three files I made tw
 - No findings were rejected; all 11 were confirmed and fixed. #10 is fixed by recording the files.yaml change as a merge gate, because files.yaml is outside this fixer's ownership.
 
 ## handoff
+> Note (15 October 2026, ADR-025): the `reauth` marker below no longer applies to adminCreatePaymentMethod,
+> adminUpdatePaymentMethod, adminDeletePaymentMethod and the six `PUT /admin/settings/*` operations. The product owner
+> limited step-up re-auth to credential actions (`docs/adr/025-reautentikasi-hanya-tindakan-kredensial.md`,
+> `packages/contracts/CHANGELOG.md`). Permissions, If-Match, Idempotency-Key and audit are unchanged. The list is kept
+> as the Phase B record.
+
 OPERATIONS (METHOD path operationId access)
 - GET /payment-methods listPaymentMethods mobile/nonsuspended
 - GET /me/fees getMyFees mobile/nonsuspended (MyFeeQuotes now requires instructions_hidden)

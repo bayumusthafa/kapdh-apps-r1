@@ -98,7 +98,18 @@ components:
       required: true
       description: |
         Token dari POST /auth/reauth (audience kapdh-reauth, terikat sesi, berlaku maksimal 10 menit) untuk tindakan
-        sensitif (ARCHITECTURE §4.3). Tidak ada atau kedaluwarsa menghasilkan 403 REAUTH_REQUIRED.
+        kredensial (ARCHITECTURE §4.3, ADR-025). Tidak ada atau kedaluwarsa menghasilkan 403 REAUTH_REQUIRED.
+      schema: { type: string, maxLength: 2048 }
+    ReauthTokenConditional:
+      name: X-Reauth-Token
+      in: header
+      required: false
+      description: |
+        Token dari POST /auth/reauth (audience kapdh-reauth, terikat sesi, berlaku maksimal 10 menit) yang wajib HANYA
+        bila permintaan memuat perubahan kredensial yang disebut deskripsi operasi, misalnya koreksi email login admin
+        (reautentikasi bersyarat, ADR-025). Perubahan itu tanpa token yang sah menghasilkan 403 REAUTH_REQUIRED;
+        perubahan lain pada operasi yang sama tidak memerlukannya, dan token yang tidak sah tidak menolak perubahan
+        lain tersebut.
       schema: { type: string, maxLength: 2048 }
     AppVersion:
       name: X-App-Version
@@ -137,7 +148,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     ReauthRequired:
-      description: REAUTH_REQUIRED; header X-Reauth-Token tidak ada, tidak valid atau lebih dari 10 menit (AC F15-3, F16-1).
+      description: REAUTH_REQUIRED; header X-Reauth-Token tidak ada, tidak valid atau lebih dari 10 menit (tindakan kredensial, ADR-025).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

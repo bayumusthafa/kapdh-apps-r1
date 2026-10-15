@@ -2,8 +2,9 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { mockPayments } from "../../api/mocks";
+import { expectNoReauthDialog } from "../../test/governance";
 import { findToast } from "../../test/utils";
-import { confirmReauth, IDS, openPayments, requestsTo } from "./testing";
+import { IDS, openPayments, requestsTo } from "./testing";
 
 const feePuts = () => requestsTo("PUT", "/admin/settings/fees");
 
@@ -16,7 +17,7 @@ function valueOf(container: HTMLElement, term: string) {
 }
 
 describe("biaya pembayaran (F-03, D4, AC F15-3; server tiruan)", () => {
-  it("AC F15-3, F03-5: ubah biaya meminta reautentikasi, mengirim If-Match; versi baru hanya untuk tagihan baru", async () => {
+  it("AC F15-3, F03-5, ADR-025: ubah biaya tanpa reautentikasi, mengirim If-Match; versi baru hanya untuk tagihan baru", async () => {
     const user = userEvent.setup();
     await openPayments(user, { tab: "fees" });
     await screen.findByRole("region", { name: "Biaya aktif" });
@@ -40,14 +41,14 @@ describe("biaya pembayaran (F-03, D4, AC F15-3; server tiruan)", () => {
     expect(screen.getByText(/Total iuran pendaftaran baru/)).toHaveTextContent("Rp65.000");
     await user.type(screen.getByRole("textbox", { name: /Catatan perubahan/ }), "Keputusan rapat pengurus");
     await user.click(save);
-    await confirmReauth(user, /Mengubah biaya iuran/);
 
     expect(
       await findToast("success", "Biaya versi 2 disimpan. Berlaku untuk tagihan yang dibuat mulai sekarang."),
     ).toBeInTheDocument();
+    expectNoReauthDialog();
     const put = feePuts()[0];
     expect(put?.ifMatch).toBe("1");
-    expect(put?.reauthToken).toMatch(/^mock-reauth-/);
+    expect(put?.reauthToken).toBeNull();
     expect(put?.body).toEqual({
       registration_fee: "55000.00",
       card_fee: "10000.00",
@@ -76,7 +77,6 @@ describe("biaya pembayaran (F-03, D4, AC F15-3; server tiruan)", () => {
     await user.type(renewal, "15.000");
     mockPayments.updateFeesAsOtherAdmin("50000.00", "10000.00", "12000.00");
     await user.click(screen.getByRole("button", { name: "Simpan biaya baru" }));
-    await confirmReauth(user);
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(
@@ -96,13 +96,14 @@ describe("biaya pembayaran (F-03, D4, AC F15-3; server tiruan)", () => {
     await user.clear(renewal);
     await user.type(renewal, "15.000");
     await user.click(screen.getByRole("button", { name: "Simpan biaya baru" }));
-    await confirmReauth(user);
     expect(await findToast("success", "Biaya versi 3 disimpan.")).toBeInTheDocument();
+    expectNoReauthDialog();
     expect(feePuts().map((r) => r.ifMatch)).toEqual(["1", "2"]);
+    expect(feePuts().every((r) => r.reauthToken === null)).toBe(true);
     expect(mockPayments.fees()).toMatchObject({ renewal_fee: "15000.00", version: "3" });
   });
 
-  it("nominal tidak valid ditolak di klien tanpa membuka reautentikasi", async () => {
+  it("nominal tidak valid ditolak di klien tanpa mengirim permintaan", async () => {
     const user = userEvent.setup();
     await openPayments(user, { tab: "fees" });
     const card = await screen.findByRole("textbox", { name: /Pembuatan KTA/ });
@@ -111,7 +112,7 @@ describe("biaya pembayaran (F-03, D4, AC F15-3; server tiruan)", () => {
     await user.click(screen.getByRole("button", { name: "Simpan biaya baru" }));
     await waitFor(() => expect(card).toHaveAccessibleDescription(/Nominal tidak valid/));
     expect(card).toHaveFocus();
-    expect(screen.queryByRole("dialog", { name: "Konfirmasi identitas" })).toBeNull();
+    expectNoReauthDialog();
     expect(feePuts()).toHaveLength(0);
   });
 });

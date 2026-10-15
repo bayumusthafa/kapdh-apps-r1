@@ -11,24 +11,22 @@ import {
   createInstruction,
   createPaymentsApp,
   memberSession,
-  reauthToken,
   type JsonBody,
 } from "./support.js";
 
 /**
- * Metode bayar oleh pengurus settings.manage (kontrak admin-payments.yaml; F-15, AC F15-3, F15-4, D13): reautentikasi,
- * audit, If-Match, metode yang dipakai hanya dapat dinonaktifkan dan identitas rekeningnya tetap.
+ * Metode bayar oleh pengurus settings.manage (kontrak admin-payments.yaml; F-15, AC F15-3, F15-4, D13): tanpa
+ * reautentikasi (ADR-025), audit, If-Match, metode yang dipakai hanya dapat dinonaktifkan dan identitas rekeningnya
+ * tetap.
  */
 
 let t: TestApp;
 let admin: AdminSession;
-let reauth: string;
 const api = () => httpClient(t.app);
 
 beforeAll(async () => {
   t = await createPaymentsApp();
   admin = await adminSession(t, ["settings.manage"]);
-  reauth = await reauthToken(t, admin.token);
 });
 afterAll(async () => {
   await t.app.close();
@@ -45,16 +43,13 @@ const input = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const headers = (extra: Record<string, string> = {}) => ({ "x-reauth-token": reauth, ...extra });
+/** Header tambahan operasi metode bayar; tidak ada X-Reauth-Token sejak ADR-025. */
+const headers = (extra: Record<string, string> = {}) => ({ ...extra });
 
 describe("Metode bayar pengurus (F-15, AC F15-3, F15-4)", () => {
-  it("AC F15-3: membuat metode wajib reautentikasi dan dicatat audit; detail dan daftar berhalaman dengan total", async () => {
-    const missing = await api().post("/admin/payment-methods", input(), { token: admin.token });
-    expect(missing.statusCode).toBe(403);
-    expect(missing.json().code).toBe("REAUTH_REQUIRED");
+  it("ADR-025: membuat metode tanpa X-Reauth-Token diterima dan dicatat audit; detail dan daftar berhalaman dengan total", async () => {
     const res = await api().post("/admin/payment-methods", input({ provider: "  BSI  " }), {
       token: admin.token,
-      headers: headers(),
     });
     const created = expectOperation("post", "/admin/payment-methods", res) as JsonBody;
     expect(res.statusCode).toBe(201);
@@ -125,11 +120,40 @@ describe("Metode bayar pengurus (F-15, AC F15-3, F15-4)", () => {
     });
     const audits = await t.db.select().from(auditLogs).where(eq(auditLogs.entityId, created.id));
     expect(audits.map((a) => a.action).sort()).toEqual(["payment_method.created", "payment_method.updated"]);
-    const noReauth = await api().put(`/admin/payment-methods/${created.id}`, input(), {
+  });
+
+  it("ADR-025: ubah dan hapus metode tanpa X-Reauth-Token diterima dengan If-Match dan diaudit; tanpa If-Match 400", async () => {
+    const created = (
+      await api().post("/admin/payment-methods", input({ provider: "Muamalat" }), { token: admin.token })
+    ).json();
+    const noIfMatch = await api().put(`/admin/payment-methods/${created.id}`, input({ provider: "X" }), {
+      token: admin.token,
+    });
+    expect(expectOperation("put", "/admin/payment-methods/{methodId}", noIfMatch)).toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    const updated = await api().put(
+      `/admin/payment-methods/${created.id}`,
+      input({ provider: "Muamalat Syariah" }),
+      { token: admin.token, headers: { "if-match": created.version } },
+    );
+    expect(updated.statusCode, updated.body).toBe(200);
+    expect(expectOperation("put", "/admin/payment-methods/{methodId}", updated)).toMatchObject({
+      provider: "Muamalat Syariah",
+      version: "2",
+    });
+    const removed = await api().delete(`/admin/payment-methods/${created.id}`, {
       token: admin.token,
       headers: { "if-match": "2" },
     });
-    expect(noReauth.json().code).toBe("REAUTH_REQUIRED");
+    expect(removed.statusCode, removed.body).toBe(204);
+    expect(await t.db.select().from(paymentMethods).where(eq(paymentMethods.id, created.id))).toEqual([]);
+    const audits = await t.db.select().from(auditLogs).where(eq(auditLogs.entityId, created.id));
+    expect(audits.map((a) => a.action).sort()).toEqual([
+      "payment_method.created",
+      "payment_method.deleted",
+      "payment_method.updated",
+    ]);
   });
 
   it("AC F15-3: metode yang dipakai payment hanya dapat dinonaktifkan; identitas rekening tetap; snapshot payment lama tidak berubah", async () => {

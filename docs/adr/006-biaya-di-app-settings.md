@@ -22,8 +22,8 @@ versi minimum, maintenance, tautan toko, kontak, legal, instruksi bayar) juga bu
    `membership`, `events`, `chat`, `min_app_version`, `maintenance`, `store_links`, `support`, `legal`,
    `payment_instructions`.
 2. `fees = {registration_fee, card_fee, renewal_fee}` sebagai string Money `numeric(14,2)`. Perubahan lewat
-   `PUT /admin/settings/fees` (izin `settings.manage` + reautentikasi + `If-Match`), menaikkan `version`, menulis audit
-   before/after dalam transaksi yang sama.
+   `PUT /admin/settings/fees` (izin `settings.manage` + `If-Match`; syarat reautentikasi dicabut oleh ADR-025),
+   menaikkan `version`, menulis audit before/after dalam transaksi yang sama.
 3. Payment pendaftaran/perpanjangan menghitung `amount` di server dan menyimpan `lines_snapshot`, `method_snapshot` dan
    `settings_version` (wajib kecuali `type = 'ticket'`, `payments_settings_version_chk`). Tiket memakai harga event.
 4. Seed referensi menyisipkan nilai D4 dengan `version = 1` dan tidak pernah menimpa nilai yang sudah diubah pengurus;

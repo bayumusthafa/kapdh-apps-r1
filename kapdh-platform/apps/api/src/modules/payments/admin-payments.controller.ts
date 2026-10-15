@@ -16,7 +16,7 @@ import type { components } from "@kapdh/contracts";
 import type { FastifyReply } from "fastify";
 import { parseIfMatch } from "../../core/concurrency/if-match.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
-import { Audience, CurrentAuth, RequirePermission, RequireReauth } from "../../core/guards/decorators.js";
+import { Audience, CurrentAuth, RequirePermission } from "../../core/guards/decorators.js";
 import { Idempotent } from "../../core/idempotency/idempotent.js";
 import { UuidParam } from "../../core/validation/uuid-param.pipe.js";
 import { validate } from "../../core/validation/validate.js";
@@ -206,7 +206,10 @@ export class AdminAdjustmentsController {
   }
 }
 
-/** Metode bayar (kontrak admin-payments.yaml; F-15, AC F15-3, F15-4): settings.manage, ubah wajib reautentikasi. */
+/**
+ * Metode bayar (kontrak admin-payments.yaml; F-15, AC F15-3, F15-4): settings.manage; ubah/hapus wajib If-Match dan
+ * tercatat di audit. Tanpa reautentikasi sejak keputusan PO 2026-10-15 (ADR-025).
+ */
 @Controller("admin/payment-methods")
 export class AdminPaymentMethodsController {
   constructor(private readonly methods: AdminPaymentMethodsService) {}
@@ -223,7 +226,6 @@ export class AdminPaymentMethodsController {
   @HttpCode(201)
   @Audience("admin")
   @RequirePermission("settings.manage")
-  @RequireReauth()
   @Idempotent({ publicResponsePaths: ["account_number"] })
   create(@Body() body: unknown): Promise<Schemas["AdminPaymentMethod"]> {
     return this.methods.create(validate(paymentMethodInputSchema, body));
@@ -241,7 +243,6 @@ export class AdminPaymentMethodsController {
   @HttpCode(200)
   @Audience("admin")
   @RequirePermission("settings.manage")
-  @RequireReauth()
   update(
     @Param("methodId", UuidParam) methodId: string,
     @Headers("if-match") ifMatch: string | undefined,
@@ -255,7 +256,6 @@ export class AdminPaymentMethodsController {
   @HttpCode(204)
   @Audience("admin")
   @RequirePermission("settings.manage")
-  @RequireReauth()
   async remove(
     @Param("methodId", UuidParam) methodId: string,
     @Headers("if-match") ifMatch: string | undefined,

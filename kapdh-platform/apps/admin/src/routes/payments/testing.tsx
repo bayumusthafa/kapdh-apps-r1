@@ -1,6 +1,5 @@
-import { screen, waitFor, within } from "@testing-library/react";
-import { expect } from "vitest";
-import { MOCK_CREDENTIALS, paymentRequests } from "../../api/mocks";
+import { screen } from "@testing-library/react";
+import { paymentRequests } from "../../api/mocks";
 import { renderApp, signIn, type User } from "../../test/utils";
 import type { PaymentTab } from "./routes";
 
@@ -24,16 +23,6 @@ export async function openPayments(
     { level: 1, name: opts.title ?? "Verifikasi Pembayaran" },
     { timeout: 10_000 },
   );
-}
-
-/** Isi dialog reautentikasi (sandi + TOTP) yang dibuka tindakan sensitif (AC F15-3). */
-export async function confirmReauth(user: User, reason?: RegExp): Promise<void> {
-  const dialog = await screen.findByRole("dialog", { name: "Konfirmasi identitas" });
-  if (reason) expect(dialog).toHaveAccessibleDescription(reason);
-  await user.type(within(dialog).getByLabelText(/^Sandi/), MOCK_CREDENTIALS.password);
-  await user.type(within(dialog).getByLabelText(/^Kode autentikator/), MOCK_CREDENTIALS.totp);
-  await user.click(within(dialog).getByRole("button", { name: "Konfirmasi" }));
-  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Konfirmasi identitas" })).toBeNull());
 }
 
 /** Permintaan ke server tiruan pembayaran dengan metode dan path tertentu. */

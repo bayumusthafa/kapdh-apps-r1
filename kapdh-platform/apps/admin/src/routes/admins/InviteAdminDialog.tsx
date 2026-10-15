@@ -59,7 +59,9 @@ type Values = z.infer<typeof schema>;
  * "Delegasi User jadi Admin" (F-16, PRD 3.16, guideline hlm. 15): Super Admin memilih alumni (pencarian nama, No.
  * KTA atau email; alumni yang tidak memenuhi syarat ditandai alasannya) atau mengundang lewat email, lalu menentukan
  * peran dan izin berlabel. Sistem membuat identitas admin BARU yang terpisah dari akun alumni; tautan undangan hanya
- * dikirim lewat email (tidak pernah tampil di layar). Wajib reautentikasi dan Idempotency-Key (AC F16-1).
+ * dikirim lewat email (tidak pernah tampil di layar). Wajib Idempotency-Key (AC F16-1); reautentikasi tidak
+ * diminta (keputusan PO 2026-10-15, ADR-025: reautentikasi hanya untuk kirim ulang undangan, koreksi email login dan
+ * pemulihan).
  */
 export function InviteAdminDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
@@ -87,13 +89,11 @@ export function InviteAdminDialog({ open, onClose }: { open: boolean; onClose: (
   });
 
   const invite = useApiMutation<InvitationResult, Values, Values>({
-    requiresReauth: true,
-    reauthReason: "Mengundang admin baru",
     setError: form.setError,
     request: (v, ctx) =>
       api.POST("/admin/admins", {
         params: {
-          header: { "X-Reauth-Token": ctx.reauthToken ?? "", "Idempotency-Key": ctx.idempotencyKey },
+          header: { "Idempotency-Key": ctx.idempotencyKey },
         },
         body: {
           ...(v.alumni_user_id ? { alumni_user_id: v.alumni_user_id } : {}),
@@ -316,7 +316,7 @@ export function InviteAdminDialog({ open, onClose }: { open: boolean; onClose: (
                     value: "super_admin",
                     label: "Super Admin",
                     description:
-                      "Semua izin termasuk mengelola admin; perubahan sensitif dengan MFA dan reautentikasi.",
+                      "Semua izin termasuk mengelola admin, dengan sesi MFA; reautentikasi untuk tindakan kredensial.",
                   },
                 ]}
               />

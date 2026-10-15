@@ -51,14 +51,15 @@ belum disahkan) selalu SEV-1.
 Efek (ARCHITECTURE §4.3, PRD 4.5): semua mutasi anggota (POST/PUT/PATCH/DELETE) ditolak `503 MAINTENANCE` dengan pesan
 dan `Retry-After` dari `until`, KECUALI `/auth/refresh`, `/auth/logout`, `/auth/logout-all`,
 `DELETE /auth/sessions/{id}`, seluruh `/admin/**`, dan `POST /public/kta/verify`; untuk access token admin yang sah juga
-`POST /auth/reauth` (reautentikasi untuk mematikan maintenance) dan `POST /files` (unggahan bukti pengurus). Baca (GET)
-tetap jalan, aplikasi menampilkan layar maintenance dari `GET /public/config`.
+`POST /auth/reauth` (agar tindakan kredensial admin seperti pemulihan admin, backup code dan reset sandi anggota tetap
+dapat dilakukan; ADR-025) dan `POST /files` (unggahan bukti pengurus). Baca (GET) tetap jalan, aplikasi menampilkan
+layar maintenance dari `GET /public/config`.
 Worker tetap berjalan (job terjadwal, outbox, penghapusan akun) kecuali dihentikan.
 
-**Cara utama (teraudit):** web admin → Pengaturan → Maintenance (Super Admin atau admin `settings.manage`, wajib
-reautentikasi). Isi pesan dengan rentang estimasi dan kanal dukungan, contoh: "Layanan KAPDH sedang dipulihkan,
-perkiraan selesai 14.00-15.00 WIB. Bantuan: bantuan@kapdh.or.id." Perubahan berlaku ≤ 5 detik di setiap instance
-(cache SettingsService).
+**Cara utama (teraudit):** web admin → Pengaturan → Maintenance (Super Admin atau admin `settings.manage`; sejak
+ADR-025 menyalakan dan mematikan maintenance tidak meminta reautentikasi, cukup versi terbaru/`If-Match`). Isi pesan
+dengan rentang estimasi dan kanal dukungan, contoh: "Layanan KAPDH sedang dipulihkan, perkiraan selesai 14.00-15.00
+WIB. Bantuan: bantuan@kapdh.or.id." Perubahan berlaku ≤ 5 detik di setiap instance (cache SettingsService).
 
 **Cara darurat (web admin tidak dapat dipakai):** psql sebagai pemilik database (kapdh_migrator) di VPS, lalu catat di
 log insiden karena jalur ini tidak menulis audit aplikasi:
@@ -101,7 +102,7 @@ Bertingkat, gunakan yang paling ringan yang cukup:
 | Penyedia email/FCM gagal | Status penyedia. Pengiriman diulang dengan backoff; inbox in-app tetap. OTP dikirim langsung oleh API (ADR-004): pengguna dapat kirim ulang; bila penyedia mati lama, ganti penyedia D10 (SMTP_URL) dan umumkan |
 | Ledger penghapusan luar VPS gagal | Permintaan `failed` dengan `ledger_*:OffsiteLedgerWriteError`: periksa kunci/kuota/object lock bucket ledger; job mengulang otomatis. Data belum dihapus sebelum entri luar VPS ada (D5-07) |
 | Paparan berkas privat (SEV-1) | Maintenance; identifikasi berkas dan pengakses dari log (`request_id`); rotasi `FILE_URL_SECRET` (semua URL bertanda tangan ≤ 10 menit batal); perbaiki; nilai kewajiban pemberitahuan (bagian 7.4) |
-| Akun admin diduga dibobol | Super Admin lain menonaktifkan admin itu (web admin); cabut sesi (bagian 5.1); periksa audit tindakan admin itu; reset TOTP lewat undangan ulang |
+| Akun admin diduga dibobol | Super Admin lain menonaktifkan admin itu (web admin); cabut sesi (bagian 5.1); periksa audit tindakan admin itu, terutama `payment_method.*`, `settings.updated` dan `admin.invited`/`admin.updated` (sejak ADR-025 perubahan ini tidak meminta sandi + TOTP, jadi sesi yang dibobol dapat melakukannya); nonaktifkan metode bayar dan admin yang dibuat penyerang, kembalikan pengaturan yang diubah, umumkan rekening yang sah bila instruksi bayar sempat mengarah ke rekening lain; reset TOTP lewat pemulihan admin (undangan ulang) |
 | Akun alumni disalahgunakan / investigasi keamanan | Atas keputusan tertulis Super Admin: status `disabled` lewat CLI `account:status` (docs/runbooks/alumni-account-disabled.md); pelanggaran perilaku memakai suspend di web admin, bukan `disabled` |
 | Kebocoran secret | Rotasi sesuai bagian 5.2; cabut sesi bila JWT/OTP terdampak |
 | Oversell/salah nominal/status | Maintenance; hentikan worker bila job ikut memperburuk; koreksi hanya lewat payment_adjustments (status paid tidak diubah, ARCHITECTURE §2.13); forward-fix |

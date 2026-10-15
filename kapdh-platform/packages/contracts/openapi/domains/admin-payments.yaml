@@ -751,13 +751,12 @@ paths:
     post:
       tags: [Admin Payments]
       operationId: adminCreatePaymentMethod
-      summary: Tambah rekening tujuan (settings.manage + reautentikasi, AC F15-3).
+      summary: Tambah rekening tujuan (settings.manage, AC F15-3).
       description: |
-        Rekening tujuan menentukan ke mana anggota mentransfer dana, sehingga perubahan wajib reautentikasi
-        (X-Reauth-Token <= 10 menit, AC F15-3) dan diaudit dalam transaksi yang sama (AC F17-1).
-      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true, idempotent: true }
+        Rekening tujuan menentukan ke mana anggota mentransfer dana, sehingga setiap perubahan diaudit dalam
+        transaksi yang sama (AC F17-1). Tidak meminta reautentikasi sejak keputusan PO 2026-10-15 (ADR-025).
+      x-kapdh-access: { audience: admin, permissions: [settings.manage], idempotent: true }
       parameters:
-        - $ref: "#/components/parameters/ReauthToken"
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
@@ -773,9 +772,7 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: |
-            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
-            MFA_REQUIRED bila sesi admin belum TOTP.
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -811,7 +808,7 @@ paths:
     put:
       tags: [Admin Payments]
       operationId: adminUpdatePaymentMethod
-      summary: Ubah atau nonaktifkan metode bayar (settings.manage + reautentikasi, AC F15-3, F15-4).
+      summary: Ubah atau nonaktifkan metode bayar (settings.manage, AC F15-3, F15-4).
       description: |
         Penggantian penuh. Payment yang sudah dibuat tetap memakai snapshot lamanya (AC F15-3); metode nonaktif
         tidak muncul di GET /payment-methods dan tidak dapat dipilih untuk payment baru atau ganti metode.
@@ -827,11 +824,10 @@ paths:
         Pembuatan payment dan ganti metode mengunci baris metode yang sama (FOR SHARE), sehingga tidak ada payment
         baru yang menyalin isi lama setelah perubahan tersimpan. Audit before/after dalam transaksi yang sama.
         If-Match usang menghasilkan 409 VERSION_CONFLICT dengan `current` AdminPaymentMethod (AC F15-4).
-      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+      x-kapdh-access: { audience: admin, permissions: [settings.manage] }
       parameters:
         - $ref: "#/components/parameters/PaymentMethodId"
         - $ref: "#/components/parameters/IfMatch"
-        - $ref: "#/components/parameters/ReauthToken"
       requestBody:
         required: true
         content:
@@ -846,9 +842,7 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: |
-            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
-            MFA_REQUIRED bila sesi admin belum TOTP.
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -862,27 +856,24 @@ paths:
     delete:
       tags: [Admin Payments]
       operationId: adminDeletePaymentMethod
-      summary: Hapus metode yang belum pernah dipakai (settings.manage + reautentikasi, F-15).
+      summary: Hapus metode yang belum pernah dipakai (settings.manage, F-15).
       description: |
         Hanya metode dengan `in_use` false (tidak pernah dirujuk payment mana pun) yang dapat dihapus. Metode yang
         sudah dipakai ditolak 400 VALIDATION_ERROR (field_errors._ "metode sudah dipakai, nonaktifkan saja") dan
         harus dinonaktifkan lewat PUT (`active` false) agar histori dan snapshot tetap utuh. Pemeriksaan dan
         penghapusan berjalan dalam satu transaksi dengan lock baris metode. If-Match usang menghasilkan 409
         VERSION_CONFLICT. Audit dicatat dalam transaksi yang sama.
-      x-kapdh-access: { audience: admin, permissions: [settings.manage], reauth: true }
+      x-kapdh-access: { audience: admin, permissions: [settings.manage] }
       parameters:
         - $ref: "#/components/parameters/PaymentMethodId"
         - $ref: "#/components/parameters/IfMatch"
-        - $ref: "#/components/parameters/ReauthToken"
       responses:
         "204":
           description: Metode dihapus.
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: |
-            FORBIDDEN tanpa izin settings.manage, REAUTH_REQUIRED tanpa X-Reauth-Token yang berlaku, atau
-            MFA_REQUIRED bila sesi admin belum TOTP.
+          description: FORBIDDEN tanpa izin settings.manage; MFA_REQUIRED bila sesi admin belum TOTP.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

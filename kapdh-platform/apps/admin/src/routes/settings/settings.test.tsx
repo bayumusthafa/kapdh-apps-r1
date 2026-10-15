@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { mockAuth } from "../../api/mocks";
 import { mockSettings, settingsRequests } from "../../api/mocks/settings";
-import { confirmReauth, openPage, section } from "../../test/governance";
+import { expectNoReauthDialog, openPage, section } from "../../test/governance";
 import { findToast, renderApp, signIn } from "../../test/utils";
 import { compareSemver } from "./SettingsPage";
 
@@ -16,7 +16,7 @@ describe("pengaturan aplikasi (F-15, AC F15-3, F15-4; server tiruan)", () => {
     expect(compareSemver("0.9.0", "1.0.0")).toBeLessThan(0);
   });
 
-  it("AC F15-3: ubah versi minimum meminta reautentikasi, memakai If-Match versi kunci dan mencatat versi baru", async () => {
+  it("AC F15-3, ADR-025: ubah versi minimum tanpa reautentikasi, memakai If-Match versi kunci dan mencatat versi baru", async () => {
     const user = userEvent.setup();
     await openPage(user, "/settings", "Pengaturan");
     const card = await section("Versi aplikasi minimum");
@@ -25,11 +25,11 @@ describe("pengaturan aplikasi (F-15, AC F15-3, F15-4; server tiruan)", () => {
     await user.clear(android);
     await user.type(android, "1.1.0");
     await user.click(within(card).getByRole("button", { name: "Simpan versi minimum" }));
-    await confirmReauth(user);
     expect(await findToast("success", "Versi aplikasi minimum disimpan.")).toBeInTheDocument();
+    expectNoReauthDialog();
     expect(within(card).getByText(/Versi 2 \| diubah .* oleh Bayu Musthafa/)).toBeInTheDocument();
     const sent = puts().at(-1);
-    expect(sent).toMatchObject({ path: "/admin/settings/min-app-version", ifMatch: "1", reauth: true });
+    expect(sent).toMatchObject({ path: "/admin/settings/min-app-version", ifMatch: "1", reauth: false });
     expect(sent?.body).toEqual({ android: "1.1.0", ios: "1.0.0" });
   });
 
@@ -56,7 +56,6 @@ describe("pengaturan aplikasi (F-15, AC F15-3, F15-4; server tiruan)", () => {
     await user.clear(email);
     await user.type(email, "pengurus@kapdh.or.id");
     await user.click(within(card).getByRole("button", { name: "Simpan kontak dukungan" }));
-    await confirmReauth(user);
     const alert = await within(card).findByRole("alert");
     expect(alert).toHaveTextContent("sudah diubah Ahmad Zulhadi (versi 2)");
     // Tidak ada percobaan kedua otomatis dengan versi baru (tidak menimpa diam-diam).
@@ -69,7 +68,7 @@ describe("pengaturan aplikasi (F-15, AC F15-3, F15-4; server tiruan)", () => {
     expect(within(card).queryByRole("alert")).toBeNull();
   });
 
-  it("PRD 4.5: mengaktifkan pemeliharaan wajib pesan dan konfirmasi eksplisit sebelum reautentikasi", async () => {
+  it("PRD 4.5: mengaktifkan pemeliharaan wajib pesan dan konfirmasi eksplisit, tanpa reautentikasi", async () => {
     const user = userEvent.setup();
     await openPage(user, "/settings", "Pengaturan");
     const card = await section("Mode pemeliharaan");
@@ -82,9 +81,10 @@ describe("pengaturan aplikasi (F-15, AC F15-3, F15-4; server tiruan)", () => {
     await user.click(within(card).getByRole("button", { name: "Simpan mode pemeliharaan" }));
     const confirm = await screen.findByRole("alertdialog", { name: /Aktifkan mode pemeliharaan/ });
     await user.click(within(confirm).getByRole("button", { name: "Aktifkan pemeliharaan" }));
-    await confirmReauth(user);
     expect(await findToast("success", "Mode pemeliharaan diaktifkan.")).toBeInTheDocument();
+    expectNoReauthDialog();
     expect(within(card).getByText("Pemeliharaan aktif")).toBeInTheDocument();
+    expect(puts().at(-1)).toMatchObject({ path: "/admin/settings/maintenance", ifMatch: "1", reauth: false });
     expect(puts().at(-1)?.body).toMatchObject({ active: true, until: null });
   });
 
@@ -95,7 +95,6 @@ describe("pengaturan aplikasi (F-15, AC F15-3, F15-4; server tiruan)", () => {
     await user.click(within(card).getByLabelText("iOS"));
     await user.type(within(card).getByLabelText(/^Catatan perubahan/), "Review App Store 3.1.1");
     await user.click(within(card).getByRole("button", { name: "Simpan instruksi iuran" }));
-    await confirmReauth(user);
     expect(await within(card).findByText("Saat ini: disembunyikan di iOS.")).toBeInTheDocument();
     expect(puts().at(-1)?.body).toEqual({
       dues_hidden_platforms: ["ios"],
@@ -119,19 +118,25 @@ describe("pengaturan aplikasi (F-15, AC F15-3, F15-4; server tiruan)", () => {
     expect(puts()).toHaveLength(0);
   });
 
-  it("reautentikasi dibatalkan: perubahan tidak dikirim dan isian tetap", async () => {
+  it("keputusan PO 2026-10-15 (ADR-025): tautan toko dan kontak dukungan disimpan tanpa dialog Konfirmasi identitas dan tanpa X-Reauth-Token", async () => {
     const user = userEvent.setup();
     await openPage(user, "/settings", "Pengaturan");
-    const card = await section("Tautan toko aplikasi");
-    const ios = within(card).getByLabelText(/^App Store/);
-    await user.type(ios, "https://apps.apple.com/id/app/kapdh/id123");
-    await user.click(within(card).getByRole("button", { name: "Simpan tautan toko" }));
-    const dialog = await screen.findByRole("dialog", { name: /Konfirmasi identitas/ });
-    expect(dialog).toHaveTextContent("Mengubah tautan toko aplikasi");
-    await user.click(within(dialog).getByRole("button", { name: "Batal" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: /Konfirmasi identitas/ })).toBeNull());
-    expect(puts()).toHaveLength(0);
-    expect(ios).toHaveValue("https://apps.apple.com/id/app/kapdh/id123");
+    const store = await section("Tautan toko aplikasi");
+    await user.type(within(store).getByLabelText(/^App Store/), "https://apps.apple.com/id/app/kapdh/id123");
+    await user.click(within(store).getByRole("button", { name: "Simpan tautan toko" }));
+    expect(await findToast("success", "Tautan toko aplikasi disimpan.")).toBeInTheDocument();
+    expectNoReauthDialog();
+    const support = await section("Kontak dukungan");
+    const email = within(support).getByLabelText(/^Email dukungan/);
+    await user.clear(email);
+    await user.type(email, "pengurus@kapdh.or.id");
+    await user.click(within(support).getByRole("button", { name: "Simpan kontak dukungan" }));
+    expect(await findToast("success", "Kontak dukungan disimpan.")).toBeInTheDocument();
+    expectNoReauthDialog();
+    expect(puts().map((r) => ({ path: r.path, ifMatch: r.ifMatch, reauth: r.reauth }))).toEqual([
+      { path: "/admin/settings/store-links", ifMatch: "1", reauth: false },
+      { path: "/admin/settings/support", ifMatch: "1", reauth: false },
+    ]);
   });
 
   it("kebijakan PRD hanya dapat dibaca (tanpa isian)", async () => {

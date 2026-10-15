@@ -78,7 +78,7 @@ describe("RequestGate (ARCHITECTURE §4.3, PRD 4.5)", () => {
   it("maintenance: POST /auth/reauth dan POST /files hanya dikecualikan untuk access token admin yang sah (D7-01)", async () => {
     const g = gate({ maintenance: true });
     for (const url of ["/api/v1/auth/reauth", "/api/v1/files"]) {
-      // Pengurus tetap dapat reautentikasi (mematikan maintenance) dan mengunggah bukti kerja.
+      // Pengurus tetap dapat reautentikasi (tindakan kredensial) dan mengunggah bukti kerja.
       expect(await check(g, "POST", url, undefined, "Bearer token-admin"), url).toBe("lolos");
       // Anggota, token tidak sah, skema bukan Bearer, atau tanpa token tetap 503.
       expect(await check(g, "POST", url, undefined, "Bearer token-anggota"), url).toBe("MAINTENANCE");

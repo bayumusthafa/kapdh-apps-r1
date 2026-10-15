@@ -19,7 +19,7 @@ dalam satu perubahan.
 | [010](010-worker-sebagai-runtime-job-registry.md) | Worker = runtime tipis di atas job registry API | PRD 5.1, 5.5 |
 | [011](011-sisa-teknis-d1-sesi-dan-rate-limit.md) | Sisa teknis D1: TTL sesi, idle admin, rate limit | D1, PRD 2.5 |
 | [012](012-challenge-pengganti-non-enumerasi.md) | Challenge pengganti (decoy) untuk alur publik non-enumerasi | PRD 2.5, N-09 |
-| [013](013-identitas-admin-undangan-dan-totp.md) | Identitas admin terpisah, undangan + TOTP wajib, cookie site sama | PRD 3.16, 5.2, D12 |
+| [013](013-identitas-admin-undangan-dan-totp.md) | Identitas admin terpisah, undangan + TOTP wajib, cookie site sama (butir 6 reautentikasi digantikan ADR-025) | PRD 3.16, 5.2, D12 |
 | [014](014-deletion-ledger-eksternal.md) | Deletion ledger eksternal dan penerapan ulang setelah restore (diperbarui ADR-019) | AC F14-6, D2 |
 | [015](015-rencana-cadangan-ios-d13.md) | Rencana cadangan iOS untuk iuran lewat `payment_instructions` | D13, [R6] |
 | [016](016-konfigurasi-lingkungan-flutter.md) | Lingkungan Flutter via `--dart-define-from-file`; push opsional | PRD 5.3, AC F13-2 |
@@ -31,6 +31,7 @@ dalam satu perubahan.
 | [022](022-baca-cadangan-perpindahan-storage.md) | Baca-cadangan selama perpindahan berkas lokal ke S3 | PRD 5.4 |
 | [023](023-job-rilis-dan-gerbang-go-live.md) | Job rilis (image `kapdh-release`) dan gerbang go-live `golive:check`; jalur CI memakai urutan yang sama | PRD 5.5, 9.2 #9, 9.3, U-12 |
 | [024](024-pipeline-ci-cd.md) | Pipeline CI/CD GitHub Actions, promosi digest yang sama, gerbang kontrak N-13 | PRD 5.5, 7.1, N-13, N-16 |
+| [025](025-reautentikasi-hanya-tindakan-kredensial.md) | Reautentikasi step-up hanya untuk tindakan kredensial (termasuk koreksi email login admin, bersyarat); perubahan pengaturan, metode bayar dan admin lainnya cukup sesi MFA (keputusan PO, menyimpang dari AC F15-3/F16-1; menggantikan ADR-013 butir 6) | PRD 2.3, AC F15-3, AC F16-1 |
 
 ADR 023 dan 024 ditulis paralel dengan nomor sementara (ADR-0002 dan ADR-010) lalu dinomori ulang saat integrasi akhir
 R1.0 (`docs/handoff/integration-final.md`); rujukan lama di riwayat git menunjuk ke berkas yang sama.

@@ -1,5 +1,5 @@
 import type { Permission } from "@kapdh/contracts";
-import { mockAdminRef, mockHasPermission, requirePermission, requireReauth } from "./auth";
+import { mockAdminRef, mockHasPermission, requirePermission } from "./auth";
 import { error, json, type MockRequest, type MockRoute, noContent, paginate, type S } from "./http";
 import {
   applyPaidDuesForMocks,
@@ -15,8 +15,9 @@ import {
  * lulus acceptance criteria (PRD 7.3). Endpoint nyata dibangun irisan API payments.
  *
  * Aturan server yang ditiru:
- * - Penjaga berurutan seperti API: izin (semua izin `x-kapdh-access.permissions`), reautentikasi, pemutaran ulang
- *   Idempotency-Key, validasi body, If-Match, lalu pemeriksaan keadaan.
+ * - Penjaga berurutan seperti API: izin (semua izin `x-kapdh-access.permissions`), reautentikasi (hanya operasi
+ *   `reauth: true`; area ini tidak punya sejak keputusan PO 2026-10-15, ADR-025), pemutaran ulang Idempotency-Key,
+ *   validasi body, If-Match, lalu pemeriksaan keadaan.
  * - `stage` dihitung server; "Menunggu" = `stage=awaiting_review`, total sama dengan `awaiting_review_count`.
  * - `actions` dihitung per pemanggil (izin payments.decide, tahap, konflik kepentingan PRD 2.3).
  * - Akun pemilik dihapus (D2, AC F14-4): `member` null, `proof` null walau `proof_version` >= 1.
@@ -2183,7 +2184,7 @@ const paymentRoutes: MockRoute[] = [
     path: "/admin/payment-methods",
     handler: (req) => {
       log(req);
-      const denied = requirePermission(req, "settings.manage") ?? requireReauth(req);
+      const denied = requirePermission(req, "settings.manage");
       if (denied) return denied;
       return withReplay(req, () => {
         const body = req.body ?? {};
@@ -2219,7 +2220,7 @@ const paymentRoutes: MockRoute[] = [
     path: "/admin/payment-methods/{methodId}",
     handler: (req) => {
       log(req);
-      const denied = requirePermission(req, "settings.manage") ?? requireReauth(req);
+      const denied = requirePermission(req, "settings.manage");
       if (denied) return denied;
       const body = req.body ?? {};
       const fe = methodInputErrors(body);
@@ -2265,7 +2266,7 @@ const paymentRoutes: MockRoute[] = [
     path: "/admin/payment-methods/{methodId}",
     handler: (req) => {
       log(req);
-      const denied = requirePermission(req, "settings.manage") ?? requireReauth(req);
+      const denied = requirePermission(req, "settings.manage");
       if (denied) return denied;
       const expected = ifMatch(req);
       if ("denied" in expected) return expected.denied;
@@ -2296,7 +2297,7 @@ const paymentRoutes: MockRoute[] = [
     path: "/admin/settings/fees",
     handler: (req) => {
       log(req);
-      const denied = requirePermission(req, "settings.manage") ?? requireReauth(req);
+      const denied = requirePermission(req, "settings.manage");
       if (denied) return denied;
       const body = req.body ?? {};
       const fieldErrors: FieldErrors = {};
