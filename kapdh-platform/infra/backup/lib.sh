@@ -124,10 +124,14 @@ bytes_of() {
   wc -c <"$1" | tr -d ' '
 }
 
-# Heartbeat Uptime Kuma (monitor Push): status up/down, pesan singkat, durasi (detik). Kegagalan push hanya dicatat
-# agar monitor "tidak ada heartbeat" yang memicu alert (docs/runbooks/monitoring.md).
-# URL yang disalin dari Kuma berbentuk `.../api/push/<token>?status=up&msg=OK&ping=`; query bawaan itu dibuang lebih
-# dahulu. Bila tidak, `status` terkirim dua kali, Kuma membacanya sebagai larik dan SETIAP heartbeat tercatat DOWN.
+# Heartbeat ke pemantau di luar VPS: status up/down, pesan singkat, durasi (detik). Kegagalan push hanya dicatat agar
+# monitor "tidak ada heartbeat" yang memicu alert (docs/runbooks/monitoring.md). Dua gaya URL:
+# - Uptime Kuma (monitor Push, URL memuat `/api/push/`): status lewat query. URL salinan Kuma berbentuk
+#   `.../api/push/<token>?status=up&msg=OK&ping=`; query bawaan itu dibuang lebih dahulu. Bila tidak, `status` terkirim
+#   dua kali, Kuma membacanya sebagai larik dan SETIAP heartbeat tercatat DOWN.
+# - Layanan ping (Healthchecks.io `https://hc-ping.com/<uuid>`, heartbeat Better Stack, dll.): sukses = permintaan ke
+#   URL, gagal = URL + `/fail`; pesan dikirim sebagai badan (log check). Query `status=down` tidak dikenal layanan ini dan
+#   akan tercatat SUKSES, jadi gaya ini wajib dibedakan.
 kuma_push() {
   _url=${1%%\?*}
   _status=$2
@@ -135,14 +139,24 @@ kuma_push() {
   _ping=${4:-}
   [ -n "$_url" ] || return 0
   command -v curl >/dev/null 2>&1 || {
-    log "curl tidak ada; heartbeat Uptime Kuma dilewati"
+    log "curl tidak ada; heartbeat pemantau dilewati"
     return 0
   }
-  curl -fsS -o /dev/null -m 15 --retry 2 --get \
-    --data-urlencode "status=$_status" \
-    --data-urlencode "msg=$_msg" \
-    --data-urlencode "ping=$_ping" \
-    "$_url" || log "heartbeat Uptime Kuma gagal dikirim (status=$_status)"
+  case $_url in
+    */api/push/*)
+      curl -fsS -o /dev/null -m 15 --retry 2 --get \
+        --data-urlencode "status=$_status" \
+        --data-urlencode "msg=$_msg" \
+        --data-urlencode "ping=$_ping" \
+        "$_url" || log "heartbeat Uptime Kuma gagal dikirim (status=$_status)"
+      ;;
+    *)
+      _url=${_url%/}
+      [ "$_status" = up ] || _url="$_url/fail"
+      curl -fsS -o /dev/null -m 15 --retry 2 --data-raw "$_msg" "$_url" ||
+        log "heartbeat layanan ping gagal dikirim (status=$_status)"
+      ;;
+  esac
 }
 
 # Lock sederhana berbasis mkdir (atomik, POSIX). Lock basi (PID tidak hidup) dibersihkan.
