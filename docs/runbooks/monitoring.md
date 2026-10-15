@@ -53,7 +53,8 @@ staging tidak boleh menjalankan uji beban yang mengganggu production (PRD 5.3).
 
 ### 2.1 Pemasangan pemeriksa di VPS
 
-1. Salin `infra/monitoring` dan `infra/backup` ke `/opt/kapdh/infra/`.
+1. Salin `infra/monitoring` dan `infra/backup` ke `/opt/kapdh/infra/` (atau `docker cp` dari image `kapdh-release` yang
+   dipin, `/app/infra/monitoring` dan `/app/infra/backup`; runbook backup-restore bagian 3 langkah 6).
 2. Buat `/etc/kapdh/monitoring.env` dari `infra/monitoring/monitoring.env.example` (0600). Isi sandi `kapdh_monitor`
    (role dibuat `infra/db/roles.sql`, hanya membaca kolom status/waktu) lewat PGPASSFILE atau `PG_EXEC`.
 3. Pasang jadwal pemeriksa `infra/monitoring/cron/kapdh-monitoring` ke `/etc/cron.d/` (semua berupa interval, tidak

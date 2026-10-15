@@ -91,6 +91,10 @@ Pemisahan kunci (PRD 5.5 "kunci backup disimpan terpisah dari salinan backup"):
    `restic` ≥ 0.16, `rclone` ≥ 1.60, `curl`, GNU coreutils/sed/grep/findutils. Catat versi di bukti penyiapan.
    Zona waktu host **UTC** (`timedatectl show -p Timezone` = `Etc/UTC`): jadwal cron/systemd ditulis dalam UTC.
 6. **Berkas konfigurasi.** Salin `infra/backup` ke `/opt/kapdh/infra/backup` (dan `infra/db`, `infra/monitoring`).
+   Tanpa SSH/scp, ambil dari image `kapdh-release` yang dipin (commit sama dengan production; root VPS sudah login
+   GHCR): `c=$(docker create ghcr.io/<org>/kapdh-release:sha-<commit>)`, lalu
+   `docker cp "$c:/app/infra/backup" /opt/kapdh/infra/`, ulangi untuk `/app/infra/db` dan `/app/infra/monitoring`,
+   `docker rm "$c"`, dan `chown -R root:root /opt/kapdh/infra`. Catat digest image sebagai sumber skrip.
    Buat `/etc/kapdh/backup.env` dari `backup.env.example` (0640) dan `/etc/kapdh/backup.secrets.env` (0600) berisi
    `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `PGPASSWORD` atau `PGPASSFILE`, dan
    `RCLONE_CONFIG_KAPDHLEDGER_*`. Tulis kata sandi restic acak (≥ 32 karakter) ke `/etc/kapdh/restic-password` (0600)
