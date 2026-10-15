@@ -1,0 +1,1635 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pratinjau Naskah KAPDH</title>
+<style>
+  :root {
+    --latar: #f6f7f5; --kertas: #ffffff; --teks: #1d2420; --redup: #5b665f; --garis: #d9dfdb;
+    --utama: #1f6b46; --utama-teks: #ffffff; --catatan: #fff7e0; --catatan-garis: #e6c35c; --kode: #eef2ef;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --latar: #121614; --kertas: #1b211e; --teks: #e6ebe8; --redup: #a3aea7; --garis: #33403a;
+      --utama: #5cc08d; --utama-teks: #0d1a13; --catatan: #2b2614; --catatan-garis: #8a7430; --kode: #26302b;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--latar); color: var(--teks);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif;
+  }
+  main { max-width: 48rem; margin: 0 auto; padding: 24px 16px 64px; }
+  a { color: var(--utama); }
+  code { background: var(--kode); padding: 0 .3em; border-radius: 4px; font-size: .92em; }
+  .pengantar, .halaman { background: var(--kertas); border: 1px solid var(--garis); border-radius: 12px; padding: 20px 22px; margin-bottom: 28px; }
+  .pengantar h1 { font-size: 1.6rem; margin: 0 0 .4rem; }
+  .pengantar h2 { font-size: 1.15rem; margin: 1.4rem 0 .4rem; }
+  .catatan { background: var(--catatan); border-left: 4px solid var(--catatan-garis); padding: 12px 14px; border-radius: 6px; margin: 1rem 0; }
+  .catatan p { margin: .3rem 0; }
+  .pengantar ol li, .pengantar ul li { margin: .25rem 0; }
+  fieldset { border: 1px solid var(--garis); border-radius: 8px; padding: 10px 14px; margin: 1rem 0 0; }
+  legend { font-weight: 600; padding: 0 .3rem; }
+  label { display: block; margin: .25rem 0; }
+  .halaman-kepala { display: flex; flex-wrap: wrap; gap: 12px 20px; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--garis); padding-bottom: 12px; margin-bottom: 16px; }
+  .halaman-kepala h1 { font-size: 1.5rem; margin: 0; }
+  .nomor, .meta { margin: 0; color: var(--redup); font-size: .9rem; }
+  .aksi { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .tombol { font: inherit; font-size: .95rem; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--utama); background: transparent; color: var(--utama); cursor: pointer; }
+  .tombol.utama { background: var(--utama); color: var(--utama-teks); }
+  .tombol:focus-visible { outline: 3px solid var(--catatan-garis); outline-offset: 2px; }
+  .status { font-size: .9rem; color: var(--redup); min-height: 1.2em; }
+  .isi { overflow-wrap: anywhere; }
+  .isi h2 { font-size: 1.25rem; margin: 1.8rem 0 .5rem; }
+  .isi h3 { font-size: 1.05rem; margin: 1.3rem 0 .4rem; }
+  .isi blockquote { margin: 1rem 0; padding: 8px 14px; border-left: 4px solid var(--utama); background: var(--kode); border-radius: 4px; }
+  .isi li { margin: .2rem 0; }
+  .akhir { margin: 1.5rem 0 0; padding-top: 10px; border-top: 1px dashed var(--garis); color: var(--redup); font-size: .9rem; }
+  @media print { .aksi, fieldset, .pengantar { display: none; } .halaman { border: 0; page-break-after: always; } }
+</style>
+</head>
+<body>
+<main id="atas">
+  <section class="pengantar" aria-labelledby="judul-pengantar">
+    <h1 id="judul-pengantar">Pratinjau naskah halaman KAPDH</h1>
+    <p>Berkas ini memuat naskah final lima halaman informasi dan legal KAPDH, berlaku sejak 15 Oktober 2026. Isi setiap halaman di bawah sama persis dengan berkas <code>docs/legal/&lt;slug&gt;.html</code> dan hanya memakai format yang diterima editor web admin (judul bagian, paragraf, daftar, tebal, miring, kutipan, dan tautan https/mailto).</p>
+
+    <div class="catatan">
+      <p><strong>Sebelum menerbitkan, baca bagian "Syarat sebelum terbit" di <code>docs/legal/README.md</code>.</strong> Yang paling penting: semua tautan memakai <code>https://kapdh.or.id/...</code>, sehingga naskah baru boleh diterbitkan setelah kapdh.or.id dan www.kapdh.or.id mengarah ke situs baru (saat ini masih mengarah ke situs lama).</p>
+      <p>Bila tanggal penerbitan bukan 15 Oktober 2026, ubah baris "Berlaku sejak 15 Oktober 2026." di kelima halaman menjadi tanggal terbit sebenarnya, setelah ditempel di editor dan sebelum menekan Terbitkan.</p>
+    </div>
+
+    <h2>Cara menerbitkan</h2>
+    <ol>
+      <li>Masuk ke web admin KAPDH dengan akun pengurus yang memiliki izin mengelola konten.</li>
+      <li>Buka menu <strong>Berita, Banner &amp; Halaman</strong>, pilih tab <strong>Halaman</strong>, lalu buka halaman dengan slug yang tertera di bawah (misalnya <code>kebijakan-privasi</code>).</li>
+      <li>Di pratinjau ini, tekan <strong>Salin isi</strong> pada halaman yang sama. Bila tombol itu tidak berhasil, tekan <strong>Pilih isi</strong>, lalu tekan Ctrl+C (Cmd+C di Mac). Cara manual juga bisa: blok isi halaman dari baris pertama sampai baris terakhir, lalu salin. Judul halaman tidak ikut disalin.</li>
+      <li>Di editor web admin, klik di dalam kolom isi, tekan Ctrl+A lalu Delete untuk mengosongkan naskah lama, kemudian tempel dengan Ctrl+V. Pastikan kolom Judul sesuai dengan judul yang tertera di bawah.</li>
+      <li>Periksa sekilas bahwa judul bagian, daftar, dan tautan tampil benar. Tekan <strong>Simpan draf</strong>, lalu <strong>Terbitkan versi baru</strong> dan konfirmasi.</li>
+      <li>Ulangi untuk kelima halaman dengan urutan: Kebijakan Privasi, Ketentuan Layanan, Ketentuan Komunitas, Bantuan, Tentang KAPDH.</li>
+      <li>Setelah terbit, buka setiap halaman di situs (misalnya <code>https://kapdh.or.id/kebijakan-privasi</code>) dan di aplikasi untuk memastikan tampilannya benar.</li>
+    </ol>
+    <p>Setiap penerbitan Kebijakan Privasi, Ketentuan Layanan, dan Ketentuan Komunitas menaikkan nomor versi legal secara otomatis. Perubahan di kemudian hari selalu dilakukan dengan cara yang sama melalui web admin.</p>
+
+    <fieldset>
+      <legend>Alamat tautan dalam naskah</legend>
+      <label><input type="radio" name="domain" value="kapdh.or.id" checked> https://kapdh.or.id/... (dipakai setelah domain dipindah ke situs baru)</label>
+      <label><input type="radio" name="domain" value="baru.kapdh.or.id"> https://baru.kapdh.or.id/... (sementara, hanya bila naskah harus terbit sebelum domain dipindah; wajib diterbitkan ulang dengan pilihan pertama setelah pindah)</label>
+    </fieldset>
+
+    <h2>Daftar halaman</h2>
+    <ol class="daftar">
+      <li><a href="#hal-kebijakan-privasi">1. Kebijakan Privasi</a> <code>kebijakan-privasi</code></li>
+      <li><a href="#hal-ketentuan">2. Ketentuan Layanan</a> <code>ketentuan</code></li>
+      <li><a href="#hal-ketentuan-komunitas">3. Ketentuan Komunitas</a> <code>ketentuan-komunitas</code></li>
+      <li><a href="#hal-bantuan">4. Bantuan</a> <code>bantuan</code></li>
+      <li><a href="#hal-tentang">5. Tentang KAPDH</a> <code>tentang</code></li>
+    </ol>
+  </section>
+
+  <section class="halaman" id="hal-kebijakan-privasi" aria-labelledby="judul-kebijakan-privasi">
+    <header class="halaman-kepala">
+      <div>
+        <p class="nomor">Halaman 1 dari 5</p>
+        <h1 id="judul-kebijakan-privasi">Kebijakan Privasi</h1>
+        <p class="meta">Judul di web admin: <strong>Kebijakan Privasi</strong> &middot; slug: <code>kebijakan-privasi</code></p>
+      </div>
+      <div class="aksi">
+        <button type="button" class="tombol utama" data-salin="kebijakan-privasi">Salin isi</button>
+        <button type="button" class="tombol" data-pilih="kebijakan-privasi">Pilih isi</button>
+        <span class="status" id="status-kebijakan-privasi" role="status" aria-live="polite"></span>
+      </div>
+    </header>
+    <div class="isi" id="isi-kebijakan-privasi">
+<p>Kebijakan Privasi ini menjelaskan cara Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH) mengumpulkan, menggunakan, menyimpan, membagikan, dan melindungi data pribadi Anda saat Anda memakai aplikasi KAPDH (KAPDH Apps) untuk Android dan iOS, situs kapdh.or.id, dan kanal bantuan kami. Kebijakan ini mengacu pada Undang-Undang Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP) dan peraturan perundang-undangan terkait. Mohon baca dengan saksama. Bila ada yang kurang jelas, tim bantuan kami siap membantu.</p>
+<p><strong>Berlaku sejak 15 Oktober 2026.</strong></p>
+
+<h2>1. Siapa Kami</h2>
+<p>Pengendali data pribadi untuk layanan yang dijelaskan dalam kebijakan ini adalah <strong>Perkumpulan Keluarga Alumni Pesantren Darel Hikmah</strong>, disingkat <strong>KAPDH</strong> ("kami"), yaitu perkumpulan alumni Pondok Pesantren Darel Hikmah, Pekanbaru, Riau. Kami menentukan tujuan dan cara pemrosesan data pribadi Anda dan bertanggung jawab atasnya, termasuk atas pemrosesan yang dilakukan penyedia layanan atas nama kami. Aplikasi anggota kami didistribusikan melalui Google Play dan App Store dengan nama KAPDH.</p>
+<p>Untuk pertanyaan, permintaan, atau pengaduan mengenai data pribadi, hubungi kami melalui:</p>
+<ul>
+<li>email <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a>, yang juga menjadi narahubung untuk urusan pelindungan data pribadi; atau</li>
+<li>nomor WhatsApp dukungan yang tercantum di aplikasi dan di halaman <a href="https://kapdh.or.id/kontak">Kontak</a> situs kapdh.or.id.</li>
+</ul>
+
+<h2>2. Ruang Lingkup</h2>
+<p>Kebijakan ini berlaku untuk:</p>
+<ul>
+<li>aplikasi anggota <strong>KAPDH</strong> (KAPDH Apps) untuk Android dan iOS;</li>
+<li>situs <a href="https://kapdh.or.id/">kapdh.or.id</a>, termasuk halaman verifikasi KTA dan halaman hapus akun;</li>
+<li>web admin yang dipakai pengurus KAPDH untuk mengelola layanan; dan</li>
+<li>komunikasi Anda dengan tim bantuan KAPDH.</li>
+</ul>
+<p>Kebijakan ini tidak berlaku untuk layanan pihak lain yang Anda buka dari aplikasi atau situs kami, misalnya tautan media sosial di profil anggota, aplikasi bank atau dompet digital yang Anda pakai untuk membayar, dan toko aplikasi. Layanan tersebut tunduk pada kebijakan privasinya masing-masing.</p>
+<p>Kebijakan ini dibaca bersama <a href="https://kapdh.or.id/ketentuan">Ketentuan Layanan</a> dan <a href="https://kapdh.or.id/ketentuan-komunitas">Ketentuan Komunitas</a>.</p>
+
+<h2>3. Ringkasan</h2>
+<ul>
+<li>Kami hanya meminta data yang diperlukan untuk keanggotaan dan layanan alumni. Kami tidak meminta NIK atau nomor KTP, tanggal lahir, alamat rumah, maupun lokasi perangkat Anda.</li>
+<li>Kami tidak menjual data pribadi, tidak menampilkan iklan, tidak memakai layanan analitik pihak ketiga, dan tidak melacak Anda lintas aplikasi atau situs.</li>
+<li>Anda mengatur apa yang terlihat oleh sesama anggota. Email, nomor telepon, dan media sosial Anda tersembunyi, kecuali Anda sendiri menampilkannya.</li>
+<li>Chat di aplikasi tidak dienkripsi end-to-end. Mohon tidak membagikan informasi yang sangat rahasia melalui chat.</li>
+<li>Anda dapat menghapus akun kapan saja dari aplikasi, atau dari situs tanpa perlu memasang aplikasi. Penghapusan selesai paling lambat 7 hari kalender. Sebagian catatan tetap disimpan tanpa identitas Anda untuk pembukuan dan akuntabilitas.</li>
+<li>Sebagian penyedia layanan kami, misalnya untuk email dan notifikasi, memproses data di luar Indonesia. Bagian 9 menjelaskan pelindungannya.</li>
+</ul>
+
+<h2>4. Data Pribadi yang Kami Kumpulkan</h2>
+
+<h3>4.1 Data akun dan pendaftaran</h3>
+<p>Saat mendaftar, Anda memberikan:</p>
+<ul>
+<li>nama lengkap, jenis kelamin, alamat email, dan kata sandi; serta</li>
+<li>angkatan, kelas masuk, dan kelas keluar di pesantren. Dari data ini, sistem menghitung tahun masuk, tahun keluar, dan tahun lulus secara otomatis.</li>
+</ul>
+<p>Kami juga menyimpan catatan persetujuan Anda atas Kebijakan Privasi dan Ketentuan Layanan (versi yang disetujui dan waktunya), status akun, waktu verifikasi email, dan waktu terakhir Anda masuk.</p>
+<p>Kata sandi disimpan dalam bentuk hash satu arah sehingga tidak dapat dibaca oleh siapa pun, termasuk pengurus. Kode verifikasi (OTP) yang kami kirim ke email Anda untuk pendaftaran, koreksi email saat pendaftaran, pemulihan kata sandi, atau penghapusan akun melalui situs juga disimpan dalam bentuk tersamar dan hanya berlaku 10 menit.</p>
+<p>Status sebagai alumni Anda nyatakan sendiri saat mendaftar. Keanggotaan baru aktif setelah pengurus memverifikasi pembayaran iuran pendaftaran.</p>
+
+<h3>4.2 Profil alumni</h3>
+<p>Setelah mendaftar, Anda dapat melengkapi profil dengan data berikut. Semuanya opsional dan dapat Anda ubah atau hapus kapan saja melalui menu Akun &gt; Ubah profil:</p>
+<ul>
+<li>foto profil;</li>
+<li>kota domisili, yang Anda ketik sendiri (bukan lokasi perangkat);</li>
+<li>nomor telepon;</li>
+<li>Tentang saya (bio), paling banyak 500 karakter;</li>
+<li>pendidikan terakhir (di aplikasi disebut Lulusan terakhir), yaitu nama institusi dan kotanya;</li>
+<li>akun Instagram, X, Facebook, dan LinkedIn;</li>
+<li>satu profesi dan paling banyak sepuluh keahlian dari daftar yang disediakan pengurus.</li>
+</ul>
+<p>Nama lengkap, jenis kelamin, angkatan, dan kelas hanya dapat dikoreksi oleh pengurus berizin, misalnya atas permintaan Anda. Pengurus berizin juga dapat mengoreksi atau menghapus isi profil lainnya, misalnya foto profil, bio, atau tautan media sosial yang melanggar Ketentuan Komunitas. Setiap perubahan oleh pengurus dicatat dalam jejak audit beserta alasannya.</p>
+
+<h3>4.3 Keanggotaan, nomor anggota, dan KTA digital</h3>
+<ul>
+<li><strong>Riwayat keanggotaan</strong>: tanggal mulai dan berakhirnya setiap periode keanggotaan, perpanjangan, dan perubahan status.</li>
+<li><strong>Nomor anggota</strong> dengan format AA.SS.JK.N yang dibuat oleh sistem. AA adalah angkatan, SS adalah kode status pendidikan (tamat MTs dan Aliyah, tamat salah satunya, atau tidak tamat), JK adalah kode jenis kelamin, dan N adalah nomor urut. Karena itu, siapa pun yang melihat nomor anggota Anda dapat mengetahui angkatan, status pendidikan, dan jenis kelamin Anda.</li>
+<li><strong>Kartu Tanda Anggota (KTA) digital</strong>, yang memuat foto (bila ada), nama, angkatan dan kode angkatan, profesi, kota domisili, nomor anggota, kode QR, masa berlaku, dan status keanggotaan. Kode QR ditandatangani secara digital oleh server dan berlaku paling lama 7 hari.</li>
+</ul>
+
+<h3>4.4 Pembayaran iuran, tiket, dan refund</h3>
+<p>Iuran keanggotaan dan tiket acara berbayar dibayar di luar aplikasi, melalui transfer ke rekening bank atau dompet digital resmi KAPDH, atau melalui QRIS resmi KAPDH bila tersedia. Kami tidak memproses kartu kredit atau debit, dan tidak pernah meminta PIN, kata sandi perbankan, atau kode OTP perbankan Anda.</p>
+<p>Untuk memverifikasi pembayaran, kami menyimpan:</p>
+<ul>
+<li>jenis pembayaran (iuran pendaftaran, perpanjangan, atau tiket), nominal, status, serta metode dan tujuan pembayaran organisasi yang Anda pilih;</li>
+<li>bukti pembayaran yang Anda unggah (gambar paling besar 5 MB atau PDF paling besar 10 MB), termasuk bukti sebelumnya bila Anda mengunggah ulang;</li>
+<li>catatan transfer yang Anda tulis, waktu pengiriman, serta keputusan pengurus beserta alasannya bila pembayaran ditolak atau dibatalkan;</li>
+<li>untuk refund, data rekening tujuan (nama bank atau dompet digital, nomor rekening, dan nama pemilik) yang Anda berikan. Data ini hanya disimpan selama refund diproses dan dikosongkan setelah refund selesai atau dibatalkan.</li>
+</ul>
+
+<h3>4.5 Acara dan tiket</h3>
+<p>Saat Anda memesan tiket, kami menyimpan acara yang Anda pilih, status tiket dan batas waktu reservasi, kode QR tiket, waktu check-in dan petugas yang melakukannya, serta data pembatalan dan alasannya. Status tiket juga dipakai untuk menyusun daftar peserta acara yang dapat dilihat anggota aktif lain, sebagaimana dijelaskan di bagian 7.1.</p>
+
+<h3>4.6 Jejaring (direktori anggota)</h3>
+<p>Fitur Jejaring memakai data profil Anda sebagaimana dijelaskan di bagian 7. Kata kunci yang Anda ketik saat mencari anggota tidak kami simpan.</p>
+
+<h3>4.7 Chat dan grup</h3>
+<p>Saat Anda memakai chat, kami menyimpan:</p>
+<ul>
+<li>pesan teks, gambar, balasan, dan reaksi yang Anda kirim;</li>
+<li>grup yang Anda buat atau ikuti, beserta nama dan fotonya;</li>
+<li>undangan grup, status terkirim dan terbaca, serta pengaturan bisukan.</li>
+</ul>
+<p>Status daring (online) dan indikator sedang mengetik dikirim sesaat kepada peserta percakapan dan tidak disimpan di basis data. Isi chat tidak dicatat di log sistem maupun jejak audit.</p>
+
+<h3>4.8 Berita</h3>
+<p>Kami mencatat berita yang Anda sukai. Anggota lain hanya melihat jumlah suka, bukan siapa yang menyukai.</p>
+
+<h3>4.9 Laporan, blokir, moderasi, dan banding</h3>
+<ul>
+<li>Laporan yang Anda kirim tentang profil, pesan, atau grup: kategori, uraian, dan salinan bukti yang dibuat saat laporan dikirim. Bukti ini berupa salinan pesan yang dilaporkan, paling banyak lima pesan tepat sebelum pesan itu dalam percakapan yang sama yang otomatis disertakan sebagai konteks (dapat berasal dari anggota lain), serta data profil atau grup secukupnya, termasuk gambar dalam pesan dan foto profil atau foto grup pada saat laporan dikirim.</li>
+<li>Laporan yang dikirim anggota lain tentang Anda, beserta buktinya.</li>
+<li>Daftar anggota yang Anda blokir.</li>
+<li>Keputusan moderasi, misalnya peringatan atau pembatasan akun (suspend), alasan internal pengurus, pesan yang ditampilkan kepada Anda, dan banding yang Anda ajukan.</li>
+</ul>
+
+<h3>4.10 Notifikasi</h3>
+<ul>
+<li>Kotak masuk notifikasi di aplikasi beserta riwayat pengirimannya, dan preferensi notifikasi Anda.</li>
+<li>Token notifikasi perangkat yang diterbitkan Firebase Cloud Messaging, beserta jenis platform dan versi aplikasi. Token ini hanya dibuat dan kami simpan bila notifikasi push tersedia di versi aplikasi Anda, setelah Anda masuk dan tidak menolak izin notifikasi.</li>
+</ul>
+
+<h3>4.11 Data teknis dan keamanan</h3>
+<ul>
+<li><strong>Catatan sesi login</strong>: nama perangkat generik (misalnya "Aplikasi KAPDH Android"), platform, versi aplikasi, waktu aktivitas terakhir, dan masa berlaku sesi. Catatan sesi tidak memuat alamat IP, model perangkat, atau informasi peramban Anda.</li>
+<li><strong>Alamat IP</strong> dipakai sesaat untuk membatasi percobaan berulang, misalnya percobaan masuk, verifikasi kode, dan verifikasi KTA. Untuk keperluan ini, alamat IP disimpan sementara dalam bentuk tersamar (hash). Alamat IP tidak dicatat di basis data maupun di log aplikasi server.</li>
+<li><strong>Jejak audit</strong> atas tindakan penting, misalnya keputusan pembayaran, perubahan keanggotaan, tindakan moderasi, perubahan pengaturan, dan permintaan penghapusan akun.</li>
+<li><strong>Log teknis server</strong> untuk menjaga dan memperbaiki layanan. Log ini tidak memuat kata sandi, kode OTP, token, isi chat, maupun bukti pembayaran. Catatan galat server dapat diteruskan ke layanan pelacakan galat yang dipakai tim teknis KAPDH; yang diteruskan hanya data teknis, seperti jenis galat, bagian sistem yang terdampak, dan waktu kejadian, tanpa data pribadi Anda.</li>
+</ul>
+
+<h3>4.12 Komunikasi dengan tim bantuan</h3>
+<p>Bila Anda menghubungi kami melalui email atau WhatsApp, kami menerima alamat email atau nomor WhatsApp Anda, nama yang Anda cantumkan, isi pesan, dan lampiran yang Anda kirim.</p>
+
+<h3>4.13 Akun pengurus</h3>
+<p>Pengurus yang memakai web admin memiliki akun terpisah dari akun alumninya. Untuk akun pengurus, kami menyimpan nama tampilan, email, hash kata sandi, data autentikasi dua langkah (TOTP) dalam bentuk terenkripsi atau tersamar, peran dan izin, keterkaitan dengan akun alumninya untuk mencegah konflik kepentingan, catatan sesi, dan jejak audit tindakan administratif.</p>
+
+<h3>4.14 Data yang tidak kami kumpulkan</h3>
+<p>Kami tidak meminta atau mengumpulkan NIK atau nomor KTP, tanggal lahir, alamat rumah, agama, lokasi perangkat, daftar kontak, rekaman suara, data kesehatan, data biometrik, riwayat penelusuran, maupun pengenal iklan. Aplikasi tidak memakai SDK iklan, analitik, atau pelaporan crash dari pihak ketiga.</p>
+
+<h2>5. Sumber Data Pribadi</h2>
+<ul>
+<li><strong>Dari Anda sendiri</strong>, saat Anda mendaftar, mengisi profil, membayar, memesan tiket, mengirim pesan, membuat laporan, atau menghubungi tim bantuan.</li>
+<li><strong>Dari perangkat Anda secara otomatis</strong>, yaitu data teknis seperti platform, versi aplikasi, token notifikasi, dan alamat IP sebagaimana dijelaskan di bagian 4.11.</li>
+<li><strong>Dari pengurus KAPDH</strong>, misalnya keputusan verifikasi pembayaran, perubahan status keanggotaan, koreksi data identitas atau isi profil, check-in acara, dan keputusan moderasi.</li>
+<li><strong>Dari anggota lain</strong>, misalnya laporan tentang Anda, undangan grup, dan pesan yang dikirim kepada Anda.</li>
+</ul>
+<p>Kami tidak mengimpor data alumni dari daftar atau basis data lama, dan tidak mengumpulkan data Anda dari sumber publik. Setiap anggota, termasuk anggota lama, mendaftar sendiri.</p>
+
+<h2>6. Tujuan dan Dasar Pemrosesan</h2>
+<p>Kami memproses data pribadi hanya untuk tujuan berikut, masing-masing dengan dasar pemrosesan sesuai Pasal 20 UU PDP:</p>
+<ul>
+<li><strong>Membuat dan mengelola akun</strong>, yaitu pendaftaran, verifikasi email, masuk, pemulihan kata sandi, dan pengelolaan sesi. Dasar: pemenuhan kewajiban perjanjian keanggotaan sesuai Ketentuan Layanan, termasuk untuk memenuhi permintaan Anda sebelum perjanjian berlaku.</li>
+<li><strong>Mengelola keanggotaan</strong>, yaitu nomor anggota, KTA digital, masa berlaku, perpanjangan, dan pengingat sebelum masa keanggotaan berakhir. Dasar: pemenuhan kewajiban perjanjian.</li>
+<li><strong>Memverifikasi pembayaran iuran dan tiket, serta memproses refund.</strong> Dasar: pemenuhan kewajiban perjanjian. Pencatatan keuangan organisasi juga didasarkan pada kepentingan yang sah atas akuntabilitas dana anggota.</li>
+<li><strong>Menyelenggarakan acara</strong>, yaitu reservasi, tiket, check-in, dan pembatalan. Dasar: pemenuhan kewajiban perjanjian.</li>
+<li><strong>Menampilkan profil Anda di Jejaring</strong> agar sesama alumni dapat saling menemukan. Dasar: pemenuhan kewajiban perjanjian, karena Jejaring merupakan bagian dari layanan keanggotaan. Anda dapat menyembunyikan profil kapan saja.</li>
+<li><strong>Memproses data profil opsional, serta menampilkan email, nomor telepon, atau media sosial Anda kepada sesama anggota.</strong> Dasar: persetujuan Anda, yang Anda berikan dengan mengisi data tersebut atau mengaktifkan pengaturan tampilannya.</li>
+<li><strong>Menyediakan chat dan grup.</strong> Dasar: pemenuhan kewajiban perjanjian.</li>
+<li><strong>Mengirim notifikasi.</strong> Kotak masuk, email transaksional, serta pemberitahuan keamanan dan akun didasarkan pada pemenuhan kewajiban perjanjian. Notifikasi push, bila tersedia, didasarkan pada persetujuan Anda melalui izin notifikasi di perangkat.</li>
+<li><strong>Menjaga keamanan komunitas</strong>, yaitu menangani laporan, blokir, moderasi, dan banding. Dasar: pemenuhan kewajiban perjanjian sesuai Ketentuan Komunitas, dan kepentingan yang sah untuk melindungi anggota.</li>
+<li><strong>Menjaga keamanan sistem dan mencegah penyalahgunaan</strong>, yaitu pembatasan percobaan, pengelolaan sesi, jejak audit, dan pemulihan dari cadangan. Dasar: kepentingan yang sah.</li>
+<li><strong>Menanggapi permintaan bantuan dan permintaan atas hak Anda sebagai subjek data.</strong> Dasar: pemenuhan kewajiban hukum dan pemenuhan kewajiban perjanjian.</li>
+<li><strong>Mematuhi hukum</strong>, termasuk memberitahukan kegagalan pelindungan data dan menanggapi permintaan resmi pihak yang berwenang. Dasar: pemenuhan kewajiban hukum.</li>
+</ul>
+<p>Data wajib pada pendaftaran diperlukan untuk membuat akun dan nomor anggota. Bila data tersebut tidak diberikan, kami tidak dapat memproses keanggotaan Anda. Data opsional tidak memengaruhi status keanggotaan Anda.</p>
+<p>Untuk pemrosesan berdasarkan persetujuan, Anda dapat menarik persetujuan kapan saja, misalnya dengan menghapus data opsional dari profil, mematikan pengaturan tampilan di Akun &gt; Privasi profil, atau mencabut izin notifikasi di pengaturan perangkat. Penarikan persetujuan tidak memengaruhi pemrosesan yang sudah dilakukan sebelumnya.</p>
+<p>Bila kami memakai dasar kepentingan yang sah, kami menimbang kepentingan tersebut terhadap hak dan kepentingan Anda. Anda dapat meminta penjelasan mengenai pertimbangan itu, atau mengajukan keberatan, melalui tim bantuan.</p>
+<p>Kami tidak memakai data Anda untuk iklan, tidak membuat profil perilaku Anda, dan tidak memproses data Anda dengan layanan kecerdasan buatan (AI) pihak ketiga. Kami tidak akan memakai data Anda untuk tujuan baru yang tidak sejalan dengan tujuan di atas tanpa memberi tahu Anda lebih dahulu dan, bila disyaratkan, memperoleh persetujuan Anda.</p>
+
+<h2>7. Siapa yang Dapat Melihat Data Anda</h2>
+
+<h3>7.1 Sesama anggota di aplikasi</h3>
+<p>Jejaring hanya dapat dibuka oleh anggota yang keanggotaannya aktif dan tidak sedang dibatasi. Profil Anda tampil di Jejaring bila akun Anda aktif, masa keanggotaan Anda masih berlaku, akun Anda tidak sedang dibatasi, dan Anda tidak menyembunyikannya. Profil ditampilkan secara bawaan. Anda dapat menyembunyikannya dengan mematikan pengaturan Tampil di direktori Jejaring di Akun &gt; Privasi profil. Pengaturan yang sama juga menentukan apakah nama Anda muncul di daftar peserta acara.</p>
+<ul>
+<li><strong>Terlihat di Jejaring</strong> selama profil Anda ditampilkan: nama lengkap, angkatan dan kode angkatan (misalnya KAPDH 25), tahun lulus, serta foto profil, kota, profesi, keahlian, pendidikan terakhir, dan bio bila Anda mengisinya.</li>
+<li><strong>Hanya terlihat bila Anda mengaktifkannya</strong>: alamat email, nomor telepon, dan media sosial. Ketiganya tersembunyi secara bawaan, dan data yang tersembunyi tidak dikirim ke perangkat anggota lain.</li>
+<li><strong>Tidak ditampilkan di Jejaring</strong>: jenis kelamin dan nomor anggota. Namun, anggota lain dapat mencari berdasarkan nama, angkatan, kota, profesi, keahlian, dan kelas yang pernah ditempuh, sehingga hasil pencarian dapat menunjukkan kelas yang pernah Anda tempuh.</li>
+</ul>
+<p>Dalam chat, peserta percakapan melihat nama dan foto Anda, pesan yang Anda kirim, status daring, indikator sedang mengetik, dan status baca. Status daring, mengetik, dan baca tidak dapat dimatikan. Anggota baru suatu grup hanya melihat pesan sejak ia bergabung. Bila Anda menyembunyikan profil dari Jejaring, anggota yang pernah satu grup dengan Anda tetap dapat mengirim pesan langsung kepada Anda.</p>
+<p>Bila Anda memblokir seorang anggota, Anda dan anggota tersebut tidak dapat saling mengirim pesan langsung atau undangan grup, dan profil Anda tidak tampil baginya di Jejaring. Riwayat pesan sebelumnya tetap ada.</p>
+<p>Pada halaman acara, anggota aktif dapat melihat daftar peserta terkonfirmasi yang memuat nama, angkatan, dan foto profil. Nama Anda hanya tampil di daftar ini bila profil Anda ditampilkan di Jejaring, dan tidak tampil bagi anggota yang Anda blokir atau yang memblokir Anda. Bila Anda menyembunyikan profil dari Jejaring, nama Anda tidak muncul di daftar peserta, dan anggota lain hanya melihat jumlah peserta.</p>
+
+<h3>7.2 Publik melalui verifikasi KTA</h3>
+<p>Siapa pun yang memindai kode QR pada KTA Anda dapat membuka halaman verifikasi di situs kapdh.or.id tanpa masuk akun. Halaman ini memeriksa status terkini di server dan hanya menampilkan:</p>
+<ul>
+<li>status keanggotaan (aktif, kedaluwarsa, tidak aktif, tidak ditemukan, atau QR tidak valid), masa berlaku, dan waktu pemeriksaan;</li>
+<li>bila keanggotaan aktif: nama lengkap, kode angkatan, nomor anggota, tanggal berakhir, dan foto profil melalui tautan yang hanya berlaku beberapa menit;</li>
+<li>bila keanggotaan sudah berakhir: identitas yang sama dapat ditampilkan tanpa foto.</li>
+</ul>
+<p>Halaman verifikasi tidak menampilkan email, nomor telepon, alamat, bukti pembayaran, atau alasan pembatasan akun. Bila akun sedang dibatasi atau belum aktif, halaman hanya menampilkan status tidak aktif tanpa identitas. Nomor anggota saja, tanpa kode QR yang sah, tidak membuka data apa pun. Halaman ini tidak diindeks mesin pencari.</p>
+<p>Perlu diingat, nomor anggota memuat kode angkatan, status pendidikan, dan jenis kelamin (lihat bagian 4.3). Tunjukkan KTA Anda hanya kepada pihak yang memang perlu memverifikasi keanggotaan Anda.</p>
+
+<h3>7.3 Pengurus berizin</h3>
+<p>Pengurus mengakses data melalui web admin dengan akun pribadi yang wajib memakai autentikasi dua langkah. Setiap pengurus hanya mendapat izin sesuai tugasnya, dan tindakan penting tercatat dalam jejak audit. Pengaturan di Akun &gt; Privasi profil mengatur apa yang terlihat oleh sesama anggota; pengaturan itu tidak membatasi pengurus berizin yang memerlukan data untuk tugas administratif.</p>
+<ul>
+<li>Pengurus dengan izin data anggota dapat melihat profil lengkap Anda, termasuk email, nomor telepon, dan media sosial, serta waktu verifikasi email, waktu terakhir masuk, dan riwayat keanggotaan.</li>
+<li>Pengurus dengan izin pembayaran dapat melihat catatan dan bukti pembayaran Anda untuk mencocokkannya dengan dana yang diterima organisasi. Pengurus tidak dapat memutuskan pembayaran miliknya sendiri.</li>
+<li>Pengurus dan petugas acara dapat melihat data pemegang tiket. Saat check-in, petugas melihat nama, nomor anggota, dan foto pemegang tiket.</li>
+<li>Moderator dapat melihat laporan, bukti laporan, dan riwayat moderasi.</li>
+<li>Pengurus dengan izin audit dapat melihat dan mengekspor jejak audit. Berkas ekspor kedaluwarsa setelah 24 jam.</li>
+<li>Pengurus tidak memiliki fitur untuk membaca percakapan chat. Isi chat hanya terlihat oleh moderator bila menjadi bagian dari bukti laporan.</li>
+<li>Tidak ada pengurus yang dapat melihat kata sandi Anda. Untuk membantu pemulihan akun, Super Admin hanya dapat mengirim kode pemulihan ke email Anda dan mengakhiri sesi Anda.</li>
+</ul>
+
+<h2>8. Penyedia Layanan dan Pihak Lain yang Menerima Data</h2>
+<p>Kami tidak menjual atau menyewakan data pribadi Anda. Kami hanya membagikan data kepada pihak berikut, sebatas yang diperlukan:</p>
+<ul>
+<li><strong>PT Cloud Hosting Indonesia (IDCloudHost)</strong>, penyedia server virtual (VPS) di Indonesia tempat basis data, cache, dan berkas unggahan disimpan. Penyedia ini menyediakan infrastruktur server, sedangkan sistem di dalamnya dikelola oleh KAPDH.</li>
+<li><strong>Resend, Inc.</strong> (Amerika Serikat), penyedia pengiriman email transaksional, yang mengirim email melalui Amazon Web Services di wilayah Tokyo, Jepang. Resend menerima alamat email Anda dan isi email, misalnya kode verifikasi atau pemberitahuan status pembayaran.</li>
+<li><strong>Amazon Web Services</strong>, yang menerima email yang Anda kirim ke alamat kapdh.or.id, termasuk bantuan@kapdh.or.id, melalui layanan penerimaan email di wilayah Tokyo, Jepang.</li>
+<li><strong>Google LLC</strong> (Amerika Serikat), melalui Firebase Cloud Messaging untuk mengirim notifikasi push bila fitur tersebut tersedia di aplikasi. Google menerima token perangkat, pengenal instalasi aplikasi, dan isi notifikasi yang ringkas. Pada iOS, notifikasi diteruskan melalui Apple Push Notification service milik <strong>Apple Inc.</strong></li>
+<li><strong>Cloudflare, Inc.</strong> (Amerika Serikat), penyedia layanan DNS untuk domain kapdh.or.id. Layanan ini membantu perangkat Anda menemukan alamat server kami. Cloudflare tidak menerima data akun maupun isi komunikasi Anda.</li>
+<li><strong>Penyedia penyimpanan objek (object storage)</strong> di luar server utama, tempat cadangan harian dan catatan penghapusan akun disimpan. Cadangan dienkripsi dengan kunci yang dipegang KAPDH sebelum dikirim, sehingga penyedia tidak dapat membaca isinya. Catatan penghapusan tidak memuat nama, email, atau nomor telepon.</li>
+<li><strong>Pengembang dan operator teknis yang ditugaskan KAPDH</strong>, yang dapat mengakses server sebatas yang diperlukan untuk pemeliharaan, keamanan, dan pemulihan layanan.</li>
+<li><strong>Pihak yang berwenang</strong>, bila diwajibkan oleh peraturan perundang-undangan atau berdasarkan permintaan resmi yang sah.</li>
+</ul>
+<p>Penyedia yang memproses data atas nama kami, yaitu penyedia server, email, notifikasi push, dan penyimpanan cadangan, hanya boleh memproses data untuk menyediakan layanannya kepada KAPDH. Pemrosesan itu tunduk pada ketentuan pemrosesan data yang mengikat penyedia tersebut, yang mewajibkan kerahasiaan dan keamanan data. Kami hanya memakai penyedia yang memberikan pelindungan data yang sama atau setara dengan pelindungan dalam Kebijakan Privasi ini, dan KAPDH tetap bertanggung jawab atas pemrosesan yang mereka lakukan atas nama kami.</p>
+<p>Pihak berikut memproses data berdasarkan kebijakan privasinya sendiri:</p>
+<ul>
+<li><strong>Google Fonts</strong>: bila huruf (font) tampilan aplikasi belum tersimpan di perangkat Anda, aplikasi mengunduhnya dari server Google. Dalam proses ini, Google menerima alamat IP dan informasi teknis permintaan tersebut, tanpa data akun Anda. Unduhan ini tidak tercakup dalam ketentuan pemrosesan data antara KAPDH dan penyedianya.</li>
+<li><strong>Google Play dan App Store</strong>, yang memproses data terkait pengunduhan aplikasi dan dapat memberikan statistik pemasangan serta laporan kerusakan (crash) aplikasi kepada kami sesuai pengaturan Anda di perangkat.</li>
+<li><strong>WhatsApp</strong> (Meta), bila Anda menghubungi kami melalui WhatsApp.</li>
+</ul>
+
+<h2>9. Transfer Data ke Luar Wilayah Indonesia</h2>
+<p>Basis data dan berkas utama kami disimpan di server di Indonesia. Namun, beberapa penyedia pada bagian 8 memproses data di luar wilayah hukum Negara Republik Indonesia:</p>
+<ul>
+<li>Resend dan Amazon Web Services, di Amerika Serikat dan Jepang, untuk mengirim dan menerima email;</li>
+<li>Google dan Apple, di Amerika Serikat dan lokasi pusat data lain yang mereka gunakan, untuk notifikasi push bila fitur tersebut tersedia;</li>
+<li>Google, untuk unduhan huruf (font) tampilan aplikasi sebagaimana dijelaskan di bagian 8;</li>
+<li>Cloudflare, melalui jaringan globalnya, untuk layanan DNS;</li>
+<li>penyedia penyimpanan objek, yang pusat datanya dapat berada di luar Indonesia, untuk cadangan terenkripsi dan catatan penghapusan akun.</li>
+</ul>
+<p>Sesuai Pasal 56 UU PDP, kami melakukan transfer tersebut hanya untuk menjalankan layanan yang Anda gunakan, dengan pelindungan berikut:</p>
+<ul>
+<li>Kami hanya mengirim data minimum. Notifikasi push tidak pernah memuat isi chat, bukti pembayaran, atau kontak, dan isi chat tidak pernah dikirim melalui email.</li>
+<li>Pemrosesan oleh penyedia yang memproses data atas nama kami, yaitu penyedia email, notifikasi push, dan penyimpanan objek, didasarkan pada ketentuan pemrosesan data yang mengikat, sebagaimana dijelaskan di bagian 8.</li>
+<li>Unduhan huruf dari Google Fonts dan layanan DNS Cloudflare tidak memuat data akun maupun isi komunikasi Anda. Untuk unduhan huruf, Google hanya menerima alamat IP dan informasi teknis permintaan, dan memprosesnya berdasarkan kebijakan privasinya sendiri, bukan berdasarkan ketentuan pemrosesan data dengan KAPDH.</li>
+<li>Data yang kami kirim ke penyedia melewati koneksi terenkripsi, dan cadangan dienkripsi dengan kunci yang dipegang KAPDH sebelum dikirim ke penyimpanan cadangan.</li>
+<li>Anda tetap dapat menggunakan seluruh hak Anda atas data tersebut melalui KAPDH, sebagaimana dijelaskan di bagian 13.</li>
+</ul>
+<p>Risiko yang perlu Anda ketahui: negara tujuan dapat memiliki tingkat pelindungan data pribadi yang berbeda dari Indonesia, termasuk kewenangan otoritas setempat untuk meminta akses data dari penyedia. Langkah di atas kami ambil untuk memperkecil risiko tersebut. Bila lembaga yang menyelenggarakan pelindungan data pribadi menetapkan ketentuan lebih lanjut mengenai transfer data ke luar negeri, kami akan menyesuaikan pengaturan ini.</p>
+
+<h2>10. Masa Penyimpanan (Retensi)</h2>
+<p>Kami menyimpan data pribadi hanya selama diperlukan untuk tujuan pemrosesannya. Secara umum, data Anda diproses sejak Anda mendaftar sampai akun Anda dihapus. Rinciannya sebagai berikut.</p>
+<ul>
+<li><strong>Akun, profil, kontak, dan foto profil</strong>: selama akun Anda ada; dihapus paling lambat 7 hari kalender setelah Anda meminta penghapusan akun.</li>
+<li><strong>Pendaftaran yang belum diverifikasi</strong>: disimpan sampai Anda menyelesaikan verifikasi email, atau sampai Anda membatalkan pendaftaran melalui halaman <a href="https://kapdh.or.id/delete-account">Hapus Akun</a>.</li>
+<li><strong>Kode verifikasi (OTP)</strong>: berlaku 10 menit; catatannya dihapus otomatis 7 hari setelah kedaluwarsa.</li>
+<li><strong>Catatan sesi login</strong>: dihapus otomatis 30 hari setelah masa berlaku sesi habis.</li>
+<li><strong>Token notifikasi perangkat</strong>: dicabut saat Anda keluar atau sesi diakhiri, dan dihapus saat akun dihapus.</li>
+<li><strong>Catatan dan bukti pembayaran</strong>: selama akun Anda ada, termasuk bukti yang pernah diganti, karena diperlukan untuk riwayat pembayaran dan penanganan keberatan. Saat akun dihapus, berkas bukti dan catatan transfer dihapus, sedangkan catatan keuangan disimpan tanpa identitas Anda (lihat bagian 11).</li>
+<li><strong>Data rekening untuk refund</strong>: hanya selama refund diproses.</li>
+<li><strong>Tiket dan riwayat keanggotaan</strong>: selama akun Anda ada; setelah akun dihapus, disimpan tanpa identitas Anda.</li>
+<li><strong>Pesan dan gambar chat</strong>: tidak dihapus otomatis berdasarkan waktu. Pesan tersimpan sampai Anda menghapusnya, dihapus moderator, atau akun Anda dihapus. Pesan yang dihapus diganti dengan tanda bahwa pesan telah dihapus.</li>
+<li><strong>Kotak masuk dan preferensi notifikasi</strong>: selama akun Anda ada.</li>
+<li><strong>Laporan dan bukti laporan</strong>: data pribadi seseorang di dalam laporan disimpan selama akun orang tersebut ada, untuk penanganan dan akuntabilitas moderasi. Salinan pesan, gambar dalam pesan yang dilaporkan, serta foto profil atau foto grup pada saat laporan dikirim tetap disimpan sebagai bukti walaupun kemudian dihapus atau diganti. Saat akun pelapor, pihak yang dilaporkan, atau pengirim pesan konteks dihapus, identitas, isi pesan, dan foto orang tersebut dihapus dari laporan, sedangkan catatan laporan tanpa identitas tetap disimpan.</li>
+<li><strong>Jejak audit</strong>: identitas dan data pribadi Anda di dalam jejak audit disimpan selama akun Anda ada, lalu dihapus saat akun Anda dihapus. Catatan tindakan tanpa identitas tetap disimpan sebagai catatan akuntabilitas.</li>
+<li><strong>Unggahan yang tidak jadi dipakai</strong>: dihapus otomatis setelah 24 jam.</li>
+<li><strong>Log teknis</strong>: dibatasi ukurannya dan dirotasi otomatis, sehingga entri lama terhapus dengan sendirinya.</li>
+<li><strong>Cadangan harian</strong>: setiap cadangan dihapus paling lama 30 hari setelah dibuat.</li>
+<li><strong>Korespondensi dengan tim bantuan</strong>: selama diperlukan untuk menindaklanjuti dan mendokumentasikan permintaan Anda.</li>
+<li><strong>Data di perangkat Anda</strong>: salinan KTA untuk penggunaan tanpa internet berlaku paling lama 7 hari dan dihapus saat Anda keluar. Cache gambar dan huruf disimpan sementara di perangkat dan ikut terhapus bila Anda menghapus data aplikasi.</li>
+</ul>
+
+<h2>11. Penghapusan Akun</h2>
+
+<h3>11.1 Cara menghapus akun</h3>
+<ul>
+<li><strong>Di aplikasi</strong>: buka Akun &gt; Hapus akun, baca penjelasan tentang data yang dihapus dan yang disimpan, konfirmasi, lalu masukkan kata sandi Anda. Fitur ini tetap tersedia walaupun akun Anda sedang dibatasi.</li>
+<li><strong>Tanpa aplikasi</strong>: buka <a href="https://kapdh.or.id/delete-account">kapdh.or.id/delete-account</a>, masukkan email akun Anda, lalu masukkan kode verifikasi yang kami kirim ke email tersebut. Halaman yang sama dapat dipakai untuk membatalkan pendaftaran yang belum diverifikasi.</li>
+<li><strong>Melalui email</strong>: bila Anda tidak dapat memakai kedua cara di atas, kirim permintaan ke <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a> dari alamat email akun Anda.</li>
+</ul>
+<p>Setelah permintaan dikonfirmasi, Anda menerima nomor permintaan yang diawali "DEL-", di layar dan melalui email.</p>
+
+<h3>11.2 Setelah permintaan dikonfirmasi</h3>
+<ul>
+<li>Semua sesi login dan token notifikasi dicabut seketika, dan Anda tidak dapat masuk lagi dengan akun tersebut.</li>
+<li>Permintaan yang sudah dikonfirmasi tidak dapat dibatalkan.</li>
+<li>Penghapusan diselesaikan otomatis paling lambat 7 hari kalender. Kami mengirim email pemberitahuan saat penghapusan selesai, dan setelah email itu terkirim, alamat email Anda tidak lagi tersimpan di sistem operasional kami. Salinannya di cadangan terhapus dengan sendirinya paling lama 30 hari kemudian (lihat bagian 11.5).</li>
+<li>Tiket aktif hangus, dan pembayaran yang masih menunggu tanpa bukti dibatalkan. Refund yang sedang berjalan tidak otomatis dianggap selesai. Karena itu, selesaikan pengajuan refund sebelum menghapus akun, atau hubungi tim bantuan bila masih ada dana yang belum kembali.</li>
+<li>Bila Anda satu-satunya admin sebuah grup, peran admin dialihkan otomatis kepada anggota aktif grup tersebut. Bila tidak ada, grup ditutup.</li>
+<li>Anda dapat mendaftar kembali dengan email yang sama sebagai akun baru. Nomor anggota lama tidak akan dipakai ulang.</li>
+</ul>
+
+<h3>11.3 Data yang dihapus</h3>
+<ul>
+<li>email login dan kata sandi;</li>
+<li>profil alumni, termasuk profesi dan keahlian, nomor telepon, media sosial, dan pengaturan privasi;</li>
+<li>foto profil dan unggahan pribadi, seperti gambar chat dan foto grup yang Anda unggah;</li>
+<li>berkas bukti pembayaran dan catatan transfer yang Anda tulis;</li>
+<li>isi pesan chat yang Anda kirim (diganti dengan tanda bahwa pesan telah dihapus), reaksi, suka pada berita, dan daftar blokir;</li>
+<li>token notifikasi, sesi login, kotak masuk notifikasi, dan preferensi notifikasi.</li>
+</ul>
+<p>Pesan yang dikirim anggota lain kepada Anda merupakan bagian dari akun mereka dan tidak ikut terhapus.</p>
+
+<h3>11.4 Data yang tetap disimpan tanpa identitas Anda, dan alasannya</h3>
+<p>Sebagian catatan tetap kami simpan setelah dilepaskan dari identitas Anda, yaitu tanpa nama, email, nomor telepon, foto, dan nomor anggota:</p>
+<ul>
+<li><strong>Catatan pembayaran</strong> (jumlah, tanggal, status, dan nomor referensi), untuk pembukuan dan akuntabilitas keuangan organisasi;</li>
+<li><strong>Catatan tiket</strong> (jumlah, tanggal, dan status), agar kuota dan laporan acara tetap benar;</li>
+<li><strong>Riwayat periode keanggotaan</strong>, tanpa nomor anggota dan tanpa alasan tertulis, untuk menjaga keutuhan catatan keanggotaan organisasi;</li>
+<li><strong>Laporan moderasi</strong> yang melibatkan Anda, tanpa nama, isi pesan, dan foto Anda, untuk akuntabilitas penanganan laporan;</li>
+<li><strong>Jejak audit</strong> keamanan dan keuangan, tanpa identitas Anda sebagai pelaku dan tanpa data pribadi Anda, untuk akuntabilitas dan keamanan sistem;</li>
+<li><strong>Catatan penghapusan</strong> (nomor permintaan, pengenal internal akun, waktu, dan daftar berkas yang dihapus) serta baris akun yang tidak lagi memuat data pribadi, agar penghapusan tetap berlaku bila cadangan dipulihkan dan nomor anggota tidak dipakai ulang.</li>
+</ul>
+
+<h3>11.5 Cadangan data</h3>
+<p>Kami membuat cadangan harian terenkripsi yang disimpan di luar server utama, dan setiap cadangan dihapus paling lama 30 hari setelah dibuat. Data yang sudah dihapus dapat masih berada di cadangan paling lama 30 hari, tidak dipakai untuk operasional sehari-hari, dan terhapus dengan sendirinya saat cadangan dirotasi. Bila cadangan harus dipulihkan, catatan penghapusan diterapkan ulang sebelum layanan dibuka kembali, sehingga data yang sudah dihapus tidak muncul lagi.</p>
+
+<h2>12. Keamanan Data</h2>
+<p>Kami menerapkan langkah teknis dan organisasi yang wajar untuk melindungi data Anda, antara lain:</p>
+<ul>
+<li>koneksi antara aplikasi, situs, web admin, dan server memakai enkripsi HTTPS/TLS;</li>
+<li>kata sandi disimpan dengan hash bcrypt, dan kode verifikasi disimpan dalam bentuk tersamar serta dibatasi masa berlaku dan jumlah percobaannya;</li>
+<li>basis data dan cache tidak dapat diakses langsung dari internet;</li>
+<li>berkas pribadi, seperti bukti pembayaran, gambar chat, dan foto profil, tidak pernah dipublikasikan dan hanya dapat dibuka setelah pemeriksaan izin, melalui tautan yang berlaku paling lama 10 menit;</li>
+<li>metadata gambar, termasuk data lokasi (EXIF), dibuang saat gambar diunggah;</li>
+<li>akun pengurus terpisah dari akun alumni, wajib memakai autentikasi dua langkah, keluar otomatis setelah 30 menit tidak aktif, dan hanya memiliki izin sesuai tugas;</li>
+<li>tindakan penting pengurus dicatat dalam jejak audit yang hanya dapat ditambah dan tidak dapat diubah oleh pengurus;</li>
+<li>pembatasan percobaan untuk mencegah tebakan kata sandi, penyalahgunaan kode verifikasi, dan pengambilan data anggota secara massal;</li>
+<li>log sistem tidak mencatat kata sandi, kode OTP, token, isi chat, maupun bukti pembayaran;</li>
+<li>di perangkat Anda, token login dan data akun disimpan di penyimpanan aman sistem operasi (Keychain di iOS dan penyimpanan terenkripsi di Android), dan tidak dipindahkan ke perangkat lain melalui cadangan atau sinkronisasi perangkat;</li>
+<li>Anda dapat melihat dan mengakhiri sesi di perangkat lain melalui Akun &gt; Sesi perangkat, dan kami mengirim pemberitahuan keamanan bila kata sandi Anda diganti atau dipulihkan, atau bila semua sesi Anda diakhiri.</li>
+</ul>
+<p>Chat tidak dienkripsi end-to-end, sehingga isi pesan tersimpan di server kami. Operator teknis tidak membuka isi chat, kecuali diperlukan untuk menangani insiden keamanan atau memenuhi kewajiban hukum.</p>
+<p>Tidak ada sistem yang sepenuhnya bebas risiko. Karena itu, jaga kerahasiaan kata sandi Anda, dan jangan pernah memberikan kata sandi, kode OTP, atau kode cadangan kepada siapa pun. Pengurus KAPDH tidak pernah memintanya.</p>
+
+<h2>13. Hak Anda sebagai Subjek Data Pribadi</h2>
+
+<h3>13.1 Hak-hak Anda</h3>
+<p>Sesuai UU PDP, Anda berhak:</p>
+<ul>
+<li><strong>mendapatkan informasi</strong> tentang identitas kami, dasar kepentingan hukum, tujuan permintaan dan penggunaan data pribadi, dan akuntabilitas kami, sebagaimana dijelaskan dalam kebijakan ini;</li>
+<li><strong>melengkapi, memperbarui, dan memperbaiki</strong> data Anda. Data profil dapat Anda ubah sendiri di aplikasi. Untuk koreksi nama, jenis kelamin, angkatan, atau kelas, hubungi tim bantuan. Alamat email akun yang sudah aktif saat ini belum dapat diubah, baik melalui aplikasi maupun oleh pengurus. Bila Anda perlu memakai alamat email lain, hubungi tim bantuan; kami akan menjelaskan pilihan yang tersedia, misalnya menghapus akun lalu mendaftar kembali dengan email baru;</li>
+<li><strong>mengakses dan memperoleh salinan</strong> data pribadi Anda;</li>
+<li><strong>mengakhiri pemrosesan dan menghapus</strong> data pribadi Anda, termasuk dengan menghapus akun (bagian 11);</li>
+<li><strong>menarik kembali persetujuan</strong> atas pemrosesan yang didasarkan pada persetujuan (bagian 6);</li>
+<li><strong>mengajukan keberatan</strong> atas keputusan yang semata-mata didasarkan pada pemrosesan otomatis, termasuk profiling, yang menimbulkan akibat hukum atau berdampak signifikan bagi Anda. Kami tidak membuat keputusan semacam itu: keputusan pembayaran, pembatasan akun, dan moderasi diambil oleh pengurus. Perubahan otomatis yang mengikuti aturan tertulis, seperti berakhirnya masa keanggotaan atau batalnya reservasi tiket yang melewati batas waktu, tetap dapat Anda pertanyakan melalui tim bantuan;</li>
+<li><strong>menunda atau membatasi</strong> pemrosesan data pribadi Anda secara proporsional sesuai tujuan pemrosesannya;</li>
+<li><strong>memperoleh dan menggunakan</strong> data pribadi Anda dalam format yang umum dipakai dan dapat dibaca oleh sistem elektronik, serta mengirimkannya kepada pengendali data pribadi lain, sepanjang sistem kedua pihak dapat saling berkomunikasi secara aman; dan</li>
+<li><strong>menggugat dan menerima ganti rugi</strong> atas pelanggaran pemrosesan data pribadi Anda, sesuai peraturan perundang-undangan.</li>
+</ul>
+<p>Pelaksanaan sebagian hak tersebut dapat dikecualikan dalam keadaan yang ditetapkan undang-undang, misalnya untuk kepentingan proses penegakan hukum. Bila kami tidak dapat memenuhi permintaan Anda, kami akan menyampaikan alasannya.</p>
+
+<h3>13.2 Cara mengajukan permintaan</h3>
+<p>Banyak hak dapat Anda jalankan sendiri di aplikasi, melalui menu Akun &gt; Ubah profil, Privasi profil, Preferensi notifikasi, Sesi perangkat, Anggota diblokir, dan Hapus akun. Untuk permintaan lain, kirim email ke <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a> atau hubungi nomor WhatsApp dukungan yang tercantum di aplikasi dan situs, dengan menyertakan:</p>
+<ul>
+<li>nama lengkap dan alamat email akun Anda;</li>
+<li>hak yang ingin Anda jalankan dan alasannya; dan</li>
+<li>uraian permintaan Anda.</li>
+</ul>
+<p>Setiap permintaan akan kami catat. Untuk melindungi akun Anda, kami dapat meminta Anda mengirim permintaan dari alamat email akun, atau memberikan informasi lain yang wajar untuk memastikan identitas Anda. Kami tidak akan pernah meminta kata sandi atau kode OTP Anda. Pelaksanaan hak ini tidak dipungut biaya.</p>
+<p>Permintaan juga dapat diajukan oleh orang tua atau wali bagi anak, wali bagi penyandang disabilitas, atau kuasa yang sah, dengan menyertakan bukti kewenangannya.</p>
+
+<h3>13.3 Jangka waktu tanggapan</h3>
+<p>Kami menanggapi permintaan Anda sesuai jangka waktu dalam UU PDP:</p>
+<ul>
+<li>pembaruan atau perbaikan data: paling lambat 3 x 24 jam sejak permintaan diterima, disertai pemberitahuan hasilnya;</li>
+<li>akses terhadap data: paling lambat 3 x 24 jam sejak permintaan diterima;</li>
+<li>penghentian pemrosesan setelah penarikan persetujuan, serta penundaan atau pembatasan pemrosesan: paling lambat 3 x 24 jam sejak permintaan diterima;</li>
+<li>salinan data: kami mengonfirmasi permintaan dan perkiraan waktu penyampaiannya paling lambat 3 x 24 jam, lalu mengirimkan salinan sesegera mungkin;</li>
+<li>penghapusan akun: diselesaikan otomatis paling lambat 7 hari kalender, disertai email pemberitahuan setelah selesai.</li>
+</ul>
+
+<h3>13.4 Pengaduan</h3>
+<p>Bila Anda merasa hak Anda belum terpenuhi, sampaikan pengaduan lebih dahulu kepada kami melalui <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a> agar dapat kami tindak lanjuti. Anda juga berhak menyampaikan pengaduan kepada lembaga yang menyelenggarakan pelindungan data pribadi sesuai peraturan perundang-undangan, serta menempuh penyelesaian sengketa melalui pengadilan, arbitrase, atau lembaga penyelesaian sengketa alternatif lainnya sesuai UU PDP.</p>
+
+<h2>14. Pemberitahuan Kegagalan Pelindungan Data</h2>
+<p>Bila terjadi kegagalan pelindungan data pribadi, misalnya data terbuka kepada pihak yang tidak berhak atau hilang, kami akan menyampaikan pemberitahuan tertulis kepada Anda dan kepada lembaga yang berwenang paling lambat 3 x 24 jam sejak kegagalan tersebut kami ketahui, sesuai Pasal 46 UU PDP. Pemberitahuan memuat:</p>
+<ul>
+<li>data pribadi yang terungkap;</li>
+<li>kapan dan bagaimana data tersebut terungkap; dan</li>
+<li>upaya penanganan dan pemulihan yang kami lakukan, serta langkah yang kami sarankan bagi Anda.</li>
+</ul>
+<p>Pemberitahuan kami sampaikan melalui email, aplikasi, atau kanal resmi lain yang sesuai. Dalam keadaan tertentu yang ditetapkan undang-undang, kami juga akan memberi tahu masyarakat.</p>
+
+<h2>15. Anak dan Penyandang Disabilitas</h2>
+<p>Layanan KAPDH hanya ditujukan bagi alumni Pondok Pesantren Darel Hikmah yang telah berusia 18 tahun atau lebih, dan tidak ditujukan bagi anak. Dengan menyetujui Ketentuan Layanan saat mendaftar, pengguna menyatakan bahwa dirinya telah berusia 18 tahun atau lebih. Aplikasi tidak meminta tanggal lahir, dan kami tidak dengan sengaja mengumpulkan data pribadi anak.</p>
+<p>Bila kami mengetahui ada akun milik pengguna yang belum berusia 18 tahun, akun tersebut kami nonaktifkan dan hapus sesuai bagian 11. Orang tua atau wali yang mengetahui anaknya mendaftar dapat menghubungi tim bantuan untuk bertanya, menjalankan hak atas data anaknya, atau meminta penghapusan akun tersebut.</p>
+<p>Penyandang disabilitas, atau walinya, yang memerlukan bantuan untuk memahami kebijakan ini atau menjalankan haknya dapat menghubungi kami melalui email atau WhatsApp. Kami akan membantu dengan cara komunikasi yang sesuai.</p>
+
+<h2>16. Data Pribadi yang Bersifat Spesifik</h2>
+<p>Bukti pembayaran dapat memuat informasi keuangan, seperti nama dan nomor rekening pengirim, yang termasuk data pribadi yang bersifat spesifik menurut UU PDP. Bukti tersebut hanya dipakai untuk memverifikasi pembayaran, hanya dapat dibuka oleh Anda dan pengurus berizin, dan dihapus saat akun Anda dihapus. Sebelum mengunggah, Anda boleh menutupi informasi yang tidak diperlukan, misalnya saldo rekening, selama nominal, tanggal, dan tujuan pembayaran tetap terbaca.</p>
+<p>Kami tidak meminta data agama atau data pribadi spesifik lainnya. Namun, perlu Anda ketahui bahwa keanggotaan dalam perkumpulan alumni pesantren dapat menunjukkan latar belakang pendidikan keagamaan Anda.</p>
+
+<h2>17. Cookie dan Penyimpanan Lokal</h2>
+<ul>
+<li><strong>Situs kapdh.or.id</strong> tidak memakai cookie, tidak menyimpan data di penyimpanan peramban, dan tidak memuat analitik maupun sumber dari pihak ketiga. Pada verifikasi KTA, token kode QR berada di bagian alamat setelah tanda #, sehingga tidak dikirim ke server web dan hanya dipakai untuk pemeriksaan ke server kami.</li>
+<li><strong>Web admin</strong> memakai satu cookie wajib untuk menjaga sesi pengurus, yang tidak dapat dibaca oleh skrip halaman. Web admin juga memakai penyimpanan lokal peramban untuk mencatat waktu aktivitas terakhir demi fitur keluar otomatis, dan penyimpanan sesi peramban untuk filter daftar yang hilang saat tab ditutup.</li>
+<li><strong>Aplikasi</strong> menyimpan token login, data akun, dan salinan KTA di penyimpanan aman perangkat. Cache gambar dan huruf disimpan di perangkat untuk mempercepat tampilan. Data akun dan salinan KTA dihapus dari perangkat saat Anda keluar.</li>
+</ul>
+
+<h2>18. Izin Perangkat</h2>
+<ul>
+<li><strong>Kamera, galeri foto, dan berkas</strong>: hanya dipakai saat Anda memilih untuk memotret atau memilih gambar atau dokumen, yaitu untuk bukti pembayaran, foto profil, gambar chat, dan foto grup.</li>
+<li><strong>Notifikasi</strong>: untuk menampilkan notifikasi push. Anda dapat menolak atau mencabut izin ini kapan saja. Aplikasi tetap berfungsi, dan kotak masuk notifikasi tetap tersedia.</li>
+<li><strong>Internet dan status jaringan</strong>: untuk terhubung ke server dan mengetahui saat perangkat Anda tidak tersambung ke internet.</li>
+</ul>
+<p>Aplikasi tidak meminta izin lokasi, kontak, atau mikrofon.</p>
+
+<h2>19. Perubahan Kebijakan Privasi</h2>
+<p>Kami dapat memperbarui kebijakan ini bila layanan, praktik pemrosesan, atau peraturan berubah. Bila perubahan menyangkut informasi penting, seperti jenis data, tujuan, dasar pemrosesan, penerima data, masa retensi, atau hak Anda, kami akan mengumumkannya melalui aplikasi dan situs kapdh.or.id sebelum perubahan berlaku. Bila Anda tidak menyetujui perubahan tersebut, Anda dapat berhenti menggunakan layanan dan menghapus akun sesuai bagian 11. Pendaftar baru menyetujui versi yang berlaku pada saat mendaftar.</p>
+<p>Tanggal berlaku di bagian atas halaman ini menunjukkan versi yang sedang berlaku. Kebijakan ini dibuat dalam Bahasa Indonesia.</p>
+
+<h2>20. Hubungi Kami</h2>
+<p>Untuk pertanyaan, permintaan, atau pengaduan mengenai kebijakan ini atau data pribadi Anda, hubungi Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH) melalui:</p>
+<ul>
+<li>email: <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a>; atau</li>
+<li>WhatsApp: nomor WhatsApp dukungan yang tercantum di aplikasi dan di halaman <a href="https://kapdh.or.id/kontak">Kontak</a>.</li>
+</ul>
+<p>Panduan memakai layanan tersedia di halaman <a href="https://kapdh.or.id/bantuan">Bantuan</a>.</p>
+    </div>
+    <p class="akhir">Akhir isi halaman Kebijakan Privasi. <a href="#atas">Kembali ke atas</a></p>
+  </section>
+
+  <section class="halaman" id="hal-ketentuan" aria-labelledby="judul-ketentuan">
+    <header class="halaman-kepala">
+      <div>
+        <p class="nomor">Halaman 2 dari 5</p>
+        <h1 id="judul-ketentuan">Ketentuan Layanan</h1>
+        <p class="meta">Judul di web admin: <strong>Ketentuan Layanan</strong> &middot; slug: <code>ketentuan</code></p>
+      </div>
+      <div class="aksi">
+        <button type="button" class="tombol utama" data-salin="ketentuan">Salin isi</button>
+        <button type="button" class="tombol" data-pilih="ketentuan">Pilih isi</button>
+        <span class="status" id="status-ketentuan" role="status" aria-live="polite"></span>
+      </div>
+    </header>
+    <div class="isi" id="isi-ketentuan">
+<p>Terima kasih telah menggunakan KAPDH Apps. Ketentuan Layanan ini adalah perjanjian antara Anda dan Perkumpulan Keluarga Alumni Pesantren Darel Hikmah ("KAPDH" atau "kami"), perkumpulan alumni Pondok Pesantren Darel Hikmah, Pekanbaru, Riau. Ketentuan ini mengatur pendaftaran akun, keanggotaan dan iuran, KTA digital, event, Jejaring dan chat, serta hak dan kewajiban Anda dan kami. Mohon luangkan waktu untuk membacanya dengan saksama.</p>
+<p><strong>Berlaku sejak 15 Oktober 2026.</strong></p>
+
+<h2>1. Ruang lingkup dan persetujuan</h2>
+<p>Yang dimaksud dengan "Layanan" dalam ketentuan ini adalah:</p>
+<ul>
+<li>aplikasi KAPDH untuk Android dan iOS;</li>
+<li>situs <a href="https://kapdh.or.id">kapdh.or.id</a>, termasuk halaman verifikasi KTA dan halaman penghapusan akun; dan</li>
+<li>layanan pendukungnya, seperti email transaksional, notifikasi, dan kanal bantuan.</li>
+</ul>
+<p><a href="https://kapdh.or.id/ketentuan-komunitas">Ketentuan Komunitas</a> merupakan bagian yang tidak terpisahkan dari Ketentuan Layanan ini. <a href="https://kapdh.or.id/kebijakan-privasi">Kebijakan Privasi</a> menjelaskan cara kami memproses data pribadi Anda dan dibaca bersama ketentuan ini.</p>
+<p>Saat mendaftar, Anda diminta mencentang pernyataan bahwa Anda telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan Layanan. Dengan mencentangnya dan menyelesaikan pendaftaran, Anda menyetujui ketentuan ini, termasuk Ketentuan Komunitas. Jika Anda tidak setuju, mohon jangan mendaftar atau menggunakan Layanan.</p>
+<p>Akun pengurus untuk web admin KAPDH terpisah dari akun alumni dan tunduk pada aturan internal perkumpulan. Dalam ketentuan ini, "hari kerja" berarti Senin sampai Jumat menurut Waktu Indonesia Barat (WIB). Tenggat yang ditampilkan di aplikasi dihitung dengan cara yang sama.</p>
+
+<h2>2. Siapa yang dapat mendaftar</h2>
+<p>Layanan ini diperuntukkan bagi alumni Pondok Pesantren Darel Hikmah. Dengan mendaftar, Anda menyatakan bahwa:</p>
+<ul>
+<li>Anda adalah alumni Pondok Pesantren Darel Hikmah, baik yang menamatkan pendidikan di MTs, Aliyah, atau keduanya, maupun yang pernah belajar di sana tetapi tidak menamatkannya;</li>
+<li>Anda telah berusia 18 tahun atau lebih;</li>
+<li>data yang Anda isi, termasuk nama lengkap, jenis kelamin, angkatan, serta kelas masuk dan kelas keluar, adalah benar dan milik Anda sendiri; dan</li>
+<li>Anda hanya membuat satu akun untuk diri sendiri, tidak meminjamkannya, dan tidak memindahtangankannya kepada orang lain.</li>
+</ul>
+<p>Status alumni dinyatakan sendiri oleh pendaftar. Pengurus dapat meminta klarifikasi atas data Anda. Jika data terbukti tidak benar, pengurus dapat menolak pembayaran iuran atau membatasi akun sesuai bagian 9.</p>
+<p>Layanan ini tidak ditujukan bagi anak di bawah 18 tahun. Bila kami mengetahui ada akun milik pengguna yang belum berusia 18 tahun, akun tersebut kami nonaktifkan dan hapus. Orang tua atau wali dapat menghubungi kami melalui kontak di bagian 18 untuk menanyakan, memperbaiki, atau meminta penghapusan data anaknya.</p>
+
+<h2>3. Akun dan keamanan</h2>
+<p>Akun dibuat dengan alamat email dan kata sandi, lalu diverifikasi dengan kode 6 digit yang kami kirim ke email Anda. Untuk menjaga keamanan akun, Anda wajib:</p>
+<ul>
+<li>merahasiakan kata sandi dan tidak memberikan kode verifikasi (OTP) kepada siapa pun;</li>
+<li>menggunakan kata sandi yang kuat dan tidak dipakai di layanan lain;</li>
+<li>keluar dari perangkat yang tidak Anda kenali melalui menu sesi perangkat, lalu segera mengganti kata sandi bila Anda menduga akun disalahgunakan; dan</li>
+<li>segera memberi tahu kami bila terjadi penyalahgunaan akun.</li>
+</ul>
+<p><strong>Pengurus KAPDH tidak pernah meminta kata sandi atau kode OTP Anda.</strong> Abaikan permintaan semacam itu walaupun mengatasnamakan pengurus.</p>
+<p>Anda bertanggung jawab atas aktivitas yang dilakukan melalui akun Anda, kecuali aktivitas itu terjadi karena kesalahan kami atau terjadi setelah Anda melaporkan penyalahgunaan kepada kami.</p>
+<p>Setelah akun aktif, alamat email saat ini belum dapat diubah, baik oleh Anda di aplikasi maupun oleh pengurus. Jika Anda perlu memakai alamat email lain atau kehilangan akses ke email akun, hubungi kami; kami akan menjelaskan pilihan yang tersedia, misalnya menghapus akun lalu mendaftar kembali dengan email baru sebagai akun baru (lihat bagian 10). Nama lengkap, jenis kelamin, angkatan, dan kelas hanya dapat dikoreksi oleh pengurus berizin atas permintaan Anda, dan setiap koreksi tercatat. Data profil lain dapat Anda ubah sendiri di aplikasi.</p>
+
+<h2>4. Keanggotaan dan iuran</h2>
+<h3>Pendaftaran dan aktivasi</h3>
+<p>Setelah email Anda terverifikasi, Anda memperoleh nomor anggota dan KTA digital berstatus Tidak Aktif. Keanggotaan menjadi aktif setelah pengurus memverifikasi dan menyetujui pembayaran iuran pendaftaran.</p>
+<p>Iuran pendaftaran terdiri atas biaya register alumni baru dan biaya pembuatan KTA. Iuran perpanjangan terdiri atas biaya perpanjangan KTA per tahun. Besaran iuran ditetapkan pengurus dan ditampilkan di aplikasi sebelum Anda membayar. Perubahan besaran iuran hanya berlaku untuk pembayaran baru, bukan pembayaran yang sudah dibuat.</p>
+<p>Iuran adalah kewajiban keanggotaan perkumpulan untuk mendukung kegiatan organisasi. Iuran bukan pembelian aplikasi, konten digital, atau fitur aplikasi. Aplikasi KAPDH dapat diunduh tanpa biaya. KTA yang diterbitkan melalui Layanan berbentuk digital; kartu fisik tidak termasuk dalam iuran.</p>
+
+<h3>Masa keanggotaan dan perpanjangan</h3>
+<ul>
+<li>Keanggotaan berlaku 12 bulan kalender sejak tanggal pengurus menyetujui pembayaran iuran pendaftaran.</li>
+<li>Saat sisa masa keanggotaan 30 hari atau kurang, status Anda menjadi "Segera Berakhir" dan kami mengirim pengingat melalui aplikasi.</li>
+<li>Perpanjangan dapat diajukan mulai 30 hari sebelum masa keanggotaan berakhir dan tetap dapat diajukan setelah masa itu berakhir.</li>
+<li>Masa perpanjangan adalah 12 bulan, dihitung dari tanggal berakhir yang lama atau tanggal persetujuan perpanjangan, mana yang lebih akhir. Dengan begitu, sisa masa keanggotaan Anda tidak hilang.</li>
+<li><strong>Tidak ada perpanjangan otomatis dan tidak ada penagihan berulang.</strong> Anda sendiri yang memutuskan kapan memperpanjang keanggotaan.</li>
+</ul>
+<p>Tidak ada masa tenggang setelah keanggotaan berakhir. Selama keanggotaan kedaluwarsa, Anda tetap dapat melihat riwayat, KTA berlabel kedaluwarsa, mengajukan perpanjangan, mengatur akun, membaca halaman informasi, dan menghapus akun. Jejaring, pengiriman pesan, dan pemesanan event baru adalah layanan bagi anggota perkumpulan yang keanggotaannya aktif. Status keanggotaan diperbarui pengurus setelah iuran organisasi diverifikasi. Tiket event yang sudah dibayar sebelumnya tetap berlaku sesuai bagian 6.</p>
+
+<h3>Cara membayar dan verifikasi</h3>
+<ul>
+<li>Pembayaran dilakukan di luar aplikasi ke tujuan pembayaran resmi KAPDH yang tercantum di aplikasi, berupa rekening bank atau dompet digital atas nama KAPDH, serta QRIS atas nama KAPDH bila tersedia.</li>
+<li>KAPDH tidak memproses kartu kredit atau kartu debit dan tidak menggunakan sistem pembayaran toko aplikasi maupun payment gateway otomatis.</li>
+<li>Setelah membayar, unggah bukti pembayaran (foto atau PDF) di aplikasi pada pembayaran yang bersangkutan.</li>
+<li>Pengurus berizin memeriksa bahwa dana benar-benar diterima pada tujuan pembayaran KAPDH, bukan hanya menilai tampilan bukti. Pengurus tidak dapat memutus pembayaran miliknya sendiri.</li>
+<li>Hasil verifikasi, berupa persetujuan atau penolakan beserta alasannya, disampaikan ke kotak masuk aplikasi dan, sesuai pengaturan notifikasi Anda, melalui notifikasi push atau email.</li>
+<li>Jika iuran ditolak, Anda dapat memperbaikinya dengan mengunggah bukti baru pada pembayaran yang sama.</li>
+</ul>
+<p>Lakukan pembayaran hanya ke tujuan yang tercantum di aplikasi. Pembayaran ke rekening lain tidak dapat kami verifikasi sebagai iuran. Waspadai permintaan transfer melalui pesan pribadi yang mengatasnamakan pengurus. Mengunggah bukti palsu atau bukti yang diubah dilarang dan dapat berakibat pembatasan akun.</p>
+<p>Pada aplikasi di perangkat tertentu, petunjuk pembayaran iuran mungkin tidak ditampilkan. Dalam hal itu, iuran diselesaikan langsung melalui pengurus, dan status KTA Anda diperbarui setelah pengurus memverifikasi pembayaran.</p>
+
+<h3>Pengembalian iuran</h3>
+<p>Iuran yang telah disetujui tidak dikembalikan, termasuk ketika Anda berhenti menggunakan Layanan, menghapus akun, atau akun Anda dibatasi. Jika terjadi kekeliruan pembayaran, misalnya pembayaran ganda, kelebihan bayar, atau dana sudah Anda transfer tetapi pembayarannya tidak dapat disetujui, hubungi kami dengan menyebutkan jenis pembayaran, nominal, dan tanggal transfer. Pengurus akan memeriksanya dan, bila kekeliruan terbukti, mencatat koreksi atau pengembalian dana yang dilakukan secara manual melalui transfer.</p>
+
+<h2>5. KTA digital</h2>
+<ul>
+<li>KTA digital memuat identitas keanggotaan Anda, nomor anggota, kode QR, masa berlaku, dan status keanggotaan.</li>
+<li>Hanya KTA berstatus <strong>KTA Aktif</strong> yang menunjukkan keanggotaan yang berlaku. KTA berstatus Tidak Aktif atau kedaluwarsa bukan bukti keanggotaan.</li>
+<li>KTA adalah tanda keanggotaan KAPDH, bukan dokumen identitas resmi negara.</li>
+<li>Siapa pun yang memindai kode QR KTA Anda dapat melihat status keanggotaan dan identitas minimum di halaman verifikasi KTA, sebagaimana dijelaskan dalam Kebijakan Privasi. Hasil verifikasi selalu mengikuti status terkini di server kami.</li>
+<li>KTA dapat ditampilkan tanpa koneksi internet paling lama 7 hari sejak sinkronisasi terakhir, dengan label Offline.</li>
+<li>Anda dilarang memalsukan, mengubah, atau meminjamkan KTA kepada orang lain, maupun menggunakannya untuk menipu.</li>
+</ul>
+
+<h2>6. Event dan tiket</h2>
+<h3>Pemesanan</h3>
+<ul>
+<li>Pemesanan tiket hanya dapat dilakukan oleh anggota aktif yang akunnya tidak sedang dibatasi.</li>
+<li>Setiap anggota hanya dapat memiliki satu tiket aktif untuk setiap event. Tiket berlaku untuk pemesannya sendiri, tidak dapat dipindahtangankan, dan tidak mencakup rombongan atau tamu.</li>
+<li>Untuk event berbayar, reservasi ditahan sampai batas waktu yang ditampilkan di aplikasi (umumnya 24 jam) atau sampai pendaftaran event ditutup, mana yang lebih dahulu. Jika bukti pembayaran tidak diunggah sebelum batas itu, reservasi berakhir dan kursi dilepas.</li>
+<li>Bukti yang diunggah tepat waktu menahan kursi sampai pengurus memutuskan. Jika bukti ditolak, tiket dibatalkan, dan Anda dapat mendaftar ulang selama pendaftaran masih dibuka dan kuota masih tersedia.</li>
+<li>Pendaftaran event gratis langsung terkonfirmasi.</li>
+<li>Setiap tiket yang terkonfirmasi memiliki satu kode QR unik yang hanya dapat dipakai untuk satu kali check-in. Check-in dibuka 2 jam sebelum acara dimulai, kecuali event menetapkan waktu lain, sampai acara selesai. Petugas event dapat melihat nama, nomor anggota, dan foto pemegang tiket untuk mencocokkan identitas.</li>
+<li>Tiket yang sudah dibayar tetap berlaku walaupun masa keanggotaan Anda berakhir sebelum acara, selama akun Anda tidak dibatasi dan event tidak dibatalkan.</li>
+</ul>
+<p>Rincian setiap event, termasuk waktu, lokasi, kuota, harga, dan ringkasan aturan pembatalannya, ditampilkan di halaman event. Pengurus dapat mengubah rincian event. Jika jadwal atau lokasi berubah, pemegang tiket diberi tahu melalui aplikasi.</p>
+
+<h3>Pembatalan dan pengembalian dana (refund)</h3>
+<ul>
+<li><strong>Event dibatalkan pengurus:</strong> seluruh QR tiket tidak berlaku dan setiap peserta yang sudah membayar mendapat refund penuh.</li>
+<li><strong>Anda membatalkan tiket:</strong> pembatalan dapat dilakukan di aplikasi sebelum acara dimulai dan sebelum check-in. Refund penuh diberikan bila pembatalan dilakukan paling lambat H-3, yaitu 72 jam sebelum waktu mulai acara; batas tepatnya ditampilkan di detail tiket. Pembatalan setelah batas itu tidak mendapat refund.</li>
+<li><strong>Bukti sedang ditinjau:</strong> selama bukti pembayaran tiket ditinjau pengurus, tiket belum dapat dibatalkan. Tunggu keputusan pengurus atau hubungi kami.</li>
+<li><strong>Event gratis:</strong> pembatalan melepas kursi untuk anggota lain dan tidak ada refund.</li>
+<li><strong>Akun dibatasi:</strong> tiket tidak berlaku, dan refund diputuskan pengurus kasus per kasus.</li>
+<li><strong>Akun dihapus:</strong> tiket aktif hangus. Jika Anda berhak atas refund, batalkan tiket dan tunggu sampai refund selesai sebelum menghapus akun.</li>
+</ul>
+<p>Refund diproses secara manual oleh bendahara melalui transfer paling lambat 7 hari kerja sejak pembatalan. Anda akan diminta mengisi rekening tujuan refund di aplikasi. Data rekening itu hanya digunakan untuk refund dan dihapus setelah refund selesai atau dibatalkan. Segera isi rekening tujuan agar refund dapat diproses tepat waktu, dan pantau statusnya di aplikasi.</p>
+<p>Pembatalan tiket tidak berarti dana sudah dikembalikan. Besar refund sama dengan harga tiket yang Anda bayarkan. Biaya lain yang Anda keluarkan, seperti transportasi atau penginapan, tidak termasuk. Keadaan yang tidak diatur di atas diputuskan pengurus kasus per kasus, dan keputusannya disampaikan kepada Anda.</p>
+
+<h2>7. Jejaring, chat, dan konten Anda</h2>
+<h3>Konten yang Anda kirim</h3>
+<p>Konten Anda meliputi foto profil, bio dan informasi profil lainnya, pesan dan gambar chat, nama dan foto grup, isi laporan, serta bukti pembayaran yang Anda unggah. Hak atas konten tersebut tetap menjadi milik Anda.</p>
+<p>Anda memberi KAPDH izin yang tidak eksklusif, bebas royalti, dan terbatas untuk menyimpan, menampilkan, dan memproses konten Anda sejauh diperlukan untuk menjalankan Layanan. Contohnya, menampilkan pesan kepada penerimanya, menampilkan profil Anda di Jejaring sesuai pengaturan privasi Anda, memverifikasi pembayaran, dan menangani laporan. Izin ini berakhir ketika konten atau akun Anda dihapus, kecuali untuk salinan yang masih perlu disimpan sebagaimana dijelaskan dalam Kebijakan Privasi.</p>
+<p>Anda menjamin bahwa Anda berhak mengunggah konten tersebut. Jangan mengunggah data pribadi atau foto orang lain tanpa izin orang yang bersangkutan.</p>
+
+<h3>Tanggung jawab atas konten</h3>
+<p>Anda bertanggung jawab atas konten yang Anda kirim. Kami tidak memeriksa setiap konten sebelum dikirim. Aplikasi dan web admin tidak menyediakan fitur bagi pengurus untuk membaca percakapan chat Anda. Pengurus hanya melihat pesan yang disertakan dalam laporan.</p>
+<p>Chat KAPDH tidak terenkripsi end-to-end. Jangan mengirim kata sandi, kode OTP, data rekening, atau informasi sensitif lainnya melalui chat.</p>
+
+<h3>Tanpa toleransi untuk konten tidak pantas dan pengguna yang berperilaku kasar</h3>
+<p><strong>KAPDH tidak menoleransi konten yang tidak pantas maupun pengguna yang melecehkan atau menyalahgunakan Layanan.</strong> Antara lain, Anda dilarang mengirim atau membagikan:</p>
+<ul>
+<li>spam, promosi massal, atau pesan berantai yang mengganggu;</li>
+<li>pelecehan, perundungan, intimidasi, atau ancaman kekerasan;</li>
+<li>ujaran kebencian berdasarkan suku, agama, ras, antargolongan, jenis kelamin, atau disabilitas;</li>
+<li>konten seksual, pornografi, atau konten yang mengeksploitasi anak dalam bentuk apa pun;</li>
+<li>konten yang menghasut atau memuliakan kekerasan;</li>
+<li>penipuan, pemalsuan identitas, atau ajakan investasi dan transaksi yang menyesatkan;</li>
+<li>data pribadi orang lain tanpa izin; dan</li>
+<li>konten lain yang melanggar hukum Republik Indonesia.</li>
+</ul>
+<p>Rincian aturan dan contohnya terdapat dalam <a href="https://kapdh.or.id/ketentuan-komunitas">Ketentuan Komunitas</a>. Atas pelanggaran, pengurus berizin dapat menghapus konten, memberi peringatan, atau membatasi akun. Untuk pelanggaran berat, misalnya ancaman terhadap keselamatan atau konten yang mengeksploitasi anak, akun dapat langsung dibatasi tanpa peringatan terlebih dahulu, dan kami dapat melaporkannya kepada aparat penegak hukum.</p>
+
+<h3>Melapor dan memblokir</h3>
+<ul>
+<li>Anda dapat melaporkan profil, pesan, atau grup dari dalam aplikasi. Identitas pelapor tidak diberitahukan kepada pihak yang dilaporkan, dan Anda dapat memantau status laporan Anda di aplikasi.</li>
+<li>Pengurus berizin menangani laporan melalui web admin. Laporan yang menyangkut ancaman atau keselamatan ditargetkan ditangani dalam 24 jam, sedangkan laporan lain dalam 2 hari kerja. Waktu tersebut adalah target layanan kami, bukan jaminan.</li>
+<li>Anda dapat memblokir anggota lain. Blokir berlaku dua arah untuk pesan langsung dan undangan grup, dan daftar blokir dapat Anda kelola di aplikasi. Di dalam grup, Anda juga dapat membisukan notifikasi atau keluar dari grup.</li>
+<li>Jangan menyalahgunakan fitur laporan, misalnya membuat laporan palsu dengan sengaja untuk merugikan orang lain.</li>
+</ul>
+
+<h2>8. Penggunaan yang dilarang</h2>
+<p>Selain larangan pada bagian 7 dan Ketentuan Komunitas, Anda dilarang:</p>
+<ul>
+<li>menyamar sebagai orang lain, termasuk sebagai pengurus KAPDH;</li>
+<li>mengakses atau mencoba mengakses akun orang lain;</li>
+<li>mengumpulkan, menyalin, atau mengekspor data anggota dari Jejaring atau chat, baik secara manual maupun otomatis, untuk pemasaran, spam, atau tujuan lain tanpa persetujuan anggota yang bersangkutan;</li>
+<li>menyebarluaskan data pribadi anggota yang Anda lihat di Layanan tanpa izin pemiliknya;</li>
+<li>menggunakan bot, skrip, atau cara otomatis lain untuk mengakses Layanan;</li>
+<li>mengakali, menguji tanpa izin, atau menembus sistem keamanan, batas penggunaan, maupun pembatasan akses Layanan;</li>
+<li>melakukan rekayasa balik, mengubah, atau menyalin aplikasi, kecuali sejauh diizinkan oleh hukum yang berlaku;</li>
+<li>mengirim virus, malware, atau kode berbahaya lainnya;</li>
+<li>mengganggu atau membebani Layanan secara berlebihan;</li>
+<li>menjual, menyewakan, atau memindahtangankan akun; dan</li>
+<li>menggunakan Layanan untuk kegiatan yang melanggar hukum.</li>
+</ul>
+
+<h2>9. Pembatasan akun, pemulihan, dan banding</h2>
+<h3>Peringatan dan pembatasan</h3>
+<p>Jika Anda melanggar Ketentuan Layanan, Ketentuan Komunitas, atau hukum yang berlaku, atau bila perlu untuk melindungi anggota lain, pengurus berizin dapat memberi peringatan atau membatasi akun Anda (suspend). Setiap keputusan dicatat beserta alasannya, dan Anda diberi tahu melalui aplikasi.</p>
+<ul>
+<li>Peringatan tidak mengubah masa keanggotaan Anda.</li>
+<li>Selama akun dibatasi, sesi Anda dicabut. KTA, pembayaran baru, Jejaring, chat, dan event tidak dapat digunakan. Profil Anda tidak tampil di Jejaring, verifikasi KTA menunjukkan status Tidak aktif, dan tiket Anda tidak berlaku.</li>
+<li>Tanggal masa keanggotaan tidak berubah selama pembatasan, dan masa keanggotaan tetap berjalan.</li>
+<li>Saat Anda masuk kembali, aplikasi menampilkan halaman pembatasan. Di halaman itu Anda dapat membaca keterangan dari pengurus, mengajukan banding, mengelola keamanan akun, membaca notifikasi, menghubungi bantuan, dan menghapus akun.</li>
+<li>Pembatasan berlaku sampai dicabut oleh pengurus. Pembayaran iuran yang disetujui tidak mencabut pembatasan.</li>
+</ul>
+
+<h3>Banding</h3>
+<p>Anda dapat mengajukan banding atas pembatasan yang sedang berlaku melalui halaman pembatasan di aplikasi. Setiap orang hanya dapat memiliki satu banding aktif pada satu waktu. Jelaskan alasan Anda dengan jelas. Pengurus menargetkan keputusan dalam 2 hari kerja. Banding dapat ditolak atau dikabulkan. Jika dikabulkan, pembatasan dicabut dan status keanggotaan Anda dihitung ulang. Bila masa keanggotaan Anda sudah berakhir saat itu, status Anda menjadi kedaluwarsa dan keanggotaan perlu diperpanjang.</p>
+<p>Keberatan atas peringatan dapat Anda sampaikan melalui kontak bantuan di bagian 18.</p>
+
+<h3>Penonaktifan akun dan pemulihan</h3>
+<p>Untuk penyalahgunaan berat atau keperluan investigasi keamanan, KAPDH dapat menonaktifkan akun sepenuhnya berdasarkan keputusan tertulis pengurus yang berwenang. Akun yang dinonaktifkan tidak dapat digunakan untuk masuk. Permintaan pemulihan atau penghapusan akun yang dinonaktifkan diajukan melalui kontak bantuan dan diproses setelah kepemilikan email akun diverifikasi.</p>
+<p>Jika Anda lupa kata sandi, gunakan fitur pemulihan kata sandi di aplikasi. Kode pemulihan dikirim ke email akun, dan setelah kata sandi diganti, semua sesi di perangkat lain akan dikeluarkan.</p>
+
+<h2>10. Menghapus akun</h2>
+<p>Anda dapat menghapus akun kapan saja, termasuk ketika akun sedang dibatasi:</p>
+<ul>
+<li>di aplikasi melalui menu <strong>Akun &gt; Hapus akun</strong>, dengan konfirmasi kata sandi; atau</li>
+<li>tanpa memasang aplikasi melalui <a href="https://kapdh.or.id/delete-account">kapdh.or.id/delete-account</a>, dengan verifikasi kode yang dikirim ke email akun.</li>
+</ul>
+<p>Sebelum Anda mengonfirmasi, kami menampilkan data yang akan dihapus atau dianonimkan, serta peringatan tentang tiket aktif, refund yang belum selesai, pembayaran yang masih menunggu, dan grup yang Anda kelola sendirian.</p>
+<p>Setelah Anda mengonfirmasi:</p>
+<ul>
+<li>Anda langsung dikeluarkan dari semua perangkat, dan nomor permintaan penghapusan ditampilkan;</li>
+<li>permintaan tidak dapat dibatalkan;</li>
+<li>penghapusan selesai paling lambat 7 hari kalender, dan kami mengirim email pemberitahuan setelah penghapusan selesai;</li>
+<li>tiket aktif hangus, dan iuran yang telah disetujui tidak dikembalikan;</li>
+<li>penghapusan tidak menunggu refund yang sedang berjalan, dan setelah akun dihapus bendahara tidak dapat lagi menghubungi Anda, sehingga sebaiknya Anda menunggu sampai refund selesai; dan</li>
+<li>keanggotaan Anda berakhir. Jika kelak Anda mendaftar kembali, Anda mendaftar sebagai akun baru dengan nomor anggota baru dan iuran pendaftaran baru. Riwayat akun lama tidak dapat dipulihkan atau dipindahkan.</li>
+</ul>
+<p>Sebagian catatan, seperti catatan transaksi, tetap disimpan dalam bentuk anonim untuk keperluan pembukuan dan akuntabilitas, sebagaimana dijelaskan dalam <a href="https://kapdh.or.id/kebijakan-privasi">Kebijakan Privasi</a>.</p>
+
+<h2>11. Data pribadi</h2>
+<p>Kami memproses data pribadi Anda sesuai Undang-Undang Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi dan peraturan pelaksananya. <a href="https://kapdh.or.id/kebijakan-privasi">Kebijakan Privasi</a> menjelaskan tujuan pemrosesan, jenis data, dasar pemrosesan, pihak yang terlibat, masa penyimpanan, cara kami melindungi data, serta hak Anda dan cara menggunakannya.</p>
+<ul>
+<li>Untuk membuat akun dan mengelola keanggotaan, kami memerlukan nama lengkap, jenis kelamin, email, kata sandi, angkatan, serta kelas masuk dan kelas keluar. Untuk memverifikasi iuran dan tiket, kami memerlukan bukti pembayaran. Tanpa data tersebut, kami tidak dapat membuat akun atau memproses keanggotaan dan tiket Anda.</li>
+<li>Data profil lain, seperti nomor telepon, kota, bio, pendidikan terakhir, media sosial, profesi, keahlian, dan foto, bersifat opsional. Anda dapat mengatur apakah profil, nomor telepon, email, dan media sosial Anda ditampilkan kepada anggota lain.</li>
+<li>Pengaturan privasi tersebut berlaku terhadap sesama anggota. Pengurus berizin tetap dapat mengakses data Anda untuk keperluan administrasi perkumpulan yang tercatat.</li>
+<li>Kami tidak meminta NIK atau nomor KTP.</li>
+</ul>
+<p>Kami berkomitmen memproses data pribadi Anda secara sah, menjaga keamanannya, dan memenuhi hak Anda sesuai peraturan perundang-undangan. Sebaliknya, Anda wajib menghormati data pribadi anggota lain yang Anda lihat melalui Layanan. Gunakan data itu hanya untuk menjalin silaturahmi, dan jangan menyebarkannya tanpa izin pemiliknya.</p>
+
+<h2>12. Hak kekayaan intelektual</h2>
+<p>Nama dan logo KAPDH, desain dan perangkat lunak aplikasi, serta konten resmi yang kami terbitkan di Layanan dimiliki oleh KAPDH atau pemberi lisensinya dan dilindungi hukum. Komponen perangkat lunak sumber terbuka di dalam aplikasi tunduk pada lisensinya masing-masing.</p>
+<p>KAPDH memberi Anda izin yang terbatas, tidak eksklusif, tidak dapat dialihkan, dan dapat dicabut untuk memasang dan menggunakan aplikasi pada perangkat yang Anda miliki atau kuasai, untuk keperluan pribadi Anda sebagai alumni dan anggota. Anda tidak boleh menyalin, mengubah, mendistribusikan, menjual, atau menggunakan nama dan logo KAPDH tanpa izin tertulis dari pengurus.</p>
+<p>Jika Anda yakin ada konten di Layanan yang melanggar hak kekayaan intelektual Anda, hubungi kami melalui kontak di bagian 18.</p>
+
+<h2>13. Ketersediaan dan perubahan Layanan</h2>
+<ul>
+<li>Kami berupaya agar Layanan berjalan baik, tetapi tidak dapat menjamin Layanan selalu tersedia tanpa gangguan. Selama pemeliharaan, aplikasi menampilkan pemberitahuan beserta perkiraan waktu dan kanal bantuan.</li>
+<li>Sebagian besar fitur memerlukan koneksi internet. Verifikasi KTA oleh pihak lain selalu memerlukan koneksi ke server kami.</li>
+<li>Jika versi aplikasi Anda sudah tidak didukung, aplikasi akan meminta Anda memperbaruinya melalui toko aplikasi.</li>
+<li>Notifikasi keamanan dan akun selalu dikirim ke kotak masuk aplikasi dan email Anda karena berkaitan dengan keamanan akun Anda. Notifikasi lain dapat Anda atur di aplikasi. Bila notifikasi push tersedia di versi aplikasi Anda, izinnya dapat Anda tolak melalui pengaturan perangkat. Kotak masuk di aplikasi menjadi catatan resmi atas pemberitahuan kami.</li>
+<li>Kami dapat menambah, mengubah, atau menghentikan fitur Layanan. Perubahan penting akan kami umumkan melalui aplikasi atau situs KAPDH.</li>
+</ul>
+
+<h2>14. Batasan tanggung jawab</h2>
+<p>Layanan ini adalah sarana silaturahmi dan administrasi keanggotaan. KAPDH bukan pihak dalam kesepakatan atau transaksi antaranggota di luar fitur pembayaran resmi Layanan, seperti kerja sama usaha, jual beli, pinjam-meminjam, atau penggalangan dana pribadi. Informasi profil diisi sendiri oleh setiap anggota, sehingga kami tidak menjamin kebenaran informasi profil anggota lain.</p>
+<p>Sejauh diizinkan oleh hukum Republik Indonesia, KAPDH tidak bertanggung jawab atas kerugian tidak langsung, seperti kehilangan keuntungan atau peluang usaha. KAPDH juga tidak bertanggung jawab atas kerugian yang timbul dari:</p>
+<ul>
+<li>perbuatan atau konten pengguna lain;</li>
+<li>kata sandi atau kode OTP yang Anda berikan kepada orang lain;</li>
+<li>gangguan perangkat, jaringan, atau layanan pihak ketiga yang berada di luar kendali wajar kami; atau</li>
+<li>keadaan kahar, seperti bencana alam, wabah, gangguan listrik atau telekomunikasi berskala luas, atau tindakan pemerintah.</li>
+</ul>
+<p>Ketentuan ini tidak membatasi tanggung jawab KAPDH atas kerugian yang timbul karena kesengajaan atau kelalaian berat KAPDH. Ketentuan ini juga tidak mengurangi kewajiban KAPDH sebagai pengendali data pribadi menurut Undang-Undang Nomor 27 Tahun 2022, maupun hak Anda yang menurut peraturan perundang-undangan tidak dapat dikesampingkan.</p>
+
+<h2>15. Aplikasi dari App Store dan Google Play</h2>
+<p>Ketentuan Layanan ini dibuat antara Anda dan KAPDH, bukan dengan Apple Inc. atau Google LLC. KAPDH, bukan Apple maupun Google, bertanggung jawab atas aplikasi KAPDH dan isinya. Pengunduhan aplikasi juga tunduk pada ketentuan toko aplikasi yang Anda gunakan.</p>
+<p>Jika Anda mengunduh aplikasi dari Apple App Store, ketentuan berikut juga berlaku:</p>
+<ul>
+<li>izin penggunaan aplikasi terbatas pada perangkat bermerek Apple yang Anda miliki atau kuasai, sesuai Aturan Penggunaan dalam ketentuan layanan media Apple;</li>
+<li>pemeliharaan dan dukungan aplikasi menjadi tanggung jawab KAPDH, dan Apple tidak berkewajiban memberikannya;</li>
+<li>aplikasi KAPDH diunduh tanpa biaya, dan sejauh diizinkan hukum, Apple tidak memiliki kewajiban jaminan apa pun atas aplikasi;</li>
+<li>KAPDH, bukan Apple, yang menangani klaim terkait aplikasi, termasuk klaim tanggung jawab produk, klaim bahwa aplikasi tidak memenuhi ketentuan hukum atau peraturan, klaim perlindungan konsumen dan privasi, serta klaim pelanggaran hak kekayaan intelektual pihak ketiga;</li>
+<li>Anda menyatakan bahwa Anda tidak berada di negara yang dikenai embargo oleh Pemerintah Amerika Serikat atau yang ditetapkan sebagai negara pendukung terorisme, dan tidak tercantum dalam daftar pihak yang dilarang atau dibatasi oleh Pemerintah Amerika Serikat; dan</li>
+<li>Apple dan anak perusahaannya adalah pihak ketiga penerima manfaat dari ketentuan ini dan berhak menegakkannya terhadap Anda.</li>
+</ul>
+
+<h2>16. Hukum yang berlaku dan penyelesaian sengketa</h2>
+<p>Ketentuan ini tunduk pada dan ditafsirkan berdasarkan hukum Republik Indonesia.</p>
+<p>Jika Anda memiliki keluhan, sampaikan terlebih dahulu kepada kami melalui kontak di bagian 18. Setiap perselisihan akan diselesaikan lebih dahulu secara musyawarah untuk mufakat dalam waktu 30 hari kalender sejak salah satu pihak menyampaikan pemberitahuan tertulis. Jika musyawarah tidak mencapai mufakat, perselisihan diselesaikan melalui pengadilan negeri yang berwenang atau melalui cara penyelesaian sengketa lain yang disepakati para pihak, sesuai peraturan perundang-undangan.</p>
+<p>Ketentuan ini tidak mengurangi hak Anda untuk menyampaikan pengaduan kepada lembaga yang berwenang di bidang pelindungan data pribadi, sebagaimana dijelaskan dalam Kebijakan Privasi.</p>
+<p>Ketentuan ini dibuat dalam bahasa Indonesia. Jika ada bagian ketentuan ini yang dinyatakan tidak sah atau tidak dapat dilaksanakan, bagian lainnya tetap berlaku.</p>
+
+<h2>17. Perubahan ketentuan</h2>
+<p>Kami dapat memperbarui Ketentuan Layanan ini untuk menyesuaikan dengan perubahan Layanan, kebijakan perkumpulan, atau peraturan perundang-undangan. Sebelum perubahan berlaku, kami akan mengumumkannya melalui aplikasi, misalnya melalui berita atau notifikasi, dan memperbarui halaman ini beserta tanggal berlakunya. Perubahan yang diwajibkan oleh hukum atau yang mendesak demi keamanan dapat berlaku lebih cepat, dan akan kami umumkan sesegera mungkin.</p>
+<p>Jika Anda tidak menyetujui perubahan, Anda dapat berhenti menggunakan Layanan dan menghapus akun sesuai bagian 10. Jika Anda tetap menggunakan Layanan setelah tanggal berlaku perubahan, Anda dianggap menyetujui Ketentuan Layanan yang telah diperbarui.</p>
+
+<h2>18. Hubungi kami</h2>
+<p>Untuk pertanyaan, keluhan, banding atas peringatan, atau permintaan terkait akun dan data pribadi, hubungi kami melalui:</p>
+<ul>
+<li>email <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a>; atau</li>
+<li>nomor WhatsApp dukungan yang tercantum di aplikasi dan situs KAPDH.</li>
+</ul>
+<p>Pertanyaan umum dijawab pada hari kerja. Permintaan terkait data pribadi ditanggapi sesuai jangka waktu dalam Kebijakan Privasi. Sertakan email akun Anda dan, bila ada, jenis pembayaran, nominal, dan tanggal transfer, atau nomor permintaan penghapusan, agar kami dapat membantu lebih cepat. Panduan penggunaan aplikasi tersedia di halaman <a href="https://kapdh.or.id/bantuan">Bantuan</a>.</p>
+<p>Ingat, pengurus KAPDH tidak pernah meminta kata sandi atau kode OTP Anda.</p>
+    </div>
+    <p class="akhir">Akhir isi halaman Ketentuan Layanan. <a href="#atas">Kembali ke atas</a></p>
+  </section>
+
+  <section class="halaman" id="hal-ketentuan-komunitas" aria-labelledby="judul-ketentuan-komunitas">
+    <header class="halaman-kepala">
+      <div>
+        <p class="nomor">Halaman 3 dari 5</p>
+        <h1 id="judul-ketentuan-komunitas">Ketentuan Komunitas</h1>
+        <p class="meta">Judul di web admin: <strong>Ketentuan Komunitas</strong> &middot; slug: <code>ketentuan-komunitas</code></p>
+      </div>
+      <div class="aksi">
+        <button type="button" class="tombol utama" data-salin="ketentuan-komunitas">Salin isi</button>
+        <button type="button" class="tombol" data-pilih="ketentuan-komunitas">Pilih isi</button>
+        <span class="status" id="status-ketentuan-komunitas" role="status" aria-live="polite"></span>
+      </div>
+    </header>
+    <div class="isi" id="isi-ketentuan-komunitas">
+<p>Aplikasi KAPDH adalah ruang bersama bagi alumni Pondok Pesantren Darel Hikmah untuk menyambung silaturahmi, saling mengenal lintas angkatan, dan saling membantu. Agar ruang ini tetap aman, nyaman, dan bermartabat, setiap anggota diminta mematuhi Ketentuan Komunitas berikut saat menggunakan profil, Jejaring, dan fitur pesan di aplikasi.</p>
+<p><strong>Berlaku sejak 15 Oktober 2026.</strong></p>
+
+<h2>1. Ruang lingkup</h2>
+<p>Ketentuan Komunitas ini berlaku untuk semua konten dan perilaku di fitur komunitas aplikasi KAPDH, yaitu:</p>
+<ul>
+<li><strong>Profil anggota</strong>: foto profil, bio, kota, pendidikan terakhir, profesi, keahlian, nomor telepon, dan tautan media sosial yang Anda isi.</li>
+<li><strong>Jejaring</strong>: direktori alumni beserta data anggota lain yang Anda lihat di dalamnya.</li>
+<li><strong>Pesan dan Pesan Grup</strong>: pesan teks, gambar, balasan, dan reaksi, serta nama dan foto grup.</li>
+</ul>
+<p>Jejaring dan fitur pesan adalah layanan bagi anggota KAPDH yang keanggotaannya aktif dan tidak sedang dibatasi.</p>
+<p>Ketentuan ini berlaku bersama <a href="https://kapdh.or.id/ketentuan">Ketentuan Layanan</a> dan <a href="https://kapdh.or.id/kebijakan-privasi">Kebijakan Privasi</a> KAPDH. Hal yang tidak diatur di sini mengikuti kedua dokumen tersebut.</p>
+<p>Ketentuan ini juga berlaku bila data atau konten yang Anda peroleh dari aplikasi digunakan di luar aplikasi, misalnya nomor telepon anggota yang disebarkan ke grup percakapan lain.</p>
+
+<h2>2. Nilai yang kita jaga</h2>
+<p>Komunitas KAPDH berpijak pada akhlak yang kita pelajari bersama di pesantren. Empat nilai berikut menjadi pegangan setiap anggota:</p>
+<ul>
+<li><strong>Adab.</strong> Bertutur kata santun, menghormati yang lebih tua, menyayangi yang lebih muda, dan berbeda pendapat dengan cara yang baik.</li>
+<li><strong>Ukhuwah.</strong> Menjaga persaudaraan lintas angkatan, saling menolong, dan menjauhi hal yang memecah belah.</li>
+<li><strong>Amanah.</strong> Menjaga kepercayaan, termasuk data pribadi dan isi percakapan anggota lain.</li>
+<li><strong>Tabayyun.</strong> Memeriksa kebenaran sebuah informasi sebelum mempercayai atau menyebarkannya.</li>
+</ul>
+
+<h2>3. Yang diharapkan dari setiap anggota</h2>
+<ul>
+<li>Gunakan nama asli dan foto profil yang pantas. Akun hanya untuk Anda sendiri dan tidak boleh dipinjamkan.</li>
+<li>Hubungi anggota lain dengan sopan dan untuk tujuan yang wajar, seperti silaturahmi, kegiatan alumni, atau jejaring profesional. Hormati anggota yang tidak membalas atau tidak ingin dihubungi.</li>
+<li>Minta izin sebelum membagikan foto, kontak, atau isi percakapan anggota lain.</li>
+<li>Gunakan grup sesuai tujuannya dan hormati aturan yang disepakati di grup tersebut.</li>
+<li>Bila menemukan pelanggaran, laporkan melalui fitur laporan. Jangan membalas pelanggaran dengan pelanggaran.</li>
+</ul>
+<h3>Tanggung jawab admin grup</h3>
+<p>Anggota yang membuat grup menjadi admin grup dan dapat menunjuk anggota lain sebagai admin. Admin grup mengundang anggota, mengelola nama dan foto grup, serta dapat mengeluarkan anggota dari grup.</p>
+<p>Undangan grup baru berlaku setelah diterima oleh yang diundang. Setiap anggota bebas menolak undangan atau keluar dari grup. Admin grup diharapkan menjaga grupnya tetap sesuai Ketentuan Komunitas, sedangkan penegakan ketentuan ini tetap menjadi wewenang pengurus KAPDH.</p>
+
+<h2>4. Perilaku dan konten yang dilarang</h2>
+<p>Anda dilarang membuat, mengirim, menampilkan, atau menyebarkan konten berikut, serta dilarang melakukan perilaku berikut.</p>
+
+<h3>Spam dan promosi yang mengganggu</h3>
+<ul>
+<li>Pesan yang sama atau serupa yang dikirim berulang kali atau secara massal kepada banyak anggota.</li>
+<li>Promosi, penawaran usaha, ajakan bergabung dengan skema pemasaran berjenjang, atau ajakan investasi yang tidak diminta penerimanya.</li>
+<li>Pesan berantai, tautan yang menyesatkan, atau ajakan memasang aplikasi yang tidak jelas asalnya.</li>
+</ul>
+<p>Berbagi informasi usaha atau lowongan kerja tetap diperbolehkan bila dilakukan secukupnya, relevan dengan percakapan, dan tidak mengganggu penerimanya.</p>
+
+<h3>Pelecehan dan perundungan</h3>
+<ul>
+<li>Menghina, merendahkan, mengejek, atau mempermalukan orang lain, termasuk terkait fisik, angkatan, latar belakang keluarga, atau pekerjaan.</li>
+<li>Terus menghubungi anggota yang sudah menolak atau meminta berhenti dihubungi, termasuk melalui akun lain.</li>
+<li>Menyerang atau mengucilkan seseorang secara beramai-ramai.</li>
+<li>Komentar, ajakan, atau rayuan bernuansa seksual yang tidak diinginkan.</li>
+</ul>
+
+<h3>Ujaran kebencian dan SARA</h3>
+<ul>
+<li>Konten yang menyerang, merendahkan, atau menghasut kebencian dan permusuhan terhadap seseorang atau kelompok berdasarkan suku, agama, ras, antargolongan, jenis kelamin, atau disabilitas.</li>
+<li>Penghinaan terhadap ajaran, tokoh, atau simbol agama mana pun.</li>
+</ul>
+
+<h3>Konten seksual</h3>
+<ul>
+<li>Pornografi, ketelanjangan, serta gambar atau teks yang bersifat seksual secara eksplisit.</li>
+<li>Meminta, menawarkan, atau menyebarkan konten intim, termasuk menyebarkan konten intim seseorang tanpa persetujuannya.</li>
+</ul>
+
+<h3>Perlindungan anak</h3>
+<p>KAPDH melarang keras segala bentuk eksploitasi dan pelecehan seksual terhadap anak, termasuk:</p>
+<ul>
+<li>materi dalam bentuk apa pun yang menggambarkan pelecehan atau eksploitasi seksual anak;</li>
+<li>mendekati, membujuk, atau memperdaya anak untuk tujuan seksual;</li>
+<li>memeras seseorang dengan ancaman menyebarkan gambar intimnya, serta segala bentuk perdagangan anak.</li>
+</ul>
+<p>Pesan atau isi profil seperti ini dihapus, akun pelakunya dibatasi tanpa peringatan terlebih dahulu, dan pengurus meneruskan informasinya kepada aparat penegak hukum sesuai peraturan perundang-undangan.</p>
+<p>Jangan meneruskan, menyimpan, atau menyebarkan ulang materi tersebut, termasuk dengan alasan sebagai bukti. Cukup laporkan pesannya melalui fitur laporan. Salinan yang diperlukan untuk pemeriksaan tersimpan otomatis sebagai bukti laporan.</p>
+
+<h3>Ancaman dan kekerasan</h3>
+<ul>
+<li>Ancaman untuk melukai, membunuh, atau mencelakai seseorang, termasuk ancaman terhadap keluarga atau hartanya.</li>
+<li>Ajakan, dukungan, atau pujian terhadap kekerasan dan terorisme.</li>
+<li>Konten yang mendorong seseorang menyakiti diri sendiri.</li>
+<li>Gambar kekerasan atau sadisme yang dimaksudkan untuk mengejutkan atau menakut-nakuti.</li>
+</ul>
+
+<h3>Penipuan</h3>
+<ul>
+<li>Meminta uang, pinjaman, atau sumbangan dengan cerita bohong, atau dengan mengatasnamakan KAPDH, pengurus, panitia acara, atau pesantren tanpa wewenang.</li>
+<li>Menawarkan investasi, arisan, undian, atau pekerjaan palsu.</li>
+<li>Meminta kata sandi, kode OTP, atau data rekening anggota lain, atau mengirim tautan yang menyamar sebagai situs resmi.</li>
+</ul>
+<p>Pengurus KAPDH tidak pernah meminta kata sandi atau kode OTP Anda. Bila Anda menerima permintaan uang atau data yang mengatasnamakan KAPDH dan merasa ragu, konfirmasikan lebih dahulu melalui <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a>.</p>
+
+<h3>Peniruan identitas</h3>
+<ul>
+<li>Mengaku sebagai orang lain, termasuk sebagai alumni lain, pengurus KAPDH, atau pengasuh dan guru pesantren.</li>
+<li>Mendaftar dengan data alumni orang lain atau memakai akun milik orang lain.</li>
+<li>Memakai foto orang lain sebagai foto profil, atau memakai, memalsukan, atau memperlihatkan KTA dan kode QR milik orang lain sebagai milik sendiri.</li>
+</ul>
+
+<h3>Menyebarkan data pribadi orang lain</h3>
+<ul>
+<li>Menyebarkan nomor telepon, email, alamat, foto, nomor anggota, atau data pribadi lain milik anggota tanpa persetujuannya, baik di dalam maupun di luar aplikasi.</li>
+<li>Menyebarkan tangkapan layar percakapan pribadi atau grup untuk mempermalukan atau merugikan seseorang.</li>
+<li>Menyalin, mengumpulkan, atau mengekspor data anggota dari Jejaring secara massal, termasuk dengan alat otomatis, atau memakainya untuk promosi, menjualnya, atau menyerahkannya kepada pihak lain.</li>
+<li>Menyebarkan dokumen identitas, data rekening, atau data keuangan orang lain.</li>
+</ul>
+<p>Data pribadi dilindungi oleh Undang-Undang Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi. Menyampaikan informasi kepada pengurus melalui fitur laporan, atau kepada aparat penegak hukum, tidak termasuk pelanggaran ini.</p>
+
+<h3>Konten melanggar hukum lainnya</h3>
+<ul>
+<li>Promosi atau ajakan berjudi, termasuk judi daring.</li>
+<li>Jual beli atau promosi narkotika, obat terlarang, senjata, atau barang ilegal lainnya.</li>
+<li>Berita bohong atau fitnah yang dapat merugikan orang lain atau menimbulkan keresahan.</li>
+<li>Konten yang melanggar hak cipta atau hak kekayaan intelektual orang lain.</li>
+<li>Virus, perangkat lunak berbahaya, atau tautan yang dirancang untuk mencuri data.</li>
+<li>Konten lain yang dilarang oleh peraturan perundang-undangan Republik Indonesia.</li>
+</ul>
+
+<h3>Penyalahgunaan fitur</h3>
+<ul>
+<li>Mengirim laporan palsu atau laporan berulang dengan tujuan mengganggu atau menjatuhkan anggota lain.</li>
+<li>Membuat atau memakai akun lain untuk menghindari blokir atau pembatasan.</li>
+<li>Mengganggu sistem, membobolnya, atau mencoba mengakses bagian sistem dan data yang bukan hak Anda.</li>
+</ul>
+
+<h2>5. Tidak ada toleransi untuk konten tidak pantas</h2>
+<p>KAPDH tidak menoleransi konten yang tidak pantas, anggota yang berperilaku kasar, maupun penyalahgunaan layanan. Setiap laporan ditinjau oleh pengurus, dan setiap pelanggaran yang terbukti ditindak sesuai bagian 9.</p>
+<p>Pelanggaran berat, seperti eksploitasi anak, ancaman terhadap keselamatan, atau penipuan, dapat langsung dikenai pembatasan akun tanpa peringatan terlebih dahulu.</p>
+<p>Tindakan dari KAPDH tidak menghapus tanggung jawab hukum pelaku. Untuk pelanggaran yang diduga merupakan tindak pidana, pengurus dapat meneruskan informasi yang diperlukan kepada aparat penegak hukum sesuai peraturan perundang-undangan.</p>
+
+<h2>6. Melindungi diri Anda</h2>
+
+<h3>Memblokir anggota</h3>
+<p>Anda dapat memblokir anggota lain kapan saja:</p>
+<ul>
+<li>dari profil anggota di Jejaring: ketuk ikon titik tiga di kanan atas, lalu pilih <strong>Blokir</strong>; atau</li>
+<li>dari percakapan langsung: ketuk nama anggota di bagian atas percakapan atau ikon info untuk membuka <strong>Info Percakapan</strong>, lalu pilih opsi <strong>Blokir</strong> untuk anggota tersebut.</li>
+</ul>
+<p>Setelah Anda memblokir seseorang:</p>
+<ul>
+<li>Anda dan anggota tersebut tidak dapat saling mengirim pesan langsung, reaksi di percakapan langsung, atau undangan grup. Undangan grup yang masih tertunda di antara Anda berdua dibatalkan.</li>
+<li>Profil Anda tidak lagi tampil di Jejaring bagi anggota yang Anda blokir.</li>
+<li>Riwayat pesan lama tetap tersimpan.</li>
+<li>Anggota yang Anda blokir tidak diberi tahu.</li>
+</ul>
+<p>Blokir tidak menyembunyikan pesan di grup yang sama-sama Anda ikuti. Di grup, gunakan bisukan, keluar grup, atau laporan.</p>
+<p>Daftar anggota yang Anda blokir dapat dilihat, dan blokirnya dapat dibuka, di <strong>Akun &gt; Anggota diblokir</strong>. Undangan grup yang sudah dibatalkan tidak dipulihkan ketika blokir dibuka.</p>
+
+<h3>Membisukan percakapan dan keluar dari grup</h3>
+<ul>
+<li>Di <strong>Info Percakapan</strong>, aktifkan <strong>Bisukan notifikasi</strong> untuk menahan notifikasi push dari percakapan tersebut. Pesan tetap masuk.</li>
+<li>Pilih <strong>Keluar grup</strong> kapan saja. Setelah keluar, Anda tidak lagi menerima pesan dan riwayat grup tidak dapat dibuka lagi. Bila Anda admin terakhir, tunjuk admin pengganti lebih dahulu.</li>
+<li>Undangan grup yang tidak Anda kehendaki dapat ditolak.</li>
+</ul>
+
+<h3>Mengatur privasi profil</h3>
+<p>Di <strong>Akun &gt; Privasi profil</strong>, Anda dapat memilih untuk tampil atau tidak di Jejaring, serta menampilkan atau menyembunyikan nomor telepon, email, dan media sosial Anda. Secara bawaan, nomor telepon, email, dan media sosial tidak ditampilkan kepada anggota lain.</p>
+<p>Pengaturan ini berlaku terhadap sesama anggota. Pengurus yang berwenang tetap dapat mengakses data Anda untuk keperluan administrasi organisasi sebagaimana dijelaskan dalam <a href="https://kapdh.or.id/kebijakan-privasi">Kebijakan Privasi</a>.</p>
+
+<h3>Perlindungan otomatis</h3>
+<p>Aplikasi secara otomatis menolak pesan dan nama grup yang memuat karakter tersembunyi atau jenis tautan berbahaya tertentu, yang dapat dipakai untuk menyamarkan isi atau menjalankan kode. Sistem juga membatasi jumlah pencarian dan pembukaan profil dalam rentang waktu tertentu untuk mencegah pengumpulan data anggota secara massal.</p>
+<p>Penilaian atas isi pesan dan profil selebihnya dilakukan oleh pengurus berdasarkan laporan anggota. Karena itu, laporan Anda sangat berarti bagi keamanan komunitas.</p>
+
+<h3>Berhati-hati saat berbagi</h3>
+<p>Pesan di aplikasi KAPDH tidak menggunakan enkripsi ujung ke ujung (<em>end-to-end encryption</em>). Jangan mengirim kata sandi, kode OTP, data rekening, atau dokumen identitas melalui pesan.</p>
+
+<h2>7. Cara melaporkan</h2>
+<p>Fitur laporan tersedia bagi anggota aktif di aplikasi. Anda dapat melaporkan pesan, anggota, atau grup:</p>
+<ul>
+<li><strong>Pesan</strong>: tekan lama pesan yang ingin dilaporkan, lalu pilih <strong>Laporkan pesan</strong>. Paling banyak lima pesan tepat sebelum pesan yang dilaporkan dalam percakapan yang sama ikut disertakan otomatis sebagai konteks.</li>
+<li><strong>Anggota</strong>: buka profilnya di Jejaring, ketuk ikon titik tiga di kanan atas, lalu pilih <strong>Laporkan</strong>. Dari percakapan langsung, Anda juga dapat membuka <strong>Info Percakapan</strong> lalu memilih <strong>Laporkan pengguna</strong>.</li>
+<li><strong>Grup</strong>: buka <strong>Info Percakapan</strong> grup dengan mengetuk nama grup di bagian atas percakapan, lalu pilih <strong>Laporkan grup</strong>.</li>
+</ul>
+<p>Pilih kategori yang paling sesuai, tambahkan penjelasan bila perlu (paling banyak 2.000 karakter), lalu ketuk <strong>Kirim laporan</strong>.</p>
+
+<h3>Memilih kategori</h3>
+<ul>
+<li><strong>Spam</strong>: pesan massal, berulang, atau promosi yang tidak diminta.</li>
+<li><strong>Pelecehan atau perundungan</strong>: hinaan, intimidasi, atau gangguan yang terus-menerus.</li>
+<li><strong>Ujaran kebencian</strong>: serangan atau hasutan berbasis SARA, jenis kelamin, atau disabilitas.</li>
+<li><strong>Konten seksual</strong>: pornografi, ketelanjangan, atau ajakan seksual.</li>
+<li><strong>Ancaman kekerasan atau keselamatan</strong>: ancaman terhadap keselamatan seseorang, ajakan menyakiti diri, atau konten yang membahayakan anak. Laporan kategori ini ditangani dengan prioritas.</li>
+<li><strong>Penipuan</strong>: permintaan uang, investasi palsu, atau upaya mencuri data akun.</li>
+<li><strong>Lainnya</strong>: misalnya peniruan identitas, penyebaran data pribadi, atau konten melanggar hukum lainnya. Untuk kategori ini, penjelasan wajib diisi minimal 10 karakter.</li>
+</ul>
+
+<h3>Memantau laporan Anda</h3>
+<p>Semua laporan yang Anda kirim tercatat di <strong>Akun &gt; Laporan saya</strong> dengan status <em>Menunggu tinjauan</em>, <em>Sedang ditinjau</em>, <em>Selesai</em>, atau <em>Ditutup</em>, beserta target waktu penanganannya. Setelah laporan diputus, Anda menerima pemberitahuan bahwa laporan selesai ditinjau.</p>
+
+<h3>Melapor di luar aplikasi</h3>
+<p>Bila Anda tidak dapat memakai fitur laporan di aplikasi, misalnya karena keanggotaan Anda sedang tidak aktif, kirim laporan ke <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a>. Sebaiknya kirim dari alamat email akun Anda, lalu sebutkan nama anggota atau grup yang dilaporkan, waktu kejadian, dan uraian singkat masalahnya. Laporan melalui email dijawab pada hari kerja, sedangkan permintaan terkait data pribadi ditanggapi sesuai jangka waktu dalam Kebijakan Privasi.</p>
+<p>Untuk konten yang melibatkan eksploitasi anak, jangan melampirkan tangkapan layarnya. Cukup sebutkan nama akun, nama grup bila ada, dan waktu kejadian.</p>
+
+<h3>Keadaan darurat</h3>
+<p>Fitur laporan bukan layanan darurat. Bila ada bahaya langsung terhadap keselamatan seseorang, segera hubungi layanan darurat 112 atau Kepolisian di 110.</p>
+
+<h2>8. Bagaimana pengurus meninjau laporan</h2>
+<ol>
+<li>Laporan masuk ke antrean moderasi di sistem admin KAPDH. Antrean ini hanya dapat diakses pengurus yang diberi izin moderasi. Aplikasi anggota tidak memiliki menu pengurus.</li>
+<li>Pengurus meninjau bukti laporan, yaitu salinan konten yang dilaporkan yang diambil saat laporan dikirim, konteks pesan bila ada, data profil atau grup secukupnya, serta riwayat tindakan moderasi sebelumnya terhadap pihak yang dilaporkan.</li>
+<li>Sistem admin tidak menyediakan akses bagi pengurus untuk membaca percakapan anggota. Pengurus hanya melihat pesan yang terekam dalam bukti laporan, dan setiap pembukaan bukti tercatat dalam log audit.</li>
+<li>Pengurus yang akun alumninya menjadi pelapor atau pihak yang dilaporkan tidak dapat menangani laporan tersebut.</li>
+<li>Pengurus memutuskan ada atau tidaknya pelanggaran serta tindakan yang diambil. Setiap keputusan dicatat beserta alasan, waktu, dan pengurus yang memutuskannya.</li>
+</ol>
+
+<h3>Target waktu penanganan</h3>
+<p>Pengurus menargetkan penanganan laporan sebagai berikut, dihitung sejak laporan dikirim:</p>
+<ul>
+<li><strong>Ancaman kekerasan atau keselamatan</strong>: paling lambat 24 jam.</li>
+<li><strong>Kategori lain</strong>: paling lambat 2 hari kerja (Senin sampai Jumat, WIB).</li>
+</ul>
+<p>Target untuk setiap laporan tampil di detail laporan pada <strong>Laporan saya</strong>.</p>
+
+<h3>Pemberitahuan hasil</h3>
+<ul>
+<li><strong>Pelapor</strong> menerima pemberitahuan bahwa laporannya selesai ditinjau. Di Laporan saya tercantum apakah pengurus telah mengambil tindakan atau tidak ada tindakan yang diperlukan. Demi privasi semua pihak, rincian tindakan terhadap pihak lain tidak disampaikan.</li>
+<li><strong>Pihak yang dilaporkan</strong> tidak diberi tahu adanya laporan maupun identitas pelapor. Bila dikenai peringatan atau pembatasan akun, ia menerima pemberitahuan berisi keterangan dari pengurus melalui Notifikasi di aplikasi dan email.</li>
+</ul>
+
+<h2>9. Tindakan atas pelanggaran</h2>
+<p>Tindakan disesuaikan dengan berat pelanggaran, dampaknya terhadap anggota lain, dan riwayat pelanggaran sebelumnya. Tindakan tidak selalu berurutan. Pelanggaran berat dapat langsung dikenai pembatasan akun.</p>
+
+<h3>Peringatan</h3>
+<p>Pengurus mengirim peringatan tertulis melalui Notifikasi di aplikasi dan email, disertai keterangan pelanggaran dan tautan ke Ketentuan Komunitas. Peringatan tercatat dalam riwayat moderasi akun dan tidak mengubah masa keanggotaan.</p>
+
+<h3>Penghapusan konten</h3>
+<p>Pengurus dapat menghapus pesan yang dilaporkan. Isinya hilang bagi semua peserta percakapan dan diganti keterangan bahwa pesan telah dihapus. Pengurus juga dapat menghapus isi profil yang melanggar, seperti foto profil, bio, atau tautan media sosial. Setiap penghapusan dicatat beserta alasannya.</p>
+
+<h3>Pembatasan akun</h3>
+<p>Pembatasan akun (suspensi) berlaku sampai dicabut oleh pengurus. Selama akun dibatasi:</p>
+<ul>
+<li>semua sesi login di perangkat Anda diakhiri;</li>
+<li>Anda tidak dapat menggunakan Jejaring, fitur pesan, Event, KTA, maupun fitur anggota lainnya;</li>
+<li>profil Anda tidak tampil di Jejaring, dan pemeriksaan KTA Anda menampilkan status Tidak aktif;</li>
+<li>tiket acara yang Anda miliki tidak dapat digunakan untuk check-in, dan pengembalian dana atas tiket berbayar diputuskan kasus per kasus;</li>
+<li>pembayaran iuran tidak mencabut pembatasan.</li>
+</ul>
+<p>Saat masuk kembali, Anda akan melihat halaman <strong>Akun Anda sedang dibatasi</strong> yang memuat keterangan dari pengurus. Dari halaman ini Anda tetap dapat membaca Notifikasi, melihat Laporan saya, mengelola sesi perangkat, mengganti kata sandi, mengajukan banding, menghubungi pengurus, membaca halaman informasi, dan menghapus akun.</p>
+<p>Masa keanggotaan tetap berjalan selama pembatasan. Setelah pembatasan dicabut, status keanggotaan Anda dihitung ulang sesuai masa berlakunya.</p>
+
+<h3>Penonaktifan akun</h3>
+<p>Akun yang disalahgunakan atau sedang diperiksa karena alasan keamanan dapat dinonaktifkan sepenuhnya berdasarkan keputusan tertulis pengurus yang berwenang. Akun yang dinonaktifkan tidak dapat dipakai untuk masuk. Pemulihan atau penghapusannya dilakukan melalui <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a> setelah kepemilikan alamat email akun diverifikasi.</p>
+
+<h2>10. Banding dan keberatan</h2>
+
+<h3>Banding atas pembatasan akun</h3>
+<ol>
+<li>Masuk ke aplikasi. Anda akan diarahkan ke halaman <strong>Akun Anda sedang dibatasi</strong>.</li>
+<li>Pada bagian <strong>Banding</strong>, tuliskan alasan mengapa pembatasan perlu ditinjau ulang (minimal 10 karakter, paling banyak 2.000 karakter), lalu ketuk <strong>Kirim banding</strong>.</li>
+<li>Pantau status banding di halaman yang sama atau di Laporan saya. Hasilnya juga dikirim melalui Notifikasi dan email.</li>
+</ol>
+<p>Anda hanya dapat memiliki satu banding yang sedang diproses pada satu waktu. Pengurus menargetkan tanggapan paling lambat 2 hari kerja.</p>
+<p>Bila banding dikabulkan, pembatasan dicabut. Bila banding ditolak, Anda menerima keterangan dari pengurus dan dapat mengajukan banding baru dengan alasan atau informasi tambahan.</p>
+
+<h3>Keberatan atas peringatan atau penghapusan konten</h3>
+<p>Bila Anda tidak setuju dengan peringatan atau penghapusan konten, sampaikan keberatan melalui <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a> atau nomor WhatsApp dukungan yang tercantum di aplikasi atau situs KAPDH. Sebaiknya kirim dari alamat email akun Anda, lalu jelaskan peringatan atau konten yang dimaksud beserta alasan keberatan Anda.</p>
+
+<h2>11. Privasi pelapor dan pihak yang dilaporkan</h2>
+<ul>
+<li>KAPDH tidak memberitahukan identitas pelapor kepada pihak yang dilaporkan, kecuali bila diwajibkan oleh peraturan perundang-undangan.</li>
+<li>Pelapor hanya menerima informasi apakah tindakan diambil, tanpa rincian tindakan terhadap pihak lain.</li>
+<li>Bukti laporan dibatasi pada yang diperlukan: konten yang dilaporkan, paling banyak lima pesan tepat sebelum pesan yang dilaporkan dalam percakapan yang sama sebagai konteks, dan data profil atau grup secukupnya. Bukti hanya dapat dibuka pengurus berizin moderasi, dan setiap pembukaan tercatat.</li>
+<li>Salinan pesan, gambar dalam pesan yang dilaporkan, serta foto profil atau foto grup pada saat laporan dikirim tetap tersimpan dalam bukti laporan walaupun kemudian dihapus atau diganti, agar laporan tetap dapat ditinjau.</li>
+<li>Informasi laporan hanya digunakan untuk menangani laporan, menegakkan Ketentuan Komunitas, dan memenuhi kewajiban hukum.</li>
+<li>Bila akun pelapor atau pihak yang dilaporkan dihapus, identitas dan isi buatan akun tersebut dihapus dari catatan laporan. Catatan laporan tanpa identitas tetap disimpan untuk akuntabilitas moderasi.</li>
+</ul>
+<p>Penjelasan lengkap tentang pengolahan dan penyimpanan data tersedia di <a href="https://kapdh.or.id/kebijakan-privasi">Kebijakan Privasi</a>.</p>
+
+<h2>12. Perubahan Ketentuan Komunitas</h2>
+<p>KAPDH dapat memperbarui Ketentuan Komunitas ini untuk menyesuaikan dengan perkembangan layanan, kebutuhan komunitas, atau peraturan perundang-undangan. Tanggal berlaku versi terbaru selalu tercantum di bagian atas halaman ini. Perubahan penting diumumkan melalui aplikasi atau situs kapdh.or.id sebelum mulai berlaku.</p>
+
+<h2>13. Hubungi kami</h2>
+<p>Pertanyaan tentang Ketentuan Komunitas, laporan di luar aplikasi, dan keberatan dapat disampaikan melalui:</p>
+<ul>
+<li>Email: <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a></li>
+<li>WhatsApp: nomor WhatsApp dukungan yang tercantum di aplikasi atau situs KAPDH</li>
+</ul>
+<p>Baca juga <a href="https://kapdh.or.id/ketentuan">Ketentuan Layanan</a>, <a href="https://kapdh.or.id/kebijakan-privasi">Kebijakan Privasi</a>, dan <a href="https://kapdh.or.id/bantuan">Bantuan</a>.</p>
+    </div>
+    <p class="akhir">Akhir isi halaman Ketentuan Komunitas. <a href="#atas">Kembali ke atas</a></p>
+  </section>
+
+  <section class="halaman" id="hal-bantuan" aria-labelledby="judul-bantuan">
+    <header class="halaman-kepala">
+      <div>
+        <p class="nomor">Halaman 4 dari 5</p>
+        <h1 id="judul-bantuan">Bantuan</h1>
+        <p class="meta">Judul di web admin: <strong>Bantuan</strong> &middot; slug: <code>bantuan</code></p>
+      </div>
+      <div class="aksi">
+        <button type="button" class="tombol utama" data-salin="bantuan">Salin isi</button>
+        <button type="button" class="tombol" data-pilih="bantuan">Pilih isi</button>
+        <span class="status" id="status-bantuan" role="status" aria-live="polite"></span>
+      </div>
+    </header>
+    <div class="isi" id="isi-bantuan">
+<p>Selamat datang di pusat bantuan KAPDH. Halaman ini berisi panduan dan jawaban atas pertanyaan yang sering diajukan tentang aplikasi KAPDH (KAPDH Apps) dan situs kapdh.or.id, layanan Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), perkumpulan alumni Pondok Pesantren Darel Hikmah, untuk keanggotaan, KTA digital, jejaring alumni, dan event. Bila jawaban yang Anda cari belum tersedia, hubungi kami melalui kanal di bagian Hubungi kami.</p>
+<p><strong>Berlaku sejak 15 Oktober 2026.</strong></p>
+
+<h2>Akses cepat</h2>
+<ul>
+<li><strong>Hapus akun dan data:</strong> di aplikasi, buka <strong>Akun &gt; Hapus akun</strong>. Tanpa aplikasi, ajukan di <a href="https://kapdh.or.id/delete-account">https://kapdh.or.id/delete-account</a>. Penjelasan lengkap ada di bagian Hapus akun dan data pada halaman ini.</li>
+<li><strong>Unduh aplikasi:</strong> <a href="https://kapdh.or.id/unduh">https://kapdh.or.id/unduh</a> (Android 8.0 ke atas dan iOS 15 ke atas).</li>
+<li><strong>Hubungi bantuan:</strong> <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a> atau nomor WhatsApp dukungan yang tercantum di aplikasi dan di halaman <a href="https://kapdh.or.id/kontak">Kontak</a>.</li>
+</ul>
+<blockquote><p><strong>Jaga keamanan akun Anda.</strong> Pengurus KAPDH tidak pernah meminta kata sandi atau kode verifikasi (OTP) Anda. Jangan berikan keduanya kepada siapa pun, termasuk kepada orang yang mengaku sebagai pengurus.</p></blockquote>
+
+<h2>Memulai</h2>
+
+<h3>Siapa yang dapat mendaftar?</h3>
+<p>Aplikasi KAPDH diperuntukkan bagi alumni Pondok Pesantren Darel Hikmah yang telah berusia 18 tahun atau lebih, dari angkatan 1 sampai angkatan terbaru, termasuk alumni yang pernah belajar di pesantren tetapi tidak menamatkan pendidikannya. Dengan menyetujui Ketentuan Layanan saat mendaftar, Anda menyatakan telah berusia 18 tahun atau lebih (lihat Ketentuan Layanan bagian 2).</p>
+<p>Data anggota tidak dipindahkan secara otomatis dari pendataan sebelumnya. Karena itu, setiap alumni, termasuk anggota lama, mendaftar sendiri melalui aplikasi. Aplikasi anggota tersedia untuk Android dan iOS; tidak ada versi web untuk anggota.</p>
+
+<h3>Bagaimana cara mendaftar?</h3>
+<ol>
+<li>Unduh aplikasi KAPDH, lalu ketuk <strong>Daftar</strong> pada halaman masuk.</li>
+<li>Isi Data Diri: nama lengkap, jenis kelamin, email, kata sandi, angkatan, serta kelas masuk dan kelas keluar. Tahun masuk, tahun keluar, dan tahun lulus dihitung otomatis dari isian tersebut.</li>
+<li>Baca Kebijakan Privasi dan Ketentuan Layanan, centang persetujuan, lalu ketuk <strong>Lanjut verifikasi email</strong>.</li>
+<li>Masukkan kode verifikasi 6 digit yang dikirim ke email Anda.</li>
+<li>Setelah email terverifikasi, KTA digital Anda dibuat dengan status KTA Tidak Aktif. Selesaikan iuran pendaftaran; KTA menjadi aktif setelah pengurus memverifikasi pembayaran Anda.</li>
+</ol>
+<p>Kata sandi minimal 8 karakter dan harus memuat huruf besar, huruf kecil, angka, serta simbol. Pastikan angkatan dan kelas yang Anda isi sudah benar, karena data tersebut dipakai untuk menyusun nomor anggota dan setelah itu hanya dapat dikoreksi pengurus.</p>
+<p>KAPDH tidak meminta NIK, nomor KTP, tanggal lahir, maupun alamat rumah saat pendaftaran.</p>
+
+<h3>Kode verifikasi email belum masuk</h3>
+<ul>
+<li>Kode dikirim dari alamat noreply@kapdh.or.id. Periksa juga folder spam, promosi, atau sampah.</li>
+<li>Kode berlaku 10 menit dan dapat dicoba paling banyak 5 kali.</li>
+<li>Kode baru dapat diminta dengan <strong>Kirim ulang</strong> setelah 60 detik. Setiap kode baru membatalkan kode sebelumnya, jadi selalu gunakan kode terbaru.</li>
+<li>Bila permintaan terlalu sering, aplikasi menampilkan hitung mundur. Tunggu sampai selesai, lalu coba lagi.</li>
+<li>Bila Anda menutup aplikasi sebelum memasukkan kode, masuk kembali dengan email dan kata sandi yang Anda daftarkan. Aplikasi akan meminta kode verifikasi lagi.</li>
+</ul>
+
+<h3>Saya salah memasukkan email saat mendaftar</h3>
+<p>Selama akun belum terverifikasi, ketuk <strong>Salah email? Ubah alamat email</strong> pada layar kode verifikasi. Masukkan email yang benar dan kata sandi akun Anda. Kode baru dikirim ke email yang benar, dan email lama tidak dapat lagi dipakai untuk aktivasi.</p>
+<p>Setelah akun aktif, alamat email saat ini belum dapat diubah, baik melalui aplikasi maupun oleh pengurus. Selama Anda masih mengingat kata sandi, Anda tetap dapat masuk walaupun tidak lagi dapat membuka email tersebut. Namun, pemulihan kata sandi dan penghapusan akun melalui situs memerlukan kode yang dikirim ke email akun. Bila Anda perlu memakai email lain, hubungi kami; kami akan menjelaskan pilihan yang tersedia, misalnya menghapus akun lalu mendaftar kembali dengan email baru sebagai akun baru. Bila memungkinkan, kirim pesan dari email yang terdaftar.</p>
+
+<h3>Bagaimana cara masuk?</h3>
+<p>Masuk dengan email dan kata sandi akun Anda. Bila terjadi beberapa kali kegagalan dalam waktu singkat, aplikasi menahan percobaan berikutnya untuk sementara demi keamanan. Tunggu hitung mundur di layar, lalu coba lagi.</p>
+<p>Bila akun Anda dinonaktifkan pengurus karena alasan keamanan atau penyalahgunaan, Anda tidak dapat masuk. Hubungi <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a> dari email akun Anda untuk menanyakan pemulihan atau penghapusan akun.</p>
+
+<h3>Saya lupa kata sandi</h3>
+<ol>
+<li>Pada halaman masuk, ketuk <strong>Lupa Password</strong>.</li>
+<li>Masukkan email akun Anda. Bila email tersebut terdaftar dan aktif, kode 6 digit dikirim ke email itu. Demi keamanan, aplikasi tidak memberi tahu apakah sebuah email terdaftar.</li>
+<li>Masukkan kode, lalu buat kata sandi baru.</li>
+</ol>
+<p>Setelah kata sandi diatur ulang, Anda keluar dari semua perangkat dan perlu masuk kembali dengan kata sandi baru.</p>
+
+<h2>Keamanan akun</h2>
+
+<h3>Mengganti kata sandi</h3>
+<p>Buka <strong>Akun &gt; Ganti password</strong>. Anda perlu memasukkan kata sandi lama. Setelah kata sandi diganti, perangkat lain dikeluarkan dari akun Anda.</p>
+
+<h3>Melihat dan mengeluarkan perangkat</h3>
+<p>Buka <strong>Akun &gt; Sesi perangkat</strong> untuk melihat perangkat yang masuk ke akun Anda. Anda dapat mengeluarkan satu perangkat, atau memilih <strong>Keluar dari semua perangkat</strong> bila ponsel hilang atau ada perangkat yang tidak Anda kenali. Setelah itu, segera ganti kata sandi Anda.</p>
+<p>Saat Anda memilih <strong>Keluar</strong> di menu Akun, KTA tersimpan dan data akun di perangkat tersebut dihapus, dan notifikasi push ke perangkat itu dihentikan.</p>
+
+<h2>Profil dan privasi</h2>
+
+<h3>Mengubah profil</h3>
+<p>Buka <strong>Akun &gt; Ubah profil</strong>. Anda dapat mengisi atau mengubah:</p>
+<ul>
+<li>foto profil (JPG, PNG, atau WebP, maksimal 5 MB; data lokasi pada foto dihapus otomatis);</li>
+<li>kota domisili (cukup nama kota, bukan alamat lengkap; kota ini tampil di KTA);</li>
+<li>nomor telepon;</li>
+<li>Tentang saya (bio), maksimal 500 karakter;</li>
+<li>profesi (satu) dan keahlian (maksimal 10), dipilih dari daftar yang dikelola pengurus;</li>
+<li>Lulusan terakhir, yaitu pendidikan terakhir Anda (institusi dan kota);</li>
+<li>akun media sosial: Instagram, X, Facebook, dan LinkedIn.</li>
+</ul>
+<p>Isian tersebut tidak wajib untuk mendaftar. Isilah sesuai kebutuhan Anda.</p>
+
+<h3>Profesi atau keahlian saya tidak ada dalam daftar</h3>
+<p>Daftar profesi dan keahlian dikelola pengurus agar pencarian di Jejaring tetap seragam. Bila pilihan yang sesuai belum tersedia, sampaikan usulan Anda melalui kontak bantuan.</p>
+
+<h3>Data yang hanya dapat dikoreksi pengurus</h3>
+<p>Nama lengkap, jenis kelamin, angkatan, kelas masuk dan kelas keluar, serta nomor anggota tidak dapat diubah sendiri. Bila ada yang keliru, hubungi kami dan jelaskan data yang perlu diperbaiki. Pengurus juga dapat mengoreksi atau menghapus isi profil yang melanggar Ketentuan Komunitas, misalnya foto profil atau bio. Setiap perubahan oleh pengurus tercatat dalam log audit beserta alasannya.</p>
+
+<h3>Mengatur apa yang terlihat oleh anggota lain</h3>
+<p>Buka <strong>Akun &gt; Privasi profil</strong>:</p>
+<ul>
+<li><strong>Tampil di direktori Jejaring</strong> aktif secara bawaan. Bila dimatikan, profil Anda tidak muncul di pencarian Jejaring maupun di daftar peserta event.</li>
+<li><strong>Tampilkan nomor telepon</strong>, <strong>Tampilkan email</strong>, dan <strong>Tampilkan media sosial</strong> nonaktif secara bawaan. Data tersebut baru terlihat oleh anggota aktif setelah Anda menyalakannya.</li>
+</ul>
+<p>Data yang Anda sembunyikan tidak dikirim ke perangkat anggota lain. Pengaturan ini berlaku terhadap sesama anggota. Pengurus yang berwenang tetap dapat melihat data Anda untuk keperluan administrasi yang tercatat, misalnya verifikasi pembayaran atau penanganan laporan.</p>
+
+<h3>Apa yang dapat dilihat anggota lain?</h3>
+<ul>
+<li>Direktori Jejaring hanya dapat diakses oleh anggota dengan keanggotaan aktif, dan hanya menampilkan anggota aktif yang memilih untuk tampil.</li>
+<li>Kartu di direktori menampilkan nama, foto, angkatan, kota, profesi, keahlian, dan pendidikan terakhir. Halaman profil menambahkan tahun lulus dan Tentang saya, serta kontak dan media sosial bila Anda mengizinkannya.</li>
+<li>Jenis kelamin dan nomor anggota tidak ditampilkan di direktori.</li>
+<li>Daftar peserta event menampilkan nama, angkatan, dan foto peserta terkonfirmasi yang tampil di direktori.</li>
+<li>Dalam percakapan, peserta lain melihat nama dan foto Anda.</li>
+</ul>
+<p>Profil Anda baru muncul di Jejaring setelah keanggotaan Anda aktif. Kata kunci pencarian di direktori tidak disimpan.</p>
+
+<h2>Keanggotaan dan KTA</h2>
+
+<h3>Kapan KTA saya aktif?</h3>
+<p>KTA digital dibuat dengan status KTA Tidak Aktif setelah email Anda terverifikasi, dan menjadi KTA Aktif setelah pengurus memverifikasi iuran pendaftaran Anda. KTA berstatus Tidak Aktif bukan bukti keanggotaan.</p>
+
+<h3>Apa isi KTA digital?</h3>
+<p>Buka tab <strong>KTA</strong>. Kartu memuat foto (bila ada), nama, angkatan beserta kode angkatan (misalnya KAPDH 25), profesi, kota domisili, nomor anggota, kode QR, masa berlaku, status keanggotaan, dan waktu sinkronisasi terakhir.</p>
+<p>Nomor anggota berformat AA.SS.JK.N, yaitu kode angkatan, kode status pendidikan (berdasarkan kelas masuk dan kelas keluar), kode jenis kelamin, dan nomor urut. Nomor dibuat oleh sistem, tidak pernah diberikan kepada orang lain, dan tidak berubah saat perpanjangan. Bila pengurus mengoreksi angkatan, kelas, atau jenis kelamin Anda, kode di bagian depan nomor ikut menyesuaikan, sedangkan nomor urutnya tetap.</p>
+
+<h3>Menunjukkan KTA tanpa internet</h3>
+<p>Setelah tersinkron, KTA dapat ditunjukkan tanpa internet paling lama 7 hari sejak sinkronisasi terakhir, dengan keterangan bahwa status berasal dari sinkronisasi terakhir. Status terkini tetap diperiksa server saat kode QR dipindai. Bila aplikasi menyatakan jam perangkat tidak sesuai, aktifkan tanggal dan jam otomatis di pengaturan perangkat, lalu sinkronkan KTA kembali.</p>
+
+<h3>Bagaimana pihak lain memverifikasi KTA saya?</h3>
+<p>Pemeriksa cukup memindai kode QR pada KTA Anda dengan kamera ponsel. Tautan dari QR membuka halaman verifikasi di situs KAPDH yang membaca status terkini langsung dari server, tanpa perlu login.</p>
+<ul>
+<li>Hasil pemeriksaan menampilkan status (misalnya Aktif, Kedaluwarsa, atau Tidak aktif), masa berlaku, dan waktu pemeriksaan.</li>
+<li>Untuk KTA aktif, halaman menampilkan nama lengkap, kode angkatan, nomor anggota, tanggal berakhir, dan foto. Untuk status lain, data yang ditampilkan lebih sedikit, dan alasan pembatasan tidak pernah ditampilkan.</li>
+<li>Email, nomor telepon, alamat, dan bukti pembayaran tidak pernah ditampilkan.</li>
+<li>Nomor anggota saja tidak cukup untuk melihat data; verifikasi memerlukan kode QR yang sah.</li>
+<li>Kode QR berlaku terbatas dan diperbarui setiap kali KTA disinkronkan. Tunjukkan KTA langsung dari aplikasi, bukan dari tangkapan layar lama.</li>
+</ul>
+<p>Bila halaman verifikasi menampilkan <strong>Tidak dapat memverifikasi</strong>, server sedang tidak terjangkau. Coba lagi beberapa saat kemudian.</p>
+
+<h3>Berapa lama masa keanggotaan?</h3>
+<p>Keanggotaan berlaku 12 bulan kalender sejak iuran pendaftaran diverifikasi pengurus; tanggal transfer tidak menjadi dasar perhitungan. Bila sisa masa 30 hari atau kurang, status berubah menjadi Segera Berakhir, dan pengingat dikirim 30 hari sebelum masa berakhir. Tidak ada masa tenggang setelah tanggal berakhir.</p>
+
+<h3>Bagaimana cara memperpanjang KTA?</h3>
+<p>Perpanjangan dapat diajukan mulai 30 hari sebelum masa berakhir dan tetap dapat diajukan setelah KTA kedaluwarsa. Buka tab <strong>KTA</strong>, ketuk <strong>Perpanjang</strong>, periksa iuran perpanjangan, lalu lanjutkan ke pembayaran.</p>
+<ul>
+<li>Bila KTA belum kedaluwarsa, masa baru 12 bulan dimulai dari tanggal berakhir saat ini, sehingga sisa masa aktif Anda tidak hilang.</li>
+<li>Bila KTA sudah kedaluwarsa, masa baru dihitung sejak iuran perpanjangan diverifikasi pengurus.</li>
+</ul>
+
+<h3>Apa yang terjadi bila keanggotaan berakhir?</h3>
+<p>Anda tetap dapat masuk dan melihat KTA berlabel KTA Kedaluwarsa, riwayat pembayaran, tiket yang sudah lunas, kotak masuk notifikasi, pengaturan akun, dan halaman informasi, serta mengajukan perpanjangan atau menghapus akun.</p>
+<p>Direktori dan pesan Jejaring serta pendaftaran event baru adalah layanan bagi anggota perkumpulan yang keanggotaannya aktif. Status keanggotaan diperbarui pengurus setelah iuran organisasi diverifikasi. Tiket event yang sudah lunas tetap berlaku walaupun keanggotaan berakhir sebelum acara.</p>
+
+<h2>Iuran dan pembayaran</h2>
+
+<h3>Iuran apa saja yang berlaku?</h3>
+<p>Iuran KAPDH adalah iuran keanggotaan organisasi, yang terdiri atas:</p>
+<ul>
+<li>iuran pendaftaran untuk anggota baru, yang mencakup registrasi alumni dan pembuatan KTA digital; dan</li>
+<li>iuran perpanjangan KTA setiap tahun.</li>
+</ul>
+<p>Nominal iuran ditetapkan pengurus dan selalu ditampilkan di aplikasi sebelum Anda membayar. Perubahan nominal hanya berlaku untuk pembayaran baru. KTA fisik tidak termasuk dalam iuran.</p>
+
+<h3>Metode pembayaran apa yang tersedia?</h3>
+<p>Pembayaran dilakukan di luar aplikasi ke tujuan pembayaran resmi yang ditetapkan pengurus dan tercantum pada instruksi pembayaran di aplikasi, yaitu transfer ke rekening bank atau dompet digital, atau QRIS bila disediakan pengurus. Aplikasi tidak memproses pembayaran kartu dan tidak menarik dana dari rekening Anda.</p>
+<p>Lakukan pembayaran hanya ke tujuan yang tampil pada instruksi di aplikasi. Jangan mentransfer ke rekening yang dikirimkan melalui pesan pribadi. Bila ragu, tanyakan melalui kontak resmi di halaman ini.</p>
+
+<h3>Bagaimana cara membayar dan mengunggah bukti?</h3>
+<ol>
+<li>Untuk iuran pendaftaran, ikuti langkah Biaya KTA dan Pembayaran setelah verifikasi email, atau ketuk <strong>Bayar</strong> di tab KTA. Untuk perpanjangan, ketuk <strong>Perpanjang</strong> di tab KTA.</li>
+<li>Periksa nominal dan tujuan pembayaran. Tujuan pembayaran masih dapat diganti sebelum bukti pertama dikirim.</li>
+<li>Bayar sesuai nominal yang tertera melalui aplikasi bank atau dompet digital Anda.</li>
+<li>Kembali ke aplikasi KAPDH, lalu unggah bukti pembayaran berupa foto atau tangkapan layar (JPG, PNG, atau WebP, maksimal 5 MB) atau PDF (maksimal 10 MB). Anda dapat menambahkan catatan untuk pengurus, misalnya nama pengirim atau bank asal.</li>
+<li>Ketuk <strong>Kirim bukti pembayaran</strong>. Status pembayaran berubah menjadi Menunggu Verifikasi.</li>
+</ol>
+<ul>
+<li>Bukti pembayaran hanya dapat dilihat oleh Anda dan pengurus yang berwenang memverifikasi pembayaran. Data lokasi pada foto dihapus otomatis.</li>
+<li>Bukti pembayaran dapat diunggah paling banyak 10 kali dalam 24 jam.</li>
+<li>Instruksi pembayaran yang belum dibayar dapat dibatalkan dengan <strong>Batalkan instruksi</strong>. Jangan mentransfer ke instruksi yang sudah dibatalkan.</li>
+<li>Status dan riwayat pembayaran dapat dilihat di <strong>Akun &gt; Riwayat pembayaran</strong>.</li>
+</ul>
+
+<h3>Berapa lama verifikasi pembayaran?</h3>
+<p>Pengurus yang berwenang mencocokkan bukti Anda dengan dana yang benar-benar masuk ke tujuan pembayaran, bukan hanya melihat berkas bukti. Pengurus berupaya memeriksa bukti secepatnya pada hari kerja. Pemeriksaan dapat memakan waktu lebih lama, misalnya pada akhir pekan, hari libur, atau bila dana perlu dicocokkan ulang.</p>
+<p>Hasil verifikasi diberitahukan melalui kotak masuk notifikasi, notifikasi push bila tersedia dan Anda mengizinkannya, serta email, kecuali Anda menonaktifkannya di <strong>Preferensi notifikasi</strong>. Masa keanggotaan dihitung sejak tanggal verifikasi, bukan tanggal transfer.</p>
+<p>Untuk tiket event, kursi Anda tetap ditahan selama bukti diperiksa. Reservasi tidak dibatalkan karena pemeriksaan yang memakan waktu lama; pemeriksaan yang melewati 2 hari kerja ditandai untuk segera ditindaklanjuti pengurus.</p>
+
+<h3>Bukti pembayaran saya ditolak</h3>
+<ul>
+<li><strong>Iuran pendaftaran atau perpanjangan:</strong> baca Catatan dari pengurus pada halaman pembayaran, lalu ketuk <strong>Unggah ulang bukti</strong> untuk mengirim bukti baru pada pembayaran yang sama. Bila dana sudah Anda kirim, Anda tidak perlu transfer ulang. Bukti lama tetap tersimpan dalam riwayat pembayaran.</li>
+<li><strong>Tiket event:</strong> penolakan bersifat final. Reservasi dibatalkan dan kursi dilepas, tetapi Anda dapat mendaftar ulang bila kuota masih tersedia.</li>
+<li>Bila Anda yakin dana sudah masuk atau penolakan tersebut keliru, hubungi kami dengan menyebutkan email akun, jenis pembayaran, nominal, dan tanggal transfer.</li>
+</ul>
+
+<h3>Koneksi terputus saat membayar atau mendaftar event</h3>
+<p>Aplikasi akan menampilkan <strong>Memeriksa status</strong> dan memastikan apakah instruksi pembayaran, bukti, atau reservasi Anda sudah tercatat sebelum mencoba lagi, sehingga tidak tercatat dua kali. Jangan mentransfer sebelum status instruksi pasti, dan jangan mentransfer ulang untuk pembayaran yang sama.</p>
+
+<h3>Aplikasi menampilkan pesan Iuran melalui pengurus</h3>
+<p>Bila pesan ini tampil di perangkat Anda, iuran keanggotaan diselesaikan melalui pengurus. Hubungi pengurus melalui kontak yang tercantum. Status KTA diperbarui setelah pengurus memverifikasi pembayaran Anda.</p>
+
+<h2>Event dan tiket</h2>
+
+<h3>Bagaimana cara mendaftar event?</h3>
+<p>Buka tab <strong>Event</strong>, pilih acara, lalu ketuk <strong>Daftar Sekarang</strong>. Pendaftaran event baru adalah layanan bagi anggota yang keanggotaannya aktif. Setiap anggota hanya dapat memiliki satu tiket aktif per event, dan tiket hanya berlaku untuk dirinya sendiri; tidak ada pemesanan untuk rombongan atau tamu.</p>
+<ul>
+<li><strong>Event gratis:</strong> tiket langsung terbit tanpa pembayaran.</li>
+<li><strong>Event berbayar:</strong> pilih tujuan pembayaran, lalu ketuk <strong>Daftar dan Lanjut Bayar</strong>. Kursi Anda ditahan paling lama 24 jam atau sampai pendaftaran ditutup, mana yang lebih dahulu. Batas waktu tepatnya ditampilkan di aplikasi.</li>
+<li>Kirim bukti pembayaran sebelum batas waktu tersebut. Reservasi tanpa bukti berakhir otomatis dan kursinya dilepas untuk anggota lain. Bukti yang dikirim tepat waktu menahan kursi Anda sampai pengurus memutuskan.</li>
+</ul>
+
+<h3>Di mana tiket dan kode QR saya?</h3>
+<p>Buka <strong>Akun &gt; Tiket saya</strong>. Kode QR tiket terbit setelah pembayaran dinyatakan lunas, atau langsung untuk event gratis. Tunjukkan QR tersebut kepada petugas check-in. Satu QR hanya dapat dipindai satu kali, jadi jangan bagikan QR tiket Anda kepada orang lain.</p>
+
+<h3>Kapan check-in dibuka?</h3>
+<p>Jadwal check-in tercantum di detail event dan detail tiket. Bila pengurus tidak menetapkan jadwal lain, check-in dibuka 2 jam sebelum acara dimulai dan ditutup saat acara selesai. Untuk mencocokkan identitas, petugas check-in dapat melihat nama, nomor anggota, dan foto pemegang tiket.</p>
+
+<h3>Bagaimana cara membatalkan tiket dan mendapatkan refund?</h3>
+<p>Buka detail tiket, lalu ketuk <strong>Batalkan Tiket</strong>, atau <strong>Batalkan Reservasi</strong> bila Anda belum mengirim bukti pembayaran.</p>
+<ul>
+<li>Reservasi yang belum dibayar dapat dibatalkan; kursi dilepas dan instruksi pembayarannya ikut dibatalkan.</li>
+<li>Tiket berbayar yang Anda batalkan sendiri paling lambat H-3, yaitu 72 jam sebelum waktu mulai acara, mendapat refund penuh. Setelah batas itu, pembatalan masih dapat dilakukan sebelum acara dimulai, tetapi tanpa refund. Batas tepatnya ditampilkan di detail tiket.</li>
+<li>Tiket yang buktinya masih diperiksa belum dapat dibatalkan sendiri, karena dana mungkin sudah ditransfer. Tunggu keputusan pengurus atau hubungi kami.</li>
+<li>Event gratis tidak memiliki refund. Pembatalan melepas kursi Anda untuk anggota lain.</li>
+</ul>
+<p>Refund ditransfer secara manual oleh bendahara paling lambat 7 hari kerja sejak pembatalan. Rekening tujuan refund diminta saat refund diproses dan diisi di halaman pembayaran terkait. Data rekening tersebut dihapus setelah refund selesai. Pembatalan tiket tidak berarti dana sudah dikembalikan, jadi pantau status refund di detail tiket.</p>
+
+<h3>Bagaimana bila event dibatalkan pengurus?</h3>
+<p>Seluruh QR tiket untuk event tersebut tidak berlaku, dan semua peserta yang sudah membayar mendapat refund penuh yang ditransfer bendahara paling lambat 7 hari kerja. Pemberitahuan pembatalan dikirim ke kotak masuk notifikasi Anda.</p>
+<p>Bila akun Anda sedang dibatasi pengurus, tiket Anda tidak berlaku dan refund diputuskan pengurus per kasus.</p>
+
+<h2>Pesan dan komunitas</h2>
+
+<h3>Siapa yang dapat saya kirimi pesan?</h3>
+<p>Pesan langsung dan pesan grup tersedia di tab <strong>Jejaring</strong> bagi anggota yang keanggotaannya aktif. Untuk memulai percakapan, buka profil anggota, lalu ketuk <strong>Kirim Pesan</strong>. Anda dapat mengirim teks (maksimal 4.000 karakter), foto, balasan, dan reaksi.</p>
+<p>Anggota yang memilih tidak tampil di direktori hanya dapat diajak memulai percakapan langsung oleh anggota yang pernah berada dalam satu grup dengannya.</p>
+<p>Gunakan fitur pesan sesuai <a href="https://kapdh.or.id/ketentuan-komunitas">Ketentuan Komunitas</a>.</p>
+
+<h3>Grup</h3>
+<ul>
+<li>Grup dibuat dari tab <strong>Pesan Grup</strong> dan dapat berisi paling banyak 100 anggota.</li>
+<li>Hanya admin grup yang dapat mengundang anggota, dan undangan baru berlaku setelah diterima oleh yang diundang.</li>
+<li>Anggota baru hanya dapat melihat pesan sejak ia bergabung.</li>
+<li>Anda dapat membisukan notifikasi grup atau keluar dari grup melalui info percakapan. Admin terakhir perlu menunjuk admin pengganti sebelum keluar.</li>
+</ul>
+
+<h3>Menghapus pesan</h3>
+<p>Tekan lama pesan Anda, lalu pilih <strong>Hapus pesan</strong>. Isi pesan dihapus untuk semua peserta dan diganti keterangan bahwa pesan telah dihapus. Pesan yang sudah dilaporkan sebelum dihapus tetap tersimpan sebagai bagian dari bukti laporan.</p>
+
+<h3>Melaporkan pengguna, pesan, atau grup</h3>
+<ul>
+<li><strong>Pesan:</strong> tekan lama pesan, lalu pilih <strong>Laporkan pesan</strong>. Laporan otomatis menyertakan paling banyak lima pesan tepat sebelum pesan yang dilaporkan dalam percakapan yang sama sebagai konteks. Pesan konteks ini dapat berasal dari anggota lain.</li>
+<li><strong>Pengguna:</strong> buka profilnya, lalu pilih <strong>Laporkan</strong>, atau gunakan menu di info percakapan.</li>
+<li><strong>Grup:</strong> buka info grup, lalu pilih <strong>Laporkan grup</strong>.</li>
+</ul>
+<p>Pilih kategori laporan (spam, pelecehan atau perundungan, ujaran kebencian, konten seksual, ancaman kekerasan atau keselamatan, penipuan, atau lainnya) dan tambahkan penjelasan bila perlu. Laporan Anda tidak dibuka kepada pihak yang dilaporkan. Pantau status laporan di <strong>Akun &gt; Laporan saya</strong>.</p>
+<p>Pengurus menargetkan penanganan laporan ancaman kekerasan atau keselamatan paling lambat 24 jam, dan laporan lain paling lambat 2 hari kerja. Dalam keadaan darurat, segera hubungi pihak berwenang.</p>
+
+<h3>Memblokir anggota</h3>
+<p>Buka profil anggota, lalu pilih <strong>Blokir</strong>, atau gunakan menu di info percakapan langsung. Setelah diblokir:</p>
+<ul>
+<li>Anda dan anggota tersebut tidak dapat saling mengirim pesan langsung, reaksi di percakapan langsung, atau undangan grup, dan undangan yang tertunda dibatalkan;</li>
+<li>profil Anda tidak muncul baginya di direktori;</li>
+<li>riwayat pesan lama tetap tersimpan, dan anggota tersebut tidak diberi tahu.</li>
+</ul>
+<p>Di dalam grup yang sama, gunakan fitur bisukan atau laporan. Kelola daftar blokir di <strong>Akun &gt; Anggota diblokir</strong>.</p>
+
+<h3>Privasi percakapan</h3>
+<ul>
+<li>Pesan dikirim melalui koneksi terenkripsi TLS, tetapi tidak menggunakan enkripsi end-to-end.</li>
+<li>Status online, indikator sedang mengetik, dan status dibaca terlihat oleh peserta percakapan dan saat ini tidak dapat dimatikan.</li>
+<li>Notifikasi pesan baru tidak menampilkan isi pesan.</li>
+<li>Web admin pengurus tidak menyediakan fitur untuk membaca percakapan anggota. Moderator hanya melihat pesan yang terlampir pada laporan.</li>
+<li>Data lokasi pada foto yang Anda kirim dihapus otomatis.</li>
+</ul>
+
+<h3>Akun saya dibatasi. Apa yang dapat saya lakukan?</h3>
+<p>Bila pengurus membatasi akun Anda, aplikasi menampilkan halaman pembatasan beserta keterangan dari pengurus. Selama dibatasi, KTA tidak dapat dipakai sebagai bukti keanggotaan, profil Anda tidak tampil di direktori, dan layanan komunitas, pembayaran baru, serta tiket tidak dapat digunakan. Tanggal masa keanggotaan Anda tidak berubah.</p>
+<p>Dari halaman pembatasan, Anda tetap dapat membaca notifikasi, mengelola sesi perangkat dan kata sandi, melihat laporan Anda, mengajukan banding, menghubungi pengurus, dan menghapus akun. Ajukan banding dengan menjelaskan alasan Anda; pengurus menargetkan tanggapan paling lambat 2 hari kerja. Keberatan atas peringatan dari pengurus dapat disampaikan melalui kontak bantuan.</p>
+
+<h2>Notifikasi</h2>
+
+<h3>Di mana saya melihat notifikasi?</h3>
+<p>Kotak masuk <strong>Notifikasi</strong>, yang dapat dibuka dari Beranda atau dari <strong>Akun &gt; Notifikasi</strong>, adalah riwayat resmi, termasuk hasil verifikasi pembayaran, masa KTA, event, dan keamanan akun. Kotak masuk selalu menyimpan notifikasi, termasuk kategori yang push atau emailnya Anda matikan.</p>
+
+<h3>Mengatur notifikasi push dan email</h3>
+<p>Buka <strong>Akun &gt; Preferensi notifikasi</strong>.</p>
+<ul>
+<li>Bila notifikasi push tersedia di versi aplikasi Anda, push dapat diatur per kategori: Pembayaran, Masa KTA, Event (termasuk pengingat H-3 dan H-1), Berita, dan Chat.</li>
+<li>Email dapat diatur untuk kategori Pembayaran, Masa KTA, dan Event. Berita dan chat tidak dikirim melalui email.</li>
+<li>Notifikasi keamanan dan akun, serta email kode verifikasi, selalu dikirim dan tidak dapat dimatikan.</li>
+</ul>
+<p>Izin notifikasi push bersifat opsional. Bila Anda menolaknya, aplikasi tetap berfungsi dan semua notifikasi tetap tersimpan di kotak masuk. Untuk mengaktifkannya kembali, izinkan notifikasi KAPDH di pengaturan perangkat.</p>
+
+<h3>Notifikasi tidak masuk</h3>
+<ul>
+<li>Periksa izin notifikasi KAPDH di pengaturan perangkat dan pilihan kategori di <strong>Preferensi notifikasi</strong>.</li>
+<li>Bila push tidak tersedia di perangkat Anda, buka kotak masuk untuk melihat semua pemberitahuan.</li>
+<li>Untuk email, periksa juga folder spam atau promosi.</li>
+</ul>
+
+<h2>Hapus akun dan data</h2>
+<p>Anda dapat menghapus akun aplikasi KAPDH beserta data terkait kapan saja, termasuk saat keanggotaan sudah berakhir atau akun sedang dibatasi.</p>
+
+<h3>Menghapus akun dari aplikasi</h3>
+<ol>
+<li>Buka <strong>Akun &gt; Hapus akun</strong>. Bila akun Anda sedang dibatasi, pilih Hapus akun dari halaman pembatasan.</li>
+<li>Baca penjelasan tentang data yang dihapus, data yang disimpan tanpa identitas, perkiraan waktu, serta peringatan bila ada tiket, refund, pembayaran, atau grup yang perlu diperhatikan.</li>
+<li>Centang konfirmasi, ketuk <strong>Hapus akun saya</strong>, lalu masukkan kata sandi Anda. Konfirmasi kata sandi berlaku 10 menit.</li>
+<li>Nomor permintaan penghapusan ditampilkan di layar dan dikirim ke email Anda.</li>
+</ol>
+<p>Bila Anda lupa kata sandi, gunakan <strong>Lupa Password</strong> terlebih dahulu atau ajukan penghapusan melalui situs dengan kode verifikasi email.</p>
+
+<h3>Menghapus akun tanpa aplikasi</h3>
+<ol>
+<li>Buka <a href="https://kapdh.or.id/delete-account">https://kapdh.or.id/delete-account</a>.</li>
+<li>Masukkan email akun, lalu masukkan kode verifikasi 6 digit yang dikirim ke email tersebut.</li>
+<li>Baca penjelasan data dan peringatan yang ditampilkan, lalu konfirmasi penghapusan.</li>
+<li>Anda menerima nomor permintaan yang diawali DEL-. Halaman yang sama dapat dipakai untuk memeriksa status permintaan.</li>
+</ol>
+<p>Pendaftaran yang belum diverifikasi juga dapat dibatalkan dan datanya dihapus melalui halaman yang sama. Bila akun Anda dinonaktifkan, halaman tersebut mengarahkan Anda ke kontak bantuan. Bila Anda tidak dapat menggunakan aplikasi maupun halaman tersebut, kirim permintaan penghapusan dari alamat email akun Anda ke <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a>.</p>
+
+<h3>Apa yang terjadi setelah Anda mengonfirmasi?</h3>
+<ul>
+<li>Anda langsung keluar dari semua perangkat, dan akun tidak dapat dipakai lagi.</li>
+<li>Penghapusan tidak dapat dibatalkan setelah dikonfirmasi. KTA, riwayat keanggotaan, dan percakapan tidak dapat dipulihkan.</li>
+<li>Penghapusan selesai paling lambat 7 hari kalender sejak permintaan. Anda menerima email saat permintaan diterima dan saat penghapusan selesai.</li>
+<li>Nomor anggota Anda tidak akan diberikan kepada orang lain.</li>
+</ul>
+
+<h3>Data yang dihapus</h3>
+<ul>
+<li>email dan kata sandi akun;</li>
+<li>profil, termasuk profesi, keahlian, kontak, media sosial, dan pengaturan privasi;</li>
+<li>foto profil dan unggahan pribadi, seperti foto yang dikirim di chat dan foto grup;</li>
+<li>berkas bukti pembayaran dan catatan transfer;</li>
+<li>isi pesan chat (diganti keterangan bahwa pesan telah dihapus), reaksi, dan tanda suka pada berita;</li>
+<li>daftar blokir, sesi, token perangkat untuk notifikasi, kotak masuk, dan preferensi notifikasi.</li>
+</ul>
+
+<h3>Data yang disimpan tanpa identitas</h3>
+<p>Catatan pembayaran, tiket, riwayat keanggotaan, laporan moderasi, dan log audit tetap disimpan, tetapi tanpa nama, email, telepon, foto, atau data identitas lain. Yang tersisa hanya jumlah, tanggal, status, dan nomor referensi minimum untuk pembukuan dan akuntabilitas organisasi.</p>
+<p>Setiap salinan cadangan (backup) harian dihapus paling lama 30 hari setelah dibuat. Data yang sudah dihapus tidak diaktifkan kembali bila backup dipulihkan. Rincian penyimpanan data dijelaskan dalam <a href="https://kapdh.or.id/kebijakan-privasi">Kebijakan Privasi</a>.</p>
+
+<h3>Sebelum menghapus akun</h3>
+<ul>
+<li>Tiket event yang masih aktif hangus saat akun dihapus. Bila Anda berhak atas refund, batalkan tiket dan tunggu sampai refund selesai.</li>
+<li>Penghapusan tidak menunggu refund yang sedang berjalan. Setelah akun dihapus, bendahara tidak dapat lagi menghubungi Anda, dan data rekening tujuan refund ikut dihapus.</li>
+<li>Pembayaran yang belum selesai dapat dibatalkan saat akun dihapus. Bila Anda sudah mentransfer, hubungi kami terlebih dahulu.</li>
+<li>Bila Anda satu-satunya admin di grup chat, kewenangan admin dialihkan otomatis kepada anggota lain atau grup ditutup.</li>
+</ul>
+
+<h2>Data pribadi dan hak Anda</h2>
+<p>Cara KAPDH memproses data pribadi Anda dijelaskan dalam <a href="https://kapdh.or.id/kebijakan-privasi">Kebijakan Privasi</a>, dengan mengacu pada Undang-Undang Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi. Sebagian hak Anda dapat digunakan langsung di aplikasi:</p>
+<ul>
+<li>memperbarui profil di <strong>Akun &gt; Ubah profil</strong>;</li>
+<li>mengatur data yang terlihat oleh anggota lain di <strong>Akun &gt; Privasi profil</strong>;</li>
+<li>mengatur notifikasi di <strong>Akun &gt; Preferensi notifikasi</strong>;</li>
+<li>menghapus akun di <strong>Akun &gt; Hapus akun</strong> atau di <a href="https://kapdh.or.id/delete-account">https://kapdh.or.id/delete-account</a>.</li>
+</ul>
+<p>Untuk permintaan lain, misalnya akses atau salinan data, koreksi data keanggotaan, penarikan persetujuan, atau keberatan atas pemrosesan, kirim email ke <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a>. Sebutkan email akun Anda, jenis permintaan, dan penjelasannya. Untuk melindungi data Anda, kami dapat meminta verifikasi bahwa Anda adalah pemilik akun, misalnya dengan meminta Anda mengirim permintaan dari email akun. Permintaan ditanggapi sesuai jangka waktu dalam Kebijakan Privasi dan peraturan perundang-undangan.</p>
+<p>Bila Anda memerlukan pendampingan, atau mengajukan permintaan sebagai wali atau pendamping seorang anggota, hubungi kami melalui email atau nomor WhatsApp dukungan. Kami akan membantu menyesuaikan cara penyampaian permintaan Anda.</p>
+
+<h2>Kendala teknis</h2>
+<ul>
+<li>Aplikasi mendukung Android 8.0 ke atas dan iOS 15 ke atas.</li>
+<li>Bila muncul layar wajib pembaruan, perbarui aplikasi melalui toko aplikasi di perangkat Anda.</li>
+<li>Saat pemeliharaan, aplikasi menampilkan perkiraan waktu selesai bila tersedia. Perubahan data ditunda sampai pemeliharaan selesai, dan data Anda tetap aman.</li>
+<li>Bila galat terus berulang, catat pesan yang muncul serta waktu kejadiannya, lalu hubungi kami.</li>
+</ul>
+
+<h2>Hubungi kami</h2>
+<ul>
+<li><strong>Email:</strong> <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a>.</li>
+<li><strong>WhatsApp:</strong> nomor WhatsApp dukungan yang tercantum di aplikasi dan di halaman <a href="https://kapdh.or.id/kontak">Kontak</a>. Bila nomor belum tercantum, gunakan email.</li>
+</ul>
+<p>Pertanyaan umum dijawab pada hari kerja. Permintaan terkait data pribadi ditanggapi sesuai jangka waktu dalam Kebijakan Privasi.</p>
+<p>Agar kami dapat membantu lebih cepat, sertakan email akun Anda dan ringkasan masalahnya. Bila relevan, sertakan juga jenis pembayaran, nominal, dan tanggal transfer, nama event, atau nomor permintaan penghapusan. Jangan pernah mengirim kata sandi atau kode verifikasi kepada siapa pun.</p>
+
+<h2>Kebijakan dan informasi lain</h2>
+<ul>
+<li><a href="https://kapdh.or.id/kebijakan-privasi">Kebijakan Privasi</a>: data yang kami proses, tujuan, penyimpanan, dan hak Anda.</li>
+<li><a href="https://kapdh.or.id/ketentuan">Ketentuan Layanan</a>: aturan penggunaan aplikasi, keanggotaan, iuran, dan event.</li>
+<li><a href="https://kapdh.or.id/ketentuan-komunitas">Ketentuan Komunitas</a>: perilaku yang diharapkan di Jejaring dan pesan, serta penanganan laporan.</li>
+<li><a href="https://kapdh.or.id/tentang">Tentang KAPDH</a>: profil organisasi dan layanan bagi anggota.</li>
+<li><a href="https://kapdh.or.id/kontak">Kontak</a>: kanal bantuan resmi.</li>
+<li><a href="https://kapdh.or.id/delete-account">Hapus Akun</a>: permintaan penghapusan akun tanpa memasang aplikasi.</li>
+</ul>
+    </div>
+    <p class="akhir">Akhir isi halaman Bantuan. <a href="#atas">Kembali ke atas</a></p>
+  </section>
+
+  <section class="halaman" id="hal-tentang" aria-labelledby="judul-tentang">
+    <header class="halaman-kepala">
+      <div>
+        <p class="nomor">Halaman 5 dari 5</p>
+        <h1 id="judul-tentang">Tentang KAPDH</h1>
+        <p class="meta">Judul di web admin: <strong>Tentang KAPDH</strong> &middot; slug: <code>tentang</code></p>
+      </div>
+      <div class="aksi">
+        <button type="button" class="tombol utama" data-salin="tentang">Salin isi</button>
+        <button type="button" class="tombol" data-pilih="tentang">Pilih isi</button>
+        <span class="status" id="status-tentang" role="status" aria-live="polite"></span>
+      </div>
+    </header>
+    <div class="isi" id="isi-tentang">
+<p>Keluarga Alumni Pondok Pesantren Darel Hikmah (KAPDH) adalah wadah silaturahmi bagi para alumni Pondok Pesantren Darel Hikmah, Pekanbaru, Riau. Halaman ini memperkenalkan KAPDH, visi dan misinya, serta layanan yang tersedia bagi anggota melalui aplikasi KAPDH (KAPDH Apps).</p>
+<p><strong>Berlaku sejak 15 Oktober 2026.</strong></p>
+
+<h2>Siapa kami</h2>
+<p>KAPDH adalah perkumpulan alumni Pondok Pesantren Darel Hikmah, Pekanbaru, Riau. Nama lengkap organisasi ini adalah Perkumpulan Keluarga Alumni Pesantren Darel Hikmah. Di aplikasi dan situs ini, kami menggunakan sebutan KAPDH atau Keluarga Alumni Pondok Pesantren Darel Hikmah.</p>
+<p>KAPDH menghimpun alumni lintas angkatan dengan berlandaskan ukhuwah Islamiyah, dakwah, pendidikan, dan pengabdian sosial. Semangat itu kami rangkum dalam semboyan:</p>
+<blockquote><p>Mengabdi untuk Umat, Menjaga Silaturahmi, Meneladani Akhlak Mulia.</p></blockquote>
+
+<h2>Visi dan misi</h2>
+<h3>Visi</h3>
+<p>Menjadi wadah perekat ukhuwah alumni Pesantren Darel Hikmah yang unggul, berintegritas, mandiri, dan berkontribusi nyata dalam dakwah, pendidikan Islam, serta kemaslahatan umat dan bangsa.</p>
+<h3>Misi</h3>
+<ol>
+<li>Mempererat tali silaturahmi dan memperkuat solidaritas antaralumni Pesantren Darel Hikmah lintas angkatan.</li>
+<li>Menyelenggarakan program pengabdian masyarakat, dakwah Islam rahmatan lil 'alamin, dan kepedulian sosial.</li>
+<li>Mendukung kemajuan, syiar, dan kesinambungan pendidikan di almamater Pondok Pesantren Darel Hikmah Pekanbaru.</li>
+<li>Mendorong pemberdayaan ekonomi, jejaring profesional, serta pengembangan keilmuan dan kompetensi alumni.</li>
+</ol>
+
+<h2>Bergabung dengan KAPDH</h2>
+<p>KAPDH Apps diperuntukkan bagi alumni Pondok Pesantren Darel Hikmah yang telah berusia 18 tahun atau lebih, dari angkatan 1 (tahun lulus 1997) hingga angkatan terbaru. Termasuk di dalamnya alumni yang menamatkan MTs, Aliyah, atau keduanya, serta mereka yang pernah belajar di Darel Hikmah tetapi tidak menamatkan pendidikannya.</p>
+<p>Langkah bergabung:</p>
+<ol>
+<li>Pasang aplikasi KAPDH hanya melalui tautan resmi di halaman <a href="https://kapdh.or.id/unduh">Unduh Aplikasi</a>.</li>
+<li>Daftar dengan nama lengkap, jenis kelamin, email, kata sandi, angkatan, serta kelas masuk dan kelas keluar, lalu setujui Kebijakan Privasi dan Ketentuan Layanan. Kami tidak meminta NIK atau nomor KTP.</li>
+<li>Masukkan kode verifikasi 6 digit yang dikirim ke email Anda.</li>
+<li>Tunaikan iuran pendaftaran keanggotaan sesuai petunjuk resmi pengurus.</li>
+<li>Setelah pengurus memverifikasi dan menyetujui iuran, keanggotaan dan KTA digital Anda aktif selama 12 bulan.</li>
+</ol>
+
+<h2>Layanan KAPDH Apps</h2>
+<p>KAPDH Apps adalah aplikasi resmi KAPDH untuk Android dan iOS. Aplikasi ini dikelola oleh pengurus KAPDH sebagai media komunikasi dan informasi yang menghubungkan alumni di seluruh Indonesia. Anggota menggunakan aplikasi di ponsel; tidak ada versi web untuk anggota.</p>
+
+<h3>KTA digital</h3>
+<ul>
+<li>Kartu Tanda Anggota (KTA) digital memuat nama, foto (bila ada), angkatan, kota domisili, nomor anggota, kode QR, masa berlaku, dan status keanggotaan.</li>
+<li>Siapa pun dapat memeriksa keaslian dan status KTA dengan memindai kode QR pada kartu. Hasil pemeriksaan di situs kapdh.or.id hanya menampilkan status keanggotaan dan identitas terbatas, seperti nama, kode angkatan, nomor anggota, dan masa berlaku, tanpa kontak maupun alamat.</li>
+<li>Perpanjangan dapat diajukan mulai 30 hari sebelum masa berlaku berakhir dan tetap dapat diajukan setelah masa berlaku habis. Sisa masa aktif tidak hilang bila Anda memperpanjang lebih awal.</li>
+</ul>
+
+<h3>Berita dan kegiatan</h3>
+<ul>
+<li>Beranda menampilkan pengumuman, berita organisasi, dan kegiatan mendatang, termasuk informasi kegiatan alumni dan pondok pesantren.</li>
+<li>Menu Event memuat jadwal, lokasi, kuota, dan biaya kegiatan bila ada. Anggota aktif dapat mendaftar dan menerima tiket digital berkode QR untuk check-in di lokasi acara.</li>
+<li>Setiap anggota memegang satu tiket untuk dirinya sendiri pada setiap kegiatan.</li>
+</ul>
+
+<h3>Jejaring dan pesan</h3>
+<ul>
+<li>Jejaring adalah direktori sesama anggota yang dapat dicari berdasarkan nama, angkatan, kelas, kota, profesi, dan keahlian.</li>
+<li>Anda mengatur sendiri tampilan profil melalui menu Privasi profil. Secara bawaan, profil Anda tampil di Jejaring bagi sesama anggota aktif, sedangkan nomor telepon, email, dan media sosial tetap tersembunyi sampai Anda memilih untuk menampilkannya.</li>
+<li>Fitur Pesan dan Pesan Grup memungkinkan anggota saling berkirim teks dan gambar. Anda dapat memblokir anggota lain serta melaporkan profil, pesan, atau grup yang melanggar <a href="https://kapdh.or.id/ketentuan-komunitas">Ketentuan Komunitas</a>.</li>
+<li>Jejaring dan pesan tersedia bagi anggota yang keanggotaannya aktif dan tidak sedang dibatasi.</li>
+</ul>
+
+<h3>Iuran dan pembayaran</h3>
+<ul>
+<li>Iuran KAPDH adalah iuran keanggotaan organisasi. Besarnya ditetapkan oleh pengurus dan diinformasikan sebelum Anda membayar.</li>
+<li>Iuran dan biaya kegiatan dibayarkan langsung kepada organisasi, kemudian diverifikasi oleh pengurus yang berwenang. Status dan riwayatnya dapat Anda pantau di menu Riwayat pembayaran.</li>
+<li>KAPDH Apps tidak memproses pembayaran kartu kredit atau debit dan tidak memiliki fitur saldo.</li>
+<li>Ketentuan iuran, tiket, pembatalan, dan pengembalian dana diatur dalam <a href="https://kapdh.or.id/ketentuan">Ketentuan Layanan</a>.</li>
+</ul>
+
+<h3>Notifikasi</h3>
+<p>Kotak masuk Notifikasi di aplikasi mencatat pemberitahuan resmi tentang pembayaran, masa keanggotaan, kegiatan, dan keamanan akun. Sebagian pemberitahuan, termasuk pemberitahuan keamanan akun, juga dikirim ke email Anda.</p>
+
+<h3>Privasi dan kendali akun</h3>
+<ul>
+<li>Dari menu Akun, Anda dapat mengubah profil, mengatur privasi profil dan preferensi notifikasi, melihat dan mengakhiri sesi di perangkat lain, mengganti kata sandi, serta mengelola daftar anggota yang diblokir.</li>
+<li>Anda dapat menghapus akun melalui menu Akun &gt; Hapus akun, atau melalui halaman <a href="https://kapdh.or.id/delete-account">Hapus Akun</a> tanpa perlu memasang aplikasi.</li>
+<li>Data yang kami kumpulkan, tujuan penggunaannya, dan hak Anda atas data tersebut dijelaskan dalam <a href="https://kapdh.or.id/kebijakan-privasi">Kebijakan Privasi</a>.</li>
+</ul>
+
+<h2>Hubungi kami</h2>
+<p>Untuk pertanyaan tentang keanggotaan, iuran, KTA, kegiatan, atau akun, silakan hubungi pengurus KAPDH melalui:</p>
+<ul>
+<li>Email: <a href="mailto:bantuan@kapdh.or.id">bantuan@kapdh.or.id</a>.</li>
+<li>WhatsApp: nomor WhatsApp dukungan yang tercantum di aplikasi dan di halaman <a href="https://kapdh.or.id/kontak">Kontak</a>.</li>
+</ul>
+<p>Pertanyaan umum dijawab pada hari kerja. Permintaan terkait data pribadi ditanggapi sesuai jangka waktu dalam <a href="https://kapdh.or.id/kebijakan-privasi">Kebijakan Privasi</a>. Agar kami dapat membantu lebih cepat, sertakan email akun Anda dan, bila ada, jenis pembayaran, nominal, dan tanggal transfer, atau nomor permintaan penghapusan.</p>
+<p><strong>Jaga keamanan akun Anda.</strong> Pengurus KAPDH tidak pernah meminta kata sandi atau kode verifikasi (OTP). Jangan berikan keduanya kepada siapa pun.</p>
+<p>Panduan penggunaan aplikasi tersedia di halaman <a href="https://kapdh.or.id/bantuan">Bantuan</a>.</p>
+    </div>
+    <p class="akhir">Akhir isi halaman Tentang KAPDH. <a href="#atas">Kembali ke atas</a></p>
+  </section>
+</main>
+<script>
+(function () {
+  "use strict";
+  var asli = {};
+  var isiList = document.querySelectorAll(".isi");
+  for (var i = 0; i < isiList.length; i++) asli[isiList[i].id] = isiList[i].innerHTML;
+
+  function terapkanDomain(domain) {
+    for (var i = 0; i < isiList.length; i++) {
+      var el = isiList[i];
+      el.innerHTML = asli[el.id];
+      if (domain === "kapdh.or.id") continue;
+      var tautan = el.querySelectorAll("a[href^='https://kapdh.or.id']");
+      for (var j = 0; j < tautan.length; j++) {
+        var a = tautan[j];
+        a.setAttribute("href", a.getAttribute("href").replace("https://kapdh.or.id", "https://" + domain));
+        a.textContent = a.textContent.replace(/^(https:\/\/)?kapdh\.or\.id/, "$1" + domain);
+      }
+    }
+  }
+  var radio = document.querySelectorAll("input[name='domain']");
+  for (var r = 0; r < radio.length; r++) {
+    radio[r].addEventListener("change", function (e) { if (e.target.checked) terapkanDomain(e.target.value); });
+  }
+
+  function lapor(slug, pesan) {
+    var s = document.getElementById("status-" + slug);
+    if (s) s.textContent = pesan;
+  }
+  function pilih(slug) {
+    var el = document.getElementById("isi-" + slug);
+    var range = document.createRange();
+    range.selectNodeContents(el);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return el;
+  }
+  function salinCadangan(slug) {
+    pilih(slug);
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    lapor(slug, ok ? "Tersalin. Tempel di editor web admin." : "Isi sudah dipilih. Tekan Ctrl+C untuk menyalin.");
+  }
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!(t instanceof HTMLElement)) return;
+    var slug = t.getAttribute("data-salin");
+    if (slug) {
+      var el = document.getElementById("isi-" + slug);
+      var html = el.innerHTML.trim();
+      var teks = el.innerText.trim();
+      if (navigator.clipboard && window.ClipboardItem && window.isSecureContext) {
+        var item = new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([teks], { type: "text/plain" })
+        });
+        navigator.clipboard.write([item]).then(
+          function () { lapor(slug, "Tersalin. Tempel di editor web admin."); },
+          function () { salinCadangan(slug); }
+        );
+      } else {
+        salinCadangan(slug);
+      }
+      return;
+    }
+    slug = t.getAttribute("data-pilih");
+    if (slug) { pilih(slug); lapor(slug, "Isi sudah dipilih. Tekan Ctrl+C untuk menyalin."); }
+  });
+})();
+</script>
+</body>
+</html>
