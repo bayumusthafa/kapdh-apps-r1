@@ -76,7 +76,8 @@ describe("QrTokenService (PRD 3.5, 3.6; ARCHITECTURE §3.2)", () => {
     const [h, p, s] = token.split(".");
     const forgedPayload = Buffer.from(JSON.stringify({ ...decodeJwt(token), seq: 10 })).toString("base64url");
     expect(await qr.verify(`${h}.${forgedPayload}.${s}`)).toBeNull();
-    expect(await qr.verify(`${h}.${p}.${s!.slice(0, -2)}xx`)).toBeNull();
+    // Ubah karakter pertama tanda tangan: akhiran base64url memuat bit pengisi yang diabaikan decoder.
+    expect(await qr.verify(`${h}.${p}.${s!.startsWith("A") ? "B" : "A"}${s!.slice(1)}`)).toBeNull();
     expect(await qr.verify("")).toBeNull();
     expect(await qr.verify("x".repeat(3000))).toBeNull();
 

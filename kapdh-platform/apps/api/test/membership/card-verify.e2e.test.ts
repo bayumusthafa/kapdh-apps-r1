@@ -421,7 +421,9 @@ describe("POST /public/kta/verify (F-06)", () => {
   it("AC F06-3: token diubah, kunci tidak dikenal, issuer/audience salah, nomor lain, atau token 7 hari lewat → QR tidak valid, tidak pernah Aktif", async () => {
     const { fixture, qr } = await activeQr();
     const [header, payload, signature] = qr.token.split(".") as [string, string, string];
-    const tampered = `${header}.${payload}.${signature.slice(0, -2)}${signature.endsWith("A") ? "BB" : "AA"}`;
+    // Ubah karakter PERTAMA tanda tangan: keenam bitnya bermakna. Karakter terakhir base64url memuat bit pengisi
+    // yang diabaikan decoder, sehingga mengganti akhiran (mis. "BA" -> "BB") kadang menghasilkan byte yang sama.
+    const tampered = `${header}.${payload}.${signature.startsWith("A") ? "B" : "A"}${signature.slice(1)}`;
     const claims = JSON.parse(Buffer.from(payload, "base64url").toString()) as Record<string, unknown>;
     const forgedPayload = Buffer.from(JSON.stringify({ ...claims, seq: 999999 })).toString("base64url");
     const forged = `${header}.${forgedPayload}.${signature}`;
