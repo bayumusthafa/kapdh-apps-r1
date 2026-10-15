@@ -32,6 +32,7 @@ dalam satu perubahan.
 | [023](023-job-rilis-dan-gerbang-go-live.md) | Job rilis (image `kapdh-release`) dan gerbang go-live `golive:check`; jalur CI memakai urutan yang sama | PRD 5.5, 9.2 #9, 9.3, U-12 |
 | [024](024-pipeline-ci-cd.md) | Pipeline CI/CD GitHub Actions, promosi digest yang sama, gerbang kontrak N-13 | PRD 5.5, 7.1, N-13, N-16 |
 | [025](025-reautentikasi-hanya-tindakan-kredensial.md) | Reautentikasi step-up hanya untuk tindakan kredensial (termasuk koreksi email login admin, bersyarat); perubahan pengaturan, metode bayar dan admin lainnya cukup sesi MFA (keputusan PO, menyimpang dari AC F15-3/F16-1; menggantikan ADR-013 butir 6) | PRD 2.3, AC F15-3, AC F16-1 |
+| [026](026-metode-qris-dan-gambar-qr-publik.md) | Metode bayar QRIS statis dengan gambar QR publik (purpose `payment_qr`, unggah khusus `settings.manage`); gambar ikut identitas metode dan snapshot payment; kontrak aditif; gerbang go-live memeriksa gambar dan mencetak sidik jari untuk bendahara (permintaan PO) | PRD 6.2, D13, AC F15-3, N-10 |
 
 ADR 023 dan 024 ditulis paralel dengan nomor sementara (ADR-0002 dan ADR-010) lalu dinomori ulang saat integrasi akhir
 R1.0 (`docs/handoff/integration-final.md`); rujukan lama di riwayat git menunjuk ke berkas yang sama.

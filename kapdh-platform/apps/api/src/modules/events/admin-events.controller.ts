@@ -1,4 +1,3 @@
-import type { Multipart } from "@fastify/multipart";
 import {
   Body,
   Controller,
@@ -16,10 +15,9 @@ import {
 import { RouteConfig } from "@nestjs/platform-fastify";
 import type { components } from "@kapdh/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import type { Readable } from "node:stream";
 import { parseIfMatch } from "../../core/concurrency/if-match.js";
-import { AppException, fieldError } from "../../core/errors/app-exception.js";
-import { FilesService, type UploadContent, type UploadTicket } from "../../core/files/files.service.js";
+import { FilesService } from "../../core/files/files.service.js";
+import { receiveSingleImage } from "../../core/files/multipart-upload.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
 import { Audience, CurrentAuth, RequirePermission } from "../../core/guards/decorators.js";
 import type { MultipartRouteConfig } from "../../core/http/fastify-hooks.js";
@@ -185,50 +183,6 @@ export class AdminEventsController {
   }
 }
 
-/** Galat parser multipart → galat baku (PRD 5.2); AppException diteruskan apa adanya. */
-function multipartError(error: unknown): AppException {
-  if (error instanceof AppException) return error;
-  switch ((error as { code?: unknown } | null)?.code) {
-    case "FST_REQ_FILE_TOO_LARGE":
-      return new AppException(413, "FILE_INVALID", "Gambar terlalu besar. Maksimal 5 MB.");
-    case "FST_FILES_LIMIT":
-      return new AppException(413, "FILE_INVALID", "Kirim satu gambar per unggahan.");
-    case "FST_PARTS_LIMIT":
-    case "FST_FIELDS_LIMIT":
-      return new AppException(413, "FILE_INVALID", "Isian unggahan terlalu banyak. Kirim satu gambar.");
-    case "FST_INVALID_MULTIPART_CONTENT_TYPE":
-      return new AppException(415, "FILE_INVALID", "Kirim gambar sebagai multipart/form-data.");
-    default:
-      return new AppException(
-        400,
-        "VALIDATION_ERROR",
-        "Format unggahan tidak valid. Pilih gambar lalu coba lagi.",
-      );
-  }
-}
-
-function tooLarge(): AppException {
-  return new AppException(413, "FILE_INVALID", "Gambar terlalu besar. Maksimal 5 MB.");
-}
-
-/** Membaca stream sampai batas byte purpose; berhenti begitu batas terlampaui (N-10). */
-async function readLimited(stream: Readable & { truncated?: boolean }, maxBytes: number): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  let total = 0;
-  try {
-    for await (const chunk of stream) {
-      const buffer = chunk as Buffer;
-      total += buffer.byteLength;
-      if (total > maxBytes) throw tooLarge();
-      chunks.push(buffer);
-    }
-  } catch (error) {
-    throw multipartError(error);
-  }
-  if (stream.truncated) throw tooLarge();
-  return Buffer.concat(chunks, total);
-}
-
 /**
  * POST /admin/event-covers (N-10, PRD 2.5): cover event `event_cover` oleh pengurus events.manage. Hak unggah dan kuota
  * (10 per akun per 24 jam) diperiksa SEBELUM isi dibaca; isi diperiksa magic bytes, dimensi aman, EXIF dibuang dan
@@ -248,36 +202,12 @@ export class AdminEventCoversController {
     @Res({ passthrough: true }) reply: FastifyReply,
     @CurrentAuth() auth: AuthContext,
   ): Promise<Schemas["AdminEventCoverMedia"]> {
-    let ticket: UploadTicket | null = null;
-    let content: UploadContent | null = null;
-    try {
-      if (!request.isMultipart()) throw multipartError({ code: "FST_INVALID_MULTIPART_CONTENT_TYPE" });
-      ticket = await this.files.beginUpload(auth, "event_cover", { allowed: ["event_cover"] });
-      const parts = request.parts()[Symbol.asyncIterator]();
-      for (;;) {
-        let step: IteratorResult<Multipart>;
-        try {
-          step = await parts.next();
-        } catch (error) {
-          throw multipartError(error);
-        }
-        if (step.done) break;
-        const part = step.value;
-        if (part.type === "field") continue;
-        if (part.fieldname !== "file") throw fieldError("file", "Kirim gambar pada field file.");
-        if (content) throw multipartError({ code: "FST_FILES_LIMIT" });
-        content = {
-          data: await readLimited(part.file, ticket.maxBytes),
-          filename: part.filename,
-          declaredMime: part.mimetype,
-        };
-      }
-    } catch (error) {
-      // Sisa body tidak dibaca lagi: koneksi ditutup setelah respons galat.
-      void reply.header("connection", "close");
-      throw error;
-    }
-    if (!ticket || !content) throw fieldError("file", "Gambar cover wajib dikirim.");
+    const { ticket, content } = await receiveSingleImage(
+      request,
+      reply,
+      () => this.files.beginUpload(auth, "event_cover", { allowed: ["event_cover"] }),
+      "Gambar cover wajib dikirim.",
+    );
     const file = await this.files.completeUpload(ticket, content);
     return {
       file_id: file.id,

@@ -24,7 +24,7 @@ import { formatDate, formatDateTime, formatRupiah } from "../../lib/format";
 import { PAYMENT_TYPE_LABEL } from "../../lib/labels";
 import { requiredText } from "../../lib/validation";
 import { memberKeys } from "../members/queries";
-import { METHOD_KIND_LABEL } from "./labels";
+import { methodSubtitle, methodTitle } from "./labels";
 import { FEES_KEY, METHODS_KEY, PAYMENTS_KEY, paymentDetailKey } from "./queries";
 import { DUES_TYPES, duesUnavailableReason, feesUnconfigured, recordBlockReason } from "./recordEligibility";
 
@@ -418,8 +418,8 @@ export function RecordDuesDialog({
                   hint="Rekening organisasi tempat dana diterima; rekening nonaktif tetap dapat dipilih."
                   options={methods.data.items.map((x) => ({
                     value: x.id,
-                    label: `${METHOD_KIND_LABEL[x.kind]} ${x.provider}${x.active ? "" : " (nonaktif)"}`,
-                    description: `${x.account_number} a.n. ${x.account_holder}`,
+                    label: `${methodTitle(x)}${x.active ? "" : " (nonaktif)"}`,
+                    description: methodSubtitle(x),
                   }))}
                 />
               )}

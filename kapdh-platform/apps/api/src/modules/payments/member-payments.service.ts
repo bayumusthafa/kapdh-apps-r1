@@ -146,7 +146,7 @@ export class MemberPaymentsService {
     return { userId: auth.userId, status: auth.effectiveStatus, platform: callerPlatform() };
   }
 
-  /** Metode aktif, urut sort_order lalu penyedia (F-03, D13). */
+  /** Metode aktif, urut sort_order lalu penyedia (F-03, D13); qris membawa URL publik gambar QRIS (ADR-026). */
   async listMethods(): Promise<Schemas["PaymentMethodList"]> {
     const rows = await this.db
       .select()
@@ -161,6 +161,7 @@ export class MemberPaymentsService {
         account_number: row.accountNumber,
         account_holder: row.accountHolder,
         instructions: row.instructions,
+        qr_image_url: this.views.qrImageUrl(row.kind, row.qrImageFileId),
       })),
     };
   }

@@ -172,6 +172,53 @@ void main() {
       expect(tester.widget<ProofUploadSection>(find.byType(ProofUploadSection)).onPick, isNotNull);
     });
 
+    testWidgets('ADR-026 reservasi dibayar QRIS: tujuan pembayaran merchant dan NMID tanpa gambar; Bayar Sekarang '
+        'menampilkan gambar QRIS di instruksi pembayaran', (tester) async {
+      final hold = testNow.add(const Duration(hours: 24));
+      final app = await pumpMemberApp(
+        tester,
+        location: '/tickets/ticket-1',
+        routes: {
+          '/me/tickets/ticket-1': (_) => FakeResponse.json(
+            200,
+            ticketDetailJson(
+              status: 'awaiting_payment',
+              holdExpiresAt: hold,
+              payment: ticketPaymentJson(
+                method: {
+                  'kind': 'qris',
+                  'provider': 'QRIS',
+                  'account_number': 'ID1020200012345',
+                  'account_holder': 'KAPDH Pusat',
+                  'instructions': null,
+                },
+              ),
+            ),
+          ),
+          '/me/payments/payment-9': (_) =>
+              FakeResponse.json(200, ticketPaymentDetailJson(holdExpiresAt: hold, method: qrisMethodJson())),
+          '/payment-methods': (_) => FakeResponse.json(200, {
+            'items': [qrisMethodJson()],
+          }),
+        },
+      );
+      expect(find.textContaining('Pindai QRIS di halaman pembayaran dan masukkan nominal persis'), findsOneWidget);
+      await scrollUntil(tester, find.text('Tujuan pembayaran'));
+      expect(find.text('QRIS KAPDH Pusat\nNMID ID1020200012345'), findsOneWidget);
+      expect(find.text('Rekening tujuan'), findsNothing);
+      // Ringkasan tiket tidak memuat gambar QRIS (events.yaml TicketPaymentMethodKind); gambar dibuka dari instruksi.
+      expect(find.byType(QrisImageCard), findsNothing);
+      expect(requestedImages, isNot(contains('https://api.kapdh.or.id/api/v1/files/public/file-qr-1')));
+
+      await scrollUntil(tester, find.byKey(const ValueKey('ticket-pay')), delta: -200);
+      await tester.tap(find.byKey(const ValueKey('ticket-pay')));
+      await settle(tester);
+      expect(app.location, '/payments/payment-9');
+      expect(find.byType(QrisImageCard), findsOneWidget);
+      expect(find.text('NMID: ID1020200012345'), findsOneWidget);
+      expect(requestedImages, contains('https://api.kapdh.or.id/api/v1/files/public/file-qr-1'));
+    });
+
     testWidgets('AC F09-2 hold habis: layar memuat ulang status dari server dan tiket tampil expired', (tester) async {
       var expired = false;
       final app = await pumpMemberApp(

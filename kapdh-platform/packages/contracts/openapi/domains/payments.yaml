@@ -551,24 +551,43 @@ components:
 
     PaymentMethodKind:
       type: string
-      enum: [bank, ewallet]
-      description: Jenis rekening tujuan transfer manual (D13).
+      enum: [bank, ewallet, qris]
+      description: |
+        Jenis rekening tujuan transfer manual (D13). `qris` (ADR-026): QRIS statis resmi organisasi tanpa nominal;
+        anggota memindai gambar `qr_image_url` lalu memasukkan nominal sendiri, kemudian mengunggah bukti seperti
+        transfer biasa (tidak ada payment gateway). Klien lama yang belum mengenal nilai ini wajib memperlakukannya
+        sebagai jenis tidak dikenal (SDK Dart: `unknown`).
 
     PaymentMethod:
       type: object
       description: |
         Rekening tujuan transfer manual milik organisasi (D13). Pada payment, objek ini adalah SNAPSHOT saat
         instruksi dibuat atau metode diganti; perubahan metode oleh pengurus tidak mengubah payment lama (AC F15-3).
+        Untuk `kind` qris: `provider` = nama metode (bawaan "QRIS"), `account_number` = NMID, `account_holder` = nama
+        merchant, dan `qr_image_url` = gambar QRIS yang dipindai anggota. Gambar ikut snapshot dan tidak dapat
+        diganti selama metode pernah dipakai payment (aturan adminUpdatePaymentMethod), sehingga QR pada instruksi
+        selalu sama dengan yang disahkan bendahara. Instruksi iuran yang disembunyikan (D13, `instructions_hidden`)
+        juga menyembunyikan gambar ini di aplikasi.
       required: [id, kind, provider, account_number, account_holder]
       properties:
         id: { type: string, format: uuid, description: ID metode asal snapshot. }
         kind: { $ref: "#/components/schemas/PaymentMethodKind" }
-        provider: { type: string, description: "Nama bank atau e-wallet, misalnya BSI." }
-        account_number: { type: string, description: Nomor rekening atau akun tujuan organisasi. }
-        account_holder: { type: string, description: Nama pemilik rekening tujuan. }
+        provider:
+          { type: string, description: "Nama bank atau e-wallet, misalnya BSI; untuk qris nama metode." }
+        account_number:
+          { type: string, description: "Nomor rekening atau akun tujuan organisasi; untuk qris NMID." }
+        account_holder:
+          { type: string, description: "Nama pemilik rekening tujuan; untuk qris nama merchant." }
         instructions:
           type: [string, "null"]
           description: Petunjuk tambahan dari pengurus (misalnya kode bank), teks polos.
+        qr_image_url:
+          type: [string, "null"]
+          format: uri
+          description: |
+            URL publik tetap gambar QRIS (berkas purpose `payment_qr`, GET /files/public/{fileId}, cache publik +
+            ETag). Terisi hanya untuk `kind` qris; null atau tidak dikirim untuk jenis lain. Opsional agar klien dan
+            respons lama tetap sah (aditif, ADR-026).
 
     PaymentMethodList:
       type: object

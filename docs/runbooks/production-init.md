@@ -418,7 +418,10 @@ go-live** (PRD 8.2, 10.2).
       sejak ADR-025, tercatat di audit `payment_method.*`): **BD** membuat rekening organisasi yang sah (bank, nomor,
       atas nama, instruksi). Tidak ada metode bayar di seed. Karena simpan tidak lagi meminta sandi + TOTP, **BD**
       mencocokkan rekening aktif dengan daftar yang ditandatangani saat sign-off go-live dan setelah setiap perubahan
-      metode (risiko yang diterima ADR-025).
+      metode (risiko yang diterima ADR-025). QRIS dibuat sebagai jenis **QRIS** dengan NMID, nama merchant, dan gambar
+      QRIS statis resmi (PNG/JPG, minimal 512 piksel), bukan sebagai bank/e-wallet tanpa gambar, karena gerbang
+      menolak bentuk itu. **BD** memindai uji gambar sebelum metode diaktifkan, lalu menandatangani sidik jari gambar
+      di laporan gerbang (ADR-026, `rilis-dan-gerbang-go-live.md` bagian 5.4).
 - [ ] **4.5 Kontak dukungan** (Pengaturan): email `bantuan@kapdh.or.id` (seed) dan **satu nomor WhatsApp admin**
       (PRD 8.3; seed `null`).
 - [ ] **4.6 Versi aplikasi minimum** (Pengaturan): `android`/`ios` = versi build rilis pertama (bawaan `1.0.0`).

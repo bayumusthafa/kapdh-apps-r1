@@ -6,6 +6,7 @@ import {
   banners,
   categories,
   events,
+  files,
   masterProfessions,
   masterSkills,
   MIGRATIONS_FOLDER,
@@ -35,6 +36,8 @@ import type { Db, DbOrTx } from "../core/db/types.js";
  * - fase `preflight` (mode enforce, SEBELUM migrasi): pemeriksaan konfigurasi yang tidak bergantung pada migrasi
  *   tertunda (semua kecuali `schema` dan `settings`), sehingga konfigurasi yang belum disahkan menghentikan rilis
  *   sebelum skema production berubah. Skema aplikasi yang belum ada (inisialisasi pertama) membuat fase ini dilewati.
+ *   Pemeriksaan fase ini hanya memakai kolom dan nilai enum skema rilis sebelumnya (mis. gambar QRIS metode qris,
+ *   kolom migrasi 0008, baru diperiksa fase penuh; ADR-026).
  * - fase `full` (setelah migrasi dan seed referensi): seluruh pemeriksaan.
  *
  * Gerbang TIDAK dipasang di /health/ready: konfigurasi yang belum disahkan adalah alasan menunda go-live atau
@@ -327,12 +330,55 @@ async function checkFees(tx: DbOrTx, settings: SettingRows): Promise<GateCheck> 
   return c;
 }
 
-async function checkPaymentMethods(tx: DbOrTx): Promise<GateCheck> {
+/** Metode yang namanya menyebut QRIS (kata utuh), mis. metode lama "QRIS" berjenis bank/ewallet tanpa gambar. */
+export const QRIS_NAME_PATTERN = /\bqris\b/i;
+
+/** Sidik jari gambar QRIS untuk ditandatangani bendahara: dimensi + 12 karakter awal sha256 (ADR-026). */
+export function qrImageFingerprint(image: { width: number | null; height: number | null; sha256: string }) {
+  return `gambar ${image.width ?? "?"}x${image.height ?? "?"} px, sha256 ${image.sha256.slice(0, 12)}…`;
+}
+
+interface QrImageState {
+  fileId: string | null;
+  status: string | null;
+  visibility: string | null;
+  purpose: string | null;
+  width: number | null;
+  height: number | null;
+  sha256: string | null;
+}
+
+/**
+ * Gambar QRIS metode qris aktif (fase penuh saja). Kolom `qr_image_file_id` baru ada setelah migrasi 0008, sehingga
+ * query ini hanya dijalankan bila ada metode berjenis qris; jenis itu sendiri dibandingkan di JavaScript (tanpa literal
+ * enum `'qris'` di SQL) agar gerbang pra-migrasi tetap berjalan di skema 0007 (ADR-026).
+ */
+async function qrImagesOf(tx: DbOrTx, methodIds: string[]): Promise<Map<string, QrImageState>> {
+  if (methodIds.length === 0) return new Map();
+  const found = await tx
+    .select({
+      id: paymentMethods.id,
+      fileId: paymentMethods.qrImageFileId,
+      status: files.status,
+      visibility: files.visibility,
+      purpose: files.purpose,
+      width: files.width,
+      height: files.height,
+      sha256: files.sha256,
+    })
+    .from(paymentMethods)
+    .leftJoin(files, eq(files.id, paymentMethods.qrImageFileId))
+    .where(inArray(paymentMethods.id, methodIds));
+  return new Map(found.map(({ id, ...image }) => [id, image]));
+}
+
+async function checkPaymentMethods(tx: DbOrTx, phase: GatePhase): Promise<GateCheck> {
   const c = check(
     "payment_methods",
     "Metode bayar aktif dibuat lewat web admin",
-    "D13; PRD 8.2 langkah 4, 9.3",
+    "D13; PRD 8.2 langkah 4, 9.3; ADR-026",
   );
+  // Hanya kolom yang ada sejak 0000: fase pra-migrasi berjalan pada skema rilis sebelumnya (tanpa qr_image_file_id).
   const active = await tx
     .select({
       id: paymentMethods.id,
@@ -348,6 +394,14 @@ async function checkPaymentMethods(tx: DbOrTx): Promise<GateCheck> {
     fail(c, "Tidak ada metode bayar aktif; anggota tidak dapat membayar iuran (D13).");
     return c;
   }
+  const qris = active.filter((m) => m.kind === "qris");
+  const images =
+    phase === "full"
+      ? await qrImagesOf(
+          tx,
+          qris.map((m) => m.id),
+        )
+      : new Map<string, QrImageState>();
   const audited = new Set(
     (
       await tx
@@ -365,7 +419,37 @@ async function checkPaymentMethods(tx: DbOrTx): Promise<GateCheck> {
     ).map((r) => r.entityId),
   );
   for (const m of active) {
-    c.details.push(`${m.provider} (${m.kind}) ${maskAccountNumber(m.accountNumber)} a.n. ${m.accountHolder}`);
+    const line = `${m.provider} (${m.kind}) ${maskAccountNumber(m.accountNumber)} a.n. ${m.accountHolder}`;
+    const isQris = m.kind === "qris";
+    const image = images.get(m.id);
+    if (isQris && image?.sha256)
+      c.details.push(`${line}; ${qrImageFingerprint({ ...image, sha256: image.sha256 })}`);
+    else if (isQris && phase === "preflight")
+      c.details.push(`${line}; gambar QRIS diperiksa pada gerbang penuh setelah migrasi`);
+    else c.details.push(line);
+    // Metode lama bernama QRIS tanpa gambar (dibuat sebagai bank/e-wallet sebelum ADR-026): anggota hanya melihat
+    // NMID tanpa QR yang dapat dipindai. Kedua fase, dibandingkan di JavaScript (tanpa nilai enum baru di SQL).
+    if (!isQris && QRIS_NAME_PATTERN.test(m.provider))
+      fail(
+        c,
+        `Metode "${m.provider}" bernama QRIS tetapi berjenis ${m.kind} tanpa gambar QR. Nonaktifkan metode ini lalu ` +
+          "buat ulang sebagai metode QRIS dengan gambar QRIS statis resmi lewat web admin (ADR-026).",
+      );
+    if (
+      isQris &&
+      phase === "full" &&
+      !(
+        image?.fileId &&
+        image.status === "ready" &&
+        image.visibility === "public" &&
+        image.purpose === "payment_qr"
+      )
+    )
+      fail(
+        c,
+        `Metode QRIS "${m.provider}" tidak memiliki gambar QR yang siap ditampilkan (berkas payment_qr publik ` +
+          "berstatus ready). Unggah ulang gambar QRIS lewat web admin.",
+      );
     const fixture =
       m.id === DEV_IDS.paymentMethod ||
       /\[[^\]]*contoh[^\]]*\]|\(contoh\)/i.test(`${m.provider} ${m.accountHolder}`) ||
@@ -377,7 +461,11 @@ async function checkPaymentMethods(tx: DbOrTx): Promise<GateCheck> {
         `Metode "${m.provider}" tidak tercatat dibuat lewat web admin (audit payment_method.created tidak ada).`,
       );
   }
-  c.details.push("Bendahara menandatangani daftar metode di atas pada bukti gerbang (PRD 9.3).");
+  c.details.push(
+    qris.length > 0
+      ? "Bendahara menandatangani daftar metode di atas, termasuk sidik jari gambar QRIS, pada bukti gerbang (PRD 9.3)."
+      : "Bendahara menandatangani daftar metode di atas pada bukti gerbang (PRD 9.3).",
+  );
   return c;
 }
 
@@ -691,7 +779,7 @@ export async function runGoLiveGate(db: Db, options: GateOptions = {}): Promise<
         checks: [
           ...(phase === "full" ? [checkSettings(settings)] : []),
           await checkFees(tx, settings),
-          await checkPaymentMethods(tx),
+          await checkPaymentMethods(tx, phase),
           await checkSuperAdmins(tx, usable),
           checkPaymentDeciders(usable),
           await checkLegalPages(tx, settings),

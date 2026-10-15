@@ -1,6 +1,16 @@
 import type { Permission } from "@kapdh/contracts";
 import { mockAdminRef, mockHasPermission, requirePermission } from "./auth";
-import { error, json, type MockRequest, type MockRoute, noContent, paginate, type S } from "./http";
+import {
+  error,
+  json,
+  type MockFile,
+  type MockRequest,
+  type MockRoute,
+  noContent,
+  paginate,
+  readMultipart,
+  type S,
+} from "./http";
 import {
   applyPaidDuesForMocks,
   MOCK_MEMBER,
@@ -27,6 +37,11 @@ import {
  * - Rekening tujuan refund hanya dikirim di detail penyesuaian kepada pemegang payments.decide yang tidak
  *   berkonflik kepentingan, selama pending; tidak pernah di daftar; dihapus saat selesai/dibatal (D2).
  * - Metode yang sudah dipakai payment (`in_use`) hanya dapat dinonaktifkan; identitas rekeningnya terkunci.
+ * - Metode QRIS (ADR-026): gambar diunggah lewat POST /admin/payment-qr-images (PNG/JPG <= 5 MB menurut magic bytes,
+ *   sisi terpendek >= 512 piksel, gambar > 2048 piksel diperkecil, 10 unggahan per 24 jam), lalu dirujuk
+ *   `qr_image_file_id`: qris wajib bergambar, jenis lain tanpa gambar; hanya berkas unggahan admin pemanggil yang
+ *   belum dipakai; PUT tanpa `qr_image_file_id` = gambar tetap; gambar metode `in_use` terkunci seperti nomor
+ *   rekening; gambar yang diganti/dihapus dibuang. Snapshot payment memuat `qr_image_url`.
  * - Pencatatan iuran D13 (adminRecordPayment): kelayakan seperti GET /me/fees, payment terbuka awaiting_transfer/
  *   needs_fix diselesaikan di tempat (200), awaiting_review → 409 dengan `current`, selain itu payment baru dari biaya
  *   aktif (201); bukti wajib payment_proof unggahan admin pemanggil yang belum terpakai (422).
@@ -37,7 +52,8 @@ type Detail = S["AdminPaymentDetail"];
 type PaymentEvent = S["AdminPaymentEvent"];
 type Adjustment = S["AdminPaymentAdjustment"];
 type ActorRef = S["AdminPaymentActorRef"];
-type MethodRow = Omit<S["AdminPaymentMethod"], "in_use">;
+/** Baris metode tersimpan; `in_use` dan `qr_image_url` dihitung saat respons seperti server. */
+type MethodRow = Omit<S["AdminPaymentMethod"], "in_use" | "qr_image_url">;
 
 /** Waktu server tiruan saat data contoh dibuat; dasar `overdue` agar data contoh deterministik. */
 const MOCK_SERVER_NOW = Date.parse("2026-10-12T11:00:00Z");
@@ -848,6 +864,17 @@ let adjustments = new Map<string, Adjustment>();
 let methods = new Map<string, MethodRow>();
 let fees: S["FeeSettings"];
 let methodSeq = 0;
+/**
+ * Gambar QRIS hasil POST /admin/payment-qr-images (purpose payment_qr, ADR-026): pemilik (admin pengunggah) dan
+ * metode yang melampirkannya (null = belum terlampir). Gambar yang dibuang dihapus dari peta.
+ */
+interface QrImageRec {
+  image: S["AdminPaymentQrImage"];
+  ownerAdminId: string;
+  attachedTo: string | null;
+}
+let qrImages = new Map<string, QrImageRec>();
+let qrSeq = 0;
 /** Nomor urut payment iuran yang dicatat pengurus (D13). */
 let recordSeq = 0;
 
@@ -967,7 +994,15 @@ function feeSettings(
 function methodFixtures(): MethodRow[] {
   const at = "2026-09-01T00:00:00Z";
   return [
-    { ...METHOD, active: true, sort_order: 0, version: "1", created_at: at, updated_at: at },
+    {
+      ...METHOD,
+      qr_image_file_id: null,
+      active: true,
+      sort_order: 0,
+      version: "1",
+      created_at: at,
+      updated_at: at,
+    },
     {
       id: "0199e000-0000-7000-8000-000000000002",
       kind: "ewallet",
@@ -975,6 +1010,7 @@ function methodFixtures(): MethodRow[] {
       account_number: "[Nomor akun e-wallet]",
       account_holder: "[Nama pemilik akun]",
       instructions: "Pilih menu transfer ke sesama pengguna, lalu masukkan nomor akun di atas.",
+      qr_image_file_id: null,
       active: true,
       sort_order: 1,
       version: "1",
@@ -988,6 +1024,7 @@ function methodFixtures(): MethodRow[] {
       account_number: "[Nomor rekening lama]",
       account_holder: "[Nama pemilik rekening]",
       instructions: null,
+      qr_image_file_id: null,
       active: false,
       sort_order: 2,
       version: "2",
@@ -1005,6 +1042,8 @@ export function reset(): void {
   for (const hold of holds.splice(0)) hold.release();
   adjustmentSeq = 0;
   methodSeq = 0;
+  qrSeq = 0;
+  qrImages = new Map();
   recordSeq = 0;
   const data = fixtures();
   payments = new Map(data.payments.map((p) => [p.id, p]));
@@ -1069,6 +1108,8 @@ function present(p: Detail): Detail {
   const decide = canDecide(p);
   return {
     ...p,
+    // Server selalu mengirim `qr_image_url` pada snapshot (null untuk bank/e-wallet, ADR-026).
+    method: { ...p.method, qr_image_url: p.method.qr_image_url ?? null },
     member: liveMember(p.member),
     adjustments: adjustmentsOf(p.id).map((a) => presentAdjustment(a)),
     actions: {
@@ -1106,8 +1147,14 @@ function inUse(methodId: string): boolean {
   return false;
 }
 
+/** URL publik gambar QRIS metode (null untuk jenis lain atau metode tanpa gambar), seperti PaymentViews.qrImageUrl. */
+function qrImageUrl(m: Pick<MethodRow, "kind" | "qr_image_file_id">): string | null {
+  if (m.kind !== "qris" || !m.qr_image_file_id) return null;
+  return qrImages.get(m.qr_image_file_id)?.image.url ?? null;
+}
+
 function presentMethod(m: MethodRow): S["AdminPaymentMethod"] {
-  return { ...m, in_use: inUse(m.id) };
+  return { ...m, qr_image_url: qrImageUrl(m), in_use: inUse(m.id) };
 }
 
 /** Kendali server tiruan untuk uji: meniru tindakan alumni dan admin lain (AC F03-2, F04-3, F04-4, F15-4). */
@@ -1205,6 +1252,62 @@ export const mockPayments = {
       new Date().toISOString(),
       OTHER_ADMIN,
     );
+  },
+  /**
+   * Tambah metode QRIS bergambar (ADR-026) tanpa mengubah data contoh bawaan: gambar 1024x1024 milik admin yang sedang
+   * masuk sudah terlampir. `inUse` true = metode sudah dipakai payment contoh baru (identitas dan gambar terkunci).
+   */
+  addQrisMethod(
+    opts: { inUse?: boolean; active?: boolean; provider?: string; sortOrder?: number } = {},
+  ): S["AdminPaymentMethod"] {
+    methodSeq += 1;
+    const at = "2026-10-01T00:00:00Z";
+    const id = `0199e000-0000-7000-8000-0000000004${String(methodSeq).padStart(2, "0")}`;
+    const image = storeQrImage(
+      { name: "qris-kapdh.png", type: "image/png", size: 4_096, bytes: new Uint8Array() },
+      { width: 1024, height: 1024 },
+      mockAdminRef().admin_id,
+    );
+    image.attachedTo = id;
+    const row: MethodRow = {
+      id,
+      kind: "qris",
+      provider: opts.provider ?? "QRIS",
+      account_number: "ID1022334455667",
+      account_holder: "KAPDH PUSAT",
+      instructions: null,
+      qr_image_file_id: image.image.file_id,
+      active: opts.active ?? true,
+      sort_order: opts.sortOrder ?? 3,
+      version: "1",
+      created_at: at,
+      updated_at: at,
+    };
+    methods.set(id, row);
+    if (opts.inUse) {
+      // Payment iuran contoh baru yang memakai snapshot metode ini; status paid agar antrean contoh tidak berubah.
+      const source = [...payments.values()].find((p) => p.status === "paid" && p.type !== "ticket");
+      if (source) {
+        const paymentId = `0199e000-0000-7000-8000-0000000007${String(methodSeq).padStart(2, "0")}`;
+        payments.set(paymentId, {
+          ...source,
+          id: paymentId,
+          method: methodSnapshot(row),
+          method_id: id,
+          method_active: row.active,
+        });
+      }
+    }
+    return presentMethod(row);
+  },
+  /** Id payment yang snapshot rekening tujuannya berasal dari metode ini (mis. dari `addQrisMethod({ inUse })`). */
+  paymentsOfMethod(methodId: string): string[] {
+    return [...payments.values()].filter((p) => p.method.id === methodId).map((p) => p.id);
+  },
+  /** Gambar QRIS hasil unggah: metode yang melampirkannya, atau undefined bila sudah dibuang/tidak ada. */
+  qrImage(fileId: string): { attachedTo: string | null } | undefined {
+    const rec = qrImages.get(fileId);
+    return rec ? { attachedTo: rec.attachedTo } : undefined;
   },
   /** Belum ada metode bayar sama sekali (mis. sebelum go-live), untuk keadaan kosong tab metode. */
   clearMethods(): void {
@@ -1320,7 +1423,8 @@ function textInvalid(value: unknown, max: number): boolean {
 /** Validasi PaymentMethodInput (POST dan PUT penggantian penuh). */
 function methodInputErrors(body: Record<string, unknown>): FieldErrors {
   const fe: FieldErrors = {};
-  if (body.kind !== "bank" && body.kind !== "ewallet") fe.kind = ["Pilih jenis rekening"];
+  if (body.kind !== "bank" && body.kind !== "ewallet" && body.kind !== "qris")
+    fe.kind = ["Pilih jenis rekening"];
   if (textInvalid(body.provider, 80))
     fe.provider = ["Nama bank atau e-wallet wajib diisi (maksimal 80 karakter)"];
   if (textInvalid(body.account_number, 64))
@@ -1339,11 +1443,19 @@ function methodInputErrors(body: Record<string, unknown>): FieldErrors {
     (body.sort_order as number) > 32767
   )
     fe.sort_order = ["Urutan tampil 0 sampai 32767"];
+  const qr = body.qr_image_file_id;
+  if (qr !== undefined && qr !== null && (typeof qr !== "string" || !UUID.test(qr)))
+    fe.qr_image_file_id = ["Gambar QRIS tidak valid"];
   return fe;
 }
 
+/**
+ * Isi metode dari body tervalidasi. `currentImage`: gambar saat ini (POST: null). `qr_image_file_id` tidak dikirim =
+ * gambar tetap, null = tanpa gambar, UUID = gambar baru (kontrak PaymentMethodInput, ADR-026).
+ */
 function methodFromInput(
   body: Record<string, unknown>,
+  currentImage: string | null,
 ): Omit<MethodRow, "id" | "version" | "created_at" | "updated_at"> {
   const instructions = typeof body.instructions === "string" ? body.instructions.trim() : "";
   return {
@@ -1352,9 +1464,148 @@ function methodFromInput(
     account_number: String(body.account_number).trim(),
     account_holder: String(body.account_holder).trim(),
     instructions: instructions.length > 0 ? instructions : null,
+    qr_image_file_id:
+      body.qr_image_file_id === undefined ? currentImage : (body.qr_image_file_id as string | null),
     active: body.active as boolean,
     sort_order: body.sort_order as number,
   };
+}
+
+const QR_REQUIRED = "Gambar QRIS wajib diunggah.";
+const QR_ONLY_FOR_QRIS = "Gambar QR hanya untuk metode QRIS.";
+const QR_FILE_INVALID = "Berkas tidak ditemukan, belum selesai diunggah, berbeda jenis, atau sudah dipakai.";
+
+/** qris wajib bergambar, jenis lain tanpa gambar (payment_methods_qr_image_chk); null bila sesuai. */
+function qrKindError(input: Pick<MethodRow, "kind" | "qr_image_file_id">): Response | null {
+  if (input.kind === "qris" && !input.qr_image_file_id)
+    return validationError({ qr_image_file_id: [QR_REQUIRED] });
+  if (input.kind !== "qris" && input.qr_image_file_id)
+    return validationError({ qr_image_file_id: [QR_ONLY_FOR_QRIS] });
+  return null;
+}
+
+/**
+ * FilesService.attach: hanya gambar payment_qr unggahan admin pemanggil yang belum dilampirkan. Mengembalikan galat
+ * 400 pada `qr_image_file_id`, atau null setelah gambar ditandai milik metode.
+ */
+function attachQrImage(fileId: string, methodId: string): Response | null {
+  const rec = qrImages.get(fileId);
+  if (!rec || rec.ownerAdminId !== mockAdminRef().admin_id || rec.attachedTo !== null)
+    return validationError({ qr_image_file_id: [QR_FILE_INVALID] });
+  rec.attachedTo = methodId;
+  return null;
+}
+
+/** Jenis gambar dari magic bytes (server: file-type), bukan dari Content-Type kiriman. */
+function sniffImage(bytes: Uint8Array): "image/png" | "image/jpeg" | null {
+  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47)
+    return "image/png";
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  return null;
+}
+
+/** Dimensi dari header PNG (IHDR) atau JPEG (SOFn); null bila tidak terbaca (server: gambar rusak, 422). */
+function imageDimensions(bytes: Uint8Array): { width: number; height: number } | null {
+  if (sniffImage(bytes) === "image/png") {
+    if (bytes.length < 24) return null;
+    const w = ((bytes[16]! << 24) | (bytes[17]! << 16) | (bytes[18]! << 8) | bytes[19]!) >>> 0;
+    const h = ((bytes[20]! << 24) | (bytes[21]! << 16) | (bytes[22]! << 8) | bytes[23]!) >>> 0;
+    return w > 0 && h > 0 ? { width: w, height: h } : null;
+  }
+  for (let i = 2; i + 8 < bytes.length; i += 1) {
+    if (bytes[i] === 0xff && bytes[i + 1]! >= 0xc0 && bytes[i + 1]! <= 0xc3) {
+      const h = (bytes[i + 5]! << 8) | bytes[i + 6]!;
+      const w = (bytes[i + 7]! << 8) | bytes[i + 8]!;
+      return w > 0 && h > 0 ? { width: w, height: h } : null;
+    }
+  }
+  return null;
+}
+
+/** Gambar QRIS pengganti untuk data contoh (isi berkas tiruan kosong); hanya pola, bukan kode yang dapat dibayar. */
+function qrPlaceholder(): string {
+  const cells = [
+    "M10 10h70v70H10z",
+    "M120 10h70v70h-70z",
+    "M10 120h70v70H10z",
+    "M100 100h20v20h-20z",
+    "M130 130h30v30h-30z",
+    "M170 100h20v20h-20z",
+  ].join("");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="#fff"/><path d="${cells}" fill="#000"/></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+const QR_MAX_BYTES = 5 * 1024 * 1024;
+const QR_MIN_DIMENSION = 512;
+const QR_MAX_OUTPUT = 2048;
+const QR_UPLOADS_PER_DAY = 10;
+
+function storeQrImage(
+  file: MockFile,
+  dims: { width: number; height: number },
+  ownerAdminId: string,
+): QrImageRec {
+  qrSeq += 1;
+  const fileId = `0199e000-0000-7000-8000-0000000009${String(qrSeq).padStart(2, "0")}`;
+  let binary = "";
+  for (const b of file.bytes) binary += String.fromCharCode(b);
+  // Gambar > 2048 piksel diperkecil proporsional tanpa pembesaran (maxOutputDimension payment_qr).
+  const scale = Math.min(1, QR_MAX_OUTPUT / Math.max(dims.width, dims.height));
+  const rec: QrImageRec = {
+    image: {
+      file_id: fileId,
+      url: binary ? `data:${file.type};base64,${btoa(binary)}` : qrPlaceholder(),
+      mime: file.type as S["AdminPaymentQrImage"]["mime"],
+      bytes: file.size,
+      width: Math.round(dims.width * scale),
+      height: Math.round(dims.height * scale),
+    },
+    ownerAdminId,
+    attachedTo: null,
+  };
+  qrImages.set(fileId, rec);
+  return rec;
+}
+
+/**
+ * POST /admin/payment-qr-images (adminUploadPaymentQrImage): multipart dan kuota diperiksa sebelum isi dibaca, lalu
+ * urutan pemeriksaan isi seperti inspectUpload server (tipe dari magic bytes, ukuran, penyamaran, dimensi).
+ */
+async function uploadQrImage(req: MockRequest): Promise<Response> {
+  if (!/^multipart\/form-data/i.test(req.headers.get("content-type") ?? ""))
+    return error(415, "FILE_INVALID", "Kirim gambar sebagai multipart/form-data.");
+  const admin = mockAdminRef().admin_id;
+  const used = [...qrImages.values()].filter((r) => r.ownerAdminId === admin).length;
+  if (used >= QR_UPLOADS_PER_DAY)
+    return error(
+      429,
+      "RATE_LIMITED",
+      `Batas ${QR_UPLOADS_PER_DAY} unggahan per 24 jam untuk jenis berkas ini tercapai. Coba lagi nanti.`,
+      { retry_after_seconds: 3600 },
+    );
+  const form = await readMultipart(req.raw);
+  const file = form?.file;
+  if (!file || typeof file === "string") return validationError({ file: ["Gambar QRIS wajib dikirim."] });
+  if (file.size > QR_MAX_BYTES) return error(413, "FILE_INVALID", "Gambar terlalu besar. Maksimal 5 MB.");
+  // Di jsdom (uji UI) isi File tidak terbawa lintas realm sehingga bagian berkas tiba kosong: isi tidak dapat
+  // diperiksa, jadi tipe dari Content-Type bagian, dimensi 1024x1024 dan gambar pengganti dipakai. Peramban (dev:mock)
+  // dan uji kontrak mengirim isi sungguhan sehingga seluruh pemeriksaan di bawah berlaku.
+  if (file.bytes.length === 0 && (file.type === "image/png" || file.type === "image/jpeg"))
+    return json(201, storeQrImage(file, { width: 1024, height: 1024 }, admin).image);
+  const detected = sniffImage(file.bytes);
+  if (!detected) return error(415, "FILE_INVALID", "Gunakan gambar PNG atau JPG.");
+  if (file.type !== detected)
+    return error(415, "FILE_INVALID", "Tipe berkas yang dikirim tidak sesuai dengan isinya.");
+  const dims = imageDimensions(file.bytes);
+  if (!dims) return error(422, "FILE_INVALID", "Gambar rusak atau tidak dapat diproses.");
+  if (Math.min(dims.width, dims.height) < QR_MIN_DIMENSION)
+    return error(
+      422,
+      "FILE_INVALID",
+      `Gambar QRIS terlalu kecil (minimal ${QR_MIN_DIMENSION} piksel) sehingga sulit dipindai.`,
+    );
+  return json(201, storeQrImage(file, dims, admin).image);
 }
 
 function destinationErrors(value: unknown, field: string): FieldErrors {
@@ -1535,6 +1786,8 @@ function methodSnapshot(m: MethodRow): S["PaymentMethod"] {
     account_number: m.account_number,
     account_holder: m.account_holder,
     instructions: m.instructions,
+    // Gambar QRIS ikut snapshot dan tidak dapat diganti selama metode dipakai payment (ADR-026).
+    qr_image_url: qrImageUrl(m),
   };
 }
 
@@ -2161,6 +2414,16 @@ const paymentRoutes: MockRoute[] = [
     },
   },
   {
+    method: "POST",
+    path: "/admin/payment-qr-images",
+    handler: async (req) => {
+      log(req);
+      const denied = requirePermission(req, "settings.manage");
+      if (denied) return denied;
+      return uploadQrImage(req);
+    },
+  },
+  {
     method: "GET",
     path: "/admin/payment-methods",
     handler: (req) => {
@@ -2190,15 +2453,17 @@ const paymentRoutes: MockRoute[] = [
         const body = req.body ?? {};
         const fe = methodInputErrors(body);
         if (Object.keys(fe).length > 0) return validationError(fe);
+        const input = methodFromInput(body, null);
+        const kindError = qrKindError(input);
+        if (kindError) return kindError;
+        const id = `0199e000-0000-7000-8000-0000000004${String(methodSeq + 1).padStart(2, "0")}`;
+        if (input.qr_image_file_id) {
+          const refused = attachQrImage(input.qr_image_file_id, id);
+          if (refused) return refused;
+        }
         methodSeq += 1;
         const at = new Date().toISOString();
-        const row: MethodRow = {
-          id: `0199e000-0000-7000-8000-0000000004${String(methodSeq).padStart(2, "0")}`,
-          ...methodFromInput(body),
-          version: "1",
-          created_at: at,
-          updated_at: at,
-        };
+        const row: MethodRow = { id, ...input, version: "1", created_at: at, updated_at: at };
         methods.set(row.id, row);
         return { status: 201, body: presentMethod(row) };
       });
@@ -2233,12 +2498,13 @@ const paymentRoutes: MockRoute[] = [
         return error(409, "VERSION_CONFLICT", "Metode sudah diubah admin lain. Muat ulang.", {
           current: presentMethod(m),
         });
-      const input = methodFromInput(body);
+      const input = methodFromInput(body, m.qr_image_file_id);
       if (inUse(m.id)) {
-        // Identitas rekening metode yang sudah dipakai payment terkunci (kontrak adminUpdatePaymentMethod).
-        const changed = (["kind", "provider", "account_number", "account_holder"] as const).filter(
-          (f) => m[f] !== input[f],
-        );
+        // Identitas rekening metode yang sudah dipakai payment terkunci, termasuk gambar QRIS (kontrak
+        // adminUpdatePaymentMethod, ADR-026).
+        const changed = (
+          ["kind", "provider", "account_number", "account_holder", "qr_image_file_id"] as const
+        ).filter((f) => m[f] !== input[f]);
         if (changed.length > 0)
           return validationError(
             Object.fromEntries(
@@ -2251,6 +2517,15 @@ const paymentRoutes: MockRoute[] = [
             ),
           );
       }
+      const kindError = qrKindError(input);
+      if (kindError) return kindError;
+      const replaced = input.qr_image_file_id !== m.qr_image_file_id;
+      if (replaced && input.qr_image_file_id) {
+        const refused = attachQrImage(input.qr_image_file_id, m.id);
+        if (refused) return refused;
+      }
+      // Gambar lama tidak lagi dirujuk dan tidak pernah dirujuk payment (in_use terkunci): dibuang.
+      if (replaced && m.qr_image_file_id) qrImages.delete(m.qr_image_file_id);
       const updated: MethodRow = {
         ...m,
         ...input,
@@ -2281,6 +2556,8 @@ const paymentRoutes: MockRoute[] = [
           _: ["Metode sudah dipakai pembayaran, nonaktifkan saja agar histori tetap utuh."],
         });
       methods.delete(m.id);
+      // Gambar QRIS metode yang dihapus ikut dibuang (ADR-026).
+      if (m.qr_image_file_id) qrImages.delete(m.qr_image_file_id);
       return noContent();
     },
   },

@@ -1,7 +1,7 @@
 import type { components } from "@kapdh/contracts";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Ban, CircleCheck, Lock, Plus } from "lucide-react";
+import { Ban, CircleCheck, Lock, Plus, QrCode } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api/client";
 import { useApiMutation, useApiQuery } from "../../api/query";
@@ -13,7 +13,7 @@ import { Field } from "../../components/ui/FormField";
 import { Select } from "../../components/ui/Input";
 import { EmptyState } from "../../components/ui/States";
 import { useToast } from "../../components/ui/Toast";
-import { METHOD_KIND_LABEL } from "./labels";
+import { METHOD_KIND_LABEL, methodSubtitle, methodTitle } from "./labels";
 import { MethodFormDialog } from "./MethodFormDialog";
 import { METHODS_KEY } from "./queries";
 
@@ -31,7 +31,8 @@ const ACTIVE_OPTIONS = [
 type FormState = { method: Method | null; nextSortOrder: number } | null;
 
 /**
- * Tab Kelola Metode (guidelines hlm. 17, F-15, D13): rekening bank dan e-wallet tujuan transfer manual. Tabel
+ * Tab Kelola Metode (guidelines hlm. 17, F-15, D13): rekening bank dan e-wallet tujuan transfer manual, serta QRIS
+ * statis organisasi bergambar QR (ADR-026; berlabel QRIS, nomornya NMID dan pemiliknya nama merchant). Tabel
  * server-side dengan total dan paging kursor, urutan tampil yang diatur pengurus. Tambah, ubah dan hapus diaudit,
  * memakai If-Match (AC F15-4) dan tidak meminta reautentikasi (keputusan PO 2026-10-15, ADR-025). Metode yang sudah
  * dipakai pembayaran tidak dapat dihapus, hanya dinonaktifkan, agar histori dan snapshot tagihan tetap utuh.
@@ -116,7 +117,13 @@ export function MethodsTab() {
         cell: ({ row }) => (
           <span className="flex flex-col">
             <span className="font-semibold">{row.original.provider}</span>
-            <span className="text-xs text-text-muted">{METHOD_KIND_LABEL[row.original.kind]}</span>
+            {row.original.kind === "qris" ? (
+              <Badge tone="primary" icon={<QrCode />} className="mt-1">
+                {METHOD_KIND_LABEL.qris}
+              </Badge>
+            ) : (
+              <span className="text-xs text-text-muted">{METHOD_KIND_LABEL[row.original.kind]}</span>
+            )}
           </span>
         ),
       },
@@ -125,7 +132,11 @@ export function MethodsTab() {
         header: "Rekening",
         cell: ({ row }) => (
           <span className="flex flex-col">
-            <span>{row.original.account_number}</span>
+            <span>
+              {row.original.kind === "qris"
+                ? `NMID ${row.original.account_number}`
+                : row.original.account_number}
+            </span>
             <span className="text-xs text-text-muted">a.n. {row.original.account_holder}</span>
           </span>
         ),
@@ -212,7 +223,7 @@ export function MethodsTab() {
           <EmptyState
             compact
             title={active === "all" ? "Belum ada metode pembayaran" : "Tidak ada metode dengan status ini"}
-            description="Tambah rekening bank atau e-wallet organisasi sebagai tujuan transfer iuran dan tiket."
+            description="Tambah rekening bank, e-wallet atau QRIS organisasi sebagai tujuan pembayaran iuran dan tiket."
           />
         }
       />
@@ -237,7 +248,7 @@ export function MethodsTab() {
         title="Hapus metode pembayaran?"
         description={
           deleting
-            ? `${METHOD_KIND_LABEL[deleting.kind]} ${deleting.provider} (${deleting.account_number} a.n. ${deleting.account_holder}) dihapus dan tidak lagi ditampilkan ke alumni. Hanya metode yang belum pernah dipakai pembayaran yang dapat dihapus.`
+            ? `${methodTitle(deleting)} (${methodSubtitle(deleting)})${deleting.kind === "qris" ? " beserta gambar QRIS-nya" : ""} dihapus dan tidak lagi ditampilkan ke alumni. Hanya metode yang belum pernah dipakai pembayaran yang dapat dihapus.`
             : undefined
         }
         confirmLabel="Hapus metode"

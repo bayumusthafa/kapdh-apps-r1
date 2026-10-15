@@ -208,7 +208,8 @@ export class AdminAdjustmentsController {
 
 /**
  * Metode bayar (kontrak admin-payments.yaml; F-15, AC F15-3, F15-4): settings.manage; ubah/hapus wajib If-Match dan
- * tercatat di audit. Tanpa reautentikasi sejak keputusan PO 2026-10-15 (ADR-025).
+ * tercatat di audit. Tanpa reautentikasi sejak keputusan PO 2026-10-15 (ADR-025). Metode qris merujuk gambar hasil
+ * POST /admin/payment-qr-images yang diunggah pemanggil sendiri (ADR-026).
  */
 @Controller("admin/payment-methods")
 export class AdminPaymentMethodsController {
@@ -227,8 +228,8 @@ export class AdminPaymentMethodsController {
   @Audience("admin")
   @RequirePermission("settings.manage")
   @Idempotent({ publicResponsePaths: ["account_number"] })
-  create(@Body() body: unknown): Promise<Schemas["AdminPaymentMethod"]> {
-    return this.methods.create(validate(paymentMethodInputSchema, body));
+  create(@CurrentAuth() auth: AuthContext, @Body() body: unknown): Promise<Schemas["AdminPaymentMethod"]> {
+    return this.methods.create(auth, validate(paymentMethodInputSchema, body));
   }
 
   @Get(":methodId")
@@ -244,12 +245,13 @@ export class AdminPaymentMethodsController {
   @Audience("admin")
   @RequirePermission("settings.manage")
   update(
+    @CurrentAuth() auth: AuthContext,
     @Param("methodId", UuidParam) methodId: string,
     @Headers("if-match") ifMatch: string | undefined,
     @Body() body: unknown,
   ): Promise<Schemas["AdminPaymentMethod"]> {
     const expected = parseIfMatch(ifMatch);
-    return this.methods.update(methodId, expected, validate(paymentMethodInputSchema, body));
+    return this.methods.update(auth, methodId, expected, validate(paymentMethodInputSchema, body));
   }
 
   @Delete(":methodId")

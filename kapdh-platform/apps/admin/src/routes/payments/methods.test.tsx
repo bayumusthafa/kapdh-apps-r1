@@ -79,6 +79,8 @@ describe("kelola metode pembayaran (F-15, guidelines hlm. 17; server tiruan)", (
       instructions: null,
       active: true,
       sort_order: 3,
+      // ADR-026: selalu dikirim; jenis selain QRIS tanpa gambar.
+      qr_image_file_id: null,
     });
     await screen.findByText("Menampilkan 4 dari 4");
     expect(screen.queryByRole("dialog", { name: "Tambah metode pembayaran" })).toBeNull();

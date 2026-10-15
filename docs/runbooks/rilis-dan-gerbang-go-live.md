@@ -165,7 +165,9 @@ Gladi seluruh bagian ini dijalankan lebih dahulu dari **database staging kosong*
 5. **Konfigurasi oleh pengurus** di web admin (PRD 8.2 langkah 4):
    - Biaya (tab Biaya): bendahara meninjau nilai D4 (Rp50.000 + Rp10.000; perpanjangan Rp10.000). Perubahan nominal
      hanya lewat web admin (tercatat `updated_by` + audit).
-   - Metode bayar: rekening organisasi dibuat lewat web admin (tercatat audit `payment_method.created`).
+   - Metode bayar: rekening organisasi dibuat lewat web admin (tercatat audit `payment_method.created`). QRIS dibuat
+     sebagai jenis **QRIS** (NMID, nama merchant, gambar QRIS statis resmi PNG/JPG minimal 512 piksel), bukan sebagai
+     bank/e-wallet tanpa gambar; bendahara memindai uji gambar sebelum metode diaktifkan (ADR-026, bagian 5.4).
    - Halaman kebijakan privasi, ketentuan, ketentuan komunitas, bantuan: naskah resmi diterbitkan.
    - Master profesi/keahlian: daftar usulan ditinjau dan diaktifkan.
    - Pengaturan dukungan: email bantuan dan satu nomor WhatsApp admin (PRD 8.3).
@@ -185,6 +187,11 @@ Gladi seluruh bagian ini dijalankan lebih dahulu dari **database staging kosong*
    Job ulang ini idempoten (tidak ada migrasi baru, seed tidak menimpa nilai pengurus). Kode keluar 1 = ditolak:
    perbaiki penyebab yang tercetak (tabel di bawah), lalu ulangi. Laporan memuat nominal dan rekening tersamar yang
    **ditandatangani bendahara**; Super Admin, QA dan pengelola infra menandatangani paket bukti (PRD 9.3).
+   Untuk setiap metode QRIS aktif, laporan juga mencetak sidik jari gambar QR
+   (`gambar <lebar>x<tinggi> px, sha256 <12 karakter>…`). Bendahara menandatangani sidik jari itu bersama NMID
+   tersamar, setelah memindai gambar yang sama dengan minimal dua aplikasi bank/e-wallet dan memastikan nama merchant
+   serta NMID cocok (ADR-026). Sidik jari adalah sha256 berkas hasil proses server, bukan berkas asli dari bank.
+   Pencocokan mandiri dilakukan dengan mengunduh gambar dari URL publik (pratinjau di web admin) lalu `sha256sum`.
 
 8. **Backup pertama** dibuat dan direstore ke lingkungan bersih (PRD 8.3 langkah 2).
 9. **Smoke production** (PRD 8.3 langkah 3) dengan akun uji, `staging-smoke.sh` terhadap domain production, lalu
@@ -192,18 +199,18 @@ Gladi seluruh bagian ini dijalankan lebih dahulu dari **database staging kosong*
 
 ### Penyebab penolakan gerbang dan perbaikannya
 
-| Pemeriksaan        | Ditolak bila                                                                                                                                                                        | Perbaikan                                                                                                                                                                                                                                                                               |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema`           | migrasi tercatat < journal image (skema tertinggal) atau > (image lebih lama dari skema)                                                                                            | jalankan job rilis image yang benar; image lama di atas skema baru = rollback (bagian 6), bukan job rilis                                                                                                                                                                               |
-| `settings`         | kunci `app_settings` belum tersimpan (API memakai bawaan versi 0) atau tidak valid                                                                                                  | job rilis (seed referensi)                                                                                                                                                                                                                                                              |
-| `fees`             | baris `fees` tidak ada, ada nominal Rp0, atau nominal di luar D4 tanpa `updated_by` pengurus                                                                                        | tetapkan lewat web admin (tab Biaya)                                                                                                                                                                                                                                                    |
-| `payment_methods`  | tidak ada metode aktif, metode contoh/rekening nol, atau metode tanpa audit pembuatan web admin                                                                                     | buat metode lewat web admin; nonaktifkan yang lain                                                                                                                                                                                                                                      |
-| `super_admins`     | < 2 Super Admin aktif (admin dan akun `active`) dengan TOTP terverifikasi                                                                                                           | bootstrap/undang, selesaikan TOTP                                                                                                                                                                                                                                                       |
-| `payment_deciders` | < 2 pengurus ber-TOTP dengan `payments.read` + `payments.decide` (Super Admin terhitung)                                                                                            | beri izin di menu Admin                                                                                                                                                                                                                                                                 |
-| `legal_pages`      | halaman wajib belum terbit, masih kerangka DRAF, atau `app_settings.legal` tidak sama dengan versi tayang                                                                           | terbitkan naskah resmi lewat web admin                                                                                                                                                                                                                                                  |
-| `masters`          | tidak ada profesi atau keahlian aktif                                                                                                                                               | aktifkan master yang disahkan                                                                                                                                                                                                                                                           |
-| `support_contact`  | WhatsApp dukungan kosong                                                                                                                                                            | isi di Pengaturan                                                                                                                                                                                                                                                                       |
-| `dev_fixtures`     | jejak `seed:dev`, id `DEV_IDS`, akun aktif ber-email `.test/.example/.invalid/.localhost`, atau konten pengurus (berita, event, banner, kategori, metode bayar) berjudul `[Contoh]` | ikuti saran di laporan: **belum ada akun anggota nyata** → reset production terkendali lalu inisialisasi ulang (PRD 8.4); **sudah ada** → JANGAN reset: ganti judul/nonaktifkan konten lewat web admin, tangani jejak fixture sebagai insiden (hapus akun lewat alur penghapusan resmi) |
+| Pemeriksaan        | Ditolak bila                                                                                                                                                                                                                                                                                    | Perbaikan                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `schema`           | migrasi tercatat < journal image (skema tertinggal) atau > (image lebih lama dari skema)                                                                                                                                                                                                        | jalankan job rilis image yang benar; image lama di atas skema baru = rollback (bagian 6), bukan job rilis                                                                                                                                                                                                                                                                |
+| `settings`         | kunci `app_settings` belum tersimpan (API memakai bawaan versi 0) atau tidak valid                                                                                                                                                                                                              | job rilis (seed referensi)                                                                                                                                                                                                                                                                                                                                               |
+| `fees`             | baris `fees` tidak ada, ada nominal Rp0, atau nominal di luar D4 tanpa `updated_by` pengurus                                                                                                                                                                                                    | tetapkan lewat web admin (tab Biaya)                                                                                                                                                                                                                                                                                                                                     |
+| `payment_methods`  | tidak ada metode aktif, metode contoh/rekening nol, atau metode tanpa audit pembuatan web admin; metode aktif bernama QRIS (kata utuh) yang tidak berjenis QRIS (gerbang pra-migrasi dan penuh); metode QRIS aktif tanpa gambar `payment_qr` publik berstatus `ready` (gerbang penuh) (ADR-026) | buat metode lewat web admin; nonaktifkan yang lain. Metode lama bernama QRIS: nonaktifkan, lalu buat ulang berjenis QRIS dengan gambar QRIS statis resmi. Gambar QRIS tidak siap: ganti gambar lewat web admin, atau bila metode sudah dipakai pembayaran, nonaktifkan lalu buat metode QRIS baru. Bendahara menandatangani daftar metode beserta sidik jari gambar QRIS |
+| `super_admins`     | < 2 Super Admin aktif (admin dan akun `active`) dengan TOTP terverifikasi                                                                                                                                                                                                                       | bootstrap/undang, selesaikan TOTP                                                                                                                                                                                                                                                                                                                                        |
+| `payment_deciders` | < 2 pengurus ber-TOTP dengan `payments.read` + `payments.decide` (Super Admin terhitung)                                                                                                                                                                                                        | beri izin di menu Admin                                                                                                                                                                                                                                                                                                                                                  |
+| `legal_pages`      | halaman wajib belum terbit, masih kerangka DRAF, atau `app_settings.legal` tidak sama dengan versi tayang                                                                                                                                                                                       | terbitkan naskah resmi lewat web admin                                                                                                                                                                                                                                                                                                                                   |
+| `masters`          | tidak ada profesi atau keahlian aktif                                                                                                                                                                                                                                                           | aktifkan master yang disahkan                                                                                                                                                                                                                                                                                                                                            |
+| `support_contact`  | WhatsApp dukungan kosong                                                                                                                                                                                                                                                                        | isi di Pengaturan                                                                                                                                                                                                                                                                                                                                                        |
+| `dev_fixtures`     | jejak `seed:dev`, id `DEV_IDS`, akun aktif ber-email `.test/.example/.invalid/.localhost`, atau konten pengurus (berita, event, banner, kategori, metode bayar) berjudul `[Contoh]`                                                                                                             | ikuti saran di laporan: **belum ada akun anggota nyata** → reset production terkendali lalu inisialisasi ulang (PRD 8.4); **sudah ada** → JANGAN reset: ganti judul/nonaktifkan konten lewat web admin, tangani jejak fixture sebagai insiden (hapus akun lewat alur penghapusan resmi)                                                                                  |
 
 Nama anggota tidak pernah menahan rilis: siapa pun dapat mendaftar dengan nama `[Contoh] ...` (dicatat sebagai catatan
 tidak memblokir). Akun `pending_otp` juga tidak dihitung.
@@ -254,6 +261,53 @@ Bila perbaikan keamanan/kritis harus dirilis sementara pemeriksaan konfigurasi y
 
 Pengecualian tidak berlaku untuk go-live pertama (bagian 4 langkah 7) dan tidak melewati cek versi skema.
 
+### 5.4 Rilis metode bayar QRIS (ADR-026, migrasi 0008)
+
+Berlaku untuk rilis pertama yang memuat migrasi `0008_qris_payment_method` ke lingkungan yang sudah berjalan. Gladi
+lebih dahulu di staging, termasuk skenario QRIS di `docs/qa/uat-checklist.md` (2.17-2.21, 5.13, 10.11-10.16, 12.10,
+13.10-13.11). Production saat ini berjalan dengan image `sha-<commit>` di Coolify dan gerbang go-live belum lulus, jadi
+job rilis production memakai pengecualian `report` dengan alasan dan penyetuju (bagian 5.3, ADR-023 butir 3).
+
+1. **Sebelum migrasi**: bendahara atau Super Admin menonaktifkan metode lama bernama "QRIS" yang dibuat sebagai
+   bank/e-wallet tanpa gambar (Verifikasi Pembayaran → tab "Kelola Metode" → ubah → matikan "Tampilkan ke alumni").
+   Gerbang `payment_methods` menolak metode seperti itu di kedua fase. Jenisnya tidak dapat diubah menjadi QRIS bila
+   sudah dipakai pembayaran. Anggota yang instruksinya belum berbukti melihat metode nonaktif dan diarahkan mengganti
+   tujuan.
+2. **Job rilis** dengan image `kapdh-release` baru (menerapkan 0008) **[bukti]**:
+
+   ```bash
+   sudo RELEASE_GATE=report RELEASE_GATE_REASON="rilis QRIS ADR-026; gerbang go-live belum lulus" \
+     RELEASE_GATE_APPROVER="<nama pemilik produk>" \
+     sh kapdh-platform/infra/scripts/run-release.sh production ghcr.io/<org>/kapdh-release:sha-<commit>
+   ```
+
+   Migrasi ini aditif (nilai enum baru, kolom nullable, CHECK yang dipenuhi semua baris lama), sehingga API dan
+   worker lama tetap berjalan di atas skema baru sampai redeploy. CHECK baru pada `files` dan `payment_methods`
+   divalidasi di bawah lock eksklusif sampai job commit, jadi unggahan berkas tertahan sebentar selama job.
+
+3. **Coolify**: redeploy berurutan `kapdh-api` → `kapdh-worker` → `kapdh-admin` (varian `-production`) → `kapdh-web`,
+   lalu uji asap. API harus lebih dahulu: web admin baru yang terhubung ke API lama gagal mengunggah gambar QRIS (404).
+4. **Metode QRIS**: bendahara mengunduh QRIS **statis** resmi organisasi (tanpa nominal) dari portal merchant
+   bank/PJP. Di tab "Kelola Metode" → Tambah metode → jenis QRIS, isi "Nama metode" ("QRIS"), "NMID" dan "Nama
+   merchant", unggah gambar (PNG/JPG, sisi terpendek minimal 512 piksel, maksimal 5 MB), lalu simpan dengan
+   **"Tampilkan ke alumni" mati**. Pindai pratinjau dengan minimal dua aplikasi bank/e-wallet berbeda: nama merchant
+   dan NMID harus sama dengan isian, dan nominal tidak boleh terisi otomatis. Selama metode masih nonaktif, sidik
+   jari belum tercetak di laporan gerbang (gerbang hanya membaca metode aktif). Pakai `qr_image_sha256` pada audit
+   `payment_method.created` (menu Audit), lalu cocokkan lagi dengan laporan `golive:check` setelah metode aktif.
+   Bendahara menandatangani sidik jari **[bukti]**.
+5. **Aktifkan** ("Tampilkan ke alumni" menyala) hanya setelah build aplikasi yang mendukung QRIS tersebar. Build lama
+   menampilkan metode QRIS sebagai transfer bank dengan NMID tanpa gambar (risiko yang diterima ADR-026). Bila build
+   lama masih banyak dipakai, naikkan versi minimum setelah build baru tersedia di toko (PRD 8.4). Pastikan tetap ada
+   metode bank/e-wallet aktif sebagai alternatif.
+6. **Rollback**: nonaktifkan **semua** metode QRIS lebih dahulu dengan web admin dan API baru. API lama menolak
+   menyimpan metode berjenis qris (validasi jenis hanya bank/e-wallet) dan membaca snapshot QRIS sebagai rekening bank
+   tanpa gambar. Setelah itu baru rollback image sesuai bagian 6.1. Jangan menjalankan job rilis image lama. Skema
+   0008 tetap (aditif, kompatibel mundur) dan tidak dibalik.
+7. **Ganti QRIS di kemudian hari** (QRIS diterbitkan ulang bank, atau gambar keliru): gambar metode yang sudah
+   dipakai pembayaran tidak dapat diganti. Nonaktifkan metode itu, buat metode QRIS baru dengan gambar baru, pindai
+   uji, lalu bendahara menandatangani sidik jari baru. Instruksi terbuka tetap memakai QR lama sampai anggota
+   mengganti tujuan.
+
 ## 6. Rollback dan pemulihan (PRD 8.4)
 
 ### 6.1 Rollback image (tanpa job rilis)
@@ -266,7 +320,8 @@ journal image dan hanya menjalankan gerbang go-live (pra-migrasi bila enforce, l
 (`docs/runbooks/ci-cd.md` bagian 5 langkah 2 dan bagian 9).
 
 1. Pastikan migrasi antara tag lama dan tag sekarang kompatibel mundur (catatan rilis/PR; PRD 5.5). Bila tidak, jangan
-   rollback image: perbaikan maju, mode maintenance read-only bila integritas data terancam.
+   rollback image: perbaikan maju, mode maintenance read-only bila integritas data terancam. Rollback ke image sebelum
+   migrasi 0008 (ADR-026): nonaktifkan dahulu semua metode QRIS dengan web admin baru (bagian 5.4 langkah 6).
 2. Bukti gerbang baca-saja dengan image lama (tidak mengubah apa pun) **[bukti]**:
 
    ```bash

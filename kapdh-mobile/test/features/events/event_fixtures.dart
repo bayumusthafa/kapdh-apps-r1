@@ -166,17 +166,20 @@ Map<String, Object?> ticketPaymentJson({
   DateTime? submittedAt,
   DateTime? decidedAt,
   String? rejectionReason,
+  Map<String, Object?>? method,
 }) => {
   'id': id,
   'status': status,
   'amount': amount,
-  'method': {
-    'kind': 'bank',
-    'provider': 'Bank Syariah Indonesia',
-    'account_number': '7123456789',
-    'account_holder': 'KAPDH Pusat',
-    'instructions': null,
-  },
+  'method':
+      method ??
+      {
+        'kind': 'bank',
+        'provider': 'Bank Syariah Indonesia',
+        'account_number': '7123456789',
+        'account_holder': 'KAPDH Pusat',
+        'instructions': null,
+      },
   'proof_version': submittedAt == null ? 0 : 1,
   'submitted_at': submittedAt == null ? null : iso(submittedAt),
   'decided_at': decidedAt == null ? null : iso(decidedAt),
@@ -261,6 +264,7 @@ Map<String, Object?> ticketPaymentDetailJson({
   String ticketId = 'ticket-1',
   String amount = '200000.00',
   required DateTime holdExpiresAt,
+  Map<String, Object?>? method,
 }) => {
   'id': id,
   'type': 'ticket',
@@ -270,7 +274,7 @@ Map<String, Object?> ticketPaymentDetailJson({
   'lines': [
     {'code': 'ticket', 'label': 'Tiket Camping Alumni KAPDH', 'amount': amount},
   ],
-  'method': paymentMethodJson(),
+  'method': method ?? paymentMethodJson(),
   'proof_version': 0,
   'proof_file_id': null,
   'transfer_note': null,
@@ -307,6 +311,7 @@ Map<String, Object?> paymentMethodJson({
   String kind = 'bank',
   String provider = 'Bank Syariah Indonesia',
   String accountNumber = '7123456789',
+  String? qrImageUrl,
 }) => {
   'id': id,
   'kind': kind,
@@ -314,4 +319,14 @@ Map<String, Object?> paymentMethodJson({
   'account_number': accountNumber,
   'account_holder': 'KAPDH Pusat',
   'instructions': null,
+  'qr_image_url': ?qrImageUrl,
 };
+
+/// Metode QRIS statis (ADR-026): `account_number` NMID, `account_holder` merchant, gambar publik `payment_qr`.
+Map<String, Object?> qrisMethodJson() => paymentMethodJson(
+  id: 'method-qris',
+  kind: 'qris',
+  provider: 'QRIS',
+  accountNumber: 'ID1020200012345',
+  qrImageUrl: 'https://api.kapdh.or.id/api/v1/files/public/file-qr-1',
+);

@@ -439,6 +439,8 @@ export class EventViews implements OnModuleInit {
       id: payment.id,
       status: payment.status,
       amount: money(payment.amount),
+      // TicketPaymentMethod hanya ringkasan: kind dapat `qris` (ADR-026), tetapi gambar QRIS (id berkas snapshot)
+      // tidak dikirim di sini; aplikasi membukanya dari GET /me/payments/{id} (`method.qr_image_url`).
       method: {
         kind: method.kind,
         provider: method.provider,

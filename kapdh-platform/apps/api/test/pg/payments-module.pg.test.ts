@@ -20,7 +20,7 @@ import {
   signInAdmin,
   signInAlumni,
 } from "../support/factories.js";
-import { uploadTestFile } from "../support/files.js";
+import { multipartBody, testPng, uploadTestFile } from "../support/files.js";
 import { httpClient } from "../support/http.js";
 import { FakePush, TestClock, testEnv } from "../support/test-app.js";
 import { connectAs, createPgTestDatabase, type PgTestDatabase, sleep, type Sql } from "./support.js";
@@ -239,6 +239,137 @@ describe("AC F04-4 / PRD 9.2: bukti diganti saat pengurus memutus (PostgreSQL 17
     const [row] = await sql<{ status: string; proof_version: number }[]>`
       select status, proof_version from app.payments where id = ${payment.id}`;
     expect(row).toEqual({ status: "paid", proof_version: 1 });
+  });
+});
+
+describe("ADR-026 / AC F15-3: gambar QRIS diganti bersamaan dengan instruksi baru (PostgreSQL 17)", () => {
+  /** Metode qris lewat API (unggah gambar + buat metode) beserta gambar pengganti yang belum terlampir. */
+  async function qrisMethod() {
+    const fixture = await createAdmin(fx, { permissions: ["settings.manage"] });
+    const token = (await signInAdmin(fx, fixture)).accessToken;
+    const upload = async () => {
+      const body = multipartBody([
+        { name: "file", filename: "qris.png", contentType: "image/png", data: await testPng(600, 600) },
+      ]);
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/admin/payment-qr-images",
+        payload: body.payload,
+        headers: { ...body.headers, authorization: `Bearer ${token}` },
+      });
+      expect(res.statusCode, res.body).toBe(201);
+      return res.json().file_id as string;
+    };
+    const original = await upload();
+    const created = await http().post("/admin/payment-methods", qrisBody(original), { token });
+    expect(created.statusCode, created.body).toBe(201);
+    return {
+      token,
+      methodId: created.json().id as string,
+      version: created.json().version as string,
+      original,
+      replacement: await upload(),
+    };
+  }
+
+  const qrisBody = (fileId: string) => ({
+    kind: "qris",
+    provider: "QRIS",
+    account_number: "ID1020304050607",
+    account_holder: "KAPDH Pusat",
+    instructions: null,
+    active: true,
+    sort_order: 0,
+    qr_image_file_id: fileId,
+  });
+
+  /** Gambar snapshot payment dan status berkasnya (invarian: snapshot selalu menunjuk berkas ready). */
+  async function snapshotImage(paymentId: string) {
+    const [row] = await sql<{ file_id: string; status: string }[]>`
+      select p.method_snapshot ->> 'qr_image_file_id' as file_id, f.status
+      from app.payments p join app.files f on f.id = (p.method_snapshot ->> 'qr_image_file_id')::uuid
+      where p.id = ${paymentId}`;
+    return row!;
+  }
+
+  async function fileStatus(fileId: string) {
+    const [row] = await sql<{ status: string; attached: boolean }[]>`
+      select status, attached_at is not null as attached from app.files where id = ${fileId}`;
+    return row!;
+  }
+
+  it("penggantian gambar mendapat kunci lebih dulu → instruksi baru menyalin gambar baru; gambar lama dibuang", async () => {
+    const method = await qrisMethod();
+    const owner = await member();
+    const { results, observed } = await underLock(
+      (tx) => tx`select id from app.payment_methods where id = ${method.methodId} for update`,
+      2,
+      () => {
+        const replace = http().put(
+          `/admin/payment-methods/${method.methodId}`,
+          qrisBody(method.replacement),
+          {
+            token: method.token,
+            headers: { "if-match": method.version },
+          },
+        );
+        // Instruksi dikirim setelah penggantian antre di kunci baris metode (FOR UPDATE lalu FOR SHARE, FIFO).
+        const instruction = waitForLockWaiters(1).then(() =>
+          http().post(
+            "/me/payments",
+            { type: "registration", payment_method_id: method.methodId },
+            { token: owner.token },
+          ),
+        );
+        return [replace, instruction];
+      },
+    );
+    expect(observed, "kedua request benar-benar menunggu kunci metode").toBe(true);
+    const [replaced, created] = results;
+    expect(replaced!.statusCode, replaced!.body).toBe(200);
+    expect(replaced!.json()).toMatchObject({ qr_image_file_id: method.replacement, in_use: false });
+    expect(created!.statusCode, created!.body).toBe(201);
+    expect(await snapshotImage(created!.json().id as string)).toEqual({
+      file_id: method.replacement,
+      status: "ready",
+    });
+    expect(await fileStatus(method.original)).toMatchObject({ status: "deleted" });
+  });
+
+  it("instruksi mendapat kunci lebih dulu → penggantian gambar ditolak 400 (metode in_use); snapshot tetap pada gambar ready", async () => {
+    const method = await qrisMethod();
+    const owner = await member();
+    const { results, observed } = await underLock(
+      (tx) => tx`select id from app.payment_methods where id = ${method.methodId} for update`,
+      2,
+      () => {
+        const instruction = http().post(
+          "/me/payments",
+          { type: "registration", payment_method_id: method.methodId },
+          { token: owner.token },
+        );
+        const replace = waitForLockWaiters(1).then(() =>
+          http().put(`/admin/payment-methods/${method.methodId}`, qrisBody(method.replacement), {
+            token: method.token,
+            headers: { "if-match": method.version },
+          }),
+        );
+        return [instruction, replace];
+      },
+    );
+    expect(observed).toBe(true);
+    const [created, replaced] = results;
+    expect(created!.statusCode, created!.body).toBe(201);
+    expect(replaced!.statusCode, replaced!.body).toBe(400);
+    expect(replaced!.json()).toMatchObject({
+      code: "VALIDATION_ERROR",
+      field_errors: { qr_image_file_id: [expect.stringContaining("sudah dipakai pembayaran")] },
+    });
+    expect(await snapshotImage(created!.json().id as string)).toEqual({
+      file_id: method.original,
+      status: "ready",
+    });
+    expect(await fileStatus(method.replacement)).toEqual({ status: "ready", attached: false });
   });
 });
 

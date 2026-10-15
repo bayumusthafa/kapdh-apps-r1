@@ -3,9 +3,14 @@ import { Controller, HttpCode, Post, Req, Res } from "@nestjs/common";
 import { RouteConfig } from "@nestjs/platform-fastify";
 import type { components } from "@kapdh/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import type { Readable } from "node:stream";
-import { AppException, fieldError } from "../../core/errors/app-exception.js";
+import { fieldError } from "../../core/errors/app-exception.js";
 import { FilesService, type UploadContent, type UploadTicket } from "../../core/files/files.service.js";
+import {
+  IMAGE_UPLOAD_MESSAGES,
+  multipartError,
+  type MultipartMessages,
+  readLimited,
+} from "../../core/files/multipart-upload.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
 import { Audience, CurrentAuth, RequirePermission } from "../../core/guards/decorators.js";
 import type { MultipartRouteConfig } from "../../core/http/fastify-hooks.js";
@@ -13,53 +18,11 @@ import { CONTENT_MEDIA_PURPOSES, type ContentMediaPurpose } from "./content-medi
 
 type ContentMedia = components["schemas"]["ContentMedia"];
 
-/** Galat parser multipart -> galat baku (PRD 5.2); AppException diteruskan apa adanya. */
-function multipartError(error: unknown): AppException {
-  if (error instanceof AppException) return error;
-  switch ((error as { code?: unknown } | null)?.code) {
-    case "FST_REQ_FILE_TOO_LARGE":
-      return new AppException(413, "FILE_INVALID", "Gambar terlalu besar. Maksimal 5 MB.");
-    case "FST_FILES_LIMIT":
-      return new AppException(413, "FILE_INVALID", "Kirim satu gambar per unggahan.");
-    case "FST_PARTS_LIMIT":
-    case "FST_FIELDS_LIMIT":
-      return new AppException(
-        413,
-        "FILE_INVALID",
-        "Isian unggahan terlalu banyak. Kirim purpose dan satu gambar.",
-      );
-    case "FST_INVALID_MULTIPART_CONTENT_TYPE":
-      return new AppException(415, "FILE_INVALID", "Kirim gambar sebagai multipart/form-data.");
-    default:
-      return new AppException(
-        400,
-        "VALIDATION_ERROR",
-        "Format unggahan tidak valid. Pilih gambar lalu coba lagi.",
-      );
-  }
-}
-
-function tooLarge(): AppException {
-  return new AppException(413, "FILE_INVALID", "Gambar terlalu besar. Maksimal 5 MB.");
-}
-
-/** Membaca stream sampai batas byte purpose; berhenti begitu batas terlampaui (N-10). */
-async function readLimited(stream: Readable & { truncated?: boolean }, maxBytes: number): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  let total = 0;
-  try {
-    for await (const chunk of stream) {
-      const buffer = chunk as Buffer;
-      total += buffer.byteLength;
-      if (total > maxBytes) throw tooLarge();
-      chunks.push(buffer);
-    }
-  } catch (error) {
-    throw multipartError(error);
-  }
-  if (stream.truncated) throw tooLarge();
-  return Buffer.concat(chunks, total);
-}
+/** Pesan unggah media konten: purpose dikirim bersama satu gambar. */
+const MEDIA_MESSAGES: MultipartMessages = {
+  ...IMAGE_UPLOAD_MESSAGES,
+  partsLimit: "Isian unggahan terlalu banyak. Kirim purpose dan satu gambar.",
+};
 
 /**
  * POST /admin/content/media (N-10, PRD 2.5): unggah cover berita (`post_cover`) atau gambar banner (`banner_image`)
@@ -84,14 +47,15 @@ export class AdminContentMediaController {
     let ticket: UploadTicket | null = null;
     let content: UploadContent | null = null;
     try {
-      if (!request.isMultipart()) throw multipartError({ code: "FST_INVALID_MULTIPART_CONTENT_TYPE" });
+      if (!request.isMultipart())
+        throw multipartError({ code: "FST_INVALID_MULTIPART_CONTENT_TYPE" }, MEDIA_MESSAGES);
       const parts = request.parts()[Symbol.asyncIterator]();
       for (;;) {
         let step: IteratorResult<Multipart>;
         try {
           step = await parts.next();
         } catch (error) {
-          throw multipartError(error);
+          throw multipartError(error, MEDIA_MESSAGES);
         }
         if (step.done) break;
         const part = step.value;
@@ -103,9 +67,9 @@ export class AdminContentMediaController {
         }
         if (part.fieldname !== "file") throw fieldError("file", "Kirim gambar pada field file.");
         if (!ticket) throw fieldError("purpose", "Kirim field purpose sebelum gambar.");
-        if (content) throw multipartError({ code: "FST_FILES_LIMIT" });
+        if (content) throw multipartError({ code: "FST_FILES_LIMIT" }, MEDIA_MESSAGES);
         content = {
-          data: await readLimited(part.file, ticket.maxBytes),
+          data: await readLimited(part.file, ticket.maxBytes, MEDIA_MESSAGES),
           filename: part.filename,
           declaredMime: part.mimetype,
         };

@@ -1499,6 +1499,8 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
   });
 
   route("GET /admin/payments/{paymentId}", async () => {
+    // Payment yang snapshot metodenya QRIS bergambar (ADR-026): `method.qr_image_url` ikut divalidasi.
+    mockPayments.addQrisMethod({ inUse: true });
     for (const p of await payments()) expect((await call("GET", `/admin/payments/${p.id}`)).status).toBe(200);
     mockAuth.setAdmin({ role: "admin", permissions: ["payments.read"] });
     for (const p of await payments()) expect((await call("GET", `/admin/payments/${p.id}`)).status).toBe(200);
@@ -1761,15 +1763,128 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
     return res.body;
   }
 
+  /** PNG minimal dengan header IHDR berdimensi tertentu (tiruan membaca dimensi dari header). */
+  function pngSized(width: number, height: number): Uint8Array {
+    const b = pngBytes();
+    new DataView(b.buffer, b.byteOffset, b.byteLength).setUint32(16, width);
+    new DataView(b.buffer, b.byteOffset, b.byteLength).setUint32(20, height);
+    return b;
+  }
+  const uploadQr = (file: { name: string; type: string; bytes: Uint8Array }) =>
+    call<S["AdminPaymentQrImage"] & S["Error"]>("POST", "/admin/payment-qr-images", {
+      multipart: { fields: {}, file },
+    });
+  const qrPng = (width = 1024, height = 1024) => ({
+    name: "qris.png",
+    type: "image/png",
+    bytes: pngSized(width, height),
+  });
+  const qrisBody = (imageId: string | null | undefined) => ({
+    kind: "qris",
+    provider: "QRIS",
+    account_number: "ID1022334455667",
+    account_holder: "KAPDH PUSAT",
+    instructions: null,
+    active: true,
+    sort_order: 4,
+    ...(imageId === undefined ? {} : { qr_image_file_id: imageId }),
+  });
+  async function newQrisMethod(): Promise<S["AdminPaymentMethod"]> {
+    const image = await uploadQr(qrPng());
+    const res = await call<S["AdminPaymentMethod"]>("POST", "/admin/payment-methods", {
+      headers: idem(),
+      body: qrisBody(image.body.file_id),
+    });
+    expect(res.status).toBe(201);
+    return res.body;
+  }
+
+  // ADR-026: setiap cabang respons kontrak adminUploadPaymentQrImage (201, 400, 403, 413, 415, 422, 429).
+  route("POST /admin/payment-qr-images", async () => {
+    const ok = await uploadQr(qrPng(1280, 720));
+    expect(ok.status).toBe(201);
+    expect(ok.body).toMatchObject({ mime: "image/png", width: 1280, height: 720 });
+    // Lebih besar dari 2048 piksel diperkecil proporsional, tidak pernah diperbesar.
+    const big = await uploadQr(qrPng(4096, 3072));
+    expect(big.status).toBe(201);
+    expect(big.body).toMatchObject({ width: 2048, height: 1536 });
+    // Sisi terpendek < 512 piksel → 422; isi rusak → 422.
+    const small = await uploadQr(qrPng(400, 900));
+    expect(small).toMatchObject({ status: 422, body: { code: "FILE_INVALID" } });
+    expect(small.body.message).toMatch(/minimal 512 piksel/);
+    const broken = await uploadQr({ name: "rusak.png", type: "image/png", bytes: pngBytes().slice(0, 12) });
+    expect(broken.status).toBe(422);
+    // WebP/SVG/PDF dan isi yang disamarkan → 415; lebih dari 5 MB → 413.
+    const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>');
+    expect((await uploadQr({ name: "qris.svg", type: "image/svg+xml", bytes: svg })).status).toBe(415);
+    const pdf = new TextEncoder().encode("%PDF-1.7");
+    expect((await uploadQr({ name: "qris.pdf", type: "application/pdf", bytes: pdf })).status).toBe(415);
+    const webp = new TextEncoder().encode("RIFF\0\0\0\0WEBPVP8 ");
+    expect((await uploadQr({ name: "qris.webp", type: "image/webp", bytes: webp })).status).toBe(415);
+    const disguised = await uploadQr({ name: "qris.jpg", type: "image/jpeg", bytes: pngSized(1024, 1024) });
+    expect(disguised.status).toBe(415);
+    const huge = new Uint8Array(5 * 1024 * 1024 + 1);
+    huge.set(pngSized(1024, 1024));
+    expect((await uploadQr({ name: "besar.png", type: "image/png", bytes: huge })).status).toBe(413);
+    // Tanpa berkas → 400 pada `file`; bukan multipart → 415.
+    const missing = await call<S["Error"]>("POST", "/admin/payment-qr-images", {
+      multipart: { fields: { catatan: "x" } },
+    });
+    expect(missing).toMatchObject({ status: 400, body: { field_errors: { file: expect.any(Array) } } });
+    expect((await call("POST", "/admin/payment-qr-images", { body: {} })).status).toBe(415);
+    // Batas 10 unggahan berhasil per akun per 24 jam → 429 dengan retry_after_seconds.
+    for (let i = 0; i < 8; i += 1) expect((await uploadQr(qrPng())).status).toBe(201);
+    const limited = await uploadQr(qrPng());
+    expect(limited).toMatchObject({ status: 429, body: { code: "RATE_LIMITED" } });
+    expect(limited.body.retry_after_seconds).toBeGreaterThan(0);
+    // Tanpa settings.manage → 403.
+    mockAuth.setAdmin({ role: "admin", permissions: ["payments.read", "payments.decide"] });
+    expect((await uploadQr(qrPng())).status).toBe(403);
+  });
+
+  it("POST /files: purpose payment_qr ditolak 400 (gambar QRIS hanya lewat POST /admin/payment-qr-images)", async () => {
+    const res = await call<S["Error"]>("POST", "/files", {
+      multipart: { fields: { purpose: "payment_qr" }, file: qrPng() },
+    });
+    expect(res).toMatchObject({ status: 400, body: { field_errors: { purpose: expect.any(Array) } } });
+  });
+
   route("GET /admin/payment-methods", async () => {
-    expect((await call("GET", "/admin/payment-methods", { query: { limit: "100" } })).status).toBe(200);
+    mockPayments.addQrisMethod();
+    const res = await call<S["AdminPaymentMethodPage"]>("GET", "/admin/payment-methods", {
+      query: { limit: "100" },
+    });
+    expect(res.status).toBe(200);
+    const qris = res.body.items.find((m) => m.kind === "qris");
+    expect(qris?.qr_image_file_id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(qris?.qr_image_url).toBeTruthy();
+    expect(res.body.items.filter((m) => m.kind !== "qris").every((m) => m.qr_image_file_id === null)).toBe(
+      true,
+    );
   });
 
   route("POST /admin/payment-methods", async () => {
     await newMethod();
+    const qris = await newQrisMethod();
+    expect(qris).toMatchObject({ kind: "qris", qr_image_file_id: expect.any(String) });
+    expect(qris.qr_image_url).toBeTruthy();
+    expect(mockPayments.qrImage(qris.qr_image_file_id!)).toEqual({ attachedTo: qris.id });
+    // QRIS tanpa gambar, jenis lain bergambar, gambar yang sudah dipakai, UUID tidak valid → 400 pada field.
+    const create = (body: Record<string, unknown>) =>
+      call<S["Error"]>("POST", "/admin/payment-methods", { headers: idem(), body });
+    const fieldOf = (res: { body: S["Error"] }) => res.body.field_errors?.qr_image_file_id;
+    expect(fieldOf(await create(qrisBody(undefined)))).toEqual(["Gambar QRIS wajib diunggah."]);
+    expect(fieldOf(await create(qrisBody(null)))).toEqual(["Gambar QRIS wajib diunggah."]);
+    const spare = await uploadQr(qrPng());
+    expect(fieldOf(await create({ ...qrisBody(spare.body.file_id), kind: "bank" }))).toEqual([
+      "Gambar QR hanya untuk metode QRIS.",
+    ]);
+    expect(fieldOf(await create(qrisBody(qris.qr_image_file_id)))).toHaveLength(1);
+    expect(fieldOf(await create(qrisBody("bukan-uuid")))).toHaveLength(1);
   });
 
   route("GET /admin/payment-methods/{methodId}", async () => {
+    mockPayments.addQrisMethod();
     const list = await call<S["AdminPaymentMethodPage"]>("GET", "/admin/payment-methods", {
       query: { limit: "100" },
     });
@@ -1792,6 +1907,52 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
       },
     });
     expect(ok.status).toBe(200);
+
+    // QRIS (ADR-026): tanpa qr_image_file_id = gambar tetap; UUID = ganti (gambar lama dibuang); qris → bank wajib null.
+    const qris = await newQrisMethod();
+    const kept = await call<S["AdminPaymentMethod"]>("PUT", `/admin/payment-methods/${qris.id}`, {
+      headers: ifMatch(qris.version),
+      body: { ...qrisBody(undefined), sort_order: 7 },
+    });
+    expect(kept.status).toBe(200);
+    expect(kept.body.qr_image_file_id).toBe(qris.qr_image_file_id);
+    const next = await uploadQr(qrPng(2048, 2048));
+    const replaced = await call<S["AdminPaymentMethod"]>("PUT", `/admin/payment-methods/${qris.id}`, {
+      headers: ifMatch(kept.body.version),
+      body: qrisBody(next.body.file_id),
+    });
+    expect(replaced.status).toBe(200);
+    expect(replaced.body.qr_image_file_id).toBe(next.body.file_id);
+    expect(mockPayments.qrImage(qris.qr_image_file_id!)).toBeUndefined();
+    const bankBody = { ...qrisBody(undefined), kind: "bank", provider: "Bank Uji" };
+    const keepsImage = await call<S["Error"]>("PUT", `/admin/payment-methods/${qris.id}`, {
+      headers: ifMatch(replaced.body.version),
+      body: bankBody,
+    });
+    expect(keepsImage.status).toBe(400);
+    expect(keepsImage.body.field_errors?.qr_image_file_id).toEqual(["Gambar QR hanya untuk metode QRIS."]);
+    const toBank = await call<S["AdminPaymentMethod"]>("PUT", `/admin/payment-methods/${qris.id}`, {
+      headers: ifMatch(replaced.body.version),
+      body: { ...bankBody, qr_image_file_id: null },
+    });
+    expect(toBank.status).toBe(200);
+    expect(toBank.body).toMatchObject({ kind: "bank", qr_image_file_id: null, qr_image_url: null });
+    expect(mockPayments.qrImage(next.body.file_id)).toBeUndefined();
+
+    // Metode QRIS yang sudah dipakai payment: gambar terkunci seperti nomor rekening.
+    const used = mockPayments.addQrisMethod({ inUse: true });
+    const spare = await uploadQr(qrPng());
+    const locked = await call<S["Error"]>("PUT", `/admin/payment-methods/${used.id}`, {
+      headers: ifMatch(used.version),
+      body: { ...qrisBody(spare.body.file_id), sort_order: used.sort_order },
+    });
+    expect(locked.status).toBe(400);
+    expect(Object.keys(locked.body.field_errors ?? {})).toEqual(["qr_image_file_id"]);
+    const instructionsOnly = await call("PUT", `/admin/payment-methods/${used.id}`, {
+      headers: ifMatch(used.version),
+      body: { ...qrisBody(used.qr_image_file_id), instructions: "Masukkan nominal sesuai tagihan." },
+    });
+    expect(instructionsOnly.status).toBe(200);
   });
 
   route("DELETE /admin/payment-methods/{methodId}", async () => {
@@ -1800,6 +1961,12 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
       headers: { ...ifMatch(m.version) },
     });
     expect(ok.status).toBe(204);
+    // Gambar QRIS metode yang dihapus ikut dibuang (ADR-026).
+    const qris = await newQrisMethod();
+    expect(
+      (await call("DELETE", `/admin/payment-methods/${qris.id}`, { headers: ifMatch(qris.version) })).status,
+    ).toBe(204);
+    expect(mockPayments.qrImage(qris.qr_image_file_id!)).toBeUndefined();
   });
 
   route("GET /admin/settings/fees", async () => {

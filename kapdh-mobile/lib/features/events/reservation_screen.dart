@@ -10,6 +10,7 @@ import '../../core/format/formatters.dart';
 import '../../design/design.dart';
 import '../home/shared/content_widgets.dart';
 import '../home/shared/remote_image.dart';
+import '../payments/payment_presentation.dart';
 import 'event_format.dart';
 import 'events_controllers.dart';
 import 'reservation.dart';
@@ -56,6 +57,31 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
     return PopScope(
       canPop: !_busy,
       child: _scaffold(event, maintenance: maintenance, priceChanged: priceChanged, price: price, canSubmit: canSubmit),
+    );
+  }
+
+  /// Pilihan metode bayar berlabel jenisnya. QRIS (ADR-026) menampilkan NMID dan merchant; gambarnya tampil di
+  /// instruksi pembayaran sesudah reservasi.
+  Widget _methodCard(PaymentMethod method) {
+    final qris = method.kind == PaymentMethodKind.qris;
+    final labels = methodFieldLabels(method.kind);
+    final kind = methodKindLabel(method.kind);
+    return MethodRadioCard(
+      key: ValueKey('method-${method.id}'),
+      title: method.provider,
+      selected: _methodId == method.id,
+      accountNumber: method.accountNumber,
+      accountHolder: method.accountHolder,
+      accountNumberLabel: qris ? labels.number : null,
+      accountHolderLabel: qris ? labels.holder : null,
+      // Jenis tidak diulang bila sama dengan nama metode (mis. metode bernama "QRIS").
+      hint: kind.toLowerCase() == method.provider.trim().toLowerCase() ? null : kind,
+      onSelected: _busy
+          ? null
+          : () => setState(() {
+              _methodId = method.id;
+              _methodError = null;
+            }),
     );
   }
 
@@ -115,23 +141,7 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (final method in items) ...[
-                        MethodRadioCard(
-                          key: ValueKey('method-${method.id}'),
-                          title: method.provider,
-                          selected: _methodId == method.id,
-                          accountNumber: method.accountNumber,
-                          accountHolder: method.accountHolder,
-                          hint: method.kind == PaymentMethodKind.ewallet ? 'E-wallet' : 'Transfer bank',
-                          onSelected: _busy
-                              ? null
-                              : () => setState(() {
-                                  _methodId = method.id;
-                                  _methodError = null;
-                                }),
-                        ),
-                        const SizedBox(height: KapdhSpace.s2),
-                      ],
+                      for (final method in items) ...[_methodCard(method), const SizedBox(height: KapdhSpace.s2)],
                       if (_methodError != null)
                         Semantics(
                           liveRegion: true,
