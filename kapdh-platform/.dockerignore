@@ -41,3 +41,7 @@ packages/contracts/dart/kapdh_api/pubspec.lock
 **/.idea
 **/.DS_Store
 **/Thumbs.db
+
+# Uji skrip operator tidak ikut ke image release (infra/backup dan infra/monitoring disalin ke /app/infra).
+infra/backup/test
+infra/monitoring/test

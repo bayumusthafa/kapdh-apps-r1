@@ -16,7 +16,7 @@
       "target": "release",
       "per_environment": false,
       "build_args": {},
-      "smoke": "test -x /app/infra/scripts/release-job.sh && test -f /app/infra/db/roles.sql && test -f /app/infra/db/role-passwords.sql && test -f dist/cli/golive-check.js && test -f node_modules/@kapdh/database/dist/bin/migrate.js && test -f node_modules/@kapdh/database/dist/bin/seed-reference.js && psql --version | grep -q \"PostgreSQL) 17\" && test -n \"$KAPDH_EXPECTED_COMMIT\" && test \"$KAPDH_COMMIT\" = \"$KAPDH_EXPECTED_COMMIT\" && test \"$(id -u)\" != 0"
+      "smoke": "test -x /app/infra/scripts/release-job.sh && test -f /app/infra/db/roles.sql && test -f /app/infra/db/role-passwords.sql && test -f dist/cli/golive-check.js && test -f node_modules/@kapdh/database/dist/bin/migrate.js && test -f node_modules/@kapdh/database/dist/bin/seed-reference.js && psql --version | grep -q \"PostgreSQL) 17\" && test -n \"$KAPDH_EXPECTED_COMMIT\" && test \"$KAPDH_COMMIT\" = \"$KAPDH_EXPECTED_COMMIT\" && test \"$(id -u)\" != 0 && test -x /app/infra/backup/backup.sh && test -x /app/infra/backup/restore.sh && test -x /app/infra/backup/verify-restore.sh && test -f /app/infra/backup/lib.sh && test -f /app/infra/backup/sql/stats.sql && test -f /app/infra/backup/systemd/kapdh-backup.timer && test -x /app/infra/monitoring/check-backup.sh && test ! -e /app/infra/backup/test"
     },
     {
       "name": "worker",
