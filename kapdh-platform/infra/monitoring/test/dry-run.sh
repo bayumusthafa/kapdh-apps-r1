@@ -87,6 +87,26 @@ else
 fi
 expect "worker lewat docker exec -> heartbeat up" sh -c "printf '%s' '$(kuma worker)' | grep -q 'status=up'"
 
+# Coolify mengganti nama kontainer setiap deploy: WORKER_CONTAINER=label=... dicari lewat docker ps.
+reset_state
+if WORKER_HEALTH_URL='' WORKER_CONTAINER=label=coolify.resourceName=kapdh-worker sh "$MON_DIR/check-worker.sh" \
+  >"$ROOT/worker-label.log" 2>&1; then
+  pass "worker lewat filter label -> keluar 0"
+else
+  fail "worker lewat filter label -> keluar 0"
+fi
+expect "filter label -> docker exec ke nama kontainer Coolify yang ditemukan, heartbeat up" \
+  sh -c "grep -qx 'fcxew2rctsrvmjrb8ea1u1uk-20261015T142844' '$FAKE_STATE_DIR/docker-exec.log' && printf '%s' '$(kuma worker)' | grep -q 'status=up'"
+reset_state
+if WORKER_HEALTH_URL='' WORKER_CONTAINER=label=coolify.resourceName=tidak-ada sh "$MON_DIR/check-worker.sh" \
+  >"$ROOT/worker-label-none.log" 2>&1; then
+  fail "filter label tanpa kontainer -> keluar 1"
+else
+  pass "filter label tanpa kontainer -> keluar 1"
+fi
+expect "filter label tanpa kontainer -> heartbeat down, tanpa docker exec" \
+  sh -c "! test -s '$FAKE_STATE_DIR/docker-exec.log' && printf '%s' '$(kuma worker)' | grep -q 'status=down msg=worker tidak-terjangkau'"
+
 # Layanan ping (Healthchecks.io): sukses = URL apa adanya, gagal = URL + /fail, pesan sebagai badan. Query status=down
 # tidak boleh dipakai karena layanan ping mencatatnya sebagai SUKSES.
 reset_state
