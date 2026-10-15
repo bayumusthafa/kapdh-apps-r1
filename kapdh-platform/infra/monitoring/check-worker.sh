@@ -2,7 +2,8 @@
 # Kesehatan worker -> heartbeat Uptime Kuma (PRD 5.5 "umur job/outbox tertua", ARCHITECTURE §4.8;
 # docs/runbooks/monitoring.md). Endpoint GET /healthz worker tidak dirutekan publik, jadi diperiksa dari VPS:
 #   WORKER_HEALTH_URL   mis. http://127.0.0.1:3001/healthz bila port dipublikasikan hanya ke loopback host, ATAU
-#   WORKER_CONTAINER    nama kontainer worker: diperiksa dengan `docker exec <kontainer> node -e fetch(...)`.
+#   WORKER_CONTAINER    nama kontainer worker, atau filter `label=<kunci>=<nilai>` (nama Coolify berganti tiap deploy):
+#                       diperiksa dengan `docker exec <kontainer> node -e fetch(...)`.
 #   KUMA_PUSH_WORKER    URL monitor Push; up hanya bila status "ok" (degraded/error/stopping = down dengan kode isu,
 #                       mis. outbox_lagging, dispatcher_failing, scheduler_failing, queue_unreachable).
 set -eu
@@ -20,9 +21,17 @@ if [ -n "${WORKER_HEALTH_URL:-}" ]; then
   BODY=$(curl -sS -m 10 "$WORKER_HEALTH_URL" 2>/dev/null || true)
 elif [ -n "${WORKER_CONTAINER:-}" ]; then
   require_cmd docker
-  BODY=$(docker exec "$WORKER_CONTAINER" node -e \
-    "fetch('http://127.0.0.1:'+(process.env.WORKER_HEALTH_PORT||3001)+'/healthz',{signal:AbortSignal.timeout(8000)}).then(r=>r.text()).then(t=>process.stdout.write(t),()=>process.exit(1))" \
-    2>/dev/null || true)
+  WORKER_NAME=$WORKER_CONTAINER
+  # Nama kontainer berganti setiap deploy (Coolify): `label=<kunci>=<nilai>` dicari lewat docker ps, sama dengan
+  # CONTAINER_* di backup.sh. Tidak ketemu = worker tidak terjangkau (heartbeat down).
+  case $WORKER_NAME in
+    label=*) WORKER_NAME=$(docker ps --filter "$WORKER_NAME" --format '{{.Names}}' 2>/dev/null | head -n 1 || true) ;;
+  esac
+  if [ -n "$WORKER_NAME" ]; then
+    BODY=$(docker exec "$WORKER_NAME" node -e \
+      "fetch('http://127.0.0.1:'+(process.env.WORKER_HEALTH_PORT||3001)+'/healthz',{signal:AbortSignal.timeout(8000)}).then(r=>r.text()).then(t=>process.stdout.write(t),()=>process.exit(1))" \
+      2>/dev/null || true)
+  fi
 else
   die "isi WORKER_HEALTH_URL atau WORKER_CONTAINER"
 fi

@@ -71,7 +71,8 @@ staging tidak boleh menjalankan uji beban yang mengganggu production (PRD 5.3).
 4. Uji setiap skrip sekali secara manual, pastikan monitor Push di Kuma berubah hijau, lalu uji jalur merah: hentikan
    worker staging → monitor 8 merah; isi `DISK_WARN_PCT=1` sementara → monitor 13 merah; kembalikan.
 5. Worker health: publikasikan port 3001 hanya ke `127.0.0.1` host (`WORKER_HEALTH_URL`) atau isi
-   `WORKER_CONTAINER` agar diperiksa lewat `docker exec`.
+   `WORKER_CONTAINER` agar diperiksa lewat `docker exec` (di Coolify nama kontainer berganti setiap deploy: isi filter
+   `label=coolify.resourceName=kapdh-worker`).
 
 ## 3. Rute alert (D9)
 

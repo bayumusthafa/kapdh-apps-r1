@@ -1,7 +1,19 @@
 #!/bin/sh
 # Tiruan docker untuk uji kering check-worker.sh (WORKER_CONTAINER): `exec <kontainer> node -e ...` mencetak
-# $FAKE_WORKER_JSON.
+# $FAKE_WORKER_JSON dan mencatat nama kontainer ke $FAKE_STATE_DIR/docker-exec.log; `ps --filter
+# label=coolify.resourceName=kapdh-worker --format ...` mencetak nama kontainer Coolify tiruan (filter lain: kosong).
 set -eu
-[ "$1" = exec ] || exit 2
-[ -f "${FAKE_WORKER_JSON:-}" ] || exit 1
-cat "$FAKE_WORKER_JSON"
+case $1 in
+  ps)
+    case " $* " in
+      *" label=coolify.resourceName=kapdh-worker "*) echo fcxew2rctsrvmjrb8ea1u1uk-20261015T142844 ;;
+    esac
+    exit 0
+    ;;
+  exec)
+    printf '%s\n' "$2" >>"$FAKE_STATE_DIR/docker-exec.log"
+    [ -f "${FAKE_WORKER_JSON:-}" ] || exit 1
+    cat "$FAKE_WORKER_JSON"
+    ;;
+  *) exit 2 ;;
+esac
