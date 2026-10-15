@@ -124,6 +124,24 @@ describe("API dasar (PRD 5.2, 5.5, N-14)", () => {
     expect(admin.headers["access-control-allow-credentials"]).toBe("true");
   });
 
+  it("CORS: preflight PATCH/PUT/DELETE web admin diizinkan beserta header If-Match dan Idempotency-Key", async () => {
+    for (const method of ["PATCH", "PUT", "DELETE"]) {
+      const res = await t.app.inject({
+        method: "OPTIONS",
+        url: "/api/v1/admin/settings/support",
+        headers: {
+          origin: t.env.ADMIN_ORIGIN,
+          "access-control-request-method": method,
+          "access-control-request-headers": "content-type,if-match,idempotency-key",
+        },
+      });
+      expect(res.headers["access-control-allow-origin"]).toBe(t.env.ADMIN_ORIGIN);
+      expect(String(res.headers["access-control-allow-methods"]).split(/,\s*/)).toContain(method);
+      expect(String(res.headers["access-control-allow-headers"])).toMatch(/if-match/i);
+      expect(String(res.headers["access-control-allow-headers"])).toMatch(/idempotency-key/i);
+    }
+  });
+
   it("N-07: HSTS tidak dikirim selama HSTS_ENABLED=false", async () => {
     const res = await api.get("/health");
     expect(res.headers["strict-transport-security"]).toBeUndefined();
