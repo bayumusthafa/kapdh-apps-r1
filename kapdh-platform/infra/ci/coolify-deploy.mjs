@@ -51,10 +51,14 @@ async function readJson(res) {
   }
 }
 
-/** Memicu deploy; mengembalikan daftar {resource_uuid, deployment_uuid, message}. */
+/**
+ * Memicu deploy; mengembalikan daftar {resource_uuid, deployment_uuid, message}. Metode POST: Coolify v4.0-v4.1 menerima
+ * GET dan POST, sejak v4.2.0 GET /api/v1/deploy dijawab 405 "This endpoint has changed to a POST request." (parameter
+ * uuid/tag/force tetap di query).
+ */
 export async function triggerDeploy({ url, token, fetchImpl = fetch }) {
   const res = await fetchImpl(url.toString(), {
-    method: "GET",
+    method: "POST",
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     signal: AbortSignal.timeout(30_000),
   });

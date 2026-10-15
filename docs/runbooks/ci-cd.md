@@ -102,6 +102,8 @@ Perubahan berkas ini lewat pull request yang ditinjau pemilik produk atau pengel
 
 ## 4. Konfigurasi GitHub (sekali, oleh pemilik repo)
 
+Penyiapan staging pertama berurutan (VPS, Coolify, Tailscale, secrets): `docs/runbooks/staging-setup.md`.
+
 ### 4.1 Environments
 
 | Environment  | Aturan                                                                                                                                                                                                                                                               |
