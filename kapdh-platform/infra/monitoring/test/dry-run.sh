@@ -87,11 +87,25 @@ else
 fi
 expect "worker lewat docker exec -> heartbeat up" sh -c "printf '%s' '$(kuma worker)' | grep -q 'status=up'"
 
+# Layanan ping (Healthchecks.io): sukses = URL apa adanya, gagal = URL + /fail, pesan sebagai badan. Query status=down
+# tidak boleh dipakai karena layanan ping mencatatnya sebagai SUKSES.
+reset_state
+printf '%s' '{"status":"ok","service":"kapdh-worker","time":"2026-10-14T10:00:00.000Z","issues":[],"checks":{"database":{"ok":true}}}' >"$ROOT/worker-ping.json"
+KUMA_PUSH_WORKER=https://hc-ping.com/0b1c2d3e FAKE_WORKER_JSON="$ROOT/worker-ping.json" WORKER_CONTAINER='' \
+  sh "$MON_DIR/check-worker.sh" >"$ROOT/worker-ping-ok.log" 2>&1 || true
+expect "layanan ping: worker ok -> URL tanpa /fail, pesan sebagai badan" \
+  sh -c "grep -q '^https://hc-ping.com/0b1c2d3e body=worker ok' '$FAKE_STATE_DIR/kuma.log' && ! grep -q 'status=' '$FAKE_STATE_DIR/kuma.log'"
+KUMA_PUSH_WORKER='https://hc-ping.com/0b1c2d3e/' FAKE_WORKER_JSON="$ROOT/tidak-ada.json" WORKER_CONTAINER='' \
+  sh "$MON_DIR/check-worker.sh" >"$ROOT/worker-ping-down.log" 2>&1 || true
+expect "layanan ping: worker tak terjangkau -> URL/fail (garis miring akhir tidak digandakan)" \
+  grep -q '^https://hc-ping.com/0b1c2d3e/fail body=worker tidak-terjangkau' "$FAKE_STATE_DIR/kuma.log"
+
 # ============================================================================================== check-host.sh
 DISK_DIR=$ROOT/disk
 mkdir -p "$DISK_DIR"
 DISK_PATHS=$DISK_DIR
 FILES_ROOT=$DISK_DIR
+
 KUMA_PUSH_DISK_WARN=https://kuma.test/api/push/disk-warn
 KUMA_PUSH_DISK_CRIT=https://kuma.test/api/push/disk-crit
 export DISK_PATHS FILES_ROOT KUMA_PUSH_DISK_WARN KUMA_PUSH_DISK_CRIT

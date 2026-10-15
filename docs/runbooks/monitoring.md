@@ -22,6 +22,10 @@ Pemilik: pengelola infra (PRD 5.5, D9). Rujukan: PRD 2.4 N-01..N-06 dan N-14, 5.
   datang dalam interval, jadi skrip/cron yang mati juga terdeteksi.
 - Pesan alert tidak memuat data pribadi, token atau isi (N-14); skrip hanya mengirim angka dan kode isu.
 - URL Push Kuma berisi token: simpan di `/etc/kapdh/monitoring.env` (0600) dan `backup.env`, bukan di repo.
+- Tanpa server Kuma, variabel `KUMA_PUSH_*` juga menerima URL layanan ping (Healthchecks.io `https://hc-ping.com/<uuid>`,
+  heartbeat Better Stack): `kuma_push` (`infra/backup/lib.sh`) mengenali URL Kuma dari `/api/push/`; selain itu sukses
+  dikirim ke URL apa adanya dan gagal ke `<URL>/fail`, pesan sebagai badan. Monitor aktif HTTP (1-5) memakai layanan
+  uptime eksternal (mis. UptimeRobot), tetap di luar VPS.
 
 ## 2. Daftar monitor
 
