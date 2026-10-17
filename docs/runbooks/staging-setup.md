@@ -568,10 +568,17 @@ permanen di entrypoint proxy, setara `kapdh-platform/infra/compose.proxy.yml` (j
   - "--entrypoints.http.http.redirections.entrypoint.scheme=https"
   ```
 
-- [ ] Simpan, lalu restart proxy (semua aplikasi dan panel lewat domain terputus sesaat). Pengaturan ini berlaku untuk
-      semua aplikasi di server. `permanent` bawaan `true` untuk pengalihan entrypoint; tantangan ACME HTTP tetap
-      dilayani karena router ACME Traefik berprioritas lebih tinggi. Sertifikat ketiga domain staging terbit sesudah
-      ini (deploy 6.4) dan dibuktikan uji asap 6.4.
+- [ ] Klik **Save changes** di bilah mengambang bawah layar dan tunggu penanda 'Changes pending', lalu **Restart
+      Proxy** (semua aplikasi dan panel lewat domain terputus sesaat). Restart tidak menyimpan isi editor, dan Coolify
+      v4.4.6 memakai salinan di basis datanya, bukan berkas di disk (`rilis-dan-gerbang-go-live.md` bagian 7).
+      Pengaturan ini berlaku untuk semua aplikasi di server. `permanent` bawaan `true` untuk pengalihan entrypoint;
+      tantangan ACME HTTP tetap dilayani karena router ACME Traefik berprioritas lebih tinggi. Sertifikat ketiga domain
+      staging terbit sesudah ini (deploy 6.4) dan dibuktikan uji asap 6.4.
+- [ ] **Server yang sama dengan production:** langkah ini sudah terpasang sejak 17 Oktober 2026, bersama baris ketiga
+      `--entrypoints.https.http.middlewares=kapdh-hsts@file` (HSTS global, `rilis-dan-gerbang-go-live.md` bagian 7).
+      Jangan menambahkannya lagi; cukup jalankan pemeriksaan di bawah. Host staging ikut mendapat
+      `strict-transport-security: max-age=31536000` dari proxy; dengan `KAPDH_EXPECT_HSTS=false` uji asap hanya
+      mencatatnya sebagai `info`.
 
 **Periksa [PC]:**
 
@@ -879,7 +886,9 @@ bawah `/srv/kapdh/staging/files`; readiness saja tidak membuktikan mount.
 
 - Laporan gerbang `DITOLAK` pada setiap deploy sampai langkah 3-4 selesai; gerbang pra-migrasi dilewati (mode
   laporan).
-- Tanpa HSTS; tanpa host `www` di staging.
+- Tanpa HSTS dari API (`HSTS_ENABLED=false`); bila staging berada di server Coolify yang sama dengan production, proxy
+  tetap mengirim `max-age=31536000` (tanpa `includeSubDomains`) dan uji asap mencatatnya sebagai `info`. Tanpa host
+  `www` di staging.
 - Registrasi anggota 409 sampai kebijakan privasi dan ketentuan terbit.
 - Push nonaktif (FCM kosong, `PUSH_ENABLED=false` di `config/staging.json`); `store_links` kosong sehingga `/unduh`
   tanpa tautan dan `min_app_version` tidak dapat dinaikkan.

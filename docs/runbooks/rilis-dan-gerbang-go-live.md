@@ -358,22 +358,69 @@ monitor, `staging-*`). Aktifkan hanya setelah semuanya terbukti HTTPS (SSL Labs,
 untuk ketiga domain:
 
 1. API: `HSTS_ENABLED=true` pada resource API production (helmet: `max-age=31536000; includeSubDomains`).
-2. Web dan admin (jalur Coolify): nginx di image tidak mengirim HSTS; tambahkan middleware header Traefik pada label
-   kontainer resource `kapdh-web` dan `kapdh-admin` (Coolify: Configuration → Container Labels; nonaktifkan label
-   hanya-baca bila diminta). Nama middleware unik per resource, lalu tambahkan ke daftar `middlewares` router HTTPS
-   yang sudah dibuat Coolify (dipisah koma, jangan hapus middleware Coolify yang ada):
+2. Web dan admin (jalur Coolify): nginx di image tidak mengirim HSTS. Header dipasang **sekali per server Coolify**
+   lewat middleware entrypoint `https`, sekaligus dengan pengalihan HTTP → HTTPS permanen (301). Efeknya global:
+   setiap host HTTPS di proxy itu (web, admin, API, panel Coolify, staging di server yang sama) mendapat
+   `Strict-Transport-Security: max-age=31536000`, tanpa `includeSubDomains`, jadi hanya berlaku untuk host yang persis
+   sama. Label kontainer per resource tidak dipakai: selama label dapat diedit, Coolify mengunci perubahan domain,
+   padahal domain diubah di hari H.
+   1. **Middleware dulu.** Servers → `localhost` → Proxy → 'Dynamic configurations', berkas `kapdh-hsts.yaml`:
 
-   ```
-   traefik.http.middlewares.kapdh-web-hsts.headers.stsSeconds=31536000
-   traefik.http.middlewares.kapdh-web-hsts.headers.stsIncludeSubdomains=true
-   traefik.http.routers.<router-https-coolify>.middlewares=<middleware-yang-ada>,kapdh-web-hsts
-   ```
+      ```yaml
+      http:
+        middlewares:
+          kapdh-hsts:
+            headers:
+              stsSeconds: 31536000
+      ```
 
-   (sama untuk admin dengan `kapdh-admin-hsts`). Nama router dan format label diverifikasi pada gladi staging; redeploy
-   resource setelah mengubah label.
+      Buktikan Traefik sudah memuatnya sebelum langkah berikut, misalnya dengan router uji sementara
+      (``rule: Host(`hsts-uji.kapdh.invalid`)``, `service: noop@internal`, `tls: {}`, middleware `kapdh-hsts@file`)
+      lalu `curl -sk --resolve hsts-uji.kapdh.invalid:443:127.0.0.1 -D - -o /dev/null https://hsts-uji.kapdh.invalid/`
+      yang harus memuat header HSTS. Hapus router uji setelahnya. Bila entrypoint merujuk middleware yang tidak ada,
+      **semua** router HTTPS gagal, termasuk panel Coolify.
+   2. **Flag static Traefik.** Di editor konfigurasi Traefik (halaman yang sama), tambahkan di bawah
+      `- '--entrypoints.https.address=:443'` dengan indentasi yang sama:
+
+      ```yaml
+      - '--entrypoints.http.http.redirections.entrypoint.to=https'
+      - '--entrypoints.http.http.redirections.entrypoint.scheme=https'
+      - '--entrypoints.https.http.middlewares=kapdh-hsts@file'
+      ```
+
+      Klik **Save changes** di bilah mengambang bawah layar (bukan 'Reset'; Enter di editor tidak menyimpan). Tunggu
+      toast 'Proxy configuration saved.' dan penanda 'Changes pending', baru klik **Restart Proxy** satu kali (klik
+      kedua dalam 120 detik diabaikan Coolify). Router `/ping` (healthcheck proxy) dan tantangan ACME berprioritas
+      `MaxInt`, di atas router pengalihan (`MaxInt-1`), jadi keduanya tidak ikut dialihkan.
+   3. **Periksa.** `docker inspect -f '{{json .Config.Cmd}}' coolify-proxy` memuat ketiga flag; `http://` setiap host
+      menjawab `301` ke `https://` dengan path dan query yang sama (GET; HEAD dijawab `308`); semua host HTTPS memuat
+      `strict-transport-security: max-age=31536000`; WSS tetap `101`. Untuk API, header proxy dapat menimpa header
+      helmet sehingga `includeSubDomains` hilang; keduanya memenuhi gerbang `go-live.md` 2.4 (max-age >= 31536000).
+      `staging-smoke.sh` dengan `KAPDH_EXPECT_HSTS=true` mewajibkan `includeSubDomains`, jadi bukti production memakai
+      blok gerbang 2.4.
+
+   **Perilaku Coolify v4.4.6** (dibaca dari kode sumber tag `v4.4.6`, 17 Oktober 2026):
+   - Sumber kebenaran konfigurasi proxy adalah **basis data Coolify** (`servers.proxy` →
+     `last_saved_proxy_configuration`), bukan `/data/coolify/proxy/docker-compose.yml`. Save menulis ke basis data lalu
+     ke berkas; Restart dan Start mengambil dari basis data lalu menimpa berkas. Mengedit berkas lewat SSH bukan
+     perubahan yang bertahan.
+   - 'Reset configuration' dan 'Switch proxy' membuang **semua** command tambahan, termasuk ketiga baris di atas.
+     Setelah tindakan itu, atau setelah upgrade Coolify, ulangi langkah 3.
+   - Restart tidak menyimpan isi editor. Edit yang belum di-Save hilang saat restart, reload, atau 'Reset' di bilah.
+   - Jaring pengaman perubahan proxy: rollback **berbasis kesehatan**, jangan berbasis waktu. Pada 17 Oktober 2026
+     rollback 20 menit memulihkan konfigurasi lama yang sebenarnya sehat karena pemeriksaan terlambat dijalankan.
+     Pengawas yang dipakai (timer systemd tiap menit, terlepas dari terminal Coolify yang ikut terputus saat proxy
+     restart) mencatat status ke journal, rollback hanya bila panel atau aplikasi tidak menjawab 200 empat menit
+     berturut-turut, dan berhenti sendiri setelah lulus tiga kali. Rollback berkas + `docker compose up -d` hanya
+     memulihkan proxy yang berjalan; basis data Coolify tetap berisi konfigurasi baru, jadi sesudahnya hapus baris
+     tersebut di editor lalu 'Save changes' tanpa Restart.
+
+   Status production: aktif sejak 17 Oktober 2026 22:28 WIB (bukti: journal `kapdh-proxy-watchdog` di VPS, tiga kali
+   berturut-turut `flag=3`, keempat host `200/301/hsts1`, WSS `101`).
 
 3. Jalur Compose cadangan: `KAPDH_HSTS=true` di `/etc/kapdh/proxy.env` (middleware `kapdh-hsts` Traefik cadangan).
-4. Bukti **[bukti]**: `KAPDH_EXPECT_HSTS=true` pada `staging-smoke.sh` (staging lebih dahulu, lalu production).
+4. Bukti **[bukti]**: staging dengan `KAPDH_EXPECT_HSTS=true` pada `staging-smoke.sh` bila HSTS staging memakai
+   `includeSubDomains`; production dengan blok gerbang `go-live.md` 2.4.
 
 ## 8. Wajib dibuktikan pada staging nyata (belum dapat diuji di mesin build tanpa Docker)
 
@@ -383,7 +430,8 @@ untuk ketiga domain:
   terhadap PostgreSQL 17.
 - `run-release.sh` dengan nama host/jaringan PostgreSQL resource Coolify yang sebenarnya dan `docker login ghcr.io`.
 - TLS grade (SSL Labs), pengalihan HTTP→HTTPS, upgrade WSS `/socket.io/`, port 5432/6379/3000/3001/8000 tertutup dari
-  internet (`staging-smoke.sh`); label HSTS Coolify (bagian 7).
+  internet (`staging-smoke.sh`); HSTS dan pengalihan 301 proxy Coolify (bagian 7; production sudah sejak
+  17 Oktober 2026).
 - Batas memori/CPU di bawah beban (N-01..N-04) dan heap Node (`--max-old-space-size`).
 - Web admin di peramban nyata dengan CSP production: login, TOTP, editor berita (TipTap tanpa `<style>` sisipan),
   pratinjau unggahan (`blob:`), QR TOTP (`data:`), pemindai check-in (kamera).
