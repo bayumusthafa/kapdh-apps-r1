@@ -87,7 +87,9 @@ Langkah berikutnya: `docs/runbooks/go-live.md`. Persiapan toko aplikasi: `docs/r
 - [ ] **HSTS (N-07)**, diaktifkan setelah semua host yang dicakup melayani HTTPS dan **sebelum** go-live:
   - Traefik: header `Strict-Transport-Security` `max-age=31536000` untuk `kapdh.or.id`, `www.kapdh.or.id` dan
     `admin.kapdh.or.id` (`infra/nginx-web.conf` menyerahkan HSTS ke Traefik). `includeSubDomains` hanya bila setiap
-    subdomain `kapdh.or.id` (termasuk staging dan panel Coolify) sudah HTTPS.
+    subdomain `kapdh.or.id` (termasuk staging dan panel Coolify) sudah HTTPS. Jalur Coolify: middleware dynamic
+    `kapdh-hsts` + middleware entrypoint `https` beserta pengalihan 301 (`rilis-dan-gerbang-go-live.md` bagian 7;
+    aktif di production sejak 17 Oktober 2026, tanpa `includeSubDomains`).
   - API: `HSTS_ENABLED=true` (helmet, `max-age=31536000; includeSubDomains`).
   - **[bukti]** keluaran `curl -sI` empat host pada gerbang transport `go-live.md` bagian 2.4.
 
