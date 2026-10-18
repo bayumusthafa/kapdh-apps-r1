@@ -117,6 +117,30 @@ Tidak diambil karena melanggar aturan mockup atau skill: Tailwind, Lucide dan fo
 pengganti keadaan, teks 9-10 px, teks `slate-400` (2,6:1 di putih), modal KTA (di aplikasi tab KTA membuka layar KTA),
 toast, dan data nyata pada contoh (mockup memakai "Ahmad Fauzi").
 
+## Ikon Phosphor untuk akses cepat dan navigasi bawah
+
+Dipilih dari perbandingan di [`ikon.html`](ikon.html) (Phosphor, Solar, Hugeicons, Fluent; Material sebagai acuan).
+Phosphor adalah set yang dikurasi skill ui-ux-pro-max, berlisensi MIT tanpa atribusi wajib, dan menyediakan gaya
+regular, fill dan duotone dalam satu keluarga.
+
+| Tempat | Gaya | Material lama -> Phosphor | Dart (`phosphor_flutter`) |
+| --- | --- | --- | --- |
+| Akses cepat KTA | Duotone | `badge_outlined` -> `identification-card-duotone` | `PhosphorIcons.identificationCard(PhosphorIconsStyle.duotone)` |
+| Akses cepat Notifikasi | Duotone | `notifications_outlined` -> `bell-simple-ringing-duotone` | `PhosphorIcons.bellSimpleRinging(PhosphorIconsStyle.duotone)` |
+| Akses cepat Tiket Saya | Duotone | `confirmation_number_outlined` -> `ticket-duotone` | `PhosphorIcons.ticket(PhosphorIconsStyle.duotone)` |
+| Akses cepat Berita | Duotone | `article_outlined` -> `newspaper-clipping-duotone` | `PhosphorIcons.newspaperClipping(PhosphorIconsStyle.duotone)` |
+| Tab Beranda | Regular / Fill | `home_outlined` / `home` -> `house-simple` / `house-simple-fill` | `PhosphorIcons.houseSimple()` / `(PhosphorIconsStyle.fill)` |
+| Tab Event | Regular / Fill | `event_outlined` / `event` -> `calendar-dots` / `calendar-dots-fill` | `PhosphorIcons.calendarDots()` |
+| Tab KTA (tengah) | Fill | `badge_outlined` / `badge` -> `identification-card-fill` | `PhosphorIcons.identificationCard(PhosphorIconsStyle.fill)` |
+| Tab Jejaring | Regular / Fill | `school_outlined` / `school` -> `graduation-cap` / `graduation-cap-fill` | `PhosphorIcons.graduationCap()` |
+| Tab Akun | Regular / Fill | `person_outline` / `person` -> `user-circle` / `user-circle-fill` | `PhosphorIcons.userCircle()` |
+| Gembok tab terkunci | Fill | `lock` -> `lock-simple-fill` | `PhosphorIcons.lockSimple(PhosphorIconsStyle.fill)` |
+
+Di mockup ikon ini memakai kelas `.ph-<nama>` dari `css/icons-phosphor.css`, dibangkitkan oleh
+`tools/build-icons-phosphor.mjs` dari `tools/icon-list-phosphor.txt`. Cara pakainya sama dengan ikon Material: duotone
+tetap dua nada karena mask memakai alfa. Ikon lain (app bar, field, kartu) masih Material Icons. Di Flutter, tambahkan
+`phosphor_flutter` ke `pubspec.yaml` dan ganti ikon di `QuickAccessRow` dan `AppShell.tabs`.
+
 ## Verifikasi
 
 - Setelah Beranda v2: 51 halaman tanpa gulir horizontal; footer kartu event dan baris berita tidak meluap.
