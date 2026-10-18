@@ -1,8 +1,14 @@
 ---
 import Base from "../layouts/Base.astro";
+import { ORGANIZATION, ORGANIZATION_ADDRESS_LINE, organizationJsonLd } from "../lib/organization";
 ---
 
-<Base title="Kontak" description="Hubungi bantuan KAPDH melalui email atau WhatsApp." maintenanceBanner>
+<Base
+  title="Kontak"
+  description="Hubungi bantuan KAPDH melalui email atau WhatsApp."
+  maintenanceBanner
+  structuredData={organizationJsonLd(new URL("/", Astro.site))}
+>
   <section class="border-b border-divider bg-surface">
     <div class="mx-auto flex max-w-4xl flex-col gap-2 px-4 py-10 sm:px-6">
       <h1 class="font-heading text-3xl font-bold text-green-950 sm:text-4xl">Kontak</h1>
@@ -41,6 +47,21 @@ import Base from "../layouts/Base.astro";
       </p>
       <p class="text-sm text-text-muted">Bila nomor belum tersedia, gunakan email bantuan.</p>
     </section>
+    {/* Alamat kedudukan statis (AD Pasal 1) dari lib/organization; tidak bergantung pada /public/config. */}
+    <section aria-labelledby="alamat-h" class="card flex flex-col gap-3 p-6 md:col-span-2">
+      <h2 id="alamat-h" class="flex items-center gap-2 font-semibold text-green-950">
+        <svg viewBox="0 0 24 24" class="size-5 text-primary" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0Z"></path>
+          <circle cx="12" cy="10" r="3"></circle>
+        </svg>
+        Alamat kedudukan
+      </h2>
+      <address class="flex flex-col gap-1 not-italic">
+        <strong class="font-semibold text-green-950">{ORGANIZATION.legalName}</strong>
+        <span class="text-neutral-700">{ORGANIZATION_ADDRESS_LINE}</span>
+      </address>
+      <p class="text-sm text-text-muted">Sesuai akta pendirian perkumpulan.</p>
+    </section>
   </div>
 
   <div class="mx-auto flex max-w-4xl flex-col gap-4 px-4 pb-12 sm:px-6">
@@ -49,7 +70,7 @@ import Base from "../layouts/Base.astro";
       <p>Pengurus KAPDH tidak pernah meminta sandi, kode OTP, atau kode cadangan. Jangan bagikan kode tersebut kepada siapa pun.</p>
     </div>
     <p class="text-sm text-text-muted">
-      Ingin menghapus akun? Gunakan halaman <a href="/delete-account" class="font-semibold text-primary underline">Hapus Akun</a>
+      Ingin menghapus akun? Gunakan halaman <a href="/delete-account" class="font-semibold text-primary underline">Hapus Akun</a>{" "}
       yang menerima permintaan langsung tanpa memasang aplikasi.
     </p>
   </div>

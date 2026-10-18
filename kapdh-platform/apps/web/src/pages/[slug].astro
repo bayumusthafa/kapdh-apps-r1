@@ -1,33 +1,52 @@
 ---
 import type { GetStaticPaths } from "astro";
+import OrganizationLegal from "../components/OrganizationLegal.astro";
 import Base from "../layouts/Base.astro";
+import { organizationJsonLd } from "../lib/organization";
 import { INFO_PAGES } from "../lib/site";
 
 /**
  * Halaman informasi/legal (F-08, PRD 3.8, 4.6): shell statis per slug baku; isi, versi dan tanggal terbit dibaca
  * saat runtime dari GET /public/pages/{slug} sehingga terbitan pengurus langsung tampil tanpa build ulang.
+ * Khusus /tentang, bagian Legalitas organisasi dan JSON-LD organisasi ditanam statis saat build sehingga tetap
+ * terbaca tanpa JavaScript (peninjau Google for Nonprofits dan perayap). Bagian itu tidak berversi di CMS, jadi
+ * baris versi/tanggal terbit (#info-meta) dipindah ke bawahnya, tepat di atas isi CMS yang ia jelaskan.
  */
 export const getStaticPaths = (() =>
   INFO_PAGES.map((page) => ({ params: { slug: page.slug }, props: { page } }))) satisfies GetStaticPaths;
 
 const { page } = Astro.props;
+const isAbout = page.slug === "tentang";
+const metaClass = "min-h-5 text-sm text-text-muted";
 ---
 
-<Base title={page.title} description={page.description}>
+<Base
+  title={page.title}
+  description={page.description}
+  structuredData={isAbout ? organizationJsonLd(new URL("/", Astro.site)) : undefined}
+>
   <section class="border-b border-divider bg-surface">
     <div class="mx-auto flex max-w-3xl flex-col gap-2 px-4 py-10 sm:px-6">
       <p class="text-sm font-semibold tracking-wide text-primary uppercase">
         {page.legal ? "Dokumen legal" : "Informasi"}
       </p>
       <h1 id="info-title" class="font-heading text-3xl font-bold text-green-950 sm:text-4xl">{page.title}</h1>
-      <p id="info-meta" class="min-h-5 text-sm text-text-muted"></p>
+      {!isAbout && <p id="info-meta" class={metaClass}></p>}
     </div>
   </section>
+  {
+    isAbout && (
+      <Fragment>
+        <OrganizationLegal />
+        <p id="info-meta" class={`mx-auto w-full max-w-3xl px-4 pt-10 sm:px-6 ${metaClass}`}></p>
+      </Fragment>
+    )
+  }
   <article
     id="info-body"
     data-slug={page.slug}
     aria-labelledby="info-title"
-    class="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6"
+    class={`mx-auto w-full max-w-3xl px-4 pb-10 sm:px-6 ${isAbout ? "pt-3" : "pt-10"}`}
   >
     <noscript>
       <p class="rounded-lg bg-neutral-bg p-5 text-sm">

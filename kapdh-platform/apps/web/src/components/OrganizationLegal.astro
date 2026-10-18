@@ -1,0 +1,101 @@
+---
+/**
+ * Bagian "Legalitas organisasi" di /tentang (id="legalitas"): identitas badan hukum, maksud dan tujuan, kegiatan,
+ * dan pengelolaan kekayaan menurut SK, akta pendirian dan Anggaran Dasar. Dirender statis saat build (tanpa
+ * JavaScript) agar peninjau dan perayap yang tidak menjalankan skrip tetap melihatnya; data dari lib/organization.
+ */
+import { ORGANIZATION, ORGANIZATION_SEAT_LINE } from "../lib/organization";
+import { LEGAL_SECTION_ID } from "../lib/site";
+
+const { sk, akta } = ORGANIZATION;
+// Nilai panjang (judul dan nomor SK) boleh dipatah di mana saja bila tidak muat (wrap-anywhere) agar tidak meluap
+// di layar sempit maupun saat teks diperbesar.
+const rows: { term: string; value: string }[] = [
+  { term: "Nama badan hukum", value: ORGANIZATION.legalName },
+  { term: "Nama singkat", value: ORGANIZATION.shortName },
+  { term: "Bentuk", value: ORGANIZATION.legalForm },
+  { term: "Pengesahan badan hukum", value: `${sk.title}, ditetapkan ${sk.issuedLabel}` },
+  {
+    term: "Akta pendirian",
+    value: `Akta Nomor ${akta.number} tanggal ${akta.dateLabel}, Notaris ${akta.notary}, ${akta.city}`,
+  },
+  { term: "Asas", value: ORGANIZATION.principle },
+  { term: "Kedudukan", value: ORGANIZATION_SEAT_LINE },
+];
+const lists = [
+  {
+    id: "legalitas-tujuan-h",
+    heading: "Maksud dan tujuan",
+    source: "Anggaran Dasar Pasal 3",
+    items: ORGANIZATION.objectives,
+  },
+  {
+    id: "legalitas-kegiatan-h",
+    heading: "Kegiatan",
+    source: "Anggaran Dasar Pasal 4",
+    items: ORGANIZATION.activities,
+  },
+];
+const termClass = "font-semibold text-green-950";
+const rowClass = "flex flex-col gap-1 py-3 sm:grid sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4";
+---
+
+<section id={LEGAL_SECTION_ID} aria-labelledby="legalitas-h" class="mx-auto w-full max-w-3xl px-4 pt-10 sm:px-6">
+  <div class="card flex flex-col gap-6 p-5 sm:p-8">
+    <div class="flex flex-col gap-2">
+      <h2 id="legalitas-h" class="flex items-center gap-2 font-heading text-2xl font-bold text-green-950">
+        <svg viewBox="0 0 24 24" class="size-6 shrink-0 text-primary" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path>
+          <path d="m9 12 2 2 4-4"></path>
+        </svg>
+        Legalitas organisasi
+      </h2>
+      <p class="text-neutral-700">
+        KAPDH adalah perkumpulan berbadan hukum yang didirikan oleh para alumni Pesantren Darel Hikmah, dengan akta
+        pendirian dan pengesahan badan hukum tersendiri.
+      </p>
+    </div>
+
+    <dl class="divide-y divide-divider border-y border-divider text-sm">
+      {
+        rows.map((row) => (
+          <div class={rowClass}>
+            <dt class={termClass}>{row.term}</dt>
+            <dd class="text-neutral-700 wrap-anywhere">{row.value}</dd>
+          </div>
+        ))
+      }
+      <div class={rowClass}>
+        <dt class={termClass}>Kontak resmi</dt>
+        <dd>
+          {/* Tautan mandiri: target sentuh 44 px seperti tautan footer dan navigasi. */}
+          <a
+            href={`mailto:${ORGANIZATION.email}`}
+            class="inline-flex min-h-11 items-center font-semibold break-all text-primary underline"
+            >{ORGANIZATION.email}</a
+          >
+        </dd>
+      </div>
+    </dl>
+
+    {
+      lists.map((list) => (
+        <section aria-labelledby={list.id} class="flex flex-col gap-3">
+          <h3 id={list.id} class="text-lg font-semibold text-green-950">
+            {list.heading} <span class="text-sm font-normal text-text-muted">({list.source})</span>
+          </h3>
+          <ol class="list-decimal space-y-2 pl-6 text-neutral-700">
+            {list.items.map((item) => (
+              <li>{item}</li>
+            ))}
+          </ol>
+        </section>
+      ))
+    }
+
+    <section aria-labelledby="legalitas-kekayaan-h" class="flex flex-col gap-3">
+      <h3 id="legalitas-kekayaan-h" class="text-lg font-semibold text-green-950">Pengelolaan kekayaan</h3>
+      <p class="text-neutral-700">{ORGANIZATION.assetsStatement}</p>
+    </section>
+  </div>
+</section>
