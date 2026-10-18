@@ -911,22 +911,31 @@ div:has(> .banner-carousel + .dots) { position: relative; }
 .avatar--m3 { background: var(--m3-primary-container); color: var(--m3-on-primary-container); font-size: 18px; }
 
 /* KtaCard (lib/design/kta_card.dart): padding 18, radius 16, gradasi ktaCard */
-.kta-card { --kta-angle: 128deg; padding: 18px; border-radius: var(--r-16); background: linear-gradient(var(--kta-angle), var(--gradient-kta-stops)); color: var(--color-text-on-dark); box-shadow: var(--shadow-kta); } /* [v2: + bayangan kartu fisik] */
+/* [v2 KTA] Kepala logo + nama perkumpulan + "KTA DIGITAL", garis pemisah, pita gelombang (BrandWavePainter), avatar
+   persegi membulat 56, nama putih 24 w700 (turun sampai 18 agar muat dua baris), QR 38 % lebar isi (96..128). */
+.kta-card { --kta-angle: 128deg; position: relative; padding: 18px; border-radius: var(--r-lg); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='a'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.05'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='.12'/%3E%3C/linearGradient%3E%3ClinearGradient id='b'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.02'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='.06'/%3E%3C/linearGradient%3E%3ClinearGradient id='c'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.04'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='.16'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23a)' d='M0 10C35 4 55 52 100 40L100 64C60 80 35 24 0 36Z'/%3E%3Cpath fill='url(%23b)' d='M0 48C30 40 62 86 100 72L100 90C60 102 30 60 0 68Z'/%3E%3Cpath fill='none' stroke='url(%23c)' stroke-width='1.5' vector-effect='non-scaling-stroke' d='M0 10C35 4 55 52 100 40'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat, linear-gradient(var(--kta-angle), var(--gradient-kta-stops)); color: var(--color-text-on-dark); box-shadow: var(--shadow-kta); overflow: hidden; }
+.kta-card__brand { position: relative; display: flex; align-items: center; gap: var(--s3); }
+.kta-card__logo { flex: none; width: 48px; height: 48px; object-fit: contain; }
+.kta-card__org { display: flex; flex-direction: column; font-size: 13px; font-weight: 700; letter-spacing: .6px; line-height: 1.25; color: var(--color-text-on-dark); }
+.kta-card__org-gold { color: var(--color-accent); }
+.kta-card__tag { position: absolute; top: 8px; right: 0; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; line-height: 1.2; color: var(--color-muted-on-dark); }
+.kta-card__rule { margin: var(--s3) 0 14px; height: 1px; border: 0; background: rgba(255, 255, 255, .25); }
 .kta-card__head { display: flex; align-items: center; gap: var(--s3); }
-.kta-card__avatar { --av: 52px; font-size: 18px; }
-.kta-card__name { font-size: 20px; font-weight: 600; color: var(--color-accent); }
-.kta-card__subtitle { margin-top: 2px; font-size: var(--fs-overline); color: var(--color-green-100); }
+.kta-card__avatar { --av: 56px; font-size: 20px; font-weight: 700; border-radius: var(--r-lg); background: var(--color-green-50); }
+.kta-card__name { font-size: 24px; font-weight: 700; line-height: 1.2; letter-spacing: 0; color: var(--color-text-on-dark); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.kta-card__name--md { font-size: 20px; } .kta-card__name--sm { font-size: 18px; } /* KtaCard.nameFontSize untuk nama panjang */
+.kta-card__subtitle { margin-top: 2px; font-size: var(--fs-caption); color: var(--color-green-100); }
 .kta-card__body { display: flex; align-items: flex-start; gap: 14px; margin-top: 14px; }
 .kta-card__fields { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .kta-field__label { font-size: var(--fs-overline); color: var(--color-muted-on-dark); }
 .kta-field__value { margin-top: 1px; color: var(--color-text-on-dark); }
-.kta-field__value--cohort { font-size: 18px; font-weight: 600; }
-.kta-field__value--number { font-size: 14px; font-weight: 600; }
-.kta-field__value--city { font-size: 13px; }
+.kta-field__value--cohort { font-size: 18px; font-weight: 700; }
+.kta-field__value--number { font-size: 16px; font-weight: 700; letter-spacing: .5px; }
+.kta-field__value--city { font-size: 15px; font-weight: 600; }
 .kta-card__validity { margin-top: 14px; font-size: 12px; color: var(--color-muted-on-dark); }
-.kta-qr { flex: none; width: var(--size-kta-qr); height: var(--size-kta-qr); padding: 10px; border-radius: var(--r-12); background: var(--color-surface); }
+.kta-qr { flex: none; width: clamp(96px, 38%, var(--size-kta-qr)); height: auto; aspect-ratio: 1; padding: 10px; border-radius: 14px; background: var(--color-surface); } /* [v2] 38 % lebar isi kartu */
 .kta-qr--locked {
-  height: auto; min-height: var(--size-kta-qr);
+  height: auto; /* persegi dari aspect-ratio .kta-qr, tumbuh bila teks panjang */
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s2);
   background: var(--color-qr-placeholder-fill); border: 1px solid var(--color-qr-placeholder-border);
   padding: 9px;
