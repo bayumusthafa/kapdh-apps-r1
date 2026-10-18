@@ -30,7 +30,7 @@
         <li>Server belum dapat dihubungi</li>
       </ol>
     </div>
-    <p class="page-header__note">Scaffold surfaceDark (#0E280C), isi terpusat di dalam SafeArea. Gerbang aplikasi (GET /public/config) dan pemulihan sesi berjalan paralel; router berpindah sendiri saat keduanya siap. Saat "Coba lagi" ditekan, spinner tampil lagi (keadaan 1).</p>
+    <p class="page-header__note"><strong>v2 (usulan):</strong> latar gradasi abu terang (<code>--gradient-splash</code> #FAFAFA → #E2E4E1) di mode terang, hijau tua surfaceDark (#0E280C) di mode gelap; judul, spinner, ikon dan tombol primary. Isi terpusat di dalam SafeArea. Gerbang aplikasi (GET /public/config) dan pemulihan sesi berjalan paralel; router berpindah sendiri saat keduanya siap. Saat "Coba lagi" ditekan, spinner tampil lagi (keadaan 1).</p>
   </header>
 
   <main class="frames">
@@ -38,24 +38,24 @@
     <figure class="frame">
       <figcaption class="frame__label"><span class="frame__num">1</span> Memuat</figcaption>
       <div class="device" role="group" aria-label="Splash, memuat">
-        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
-        <div class="screen auth-dark">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen auth-dark auth-splash">
           <div class="auth-dark__inner">
             <img class="auth-splash-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="120" height="120">
             <p class="auth-splash-title">Keluarga Alumni<br>Pesantren Darel Hikmah</p>
             <span class="spinner auth-splash-spinner" role="status" aria-label="Memuat aplikasi"></span>
           </div>
         </div>
-        <div class="sysnav sysnav--on-dark" aria-hidden="true"></div>
+        <div class="sysnav" aria-hidden="true"></div>
       </div>
-      <p class="frame__note">CircularProgressIndicator 32 emas (garis 4).</p>
+      <p class="frame__note">CircularProgressIndicator 32 primary (garis 4); dulu emas di hijau tua.</p>
     </figure>
 
     <figure class="frame">
       <figcaption class="frame__label"><span class="frame__num">2</span> Tanpa koneksi</figcaption>
       <div class="device" role="group" aria-label="Splash, tanpa koneksi">
-        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
-        <div class="screen auth-dark">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen auth-dark auth-splash">
           <div class="auth-dark__inner">
             <img class="auth-splash-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="120" height="120">
             <p class="auth-splash-title">Keluarga Alumni<br>Pesantren Darel Hikmah</p>
@@ -67,16 +67,16 @@
             </div>
           </div>
         </div>
-        <div class="sysnav sysnav--on-dark" aria-hidden="true"></div>
+        <div class="sysnav" aria-hidden="true"></div>
       </div>
-      <p class="frame__note">SessionIssue.offline: ikon cloud_off 40 emas, OutlinedButton.icon emas padding 24.</p>
+      <p class="frame__note">SessionIssue.offline: ikon 40 primary, OutlinedButton.icon primary padding 24 (dulu emas).</p>
     </figure>
 
     <figure class="frame">
       <figcaption class="frame__label"><span class="frame__num">3</span> Data sesi belum dapat dibaca</figcaption>
       <div class="device" role="group" aria-label="Splash, data sesi belum dapat dibaca">
-        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
-        <div class="screen auth-dark">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen auth-dark auth-splash">
           <div class="auth-dark__inner">
             <img class="auth-splash-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="120" height="120">
             <p class="auth-splash-title">Keluarga Alumni<br>Pesantren Darel Hikmah</p>
@@ -88,7 +88,7 @@
             </div>
           </div>
         </div>
-        <div class="sysnav sysnav--on-dark" aria-hidden="true"></div>
+        <div class="sysnav" aria-hidden="true"></div>
       </div>
       <p class="frame__note">SessionIssue.storage (penyimpanan aman tidak dapat dibuka).</p>
     </figure>
@@ -96,8 +96,8 @@
     <figure class="frame">
       <figcaption class="frame__label"><span class="frame__num">4</span> Server belum dapat dihubungi</figcaption>
       <div class="device" role="group" aria-label="Splash, server belum dapat dihubungi">
-        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
-        <div class="screen auth-dark">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen auth-dark auth-splash">
           <div class="auth-dark__inner">
             <img class="auth-splash-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="120" height="120">
             <p class="auth-splash-title">Keluarga Alumni<br>Pesantren Darel Hikmah</p>
@@ -109,7 +109,7 @@
             </div>
           </div>
         </div>
-        <div class="sysnav sysnav--on-dark" aria-hidden="true"></div>
+        <div class="sysnav" aria-hidden="true"></div>
       </div>
       <p class="frame__note">Masalah lain (server sibuk/5xx).</p>
     </figure>

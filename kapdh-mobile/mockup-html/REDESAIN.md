@@ -142,7 +142,8 @@ nama Dart di tabel ini menjadi `KapdhIcons.<namaMaterial>` dan duotone memakai `
 
 Di mockup ikon ini memakai kelas `.ph-<nama>` dari `css/icons-phosphor.css`, dibangkitkan oleh
 `tools/build-icons-phosphor.mjs` dari `tools/icon-list-phosphor.txt`. Cara pakainya sama dengan ikon Material: duotone
-tetap dua nada karena mask memakai alfa. Ikon lain (app bar, field, kartu) masih Material Icons. 
+tetap dua nada karena mask memakai alfa. Sejak audit, ikon app bar, field dan kartu juga Phosphor; Material Icons hanya
+tersisa di ikon status bar sistem Android dan di halaman perbandingan (`ikon.html`, galeri `components.html`). 
 
 ## Audit standar desain Flutter (18 Oktober 2026)
 
@@ -165,8 +166,8 @@ radius hanya 8/12/16/24 (+ badge 9, segmen 20), tidak ada kontras teks gagal sel
 memang berscrim. Target sentuh di bawah 48 yang tersisa adalah tautan di dalam paragraf berita (pengecualian WCAG
 2.5.8) dan komponen Material yang targetnya diperluas margin (ChoiceChip, SegmentedButton, TabBar).
 
-Belum dikerjakan: mode gelap (aplikasi belum punya tema gelap) dan pemindahan seluruh usulan v2 lain (token warna,
-header Beranda, tombol KTA tengah) ke Flutter; daftarnya di bagian sebelumnya.
+Saat audit ini mode gelap belum ada; kini sudah dimockup (bagian *Mode gelap, teks 200 %, tablet dan token ikon*).
+Pemindahan usulan v2 lain (token warna, header Beranda, tombol KTA tengah) ke Flutter tercatat di *Belum dikerjakan*.
 
 ## Mode gelap, teks 200 %, tablet dan token ikon (P2, 18 Oktober 2026)
 
@@ -202,8 +203,16 @@ usulan:
 | 5 label navigasi bawah bertabrakan | Skala label dibatasi 1,3 | `MediaQuery.withClampedTextScaling(maxScaleFactor: 1.3)` di `NavigationBar` |
 | 4 label akses cepat Beranda bertabrakan | Ubin menjadi 2 x 2 bila skala > 1,3 | Ambang `--text-scale-stack` seperti `StatusActionCard` |
 | Judul kartu event/berita, nama header, pratinjau chat terpotong | Dibiarkan: sesuai `maxLines` + elipsis di Dart | Pastikan teks lengkap ada di layar detail |
-| Petunjuk field panjang terpotong ("Masukkan Passw…") | Belum | Petunjuk lebih pendek atau `hintMaxLines: 2` |
-| Judul banner menumpuk logo | Belum | Batasi skala judul banner (gambar berasio tetap) |
+| Label stepper pendaftaran meluap ("Pembayaran" lebih lebar dari kolomnya) | Bila skala > 1,3 hanya label langkah aktif yang tampil, satu baris selebar stepper; langkah lain tetap dibacakan | `KapdhStepper`: cabang `textScaler.scale(12) > 12 * 1.3`; `Semantics` "Langkah n dari 4: ..." tetap |
+| Email/token panjang meluap (OTP, profil anggota, tautan bantuan, galat konfigurasi) | Kata yang lebih panjang dari barisnya dipecah (`overflow-wrap: break-word`), email di baris ikon `min-width: 0` | Perilaku bawaan `Text`; di `Row` bungkus dengan `Flexible` |
+| Tombol teks panjang meluap ("Buka peta lokasi (tautan luar)", "Isi rekening tujuan refund") | Label boleh pindah baris | `TextButton` tanpa `maxLines: 1`, tidak di `Row` tanpa `Flexible` |
+| "24 suka" meluap di samping chip kategori berita | Baris atas kartu menjadi `Wrap` | `Wrap` sebagai ganti `Row` |
+| Judul banner menumpuk gambar | Skala judul dibatasi 1,3 | `MediaQuery.withClampedTextScaling(maxScaleFactor: 1.3)` di keterangan banner |
+| Petunjuk field panjang terpotong ("Masukkan Passw…") | Diterima: label di atas field sudah lengkap, petunjuk hanya contoh | Tetap `hintMaxLines` 1 |
+
+Tab Jejaring, kategori Event dan strip chip penerima memang bisa digeser ke samping (`overflow-x: auto` di mockup),
+jadi tab yang keluar layar bukan luapan. Keyboard sistem tiruan dan status bar tidak ikut skala teks aplikasi, dan
+keyboard mengikuti tema gelap (token `--color-keyboard*`, warna Gboard gelap).
 
 Frame ber-tinggi tetap memotong isi; untuk melihat seluruh isi pada 200 % pakai frame "Gulir penuh".
 
@@ -211,6 +220,13 @@ Frame ber-tinggi tetap memotong isi; untuk melihat seluruh isi pada 200 % pakai 
 `.screen__body` dibatasi `--content-max-w` 600 px di tengah; app bar, header, navigasi bawah dan latar tetap selebar
 layar. Di Flutter: `Center` + `ConstrainedBox(maxWidth: 600)` di tiap layar. Navigasi bawah selebar 800 dp masih
 terasa renggang; pada lebar >= 840 dp sebaiknya pindah ke `NavigationRail` (belum dimockup).
+
+**Latar Splash** (usulan). Mode terang memakai gradasi abu terang `--gradient-splash` (#FAFAFA → #EEEFED →
+#E2E4E1, atas ke bawah) sebagai ganti hijau tua; mode gelap tetap hijau tua `surfaceDark`. Karena emas di abu hanya
+1,4:1, judul, spinner, ikon masalah dan tombol "Coba lagi" menjadi primary (7,96:1 terang, 8,9:1 gelap), pesan
+text-muted (4,65:1), status bar ikon gelap. Halaman galat konfigurasi tetap hijau tua. Flutter nanti: `Scaffold` dengan
+`DecoratedBox(gradient)` dan `SystemUiOverlayStyle.dark`; splash native (`flutter_native_splash`) perlu warna
+`#FAFAFA` agar transisinya mulus.
 
 **Token ukuran ikon** (usulan `KapdhIconSize`): `--ic-xs` 14, `--ic-sm` 16, `--ic-btn` 18, `--ic-md` 20,
 `--ic-lg` 24 (bawaan), `--ic-xl` 28. Kelas `.ic-s14` sampai `.ic-s28` dan 47 nilai `--ic-size` di komponen kini

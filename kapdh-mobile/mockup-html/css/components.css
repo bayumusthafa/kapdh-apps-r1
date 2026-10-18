@@ -248,7 +248,7 @@ a { color: inherit; text-decoration: none; }
 .sysnav::before { content: ""; width: 108px; height: 4px; border-radius: 2px; background: var(--color-sysnav); }
 .sysnav--on-dark::before { background: rgba(255, 255, 255, .9); }
 
-.screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--color-background); }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--color-background); overflow-wrap: break-word; } /* [v2 P2-3] Text Flutter memecah kata yang lebih panjang dari barisnya (email, token) */
 .screen--surface { background: var(--color-surface); }
 .screen__body { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .screen__body > .scroll { flex: 1 1 auto; } /* isi daftar; tinggi bebas */
@@ -274,11 +274,11 @@ a { color: inherit; text-decoration: none; }
   position: absolute; z-index: 45; left: 0; right: 0; bottom: 0;
   height: calc(268px + var(--inset-bottom));
   padding: 10px 4px var(--inset-bottom);
-  background: #E8EAED;
+  background: var(--color-keyboard);
   display: grid; grid-template-rows: repeat(4, 1fr); gap: 8px;
 }
 .keyboard__row { display: flex; gap: 6px; justify-content: center; }
-.keyboard__key { flex: 1; max-width: 32px; background: #FFFFFF; border-radius: 6px; box-shadow: 0 1px 0 rgba(0, 0, 0, .2); }
+.keyboard__key { flex: 1; max-width: 32px; background: var(--color-keyboard-key); border-radius: 6px; box-shadow: 0 1px 0 rgba(0, 0, 0, .2); }
 
 /* ---------------------------------------------------------------------------------------------------------------------
    TIPOGRAFI  (TextTheme KapdhTheme.light(); teks biasa = bodyMedium 14 / 1.45 / ls .25)
@@ -581,7 +581,7 @@ a { color: inherit; text-decoration: none; }
   border-radius: var(--r-pill);
   font-size: calc(13px * var(--ts, 1)); font-weight: 500; letter-spacing: 0; line-height: var(--lh-poppins);
   color: var(--color-primary);
-  white-space: nowrap;
+  text-align: center; /* [v2 P2-3] label TextButton boleh pindah baris bila lebar tidak cukup (dulu nowrap: meluap pada teks 200 %) */
 }
 .btn-text .ic { --ic-size: var(--ic-btn); }
 .btn-text--icon { padding: 0 16px 0 12px; }
@@ -865,7 +865,7 @@ a { color: inherit; text-decoration: none; }
 .post-card--row { display: flex; align-items: flex-start; gap: var(--s3); padding: 11px; }
 .post-card--row .post-card__cover { flex: none; width: 80px; height: 80px; aspect-ratio: auto; border-radius: var(--r-md); overflow: hidden; }
 .post-card--row .post-card__body { flex: 1 1 auto; min-width: 0; padding: 0; }
-.post-card__top { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
+.post-card__top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); } /* [v2 P2-3] Wrap: suka turun ke baris berikut pada teks besar */
 .post-card--row .post-card__title { margin-top: 6px; }
 .post-card__date { margin-top: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
 
@@ -888,7 +888,7 @@ a { color: inherit; text-decoration: none; }
 .banner-tile > img, .banner-tile > .img-ph { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .banner-tile::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, 0) 45%, var(--color-banner-scrim-end) 100%); }
 .banner-tile__caption { position: absolute; z-index: 1; left: var(--s3); right: var(--s3); bottom: var(--s3); display: flex; align-items: flex-end; gap: var(--s2); }
-.banner-tile__title { flex: 1 1 auto; min-width: 0; color: var(--color-text-on-dark); font-size: var(--fs-body); font-weight: 600; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.banner-tile__title { flex: 1 1 auto; min-width: 0; color: var(--color-text-on-dark); font-size: calc(14px * min(var(--ts, 1), 1.3)); /* [v2 P2-3] judul di atas gambar berasio tetap: skala dibatasi 1,3 agar tidak menutupi gambar; judul lengkap ada di layar detail */ font-weight: 600; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .external-pill { flex: none; display: inline-flex; align-items: center; gap: 2px; padding: 2px var(--s2); border-radius: var(--r-pill); background: var(--color-surface); color: var(--color-primary); font-size: var(--fs-overline); font-weight: 600; }
 .external-pill .ic { --ic-size: 12px; }
 .dots { display: flex; justify-content: center; margin-top: var(--s2); }
@@ -1096,6 +1096,11 @@ div:has(> .banner-carousel + .dots) { position: relative; }
 .stepper__step.is-current .stepper__label { font-weight: 600; color: var(--color-text); }
 .stepper--compact .stepper__dot { width: var(--size-stepper-dot-compact); height: var(--size-stepper-dot-compact); }
 .stepper--compact .stepper__label { font-size: var(--fs-overline); }
+/* [v2 P2-3, usulan] skala teks > 1,3: label langkah lain disembunyikan (tetap dibacakan lewat aria-label/Semantics
+   "Langkah n dari 4: ..."), label langkah aktif tampil satu baris selebar stepper di bawah titik. */
+:root[data-ts="2"] .stepper { position: relative; padding-bottom: calc(6px + 12px * var(--ts) * 1.45); }
+:root[data-ts="2"] .stepper__step:not(.is-current) .stepper__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+:root[data-ts="2"] .stepper__step.is-current .stepper__label { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; -webkit-line-clamp: 1; }
 
 /* ---------------------------------------------------------------------------------------------------------------------
    DAFTAR & MENU
@@ -1157,11 +1162,11 @@ div:has(> .banner-carousel + .dots) { position: relative; }
 .tab__label { position: relative; display: inline-flex; height: 100%; align-items: center; }
 .tab.is-selected { color: var(--color-primary); }
 .tab.is-selected .tab__label::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--color-primary); }
-.tabs--scrollable { justify-content: flex-start; overflow: hidden; }
+.tabs--scrollable { justify-content: flex-start; overflow-x: auto; scrollbar-width: none; } /* TabBar isScrollable: dapat digeser */
 .tabs--scrollable .tab { flex: none; padding: 0 var(--s4); }
 
 /* Tab kategori bergaris bawah (events_screen _CategoryTabs): 13, min 48, padding 0 12, garis 2 primary */
-.underline-tabs { display: flex; overflow: hidden; }
+.underline-tabs { display: flex; overflow-x: auto; scrollbar-width: none; } /* SingleChildScrollView horizontal */
 .underline-tab { flex: none; min-height: 48px; padding: 0 var(--s3); display: flex; align-items: center; border-bottom: 2px solid transparent; font-size: calc(13px * var(--ts, 1)); font-weight: 500; color: var(--color-text-muted); white-space: nowrap; }
 .underline-tab.is-selected { border-bottom-color: var(--color-primary); font-weight: 600; color: var(--color-primary); }
 
