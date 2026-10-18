@@ -81,10 +81,10 @@ Butir berikut harus benar pada saat naskah diterbitkan. Bila belum, sebagian kal
    sesuai SK AHU-0002732.AH.01.07.TAHUN 2023 (11 April 2023) dan akta Nomor 01 (27 Maret 2023), lokasi pesantren
    (Pekanbaru, Riau), serta nama akun developer Google Play dan Apple yang persis sama dengan nama badan hukum. Di
    halaman Tentang (revisi 18 Oktober 2026): misi dijabarkan dari Anggaran Dasar Pasal 3 dan 4; visi adalah rumusan
-   baru yang wajib disahkan pengurus; semboyan berasal dari situs lama (tidak ada di AD); pernyataan bahwa KAPDH
-   didirikan oleh para alumni, terpisah dari pesantren sebagai badan hukum tersendiri, bukan lembaga pendidikan (tidak
-   menyelenggarakan sekolah atau madrasah dan tidak menerima santri maupun peserta didik), dan nirlaba (AD Pasal 6)
-   wajib dikonfirmasi pengurus.
+   baru yang wajib disahkan pengurus; semboyan berasal dari situs lama (tidak ada di AD). Dikonfirmasi pemilik
+   18 Oktober 2026: KAPDH tidak menyelenggarakan pendidikan formal (sekolah atau madrasah), semboyan adalah semboyan
+   resmi, dan butir misi lama di luar AD dihapus. Masih wajib disahkan pengurus: rumusan visi dan pernyataan bahwa
+   KAPDH didirikan oleh para alumni.
 7. **Batas usia 18 tahun disetujui pemilik.** Aplikasi tidak menanyakan usia dan tidak dapat mencatat persetujuan
    orang tua atau wali, sehingga naskah menetapkan layanan hanya untuk usia 18 tahun ke atas (pernyataan usia melalui
    persetujuan Ketentuan Layanan). Disarankan menambahkan kalimat usia pada centang pendaftaran di aplikasi dan
