@@ -83,8 +83,7 @@ Butir berikut harus benar pada saat naskah diterbitkan. Bila belum, sebagian kal
    halaman Tentang (revisi 18 Oktober 2026): misi dijabarkan dari Anggaran Dasar Pasal 3 dan 4; visi adalah rumusan
    baru yang wajib disahkan pengurus; semboyan berasal dari situs lama (tidak ada di AD). Dikonfirmasi pemilik
    18 Oktober 2026: KAPDH tidak menyelenggarakan pendidikan formal (sekolah atau madrasah), semboyan adalah semboyan
-   resmi, dan butir misi lama di luar AD dihapus. Masih wajib disahkan pengurus: rumusan visi dan pernyataan bahwa
-   KAPDH didirikan oleh para alumni.
+   resmi, butir misi lama di luar AD dihapus, rumusan visi disetujui, dan seluruh pendiri adalah alumni.
 7. **Batas usia 18 tahun disetujui pemilik.** Aplikasi tidak menanyakan usia dan tidak dapat mencatat persetujuan
    orang tua atau wali, sehingga naskah menetapkan layanan hanya untuk usia 18 tahun ke atas (pernyataan usia melalui
    persetujuan Ketentuan Layanan). Disarankan menambahkan kalimat usia pada centang pendaftaran di aplikasi dan
