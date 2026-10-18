@@ -168,6 +168,55 @@ memang berscrim. Target sentuh di bawah 48 yang tersisa adalah tautan di dalam p
 Belum dikerjakan: mode gelap (aplikasi belum punya tema gelap) dan pemindahan seluruh usulan v2 lain (token warna,
 header Beranda, tombol KTA tengah) ke Flutter; daftarnya di bagian sebelumnya.
 
+## Mode gelap, teks 200 %, tablet dan token ikon (P2, 18 Oktober 2026)
+
+Usulan mockup saja; Flutter belum. Semua 52 layar bisa dilihat dalam tiap mode lewat tombol di strip kepala
+(`js/theme.js`) atau parameter URL `?theme=dark`, `?ts=2`, `?device=tablet`.
+
+**Mode gelap** (`:root[data-theme="dark"]` di `css/tokens.css`). Varian tonal yang lebih terang dan tidak jenuh,
+bukan warna dibalik. Permukaan bertingkat: latar `#0F1A0E` < permukaan `#172416` < permukaan terangkat `#1D2C1B`
+(dialog, sheet, menu). Primary menjadi `#8BD47E` dengan teks `#0E280C` di atasnya (pola Material 3 gelap). Pita
+hijau merek (header Beranda, Welcome, kartu KTA) tidak berubah. Agar warna ikut berganti, nilai literal di CSS diganti
+token semantik baru: `--color-tint`, `--color-tint-strong`, `--color-surface-raised`, `--color-icon-accent`,
+`--color-on-surface-disabled`, `--color-statusbar`, `--color-sysnav`, `--color-skeleton`, `--color-on-danger`.
+
+| Pasangan (gelap) | Kontras |
+| --- | --- |
+| Teks di latar/permukaan | 13,5–14,9 : 1 |
+| Teks redup | 6,5–8,0 : 1 |
+| Primary sebagai teks | 9,1 : 1 |
+| Teks status (sukses, peringatan, bahaya, info) | 7,1–8,7 : 1 |
+| Garis field | 3,9 : 1 |
+| Cincin fokus emas `#E6D312` | 10,5 : 1 |
+
+Audit otomatis 52 halaman dalam mode gelap: 10.218 teks, 0 gagal (setelah 9 pola diperbaiki: teks putih di pita
+gelap memakai `--color-text-on-dark`, kutipan di gelembung sendiri `rgba(255,255,255,.92)` 5,45:1 di kedua mode).
+
+**Teks 200 %** (WCAG 1.4.4). Semua ukuran huruf layar menjadi `calc(Npx * var(--ts, 1))` (84 nilai + token
+`--fs-*`); ikon, jarak dan tinggi komponen tidak ikut, sama seperti `MediaQuery.textScaler`. Skala dibuat linear
+sebagai kasus terburuk; Android 14 menskalakan huruf besar secara nonlinier. Status bar sistem tidak ikut. Temuan dan
+usulan:
+
+| Temuan pada 200 % | Usulan (di mockup) | Flutter nanti |
+| --- | --- | --- |
+| 5 label navigasi bawah bertabrakan | Skala label dibatasi 1,3 | `MediaQuery.withClampedTextScaling(maxScaleFactor: 1.3)` di `NavigationBar` |
+| 4 label akses cepat Beranda bertabrakan | Ubin menjadi 2 x 2 bila skala > 1,3 | Ambang `--text-scale-stack` seperti `StatusActionCard` |
+| Judul kartu event/berita, nama header, pratinjau chat terpotong | Dibiarkan: sesuai `maxLines` + elipsis di Dart | Pastikan teks lengkap ada di layar detail |
+| Petunjuk field panjang terpotong ("Masukkan Passw…") | Belum | Petunjuk lebih pendek atau `hintMaxLines: 2` |
+| Judul banner menumpuk logo | Belum | Batasi skala judul banner (gambar berasio tetap) |
+
+Frame ber-tinggi tetap memotong isi; untuk melihat seluruh isi pada 200 % pakai frame "Gulir penuh".
+
+**Tablet** (`:root[data-device="tablet"]`). Frame 800 x 1280 dp (kelas lebar *medium* Material 3). Isi
+`.screen__body` dibatasi `--content-max-w` 600 px di tengah; app bar, header, navigasi bawah dan latar tetap selebar
+layar. Di Flutter: `Center` + `ConstrainedBox(maxWidth: 600)` di tiap layar. Navigasi bawah selebar 800 dp masih
+terasa renggang; pada lebar >= 840 dp sebaiknya pindah ke `NavigationRail` (belum dimockup).
+
+**Token ukuran ikon** (usulan `KapdhIconSize`): `--ic-xs` 14, `--ic-sm` 16, `--ic-btn` 18, `--ic-md` 20,
+`--ic-lg` 24 (bawaan), `--ic-xl` 28. Kelas `.ic-s14` sampai `.ic-s28` dan 47 nilai `--ic-size` di komponen kini
+memakai token; nilainya sama, jadi tidak ada perubahan visual. Ukuran lain (10, 12, 15, 22, 26, 30–64) tetap literal
+karena memang khusus (ilustrasi keadaan kosong, lencana, status bar, ubin akses cepat).
+
 ## Verifikasi
 
 - Setelah Beranda v2: 51 halaman tanpa gulir horizontal; footer kartu event dan baris berita tidak meluap.
@@ -178,11 +227,9 @@ header Beranda, tombol KTA tengah) ke Flutter; daftarnya di bagian sebelumnya.
 
 ## Belum dikerjakan
 
-- **Mode gelap.** Aplikasi belum punya tema gelap, jadi butir *checklist* mode gelap belum bisa diuji.
-- **Skala teks 200 %** dan layar lebar/tablet belum dimockup (aplikasi hanya ponsel, frame 360 dp).
-- **Target sentuh `InputChip` compact** (`.tag-chip--input`, target 40 dp) masih di bawah 48 dp; perlu
-  `materialTapTargetSize: padded` di Dart.
-- **Ukuran ikon** masih memakai banyak nilai literal (`ic-s14` sampai `ic-s34`). Kandidat token `icon.sm/md/lg`
-  (16 / 20 / 24).
+- **Mode gelap, teks 200 % dan tablet di Flutter.** Sudah dimockup (bagian sebelumnya), belum ada di aplikasi:
+  perlu `KapdhTheme.dark()` + `themeMode`, pembatasan skala label navigasi, ubin akses cepat 2 x 2, dan
+  `ConstrainedBox` lebar 600 untuk tablet.
+- **Token ikon** baru ada di mockup (`--ic-*`); belum masuk `tokens.json` sebagai `KapdhIconSize`.
 - Nilai v2 belum masuk `kapdh-platform/packages/design-tokens/tokens.json`. Setelah disetujui, ikuti langkah 3-6 di
   `README.md` bagian *Alur redesain kembali ke Flutter*, lalu perbarui uji golden.

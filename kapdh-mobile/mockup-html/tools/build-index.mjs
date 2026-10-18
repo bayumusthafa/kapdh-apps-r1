@@ -78,7 +78,7 @@ const groups = GROUPS.map((g) => {
 });
 const known = new Set(GROUPS.map((g) => g.dir));
 for (const d of readdirSync(root)) {
-  if (statSync(join(root, d)).isDirectory() && !['css', 'fonts', 'assets', 'tools'].includes(d) && !known.has(d)) {
+  if (statSync(join(root, d)).isDirectory() && !['css', 'fonts', 'assets', 'tools', 'js'].includes(d) && !known.has(d)) {
     console.warn(`Peringatan: folder ${d}/ belum terdaftar di GROUPS (tools/build-index.mjs); halamannya tidak masuk indeks.`);
   }
 }
@@ -134,6 +134,7 @@ const out = `<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mockup KAPDH</title>
   <meta name="description" content="Indeks mockup HTML+CSS statis untuk setiap layar aplikasi Flutter KAPDH.">
+  <script src="js/theme.js"></script>
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/components.css">
 </head>
@@ -150,7 +151,7 @@ const out = `<!doctype html>
       <dt>Cakupan</dt><dd>${coverage.length - missing.length} dari ${coverage.length} layar Flutter (${screens.length - 1} <code>*_screen.dart</code> + <code>AppShell</code>)${missing.length ? `, <strong>${missing.length} belum ada halaman</strong>` : ', semuanya punya halaman'}</dd>
       <dt>Sumber</dt><dd><code>kapdh-mobile/lib</code> (Flutter 3.47.2, <code>KapdhTheme.light()</code>)</dd>
     </dl>
-    <p class="page-header__note">Tiruan statis tampilan Flutter saat ini sebagai bahan iterasi desain. Setiap halaman berisi satu layar dengan semua keadaan pentingnya (utama, gulir penuh, kosong, galat, memuat, terkunci, dialog, lembar bawah) sebagai frame berlabel. Teks disalin dari Dart; data contoh fiktif. Buka lewat Chrome/Edge atau <code>node tools/serve.mjs</code>.</p>
+    <p class="page-header__note">Tiruan statis tampilan Flutter saat ini sebagai bahan iterasi desain. Setiap halaman berisi satu layar dengan semua keadaan pentingnya (utama, gulir penuh, kosong, galat, memuat, terkunci, dialog, lembar bawah) sebagai frame berlabel. Teks disalin dari Dart; data contoh fiktif. Buka lewat Chrome/Edge atau <code>node tools/serve.mjs</code>. Tombol di kanan atas mengganti tema gelap, teks 200 % dan tablet untuk semua layar (usulan v2).</p>
   </header>
 
   <main class="doc">
