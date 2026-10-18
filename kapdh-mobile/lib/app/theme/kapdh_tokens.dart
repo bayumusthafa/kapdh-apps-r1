@@ -41,9 +41,10 @@ abstract final class KapdhColors {
   static const textHighlightOnDark = Color(0xFFE6D312);
   static const border = Color(0xFF8A8F87);
   static const divider = Color(0xFFE3E3E6);
-  static const disabledBg = Color(0xFFDCDCE0);
-  static const disabledText = Color(0xFF6B6B6B);
-  static const focusRing = Color(0xFFE6D312);
+  static const disabledBg = Color(0xFFE1E5DE);
+  static const disabledText = Color(0xFF5E665C);
+  static const focusRing = Color(0xFF2D7A28);
+  static const focusRingOnDark = Color(0xFFE6D312);
 
   static const success = Color(0xFF1E7A46);
   static const successBg = Color(0xFFE8F7F0);

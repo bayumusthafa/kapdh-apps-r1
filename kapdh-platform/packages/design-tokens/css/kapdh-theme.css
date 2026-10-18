@@ -37,9 +37,10 @@
   --color-text-highlight-on-dark: #E6D312;
   --color-border: #8A8F87;
   --color-divider: #E3E3E6;
-  --color-disabled-bg: #DCDCE0;
-  --color-disabled-text: #6B6B6B;
-  --color-focus-ring: #E6D312;
+  --color-disabled-bg: #E1E5DE;
+  --color-disabled-text: #5E665C;
+  --color-focus-ring: #2D7A28;
+  --color-focus-ring-on-dark: #E6D312;
   --color-success: #1E7A46;
   --color-success-bg: #E8F7F0;
   --color-warning: #8A5A00;
@@ -87,3 +88,4 @@
 .bg-kta-card { background: var(--gradient-kta-card); }
 .bg-button-primary { background: var(--gradient-button-primary); }
 :where(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+[data-surface="dark"] { --color-focus-ring: var(--color-focus-ring-on-dark); }

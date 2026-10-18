@@ -9,6 +9,7 @@ import '../../core/session/session_controller.dart';
 import '../../core/session/session_state.dart';
 import '../../core/welcome/welcome_gate.dart';
 import '../../design/design.dart';
+import '../../app/theme/kapdh_focus.dart';
 
 /// Splash (PRD 4.6 Flutter sistem): memeriksa gerbang aplikasi (GET /public/config: versi minimum, maintenance),
 /// memulihkan sesi dan membaca penanda Welcome (pemasangan baru/pembaruan) secara paralel. Router berpindah sendiri saat keduanya siap (redirect.dart). Tanpa koneksi
@@ -57,34 +58,36 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     return Scaffold(
       backgroundColor: KapdhColors.surfaceDark,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(KapdhSpace.s6),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset('assets/logo-kapdh.png', width: 120, height: 120, semanticLabel: 'Logo KAPDH'),
-                const SizedBox(height: KapdhSpace.s4),
-                const Text(
-                  'Keluarga Alumni\nPesantren Darel Hikmah',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: KapdhFontSize.bodyLg,
-                    fontWeight: FontWeight.w600,
-                    color: KapdhColors.textOnDark,
+      body: DarkSurfaceFocus(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(KapdhSpace.s6),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset('assets/logo-kapdh.png', width: 120, height: 120, semanticLabel: 'Logo KAPDH'),
+                  const SizedBox(height: KapdhSpace.s4),
+                  const Text(
+                    'Keluarga Alumni\nPesantren Darel Hikmah',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: KapdhFontSize.bodyLg,
+                      fontWeight: FontWeight.w600,
+                      color: KapdhColors.textOnDark,
+                    ),
                   ),
-                ),
-                const SizedBox(height: KapdhSpace.s8),
-                if (issue == SessionIssue.none || _retrying)
-                  const SizedBox(
-                    width: 32,
-                    height: 32,
-                    child: CircularProgressIndicator(color: KapdhColors.accent, semanticsLabel: 'Memuat aplikasi'),
-                  )
-                else
-                  _ConnectionProblem(issue: issue, onRetry: _retry),
-              ],
+                  const SizedBox(height: KapdhSpace.s8),
+                  if (issue == SessionIssue.none || _retrying)
+                    const SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: CircularProgressIndicator(color: KapdhColors.accent, semanticsLabel: 'Memuat aplikasi'),
+                    )
+                  else
+                    _ConnectionProblem(issue: issue, onRetry: _retry),
+                ],
+              ),
             ),
           ),
         ),

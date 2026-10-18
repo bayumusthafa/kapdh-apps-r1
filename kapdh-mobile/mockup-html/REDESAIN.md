@@ -52,9 +52,9 @@ Kontras diukur dengan rumus WCAG 2.2.
 | `--color-background`, `--color-neutral-50` | `#FBFAFF` | `#F5F7F3` | `tokens.json` `color.semantic.background`, `color.neutral.50` -> `KapdhColors.background` |
 | `--color-text-muted` | `#6B6B6B` | `#5E665C` (5,5:1 di latar, 6,0:1 di putih) | `color.semantic.text-muted` -> `KapdhColors.textMuted` |
 | `--color-divider` | `#E3E3E6` | `#E1E6DE` | `KapdhColors.divider` |
-| `--color-disabled-bg` / `-text` | `#DCDCE0` / `#6B6B6B` | `#E1E5DE` / `#6E766C` | `KapdhColors.disabledBg`, `disabledText` |
-| `--color-focus-ring` | `#E6D312` | `#2D7A28` (5,4:1) | `KapdhColors.focusRing` |
-| `--color-focus-ring-on-dark` | | `#E6D312` (baru) | token baru `focusRingOnDark` |
+| `--color-disabled-bg` / `-text` | `#DCDCE0` / `#6B6B6B` | `#E1E5DE` / `#5E665C` (4,66:1) | `KapdhColors.disabledBg`, `disabledText`: **sudah di tokens.json dan Flutter** |
+| `--color-focus-ring` | `#E6D312` | `#2D7A28` (5,4:1) | `KapdhColors.focusRing`: **sudah di tokens.json dan Flutter** (KapdhFocusTheme, garis fokus 3 px tombol, `DarkSurfaceFocus`) |
+| `--color-focus-ring-on-dark` | | `#E6D312` (baru) | `KapdhColors.focusRingOnDark`: **sudah di tokens.json dan Flutter** |
 | `--color-card-border` | | `#E6EBE3` (baru) | token baru `cardBorder` |
 | `--r-sm` / `--r-md` / `--r-lg` / `--r-xl` | 6 / 10 / 14 / 20 | 8 / 12 / 16 / 24 | `tokens.json` `radius` -> `KapdhRadius` |
 | `--r-12`, `--r-16` (literal) | 12, 16 | sama dengan `--r-md`, `--r-lg` | hapus literal 12/16 di Dart, pakai `KapdhRadius.md/lg` |
