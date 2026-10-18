@@ -27,7 +27,8 @@ KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobil
     adr/                           catatan keputusan arsitektur 001-024
     runbooks/                      production-init, go-live (+ rollback), rilis-dan-gerbang-go-live, ci-cd,
                                    compose-cadangan, backup-restore, restore-backup, monitoring, incident-response,
-                                   load-test, storage-migration, app-store-submission, alumni-account-disabled
+                                   load-test, storage-migration, app-store-submission, alumni-account-disabled,
+                                   push-fcm
     qa/                            traceability.md (bukti otomatis per AC/N/U), uat-checklist.md (UAT manual),
                                    device-matrix.md (D7), templat bukti restore-drills/, availability/, load/
     handoff/                       laporan serah terima per fase/irisan (fakta, keputusan, isu terbuka)
@@ -63,6 +64,7 @@ KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobil
 | Backup, restore drill, monitoring, insiden, uji beban | `docs/runbooks/backup-restore.md`, `monitoring.md`, `incident-response.md`, `load-test.md`, `storage-migration.md` |
 | Restore backup tanpa menghidupkan akun terhapus; status akun `disabled` | `docs/runbooks/restore-backup.md`, `docs/runbooks/alumni-account-disabled.md` (Bahasa Inggris, dari hardening Fase D) |
 | Pengajuan toko aplikasi | `docs/runbooks/app-store-submission.md` |
+| Push FCM production (Firebase, kunci akun layanan, uji mandiri `push-selftest`, rotasi) | `docs/runbooks/push-fcm.md` |
 | Bukti penerimaan | `docs/qa/traceability.md`, `docs/qa/uat-checklist.md` |
 
 ## Prasyarat

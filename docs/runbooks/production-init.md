@@ -451,14 +451,20 @@ setelah langkah 4.
       **[bukti]** header email uji menunjukkan `spf=pass`, `dkim=pass`, `dmarc=pass`.
 - [ ] **5.3 FCM production**: proyek Firebase khusus production (staging terpisah, PRD 5.3); aplikasi Android
       `id.or.kapdh.app` dan iOS `id.or.kapdh.app` terdaftar; akun layanan dengan izin kirim FCM → `FCM_PROJECT_ID` dan
-      `FCM_SERVICE_ACCOUNT_JSON` (API dan worker). Firebase hanya untuk FCM (ARCHITECTURE §2 butir 4).
+      `FCM_SERVICE_ACCOUNT_JSON` (API dan worker). Firebase hanya untuk FCM (ARCHITECTURE §2 butir 4). Langkah rinci
+      (Console Firebase, Coolify Normal view, verifikasi VPS tanpa mencetak secret, salin ke berkas env, rotasi kunci,
+      rollback): `docs/runbooks/push-fcm.md`.
 - [ ] **5.4 APNs**: kunci APNs (.p8) dari akun Apple Developer organisasi diunggah ke proyek Firebase production;
-      capability Push Notifications di App ID.
+      capability Push Notifications di App ID (`push-fcm.md` bagian 8).
 - [ ] **5.5 Nilai klien Firebase** (`FIREBASE_PROJECT_ID`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_API_KEY`,
       `FIREBASE_ANDROID_APP_ID`, `FIREBASE_IOS_APP_ID`, `PUSH_ENABLED=true`) disimpan sebagai secret CI untuk build
-      Flutter production (ADR-016); `kapdh-mobile/config/production.json` di repo tetap kosong.
+      Flutter production (ADR-016); `kapdh-mobile/config/production.json` di repo tetap kosong. Build di PC tepercaya
+      memakai berkas di luar repo `C:\kapdh-secure\firebase-production.json` (`push-fcm.md` bagian 6). Proyeknya wajib
+      sama dengan `FCM_PROJECT_ID`, karena token dari proyek lain ditolak `SENDER_ID_MISMATCH` lalu dinonaktifkan.
 - [ ] **5.6 Uji kirim** **[bukti]**: registrasi akun uji menerima OTP; akun uji di perangkat nyata menerima push
-      (mis. notifikasi keputusan pembayaran). Kegagalan terlihat di web admin Notifikasi → Pengiriman.
+      (mis. notifikasi keputusan pembayaran). Kegagalan terlihat di web admin Notifikasi → Pengiriman. Kredensial
+      server dibuktikan lebih dulu dengan `node dist/cli/push-selftest.js` di kontainer API (validate_only, tanpa
+      notifikasi terkirim; `push-fcm.md` bagian 5).
 
 ## Langkah 6. Toko aplikasi (PRD 8.2 langkah 6; D10, D13, D16)
 
@@ -489,10 +495,10 @@ Penyiapan staging pertama (VPS, Coolify, Tailscale, secrets GitHub): `docs/runbo
       FCM staging). Seed dev **boleh** di staging hanya bila gladi ini tidak sedang membuktikan "tanpa fixture"; untuk
       U-12 jalankan tanpa seed dev.
 - [ ] Build Flutter yang dipakai gladi/UAT ber-versi >= `min_app_version` lingkungan itu. Seed referensi mengisi
-      `min_app_version` `1.0.0` untuk Android dan iOS, sedangkan `kapdh-mobile/pubspec.yaml` saat ini `0.1.0+1`;
-      aplikasi mengirim versi pubspec sebagai `X-App-Version`, sehingga setiap mutasi dari build `0.1.0` ditolak
-      426 `UPGRADE_REQUIRED`. Naikkan versi build ke `1.0.0+n`, atau (staging saja) turunkan `min_app_version` ke versi
-      build lewat Pengaturan dan catat di laporan gladi.
+      `min_app_version` `1.0.0` untuk Android dan iOS dan `kapdh-mobile/pubspec.yaml` saat ini `1.0.0+1`; aplikasi
+      mengirim versi pubspec sebagai `X-App-Version`, dan setiap mutasi dari build di bawah `1.0.0` ditolak 426
+      `UPGRADE_REQUIRED`. Bila `min_app_version` lingkungan lebih tinggi dari versi build, naikkan versi build, atau
+      (staging saja) turunkan `min_app_version` ke versi build lewat Pengaturan dan catat di laporan gladi.
 - [ ] Smoke test semua peran memakai `docs/qa/uat-checklist.md`: U-01, U-02, U-03, U-05, U-07, U-08, U-09 (set yang
       sama dengan smoke test production `go-live.md` 3.1) ditambah U-12.
 - [ ] Backup pertama staging → restore ke lingkungan bersih mengikuti `docs/runbooks/restore-backup.md` (API/worker

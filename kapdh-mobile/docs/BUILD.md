@@ -37,7 +37,9 @@ flutter build appbundle --release --dart-define-from-file=config/production.json
 - Berkas `config/*.json` di repo TIDAK memuat nilai rahasia atau nilai Firebase. Nilai Firebase lingkungan
   diberikan saat build (bagian 5) dengan menggabungkan berkas sementara di luar repo, misalnya:
   `jq -s add config/production.json /aman/firebase-production.json > /tmp/kapdh-build.json` lalu
-  `--dart-define-from-file=/tmp/kapdh-build.json`; hapus berkas sementara sesudahnya.
+  `--dart-define-from-file=/tmp/kapdh-build.json`; hapus berkas sementara sesudahnya. Tanpa `jq` (mesin Windows),
+  gabungkan dengan Node; berkas kedua menimpa kunci yang sama:
+  `node -e "const f=require('fs');const [a,b,o]=process.argv.slice(1);f.writeFileSync(o,JSON.stringify({...JSON.parse(f.readFileSync(a,'utf8')),...JSON.parse(f.readFileSync(b,'utf8'))},null,2))" config/production.json /aman/firebase-production.json /aman/kapdh-build.json`.
 - Karena ID aplikasi sama, build staging dan production tidak dapat terpasang berdampingan di satu perangkat. Bila
   kelak diperlukan, akhiran ID per lingkungan memerlukan ADR (proyek Firebase, listing dan App Links terpisah).
 
@@ -61,8 +63,25 @@ keyAlias=upload
 storeFile=/path/absolut/di/luar/repo/kapdh-upload.jks
 ```
 
-`android/app/build.gradle.kts` memakai berkas ini bila ada. Tanpa berkas itu build rilis ditandatangani kunci debug
-dan TIDAK boleh diunggah (Play menolaknya).
+`android/app/build.gradle.kts` memakai berkas ini bila ada. Tanpa berkas itu:
+
+- **AAB rilis ditolak.** Graf task yang memuat `bundle*Release` (`flutter build appbundle --release`,
+  `gradlew bundleRelease`) atau task AGP penghasil AAB `package*ReleaseBundle` / `sign*ReleaseBundle` (juga ikut di graf
+  setiap task turunan AAB) gagal sebelum task apa pun berjalan dengan `GradleException` "Build AAB rilis (...)
+  dihentikan: android/key.properties tidak ditemukan ..." yang merujuk bagian ini. Penjaga memakai
+  `gradle.taskGraph.whenReady` (aman untuk configuration cache). Jalur yang dijaga itulah satu-satunya jalur Gradle
+  penghasil AAB rilis, sehingga AAB rilis bertanda tangan kunci debug tidak dibuat tanpa kunci unggah.
+- **Pengecualian:** 'Generate Signed Bundle / APK' di Android Studio menyuntikkan kunci rilis lewat properti
+  `-Pandroid.injected.signing.store.file` (dan `android.injected.signing.*` lain) tanpa `key.properties`. AGP
+  menandatangani dengan kunci itu, jadi penjaga tidak menghentikannya. Pastikan yang dipilih di wizard adalah kunci
+  unggah, bukan `debug.keystore`.
+- **APK rilis tetap dapat dibangun** (`flutter build apk --release`) dan ditandatangani kunci debug. APK seperti itu
+  hanya untuk uji internal di perangkat sendiri (pasang manual), TIDAK untuk toko aplikasi.
+- Build debug/profile dan workflow APK debug di CI (bagian 3.3) tidak terpengaruh.
+
+Pemeriksaan penanda tangan artefak: `<android-sdk>/build-tools/<versi>/apksigner verify --print-certs <apk>` untuk APK
+(minSdk 26 sehingga APK hanya memakai skema v2 dan `keytool -printcert -jarfile` menjawab "Not a signed jar file"), atau
+`keytool -printcert -jarfile <aab>` untuk AAB. DN `CN=Android Debug` berarti kunci debug.
 
 ### 3.2 Build rilis
 
@@ -73,8 +92,8 @@ flutter build appbundle --release --dart-define-from-file=<berkas gabungan produ
 
 - Versi dari `pubspec.yaml` `version: X.Y.Z+N`: `N` (versionCode) naik setiap unggahan; `X.Y.Z` wajib >=
   `info.x-kapdh-min-app-version` kontrak (saat ini `1.0.0`) dan >= `app_settings.min_app_version` production; versi
-  di bawahnya ditolak API dengan 426 UPGRADE_REQUIRED (PRD 4.5). `pubspec.yaml` saat ini `0.1.0+1` dan harus
-  dinaikkan sebelum rilis toko.
+  di bawahnya ditolak API dengan 426 UPGRADE_REQUIRED (PRD 4.5). `pubspec.yaml` saat ini `1.0.0+1` (sama dengan
+  `min_app_version` seed); naikkan `N` untuk setiap unggahan berikutnya.
 - Simpan `build/symbols/<versi>` bersama artefak rilis (di luar repo) untuk membaca stack trace.
 - App Links: `https://kapdh.or.id/.well-known/assetlinks.json` memuat SHA-256 kunci penandatanganan dari Play Console.
 - Ikon notifikasi monokrom dan ikon tema Android 13: lihat "Tindak lanjut rilis" di `README.md`.
@@ -91,6 +110,15 @@ Penandatanganan rilis di CI belum dibuat untuk R1.0 (build rilis dari mesin tepe
 GitHub `mobile-release` dengan reviewer, secrets `ANDROID_UPLOAD_KEYSTORE_BASE64`, `ANDROID_UPLOAD_KEYSTORE_PASSWORD`,
 `ANDROID_UPLOAD_KEY_ALIAS`, `ANDROID_UPLOAD_KEY_PASSWORD` yang ditulis ke `$RUNNER_TEMP` dan `android/key.properties`
 hanya selama job, lalu dihapus.
+
+### 3.4 APK uji internal dengan push (kunci debug)
+
+Untuk uji push di ponsel pengurus sebelum kunci unggah ada: gabungkan `config/production.json` dengan nilai Firebase
+production di luar repo (bagian 2), lalu `flutter build apk --release --dart-define-from-file=<berkas gabungan>`.
+Salin `build/app/outputs/flutter-apk/app-release.apk` ke folder aman di luar repo, catat SHA-256-nya, dan pasang manual
+(izinkan "Instal aplikasi tidak dikenal"). APK ini bertanda tangan kunci debug: Play menolaknya, dan versi Play kelak
+tidak dapat dipasang di atasnya tanpa menghapus aplikasi lebih dulu (tanda tangan berbeda). Versi build harus >=
+`min_app_version` production agar login dan pendaftaran token push tidak ditolak 426.
 
 ## 4. iOS (macOS + Xcode)
 
@@ -115,6 +143,11 @@ hanya selama job, lalu dihapus.
 - Aplikasi membaca opsi Firebase dari `--dart-define` (`PushConfig`): `PUSH_ENABLED=true`, `FIREBASE_PROJECT_ID`,
   `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_API_KEY`, `FIREBASE_ANDROID_APP_ID`, `FIREBASE_IOS_APP_ID`. Tanpa nilai
   itu, atau bila inisialisasi gagal, aplikasi berjalan tanpa push (AC F13-2).
+- Production: nilai di atas disimpan di luar repo, di `C:\kapdh-secure\firebase-production.json` pada PC build
+  (berisi enam kunci itu saja). Proyeknya wajib `kapdh-prod`, sama dengan `FCM_PROJECT_ID` server. Token dari build
+  dengan proyek lain ditolak FCM (`SENDER_ID_MISMATCH`) lalu dinonaktifkan server. Cara memperoleh setiap nilai, cara
+  memeriksa berkas tanpa menampilkan kunci API, dan cara memvalidasi token perangkat dengan `push-selftest`:
+  `../../docs/runbooks/push-fcm.md` bagian 2.4-2.5, 5.3, dan 6.
 - `google-services.json` dan `GoogleService-Info.plist` TIDAK dipakai (tanpa plugin Gradle google-services) dan
   diabaikan git (`android/app/google-services.json`, `android/app/src/*/google-services.json`,
   `ios/Runner/GoogleService-Info.plist`). Bila kelak plugin membutuhkannya, berkas hanya ditaruh di path tersebut
