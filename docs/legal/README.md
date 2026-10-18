@@ -5,8 +5,9 @@ UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP) dan disusun untuk
 dan Apple App Store. Setiap pernyataan tentang cara kerja aplikasi sudah dicocokkan dengan kode R1.0 per
 15 Oktober 2026.
 
-- **Tanggal berlaku:** 15 Oktober 2026. Bila diterbitkan pada tanggal lain, ubah baris "Berlaku sejak 15 Oktober
-  2026." di kelima halaman menjadi tanggal terbit sebenarnya sebelum menekan Terbitkan.
+- **Tanggal berlaku:** setiap halaman memuat baris "Berlaku sejak ..." sendiri (Kebijakan Privasi 16 Oktober 2026,
+  Tentang 18 Oktober 2026, lainnya 15 Oktober 2026). Bila diterbitkan pada tanggal lain, ubah baris itu menjadi tanggal
+  terbit sebenarnya sebelum menekan Terbitkan.
 - **Pratinjau dan cara menyalin:** buka `pratinjau.html` di peramban. Halaman itu memuat kelima naskah, tombol
   "Salin isi" per halaman, dan langkah penerbitan.
 
@@ -77,9 +78,13 @@ Butir berikut harus benar pada saat naskah diterbitkan. Bila belum, sebagian kal
    dan penyedia object storage (IS3 IDCloudHost, ketentuan layanan yang sama dengan VPS). Kebijakan Privasi bagian 8 menyatakan para pemroses terikat ketentuan
    pemrosesan data dengan pelindungan yang sama atau setara (syarat Apple 5.1.1).
 6. **Identitas organisasi dikonfirmasi:** nama badan hukum "Perkumpulan Keluarga Alumni Pesantren Darel Hikmah"
-   sesuai SK AHU, lokasi pesantren (Pekanbaru, Riau), visi, misi, dan semboyan di halaman Tentang (bersumber dari
-   situs lama, belum ada di PRD), serta nama akun developer Google Play dan Apple yang persis sama dengan nama badan
-   hukum.
+   sesuai SK AHU-0002732.AH.01.07.TAHUN 2023 (11 April 2023) dan akta Nomor 01 (27 Maret 2023), lokasi pesantren
+   (Pekanbaru, Riau), serta nama akun developer Google Play dan Apple yang persis sama dengan nama badan hukum. Di
+   halaman Tentang (revisi 18 Oktober 2026): misi dijabarkan dari Anggaran Dasar Pasal 3 dan 4; visi adalah rumusan
+   baru yang wajib disahkan pengurus; semboyan berasal dari situs lama (tidak ada di AD); pernyataan bahwa KAPDH
+   didirikan oleh para alumni, terpisah dari pesantren sebagai badan hukum tersendiri, bukan lembaga pendidikan (tidak
+   menyelenggarakan sekolah atau madrasah dan tidak menerima santri maupun peserta didik), dan nirlaba (AD Pasal 6)
+   wajib dikonfirmasi pengurus.
 7. **Batas usia 18 tahun disetujui pemilik.** Aplikasi tidak menanyakan usia dan tidak dapat mencatat persetujuan
    orang tua atau wali, sehingga naskah menetapkan layanan hanya untuk usia 18 tahun ke atas (pernyataan usia melalui
    persetujuan Ketentuan Layanan). Disarankan menambahkan kalimat usia pada centang pendaftaran di aplikasi dan
