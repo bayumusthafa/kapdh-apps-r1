@@ -8,8 +8,17 @@ import 'package:flutter/services.dart';
 
 import '../app/theme/kapdh_tokens.dart';
 import 'design_constants.dart';
+import 'kapdh_button.dart';
 
-/// Formatter OTP: hanya digit, maksimal [length]. Tempelan seperti "Kode Anda: 482 913" menjadi "482913".
+/// Digit pertama sebanyak [length] dari teks tempelan ("Kode Anda: 482 913" menjadi "482913").
+String otpDigits(String text, int length) {
+  final digits = text.replaceAll(RegExp(r'[^0-9]'), '');
+  return digits.length > length ? digits.substring(0, length) : digits;
+}
+
+/// Formatter OTP: hanya digit, maksimal [length]. Tempelan seperti "Kode Anda: 482 913" menjadi "482913". Tempelan
+/// yang memuat kode lengkap MENGGANTI isi lama (mis. kotak sudah terisi kode yang salah), bukan disisipkan lalu
+/// terpotong sehingga kode lama yang tersisa.
 class OtpInputFormatter extends TextInputFormatter {
   const OtpInputFormatter(this.length);
 
@@ -17,6 +26,15 @@ class OtpInputFormatter extends TextInputFormatter {
 
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final inserted = _insertedText(oldValue.text, newValue.text);
+    final insertedDigits = inserted.replaceAll(RegExp(r'[^0-9]'), '');
+    if (oldValue.text.isNotEmpty && insertedDigits.length >= length) {
+      final code = insertedDigits.substring(0, length);
+      return TextEditingValue(
+        text: code,
+        selection: TextSelection.collapsed(offset: code.length),
+      );
+    }
     final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
     final clipped = digits.length > length ? digits.substring(0, length) : digits;
     return TextEditingValue(
@@ -24,11 +42,28 @@ class OtpInputFormatter extends TextInputFormatter {
       selection: TextSelection.collapsed(offset: clipped.length),
     );
   }
+
+  /// Bagian yang ditambahkan dari [before] ke [after] (di antara awalan dan akhiran yang sama).
+  static String _insertedText(String before, String after) {
+    var start = 0;
+    while (start < before.length && start < after.length && before[start] == after[start]) {
+      start++;
+    }
+    var end = 0;
+    while (end < before.length - start &&
+        end < after.length - start &&
+        before[before.length - 1 - end] == after[after.length - 1 - end]) {
+      end++;
+    }
+    return after.substring(start, after.length - end);
+  }
 }
 
 /// Masukan kode OTP enam kotak (prototipe layar 1; AC F01-2, F01-3).
 ///
-/// Satu field teks tak terlihat menerima ketikan, tempel dan isi otomatis `oneTimeCode`; kotak hanya tampilan.
+/// Satu field teks tak terlihat menerima ketikan, tempel (menu tekan lama, saran papan klip keyboard) dan isi otomatis
+/// `oneTimeCode`; kotak hanya tampilan. Tombol "Tempel kode" di bawah kotak membaca papan klip langsung karena menu
+/// tempel pada field tak terlihat sulit ditemukan pengguna.
 /// Kotak terisi bergaris hijau 2 px, kotak aktif emas, kosong abu 1 px; galat membuat semua kotak merah.
 class OtpBoxes extends StatefulWidget {
   const OtpBoxes({
@@ -41,6 +76,7 @@ class OtpBoxes extends StatefulWidget {
     this.enabled = true,
     this.autofocus = false,
     this.focusNode,
+    this.showPasteButton = true,
   });
 
   final TextEditingController controller;
@@ -53,6 +89,12 @@ class OtpBoxes extends StatefulWidget {
   final bool enabled;
   final bool autofocus;
   final FocusNode? focusNode;
+
+  /// Tampilkan tombol "Tempel kode".
+  final bool showPasteButton;
+
+  static const pasteLabel = 'Tempel kode';
+  static const pasteEmptyMessage = 'Tidak ada kode angka di papan klip. Salin kode dari email lalu coba lagi.';
 
   @override
   State<OtpBoxes> createState() => _OtpBoxesState();
@@ -109,6 +151,22 @@ class _OtpBoxesState extends State<OtpBoxes> {
   void _handleChanged(String value) {
     widget.onChanged?.call(value);
     if (value.length == widget.length) widget.onCompleted?.call(value);
+  }
+
+  Future<void> _paste() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (!mounted) return;
+    final code = otpDigits(data?.text ?? '', widget.length);
+    if (code.isEmpty) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text(OtpBoxes.pasteEmptyMessage)));
+      return;
+    }
+    widget.controller.value = TextEditingValue(
+      text: code,
+      selection: TextSelection.collapsed(offset: code.length),
+    );
+    if (code.length < widget.length) _focus.requestFocus();
+    _handleChanged(code);
   }
 
   @override
@@ -221,8 +279,18 @@ class _OtpBoxesState extends State<OtpBoxes> {
             ],
           ),
         ),
+        if (widget.showPasteButton)
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: KapdhLinkButton(
+              key: const ValueKey('otp-paste'),
+              label: OtpBoxes.pasteLabel,
+              icon: Icons.content_paste,
+              onPressed: widget.enabled ? _paste : null,
+            ),
+          ),
         if (hasError) ...[
-          const SizedBox(height: KapdhSpace.s2),
+          if (!widget.showPasteButton) const SizedBox(height: KapdhSpace.s2),
           Semantics(
             liveRegion: true,
             container: true,
