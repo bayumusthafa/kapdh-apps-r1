@@ -175,7 +175,7 @@ void main() {
   group('RegisterStepper', () {
     testWidgets('langkah selesai bercentang, langkah aktif diumumkan', (tester) async {
       await pumpDesign(tester, const RegisterStepper(current: 1));
-      expect(find.byIcon(Icons.check), findsOneWidget);
+      expect(find.byIcon(KapdhIcons.check), findsOneWidget);
       expect(find.bySemanticsLabel('Langkah 2 dari 4: OTP'), findsOneWidget);
       for (final label in ['Data Diri', 'OTP', 'Biaya KTA', 'Pembayaran']) {
         expect(find.text(label), findsOneWidget);
@@ -184,7 +184,7 @@ void main() {
 
     testWidgets('versi ringkas dan teks 200 % tanpa meluap', (tester) async {
       await pumpDesign(tester, const RegisterStepper(current: 3, compact: true), textScale: 2);
-      expect(find.byIcon(Icons.check), findsNWidgets(3));
+      expect(find.byIcon(KapdhIcons.check), findsNWidgets(3));
       expect(tester.takeException(), isNull);
     });
   });

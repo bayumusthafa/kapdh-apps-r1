@@ -300,7 +300,7 @@ class _ForgotOtpScreenState extends ConsumerState<ForgotOtpScreen> {
   Widget _signedInNotice() => _scaffold(
     onBack: _goHome,
     body: AuthResultPanel(
-      icon: Icons.lock_reset,
+      icon: KapdhIcons.lockReset,
       iconColor: KapdhColors.primary,
       title: 'Tautan pemulihan password',
       message:

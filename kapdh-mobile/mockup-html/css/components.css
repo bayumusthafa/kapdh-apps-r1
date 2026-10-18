@@ -46,19 +46,19 @@ a { color: inherit; text-decoration: none; }
    Flutter: InkWell / ButtonStyle.overlayColor sudah ada; yang baru hanya durasi transisinya (KapdhMotion.press). */
 :where(.btn, .btn-m3, .btn-text, .btn-link, .icon-btn, .fab-small, .menu-tile, .list-tile, .popup-menu__item,
   .dropdown-menu__item, .quick-access__item, .contact-row, .choice-chip, .segmented__item, .tab, .underline-tab,
-  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card) {
+  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card, button.tag-chip--input, button.jj-input-chip) {
   box-shadow: var(--elev, 0 0 #0000), inset 0 0 0 999px var(--state-color, transparent);
   transition: box-shadow var(--dur-press) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard),
     border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
 }
 :where(.btn, .btn-m3, .btn-text, .btn-link, .icon-btn, .fab-small, .menu-tile, .list-tile, .popup-menu__item,
   .dropdown-menu__item, .quick-access__item, .contact-row, .choice-chip, .segmented__item, .tab, .underline-tab,
-  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card):not(:disabled, .is-disabled):hover {
+  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card, button.tag-chip--input, button.jj-input-chip):not(:disabled, .is-disabled):hover {
   --state-color: color-mix(in srgb, currentColor 8%, transparent);   /* --state-hover */
 }
 :where(.btn, .btn-m3, .btn-text, .btn-link, .icon-btn, .fab-small, .menu-tile, .list-tile, .popup-menu__item,
   .dropdown-menu__item, .quick-access__item, .contact-row, .choice-chip, .segmented__item, .tab, .underline-tab,
-  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card):not(:disabled, .is-disabled):active {
+  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card, button.tag-chip--input, button.jj-input-chip):not(:disabled, .is-disabled):active {
   --state-color: color-mix(in srgb, currentColor 12%, transparent);  /* --state-pressed */
 }
 @media (prefers-reduced-motion: reduce) {
@@ -467,21 +467,24 @@ a { color: inherit; text-decoration: none; }
 .bottom-nav__item.is-selected .bottom-nav__label { font-weight: 600; color: var(--color-primary); }
 .bottom-nav__icon { position: relative; display: inline-flex; }
 /* [v2 Beranda] Tab KTA sebagai tombol tengah menonjol: kotak 56 radius 18 bergradasi hijau, garis putih 4 dan bayangan,
-   naik 20 dp di atas bilah. Kolom tab tetap 72 x 64 (target sentuh tidak berubah); terpilih = cincin emas 2 px.
+   naik 20 dp di atas bilah. Kolom tab tetap 72 x 64 (target sentuh tidak berubah); terpilih = isi emas, ikon gelap, cincin primary 2 px.
    Flutter: AppShell -> NavigationBar diganti Row kustom atau NavigationDestination dengan icon kustom + Stack
    (clipBehavior: Clip.none) agar tombol dapat keluar dari bilah. */
 .bottom-nav__item--kta .bottom-nav__indicator {
-  width: 56px; height: 56px; margin-top: -26px; border-radius: 18px;
+  width: 56px; height: 56px; margin-top: -26px; border-radius: var(--r-lg);
   background: linear-gradient(45deg, var(--color-green-800) 0%, var(--color-green-600) 100%);
   color: var(--color-on-primary);
   border: 4px solid var(--color-surface);
   box-shadow: 0 8px 18px -4px rgba(26, 75, 23, .45);
 }
 .bottom-nav__item--kta .bottom-nav__label { font-weight: 600; color: var(--color-primary); }
-.bottom-nav__item--kta.is-selected .bottom-nav__indicator { background: linear-gradient(45deg, var(--color-green-800) 0%, var(--color-green-600) 100%); box-shadow: 0 0 0 2px var(--color-accent), 0 8px 18px -4px rgba(26, 75, 23, .45); }
+/* Terpilih: isi emas + ikon gelap + cincin primary 2 px (11:1 terhadap bilah putih; dulu cincin emas 1,5:1) dan label w700,
+   sehingga keadaan terpilih tidak hanya dibedakan warna lemah. */
+.bottom-nav__item--kta.is-selected .bottom-nav__indicator { background: var(--color-accent); color: var(--color-on-accent); box-shadow: 0 0 0 2px var(--color-primary), 0 8px 18px -4px rgba(26, 75, 23, .45); }
+.bottom-nav__item--kta.is-selected .bottom-nav__label { font-weight: 700; }
 .bottom-nav__item--kta:hover .bottom-nav__indicator { box-shadow: 0 8px 18px -4px rgba(26, 75, 23, .45), inset 0 0 0 999px rgba(255, 255, 255, .10); }
 .bottom-nav__item--kta:active .bottom-nav__indicator { box-shadow: 0 4px 10px -4px rgba(26, 75, 23, .45), inset 0 0 0 999px rgba(255, 255, 255, .16); }
-.bottom-nav__item--kta.is-selected:hover .bottom-nav__indicator { box-shadow: 0 0 0 2px var(--color-accent), 0 8px 18px -4px rgba(26, 75, 23, .45), inset 0 0 0 999px rgba(255, 255, 255, .10); }
+.bottom-nav__item--kta.is-selected:hover .bottom-nav__indicator { box-shadow: 0 0 0 2px var(--color-primary), 0 8px 18px -4px rgba(26, 75, 23, .45), inset 0 0 0 999px rgba(14, 40, 12, .08); }
 
 /* ---------------------------------------------------------------------------------------------------------------------
    BADGE  (Badge M3): besar 16 tinggi, padding 0 4, label 11 w500; posisi kiri = lebar ikon - 12, atas -4.
@@ -753,8 +756,8 @@ a { color: inherit; text-decoration: none; }
 .tag-chip { display: inline-flex; align-items: center; padding: 3px var(--s2); border-radius: var(--r-sm); font-size: var(--fs-overline); font-weight: 500; line-height: var(--lh-normal); color: var(--color-success); background: var(--color-success-bg); }
 .tag-chip--blue { color: var(--color-info); background: var(--color-info-bg); }
 .tag-chip--neutral { color: var(--color-neutral); background: var(--color-neutral-bg); }
-/* TagChip dengan onDeleted = InputChip compact: tinggi visual 24 (target 40), pil, label 16 kiri, close 16 */
-.tag-chip--input { height: 24px; margin: 8px 0; padding: 0 8px 0 16px; gap: 8px; border-radius: var(--r-pill); letter-spacing: var(--ls-label); }
+/* TagChip dengan onDeleted = InputChip (v2: kepadatan standar, onPressed = hapus): pil 32 (target 48), label 16 kiri, close 16 */
+.tag-chip--input { height: 32px; margin: 8px 0; padding: 0 8px 0 16px; gap: 8px; border-radius: var(--r-pill); letter-spacing: var(--ls-label); } /* [v2] kepadatan standar: pil 32 dalam target 48, seluruh chip = hapus filter */
 .tag-chip--input .ic { --ic-size: 16px; }
 
 /* ChoiceChip M3 bertema (chipTheme: pil, tanpa garis). Bawaan (Notifikasi): terpilih secondaryContainer + centang 18,
@@ -919,7 +922,7 @@ div:has(> .banner-carousel + .dots) { position: relative; }
 .kta-card__logo { flex: none; width: 30px; height: 30px; object-fit: contain; }
 .kta-card__org { display: flex; flex-direction: column; font-size: 11px; font-weight: 700; letter-spacing: .5px; line-height: 1.2; color: var(--color-text-on-dark); }
 .kta-card__org-gold { color: var(--color-accent); }
-.kta-card__tag { position: absolute; top: 2px; right: 0; font-size: 9px; font-weight: 600; letter-spacing: 1.1px; line-height: 1.2; color: var(--color-muted-on-dark); }
+.kta-card__tag { position: absolute; top: 2px; right: 0; font-size: var(--fs-overline); font-weight: 600; letter-spacing: 1px; line-height: 1.2; color: var(--color-muted-on-dark); }
 .kta-card__rule { margin: 6px 0 var(--s2); height: 1px; border: 0; background: rgba(255, 255, 255, .25); }
 .kta-card__head { display: flex; align-items: center; gap: 10px; }
 .kta-card__avatar { --av: 40px; font-size: 16px; font-weight: 700; border-radius: var(--r-md); background: var(--color-green-50); }
@@ -929,7 +932,7 @@ div:has(> .banner-carousel + .dots) { position: relative; }
 .kta-card__body { display: flex; align-items: flex-start; gap: var(--s3); margin-top: var(--s2); }
 .kta-card__fields { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .kta-card__pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); } /* kode angkatan | nomor anggota */
-.kta-field__label { font-size: 10px; line-height: 1.2; color: var(--color-muted-on-dark); }
+.kta-field__label { font-size: var(--fs-overline); letter-spacing: 0; line-height: 1.2; color: var(--color-muted-on-dark); }
 .kta-field__value { font-size: 14px; font-weight: 700; line-height: 1.25; color: var(--color-text-on-dark); }
 .kta-field__value--cohort { }
 .kta-field__value--number { letter-spacing: .3px; }

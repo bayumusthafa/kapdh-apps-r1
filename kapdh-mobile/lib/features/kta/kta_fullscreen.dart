@@ -91,7 +91,7 @@ class _KtaFullScreenState extends State<KtaFullScreen> {
                 child: IconButton(
                   tooltip: KtaFullScreen.closeTooltip,
                   onPressed: () => Navigator.of(context).maybePop(),
-                  icon: const Icon(Icons.close, color: KapdhColors.textOnDark),
+                  icon: const Icon(KapdhIcons.close, color: KapdhColors.textOnDark),
                 ),
               ),
             ],

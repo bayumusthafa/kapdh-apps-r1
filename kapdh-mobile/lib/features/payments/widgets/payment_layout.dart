@@ -24,7 +24,7 @@ class SheetTitleRow extends StatelessWidget {
             IconButton(
               tooltip: 'Kembali',
               onPressed: onBack,
-              icon: const Icon(Icons.chevron_left, size: 26, color: KapdhColors.text),
+              icon: const Icon(KapdhIcons.chevronLeft, size: 26, color: KapdhColors.text),
             ),
             const SizedBox(width: KapdhSpace.s1),
           ],
@@ -91,7 +91,7 @@ class GreetingBand extends StatelessWidget {
             IconButton(
               tooltip: 'Kembali',
               onPressed: onBack,
-              icon: const Icon(Icons.arrow_back, color: KapdhColors.textOnDark),
+              icon: const Icon(KapdhIcons.arrowBack, color: KapdhColors.textOnDark),
             ),
             const SizedBox(width: KapdhSpace.s1),
           ],
@@ -192,7 +192,7 @@ class RefreshFailedNotice extends StatelessWidget {
       liveRegion: true,
       child: InfoBox(
         tone: InfoBoxTone.warning,
-        icon: Icons.sync_problem,
+        icon: KapdhIcons.syncProblem,
         title: title,
         message: '${error.message} Data yang tampil berasal dari pemuatan terakhir.',
         trailing: TextButton(onPressed: onRetry, child: const Text('Coba lagi')),

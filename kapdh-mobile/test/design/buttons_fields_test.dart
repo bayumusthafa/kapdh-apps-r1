@@ -122,7 +122,7 @@ void main() {
           label: 'Email',
           controller: controller,
           hint: 'Masukkan Email',
-          prefixIcon: Icons.mail_outline,
+          prefixIcon: KapdhIcons.mailOutline,
           errorText: 'Email sudah terdaftar',
           trailingText: '0/72',
         ),

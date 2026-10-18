@@ -11,11 +11,11 @@ const List<String> quickReactions = ['👍', '❤️', '😂', '😮', '😢', '
 
 /// Status kirim pesan milik sendiri yang ditampilkan di gelembung (AC F11-2). Selalu label + ikon (N-11).
 enum DeliveryStatus {
-  sending('Mengirim', Icons.schedule),
-  failed('Gagal terkirim', Icons.error_outline),
-  held('Ditahan', Icons.pause_circle_outline),
-  sent('Terkirim', Icons.done),
-  read('Dibaca', Icons.done_all);
+  sending('Mengirim', KapdhIcons.schedule),
+  failed('Gagal terkirim', KapdhIcons.errorOutline),
+  held('Ditahan', KapdhIcons.pauseCircleOutline),
+  sent('Terkirim', KapdhIcons.done),
+  read('Dibaca', KapdhIcons.doneAll);
 
   const DeliveryStatus(this.label, this.icon);
 
@@ -182,7 +182,7 @@ class ChatImageView extends StatelessWidget {
                   child: Center(
                     child: TextButton.icon(
                       onPressed: onReload,
-                      icon: const Icon(Icons.refresh),
+                      icon: const Icon(KapdhIcons.refresh),
                       label: const Text('Muat ulang foto'),
                     ),
                   ),
@@ -213,7 +213,6 @@ class ReactionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Wrap(
       spacing: KapdhSpace.s1,
-      runSpacing: KapdhSpace.s1,
       children: [
         for (final reaction in reactions)
           Semantics(
@@ -223,21 +222,25 @@ class ReactionRow extends StatelessWidget {
             child: InkWell(
               borderRadius: BorderRadius.circular(KapdhRadius.pill),
               onTap: onToggle == null ? null : () => onToggle!(reaction.emoji),
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 32, minWidth: 44),
-                padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s2, vertical: 2),
-                decoration: BoxDecoration(
-                  color: reaction.reactedByMe ? KapdhColors.green100 : KapdhColors.surface,
-                  borderRadius: BorderRadius.circular(KapdhRadius.pill),
-                  border: Border.all(color: reaction.reactedByMe ? KapdhColors.primary : KapdhColors.divider),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(reaction.emoji, style: const TextStyle(fontSize: KapdhFontSize.body)),
-                    const SizedBox(width: 4),
-                    Text('${reaction.count}', style: const TextStyle(fontSize: KapdhFontSize.caption)),
-                  ],
+              // Pil terlihat 32 dp, area ketuk 48 dp (padding vertikal 8 ikut menerima ketukan).
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: KapdhSpace.s2),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 32, minWidth: 44),
+                  padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s2, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: reaction.reactedByMe ? KapdhColors.green100 : KapdhColors.surface,
+                    borderRadius: BorderRadius.circular(KapdhRadius.pill),
+                    border: Border.all(color: reaction.reactedByMe ? KapdhColors.primary : KapdhColors.divider),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(reaction.emoji, style: const TextStyle(fontSize: KapdhFontSize.body)),
+                      const SizedBox(width: 4),
+                      Text('${reaction.count}', style: const TextStyle(fontSize: KapdhFontSize.caption)),
+                    ],
+                  ),
                 ),
               ),
             ),

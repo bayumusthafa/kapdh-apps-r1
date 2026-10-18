@@ -181,7 +181,7 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
           onPressed: _syncing ? null : () => unawaited(_sync()),
           icon: _syncing
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.sync),
+              : const Icon(KapdhIcons.sync),
         ),
       ],
       body: switch (view) {
@@ -216,7 +216,7 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
             const SizedBox(height: KapdhSpace.s4),
             const InfoBox(
               key: ValueKey('kta-brightness-tip'),
-              icon: Icons.brightness_high_outlined,
+              icon: KapdhIcons.brightnessHighOutlined,
               message:
                   'Naikkan kecerahan layar saat QR dipindai. Status terkini selalu dicek server saat pemeriksa '
                   'memindai QR, dan QR diperbarui setiap kali KTA disinkronkan.',
@@ -230,7 +230,7 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
             const SizedBox(height: KapdhSpace.s4),
             InfoBox(
               key: const ValueKey('kta-complete-profile'),
-              icon: Icons.location_city_outlined,
+              icon: KapdhIcons.locationCityOutlined,
               message: 'Kota domisili belum diisi. Lengkapi profil agar kota tampil di KTA.',
               trailing: TextButton(
                 onPressed: () => context.push(AppRoutes.accountProfile),
@@ -319,7 +319,7 @@ class _OfflineUnavailable extends StatelessWidget {
                 width: 64,
                 height: 64,
                 decoration: const BoxDecoration(color: KapdhColors.dangerBg, shape: BoxShape.circle),
-                child: const Icon(Icons.cloud_off, size: 30, color: KapdhColors.danger),
+                child: const Icon(KapdhIcons.cloudOff, size: 30, color: KapdhColors.danger),
               ),
             ),
           ),
@@ -341,7 +341,7 @@ class _OfflineUnavailable extends StatelessWidget {
           const SizedBox(height: KapdhSpace.s5),
           KapdhButton.outlined(
             label: 'Sinkronkan',
-            icon: Icons.sync,
+            icon: KapdhIcons.sync,
             busy: syncing,
             busyLabel: 'Menyinkronkan...',
             onPressed: syncing ? null : () => unawaited(onSync()),
@@ -366,7 +366,7 @@ class _SyncedAt extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.sync, size: 14, color: KapdhColors.textMuted),
+          const Icon(KapdhIcons.sync, size: 14, color: KapdhColors.textMuted),
           const SizedBox(width: KapdhSpace.s1),
           Flexible(
             child: Text(
@@ -387,9 +387,9 @@ class _LockedFeatures extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const items = [
-      (Icons.qr_code_2, 'QR KTA untuk verifikasi'),
-      (Icons.groups_outlined, 'Jejaring alumni dan chat'),
-      (Icons.event_outlined, 'Pendaftaran event dan tiket'),
+      (KapdhIcons.qrCode2, 'QR KTA untuk verifikasi'),
+      (KapdhIcons.groupsOutlined, 'Jejaring alumni dan chat'),
+      (KapdhIcons.eventOutlined, 'Pendaftaran event dan tiket'),
     ];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: 14),

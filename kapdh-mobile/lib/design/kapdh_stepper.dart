@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app/theme/kapdh_tokens.dart';
 import 'design_constants.dart';
+import 'kapdh_icons.dart';
 
 /// Satu langkah stepper.
 @immutable
@@ -50,7 +51,7 @@ class KapdhStepper extends StatelessWidget {
                       boxShadow: i == current ? const [BoxShadow(color: KapdhColors.green100, spreadRadius: 4)] : null,
                     ),
                     child: Icon(
-                      i < current ? Icons.check : steps[i].icon,
+                      i < current ? KapdhIcons.check : steps[i].icon,
                       size: 18,
                       color: i <= current ? KapdhColors.onPrimary : KapdhColors.textMuted,
                     ),
@@ -83,10 +84,10 @@ class RegisterStepper extends StatelessWidget {
   const RegisterStepper({super.key, required this.current, this.compact = false});
 
   static const steps = [
-    KapdhStep('Data Diri', Icons.person_outline),
-    KapdhStep('OTP', Icons.shield_outlined),
-    KapdhStep('Biaya KTA', Icons.payments_outlined),
-    KapdhStep('Pembayaran', Icons.credit_card),
+    KapdhStep('Data Diri', KapdhIcons.personOutline),
+    KapdhStep('OTP', KapdhIcons.shieldOutlined),
+    KapdhStep('Biaya KTA', KapdhIcons.paymentsOutlined),
+    KapdhStep('Pembayaran', KapdhIcons.creditCard),
   ];
 
   /// 0 Data Diri, 1 OTP, 2 Biaya KTA, 3 Pembayaran.

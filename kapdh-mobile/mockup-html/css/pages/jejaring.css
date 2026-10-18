@@ -58,8 +58,8 @@
   color: var(--color-text-muted); background: transparent;
   white-space: nowrap;
 }
-.jj-input-chip .icon-btn { width: 18px; height: 18px; color: var(--color-text-muted); }
-.jj-input-chip .icon-btn .ic { --ic-size: 18px; }
+.jj-input-chip > .ic { --ic-size: 18px; color: var(--color-text-muted); } /* [v2] seluruh chip = tombol hapus (48 dp) */
+.jj-input-chip:disabled { opacity: .38; }
 .jj-input-chip.is-disabled { color: rgba(28, 27, 31, .38); }
 
 /* Avatar 88 (Info Percakapan, Grup Baru). Ikon pengganti 0.5 x ukuran = 44. */
@@ -198,7 +198,7 @@
 .jj-room__muted { --ic-size: 16px; margin-left: var(--s1); color: var(--color-text-muted); }
 /* Pil jumlah belum dibaca: 2 x 7, pil primary (neutral500 bila dibisukan), 11 w600 putih */
 .jj-unread-pill { flex: none; margin-left: var(--s2); padding: 2px 7px; border-radius: var(--r-pill); background: var(--color-primary); color: var(--color-on-primary); font-size: var(--fs-overline); font-weight: var(--fw-semibold); }
-.jj-unread-pill--muted { background: var(--color-neutral-500); }
+.jj-unread-pill--muted { background: var(--color-neutral-700); } /* [v2] 9,3:1 (dulu neutral500 3,3:1) */
 /* Divider(height 1, indent 76) antarbaris */
 .jj-room-sep { height: 1px; margin-left: 76px; background: var(--color-divider); flex: none; }
 
@@ -267,7 +267,7 @@
 .jj-msg__footer--held { color: var(--color-warning); }
 /* ReactionRow: Wrap jarak 4; chip min 44 x 32, padding 8/2, pil; reaksi saya green100 + garis primary */
 .jj-reactions { display: flex; flex-wrap: wrap; gap: var(--s1); margin-top: 2px; }
-.jj-reaction { display: inline-flex; align-items: center; gap: 4px; min-width: 44px; min-height: 32px; padding: 2px var(--s2); border-radius: var(--r-pill); background: var(--color-surface); border: 1px solid var(--color-divider); color: var(--color-text); }
+.jj-reaction { display: inline-flex; align-items: center; gap: 4px; min-width: 44px; min-height: 32px; margin: var(--s2) 0; /* [v2] area ketuk 48 dp */ padding: 2px var(--s2); border-radius: var(--r-pill); background: var(--color-surface); border: 1px solid var(--color-divider); color: var(--color-text); }
 .jj-reaction.is-mine { background: var(--color-green-100); border-color: var(--color-primary); }
 .jj-reaction__emoji { font-size: var(--fs-body); line-height: 1.45; }
 .jj-reaction__count { font-size: var(--fs-caption); }
@@ -347,9 +347,9 @@
 .jj-caption-center { margin-top: var(--s1); text-align: center; font-size: var(--fs-caption); color: var(--color-text-muted); }
 .jj-chips { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); }
 .jj-chips--8 { gap: var(--s2); } /* Wrap spacing 8, runSpacing 8 (Skill di profil) */
-/* Baris pilihan horizontal (tinggi 56, padding 16/8): chip dibatasi tinggi 40 */
-.jj-chip-strip { flex: none; display: flex; align-items: center; gap: var(--s2); height: 56px; padding: var(--s2) var(--s4); overflow: hidden; }
-.jj-chip-strip .jj-input-chip { height: 40px; flex: none; }
+/* Baris pilihan horizontal (tinggi 56, padding 16/4 [v2; dulu 16/8 yang membatasi chip 40]): chip target 48 */
+.jj-chip-strip { flex: none; display: flex; align-items: center; gap: var(--s2); height: 56px; padding: var(--s1) var(--s4); overflow: hidden; }
+.jj-chip-strip .jj-input-chip { flex: none; }
 .jj-picker-search { padding: var(--s3) var(--s4) 0; }
 
 /* Menu DropdownButtonFormField terbuka di atas lembar: selebar field (20 dari tepi), item terpilih sejajar field

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/theme/kapdh_tokens.dart';
+import 'kapdh_icons.dart';
 
 enum TimelineState {
   /// Sudah terjadi: lingkaran hijau dengan centang.
@@ -50,7 +51,7 @@ class Timeline extends StatelessWidget {
           width: size,
           height: size,
           decoration: const BoxDecoration(color: KapdhColors.primary, shape: BoxShape.circle),
-          child: const Icon(Icons.check, size: 14, color: KapdhColors.onPrimary),
+          child: const Icon(KapdhIcons.check, size: 14, color: KapdhColors.onPrimary),
         ),
         TimelineState.current => Container(
           width: size,
@@ -76,7 +77,7 @@ class Timeline extends StatelessWidget {
           width: size,
           height: size,
           decoration: const BoxDecoration(color: KapdhColors.danger, shape: BoxShape.circle),
-          child: const Icon(Icons.close, size: 14, color: KapdhColors.onPrimary),
+          child: const Icon(KapdhIcons.close, size: 14, color: KapdhColors.onPrimary),
         ),
       };
     }

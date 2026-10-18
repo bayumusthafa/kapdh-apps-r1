@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/theme/kapdh_tokens.dart';
+import 'kapdh_icons.dart';
 
 enum InfoBoxTone { info, warning, danger }
 
@@ -18,9 +19,9 @@ class InfoBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (Color bg, Color fg, IconData defaultIcon) = switch (tone) {
-      InfoBoxTone.info => (KapdhColors.green50, KapdhColors.primary, Icons.info_outline),
-      InfoBoxTone.warning => (KapdhColors.warningBg, KapdhColors.warning, Icons.warning_amber_rounded),
-      InfoBoxTone.danger => (KapdhColors.dangerBg, KapdhColors.danger, Icons.error_outline),
+      InfoBoxTone.info => (KapdhColors.green50, KapdhColors.primary, KapdhIcons.infoOutline),
+      InfoBoxTone.warning => (KapdhColors.warningBg, KapdhColors.warning, KapdhIcons.warningAmberRounded),
+      InfoBoxTone.danger => (KapdhColors.dangerBg, KapdhColors.danger, KapdhIcons.errorOutline),
     };
     return Container(
       width: double.infinity,

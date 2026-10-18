@@ -91,7 +91,7 @@ class _ProofPreviewLinkState extends ConsumerState<ProofPreviewLink> {
         child: KapdhLinkButton(
           key: const ValueKey('proof-view'),
           label: _opening ? 'Membuka bukti...' : 'Lihat bukti yang dikirim',
-          icon: Icons.image_search_outlined,
+          icon: KapdhIcons.imageSearchOutlined,
           onPressed: _opening ? null : () => unawaited(_open()),
         ),
       ),
@@ -163,7 +163,7 @@ class _ProofImageViewerState extends ConsumerState<ProofImageViewer> {
                     minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
                   ),
                   onPressed: () => unawaited(_reload()),
-                  icon: const Icon(Icons.refresh),
+                  icon: const Icon(KapdhIcons.refresh),
                   label: const Text('Muat ulang'),
                 ),
         ],
@@ -205,7 +205,7 @@ class _ProofImageViewerState extends ConsumerState<ProofImageViewer> {
                   key: const ValueKey('proof-viewer-close'),
                   tooltip: 'Tutup',
                   color: KapdhColors.onPrimary,
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(KapdhIcons.close),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
                 Expanded(

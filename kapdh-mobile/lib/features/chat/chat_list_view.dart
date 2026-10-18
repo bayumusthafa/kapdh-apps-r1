@@ -57,7 +57,7 @@ class ChatRoomListView extends ConsumerWidget {
       content = ErrorState.fromException(state.error!, onRetry: controller.refresh);
     } else if (state.isEmpty) {
       content = EmptyState(
-        icon: group ? Icons.groups_outlined : Icons.chat_bubble_outline,
+        icon: group ? KapdhIcons.groupsOutlined : KapdhIcons.chatBubbleOutline,
         title: group ? 'Belum ada grup' : 'Belum ada percakapan',
         message: group
             ? 'Buat grup lalu undang alumni, atau terima undangan grup yang masuk.'
@@ -135,7 +135,7 @@ class _GroupActions extends StatelessWidget {
         children: [
           OutlinedButton.icon(
             onPressed: () => context.push(AppRoutes.chatNewGroup),
-            icon: const Icon(Icons.group_add_outlined),
+            icon: const Icon(KapdhIcons.groupAddOutlined),
             label: const Text('Buat grup'),
           ),
           OutlinedButton.icon(
@@ -143,7 +143,7 @@ class _GroupActions extends StatelessWidget {
             icon: Badge(
               isLabelVisible: pendingInvitations > 0,
               label: Text('$pendingInvitations'),
-              child: const Icon(Icons.mail_outline),
+              child: const Icon(KapdhIcons.mailOutline),
             ),
             label: Text(pendingInvitations > 0 ? 'Undangan ($pendingInvitations)' : 'Undangan grup'),
           ),
@@ -199,7 +199,7 @@ class ChatRoomTile extends StatelessWidget {
                   name: room.title,
                   url: room.avatarUrl,
                   size: 48,
-                  icon: room.kind == ChatRoomKind.group && room.avatarUrl == null ? Icons.groups : null,
+                  icon: room.kind == ChatRoomKind.group && room.avatarUrl == null ? KapdhIcons.groups : null,
                 ),
                 const SizedBox(width: KapdhSpace.s3),
                 Expanded(
@@ -232,7 +232,7 @@ class ChatRoomTile extends StatelessWidget {
                           if (hasUnsent)
                             const Padding(
                               padding: EdgeInsets.only(right: KapdhSpace.s1),
-                              child: Icon(Icons.error_outline, size: 16, color: KapdhColors.danger),
+                              child: Icon(KapdhIcons.errorOutline, size: 16, color: KapdhColors.danger),
                             ),
                           Expanded(
                             child: Text(
@@ -249,14 +249,15 @@ class ChatRoomTile extends StatelessWidget {
                           if (room.muted)
                             const Padding(
                               padding: EdgeInsets.only(left: KapdhSpace.s1),
-                              child: Icon(Icons.notifications_off_outlined, size: 16, color: KapdhColors.textMuted),
+                              child: Icon(KapdhIcons.notificationsOffOutlined, size: 16, color: KapdhColors.textMuted),
                             ),
                           if (unread > 0)
                             Container(
                               margin: const EdgeInsets.only(left: KapdhSpace.s2),
                               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(
-                                color: room.muted ? KapdhColors.neutral500 : KapdhColors.primary,
+                                // Dibisukan: neutral700 (9,3:1 dengan teks putih; dulu neutral500 3,3:1 gagal WCAG).
+                                color: room.muted ? KapdhColors.neutral700 : KapdhColors.primary,
                                 borderRadius: BorderRadius.circular(KapdhRadius.pill),
                               ),
                               child: Text(

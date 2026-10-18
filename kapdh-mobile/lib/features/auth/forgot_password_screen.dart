@@ -145,7 +145,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   label: 'Email',
                   controller: _email,
                   hint: 'Masukkan Email',
-                  prefixIcon: Icons.mail_outline,
+                  prefixIcon: KapdhIcons.mailOutline,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.done,
                   autofillHints: const [AutofillHints.email],
@@ -181,7 +181,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               ],
               const SizedBox(height: KapdhSpace.s4),
               const InfoBox(
-                icon: Icons.shield_outlined,
+                icon: KapdhIcons.shieldOutlined,
                 message:
                     'Demi keamanan, kami tidak memberi tahu apakah sebuah email terdaftar. Periksa juga folder spam '
                     'bila kode belum masuk.',

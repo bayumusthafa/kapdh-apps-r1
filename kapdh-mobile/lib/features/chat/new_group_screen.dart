@@ -86,6 +86,9 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
     if (picked != null && mounted) setState(() => _invitees = picked);
   }
 
+  void _remove(DirectoryMember member) =>
+      setState(() => _invitees = _invitees.where((m) => m.userId != member.userId).toList());
+
   void _snack(String message) {
     ref.read(scaffoldMessengerKeyProvider).currentState
       ?..hideCurrentSnackBar()
@@ -171,7 +174,7 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
                   customBorder: const CircleBorder(),
                   onTap: _busy ? null : _pickAvatar,
                   child: avatar == null
-                      ? const AlumniAvatar(name: 'Grup', size: 88, icon: Icons.add_a_photo_outlined)
+                      ? const AlumniAvatar(name: 'Grup', size: 88, icon: KapdhIcons.addAPhotoOutlined)
                       : ClipOval(
                           child: Image.memory(
                             avatar.bytes,
@@ -179,7 +182,7 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
                             height: 88,
                             fit: BoxFit.cover,
                             errorBuilder: (_, _, _) =>
-                                const AlumniAvatar(name: 'Grup', size: 88, icon: Icons.broken_image_outlined),
+                                const AlumniAvatar(name: 'Grup', size: 88, icon: KapdhIcons.brokenImageOutlined),
                           ),
                         ),
                 ),
@@ -223,10 +226,9 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
                     InputChip(
                       label: Text(member.fullName),
                       deleteButtonTooltipMessage: 'Hapus ${member.fullName}',
-                      onDeleted: _busy
-                          ? null
-                          : () =>
-                                setState(() => _invitees = _invitees.where((m) => m.userId != member.userId).toList()),
+                      onDeleted: _busy ? null : () => _remove(member),
+                      // Seluruh chip menghapus undangan (area ketuk 48 dp), bukan hanya ikon silang.
+                      onPressed: _busy ? null : () => _remove(member),
                     ),
                 ],
               ),
@@ -239,7 +241,7 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
             const SizedBox(height: KapdhSpace.s6),
             KapdhButton(
               label: 'Buat grup',
-              icon: Icons.group_add,
+              icon: KapdhIcons.groupAdd,
               busy: _busy,
               busyLabel: 'Membuat grup',
               onPressed: _busy || _created ? null : _create,

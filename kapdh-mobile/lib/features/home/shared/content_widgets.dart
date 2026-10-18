@@ -154,7 +154,7 @@ class RefreshFailedNotice extends StatelessWidget {
         child: InfoBox(
           key: const ValueKey('refresh-failed'),
           tone: InfoBoxTone.warning,
-          icon: offline ? Icons.cloud_off : Icons.sync_problem,
+          icon: offline ? KapdhIcons.cloudOff : KapdhIcons.syncProblem,
           title: 'Belum dapat diperbarui',
           message: '$cause Data di bawah adalah keadaan terakhir yang dimuat.',
           trailing: TextButton(onPressed: onRetry, child: const Text('Coba lagi')),

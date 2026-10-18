@@ -282,7 +282,7 @@ class ChallengeLinkStatusView extends StatelessWidget {
             : ErrorState.fromException(failure, onRetry: onRetry);
       case ChallengeLinkPhase.gone:
         return EmptyState(
-          icon: Icons.link_off,
+          icon: KapdhIcons.linkOff,
           title: goneTitle,
           message: goneMessage,
           actionLabel: goneActionLabel,

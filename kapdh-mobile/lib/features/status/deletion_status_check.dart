@@ -214,7 +214,7 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
               label: 'Email akun',
               controller: _email,
               hint: 'nama@email.com',
-              prefixIcon: Icons.mail_outline,
+              prefixIcon: KapdhIcons.mailOutline,
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
               errorText: _emailError,

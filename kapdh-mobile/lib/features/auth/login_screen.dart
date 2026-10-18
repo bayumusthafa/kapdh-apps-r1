@@ -182,7 +182,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 label: 'Email',
                 controller: _email,
                 hint: 'Masukkan Email',
-                prefixIcon: Icons.mail_outline,
+                prefixIcon: KapdhIcons.mailOutline,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.email],
@@ -218,7 +218,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: InfoBox(
                     key: const ValueKey('login-notice'),
                     tone: notice.success ? InfoBoxTone.info : InfoBoxTone.warning,
-                    icon: notice.success ? Icons.check_circle_outline : null,
+                    icon: notice.success ? KapdhIcons.checkCircleOutline : null,
                     title: notice.title,
                     message: notice.message,
                   ),

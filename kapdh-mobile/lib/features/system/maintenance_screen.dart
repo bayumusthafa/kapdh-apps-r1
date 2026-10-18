@@ -54,7 +54,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
               StatusHero(
                 status: const StatusBadgeStyle(
                   label: 'Pemeliharaan',
-                  icon: Icons.build_outlined,
+                  icon: KapdhIcons.buildOutlined,
                   foreground: KapdhColors.warning,
                   background: KapdhColors.warningBg,
                 ),
@@ -65,7 +65,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
               ),
               const SizedBox(height: KapdhSpace.s5),
               InfoBox(
-                icon: Icons.schedule,
+                icon: KapdhIcons.schedule,
                 message: until != null
                     ? 'Perkiraan selesai: ${formatDateTime(until)}. Waktu dapat berubah.'
                     : 'Perkiraan waktu selesai belum tersedia. Silakan coba lagi beberapa saat lagi.',
@@ -76,7 +76,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                 const SizedBox(height: KapdhSpace.s3),
                 KapdhButton.outlined(
                   label: 'Lanjut dalam mode baca',
-                  icon: Icons.chrome_reader_mode_outlined,
+                  icon: KapdhIcons.chromeReaderModeOutlined,
                   onPressed: () => context.go(readOnlyTarget),
                 ),
               ],
@@ -84,7 +84,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                 const SizedBox(height: KapdhSpace.s3),
                 KapdhButton.outlined(
                   label: 'Tampilkan KTA',
-                  icon: Icons.badge_outlined,
+                  icon: KapdhIcons.badgeOutlined,
                   onPressed: () => context.go(AppRoutes.kta),
                 ),
               ],

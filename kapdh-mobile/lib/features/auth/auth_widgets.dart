@@ -15,7 +15,7 @@ class AuthSheetTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        IconButton(tooltip: 'Kembali', icon: const Icon(Icons.chevron_left, size: 28), onPressed: onBack),
+        IconButton(tooltip: 'Kembali', icon: const Icon(KapdhIcons.chevronLeft, size: 28), onPressed: onBack),
         const SizedBox(width: KapdhSpace.s1),
         Expanded(
           child: Semantics(
@@ -37,9 +37,9 @@ class RecoveryStepper extends StatelessWidget {
   const RecoveryStepper({super.key, required this.current});
 
   static const steps = [
-    KapdhStep('Email', Icons.mail_outline),
-    KapdhStep('Kode OTP', Icons.shield_outlined),
-    KapdhStep('Password Baru', Icons.lock_outline),
+    KapdhStep('Email', KapdhIcons.mailOutline),
+    KapdhStep('Kode OTP', KapdhIcons.shieldOutlined),
+    KapdhStep('Password Baru', KapdhIcons.lockOutline),
   ];
 
   /// 0 Email, 1 Kode OTP, 2 Password Baru.
@@ -70,7 +70,7 @@ class PasswordRules extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.only(right: KapdhSpace.s1),
                 child: Icon(
-                  ok ? Icons.check_circle : Icons.radio_button_unchecked,
+                  ok ? KapdhIcons.checkCircle : KapdhIcons.radioButtonUnchecked,
                   size: 16,
                   color: ok ? KapdhColors.success : KapdhColors.textMuted,
                 ),
