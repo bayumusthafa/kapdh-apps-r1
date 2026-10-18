@@ -6,9 +6,9 @@
   "description": "Situs publik kapdh.or.id (Astro static): beranda, unduh aplikasi, halaman legal/informasi, kontak, verifikasi KTA, hapus akun.",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && node scripts/assert-csp-safe.mjs",
+    "build": "astro build && node scripts/assert-csp-safe.mjs && node scripts/assert-static-content.mjs",
     "preview": "astro preview",
-    "typecheck": "astro check && tsc -p tsconfig.json --noEmit",
+    "typecheck": "astro sync && astro-check && tsc -p tsconfig.json --noEmit",
     "lint": "eslint src scripts",
     "test": "vitest run"
   },

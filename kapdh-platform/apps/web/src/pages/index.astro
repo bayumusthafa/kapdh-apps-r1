@@ -1,6 +1,8 @@
 ---
 import StoreButtons from "../components/StoreButtons.astro";
 import Base from "../layouts/Base.astro";
+import { ORGANIZATION, organizationJsonLd } from "../lib/organization";
+import { LEGAL_SECTION_HREF } from "../lib/site";
 
 // Fitur Utama sesuai Guidelines KAPDH v1.0 halaman 4 (kartu putih dan hijau bergantian).
 const features = [
@@ -54,7 +56,7 @@ const quickLinks = [
 ];
 ---
 
-<Base title="Beranda" maintenanceBanner>
+<Base title="Beranda" maintenanceBanner structuredData={organizationJsonLd(new URL("/", Astro.site))}>
   <section class="relative overflow-hidden">
     <svg class="brand-arcs -top-24 -right-24 size-96" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
       <circle cx="200" cy="0" r="60"></circle>
@@ -117,6 +119,13 @@ const quickLinks = [
         <p>
           Anggota mendaftar dan membayar iuran langsung dari aplikasi, lalu memakai KTA digital, jejaring alumni, event dan
           tiket, serta chat. Data pribadi dilindungi: KAPDH tidak pernah meminta NIK atau Nomor KTP.
+        </p>
+        {/* Pengelola aplikasi dan dasar hukumnya, statis tanpa JavaScript (lib/organization). wrap-anywhere: nomor SK
+            boleh dipatah tanpa melebarkan kolom grid saat teks diperbesar. */}
+        <p class="wrap-anywhere">
+          KAPDH Apps dikelola oleh {ORGANIZATION.legalName} ({ORGANIZATION.shortName}), perkumpulan berbadan hukum
+          berdasarkan {ORGANIZATION.sk.shortLabel} Nomor {ORGANIZATION.sk.number}.{" "}
+          <a href={LEGAL_SECTION_HREF} class="font-semibold text-primary underline">Lihat legalitas organisasi</a>
         </p>
         <a href="/tentang" class="btn-link self-start px-0 text-sm">Selengkapnya tentang KAPDH</a>
       </div>

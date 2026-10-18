@@ -8,6 +8,16 @@ export const DEV_API_URL = "http://localhost:3000/api/v1";
 /** API produksi (D12: api.kapdh.or.id). */
 export const PROD_API_URL = "https://api.kapdh.or.id/api/v1";
 
+/**
+ * Email resmi KAPDH (PRD 8.3): kontak resmi pada identitas badan hukum (lib/organization) sekaligus kanal bantuan
+ * awal sebelum /public/config terbaca (scripts/config.ts DEFAULT_SUPPORT_EMAIL).
+ */
+export const OFFICIAL_EMAIL = "bantuan@kapdh.or.id";
+
+/** Id bagian statis "Legalitas organisasi" di /tentang (components/OrganizationLegal.astro) dan tautannya. */
+export const LEGAL_SECTION_ID = "legalitas";
+export const LEGAL_SECTION_HREF = `/tentang#${LEGAL_SECTION_ID}` as const;
+
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 /**
@@ -62,7 +72,8 @@ export const INFO_PAGES = [
   {
     slug: "tentang",
     title: "Tentang KAPDH",
-    description: "Tentang Keluarga Alumni Pondok Pesantren Darel Hikmah dan KAPDH Apps.",
+    // Cuplikan halaman identitas badan hukum: nama badan hukum persis (lib/organization, site.test.ts).
+    description: "Tentang Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH) dan KAPDH Apps.",
     legal: false,
   },
 ] as const;
@@ -85,6 +96,8 @@ export const FOOTER_LINKS = [
   { href: "/kebijakan-privasi", label: "Kebijakan Privasi" },
   { href: "/ketentuan", label: "Ketentuan Layanan" },
   { href: "/ketentuan-komunitas", label: "Ketentuan Komunitas" },
+  /** Bagian statis Legalitas organisasi di /tentang (components/OrganizationLegal.astro). */
+  { href: LEGAL_SECTION_HREF, label: "Legalitas" },
   { href: "/bantuan", label: "Bantuan" },
   { href: "/kontak", label: "Kontak" },
   { href: "/kta", label: "Verifikasi KTA" },
