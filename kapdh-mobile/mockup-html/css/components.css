@@ -583,6 +583,7 @@ a { color: inherit; text-decoration: none; }
   color: var(--color-primary);
 }
 .btn-link .ic { --ic-size: 18px; }
+.btn-link:disabled { color: rgba(28, 27, 31, .38); cursor: default; }
 
 /* IconButton 48 x 48 (ikon 24) */
 .icon-btn {
@@ -682,6 +683,8 @@ a { color: inherit; text-decoration: none; }
 @keyframes kapdh-caret { 50% { opacity: 0; } }
 .otp.is-error .otp__box { border: 2px solid var(--color-danger); background: var(--color-surface); box-shadow: none; }
 .otp.is-disabled .otp__box { background: var(--color-neutral-100); }
+/* Tombol "Tempel kode" di bawah kotak (OtpBoxes.showPasteButton): KapdhLinkButton + Icons.content_paste, rata kanan */
+.otp-paste { display: flex; justify-content: flex-end; }
 .otp__error { margin-top: var(--s2); font-size: var(--fs-caption); color: var(--color-danger); }
 
 /* PasswordRules (auth_widgets.dart): Wrap jarak 16/4, ikon 16 check_circle success / radio_button_unchecked muted, 12 */

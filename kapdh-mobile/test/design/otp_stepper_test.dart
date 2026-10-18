@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/app/theme/kapdh_tokens.dart';
 import 'package:kapdh_mobile/design/design.dart';
@@ -49,6 +50,82 @@ void main() {
       final result = formatter.formatEditUpdate(TextEditingValue.empty, const TextEditingValue(text: 'a1b2c3d4e5f6g7'));
       expect(result.text, '123456');
       expect(result.selection, const TextSelection.collapsed(offset: 6));
+    });
+
+    test('formatter: tempelan kode lengkap mengganti isi lama', () {
+      const formatter = OtpInputFormatter(6);
+      TextEditingValue paste(String old, String inserted) => formatter.formatEditUpdate(
+        TextEditingValue(
+          text: old,
+          selection: TextSelection.collapsed(offset: old.length),
+        ),
+        TextEditingValue(text: old + inserted),
+      );
+      expect(paste('111111', '482913').text, '482913');
+      expect(paste('12', 'Kode: 482 913').text, '482913');
+      // Ketikan biasa tetap disisipkan.
+      expect(paste('12', '3').text, '123');
+      expect(paste('', '482913').text, '482913');
+    });
+
+    group('tombol Tempel kode', () {
+      void mockClipboard(WidgetTester tester, String? text) {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.getData') return text == null ? null : <String, Object?>{'text': text};
+          return null;
+        });
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null),
+        );
+      }
+
+      testWidgets('mengisi kotak dari papan klip dan memanggil onCompleted', (tester) async {
+        mockClipboard(tester, 'Kode verifikasi KAPDH Anda: 482 913');
+        final controller = TextEditingController(text: '11');
+        addTearDown(controller.dispose);
+        String? completed;
+        final changes = <String>[];
+        await pumpDesign(
+          tester,
+          OtpBoxes(controller: controller, onChanged: changes.add, onCompleted: (code) => completed = code),
+        );
+        await tester.tap(find.text(OtpBoxes.pasteLabel));
+        await tester.pump();
+        expect(controller.text, '482913');
+        expect(changes, ['482913']);
+        expect(completed, '482913');
+        expect(find.text('4'), findsOneWidget);
+      });
+
+      testWidgets('papan klip tanpa angka: pesan, isi tidak berubah', (tester) async {
+        mockClipboard(tester, 'halo');
+        final controller = TextEditingController(text: '12');
+        addTearDown(controller.dispose);
+        await pumpDesign(tester, OtpBoxes(controller: controller));
+        await tester.tap(find.text(OtpBoxes.pasteLabel));
+        await tester.pump();
+        expect(controller.text, '12');
+        expect(find.text(OtpBoxes.pasteEmptyMessage), findsOneWidget);
+      });
+
+      testWidgets('nonaktif saat kotak nonaktif; dapat disembunyikan', (tester) async {
+        final controller = TextEditingController();
+        addTearDown(controller.dispose);
+        await pumpDesign(tester, OtpBoxes(controller: controller, enabled: false));
+        final button = tester.widget<TextButton>(
+          find.descendant(of: find.byKey(const ValueKey('otp-paste')), matching: find.byType(TextButton)),
+        );
+        expect(button.onPressed, isNull);
+        await pumpDesign(tester, OtpBoxes(controller: controller, showPasteButton: false));
+        expect(find.text(OtpBoxes.pasteLabel), findsNothing);
+      });
+
+      testWidgets('target sentuh minimal 48 px', (tester) async {
+        final controller = TextEditingController();
+        addTearDown(controller.dispose);
+        await pumpDesign(tester, OtpBoxes(controller: controller));
+        expect(tester.getSize(find.byKey(const ValueKey('otp-paste'))).height, greaterThanOrEqualTo(48));
+      });
     });
 
     testWidgets('keadaan galat: semua kotak merah dan pesan tampil', (tester) async {
