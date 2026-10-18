@@ -172,6 +172,9 @@ describe("GET /me/deletion/disclosure (N-15, D2, PRD 3.9, 4.4)", () => {
       updatedAt: now,
     });
     const refundId = uuidv7();
+    // Nomor rekening penanda yang panjang: angka pendek seperti "123" bisa muncul secara acak di UUID atau
+    // timestamp pada JSON pengungkapan, sehingga uji kebocoran rekening menjadi flaky.
+    const refundAccountNumber = "8800123456789012";
     await t.db.insert(paymentAdjustments).values({
       id: refundId,
       paymentId: paidPayment,
@@ -179,7 +182,7 @@ describe("GET /me/deletion/disclosure (N-15, D2, PRD 3.9, 4.4)", () => {
       amount: "50000.00",
       reason: "Refund uji",
       status: "pending",
-      refundDestination: { account_number: "123" },
+      refundDestination: { account_number: refundAccountNumber },
       dueAt: new Date(now.getTime() + 7 * DAY),
       createdAt: now,
       updatedAt: now,
@@ -219,7 +222,9 @@ describe("GET /me/deletion/disclosure (N-15, D2, PRD 3.9, 4.4)", () => {
         destination_provided: true,
       }),
     ]);
-    expect(JSON.stringify(disclosure.pending_refunds)).not.toContain("123");
+    const refundsJson = JSON.stringify(disclosure.pending_refunds);
+    expect(refundsJson).not.toContain(refundAccountNumber);
+    expect(refundsJson).not.toContain("account_number");
     expect(disclosure.open_payments).toEqual([
       expect.objectContaining({ payment_id: paymentId, type: "ticket", proof_submitted: false }),
     ]);
