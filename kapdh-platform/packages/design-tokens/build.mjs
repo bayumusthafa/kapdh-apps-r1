@@ -36,11 +36,15 @@ const argbCss = (argb) => {
   const a = ((n >>> 24) & 255) / 255;
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Number(a.toFixed(3))})`;
 };
-const shadowCss = (list) => list.map(([x, y, b, sp, c]) => `${x}px ${y}px ${b}px${sp ? ` ${sp}px` : ""} ${argbCss(c)}`).join(", ");
+const shadowCss = (list) =>
+  list.map(([x, y, b, sp, c]) => `${x}px ${y}px ${b}px${sp ? ` ${sp}px` : ""} ${argbCss(c)}`).join(", ");
 const shadowDart = (list) =>
   "[" +
   list
-    .map(([x, y, b, sp, c]) => `BoxShadow(offset: Offset(${x}, ${y}), blurRadius: ${b}${sp ? `, spreadRadius: ${sp}` : ""}, color: Color(${c}))`)
+    .map(
+      ([x, y, b, sp, c]) =>
+        `BoxShadow(offset: Offset(${x}, ${y}), blurRadius: ${b}${sp ? `, spreadRadius: ${sp}` : ""}, color: Color(${c}))`,
+    )
     .join(", ") +
   "]";
 
@@ -77,7 +81,7 @@ css.push(
   ":where(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }",
 );
 // Cincin fokus hijau (focus-ring) di permukaan terang; emas (focus-ring-on-dark) di permukaan hijau gelap (WCAG 1.4.11).
-css.push("[data-surface=\"dark\"] { --color-focus-ring: var(--color-focus-ring-on-dark); }");
+css.push('[data-surface="dark"] { --color-focus-ring: var(--color-focus-ring-on-dark); }');
 mkdirSync(join(ROOT, "css"), { recursive: true });
 writeFileSync(join(ROOT, "css", "kapdh-theme.css"), css.join("\n") + "\n");
 
@@ -123,7 +127,9 @@ d.push(
   "  static const buttonPrimary = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,",
 );
 d.push("      colors: [Color(0xFF215E1E), Color(0xFF1A4B17)]);");
-d.push("  /// Dasar mesh zamrud (gradient.brand-mesh): diagonal green950 -> green800 -> green700. Cahaya emas dan hijau");
+d.push(
+  "  /// Dasar mesh zamrud (gradient.brand-mesh): diagonal green950 -> green800 -> green700. Cahaya emas dan hijau",
+);
 d.push("  /// ditumpuk oleh BrandMesh (lib/design/brand_mesh.dart).");
 d.push("  static const brandMeshBase = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,");
 d.push("      colors: [Color(0xFF0E280C), Color(0xFF1A4B17), Color(0xFF215E1E)], stops: [0, 0.55, 1]);");
@@ -135,7 +141,10 @@ d.push("  /// Latar Splash mode terang (gradient.splash).");
 d.push("  static const splash = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,");
 d.push("      colors: [Color(0xFFFAFAFA), Color(0xFFEEEFED), Color(0xFFE2E4E1)], stops: [0, 0.55, 1]);");
 d.push("}", "");
-for (const [cls, set] of [["KapdhShadows", T.elevation.light], ["KapdhShadowsDark", T.elevation.dark]]) {
+for (const [cls, set] of [
+  ["KapdhShadows", T.elevation.light],
+  ["KapdhShadowsDark", T.elevation.dark],
+]) {
   d.push(`/// Bayangan v2 (elevation.${cls === "KapdhShadows" ? "light" : "dark"}).`);
   d.push(`abstract final class ${cls} {`);
   for (const [k, v] of own(set)) d.push(`  static const ${camel(k)} = <BoxShadow>${shadowDart(v)};`);
@@ -144,7 +153,8 @@ for (const [cls, set] of [["KapdhShadows", T.elevation.light], ["KapdhShadowsDar
 d.push("/// Durasi (motion, ms) dan kurva (easing) animasi v2.");
 d.push("abstract final class KapdhMotion {");
 for (const [k, v] of own(T.motion)) d.push(`  static const ${camel(k)} = Duration(milliseconds: ${v});`);
-for (const [k, v] of own(T.easing)) d.push(`  static const Curve ${camel("ease", k)} = Cubic(${v.join(", ")});`);
+for (const [k, v] of own(T.easing))
+  d.push(`  static const Curve ${camel("ease", k)} = Cubic(${v.join(", ")});`);
 d.push("}", "");
 d.push("abstract final class KapdhIconSize {");
 for (const [k, v] of Object.entries(T.icon)) d.push(`  static const double ${camel(k)} = ${v};`);
