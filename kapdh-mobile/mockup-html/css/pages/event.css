@@ -159,7 +159,7 @@
 /* _PaymentCard / _RefundsCard: padding 16, surface, garis divider, radius lg */
 .tk-box { padding: 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); display: flex; flex-direction: column; }
 .tk-box__head { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s3); }
-.tk-box__title { flex: 1 1 auto; min-width: 0; font-size: var(--fs-body); font-weight: 600; }
+.tk-box__title { flex: 1 1 auto; min-width: 0; font-size: var(--fs-body); font-weight: 600; overflow-wrap: normal; } /* kata pendek; jangan dipecah karena selisih subpiksel dengan lencana "Menunggu Pembayaran" */
 .tk-box > .btn-text { align-self: flex-start; }
 .tk-box__heading { margin-bottom: var(--s3); font-size: var(--fs-body); font-weight: 600; } /* judul "Refund" + SizedBox 12 */
 /* _Row: Expanded(label 13 muted) + 12 + Flexible(flex 2, nilai 13 rata kanan, w600 bila emphasis), padding bawah 8.
