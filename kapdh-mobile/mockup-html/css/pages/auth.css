@@ -33,9 +33,9 @@
 .auth-keypad .keyboard__row { padding: 0 var(--s2); gap: var(--s2); }
 .auth-keypad .keyboard__key {
   max-width: none; display: grid; place-items: center;
-  font-family: Roboto, 'Segoe UI', system-ui, sans-serif; font-size: calc(20px * var(--ts, 1)); line-height: 1; letter-spacing: 0; color: #1C1B1F;
+  font-family: Roboto, 'Segoe UI', system-ui, sans-serif; font-size: 20px; line-height: 1; letter-spacing: 0; color: var(--color-keyboard-text); /* keyboard sistem: tidak ikut skala teks aplikasi */
 }
-.auth-keypad .keyboard__key--fn { background: #D3D6DB; }
+.auth-keypad .keyboard__key--fn { background: var(--color-keyboard-key-fn); }
 
 /* Area status bar tetap hijau saat pita login tergulir (Positioned top, warna pertama bandGradient #215E1E). */
 .auth-statusfill { position: absolute; z-index: 3; top: 0; left: 0; right: 0; height: var(--inset-top); background: var(--color-green-700); }
@@ -143,7 +143,15 @@
   justify-content: center; align-items: center; text-align: center;
   padding: var(--inset-top) 0 var(--inset-bottom);
 }
-.auth-dark__inner { display: flex; flex-direction: column; align-items: center; padding: var(--s6); }
+/* [v2, usulan] Splash: latar gradasi abu terang di mode terang (mode gelap tetap hijau tua). Teks, ikon dan tombol
+   memakai warna permukaan terang: judul primary, pesan text-muted, spinner/ikon/tombol primary (emas di abu hanya 1,4:1). */
+.auth-dark.auth-splash { background: var(--gradient-splash); color: var(--color-text); }
+.auth-splash .auth-splash-title { color: var(--color-primary); }
+.auth-splash .auth-splash-spinner, .auth-splash .auth-problem > .ic { color: var(--color-primary); }
+.auth-splash .auth-dark__message, .auth-splash .auth-dark__detail { color: var(--color-text-muted); }
+.auth-splash .auth-btn-accent { border-color: var(--color-primary); color: var(--color-primary); }
+.auth-dark__inner { display: flex; flex-direction: column; align-items: center; max-width: 100%; padding: var(--s6); }
+.auth-dark__inner > * { max-width: 100%; } /* [v2 P2-3] detail teknis panjang (KAPDH_ENV=...) pindah baris */
 .auth-splash-logo { width: 120px; height: 120px; object-fit: contain; }
 .auth-splash-title { margin-top: var(--s4); font-size: var(--fs-body-lg); font-weight: 600; }
 .auth-splash-spinner { margin-top: var(--s8); --spinner-size: 32px; color: var(--color-accent); }

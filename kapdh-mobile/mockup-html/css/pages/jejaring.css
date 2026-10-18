@@ -129,6 +129,7 @@
 /* _IconLine: padding atas 4, ikon 16 abu, celah 4, teks 12 abu */
 .jj-icon-line { display: flex; align-items: center; gap: var(--s1); padding-top: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
 .jj-icon-line .ic { --ic-size: var(--ic-sm); }
+.jj-icon-line > span:not(.ic) { min-width: 0; } /* [v2 P2-3] Flexible(Text): email panjang pindah baris, tidak meluap */
 .jj-profile-note { padding: 0 var(--s5) var(--s3); }
 /* Bagian: SliverList dipisah Divider(height 24); judul 14 w600, jarak 8, nilai 14 abu */
 .jj-sections { padding: 0 var(--s5) var(--s4); }
@@ -348,7 +349,7 @@
 .jj-chips { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); }
 .jj-chips--8 { gap: var(--s2); } /* Wrap spacing 8, runSpacing 8 (Skill di profil) */
 /* Baris pilihan horizontal (tinggi 56, padding 16/4 [v2; dulu 16/8 yang membatasi chip 40]): chip target 48 */
-.jj-chip-strip { flex: none; display: flex; align-items: center; gap: var(--s2); height: 56px; padding: var(--s1) var(--s4); overflow: hidden; }
+.jj-chip-strip { flex: none; display: flex; align-items: center; gap: var(--s2); height: 56px; padding: var(--s1) var(--s4); overflow-x: auto; scrollbar-width: none; } /* ListView horizontal */
 .jj-chip-strip .jj-input-chip { flex: none; }
 .jj-picker-search { padding: var(--s3) var(--s4) 0; }
 

@@ -104,6 +104,10 @@
   --color-on-surface-disabled:    rgba(28, 27, 31, .38);  /* teks/ikon nonaktif Material 3 (onSurface 38 %) */
   --color-on-surface-disabled-bg: rgba(28, 27, 31, .12);  /* isi nonaktif Material 3 (onSurface 12 %) */
   --color-statusbar:              #1C1B1F;                /* ikon status bar di atas app bar terang */
+  --color-keyboard:               #E8EAED;                /* keyboard sistem tiruan (Gboard terang); UI sistem, ikut tema OS */
+  --color-keyboard-key:           #FFFFFF;
+  --color-keyboard-key-fn:        #D3D6DB;
+  --color-keyboard-text:          #1C1B1F;
   --color-sysnav:                 rgba(28, 27, 31, .82);  /* pegangan navigasi gestur */
   --color-skeleton:               #E4E9E1;
   --color-skeleton-shine:         #F0F3EE;
@@ -153,6 +157,7 @@
   /* GRADASI  (KapdhGradients.*, KapdhExtraColors.bandGradient | tokens.json gradient) */
   --gradient-button-primary: linear-gradient(180deg, #215E1E 0%, #1A4B17 100%); /* KapdhGradients.buttonPrimary (topCenter -> bottomCenter) */
   --gradient-band:           linear-gradient(180deg, #215E1E 0%, #1A4B17 100%); /* KapdhExtraColors.bandGradient = tokens.json gradient.header */
+  --gradient-splash:         linear-gradient(180deg, #FAFAFA 0%, #EEEFED 55%, #E2E4E1 100%); /* [v2, usulan] latar Splash mode terang: abu terang bergradasi */
   --gradient-kta-stops:      #020702 0%, #0E280C 45%, #215E1E 100%;            /* KapdhGradients.ktaCard (topLeft -> bottomRight) */
   /* Flutter menarik garis gradasi dari sudut kiri atas ke kanan bawah. Di CSS sudut tergantung rasio kotak:
      sudut = 90deg + atan(tinggi/lebar). .kta-card memakai var(--kta-angle) (bawaan 128deg untuk kartu 320x250). */
@@ -371,12 +376,17 @@
   --color-icon-accent:  #8BD47E;
   --color-statusbar:    #E7ECE5;
   --color-sysnav:       rgba(231, 236, 229, .82);
+  --color-keyboard:        #202124; /* Gboard gelap */
+  --color-keyboard-key:    #3C4043;
+  --color-keyboard-key-fn: #2D2E31;
+  --color-keyboard-text:   #E8EAED;
 
   /* Merek: primary terang sebagai teks/isi, teks gelap di atasnya (pola Material 3 mode gelap) */
   --color-primary:       #8BD47E;
   --color-on-primary:    #0E280C;
   --color-primary-hover: #9EDD92;
   --gradient-button-primary: linear-gradient(180deg, #9EDD92 0%, #8BD47E 100%);
+  --gradient-splash: linear-gradient(180deg, #0E280C 0%, #0E280C 100%); /* Splash gelap tetap hijau tua surfaceDark */
 
   /* Nonaktif */
   --color-disabled-bg:   #263124;
