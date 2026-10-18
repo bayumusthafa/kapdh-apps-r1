@@ -8,6 +8,8 @@
        (diukur dari Flutter 3.47.2 dengan uji widget; dipakai widget Material bawaan: SegmentedButton, ChoiceChip, Switch,
        FAB, PopupMenu, LinearProgressIndicator)
    1 px CSS = 1 dp Flutter. Nama variabel memetakan 1:1 ke nama Dart (komentar di tiap baris).
+   REDESAIN v2: nilai bertanda [v2] adalah USULAN yang belum ada di Dart ("dulu X" = nilai aplikasi saat ini). Daftar
+   lengkap perubahan, alasan, dan tempatnya di Flutter: REDESAIN.md. Tampilan apa adanya: commit 89db9f4.
    File bersama: JANGAN diubah dari grup layar. Usulan perubahan tulis di catatan grup.
    ===================================================================================================================== */
 
@@ -63,7 +65,7 @@
   --color-gold-100:  #FBF6C9;   /* KapdhColors.gold100 */
   --color-cream:     #FCF8F5;   /* KapdhColors.cream */
   --color-neutral-0:   #FFFFFF; /* KapdhColors.neutral0 */
-  --color-neutral-50:  #FBFAFF; /* KapdhColors.neutral50 */
+  --color-neutral-50:  #F5F7F3; /* KapdhColors.neutral50  [v2; dulu #FBFAFF lila bawaan M3 -> netral bernada hijau] */
   --color-neutral-100: #F4F4F6; /* KapdhColors.neutral100 */
   --color-neutral-200: #E3E3E6; /* KapdhColors.neutral200 */
   --color-neutral-300: #C9C9C9; /* KapdhColors.neutral300 */
@@ -78,19 +80,22 @@
   --color-primary-hover:          #215E1E; /* KapdhColors.primaryHover */
   --color-accent:                 #E6D312; /* KapdhColors.accent (= gold500); ColorScheme.secondary */
   --color-on-accent:              #0E280C; /* KapdhColors.onAccent */
-  --color-background:             #FBFAFF; /* KapdhColors.background; scaffoldBackgroundColor */
+  --color-background:             #F5F7F3; /* KapdhColors.background; scaffoldBackgroundColor  [v2; dulu #FBFAFF] */
   --color-surface:                #FFFFFF; /* KapdhColors.surface; app bar, kartu, field, dialog, sheet */
   --color-surface-brand:          #FCF8F5; /* KapdhColors.surfaceBrand */
   --color-surface-dark:           #0E280C; /* KapdhColors.surfaceDark; kotak nominal, modul QR */
   --color-text:                   #1C1B1F; /* KapdhColors.text; ColorScheme.onSurface */
-  --color-text-muted:             #6B6B6B; /* KapdhColors.textMuted; ColorScheme.onSurfaceVariant */
+  --color-text-muted:             #5E665C; /* KapdhColors.textMuted; ColorScheme.onSurfaceVariant  [v2; dulu #6B6B6B abu netral. 5,5:1 di latar, 6,0:1 di putih] */
   --color-text-on-dark:           #FFFFFF; /* KapdhColors.textOnDark */
   --color-text-highlight-on-dark: #E6D312; /* KapdhColors.textHighlightOnDark */
   --color-border:                 #8A8F87; /* KapdhColors.border; ColorScheme.outline, garis field */
-  --color-divider:                #E3E3E6; /* KapdhColors.divider; ColorScheme.outlineVariant, DividerTheme */
-  --color-disabled-bg:            #DCDCE0; /* KapdhColors.disabledBg */
-  --color-disabled-text:          #6B6B6B; /* KapdhColors.disabledText */
-  --color-focus-ring:             #E6D312; /* KapdhColors.focusRing */
+  --color-divider:                #E1E6DE; /* KapdhColors.divider; ColorScheme.outlineVariant, DividerTheme  [v2; dulu #E3E3E6] */
+  --color-disabled-bg:            #E1E5DE; /* KapdhColors.disabledBg  [v2; dulu #DCDCE0] */
+  --color-disabled-text:          #6E766C; /* KapdhColors.disabledText  [v2; dulu #6B6B6B] */
+  --color-focus-ring:             #2D7A28; /* KapdhColors.focusRing  [v2; dulu #E6D312 emas = 1,5:1 di permukaan terang (gagal WCAG 1.4.11).
+                                              Kini green600 5,4:1; emas tetap dipakai di atas permukaan gelap lewat --color-focus-ring-on-dark] */
+  --color-focus-ring-on-dark:     #E6D312; /* [v2 baru] cincin fokus di header hijau, kartu KTA, kotak nominal, snackbar (6,6:1) */
+  --color-card-border:            #E6EBE3; /* [v2 baru] garis rambut kartu; kedalaman utama dari --shadow-sm */
 
   /* WARNA STATUS  (KapdhColors.* | tokens.json color.status) */
   --color-success:    #1E7A46; /* KapdhColors.success */
@@ -168,6 +173,7 @@
   --fw-medium:   500; /* FontWeight.w500 */
   --fw-semibold: 600; /* FontWeight.w600 (heading) */
   --fw-bold:     700; /* FontWeight.w700 */
+  --fw-heading:  700; /* [v2 baru] judul layar/bagian/dialog: w700 (dulu w600) agar hierarki judul vs isi tegas */
 
   --lh-tight:   1.2;  /* tokens.json font.line-height.tight */
   --lh-heading: 1.25; /* KapdhTheme heading(): height 1.25 */
@@ -201,15 +207,17 @@
   /* -------------------------------------------------------------------------------------------------------------------
      RADIUS  (KapdhRadius.* | tokens.json radius) + literal di kode
      ------------------------------------------------------------------------------------------------------------------- */
-  --r-sm:   6px;   /* KapdhRadius.sm: CategoryChip, TagChip, blok skeleton */
-  --r-md:   10px;  /* KapdhRadius.md: tombol, field, OTP, kartu direktori, cover event */
-  --r-lg:   14px;  /* KapdhRadius.lg: kartu, banner, dialog, CardTheme */
-  --r-xl:   20px;  /* KapdhRadius.xl: lembar (sheet) dan bottom sheet, kartu profil Akun */
+  /* [v2] Skala radius disatukan menjadi 8 / 12 / 16 / 24 (skill flutter-ui-design: radius komponen seragam 12-16).
+     Literal lama 10 dan 14 yang berdekatan dilebur; --r-12 dan --r-16 kini sama dengan --r-md dan --r-lg. */
+  --r-sm:   8px;   /* KapdhRadius.sm: CategoryChip, TagChip, blok skeleton  [v2; dulu 6] */
+  --r-md:   12px;  /* KapdhRadius.md: tombol, field, OTP, kartu direktori, cover event  [v2; dulu 10] */
+  --r-lg:   16px;  /* KapdhRadius.lg: kartu, banner, CardTheme  [v2; dulu 14] */
+  --r-xl:   24px;  /* KapdhRadius.xl: lembar (sheet), bottom sheet, dialog, kartu profil Akun  [v2; dulu 20] */
   --r-pill: 999px; /* KapdhRadius.pill: badge, chip, indikator navigasi */
-  --r-12:   12px;  /* literal 12: InfoBox, UploadTile, MethodRadioCard, kotak QR KTA, FAB small */
-  --r-16:   16px;  /* literal 16: KtaCard; indikator NavigationBar (64x32, radius 16) */
+  --r-12:   var(--r-md); /* [v2 = r-md] literal 12: InfoBox, UploadTile, MethodRadioCard, kotak QR KTA, FAB small */
+  --r-16:   var(--r-lg); /* [v2 = r-lg] literal 16: KtaCard; indikator NavigationBar (64x32, radius 16) */
   --r-8:    8px;   /* literal KapdhSpace.s2 sebagai radius: ikon UploadTile 44 px */
-  --r-4:    4px;   /* Material 3: SnackBar, PopupMenu */
+  --r-4:    4px;   /* Material 3: SnackBar, PopupMenu (v2: keduanya kini --r-md; token tersisa untuk ekor gelembung chat) */
   --r-2:    2px;   /* Material 3: Checkbox */
 
   /* -------------------------------------------------------------------------------------------------------------------
@@ -226,6 +234,32 @@
   --elevation-3: 0 1px 3px rgba(0, 0, 0, .30), 0 4px 8px 3px rgba(0, 0, 0, .15); /* M3 level 3 (6 dp): SnackBar, FAB */
   --shadow-card:   0 1px 2px rgba(14, 40, 12, .06), 0 4px 12px rgba(14, 40, 12, .08); /* tokens.json shadow.card (web; tidak dipakai Flutter) */
   --shadow-raised: 0 8px 24px rgba(14, 40, 12, .16);                                  /* tokens.json shadow.raised (web) */
+
+  /* [v2 baru] Kedalaman lembut "Soft UI Evolution" (ui-ux-pro-max): bayangan berlapis bernada hijau gelap, kontras
+     rendah, menggantikan kartu datar bergaris yang nyaris menyatu dengan latar (putih vs latar lama = 1,04:1).
+     Flutter: BoxShadow di KapdhShadows (usulan token tokens.json shadow.*), CardTheme elevation 0 + dekorasi. */
+  --shadow-xs: 0 1px 2px rgba(14, 40, 12, .06);                                          /* chip terangkat, tombol tonal */
+  --shadow-sm: 0 1px 2px rgba(14, 40, 12, .04), 0 2px 8px rgba(14, 40, 12, .06);         /* kartu, field pencarian */
+  --shadow-md: 0 2px 4px rgba(14, 40, 12, .05), 0 8px 20px rgba(14, 40, 12, .08);        /* kartu menonjol, menu, kartu profil */
+  --shadow-lg: 0 4px 8px rgba(14, 40, 12, .08), 0 16px 40px rgba(14, 40, 12, .18);       /* dialog, snackbar, sheet */
+  --shadow-kta: 0 4px 8px rgba(2, 7, 2, .14), 0 14px 32px rgba(14, 40, 12, .28);         /* KtaCard / KtaMiniCard (kartu fisik) */
+  --shadow-primary-btn: 0 1px 2px rgba(14, 40, 12, .16), 0 4px 12px rgba(26, 75, 23, .24); /* KapdhButton gradasi */
+  --shadow-bar-top: 0 -1px 0 var(--color-divider), 0 -6px 20px rgba(14, 40, 12, .06);    /* navigasi bawah & bilah aksi bawah */
+  --ring-focus-field: 0 0 0 4px rgba(45, 122, 40, .16);                                  /* halo field fokus (di luar garis 2 px) */
+
+  /* [v2 baru] MOTION  (skill flutter-ui-design + ui-ux-pro-max: tap 100-150 ms, transisi layar 250-350 ms, easeOutCubic;
+     durasi berbeda per jarak/kompleksitas). Flutter: KapdhMotion.press/fast/base/slow + Curves.easeOutCubic. */
+  --dur-press: 100ms;  /* umpan balik tekan (state layer) */
+  --dur-fast:  150ms;  /* hover, warna, garis field */
+  --dur-base:  250ms;  /* indikator tab/navigasi, chip terpilih, titik carousel */
+  --dur-slow:  350ms;  /* sheet/dialog masuk */
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);         /* M3 standard (Easing.standard) */
+  --ease-out:      cubic-bezier(.215, .61, .355, 1);  /* Curves.easeOutCubic */
+
+  /* [v2 baru] STATE LAYER Material 3 (InkWell/overlayColor): lapisan warna konten di atas permukaan, tanpa menggeser
+     tata letak (ui-ux-pro-max: "pressed state tanpa layout shift"). */
+  --state-hover:   .08;
+  --state-pressed: .12;
 
   /* -------------------------------------------------------------------------------------------------------------------
      UKURAN  (KapdhSize.*, KapdhComponentSize.* | tokens.json size) + ukuran widget Material 3 terukur

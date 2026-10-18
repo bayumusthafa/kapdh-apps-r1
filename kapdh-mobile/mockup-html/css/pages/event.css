@@ -94,7 +94,7 @@
 .ev-participants__more { display: flex; justify-content: center; }
 
 /* _ActionBar / bilah bawah konfirmasi: surface, garis atas divider, SafeArea bawah, padding 20/12, catatan 12 muted */
-.ev-bar { position: relative; z-index: 2; flex: none; background: var(--color-surface); border-top: 1px solid var(--color-divider); padding: var(--s3) var(--s5) calc(var(--s3) + var(--inset-bottom)); }
+.ev-bar { position: relative; z-index: 2; flex: none; background: var(--color-surface); box-shadow: var(--shadow-bar-top); /* [v2: dulu border-top divider] */ padding: var(--s3) var(--s5) calc(var(--s3) + var(--inset-bottom)); }
 .ev-bar__note { margin-bottom: var(--s2); font-size: var(--fs-caption); color: var(--color-text-muted); text-align: center; }
 /* SnackBar mengambang di atas bilah bawah tanpa catatan: 1 + 12 + 52 + 12 = 77 + inset bawah */
 .ev-snackbar--above-bar { --snackbar-offset: calc(77px + var(--inset-bottom)); }
