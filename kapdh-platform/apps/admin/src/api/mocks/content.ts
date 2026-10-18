@@ -593,10 +593,10 @@ export function reset(): void {
         title: "Tentang KAPDH",
         system: true,
         seed_order: 4,
-        body_html: "<p>Keluarga Alumni Ponpes Darel Hikmah.</p>",
+        body_html: "<p>Keluarga Alumni Pesantren Darel Hikmah.</p>",
         published: {
           title: "Tentang KAPDH",
-          body_html: "<p>Keluarga Alumni Ponpes Darel Hikmah.</p>",
+          body_html: "<p>Keluarga Alumni Pesantren Darel Hikmah.</p>",
           version: 1,
           published_at: "2026-08-01T02:00:00Z",
         },

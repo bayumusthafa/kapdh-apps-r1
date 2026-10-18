@@ -62,7 +62,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 Image.asset('assets/logo-kapdh.png', width: 120, height: 120, semanticLabel: 'Logo KAPDH'),
                 const SizedBox(height: KapdhSpace.s4),
                 const Text(
-                  'Keluarga Alumni\nPonpes Darel Hikmah',
+                  'Keluarga Alumni\nPesantren Darel Hikmah',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: KapdhFontSize.bodyLg,
