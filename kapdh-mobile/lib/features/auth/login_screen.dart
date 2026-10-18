@@ -135,6 +135,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // yang tersisa (N-11).
       scrollable: true,
       header: BrandHeader(
+        motif: BrandMotif.waves,
         padding: const EdgeInsets.fromLTRB(KapdhSpace.s6, KapdhSpace.s4, KapdhSpace.s4, KapdhSpace.s8 + KapdhSpace.s4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

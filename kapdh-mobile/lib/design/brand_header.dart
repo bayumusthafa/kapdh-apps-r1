@@ -33,6 +33,75 @@ class BrandPatternPainter extends CustomPainter {
   bool shouldRepaint(BrandPatternPainter oldDelegate) => oldDelegate.color != color || oldDelegate.cell != cell;
 }
 
+/// Motif pita hijau [BrandHeader].
+enum BrandMotif {
+  /// Lingkaran bertumpuk tipis ([BrandPatternPainter]), bawaan.
+  quatrefoil,
+
+  /// Pita gelombang diagonal berkilau ([BrandWavePainter]); layar Masuk.
+  waves,
+}
+
+/// Pita gelombang lebar yang melengkung diagonal dari kiri atas ke kanan, putih tembus pandang dengan kilau ke kanan
+/// dan garis sorot tipis di tepi atas pita pertama (desain layar Masuk). Digambar relatif terhadap ukuran pita
+/// sehingga mengikuti tinggi header pada teks besar.
+class BrandWavePainter extends CustomPainter {
+  const BrandWavePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    if (w == 0 || h == 0) return;
+
+    // Cahaya lembut di kiri atas.
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = const RadialGradient(
+          center: Alignment(-0.4, -0.9),
+          radius: 0.9,
+          colors: [Color(0x14FFFFFF), Color(0x00FFFFFF)],
+        ).createShader(Offset.zero & size),
+    );
+
+    Paint sheen(double from, double to) => Paint()
+      ..shader = LinearGradient(
+        colors: [Color.fromRGBO(255, 255, 255, from), Color.fromRGBO(255, 255, 255, to)],
+      ).createShader(Offset.zero & size);
+
+    final first = Path()
+      ..moveTo(0, h * 0.10)
+      ..cubicTo(w * 0.35, h * 0.04, w * 0.55, h * 0.52, w, h * 0.40)
+      ..lineTo(w, h * 0.64)
+      ..cubicTo(w * 0.60, h * 0.80, w * 0.35, h * 0.24, 0, h * 0.36)
+      ..close();
+    canvas.drawPath(first, sheen(0.05, 0.12));
+
+    final second = Path()
+      ..moveTo(0, h * 0.48)
+      ..cubicTo(w * 0.30, h * 0.40, w * 0.62, h * 0.86, w, h * 0.72)
+      ..lineTo(w, h * 0.90)
+      ..cubicTo(w * 0.60, h * 1.02, w * 0.30, h * 0.60, 0, h * 0.68)
+      ..close();
+    canvas.drawPath(second, sheen(0.02, 0.06));
+
+    // Garis sorot di tepi atas pita pertama.
+    final highlight = Path()
+      ..moveTo(0, h * 0.10)
+      ..cubicTo(w * 0.35, h * 0.04, w * 0.55, h * 0.52, w, h * 0.40);
+    canvas.drawPath(
+      highlight,
+      sheen(0.04, 0.16)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+  }
+
+  @override
+  bool shouldRepaint(BrandWavePainter oldDelegate) => false;
+}
+
 /// Pita hijau bergradasi bermotif (guideline hal. 5; prototipe layar 1 sampai 5). Konten di dalamnya memakai warna
 /// teks terang. Inset status bar ditambahkan otomatis bila [includeTopInset].
 class BrandHeader extends StatelessWidget {
@@ -41,6 +110,7 @@ class BrandHeader extends StatelessWidget {
     this.child,
     this.padding = const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5),
     this.pattern = true,
+    this.motif = BrandMotif.quatrefoil,
     this.includeTopInset = true,
     this.minHeight = 0,
   });
@@ -48,6 +118,9 @@ class BrandHeader extends StatelessWidget {
   final Widget? child;
   final EdgeInsets padding;
   final bool pattern;
+
+  /// Motif yang digambar bila [pattern] aktif.
+  final BrandMotif motif;
   final bool includeTopInset;
   final double minHeight;
 
@@ -58,7 +131,12 @@ class BrandHeader extends StatelessWidget {
       constraints: BoxConstraints(minHeight: minHeight + top),
       decoration: const BoxDecoration(gradient: KapdhExtraColors.bandGradient),
       child: CustomPaint(
-        painter: pattern ? const BrandPatternPainter() : null,
+        painter: !pattern
+            ? null
+            : switch (motif) {
+                BrandMotif.quatrefoil => const BrandPatternPainter(),
+                BrandMotif.waves => const BrandWavePainter(),
+              },
         child: Padding(
           padding: padding.copyWith(top: padding.top + top),
           child: child,
