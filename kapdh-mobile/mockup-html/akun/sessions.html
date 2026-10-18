@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sesi Perangkat - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Sesi Perangkat aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/akun.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <nav class="page-header__nav" aria-label="Layar grup Akun">
+      <a href="account.html">Akun</a>
+      <a href="profile-edit.html">Ubah Profil</a>
+      <a href="privacy.html">Privasi Profil</a>
+      <a href="notification-preferences.html">Preferensi Notifikasi</a>
+      <a href="sessions.html" aria-current="page">Sesi Perangkat</a>
+      <a href="change-password.html">Ganti Password</a>
+      <a href="delete-account.html">Hapus Akun</a>
+      <a href="blocked-users.html">Pengguna Diblokir</a>
+      <a href="my-reports.html">Laporan Saya</a>
+    </nav>
+    <h1 class="page-header__title">Sesi Perangkat</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/account/sessions_screen.dart</code> (SessionsScreen, _tile) + <code>widgets/account_section.dart</code></dd>
+      <dt>Rute</dt><dd><code>/account/sessions</code> (rute di luar cangkang: juga dibuka anggota Dibatasi dan dari notifikasi keamanan)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama: perangkat ini + 2 perangkat lain</li>
+        <li>Tidak ada perangkat lain</li>
+        <li>Mengeluarkan satu perangkat + halaman berikut</li>
+        <li>Snackbar setelah perangkat dikeluarkan</li>
+        <li>Dialog keluarkan perangkat lain</li>
+        <li>Dialog keluar dari perangkat ini</li>
+        <li>Dialog keluar dari semua perangkat</li>
+        <li>Mengeluarkan semua perangkat</li>
+        <li>Memuat</li>
+        <li>Galat memuat</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Satu baris per keluarga sesi; perangkat ini paling atas, lalu aktivitas terbaru. Tidak ada token maupun IP. Nama perangkat dari server; tanpa nama: "Perangkat Android", "Perangkat iOS", "Peramban web" atau "Perangkat tidak dikenal". Ikon computer untuk web, smartphone lainnya. Gulir tarik untuk memuat ulang (RefreshIndicator).</p>
+  </header>
+
+  <main class="frames">
+
+    <h2 class="frames__group-title">Daftar sesi</h2>
+
+    <figure class="frame" id="frame-1">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama: perangkat ini + 2 perangkat lain</figcaption>
+      <div class="device" role="group" aria-label="Sesi Perangkat, keadaan utama">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Sesi Perangkat</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Keluarkan perangkat yang tidak Anda kenali, lalu ganti password Anda. Mengganti password juga mengeluarkan semua perangkat lain.</p></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-1">
+                    <h3 class="account-section__title" id="sec-1">PERANGKAT INI</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Samsung Galaxy A54</p>
+                          <p class="akun-session__meta">Android · versi 1.0.0</p>
+                          <p class="akun-session__meta">Aktif sekarang</p>
+                          <p class="akun-session__meta">Masuk 1 Okt 2026, 07.30 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluar</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-2">
+                    <h3 class="account-section__title" id="sec-2">PERANGKAT LAIN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">iPhone 13</p>
+                          <p class="akun-session__meta">iOS · versi 1.0.0</p>
+                          <p class="akun-session__meta">Terakhir aktif 2 jam lalu</p>
+                          <p class="akun-session__meta">Masuk 20 Sep 2026, 19.05 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluarkan</button>
+                      </div>
+                      <div class="akun-session">
+                        <span class="ic ic-computer" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Peramban web</p>
+                          <p class="akun-session__meta">Web</p>
+                          <p class="akun-session__meta">Terakhir aktif kemarin, 21.40 WIB</p>
+                          <p class="akun-session__meta">Masuk 15 Okt 2026, 09.12 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluarkan</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar dari semua perangkat</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-2">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Tidak ada perangkat lain</figcaption>
+      <div class="device" role="group" aria-label="Sesi Perangkat, tanpa perangkat lain">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Sesi Perangkat</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Keluarkan perangkat yang tidak Anda kenali, lalu ganti password Anda. Mengganti password juga mengeluarkan semua perangkat lain.</p></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-3">
+                    <h3 class="account-section__title" id="sec-3">PERANGKAT INI</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Samsung Galaxy A54</p>
+                          <p class="akun-session__meta">Android · versi 1.0.0</p>
+                          <p class="akun-session__meta">Aktif sekarang</p>
+                          <p class="akun-session__meta">Masuk 1 Okt 2026, 07.30 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluar</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-4">
+                    <h3 class="account-section__title" id="sec-4">PERANGKAT LAIN</h3>
+                    <div class="account-section__card">
+                      <p class="akun-session-empty">Tidak ada perangkat lain yang masuk ke akun Anda.</p>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar dari semua perangkat</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-3">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Mengeluarkan satu perangkat + halaman berikut</figcaption>
+      <div class="device" role="group" aria-label="Sesi Perangkat, mengeluarkan perangkat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Sesi Perangkat</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Keluarkan perangkat yang tidak Anda kenali, lalu ganti password Anda. Mengganti password juga mengeluarkan semua perangkat lain.</p></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-5">
+                    <h3 class="account-section__title" id="sec-5">PERANGKAT INI</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Samsung Galaxy A54</p>
+                          <p class="akun-session__meta">Android · versi 1.0.0</p>
+                          <p class="akun-session__meta">Aktif sekarang</p>
+                          <p class="akun-session__meta">Masuk 1 Okt 2026, 07.30 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluar</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-6">
+                    <h3 class="account-section__title" id="sec-6">PERANGKAT LAIN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">iPhone 13</p>
+                          <p class="akun-session__meta">iOS · versi 1.0.0</p>
+                          <p class="akun-session__meta">Terakhir aktif 2 jam lalu</p>
+                          <p class="akun-session__meta">Masuk 20 Sep 2026, 19.05 WIB</p>
+                        </div>
+                        <span class="akun-session__busy" role="status" aria-label="Mengeluarkan"><span class="spinner spinner--20" aria-hidden="true"></span></span>
+                      </div>
+                      <div class="akun-session">
+                        <span class="ic ic-computer" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Peramban web</p>
+                          <p class="akun-session__meta">Web</p>
+                          <p class="akun-session__meta">Terakhir aktif kemarin, 21.40 WIB</p>
+                          <p class="akun-session__meta">Masuk 15 Okt 2026, 09.12 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluarkan</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="center"><button class="btn-link" type="button">Muat perangkat lain</button></div>
+                <div class="mt-6"><button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar dari semua perangkat</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Spinner 20 menggantikan tombol pada baris yang dicabut. "Muat perangkat lain" muncul bila next_cursor ada (saat memuat: CircularProgressIndicator).</p>
+    </figure>
+
+    <figure class="frame" id="frame-4">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Snackbar setelah perangkat dikeluarkan</figcaption>
+      <div class="device" role="group" aria-label="Sesi Perangkat, perangkat dikeluarkan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Sesi Perangkat</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Keluarkan perangkat yang tidak Anda kenali, lalu ganti password Anda. Mengganti password juga mengeluarkan semua perangkat lain.</p></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-7">
+                    <h3 class="account-section__title" id="sec-7">PERANGKAT INI</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Samsung Galaxy A54</p>
+                          <p class="akun-session__meta">Android · versi 1.0.0</p>
+                          <p class="akun-session__meta">Aktif sekarang</p>
+                          <p class="akun-session__meta">Masuk 1 Okt 2026, 07.30 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluar</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-8">
+                    <h3 class="account-section__title" id="sec-8">PERANGKAT LAIN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-computer" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Peramban web</p>
+                          <p class="akun-session__meta">Web</p>
+                          <p class="akun-session__meta">Terakhir aktif kemarin, 21.40 WIB</p>
+                          <p class="akun-session__meta">Masuk 15 Okt 2026, 09.12 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluarkan</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar dari semua perangkat</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">iPhone 13 sudah dikeluarkan.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Sesi yang ternyata sudah dicabut (404): "Sesi perangkat itu sudah tidak berlaku."</p>
+    </figure>
+
+    <h2 class="frames__group-title">Dialog konfirmasi</h2>
+
+    <figure class="frame" id="frame-5">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Dialog keluarkan perangkat lain</figcaption>
+      <div class="device" role="group" aria-label="Sesi Perangkat, dialog keluarkan perangkat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Sesi Perangkat</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Keluarkan perangkat yang tidak Anda kenali, lalu ganti password Anda. Mengganti password juga mengeluarkan semua perangkat lain.</p></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-9">
+                    <h3 class="account-section__title" id="sec-9">PERANGKAT INI</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Samsung Galaxy A54</p>
+                          <p class="akun-session__meta">Android · versi 1.0.0</p>
+                          <p class="akun-session__meta">Aktif sekarang</p>
+                          <p class="akun-session__meta">Masuk 1 Okt 2026, 07.30 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluar</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-10">
+                    <h3 class="account-section__title" id="sec-10">PERANGKAT LAIN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">iPhone 13</p>
+                          <p class="akun-session__meta">iOS · versi 1.0.0</p>
+                          <p class="akun-session__meta">Terakhir aktif 2 jam lalu</p>
+                          <p class="akun-session__meta">Masuk 20 Sep 2026, 19.05 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluarkan</button>
+                      </div>
+                      <div class="akun-session">
+                        <span class="ic ic-computer" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Peramban web</p>
+                          <p class="akun-session__meta">Web</p>
+                          <p class="akun-session__meta">Terakhir aktif kemarin, 21.40 WIB</p>
+                          <p class="akun-session__meta">Masuk 15 Okt 2026, 09.12 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluarkan</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar dari semua perangkat</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-11">
+          <h3 class="dialog__title" id="dlg-11">Keluarkan perangkat?</h3>
+          <div class="dialog__content c-muted">
+            <p>iPhone 13 akan dikeluarkan dari akun Anda dan perlu masuk ulang. Notifikasi push ke perangkat itu dihentikan.</p>
+          </div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text btn-text--danger" type="button">Keluarkan</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-6">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Dialog keluar dari perangkat ini</figcaption>
+      <div class="device" role="group" aria-label="Sesi Perangkat, dialog keluar dari perangkat ini">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Sesi Perangkat</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Keluarkan perangkat yang tidak Anda kenali, lalu ganti password Anda. Mengganti password juga mengeluarkan semua perangkat lain.</p></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-12">
+                    <h3 class="account-section__title" id="sec-12">PERANGKAT INI</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Samsung Galaxy A54</p>
+                          <p class="akun-session__meta">Android · versi 1.0.0</p>
+                          <p class="akun-session__meta">Aktif sekarang</p>
+                          <p class="akun-session__meta">Masuk 1 Okt 2026, 07.30 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluar</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-13">
+                    <h3 class="account-section__title" id="sec-13">PERANGKAT LAIN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">iPhone 13</p>
+                          <p class="akun-session__meta">iOS · versi 1.0.0</p>
+                          <p class="akun-session__meta">Terakhir aktif 2 jam lalu</p>
+                          <p class="akun-session__meta">Masuk 20 Sep 2026, 19.05 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluarkan</button>
+                      </div>
+                      <div class="akun-session">
+                        <span class="ic ic-computer" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Peramban web</p>
+                          <p class="akun-session__meta">Web</p>
+                          <p class="akun-session__meta">Terakhir aktif kemarin, 21.40 WIB</p>
+                          <p class="akun-session__meta">Masuk 15 Okt 2026, 09.12 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluarkan</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar dari semua perangkat</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-14">
+          <h3 class="dialog__title" id="dlg-14">Keluar dari perangkat ini?</h3>
+          <div class="dialog__content c-muted">
+            <p>Anda perlu masuk ulang. Cache KTA dan data akun di perangkat ini dihapus.</p>
+          </div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text btn-text--danger" type="button">Keluar</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-7">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Dialog keluar dari semua perangkat</figcaption>
+      <div class="device" role="group" aria-label="Sesi Perangkat, dialog keluar dari semua perangkat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Sesi Perangkat</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Keluarkan perangkat yang tidak Anda kenali, lalu ganti password Anda. Mengganti password juga mengeluarkan semua perangkat lain.</p></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-15">
+                    <h3 class="account-section__title" id="sec-15">PERANGKAT INI</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Samsung Galaxy A54</p>
+                          <p class="akun-session__meta">Android · versi 1.0.0</p>
+                          <p class="akun-session__meta">Aktif sekarang</p>
+                          <p class="akun-session__meta">Masuk 1 Okt 2026, 07.30 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluar</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-16">
+                    <h3 class="account-section__title" id="sec-16">PERANGKAT LAIN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">iPhone 13</p>
+                          <p class="akun-session__meta">iOS · versi 1.0.0</p>
+                          <p class="akun-session__meta">Terakhir aktif 2 jam lalu</p>
+                          <p class="akun-session__meta">Masuk 20 Sep 2026, 19.05 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluarkan</button>
+                      </div>
+                      <div class="akun-session">
+                        <span class="ic ic-computer" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Peramban web</p>
+                          <p class="akun-session__meta">Web</p>
+                          <p class="akun-session__meta">Terakhir aktif kemarin, 21.40 WIB</p>
+                          <p class="akun-session__meta">Masuk 15 Okt 2026, 09.12 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluarkan</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar dari semua perangkat</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-17">
+          <h3 class="dialog__title" id="dlg-17">Keluar dari semua perangkat?</h3>
+          <div class="dialog__content c-muted">
+            <p>Semua perangkat, termasuk perangkat ini, akan dikeluarkan dan perlu masuk ulang. Gunakan bila Anda kehilangan perangkat atau melihat perangkat yang tidak dikenal.</p>
+          </div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text btn-text--danger" type="button">Keluar semua</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-8">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Mengeluarkan semua perangkat</figcaption>
+      <div class="device" role="group" aria-label="Sesi Perangkat, mengeluarkan semua perangkat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Sesi Perangkat</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Keluarkan perangkat yang tidak Anda kenali, lalu ganti password Anda. Mengganti password juga mengeluarkan semua perangkat lain.</p></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-18">
+                    <h3 class="account-section__title" id="sec-18">PERANGKAT INI</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Samsung Galaxy A54</p>
+                          <p class="akun-session__meta">Android · versi 1.0.0</p>
+                          <p class="akun-session__meta">Aktif sekarang</p>
+                          <p class="akun-session__meta">Masuk 1 Okt 2026, 07.30 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluar</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-19">
+                    <h3 class="account-section__title" id="sec-19">PERANGKAT LAIN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-session">
+                        <span class="ic ic-smartphone" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">iPhone 13</p>
+                          <p class="akun-session__meta">iOS · versi 1.0.0</p>
+                          <p class="akun-session__meta">Terakhir aktif 2 jam lalu</p>
+                          <p class="akun-session__meta">Masuk 20 Sep 2026, 19.05 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluarkan</button>
+                      </div>
+                      <div class="akun-session">
+                        <span class="ic ic-computer" aria-hidden="true"></span>
+                        <div class="akun-session__body">
+                          <p class="akun-session__name">Peramban web</p>
+                          <p class="akun-session__meta">Web</p>
+                          <p class="akun-session__meta">Terakhir aktif kemarin, 21.40 WIB</p>
+                          <p class="akun-session__meta">Masuk 15 Okt 2026, 09.12 WIB</p>
+                        </div>
+                        <button class="btn-text btn-text--danger" type="button">Keluarkan</button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--outline is-busy" type="button" disabled><span class="spinner spinner--18" aria-hidden="true"></span>Mengeluarkan...</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Berhasil: kembali ke halaman masuk. Gagal: sesi lokal tidak diubah dan ErrorPresenter menampilkan galat dengan "Coba lagi".</p>
+    </figure>
+
+    <h2 class="frames__group-title">Memuat dan galat</h2>
+
+    <figure class="frame" id="frame-9">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Memuat</figcaption>
+      <div class="device" role="group" aria-label="Sesi Perangkat, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Sesi Perangkat</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="skeleton" role="status" aria-label="Memuat sesi perangkat">
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-10">
+      <figcaption class="frame__label"><span class="frame__num">10</span> Galat memuat</figcaption>
+      <div class="device" role="group" aria-label="Sesi Perangkat, galat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Sesi Perangkat</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off"></span></div>
+              <h3 class="state__title">Tidak ada koneksi</h3>
+              <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+  </main>
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grup Baru - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Grup Baru (buat grup chat) aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/jejaring.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+      <a href="chat-list.html">Tab Pesan Grup</a>
+      <a href="member-picker.html">Pemilih alumni</a>
+      <a href="chat-room.html">Percakapan</a>
+    </nav>
+    <h1 class="page-header__title">Grup Baru</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/chat/new_group_screen.dart</code> (NewGroupScreen, inviteSkipLabel, inviteSkipSummary)</dd>
+      <dt>Rute</dt><dd><code>/chat/new-group</code> (dari "Buat grup" di tab Pesan Grup; ditolak router bila status akun tidak aktif)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Awal</li>
+        <li>Terisi</li>
+        <li>Validasi nama</li>
+        <li>Mengetik nama + keyboard</li>
+        <li>Membuat grup</li>
+        <li>Sebagian undangan tidak terkirim</li>
+      </ol>
+    </div>
+    <p class="page-header__note">AppScaffold "Grup Baru", ListView padding 20. Pembuat menjadi admin; alumni yang dipilih menerima undangan dan harus menerimanya sendiri. Galat foto: "Gunakan foto JPG atau PNG.", "Ukuran foto maksimal 5 MB.".</p>
+  </header>
+
+  <main class="frames">
+
+    <!-- 1. Awal -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Awal</figcaption>
+      <div class="device" aria-label="Grup Baru, awal">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Grup Baru</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <form class="jj-form" aria-label="Grup Baru">
+              <div class="jj-avatar-pick"><button type="button" aria-label="Pilih foto grup"><span class="avatar jj-avatar-88" aria-hidden="true"><span class="ic ic-add_a_photo_outlined"></span></span></button></div>
+              <p class="jj-caption-center">Foto grup (opsional)</p>
+              <div class="field mt-5">
+                <label class="field__label" for="ng1-name">Nama grup <span class="field__req">*</span></label>
+                <div class="input"><input class="input__control" id="ng1-name" maxlength="80" placeholder="Contoh: Angkatan 29"></div>
+              </div>
+              <div class="section-header mt-5"><h3 class="section-header__title">Undang alumni (0)</h3><button class="btn-text" type="button">Pilih alumni</button></div>
+              <p class="c-muted">Belum ada alumni yang dipilih. Anda juga dapat mengundang setelah grup dibuat.</p>
+              <div class="mt-4"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
+              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ic-group_add" aria-hidden="true"></span>Buat grup</button></div>
+            </form>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Avatar 88 green100 dengan ikon add_a_photo_outlined 44 (ketuk untuk memilih dari galeri). Field KapdhTextField wajib (*) maks 80. SectionHeader dengan TextButton "Pilih alumni".</p>
+    </figure>
+
+    <!-- 2. Terisi -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Terisi</figcaption>
+      <div class="device" aria-label="Grup Baru, terisi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Grup Baru</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <form class="jj-form" aria-label="Grup Baru">
+              <div class="jj-avatar-pick"><button type="button" aria-label="Ganti foto grup"><span class="avatar jj-avatar-88"><img class="jj-avatar-img" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></span></button></div>
+              <p class="jj-caption-center">Foto grup (opsional)</p>
+              <div class="field mt-5">
+                <label class="field__label" for="ng2-name">Nama grup <span class="field__req">*</span></label>
+                <div class="input"><input class="input__control" id="ng2-name" maxlength="80" placeholder="Contoh: Angkatan 29" value="Panitia Reuni Akbar"></div>
+              </div>
+              <div class="section-header mt-5"><h3 class="section-header__title">Undang alumni (3)</h3><button class="btn-text" type="button">Pilih alumni</button></div>
+              <div class="jj-chips"><span class="jj-input-chip">Siti Rahmah<button class="icon-btn" type="button" aria-label="Hapus Siti Rahmah"><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip">Muhammad Rizki<button class="icon-btn" type="button" aria-label="Hapus Muhammad Rizki"><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip">Dewi Lestari<button class="icon-btn" type="button" aria-label="Hapus Dewi Lestari"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
+              <div class="mt-4"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
+              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ic-group_add" aria-hidden="true"></span>Buat grup</button></div>
+            </form>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Calon anggota tampil sebagai InputChip bawaan M3: dengan chipTheme (side: none) chip TIDAK berlatar dan TIDAK bergaris, hanya label abu 14 w600 + ikon hapus 18 (terukur). Kandidat redesain.</p>
+    </figure>
+
+    <!-- 3. Validasi nama -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Validasi nama</figcaption>
+      <div class="device" aria-label="Grup Baru, nama kosong">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Grup Baru</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <form class="jj-form" aria-label="Grup Baru">
+              <div class="jj-avatar-pick"><button type="button" aria-label="Pilih foto grup"><span class="avatar jj-avatar-88" aria-hidden="true"><span class="ic ic-add_a_photo_outlined"></span></span></button></div>
+              <p class="jj-caption-center">Foto grup (opsional)</p>
+              <div class="field mt-5">
+                <label class="field__label" for="ng3-name">Nama grup <span class="field__req">*</span></label>
+                <div class="input is-error"><input class="input__control" id="ng3-name" maxlength="80" placeholder="Contoh: Angkatan 29" aria-invalid="true" aria-describedby="${id}-name-err"></div>
+                <p class="field__error" id="ng3-name-err">Nama grup wajib diisi.</p>
+              </div>
+              <div class="section-header mt-5"><h3 class="section-header__title">Undang alumni (1)</h3><button class="btn-text" type="button">Pilih alumni</button></div>
+              <div class="jj-chips"><span class="jj-input-chip">Siti Rahmah<button class="icon-btn" type="button" aria-label="Hapus Siti Rahmah"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
+              <div class="mt-4"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
+              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ic-group_add" aria-hidden="true"></span>Buat grup</button></div>
+            </form>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Galat lain: "Nama grup maksimal 80 karakter." atau galat server field name.</p>
+    </figure>
+
+    <!-- 4. Mengetik nama + keyboard -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Mengetik nama + keyboard</figcaption>
+      <div class="device" aria-label="Grup Baru, mengetik nama">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen jj-screen--kb">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Grup Baru</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <form class="jj-form" aria-label="Grup Baru">
+              <div class="jj-avatar-pick"><button type="button" aria-label="Pilih foto grup"><span class="avatar jj-avatar-88" aria-hidden="true"><span class="ic ic-add_a_photo_outlined"></span></span></button></div>
+              <p class="jj-caption-center">Foto grup (opsional)</p>
+              <div class="field mt-5">
+                <label class="field__label" for="ng4-name">Nama grup <span class="field__req">*</span></label>
+                <div class="input is-focused"><input class="input__control" id="ng4-name" maxlength="80" placeholder="Contoh: Angkatan 29" value="Panitia Reu"></div>
+              </div>
+              <div class="section-header mt-5"><h3 class="section-header__title">Undang alumni (0)</h3><button class="btn-text" type="button">Pilih alumni</button></div>
+              <p class="c-muted">Belum ada alumni yang dipilih. Anda juga dapat mengundang setelah grup dibuat.</p>
+              <div class="mt-4"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
+              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ic-group_add" aria-hidden="true"></span>Buat grup</button></div>
+            </form>
+          </div>
+        </div>
+        <div class="keyboard" aria-hidden="true">
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key jj-key-space"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 5. Membuat grup -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Membuat grup</figcaption>
+      <div class="device" aria-label="Grup Baru, sedang membuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Grup Baru</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <form class="jj-form" aria-label="Grup Baru">
+              <div class="jj-avatar-pick"><button type="button" aria-label="Ganti foto grup"><span class="avatar jj-avatar-88"><img class="jj-avatar-img" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></span></button></div>
+              <p class="jj-caption-center">Foto grup (opsional)</p>
+              <div class="field mt-5">
+                <label class="field__label" for="ng5-name">Nama grup <span class="field__req">*</span></label>
+                <div class="input"><input class="input__control" id="ng5-name" maxlength="80" placeholder="Contoh: Angkatan 29" value="Panitia Reuni Akbar"></div>
+              </div>
+              <div class="section-header mt-5"><h3 class="section-header__title">Undang alumni (3)</h3><button class="btn-text" type="button" disabled>Pilih alumni</button></div>
+              <div class="jj-chips"><span class="jj-input-chip is-disabled">Siti Rahmah<button class="icon-btn" type="button" aria-label="Hapus Siti Rahmah" disabled><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip is-disabled">Muhammad Rizki<button class="icon-btn" type="button" aria-label="Hapus Muhammad Rizki" disabled><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip is-disabled">Dewi Lestari<button class="icon-btn" type="button" aria-label="Hapus Dewi Lestari" disabled><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
+              <div class="mt-4"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
+              <div class="mt-6"><button class="btn btn--primary is-busy" type="button" disabled><span class="spinner spinner--18" aria-hidden="true"></span>Membuat grup</button></div>
+            </form>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Unggah foto (bila ada) lalu POST grup. Tombol, foto, chip dan "Pilih alumni" nonaktif. Setelah dibuat formulir terkunci agar tidak membuat grup kedua.</p>
+    </figure>
+
+    <!-- 6. Sebagian undangan tidak terkirim -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Sebagian undangan tidak terkirim</figcaption>
+      <div class="device" aria-label="Grup Baru, dialog undangan dilewati">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Grup Baru</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <form class="jj-form" aria-label="Grup Baru">
+              <div class="jj-avatar-pick"><button type="button" aria-label="Ganti foto grup"><span class="avatar jj-avatar-88"><img class="jj-avatar-img" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></span></button></div>
+              <p class="jj-caption-center">Foto grup (opsional)</p>
+              <div class="field mt-5">
+                <label class="field__label" for="ng6-name">Nama grup <span class="field__req">*</span></label>
+                <div class="input"><input class="input__control" id="ng6-name" maxlength="80" placeholder="Contoh: Angkatan 29" value="Panitia Reuni Akbar"></div>
+              </div>
+              <div class="section-header mt-5"><h3 class="section-header__title">Undang alumni (3)</h3><button class="btn-text" type="button">Pilih alumni</button></div>
+              <div class="jj-chips"><span class="jj-input-chip">Siti Rahmah<button class="icon-btn" type="button" aria-label="Hapus Siti Rahmah"><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip">Muhammad Rizki<button class="icon-btn" type="button" aria-label="Hapus Muhammad Rizki"><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip">Dewi Lestari<button class="icon-btn" type="button" aria-label="Hapus Dewi Lestari"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
+              <div class="mt-4"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
+              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ic-group_add" aria-hidden="true"></span>Buat grup</button></div>
+            </form>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ng6-title">
+          <h3 class="dialog__title" id="ng6-title">Sebagian undangan tidak terkirim</h3>
+          <div class="dialog__content"><p class="c-muted">Dewi Lestari: tidak dapat diundang</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Tutup</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Alasan: "sudah menjadi anggota", "sudah diundang", "grup sudah penuh (100 anggota)", selain itu "tidak dapat diundang". Tanpa yang dilewati: snackbar "Grup dibuat. N undangan terkirim." lalu membuka percakapan.</p>
+    </figure>
+
+  </main>
+</body>
+</html>

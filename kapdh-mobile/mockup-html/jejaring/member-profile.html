@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profil Alumni - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Profil Alumni (direktori Jejaring) aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/jejaring.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+      <a href="network.html">Tab Jejaring</a>
+      <a href="report-sheet.html">Lembar laporan</a>
+      <a href="chat-room.html">Percakapan</a>
+    </nav>
+    <h1 class="page-header__title">Profil Alumni</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/network/member_profile_screen.dart</code> (MemberProfileScreen, _ProfileView, _MessageArea, _PhoneLink, _SocialLink), <code>moderation_actions.dart</code> (confirmBlock, confirmUnblock), <code>report_sheet.dart</code>, <code>widgets/alumni_avatar.dart</code>, <code>widgets/tag_chip.dart</code></dd>
+      <dt>Rute</dt><dd><code>/network/members/:userId</code> (navigator akar, di luar AppShell)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama</li>
+        <li>Gulir penuh</li>
+        <li>Menu tindakan</li>
+        <li>Dialog blokir</li>
+        <li>Diblokir + snackbar</li>
+        <li>Menu saat diblokir</li>
+        <li>Dialog buka blokir</li>
+        <li>Kontak tersembunyi, pesan belum tersedia</li>
+        <li>Membuka percakapan</li>
+        <li>Profil sendiri (pratinjau)</li>
+        <li>Lembar laporan pengguna</li>
+        <li>Snackbar salin nomor</li>
+        <li>Memuat</li>
+        <li>Profil tidak tersedia</li>
+        <li>Galat</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Scaffold putih (surface) tanpa app bar: BrandHeader hijau bermotif setinggi 112 + status bar, ikut bergulir (SliverToBoxAdapter). Pita global Offline/Pemeliharaan, bila ada, tampil tepat di bawah pita hijau. Skill memakai TagChip biru, Profesi TagChip hijau. Data contoh fiktif.</p>
+  </header>
+
+  <main class="frames">
+
+    <!-- 1. Utama -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama</figcaption>
+      <div class="device" aria-label="Profil alumni, keadaan utama">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body">
+            <header class="brand-band brand-band--pattern jj-profile-band">
+              <button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button>
+              <button class="icon-btn" type="button" aria-label="Tindakan lain" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button>
+            </header>
+            <div class="jj-profile-head">
+              <span class="avatar avatar--72" aria-hidden="true">SR</span>
+              <div class="jj-profile-head__text">
+                <h2 class="jj-profile-name">Siti Rahmah</h2>
+                <a class="jj-icon-line" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span>siti.rahmah@contoh.id</span></a>
+                <p class="jj-icon-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Pekanbaru</span></p>
+              </div>
+            </div>
+            <div class="jj-sections">
+              <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ic-call_outlined" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ic-alternate_email" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ic-facebook" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ic-work_outline" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+                  </div></div></section>
+            </div>
+          </div>
+          <div class="jj-profile-bottom"><button class="btn btn--outline" type="button"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span>Kirim Pesan</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">BrandHeader(minHeight 112) bermotif dengan tombol kembali dan menu titik tiga putih; avatar 72 + nama 20 w700. Bagian dipisah Divider(height 24). "Kirim Pesan" (KapdhButton.outlined) tetap di bawah, di luar gulir.</p>
+    </figure>
+
+    <!-- 2. Gulir penuh -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh</figcaption>
+      <div class="device device--tall" aria-label="Profil alumni, seluruh isi">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body">
+            <header class="brand-band brand-band--pattern jj-profile-band">
+              <button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button>
+              <button class="icon-btn" type="button" aria-label="Tindakan lain" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button>
+            </header>
+            <div class="jj-profile-head">
+              <span class="avatar avatar--72" aria-hidden="true">SR</span>
+              <div class="jj-profile-head__text">
+                <h2 class="jj-profile-name">Siti Rahmah</h2>
+                <a class="jj-icon-line" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span>siti.rahmah@contoh.id</span></a>
+                <p class="jj-icon-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Pekanbaru</span></p>
+              </div>
+            </div>
+            <div class="jj-sections">
+              <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ic-call_outlined" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ic-alternate_email" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ic-facebook" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ic-work_outline" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+                  </div></div></section>
+            </div>
+          </div>
+          <div class="jj-profile-bottom"><button class="btn btn--outline" type="button"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span>Kirim Pesan</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Kontak (email, nomor telpon, social media) hanya tampil bila pemilik mengizinkan; nomor telpon diketuk untuk menelepon dan ditekan lama untuk menyalin. Social media dibuka hanya sebagai tautan https.</p>
+    </figure>
+
+    <!-- 3. Menu tindakan -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Menu tindakan</figcaption>
+      <div class="device" aria-label="Profil alumni, menu tindakan terbuka">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body">
+            <header class="brand-band brand-band--pattern jj-profile-band">
+              <button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button>
+              <button class="icon-btn" type="button" aria-label="Tindakan lain" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button>
+            </header>
+            <div class="jj-profile-head">
+              <span class="avatar avatar--72" aria-hidden="true">SR</span>
+              <div class="jj-profile-head__text">
+                <h2 class="jj-profile-name">Siti Rahmah</h2>
+                <a class="jj-icon-line" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span>siti.rahmah@contoh.id</span></a>
+                <p class="jj-icon-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Pekanbaru</span></p>
+              </div>
+            </div>
+            <div class="jj-sections">
+              <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ic-call_outlined" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ic-alternate_email" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ic-facebook" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ic-work_outline" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+                  </div></div></section>
+            </div>
+          </div>
+          <div class="jj-profile-bottom"><button class="btn btn--outline" type="button"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span>Kirim Pesan</button></div>
+        </div>
+        <div class="popup-menu jj-popup jj-popup--profile" role="menu" aria-label="Tindakan lain">
+          <button class="popup-menu__item" type="button" role="menuitem">Blokir</button>
+          <button class="popup-menu__item" type="button" role="menuitem">Laporkan</button>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">PopupMenuButton (tooltip "Tindakan lain"): menu surfaceContainer radius 4 menempel tombol, lebar 112. Tidak tampil di profil sendiri.</p>
+    </figure>
+
+    <!-- 4. Dialog blokir -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Dialog blokir</figcaption>
+      <div class="device" aria-label="Profil alumni, konfirmasi blokir">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body">
+            <header class="brand-band brand-band--pattern jj-profile-band">
+              <button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button>
+              <button class="icon-btn" type="button" aria-label="Tindakan lain" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button>
+            </header>
+            <div class="jj-profile-head">
+              <span class="avatar avatar--72" aria-hidden="true">SR</span>
+              <div class="jj-profile-head__text">
+                <h2 class="jj-profile-name">Siti Rahmah</h2>
+                <a class="jj-icon-line" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span>siti.rahmah@contoh.id</span></a>
+                <p class="jj-icon-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Pekanbaru</span></p>
+              </div>
+            </div>
+            <div class="jj-sections">
+              <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ic-call_outlined" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ic-alternate_email" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ic-facebook" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ic-work_outline" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+                  </div></div></section>
+            </div>
+          </div>
+          <div class="jj-profile-bottom"><button class="btn btn--outline" type="button"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span>Kirim Pesan</button></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="p4-title">
+          <h3 class="dialog__title" id="p4-title">Blokir Siti Rahmah?</h3>
+          <div class="dialog__content"><p class="c-muted">Anda dan Siti Rahmah tidak dapat saling mengirim pesan langsung, reaksi di percakapan langsung, atau undangan grup. Riwayat pesan lama tetap tersimpan, dan Siti Rahmah tidak diberi tahu. Di grup yang sama, gunakan bisukan atau laporan.</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text" type="button">Blokir</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">confirmBlock (moderation_actions.dart). Kedua aksi TextButton hijau; tidak ada penanda bahaya pada "Blokir".</p>
+    </figure>
+
+    <!-- 5. Diblokir + snackbar -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Diblokir + snackbar</figcaption>
+      <div class="device" aria-label="Profil alumni, pengguna diblokir">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body">
+            <header class="brand-band brand-band--pattern jj-profile-band">
+              <button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button>
+              <button class="icon-btn" type="button" aria-label="Tindakan lain" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button>
+            </header>
+            <div class="jj-profile-head">
+              <span class="avatar avatar--72" aria-hidden="true">SR</span>
+              <div class="jj-profile-head__text">
+                <h2 class="jj-profile-name">Siti Rahmah</h2>
+                <a class="jj-icon-line" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span>siti.rahmah@contoh.id</span></a>
+                <p class="jj-icon-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Pekanbaru</span></p>
+              </div>
+            </div>
+            <div class="jj-sections">
+              <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ic-call_outlined" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ic-alternate_email" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ic-facebook" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ic-work_outline" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+                  </div></div></section>
+            </div>
+          </div>
+          <div class="jj-profile-bottom"><div class="info-box info-box--warning"><span class="ic ic-block" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Anda memblokir Siti Rahmah. Buka blokir untuk kembali saling mengirim pesan.</p></div><button class="btn-text info-box__trailing" type="button">Buka blokir</button></div></div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">Siti Rahmah diblokir.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Setelah blokir: area bawah menjadi InfoBox peringatan (ikon block) dengan "Buka blokir"; menu berisi "Buka blokir" dan "Laporkan". Snackbar dari ScaffoldMessenger akar.</p>
+    </figure>
+
+    <!-- 6. Menu saat diblokir -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Menu saat diblokir</figcaption>
+      <div class="device" aria-label="Profil alumni, menu buka blokir">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body">
+            <header class="brand-band brand-band--pattern jj-profile-band">
+              <button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button>
+              <button class="icon-btn" type="button" aria-label="Tindakan lain" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button>
+            </header>
+            <div class="jj-profile-head">
+              <span class="avatar avatar--72" aria-hidden="true">SR</span>
+              <div class="jj-profile-head__text">
+                <h2 class="jj-profile-name">Siti Rahmah</h2>
+                <a class="jj-icon-line" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span>siti.rahmah@contoh.id</span></a>
+                <p class="jj-icon-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Pekanbaru</span></p>
+              </div>
+            </div>
+            <div class="jj-sections">
+              <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ic-call_outlined" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ic-alternate_email" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ic-facebook" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ic-work_outline" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+                  </div></div></section>
+            </div>
+          </div>
+          <div class="jj-profile-bottom"><div class="info-box info-box--warning"><span class="ic ic-block" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Anda memblokir Siti Rahmah. Buka blokir untuk kembali saling mengirim pesan.</p></div><button class="btn-text info-box__trailing" type="button">Buka blokir</button></div></div>
+        </div>
+        <div class="popup-menu jj-popup jj-popup--profile" role="menu" aria-label="Tindakan lain">
+          <button class="popup-menu__item" type="button" role="menuitem">Buka blokir</button>
+          <button class="popup-menu__item" type="button" role="menuitem">Laporkan</button>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 7. Dialog buka blokir -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Dialog buka blokir</figcaption>
+      <div class="device" aria-label="Profil alumni, konfirmasi buka blokir">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body">
+            <header class="brand-band brand-band--pattern jj-profile-band">
+              <button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button>
+              <button class="icon-btn" type="button" aria-label="Tindakan lain" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button>
+            </header>
+            <div class="jj-profile-head">
+              <span class="avatar avatar--72" aria-hidden="true">SR</span>
+              <div class="jj-profile-head__text">
+                <h2 class="jj-profile-name">Siti Rahmah</h2>
+                <a class="jj-icon-line" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span>siti.rahmah@contoh.id</span></a>
+                <p class="jj-icon-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Pekanbaru</span></p>
+              </div>
+            </div>
+            <div class="jj-sections">
+              <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ic-call_outlined" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ic-alternate_email" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ic-facebook" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ic-work_outline" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+                  </div></div></section>
+            </div>
+          </div>
+          <div class="jj-profile-bottom"><div class="info-box info-box--warning"><span class="ic ic-block" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Anda memblokir Siti Rahmah. Buka blokir untuk kembali saling mengirim pesan.</p></div><button class="btn-text info-box__trailing" type="button">Buka blokir</button></div></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="p7-title">
+          <h3 class="dialog__title" id="p7-title">Buka blokir Siti Rahmah?</h3>
+          <div class="dialog__content"><p class="c-muted">Anda dapat kembali saling mengirim pesan langsung dengan Siti Rahmah, kecuali bila Siti Rahmah juga membatasi percakapan. Undangan grup yang sudah dibatalkan tidak dipulihkan.</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text" type="button">Buka blokir</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 8. Kontak tersembunyi, pesan belum tersedia -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Kontak tersembunyi, pesan belum tersedia</figcaption>
+      <div class="device" aria-label="Profil alumni tanpa kontak dan tanpa pesan langsung">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body">
+            <header class="brand-band brand-band--pattern jj-profile-band">
+              <button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button>
+              <button class="icon-btn" type="button" aria-label="Tindakan lain" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button>
+            </header>
+            <div class="jj-profile-head">
+              <span class="avatar avatar--72" aria-hidden="true">HB</span>
+              <div class="jj-profile-head__text">
+                <h2 class="jj-profile-name">Hasan Basri</h2>
+                <p class="jj-icon-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Bukittinggi</span></p>
+              </div>
+            </div>
+            <div class="jj-sections">
+              <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH07 · Lulus 2009</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Wiraswasta</span></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Kuliner</span></div></div></section>
+            </div>
+          </div>
+          <div class="jj-profile-bottom"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Pesan langsung belum tersedia untuk anggota ini.</p></div></div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Pemilik menyembunyikan email/telpon (field tidak dikirim server) dan tanpa lulusan, bio, social media. canMessage false: InfoBox info, alasan sengaja tidak dibedakan.</p>
+    </figure>
+
+    <!-- 9. Membuka percakapan -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Membuka percakapan</figcaption>
+      <div class="device" aria-label="Profil alumni, membuka percakapan">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body">
+            <header class="brand-band brand-band--pattern jj-profile-band">
+              <button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button>
+              <button class="icon-btn" type="button" aria-label="Tindakan lain" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button>
+            </header>
+            <div class="jj-profile-head">
+              <span class="avatar avatar--72" aria-hidden="true">SR</span>
+              <div class="jj-profile-head__text">
+                <h2 class="jj-profile-name">Siti Rahmah</h2>
+                <a class="jj-icon-line" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span>siti.rahmah@contoh.id</span></a>
+                <p class="jj-icon-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Pekanbaru</span></p>
+              </div>
+            </div>
+            <div class="jj-sections">
+              <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ic-call_outlined" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ic-alternate_email" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ic-facebook" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ic-work_outline" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+                  </div></div></section>
+            </div>
+          </div>
+          <div class="jj-profile-bottom"><button class="btn btn--outline is-busy" type="button" disabled><span class="spinner spinner--18" aria-hidden="true"></span>Membuka percakapan</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tanpa room direct: POST /chat/direct lalu membuka /chat/:roomId. Selama proses tombol nonaktif dengan busyLabel.</p>
+    </figure>
+
+    <!-- 10. Profil sendiri (pratinjau) -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">10</span> Profil sendiri (pratinjau)</figcaption>
+      <div class="device" aria-label="Profil alumni, pratinjau profil sendiri">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body">
+            <header class="brand-band brand-band--pattern jj-profile-band">
+              <button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button>
+              
+            </header>
+            <div class="jj-profile-head">
+              <span class="avatar avatar--72" aria-hidden="true">AF</span>
+              <div class="jj-profile-head__text">
+                <h2 class="jj-profile-name">Ahmad Fauzi</h2>
+                <a class="jj-icon-line" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span>ahmad.fauzi@contoh.id</span></a>
+                <p class="jj-icon-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Pekanbaru</span></p>
+              </div>
+            </div>
+            <div class="jj-profile-note"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Ini pratinjau profil Anda seperti dilihat alumni lain.</p></div><button class="btn-text info-box__trailing" type="button">Atur privasi</button></div></div>
+            <div class="jj-sections">
+              <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Pekanbaru</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Guru</span></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Bahasa Arab</span><span class="tag-chip tag-chip--blue">Tahfiz</span></div></div></section>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">isMe: tanpa menu tindakan dan tanpa area pesan; InfoBox dengan tautan ke /account/privacy.</p>
+    </figure>
+
+    <!-- 11. Lembar laporan pengguna -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">11</span> Lembar laporan pengguna</figcaption>
+      <div class="device" aria-label="Profil alumni, lembar laporkan pengguna">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body">
+            <header class="brand-band brand-band--pattern jj-profile-band">
+              <button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button>
+              <button class="icon-btn" type="button" aria-label="Tindakan lain" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button>
+            </header>
+            <div class="jj-profile-head">
+              <span class="avatar avatar--72" aria-hidden="true">SR</span>
+              <div class="jj-profile-head__text">
+                <h2 class="jj-profile-name">Siti Rahmah</h2>
+                <a class="jj-icon-line" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span>siti.rahmah@contoh.id</span></a>
+                <p class="jj-icon-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Pekanbaru</span></p>
+              </div>
+            </div>
+            <div class="jj-sections">
+              <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ic-call_outlined" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ic-alternate_email" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ic-facebook" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ic-work_outline" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+                  </div></div></section>
+            </div>
+          </div>
+          <div class="jj-profile-bottom"><button class="btn btn--outline" type="button"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span>Kirim Pesan</button></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="p11-title">
+          <div class="sheet__body">
+            <h3 class="jj-sheet-title" id="p11-title">Laporkan pengguna</h3>
+            <p class="mt-1 c-muted clamp-2">Siti Rahmah</p>
+            <p class="mt-3 fw-500" id="p11-title-cat">Kategori</p>
+            <div role="radiogroup" aria-labelledby="p11-title-cat">
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Spam</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Pelecehan atau perundungan</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ujaran kebencian</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Konten seksual</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ancaman kekerasan atau keselamatan</span><span class="jj-tile__subtitle">Ditangani paling lambat 24 jam.</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Penipuan</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Lainnya</span><span class="jj-tile__subtitle">Wajib menjelaskan masalahnya.</span></span></div>
+            </div>
+            <div class="field mt-3">
+              <label class="field__label" for="p11-title-desc">Penjelasan</label>
+              <div class="input input--multiline"><textarea class="input__control" id="p11-title-desc" rows="4" maxlength="2000" placeholder="Opsional"></textarea></div>
+            </div>
+            <div class="mt-3"><div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Laporan tidak dibuka kepada pihak yang dilaporkan. Pantau statusnya di Akun &gt; Laporan Saya. Dalam keadaan darurat, hubungi pihak berwenang.</p></div></div></div>
+            <div class="mt-4"><button class="btn btn--primary" type="button"><span class="ic ic-flag_outlined" aria-hidden="true"></span>Kirim laporan</button></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Dari menu "Laporkan". Varian lengkap lembar laporan (galat, sibuk, pesan, grup) di <a href="report-sheet.html">report-sheet.html</a>.</p>
+    </figure>
+
+    <!-- 12. Snackbar salin nomor -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">12</span> Snackbar salin nomor</figcaption>
+      <div class="device" aria-label="Profil alumni, nomor telpon disalin">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body">
+            <header class="brand-band brand-band--pattern jj-profile-band">
+              <button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button>
+              <button class="icon-btn" type="button" aria-label="Tindakan lain" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button>
+            </header>
+            <div class="jj-profile-head">
+              <span class="avatar avatar--72" aria-hidden="true">SR</span>
+              <div class="jj-profile-head__text">
+                <h2 class="jj-profile-name">Siti Rahmah</h2>
+                <a class="jj-icon-line" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span>siti.rahmah@contoh.id</span></a>
+                <p class="jj-icon-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Pekanbaru</span></p>
+              </div>
+            </div>
+            <div class="jj-sections">
+              <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ic-call_outlined" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
+              <hr class="jj-divider-24">
+              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ic-alternate_email" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ic-facebook" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ic-work_outline" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+                  </div></div></section>
+            </div>
+          </div>
+          <div class="jj-profile-bottom"><button class="btn btn--outline" type="button"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span>Kirim Pesan</button></div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">Nomor telpon disalin.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tekan lama nomor telpon. Bila tautan tel:/mailto:/https gagal dibuka: "Tautan tidak dapat dibuka."</p>
+    </figure>
+
+    <!-- 13. Memuat -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">13</span> Memuat</figcaption>
+      <div class="device" aria-label="Profil alumni, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Profil Alumni</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="skeleton" role="status" aria-label="Memuat profil alumni"><div class="skeleton__card"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div></div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Sebelum data ada, layar memakai AppScaffold putih "Profil Alumni" (bukan pita hijau). LoadingSkeleton bawaan: kartu 160 + 3 baris.</p>
+    </figure>
+
+    <!-- 14. Profil tidak tersedia -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">14</span> Profil tidak tersedia</figcaption>
+      <div class="device" aria-label="Profil alumni tidak tersedia">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Profil Alumni</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-person_off_outlined"></span></div>
+              <h3 class="state__title">Profil tidak tersedia</h3>
+              <p class="state__message">Profil alumni ini tidak dapat ditampilkan saat ini.</p>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">404 NOT_FOUND: alasan tidak dibedakan (tidak aktif, menyembunyikan profil, atau membatasi pemanggil).</p>
+    </figure>
+
+    <!-- 15. Galat -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">15</span> Galat</figcaption>
+      <div class="device" aria-label="Profil alumni, galat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Profil Alumni</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off"></span></div>
+              <h3 class="state__title">Tidak ada koneksi</h3>
+              <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+  </main>
+</body>
+</html>

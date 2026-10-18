@@ -1,0 +1,1247 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Detail Tiket - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Detail Tiket dan QR check-in aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/event.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+      <a href="events.html">Event</a>
+      <a href="event-detail.html">Detail Event</a>
+      <a href="reservation.html">Konfirmasi Pendaftaran</a>
+      <a href="tickets.html">Tiket Saya</a>
+      <a href="ticket-detail.html" aria-current="page">Detail Tiket</a>
+    </nav>
+    <h1 class="page-header__title">Detail Tiket</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/tickets/ticket_detail_screen.dart</code> (TicketDetailScreen, _TicketContent, _EventHeader, _TicketQr, _PaymentCard, _RefundsCard, _CancelDialog), <code>lib/features/tickets/widgets/hold_countdown.dart</code> (HoldCountdown)</dd>
+      <dt>Rute</dt><dd><code>/tickets/:ticketId</code> (layar penuh, kembali ke <code>/tickets</code>)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Lunas: QR check-in</li>
+        <li>Gulir penuh: lunas berbayar</li>
+        <li>Gratis baru terbit + snackbar</li>
+        <li>Sudah check-in</li>
+        <li>QR tidak tersedia</li>
+        <li>Menunggu pembayaran (transfer)</li>
+        <li>Gulir penuh: menunggu pembayaran</li>
+        <li>Menunggu pembayaran (QRIS)</li>
+        <li>Batas lewat, status belum terbaru</li>
+        <li>Batas lewat, memeriksa status</li>
+        <li>Menunggu verifikasi</li>
+        <li>Kedaluwarsa</li>
+        <li>Gulir penuh: dibatalkan sendiri, refund diproses</li>
+        <li>Event dibatalkan pengurus</li>
+        <li>Bukti ditolak (final)</li>
+        <li>Status tidak dikenal</li>
+        <li>Dialog: batalkan tiket (refund penuh)</li>
+        <li>Dialog: batalkan tiket (tanpa refund)</li>
+        <li>Dialog: batalkan reservasi</li>
+        <li>Membatalkan… (digulir ke akhir)</li>
+        <li>Snackbar sesudah membatalkan</li>
+        <li>Dialog: data tiket berubah</li>
+        <li>Memuat</li>
+        <li>Tiket tidak ditemukan</li>
+        <li>Galat</li>
+        <li>Gagal diperbarui (offline)</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Setiap frame adalah skenario terpisah dengan data contoh fiktif (nomor rekening dan NMID rekaan). Aturan batal D6: refund penuh sampai H-3, refund ditransfer bendahara paling lambat 7 hari kerja. Frame yang "digulir" memotong isi daftar secara statis.</p>
+  </header>
+
+  <main class="frames">
+
+    <h2 class="frames__group-title">Lunas</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Lunas: QR check-in</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket lunas dengan QR">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--success"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Terkonfirmasi</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-qr"><div class="tk-qr__box"><span class="qr-glyph tk-qr__code" role="img" aria-label="QR tiket untuk check-in (tiruan, tidak dapat dipindai)"></span></div></div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Tunjukkan QR ini kepada petugas check-in</p><p class="info-box__message">Check-in dibuka 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB. Satu QR hanya dapat dipindai sekali; jangan bagikan QR ini.</p></div></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <div class="tk-row"><span class="tk-row__label">Bukti dikirim</span><span class="tk-row__value">15 Okt 2026, 10.02 WIB</span></div>
+                <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB (H-3) untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ic-event_busy_outlined" aria-hidden="true"></span>Batalkan Tiket</button></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">QR (QrImageView 220, modul surfaceDark) hanya untuk tiket lunas yang eventnya tidak dibatalkan. Glyph di mockup tiruan dan tidak dapat dipindai.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh: lunas berbayar</figcaption>
+      <div class="device device--tall" role="group" aria-label="Detail Tiket lunas, seluruh isi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--success"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Terkonfirmasi</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-qr"><div class="tk-qr__box"><span class="qr-glyph tk-qr__code" role="img" aria-label="QR tiket untuk check-in (tiruan, tidak dapat dipindai)"></span></div></div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Tunjukkan QR ini kepada petugas check-in</p><p class="info-box__message">Check-in dibuka 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB. Satu QR hanya dapat dipindai sekali; jangan bagikan QR ini.</p></div></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <div class="tk-row"><span class="tk-row__label">Bukti dikirim</span><span class="tk-row__value">15 Okt 2026, 10.02 WIB</span></div>
+                <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB (H-3) untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ic-event_busy_outlined" aria-hidden="true"></span>Batalkan Tiket</button></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Baris _PaymentCard: label = sepertiga lebar (Expanded), nilai Flexible(flex 2) rata kanan dalam kotaknya sendiri, sehingga nilai pendek tidak menempel tepi kanan (sama seperti Flutter).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Gratis baru terbit + snackbar</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket event gratis yang baru terbit">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--success"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Terkonfirmasi</span></div>
+                    <h3 class="tk-head__title">Peluncuran KAPDH Apps dan Silaturahmi Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026 · 20.00–21.30 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Gratis</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-qr"><div class="tk-qr__box"><span class="qr-glyph tk-qr__code" role="img" aria-label="QR tiket untuk check-in (tiruan, tidak dapat dipindai)"></span></div></div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Tunjukkan QR ini kepada petugas check-in</p><p class="info-box__message">Check-in dibuka 31 Okt 2026, 18.00 WIB – 31 Okt 2026, 21.30 WIB. Satu QR hanya dapat dipindai sekali; jangan bagikan QR ini.</p></div></div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Event gratis tidak memiliki refund; pembatalan melepas kursi untuk anggota lain.</p></div></div></div>
+              <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ic-event_busy_outlined" aria-hidden="true"></span>Batalkan Tiket</button></div>
+            </div>
+            </div>
+          </div>
+        </div><div class="snackbar" role="status"><span class="snackbar__text">Pendaftaran berhasil. Tiket Anda sudah terbit.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Event gratis tanpa kartu Pembayaran; baris harga "Gratis".</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Sudah check-in</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket sudah check-in">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--success"><span class="ic ic-how_to_reg" aria-hidden="true"></span>Sudah Check-in</span></div>
+                    <h3 class="tk-head__title">Buka Puasa Bersama Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 14 Mar 2026 · 17.00–19.30 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Gratis</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-how_to_reg" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Sudah check-in</p><p class="info-box__message">Anda tercatat hadir pada 14 Mar 2026, 16.47 WIB.</p></div></div></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tiket lunas yang sudah dipindai: tanpa QR, tanpa aturan pembatalan dan tombol batal.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> QR tidak tersedia</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket lunas tanpa QR">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--success"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Terkonfirmasi</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">QR tiket tidak tersedia. Tarik layar ke bawah untuk memuat ulang atau hubungi pengurus.</p></div></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <div class="tk-row"><span class="tk-row__label">Bukti dikirim</span><span class="tk-row__value">15 Okt 2026, 10.02 WIB</span></div>
+                <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <h2 class="frames__group-title">Menunggu pembayaran dan verifikasi</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Menunggu pembayaran (transfer)</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket menunggu pembayaran">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-hold" role="timer" aria-label="Sisa waktu pembayaran 23 jam 33 menit, batas 19 Okt 2026, 09.15 WIB">
+                <p class="tk-hold__head"><span class="ic ic-timer_outlined" aria-hidden="true"></span><span>Selesaikan pembayaran dalam</span></p>
+                <p class="tk-hold__time">23:33:52</p>
+                <p class="tk-hold__deadline">Batas kirim bukti: 19 Okt 2026, 09.15 WIB</p>
+              </div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-account_balance_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Transfer sesuai nominal ke rekening tujuan, lalu unggah bukti transfer. Kursi Anda dilepas otomatis bila bukti tidak dikirim sebelum batas waktu.</p></div></div></div>
+              <div class="ev-gap-3"><a class="btn btn--primary" href="#"><span class="ic ic-upload_file_outlined" aria-hidden="true"></span>Bayar Sekarang</a></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Reservasi dapat dibatalkan sebelum bukti transfer dikirim; kursi dilepas dan pembayaran dibatalkan.</p></div></div></div>
+              <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ic-event_busy_outlined" aria-hidden="true"></span>Batalkan Reservasi</button></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">HoldCountdown: hitung mundur detik per detik terhadap jam server (HH:MM:SS, angka tabular). Saat habis, status dimuat ulang dari server.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Gulir penuh: menunggu pembayaran</figcaption>
+      <div class="device device--tall" role="group" aria-label="Detail Tiket menunggu pembayaran, seluruh isi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-hold" role="timer" aria-label="Sisa waktu pembayaran 23 jam 33 menit, batas 19 Okt 2026, 09.15 WIB">
+                <p class="tk-hold__head"><span class="ic ic-timer_outlined" aria-hidden="true"></span><span>Selesaikan pembayaran dalam</span></p>
+                <p class="tk-hold__time">23:33:52</p>
+                <p class="tk-hold__deadline">Batas kirim bukti: 19 Okt 2026, 09.15 WIB</p>
+              </div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-account_balance_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Transfer sesuai nominal ke rekening tujuan, lalu unggah bukti transfer. Kursi Anda dilepas otomatis bila bukti tidak dikirim sebelum batas waktu.</p></div></div></div>
+              <div class="ev-gap-3"><a class="btn btn--primary" href="#"><span class="ic ic-upload_file_outlined" aria-hidden="true"></span>Bayar Sekarang</a></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Reservasi dapat dibatalkan sebelum bukti transfer dikirim; kursi dilepas dan pembayaran dibatalkan.</p></div></div></div>
+              <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ic-event_busy_outlined" aria-hidden="true"></span>Batalkan Reservasi</button></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Menunggu pembayaran (QRIS)</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket menunggu pembayaran QRIS">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail scroll-offset" style="--scroll:120px">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-hold" role="timer" aria-label="Sisa waktu pembayaran 23 jam 33 menit, batas 19 Okt 2026, 09.15 WIB">
+                <p class="tk-hold__head"><span class="ic ic-timer_outlined" aria-hidden="true"></span><span>Selesaikan pembayaran dalam</span></p>
+                <p class="tk-hold__time">23:33:52</p>
+                <p class="tk-hold__deadline">Batas kirim bukti: 19 Okt 2026, 09.15 WIB</p>
+              </div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-qr_code_2" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Pindai QRIS di halaman pembayaran dan masukkan nominal persis, lalu unggah bukti pembayaran. Kursi Anda dilepas otomatis bila bukti tidak dikirim sebelum batas waktu.</p></div></div></div>
+              <div class="ev-gap-3"><a class="btn btn--primary" href="#"><span class="ic ic-upload_file_outlined" aria-hidden="true"></span>Bayar Sekarang</a></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Tujuan pembayaran</span><span class="tk-row__value">QRIS KAPDH Pusat
+NMID ID0000000012345</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Reservasi dapat dibatalkan sebelum bukti transfer dikirim; kursi dilepas dan pembayaran dibatalkan.</p></div></div></div>
+              <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ic-event_busy_outlined" aria-hidden="true"></span>Batalkan Reservasi</button></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Digulir sedikit. QRIS statis tanpa nominal (ADR-026): baris "Tujuan pembayaran" berisi merchant dan NMID.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Batas lewat, status belum terbaru</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, batas pembayaran lewat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-hold tk-hold--expired" role="timer" aria-label="Batas waktu pembayaran sudah lewat">
+                <p class="tk-hold__head"><span class="ic ic-timer_off_outlined" aria-hidden="true"></span><span>Batas waktu pembayaran lewat</span></p>
+                <p class="tk-hold__deadline">Batas kirim bukti: 19 Okt 2026, 09.15 WIB</p>
+              </div></div>
+              <div class="ev-gap-3"><div class="info-box info-box--warning"><span class="ic ic-sync_problem" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Status reservasi belum terbaru</p><p class="info-box__message">Batas kirim bukti sudah lewat, sehingga reservasi ini kemungkinan sudah berakhir dan kursinya dilepas. Jangan transfer untuk reservasi ini sebelum statusnya diperbarui.</p></div><button class="btn-text info-box__trailing" type="button">Muat ulang</button></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Menurut jam server batas sudah lewat tetapi status belum berubah (mis. offline): tombol bayar, aturan dan tombol batal disembunyikan.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">10</span> Batas lewat, memeriksa status</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, memeriksa status reservasi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-hold tk-hold--expired" role="timer" aria-label="Batas waktu pembayaran sudah lewat">
+                <p class="tk-hold__head"><span class="ic ic-timer_off_outlined" aria-hidden="true"></span><span>Batas waktu pembayaran lewat</span></p>
+                <p class="tk-hold__deadline">Batas kirim bukti: 19 Okt 2026, 09.15 WIB</p>
+              </div></div>
+              <div class="ev-gap-3"><div class="info-box info-box--warning"><span class="ic ic-sync_problem" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Memeriksa status reservasi…</p><p class="info-box__message">Batas kirim bukti sudah lewat, sehingga reservasi ini kemungkinan sudah berakhir dan kursinya dilepas. Jangan transfer untuk reservasi ini sebelum statusnya diperbarui.</p></div></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">11</span> Menunggu verifikasi</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket menunggu verifikasi pengurus">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu Verifikasi</span></div>
+                    <h3 class="tk-head__title">Workshop Kewirausahaan Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 28 Nov 2026 · 09.00–15.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp75.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-hourglass_top" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Menunggu verifikasi pengurus</p><p class="info-box__message">Bukti transfer Anda sedang diverifikasi. Kursi tetap ditahan sampai keputusan; QR tiket terbit setelah pembayaran dinyatakan lunas.</p></div></div></div>
+              <div class="ev-gap-3"><a class="btn btn--outline" href="#">Lihat pembayaran</a></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu Verifikasi</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp75.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <div class="tk-row"><span class="tk-row__label">Bukti dikirim</span><span class="tk-row__value">17 Okt 2026, 19.48 WIB</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Tiket yang buktinya sedang diverifikasi tidak dapat dibatalkan sendiri karena dana mungkin sudah ditransfer. Tunggu keputusan pengurus atau hubungi pengurus.</p></div></div></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tiket yang buktinya sedang diverifikasi tidak dapat dibatalkan sendiri (tanpa tombol batal).</p>
+    </figure>
+
+    <h2 class="frames__group-title">Berakhir dan dibatalkan</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">12</span> Kedaluwarsa</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket kedaluwarsa">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--neutral"><span class="ic ic-timer_off_outlined" aria-hidden="true"></span>Kedaluwarsa</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="info-box info-box--warning"><span class="ic ic-timer_off_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Reservasi berakhir</p><p class="info-box__message">Bukti transfer tidak dikirim sebelum batas waktu, sehingga kursi sudah dilepas. Jangan transfer untuk reservasi ini. Anda dapat mendaftar ulang bila kuota masih tersedia.</p></div></div></div>
+              <div class="ev-gap-3"><a class="btn btn--outline" href="event-detail.html">Lihat event</a></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Anggota tidak aktif: kalimat "Anda dapat mendaftar ulang ..." dan tombol "Lihat event" tidak tampil.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">13</span> Gulir penuh: dibatalkan sendiri, refund diproses</figcaption>
+      <div class="device device--tall" role="group" aria-label="Detail Tiket dibatalkan dengan refund diproses">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="info-box info-box--danger"><span class="ic ic-block" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Tiket dibatalkan</p><p class="info-box__message">Anda membatalkan tiket ini pada 20 Okt 2026, 13.05 WIB. Alasan: Berhalangan hadir.</p></div></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <div class="tk-row"><span class="tk-row__label">Bukti dikirim</span><span class="tk-row__value">15 Okt 2026, 10.02 WIB</span></div>
+                <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <p class="tk-box__heading">Refund</p>
+                <div class="tk-refund"><div class="tk-refund__body"><p class="tk-refund__amount">Rp150.000</p><p class="tk-refund__meta">Paling lambat 29 Okt 2026</p></div><span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Refund Diproses</span></div>
+                <p class="tk-refund-note">Rekening tujuan refund diminta saat refund diproses. Isi atau ubah di halaman pembayaran.</p>
+                <a class="btn-text" href="#">Isi rekening tujuan refund</a>
+              </div></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Rekening tujuan refund tidak pernah ditampilkan di sini; diminta di layar pembayaran.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">14</span> Event dibatalkan pengurus</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, event dibatalkan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail scroll-offset" style="--scroll:60px">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span><span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>Dibatalkan</span></div>
+                    <h3 class="tk-head__title">Reuni Akbar Lintas Angkatan</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 3 Okt 2026 · 08.00–14.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp100.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="info-box info-box--danger"><span class="ic ic-block" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Event dibatalkan</p><p class="info-box__message">Event dibatalkan pengurus pada 25 Sep 2026, 10.00 WIB; seluruh QR tidak berlaku. Peserta berbayar mendapat refund penuh yang diproses bendahara paling lambat 7 hari kerja. Alasan: Lokasi acara tidak dapat digunakan.</p></div></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp100.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <div class="tk-row"><span class="tk-row__label">Bukti dikirim</span><span class="tk-row__value">2 Sep 2026, 08.11 WIB</span></div>
+                <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">2 Sep 2026, 13.40 WIB</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <p class="tk-box__heading">Refund</p>
+                <div class="tk-refund"><div class="tk-refund__body"><p class="tk-refund__amount">Rp100.000</p><p class="tk-refund__meta">Selesai 1 Okt 2026, 15.30 WIB</p></div><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Refund Selesai</span></div>
+              </div></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">15</span> Bukti ditolak (final)</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, bukti pembayaran ditolak">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span></div>
+                    <h3 class="tk-head__title">Workshop Kewirausahaan Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 28 Nov 2026 · 09.00–15.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp75.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="info-box info-box--danger"><span class="ic ic-block" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Tiket dibatalkan</p><p class="info-box__message">Bukti pembayaran ditolak pengurus pada 18 Okt 2026, 08.30 WIB: Nominal transfer tidak sesuai. Penolakan tiket bersifat final. Daftar ulang bila kuota masih tersedia.</p></div></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>Ditolak</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp75.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <div class="tk-row"><span class="tk-row__label">Bukti dikirim</span><span class="tk-row__value">17 Okt 2026, 19.48 WIB</span></div>
+                <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">18 Okt 2026, 08.30 WIB</span></div>
+                <div class="tk-row"><span class="tk-row__label">Alasan penolakan</span><span class="tk-row__value">Nominal transfer tidak sesuai</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">16</span> Status tidak dikenal</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, status tidak dikenal">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--neutral"><span class="ic ic-help_outline" aria-hidden="true"></span>Status Tidak Dikenal</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Status tiket belum dikenali versi aplikasi ini. Perbarui aplikasi untuk detail lengkap.</p></div></div></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <h2 class="frames__group-title">Pembatalan</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">17</span> Dialog: batalkan tiket (refund penuh)</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, dialog batalkan tiket dengan refund">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--success"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Terkonfirmasi</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-qr"><div class="tk-qr__box"><span class="qr-glyph tk-qr__code" role="img" aria-label="QR tiket untuk check-in (tiruan, tidak dapat dipindai)"></span></div></div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Tunjukkan QR ini kepada petugas check-in</p><p class="info-box__message">Check-in dibuka 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB. Satu QR hanya dapat dipindai sekali; jangan bagikan QR ini.</p></div></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <div class="tk-row"><span class="tk-row__label">Bukti dikirim</span><span class="tk-row__value">15 Okt 2026, 10.02 WIB</span></div>
+                <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB (H-3) untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ic-event_busy_outlined" aria-hidden="true"></span>Batalkan Tiket</button></div>
+            </div>
+            </div>
+          </div>
+        </div><div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-1">
+          <h3 class="dialog__title" id="dlg-1">Batalkan tiket?</h3>
+          <div class="dialog__content"><div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Anda membatalkan sebelum batas refund penuh (H-3, 18 Mar 2027, 08.00 WIB). Refund penuh Rp150.000 diproses bendahara paling lambat 7 hari kerja; rekening tujuan diminta saat refund diproses.</p></div></div><div class="tk-reason"><textarea class="tk-reason__input" id="reason-1" rows="1" maxlength="500" placeholder=" " aria-describedby="reason-1-count"></textarea><label class="tk-reason__label" for="reason-1">Alasan (opsional)</label></div><p class="tk-reason__counter" id="reason-1-count">0/500</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Kembali</button><button class="btn-text btn-text--danger" type="button">Batalkan tiket</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Alasan boleh kosong (maks 500). Label TextField mengambang ke garis atas saat fokus/terisi.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">18</span> Dialog: batalkan tiket (tanpa refund)</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, dialog batalkan tiket tanpa refund">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--success"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Terkonfirmasi</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-qr"><div class="tk-qr__box"><span class="qr-glyph tk-qr__code" role="img" aria-label="QR tiket untuk check-in (tiruan, tidak dapat dipindai)"></span></div></div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Tunjukkan QR ini kepada petugas check-in</p><p class="info-box__message">Check-in dibuka 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB. Satu QR hanya dapat dipindai sekali; jangan bagikan QR ini.</p></div></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <div class="tk-row"><span class="tk-row__label">Bukti dikirim</span><span class="tk-row__value">15 Okt 2026, 10.02 WIB</span></div>
+                <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batas refund penuh (H-3) sudah lewat pada 18 Mar 2027, 08.00 WIB. Pembatalan sekarang tetap boleh sebelum acara dimulai, tetapi tanpa refund.</p></div></div></div>
+              <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ic-event_busy_outlined" aria-hidden="true"></span>Batalkan Tiket</button></div>
+            </div>
+            </div>
+          </div>
+        </div><div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-2">
+          <h3 class="dialog__title" id="dlg-2">Batalkan tiket?</h3>
+          <div class="dialog__content"><div class="info-box info-box--danger"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Batas refund penuh (H-3, 18 Mar 2027, 08.00 WIB) sudah lewat. Pembatalan sekarang TIDAK mendapat refund. Kursi Anda dilepas untuk anggota lain.</p></div></div><div class="tk-reason"><textarea class="tk-reason__input" id="reason-2" rows="1" maxlength="500" placeholder=" " aria-describedby="reason-2-count"></textarea><label class="tk-reason__label" for="reason-2">Alasan (opsional)</label></div><p class="tk-reason__counter" id="reason-2-count">0/500</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Kembali</button><button class="btn-text btn-text--danger" type="button">Batalkan tiket</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Event gratis: kotak peringatan "Event gratis tidak memiliki refund. Kursi Anda dilepas untuk anggota lain."</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">19</span> Dialog: batalkan reservasi</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, dialog batalkan reservasi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-hold" role="timer" aria-label="Sisa waktu pembayaran 23 jam 33 menit, batas 19 Okt 2026, 09.15 WIB">
+                <p class="tk-hold__head"><span class="ic ic-timer_outlined" aria-hidden="true"></span><span>Selesaikan pembayaran dalam</span></p>
+                <p class="tk-hold__time">23:33:52</p>
+                <p class="tk-hold__deadline">Batas kirim bukti: 19 Okt 2026, 09.15 WIB</p>
+              </div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-account_balance_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Transfer sesuai nominal ke rekening tujuan, lalu unggah bukti transfer. Kursi Anda dilepas otomatis bila bukti tidak dikirim sebelum batas waktu.</p></div></div></div>
+              <div class="ev-gap-3"><a class="btn btn--primary" href="#"><span class="ic ic-upload_file_outlined" aria-hidden="true"></span>Bayar Sekarang</a></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Reservasi dapat dibatalkan sebelum bukti transfer dikirim; kursi dilepas dan pembayaran dibatalkan.</p></div></div></div>
+              <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ic-event_busy_outlined" aria-hidden="true"></span>Batalkan Reservasi</button></div>
+            </div>
+            </div>
+          </div>
+        </div><div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-3">
+          <h3 class="dialog__title" id="dlg-3">Batalkan reservasi?</h3>
+          <div class="dialog__content"><div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Reservasi dibatalkan dan kursi dilepas. Jangan transfer untuk reservasi ini.</p></div></div><div class="tk-reason"><textarea class="tk-reason__input" id="reason-3" rows="1" maxlength="500" placeholder=" " aria-describedby="reason-3-count"></textarea><label class="tk-reason__label" for="reason-3">Alasan (opsional)</label></div><p class="tk-reason__counter" id="reason-3-count">0/500</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Kembali</button><button class="btn-text btn-text--danger" type="button">Batalkan reservasi</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">20</span> Membatalkan… (digulir ke akhir)</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, sedang membatalkan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport scroll-end">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--success"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Terkonfirmasi</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-qr"><div class="tk-qr__box"><span class="qr-glyph tk-qr__code" role="img" aria-label="QR tiket untuk check-in (tiruan, tidak dapat dipindai)"></span></div></div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Tunjukkan QR ini kepada petugas check-in</p><p class="info-box__message">Check-in dibuka 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB. Satu QR hanya dapat dipindai sekali; jangan bagikan QR ini.</p></div></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <div class="tk-row"><span class="tk-row__label">Bukti dikirim</span><span class="tk-row__value">15 Okt 2026, 10.02 WIB</span></div>
+                <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB (H-3) untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-4"><button class="btn btn--danger-outline tk-cancel-busy" type="button" disabled aria-busy="true"><span class="spinner spinner--18" aria-hidden="true"></span>Membatalkan…</button></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">OutlinedButton nonaktif: garis danger tetap, label abu 38 %, indikator 18 px.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">21</span> Snackbar sesudah membatalkan</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket dibatalkan dengan snackbar">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="info-box info-box--danger"><span class="ic ic-block" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Tiket dibatalkan</p><p class="info-box__message">Anda membatalkan tiket ini pada 20 Okt 2026, 13.05 WIB. Alasan: Berhalangan hadir.</p></div></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <div class="tk-row"><span class="tk-row__label">Bukti dikirim</span><span class="tk-row__value">15 Okt 2026, 10.02 WIB</span></div>
+                <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <p class="tk-box__heading">Refund</p>
+                <div class="tk-refund"><div class="tk-refund__body"><p class="tk-refund__amount">Rp150.000</p><p class="tk-refund__meta">Paling lambat 29 Okt 2026</p></div><span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Refund Diproses</span></div>
+                <p class="tk-refund-note">Rekening tujuan refund diminta saat refund diproses. Isi atau ubah di halaman pembayaran.</p>
+                <a class="btn-text" href="#">Isi rekening tujuan refund</a>
+              </div></div>
+            </div>
+            </div>
+          </div>
+        </div><div class="snackbar" role="status"><span class="snackbar__text">Tiket dibatalkan. Refund penuh diproses bendahara paling lambat 7 hari kerja; rekening tujuan diminta di halaman pembayaran.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Varian: "Reservasi dibatalkan dan kursi dilepas. Jangan transfer untuk reservasi ini." dan "Tiket dibatalkan dan kursi Anda dilepas."</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">22</span> Dialog: data tiket berubah</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, dialog data tiket berubah">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--success"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Terkonfirmasi</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-qr"><div class="tk-qr__box"><span class="qr-glyph tk-qr__code" role="img" aria-label="QR tiket untuk check-in (tiruan, tidak dapat dipindai)"></span></div></div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Tunjukkan QR ini kepada petugas check-in</p><p class="info-box__message">Check-in dibuka 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB. Satu QR hanya dapat dipindai sekali; jangan bagikan QR ini.</p></div></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <div class="tk-row"><span class="tk-row__label">Bukti dikirim</span><span class="tk-row__value">15 Okt 2026, 10.02 WIB</span></div>
+                <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB (H-3) untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ic-event_busy_outlined" aria-hidden="true"></span>Batalkan Tiket</button></div>
+            </div>
+            </div>
+          </div>
+        </div><div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-4">
+          <h3 class="dialog__title" id="dlg-4">Data tiket berubah</h3>
+          <div class="dialog__content"><p class="c-muted">Batas refund penuh (H-3) sudah lewat. Pembatalan sekarang tidak mendapat refund. Periksa kembali sebelum membatalkan.</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Tutup</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">409 VERSION_CONFLICT saat membatalkan. PAYMENT_STATE_CONFLICT memakai judul "Tiket tidak dapat dibatalkan" dengan pesan server.</p>
+    </figure>
+
+    <h2 class="frames__group-title">Memuat, kosong, galat</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">23</span> Memuat</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body"><div class="skeleton" role="status" aria-label="Memuat tiket"><div class="skeleton__card"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">24</span> Tiket tidak ditemukan</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, tidak ditemukan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="screen__body"><div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-search_off"></span></div>
+              <h3 class="state__title">Tiket tidak ditemukan</h3>
+              <p class="state__message">Tiket ini tidak ada atau bukan milik akun Anda.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button">Lihat tiket saya</button>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">25</span> Galat</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, galat koneksi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="status-strip" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><span class="status-strip__text"><strong>Offline</strong>. Periksa koneksi internet Anda.</span><button class="btn-text" type="button">Coba lagi</button></div>
+          <div class="screen__body"><div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off"></span></div>
+              <h3 class="state__title">Tidak ada koneksi</h3>
+              <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">26</span> Gagal diperbarui (offline)</figcaption>
+      <div class="device" role="group" aria-label="Detail Tiket, gagal diperbarui saat offline">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Tiket</span></h2>
+          </header>
+          <div class="status-strip" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><span class="status-strip__text"><strong>Offline</strong>. Tersinkron 18 Okt 2026, 09.30 WIB</span><button class="btn-text" type="button">Coba lagi</button></div>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="info-box info-box--warning info-box--refresh" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Belum dapat diperbarui</p><p class="info-box__message">Periksa koneksi internet Anda. Data di bawah adalah keadaan terakhir yang dimuat.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+              <div class="tk-head">
+                <div class="tk-head__top">
+                  <div class="tk-head__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                  <div class="tk-head__body">
+                    <div class="tk-badges"><span class="status-badge status-badge--success"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Terkonfirmasi</span></div>
+                    <h3 class="tk-head__title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+                  </div>
+                </div>
+                <div class="tk-head__lines">
+                  <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Total Rp150.000 (1 orang)</span></p>
+                </div>
+                <a class="btn-text" href="event-detail.html">Lihat detail event</a>
+              </div>
+              <div class="ev-gap-4"><div class="tk-qr"><div class="tk-qr__box"><span class="qr-glyph tk-qr__code" role="img" aria-label="QR tiket untuk check-in (tiruan, tidak dapat dipindai)"></span></div></div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Tunjukkan QR ini kepada petugas check-in</p><p class="info-box__message">Check-in dibuka 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB. Satu QR hanya dapat dipindai sekali; jangan bagikan QR ini.</p></div></div></div>
+              <div class="ev-gap-4"><div class="tk-box">
+                <div class="tk-box__head"><p class="tk-box__title">Pembayaran</p><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></div>
+                <div class="tk-row"><span class="tk-row__label">Nominal</span><span class="tk-row__value tk-row__value--em">Rp150.000</span></div>
+                <div class="tk-row"><span class="tk-row__label">Rekening tujuan</span><span class="tk-row__value">Bank Contoh Syariah 7001234567
+a.n. KAPDH Kas Event</span></div>
+                <div class="tk-row"><span class="tk-row__label">Bukti dikirim</span><span class="tk-row__value">15 Okt 2026, 10.02 WIB</span></div>
+                <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
+                <a class="btn-text" href="#">Lihat pembayaran</a>
+              </div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB (H-3) untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ic-event_busy_outlined" aria-hidden="true"></span>Batalkan Tiket</button></div>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tiket dan QR terakhir tetap tampil; kotak RefreshFailedNotice di atas kartu event.</p>
+    </figure>
+
+  </main>
+</body>
+</html>

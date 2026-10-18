@@ -1,0 +1,1339 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daftar Alumni: Data Diri - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar pendaftaran langkah Data Diri (RegisterScreen) aplikasi KAPDH untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/auth.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Daftar Alumni: Data Diri</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/auth/register_screen.dart</code> (RegisterScreen, _ClassFields, _AcademicYearsCard, _ConsentField)</dd>
+      <dt>Rute</dt><dd><code>/register</code></dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama (kosong)</li>
+        <li>Gulir penuh terisi + tahun akademik</li>
+        <li>Validasi (semua galat)</li>
+        <li>Dropdown Jenis Kelamin terbuka</li>
+        <li>Email sudah terdaftar</li>
+        <li>Fokus Nama + keyboard</li>
+        <li>Versi kebijakan gagal dimuat</li>
+        <li>Pendaftaran belum dibuka</li>
+        <li>Kebijakan diperbarui (409)</li>
+        <li>Mengirim</li>
+        <li>Batas kirim (429)</li>
+        <li>Kelas keluar sebelum kelas masuk</li>
+      </ol>
+    </div>
+    <p class="page-header__note">BrandSheetScaffold tanpa header: pita hijau tipis 28 + lembar membulat 20 yang menumpuk pita 12. Isi bergulir (SingleChildScrollView padding 20/16/20/32). Tombol "Lanjut verifikasi email" selalu aktif kecuali saat cooldown; validasi lokal berjalan saat ditekan. Kartu "Perhitungan Tahun Akademik" baru muncul setelah Angkatan, Kelas Masuk dan Kelas Keluar valid (contoh: Angkatan 12, Kelas 1 sampai 6).</p>
+  </header>
+
+  <main class="frames">
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama (kosong)</figcaption>
+      <div class="device" role="group" aria-label="Daftar Alumni, utama (kosong)">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="brand-band brand-band--thin" aria-hidden="true"></div>
+          <div class="brand-sheet auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset">
+                <div class="auth-body">
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="mt-4">
+                    <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                    </ol>
+                  </div>
+                  <div class="mt-6">
+                    <div class="field">
+                      <label class="field__label" for="r1-name">Nama Lengkap</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <input class="input__control" id="r1-name" type="text" placeholder="Masukkan nama lengkap" autocomplete="name">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r1-gender-l">Jenis Kelamin</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r1-gender-l r1-gender-v"><span class="input__value input__hint" id="r1-gender-v">Pilih Jenis Kelamin</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r1-email">Email</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <input class="input__control" id="r1-email" type="email" placeholder="Masukkan email" autocomplete="email">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r1-pw">Password</label>
+                      <div class="input">
+                        <input class="input__control" id="r1-pw" type="password" placeholder="Masukkan password" autocomplete="new-password">
+                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                      </div>
+                    </div>
+                  </div>
+                  <ul class="rules" aria-label="Aturan password">
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
+                  </ul>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r1-cohort-l">Angkatan</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r1-cohort-l r1-cohort-v"><span class="input__value input__hint" id="r1-cohort-v">Pilih angkatan</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-class-row">
+                      <div class="field">
+                        <span class="field__label" id="r1-cin-l">Kelas Masuk</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r1-cin-l r1-cin-v"><span class="input__value input__hint auth-value-clip" id="r1-cin-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                      <div class="field">
+                        <span class="field__label" id="r1-cout-l">Kelas Keluar</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r1-cout-l r1-cout-v"><span class="input__value input__hint auth-value-clip" id="r1-cout-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-consent">
+                      <div class="list-tile list-tile--control-leading" role="checkbox" aria-checked="false" tabindex="0" aria-labelledby="r1-consent-t"><span class="checkbox" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r1-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
+                      <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
+                      <p class="auth-note auth-consent__version">Versi berlaku: Kebijakan Privasi versi 2 · Ketentuan versi 1</p>
+                    </div>
+                  </div>
+                  <div class="mt-5">
+                    <button class="btn btn--primary" type="button">Lanjut verifikasi email</button>
+                  </div>
+                  <div class="mt-3">
+                    <div class="auth-wrap"><span class="auth-wrap__text">Sudah punya akun?</span><button class="btn-link" type="button">Masuk</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Penghitung password "0/8" merah (belum mencapai 8 byte). Versi persetujuan yang berlaku tampil di bawah tautan baca.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh terisi</figcaption>
+      <div class="device device--tall" role="group" aria-label="Daftar Alumni, gulir penuh terisi">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="brand-band brand-band--thin" aria-hidden="true"></div>
+          <div class="brand-sheet auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset">
+                <div class="auth-body">
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="mt-4">
+                    <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                    </ol>
+                  </div>
+                  <div class="mt-6">
+                    <div class="field">
+                      <label class="field__label" for="r2-name">Nama Lengkap</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <input class="input__control" id="r2-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r2-gender-l">Jenis Kelamin</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r2-gender-l r2-gender-v"><span class="input__value" id="r2-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r2-email">Email</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <input class="input__control" id="r2-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r2-pw">Password</label>
+                      <div class="input">
+                        <input class="input__control" id="r2-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                      </div>
+                    </div>
+                  </div>
+                  <ul class="rules" aria-label="Aturan password">
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                  </ul>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r2-cohort-l">Angkatan</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r2-cohort-l r2-cohort-v"><span class="input__value" id="r2-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-class-row">
+                      <div class="field">
+                        <span class="field__label" id="r2-cin-l">Kelas Masuk</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r2-cin-l r2-cin-v"><span class="input__value auth-value-clip" id="r2-cin-v">Kelas 1 (1 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                      <div class="field">
+                        <span class="field__label" id="r2-cout-l">Kelas Keluar</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r2-cout-l r2-cout-v"><span class="input__value auth-value-clip" id="r2-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <section aria-label="Perhitungan tahun akademik: tahun masuk 2002, tahun keluar 2008, tahun lulus 2008">
+                      <p class="auth-label" aria-hidden="true">Perhitungan Tahun Akademik</p>
+                      <div class="auth-years" aria-hidden="true">
+                        <div class="auth-years__cell"><span class="auth-years__value">2002</span><span class="auth-years__label">Tahun Masuk</span></div>
+                        <div class="auth-years__cell"><span class="auth-years__value">2008</span><span class="auth-years__label">Tahun Keluar</span></div>
+                        <div class="auth-years__cell"><span class="auth-years__value">2008</span><span class="auth-years__label">Tahun Lulus</span></div>
+                      </div>
+                    </section>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-consent">
+                      <div class="list-tile list-tile--control-leading" role="checkbox" aria-checked="true" tabindex="0" aria-labelledby="r2-consent-t"><span class="checkbox is-checked" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r2-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
+                      <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
+                      <p class="auth-note auth-consent__version">Versi yang disetujui: Kebijakan Privasi versi 2 · Ketentuan versi 1</p>
+                    </div>
+                  </div>
+                  <div class="mt-5">
+                    <button class="btn btn--primary" type="button">Lanjut verifikasi email</button>
+                  </div>
+                  <div class="mt-3">
+                    <div class="auth-wrap"><span class="auth-wrap__text">Sudah punya akun?</span><button class="btn-link" type="button">Masuk</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Label kelas panjang ("Kelas 1 (1 MTs)") di kolom setengah lebar: DropdownButtonFormField isDense tidak memberi elipsis, jadi di 360 dp teks kemungkinan terpotong. Mockup memakai elipsis; lihat usulan di catatan grup.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Validasi (semua galat)</figcaption>
+      <div class="device device--tall" role="group" aria-label="Daftar Alumni, validasi (semua galat)">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="brand-band brand-band--thin" aria-hidden="true"></div>
+          <div class="brand-sheet auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset">
+                <div class="auth-body">
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="mt-4">
+                    <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                    </ol>
+                  </div>
+                  <div class="mt-6">
+                    <div class="field">
+                      <label class="field__label" for="r3-name">Nama Lengkap</label>
+                      <div class="input is-error">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <input class="input__control" id="r3-name" type="text" placeholder="Masukkan nama lengkap" autocomplete="name" aria-invalid="true" aria-describedby="r3-name-err">
+                      </div>
+                      <p class="field__error" id="r3-name-err">Isi nama lengkap</p>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r3-gender-l">Jenis Kelamin</span>
+                      <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r3-gender-l r3-gender-v" aria-describedby="r3-gender-err"><span class="input__value input__hint" id="r3-gender-v">Pilih Jenis Kelamin</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <p class="field__error" id="r3-gender-err">Pilih jenis kelamin</p>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r3-email">Email</label>
+                      <div class="input is-error">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <input class="input__control" id="r3-email" type="email" placeholder="Masukkan email" autocomplete="email" aria-invalid="true" aria-describedby="r3-email-err">
+                      </div>
+                      <p class="field__error" id="r3-email-err">Masukkan email yang valid</p>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r3-pw">Password</label>
+                      <div class="input is-error">
+                        <input class="input__control" id="r3-pw" type="password" placeholder="Masukkan password" autocomplete="new-password" aria-invalid="true" aria-describedby="r3-pw-err">
+                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                      </div>
+                      <p class="field__error" id="r3-pw-err">Belum memenuhi aturan password</p>
+                    </div>
+                  </div>
+                  <ul class="rules" aria-label="Aturan password">
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
+                  </ul>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r3-cohort-l">Angkatan</span>
+                      <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r3-cohort-l r3-cohort-v" aria-describedby="r3-cohort-err"><span class="input__value input__hint" id="r3-cohort-v">Pilih angkatan</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <p class="field__error" id="r3-cohort-err">Pilih angkatan</p>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-class-row">
+                      <div class="field">
+                        <span class="field__label" id="r3-cin-l">Kelas Masuk</span>
+                        <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r3-cin-l r3-cin-v" aria-describedby="r3-cin-err"><span class="input__value input__hint auth-value-clip" id="r3-cin-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <p class="field__error" id="r3-cin-err">Pilih kelas</p>
+                      </div>
+                      <div class="field">
+                        <span class="field__label" id="r3-cout-l">Kelas Keluar</span>
+                        <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r3-cout-l r3-cout-v" aria-describedby="r3-cout-err"><span class="input__value input__hint auth-value-clip" id="r3-cout-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <p class="field__error" id="r3-cout-err">Pilih kelas</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-consent">
+                      <div class="list-tile list-tile--control-leading" role="checkbox" aria-checked="false" tabindex="0" aria-labelledby="r3-consent-t"><span class="checkbox" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r3-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
+                      <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
+                      <p class="auth-note auth-consent__version">Versi berlaku: Kebijakan Privasi versi 2 · Ketentuan versi 1</p>
+                      <p class="auth-consent__error">Setujui Kebijakan Privasi dan Ketentuan untuk melanjutkan.</p>
+                    </div>
+                  </div>
+                  <div class="mt-5">
+                    <button class="btn btn--primary" type="button">Lanjut verifikasi email</button>
+                  </div>
+                  <div class="mt-3">
+                    <div class="auth-wrap"><span class="auth-wrap__text">Sudah punya akun?</span><button class="btn-link" type="button">Masuk</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Formulir kosong lalu tombol ditekan: validator lokal tiap field dan galat persetujuan (12 merah).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Dropdown Jenis Kelamin terbuka</figcaption>
+      <div class="device" role="group" aria-label="Daftar Alumni, dropdown jenis kelamin terbuka">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="brand-band brand-band--thin" aria-hidden="true"></div>
+          <div class="brand-sheet auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset">
+                <div class="auth-body">
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="mt-4">
+                    <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                    </ol>
+                  </div>
+                  <div class="mt-6">
+                    <div class="field">
+                      <label class="field__label" for="r4-name">Nama Lengkap</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <input class="input__control" id="r4-name" type="text" placeholder="Masukkan nama lengkap" autocomplete="name">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-anchor">
+                      <div class="field">
+                        <span class="field__label" id="r4-gender-l">Jenis Kelamin</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r4-gender-l r4-gender-v"><span class="input__value input__hint" id="r4-gender-v">Pilih Jenis Kelamin</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                      <div class="auth-dropdown-pop">
+                        <div class="dropdown-menu" role="listbox" aria-label="Jenis Kelamin">
+                          <div class="dropdown-menu__item" role="option" aria-selected="false">Laki-laki</div>
+                          <div class="dropdown-menu__item" role="option" aria-selected="false">Perempuan</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r4-email">Email</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <input class="input__control" id="r4-email" type="email" placeholder="Masukkan email" autocomplete="email">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r4-pw">Password</label>
+                      <div class="input">
+                        <input class="input__control" id="r4-pw" type="password" placeholder="Masukkan password" autocomplete="new-password">
+                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                      </div>
+                    </div>
+                  </div>
+                  <ul class="rules" aria-label="Aturan password">
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
+                  </ul>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r4-cohort-l">Angkatan</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r4-cohort-l r4-cohort-v"><span class="input__value input__hint" id="r4-cohort-v">Pilih angkatan</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-class-row">
+                      <div class="field">
+                        <span class="field__label" id="r4-cin-l">Kelas Masuk</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r4-cin-l r4-cin-v"><span class="input__value input__hint auth-value-clip" id="r4-cin-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                      <div class="field">
+                        <span class="field__label" id="r4-cout-l">Kelas Keluar</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r4-cout-l r4-cout-v"><span class="input__value input__hint auth-value-clip" id="r4-cout-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-consent">
+                      <div class="list-tile list-tile--control-leading" role="checkbox" aria-checked="false" tabindex="0" aria-labelledby="r4-consent-t"><span class="checkbox" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r4-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
+                      <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
+                      <p class="auth-note auth-consent__version">Versi berlaku: Kebijakan Privasi versi 2 · Ketentuan versi 1</p>
+                    </div>
+                  </div>
+                  <div class="mt-5">
+                    <button class="btn btn--primary" type="button">Lanjut verifikasi email</button>
+                  </div>
+                  <div class="mt-3">
+                    <div class="auth-wrap"><span class="auth-wrap__text">Sudah punya akun?</span><button class="btn-link" type="button">Masuk</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Menu DropdownButton: item pertama menumpuk tombol, lebar sama dengan field, tanpa scrim.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Email sudah terdaftar</figcaption>
+      <div class="device" role="group" aria-label="Daftar Alumni, email sudah terdaftar">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="brand-band brand-band--thin" aria-hidden="true"></div>
+          <div class="brand-sheet auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset">
+                <div class="auth-body">
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="mt-4">
+                    <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                    </ol>
+                  </div>
+                  <div class="mt-6">
+                    <div class="field">
+                      <label class="field__label" for="r5-name">Nama Lengkap</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <input class="input__control" id="r5-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r5-gender-l">Jenis Kelamin</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r5-gender-l r5-gender-v"><span class="input__value" id="r5-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r5-email">Email</label>
+                      <div class="input is-error">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <input class="input__control" id="r5-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email" aria-invalid="true" aria-describedby="r5-email-err">
+                      </div>
+                      <p class="field__error" id="r5-email-err">Email sudah terdaftar</p>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r5-pw">Password</label>
+                      <div class="input">
+                        <input class="input__control" id="r5-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                      </div>
+                    </div>
+                  </div>
+                  <ul class="rules" aria-label="Aturan password">
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                  </ul>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r5-cohort-l">Angkatan</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r5-cohort-l r5-cohort-v"><span class="input__value" id="r5-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-class-row">
+                      <div class="field">
+                        <span class="field__label" id="r5-cin-l">Kelas Masuk</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r5-cin-l r5-cin-v"><span class="input__value auth-value-clip" id="r5-cin-v">Kelas 1 (1 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                      <div class="field">
+                        <span class="field__label" id="r5-cout-l">Kelas Keluar</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r5-cout-l r5-cout-v"><span class="input__value auth-value-clip" id="r5-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <section aria-label="Perhitungan tahun akademik: tahun masuk 2002, tahun keluar 2008, tahun lulus 2008">
+                      <p class="auth-label" aria-hidden="true">Perhitungan Tahun Akademik</p>
+                      <div class="auth-years" aria-hidden="true">
+                        <div class="auth-years__cell"><span class="auth-years__value">2002</span><span class="auth-years__label">Tahun Masuk</span></div>
+                        <div class="auth-years__cell"><span class="auth-years__value">2008</span><span class="auth-years__label">Tahun Keluar</span></div>
+                        <div class="auth-years__cell"><span class="auth-years__value">2008</span><span class="auth-years__label">Tahun Lulus</span></div>
+                      </div>
+                    </section>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-consent">
+                      <div class="list-tile list-tile--control-leading" role="checkbox" aria-checked="true" tabindex="0" aria-labelledby="r5-consent-t"><span class="checkbox is-checked" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r5-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
+                      <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
+                      <p class="auth-note auth-consent__version">Versi yang disetujui: Kebijakan Privasi versi 2 · Ketentuan versi 1</p>
+                    </div>
+                  </div>
+                  <div class="mt-5">
+                    <button class="btn btn--primary" type="button">Lanjut verifikasi email</button>
+                  </div>
+                  <div class="mt-3">
+                    <div class="auth-wrap"><span class="auth-wrap__text">Sudah punya akun?</span><button class="btn-link" type="button">Masuk</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">field_errors.email dari 409; tanpa InfoBox umum karena tidak ada field "_".</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Fokus Nama + keyboard</figcaption>
+      <div class="device" role="group" aria-label="Daftar Alumni, fokus nama + keyboard">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen auth-kb">
+          <div class="brand-band brand-band--thin" aria-hidden="true"></div>
+          <div class="brand-sheet auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset">
+                <div class="auth-body">
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="mt-4">
+                    <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                    </ol>
+                  </div>
+                  <div class="mt-6">
+                    <div class="field">
+                      <label class="field__label" for="r6-name">Nama Lengkap</label>
+                      <div class="input is-focused">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <input class="input__control" id="r6-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad F" autocomplete="name">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r6-gender-l">Jenis Kelamin</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r6-gender-l r6-gender-v"><span class="input__value input__hint" id="r6-gender-v">Pilih Jenis Kelamin</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r6-email">Email</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <input class="input__control" id="r6-email" type="email" placeholder="Masukkan email" autocomplete="email">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r6-pw">Password</label>
+                      <div class="input">
+                        <input class="input__control" id="r6-pw" type="password" placeholder="Masukkan password" autocomplete="new-password">
+                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                      </div>
+                    </div>
+                  </div>
+                  <ul class="rules" aria-label="Aturan password">
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
+                  </ul>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r6-cohort-l">Angkatan</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r6-cohort-l r6-cohort-v"><span class="input__value input__hint" id="r6-cohort-v">Pilih angkatan</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-class-row">
+                      <div class="field">
+                        <span class="field__label" id="r6-cin-l">Kelas Masuk</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r6-cin-l r6-cin-v"><span class="input__value input__hint auth-value-clip" id="r6-cin-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                      <div class="field">
+                        <span class="field__label" id="r6-cout-l">Kelas Keluar</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r6-cout-l r6-cout-v"><span class="input__value input__hint auth-value-clip" id="r6-cout-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-consent">
+                      <div class="list-tile list-tile--control-leading" role="checkbox" aria-checked="false" tabindex="0" aria-labelledby="r6-consent-t"><span class="checkbox" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r6-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
+                      <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
+                      <p class="auth-note auth-consent__version">Versi berlaku: Kebijakan Privasi versi 2 · Ketentuan versi 1</p>
+                    </div>
+                  </div>
+                  <div class="mt-5">
+                    <button class="btn btn--primary" type="button">Lanjut verifikasi email</button>
+                  </div>
+                  <div class="mt-3">
+                    <div class="auth-wrap"><span class="auth-wrap__text">Sudah punya akun?</span><button class="btn-link" type="button">Masuk</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="keyboard" aria-hidden="true">
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key" style="max-width:150px;flex:5"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Keyboard terbuka; badan lembar menyusut sampai atas keyboard.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Versi kebijakan gagal dimuat</figcaption>
+      <div class="device" role="group" aria-label="Daftar Alumni, versi kebijakan gagal dimuat">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="brand-band brand-band--thin" aria-hidden="true"></div>
+          <div class="brand-sheet auth-sheet">
+            <div class="scroll-viewport scroll-end">
+              <div class="scroll-offset">
+                <div class="auth-body">
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="mt-4">
+                    <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                    </ol>
+                  </div>
+                  <div class="mt-6">
+                    <div class="field">
+                      <label class="field__label" for="r7-name">Nama Lengkap</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <input class="input__control" id="r7-name" type="text" placeholder="Masukkan nama lengkap" autocomplete="name">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r7-gender-l">Jenis Kelamin</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r7-gender-l r7-gender-v"><span class="input__value input__hint" id="r7-gender-v">Pilih Jenis Kelamin</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r7-email">Email</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <input class="input__control" id="r7-email" type="email" placeholder="Masukkan email" autocomplete="email">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r7-pw">Password</label>
+                      <div class="input">
+                        <input class="input__control" id="r7-pw" type="password" placeholder="Masukkan password" autocomplete="new-password">
+                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                      </div>
+                    </div>
+                  </div>
+                  <ul class="rules" aria-label="Aturan password">
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
+                  </ul>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r7-cohort-l">Angkatan</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r7-cohort-l r7-cohort-v"><span class="input__value input__hint" id="r7-cohort-v">Pilih angkatan</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-class-row">
+                      <div class="field">
+                        <span class="field__label" id="r7-cin-l">Kelas Masuk</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r7-cin-l r7-cin-v"><span class="input__value input__hint auth-value-clip" id="r7-cin-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                      <div class="field">
+                        <span class="field__label" id="r7-cout-l">Kelas Keluar</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r7-cout-l r7-cout-v"><span class="input__value input__hint auth-value-clip" id="r7-cout-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-consent">
+                      <div class="list-tile list-tile--control-leading is-disabled" role="checkbox" aria-checked="false" aria-disabled="true" aria-labelledby="r7-consent-t"><span class="checkbox" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r7-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
+                      <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
+                      <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Versi kebijakan belum dapat dimuat. Periksa koneksi Anda.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+                    </div>
+                  </div>
+                  <div class="mt-5">
+                    <button class="btn btn--primary" type="button">Lanjut verifikasi email</button>
+                  </div>
+                  <div class="mt-3">
+                    <div class="auth-wrap"><span class="auth-wrap__text">Sudah punya akun?</span><button class="btn-link" type="button">Masuk</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">consentVersionsProvider galat: kotak centang nonaktif, InfoBox peringatan dengan "Coba lagi". Tergulir ke bawah.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Pendaftaran belum dibuka</figcaption>
+      <div class="device" role="group" aria-label="Daftar Alumni, pendaftaran belum dibuka">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="brand-band brand-band--thin" aria-hidden="true"></div>
+          <div class="brand-sheet auth-sheet">
+            <div class="scroll-viewport scroll-end">
+              <div class="scroll-offset">
+                <div class="auth-body">
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="mt-4">
+                    <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                    </ol>
+                  </div>
+                  <div class="mt-6">
+                    <div class="field">
+                      <label class="field__label" for="r8-name">Nama Lengkap</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <input class="input__control" id="r8-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r8-gender-l">Jenis Kelamin</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r8-gender-l r8-gender-v"><span class="input__value" id="r8-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r8-email">Email</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <input class="input__control" id="r8-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r8-pw">Password</label>
+                      <div class="input">
+                        <input class="input__control" id="r8-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                      </div>
+                    </div>
+                  </div>
+                  <ul class="rules" aria-label="Aturan password">
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                  </ul>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r8-cohort-l">Angkatan</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r8-cohort-l r8-cohort-v"><span class="input__value" id="r8-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-class-row">
+                      <div class="field">
+                        <span class="field__label" id="r8-cin-l">Kelas Masuk</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r8-cin-l r8-cin-v"><span class="input__value auth-value-clip" id="r8-cin-v">Kelas 1 (1 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                      <div class="field">
+                        <span class="field__label" id="r8-cout-l">Kelas Keluar</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r8-cout-l r8-cout-v"><span class="input__value auth-value-clip" id="r8-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <section aria-label="Perhitungan tahun akademik: tahun masuk 2002, tahun keluar 2008, tahun lulus 2008">
+                      <p class="auth-label" aria-hidden="true">Perhitungan Tahun Akademik</p>
+                      <div class="auth-years" aria-hidden="true">
+                        <div class="auth-years__cell"><span class="auth-years__value">2002</span><span class="auth-years__label">Tahun Masuk</span></div>
+                        <div class="auth-years__cell"><span class="auth-years__value">2008</span><span class="auth-years__label">Tahun Keluar</span></div>
+                        <div class="auth-years__cell"><span class="auth-years__value">2008</span><span class="auth-years__label">Tahun Lulus</span></div>
+                      </div>
+                    </section>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-consent">
+                      <div class="list-tile list-tile--control-leading is-disabled" role="checkbox" aria-checked="false" aria-disabled="true" aria-labelledby="r8-consent-t"><span class="checkbox" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r8-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
+                      <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
+                      <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Pendaftaran belum dibuka karena Kebijakan Privasi atau Ketentuan belum diterbitkan pengurus. Coba lagi nanti.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+                    </div>
+                  </div>
+                  <div class="mt-3">
+                    <div class="info-box info-box--danger" role="status"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Pendaftaran belum dibuka karena Kebijakan Privasi atau Ketentuan belum diterbitkan pengurus. Coba lagi nanti.</p></div></div>
+                  </div>
+                  <div class="mt-5">
+                    <button class="btn btn--primary" type="button">Lanjut verifikasi email</button>
+                  </div>
+                  <div class="mt-3">
+                    <div class="auth-wrap"><span class="auth-wrap__text">Sudah punya akun?</span><button class="btn-link" type="button">Masuk</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">policy_version null: kotak centang nonaktif. Bila tombol tetap ditekan, pesan yang sama muncul sebagai InfoBox bahaya.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Kebijakan diperbarui (409)</figcaption>
+      <div class="device" role="group" aria-label="Daftar Alumni, kebijakan diperbarui (409)">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="brand-band brand-band--thin" aria-hidden="true"></div>
+          <div class="brand-sheet auth-sheet">
+            <div class="scroll-viewport scroll-end">
+              <div class="scroll-offset">
+                <div class="auth-body">
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="mt-4">
+                    <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                    </ol>
+                  </div>
+                  <div class="mt-6">
+                    <div class="field">
+                      <label class="field__label" for="r9-name">Nama Lengkap</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <input class="input__control" id="r9-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r9-gender-l">Jenis Kelamin</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r9-gender-l r9-gender-v"><span class="input__value" id="r9-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r9-email">Email</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <input class="input__control" id="r9-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r9-pw">Password</label>
+                      <div class="input">
+                        <input class="input__control" id="r9-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                      </div>
+                    </div>
+                  </div>
+                  <ul class="rules" aria-label="Aturan password">
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                  </ul>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r9-cohort-l">Angkatan</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r9-cohort-l r9-cohort-v"><span class="input__value" id="r9-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-class-row">
+                      <div class="field">
+                        <span class="field__label" id="r9-cin-l">Kelas Masuk</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r9-cin-l r9-cin-v"><span class="input__value auth-value-clip" id="r9-cin-v">Kelas 1 (1 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                      <div class="field">
+                        <span class="field__label" id="r9-cout-l">Kelas Keluar</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r9-cout-l r9-cout-v"><span class="input__value auth-value-clip" id="r9-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <section aria-label="Perhitungan tahun akademik: tahun masuk 2002, tahun keluar 2008, tahun lulus 2008">
+                      <p class="auth-label" aria-hidden="true">Perhitungan Tahun Akademik</p>
+                      <div class="auth-years" aria-hidden="true">
+                        <div class="auth-years__cell"><span class="auth-years__value">2002</span><span class="auth-years__label">Tahun Masuk</span></div>
+                        <div class="auth-years__cell"><span class="auth-years__value">2008</span><span class="auth-years__label">Tahun Keluar</span></div>
+                        <div class="auth-years__cell"><span class="auth-years__value">2008</span><span class="auth-years__label">Tahun Lulus</span></div>
+                      </div>
+                    </section>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-consent">
+                      <div class="list-tile list-tile--control-leading" role="checkbox" aria-checked="false" tabindex="0" aria-labelledby="r9-consent-t"><span class="checkbox" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r9-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
+                      <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
+                      <p class="auth-note auth-consent__version">Versi berlaku: Kebijakan Privasi versi 2 · Ketentuan versi 1</p>
+                    </div>
+                  </div>
+                  <div class="mt-3">
+                    <div class="info-box info-box--danger" role="status"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kebijakan Privasi atau Ketentuan baru saja diperbarui. Baca ulang lalu setujui kembali.</p></div></div>
+                  </div>
+                  <div class="mt-5">
+                    <button class="btn btn--primary" type="button">Lanjut verifikasi email</button>
+                  </div>
+                  <div class="mt-3">
+                    <div class="auth-wrap"><span class="auth-wrap__text">Sudah punya akun?</span><button class="btn-link" type="button">Masuk</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">409 VERSION_CONFLICT: centang dilepas dan versi dimuat ulang.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">10</span> Mengirim</figcaption>
+      <div class="device" role="group" aria-label="Daftar Alumni, mengirim">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="brand-band brand-band--thin" aria-hidden="true"></div>
+          <div class="brand-sheet auth-sheet">
+            <div class="scroll-viewport scroll-end">
+              <div class="scroll-offset">
+                <div class="auth-body">
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="mt-4">
+                    <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                    </ol>
+                  </div>
+                  <div class="mt-6">
+                    <div class="field">
+                      <label class="field__label" for="r10-name">Nama Lengkap</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <input class="input__control" id="r10-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r10-gender-l">Jenis Kelamin</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r10-gender-l r10-gender-v"><span class="input__value" id="r10-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r10-email">Email</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <input class="input__control" id="r10-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r10-pw">Password</label>
+                      <div class="input">
+                        <input class="input__control" id="r10-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                      </div>
+                    </div>
+                  </div>
+                  <ul class="rules" aria-label="Aturan password">
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                  </ul>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r10-cohort-l">Angkatan</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r10-cohort-l r10-cohort-v"><span class="input__value" id="r10-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-class-row">
+                      <div class="field">
+                        <span class="field__label" id="r10-cin-l">Kelas Masuk</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r10-cin-l r10-cin-v"><span class="input__value auth-value-clip" id="r10-cin-v">Kelas 1 (1 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                      <div class="field">
+                        <span class="field__label" id="r10-cout-l">Kelas Keluar</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r10-cout-l r10-cout-v"><span class="input__value auth-value-clip" id="r10-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <section aria-label="Perhitungan tahun akademik: tahun masuk 2002, tahun keluar 2008, tahun lulus 2008">
+                      <p class="auth-label" aria-hidden="true">Perhitungan Tahun Akademik</p>
+                      <div class="auth-years" aria-hidden="true">
+                        <div class="auth-years__cell"><span class="auth-years__value">2002</span><span class="auth-years__label">Tahun Masuk</span></div>
+                        <div class="auth-years__cell"><span class="auth-years__value">2008</span><span class="auth-years__label">Tahun Keluar</span></div>
+                        <div class="auth-years__cell"><span class="auth-years__value">2008</span><span class="auth-years__label">Tahun Lulus</span></div>
+                      </div>
+                    </section>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-consent">
+                      <div class="list-tile list-tile--control-leading" role="checkbox" aria-checked="true" tabindex="0" aria-labelledby="r10-consent-t"><span class="checkbox is-checked" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r10-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
+                      <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
+                      <p class="auth-note auth-consent__version">Versi yang disetujui: Kebijakan Privasi versi 2 · Ketentuan versi 1</p>
+                    </div>
+                  </div>
+                  <div class="mt-5">
+                    <button class="btn btn--primary is-busy" type="button" disabled aria-busy="true"><span class="spinner spinner--18" aria-hidden="true"></span>Mengirim...</button>
+                  </div>
+                  <div class="mt-3">
+                    <div class="auth-wrap"><span class="auth-wrap__text">Sudah punya akun?</span><button class="btn-link" type="button">Masuk</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">11</span> Batas kirim (429)</figcaption>
+      <div class="device" role="group" aria-label="Daftar Alumni, batas kirim (429)">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="brand-band brand-band--thin" aria-hidden="true"></div>
+          <div class="brand-sheet auth-sheet">
+            <div class="scroll-viewport scroll-end">
+              <div class="scroll-offset">
+                <div class="auth-body">
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="mt-4">
+                    <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                    </ol>
+                  </div>
+                  <div class="mt-6">
+                    <div class="field">
+                      <label class="field__label" for="r11-name">Nama Lengkap</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <input class="input__control" id="r11-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r11-gender-l">Jenis Kelamin</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r11-gender-l r11-gender-v"><span class="input__value" id="r11-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r11-email">Email</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <input class="input__control" id="r11-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r11-pw">Password</label>
+                      <div class="input">
+                        <input class="input__control" id="r11-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                      </div>
+                    </div>
+                  </div>
+                  <ul class="rules" aria-label="Aturan password">
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                  </ul>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r11-cohort-l">Angkatan</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r11-cohort-l r11-cohort-v"><span class="input__value" id="r11-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-class-row">
+                      <div class="field">
+                        <span class="field__label" id="r11-cin-l">Kelas Masuk</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r11-cin-l r11-cin-v"><span class="input__value auth-value-clip" id="r11-cin-v">Kelas 1 (1 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                      <div class="field">
+                        <span class="field__label" id="r11-cout-l">Kelas Keluar</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r11-cout-l r11-cout-v"><span class="input__value auth-value-clip" id="r11-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <section aria-label="Perhitungan tahun akademik: tahun masuk 2002, tahun keluar 2008, tahun lulus 2008">
+                      <p class="auth-label" aria-hidden="true">Perhitungan Tahun Akademik</p>
+                      <div class="auth-years" aria-hidden="true">
+                        <div class="auth-years__cell"><span class="auth-years__value">2002</span><span class="auth-years__label">Tahun Masuk</span></div>
+                        <div class="auth-years__cell"><span class="auth-years__value">2008</span><span class="auth-years__label">Tahun Keluar</span></div>
+                        <div class="auth-years__cell"><span class="auth-years__value">2008</span><span class="auth-years__label">Tahun Lulus</span></div>
+                      </div>
+                    </section>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-consent">
+                      <div class="list-tile list-tile--control-leading" role="checkbox" aria-checked="true" tabindex="0" aria-labelledby="r11-consent-t"><span class="checkbox is-checked" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r11-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
+                      <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
+                      <p class="auth-note auth-consent__version">Versi yang disetujui: Kebijakan Privasi versi 2 · Ketentuan versi 1</p>
+                    </div>
+                  </div>
+                  <div class="mt-3">
+                    <div class="info-box info-box--danger" role="status"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Terlalu banyak percobaan. Coba lagi nanti.</p></div></div>
+                  </div>
+                  <div class="mt-5">
+                    <button class="btn btn--primary" type="button" disabled>Coba lagi dalam 0:42</button>
+                  </div>
+                  <div class="mt-3">
+                    <div class="auth-wrap"><span class="auth-wrap__text">Sudah punya akun?</span><button class="btn-link" type="button">Masuk</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Hitung mundur dari retry_after; tombol nonaktif sampai 0:00.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">12</span> Kelas keluar sebelum kelas masuk</figcaption>
+      <div class="device" role="group" aria-label="Daftar Alumni, kelas keluar sebelum kelas masuk">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="brand-band brand-band--thin" aria-hidden="true"></div>
+          <div class="brand-sheet auth-sheet">
+            <div class="scroll-viewport" style="--scroll:380px">
+              <div class="scroll-offset">
+                <div class="auth-body">
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="mt-4">
+                    <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                    </ol>
+                  </div>
+                  <div class="mt-6">
+                    <div class="field">
+                      <label class="field__label" for="r12-name">Nama Lengkap</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <input class="input__control" id="r12-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r12-gender-l">Jenis Kelamin</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r12-gender-l r12-gender-v"><span class="input__value" id="r12-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r12-email">Email</label>
+                      <div class="input">
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <input class="input__control" id="r12-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="field">
+                      <label class="field__label" for="r12-pw">Password</label>
+                      <div class="input">
+                        <input class="input__control" id="r12-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                      </div>
+                    </div>
+                  </div>
+                  <ul class="rules" aria-label="Aturan password">
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                  </ul>
+                  <div class="mt-4">
+                    <div class="field">
+                      <span class="field__label" id="r12-cohort-l">Angkatan</span>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r12-cohort-l r12-cohort-v"><span class="input__value" id="r12-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-class-row">
+                      <div class="field">
+                        <span class="field__label" id="r12-cin-l">Kelas Masuk</span>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r12-cin-l r12-cin-v"><span class="input__value auth-value-clip" id="r12-cin-v">Kelas 4 (1 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      </div>
+                      <div class="field">
+                        <span class="field__label" id="r12-cout-l">Kelas Keluar</span>
+                        <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r12-cout-l r12-cout-v" aria-describedby="r12-cout-err"><span class="input__value auth-value-clip" id="r12-cout-v">Kelas 3 (3 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <p class="field__error" id="r12-cout-err">Tidak boleh sebelum kelas masuk</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-4">
+                    <div class="auth-consent">
+                      <div class="list-tile list-tile--control-leading" role="checkbox" aria-checked="true" tabindex="0" aria-labelledby="r12-consent-t"><span class="checkbox is-checked" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r12-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
+                      <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
+                      <p class="auth-note auth-consent__version">Versi yang disetujui: Kebijakan Privasi versi 2 · Ketentuan versi 1</p>
+                    </div>
+                  </div>
+                  <div class="mt-5">
+                    <button class="btn btn--primary" type="button">Lanjut verifikasi email</button>
+                  </div>
+                  <div class="mt-3">
+                    <div class="auth-wrap"><span class="auth-wrap__text">Sudah punya akun?</span><button class="btn-link" type="button">Masuk</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Validator Kelas Keluar; kartu tahun akademik tidak tampil karena kombinasi kelas tidak valid.</p>
+    </figure>
+
+  </main>
+</body>
+</html>

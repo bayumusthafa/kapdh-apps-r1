@@ -1,0 +1,1326 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Beranda - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Beranda aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/beranda.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Beranda</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/home/home_screen.dart</code> (HomeScreen, _ActiveHome, _CacheNotice, _QuickAccess, _RenewalReminder, _GatedHome); widget <code>home/widgets/home_widgets.dart</code>, <code>home/widgets/banner_carousel.dart</code>, <code>home/shared/content_widgets.dart</code>, <code>events/widgets/event_card.dart</code>, <code>news/widgets/post_card.dart</code></dd>
+      <dt>Rute</dt><dd><code>/home</code> (tab Beranda, StatefulShellRoute)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama</li>
+        <li>Gulir penuh</li>
+        <li>KTA segera berakhir</li>
+        <li>Memuat</li>
+        <li>Cache, sedang memperbarui</li>
+        <li>Cache, offline</li>
+        <li>Cache, server gagal</li>
+        <li>Galat tanpa cache (offline)</li>
+        <li>Galat tanpa cache (server)</li>
+        <li>Pita Pemeliharaan</li>
+        <li>Bagian kosong</li>
+        <li>Semua kosong</li>
+        <li>Dialog tautan luar</li>
+        <li>Snackbar konten tidak tersedia</li>
+        <li>KTA belum aktif</li>
+        <li>Masa keanggotaan berakhir</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Data contoh fiktif: anggota "Ahmad Fauzi" nomor 12.01.01.7, 3 belum dibaca, lencana Jejaring 2. Judul banner, event dan berita diambil dari draf docs/konten/konten-peluncuran.md; tanggal, lokasi dan harga contoh. Tidak ditampilkan: RefreshIndicator (tarik untuk menyegarkan), keadaan status lain "Beranda belum tersedia" (tanpa tombol; status di luar unverified/verified/expiring/expired tidak dapat membuka /home).</p>
+  </header>
+
+  <main class="frames">
+
+<h2 class="frames__group-title">Anggota aktif (KTA Aktif / Segera Berakhir)</h2>
+
+<figure class="frame" id="frame-1">
+<figcaption class="frame__label"><span class="frame__num">1</span> Utama</figcaption>
+<div class="device" aria-label="Beranda, keadaan utama">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi, 3 belum dibaca"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="badge badge--accent" aria-hidden="true">3</span></span></button>
+</header>
+<div class="screen__body">
+<div class="home-list">
+<div class="mb-4">
+<section class="banner-carousel" aria-label="Banner">
+  <div class="banner-carousel__track">
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 2 dari 3: Panduan Iuran dan Perpanjangan KTA Digital, membuka tautan luar"><img src="../assets/sample/banner-2-iuran-kta.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Panduan Iuran dan Perpanjangan KTA Digital</span><span class="external-pill">Tautan luar<span class="ic ic-open_in_new" aria-hidden="true"></span></span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 3 dari 3: Lengkapi Profil dan Ikuti Temu Jejaring Alumni, membuka detail"><img src="../assets/sample/banner-3-jejaring.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Lengkapi Profil dan Ikuti Temu Jejaring Alumni</span></span></a></div>
+  </div>
+</section>
+<div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
+</div>
+<div class="quick-access" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="KTA, 12.01.01.7"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">12.01.01.7</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<section aria-label="Event Mendatang">
+<div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card card--pad event-card" href="#" aria-label="Peluncuran KAPDH Apps dan Silaturahmi Alumni, Silaturahmi, Sabtu, 31 Okt 2026, Daring melalui Zoom, Gratis, Pendaftaran Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Temu Jejaring Alumni Lintas Profesi, Jejaring, Sabtu, 14 Nov 2026, Daring melalui Google Meet, Gratis, Kuota Penuh">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-3-temu-jejaring.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Jejaring</span>
+    <p class="event-card__title clamp-2 mt-6px">Temu Jejaring Alumni Lintas Profesi</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 14 Nov 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Google Meet</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--warning"><span class="ic ic-group_off" aria-hidden="true"></span>Kuota Penuh</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Halal Bihalal dan Silaturahmi Akbar Alumni, Silaturahmi, Minggu, 21 Mar 2027, Aula Pondok Pesantren Darel Hikmah, Rp150.000, Pendaftaran Belum Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Aula Pondok Pesantren Darel Hikmah</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span><span class="price">Rp150.000</span></div>
+  </div>
+</a>
+</div>
+</section>
+<section aria-label="Berita Terbaru">
+<div class="section-title mt-4"><h3 class="section-title__title">Berita Terbaru</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+</div>
+</section>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Banner aktif (1 dari 3, banner berikutnya mengintip 9 px), akses cepat, 3 event mendatang, 3 berita terbaru. Lonceng: lencana emas jumlah belum dibaca. Tab Jejaring berlencana jumlah percakapan belum dibaca.</p>
+</figure>
+
+<figure class="frame" id="frame-2">
+<figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh</figcaption>
+<div class="device device--tall" aria-label="Beranda, seluruh isi">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi, 3 belum dibaca"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="badge badge--accent" aria-hidden="true">3</span></span></button>
+</header>
+<div class="screen__body">
+<div class="home-list">
+<div class="mb-4">
+<section class="banner-carousel" aria-label="Banner">
+  <div class="banner-carousel__track">
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 2 dari 3: Panduan Iuran dan Perpanjangan KTA Digital, membuka tautan luar"><img src="../assets/sample/banner-2-iuran-kta.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Panduan Iuran dan Perpanjangan KTA Digital</span><span class="external-pill">Tautan luar<span class="ic ic-open_in_new" aria-hidden="true"></span></span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 3 dari 3: Lengkapi Profil dan Ikuti Temu Jejaring Alumni, membuka detail"><img src="../assets/sample/banner-3-jejaring.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Lengkapi Profil dan Ikuti Temu Jejaring Alumni</span></span></a></div>
+  </div>
+</section>
+<div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
+</div>
+<div class="quick-access" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="KTA, 12.01.01.7"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">12.01.01.7</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<section aria-label="Event Mendatang">
+<div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card card--pad event-card" href="#" aria-label="Peluncuran KAPDH Apps dan Silaturahmi Alumni, Silaturahmi, Sabtu, 31 Okt 2026, Daring melalui Zoom, Gratis, Pendaftaran Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Temu Jejaring Alumni Lintas Profesi, Jejaring, Sabtu, 14 Nov 2026, Daring melalui Google Meet, Gratis, Kuota Penuh">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-3-temu-jejaring.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Jejaring</span>
+    <p class="event-card__title clamp-2 mt-6px">Temu Jejaring Alumni Lintas Profesi</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 14 Nov 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Google Meet</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--warning"><span class="ic ic-group_off" aria-hidden="true"></span>Kuota Penuh</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Halal Bihalal dan Silaturahmi Akbar Alumni, Silaturahmi, Minggu, 21 Mar 2027, Aula Pondok Pesantren Darel Hikmah, Rp150.000, Pendaftaran Belum Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Aula Pondok Pesantren Darel Hikmah</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span><span class="price">Rp150.000</span></div>
+  </div>
+</a>
+</div>
+</section>
+<section aria-label="Berita Terbaru">
+<div class="section-title mt-4"><h3 class="section-title__title">Berita Terbaru</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+</div>
+</section>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">ListView padding 20/16/20/32. HomeSectionTitle 16 w600 + "Lihat semua"; jarak 8 ke kartu, 12 antarkartu, 16 sebelum bagian Berita.</p>
+</figure>
+
+<figure class="frame" id="frame-3">
+<figcaption class="frame__label"><span class="frame__num">3</span> KTA segera berakhir</figcaption>
+<div class="device" aria-label="Beranda, KTA segera berakhir">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi, 3 belum dibaca"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="badge badge--accent" aria-hidden="true">3</span></span></button>
+</header>
+<div class="screen__body">
+<div class="home-list">
+<div class="mb-4">
+<section class="banner-carousel" aria-label="Banner">
+  <div class="banner-carousel__track">
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 2 dari 3: Panduan Iuran dan Perpanjangan KTA Digital, membuka tautan luar"><img src="../assets/sample/banner-2-iuran-kta.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Panduan Iuran dan Perpanjangan KTA Digital</span><span class="external-pill">Tautan luar<span class="ic ic-open_in_new" aria-hidden="true"></span></span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 3 dari 3: Lengkapi Profil dan Ikuti Temu Jejaring Alumni, membuka detail"><img src="../assets/sample/banner-3-jejaring.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Lengkapi Profil dan Ikuti Temu Jejaring Alumni</span></span></a></div>
+  </div>
+</section>
+<div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
+</div>
+<div class="quick-access" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="KTA, 12.01.01.7"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">12.01.01.7</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<div class="mt-3"><div class="info-box info-box--warning" role="status"><span class="ic ic-schedule" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Masa aktif KTA segera berakhir</p><p class="info-box__message">KTA Anda berakhir pada 13 Nov 2026. Perpanjang sekarang agar akses event, jejaring dan chat tidak terputus.</p></div><button class="btn-text info-box__trailing" type="button">Perpanjang</button></div></div>
+<section aria-label="Event Mendatang">
+<div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card card--pad event-card" href="#" aria-label="Peluncuran KAPDH Apps dan Silaturahmi Alumni, Silaturahmi, Sabtu, 31 Okt 2026, Daring melalui Zoom, Gratis, Pendaftaran Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Temu Jejaring Alumni Lintas Profesi, Jejaring, Sabtu, 14 Nov 2026, Daring melalui Google Meet, Gratis, Kuota Penuh">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-3-temu-jejaring.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Jejaring</span>
+    <p class="event-card__title clamp-2 mt-6px">Temu Jejaring Alumni Lintas Profesi</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 14 Nov 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Google Meet</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--warning"><span class="ic ic-group_off" aria-hidden="true"></span>Kuota Penuh</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Halal Bihalal dan Silaturahmi Akbar Alumni, Silaturahmi, Minggu, 21 Mar 2027, Aula Pondok Pesantren Darel Hikmah, Rp150.000, Pendaftaran Belum Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Aula Pondok Pesantren Darel Hikmah</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span><span class="price">Rp150.000</span></div>
+  </div>
+</a>
+</div>
+</section>
+<section aria-label="Berita Terbaru">
+<div class="section-title mt-4"><h3 class="section-title__title">Berita Terbaru</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+</div>
+</section>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">_RenewalReminder (effective_status expiring): InfoBox warning dengan TextButton "Perpanjang" ke /renewal, 12 di bawah akses cepat.</p>
+</figure>
+
+<h2 class="frames__group-title">Memuat, cache dan galat</h2>
+
+<figure class="frame" id="frame-4">
+<figcaption class="frame__label"><span class="frame__num">4</span> Memuat</figcaption>
+<div class="device" aria-label="Beranda, memuat">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span></button>
+</header>
+<div class="screen__body">
+<div class="skeleton" role="status" aria-label="Memuat Beranda"><div class="skeleton__card"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Belum ada data maupun cache: LoadingSkeleton(lines: 6) dengan blok kartu. Lonceng tanpa lencana sampai penghitung diketahui.</p>
+</figure>
+
+<figure class="frame" id="frame-5">
+<figcaption class="frame__label"><span class="frame__num">5</span> Cache, sedang memperbarui</figcaption>
+<div class="device" aria-label="Beranda, menampilkan cache sambil memperbarui">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi, 3 belum dibaca"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="badge badge--accent" aria-hidden="true">3</span></span></button>
+</header>
+<div class="screen__body">
+<div class="home-list">
+<div class="progress-linear progress-linear--thin" role="progressbar" aria-label="Memperbarui Beranda" style="--value:35%"><span class="progress-linear__bar"></span></div>
+<div class="mb-4"><div class="info-box"><span class="ic ic-history" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Menampilkan data tersimpan</p><p class="info-box__message">Diperbarui 17 Okt 2026, 21.05 WIB. Memperbarui…</p></div></div></div>
+<div class="mb-4">
+<section class="banner-carousel" aria-label="Banner">
+  <div class="banner-carousel__track">
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 2 dari 3: Panduan Iuran dan Perpanjangan KTA Digital, membuka tautan luar"><img src="../assets/sample/banner-2-iuran-kta.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Panduan Iuran dan Perpanjangan KTA Digital</span><span class="external-pill">Tautan luar<span class="ic ic-open_in_new" aria-hidden="true"></span></span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 3 dari 3: Lengkapi Profil dan Ikuti Temu Jejaring Alumni, membuka detail"><img src="../assets/sample/banner-3-jejaring.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Lengkapi Profil dan Ikuti Temu Jejaring Alumni</span></span></a></div>
+  </div>
+</section>
+<div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
+</div>
+<div class="quick-access" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="KTA, 12.01.01.7"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">12.01.01.7</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<section aria-label="Event Mendatang">
+<div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card card--pad event-card" href="#" aria-label="Peluncuran KAPDH Apps dan Silaturahmi Alumni, Silaturahmi, Sabtu, 31 Okt 2026, Daring melalui Zoom, Gratis, Pendaftaran Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Temu Jejaring Alumni Lintas Profesi, Jejaring, Sabtu, 14 Nov 2026, Daring melalui Google Meet, Gratis, Kuota Penuh">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-3-temu-jejaring.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Jejaring</span>
+    <p class="event-card__title clamp-2 mt-6px">Temu Jejaring Alumni Lintas Profesi</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 14 Nov 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Google Meet</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--warning"><span class="ic ic-group_off" aria-hidden="true"></span>Kuota Penuh</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Halal Bihalal dan Silaturahmi Akbar Alumni, Silaturahmi, Minggu, 21 Mar 2027, Aula Pondok Pesantren Darel Hikmah, Rp150.000, Pendaftaran Belum Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Aula Pondok Pesantren Darel Hikmah</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span><span class="price">Rp150.000</span></div>
+  </div>
+</a>
+</div>
+</section>
+<section aria-label="Berita Terbaru">
+<div class="section-title mt-4"><h3 class="section-title__title">Berita Terbaru</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+</div>
+</section>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Cache tampil lebih dulu: LinearProgressIndicator 2 px + InfoBox info (Icons.history) dengan waktu generated_at.</p>
+</figure>
+
+<figure class="frame" id="frame-6">
+<figcaption class="frame__label"><span class="frame__num">6</span> Cache, offline</figcaption>
+<div class="device" aria-label="Beranda, cache saat offline">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi, 3 belum dibaca"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="badge badge--accent" aria-hidden="true">3</span></span></button>
+</header>
+<div class="status-strip" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><span class="status-strip__text"><strong>Offline</strong>. Tersinkron 18 Okt 2026, 07.42 WIB</span><button class="btn-text" type="button">Coba lagi</button></div>
+<div class="screen__body">
+<div class="home-list">
+<div class="mb-4"><div class="info-box info-box--warning" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Offline</p><p class="info-box__message">Diperbarui 17 Okt 2026, 21.05 WIB. Periksa koneksi internet Anda.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div></div>
+<div class="mb-4">
+<section class="banner-carousel" aria-label="Banner">
+  <div class="banner-carousel__track">
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 2 dari 3: Panduan Iuran dan Perpanjangan KTA Digital, membuka tautan luar"><img src="../assets/sample/banner-2-iuran-kta.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Panduan Iuran dan Perpanjangan KTA Digital</span><span class="external-pill">Tautan luar<span class="ic ic-open_in_new" aria-hidden="true"></span></span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 3 dari 3: Lengkapi Profil dan Ikuti Temu Jejaring Alumni, membuka detail"><img src="../assets/sample/banner-3-jejaring.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Lengkapi Profil dan Ikuti Temu Jejaring Alumni</span></span></a></div>
+  </div>
+</section>
+<div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
+</div>
+<div class="quick-access" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="KTA, 12.01.01.7"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">12.01.01.7</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<section aria-label="Event Mendatang">
+<div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card card--pad event-card" href="#" aria-label="Peluncuran KAPDH Apps dan Silaturahmi Alumni, Silaturahmi, Sabtu, 31 Okt 2026, Daring melalui Zoom, Gratis, Pendaftaran Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Temu Jejaring Alumni Lintas Profesi, Jejaring, Sabtu, 14 Nov 2026, Daring melalui Google Meet, Gratis, Kuota Penuh">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-3-temu-jejaring.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Jejaring</span>
+    <p class="event-card__title clamp-2 mt-6px">Temu Jejaring Alumni Lintas Profesi</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 14 Nov 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Google Meet</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--warning"><span class="ic ic-group_off" aria-hidden="true"></span>Kuota Penuh</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Halal Bihalal dan Silaturahmi Akbar Alumni, Silaturahmi, Minggu, 21 Mar 2027, Aula Pondok Pesantren Darel Hikmah, Rp150.000, Pendaftaran Belum Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Aula Pondok Pesantren Darel Hikmah</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span><span class="price">Rp150.000</span></div>
+  </div>
+</a>
+</div>
+</section>
+<section aria-label="Berita Terbaru">
+<div class="section-title mt-4"><h3 class="section-title__title">Berita Terbaru</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+</div>
+</section>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">GET /home gagal karena jaringan: InfoBox warning cloud_off + "Coba lagi". Pita global Offline (sesi offlineLastKnown) dipasang Beranda sendiri tepat di bawah HomeHeader.</p>
+</figure>
+
+<figure class="frame" id="frame-7">
+<figcaption class="frame__label"><span class="frame__num">7</span> Cache, server gagal</figcaption>
+<div class="device" aria-label="Beranda, cache saat server gagal">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi, 3 belum dibaca"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="badge badge--accent" aria-hidden="true">3</span></span></button>
+</header>
+<div class="screen__body">
+<div class="home-list">
+<div class="mb-4"><div class="info-box info-box--warning" role="status"><span class="ic ic-sync_problem" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Beranda belum dapat diperbarui</p><p class="info-box__message">Diperbarui 17 Okt 2026, 21.05 WIB. Terjadi kesalahan. Coba lagi.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div></div>
+<div class="mb-4">
+<section class="banner-carousel" aria-label="Banner">
+  <div class="banner-carousel__track">
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 2 dari 3: Panduan Iuran dan Perpanjangan KTA Digital, membuka tautan luar"><img src="../assets/sample/banner-2-iuran-kta.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Panduan Iuran dan Perpanjangan KTA Digital</span><span class="external-pill">Tautan luar<span class="ic ic-open_in_new" aria-hidden="true"></span></span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 3 dari 3: Lengkapi Profil dan Ikuti Temu Jejaring Alumni, membuka detail"><img src="../assets/sample/banner-3-jejaring.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Lengkapi Profil dan Ikuti Temu Jejaring Alumni</span></span></a></div>
+  </div>
+</section>
+<div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
+</div>
+<div class="quick-access" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="KTA, 12.01.01.7"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">12.01.01.7</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<section aria-label="Event Mendatang">
+<div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card card--pad event-card" href="#" aria-label="Peluncuran KAPDH Apps dan Silaturahmi Alumni, Silaturahmi, Sabtu, 31 Okt 2026, Daring melalui Zoom, Gratis, Pendaftaran Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Temu Jejaring Alumni Lintas Profesi, Jejaring, Sabtu, 14 Nov 2026, Daring melalui Google Meet, Gratis, Kuota Penuh">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-3-temu-jejaring.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Jejaring</span>
+    <p class="event-card__title clamp-2 mt-6px">Temu Jejaring Alumni Lintas Profesi</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 14 Nov 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Google Meet</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--warning"><span class="ic ic-group_off" aria-hidden="true"></span>Kuota Penuh</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Halal Bihalal dan Silaturahmi Akbar Alumni, Silaturahmi, Minggu, 21 Mar 2027, Aula Pondok Pesantren Darel Hikmah, Rp150.000, Pendaftaran Belum Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Aula Pondok Pesantren Darel Hikmah</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span><span class="price">Rp150.000</span></div>
+  </div>
+</a>
+</div>
+</section>
+<section aria-label="Berita Terbaru">
+<div class="section-title mt-4"><h3 class="section-title__title">Berita Terbaru</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+</div>
+</section>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Galat selain jaringan: Icons.sync_problem, judul "Beranda belum dapat diperbarui", pesan dari ApiException.message.</p>
+</figure>
+
+<figure class="frame" id="frame-8">
+<figcaption class="frame__label"><span class="frame__num">8</span> Galat tanpa cache (offline)</figcaption>
+<div class="device" aria-label="Beranda, galat offline tanpa cache">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span></button>
+</header>
+<div class="screen__body">
+<div class="state state--error">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off" aria-hidden="true"></span></div>
+  <h3 class="state__title">Tidak ada koneksi</h3>
+  <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+  <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">ErrorState.fromException mengisi tinggi daftar (tarik untuk memuat ulang tetap aktif). Galat jaringan tidak punya request_id.</p>
+</figure>
+
+<figure class="frame" id="frame-9">
+<figcaption class="frame__label"><span class="frame__num">9</span> Galat tanpa cache (server)</figcaption>
+<div class="device" aria-label="Beranda, galat server tanpa cache">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span></button>
+</header>
+<div class="screen__body">
+<div class="state state--error">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-error_outline" aria-hidden="true"></span></div>
+  <h3 class="state__title">Terjadi kesalahan</h3>
+  <p class="state__message">Terjadi kesalahan. Coba lagi.</p>
+  <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+  <p class="state__footnote">Kode bantuan: req_4c1d8e2a</p>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Galat server: "Terjadi kesalahan" + "Kode bantuan: request_id" (SelectableText 11).</p>
+</figure>
+
+<figure class="frame" id="frame-10">
+<figcaption class="frame__label"><span class="frame__num">10</span> Pita Pemeliharaan</figcaption>
+<div class="device" aria-label="Beranda, pita pemeliharaan">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi, 3 belum dibaca"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="badge badge--accent" aria-hidden="true">3</span></span></button>
+</header>
+<div class="status-strip" role="status"><span class="ic ic-build_outlined" aria-hidden="true"></span><span class="status-strip__text"><strong>Pemeliharaan</strong>. Perubahan data ditunda sampai sekitar 18 Okt 2026, 23.00 WIB.</span><button class="btn-text" type="button">Detail</button></div>
+<div class="screen__body">
+<div class="home-list">
+<div class="mb-4">
+<section class="banner-carousel" aria-label="Banner">
+  <div class="banner-carousel__track">
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 2 dari 3: Panduan Iuran dan Perpanjangan KTA Digital, membuka tautan luar"><img src="../assets/sample/banner-2-iuran-kta.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Panduan Iuran dan Perpanjangan KTA Digital</span><span class="external-pill">Tautan luar<span class="ic ic-open_in_new" aria-hidden="true"></span></span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 3 dari 3: Lengkapi Profil dan Ikuti Temu Jejaring Alumni, membuka detail"><img src="../assets/sample/banner-3-jejaring.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Lengkapi Profil dan Ikuti Temu Jejaring Alumni</span></span></a></div>
+  </div>
+</section>
+<div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
+</div>
+<div class="quick-access" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="KTA, 12.01.01.7"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">12.01.01.7</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<section aria-label="Event Mendatang">
+<div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card card--pad event-card" href="#" aria-label="Peluncuran KAPDH Apps dan Silaturahmi Alumni, Silaturahmi, Sabtu, 31 Okt 2026, Daring melalui Zoom, Gratis, Pendaftaran Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Temu Jejaring Alumni Lintas Profesi, Jejaring, Sabtu, 14 Nov 2026, Daring melalui Google Meet, Gratis, Kuota Penuh">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-3-temu-jejaring.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Jejaring</span>
+    <p class="event-card__title clamp-2 mt-6px">Temu Jejaring Alumni Lintas Profesi</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 14 Nov 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Google Meet</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--warning"><span class="ic ic-group_off" aria-hidden="true"></span>Kuota Penuh</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Halal Bihalal dan Silaturahmi Akbar Alumni, Silaturahmi, Minggu, 21 Mar 2027, Aula Pondok Pesantren Darel Hikmah, Rp150.000, Pendaftaran Belum Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Aula Pondok Pesantren Darel Hikmah</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span><span class="price">Rp150.000</span></div>
+  </div>
+</a>
+</div>
+</section>
+<section aria-label="Berita Terbaru">
+<div class="section-title mt-4"><h3 class="section-title__title">Berita Terbaru</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+</div>
+</section>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">MaintenanceBanner (gerbang maintenance, mode baca): ikon build_outlined, TextButton "Detail" ke /maintenance.</p>
+</figure>
+
+<h2 class="frames__group-title">Variasi isi</h2>
+
+<figure class="frame" id="frame-11">
+<figcaption class="frame__label"><span class="frame__num">11</span> Bagian kosong</figcaption>
+<div class="device" aria-label="Beranda, event dan berita kosong">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi, 3 belum dibaca"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="badge badge--accent" aria-hidden="true">3</span></span></button>
+</header>
+<div class="screen__body">
+<div class="home-list">
+<div class="mb-4">
+<section class="banner-carousel" aria-label="Banner">
+  <div class="banner-carousel__track">
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 2 dari 3: Panduan Iuran dan Perpanjangan KTA Digital, membuka tautan luar"><img src="../assets/sample/banner-2-iuran-kta.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Panduan Iuran dan Perpanjangan KTA Digital</span><span class="external-pill">Tautan luar<span class="ic ic-open_in_new" aria-hidden="true"></span></span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 3 dari 3: Lengkapi Profil dan Ikuti Temu Jejaring Alumni, membuka detail"><img src="../assets/sample/banner-3-jejaring.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Lengkapi Profil dan Ikuti Temu Jejaring Alumni</span></span></a></div>
+  </div>
+</section>
+<div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
+</div>
+<div class="quick-access" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="KTA, 12.01.01.7"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">12.01.01.7</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<section aria-label="Event Mendatang">
+<div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<div class="section-empty"><span class="ic ic-event_outlined" aria-hidden="true"></span><p class="section-empty__text">Belum ada event mendatang. Event baru dari pengurus akan tampil di sini.</p></div>
+</div>
+</section>
+<section aria-label="Berita Terbaru">
+<div class="section-title mt-4"><h3 class="section-title__title">Berita Terbaru</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<div class="section-empty"><span class="ic ic-article_outlined" aria-hidden="true"></span><p class="section-empty__text">Belum ada berita terbit. Berita resmi pengurus akan tampil di sini.</p></div>
+</div>
+</section>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Ada banner tetapi event dan berita kosong: SectionEmpty (event_outlined / article_outlined) di bawah judul bagian.</p>
+</figure>
+
+<figure class="frame" id="frame-12">
+<figcaption class="frame__label"><span class="frame__num">12</span> Semua kosong</figcaption>
+<div class="device" aria-label="Beranda, belum ada kabar">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span></button>
+</header>
+<div class="screen__body">
+<div class="home-list">
+<div class="quick-access" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="KTA, 12.01.01.7"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">12.01.01.7</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, Semua terbaca"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">Semua terbaca</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<div class="state mt-5">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-campaign_outlined" aria-hidden="true"></span></div>
+  <h3 class="state__title">Belum ada kabar terbaru</h3>
+  <p class="state__message">Pengurus belum menerbitkan berita atau event. Tarik layar ke bawah untuk memuat ulang; kabar baru juga dikirim lewat notifikasi.</p>
+  <button class="btn btn--outline btn--inline state__action" type="button">Muat ulang</button>
+</div>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Tanpa banner, event dan berita: EmptyState campaign_outlined + "Muat ulang". Akses cepat tetap tampil; "Semua terbaca" bila 0 belum dibaca.</p>
+</figure>
+
+<h2 class="frames__group-title">Interaksi banner</h2>
+
+<figure class="frame" id="frame-13">
+<figcaption class="frame__label"><span class="frame__num">13</span> Dialog tautan luar</figcaption>
+<div class="device" aria-label="Beranda, dialog buka tautan luar">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi, 3 belum dibaca"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="badge badge--accent" aria-hidden="true">3</span></span></button>
+</header>
+<div class="screen__body">
+<div class="home-list">
+<div class="mb-4">
+<section class="banner-carousel" aria-label="Banner">
+  <div class="banner-carousel__track banner-carousel__track--page-2">
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 2 dari 3: Panduan Iuran dan Perpanjangan KTA Digital, membuka tautan luar"><img src="../assets/sample/banner-2-iuran-kta.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Panduan Iuran dan Perpanjangan KTA Digital</span><span class="external-pill">Tautan luar<span class="ic ic-open_in_new" aria-hidden="true"></span></span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 3 dari 3: Lengkapi Profil dan Ikuti Temu Jejaring Alumni, membuka detail"><img src="../assets/sample/banner-3-jejaring.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Lengkapi Profil dan Ikuti Temu Jejaring Alumni</span></span></a></div>
+  </div>
+</section>
+<div class="dots" aria-hidden="true"><span class="dots__dot"></span><span class="dots__dot is-active"></span><span class="dots__dot"></span></div>
+</div>
+<div class="quick-access" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="KTA, 12.01.01.7"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">12.01.01.7</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<section aria-label="Event Mendatang">
+<div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card card--pad event-card" href="#" aria-label="Peluncuran KAPDH Apps dan Silaturahmi Alumni, Silaturahmi, Sabtu, 31 Okt 2026, Daring melalui Zoom, Gratis, Pendaftaran Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Temu Jejaring Alumni Lintas Profesi, Jejaring, Sabtu, 14 Nov 2026, Daring melalui Google Meet, Gratis, Kuota Penuh">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-3-temu-jejaring.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Jejaring</span>
+    <p class="event-card__title clamp-2 mt-6px">Temu Jejaring Alumni Lintas Profesi</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 14 Nov 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Google Meet</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--warning"><span class="ic ic-group_off" aria-hidden="true"></span>Kuota Penuh</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Halal Bihalal dan Silaturahmi Akbar Alumni, Silaturahmi, Minggu, 21 Mar 2027, Aula Pondok Pesantren Darel Hikmah, Rp150.000, Pendaftaran Belum Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Aula Pondok Pesantren Darel Hikmah</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span><span class="price">Rp150.000</span></div>
+  </div>
+</a>
+</div>
+</section>
+<section aria-label="Berita Terbaru">
+<div class="section-title mt-4"><h3 class="section-title__title">Berita Terbaru</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+</div>
+</section>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="scrim"></div>
+<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-home-ext">
+  <div class="dialog__icon"><span class="ic ic-open_in_new" aria-hidden="true"></span></div>
+  <h3 class="dialog__title" id="dlg-home-ext">Buka tautan luar?</h3>
+  <div class="dialog__content"><p class="c-muted">Anda akan meninggalkan aplikasi KAPDH menuju <strong>kapdh.or.id</strong>. Isi situs tersebut di luar tanggung jawab pengurus.</p></div>
+  <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text" type="button">Buka</button></div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Banner bertarget url (pil "Tautan luar", halaman 2 dari 3) diketuk: confirmExternalLink (AlertDialog dengan ikon open_in_new primary, nama host tebal).</p>
+</figure>
+
+<figure class="frame" id="frame-14">
+<figcaption class="frame__label"><span class="frame__num">14</span> Snackbar konten tidak tersedia</figcaption>
+<div class="device" aria-label="Beranda, snackbar konten tidak tersedia">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi, 3 belum dibaca"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="badge badge--accent" aria-hidden="true">3</span></span></button>
+</header>
+<div class="screen__body">
+<div class="home-list">
+<div class="mb-4">
+<section class="banner-carousel" aria-label="Banner">
+  <div class="banner-carousel__track">
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 2 dari 3: Panduan Iuran dan Perpanjangan KTA Digital, membuka tautan luar"><img src="../assets/sample/banner-2-iuran-kta.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Panduan Iuran dan Perpanjangan KTA Digital</span><span class="external-pill">Tautan luar<span class="ic ic-open_in_new" aria-hidden="true"></span></span></span></a></div>
+    <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 3 dari 3: Lengkapi Profil dan Ikuti Temu Jejaring Alumni, membuka detail"><img src="../assets/sample/banner-3-jejaring.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Lengkapi Profil dan Ikuti Temu Jejaring Alumni</span></span></a></div>
+  </div>
+</section>
+<div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
+</div>
+<div class="quick-access" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="KTA, 12.01.01.7"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">12.01.01.7</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<section aria-label="Event Mendatang">
+<div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card card--pad event-card" href="#" aria-label="Peluncuran KAPDH Apps dan Silaturahmi Alumni, Silaturahmi, Sabtu, 31 Okt 2026, Daring melalui Zoom, Gratis, Pendaftaran Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Temu Jejaring Alumni Lintas Profesi, Jejaring, Sabtu, 14 Nov 2026, Daring melalui Google Meet, Gratis, Kuota Penuh">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-3-temu-jejaring.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Jejaring</span>
+    <p class="event-card__title clamp-2 mt-6px">Temu Jejaring Alumni Lintas Profesi</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 14 Nov 2026</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Google Meet</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--warning"><span class="ic ic-group_off" aria-hidden="true"></span>Kuota Penuh</span><span class="price">Gratis</span></div>
+  </div>
+</a>
+<a class="card card--pad event-card" href="#" aria-label="Halal Bihalal dan Silaturahmi Akbar Alumni, Silaturahmi, Minggu, 21 Mar 2027, Aula Pondok Pesantren Darel Hikmah, Rp150.000, Pendaftaran Belum Dibuka">
+  <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+  <div class="event-card__body">
+    <span class="category-chip">Silaturahmi</span>
+    <p class="event-card__title clamp-2 mt-6px">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+    <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+    <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Aula Pondok Pesantren Darel Hikmah</span></p>
+    <div class="event-card__meta"><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span><span class="price">Rp150.000</span></div>
+  </div>
+</a>
+</div>
+</section>
+<section aria-label="Berita Terbaru">
+<div class="section-title mt-4"><h3 class="section-title__title">Berita Terbaru</h3><a class="btn-text" href="#">Lihat semua</a></div>
+<div class="home-cards">
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+</div>
+</section>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="snackbar snackbar--above-nav" role="status"><span class="snackbar__text">Konten tujuan sudah tidak tersedia. Mungkin sudah diarsipkan atau dibatalkan.</span></div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Target internal available=false (berita diarsipkan, event dibatalkan) atau url tidak sah: SnackBar mengambang di atas navigasi.</p>
+</figure>
+
+<h2 class="frames__group-title">Status yang belum membuka Beranda anggota</h2>
+
+<figure class="frame" id="frame-15">
+<figcaption class="frame__label"><span class="frame__num">15</span> KTA belum aktif (unverified)</figcaption>
+<div class="device" aria-label="Beranda, KTA belum aktif">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi, 1 belum dibaca"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="badge badge--accent" aria-hidden="true">1</span></span></button>
+</header>
+<div class="screen__body">
+<div class="home-gated">
+<div class="status-hero tone-danger">
+  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-lock_outline" aria-hidden="true"></span></div>
+  <span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>KTA Tidak Aktif</span>
+  <h3 class="status-hero__title">KTA Anda belum aktif</h3>
+  <p class="status-hero__message">Selesaikan iuran pendaftaran agar pengurus dapat memverifikasi keanggotaan. Setelah KTA aktif, berita, event dan jejaring alumni terbuka di Beranda.</p>
+</div>
+<button class="btn btn--primary mt-5" type="button">Selesaikan Iuran Pendaftaran</button>
+<div class="quick-access mt-5" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="KTA, KTA Tidak Aktif"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">KTA Tidak Aktif</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 1 belum dibaca"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">1 belum dibaca</span></a>
+</div>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Event, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-event_outlined" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ic-lock"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ic-lock"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">_GatedHome: tidak memanggil GET /home. StatusHero (lock_outline, badge KTA Tidak Aktif), KapdhButton ke /onboarding/fees, akses cepat KTA + Notifikasi. Tab Event dan Jejaring terkunci.</p>
+</figure>
+
+<figure class="frame" id="frame-16">
+<figcaption class="frame__label"><span class="frame__num">16</span> Masa keanggotaan berakhir (expired)</figcaption>
+<div class="device" aria-label="Beranda, masa keanggotaan berakhir">
+<div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="home-header">
+  <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+  <div class="home-header__text" role="heading" aria-level="2"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+  <button class="icon-btn" type="button" aria-label="Notifikasi"><span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span></button>
+</header>
+<div class="screen__body">
+<div class="home-gated">
+<div class="status-hero tone-danger">
+  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-lock_outline" aria-hidden="true"></span></div>
+  <span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>KTA Kedaluwarsa</span>
+  <h3 class="status-hero__title">Masa keanggotaan berakhir</h3>
+  <p class="status-hero__message">Perpanjang KTA untuk kembali membuka berita, event, jejaring dan chat. Tiket event yang sudah lunas tetap berlaku dan dapat dibuka di Tiket Saya.</p>
+</div>
+<button class="btn btn--primary mt-5" type="button">Perpanjang Keanggotaan</button>
+<div class="quick-access mt-5" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="KTA, KTA Kedaluwarsa"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">KTA Kedaluwarsa</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, Semua terbaca"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">Semua terbaca</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+</div>
+</div>
+</div>
+<nav class="bottom-nav" aria-label="Navigasi utama">
+  <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Event, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-event_outlined" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ic-lock"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+  <a class="bottom-nav__item" href="#" aria-label="Jejaring, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ic-lock"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+  <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+</nav>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">KapdhButton ke /renewal; akses cepat menambah "Tiket Saya" (tiket lunas tetap berlaku). Detail Notifikasi kosong bila penghitung belum diketahui.</p>
+</figure>
+
+  </main>
+</body>
+</html>

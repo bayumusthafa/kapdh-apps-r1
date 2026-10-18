@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lembar Laporan - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis lembar bawah Laporkan pengguna, pesan dan grup aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/jejaring.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+      <a href="member-profile.html">Profil Alumni</a>
+      <a href="chat-room.html">Percakapan</a>
+      <a href="chat-info.html">Info Percakapan</a>
+      <a href="my-reports.html">Laporan Saya</a>
+    </nav>
+    <h1 class="page-header__title">Lembar Laporan (pengguna, pesan, grup)</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/network/report_sheet.dart</code> (showReportSheet, ReportSheet, UserReportTarget, MessageReportTarget, RoomReportTarget)</dd>
+      <dt>Rute</dt><dd>tanpa rute: showModalBottomSheet dari <code>/network/members/:userId</code>, <code>/chat/:roomId</code> dan <code>/chat/:roomId/info</code></dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Pengguna: awal</li>
+        <li>Isi penuh: pengguna, belum memilih kategori</li>
+        <li>Isi penuh: pesan, Lainnya tanpa penjelasan</li>
+        <li>Grup: mengirim</li>
+        <li>Ancaman dipilih + keyboard</li>
+        <li>Terkirim (snackbar)</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Judul 18 w600, ringkasan objek abu, "Kategori" w500, 7 RadioListTile (contentPadding 0, radio 40 di kiri), field "Penjelasan" 4 baris, InfoBox perisai, KapdhButton gradasi dengan ikon bendera. Laporan tidak pernah dibuka kepada terlapor.</p>
+  </header>
+
+  <main class="frames">
+
+    <!-- 1. Pengguna: awal -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Pengguna: awal</figcaption>
+      <div class="device" aria-label="Lembar laporkan pengguna, awal">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body"></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="r1-title">
+          <div class="sheet__body">
+            <h3 class="jj-sheet-title" id="r1-title">Laporkan pengguna</h3>
+            <p class="mt-1 c-muted clamp-2">Siti Rahmah</p>
+            <p class="mt-3 fw-500" id="r1-title-cat">Kategori</p>
+            <div role="radiogroup" aria-labelledby="r1-title-cat">
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Spam</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Pelecehan atau perundungan</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ujaran kebencian</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Konten seksual</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ancaman kekerasan atau keselamatan</span><span class="jj-tile__subtitle">Ditangani paling lambat 24 jam.</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Penipuan</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Lainnya</span><span class="jj-tile__subtitle">Wajib menjelaskan masalahnya.</span></span></div>
+            </div>
+            <div class="field mt-3">
+              <label class="field__label" for="r1-title-desc">Penjelasan</label>
+              <div class="input input--multiline"><textarea class="input__control" id="r1-title-desc" rows="4" maxlength="2000" placeholder="Opsional"></textarea></div>
+            </div>
+            <div class="mt-3"><div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Laporan tidak dibuka kepada pihak yang dilaporkan. Pantau statusnya di Akun &gt; Laporan Saya. Dalam keadaan darurat, hubungi pihak berwenang.</p></div></div></div>
+            <div class="mt-4"><button class="btn btn--primary" type="button"><span class="ic ic-flag_outlined" aria-hidden="true"></span>Kirim laporan</button></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Dibuka dari Profil Alumni (menu Laporkan) dan Info Percakapan direct (Laporkan pengguna). Lembar setinggi isi, maksimum layar; isi bergulir.</p>
+    </figure>
+
+    <!-- 2. Isi penuh: pengguna, belum memilih kategori -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Isi penuh: pengguna, belum memilih kategori</figcaption>
+      <div class="sheet sheet--static" role="dialog" aria-labelledby="r2-title">
+          <div class="sheet__body">
+            <h3 class="jj-sheet-title" id="r2-title">Laporkan pengguna</h3>
+            <p class="mt-1 c-muted clamp-2">Siti Rahmah</p>
+            <p class="mt-3 fw-500" id="r2-title-cat">Kategori</p>
+            <div role="radiogroup" aria-labelledby="r2-title-cat">
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Spam</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Pelecehan atau perundungan</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ujaran kebencian</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Konten seksual</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ancaman kekerasan atau keselamatan</span><span class="jj-tile__subtitle">Ditangani paling lambat 24 jam.</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Penipuan</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Lainnya</span><span class="jj-tile__subtitle">Wajib menjelaskan masalahnya.</span></span></div>
+            </div>
+            <p class="fs-12 c-danger" role="alert">Pilih kategori laporan.</p>
+            <div class="field mt-3">
+              <label class="field__label" for="r2-title-desc">Penjelasan</label>
+              <div class="input input--multiline"><textarea class="input__control" id="r2-title-desc" rows="4" maxlength="2000" placeholder="Opsional"></textarea></div>
+            </div>
+            <div class="mt-3"><div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Laporan tidak dibuka kepada pihak yang dilaporkan. Pantau statusnya di Akun &gt; Laporan Saya. Dalam keadaan darurat, hubungi pihak berwenang.</p></div></div></div>
+            <div class="mt-4"><button class="btn btn--primary" type="button"><span class="ic ic-flag_outlined" aria-hidden="true"></span>Kirim laporan</button></div>
+          </div>
+        </div>
+      <p class="frame__note">Lembar statis selebar 360. "Kirim laporan" tanpa kategori: teks galat 12 merah di bawah daftar radio (tanpa indent).</p>
+    </figure>
+
+    <!-- 3. Isi penuh: pesan, Lainnya tanpa penjelasan -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Isi penuh: pesan, Lainnya tanpa penjelasan</figcaption>
+      <div class="sheet sheet--static" role="dialog" aria-labelledby="r3-title">
+          <div class="sheet__body">
+            <h3 class="jj-sheet-title" id="r3-title">Laporkan pesan</h3>
+            <p class="mt-1 c-muted clamp-2">Muhammad Rizki: Foto · Silakan transfer dulu ke rekening pribadi saya agar namanya masuk daftar.</p>
+            <p class="mt-3 fw-500" id="r3-title-cat">Kategori</p>
+            <div role="radiogroup" aria-labelledby="r3-title-cat">
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Spam</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Pelecehan atau perundungan</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ujaran kebencian</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Konten seksual</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ancaman kekerasan atau keselamatan</span><span class="jj-tile__subtitle">Ditangani paling lambat 24 jam.</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Penipuan</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="true" tabindex="0"><span class="radio is-checked" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Lainnya</span><span class="jj-tile__subtitle">Wajib menjelaskan masalahnya.</span></span></div>
+            </div>
+            <div class="field mt-3">
+              <label class="field__label" for="r3-title-desc">Penjelasan <span class="field__req">*</span></label>
+              <div class="input input--multiline is-error"><textarea class="input__control" id="r3-title-desc" rows="4" maxlength="2000" placeholder="Wajib diisi" aria-invalid="true" aria-describedby="r3-title-desc-err">Aneh</textarea></div>
+              <p class="field__error" id="r3-title-desc-err">Jelaskan masalahnya minimal 10 karakter.</p>
+            </div>
+            <div class="mt-3"><div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Laporan tidak dibuka kepada pihak yang dilaporkan. Pantau statusnya di Akun &gt; Laporan Saya. Dalam keadaan darurat, hubungi pihak berwenang.</p></div></div></div>
+            <div class="mt-4"><button class="btn btn--primary" type="button"><span class="ic ic-flag_outlined" aria-hidden="true"></span>Kirim laporan</button></div>
+          </div>
+        </div>
+      <p class="frame__note">Dari lembar tindakan pesan (Laporkan pesan). Ringkasan "Pengirim: pratinjau" maksimal 2 baris. "Lainnya" mewajibkan penjelasan (tanda *, petunjuk "Wajib diisi") minimal 10 karakter bukan spasi; maks 2000.</p>
+    </figure>
+
+    <!-- 4. Grup: mengirim -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Grup: mengirim</figcaption>
+      <div class="device" aria-label="Lembar laporkan grup, sedang mengirim">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body"></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet jj-sheet--end" role="dialog" aria-modal="true" aria-labelledby="r4-title">
+          <div class="sheet__body">
+            <h3 class="jj-sheet-title" id="r4-title">Laporkan grup</h3>
+            <p class="mt-1 c-muted clamp-2">Angkatan 12</p>
+            <p class="mt-3 fw-500" id="r4-title-cat">Kategori</p>
+            <div role="radiogroup" aria-labelledby="r4-title-cat">
+              <div class="jj-tile" role="radio" aria-checked="true" tabindex="0"><span class="radio is-checked" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Spam</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Pelecehan atau perundungan</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ujaran kebencian</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Konten seksual</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ancaman kekerasan atau keselamatan</span><span class="jj-tile__subtitle">Ditangani paling lambat 24 jam.</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Penipuan</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Lainnya</span><span class="jj-tile__subtitle">Wajib menjelaskan masalahnya.</span></span></div>
+            </div>
+            <div class="field mt-3">
+              <label class="field__label" for="r4-title-desc">Penjelasan</label>
+              <div class="input input--multiline"><textarea class="input__control" id="r4-title-desc" rows="4" maxlength="2000" placeholder="Opsional">Banyak pesan promosi berulang setiap hari.</textarea></div>
+            </div>
+            <div class="mt-3"><div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Laporan tidak dibuka kepada pihak yang dilaporkan. Pantau statusnya di Akun &gt; Laporan Saya. Dalam keadaan darurat, hubungi pihak berwenang.</p></div></div></div>
+            <div class="mt-4"><button class="btn btn--primary is-busy" type="button" disabled><span class="spinner spinner--18" aria-hidden="true"></span>Mengirim laporan</button></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Dari Info Percakapan grup (Laporkan grup). Digulir ke akhir: tombol nonaktif "Mengirim laporan".</p>
+    </figure>
+
+    <!-- 5. Ancaman dipilih + keyboard -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Ancaman dipilih + keyboard</figcaption>
+      <div class="device" aria-label="Lembar laporan dengan kategori ancaman dan keyboard">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="jj-chat-title"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></div>
+            <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></button></div>
+          </header>
+          <div class="screen__body bg-background"></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet jj-sheet--above-kb" role="dialog" aria-modal="true" aria-labelledby="r5-title">
+          <div class="sheet__body">
+            <h3 class="jj-sheet-title" id="r5-title">Laporkan pesan</h3>
+            <p class="mt-1 c-muted clamp-2">Siti Rahmah: Ini denah lokasinya.</p>
+            <p class="mt-3 fw-500" id="r5-title-cat">Kategori</p>
+            <div role="radiogroup" aria-labelledby="r5-title-cat">
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Spam</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Pelecehan atau perundungan</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ujaran kebencian</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Konten seksual</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="true" tabindex="0"><span class="radio is-checked" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ancaman kekerasan atau keselamatan</span><span class="jj-tile__subtitle">Ditangani paling lambat 24 jam.</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Penipuan</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Lainnya</span><span class="jj-tile__subtitle">Wajib menjelaskan masalahnya.</span></span></div>
+            </div>
+            <div class="field mt-3">
+              <label class="field__label" for="r5-title-desc">Penjelasan</label>
+              <div class="input input--multiline is-focused"><textarea class="input__control" id="r5-title-desc" rows="4" maxlength="2000" placeholder="Opsional"></textarea></div>
+            </div>
+            <div class="mt-3"><div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Laporan tidak dibuka kepada pihak yang dilaporkan. Pantau statusnya di Akun &gt; Laporan Saya. Dalam keadaan darurat, hubungi pihak berwenang.</p></div></div></div>
+            <div class="mt-4"><button class="btn btn--primary" type="button"><span class="ic ic-flag_outlined" aria-hidden="true"></span>Kirim laporan</button></div>
+          </div>
+        </div>
+        <div class="keyboard" aria-hidden="true">
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key jj-key-space"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Lembar naik di atas keyboard (padding viewInsets) dan isinya bergulir. "Ancaman kekerasan atau keselamatan" diberi keterangan prioritas 24 jam.</p>
+    </figure>
+
+    <!-- 6. Terkirim (snackbar) -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Terkirim (snackbar)</figcaption>
+      <div class="device" aria-label="Laporan terkirim">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen screen--surface">
+          <div class="screen__body"><header class="brand-band brand-band--pattern jj-profile-band"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button><button class="icon-btn" type="button" aria-label="Tindakan lain"><span class="ic ic-more_vert" aria-hidden="true"></span></button></header></div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">Laporan terkirim. Pengurus akan meninjaunya.</span><button class="btn-text" type="button">Lihat</button></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Lembar tertutup; snackbar emas "Lihat" membuka Akun > Laporan Saya (<a href="my-reports.html">my-reports.html</a>). Galat server per field ditampilkan di field; galat lain lewat ErrorPresenter.</p>
+    </figure>
+
+  </main>
+</body>
+</html>

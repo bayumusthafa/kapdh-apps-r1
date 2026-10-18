@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Berita - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Berita aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/beranda.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Berita</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/news/news_list_screen.dart</code> (NewsListScreen, _CategoryFilter); <code>home/shared/paged_list.dart</code> (PagedListView), <code>news/widgets/post_card.dart</code>, <code>home/shared/member_gate.dart</code> (MemberOnlyNotice)</dd>
+      <dt>Rute</dt><dd><code>/news</code> (di luar cangkang tab, tanpa navigasi bawah)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama (Semua)</li>
+        <li>Gulir penuh</li>
+        <li>Kategori dipilih</li>
+        <li>Memperbarui</li>
+        <li>Memuat</li>
+        <li>Memuat berikutnya</li>
+        <li>Gagal memuat berikutnya</li>
+        <li>Kosong (Semua)</li>
+        <li>Kosong (kategori)</li>
+        <li>Galat halaman pertama</li>
+        <li>Gagal memperbarui</li>
+        <li>Kategori gagal dimuat</li>
+        <li>Khusus anggota aktif</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Kategori contoh sesuai draf konten: Pengumuman, Organisasi, Panduan. Jumlah suka dan tanggal fiktif. Berita ke-4 sengaja tanpa cover dan tanpa kategori untuk memperlihatkan varian PostCard.</p>
+  </header>
+
+  <main class="frames">
+
+<h2 class="frames__group-title">Daftar berita</h2>
+
+<figure class="frame" id="frame-1">
+<figcaption class="frame__label"><span class="frame__num">1</span> Utama (Semua)</figcaption>
+<div class="device" aria-label="Berita, keadaan utama">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Berita</span></h2>
+</header>
+<div class="news-filter" role="group" aria-label="Kategori berita"><button class="choice-chip choice-chip--primary is-selected" type="button" aria-pressed="true">Semua</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Pengumuman</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Organisasi</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Panduan</button></div>
+<div class="screen__body">
+<div class="paged-list">
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni, terbit 10 Okt 2026, 0 suka">
+  <div class="post-card__body">
+    <p class="post-card__title clamp-3">Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>10 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>0 suka</span></div>
+  </div>
+</a>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Filter kategori (ChoiceChip, terpilih primary teks putih 12 w600, tanpa centang) di atas daftar; PostCard bercover 16:9.</p>
+</figure>
+
+<figure class="frame" id="frame-2">
+<figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh</figcaption>
+<div class="device device--tall" aria-label="Berita, seluruh isi">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Berita</span></h2>
+</header>
+<div class="news-filter" role="group" aria-label="Kategori berita"><button class="choice-chip choice-chip--primary is-selected" type="button" aria-pressed="true">Semua</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Pengumuman</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Organisasi</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Panduan</button></div>
+<div class="screen__body">
+<div class="paged-list">
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni, terbit 10 Okt 2026, 0 suka">
+  <div class="post-card__body">
+    <p class="post-card__title clamp-3">Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>10 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>0 suka</span></div>
+  </div>
+</a>
+<div class="paged-footer-more"><button class="btn-text" type="button">Muat lebih banyak</button></div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Berita tanpa cover dan tanpa kategori tampil tanpa gambar dan chip. Footer "Muat lebih banyak" adalah cadangan bila daftar terlalu pendek untuk memicu muat otomatis (sisa gulir &lt; 400).</p>
+</figure>
+
+<figure class="frame" id="frame-3">
+<figcaption class="frame__label"><span class="frame__num">3</span> Kategori dipilih</figcaption>
+<div class="device" aria-label="Berita, kategori Panduan">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Berita</span></h2>
+</header>
+<div class="news-filter" role="group" aria-label="Kategori berita"><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Semua</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Pengumuman</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Organisasi</button><button class="choice-chip choice-chip--primary is-selected" type="button" aria-pressed="true">Panduan</button></div>
+<div class="screen__body">
+<div class="paged-list">
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">postsControllerProvider(slug) per kategori; daftar dimuat ulang saat kategori berganti.</p>
+</figure>
+
+<figure class="frame" id="frame-4">
+<figcaption class="frame__label"><span class="frame__num">4</span> Memperbarui</figcaption>
+<div class="device" aria-label="Berita, memperbarui">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Berita</span></h2>
+</header>
+<div class="news-filter" role="group" aria-label="Kategori berita"><button class="choice-chip choice-chip--primary is-selected" type="button" aria-pressed="true">Semua</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Pengumuman</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Organisasi</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Panduan</button></div>
+<div class="screen__body">
+<div class="paged-list">
+<div class="progress-linear progress-linear--thin" role="progressbar" aria-label="Memuat" style="--value:35%"><span class="progress-linear__bar"></span></div>
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni, terbit 10 Okt 2026, 0 suka">
+  <div class="post-card__body">
+    <p class="post-card__title clamp-3">Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>10 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>0 suka</span></div>
+  </div>
+</a>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Tarik untuk menyegarkan (sudah ada data): LinearProgressIndicator 2 px di atas kartu pertama, tanpa jarak.</p>
+</figure>
+
+<h2 class="frames__group-title">Memuat dan footer</h2>
+
+<figure class="frame" id="frame-5">
+<figcaption class="frame__label"><span class="frame__num">5</span> Memuat</figcaption>
+<div class="device" aria-label="Berita, memuat">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Berita</span></h2>
+</header>
+<div class="news-filter" role="group" aria-label="Kategori berita"><button class="choice-chip choice-chip--primary is-selected" type="button" aria-pressed="true">Semua</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Pengumuman</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Organisasi</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Panduan</button></div>
+<div class="screen__body">
+<div class="skeleton" role="status" aria-label="Memuat berita"><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Halaman pertama: LoadingSkeleton(showCard: false, lines: 6).</p>
+</figure>
+
+<figure class="frame" id="frame-6">
+<figcaption class="frame__label"><span class="frame__num">6</span> Memuat berikutnya</figcaption>
+<div class="device" aria-label="Berita, memuat halaman berikutnya">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Berita</span></h2>
+</header>
+<div class="news-filter" role="group" aria-label="Kategori berita"><button class="choice-chip choice-chip--primary is-selected" type="button" aria-pressed="true">Semua</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Pengumuman</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Organisasi</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Panduan</button></div>
+<div class="screen__body scroll-end">
+<div class="paged-list">
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni, terbit 10 Okt 2026, 0 suka">
+  <div class="post-card__body">
+    <p class="post-card__title clamp-3">Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>10 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>0 suka</span></div>
+  </div>
+</a>
+<div class="paged-footer-spinner"><span class="spinner spinner--24" role="status" aria-label="Memuat berikutnya"></span></div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Digulir ke akhir: CircularProgressIndicator 24 (stroke 2) di tengah, padding vertikal 16.</p>
+</figure>
+
+<figure class="frame" id="frame-7">
+<figcaption class="frame__label"><span class="frame__num">7</span> Gagal memuat berikutnya</figcaption>
+<div class="device" aria-label="Berita, gagal memuat berikutnya">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Berita</span></h2>
+</header>
+<div class="news-filter" role="group" aria-label="Kategori berita"><button class="choice-chip choice-chip--primary is-selected" type="button" aria-pressed="true">Semua</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Pengumuman</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Organisasi</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Panduan</button></div>
+<div class="screen__body scroll-end">
+<div class="paged-list">
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni, terbit 10 Okt 2026, 0 suka">
+  <div class="post-card__body">
+    <p class="post-card__title clamp-3">Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>10 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>0 suka</span></div>
+  </div>
+</a>
+<div class="paged-footer-error"><div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div></div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">loadMoreError: InfoBox warning (ikon bawaan warning_amber_rounded) + "Coba lagi"; daftar yang sudah tampil tetap.</p>
+</figure>
+
+<h2 class="frames__group-title">Kosong dan galat</h2>
+
+<figure class="frame" id="frame-8">
+<figcaption class="frame__label"><span class="frame__num">8</span> Kosong (Semua)</figcaption>
+<div class="device" aria-label="Berita, kosong">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Berita</span></h2>
+</header>
+<div class="news-filter" role="group" aria-label="Kategori berita"><button class="choice-chip choice-chip--primary is-selected" type="button" aria-pressed="true">Semua</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Pengumuman</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Organisasi</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Panduan</button></div>
+<div class="screen__body">
+<div class="paged-list">
+<div class="state">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-article_outlined" aria-hidden="true"></span></div>
+  <h3 class="state__title">Belum ada berita</h3>
+  <p class="state__message">Berita resmi pengurus akan tampil di sini setelah terbit.</p>
+  <button class="btn btn--outline btn--inline state__action" type="button">Muat ulang</button>
+</div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">EmptyState dalam ConstrainedBox(minHeight: 55 % tinggi daftar).</p>
+</figure>
+
+<figure class="frame" id="frame-9">
+<figcaption class="frame__label"><span class="frame__num">9</span> Kosong (kategori)</figcaption>
+<div class="device" aria-label="Berita, kosong di kategori">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Berita</span></h2>
+</header>
+<div class="news-filter" role="group" aria-label="Kategori berita"><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Semua</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Pengumuman</button><button class="choice-chip choice-chip--primary is-selected" type="button" aria-pressed="true">Organisasi</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Panduan</button></div>
+<div class="screen__body">
+<div class="paged-list">
+<div class="state">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-article_outlined" aria-hidden="true"></span></div>
+  <h3 class="state__title">Belum ada berita di kategori ini</h3>
+  <p class="state__message">Coba kategori lain atau lihat semua berita.</p>
+  <button class="btn btn--outline btn--inline state__action" type="button">Lihat semua berita</button>
+</div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">"Lihat semua berita" mengembalikan filter ke Semua.</p>
+</figure>
+
+<figure class="frame" id="frame-10">
+<figcaption class="frame__label"><span class="frame__num">10</span> Galat halaman pertama</figcaption>
+<div class="device" aria-label="Berita, galat">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Berita</span></h2>
+</header>
+<div class="news-filter" role="group" aria-label="Kategori berita"><button class="choice-chip choice-chip--primary is-selected" type="button" aria-pressed="true">Semua</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Pengumuman</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Organisasi</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Panduan</button></div>
+<div class="screen__body">
+<div class="state state--error paged-error">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off" aria-hidden="true"></span></div>
+  <h3 class="state__title">Tidak ada koneksi</h3>
+  <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+  <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">ErrorState dalam ConstrainedBox(minHeight: 60 % tinggi daftar), dapat ditarik untuk memuat ulang.</p>
+</figure>
+
+<figure class="frame" id="frame-11">
+<figcaption class="frame__label"><span class="frame__num">11</span> Gagal memperbarui</figcaption>
+<div class="device" aria-label="Berita, gagal memperbarui">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Berita</span></h2>
+</header>
+<div class="news-filter" role="group" aria-label="Kategori berita"><button class="choice-chip choice-chip--primary is-selected" type="button" aria-pressed="true">Semua</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Pengumuman</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Organisasi</button><button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Panduan</button></div>
+<div class="screen__body">
+<div class="paged-list">
+<div class="info-box info-box--danger"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p></div></div>
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni, terbit 10 Okt 2026, 0 suka">
+  <div class="post-card__body">
+    <p class="post-card__title clamp-3">Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>10 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>0 suka</span></div>
+  </div>
+</a>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Muat ulang gagal sementara data sudah ada: InfoBox danger (pesan ApiException) di atas daftar.</p>
+</figure>
+
+<figure class="frame" id="frame-12">
+<figcaption class="frame__label"><span class="frame__num">12</span> Kategori gagal dimuat</figcaption>
+<div class="device" aria-label="Berita, tanpa filter kategori">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Berita</span></h2>
+</header>
+<div class="screen__body">
+<div class="paged-list">
+<a class="card post-card" href="#" aria-label="Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, Organisasi, terbit 18 Okt 2026, 5 suka">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-2-legalitas.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Organisasi</span>
+    <p class="post-card__title clamp-3 mt-6px">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</p>
+    <p class="post-card__excerpt clamp-2">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>5 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan, Panduan, terbit 14 Okt 2026, 9 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-3-iuran-kta.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Panduan</span>
+    <p class="post-card__title clamp-3 mt-6px">Panduan Iuran Keanggotaan dan KTA Digital: Pembayaran, Verifikasi, dan Perpanjangan</p>
+    <p class="post-card__excerpt clamp-2">Iuran keanggotaan dibayar ke tujuan resmi yang tercantum di aplikasi, lalu diverifikasi pengurus. Simak langkah membayar dan mengunggah bukti, masa berlaku KTA 12 bulan, serta cara memperpanjang keanggotaan.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>14 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>9 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah, Pengumuman, terbit 11 Okt 2026, 24 suka, Anda menyukai berita ini">
+  <div class="post-card__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+  <div class="post-card__body">
+    <span class="category-chip">Pengumuman</span>
+    <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+    <p class="post-card__excerpt clamp-2">Alhamdulillah, aplikasi resmi KAPDH kini dapat digunakan di Android dan iOS. Simak layanan yang tersedia, cara mengajak sahabat alumni bergabung, dan agenda silaturahmi terdekat.</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>11 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>24 suka</span></div>
+  </div>
+</a>
+<a class="card post-card" href="#" aria-label="Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni, terbit 10 Okt 2026, 0 suka">
+  <div class="post-card__body">
+    <p class="post-card__title clamp-3">Tautan Pertemuan Daring Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+    <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>10 Okt 2026</span></p><span class="ic ic-favorite_border" aria-hidden="true"></span><span>0 suka</span></div>
+  </div>
+</a>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">newsCategoriesProvider gagal atau kosong: baris filter disembunyikan, feed "Semua" tetap dapat dibaca.</p>
+</figure>
+
+<h2 class="frames__group-title">Status belum aktif</h2>
+
+<figure class="frame" id="frame-13">
+<figcaption class="frame__label"><span class="frame__num">13</span> Khusus anggota aktif</figcaption>
+<div class="device" aria-label="Berita, khusus anggota aktif">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Berita</span></h2>
+</header>
+<div class="screen__body">
+<div class="pad-screen pt-8 pb-8">
+<div class="status-hero tone-danger">
+  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-lock_outline" aria-hidden="true"></span></div>
+  <span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>KTA Tidak Aktif</span>
+  <h3 class="status-hero__title">Berita khusus anggota aktif</h3>
+  <p class="status-hero__message">Berita terbuka setelah KTA aktif. Selesaikan iuran pendaftaran agar pengurus dapat memverifikasi keanggotaan Anda.</p>
+</div>
+<button class="btn btn--primary mt-5" type="button">Bayar iuran</button>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">MemberOnlyNotice (unverified): tidak memanggil API. Untuk expired: tombol "Perpanjang KTA" (lihat detail berita).</p>
+</figure>
+
+  </main>
+</body>
+</html>

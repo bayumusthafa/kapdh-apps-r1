@@ -1,0 +1,168 @@
+/* =====================================================================================================================
+   KAPDH mockup HTML: GRUP AKUN
+   Layar: lib/features/account/* (tab Akun, ubah profil, privasi, preferensi notifikasi, sesi, ganti password,
+   hapus akun) dan layar yang diekspor ulang dari lib/features/network/* (pengguna diblokir, laporan saya).
+   Hanya gaya khusus grup ini; komponen bersama ada di components.css dan TIDAK diubah dari sini.
+   Nilai mengikuti Dart (komentar menyebut widget sumbernya). 1 px CSS = 1 dp.
+   ===================================================================================================================== */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   UTILITAS MOCKUP (bukan UI aplikasi)
+   --------------------------------------------------------------------------------------------------------------------- */
+/* Posisi gulir tiruan: pakai utilitas bersama .scroll-viewport / .scroll-end / .scroll-offset (components.css). */
+/* Tombol spasi keyboard tiruan. */
+.akun-key--wide { flex: 5; max-width: none; }
+/* Dialog saat keyboard terbuka: Dialog memusatkan diri di ruang di atas keyboard (800 - 288 = 512, inset 24). */
+.akun-dialog--above-keyboard { top: 256px; }
+/* Foto profil tiruan (pratinjau foto baru / foto tersimpan). Bukan foto orang sungguhan. */
+.akun-photo { background: linear-gradient(160deg, var(--color-green-500) 0%, var(--color-green-800) 100%); color: rgba(255, 255, 255, .85); align-items: end; }
+.akun-photo .ic { --ic-size: calc(var(--av) * .78); margin-bottom: calc(var(--av) * -.1); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   TAB AKUN  account_screen.dart
+   _Header: Stack(BrandHeader bermotif Positioned.fill(bottom: 56), SafeArea > Padding(20, 16, 20, 0) >
+   "Akun" 18 w600 putih, jarak 16, kartu profil putih padding 16 radius 20 bayangan 0x14000000 blur 12 (0,4)).
+   --------------------------------------------------------------------------------------------------------------------- */
+.akun-header { position: relative; flex: none; padding: calc(var(--inset-top) + var(--s4)) var(--s5) 0; }
+.akun-header__band { position: absolute; top: 0; right: 0; bottom: 56px; left: 0; padding: 0; } /* .brand-band--pattern tanpa isi */
+.akun-header__title { position: relative; font-size: var(--fs-h3); font-weight: var(--fw-semibold); color: var(--color-text-on-dark); }
+.akun-profile-card {
+  position: relative;
+  display: flex; align-items: flex-start; gap: var(--s4);
+  margin-top: var(--s4);
+  padding: var(--s4);
+  background: var(--color-surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-account-card);
+}
+.akun-profile-card__body { flex: 1 1 auto; min-width: 0; }
+.akun-profile-card__name { font-size: var(--fs-h3); font-weight: var(--fw-bold); color: var(--color-primary); }
+.akun-profile-card__meta { font-size: var(--fs-caption); color: var(--color-text-muted); }            /* email, angkatan · kota */
+.akun-profile-card__number { padding-top: var(--s1); font-size: 13px; font-weight: var(--fw-semibold); } /* "No. anggota ..." */
+.akun-profile-card__badge { margin-top: var(--s2); }
+.akun-profile-card__validity { padding-top: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
+
+/* Menu: Padding(20, 20, 20, 32), AccountSection berjarak 20, lalu 24 + tombol Keluar, 16 + teks versi 12 muted. */
+.akun-menu { padding: var(--s5) var(--s5) var(--s8); }
+.akun-menu > .akun-menu__end { margin-top: var(--s6); }
+.akun-version { margin-top: var(--s4); font-size: var(--fs-caption); color: var(--color-text-muted); text-align: center; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   LEMBAR BAWAH grup ini
+   --------------------------------------------------------------------------------------------------------------------- */
+.akun-sheet-list { padding-bottom: 0; }                               /* lembar sumber foto: Column ListTile tanpa padding */
+.akun-sheet-body--24 { padding-bottom: var(--s6); }                   /* detail laporan: ListView padding (20, 0, 20, 24) */
+.akun-sheet-close { width: 100%; }                                    /* TextButton "Tutup" di Column stretch */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   UBAH PROFIL  profile_edit_screen.dart
+   --------------------------------------------------------------------------------------------------------------------- */
+.akun-avatar-block { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.akun-avatar-actions { display: flex; flex-wrap: wrap; justify-content: center; margin-top: var(--s2); } /* Wrap tanpa jarak */
+.akun-avatar-hint { font-size: var(--fs-caption); color: var(--color-text-muted); }
+.akun-avatar-error { font-size: var(--fs-caption); color: var(--color-danger); }
+
+/* _ReadOnlyRow: padding 16 x 12, label 13 muted Expanded, jarak 12, nilai 13 w500 rata kanan Flexible (maks. separuh) */
+.akun-ro-row { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s3) var(--s4); font-size: 13px; }
+.akun-ro-row__label { flex: 1 1 0; min-width: 0; color: var(--color-text-muted); }
+.akun-ro-row__value { flex: 0 1 auto; max-width: calc(50% - 6px); text-align: right; font-weight: var(--fw-medium); overflow-wrap: anywhere; }
+
+/* Field formulir: Padding(bottom: 16) per field. */
+.akun-fields > .field { margin-bottom: var(--s4); }
+.akun-card-fields { padding: var(--s4) var(--s4) 0; }                /* field di dalam AccountSection: Padding(16, 16, 16, 0) */
+.akun-lines-1 .input__control { min-height: calc(1 * 20.3px + 26px); }  /* TextField maxLines 4 tumbuh mengikuti isi */
+.akun-lines-2 .input__control { min-height: calc(2 * 20.3px + 26px); }
+.akun-lines-3 .input__control { min-height: calc(3 * 20.3px + 26px); }
+.input__trailing-text.is-problem { color: var(--color-danger); }      /* penghitung byte sandi trailingTextColor danger */
+
+/* _PickerField: label 14 w500 + 8; kotak min 52, padding 16 x 12 (+ garis 1), teks 14, keyboard_arrow_down 24;
+   garis danger bila galat; cip keahlian infoBg/info 12, padding 8 x 4, radius 6, jarak 8; galat 12 danger tanpa indent. */
+.akun-picker-field { display: flex; flex-direction: column; }
+.akun-picker .input__value { padding: var(--s3) 0 var(--s3) var(--s4); }
+.akun-picker .input__chevron { margin-right: var(--s4); }
+.akun-chips { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
+.akun-chip { display: inline-flex; padding: var(--s1) var(--s2); border-radius: var(--r-sm); background: var(--color-info-bg); color: var(--color-info); font-size: var(--fs-caption); }
+.akun-picker__error { margin-top: var(--s1); font-size: var(--fs-caption); color: var(--color-danger); }
+
+/* Lembar pilih profesi/keahlian (widgets/master_picker.dart): SizedBox(tinggi layar x 0.85 = 680) di SafeArea. */
+.akun-master { height: 680px; display: flex; flex-direction: column; }
+.akun-master__head { display: flex; align-items: center; padding: var(--s4) var(--s2) 0 var(--s5); }
+.akun-master__title { flex: 1 1 auto; min-width: 0; font-size: var(--fs-h3); font-weight: var(--fw-semibold); }
+.akun-master__search { padding: var(--s2) var(--s5); }
+.akun-master__count { padding: 0 var(--s5); font-size: var(--fs-caption); color: var(--color-text-muted); }
+.akun-master__count.is-full { color: var(--color-warning); }
+.akun-master__list { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.akun-master__list .skeleton { padding-top: var(--s5); }
+.akun-master__empty { padding: var(--s5); text-align: center; }        /* "Tidak ada pilihan yang cocok." */
+.akun-master__foot { padding: var(--s2) var(--s5) var(--s4); }
+.akun-tile--selected .list-tile__title, .akun-tile--selected .list-tile__trailing { color: var(--color-primary); } /* _SingleTile selected */
+.list-tile.is-disabled .checkbox { opacity: .38; }                   /* CheckboxListTile onChanged null */
+.list-tile .list-tile__body > span { display: block; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   SAKLAR DAN BARIS PENGATURAN  (SwitchListTile / ListTile di privacy_settings_screen.dart dan
+   notification_preferences_screen.dart). ListTile M3: tinggi min 72 (dua baris), minVerticalPadding 8, jarak 16,
+   Switch 60 lebar (trek 52 + margin 4). contentPadding horizontal 16 (+ vertikal 4 di Privasi).
+   --------------------------------------------------------------------------------------------------------------------- */
+.akun-switch-tile { display: flex; align-items: center; gap: var(--s4); width: 100%; min-height: 72px; padding: var(--s2) var(--s3) var(--s2) var(--s4); text-align: left; }
+.akun-switch-tile--v4 { min-height: 80px; padding-top: var(--s3); padding-bottom: var(--s3); } /* contentPadding vertikal 4 */
+.akun-tile-row { display: flex; align-items: center; gap: var(--s4); min-height: 72px; padding: var(--s2) var(--s4); } /* _MandatoryRow */
+.akun-tile__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.akun-tile__title { font-size: var(--fs-body); font-weight: var(--fw-medium); letter-spacing: var(--ls-body-lg); color: var(--color-text); }
+.akun-tile__title--strong { font-weight: var(--fw-semibold); }
+.akun-tile__subtitle { font-size: var(--fs-caption); line-height: var(--lh-normal); color: var(--color-text-muted); white-space: pre-line; }
+.akun-switch-tile.is-disabled .akun-tile__title, .akun-switch-tile.is-disabled .akun-tile__subtitle { color: rgba(28, 27, 31, .38); }
+.akun-always-on { flex: none; display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
+.akun-always-on .ic { --ic-size: 16px; }
+.akun-saving { margin-top: var(--s4); font-size: var(--fs-caption); color: var(--color-text-muted); text-align: center; } /* "Menyimpan..." */
+.akun-link-row { display: flex; justify-content: flex-start; }      /* Align(centerLeft) KapdhLinkButton */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   SESI PERANGKAT  sessions_screen.dart _tile: Padding(16, 12, 8, 12), ikon 24 primary, jarak 12, nama 14 w600,
+   rincian 12 muted, TextButton danger min 48 (rata atas) atau spinner 20 dalam padding 12.
+   --------------------------------------------------------------------------------------------------------------------- */
+.akun-session { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s3) var(--s2) var(--s3) var(--s4); }
+.akun-session > .ic { color: var(--color-primary); }
+.akun-session__body { flex: 1 1 auto; min-width: 0; }
+.akun-session__name { font-size: var(--fs-body); font-weight: var(--fw-semibold); }
+.akun-session__meta { font-size: var(--fs-caption); color: var(--color-text-muted); }
+.akun-session__busy { flex: none; padding: var(--s3); display: grid; }
+.akun-session-empty { padding: var(--s4); font-size: var(--fs-body); color: var(--color-text-muted); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   HAPUS AKUN  delete_account_screen.dart
+   --------------------------------------------------------------------------------------------------------------------- */
+/* _Bullet: padding 16 x 12, ikon 18 primary, jarak 12, teks 13 / 1.5 */
+.akun-bullet { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s3) var(--s4); font-size: 13px; line-height: 1.5; }
+.akun-bullet > .ic { --ic-size: 18px; color: var(--color-primary); }
+.akun-warn-title { font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--color-danger); } /* "Perhatikan sebelum menghapus" */
+.akun-warn-list > * + * { margin-top: var(--s3); }
+/* CheckboxListTile(contentPadding: zero, leading): kotak 40, jarak 16, judul 13 (bodyLarge ls .5), min 56 */
+.akun-check-tile { display: flex; align-items: center; gap: var(--s4); min-height: 56px; padding: var(--s2) 0; width: 100%; text-align: left; }
+.akun-check-tile__title { flex: 1 1 auto; min-width: 0; font-size: 13px; letter-spacing: var(--ls-body-lg); }
+.akun-spinner-on-primary { color: var(--color-on-primary); }         /* spinner putih di _DangerButton */
+.akun-delete-hint { margin-top: var(--s3); font-size: var(--fs-caption); color: var(--color-text-muted); text-align: center; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   PENGGUNA DIBLOKIR DAN LAPORAN SAYA  (lib/features/network/blocked_users_screen.dart, my_reports_screen.dart)
+   ListView padding 16; Card radius 10 garis divider.
+   --------------------------------------------------------------------------------------------------------------------- */
+.akun-list { padding: var(--s4); }
+.akun-list--gap-8 > * + * { margin-top: var(--s2); }
+.akun-list--gap-12 > * + * { margin-top: var(--s3); }
+.akun-block-card__row { display: flex; align-items: center; gap: var(--s3); }
+.akun-block-card__name { font-weight: var(--fw-semibold); }
+.akun-block-card__since { font-size: var(--fs-caption); color: var(--color-text-muted); }
+.akun-block-card__actions { display: flex; justify-content: flex-end; }
+.akun-paged-foot { display: flex; justify-content: center; }            /* PagedFooter "Muat lebih banyak" */
+.akun-paged-foot--retry { display: block; padding: var(--s2) 0; }      /* PagedFooter galat: InfoBox warning */
+/* _ReportCard: Card radius 10, padding 16, Wrap(kategori w600 + StatusBadge; jarak 8 / 4) */
+.akun-report-card { display: block; padding: 15px; }
+.akun-report-card__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); }
+.akun-report-card__category { font-weight: var(--fw-semibold); }
+.akun-report-card__target { margin-top: var(--s1); color: var(--color-text-muted); }
+.akun-report-card__date { margin-top: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
+.akun-report-card__outcome { margin-top: var(--s2); font-size: var(--fs-caption); }
+.akun-report-detail__label { font-weight: var(--fw-medium); }
+
+/* SummaryRow (label tepat separuh, nilai paling lebar separuh) kini diatur .summary-row di components.css. */

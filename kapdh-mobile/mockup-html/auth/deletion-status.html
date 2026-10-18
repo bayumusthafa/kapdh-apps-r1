@@ -1,0 +1,884 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portal Status Akun (Penghapusan) - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis portal status akun tanpa sesi (DeletionStatusScreen) aplikasi KAPDH untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/auth.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Portal Status Akun (Penghapusan)</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/status/deletion_status_screen.dart</code> (DeletionStatusScreen, _PortalHeader, _StatusSummary), <code>lib/features/status/deletion_status_check.dart</code> (DeletionStatusCheck), <code>lib/features/status/deletion_portal.dart</code></dd>
+      <dt>Rute</dt><dd><code>/deletion-status</code></dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Penghapusan diproses (viewport)</li>
+        <li>Gulir penuh</li>
+        <li>Baru saja diminta</li>
+        <li>Diproses ulang otomatis</li>
+        <li>Akun tidak aktif</li>
+        <li>Belum diketahui (dibuka langsung)</li>
+        <li>Kode dikirim + papan angka</li>
+        <li>Kode salah / habis</li>
+        <li>Akun aktif</li>
+        <li>Pendaftaran belum diverifikasi</li>
+        <li>Dengan sesi lama</li>
+        <li>Nomor disalin (snackbar)</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Portal tanpa sesi untuk akun deletion_pending/disabled (kontrak C1). Nomor permintaan DEL-YYYY-XXXX, status dan batas penyelesaian dari jawaban login atau permintaan (contoh fiktif). Pemeriksaan ulang memakai OTP email non-enumerasi: layar tidak pernah menyatakan email terdaftar.</p>
+  </header>
+
+  <main class="frames">
+
+    <h2 class="frames__group-title">Penghapusan sedang berjalan</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Penghapusan diproses (viewport)</figcaption>
+      <div class="device" role="group" aria-label="Status Akun, penghapusan diproses (viewport)">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <h2 class="auth-portal-title">Status Akun</h2>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-info">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-inbox_outlined"></span></div>
+                  <span class="status-badge status-badge--info"><span class="ic ic-inbox_outlined" aria-hidden="true"></span>Permintaan Diterima</span>
+                  <h2 class="status-hero__title">Penghapusan akun sedang diproses</h2>
+                  <p class="status-hero__message">Akun tidak dapat dipakai masuk selama penghapusan berjalan. Anda menerima email setelah penghapusan selesai.</p>
+                </div>
+                <div class="mt-4">
+                  <div class="summary-card">
+                    <h3 class="summary-card__title">Permintaan penghapusan</h3>
+                    <div class="summary-row"><span class="summary-row__label">Nomor permintaan</span><span class="summary-row__value summary-row__value--em">DEL-2026-4M8P2T</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Status</span><span class="summary-row__value">Permintaan Diterima</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan</span><span class="summary-row__value">17 Okt 2026, 20.14 WIB</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Selesai paling lambat</span><span class="summary-row__value">16 Nov 2026, 20.14 WIB</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan lewat</span><span class="summary-row__value">Aplikasi</span></div>
+                  </div>
+                </div>
+                <div class="auth-right"><button class="btn-link" type="button"><span class="ic ic-copy" aria-hidden="true"></span>Salin nomor permintaan</button></div>
+                <p class="auth-checked">Status per 18 Okt 2026, 09.41 WIB</p>
+                <div class="mt-5">
+                  <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Data apa yang dihapus?</p><p class="info-box__message">Data pribadi, kontak, foto, unggahan, file bukti transfer dan isi chat Anda dihapus. Catatan keuangan, tiket, laporan dan audit hanya disimpan tanpa identitas. Backup harian berotasi 30 hari dan data yang sudah dihapus tidak aktif kembali saat pemulihan (D2).</p></div></div>
+                </div>
+                <div class="mt-4">
+                  <div class="auth-panel">
+                    <h3 class="auth-panel__title">Periksa status terbaru</h3>
+                    <p class="auth-panel__text">Kami kirim kode verifikasi ke email akun. Kode hanya membuka status penghapusan, bukan akses akun.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="d1-email">Email akun</label>
+                        <div class="input">
+                          <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                          <input class="input__control" id="d1-email" type="email" placeholder="nama@email.com" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button">Kirim kode verifikasi</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--outline" type="button"><span class="ic ic-login" aria-hidden="true"></span>Kembali ke halaman masuk</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Dari login: StatusStyles.deletion(pending) "Permintaan Diterima" nada info.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh</figcaption>
+      <div class="device device--tall" role="group" aria-label="Status Akun, gulir penuh">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <h2 class="auth-portal-title">Status Akun</h2>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-info">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-inbox_outlined"></span></div>
+                  <span class="status-badge status-badge--info"><span class="ic ic-inbox_outlined" aria-hidden="true"></span>Permintaan Diterima</span>
+                  <h2 class="status-hero__title">Penghapusan akun sedang diproses</h2>
+                  <p class="status-hero__message">Akun tidak dapat dipakai masuk selama penghapusan berjalan. Anda menerima email setelah penghapusan selesai.</p>
+                </div>
+                <div class="mt-4">
+                  <div class="summary-card">
+                    <h3 class="summary-card__title">Permintaan penghapusan</h3>
+                    <div class="summary-row"><span class="summary-row__label">Nomor permintaan</span><span class="summary-row__value summary-row__value--em">DEL-2026-4M8P2T</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Status</span><span class="summary-row__value">Permintaan Diterima</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan</span><span class="summary-row__value">17 Okt 2026, 20.14 WIB</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Selesai paling lambat</span><span class="summary-row__value">16 Nov 2026, 20.14 WIB</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan lewat</span><span class="summary-row__value">Aplikasi</span></div>
+                  </div>
+                </div>
+                <div class="auth-right"><button class="btn-link" type="button"><span class="ic ic-copy" aria-hidden="true"></span>Salin nomor permintaan</button></div>
+                <p class="auth-checked">Status per 18 Okt 2026, 09.41 WIB</p>
+                <div class="mt-5">
+                  <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Data apa yang dihapus?</p><p class="info-box__message">Data pribadi, kontak, foto, unggahan, file bukti transfer dan isi chat Anda dihapus. Catatan keuangan, tiket, laporan dan audit hanya disimpan tanpa identitas. Backup harian berotasi 30 hari dan data yang sudah dihapus tidak aktif kembali saat pemulihan (D2).</p></div></div>
+                </div>
+                <div class="mt-4">
+                  <div class="auth-panel">
+                    <h3 class="auth-panel__title">Periksa status terbaru</h3>
+                    <p class="auth-panel__text">Kami kirim kode verifikasi ke email akun. Kode hanya membuka status penghapusan, bukan akses akun.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="d2-email">Email akun</label>
+                        <div class="input">
+                          <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                          <input class="input__control" id="d2-email" type="email" placeholder="nama@email.com" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button">Kirim kode verifikasi</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--outline" type="button"><span class="ic ic-login" aria-hidden="true"></span>Kembali ke halaman masuk</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Kotak "Data apa yang dihapus?", formulir pemeriksaan (email terisi dari login), kontak, kebijakan privasi, kembali ke halaman masuk.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Baru saja diminta</figcaption>
+      <div class="device" role="group" aria-label="Status Akun, baru saja diminta">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <h2 class="auth-portal-title">Status Akun</h2>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-info">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-inbox_outlined"></span></div>
+                  <span class="status-badge status-badge--info"><span class="ic ic-inbox_outlined" aria-hidden="true"></span>Permintaan Diterima</span>
+                  <h2 class="status-hero__title">Penghapusan akun sedang diproses</h2>
+                  <p class="status-hero__message">Akun tidak dapat dipakai masuk selama penghapusan berjalan. Anda menerima email setelah penghapusan selesai.</p>
+                </div>
+                <div class="mt-4">
+                  <div class="info-box" role="status"><span class="ic ic-check_circle_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Permintaan diterima</p><p class="info-box__message">Anda sudah keluar dari semua perangkat, dan data akun di perangkat ini sudah dihapus. Simpan nomor permintaan untuk komunikasi dengan pengurus.</p></div></div>
+                </div>
+                <div class="mt-4">
+                  <div class="summary-card">
+                    <h3 class="summary-card__title">Permintaan penghapusan</h3>
+                    <div class="summary-row"><span class="summary-row__label">Nomor permintaan</span><span class="summary-row__value summary-row__value--em">DEL-2026-4M8P2T</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Status</span><span class="summary-row__value">Permintaan Diterima</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan</span><span class="summary-row__value">17 Okt 2026, 20.14 WIB</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Selesai paling lambat</span><span class="summary-row__value">16 Nov 2026, 20.14 WIB</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan lewat</span><span class="summary-row__value">Aplikasi</span></div>
+                  </div>
+                </div>
+                <div class="auth-right"><button class="btn-link" type="button"><span class="ic ic-copy" aria-hidden="true"></span>Salin nomor permintaan</button></div>
+                <p class="auth-checked">Status per 18 Okt 2026, 09.41 WIB</p>
+                <div class="mt-5">
+                  <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Data apa yang dihapus?</p><p class="info-box__message">Data pribadi, kontak, foto, unggahan, file bukti transfer dan isi chat Anda dihapus. Catatan keuangan, tiket, laporan dan audit hanya disimpan tanpa identitas. Backup harian berotasi 30 hari dan data yang sudah dihapus tidak aktif kembali saat pemulihan (D2).</p></div></div>
+                </div>
+                <div class="mt-4">
+                  <div class="auth-panel">
+                    <h3 class="auth-panel__title">Periksa status terbaru</h3>
+                    <p class="auth-panel__text">Kami kirim kode verifikasi ke email akun. Kode hanya membuka status penghapusan, bukan akses akun.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="d3-email">Email akun</label>
+                        <div class="input">
+                          <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                          <input class="input__control" id="d3-email" type="email" placeholder="nama@email.com" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button">Kirim kode verifikasi</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--outline" type="button"><span class="ic ic-login" aria-hidden="true"></span>Kembali ke halaman masuk</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Setelah POST /me/deletion dari aplikasi: semua sesi dicabut dan data lokal dihapus.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Diproses ulang otomatis</figcaption>
+      <div class="device" role="group" aria-label="Status Akun, diproses ulang otomatis">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <h2 class="auth-portal-title">Status Akun</h2>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-warning">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-autorenew"></span></div>
+                  <span class="status-badge status-badge--warning"><span class="ic ic-autorenew" aria-hidden="true"></span>Sedang Diproses Ulang</span>
+                  <h2 class="status-hero__title">Penghapusan akun sedang diproses</h2>
+                  <p class="status-hero__message">Satu langkah penghapusan sedang diulang otomatis tanpa mengulang langkah yang sudah selesai. Anda tidak perlu mengajukan ulang.</p>
+                </div>
+                <div class="mt-4">
+                  <div class="summary-card">
+                    <h3 class="summary-card__title">Permintaan penghapusan</h3>
+                    <div class="summary-row"><span class="summary-row__label">Nomor permintaan</span><span class="summary-row__value summary-row__value--em">DEL-2026-4M8P2T</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Status</span><span class="summary-row__value">Sedang Diproses Ulang</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan</span><span class="summary-row__value">17 Okt 2026, 20.14 WIB</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Selesai paling lambat</span><span class="summary-row__value">16 Nov 2026, 20.14 WIB</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan lewat</span><span class="summary-row__value">Aplikasi</span></div>
+                  </div>
+                </div>
+                <div class="auth-right"><button class="btn-link" type="button"><span class="ic ic-copy" aria-hidden="true"></span>Salin nomor permintaan</button></div>
+                <p class="auth-checked">Status per 18 Okt 2026, 09.41 WIB</p>
+                <div class="mt-5">
+                  <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Data apa yang dihapus?</p><p class="info-box__message">Data pribadi, kontak, foto, unggahan, file bukti transfer dan isi chat Anda dihapus. Catatan keuangan, tiket, laporan dan audit hanya disimpan tanpa identitas. Backup harian berotasi 30 hari dan data yang sudah dihapus tidak aktif kembali saat pemulihan (D2).</p></div></div>
+                </div>
+                <div class="mt-4">
+                  <div class="auth-panel">
+                    <h3 class="auth-panel__title">Periksa status terbaru</h3>
+                    <p class="auth-panel__text">Kami kirim kode verifikasi ke email akun. Kode hanya membuka status penghapusan, bukan akses akun.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="d4-email">Email akun</label>
+                        <div class="input">
+                          <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                          <input class="input__control" id="d4-email" type="email" placeholder="nama@email.com" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button">Kirim kode verifikasi</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--outline" type="button"><span class="ic ic-login" aria-hidden="true"></span>Kembali ke halaman masuk</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">AccountDeletionStatus.failed tampil sebagai "Sedang Diproses Ulang" (autorenew, nada peringatan).</p>
+    </figure>
+
+    <h2 class="frames__group-title">Status lain</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Akun tidak aktif</figcaption>
+      <div class="device" role="group" aria-label="Status Akun, akun tidak aktif">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <h2 class="auth-portal-title">Status Akun</h2>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-neutral">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-person_off_outlined"></span></div>
+                  <span class="status-badge status-badge--neutral"><span class="ic ic-person_off_outlined" aria-hidden="true"></span>Nonaktif</span>
+                  <h2 class="status-hero__title">Akun tidak aktif</h2>
+                  <p class="status-hero__message">Akun ini sedang dinonaktifkan sehingga tidak dapat dipakai masuk. Pemulihan atau penghapusan hanya dapat dilakukan pengurus setelah verifikasi identitas. Hubungi pengurus melalui kontak di bawah.</p>
+                </div>
+                <p class="auth-checked">Status per 18 Okt 2026, 09.41 WIB</p>
+                <div class="mt-5">
+                  <div class="auth-panel">
+                    <h3 class="auth-panel__title">Periksa status terbaru</h3>
+                    <p class="auth-panel__text">Kami kirim kode verifikasi ke email akun. Kode hanya membuka status penghapusan, bukan akses akun.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="d5-email">Email akun</label>
+                        <div class="input">
+                          <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                          <input class="input__control" id="d5-email" type="email" placeholder="nama@email.com" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button">Kirim kode verifikasi</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--outline" type="button"><span class="ic ic-login" aria-hidden="true"></span>Kembali ke halaman masuk</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Login akun disabled: tanpa kotak data dan tanpa kartu permintaan.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Belum diketahui (dibuka langsung)</figcaption>
+      <div class="device" role="group" aria-label="Status Akun, belum diketahui (dibuka langsung)">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <h2 class="auth-portal-title">Status Akun</h2>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-neutral">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-manage_search"></span></div>
+                  <h2 class="status-hero__title">Periksa status penghapusan akun</h2>
+                  <p class="status-hero__message">Masukkan email akun untuk menerima kode verifikasi dan melihat status permintaan penghapusan. Anda juga dapat masuk dengan email dan password untuk melihat status.</p>
+                </div>
+                <div class="mt-5">
+                  <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Data apa yang dihapus?</p><p class="info-box__message">Data pribadi, kontak, foto, unggahan, file bukti transfer dan isi chat Anda dihapus. Catatan keuangan, tiket, laporan dan audit hanya disimpan tanpa identitas. Backup harian berotasi 30 hari dan data yang sudah dihapus tidak aktif kembali saat pemulihan (D2).</p></div></div>
+                </div>
+                <div class="mt-4">
+                  <div class="auth-panel">
+                    <h3 class="auth-panel__title">Periksa status terbaru</h3>
+                    <p class="auth-panel__text">Kami kirim kode verifikasi ke email akun. Kode hanya membuka status penghapusan, bukan akses akun.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="d6-email">Email akun</label>
+                        <div class="input">
+                          <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                          <input class="input__control" id="d6-email" type="email" placeholder="nama@email.com" autocomplete="email">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button">Kirim kode verifikasi</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--outline" type="button"><span class="ic ic-login" aria-hidden="true"></span>Kembali ke halaman masuk</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tanpa status: StatusHero manage_search tanpa badge, email belum terisi.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Kode dikirim + papan angka</figcaption>
+      <div class="device" role="group" aria-label="Status Akun, kode dikirim + papan angka">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen auth-kb">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <h2 class="auth-portal-title">Status Akun</h2>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport" style="--scroll:330px">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-neutral">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-manage_search"></span></div>
+                  <h2 class="status-hero__title">Periksa status penghapusan akun</h2>
+                  <p class="status-hero__message">Masukkan email akun untuk menerima kode verifikasi dan melihat status permintaan penghapusan. Anda juga dapat masuk dengan email dan password untuk melihat status.</p>
+                </div>
+                <div class="mt-5">
+                  <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Data apa yang dihapus?</p><p class="info-box__message">Data pribadi, kontak, foto, unggahan, file bukti transfer dan isi chat Anda dihapus. Catatan keuangan, tiket, laporan dan audit hanya disimpan tanpa identitas. Backup harian berotasi 30 hari dan data yang sudah dihapus tidak aktif kembali saat pemulihan (D2).</p></div></div>
+                </div>
+                <div class="mt-4">
+                  <div class="auth-panel">
+                    <h3 class="auth-panel__title">Periksa status terbaru</h3>
+                    <p class="auth-panel__text">Kami kirim kode verifikasi ke email akun. Kode hanya membuka status penghapusan, bukan akses akun.</p>
+                    <div class="mt-3">
+                      <p class="auth-check-text">Bila email ah***@contoh.id terdaftar, kode 6 digit sudah dikirim. Kode berlaku sampai 09.51 WIB.</p>
+                    </div>
+                    <div class="mt-3">
+                      <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box is-current"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div>
+                    </div>
+                    <p class="auth-attempts mt-2" role="status">Sisa percobaan 5 dari 5</p>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button" disabled>Periksa status</button>
+                    </div>
+                    <div class="auth-links auth-links--between"><button class="btn-link" type="button" disabled>Kirim ulang dalam 0:52</button><button class="btn-link" type="button">Ganti email</button></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--outline" type="button"><span class="ic ic-login" aria-hidden="true"></span>Kembali ke halaman masuk</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="keyboard auth-keypad" aria-hidden="true">
+          <div class="keyboard__row"><span class="keyboard__key">1</span><span class="keyboard__key">2</span><span class="keyboard__key">3</span><span class="keyboard__key keyboard__key--fn">-</span></div>
+          <div class="keyboard__row"><span class="keyboard__key">4</span><span class="keyboard__key">5</span><span class="keyboard__key">6</span><span class="keyboard__key keyboard__key--fn">␣</span></div>
+          <div class="keyboard__row"><span class="keyboard__key">7</span><span class="keyboard__key">8</span><span class="keyboard__key">9</span><span class="keyboard__key keyboard__key--fn">⌫</span></div>
+          <div class="keyboard__row"><span class="keyboard__key">,</span><span class="keyboard__key">0</span><span class="keyboard__key">.</span><span class="keyboard__key keyboard__key--fn">✓</span></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">POST /public/deletion/challenge: OtpBoxes autofocus, kirim ulang terkunci. Tergulir ke kartu pemeriksaan.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Kode salah / habis</figcaption>
+      <div class="device" role="group" aria-label="Status Akun, kode salah / habis">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <h2 class="auth-portal-title">Status Akun</h2>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport" style="--scroll:330px">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-neutral">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-manage_search"></span></div>
+                  <h2 class="status-hero__title">Periksa status penghapusan akun</h2>
+                  <p class="status-hero__message">Masukkan email akun untuk menerima kode verifikasi dan melihat status permintaan penghapusan. Anda juga dapat masuk dengan email dan password untuk melihat status.</p>
+                </div>
+                <div class="mt-5">
+                  <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Data apa yang dihapus?</p><p class="info-box__message">Data pribadi, kontak, foto, unggahan, file bukti transfer dan isi chat Anda dihapus. Catatan keuangan, tiket, laporan dan audit hanya disimpan tanpa identitas. Backup harian berotasi 30 hari dan data yang sudah dihapus tidak aktif kembali saat pemulihan (D2).</p></div></div>
+                </div>
+                <div class="mt-4">
+                  <div class="auth-panel">
+                    <h3 class="auth-panel__title">Periksa status terbaru</h3>
+                    <p class="auth-panel__text">Kami kirim kode verifikasi ke email akun. Kode hanya membuka status penghapusan, bukan akses akun.</p>
+                    <div class="mt-3">
+                      <p class="auth-check-text">Bila email ah***@contoh.id terdaftar, kode 6 digit sudah dikirim. Kode berlaku sampai 09.51 WIB.</p>
+                    </div>
+                    <div class="mt-3">
+                      <div class="otp is-error is-disabled" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div>
+                    </div>
+                    <p class="otp__error" role="status">Kode tidak berlaku lagi.</p>
+                    <p class="auth-attempts mt-2 is-danger" role="status">Kode tidak berlaku lagi. Kirim ulang kode untuk mendapatkan kode baru.</p>
+                    <div class="mt-2">
+                      <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Minta kode baru. Bila permintaan penghapusan sudah selesai, akun tidak lagi terdaftar dan Anda sudah menerima email pemberitahuan penyelesaian.</p></div></div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button" disabled>Periksa status</button>
+                    </div>
+                    <div class="auth-links auth-links--between"><button class="btn-link" type="button">Kirim ulang kode</button><button class="btn-link" type="button">Ganti email</button></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--outline" type="button"><span class="ic ic-login" aria-hidden="true"></span>Kembali ke halaman masuk</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">410 OTP_EXPIRED: kotak nonaktif dan merah, catatan peringatan. Kode salah biasa: "Kode salah. Sisa percobaan 3." dan "Sisa percobaan 3 dari 5".</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Akun aktif</figcaption>
+      <div class="device" role="group" aria-label="Status Akun, akun aktif">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <h2 class="auth-portal-title">Status Akun</h2>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport scroll-end">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-success">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-verified_user_outlined"></span></div>
+                  <h2 class="status-hero__title">Tidak ada permintaan penghapusan</h2>
+                  <p class="status-hero__message">Akun dengan email ini aktif dan tidak sedang dihapus. Silakan masuk untuk memakai aplikasi.</p>
+                </div>
+                <p class="auth-checked">Status per 18 Okt 2026, 09.41 WIB</p>
+                <div class="mt-5">
+                  <div class="auth-panel">
+                    <h3 class="auth-panel__title">Periksa status terbaru</h3>
+                    <p class="auth-panel__text">Kami kirim kode verifikasi ke email akun. Kode hanya membuka status penghapusan, bukan akses akun.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="d9-email">Email akun</label>
+                        <div class="input">
+                          <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                          <input class="input__control" id="d9-email" type="email" placeholder="nama@email.com" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button">Kirim kode verifikasi</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--outline" type="button"><span class="ic ic-login" aria-hidden="true"></span>Masuk</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Hasil verifikasi: akun aktif tanpa permintaan. Tombol bawah berlabel "Masuk".</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">10</span> Pendaftaran belum diverifikasi</figcaption>
+      <div class="device" role="group" aria-label="Status Akun, pendaftaran belum diverifikasi">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <h2 class="auth-portal-title">Status Akun</h2>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-info">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-mark_email_unread_outlined"></span></div>
+                  <span class="status-badge status-badge--info"><span class="ic ic-mark_email_unread_outlined" aria-hidden="true"></span>Menunggu Verifikasi Email</span>
+                  <h2 class="status-hero__title">Pendaftaran belum diverifikasi</h2>
+                  <p class="status-hero__message">Email ini terdaftar tetapi belum diverifikasi. Masuk untuk melanjutkan verifikasi email.</p>
+                </div>
+                <p class="auth-checked">Status per 18 Okt 2026, 09.41 WIB</p>
+                <div class="mt-5">
+                  <div class="auth-panel">
+                    <h3 class="auth-panel__title">Periksa status terbaru</h3>
+                    <p class="auth-panel__text">Kami kirim kode verifikasi ke email akun. Kode hanya membuka status penghapusan, bukan akses akun.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="d10-email">Email akun</label>
+                        <div class="input">
+                          <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                          <input class="input__control" id="d10-email" type="email" placeholder="nama@email.com" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button">Kirim kode verifikasi</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--outline" type="button"><span class="ic ic-login" aria-hidden="true"></span>Masuk</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">registration_pending: badge "Menunggu Verifikasi Email".</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">11</span> Dengan sesi lama</figcaption>
+      <div class="device" role="group" aria-label="Status Akun, dengan sesi lama">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <h2 class="auth-portal-title">Status Akun</h2>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport scroll-end">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-info">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-inbox_outlined"></span></div>
+                  <span class="status-badge status-badge--info"><span class="ic ic-inbox_outlined" aria-hidden="true"></span>Permintaan Diterima</span>
+                  <h2 class="status-hero__title">Penghapusan akun sedang diproses</h2>
+                  <p class="status-hero__message">Akun tidak dapat dipakai masuk selama penghapusan berjalan. Anda menerima email setelah penghapusan selesai.</p>
+                </div>
+                <div class="mt-4">
+                  <div class="summary-card">
+                    <h3 class="summary-card__title">Permintaan penghapusan</h3>
+                    <div class="summary-row"><span class="summary-row__label">Nomor permintaan</span><span class="summary-row__value summary-row__value--em">DEL-2026-4M8P2T</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Status</span><span class="summary-row__value">Permintaan Diterima</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan</span><span class="summary-row__value">17 Okt 2026, 20.14 WIB</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Selesai paling lambat</span><span class="summary-row__value">16 Nov 2026, 20.14 WIB</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan lewat</span><span class="summary-row__value">Aplikasi</span></div>
+                  </div>
+                </div>
+                <div class="auth-right"><button class="btn-link" type="button"><span class="ic ic-copy" aria-hidden="true"></span>Salin nomor permintaan</button></div>
+                <p class="auth-checked">Status per 18 Okt 2026, 09.41 WIB</p>
+                <div class="mt-5">
+                  <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Data apa yang dihapus?</p><p class="info-box__message">Data pribadi, kontak, foto, unggahan, file bukti transfer dan isi chat Anda dihapus. Catatan keuangan, tiket, laporan dan audit hanya disimpan tanpa identitas. Backup harian berotasi 30 hari dan data yang sudah dihapus tidak aktif kembali saat pemulihan (D2).</p></div></div>
+                </div>
+                <div class="mt-4">
+                  <div class="auth-panel">
+                    <h3 class="auth-panel__title">Periksa status terbaru</h3>
+                    <p class="auth-panel__text">Kami kirim kode verifikasi ke email akun. Kode hanya membuka status penghapusan, bukan akses akun.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="d11-email">Email akun</label>
+                        <div class="input">
+                          <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                          <input class="input__control" id="d11-email" type="email" placeholder="nama@email.com" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button">Kirim kode verifikasi</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--primary" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Periksa status</button>
+                  <div class="mt-3">
+                    <button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Bila server masih mengirim status ini lewat GET /me: StatusPortalActions (Periksa status, Keluar) menggantikan tombol halaman masuk.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">12</span> Nomor disalin</figcaption>
+      <div class="device" role="group" aria-label="Status Akun, nomor disalin">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <h2 class="auth-portal-title">Status Akun</h2>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-info">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-inbox_outlined"></span></div>
+                  <span class="status-badge status-badge--info"><span class="ic ic-inbox_outlined" aria-hidden="true"></span>Permintaan Diterima</span>
+                  <h2 class="status-hero__title">Penghapusan akun sedang diproses</h2>
+                  <p class="status-hero__message">Akun tidak dapat dipakai masuk selama penghapusan berjalan. Anda menerima email setelah penghapusan selesai.</p>
+                </div>
+                <div class="mt-4">
+                  <div class="summary-card">
+                    <h3 class="summary-card__title">Permintaan penghapusan</h3>
+                    <div class="summary-row"><span class="summary-row__label">Nomor permintaan</span><span class="summary-row__value summary-row__value--em">DEL-2026-4M8P2T</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Status</span><span class="summary-row__value">Permintaan Diterima</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan</span><span class="summary-row__value">17 Okt 2026, 20.14 WIB</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Selesai paling lambat</span><span class="summary-row__value">16 Nov 2026, 20.14 WIB</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan lewat</span><span class="summary-row__value">Aplikasi</span></div>
+                  </div>
+                </div>
+                <div class="auth-right"><button class="btn-link" type="button"><span class="ic ic-copy" aria-hidden="true"></span>Salin nomor permintaan</button></div>
+                <p class="auth-checked">Status per 18 Okt 2026, 09.41 WIB</p>
+                <div class="mt-5">
+                  <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Data apa yang dihapus?</p><p class="info-box__message">Data pribadi, kontak, foto, unggahan, file bukti transfer dan isi chat Anda dihapus. Catatan keuangan, tiket, laporan dan audit hanya disimpan tanpa identitas. Backup harian berotasi 30 hari dan data yang sudah dihapus tidak aktif kembali saat pemulihan (D2).</p></div></div>
+                </div>
+                <div class="mt-4">
+                  <div class="auth-panel">
+                    <h3 class="auth-panel__title">Periksa status terbaru</h3>
+                    <p class="auth-panel__text">Kami kirim kode verifikasi ke email akun. Kode hanya membuka status penghapusan, bukan akses akun.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="d12-email">Email akun</label>
+                        <div class="input">
+                          <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                          <input class="input__control" id="d12-email" type="email" placeholder="nama@email.com" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button">Kirim kode verifikasi</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--outline" type="button"><span class="ic ic-login" aria-hidden="true"></span>Kembali ke halaman masuk</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">Nomor permintaan disalin.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">SnackBar setelah "Salin nomor permintaan".</p>
+    </figure>
+
+  </main>
+</body>
+</html>

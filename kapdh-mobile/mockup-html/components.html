@@ -1,0 +1,1135 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Komponen KAPDH</title>
+  <meta name="description" content="Etalase komponen bersama mockup HTML aplikasi KAPDH beserta nama kelas CSS dan sumber Dart.">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="_template.html">Templat halaman</a>
+    </nav>
+    <h1 class="page-header__title">Komponen bersama</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/design/*</code>, <code>lib/app/app_shell.dart</code>, <code>lib/app/theme/*</code>, widget bersama di <code>lib/features/*/widgets</code> dan <code>lib/features/home/shared</code></dd>
+      <dt>CSS</dt><dd><code>css/tokens.css</code>, <code>css/components.css</code> (mengimpor <code>css/icons.css</code>)</dd>
+    </dl>
+    <p class="page-header__note">Setiap contoh menampilkan nama kelas dan widget Dart sumbernya. Lihat sumber halaman ini (Ctrl+U) untuk menyalin markup. Data contoh fiktif. Ukuran diukur dari Flutter 3.47.2 pada lebar 360 dp.</p>
+  </header>
+
+  <main class="doc">
+
+    <!-- ============================================================ FONDASI -->
+    <section class="doc-section" aria-labelledby="h-warna">
+      <h2 id="h-warna">Warna</h2>
+      <p>Variabel <code>--color-*</code> memetakan <code>KapdhColors.*</code>; <code>--m3-*</code> adalah warna turunan Material 3 yang dipakai widget bawaan.</p>
+      <div class="swatches">
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-primary)"></div><div class="swatch__meta">primary<code>--color-primary #1A4B17</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-primary-hover)"></div><div class="swatch__meta">primaryHover / green700<code>--color-primary-hover #215E1E</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-green-950)"></div><div class="swatch__meta">green950 / surfaceDark<code>--color-green-950 #0E280C</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-green-600)"></div><div class="swatch__meta">green600<code>--color-green-600 #2D7A28</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-green-100)"></div><div class="swatch__meta">green100<code>--color-green-100 #E3F0E1</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-green-50)"></div><div class="swatch__meta">green50<code>--color-green-50 #F1F8F0</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-accent)"></div><div class="swatch__meta">accent / gold500<code>--color-accent #E6D312</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-background)"></div><div class="swatch__meta">background<code>--color-background #FBFAFF</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-surface)"></div><div class="swatch__meta">surface<code>--color-surface #FFFFFF</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-text)"></div><div class="swatch__meta">text<code>--color-text #1C1B1F</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-text-muted)"></div><div class="swatch__meta">textMuted<code>--color-text-muted #6B6B6B</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-border)"></div><div class="swatch__meta">border<code>--color-border #8A8F87</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-divider)"></div><div class="swatch__meta">divider<code>--color-divider #E3E3E6</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-disabled-bg)"></div><div class="swatch__meta">disabledBg<code>--color-disabled-bg #DCDCE0</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-success)"></div><div class="swatch__meta">success<code>--color-success #1E7A46</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-warning)"></div><div class="swatch__meta">warning<code>--color-warning #8A5A00</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-danger)"></div><div class="swatch__meta">danger<code>--color-danger #B3261E</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-info)"></div><div class="swatch__meta">info<code>--color-info #1F5FA8</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-neutral)"></div><div class="swatch__meta">neutral<code>--color-neutral #3F4A3E</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-muted-on-dark)"></div><div class="swatch__meta">mutedOnDark<code>--color-muted-on-dark #C9D6C8</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--m3-secondary-container)"></div><div class="swatch__meta">M3 secondaryContainer<code>--m3-secondary-container #D6E8CD</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--m3-primary-container)"></div><div class="swatch__meta">M3 primaryContainer<code>--m3-primary-container #BFF0B1</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--gradient-band)"></div><div class="swatch__meta">bandGradient / buttonPrimary<code>--gradient-band</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:linear-gradient(128deg, var(--gradient-kta-stops))"></div><div class="swatch__meta">KapdhGradients.ktaCard<code>--gradient-kta-stops</code></div></div>
+      </div>
+    </section>
+
+    <section class="doc-section" aria-labelledby="h-tipo">
+      <h2 id="h-tipo">Tipografi</h2>
+      <p>Poppins lokal. Teks biasa mewarisi <code>bodyMedium</code> (14 / 1.45 / letter-spacing 0.25), juga saat kode hanya mengganti <code>fontSize</code>.</p>
+      <div class="type-list">
+        <div class="type-row"><code>.t-display</code><span class="t-display">Display 32</span></div>
+        <div class="type-row"><code>.t-h1 (headlineSmall)</code><span class="t-h1">Konfirmasi identitas</span></div>
+        <div class="type-row"><code>.t-h2 (titleLarge, KapdhFontSize.h2)</code><span class="t-h2">Masuk ke akun</span></div>
+        <div class="type-row"><code>.t-h3 (titleMedium, h3)</code><span class="t-h3">Alumni tidak ditemukan</span></div>
+        <div class="type-row"><code>.t-title-sm (label TabBar 15)</code><span class="t-title-sm">Riwayat</span></div>
+        <div class="type-row"><code>.t-body-lg (bodyLarge 16)</code><span class="t-body-lg">Judul ListTile</span></div>
+        <div class="type-row"><code>.t-body (bodyMedium 14)</code><span class="t-body">Teks isi bawaan aplikasi KAPDH.</span></div>
+        <div class="type-row"><code>.t-body-sm (bodySmall 12 muted)</code><span class="t-body-sm">Keterangan kecil</span></div>
+        <div class="type-row"><code>.t-label-lg (labelLarge 14 w600)</code><span class="t-label-lg">Label tombol</span></div>
+        <div class="type-row"><code>.t-label-sm (overline 11)</code><span class="t-label-sm">Kode Angkatan</span></div>
+        <div class="type-row"><code>.fs-13 / .fw-600 / .c-muted</code><span class="fs-13 fw-600 c-muted">Utilitas literal</span></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ PERANGKAT -->
+    <section class="doc-section" aria-labelledby="h-device">
+      <h2 id="h-device">Perangkat dan kerangka layar</h2>
+      <p><code>.frame</code> &gt; <code>.frame__label</code> + <code>.device</code> (360 x 800) &gt; <code>.statusbar</code>, <code>.screen</code> (<code>.appbar</code> / <code>.home-header</code>, <code>.screen__body</code>, <code>.bottom-nav</code>), <code>.sysnav</code>. Tambah <code>.device--tall</code> untuk tinggi gulir penuh. Status bar memakai <code>.statusbar--on-dark</code> di atas header hijau.</p>
+      <div class="frames" style="padding:16px 0 0">
+
+        <figure class="frame">
+          <figcaption class="frame__label"><span class="frame__num">A</span> Cangkang tab: HomeHeader + NavigationBar</figcaption>
+          <div class="device" aria-label="Contoh cangkang tab Beranda">
+            <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+            <div class="screen">
+              <header class="home-header">
+                <img class="home-header__logo" src="assets/logo-kapdh.png" alt="Logo KAPDH">
+                <div class="home-header__text">
+                  <span class="greeting__hello">Assalamu'alaikum,</span>
+                  <span class="greeting__name">Ahmad Fauzi</span>
+                </div>
+                <button class="icon-btn" type="button" aria-label="Notifikasi, 3 belum dibaca">
+                  <span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="badge badge--accent">3</span></span>
+                </button>
+              </header>
+              <div class="screen__body">
+                <div class="pad-screen pt-4 stack-4">
+                  <div class="quick-access">
+                    <a class="quick-access__item" href="#"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label">KTA</span><span class="quick-access__detail">12.01.01.7</span></a>
+                    <a class="quick-access__item" href="#"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label">Notifikasi</span><span class="quick-access__detail">3 belum dibaca</span></a>
+                    <a class="quick-access__item" href="#"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label">Tiket Saya</span></a>
+                    <a class="quick-access__item" href="#"><span class="quick-access__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span><span class="quick-access__label">Berita</span></a>
+                  </div>
+                </div>
+              </div>
+              <nav class="bottom-nav" aria-label="Navigasi utama">
+                <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+                <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+                <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+                <a class="bottom-nav__item" href="#" aria-label="Jejaring, 2 percakapan belum dibaca"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">2</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+                <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+              </nav>
+            </div>
+            <div class="sysnav" aria-hidden="true"></div>
+          </div>
+          <p class="frame__note">Ikon tab: home_outlined/home, event_outlined/event, badge_outlined/badge, school_outlined/school, person_outline/person (AppShell.tabs).</p>
+        </figure>
+
+        <figure class="frame">
+          <figcaption class="frame__label"><span class="frame__num">B</span> AppScaffold detail + pita Offline</figcaption>
+          <div class="device" aria-label="Contoh layar detail dengan app bar">
+            <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+            <div class="screen">
+              <header class="appbar">
+                <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+                <h2 class="appbar__title"><span>Notifikasi</span></h2>
+                <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca"><span class="ic ic-done_all" aria-hidden="true"></span></button></div>
+              </header>
+              <div class="status-strip" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><span class="status-strip__text"><strong>Offline</strong>. Tersinkron 11 Okt 2026, 20.14 WIB</span><button class="btn-text" type="button">Coba lagi</button></div>
+              <div class="screen__body">
+                <div class="state">
+                  <div class="state__icon" aria-hidden="true"><span class="ic ic-notifications_none"></span></div>
+                  <h2 class="state__title">Judul keadaan kosong</h2>
+                  <p class="state__message">Pesan keadaan kosong dari Dart disalin persis di halaman layar.</p>
+                </div>
+              </div>
+            </div>
+            <div class="sysnav" aria-hidden="true"></div>
+          </div>
+          <p class="frame__note">.appbar: putih 56 + garis 1; judul 17 w600 di tengah; .status-strip tepat di bawah app bar.</p>
+        </figure>
+
+        <figure class="frame">
+          <figcaption class="frame__label"><span class="frame__num">C</span> BrandSheetScaffold: pita bermotif + lembar</figcaption>
+          <div class="device" aria-label="Contoh pita merek dan lembar">
+            <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+            <div class="screen">
+              <header class="brand-band brand-band--pattern" style="padding-bottom:calc(var(--s8) + var(--s4))">
+                <img class="brand-logo" src="assets/logo-kapdh.png" alt="Logo KAPDH" style="width:84px;height:84px;margin-left:auto">
+                <p class="mt-4 fs-22 fw-600 lh-13">Selamat<br><span class="c-accent">Datang kembali !!!</span></p>
+              </header>
+              <div class="brand-sheet brand-sheet--overlap-16">
+                <div class="pad-screen pt-8 stack-4">
+                  <div class="sheet-title-row"><span class="sheet-title-row__title">Judul lembar 20</span></div>
+                  <button class="btn btn--primary" type="button">Masuk</button>
+                </div>
+              </div>
+            </div>
+            <div class="sysnav" aria-hidden="true"></div>
+          </div>
+          <p class="frame__note">.brand-band(--pattern) + .brand-sheet (sudut 20, menumpuk pita 12; --overlap-16 untuk login/greeting).</p>
+        </figure>
+
+        <figure class="frame">
+          <figcaption class="frame__label"><span class="frame__num">D</span> Overlay: dialog, bottom sheet, snackbar</figcaption>
+          <div class="device" aria-label="Contoh overlay">
+            <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+            <div class="screen">
+              <header class="appbar">
+                <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+                <h2 class="appbar__title"><span>Keamanan</span></h2>
+              </header>
+              <div class="screen__body"></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-demo-title">
+              <h2 class="dialog__title" id="dlg-demo-title">Konfirmasi identitas</h2>
+              <div class="dialog__content">
+                <p class="c-muted">Masukkan password Anda untuk melanjutkan tindakan ini.</p>
+                <div class="field mt-4">
+                  <label class="field__label" for="dlg-pw">Password</label>
+                  <div class="input">
+                    <input class="input__control" id="dlg-pw" type="password" placeholder="Masukkan password">
+                    <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                  </div>
+                </div>
+              </div>
+              <div class="dialog__actions">
+                <button class="btn-text" type="button">Batal</button>
+                <button class="btn btn--solid btn--inline" type="button" disabled>Konfirmasi</button>
+              </div>
+            </div>
+            <div class="sysnav" aria-hidden="true"></div>
+          </div>
+          <p class="frame__note">.scrim + .dialog (reauth_dialog.dart). Lembar bawah: .sheet; snackbar: .snackbar (lihat bagian Umpan balik).</p>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============================================================ APP BAR -->
+    <section class="doc-section" aria-labelledby="h-appbar">
+      <h2 id="h-appbar">App bar dan header</h2>
+      <div class="doc-grid">
+        <div class="specimen">
+          <span class="specimen__name">AppScaffold app bar</span>
+          <div class="specimen__stage specimen__stage--flush">
+            <header class="appbar">
+              <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+              <h3 class="appbar__title"><span>Tiket Saya</span></h3>
+            </header>
+          </div>
+          <code class="specimen__code">header.appbar &gt; .appbar__leading &gt; button.icon-btn (ic-arrow_back) | .appbar__title &gt; span | .appbar__actions &gt; .icon-btn</code>
+          <span class="specimen__src">lib/design/app_scaffold.dart (AppScaffold)</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">Tab tanpa kembali + aksi (Event)</span>
+          <div class="specimen__stage specimen__stage--flush">
+            <header class="appbar">
+              <h3 class="appbar__title"><span>Event</span></h3>
+              <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tiket Saya"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></button></div>
+            </header>
+          </div>
+          <code class="specimen__code">.appbar (tanpa .appbar__leading) + .appbar__actions</code>
+          <span class="specimen__src">AppScaffold(showBack: false, actions: [...])</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">HomeHeader (Beranda)</span>
+          <div class="specimen__stage specimen__stage--flush">
+            <header class="home-header">
+              <img class="home-header__logo" src="assets/logo-kapdh.png" alt="Logo KAPDH">
+              <div class="home-header__text"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Siti Rahmah</span></div>
+              <button class="icon-btn" type="button" aria-label="Notifikasi"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></button>
+            </header>
+          </div>
+          <code class="specimen__code">header.home-header &gt; img.home-header__logo + .home-header__text (.greeting__hello, .greeting__name) + .icon-btn (.badge-host + .badge.badge--accent)</code>
+          <span class="specimen__src">lib/features/home/widgets/home_widgets.dart (HomeHeader)</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">GreetingBand dengan kembali + lembar</span>
+          <div class="specimen__stage specimen__stage--flush">
+            <div class="brand-band" style="padding-bottom:calc(var(--s5) + 16px)">
+              <div class="greeting-band">
+                <button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button>
+                <img class="brand-logo" src="assets/logo-kapdh.png" alt="Logo KAPDH">
+                <div class="col"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+              </div>
+            </div>
+            <div class="brand-sheet brand-sheet--overlap-16"><div class="pad-screen pt-4 pb-4"><div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s26" aria-hidden="true"></span></button><h3 class="sheet-title-row__title">Pembayaran</h3></div></div></div>
+          </div>
+          <code class="specimen__code">.brand-band &gt; .greeting-band | .brand-sheet(.brand-sheet--overlap-16) &gt; .sheet-title-row (.icon-btn ic-chevron_left ic-s26 + .sheet-title-row__title)</code>
+          <span class="specimen__src">lib/design/brand_header.dart, lib/features/payments/widgets/payment_layout.dart</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ NAV -->
+    <section class="doc-section" aria-labelledby="h-nav">
+      <h2 id="h-nav">Navigasi bawah</h2>
+      <div class="doc-grid">
+        <div class="specimen">
+          <span class="specimen__name">Status unverified: Event, Jejaring terkunci</span>
+          <div class="specimen__stage specimen__stage--flush">
+            <nav class="bottom-nav" aria-label="Navigasi utama (contoh)">
+              <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+              <a class="bottom-nav__item" href="#" aria-label="Event, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-event_outlined" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ic-lock"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
+              <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+              <a class="bottom-nav__item" href="#" aria-label="Jejaring, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ic-lock"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+              <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+            </nav>
+          </div>
+          <code class="specimen__code">nav.bottom-nav &gt; a.bottom-nav__item(.is-selected) &gt; .bottom-nav__indicator &gt; .ic | .badge-host + .badge(--primary | --lock) ; .bottom-nav__label</code>
+          <span class="specimen__src">lib/app/app_shell.dart (AppShell, _TabIcon)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ BUTTONS -->
+    <section class="doc-section" aria-labelledby="h-btn">
+      <h2 id="h-btn">Tombol</h2>
+      <div class="doc-grid">
+        <div class="specimen">
+          <span class="specimen__name">KapdhButton (primary, solid, outlined)</span>
+          <div class="specimen__stage stack-3">
+            <button class="btn btn--primary" type="button">Masuk</button>
+            <button class="btn btn--primary" type="button" disabled>Masuk</button>
+            <button class="btn btn--primary is-busy" type="button" disabled><span class="spinner spinner--18" aria-hidden="true"></span>Memeriksa...</button>
+            <button class="btn btn--solid" type="button">Bayar</button>
+            <button class="btn btn--outline" type="button"><span class="ic ic-sync" aria-hidden="true"></span>Sinkronkan</button>
+            <button class="btn btn--outline" type="button" disabled>Sinkronkan</button>
+          </div>
+          <code class="specimen__code">button.btn.btn--primary (52, gradasi, 15 w600) | .btn--solid | .btn--outline | :disabled | .is-busy + .spinner.spinner--18 | .btn--inline (expand:false)</code>
+          <span class="specimen__src">lib/design/kapdh_button.dart</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">Tombol Material bertema</span>
+          <div class="specimen__stage stack-3">
+            <button class="btn btn--danger" type="button"><span class="ic ic-delete_forever_outlined" aria-hidden="true"></span>Hapus akun</button>
+            <button class="btn btn--danger-outline" type="button"><span class="ic ic-event_busy_outlined" aria-hidden="true"></span>Batalkan tiket</button>
+            <div class="wrap gap-2">
+              <button class="btn-m3 btn-m3--outlined btn-m3--icon" type="button"><span class="ic ic-group_add_outlined" aria-hidden="true"></span>Buat grup</button>
+              <button class="btn-m3 btn-m3--filled" type="button">Filled</button>
+            </div>
+            <div class="wrap">
+              <button class="btn-text" type="button">Lihat semua</button>
+              <button class="btn-text btn-text--icon btn-text--semibold" type="button"><span class="ic ic-zoom_in" aria-hidden="true"></span>Perbesar QRIS</button>
+              <button class="btn-text btn-text--danger" type="button">Keluarkan</button>
+              <button class="btn-link" type="button">Daftar</button>
+            </div>
+            <div class="wrap gap-2">
+              <button class="icon-btn" type="button" aria-label="Tutup"><span class="ic ic-close" aria-hidden="true"></span></button>
+              <button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button>
+              <button class="fab-small" type="button" aria-label="Ke pesan terbaru"><span class="ic ic-arrow_downward" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <code class="specimen__code">.btn--danger | .btn--danger-outline | .btn-m3.btn-m3--outlined(.btn-m3--icon) | .btn-m3--filled | .btn-text(.btn-text--icon, --danger, --warning, --accent, --semibold) | .btn-link | .icon-btn(.icon-btn--tonal) | .fab-small</code>
+          <span class="specimen__src">FilledButton/OutlinedButton/TextButton/IconButton dengan KapdhTheme; KapdhLinkButton</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ FIELDS -->
+    <section class="doc-section" aria-labelledby="h-field">
+      <h2 id="h-field">Field</h2>
+      <div class="doc-grid">
+        <div class="specimen">
+          <span class="specimen__name">KapdhTextField: biasa, fokus, galat, nonaktif</span>
+          <div class="specimen__stage stack-4">
+            <div class="field">
+              <label class="field__label" for="f-email">Email</label>
+              <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span><input class="input__control" id="f-email" type="email" placeholder="Masukkan Email"></div>
+            </div>
+            <div class="field">
+              <label class="field__label" for="f-name">Nama Lengkap <span class="field__req">*</span></label>
+              <div class="input is-focused"><input class="input__control" id="f-name" value="Ahmad Fauzi"></div>
+            </div>
+            <div class="field">
+              <label class="field__label" for="f-pw">Password</label>
+              <div class="input is-error">
+                <input class="input__control" id="f-pw" type="password" value="rahasia12" aria-describedby="f-pw-err">
+                <span class="input__suffix"><span class="input__trailing-text">9/72</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+              </div>
+              <p class="field__error" id="f-pw-err">Contoh teks galat dari server.</p>
+            </div>
+            <div class="field">
+              <label class="field__label" for="f-dis">Email</label>
+              <div class="input is-disabled"><input class="input__control" id="f-dis" value="ahmad.fauzi@contoh.id" disabled></div>
+              <p class="field__helper">Teks bantuan (helperText).</p>
+            </div>
+          </div>
+          <code class="specimen__code">.field &gt; label.field__label (+ .field__req) + .input(.is-focused | .is-error | .is-disabled) &gt; .input__prefix + input.input__control + .input__suffix (.input__trailing-text, .icon-btn) ; .field__error | .field__helper</code>
+          <span class="specimen__src">lib/design/kapdh_text_field.dart (KapdhTextField)</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">Dropdown, pencarian, multiline</span>
+          <div class="specimen__stage stack-4">
+            <div class="field">
+              <span class="field__label" id="f-cohort-l">Angkatan</span>
+              <button class="input input--dropdown" type="button" aria-labelledby="f-cohort-l"><span class="input__value">KAPDH 12</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+            </div>
+            <div class="field">
+              <span class="field__label" id="f-gender-l">Jenis Kelamin</span>
+              <button class="input input--dropdown" type="button" aria-labelledby="f-gender-l"><span class="input__value input__hint">Pilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+            </div>
+            <div class="input input--search"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari" placeholder="Cari relasi dengan alumni ..."></div>
+            <div class="input input--search"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari" value="Siti"><span class="input__suffix"><button class="icon-btn" type="button" aria-label="Hapus pencarian"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
+            <div class="field">
+              <label class="field__label" for="f-bio">Bio</label>
+              <div class="input input--multiline"><textarea class="input__control" id="f-bio" rows="4" placeholder="Tulis"></textarea></div>
+            </div>
+          </div>
+          <code class="specimen__code">.input.input--dropdown &gt; .input__value(.input__hint) + .ic.input__chevron | .input.input--search | .input.input--multiline &gt; textarea.input__control</code>
+          <span class="specimen__src">KapdhDropdownField; TextField(isDense) di network_screen/events_screen</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">OtpBoxes + PasswordRules</span>
+          <div class="specimen__stage stack-4">
+            <div class="otp" role="group" aria-label="Kode OTP 6 digit">
+              <span class="otp__box is-filled">4</span><span class="otp__box is-filled">8</span><span class="otp__box is-filled">2</span><span class="otp__box is-current"></span><span class="otp__box"></span><span class="otp__box"></span>
+            </div>
+            <div>
+              <div class="otp is-error" role="group" aria-label="Kode OTP 6 digit">
+                <span class="otp__box">4</span><span class="otp__box">8</span><span class="otp__box">2</span><span class="otp__box">9</span><span class="otp__box">1</span><span class="otp__box">3</span>
+              </div>
+              <p class="otp__error">Contoh teks galat OTP.</p>
+            </div>
+            <div class="otp is-disabled" aria-hidden="true"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div>
+            <ul class="rules">
+              <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte</li>
+              <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar</li>
+              <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf kecil</li>
+              <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Angka</li>
+              <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Simbol</li>
+            </ul>
+          </div>
+          <code class="specimen__code">.otp(.is-error | .is-disabled) &gt; .otp__box(.is-filled | .is-current) ; .otp__error | ul.rules &gt; li.rules__item(.is-ok)</code>
+          <span class="specimen__src">lib/design/otp_boxes.dart; lib/features/auth/auth_widgets.dart (PasswordRules)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ CONTROLS -->
+    <section class="doc-section" aria-labelledby="h-ctrl">
+      <h2 id="h-ctrl">Kontrol dan ListTile</h2>
+      <div class="doc-grid">
+        <div class="specimen">
+          <span class="specimen__name">SwitchListTile, CheckboxListTile, RadioListTile, ListTile</span>
+          <div class="specimen__stage specimen__stage--flush bg-surface">
+            <div class="list-tile list-tile--two-line list-tile--control-trailing" role="switch" aria-checked="true" tabindex="0">
+              <div class="list-tile__body"><div class="list-tile__title">Judul pengaturan</div><div class="list-tile__subtitle">Keterangan pengaturan</div></div>
+              <span class="switch is-on" aria-hidden="true"></span>
+            </div>
+            <div class="list-tile list-tile--control-trailing" role="switch" aria-checked="false" tabindex="0">
+              <div class="list-tile__body"><div class="list-tile__title">Pengaturan mati</div></div>
+              <span class="switch" aria-hidden="true"></span>
+            </div>
+            <div class="list-tile list-tile--control-leading" role="checkbox" aria-checked="true" tabindex="0">
+              <span class="checkbox is-checked" aria-hidden="true"></span>
+              <div class="list-tile__body"><div class="list-tile__title">Kotak centang terpilih</div></div>
+            </div>
+            <div class="list-tile list-tile--control-leading" role="checkbox" aria-checked="false" tabindex="0">
+              <span class="checkbox" aria-hidden="true"></span>
+              <div class="list-tile__body"><div class="list-tile__title">Kotak centang kosong</div></div>
+            </div>
+            <div class="list-tile list-tile--control-leading" role="radio" aria-checked="true" tabindex="0">
+              <span class="radio is-checked" aria-hidden="true"></span>
+              <div class="list-tile__body"><div class="list-tile__title">Nama A-Z</div></div>
+            </div>
+            <div class="list-tile list-tile--control-leading" role="radio" aria-checked="false" tabindex="-1">
+              <span class="radio" aria-hidden="true"></span>
+              <div class="list-tile__body"><div class="list-tile__title">Angkatan terbaru</div></div>
+            </div>
+            <a class="list-tile" href="#"><span class="list-tile__leading" aria-hidden="true"><span class="ic ic-person_outline"></span></span><span class="list-tile__body"><span class="list-tile__title">ListTile satu baris</span></span></a>
+            <a class="list-tile list-tile--two-line" href="#"><span class="avatar avatar--40 avatar--m3" aria-hidden="true">AF</span><span class="list-tile__body"><span class="list-tile__title">Ahmad Fauzi</span><span class="list-tile__subtitle">ListTile dua baris</span></span><span class="list-tile__trailing" aria-hidden="true"><span class="ic ic-chevron_right"></span></span></a>
+          </div>
+          <code class="specimen__code">.list-tile(.list-tile--two-line | --three-line | --control-leading | --control-trailing) &gt; .list-tile__leading + .list-tile__body (.list-tile__title, .list-tile__subtitle) + .list-tile__trailing ; .switch(.is-on) ; .checkbox(.is-checked) ; .radio(.is-checked)</code>
+          <span class="specimen__src">ListTile/SwitchListTile/CheckboxListTile/RadioListTile M3 dengan checkboxTheme/radioTheme</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">MethodRadioCard</span>
+          <div class="specimen__stage stack-3">
+            <div class="method-card is-selected">
+              <div class="method-card__main" role="radio" aria-checked="true" tabindex="0">
+                <span class="method-card__dot" aria-hidden="true"></span>
+                <div><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__number">7001234567</div><div class="method-card__holder">a.n. Perkumpulan Alumni Contoh</div></div>
+              </div>
+              <button class="btn-text method-card__copy" type="button">Salin</button>
+            </div>
+            <div class="method-card">
+              <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                <span class="method-card__dot" aria-hidden="true"></span>
+                <div><div class="method-card__title">QRIS</div><div class="method-card__hint">Ketuk untuk melihat nomor tujuan</div></div>
+              </div>
+            </div>
+          </div>
+          <code class="specimen__code">.method-card(.is-selected) &gt; .method-card__main &gt; .method-card__dot + (.method-card__title, __number, __holder | __hint) ; .btn-text.method-card__copy</code>
+          <span class="specimen__src">lib/design/method_radio_card.dart</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ CHIPS -->
+    <section class="doc-section" aria-labelledby="h-chip">
+      <h2 id="h-chip">Chip, badge status, lencana</h2>
+      <div class="doc-grid">
+        <div class="specimen">
+          <span class="specimen__name">StatusBadge (keanggotaan)</span>
+          <div class="specimen__stage wrap gap-2">
+            <span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>KTA Aktif</span>
+            <span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Segera Berakhir</span>
+            <span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>KTA Kedaluwarsa</span>
+            <span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>KTA Tidak Aktif</span>
+            <span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu Verifikasi</span>
+            <span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatasi</span>
+            <span class="status-badge status-badge--info"><span class="ic ic-mark_email_unread_outlined" aria-hidden="true"></span>Menunggu Verifikasi Email</span>
+            <span class="status-badge status-badge--warning"><span class="ic ic-cloud_off" aria-hidden="true"></span>Offline</span>
+          </div>
+          <code class="specimen__code">span.status-badge.status-badge--{success|warning|danger|info|neutral} &gt; .ic + label</code>
+          <span class="specimen__src">lib/design/status_badge.dart (StatusStyles.membership/card/offline)</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">StatusBadge (bayar, tiket, event)</span>
+          <div class="specimen__stage wrap gap-2">
+            <span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span>
+            <span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span>
+            <span class="status-badge status-badge--danger"><span class="ic ic-error_outline" aria-hidden="true"></span>Perlu Perbaikan</span>
+            <span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span>
+            <span class="status-badge status-badge--success"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Terkonfirmasi</span>
+            <span class="status-badge status-badge--success"><span class="ic ic-how_to_reg" aria-hidden="true"></span>Sudah Check-in</span>
+            <span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span>
+            <span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span>
+            <span class="status-badge status-badge--warning"><span class="ic ic-group_off" aria-hidden="true"></span>Kuota Penuh</span>
+            <span class="status-badge status-badge--danger"><span class="ic ic-event_busy" aria-hidden="true"></span>Pendaftaran Ditutup</span>
+          </div>
+          <code class="specimen__code">StatusStyles.payment / ticket / event; registrationStateStyle (events/event_format.dart)</code>
+          <span class="specimen__src">lib/design/status_badge.dart, lib/features/events/event_format.dart</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">CategoryChip, TagChip, ChoiceChip, lencana</span>
+          <div class="specimen__stage stack-3">
+            <div class="wrap gap-2"><span class="category-chip">Silaturahmi</span><span class="category-chip">Jejaring</span></div>
+            <div class="wrap gap-1"><span class="tag-chip">Pendidikan</span><span class="tag-chip">Desain Grafis</span><span class="tag-chip tag-chip--blue">Bahasa Arab</span><span class="tag-chip tag-chip--neutral">Netral</span></div>
+            <div class="wrap gap-2"><span class="tag-chip tag-chip--neutral tag-chip--input">Angkatan 12<button class="icon-btn" type="button" aria-label="Hapus filter Angkatan 12" style="width:16px;height:16px"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
+            <div class="wrap gap-2">
+              <button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Semua</button>
+              <button class="choice-chip" type="button" aria-pressed="false">Belum dibaca (3)</button>
+            </div>
+            <div class="wrap gap-2">
+              <button class="choice-chip choice-chip--primary is-selected" type="button" aria-pressed="true">Semua</button>
+              <button class="choice-chip choice-chip--primary" type="button" aria-pressed="false">Pengumuman</button>
+            </div>
+            <div class="wrap gap-6" style="padding-top:8px">
+              <span class="badge-host"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="badge">5</span></span>
+              <span class="badge-host"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="badge badge--primary">12</span></span>
+              <span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--lock"><span class="ic ic-lock" aria-hidden="true"></span></span></span>
+              <span class="badge-host fs-15 fw-600 c-primary">Pesan<span class="badge badge--primary badge--dot" aria-hidden="true"></span></span>
+              <span class="count-pill">4</span>
+            </div>
+          </div>
+          <code class="specimen__code">.category-chip | .tag-chip(--blue | --neutral | --input) | button.choice-chip(.is-selected)(.choice-chip--primary) | .badge-host + .badge(--primary | --accent | --lock | --dot | --dot6) | .count-pill</code>
+          <span class="specimen__src">home/shared/content_widgets.dart, network/widgets/tag_chip.dart, news_list_screen, notifications_screen</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ CARDS -->
+    <section class="doc-section" aria-labelledby="h-card">
+      <h2 id="h-card">Kartu konten</h2>
+      <div class="doc-grid">
+        <div class="specimen">
+          <span class="specimen__name">Judul bagian, kartu kosong bagian</span>
+          <div class="specimen__stage stack-2">
+            <div class="section-title"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text" href="#">Lihat semua</a></div>
+            <div class="section-empty"><span class="ic ic-event_outlined" aria-hidden="true"></span><p class="section-empty__text">Belum ada event mendatang. Event baru dari pengurus akan tampil di sini.</p></div>
+            <div class="section-header"><h3 class="section-header__title">Riwayat</h3><a class="btn-text" href="#">Lihat semua</a></div>
+          </div>
+          <code class="specimen__code">.section-title &gt; .section-title__title + .btn-text | .section-empty &gt; .ic + .section-empty__text | .section-header &gt; .section-header__title</code>
+          <span class="specimen__src">HomeSectionTitle, SectionEmpty, SectionHeader</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">EventCard</span>
+          <div class="specimen__stage stack-3">
+            <a class="card card--pad event-card" href="#">
+              <div class="event-card__cover"><img class="img-cover" src="assets/sample/event-1-peluncuran.jpg" alt=""></div>
+              <div class="event-card__body">
+                <span class="category-chip">Silaturahmi</span>
+                <p class="event-card__title clamp-2 mt-6px">Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+                <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026</span></p>
+                <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring (Zoom)</span></p>
+                <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span></div>
+              </div>
+            </a>
+            <a class="card card--pad event-card" href="#">
+              <div class="event-card__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+              <div class="event-card__body">
+                <p class="event-card__title clamp-2">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+                <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+                <div class="event-card__meta"><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span><span class="price">Rp150.000</span></div>
+              </div>
+            </a>
+          </div>
+          <code class="specimen__code">a.card.card--pad.event-card &gt; .event-card__cover (img.img-cover | .img-ph) + .event-card__body (.category-chip, .event-card__title.clamp-2, p.icon-line, .event-card__meta &gt; .status-badge + .price)</code>
+          <span class="specimen__src">lib/features/events/widgets/event_card.dart</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">PostCard</span>
+          <div class="specimen__stage">
+            <a class="card post-card" href="#">
+              <div class="post-card__cover"><img class="img-cover" src="assets/sample/berita-1-peluncuran.jpg" alt=""></div>
+              <div class="post-card__body">
+                <span class="category-chip">Pengumuman</span>
+                <p class="post-card__title clamp-3 mt-6px">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</p>
+                <p class="post-card__excerpt clamp-2">Ringkasan berita dua baris tampil di bawah judul dengan warna teks redup.</p>
+                <div class="post-card__foot"><p class="icon-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>18 Okt 2026</span></p><span class="ic ic-favorite is-liked" aria-hidden="true"></span><span>12 suka</span></div>
+              </div>
+            </a>
+          </div>
+          <code class="specimen__code">a.card.post-card &gt; .post-card__cover + .post-card__body (.category-chip, .post-card__title.clamp-3, .post-card__excerpt.clamp-2, .post-card__foot &gt; .icon-line + .ic(.is-liked) + teks)</code>
+          <span class="specimen__src">lib/features/news/widgets/post_card.dart</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">BannerCarousel</span>
+          <div class="specimen__stage" style="padding:20px 20px 16px">
+            <div class="banner-carousel" role="region" aria-label="Banner">
+              <div class="banner-carousel__track">
+                <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps"><img src="assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
+                <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 2 dari 3"><img src="assets/sample/banner-2-iuran-kta.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Panduan Iuran dan Perpanjangan KTA Digital</span><span class="external-pill">Tautan luar<span class="ic ic-open_in_new" aria-hidden="true"></span></span></span></a></div>
+              </div>
+            </div>
+            <div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
+          </div>
+          <code class="specimen__code">.banner-carousel &gt; .banner-carousel__track &gt; .banner-carousel__page &gt; a.banner-tile &gt; img + .banner-tile__caption (.banner-tile__title, .external-pill) ; .dots &gt; .dots__dot(.is-active)</code>
+          <span class="specimen__src">lib/features/home/widgets/banner_carousel.dart</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">QuickAccessRow (gated: 3 ubin)</span>
+          <div class="specimen__stage">
+            <div class="quick-access">
+              <a class="quick-access__item" href="#"><span class="quick-access__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="quick-access__label">KTA</span><span class="quick-access__detail">KTA Kedaluwarsa</span></a>
+              <a class="quick-access__item" href="#"><span class="quick-access__icon"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></span><span class="quick-access__label">Notifikasi</span><span class="quick-access__detail">Semua terbaca</span></a>
+              <a class="quick-access__item" href="#"><span class="quick-access__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="quick-access__label">Tiket Saya</span></a>
+            </div>
+          </div>
+          <code class="specimen__code">.quick-access &gt; a.quick-access__item &gt; .quick-access__icon + .quick-access__label + .quick-access__detail</code>
+          <span class="specimen__src">lib/features/home/widgets/home_widgets.dart (QuickAccessRow)</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">DirectoryMemberCard + avatar</span>
+          <div class="specimen__stage stack-3">
+            <a class="card card--md member-card" href="#">
+              <span class="avatar avatar--48" aria-hidden="true">AF</span>
+              <span class="member-card__body">
+                <span class="member-card__name" style="display:block">Ahmad Fauzi</span>
+                <span class="member-card__line" style="display:block">Guru • Pekanbaru</span>
+                <span class="member-card__line" style="display:block">Universitas Contoh • Pekanbaru</span>
+                <span class="member-card__tags"><span class="tag-chip">Pendidikan</span><span class="tag-chip">Bahasa Arab</span></span>
+                <span class="member-card__cohort" style="display:block">#KAPDH12</span>
+              </span>
+            </a>
+            <div class="wrap gap-3" style="align-items:center">
+              <span class="avatar avatar--40" aria-hidden="true">SR</span>
+              <span class="avatar avatar--52" aria-hidden="true">SR</span>
+              <span class="avatar avatar--64 avatar--profile" aria-hidden="true">AF</span>
+              <span class="avatar avatar--48" aria-hidden="true"><span class="ic ic-groups"></span></span>
+            </div>
+          </div>
+          <code class="specimen__code">a.card.card--md.member-card &gt; .avatar.avatar--48 + .member-card__body (.member-card__name, .member-card__line, .member-card__tags &gt; .tag-chip, .member-card__cohort) | .avatar--{32..96} (.avatar--profile | .avatar--m3)</code>
+          <span class="specimen__src">network/widgets/directory_member_card.dart, alumni_avatar.dart, account/widgets/profile_avatar.dart</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" aria-labelledby="h-kta">
+      <h2 id="h-kta">KTA dan status</h2>
+      <div class="doc-grid">
+        <div class="specimen">
+          <span class="specimen__name">KtaCard aktif (QR tiruan)</span>
+          <div class="specimen__stage">
+            <div class="kta-card" role="img" aria-label="Kartu Tanda Anggota. Ahmad Fauzi. Angkatan 12 | Guru. Kode angkatan KAPDH 12. Nomor anggota 12.01.01.7. Kota Pekanbaru. Berlaku sampai 13/10/2027. QR verifikasi tersedia">
+              <div class="kta-card__head">
+                <span class="avatar kta-card__avatar">AF</span>
+                <div><p class="kta-card__name">Ahmad Fauzi</p><p class="kta-card__subtitle">Angkatan 12 | Guru</p></div>
+              </div>
+              <div class="kta-card__body">
+                <div class="kta-card__fields">
+                  <div><p class="kta-field__label">Kode Angkatan</p><p class="kta-field__value kta-field__value--cohort">KAPDH 12</p></div>
+                  <div><p class="kta-field__label">Nomor anggota</p><p class="kta-field__value kta-field__value--number">12.01.01.7</p></div>
+                  <div><p class="kta-field__label">Kota</p><p class="kta-field__value kta-field__value--city">Pekanbaru</p></div>
+                </div>
+                <div class="kta-qr"><span class="qr-glyph"></span></div>
+              </div>
+              <p class="kta-card__validity">Berlaku sampai 13/10/2027</p>
+            </div>
+          </div>
+          <code class="specimen__code">.kta-card(--kta-angle) &gt; .kta-card__head (.avatar.kta-card__avatar, .kta-card__name, .kta-card__subtitle) + .kta-card__body (.kta-card__fields &gt; .kta-field__label + .kta-field__value--{cohort|number|city}; .kta-qr &gt; .qr-glyph) + .kta-card__validity</code>
+          <span class="specimen__src">lib/design/kta_card.dart (KtaCard)</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">KtaCard tidak aktif + StatusActionCard</span>
+          <div class="specimen__stage stack-4">
+            <div class="kta-card" role="img" aria-label="Kartu Tanda Anggota tidak aktif">
+              <div class="kta-card__head"><span class="avatar kta-card__avatar">SR</span><div><p class="kta-card__name">Siti Rahmah</p><p class="kta-card__subtitle">Angkatan 12 | Lulus 2016</p></div></div>
+              <div class="kta-card__body">
+                <div class="kta-card__fields">
+                  <div><p class="kta-field__label">Kode Angkatan</p><p class="kta-field__value kta-field__value--cohort">KAPDH 12</p></div>
+                  <div><p class="kta-field__label">Nomor anggota</p><p class="kta-field__value kta-field__value--number">12.01.02.3</p></div>
+                </div>
+                <div class="kta-qr kta-qr--locked"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>QR muncul setelah KTA aktif</span></div>
+              </div>
+              <p class="kta-card__validity">Berlaku sampai: belum aktif</p>
+            </div>
+            <div class="status-action-card">
+              <div class="status-action-card__info">
+                <span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>KTA Tidak Aktif</span>
+                <p class="status-action-card__message">Keterangan status dari Dart.</p>
+              </div>
+              <button class="btn btn--solid btn--inline" type="button">Bayar</button>
+            </div>
+          </div>
+          <code class="specimen__code">.kta-qr.kta-qr--locked &gt; .ic.ic-lock_outline + teks | .status-action-card &gt; .status-action-card__info (.status-badge, .status-action-card__message) + .btn.btn--solid|--outline.btn--inline ; .status-action-card--stacked</code>
+          <span class="specimen__src">lib/design/kta_card.dart (KtaCard, StatusActionCard)</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">KtaMiniCard + StatusHero</span>
+          <div class="specimen__stage stack-5">
+            <div class="kta-mini">
+              <div class="kta-mini__head">
+                <div class="grow"><p class="kta-mini__name">Ahmad Fauzi</p><p class="kta-mini__subtitle">Angkatan 12 | Guru</p></div>
+                <span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>KTA Tidak Aktif</span>
+              </div>
+              <p class="kta-mini__label">Nomor anggota</p>
+              <p class="kta-mini__number">12.01.01.7</p>
+            </div>
+            <div class="status-hero tone-info">
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-hourglass_top"></span></div>
+              <span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu Verifikasi</span>
+              <h3 class="status-hero__title">Judul StatusHero</h3>
+              <p class="status-hero__message">Pesan StatusHero 13 px, rata tengah, warna redup.</p>
+            </div>
+          </div>
+          <code class="specimen__code">.kta-mini &gt; .kta-mini__head (.kta-mini__name, .kta-mini__subtitle, .status-badge) + .kta-mini__label + .kta-mini__number | .status-hero.tone-{success|warning|danger|info|neutral} &gt; .status-hero__icon + .status-badge + .status-hero__title + .status-hero__message</code>
+          <span class="specimen__src">lib/design/kta_card.dart (KtaMiniCard), lib/design/status_hero.dart</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" aria-labelledby="h-pay">
+      <h2 id="h-pay">Pembayaran dan informasi</h2>
+      <div class="doc-grid">
+        <div class="specimen">
+          <span class="specimen__name">SummaryCard (biasa, total, penolakan)</span>
+          <div class="specimen__stage stack-3">
+            <div class="summary-card summary-card--plain-labels">
+              <h3 class="summary-card__title">Rincian iuran pendaftaran</h3>
+              <div class="summary-row"><span class="summary-row__label">Iuran pendaftaran</span><span class="summary-row__value">Rp100.000</span></div>
+              <div class="summary-row"><span class="summary-row__label">Iuran tahunan</span><span class="summary-row__value">Rp50.000</span></div>
+              <hr class="summary-card__divider">
+              <div class="summary-row summary-row--total"><span class="summary-row__label">Total</span><span class="summary-row__value">Rp150.000</span></div>
+              <p class="summary-card__footnote">Catatan kaki ringkasan.</p>
+            </div>
+            <div class="summary-card">
+              <h3 class="summary-card__title">Iuran pendaftaran</h3>
+              <div class="summary-row"><span class="summary-row__label">Nominal</span><span class="summary-row__value summary-row__value--em">Rp150.000</span></div>
+              <div class="summary-row"><span class="summary-row__label">Dikirim</span><span class="summary-row__value">12 Okt 2026, 14.20 WIB</span></div>
+            </div>
+            <div class="summary-card summary-card--danger">
+              <h3 class="summary-card__title">Catatan dari pengurus</h3>
+              <p class="summary-card__body">Contoh alasan penolakan bukti pembayaran.</p>
+            </div>
+          </div>
+          <code class="specimen__code">.summary-card(.summary-card--danger | --plain-labels) &gt; .summary-card__title + .summary-card__body + .summary-row (.summary-row__label, .summary-row__value(--em)) + hr.summary-card__divider + .summary-row--total + .summary-card__footnote</code>
+          <span class="specimen__src">lib/design/summary_card.dart</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">InfoBox, AmountCopyBox, SupportContactCard</span>
+          <div class="specimen__stage stack-3">
+            <div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Judul info</p><p class="info-box__message">Pesan nada info: hijau muda, ikon primary.</p></div></div>
+            <div class="info-box info-box--warning"><span class="ic ic-schedule" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Masa aktif KTA segera berakhir</p><p class="info-box__message">KTA Anda berakhir pada 13 Nov 2026. Perpanjang sekarang agar akses event, jejaring dan chat tidak terputus.</p></div><button class="btn-text info-box__trailing" type="button">Perpanjang</button></div>
+            <div class="info-box info-box--danger"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Pesan nada bahaya tanpa judul.</p></div></div>
+            <div class="amount-box"><div class="grow"><p class="amount-box__label">Transfer tepat sebesar</p><p class="amount-box__value">Rp150.000</p></div><button class="amount-box__copy" type="button" aria-label="Salin nominal Rp150.000">Salin</button></div>
+            <div class="support-card">
+              <h3 class="support-card__title">Butuh bantuan?</h3>
+              <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+              <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+            </div>
+          </div>
+          <code class="specimen__code">.info-box(--warning | --danger) &gt; .ic + .info-box__body (.info-box__title, .info-box__message) + .btn-text.info-box__trailing | .amount-box &gt; .amount-box__label + .amount-box__value + .amount-box__copy | .support-card &gt; .support-card__title + a.contact-row</code>
+          <span class="specimen__src">lib/design/info_box.dart, amount_copy_box.dart, support_contact_card.dart</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">UploadTile, QrisImageCard, Timeline</span>
+          <div class="specimen__stage stack-3">
+            <button class="upload-tile" type="button"><span class="upload-tile__icon"><span class="ic ic-upload_file" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button>
+            <div class="upload-tile"><span class="upload-tile__icon"><span class="ic ic-image_outlined" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">bukti-transfer.jpg</span><span class="upload-tile__subtitle">Mengunggah 60%</span><span class="progress-linear" style="display:block;--value:60%"><span class="progress-linear__bar"></span></span></span></div>
+            <div>
+              <button class="upload-tile upload-tile--error" type="button"><span class="upload-tile__icon"><span class="ic ic-error_outline" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">bukti-transfer.heic</span><span class="upload-tile__subtitle">5,2 MB</span></span><span class="upload-tile__action">Ganti</span></button>
+              <p class="upload-tile__error">Contoh galat FILE_INVALID dari Dart.</p>
+            </div>
+            <div class="qris-card"><div class="qris-card__image" style="max-width:200px"><span class="qr-glyph"></span></div><button class="btn-text btn-text--icon" type="button"><span class="ic ic-zoom_in" aria-hidden="true"></span>Perbesar QRIS</button></div>
+            <ol class="timeline">
+              <li class="timeline__item timeline__item--current"><span class="timeline__marker" aria-hidden="true"></span><div><p class="timeline__title">Menunggu verifikasi</p><p class="timeline__subtitle">Sedang berlangsung</p></div></li>
+              <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Bukti dikirim</p><p class="timeline__subtitle">12 Okt 2026, 14.20 WIB</p></div></li>
+              <li class="timeline__item timeline__item--failed"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-close"></span></span><div><p class="timeline__title">Ditolak</p></div></li>
+              <li class="timeline__item timeline__item--upcoming"><span class="timeline__marker" aria-hidden="true"></span><div><p class="timeline__title">Belum terjadi</p></div></li>
+            </ol>
+          </div>
+          <code class="specimen__code">.upload-tile(.upload-tile--error) &gt; .upload-tile__icon + .upload-tile__body (.upload-tile__title, .upload-tile__subtitle, .progress-linear) + .upload-tile__action ; .upload-tile__error | .qris-card &gt; .qris-card__image &gt; .qr-glyph + .btn-text--icon ; .qris-error | ol.timeline &gt; .timeline__item--{done|current|upcoming|failed}</code>
+          <span class="specimen__src">lib/design/upload_tile.dart, qris_image_card.dart, timeline.dart</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">KapdhStepper (RegisterStepper, ringkas)</span>
+          <div class="specimen__stage stack-5">
+            <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
+              <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+              <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+              <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+              <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+            </ol>
+            <ol class="stepper stepper--compact" aria-label="Langkah 4 dari 4: Pembayaran">
+              <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+              <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+              <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+              <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+            </ol>
+          </div>
+          <code class="specimen__code">ol.stepper(.stepper--compact) &gt; li.stepper__step(.is-done | .is-current) &gt; .stepper__dot &gt; .ic + .stepper__label</code>
+          <span class="specimen__src">lib/design/kapdh_stepper.dart; RecoveryStepper: Email, Kode OTP, Password Baru (mail_outline, shield_outlined, lock_outline)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ LISTS/MENU -->
+    <section class="doc-section" aria-labelledby="h-menu">
+      <h2 id="h-menu">Menu Akun, menu popup, pemisah</h2>
+      <div class="doc-grid">
+        <div class="specimen">
+          <span class="specimen__name">AccountSection + AccountMenuTile</span>
+          <div class="specimen__stage">
+            <section aria-labelledby="acc-demo">
+              <h3 class="account-section__title" id="acc-demo">Pengaturan</h3>
+              <div class="account-section__card">
+                <a class="menu-tile" href="#"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Notifikasi</span><span class="menu-tile__subtitle">Keterangan menu</span></span><span class="count-pill">3</span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                <a class="menu-tile is-locked" href="#"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Menu terkunci</span></span><span class="ic ic-lock_outline menu-tile__trail" aria-hidden="true"></span></a>
+                <a class="menu-tile is-paused" href="#"><span class="ic ic-person_outline" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Menu ditahan</span><span class="menu-tile__subtitle">Ditunda selama pemeliharaan</span></span><span class="ic ic-build_outlined menu-tile__trail" aria-hidden="true"></span></a>
+                <button class="menu-tile menu-tile--danger" type="button"><span class="ic ic-logout" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Menu bahaya</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></button>
+              </div>
+              <p class="account-section__footnote">Catatan kaki bagian.</p>
+            </section>
+          </div>
+          <code class="specimen__code">h3.account-section__title + .account-section__card &gt; .menu-tile(.is-locked | .is-paused | .menu-tile--danger) &gt; .ic + .menu-tile__body (.menu-tile__label, .menu-tile__subtitle) + .count-pill + .ic.menu-tile__trail ; .account-section__footnote</code>
+          <span class="specimen__src">lib/features/account/widgets/account_section.dart</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">PopupMenu, Divider, Dropdown menu</span>
+          <div class="specimen__stage stack-4">
+            <div class="popup-menu" role="menu" style="width:200px">
+              <button class="popup-menu__item" type="button" role="menuitem"><span class="ic ic-flag_outlined" aria-hidden="true"></span>Laporkan</button>
+              <button class="popup-menu__item popup-menu__item--danger" type="button" role="menuitem"><span class="ic ic-block" aria-hidden="true"></span>Blokir</button>
+            </div>
+            <hr class="divider">
+            <div class="dropdown-menu" role="listbox" aria-label="Angkatan" style="width:200px">
+              <div class="dropdown-menu__item is-selected" role="option" aria-selected="true">KAPDH 12</div>
+              <div class="dropdown-menu__item" role="option" aria-selected="false">KAPDH 13</div>
+            </div>
+          </div>
+          <code class="specimen__code">.popup-menu &gt; .popup-menu__item(--danger) | hr.divider(.divider--inset) | .dropdown-menu &gt; .dropdown-menu__item(.is-selected)</code>
+          <span class="specimen__src">PopupMenuButton M3 (member_profile_screen, chat_info_screen); Divider</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ TABS -->
+    <section class="doc-section" aria-labelledby="h-tabs">
+      <h2 id="h-tabs">Tab dan segmen</h2>
+      <div class="doc-grid">
+        <div class="specimen">
+          <span class="specimen__name">TabBar tetap (Tiket Saya)</span>
+          <div class="specimen__stage specimen__stage--flush">
+            <div class="tabs tabs--surface" role="tablist"><button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Aktif</span></button><button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Riwayat</span></button></div>
+          </div>
+          <code class="specimen__code">.tabs(.tabs--surface) [role=tablist] &gt; button.tab(.is-selected) &gt; .tab__label</code>
+          <span class="specimen__src">lib/features/tickets/tickets_screen.dart</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">TabBar scrollable + titik lencana (Jejaring)</span>
+          <div class="specimen__stage specimen__stage--flush">
+            <div class="tabs tabs--scrollable" role="tablist"><button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Jejaring</span></button><button class="tab" type="button" role="tab" aria-selected="false" aria-label="Pesan, 2 percakapan belum dibaca"><span class="tab__label"><span class="badge-host">Pesan<span class="badge badge--primary badge--dot"></span></span></span></button><button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Pesan Grup</span></button></div>
+          </div>
+          <code class="specimen__code">.tabs.tabs--scrollable &gt; .tab &gt; .tab__label &gt; .badge-host (teks) + .badge.badge--primary.badge--dot</code>
+          <span class="specimen__src">lib/features/network/network_screen.dart</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">Tab kategori bergaris + SegmentedButton (Event)</span>
+          <div class="specimen__stage specimen__stage--flush">
+            <div class="bg-surface pad-screen pt-3">
+              <div class="underline-tabs" role="tablist"><button class="underline-tab is-selected" type="button" role="tab" aria-selected="true">Semua</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Silaturahmi</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Jejaring</button></div>
+            </div>
+            <div class="pad-screen pt-3 pb-4">
+              <div class="segmented" role="radiogroup" aria-label="Periode"><button class="segmented__item is-selected" type="button" role="radio" aria-checked="true">Mendatang</button><button class="segmented__item" type="button" role="radio" aria-checked="false">Lampau</button></div>
+            </div>
+          </div>
+          <code class="specimen__code">.underline-tabs &gt; button.underline-tab(.is-selected) | .segmented &gt; button.segmented__item(.is-selected)</code>
+          <span class="specimen__src">lib/features/events/events_screen.dart (_CategoryTabs, SegmentedButton)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ FEEDBACK -->
+    <section class="doc-section" aria-labelledby="h-fb">
+      <h2 id="h-fb">Umpan balik: keadaan, memuat, pita, snackbar, dialog, lembar</h2>
+      <div class="doc-grid">
+        <div class="specimen">
+          <span class="specimen__name">EmptyState + ErrorState</span>
+          <div class="specimen__stage stack-4">
+            <div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-person_search_outlined"></span></div>
+              <h3 class="state__title">Alumni tidak ditemukan</h3>
+              <p class="state__message">Tidak ada alumni yang cocok. Ubah kata kunci atau filter pencarian.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button">Atur ulang filter</button>
+            </div>
+            <div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off"></span></div>
+              <h3 class="state__title">Tidak ada koneksi</h3>
+              <p class="state__message">Pesan galat dari ApiException.message.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+              <p class="state__footnote">Kode bantuan: req_7f3a91c2</p>
+            </div>
+          </div>
+          <code class="specimen__code">.state(.state--error) &gt; .state__icon &gt; .ic + h.state__title + .state__message + .btn.btn--outline.btn--inline.state__action + .state__footnote</code>
+          <span class="specimen__src">lib/design/states.dart (EmptyState, ErrorState.fromException: Tidak ada koneksi / Data tidak ditemukan / Akses ditolak / Akses belum tersedia / Sedang pemeliharaan / Terlalu banyak permintaan / Terjadi kesalahan)</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">LoadingSkeleton, progres</span>
+          <div class="specimen__stage specimen__stage--flush">
+            <div class="skeleton" role="status" aria-label="Memuat">
+              <div class="skeleton__card"></div>
+              <div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div>
+            </div>
+            <div class="pad-screen pb-5 stack-4">
+              <div class="progress-linear progress-linear--thin" style="--value:35%"><span class="progress-linear__bar"></span></div>
+              <div class="row gap-4"><span class="spinner" role="status" aria-label="Memuat"></span><span class="spinner spinner--24" aria-hidden="true"></span><span class="spinner spinner--20" aria-hidden="true"></span></div>
+            </div>
+          </div>
+          <code class="specimen__code">.skeleton &gt; .skeleton__card + .skeleton__line(.is-short pada baris ke-2, 4, ...) | .progress-linear(--thin) &gt; .progress-linear__bar (--value) | .spinner(.spinner--24 | --20 | --18)</code>
+          <span class="specimen__src">lib/design/states.dart (LoadingSkeleton lines/showCard)</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">Pita Offline/Pemeliharaan + SnackBar</span>
+          <div class="specimen__stage specimen__stage--flush">
+            <div class="status-strip" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><span class="status-strip__text"><strong>Offline</strong>. Periksa koneksi internet Anda.</span><button class="btn-text" type="button">Coba lagi</button></div>
+            <div class="status-strip mt-2" role="status"><span class="ic ic-build_outlined" aria-hidden="true"></span><span class="status-strip__text"><strong>Pemeliharaan</strong>. Perubahan data ditunda sementara.</span><button class="btn-text" type="button">Detail</button></div>
+            <div class="p-5"><div class="status-strip status-strip--inset" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><span class="status-strip__text"><strong>Offline</strong>. Tersinkron 11 Okt 2026, 20.14 WIB</span></div></div>
+            <div class="px-5 pb-5"><div class="snackbar snackbar--static" role="status"><span class="snackbar__text">Nominal disalin</span></div></div>
+            <div class="px-5 pb-5"><div class="snackbar snackbar--static" role="status"><span class="snackbar__text">Pesan dengan aksi</span><button class="btn-text" type="button">Lihat</button></div></div>
+          </div>
+          <code class="specimen__code">.status-strip(.status-strip--inset) &gt; .ic + .status-strip__text (strong) + .btn-text | .snackbar(.snackbar--above-nav | --static) &gt; .snackbar__text + .btn-text</code>
+          <span class="specimen__src">lib/design/offline_banner.dart; SnackBarTheme</span>
+        </div>
+        <div class="specimen">
+          <span class="specimen__name">AlertDialog dan bottom sheet (statis)</span>
+          <div class="specimen__stage stack-4" style="background:#8A8C88">
+            <div class="dialog dialog--static" role="dialog" aria-labelledby="dlg-s-title">
+              <h3 class="dialog__title" id="dlg-s-title">Judul dialog</h3>
+              <div class="dialog__content"><p>Isi dialog 14 px.</p></div>
+              <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text" type="button">Ya</button></div>
+            </div>
+            <div class="sheet sheet--static" role="dialog" aria-labelledby="sheet-s-title" style="margin:0 -20px -20px">
+              <div class="sheet__body">
+                <div class="status-hero tone-danger">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-lock_outline"></span></div>
+                  <span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>KTA Tidak Aktif</span>
+                  <h3 class="status-hero__title" id="sheet-s-title">Event terkunci</h3>
+                  <p class="status-hero__message">Event terbuka setelah KTA aktif. Selesaikan iuran pendaftaran agar pengurus dapat memverifikasi keanggotaan Anda.</p>
+                </div>
+                <div class="mt-5"><button class="btn btn--primary" type="button">Bayar iuran</button></div>
+                <div class="center mt-2"><button class="btn-text" type="button">Tutup</button></div>
+              </div>
+            </div>
+          </div>
+          <code class="specimen__code">.scrim + .dialog(.dialog--static | --fullscreen) &gt; .dialog__icon? + .dialog__title + .dialog__content + .dialog__actions | .scrim + .sheet(.sheet--static) &gt; .sheet__body (.sheet__title)</code>
+          <span class="specimen__src">AlertDialog/DialogTheme, showModalBottomSheet/BottomSheetTheme; showLockedTabSheet (app_shell.dart)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ ICONS -->
+    <section class="doc-section" aria-labelledby="h-icons">
+      <h2 id="h-icons">Ikon</h2>
+      <p>Glyph diambil dari font Material Icons Flutter (<code>tools/build-icons.mjs</code>), sehingga identik dengan <code>Icons.&lt;nama&gt;</code>. Markup: <code>&lt;span class="ic ic-&lt;nama&gt; ic-s20" aria-hidden="true"&gt;&lt;/span&gt;</code>. Sprite untuk desainer: <code>assets/icons.svg</code>. Menambah ikon: tulis namanya di <code>tools/icon-list.txt</code>, jalankan <code>node tools/build-icons.mjs</code>.</p>
+      <!-- ICONS:START -->
+        <ul class="icon-grid" aria-label="176 ikon">
+          <li class="icon-cell"><span class="ic ic-account_balance_outlined" aria-hidden="true"></span><code>account_balance_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-add" aria-hidden="true"></span><code>add</code></li>
+          <li class="icon-cell"><span class="ic ic-add_a_photo_outlined" aria-hidden="true"></span><code>add_a_photo_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span><code>add_photo_alternate_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-admin_panel_settings_outlined" aria-hidden="true"></span><code>admin_panel_settings_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-alternate_email" aria-hidden="true"></span><code>alternate_email</code></li>
+          <li class="icon-cell"><span class="ic ic-arrow_back" aria-hidden="true"></span><code>arrow_back</code></li>
+          <li class="icon-cell"><span class="ic ic-arrow_downward" aria-hidden="true"></span><code>arrow_downward</code></li>
+          <li class="icon-cell"><span class="ic ic-arrow_drop_down" aria-hidden="true"></span><code>arrow_drop_down</code></li>
+          <li class="icon-cell"><span class="ic ic-arrow_forward" aria-hidden="true"></span><code>arrow_forward</code></li>
+          <li class="icon-cell"><span class="ic ic-article_outlined" aria-hidden="true"></span><code>article_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-attach_file" aria-hidden="true"></span><code>attach_file</code></li>
+          <li class="icon-cell"><span class="ic ic-autorenew" aria-hidden="true"></span><code>autorenew</code></li>
+          <li class="icon-cell"><span class="ic ic-backup_outlined" aria-hidden="true"></span><code>backup_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-badge" aria-hidden="true"></span><code>badge</code></li>
+          <li class="icon-cell"><span class="ic ic-badge_outlined" aria-hidden="true"></span><code>badge_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-battery_full" aria-hidden="true"></span><code>battery_full</code></li>
+          <li class="icon-cell"><span class="ic ic-block" aria-hidden="true"></span><code>block</code></li>
+          <li class="icon-cell"><span class="ic ic-brightness_high_outlined" aria-hidden="true"></span><code>brightness_high_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-broken_image_outlined" aria-hidden="true"></span><code>broken_image_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-build_outlined" aria-hidden="true"></span><code>build_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><code>calendar_today_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-call_outlined" aria-hidden="true"></span><code>call_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span><code>camera_alt_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-campaign_outlined" aria-hidden="true"></span><code>campaign_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-cancel" aria-hidden="true"></span><code>cancel</code></li>
+          <li class="icon-cell"><span class="ic ic-cancel_outlined" aria-hidden="true"></span><code>cancel_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-card_membership_outlined" aria-hidden="true"></span><code>card_membership_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span><code>chat_bubble_outline</code></li>
+          <li class="icon-cell"><span class="ic ic-chat_outlined" aria-hidden="true"></span><code>chat_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-check" aria-hidden="true"></span><code>check</code></li>
+          <li class="icon-cell"><span class="ic ic-check_box" aria-hidden="true"></span><code>check_box</code></li>
+          <li class="icon-cell"><span class="ic ic-check_box_outline_blank" aria-hidden="true"></span><code>check_box_outline_blank</code></li>
+          <li class="icon-cell"><span class="ic ic-check_circle" aria-hidden="true"></span><code>check_circle</code></li>
+          <li class="icon-cell"><span class="ic ic-check_circle_outline" aria-hidden="true"></span><code>check_circle_outline</code></li>
+          <li class="icon-cell"><span class="ic ic-chevron_left" aria-hidden="true"></span><code>chevron_left</code></li>
+          <li class="icon-cell"><span class="ic ic-chevron_right" aria-hidden="true"></span><code>chevron_right</code></li>
+          <li class="icon-cell"><span class="ic ic-chrome_reader_mode_outlined" aria-hidden="true"></span><code>chrome_reader_mode_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-close" aria-hidden="true"></span><code>close</code></li>
+          <li class="icon-cell"><span class="ic ic-cloud_off" aria-hidden="true"></span><code>cloud_off</code></li>
+          <li class="icon-cell"><span class="ic ic-computer" aria-hidden="true"></span><code>computer</code></li>
+          <li class="icon-cell"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span><code>confirmation_number_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-construction" aria-hidden="true"></span><code>construction</code></li>
+          <li class="icon-cell"><span class="ic ic-content_copy" aria-hidden="true"></span><code>content_copy</code></li>
+          <li class="icon-cell"><span class="ic ic-copy" aria-hidden="true"></span><code>copy</code></li>
+          <li class="icon-cell"><span class="ic ic-credit_card" aria-hidden="true"></span><code>credit_card</code></li>
+          <li class="icon-cell"><span class="ic ic-delete" aria-hidden="true"></span><code>delete</code></li>
+          <li class="icon-cell"><span class="ic ic-delete_forever_outlined" aria-hidden="true"></span><code>delete_forever_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-delete_outline" aria-hidden="true"></span><code>delete_outline</code></li>
+          <li class="icon-cell"><span class="ic ic-description_outlined" aria-hidden="true"></span><code>description_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-devices_outlined" aria-hidden="true"></span><code>devices_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-dns_outlined" aria-hidden="true"></span><code>dns_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-do_not_disturb_on_outlined" aria-hidden="true"></span><code>do_not_disturb_on_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-done" aria-hidden="true"></span><code>done</code></li>
+          <li class="icon-cell"><span class="ic ic-done_all" aria-hidden="true"></span><code>done_all</code></li>
+          <li class="icon-cell"><span class="ic ic-download" aria-hidden="true"></span><code>download</code></li>
+          <li class="icon-cell"><span class="ic ic-edit" aria-hidden="true"></span><code>edit</code></li>
+          <li class="icon-cell"><span class="ic ic-edit_note" aria-hidden="true"></span><code>edit_note</code></li>
+          <li class="icon-cell"><span class="ic ic-edit_outlined" aria-hidden="true"></span><code>edit_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-error" aria-hidden="true"></span><code>error</code></li>
+          <li class="icon-cell"><span class="ic ic-error_outline" aria-hidden="true"></span><code>error_outline</code></li>
+          <li class="icon-cell"><span class="ic ic-event" aria-hidden="true"></span><code>event</code></li>
+          <li class="icon-cell"><span class="ic ic-event_available" aria-hidden="true"></span><code>event_available</code></li>
+          <li class="icon-cell"><span class="ic ic-event_available_outlined" aria-hidden="true"></span><code>event_available_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-event_busy" aria-hidden="true"></span><code>event_busy</code></li>
+          <li class="icon-cell"><span class="ic ic-event_busy_outlined" aria-hidden="true"></span><code>event_busy_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-event_note" aria-hidden="true"></span><code>event_note</code></li>
+          <li class="icon-cell"><span class="ic ic-event_outlined" aria-hidden="true"></span><code>event_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-expand_less" aria-hidden="true"></span><code>expand_less</code></li>
+          <li class="icon-cell"><span class="ic ic-expand_more" aria-hidden="true"></span><code>expand_more</code></li>
+          <li class="icon-cell"><span class="ic ic-facebook" aria-hidden="true"></span><code>facebook</code></li>
+          <li class="icon-cell"><span class="ic ic-favorite" aria-hidden="true"></span><code>favorite</code></li>
+          <li class="icon-cell"><span class="ic ic-favorite_border" aria-hidden="true"></span><code>favorite_border</code></li>
+          <li class="icon-cell"><span class="ic ic-flag_outlined" aria-hidden="true"></span><code>flag_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-gavel_outlined" aria-hidden="true"></span><code>gavel_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-group_add" aria-hidden="true"></span><code>group_add</code></li>
+          <li class="icon-cell"><span class="ic ic-group_add_outlined" aria-hidden="true"></span><code>group_add_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-group_off" aria-hidden="true"></span><code>group_off</code></li>
+          <li class="icon-cell"><span class="ic ic-groups" aria-hidden="true"></span><code>groups</code></li>
+          <li class="icon-cell"><span class="ic ic-groups_outlined" aria-hidden="true"></span><code>groups_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-help_outline" aria-hidden="true"></span><code>help_outline</code></li>
+          <li class="icon-cell"><span class="ic ic-hide_image_outlined" aria-hidden="true"></span><code>hide_image_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-history" aria-hidden="true"></span><code>history</code></li>
+          <li class="icon-cell"><span class="ic ic-home" aria-hidden="true"></span><code>home</code></li>
+          <li class="icon-cell"><span class="ic ic-home_outlined" aria-hidden="true"></span><code>home_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-hourglass_top" aria-hidden="true"></span><code>hourglass_top</code></li>
+          <li class="icon-cell"><span class="ic ic-how_to_reg" aria-hidden="true"></span><code>how_to_reg</code></li>
+          <li class="icon-cell"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><code>how_to_reg_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-image" aria-hidden="true"></span><code>image</code></li>
+          <li class="icon-cell"><span class="ic ic-image_outlined" aria-hidden="true"></span><code>image_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-image_search_outlined" aria-hidden="true"></span><code>image_search_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-inbox_outlined" aria-hidden="true"></span><code>inbox_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-info" aria-hidden="true"></span><code>info</code></li>
+          <li class="icon-cell"><span class="ic ic-info_outline" aria-hidden="true"></span><code>info_outline</code></li>
+          <li class="icon-cell"><span class="ic ic-inventory_2_outlined" aria-hidden="true"></span><code>inventory_2_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-keyboard_arrow_down" aria-hidden="true"></span><code>keyboard_arrow_down</code></li>
+          <li class="icon-cell"><span class="ic ic-keyboard_arrow_right" aria-hidden="true"></span><code>keyboard_arrow_right</code></li>
+          <li class="icon-cell"><span class="ic ic-keyboard_arrow_up" aria-hidden="true"></span><code>keyboard_arrow_up</code></li>
+          <li class="icon-cell"><span class="ic ic-link_off" aria-hidden="true"></span><code>link_off</code></li>
+          <li class="icon-cell"><span class="ic ic-location_city_outlined" aria-hidden="true"></span><code>location_city_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-location_on_outlined" aria-hidden="true"></span><code>location_on_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-lock" aria-hidden="true"></span><code>lock</code></li>
+          <li class="icon-cell"><span class="ic ic-lock_clock_outlined" aria-hidden="true"></span><code>lock_clock_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-lock_open" aria-hidden="true"></span><code>lock_open</code></li>
+          <li class="icon-cell"><span class="ic ic-lock_outline" aria-hidden="true"></span><code>lock_outline</code></li>
+          <li class="icon-cell"><span class="ic ic-lock_reset" aria-hidden="true"></span><code>lock_reset</code></li>
+          <li class="icon-cell"><span class="ic ic-login" aria-hidden="true"></span><code>login</code></li>
+          <li class="icon-cell"><span class="ic ic-logout" aria-hidden="true"></span><code>logout</code></li>
+          <li class="icon-cell"><span class="ic ic-mail" aria-hidden="true"></span><code>mail</code></li>
+          <li class="icon-cell"><span class="ic ic-mail_outline" aria-hidden="true"></span><code>mail_outline</code></li>
+          <li class="icon-cell"><span class="ic ic-manage_accounts_outlined" aria-hidden="true"></span><code>manage_accounts_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-manage_search" aria-hidden="true"></span><code>manage_search</code></li>
+          <li class="icon-cell"><span class="ic ic-mark_email_unread_outlined" aria-hidden="true"></span><code>mark_email_unread_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-more_horiz" aria-hidden="true"></span><code>more_horiz</code></li>
+          <li class="icon-cell"><span class="ic ic-more_vert" aria-hidden="true"></span><code>more_vert</code></li>
+          <li class="icon-cell"><span class="ic ic-notifications" aria-hidden="true"></span><code>notifications</code></li>
+          <li class="icon-cell"><span class="ic ic-notifications_active_outlined" aria-hidden="true"></span><code>notifications_active_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-notifications_none" aria-hidden="true"></span><code>notifications_none</code></li>
+          <li class="icon-cell"><span class="ic ic-notifications_off_outlined" aria-hidden="true"></span><code>notifications_off_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><code>notifications_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-open_in_new" aria-hidden="true"></span><code>open_in_new</code></li>
+          <li class="icon-cell"><span class="ic ic-pause_circle_outline" aria-hidden="true"></span><code>pause_circle_outline</code></li>
+          <li class="icon-cell"><span class="ic ic-payments_outlined" aria-hidden="true"></span><code>payments_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-person" aria-hidden="true"></span><code>person</code></li>
+          <li class="icon-cell"><span class="ic ic-person_off_outlined" aria-hidden="true"></span><code>person_off_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-person_outline" aria-hidden="true"></span><code>person_outline</code></li>
+          <li class="icon-cell"><span class="ic ic-person_search_outlined" aria-hidden="true"></span><code>person_search_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-phone_outlined" aria-hidden="true"></span><code>phone_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-phonelink_lock" aria-hidden="true"></span><code>phonelink_lock</code></li>
+          <li class="icon-cell"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span><code>photo_camera_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-photo_library_outlined" aria-hidden="true"></span><code>photo_library_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-picture_as_pdf_outlined" aria-hidden="true"></span><code>picture_as_pdf_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-place_outlined" aria-hidden="true"></span><code>place_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-policy_outlined" aria-hidden="true"></span><code>policy_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span><code>privacy_tip_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-qr_code_2" aria-hidden="true"></span><code>qr_code_2</code></li>
+          <li class="icon-cell"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><code>qr_code_scanner</code></li>
+          <li class="icon-cell"><span class="ic ic-radio_button_checked" aria-hidden="true"></span><code>radio_button_checked</code></li>
+          <li class="icon-cell"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span><code>radio_button_unchecked</code></li>
+          <li class="icon-cell"><span class="ic ic-receipt_long_outlined" aria-hidden="true"></span><code>receipt_long_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-refresh" aria-hidden="true"></span><code>refresh</code></li>
+          <li class="icon-cell"><span class="ic ic-remove" aria-hidden="true"></span><code>remove</code></li>
+          <li class="icon-cell"><span class="ic ic-reply" aria-hidden="true"></span><code>reply</code></li>
+          <li class="icon-cell"><span class="ic ic-schedule" aria-hidden="true"></span><code>schedule</code></li>
+          <li class="icon-cell"><span class="ic ic-school" aria-hidden="true"></span><code>school</code></li>
+          <li class="icon-cell"><span class="ic ic-school_outlined" aria-hidden="true"></span><code>school_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-search" aria-hidden="true"></span><code>search</code></li>
+          <li class="icon-cell"><span class="ic ic-search_off" aria-hidden="true"></span><code>search_off</code></li>
+          <li class="icon-cell"><span class="ic ic-send" aria-hidden="true"></span><code>send</code></li>
+          <li class="icon-cell"><span class="ic ic-send_outlined" aria-hidden="true"></span><code>send_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-settings_suggest_outlined" aria-hidden="true"></span><code>settings_suggest_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-share" aria-hidden="true"></span><code>share</code></li>
+          <li class="icon-cell"><span class="ic ic-shield_outlined" aria-hidden="true"></span><code>shield_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-signal_cellular_alt" aria-hidden="true"></span><code>signal_cellular_alt</code></li>
+          <li class="icon-cell"><span class="ic ic-smartphone" aria-hidden="true"></span><code>smartphone</code></li>
+          <li class="icon-cell"><span class="ic ic-speaker_notes_off_outlined" aria-hidden="true"></span><code>speaker_notes_off_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-star" aria-hidden="true"></span><code>star</code></li>
+          <li class="icon-cell"><span class="ic ic-star_border" aria-hidden="true"></span><code>star_border</code></li>
+          <li class="icon-cell"><span class="ic ic-sync" aria-hidden="true"></span><code>sync</code></li>
+          <li class="icon-cell"><span class="ic ic-sync_problem" aria-hidden="true"></span><code>sync_problem</code></li>
+          <li class="icon-cell"><span class="ic ic-system_update" aria-hidden="true"></span><code>system_update</code></li>
+          <li class="icon-cell"><span class="ic ic-timer_off_outlined" aria-hidden="true"></span><code>timer_off_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-timer_outlined" aria-hidden="true"></span><code>timer_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-tune" aria-hidden="true"></span><code>tune</code></li>
+          <li class="icon-cell"><span class="ic ic-upload_file" aria-hidden="true"></span><code>upload_file</code></li>
+          <li class="icon-cell"><span class="ic ic-upload_file_outlined" aria-hidden="true"></span><code>upload_file_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-verified_user_outlined" aria-hidden="true"></span><code>verified_user_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-visibility" aria-hidden="true"></span><code>visibility</code></li>
+          <li class="icon-cell"><span class="ic ic-visibility_off" aria-hidden="true"></span><code>visibility_off</code></li>
+          <li class="icon-cell"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span><code>visibility_off_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-visibility_outlined" aria-hidden="true"></span><code>visibility_outlined</code></li>
+          <li class="icon-cell"><span class="ic ic-warning" aria-hidden="true"></span><code>warning</code></li>
+          <li class="icon-cell"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><code>warning_amber_rounded</code></li>
+          <li class="icon-cell"><span class="ic ic-wifi" aria-hidden="true"></span><code>wifi</code></li>
+          <li class="icon-cell"><span class="ic ic-work_outline" aria-hidden="true"></span><code>work_outline</code></li>
+          <li class="icon-cell"><span class="ic ic-zoom_in" aria-hidden="true"></span><code>zoom_in</code></li>
+        </ul>
+        <!-- ICONS:END -->
+    </section>
+
+  </main>
+</body>
+</html>

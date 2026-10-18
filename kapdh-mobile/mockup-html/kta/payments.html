@@ -1,0 +1,213 @@
+<!doctype html>
+<!-- Mockup statis grup kta. Teks disalin dari Dart; data contoh fiktif. QR = glyph tiruan yang tidak dapat dipindai. -->
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Riwayat Pembayaran - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Riwayat Pembayaran aplikasi KAPDH (Flutter): daftar iuran dan tiket beserta status, halaman berikutnya, muat ulang gagal, kosong, galat dan memuat.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/kta.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+      <a href="kta.html">KTA</a>
+      <a href="new-payment.html">Buat instruksi</a>
+      <a href="payment-detail.html">Status Pembayaran</a>
+      <a href="renewal.html">Perpanjang KTA</a>
+    </nav>
+    <h1 class="page-header__title">Riwayat Pembayaran</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/payments/payments_screen.dart</code> (PaymentsScreen, PaymentTile), <code>payment_presentation.dart</code> (paymentTitle, paymentBadge)</dd>
+      <dt>Rute</dt><dd><code>/payments</code> (dari Akun; kembali ke <code>/account</code> bila tidak ada halaman sebelumnya)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Daftar (semua status)</li>
+        <li>Akhir halaman: Muat lagi</li>
+        <li>Gagal memuat halaman berikutnya</li>
+        <li>Muat ulang gagal (data lama tetap tampil)</li>
+        <li>Kosong (anggota belum aktif)</li>
+        <li>Galat (tanpa koneksi)</li>
+        <li>Memuat</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Urut terbaru, halaman keyset 30 item; halaman berikutnya dimuat otomatis saat sisa gulir kurang dari 320. Badge mengikuti stage server: Menunggu Pembayaran, Menunggu Verifikasi, Perlu Perbaikan, Lunas, Ditolak (tiket), Dibatalkan. Ikon jenis: card_membership_outlined (pendaftaran), autorenew (perpanjangan), confirmation_number_outlined (tiket). Judul tiket dan nominal adalah contoh fiktif.</p>
+  </header>
+
+  <main class="frames">
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Daftar (semua status)</figcaption>
+      <div class="device" aria-label="Riwayat Pembayaran, Daftar (semua status)">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Riwayat Pembayaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="kta-list pay-tiles">
+            <button class="pay-tile" type="button" aria-label="Iuran perpanjangan, Rp10.000, 18 Okt 2026, status Perlu Perbaikan"><span class="pay-tile__icon"><span class="ic ic-autorenew" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Iuran perpanjangan</span><span class="pay-tile__meta">Rp10.000 · 18 Okt 2026</span><span class="status-badge status-badge--danger"><span class="ic ic-error_outline" aria-hidden="true"></span>Perlu Perbaikan</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Silaturahmi Akbar 2026, Rp75.000, 12 Okt 2026, status Menunggu Verifikasi"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Silaturahmi Akbar 2026</span><span class="pay-tile__meta">Rp75.000 · 12 Okt 2026</span><span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu Verifikasi</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Kajian Bulanan Oktober, Rp25.000, 5 Okt 2026, status Menunggu Pembayaran"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Kajian Bulanan Oktober</span><span class="pay-tile__meta">Rp25.000 · 5 Okt 2026</span><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Halalbihalal Alumni, Rp35.000, 6 Apr 2026, status Dibatalkan"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Halalbihalal Alumni</span><span class="pay-tile__meta">Rp35.000 · 6 Apr 2026</span><span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Bakti Sosial Ramadan, Rp50.000, 2 Mar 2026, status Ditolak"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Bakti Sosial Ramadan</span><span class="pay-tile__meta">Rp50.000 · 2 Mar 2026</span><span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>Ditolak</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Iuran pendaftaran, Rp60.000, 13 Okt 2025, status Lunas"><span class="pay-tile__icon"><span class="ic ic-card_membership_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Iuran pendaftaran</span><span class="pay-tile__meta">Rp60.000 · 13 Okt 2025</span><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+          </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Akhir halaman: Muat lagi</figcaption>
+      <div class="device" aria-label="Riwayat Pembayaran, Akhir halaman: Muat lagi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Riwayat Pembayaran</span></h2>
+          </header>
+          <div class="screen__body scroll-end">
+            <div class="kta-list pay-tiles">
+            <button class="pay-tile" type="button" aria-label="Tiket Halalbihalal Alumni, Rp35.000, 6 Apr 2026, status Dibatalkan"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Halalbihalal Alumni</span><span class="pay-tile__meta">Rp35.000 · 6 Apr 2026</span><span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Bakti Sosial Ramadan, Rp50.000, 2 Mar 2026, status Ditolak"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Bakti Sosial Ramadan</span><span class="pay-tile__meta">Rp50.000 · 2 Mar 2026</span><span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>Ditolak</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Iuran pendaftaran, Rp60.000, 13 Okt 2025, status Lunas"><span class="pay-tile__icon"><span class="ic ic-card_membership_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Iuran pendaftaran</span><span class="pay-tile__meta">Rp60.000 · 13 Okt 2025</span><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Temu Jejaring Wilayah, Rp40.000, 20 Agu 2025, status Lunas"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Temu Jejaring Wilayah</span><span class="pay-tile__meta">Rp40.000 · 20 Agu 2025</span><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Kajian Bulanan Juli, Rp25.000, 6 Jul 2025, status Lunas"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Kajian Bulanan Juli</span><span class="pay-tile__meta">Rp25.000 · 6 Jul 2025</span><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Seminar Pendidikan, Rp30.000, 14 Mei 2025, status Dibatalkan"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Seminar Pendidikan</span><span class="pay-tile__meta">Rp30.000 · 14 Mei 2025</span><span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Reuni Akbar 2025, Rp100.000, 2 Feb 2025, status Lunas"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Reuni Akbar 2025</span><span class="pay-tile__meta">Rp100.000 · 2 Feb 2025</span><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <div class="center"><button class="btn-link" type="button">Muat lagi</button></div>
+          </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Daftar digulir ke bawah. Saat halaman berikutnya dimuat, footer berganti CircularProgressIndicator 36 di tengah (padding 16). Bila tidak ada halaman lagi: ruang kosong 16.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Gagal memuat halaman berikutnya</figcaption>
+      <div class="device" aria-label="Riwayat Pembayaran, Gagal memuat halaman berikutnya">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Riwayat Pembayaran</span></h2>
+          </header>
+          <div class="screen__body scroll-end">
+            <div class="kta-list pay-tiles">
+            <button class="pay-tile" type="button" aria-label="Tiket Halalbihalal Alumni, Rp35.000, 6 Apr 2026, status Dibatalkan"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Halalbihalal Alumni</span><span class="pay-tile__meta">Rp35.000 · 6 Apr 2026</span><span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Bakti Sosial Ramadan, Rp50.000, 2 Mar 2026, status Ditolak"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Bakti Sosial Ramadan</span><span class="pay-tile__meta">Rp50.000 · 2 Mar 2026</span><span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>Ditolak</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Iuran pendaftaran, Rp60.000, 13 Okt 2025, status Lunas"><span class="pay-tile__icon"><span class="ic ic-card_membership_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Iuran pendaftaran</span><span class="pay-tile__meta">Rp60.000 · 13 Okt 2025</span><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Temu Jejaring Wilayah, Rp40.000, 20 Agu 2025, status Lunas"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Temu Jejaring Wilayah</span><span class="pay-tile__meta">Rp40.000 · 20 Agu 2025</span><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Kajian Bulanan Juli, Rp25.000, 6 Jul 2025, status Lunas"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Kajian Bulanan Juli</span><span class="pay-tile__meta">Rp25.000 · 6 Jul 2025</span><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Seminar Pendidikan, Rp30.000, 14 Mei 2025, status Dibatalkan"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Seminar Pendidikan</span><span class="pay-tile__meta">Rp30.000 · 14 Mei 2025</span><span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Reuni Akbar 2025, Rp100.000, 2 Feb 2025, status Lunas"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Reuni Akbar 2025</span><span class="pay-tile__meta">Rp100.000 · 2 Feb 2025</span><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+          </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">InfoBox peringatan berisi pesan galat (contoh: galat jaringan) dengan "Coba lagi".</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Muat ulang gagal (data lama tetap tampil)</figcaption>
+      <div class="device" aria-label="Riwayat Pembayaran, Muat ulang gagal (data lama tetap tampil)">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Riwayat Pembayaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="kta-list pay-tiles">
+            <div class="info-box info-box--warning" role="status"><span class="ic ic-sync_problem" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Riwayat terbaru belum dapat dimuat</p><p class="info-box__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi. Data yang tampil berasal dari pemuatan terakhir.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+            <button class="pay-tile" type="button" aria-label="Iuran perpanjangan, Rp10.000, 18 Okt 2026, status Perlu Perbaikan"><span class="pay-tile__icon"><span class="ic ic-autorenew" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Iuran perpanjangan</span><span class="pay-tile__meta">Rp10.000 · 18 Okt 2026</span><span class="status-badge status-badge--danger"><span class="ic ic-error_outline" aria-hidden="true"></span>Perlu Perbaikan</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Silaturahmi Akbar 2026, Rp75.000, 12 Okt 2026, status Menunggu Verifikasi"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Silaturahmi Akbar 2026</span><span class="pay-tile__meta">Rp75.000 · 12 Okt 2026</span><span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu Verifikasi</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Kajian Bulanan Oktober, Rp25.000, 5 Okt 2026, status Menunggu Pembayaran"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Kajian Bulanan Oktober</span><span class="pay-tile__meta">Rp25.000 · 5 Okt 2026</span><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Halalbihalal Alumni, Rp35.000, 6 Apr 2026, status Dibatalkan"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Halalbihalal Alumni</span><span class="pay-tile__meta">Rp35.000 · 6 Apr 2026</span><span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+            <button class="pay-tile" type="button" aria-label="Tiket Bakti Sosial Ramadan, Rp50.000, 2 Mar 2026, status Ditolak"><span class="pay-tile__icon"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></span><span class="pay-tile__body"><span class="pay-tile__title">Tiket Bakti Sosial Ramadan</span><span class="pay-tile__meta">Rp50.000 · 2 Mar 2026</span><span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>Ditolak</span></span><span class="ic ic-chevron_right pay-tile__chevron" aria-hidden="true"></span></button>
+          </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">RefreshFailedNotice di puncak daftar setelah tarik-untuk-muat-ulang gagal. Muat ulang latar (realtime, kembali ke aplikasi) gagal diam-diam.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Kosong (anggota belum aktif)</figcaption>
+      <div class="device" aria-label="Riwayat Pembayaran, Kosong (anggota belum aktif)">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Riwayat Pembayaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="kta-block">
+            <div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-receipt_long_outlined" aria-hidden="true"></span></div>
+              <h3 class="state__title">Belum ada pembayaran</h3>
+              <p class="state__message">Iuran keanggotaan dan pembayaran tiket Anda akan tampil di sini beserta statusnya.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button">Bayar iuran</button>
+            </div>
+          </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">EmptyState di dalam ListView sehingga tampil di atas, bukan di tengah. Tombol "Bayar iuran" (ke /onboarding/fees) hanya untuk status unverified; status lain tanpa tombol.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Galat (tanpa koneksi)</figcaption>
+      <div class="device" aria-label="Riwayat Pembayaran, Galat (tanpa koneksi)">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Riwayat Pembayaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off" aria-hidden="true"></span></div>
+              <h3 class="state__title">Tidak ada koneksi</h3>
+              <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">ErrorState.fromException saat halaman pertama belum pernah termuat. Galat server menambah "Kode bantuan: ..." di bawah tombol.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Memuat</figcaption>
+      <div class="device" aria-label="Riwayat Pembayaran, Memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Riwayat Pembayaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="skeleton" role="status" aria-label="Memuat riwayat pembayaran"><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+  </main>
+</body>
+</html>

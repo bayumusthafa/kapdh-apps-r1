@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Halaman legal dan informasi - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Halaman legal dan informasi aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/beranda.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Halaman legal dan informasi</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/legal/legal_page_screen.dart</code> (LegalPageScreen); <code>core/ui/support_section.dart</code>, <code>design/support_contact_card.dart</code></dd>
+      <dt>Rute</dt><dd><code>/legal/:slug</code> (terbuka untuk semua status, juga sebelum login)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama</li>
+        <li>Gulir penuh</li>
+        <li>Memuat</li>
+        <li>Belum tersedia</li>
+        <li>Galat</li>
+        <li>Tautan tidak dapat dibuka</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Contoh memakai slug kebijakan-privasi, versi 1. Isi HTML disanitasi server; gaya bawaan flutter_widget_from_html_core (h2 1.5em bold, daftar menjorok 40) ditiru oleh .html-body.</p>
+  </header>
+
+  <main class="frames">
+
+<figure class="frame" id="frame-1">
+<figcaption class="frame__label"><span class="frame__num">1</span> Utama</figcaption>
+<div class="device" aria-label="Halaman legal, keadaan utama">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Kebijakan Privasi</span></h2>
+</header>
+<div class="screen__body">
+<div class="legal">
+<h3 class="legal__title">Kebijakan Privasi</h3>
+<p class="legal__meta">Versi 1 · diterbitkan 16 Okt 2026</p>
+<hr class="divider legal__divider">
+<div class="html-body legal-body">
+<p>Kebijakan Privasi ini menjelaskan cara Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH) mengumpulkan, menggunakan, menyimpan, membagikan, dan melindungi data pribadi Anda saat Anda memakai aplikasi KAPDH (KAPDH Apps) untuk Android dan iOS, situs kapdh.or.id, dan kanal bantuan kami.</p>
+<p><strong>Berlaku sejak 16 Oktober 2026.</strong></p>
+<h2>1. Siapa Kami</h2>
+<p>Pengendali data pribadi untuk layanan yang dijelaskan dalam kebijakan ini adalah <strong>Perkumpulan Keluarga Alumni Pesantren Darel Hikmah</strong>, disingkat <strong>KAPDH</strong> ("kami"), yaitu perkumpulan alumni Pondok Pesantren Darel Hikmah, Pekanbaru, Riau.</p>
+<p>Untuk pertanyaan, permintaan, atau pengaduan mengenai data pribadi, hubungi kami melalui:</p>
+<ul>
+<li>email <a href="#">bantuan@kapdh.or.id</a>, yang juga menjadi narahubung untuk urusan pelindungan data pribadi; atau</li>
+<li>nomor WhatsApp dukungan yang tercantum di aplikasi dan di halaman <a href="#">Kontak</a> situs kapdh.or.id.</li>
+</ul>
+<h2>2. Ruang Lingkup</h2>
+<p>Kebijakan ini berlaku untuk:</p>
+<ul>
+<li>aplikasi anggota <strong>KAPDH</strong> (KAPDH Apps) untuk Android dan iOS;</li>
+<li>situs <a href="#">kapdh.or.id</a>, termasuk halaman verifikasi KTA dan halaman hapus akun;</li>
+<li>web admin yang dipakai pengurus KAPDH untuk mengelola layanan; dan</li>
+<li>komunikasi Anda dengan tim bantuan KAPDH.</li>
+</ul>
+<p>Kebijakan ini dibaca bersama <a href="#">Ketentuan Layanan</a> dan <a href="#">Ketentuan Komunitas</a>.</p>
+<h2>3. Ringkasan</h2>
+<ul>
+<li>Kami hanya meminta data yang diperlukan untuk keanggotaan dan layanan alumni. Kami tidak meminta NIK atau nomor KTP, tanggal lahir, alamat rumah, maupun lokasi perangkat Anda.</li>
+<li>Kami tidak menjual data pribadi, tidak menampilkan iklan, tidak memakai layanan analitik pihak ketiga, dan tidak melacak Anda lintas aplikasi atau situs.</li>
+</ul>
+<h2>4. Data Pribadi yang Kami Kumpulkan</h2>
+<h3>4.1 Data akun dan pendaftaran</h3>
+<p>Saat mendaftar, Anda memberikan:</p>
+<ul>
+<li>nama lengkap, jenis kelamin, alamat email, dan kata sandi; serta</li>
+<li>angkatan, kelas masuk, dan kelas keluar di pesantren.</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Judul app bar = judul halaman. Judul 20 w600 (1.3), "Versi N · diterbitkan tanggal" 12 muted, Divider, isi HTML 14 / 1.6 tanpa gaya khusus (tautan bergaris bawah warna primary, tanpa ikon tautan luar).</p>
+</figure>
+
+<figure class="frame" id="frame-2">
+<figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh</figcaption>
+<div class="device device--tall" aria-label="Halaman legal, seluruh isi">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Kebijakan Privasi</span></h2>
+</header>
+<div class="screen__body">
+<div class="legal">
+<h3 class="legal__title">Kebijakan Privasi</h3>
+<p class="legal__meta">Versi 1 · diterbitkan 16 Okt 2026</p>
+<hr class="divider legal__divider">
+<div class="html-body legal-body">
+<p>Kebijakan Privasi ini menjelaskan cara Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH) mengumpulkan, menggunakan, menyimpan, membagikan, dan melindungi data pribadi Anda saat Anda memakai aplikasi KAPDH (KAPDH Apps) untuk Android dan iOS, situs kapdh.or.id, dan kanal bantuan kami.</p>
+<p><strong>Berlaku sejak 16 Oktober 2026.</strong></p>
+<h2>1. Siapa Kami</h2>
+<p>Pengendali data pribadi untuk layanan yang dijelaskan dalam kebijakan ini adalah <strong>Perkumpulan Keluarga Alumni Pesantren Darel Hikmah</strong>, disingkat <strong>KAPDH</strong> ("kami"), yaitu perkumpulan alumni Pondok Pesantren Darel Hikmah, Pekanbaru, Riau.</p>
+<p>Untuk pertanyaan, permintaan, atau pengaduan mengenai data pribadi, hubungi kami melalui:</p>
+<ul>
+<li>email <a href="#">bantuan@kapdh.or.id</a>, yang juga menjadi narahubung untuk urusan pelindungan data pribadi; atau</li>
+<li>nomor WhatsApp dukungan yang tercantum di aplikasi dan di halaman <a href="#">Kontak</a> situs kapdh.or.id.</li>
+</ul>
+<h2>2. Ruang Lingkup</h2>
+<p>Kebijakan ini berlaku untuk:</p>
+<ul>
+<li>aplikasi anggota <strong>KAPDH</strong> (KAPDH Apps) untuk Android dan iOS;</li>
+<li>situs <a href="#">kapdh.or.id</a>, termasuk halaman verifikasi KTA dan halaman hapus akun;</li>
+<li>web admin yang dipakai pengurus KAPDH untuk mengelola layanan; dan</li>
+<li>komunikasi Anda dengan tim bantuan KAPDH.</li>
+</ul>
+<p>Kebijakan ini dibaca bersama <a href="#">Ketentuan Layanan</a> dan <a href="#">Ketentuan Komunitas</a>.</p>
+<h2>3. Ringkasan</h2>
+<ul>
+<li>Kami hanya meminta data yang diperlukan untuk keanggotaan dan layanan alumni. Kami tidak meminta NIK atau nomor KTP, tanggal lahir, alamat rumah, maupun lokasi perangkat Anda.</li>
+<li>Kami tidak menjual data pribadi, tidak menampilkan iklan, tidak memakai layanan analitik pihak ketiga, dan tidak melacak Anda lintas aplikasi atau situs.</li>
+</ul>
+<h2>4. Data Pribadi yang Kami Kumpulkan</h2>
+<h3>4.1 Data akun dan pendaftaran</h3>
+<p>Saat mendaftar, Anda memberikan:</p>
+<ul>
+<li>nama lengkap, jenis kelamin, alamat email, dan kata sandi; serta</li>
+<li>angkatan, kelas masuk, dan kelas keluar di pesantren.</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">ScrollColumn padding 20/20/20/32. Isi contoh diringkas dari docs/legal/kebijakan-privasi.html. Slug lain: ketentuan, ketentuan-komunitas, bantuan, tentang.</p>
+</figure>
+
+<figure class="frame" id="frame-3">
+<figcaption class="frame__label"><span class="frame__num">3</span> Memuat</figcaption>
+<div class="device" aria-label="Halaman legal, memuat">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Informasi</span></h2>
+</header>
+<div class="screen__body">
+<div class="skeleton" role="status" aria-label="Memuat halaman"><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Sebelum halaman dimuat judul app bar "Informasi". LoadingSkeleton(showCard: false, lines: 10).</p>
+</figure>
+
+<figure class="frame" id="frame-4">
+<figcaption class="frame__label"><span class="frame__num">4</span> Belum tersedia</figcaption>
+<div class="device" aria-label="Halaman legal, halaman belum tersedia">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Informasi</span></h2>
+</header>
+<div class="screen__body">
+<div class="legal-missing">
+<div class="legal-missing__state">
+<div class="state">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-description_outlined" aria-hidden="true"></span></div>
+  <h3 class="state__title">Halaman belum tersedia</h3>
+  <p class="state__message">Halaman ini belum diterbitkan pengurus. Hubungi pengurus bila Anda membutuhkan informasinya.</p>
+</div>
+</div>
+<div class="support-card">
+<h3 class="support-card__title">Butuh bantuan?</h3>
+<a class="contact-row" href="#" aria-label="Email pengurus, bantuan@kapdh.or.id"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="contact-row__text"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+<a class="contact-row" href="#" aria-label="WhatsApp pengurus, 0812-0000-0000"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="contact-row__text"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+</div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">404 atau slug tidak sah: EmptyState dalam SizedBox 320 + SupportSection (email bawaan bantuan@kapdh.or.id; baris WhatsApp hanya bila dikonfigurasi, nomor contoh fiktif).</p>
+</figure>
+
+<figure class="frame" id="frame-5">
+<figcaption class="frame__label"><span class="frame__num">5</span> Galat</figcaption>
+<div class="device" aria-label="Halaman legal, galat">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Informasi</span></h2>
+</header>
+<div class="screen__body">
+<div class="state state--error">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off" aria-hidden="true"></span></div>
+  <h3 class="state__title">Tidak ada koneksi</h3>
+  <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+  <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Galat lain: ErrorState.fromException dengan "Coba lagi".</p>
+</figure>
+
+<figure class="frame" id="frame-6">
+<figcaption class="frame__label"><span class="frame__num">6</span> Tautan tidak dapat dibuka</figcaption>
+<div class="device" aria-label="Halaman legal, snackbar tautan">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Kebijakan Privasi</span></h2>
+</header>
+<div class="screen__body">
+<div class="legal">
+<h3 class="legal__title">Kebijakan Privasi</h3>
+<p class="legal__meta">Versi 1 · diterbitkan 16 Okt 2026</p>
+<hr class="divider legal__divider">
+<div class="html-body legal-body">
+<p>Kebijakan Privasi ini menjelaskan cara Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH) mengumpulkan, menggunakan, menyimpan, membagikan, dan melindungi data pribadi Anda saat Anda memakai aplikasi KAPDH (KAPDH Apps) untuk Android dan iOS, situs kapdh.or.id, dan kanal bantuan kami.</p>
+<p><strong>Berlaku sejak 16 Oktober 2026.</strong></p>
+<h2>1. Siapa Kami</h2>
+<p>Pengendali data pribadi untuk layanan yang dijelaskan dalam kebijakan ini adalah <strong>Perkumpulan Keluarga Alumni Pesantren Darel Hikmah</strong>, disingkat <strong>KAPDH</strong> ("kami"), yaitu perkumpulan alumni Pondok Pesantren Darel Hikmah, Pekanbaru, Riau.</p>
+<p>Untuk pertanyaan, permintaan, atau pengaduan mengenai data pribadi, hubungi kami melalui:</p>
+<ul>
+<li>email <a href="#">bantuan@kapdh.or.id</a>, yang juga menjadi narahubung untuk urusan pelindungan data pribadi; atau</li>
+<li>nomor WhatsApp dukungan yang tercantum di aplikasi dan di halaman <a href="#">Kontak</a> situs kapdh.or.id.</li>
+</ul>
+<h2>2. Ruang Lingkup</h2>
+<p>Kebijakan ini berlaku untuk:</p>
+<ul>
+<li>aplikasi anggota <strong>KAPDH</strong> (KAPDH Apps) untuk Android dan iOS;</li>
+<li>situs <a href="#">kapdh.or.id</a>, termasuk halaman verifikasi KTA dan halaman hapus akun;</li>
+<li>web admin yang dipakai pengurus KAPDH untuk mengelola layanan; dan</li>
+<li>komunikasi Anda dengan tim bantuan KAPDH.</li>
+</ul>
+<p>Kebijakan ini dibaca bersama <a href="#">Ketentuan Layanan</a> dan <a href="#">Ketentuan Komunitas</a>.</p>
+<h2>3. Ringkasan</h2>
+<ul>
+<li>Kami hanya meminta data yang diperlukan untuk keanggotaan dan layanan alumni. Kami tidak meminta NIK atau nomor KTP, tanggal lahir, alamat rumah, maupun lokasi perangkat Anda.</li>
+<li>Kami tidak menjual data pribadi, tidak menampilkan iklan, tidak memakai layanan analitik pihak ketiga, dan tidak melacak Anda lintas aplikasi atau situs.</li>
+</ul>
+<h2>4. Data Pribadi yang Kami Kumpulkan</h2>
+<h3>4.1 Data akun dan pendaftaran</h3>
+<p>Saat mendaftar, Anda memberikan:</p>
+<ul>
+<li>nama lengkap, jenis kelamin, alamat email, dan kata sandi; serta</li>
+<li>angkatan, kelas masuk, dan kelas keluar di pesantren.</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="snackbar" role="status"><span class="snackbar__text">Tautan ini tidak dapat dibuka.</span></div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Hanya https dan mailto yang dibuka di aplikasi luar (tanpa dialog konfirmasi); skema lain atau gagal membuka: SnackBar.</p>
+</figure>
+
+  </main>
+</body>
+</html>

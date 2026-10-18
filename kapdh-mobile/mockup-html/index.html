@@ -1,0 +1,1370 @@
+<!doctype html>
+<!-- DIBANGKITKAN oleh tools/build-index.mjs dari strip kepala setiap halaman. Jangan diedit langsung:
+     ubah strip kepala halaman atau daftar GROUPS di skrip, lalu jalankan  node tools/build-index.mjs  -->
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mockup KAPDH</title>
+  <meta name="description" content="Indeks mockup HTML+CSS statis untuk setiap layar aplikasi Flutter KAPDH.">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="components.html">Komponen bersama</a>
+      <a href="README.md">README (cara membuka, konvensi, alur redesain)</a>
+      <a href="_template.html">Templat halaman</a>
+    </nav>
+    <h1 class="page-header__title">Mockup HTML aplikasi KAPDH</h1>
+    <dl class="page-header__meta">
+      <dt>Isi</dt><dd>51 halaman, 523 frame ponsel 360 x 800, 6 grup</dd>
+      <dt>Cakupan</dt><dd>47 dari 47 layar Flutter (46 <code>*_screen.dart</code> + <code>AppShell</code>), semuanya punya halaman</dd>
+      <dt>Sumber</dt><dd><code>kapdh-mobile/lib</code> (Flutter 3.47.2, <code>KapdhTheme.light()</code>)</dd>
+    </dl>
+    <p class="page-header__note">Tiruan statis tampilan Flutter saat ini sebagai bahan iterasi desain. Setiap halaman berisi satu layar dengan semua keadaan pentingnya (utama, gulir penuh, kosong, galat, memuat, terkunci, dialog, lembar bawah) sebagai frame berlabel. Teks disalin dari Dart; data contoh fiktif. Buka lewat Chrome/Edge atau <code>node tools/serve.mjs</code>.</p>
+  </header>
+
+  <main class="doc">
+    <nav class="index-toc" aria-label="Grup layar">
+      <a href="#g-auth">Masuk, pendaftaran, sistem dan status akun <span class="index-toc__count">14</span></a>
+      <a href="#g-beranda">Beranda, berita, notifikasi, legal dan navigasi bawah <span class="index-toc__count">7</span></a>
+      <a href="#g-event">Event dan tiket <span class="index-toc__count">5</span></a>
+      <a href="#g-kta">KTA dan pembayaran <span class="index-toc__count">5</span></a>
+      <a href="#g-jejaring">Jejaring dan chat <span class="index-toc__count">11</span></a>
+      <a href="#g-akun">Akun dan pengaturan <span class="index-toc__count">9</span></a>
+      <a href="#cakupan">Cakupan layar Flutter</a>
+    </nav>
+
+    <section class="doc-section" id="g-auth" aria-labelledby="h-auth">
+      <h2 id="h-auth">Masuk, pendaftaran, sistem dan status akun</h2>
+      <p>Folder <code>auth/</code>, gaya grup <code>css/pages/auth.css</code>. Dart: <code>lib/features/auth, system, onboarding, status</code>. 14 halaman, 110 frame.</p>
+      <div class="index-list">
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/login.html">Masuk</a></h3>
+            <p class="index-card__file"><code>auth/login.html</code> · 10 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/auth/login_screen.dart</code> (LoginScreen, _ForgotPasswordLink)</dd>
+              <dt>Rute</dt><dd><code>/login</code></dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama (kosong, tombol nonaktif)</li>
+              <li>Terisi, siap masuk</li>
+              <li>Password ditampilkan</li>
+              <li>Fokus Email + keyboard</li>
+              <li>Memeriksa</li>
+              <li>Email atau password salah</li>
+              <li>Galat per field</li>
+              <li>Batas percobaan (cooldown)</li>
+              <li>Pemberitahuan password diganti</li>
+              <li>Pemberitahuan peringatan</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/register.html">Daftar Alumni: Data Diri</a></h3>
+            <p class="index-card__file"><code>auth/register.html</code> · 12 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/auth/register_screen.dart</code> (RegisterScreen, _ClassFields, _AcademicYearsCard, _ConsentField)</dd>
+              <dt>Rute</dt><dd><code>/register</code></dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama (kosong)</li>
+              <li>Gulir penuh terisi + tahun akademik</li>
+              <li>Validasi (semua galat)</li>
+              <li>Dropdown Jenis Kelamin terbuka</li>
+              <li>Email sudah terdaftar</li>
+              <li>Fokus Nama + keyboard</li>
+              <li>Versi kebijakan gagal dimuat</li>
+              <li>Pendaftaran belum dibuka</li>
+              <li>Kebijakan diperbarui (409)</li>
+              <li>Mengirim</li>
+              <li>Batas kirim (429)</li>
+              <li>Kelas keluar sebelum kelas masuk</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/otp.html">Daftar Alumni: Verifikasi OTP</a></h3>
+            <p class="index-card__file"><code>auth/otp.html</code> · 16 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/auth/otp_screen.dart</code> (OtpScreen), <code>lib/features/auth/otp_challenge.dart</code> (OtpEntrySection, ChallengeLinkStatusView), <code>lib/features/auth/email_correction_sheet.dart</code>, <code>lib/design/otp_boxes.dart</code></dd>
+              <dt>Rute</dt><dd><code>/register/otp</code> (opsional <code>?challenge=&lt;id&gt;</code>)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama: autofocus + papan angka</li>
+              <li>Mengetik 3 digit</li>
+              <li>Memeriksa</li>
+              <li>Kode salah</li>
+              <li>Kode kedaluwarsa</li>
+              <li>Tidak dapat diperbarui (mulai ulang)</li>
+              <li>Galat jaringan</li>
+              <li>Email diubah + snackbar</li>
+              <li>Info pemulihan</li>
+              <li>Lembar Ubah alamat email</li>
+              <li>Lembar: email sudah terdaftar</li>
+              <li>Lembar: mengirim</li>
+              <li>Tautan: memuat</li>
+              <li>Tautan: gagal dimuat</li>
+              <li>Tautan: tidak berlaku</li>
+              <li>Kode belum tersedia</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/onboarding-fees.html">Daftar Alumni: Biaya KTA</a></h3>
+            <p class="index-card__file"><code>auth/onboarding-fees.html</code> · 7 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/onboarding/onboarding_fees_screen.dart</code> (OnboardingFeesScreen), <code>lib/features/payments/widgets/payment_layout.dart</code> (SheetTitleRow, SheetStatusBanner, RefreshFailedNotice), <code>lib/design/kta_card.dart</code> (KtaMiniCard), <code>lib/design/summary_card.dart</code></dd>
+              <dt>Rute</dt><dd><code>/onboarding/fees</code></dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama: siap bayar</li>
+              <li>Memuat rincian</li>
+              <li>Galat memuat</li>
+              <li>Muat ulang gagal + pita Offline</li>
+              <li>Pembayaran terbuka</li>
+              <li>Iuran melalui pengurus</li>
+              <li>Tidak dapat dibayar</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/forgot-password.html">Lupa Password: Email</a></h3>
+            <p class="index-card__file"><code>auth/forgot-password.html</code> · 6 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/auth/forgot_password_screen.dart</code> (ForgotPasswordScreen)</dd>
+              <dt>Rute</dt><dd><code>/forgot</code></dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama (kosong)</li>
+              <li>Terisi dari login + keyboard</li>
+              <li>Email tidak valid</li>
+              <li>Mengirim</li>
+              <li>Batas kirim (429)</li>
+              <li>Kode tertunda</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/forgot-otp.html">Lupa Password: Kode Pemulihan</a></h3>
+            <p class="index-card__file"><code>auth/forgot-otp.html</code> · 11 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/auth/forgot_otp_screen.dart</code> (ForgotOtpScreen), <code>lib/features/auth/otp_challenge.dart</code> (OtpEntrySection), <code>lib/features/auth/auth_widgets.dart</code> (AuthResultPanel)</dd>
+              <dt>Rute</dt><dd><code>/forgot/otp</code> (opsional <code>?challenge=&lt;id&gt;</code> dari email reset pengurus)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama: autofocus + papan angka</li>
+              <li>Memeriksa</li>
+              <li>Kode salah</li>
+              <li>Kode sudah terpakai</li>
+              <li>Galat jaringan</li>
+              <li>Kode baru + snackbar</li>
+              <li>Tautan saat masih masuk</li>
+              <li>Kode belum tersedia</li>
+              <li>Tautan: memuat</li>
+              <li>Tautan: gagal dimuat</li>
+              <li>Tautan: tidak berlaku</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/reset-password.html">Lupa Password: Password Baru</a></h3>
+            <p class="index-card__file"><code>auth/reset-password.html</code> · 11 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/auth/reset_password_screen.dart</code> (ResetPasswordScreen), <code>lib/features/auth/auth_widgets.dart</code> (PasswordRules, AuthResultPanel)</dd>
+              <dt>Rute</dt><dd><code>/forgot/reset</code></dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama (kosong)</li>
+              <li>Terisi valid</li>
+              <li>Validasi</li>
+              <li>Mengetik + keyboard</li>
+              <li>Menyimpan</li>
+              <li>Waktu habis</li>
+              <li>Galat jaringan</li>
+              <li>Dialog batalkan</li>
+              <li>Berhasil diganti</li>
+              <li>Mungkin sudah tersimpan</li>
+              <li>Sesi pemulihan berakhir</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/splash.html">Splash</a></h3>
+            <p class="index-card__file"><code>auth/splash.html</code> · 4 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/system/splash_screen.dart</code> (SplashScreen, _ConnectionProblem)</dd>
+              <dt>Rute</dt><dd><code>/splash</code></dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Memuat</li>
+              <li>Tanpa koneksi</li>
+              <li>Data sesi belum dapat dibaca</li>
+              <li>Server belum dapat dihubungi</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/update-required.html">Wajib Update</a></h3>
+            <p class="index-card__file"><code>auth/update-required.html</code> · 5 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/system/update_required_screen.dart</code> (UpdateRequiredScreen), <code>lib/design/status_hero.dart</code>, <code>lib/core/ui/support_section.dart</code></dd>
+              <dt>Rute</dt><dd><code>/update-required</code></dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Android: versi di bawah minimum</li>
+              <li>Tautan toko belum tersedia</li>
+              <li>Status akun belum dikenal</li>
+              <li>Memeriksa</li>
+              <li>Toko tidak dapat dibuka (snackbar)</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/maintenance.html">Pemeliharaan</a></h3>
+            <p class="index-card__file"><code>auth/maintenance.html</code> · 4 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/system/maintenance_screen.dart</code> (MaintenanceScreen), <code>lib/design/status_hero.dart</code>, <code>lib/core/ui/support_section.dart</code></dd>
+              <dt>Rute</dt><dd><code>/maintenance</code> (opsional <code>?from=</code>)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Tanpa sesi + perkiraan selesai</li>
+              <li>Dengan sesi: mode baca + KTA</li>
+              <li>Memeriksa</li>
+              <li>Perkiraan belum tersedia + pesan server</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/not-found.html">Halaman Tidak Ditemukan</a></h3>
+            <p class="index-card__file"><code>auth/not-found.html</code> · 2 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/system/not_found_screen.dart</code> (NotFoundScreen), <code>lib/design/app_scaffold.dart</code> (AppScaffold), <code>lib/design/states.dart</code> (EmptyState)</dd>
+              <dt>Rute</dt><dd>Rute tidak dikenal (errorBuilder GoRouter), mis. tautan lama</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama</li>
+              <li>Dengan pita Offline global</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/config-error.html">Galat Konfigurasi Build</a></h3>
+            <p class="index-card__file"><code>auth/config-error.html</code> · 1 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/system/config_error_app.dart</code> (ConfigErrorApp)</dd>
+              <dt>Rute</dt><dd>Tanpa rute: <code>runApp(ConfigErrorApp(detail: ...))</code> dari <code>lib/bootstrap.dart</code></dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Konfigurasi tidak sah</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/restricted.html">Portal Akun Dibatasi</a></h3>
+            <p class="index-card__file"><code>auth/restricted.html</code> · 9 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/status/restricted_screen.dart</code> (RestrictedScreen), <code>lib/features/status/appeal_section.dart</code> (AppealSection, _AppealCard), <code>lib/features/status/status_portal_actions.dart</code>, <code>lib/features/account/widgets/account_section.dart</code></dd>
+              <dt>Rute</dt><dd><code>/restricted</code></dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama (viewport)</li>
+              <li>Gulir penuh</li>
+              <li>Banding sudah diterima</li>
+              <li>Banding: alasan terlalu pendek</li>
+              <li>Status banding memuat</li>
+              <li>Status banding gagal dimuat</li>
+              <li>Offline</li>
+              <li>Pemeliharaan: ganti password ditunda</li>
+              <li>Banding terkirim (snackbar)</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/deletion-status.html">Portal Status Akun (Penghapusan)</a></h3>
+            <p class="index-card__file"><code>auth/deletion-status.html</code> · 12 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/status/deletion_status_screen.dart</code> (DeletionStatusScreen, _PortalHeader, _StatusSummary), <code>lib/features/status/deletion_status_check.dart</code> (DeletionStatusCheck), <code>lib/features/status/deletion_portal.dart</code></dd>
+              <dt>Rute</dt><dd><code>/deletion-status</code></dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Penghapusan diproses (viewport)</li>
+              <li>Gulir penuh</li>
+              <li>Baru saja diminta</li>
+              <li>Diproses ulang otomatis</li>
+              <li>Akun tidak aktif</li>
+              <li>Belum diketahui (dibuka langsung)</li>
+              <li>Kode dikirim + papan angka</li>
+              <li>Kode salah / habis</li>
+              <li>Akun aktif</li>
+              <li>Pendaftaran belum diverifikasi</li>
+              <li>Dengan sesi lama</li>
+              <li>Nomor disalin (snackbar)</li>
+            </ol>
+          </article>
+      </div>
+    </section>
+
+    <section class="doc-section" id="g-beranda" aria-labelledby="h-beranda">
+      <h2 id="h-beranda">Beranda, berita, notifikasi, legal dan navigasi bawah</h2>
+      <p>Folder <code>beranda/</code>, gaya grup <code>css/pages/beranda.css</code>. Dart: <code>lib/app/app_shell.dart, lib/features/home, news, notifications, legal</code>. 7 halaman, 71 frame.</p>
+      <div class="index-list">
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="beranda/app-shell.html">Cangkang navigasi bawah</a></h3>
+            <p class="index-card__file"><code>beranda/app-shell.html</code> · 7 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/app/app_shell.dart</code> (AppShell, _TabIcon, showLockedTabSheet); kunci tab dari <code>lib/app/redirect.dart</code> (isLocationAllowed)</dd>
+              <dt>Rute</dt><dd><code>/home</code>, <code>/events</code>, <code>/kta</code>, <code>/network</code>, <code>/account</code> (StatefulShellRoute.indexedStack di <code>lib/app/router.dart</code>)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Anggota aktif</li>
+              <li>KTA belum aktif: tab terkunci</li>
+              <li>Lembar Event terkunci (belum aktif)</li>
+              <li>Lembar Event terkunci (kedaluwarsa)</li>
+              <li>Lembar Jejaring terkunci</li>
+              <li>Lembar status lain</li>
+              <li>Varian bilah navigasi</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="beranda/home.html">Beranda</a></h3>
+            <p class="index-card__file"><code>beranda/home.html</code> · 16 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/home/home_screen.dart</code> (HomeScreen, _ActiveHome, _CacheNotice, _QuickAccess, _RenewalReminder, _GatedHome); widget <code>home/widgets/home_widgets.dart</code>, <code>home/widgets/banner_carousel.dart</code>, <code>home/shared/content_widgets.dart</code>, <code>events/widgets/event_card.dart</code>, <code>news/widgets/post_card.dart</code></dd>
+              <dt>Rute</dt><dd><code>/home</code> (tab Beranda, StatefulShellRoute)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama</li>
+              <li>Gulir penuh</li>
+              <li>KTA segera berakhir</li>
+              <li>Memuat</li>
+              <li>Cache, sedang memperbarui</li>
+              <li>Cache, offline</li>
+              <li>Cache, server gagal</li>
+              <li>Galat tanpa cache (offline)</li>
+              <li>Galat tanpa cache (server)</li>
+              <li>Pita Pemeliharaan</li>
+              <li>Bagian kosong</li>
+              <li>Semua kosong</li>
+              <li>Dialog tautan luar</li>
+              <li>Snackbar konten tidak tersedia</li>
+              <li>KTA belum aktif</li>
+              <li>Masa keanggotaan berakhir</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="beranda/news-list.html">Berita</a></h3>
+            <p class="index-card__file"><code>beranda/news-list.html</code> · 13 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/news/news_list_screen.dart</code> (NewsListScreen, _CategoryFilter); <code>home/shared/paged_list.dart</code> (PagedListView), <code>news/widgets/post_card.dart</code>, <code>home/shared/member_gate.dart</code> (MemberOnlyNotice)</dd>
+              <dt>Rute</dt><dd><code>/news</code> (di luar cangkang tab, tanpa navigasi bawah)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama (Semua)</li>
+              <li>Gulir penuh</li>
+              <li>Kategori dipilih</li>
+              <li>Memperbarui</li>
+              <li>Memuat</li>
+              <li>Memuat berikutnya</li>
+              <li>Gagal memuat berikutnya</li>
+              <li>Kosong (Semua)</li>
+              <li>Kosong (kategori)</li>
+              <li>Galat halaman pertama</li>
+              <li>Gagal memperbarui</li>
+              <li>Kategori gagal dimuat</li>
+              <li>Khusus anggota aktif</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="beranda/news-detail.html">Detail Berita</a></h3>
+            <p class="index-card__file"><code>beranda/news-detail.html</code> · 12 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/news/news_detail_screen.dart</code> (NewsDetailScreen, _PostContent, _LikeBar); <code>news/widgets/post_body.dart</code> (PostBody, _ExternalAnchor), <code>home/shared/links.dart</code> (confirmExternalLink)</dd>
+              <dt>Rute</dt><dd><code>/news/:slug</code> (di luar cangkang tab)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama</li>
+              <li>Gulir penuh</li>
+              <li>Tanpa cover</li>
+              <li>Belum disukai (akhir isi)</li>
+              <li>Disukai</li>
+              <li>Sedang memproses</li>
+              <li>Gagal menyukai</li>
+              <li>Dialog tautan luar</li>
+              <li>Memuat</li>
+              <li>Tidak lagi tersedia</li>
+              <li>Galat</li>
+              <li>Khusus anggota aktif</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="beranda/notifications.html">Notifikasi</a></h3>
+            <p class="index-card__file"><code>beranda/notifications.html</code> · 13 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/notifications/notifications_screen.dart</code> (NotificationsScreen, NotificationTile); <code>notification_presentation.dart</code> (notificationCategoryStyle)</dd>
+              <dt>Rute</dt><dd><code>/notifications</code> (di luar cangkang tab; dibuka dari lonceng dan akses cepat Beranda, menu Akun)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama (Semua)</li>
+              <li>Gulir penuh</li>
+              <li>Filter Belum dibaca</li>
+              <li>Menandai semua dibaca</li>
+              <li>Semua sudah dibaca</li>
+              <li>Kosong (Semua)</li>
+              <li>Kosong (Belum dibaca)</li>
+              <li>Memuat</li>
+              <li>Galat</li>
+              <li>Memuat berikutnya</li>
+              <li>Gagal memuat berikutnya</li>
+              <li>Tujuan belum didukung</li>
+              <li>Gagal menandai semua</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="beranda/notification-open.html">Notifikasi (gerbang ketukan push)</a></h3>
+            <p class="index-card__file"><code>beranda/notification-open.html</code> · 4 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/notifications/notification_open_screen.dart</code> (NotificationOpenScreen)</dd>
+              <dt>Rute</dt><dd><code>/notifications/:notificationId</code> (ketukan notifikasi push; login dulu bila belum masuk)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Membuka notifikasi</li>
+              <li>Tidak tersedia</li>
+              <li>Galat (offline)</li>
+              <li>Galat (server)</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="beranda/legal-page.html">Halaman legal dan informasi</a></h3>
+            <p class="index-card__file"><code>beranda/legal-page.html</code> · 6 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/legal/legal_page_screen.dart</code> (LegalPageScreen); <code>core/ui/support_section.dart</code>, <code>design/support_contact_card.dart</code></dd>
+              <dt>Rute</dt><dd><code>/legal/:slug</code> (terbuka untuk semua status, juga sebelum login)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama</li>
+              <li>Gulir penuh</li>
+              <li>Memuat</li>
+              <li>Belum tersedia</li>
+              <li>Galat</li>
+              <li>Tautan tidak dapat dibuka</li>
+            </ol>
+          </article>
+      </div>
+    </section>
+
+    <section class="doc-section" id="g-event" aria-labelledby="h-event">
+      <h2 id="h-event">Event dan tiket</h2>
+      <p>Folder <code>event/</code>, gaya grup <code>css/pages/event.css</code>. Dart: <code>lib/features/events, tickets</code>. 5 halaman, 79 frame.</p>
+      <div class="index-list">
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="event/events.html">Daftar Event</a></h3>
+            <p class="index-card__file"><code>event/events.html</code> · 11 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/events/events_screen.dart</code> (EventsScreen, _SearchField, _CategoryTabs), <code>lib/features/events/widgets/event_card.dart</code> (EventCard.summary), <code>lib/features/home/shared/paged_list.dart</code> (PagedListView)</dd>
+              <dt>Rute</dt><dd><code>/events</code> (tab Event di AppShell, StatefulShellBranch)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama: Mendatang, Semua</li>
+              <li>Gulir penuh + Muat lebih banyak</li>
+              <li>Pencarian + kategori dipilih</li>
+              <li>Lampau</li>
+              <li>Kosong: belum ada event mendatang</li>
+              <li>Kosong: hasil filter</li>
+              <li>Galat (offline)</li>
+              <li>Memuat</li>
+              <li>Galat halaman berikutnya (digulir ke akhir)</li>
+              <li>Bukan anggota aktif (KTA kedaluwarsa)</li>
+              <li>Lembar tab Event terkunci</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="event/event-detail.html">Detail Event</a></h3>
+            <p class="index-card__file"><code>event/event-detail.html</code> · 20 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/events/event_detail_screen.dart</code> (EventDetailScreen, _EventContent, _InfoCard, _Quota, _MyTicketCard, _Participants, _ActionBar), <code>lib/features/events/reservation.dart</code> (dialog dan snackbar hasil reservasi)</dd>
+              <dt>Rute</dt><dd><code>/events/:eventId</code> (navigator akar, tanpa navigasi bawah)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama: berbayar, pendaftaran dibuka</li>
+              <li>Gulir penuh</li>
+              <li>Sudah punya tiket aktif</li>
+              <li>Kuota penuh</li>
+              <li>Pendaftaran belum dibuka (tanpa cover)</li>
+              <li>Event dibatalkan</li>
+              <li>Pemeliharaan</li>
+              <li>Anggota KTA kedaluwarsa (tiket lama berakhir)</li>
+              <li>Event gratis</li>
+              <li>Dialog: Daftar event gratis?</li>
+              <li>Mendaftarkan…</li>
+              <li>Snackbar: koneksi terputus</li>
+              <li>Peserta: memuat</li>
+              <li>Peserta: galat</li>
+              <li>Peserta: kosong</li>
+              <li>Memuat</li>
+              <li>Event tidak tersedia (404)</li>
+              <li>Galat</li>
+              <li>Khusus anggota aktif (403)</li>
+              <li>Gagal diperbarui (offline)</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="event/reservation.html">Konfirmasi Pendaftaran</a></h3>
+            <p class="index-card__file"><code>event/reservation.html</code> · 14 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/events/reservation_screen.dart</code> (ReservationScreen, _Label, _ValueBox, _EventSummaryCard), <code>lib/features/events/reservation.dart</code> (submitReservation, dialog, snackbar)</dd>
+              <dt>Rute</dt><dd>Tanpa rute go_router: <code>MaterialPageRoute</code> dari Detail Event (<code>/events/:eventId</code>) untuk event berbayar</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama: metode belum dipilih</li>
+              <li>Gulir penuh: rekening dipilih</li>
+              <li>QRIS dipilih (digulir ke metode)</li>
+              <li>Harga berubah</li>
+              <li>Mendaftarkan…</li>
+              <li>Metode memuat</li>
+              <li>Metode gagal dimuat</li>
+              <li>Tanpa rekening tujuan</li>
+              <li>Metode ditolak server</li>
+              <li>Gulir penuh: kuota penuh saat pemeliharaan</li>
+              <li>Event kini gratis (digulir ke akhir)</li>
+              <li>Memuat event</li>
+              <li>Dialog: Kuota penuh</li>
+              <li>Snackbar: koneksi terputus</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="event/tickets.html">Tiket Saya</a></h3>
+            <p class="index-card__file"><code>event/tickets.html</code> · 8 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/tickets/tickets_screen.dart</code> (TicketsScreen, _TicketList, TicketCard), <code>lib/features/home/shared/paged_list.dart</code> (PagedListView)</dd>
+              <dt>Rute</dt><dd><code>/tickets</code> (layar penuh di atas shell, kembali ke <code>/home</code> bila tidak ada riwayat)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Aktif</li>
+              <li>Riwayat</li>
+              <li>Aktif kosong (anggota aktif)</li>
+              <li>Aktif kosong (KTA tidak aktif)</li>
+              <li>Riwayat kosong</li>
+              <li>Galat</li>
+              <li>Memuat halaman berikutnya (digulir ke akhir)</li>
+              <li>Memuat</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="event/ticket-detail.html">Detail Tiket</a></h3>
+            <p class="index-card__file"><code>event/ticket-detail.html</code> · 26 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/tickets/ticket_detail_screen.dart</code> (TicketDetailScreen, _TicketContent, _EventHeader, _TicketQr, _PaymentCard, _RefundsCard, _CancelDialog), <code>lib/features/tickets/widgets/hold_countdown.dart</code> (HoldCountdown)</dd>
+              <dt>Rute</dt><dd><code>/tickets/:ticketId</code> (layar penuh, kembali ke <code>/tickets</code>)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Lunas: QR check-in</li>
+              <li>Gulir penuh: lunas berbayar</li>
+              <li>Gratis baru terbit + snackbar</li>
+              <li>Sudah check-in</li>
+              <li>QR tidak tersedia</li>
+              <li>Menunggu pembayaran (transfer)</li>
+              <li>Gulir penuh: menunggu pembayaran</li>
+              <li>Menunggu pembayaran (QRIS)</li>
+              <li>Batas lewat, status belum terbaru</li>
+              <li>Batas lewat, memeriksa status</li>
+              <li>Menunggu verifikasi</li>
+              <li>Kedaluwarsa</li>
+              <li>Gulir penuh: dibatalkan sendiri, refund diproses</li>
+              <li>Event dibatalkan pengurus</li>
+              <li>Bukti ditolak (final)</li>
+              <li>Status tidak dikenal</li>
+              <li>Dialog: batalkan tiket (refund penuh)</li>
+              <li>Dialog: batalkan tiket (tanpa refund)</li>
+              <li>Dialog: batalkan reservasi</li>
+              <li>Membatalkan… (digulir ke akhir)</li>
+              <li>Snackbar sesudah membatalkan</li>
+              <li>Dialog: data tiket berubah</li>
+              <li>Memuat</li>
+              <li>Tiket tidak ditemukan</li>
+              <li>Galat</li>
+              <li>Gagal diperbarui (offline)</li>
+            </ol>
+          </article>
+      </div>
+    </section>
+
+    <section class="doc-section" id="g-kta" aria-labelledby="h-kta">
+      <h2 id="h-kta">KTA dan pembayaran</h2>
+      <p>Folder <code>kta/</code>, gaya grup <code>css/pages/kta.css</code>. Dart: <code>lib/features/kta, payments</code>. 5 halaman, 63 frame.</p>
+      <div class="index-list">
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="kta/kta.html">Kartu Tanda Anggota</a></h3>
+            <p class="index-card__file"><code>kta/kta.html</code> · 11 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/kta/kta_screen.dart</code> (KtaScreen), <code>kta_presentation.dart</code> (ktaStatusOf, ktaOfflineMissOf), <code>lib/design/kta_card.dart</code> (KtaCard, StatusActionCard)</dd>
+              <dt>Rute</dt><dd><code>/kta</code> (tab KTA di AppShell)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>KTA Aktif</li>
+              <li>Segera Berakhir</li>
+              <li>KTA Tidak Aktif (menunggu iuran pendaftaran)</li>
+              <li>Tidak Aktif: iuran sedang diproses, kota belum diisi (gulir penuh)</li>
+              <li>KTA Kedaluwarsa</li>
+              <li>Dibatasi (kartu dari server)</li>
+              <li>Offline: kartu dari cache</li>
+              <li>Offline: menyinkronkan, QR perlu diperbarui</li>
+              <li>Offline: KTA belum tersimpan di perangkat</li>
+              <li>Galat dari server</li>
+              <li>Memuat</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="kta/payments.html">Riwayat Pembayaran</a></h3>
+            <p class="index-card__file"><code>kta/payments.html</code> · 7 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/payments/payments_screen.dart</code> (PaymentsScreen, PaymentTile), <code>payment_presentation.dart</code> (paymentTitle, paymentBadge)</dd>
+              <dt>Rute</dt><dd><code>/payments</code> (dari Akun; kembali ke <code>/account</code> bila tidak ada halaman sebelumnya)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Daftar (semua status)</li>
+              <li>Akhir halaman: Muat lagi</li>
+              <li>Gagal memuat halaman berikutnya</li>
+              <li>Muat ulang gagal (data lama tetap tampil)</li>
+              <li>Kosong (anggota belum aktif)</li>
+              <li>Galat (tanpa koneksi)</li>
+              <li>Memuat</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="kta/new-payment.html">Pembayaran (buat instruksi iuran)</a></h3>
+            <p class="index-card__file"><code>kta/new-payment.html</code> · 9 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/payments/new_payment_screen.dart</code> (NewPaymentScreen, _Progress, _UnknownOutcome), <code>payment_presentation.dart</code> (ineligibleMessage, duesHiddenMessage)</dd>
+              <dt>Rute</dt><dd><code>/payments/new/:type</code> (<code>registration</code> | <code>renewal</code>; rute mutasi saja)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Memuat iuran</li>
+              <li>Menyiapkan instruksi</li>
+              <li>Memeriksa status (koneksi sempat terputus)</li>
+              <li>Status instruksi belum dapat dipastikan</li>
+              <li>Iuran melalui pengurus (D13)</li>
+              <li>Iuran belum dapat dibayar</li>
+              <li>Rekening tujuan belum tersedia</li>
+              <li>Jenis pembayaran tidak dikenal</li>
+              <li>Galat membuat instruksi</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="kta/payment-detail.html">Status Pembayaran</a></h3>
+            <p class="index-card__file"><code>kta/payment-detail.html</code> · 28 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/payments/payment_detail_screen.dart</code> (PaymentDetailScreen), <code>widgets/payment_layout.dart</code>, <code>widgets/proof_upload_section.dart</code>, <code>widgets/proof_preview.dart</code>, <code>widgets/adjustment_card.dart</code>, <code>payment_presentation.dart</code>; <code>lib/design/</code> method_radio_card, qris_image_card, upload_tile, amount_copy_box, summary_card, timeline, status_hero</dd>
+              <dt>Rute</dt><dd><code>/payments/:paymentId</code> (deep link; juga tujuan pushReplacement dari <code>/payments/new/:type</code>)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Transfer bank, bukti belum dipilih</li>
+              <li>Transfer bank (gulir penuh)</li>
+              <li>Mengunggah bukti</li>
+              <li>QRIS terpilih, iuran perpanjangan (gulir penuh)</li>
+              <li>Gambar QRIS gagal dimuat</li>
+              <li>Penampil QRIS layar penuh</li>
+              <li>Lembar pilih bukti transfer</li>
+              <li>Dialog batalkan instruksi</li>
+              <li>Berkas ditolak, rekening tujuan dinonaktifkan</li>
+              <li>Pengiriman terputus: memeriksa status</li>
+              <li>Tiket: batas waktu reservasi, nominal disalin</li>
+              <li>Ganti bukti (transfer bank)</li>
+              <li>Unggah ulang bukti, QRIS (gulir penuh)</li>
+              <li>Menunggu verifikasi</li>
+              <li>Menunggu verifikasi (gulir penuh)</li>
+              <li>Penampil bukti yang dikirim</li>
+              <li>Penampil bukti: gagal dimuat</li>
+              <li>Tiket menunggu verifikasi, muat ulang gagal</li>
+              <li>Perlu perbaikan</li>
+              <li>Perlu perbaikan (gulir penuh)</li>
+              <li>Lunas: iuran pendaftaran (gulir penuh)</li>
+              <li>Lunas, tiket dibatalkan: isi rekening refund (gulir penuh)</li>
+              <li>Refund: rekening tujuan sudah diterima</li>
+              <li>Dibatalkan: iuran perpanjangan</li>
+              <li>Ditolak final: tiket (gulir penuh)</li>
+              <li>Iuran melalui pengurus, D13 (gulir penuh)</li>
+              <li>Memuat</li>
+              <li>Galat: pembayaran tidak ditemukan</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="kta/renewal.html">Perpanjang KTA</a></h3>
+            <p class="index-card__file"><code>kta/renewal.html</code> · 8 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/payments/renewal_screen.dart</code> (RenewalScreen, _OpenRenewalInfo), <code>payment_presentation.dart</code> (ineligibleMessage), <code>lib/design/kta_card.dart</code> (KtaMiniCard)</dd>
+              <dt>Rute</dt><dd><code>/renewal</code> (rute awal anggota expired; dari KTA "Perpanjang"; kembali ke <code>/kta</code>)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Layak diperpanjang (segera berakhir)</li>
+              <li>Layak diperpanjang (gulir penuh)</li>
+              <li>Perpanjangan belum dibuka</li>
+              <li>Kedaluwarsa, muat ulang gagal</li>
+              <li>Iuran perpanjangan berjalan (perlu perbaikan)</li>
+              <li>Iuran melalui pengurus (D13)</li>
+              <li>Memuat</li>
+              <li>Galat (tanpa koneksi)</li>
+            </ol>
+          </article>
+      </div>
+    </section>
+
+    <section class="doc-section" id="g-jejaring" aria-labelledby="h-jejaring">
+      <h2 id="h-jejaring">Jejaring dan chat</h2>
+      <p>Folder <code>jejaring/</code>, gaya grup <code>css/pages/jejaring.css</code>. Dart: <code>lib/features/network, chat</code>. 11 halaman, 118 frame.</p>
+      <div class="index-list">
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="jejaring/network.html">Jejaring: direktori alumni</a></h3>
+            <p class="index-card__file"><code>jejaring/network.html</code> · 16 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/network/network_screen.dart</code> (NetworkScreen), <code>directory_tab.dart</code> (DirectoryTab, PagedFooter), <code>directory_filter_sheet.dart</code> (DirectoryFilterSheet), <code>widgets/directory_member_card.dart</code>, <code>widgets/tag_chip.dart</code></dd>
+              <dt>Rute</dt><dd><code>/network</code> (tab Jejaring di AppShell, tab pertama TabBar)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama</li>
+              <li>Gulir penuh</li>
+              <li>Filter aktif</li>
+              <li>Cari nama</li>
+              <li>Kata kunci terlalu pendek + keyboard</li>
+              <li>Kosong</li>
+              <li>Kosong dengan filter</li>
+              <li>Memuat</li>
+              <li>Galat</li>
+              <li>Offline + gagal memuat ulang</li>
+              <li>Memuat lebih banyak</li>
+              <li>Galat muat lebih banyak</li>
+              <li>Lembar filter</li>
+              <li>Lembar filter terisi (isi penuh)</li>
+              <li>Lembar filter: validasi, master memuat/galat</li>
+              <li>Dropdown Kelas terbuka</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="jejaring/chat-list.html">Jejaring: tab Pesan dan Pesan Grup</a></h3>
+            <p class="index-card__file"><code>jejaring/chat-list.html</code> · 8 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/chat/chat_list_view.dart</code> (ChatRoomListView, ChatRoomTile, _GroupActions) di dalam <code>lib/features/network/network_screen.dart</code> (NetworkScreen)</dd>
+              <dt>Rute</dt><dd><code>/network</code> (tab kedua "Pesan" = room direct, tab ketiga "Pesan Grup" = room grup)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Pesan</li>
+              <li>Pesan Grup</li>
+              <li>Pesan: gulir penuh</li>
+              <li>Pesan kosong</li>
+              <li>Pesan Grup kosong</li>
+              <li>Memuat</li>
+              <li>Galat</li>
+              <li>Daftar lama + gagal memuat ulang</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="jejaring/member-profile.html">Profil Alumni</a></h3>
+            <p class="index-card__file"><code>jejaring/member-profile.html</code> · 15 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/network/member_profile_screen.dart</code> (MemberProfileScreen, _ProfileView, _MessageArea, _PhoneLink, _SocialLink), <code>moderation_actions.dart</code> (confirmBlock, confirmUnblock), <code>report_sheet.dart</code>, <code>widgets/alumni_avatar.dart</code>, <code>widgets/tag_chip.dart</code></dd>
+              <dt>Rute</dt><dd><code>/network/members/:userId</code> (navigator akar, di luar AppShell)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama</li>
+              <li>Gulir penuh</li>
+              <li>Menu tindakan</li>
+              <li>Dialog blokir</li>
+              <li>Diblokir + snackbar</li>
+              <li>Menu saat diblokir</li>
+              <li>Dialog buka blokir</li>
+              <li>Kontak tersembunyi, pesan belum tersedia</li>
+              <li>Membuka percakapan</li>
+              <li>Profil sendiri (pratinjau)</li>
+              <li>Lembar laporan pengguna</li>
+              <li>Snackbar salin nomor</li>
+              <li>Memuat</li>
+              <li>Profil tidak tersedia</li>
+              <li>Galat</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="jejaring/report-sheet.html">Lembar Laporan (pengguna, pesan, grup)</a></h3>
+            <p class="index-card__file"><code>jejaring/report-sheet.html</code> · 6 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/network/report_sheet.dart</code> (showReportSheet, ReportSheet, UserReportTarget, MessageReportTarget, RoomReportTarget)</dd>
+              <dt>Rute</dt><dd>tanpa rute: showModalBottomSheet dari <code>/network/members/:userId</code>, <code>/chat/:roomId</code> dan <code>/chat/:roomId/info</code></dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Pengguna: awal</li>
+              <li>Isi penuh: pengguna, belum memilih kategori</li>
+              <li>Isi penuh: pesan, Lainnya tanpa penjelasan</li>
+              <li>Grup: mengirim</li>
+              <li>Ancaman dipilih + keyboard</li>
+              <li>Terkirim (snackbar)</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="jejaring/chat-room.html">Percakapan (chat room)</a></h3>
+            <p class="index-card__file"><code>jejaring/chat-room.html</code> · 24 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/chat/chat_room_screen.dart</code> (ChatRoomScreen, _ConnectionNotice, _NoticeBar), <code>chat_message_widgets.dart</code> (ChatBubble, BubbleMeta, ReplyQuote, ChatImageView, ReactionRow, SystemMessageView, DateSeparator), <code>chat_room_controller.dart</code>, <code>outgoing_message.dart</code></dd>
+              <dt>Rute</dt><dd><code>/chat/:roomId</code> (navigator akar)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Percakapan langsung</li>
+              <li>Grup: nama pengirim, sistem, reaksi, gagal</li>
+              <li>Gulir penuh</li>
+              <li>Membalas + mengetik</li>
+              <li>Pesan terlalu panjang</li>
+              <li>Tindakan pesan orang lain</li>
+              <li>Tindakan pesan sendiri</li>
+              <li>Dialog hapus pesan</li>
+              <li>Pesan gagal: kirim ulang atau buang</li>
+              <li>Pilih sumber foto</li>
+              <li>Galat foto</li>
+              <li>Penampil foto</li>
+              <li>Pesan baru di bawah, foto memuat dan gagal</li>
+              <li>Menyambungkan ulang</li>
+              <li>Belum tersinkron</li>
+              <li>Keanggotaan berakhir</li>
+              <li>Diblokir</li>
+              <li>Grup ditutup</li>
+              <li>Lawan bicara tidak tersedia</li>
+              <li>Laporkan pesan</li>
+              <li>Memuat</li>
+              <li>Galat</li>
+              <li>Percakapan tidak tersedia</li>
+              <li>Keanggotaan tidak aktif</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="jejaring/chat-info.html">Info Percakapan</a></h3>
+            <p class="index-card__file"><code>jejaring/chat-info.html</code> · 17 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/chat/chat_info_screen.dart</code> (ChatInfoScreen, _RenameGroupDialog), <code>chat_info_controller.dart</code>, <code>../network/moderation_actions.dart</code>, <code>../network/report_sheet.dart</code>, <code>member_picker.dart</code></dd>
+              <dt>Rute</dt><dd><code>/chat/:roomId/info</code> (navigator akar)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Percakapan langsung</li>
+              <li>Grup, admin (gulir penuh)</li>
+              <li>Grup, admin</li>
+              <li>Grup, anggota biasa</li>
+              <li>Menu anggota (admin)</li>
+              <li>Dialog ubah nama + keyboard</li>
+              <li>Dialog jadikan admin</li>
+              <li>Dialog keluarkan anggota</li>
+              <li>Dialog keluar grup</li>
+              <li>Pilih admin pengganti</li>
+              <li>Hasil undangan</li>
+              <li>Grup ditutup</li>
+              <li>Langsung: diblokir + galat muat ulang</li>
+              <li>Laporkan grup</li>
+              <li>Memuat</li>
+              <li>Galat</li>
+              <li>Percakapan tidak tersedia</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="jejaring/new-group.html">Grup Baru</a></h3>
+            <p class="index-card__file"><code>jejaring/new-group.html</code> · 6 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/chat/new_group_screen.dart</code> (NewGroupScreen, inviteSkipLabel, inviteSkipSummary)</dd>
+              <dt>Rute</dt><dd><code>/chat/new-group</code> (dari "Buat grup" di tab Pesan Grup; ditolak router bila status akun tidak aktif)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Awal</li>
+              <li>Terisi</li>
+              <li>Validasi nama</li>
+              <li>Mengetik nama + keyboard</li>
+              <li>Membuat grup</li>
+              <li>Sebagian undangan tidak terkirim</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="jejaring/member-picker.html">Pemilih Alumni (undang ke grup)</a></h3>
+            <p class="index-card__file"><code>jejaring/member-picker.html</code> · 7 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/chat/member_picker.dart</code> (showMemberPicker, MemberPickerPage), memakai <code>../network/widgets/directory_member_card.dart</code> dan <code>../network/directory_tab.dart</code> (PagedFooter)</dd>
+              <dt>Rute</dt><dd>tanpa rute: Navigator.push(MaterialPageRoute(fullscreenDialog)) dari <code>/chat/new-group</code> ("Pilih alumni") dan <code>/chat/:roomId/info</code> ("Undang")</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Awal</li>
+              <li>Dengan pilihan</li>
+              <li>Undang ke grup: batas pilihan</li>
+              <li>Cari tanpa hasil</li>
+              <li>Memuat</li>
+              <li>Galat</li>
+              <li>Akhir daftar: muat lebih banyak</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="jejaring/chat-invitations.html">Undangan Grup</a></h3>
+            <p class="index-card__file"><code>jejaring/chat-invitations.html</code> · 5 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/chat/chat_invitations_screen.dart</code> (ChatInvitationsScreen, ChatInvitationsController)</dd>
+              <dt>Rute</dt><dd><code>/chat/invitations</code> (dari tombol "Undangan (N)" di tab Pesan Grup)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama (satu sedang diproses)</li>
+              <li>Dialog tolak</li>
+              <li>Kosong</li>
+              <li>Memuat</li>
+              <li>Galat</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="jejaring/my-reports.html">Laporan Saya</a></h3>
+            <p class="index-card__file"><code>jejaring/my-reports.html</code> · 8 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/network/my_reports_screen.dart</code> (MyReportsScreen, _ReportCard, _ReportDetailSheet, reportStatusStyle, reportOutcomeText, reportTargetText); diekspor ulang lewat <code>lib/features/account/my_reports_screen.dart</code></dd>
+              <dt>Rute</dt><dd><code>/account/reports</code> (navigator akar; tujuan snackbar "Lihat" setelah melapor dan notifikasi hasil moderasi)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama</li>
+              <li>Detail: menunggu tinjauan</li>
+              <li>Detail: selesai dengan pesan pengurus</li>
+              <li>Detail: ditutup</li>
+              <li>Detail: memuat</li>
+              <li>Kosong</li>
+              <li>Memuat</li>
+              <li>Galat</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="jejaring/blocked-users.html">Pengguna Diblokir</a></h3>
+            <p class="index-card__file"><code>jejaring/blocked-users.html</code> · 6 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/network/blocked_users_screen.dart</code> (BlockedUsersScreen), <code>moderation_actions.dart</code> (unblockWithConfirmation); diekspor ulang lewat <code>lib/features/account/blocked_users_screen.dart</code></dd>
+              <dt>Rute</dt><dd><code>/account/blocked</code> (navigator akar)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama</li>
+              <li>Dialog buka blokir</li>
+              <li>Setelah buka blokir</li>
+              <li>Kosong</li>
+              <li>Memuat</li>
+              <li>Galat</li>
+            </ol>
+          </article>
+      </div>
+    </section>
+
+    <section class="doc-section" id="g-akun" aria-labelledby="h-akun">
+      <h2 id="h-akun">Akun dan pengaturan</h2>
+      <p>Folder <code>akun/</code>, gaya grup <code>css/pages/akun.css</code>. Dart: <code>lib/features/account</code>. 9 halaman, 82 frame.</p>
+      <div class="index-list">
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="akun/account.html">Akun</a></h3>
+            <p class="index-card__file"><code>akun/account.html</code> · 8 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/account/account_screen.dart</code> (AccountScreen, _Header) + <code>widgets/account_section.dart</code> (AccountSection, AccountMenuTile), <code>widgets/profile_avatar.dart</code>; lembar terkunci <code>lib/app/app_shell.dart</code> (showLockedTabSheet)</dd>
+              <dt>Rute</dt><dd><code>/account</code> (tab Akun di AppShell; status bar di atas pita hijau)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama: KTA Aktif</li>
+              <li>Gulir penuh: KTA Aktif</li>
+              <li>KTA Tidak Aktif: menu terkunci (gulir penuh)</li>
+              <li>Lembar menu terkunci (ketuk Tiket saya)</li>
+              <li>Pemeliharaan: pita + menu ditunda (gulir penuh)</li>
+              <li>Lembar pemeliharaan (ketuk Ganti password)</li>
+              <li>Offline (snapshot terakhir)</li>
+              <li>Keluar sedang diproses (digulir ke dasar)</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="akun/profile-edit.html">Ubah Profil</a></h3>
+            <p class="index-card__file"><code>akun/profile-edit.html</code> · 16 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/account/profile_edit_screen.dart</code> (ProfileEditScreen, _ReadOnlyRow, _PickerField) + <code>widgets/master_picker.dart</code> (lembar profesi/keahlian), <code>widgets/profile_avatar.dart</code>, <code>avatar_image.dart</code></dd>
+              <dt>Rute</dt><dd><code>/account/profile</code> (di atas cangkang, tanpa navigasi bawah)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama: belum ada perubahan</li>
+              <li>Gulir penuh: tombol Simpan profil nonaktif</li>
+              <li>Foto baru dipilih (Hapus foto muncul)</li>
+              <li>Galat validasi setelah Simpan (digulir)</li>
+              <li>Menyimpan (digulir ke dasar)</li>
+              <li>Lembar sumber foto (Ganti foto)</li>
+              <li>Dialog foto tidak dapat dipakai</li>
+              <li>Lembar Pilih profesi</li>
+              <li>Lembar profesi: pencarian tanpa hasil</li>
+              <li>Lembar Pilih keahlian (3 dipilih)</li>
+              <li>Lembar keahlian penuh + keahlian tidak aktif</li>
+              <li>Lembar pilihan sedang memuat</li>
+              <li>Dialog konflik versi (409)</li>
+              <li>Dialog buang perubahan (kembali)</li>
+              <li>Memuat</li>
+              <li>Galat memuat</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="akun/privacy.html">Privasi Profil</a></h3>
+            <p class="index-card__file"><code>akun/privacy.html</code> · 6 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/account/privacy_settings_screen.dart</code> (PrivacySettingsScreen) + <code>widgets/account_section.dart</code></dd>
+              <dt>Rute</dt><dd><code>/account/privacy</code> (di atas cangkang, tanpa navigasi bawah)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama: KTA Aktif, bawaan</li>
+              <li>KTA belum aktif + telepon belum diisi</li>
+              <li>Menyimpan (saklar nonaktif)</li>
+              <li>Konflik versi: nilai terbaru ditampilkan</li>
+              <li>Memuat</li>
+              <li>Galat memuat</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="akun/notification-preferences.html">Preferensi Notifikasi</a></h3>
+            <p class="index-card__file"><code>akun/notification-preferences.html</code> · 10 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/account/notification_preferences_screen.dart</code> (NotificationPreferencesScreen, _DevicePushCard, _PreferenceSwitch, _MandatoryRow) + <code>lib/features/notifications/push_permission.dart</code> (PushPermissionState)</dd>
+              <dt>Rute</dt><dd><code>/account/notifications</code> (di atas cangkang, tanpa navigasi bawah)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama: push aktif</li>
+              <li>Gulir penuh</li>
+              <li>Izin belum diminta (Izinkan)</li>
+              <li>Izin ditolak (Periksa lagi)</li>
+              <li>Push tidak tersedia di perangkat</li>
+              <li>Memeriksa izin perangkat</li>
+              <li>Menyimpan (saklar nonaktif)</li>
+              <li>Gagal menyimpan: nilai dikembalikan</li>
+              <li>Memuat</li>
+              <li>Galat memuat</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="akun/sessions.html">Sesi Perangkat</a></h3>
+            <p class="index-card__file"><code>akun/sessions.html</code> · 10 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/account/sessions_screen.dart</code> (SessionsScreen, _tile) + <code>widgets/account_section.dart</code></dd>
+              <dt>Rute</dt><dd><code>/account/sessions</code> (rute di luar cangkang: juga dibuka anggota Dibatasi dan dari notifikasi keamanan)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama: perangkat ini + 2 perangkat lain</li>
+              <li>Tidak ada perangkat lain</li>
+              <li>Mengeluarkan satu perangkat + halaman berikut</li>
+              <li>Snackbar setelah perangkat dikeluarkan</li>
+              <li>Dialog keluarkan perangkat lain</li>
+              <li>Dialog keluar dari perangkat ini</li>
+              <li>Dialog keluar dari semua perangkat</li>
+              <li>Mengeluarkan semua perangkat</li>
+              <li>Memuat</li>
+              <li>Galat memuat</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="akun/change-password.html">Ganti Password</a></h3>
+            <p class="index-card__file"><code>akun/change-password.html</code> · 9 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/account/change_password_screen.dart</code> (ChangePasswordScreen, _PasswordRules) + <code>lib/core/validation/password.dart</code> (checkPassword, passwordCounter)</dd>
+              <dt>Rute</dt><dd><code>/account/password</code> (rute di luar cangkang)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama: kosong</li>
+              <li>Mengetik password baru (keyboard terbuka)</li>
+              <li>Galat setelah Simpan dengan isian kosong</li>
+              <li>Konfirmasi tidak sama</li>
+              <li>Menyimpan</li>
+              <li>Password saat ini salah</li>
+              <li>Terlalu banyak percobaan (hitung mundur)</li>
+              <li>Galat formulir (field_errors._)</li>
+              <li>Snackbar Lupa password saat ini?</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="akun/delete-account.html">Hapus Akun</a></h3>
+            <p class="index-card__file"><code>akun/delete-account.html</code> · 9 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/account/delete_account_screen.dart</code> (DeleteAccountScreen, _Bullet, _Warnings, _DangerButton) + <code>lib/core/ui/reauth_dialog.dart</code> (showReauthDialog)</dd>
+              <dt>Rute</dt><dd><code>/account/delete</code> (rute di luar cangkang; kembali ke <code>/restricted</code> untuk anggota Dibatasi)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama: tanpa peringatan pribadi</li>
+              <li>Gulir penuh: belum dicentang, tombol nonaktif</li>
+              <li>Gulir penuh: peringatan pribadi, kedua centang terisi</li>
+              <li>Pengungkapan berubah saat konfirmasi (409)</li>
+              <li>Dialog Konfirmasi identitas (keyboard terbuka)</li>
+              <li>Dialog: sandi salah</li>
+              <li>Memproses permintaan (digulir ke dasar)</li>
+              <li>Memuat</li>
+              <li>Galat memuat</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="akun/blocked-users.html">Pengguna Diblokir</a></h3>
+            <p class="index-card__file"><code>akun/blocked-users.html</code> · 7 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/network/blocked_users_screen.dart</code> (BlockedUsersScreen; diekspor ulang oleh <code>lib/features/account/blocked_users_screen.dart</code>) + <code>moderation_actions.dart</code> (confirmUnblock), <code>directory_tab.dart</code> (PagedFooter), <code>widgets/alumni_avatar.dart</code></dd>
+              <dt>Rute</dt><dd><code>/account/blocked</code> (menu Akun "Anggota diblokir"; hanya untuk KTA Aktif / Segera Berakhir)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Daftar: 3 anggota + Muat lebih banyak</li>
+              <li>Kosong</li>
+              <li>Dialog buka blokir</li>
+              <li>Snackbar setelah buka blokir</li>
+              <li>Gagal memuat halaman berikut</li>
+              <li>Memuat</li>
+              <li>Galat memuat</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="akun/my-reports.html">Laporan Saya</a></h3>
+            <p class="index-card__file"><code>akun/my-reports.html</code> · 7 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/network/my_reports_screen.dart</code> (MyReportsScreen, _ReportCard, _ReportDetailSheet, reportStatusStyle, reportOutcomeText, reportTargetText; diekspor ulang oleh <code>lib/features/account/my_reports_screen.dart</code>) + <code>report_sheet.dart</code> (reportCategoryLabel)</dd>
+              <dt>Rute</dt><dd><code>/account/reports</code> (semua status anggota, termasuk Kedaluwarsa dan Dibatasi)</dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Daftar: 4 laporan dengan status berbeda</li>
+              <li>Kosong</li>
+              <li>Detail: sedang ditinjau</li>
+              <li>Detail: selesai dengan hasil dan pesan pengurus</li>
+              <li>Detail: memuat</li>
+              <li>Memuat</li>
+              <li>Galat memuat</li>
+            </ol>
+          </article>
+      </div>
+    </section>
+
+    <section class="doc-section" id="cakupan" aria-labelledby="h-cakupan">
+      <h2 id="h-cakupan">Cakupan layar Flutter</h2>
+      <p>Setiap <code>lib/**/*_screen.dart</code> dan <code>lib/app/app_shell.dart</code> beserta halaman mockupnya. <code>account/blocked_users_screen.dart</code> dan <code>account/my_reports_screen.dart</code> hanya mengekspor ulang layar di <code>network/</code>; keduanya dimockup di grup Akun dan Jejaring (lihat catatan di halamannya).</p>
+      <div class="index-table-wrap">
+        <table class="index-table">
+          <thead><tr><th scope="col">Layar Flutter</th><th scope="col">Halaman mockup</th><th scope="col">Rute</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>lib/app/app_shell.dart</code></td>
+              <td><a href="beranda/app-shell.html">Cangkang navigasi bawah</a> <code>beranda/app-shell.html</code><br><span class="index-table__also">Juga di: <a href="akun/account.html">akun/account.html</a></span></td>
+              <td><code>/home</code>, <code>/events</code>, <code>/kta</code>, <code>/network</code>, <code>/account</code> (StatefulShellRoute.indexedStack di <code>lib/app/router.dart</code>)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/account/account_screen.dart</code></td>
+              <td><a href="akun/account.html">Akun</a> <code>akun/account.html</code></td>
+              <td><code>/account</code> (tab Akun di AppShell; status bar di atas pita hijau)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/account/blocked_users_screen.dart</code></td>
+              <td><a href="akun/blocked-users.html">Pengguna Diblokir</a> <code>akun/blocked-users.html</code><br><span class="index-table__also">Juga di: <a href="jejaring/blocked-users.html">jejaring/blocked-users.html</a></span></td>
+              <td><code>/account/blocked</code> (menu Akun "Anggota diblokir"; hanya untuk KTA Aktif / Segera Berakhir)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/account/change_password_screen.dart</code></td>
+              <td><a href="akun/change-password.html">Ganti Password</a> <code>akun/change-password.html</code></td>
+              <td><code>/account/password</code> (rute di luar cangkang)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/account/delete_account_screen.dart</code></td>
+              <td><a href="akun/delete-account.html">Hapus Akun</a> <code>akun/delete-account.html</code></td>
+              <td><code>/account/delete</code> (rute di luar cangkang; kembali ke <code>/restricted</code> untuk anggota Dibatasi)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/account/my_reports_screen.dart</code></td>
+              <td><a href="akun/my-reports.html">Laporan Saya</a> <code>akun/my-reports.html</code><br><span class="index-table__also">Juga di: <a href="jejaring/my-reports.html">jejaring/my-reports.html</a></span></td>
+              <td><code>/account/reports</code> (semua status anggota, termasuk Kedaluwarsa dan Dibatasi)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/account/notification_preferences_screen.dart</code></td>
+              <td><a href="akun/notification-preferences.html">Preferensi Notifikasi</a> <code>akun/notification-preferences.html</code></td>
+              <td><code>/account/notifications</code> (di atas cangkang, tanpa navigasi bawah)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/account/privacy_settings_screen.dart</code></td>
+              <td><a href="akun/privacy.html">Privasi Profil</a> <code>akun/privacy.html</code></td>
+              <td><code>/account/privacy</code> (di atas cangkang, tanpa navigasi bawah)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/account/profile_edit_screen.dart</code></td>
+              <td><a href="akun/profile-edit.html">Ubah Profil</a> <code>akun/profile-edit.html</code></td>
+              <td><code>/account/profile</code> (di atas cangkang, tanpa navigasi bawah)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/account/sessions_screen.dart</code></td>
+              <td><a href="akun/sessions.html">Sesi Perangkat</a> <code>akun/sessions.html</code></td>
+              <td><code>/account/sessions</code> (rute di luar cangkang: juga dibuka anggota Dibatasi dan dari notifikasi keamanan)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/auth/forgot_otp_screen.dart</code></td>
+              <td><a href="auth/forgot-otp.html">Lupa Password: Kode Pemulihan</a> <code>auth/forgot-otp.html</code></td>
+              <td><code>/forgot/otp</code> (opsional <code>?challenge=&lt;id&gt;</code> dari email reset pengurus)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/auth/forgot_password_screen.dart</code></td>
+              <td><a href="auth/forgot-password.html">Lupa Password: Email</a> <code>auth/forgot-password.html</code></td>
+              <td><code>/forgot</code></td>
+            </tr>
+            <tr>
+              <td><code>lib/features/auth/login_screen.dart</code></td>
+              <td><a href="auth/login.html">Masuk</a> <code>auth/login.html</code></td>
+              <td><code>/login</code></td>
+            </tr>
+            <tr>
+              <td><code>lib/features/auth/otp_screen.dart</code></td>
+              <td><a href="auth/otp.html">Daftar Alumni: Verifikasi OTP</a> <code>auth/otp.html</code></td>
+              <td><code>/register/otp</code> (opsional <code>?challenge=&lt;id&gt;</code>)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/auth/register_screen.dart</code></td>
+              <td><a href="auth/register.html">Daftar Alumni: Data Diri</a> <code>auth/register.html</code></td>
+              <td><code>/register</code></td>
+            </tr>
+            <tr>
+              <td><code>lib/features/auth/reset_password_screen.dart</code></td>
+              <td><a href="auth/reset-password.html">Lupa Password: Password Baru</a> <code>auth/reset-password.html</code></td>
+              <td><code>/forgot/reset</code></td>
+            </tr>
+            <tr>
+              <td><code>lib/features/chat/chat_info_screen.dart</code></td>
+              <td><a href="jejaring/chat-info.html">Info Percakapan</a> <code>jejaring/chat-info.html</code></td>
+              <td><code>/chat/:roomId/info</code> (navigator akar)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/chat/chat_invitations_screen.dart</code></td>
+              <td><a href="jejaring/chat-invitations.html">Undangan Grup</a> <code>jejaring/chat-invitations.html</code></td>
+              <td><code>/chat/invitations</code> (dari tombol "Undangan (N)" di tab Pesan Grup)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/chat/chat_room_screen.dart</code></td>
+              <td><a href="jejaring/chat-room.html">Percakapan (chat room)</a> <code>jejaring/chat-room.html</code></td>
+              <td><code>/chat/:roomId</code> (navigator akar)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/chat/new_group_screen.dart</code></td>
+              <td><a href="jejaring/new-group.html">Grup Baru</a> <code>jejaring/new-group.html</code></td>
+              <td><code>/chat/new-group</code> (dari "Buat grup" di tab Pesan Grup; ditolak router bila status akun tidak aktif)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/events/event_detail_screen.dart</code></td>
+              <td><a href="event/event-detail.html">Detail Event</a> <code>event/event-detail.html</code></td>
+              <td><code>/events/:eventId</code> (navigator akar, tanpa navigasi bawah)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/events/events_screen.dart</code></td>
+              <td><a href="event/events.html">Daftar Event</a> <code>event/events.html</code></td>
+              <td><code>/events</code> (tab Event di AppShell, StatefulShellBranch)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/events/reservation_screen.dart</code></td>
+              <td><a href="event/reservation.html">Konfirmasi Pendaftaran</a> <code>event/reservation.html</code></td>
+              <td>Tanpa rute go_router: <code>MaterialPageRoute</code> dari Detail Event (<code>/events/:eventId</code>) untuk event berbayar</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/home/home_screen.dart</code></td>
+              <td><a href="beranda/home.html">Beranda</a> <code>beranda/home.html</code></td>
+              <td><code>/home</code> (tab Beranda, StatefulShellRoute)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/kta/kta_screen.dart</code></td>
+              <td><a href="kta/kta.html">Kartu Tanda Anggota</a> <code>kta/kta.html</code></td>
+              <td><code>/kta</code> (tab KTA di AppShell)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/legal/legal_page_screen.dart</code></td>
+              <td><a href="beranda/legal-page.html">Halaman legal dan informasi</a> <code>beranda/legal-page.html</code></td>
+              <td><code>/legal/:slug</code> (terbuka untuk semua status, juga sebelum login)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/network/blocked_users_screen.dart</code></td>
+              <td><a href="jejaring/blocked-users.html">Pengguna Diblokir</a> <code>jejaring/blocked-users.html</code><br><span class="index-table__also">Juga di: <a href="akun/blocked-users.html">akun/blocked-users.html</a></span></td>
+              <td><code>/account/blocked</code> (navigator akar)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/network/member_profile_screen.dart</code></td>
+              <td><a href="jejaring/member-profile.html">Profil Alumni</a> <code>jejaring/member-profile.html</code></td>
+              <td><code>/network/members/:userId</code> (navigator akar, di luar AppShell)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/network/my_reports_screen.dart</code></td>
+              <td><a href="jejaring/my-reports.html">Laporan Saya</a> <code>jejaring/my-reports.html</code><br><span class="index-table__also">Juga di: <a href="akun/my-reports.html">akun/my-reports.html</a></span></td>
+              <td><code>/account/reports</code> (navigator akar; tujuan snackbar "Lihat" setelah melapor dan notifikasi hasil moderasi)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/network/network_screen.dart</code></td>
+              <td><a href="jejaring/network.html">Jejaring: direktori alumni</a> <code>jejaring/network.html</code><br><span class="index-table__also">Juga di: <a href="jejaring/chat-list.html">jejaring/chat-list.html</a></span></td>
+              <td><code>/network</code> (tab Jejaring di AppShell, tab pertama TabBar)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/news/news_detail_screen.dart</code></td>
+              <td><a href="beranda/news-detail.html">Detail Berita</a> <code>beranda/news-detail.html</code></td>
+              <td><code>/news/:slug</code> (di luar cangkang tab)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/news/news_list_screen.dart</code></td>
+              <td><a href="beranda/news-list.html">Berita</a> <code>beranda/news-list.html</code></td>
+              <td><code>/news</code> (di luar cangkang tab, tanpa navigasi bawah)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/notifications/notification_open_screen.dart</code></td>
+              <td><a href="beranda/notification-open.html">Notifikasi (gerbang ketukan push)</a> <code>beranda/notification-open.html</code></td>
+              <td><code>/notifications/:notificationId</code> (ketukan notifikasi push; login dulu bila belum masuk)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/notifications/notifications_screen.dart</code></td>
+              <td><a href="beranda/notifications.html">Notifikasi</a> <code>beranda/notifications.html</code></td>
+              <td><code>/notifications</code> (di luar cangkang tab; dibuka dari lonceng dan akses cepat Beranda, menu Akun)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/onboarding/onboarding_fees_screen.dart</code></td>
+              <td><a href="auth/onboarding-fees.html">Daftar Alumni: Biaya KTA</a> <code>auth/onboarding-fees.html</code></td>
+              <td><code>/onboarding/fees</code></td>
+            </tr>
+            <tr>
+              <td><code>lib/features/payments/new_payment_screen.dart</code></td>
+              <td><a href="kta/new-payment.html">Pembayaran (buat instruksi iuran)</a> <code>kta/new-payment.html</code></td>
+              <td><code>/payments/new/:type</code> (<code>registration</code> | <code>renewal</code>; rute mutasi saja)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/payments/payment_detail_screen.dart</code></td>
+              <td><a href="kta/payment-detail.html">Status Pembayaran</a> <code>kta/payment-detail.html</code></td>
+              <td><code>/payments/:paymentId</code> (deep link; juga tujuan pushReplacement dari <code>/payments/new/:type</code>)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/payments/payments_screen.dart</code></td>
+              <td><a href="kta/payments.html">Riwayat Pembayaran</a> <code>kta/payments.html</code></td>
+              <td><code>/payments</code> (dari Akun; kembali ke <code>/account</code> bila tidak ada halaman sebelumnya)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/payments/renewal_screen.dart</code></td>
+              <td><a href="kta/renewal.html">Perpanjang KTA</a> <code>kta/renewal.html</code></td>
+              <td><code>/renewal</code> (rute awal anggota expired; dari KTA "Perpanjang"; kembali ke <code>/kta</code>)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/status/deletion_status_screen.dart</code></td>
+              <td><a href="auth/deletion-status.html">Portal Status Akun (Penghapusan)</a> <code>auth/deletion-status.html</code></td>
+              <td><code>/deletion-status</code></td>
+            </tr>
+            <tr>
+              <td><code>lib/features/status/restricted_screen.dart</code></td>
+              <td><a href="auth/restricted.html">Portal Akun Dibatasi</a> <code>auth/restricted.html</code></td>
+              <td><code>/restricted</code></td>
+            </tr>
+            <tr>
+              <td><code>lib/features/system/maintenance_screen.dart</code></td>
+              <td><a href="auth/maintenance.html">Pemeliharaan</a> <code>auth/maintenance.html</code></td>
+              <td><code>/maintenance</code> (opsional <code>?from=</code>)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/system/not_found_screen.dart</code></td>
+              <td><a href="auth/not-found.html">Halaman Tidak Ditemukan</a> <code>auth/not-found.html</code></td>
+              <td>Rute tidak dikenal (errorBuilder GoRouter), mis. tautan lama</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/system/splash_screen.dart</code></td>
+              <td><a href="auth/splash.html">Splash</a> <code>auth/splash.html</code></td>
+              <td><code>/splash</code></td>
+            </tr>
+            <tr>
+              <td><code>lib/features/system/update_required_screen.dart</code></td>
+              <td><a href="auth/update-required.html">Wajib Update</a> <code>auth/update-required.html</code></td>
+              <td><code>/update-required</code></td>
+            </tr>
+            <tr>
+              <td><code>lib/features/tickets/ticket_detail_screen.dart</code></td>
+              <td><a href="event/ticket-detail.html">Detail Tiket</a> <code>event/ticket-detail.html</code></td>
+              <td><code>/tickets/:ticketId</code> (layar penuh, kembali ke <code>/tickets</code>)</td>
+            </tr>
+            <tr>
+              <td><code>lib/features/tickets/tickets_screen.dart</code></td>
+              <td><a href="event/tickets.html">Tiket Saya</a> <code>event/tickets.html</code></td>
+              <td><code>/tickets</code> (layar penuh di atas shell, kembali ke <code>/home</code> bila tidak ada riwayat)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <h3 class="index-subtitle">Halaman tambahan (bukan berkas <code>*_screen.dart</code>)</h3>
+      <ul class="index-extras">
+        <li><a href="auth/config-error.html">Galat Konfigurasi Build</a> <code>auth/config-error.html</code>: <code>lib/features/system/config_error_app.dart</code> (ConfigErrorApp)</li>
+        <li><a href="jejaring/chat-list.html">Jejaring: tab Pesan dan Pesan Grup</a> <code>jejaring/chat-list.html</code>: <code>lib/features/chat/chat_list_view.dart</code> (ChatRoomListView, ChatRoomTile, _GroupActions) di dalam <code>lib/features/network/network_screen.dart</code> (NetworkScreen)</li>
+        <li><a href="jejaring/report-sheet.html">Lembar Laporan (pengguna, pesan, grup)</a> <code>jejaring/report-sheet.html</code>: <code>lib/features/network/report_sheet.dart</code> (showReportSheet, ReportSheet, UserReportTarget, MessageReportTarget, RoomReportTarget)</li>
+        <li><a href="jejaring/member-picker.html">Pemilih Alumni (undang ke grup)</a> <code>jejaring/member-picker.html</code>: <code>lib/features/chat/member_picker.dart</code> (showMemberPicker, MemberPickerPage), memakai <code>../network/widgets/directory_member_card.dart</code> dan <code>../network/directory_tab.dart</code> (PagedFooter)</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
