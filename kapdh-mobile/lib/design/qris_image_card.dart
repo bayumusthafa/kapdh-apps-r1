@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../app/theme/kapdh_focus.dart';
+import '../app/theme/kapdh_palette.dart';
+import '../app/theme/kapdh_theme.dart';
 import '../app/theme/kapdh_tokens.dart';
 import 'kapdh_icons.dart';
 
@@ -52,9 +55,10 @@ class _QrisImageCardState extends State<QrisImageCard> with _QrisImageLoad<QrisI
       width: double.infinity,
       padding: const EdgeInsets.all(KapdhSpace.s4),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: KapdhColors.divider),
+        color: context.kc.surface,
+        border: Border.all(color: context.kc.cardBorder),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
+        boxShadow: context.kc.shadowSm,
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -75,12 +79,17 @@ class _QrisImageCardState extends State<QrisImageCard> with _QrisImageLoad<QrisI
                 label: 'Kode QRIS ${widget.merchantName}, ketuk untuk memperbesar',
                 excludeSemantics: true,
                 onTap: _open,
-                child: Material(
-                  color: KapdhColors.surface,
-                  child: InkWell(
-                    key: const ValueKey('qris-image'),
-                    onTap: _open,
-                    child: SizedBox.square(dimension: side, child: buildQrisImage()),
+                // [v2] Cincin fokus 3 px saat gambar terfokus keyboard/akses saklar (WCAG 2.4.7, 1.4.11).
+                child: KapdhFocusRing(
+                  radius: BorderRadius.zero,
+                  builder: (onFocusChange) => Material(
+                    color: KapdhColors.neutral0,
+                    child: InkWell(
+                      key: const ValueKey('qris-image'),
+                      onTap: _open,
+                      onFocusChange: onFocusChange,
+                      child: SizedBox.square(dimension: side, child: buildQrisImage()),
+                    ),
                   ),
                 ),
               ),
@@ -89,11 +98,11 @@ class _QrisImageCardState extends State<QrisImageCard> with _QrisImageLoad<QrisI
                 key: const ValueKey('qris-enlarge'),
                 onPressed: _open,
                 style: TextButton.styleFrom(
-                  foregroundColor: KapdhColors.primary,
+                  foregroundColor: context.kc.primary,
                   minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
-                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  textStyle: KapdhTheme.font(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
-                icon: const Icon(KapdhIcons.zoomIn, size: 18),
+                icon: const Icon(KapdhIcons.zoomIn, size: KapdhIconSize.button),
                 label: const Text('Perbesar QRIS'),
               ),
             ],
@@ -104,8 +113,9 @@ class _QrisImageCardState extends State<QrisImageCard> with _QrisImageLoad<QrisI
   }
 }
 
-/// Penampil QRIS layar penuh berlatar putih (ADR-026): gambar dapat diperbesar dan digeser tanpa dihaluskan,
-/// tombol "Tutup", dan petunjuk memindai karena kamera ponsel yang sama tidak dapat memindai layarnya sendiri.
+/// Penampil QRIS layar penuh di atas permukaan tema dengan gambar beralas putih tetap (ADR-026): gambar dapat
+/// diperbesar dan digeser tanpa dihaluskan, tombol "Tutup", dan petunjuk memindai karena kamera ponsel yang sama
+/// tidak dapat memindai layarnya sendiri.
 class QrisImageViewer extends StatefulWidget {
   const QrisImageViewer({super.key, required this.image, required this.merchantName});
 
@@ -146,7 +156,7 @@ class _QrisImageViewerState extends State<QrisImageViewer> with _QrisImageLoad<Q
   Widget build(BuildContext context) {
     return Dialog.fullscreen(
       key: const ValueKey('qris-viewer'),
-      backgroundColor: KapdhColors.surface,
+      backgroundColor: context.kc.surface,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -162,10 +172,10 @@ class _QrisImageViewerState extends State<QrisImageViewer> with _QrisImageLoad<Q
                         'QRIS ${widget.merchantName}',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: KapdhFontSize.h3,
                           fontWeight: FontWeight.w600,
-                          color: KapdhColors.text,
+                          color: context.kc.text,
                         ),
                       ),
                     ),
@@ -175,7 +185,7 @@ class _QrisImageViewerState extends State<QrisImageViewer> with _QrisImageLoad<Q
                     key: const ValueKey('qris-viewer-close'),
                     onPressed: () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
-                      foregroundColor: KapdhColors.primary,
+                      foregroundColor: context.kc.primary,
                       minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
                     ),
                     icon: const Icon(KapdhIcons.close),
@@ -201,18 +211,23 @@ class _QrisImageViewerState extends State<QrisImageViewer> with _QrisImageLoad<Q
                           child: Semantics(
                             image: true,
                             label: 'Kode QRIS ${widget.merchantName}',
-                            child: buildQrisImage(),
+                            // Alas putih tetap (juga di mode gelap) dengan zona tenang agar QRIS berlatar transparan
+                            // tetap terbaca dan dapat dipindai dari perangkat lain.
+                            child: ColoredBox(
+                              color: KapdhColors.neutral0,
+                              child: Padding(padding: const EdgeInsets.all(KapdhSpace.s3), child: buildQrisImage()),
+                            ),
                           ),
                         ),
                       ),
                     ),
             ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s2, KapdhSpace.s5, KapdhSpace.s5),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s2, KapdhSpace.s5, KapdhSpace.s5),
               child: Text(
                 QrisImageViewer.scanHint,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
+                style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: context.kc.textMuted),
               ),
             ),
           ],
@@ -263,7 +278,7 @@ mixin _QrisImageLoad<T extends StatefulWidget> on State<T> {
     frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
       if (wasSynchronouslyLoaded || frame != null) return child;
       // Tempat kosong statis (tanpa animasi) selama gambar dimuat.
-      return const Center(child: Icon(KapdhIcons.qrCode2, size: 48, color: KapdhColors.neutral300));
+      return Center(child: Icon(KapdhIcons.qrCode2, size: 48, color: context.kc.neutral300));
     },
     errorBuilder: (context, error, stackTrace) {
       _markFailed();
@@ -286,28 +301,28 @@ class _QrisLoadError extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(KapdhIcons.qrCode2, size: 40, color: KapdhColors.neutral300),
+        Icon(KapdhIcons.qrCode2, size: 40, color: context.kc.neutral300),
         const SizedBox(height: KapdhSpace.s2),
         Semantics(
           liveRegion: true,
-          child: const Text(
+          child: Text(
             'Gambar QRIS belum dapat dimuat',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600, color: KapdhColors.text),
+            style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600, color: context.kc.text),
           ),
         ),
         const SizedBox(height: KapdhSpace.s1),
-        const Text(
+        Text(
           'Periksa koneksi lalu muat ulang.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
         ),
         const SizedBox(height: KapdhSpace.s2),
         TextButton.icon(
           key: const ValueKey('qris-retry'),
           onPressed: retrying ? null : onRetry,
           style: TextButton.styleFrom(
-            foregroundColor: KapdhColors.primary,
+            foregroundColor: context.kc.primary,
             minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
           ),
           icon: const Icon(KapdhIcons.refresh),

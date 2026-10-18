@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
 import '../../app/routes.dart';
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/api/error_presenter.dart';
@@ -147,7 +148,12 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
 
   void _scrollToBottom() {
     if (!_scroll.hasClients) return;
-    unawaited(_scroll.animateTo(0, duration: const Duration(milliseconds: 250), curve: Curves.easeOut));
+    // [v2] Token motion base/easeOut; reduce motion = lompat langsung tanpa animasi.
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      _scroll.jumpTo(0);
+      return;
+    }
+    unawaited(_scroll.animateTo(0, duration: KapdhMotion.base, curve: KapdhMotion.easeOut));
   }
 
   void _schedulePrune(ChatRoomViewState state) {
@@ -282,7 +288,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                 ),
               if (mine && !deleted)
                 ListTile(
-                  leading: const Icon(KapdhIcons.deleteOutline, color: KapdhColors.danger),
+                  leading: Icon(KapdhIcons.deleteOutline, color: context.kc.danger),
                   title: const Text('Hapus pesan'),
                   onTap: () => Navigator.of(sheetContext).pop('delete'),
                 ),
@@ -363,7 +369,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                 ),
               if (entry.status != OutgoingStatus.sending)
                 ListTile(
-                  leading: const Icon(KapdhIcons.deleteOutline, color: KapdhColors.danger),
+                  leading: Icon(KapdhIcons.deleteOutline, color: context.kc.danger),
                   title: const Text('Buang pesan'),
                   onTap: () => Navigator.of(sheetContext).pop('discard'),
                 ),
@@ -525,10 +531,10 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                 fit: BoxFit.cover,
                 // "Foto" sudah ada di label gelembung pesan keluar.
                 excludeFromSemantics: true,
-                errorBuilder: (_, _, _) => const SizedBox(
+                errorBuilder: (_, _, _) => SizedBox(
                   width: ChatImageView.maxWidth,
                   height: 120,
-                  child: ColoredBox(color: KapdhColors.neutral100, child: Icon(KapdhIcons.imageOutlined)),
+                  child: ColoredBox(color: context.kc.neutral100, child: const Icon(KapdhIcons.imageOutlined)),
                 ),
               ),
             ),
@@ -545,7 +551,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                 textAlign: TextAlign.end,
                 style: TextStyle(
                   fontSize: KapdhFontSize.overline,
-                  color: entry.status == OutgoingStatus.failed ? KapdhColors.danger : KapdhColors.warning,
+                  color: entry.status == OutgoingStatus.failed ? context.kc.danger : context.kc.warning,
                 ),
               ),
             ),
@@ -622,7 +628,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
             ? 'Awal percakapan'
             : 'Anda melihat pesan sejak bergabung pada ${formatDateTime(visibleFrom)}.',
         textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+        style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
       ),
     );
   }
@@ -672,9 +678,9 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
-          color: KapdhColors.surface,
-          border: Border(top: BorderSide(color: KapdhColors.divider)),
+        decoration: BoxDecoration(
+          color: context.kc.surface,
+          border: Border(top: BorderSide(color: context.kc.divider)),
         ),
         padding: const EdgeInsets.fromLTRB(KapdhSpace.s2, KapdhSpace.s2, KapdhSpace.s2, KapdhSpace.s2),
         child: Column(
@@ -726,8 +732,8 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                 IconButton.filled(
                   tooltip: 'Kirim',
                   style: IconButton.styleFrom(
-                    backgroundColor: KapdhColors.primary,
-                    foregroundColor: KapdhColors.onPrimary,
+                    backgroundColor: context.kc.primary,
+                    foregroundColor: context.kc.onPrimary,
                     minimumSize: const Size(48, 48),
                   ),
                   icon: const Icon(KapdhIcons.send),
@@ -785,7 +791,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                        style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
                       ),
                   ],
                 ),
@@ -866,7 +872,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
     final banner = AppBannerScope.of(context);
 
     return Scaffold(
-      backgroundColor: KapdhColors.background,
+      backgroundColor: context.kc.background,
       appBar: _appBar(state),
       body: Column(
         children: [
@@ -912,12 +918,31 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                   Positioned(
                     bottom: KapdhSpace.s3,
                     right: KapdhSpace.s3,
-                    child: FloatingActionButton.small(
-                      tooltip: 'Pesan baru, gulir ke bawah',
-                      backgroundColor: KapdhColors.primary,
-                      foregroundColor: KapdhColors.onPrimary,
-                      onPressed: _scrollToBottom,
-                      child: const Icon(KapdhIcons.arrowDownward),
+                    // [v2] Bayangan --shadow-md dari palet (terang/gelap) menggantikan elevasi Material; warna dan
+                    // radius md mengikuti tema FAB. Bayangan dipasang pada kotak 40 (ukuran visual FAB.small) di
+                    // belakang tombol, bukan membungkusnya: tap target padded membuat FAB berukuran 48 sehingga
+                    // bayangan pembungkus akan tampak sebagai pita 4 px di luar tombol.
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(KapdhRadius.md),
+                            boxShadow: context.kc.shadowMd,
+                          ),
+                          child: const SizedBox.square(dimension: 40),
+                        ),
+                        FloatingActionButton.small(
+                          tooltip: 'Pesan baru, gulir ke bawah',
+                          elevation: 0,
+                          focusElevation: 0,
+                          hoverElevation: 0,
+                          highlightElevation: 0,
+                          disabledElevation: 0,
+                          onPressed: _scrollToBottom,
+                          child: const Icon(KapdhIcons.arrowDownward),
+                        ),
+                      ],
                     ),
                   ),
               ],
@@ -942,16 +967,16 @@ class _ConnectionNotice extends StatelessWidget {
       liveRegion: true,
       child: Container(
         width: double.infinity,
-        color: KapdhColors.warningBg,
+        color: context.kc.warningBg,
         padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s2),
         child: Row(
           children: [
-            const Icon(KapdhIcons.syncProblem, size: 18, color: KapdhColors.warning),
+            Icon(KapdhIcons.syncProblem, size: 18, color: context.kc.warning),
             const SizedBox(width: KapdhSpace.s2),
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.warning),
+                style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.warning),
               ),
             ),
             if (onRetry != null) TextButton(onPressed: onRetry, child: const Text('Coba lagi')),
@@ -975,9 +1000,9 @@ class _NoticeBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
-          color: KapdhColors.surface,
-          border: Border(top: BorderSide(color: KapdhColors.divider)),
+        decoration: BoxDecoration(
+          color: context.kc.surface,
+          border: Border(top: BorderSide(color: context.kc.divider)),
         ),
         padding: const EdgeInsets.all(KapdhSpace.s3),
         child: InfoBox(

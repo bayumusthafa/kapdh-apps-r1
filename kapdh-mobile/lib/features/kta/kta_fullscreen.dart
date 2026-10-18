@@ -8,20 +8,26 @@ import '../../design/design.dart';
 import '../../app/theme/kapdh_focus.dart';
 
 /// Membuka pratinjau KTA layar penuh landscape.
-Future<void> showKtaFullScreen(BuildContext context, KtaCardData data) =>
-    Navigator.of(context, rootNavigator: true).push(
-      PageRouteBuilder<void>(
-        opaque: true,
-        fullscreenDialog: true,
-        transitionDuration: const Duration(milliseconds: 250),
-        reverseTransitionDuration: const Duration(milliseconds: 200),
-        pageBuilder: (_, _, _) => KtaFullScreen(data: data),
-        transitionsBuilder: (_, animation, _, child) => FadeTransition(
-          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-          child: child,
-        ),
+Future<void> showKtaFullScreen(BuildContext context, KtaCardData data) {
+  // [v2] Durasi/kurva dari token motion; reduce motion (dibaca saat push) meniadakan fade.
+  final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+  return Navigator.of(context, rootNavigator: true).push(
+    PageRouteBuilder<void>(
+      opaque: true,
+      fullscreenDialog: true,
+      transitionDuration: reduceMotion ? Duration.zero : KapdhMotion.base,
+      // [v2] Dulu 200 ms; tidak ada token 200, pakai fast (150 ms).
+      reverseTransitionDuration: reduceMotion ? Duration.zero : KapdhMotion.fast,
+      pageBuilder: (_, _, _) => KtaFullScreen(data: data),
+      // [v2] drive(CurveTween) alih-alih CurvedAnimation: builder dipanggil ulang tiap rebuild dan CurvedAnimation
+      // baru menambah status listener ke animasi rute tanpa pernah dilepas.
+      transitionsBuilder: (_, animation, _, child) => FadeTransition(
+        opacity: animation.drive(CurveTween(curve: KapdhMotion.easeOut)),
+        child: child,
       ),
-    );
+    ),
+  );
+}
 
 /// Pratinjau KTA layar penuh: layar diputar ke landscape dan bilah sistem disembunyikan selama tampil, kartu digambar
 /// dengan proporsi KTP (ISO/IEC 7810 ID-1, 85,6 x 54 mm) sebesar mungkin sehingga QR lebih mudah dipindai petugas.

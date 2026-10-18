@@ -36,6 +36,46 @@ void main() {
       expect(completed, '482913');
     });
 
+    Opacity caretOpacity(WidgetTester tester) => tester.widget<Opacity>(
+      find.ancestor(
+        of: find.byWidgetPredicate(
+          (w) => w is Container && w.constraints == const BoxConstraints.tightFor(width: 2, height: 24),
+        ),
+        matching: find.byType(Opacity),
+      ),
+    );
+
+    testWidgets('kursor kotak aktif berkedip 500 ms (mockup kapdh-caret 1 s steps(1))', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      await pumpDesign(tester, OtpBoxes(controller: controller, autofocus: true));
+      await tester.pumpAndSettle();
+      expect(caretOpacity(tester).opacity, 1);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(caretOpacity(tester).opacity, 0);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(caretOpacity(tester).opacity, 1);
+    });
+
+    testWidgets('kursor statis bila reduce motion', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      await pumpDesign(
+        tester,
+        Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: OtpBoxes(controller: controller, autofocus: true),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(caretOpacity(tester).opacity, 1);
+      }
+    });
+
     testWidgets('tempel teks berisi kode: hanya digit, maksimal enam', (tester) async {
       final controller = TextEditingController();
       addTearDown(controller.dispose);
@@ -154,12 +194,12 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('kotak aktif berwarna emas saat fokus', (tester) async {
+    testWidgets('kotak aktif bergaris primary dengan halo saat fokus (v2, dulu emas)', (tester) async {
       final controller = TextEditingController(text: '48');
       addTearDown(controller.dispose);
       await pumpDesign(tester, OtpBoxes(controller: controller, autofocus: true));
       await tester.pump();
-      expect(borderOfBox(tester, 2), KapdhColors.accent);
+      expect(borderOfBox(tester, 2), KapdhColors.primary);
     });
 
     testWidgets('berlabel untuk pembaca layar dan tidak meluap pada teks 200 %', (tester) async {

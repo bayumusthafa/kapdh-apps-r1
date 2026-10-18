@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 
-import '../../../app/theme/kapdh_tokens.dart';
+import '../../../app/theme/kapdh_palette.dart';
 import '../../home/shared/links.dart';
 import '../../home/shared/remote_image.dart';
 
@@ -20,19 +20,24 @@ class PostBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final images = ref.watch(remoteImageProviderFactoryProvider);
+    // Warna CSS diambil dari palet aktif agar judul, tautan, dan kutipan tetap terbaca di mode gelap (sama dengan
+    // _ExternalAnchor dan mockup news-detail: var(--color-primary)).
+    final p = context.kc;
+    String hex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
     return HtmlWidget(
       html,
-      textStyle: const TextStyle(fontSize: 15, height: 1.6, color: KapdhColors.text),
+      textStyle: TextStyle(fontSize: 15, height: 1.6, color: p.text),
       factoryBuilder: () => _ContentWidgetFactory(images),
       customStylesBuilder: (element) => switch (element.localName) {
-        'a' => {'color': '#1A4B17', 'text-decoration': 'underline', 'font-weight': '600'},
+        'a' => {'color': hex(p.primary), 'text-decoration': 'underline', 'font-weight': '600'},
         'blockquote' => {
+          // Garis kiri tetap (hiasan, mockup --color-green-500).
           'border-left': '3px solid #3F9A38',
           'padding-left': '12px',
           'margin': '8px 0',
-          'color': '#3F4A3E',
+          'color': hex(p.neutral),
         },
-        'h2' || 'h3' || 'h4' => {'color': '#1A4B17'},
+        'h2' || 'h3' || 'h4' => {'color': hex(p.primary)},
         _ => null,
       },
       customWidgetBuilder: (element) {
@@ -99,10 +104,10 @@ class _ExternalAnchor extends StatelessWidget {
               ),
             ],
           ),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 15,
             height: 1.6,
-            color: KapdhColors.primary,
+            color: context.kc.primary,
             fontWeight: FontWeight.w600,
             decoration: TextDecoration.underline,
           ),

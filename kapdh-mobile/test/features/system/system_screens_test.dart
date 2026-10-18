@@ -10,6 +10,7 @@ import 'package:kapdh_mobile/core/session/me_snapshot_store.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/core/storage/token_store.dart';
 import 'package:kapdh_mobile/design/design.dart';
+import 'package:kapdh_mobile/features/home/widgets/home_widgets.dart';
 import 'package:kapdh_mobile/features/system/maintenance_screen.dart';
 import 'package:kapdh_mobile/features/system/splash_screen.dart';
 import 'package:kapdh_mobile/features/system/update_required_screen.dart';
@@ -57,7 +58,8 @@ void main() {
       expect(app.container.read(sessionProvider).isOffline, isTrue);
       expect(find.textContaining('Tersinkron 12 Okt 2026, 09.00 WIB'), findsOneWidget);
       expect(find.byType(OfflineBanner), findsOneWidget);
-      final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+      // v2: kepala Beranda adalah pita mesh (HomeHeader) di slot app bar.
+      final appBarBottom = tester.getBottomLeft(find.byType(HomeHeader)).dy;
       expect(tester.getTopLeft(find.byType(OfflineBanner)).dy, closeTo(appBarBottom, 1));
       expect(
         tester.getBottomLeft(find.byType(OfflineBanner)).dy,
@@ -195,7 +197,8 @@ void main() {
       expect(app.location, '/home');
       expect(find.byType(MaintenanceBanner), findsOneWidget);
       expect(find.textContaining('Perubahan data ditunda sampai sekitar 12 Okt 2026, 16.00 WIB'), findsOneWidget);
-      final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+      // v2: kepala Beranda adalah pita mesh (HomeHeader) di slot app bar.
+      final appBarBottom = tester.getBottomLeft(find.byType(HomeHeader)).dy;
       expect(tester.getTopLeft(find.byType(MaintenanceBanner)).dy, closeTo(appBarBottom, 1));
 
       // Alur khusus mutasi tetap ke layar maintenance (pembuatan instruksi perpanjangan; layar /renewal sendiri

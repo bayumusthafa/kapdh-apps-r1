@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/redirect.dart' show homeFor;
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
@@ -301,7 +302,7 @@ class _ForgotOtpScreenState extends ConsumerState<ForgotOtpScreen> {
     onBack: _goHome,
     body: AuthResultPanel(
       icon: KapdhIcons.lockReset,
-      iconColor: KapdhColors.primary,
+      iconColor: context.kc.primary,
       title: 'Tautan pemulihan password',
       message:
           'Tautan ini untuk membuat password baru, tetapi Anda masih masuk di perangkat ini. Keluar dahulu untuk '
@@ -384,7 +385,7 @@ class _ForgotOtpScreenState extends ConsumerState<ForgotOtpScreen> {
                 const TextSpan(text: 'Bila akun dengan email '),
                 TextSpan(
                   text: email,
-                  style: const TextStyle(fontWeight: FontWeight.w600, color: KapdhColors.text),
+                  style: TextStyle(fontWeight: FontWeight.w600, color: context.kc.text),
                 ),
                 const TextSpan(
                   text: ' terdaftar dan aktif, kode 6 digit sudah dikirim ke email tersebut. Kode berlaku 10 menit.',

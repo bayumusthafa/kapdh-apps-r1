@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/format/formatters.dart';
@@ -64,54 +65,60 @@ class BlockedUsersScreen extends ConsumerWidget {
               return PagedFooter(state: state, onRetry: controller.loadMore, onLoadMore: controller.loadMore);
             }
             final member = state.items[index];
-            return Card(
-              margin: EdgeInsets.zero,
-              elevation: 0,
-              color: KapdhColors.surface,
-              shape: RoundedRectangleBorder(
+            return DecoratedBox(
+              decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(KapdhRadius.md),
-                side: const BorderSide(color: KapdhColors.divider),
+                boxShadow: context.kc.shadowSm,
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(KapdhSpace.s3),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        AlumniAvatar(name: member.fullName, url: member.avatarUrl, size: 44),
-                        const SizedBox(width: KapdhSpace.s3),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(member.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                              Text(
-                                'Diblokir sejak ${formatDate(member.blockedAt)}',
-                                style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
-                              ),
-                            ],
+              child: Card(
+                margin: EdgeInsets.zero,
+                elevation: 0,
+                color: context.kc.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(KapdhRadius.md),
+                  side: BorderSide(color: context.kc.cardBorder),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(KapdhSpace.s3),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          AlumniAvatar(name: member.fullName, url: member.avatarUrl, size: 44),
+                          const SizedBox(width: KapdhSpace.s3),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(member.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                Text(
+                                  'Diblokir sejak ${formatDate(member.blockedAt)}',
+                                  style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    // Tombol di baris sendiri agar tidak meluap saat teks diperbesar 200 % (N-11).
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () async {
-                          final done = await unblockWithConfirmation(
-                            context,
-                            ref,
-                            userId: member.userId,
-                            name: member.fullName,
-                          );
-                          if (done) controller.removeWhere((m) => m.userId == member.userId);
-                        },
-                        child: const Text('Buka blokir'),
+                        ],
                       ),
-                    ),
-                  ],
+                      // Tombol di baris sendiri agar tidak meluap saat teks diperbesar 200 % (N-11).
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () async {
+                            final done = await unblockWithConfirmation(
+                              context,
+                              ref,
+                              userId: member.userId,
+                              name: member.fullName,
+                            );
+                            if (done) controller.removeWhere((m) => m.userId == member.userId);
+                          },
+                          child: const Text('Buka blokir'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../app/theme/kapdh_palette.dart';
 import '../app/theme/kapdh_tokens.dart';
 import 'kapdh_icons.dart';
 
@@ -173,28 +174,32 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ikon sebagai WidgetSpan: label membungkus wajar saat teks diperbesar 200 % tanpa bergantung lebar induk.
+    final fg = context.kc.resolve(style.foreground);
+    // Ikon [KapdhIconSize.xs] 14 tetap (tidak ikut textScaler, mockup .status-badge .ic = --ic-xs); label membungkus
+    // di kolom kanan lewat Flexible longgar, aman di lebar tak terbatas karena mainAxisSize.min.
     return Semantics(
       container: true,
       label: 'Status: ${style.label}',
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: KapdhSpace.s1),
-        decoration: BoxDecoration(color: style.background, borderRadius: BorderRadius.circular(KapdhRadius.pill)),
-        child: Text.rich(
-          TextSpan(
-            children: [
-              WidgetSpan(
-                alignment: PlaceholderAlignment.middle,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: Icon(style.icon, size: 14, color: style.foreground),
-                ),
+        decoration: BoxDecoration(
+          color: context.kc.resolve(style.background),
+          borderRadius: BorderRadius.circular(KapdhRadius.pill),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(style.icon, size: KapdhIconSize.xs, color: fg),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                style.label,
+                style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: KapdhFontSize.caption),
               ),
-              TextSpan(text: style.label),
-            ],
-          ),
-          style: TextStyle(color: style.foreground, fontWeight: FontWeight.w600, fontSize: KapdhFontSize.caption),
+            ),
+          ],
         ),
       ),
     );

@@ -8,6 +8,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../app/redirect.dart';
 import '../../app/routes.dart';
+import '../../app/theme/kapdh_focus.dart';
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/api/error_presenter.dart';
@@ -137,11 +139,11 @@ class _TicketContent extends ConsumerWidget {
           OutlinedButton.icon(
             key: const ValueKey('ticket-cancel'),
             onPressed: cancelling ? null : () => unawaited(_cancel(context, ref)),
+            // [v2] Garis danger lewat ringedSide: side di styleFrom menimpa garis fokus tema sehingga cincin hilang.
             style: OutlinedButton.styleFrom(
-              foregroundColor: KapdhColors.danger,
-              side: const BorderSide(color: KapdhColors.danger),
+              foregroundColor: context.kc.danger,
               minimumSize: const Size.fromHeight(KapdhSize.buttonHeight),
-            ),
+            ).copyWith(side: KapdhFocusTheme.ringedSide(context, BorderSide(color: context.kc.danger))),
             icon: cancelling
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(KapdhIcons.eventBusyOutlined),
@@ -458,8 +460,8 @@ class _EventHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(KapdhSpace.s3),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: KapdhColors.divider),
+        color: context.kc.surface,
+        border: Border.all(color: context.kc.divider),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
       ),
       child: Column(
@@ -510,18 +512,18 @@ class _EventHeader extends StatelessWidget {
           IconLine(
             icon: KapdhIcons.calendarTodayOutlined,
             text: formatEventSchedule(event.startsAt, event.endsAt, event.timezone),
-            color: KapdhColors.text,
+            color: context.kc.text,
             size: 13,
           ),
           if (event.locationName != null) ...[
             const SizedBox(height: KapdhSpace.s1),
-            IconLine(icon: KapdhIcons.placeOutlined, text: event.locationName!, color: KapdhColors.text, size: 13),
+            IconLine(icon: KapdhIcons.placeOutlined, text: event.locationName!, color: context.kc.text, size: 13),
           ],
           const SizedBox(height: KapdhSpace.s1),
           IconLine(
             icon: KapdhIcons.paymentsOutlined,
             text: free ? 'Gratis' : 'Total ${formatRupiah(ticket.total)} (1 orang)',
-            color: KapdhColors.text,
+            color: context.kc.text,
             size: 13,
           ),
           if (canOpenEvent)
@@ -552,8 +554,8 @@ class _TicketQr extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(KapdhSpace.s4),
         decoration: BoxDecoration(
-          color: KapdhColors.surface,
-          border: Border.all(color: KapdhColors.divider),
+          color: KapdhColors.neutral0,
+          border: Border.all(color: context.kc.divider),
           borderRadius: BorderRadius.circular(KapdhRadius.lg),
         ),
         child: QrImageView(
@@ -561,7 +563,7 @@ class _TicketQr extends StatelessWidget {
           data: data,
           size: 220,
           padding: EdgeInsets.zero,
-          backgroundColor: KapdhColors.surface,
+          backgroundColor: KapdhColors.neutral0,
           eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: KapdhColors.surfaceDark),
           dataModuleStyle: const QrDataModuleStyle(
             dataModuleShape: QrDataModuleShape.square,
@@ -592,23 +594,32 @@ class _PaymentCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(KapdhSpace.s4),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: KapdhColors.divider),
+        color: context.kc.surface,
+        border: Border.all(color: context.kc.divider),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Pembayaran',
-                  style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
+          // Wrap, bukan Row: pada teks besar lencana turun ke baris kedua dan membungkus, judul tidak terjepit.
+          // SizedBox selebar penuh agar spaceBetween menaruh lencana di kanan (Column start memberi batas longgar).
+          SizedBox(
+            width: double.infinity,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              runSpacing: KapdhSpace.s1,
+              children: [
+                Semantics(
+                  header: true,
+                  child: const Text(
+                    'Pembayaran',
+                    style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
+                  ),
                 ),
-              ),
-              StatusBadge(style),
-            ],
+                StatusBadge(style),
+              ],
+            ),
           ),
           const SizedBox(height: KapdhSpace.s3),
           _Row(label: 'Nominal', value: formatRupiah(payment.amount), emphasis: true),
@@ -647,26 +658,35 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Pada skala teks besar kolom label (sepertiga lebar kartu) terlalu sempit sehingga kata seperti 'Rekening'
+    // terpecah di tengah; label dan nilai lalu ditumpuk agar keduanya memakai lebar penuh.
+    final stacked = MediaQuery.textScalerOf(context).scale(13) > 13 * 1.3;
+    final valueStyle = TextStyle(fontSize: 13, fontWeight: emphasis ? FontWeight.w600 : FontWeight.w400);
     return Padding(
       padding: const EdgeInsets.only(bottom: KapdhSpace.s2),
       child: MergeSemantics(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Text(label, style: const TextStyle(fontSize: 13, color: KapdhColors.textMuted)),
-            ),
-            const SizedBox(width: KapdhSpace.s3),
-            Flexible(
-              flex: 2,
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
-                style: TextStyle(fontSize: 13, fontWeight: emphasis ? FontWeight.w600 : FontWeight.w400),
+        child: stacked
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: TextStyle(fontSize: 13, color: context.kc.textMuted)),
+                  const SizedBox(height: 2),
+                  Text(value, textAlign: TextAlign.start, style: valueStyle),
+                ],
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(label, style: TextStyle(fontSize: 13, color: context.kc.textMuted)),
+                  ),
+                  const SizedBox(width: KapdhSpace.s3),
+                  Flexible(
+                    flex: 2,
+                    child: Text(value, textAlign: TextAlign.right, style: valueStyle),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -687,16 +707,19 @@ class _RefundsCard extends StatelessWidget {
       key: const ValueKey('ticket-refunds'),
       padding: const EdgeInsets.all(KapdhSpace.s4),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: KapdhColors.divider),
+        color: context.kc.surface,
+        border: Border.all(color: context.kc.divider),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Refund',
-            style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
+          Semantics(
+            header: true,
+            child: const Text(
+              'Refund',
+              style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
+            ),
           ),
           const SizedBox(height: KapdhSpace.s3),
           for (final refund in refunds) ...[
@@ -713,19 +736,20 @@ class _RefundsCard extends StatelessWidget {
                         TicketRefundStatus.cancelled => 'Dicatat ulang atau dibatalkan bendahara',
                         _ when refund.dueAt != null => 'Paling lambat ${formatDate(refund.dueAt!)}',
                         _ => 'Diproses bendahara',
-                      }, style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted)),
+                      }, style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted)),
                     ],
                   ),
                 ),
-                StatusBadge(refundStatusStyle(refund.status)),
+                const SizedBox(width: KapdhSpace.s2),
+                Flexible(child: StatusBadge(refundStatusStyle(refund.status))),
               ],
             ),
             const SizedBox(height: KapdhSpace.s3),
           ],
           if (pending && paymentId != null) ...[
-            const Text(
+            Text(
               'Rekening tujuan refund diminta saat refund diproses. Isi atau ubah di halaman pembayaran.',
-              style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted, height: 1.45),
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted, height: 1.45),
             ),
             Align(
               alignment: Alignment.centerLeft,
@@ -813,7 +837,7 @@ class _CancelDialogState extends State<_CancelDialog> {
         TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Kembali')),
         TextButton(
           key: const ValueKey('cancel-confirm'),
-          style: TextButton.styleFrom(foregroundColor: KapdhColors.danger),
+          style: TextButton.styleFrom(foregroundColor: context.kc.danger),
           onPressed: () => Navigator.of(context).pop(_reason.text),
           child: Text(widget.ticket.status == TicketStatus.awaitingPayment ? 'Batalkan reservasi' : 'Batalkan tiket'),
         ),

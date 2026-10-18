@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/format/formatters.dart';
@@ -151,7 +152,7 @@ class _RenewalScreenState extends ConsumerState<RenewalScreen> {
               membership.effectiveStatus == EffectiveStatus.expired ? 'Berakhir' : 'Berlaku sampai',
               expires == null ? 'Belum aktif' : formatDate(expires),
               emphasis: true,
-              valueColor: membership.effectiveStatus == EffectiveStatus.expired ? KapdhColors.danger : null,
+              valueColor: membership.effectiveStatus == EffectiveStatus.expired ? context.kc.danger : null,
             ),
             if (opens != null)
               SummaryRow(

@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/app_shell.dart';
 import '../../app/redirect.dart';
 import '../../app/routes.dart';
@@ -42,6 +44,24 @@ class AccountScreen extends ConsumerStatefulWidget {
 
 class _AccountScreenState extends ConsumerState<AccountScreen> {
   bool _signingOut = false;
+
+  /// [v2] Piksel gulir isi untuk [BrandStatusBarFill]: pengisi status bar memudar masuk saat pita tergulir.
+  final _scrollOffset = ValueNotifier<double>(0);
+
+  @override
+  void dispose() {
+    _scrollOffset.dispose();
+    super.dispose();
+  }
+
+  bool _onScroll(ScrollNotification notification) {
+    // Hanya scroll view langsung (depth 0) dan vertikal; gulir bersarang tidak memengaruhi pengisi. Lewat notifikasi,
+    // bukan ScrollController, agar scroll view tetap primary (ketuk status bar iOS menggulir ke atas).
+    if (notification.depth == 0 && notification.metrics.axis == Axis.vertical) {
+      _scrollOffset.value = notification.metrics.pixels;
+    }
+    return false;
+  }
 
   Future<void> _signOut() async {
     // Keluar atas pilihan sendiri membuka login yang bersih (tanpa tujuan tertunda dari sesi sebelumnya).
@@ -93,11 +113,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               StatusHero(
-                status: const StatusBadgeStyle(
+                status: StatusBadgeStyle(
                   label: 'Pemeliharaan',
                   icon: KapdhIcons.buildOutlined,
-                  foreground: KapdhColors.warning,
-                  background: KapdhColors.warningBg,
+                  foreground: context.kc.warning,
+                  background: context.kc.warningBg,
                 ),
                 icon: KapdhIcons.buildOutlined,
                 title: '$label ditunda sementara',
@@ -162,118 +182,140 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     );
 
     final banner = AppBannerScope.of(context);
-    return Scaffold(
-      backgroundColor: KapdhColors.background,
-      // Menu pendek: dibangun sekaligus (bukan sliver malas) agar seluruh baris terjangkau pembaca layar.
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    // [v2] Ikon status bar terang di atas pita hijau; karena pita ikut tergulir, area status bar ditahan hijau oleh
+    // BrandStatusBarFill (anak terakhir Stack) yang memudar masuk mengikuti gulir.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: kBrandStatusBarOverlay,
+      child: Scaffold(
+        backgroundColor: context.kc.background,
+        body: Stack(
           children: [
-            _Header(me: me),
-            ?banner,
-            Padding(
-              padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AccountSection(
-                    title: 'PROFIL',
+            Positioned.fill(
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _onScroll,
+                // Menu pendek: dibangun sekaligus (bukan sliver malas) agar seluruh baris terjangkau pembaca layar.
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      tile(
-                        AppRoutes.accountProfile,
-                        'Ubah profil',
-                        KapdhIcons.personOutline,
-                        subtitle: 'Foto, kota, profesi, keahlian, kontak',
+                      _Header(me: me),
+                      ?banner,
+                      Padding(
+                        // Tablet: isi selebar 600 di tengah (ContentWidth.inset); ponsel tetap 20.
+                        padding: EdgeInsets.fromLTRB(
+                          ContentWidth.inset(context, KapdhSpace.s5),
+                          KapdhSpace.s5,
+                          ContentWidth.inset(context, KapdhSpace.s5),
+                          KapdhSpace.s8,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            AccountSection(
+                              title: 'PROFIL',
+                              children: [
+                                tile(
+                                  AppRoutes.accountProfile,
+                                  'Ubah profil',
+                                  KapdhIcons.personOutline,
+                                  subtitle: 'Foto, kota, profesi, keahlian, kontak',
+                                ),
+                                tile(
+                                  AppRoutes.accountPrivacy,
+                                  'Privasi profil',
+                                  KapdhIcons.visibilityOutlined,
+                                  subtitle: 'Atur data yang terlihat anggota lain',
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: KapdhSpace.s5),
+                            AccountSection(
+                              title: 'AKTIVITAS',
+                              children: [
+                                tile(
+                                  AppRoutes.notifications,
+                                  'Notifikasi',
+                                  KapdhIcons.notificationsOutlined,
+                                  subtitle: 'Kotak masuk resmi',
+                                  badge: unread != null && unread > 0 ? (unread > 99 ? '99+' : '$unread') : null,
+                                ),
+                                tile(AppRoutes.payments, 'Riwayat pembayaran', KapdhIcons.receiptLongOutlined),
+                                tile(AppRoutes.tickets, 'Tiket saya', KapdhIcons.confirmationNumberOutlined),
+                              ],
+                            ),
+                            const SizedBox(height: KapdhSpace.s5),
+                            AccountSection(
+                              title: 'KEAMANAN DAN NOTIFIKASI',
+                              children: [
+                                tile(AppRoutes.accountNotifications, 'Preferensi notifikasi', KapdhIcons.tune),
+                                tile(
+                                  AppRoutes.accountSessions,
+                                  'Sesi perangkat',
+                                  KapdhIcons.devicesOutlined,
+                                  subtitle: 'Perangkat yang masuk ke akun Anda',
+                                ),
+                                tile(AppRoutes.accountPassword, 'Ganti password', KapdhIcons.lockReset),
+                              ],
+                            ),
+                            const SizedBox(height: KapdhSpace.s5),
+                            AccountSection(
+                              title: 'KOMUNITAS',
+                              children: [
+                                tile(AppRoutes.accountBlocked, 'Anggota diblokir', KapdhIcons.block),
+                                tile(AppRoutes.accountReports, 'Laporan saya', KapdhIcons.flagOutlined),
+                              ],
+                            ),
+                            const SizedBox(height: KapdhSpace.s5),
+                            AccountSection(
+                              title: 'INFORMASI',
+                              children: [
+                                legal(AppRoutes.privacySlug, 'Kebijakan privasi', KapdhIcons.privacyTipOutlined),
+                                legal(AppRoutes.termsSlug, 'Ketentuan layanan', KapdhIcons.descriptionOutlined),
+                                legal(AppRoutes.communitySlug, 'Ketentuan komunitas', KapdhIcons.gavelOutlined),
+                                legal(AppRoutes.helpSlug, 'Bantuan', KapdhIcons.helpOutline),
+                                legal(AppRoutes.aboutSlug, 'Tentang KAPDH', KapdhIcons.infoOutline),
+                              ],
+                            ),
+                            const SizedBox(height: KapdhSpace.s5),
+                            AccountSection(
+                              title: 'DATA AKUN',
+                              children: [
+                                AccountMenuTile(
+                                  key: const ValueKey('account-menu-delete'),
+                                  icon: KapdhIcons.deleteOutline,
+                                  label: 'Hapus akun',
+                                  subtitle: 'Hapus akun dan data pribadi Anda',
+                                  danger: true,
+                                  paused: paused(AppRoutes.accountDelete),
+                                  onTap: () =>
+                                      _open(AppRoutes.accountDelete, label: 'Hapus akun', icon: KapdhIcons.delete),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: KapdhSpace.s6),
+                            KapdhButton.outlined(
+                              key: const ValueKey('account-logout'),
+                              label: 'Keluar',
+                              busyLabel: 'Keluar...',
+                              busy: _signingOut,
+                              icon: KapdhIcons.logout,
+                              onPressed: _signOut,
+                            ),
+                            const SizedBox(height: KapdhSpace.s4),
+                            Text(
+                              'KAPDH Apps versi ${info.version} (${info.buildNumber})',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+                            ),
+                          ],
+                        ),
                       ),
-                      tile(
-                        AppRoutes.accountPrivacy,
-                        'Privasi profil',
-                        KapdhIcons.visibilityOutlined,
-                        subtitle: 'Atur data yang terlihat anggota lain',
-                      ),
                     ],
                   ),
-                  const SizedBox(height: KapdhSpace.s5),
-                  AccountSection(
-                    title: 'AKTIVITAS',
-                    children: [
-                      tile(
-                        AppRoutes.notifications,
-                        'Notifikasi',
-                        KapdhIcons.notificationsOutlined,
-                        subtitle: 'Kotak masuk resmi',
-                        badge: unread != null && unread > 0 ? (unread > 99 ? '99+' : '$unread') : null,
-                      ),
-                      tile(AppRoutes.payments, 'Riwayat pembayaran', KapdhIcons.receiptLongOutlined),
-                      tile(AppRoutes.tickets, 'Tiket saya', KapdhIcons.confirmationNumberOutlined),
-                    ],
-                  ),
-                  const SizedBox(height: KapdhSpace.s5),
-                  AccountSection(
-                    title: 'KEAMANAN DAN NOTIFIKASI',
-                    children: [
-                      tile(AppRoutes.accountNotifications, 'Preferensi notifikasi', KapdhIcons.tune),
-                      tile(
-                        AppRoutes.accountSessions,
-                        'Sesi perangkat',
-                        KapdhIcons.devicesOutlined,
-                        subtitle: 'Perangkat yang masuk ke akun Anda',
-                      ),
-                      tile(AppRoutes.accountPassword, 'Ganti password', KapdhIcons.lockReset),
-                    ],
-                  ),
-                  const SizedBox(height: KapdhSpace.s5),
-                  AccountSection(
-                    title: 'KOMUNITAS',
-                    children: [
-                      tile(AppRoutes.accountBlocked, 'Anggota diblokir', KapdhIcons.block),
-                      tile(AppRoutes.accountReports, 'Laporan saya', KapdhIcons.flagOutlined),
-                    ],
-                  ),
-                  const SizedBox(height: KapdhSpace.s5),
-                  AccountSection(
-                    title: 'INFORMASI',
-                    children: [
-                      legal(AppRoutes.privacySlug, 'Kebijakan privasi', KapdhIcons.privacyTipOutlined),
-                      legal(AppRoutes.termsSlug, 'Ketentuan layanan', KapdhIcons.descriptionOutlined),
-                      legal(AppRoutes.communitySlug, 'Ketentuan komunitas', KapdhIcons.gavelOutlined),
-                      legal(AppRoutes.helpSlug, 'Bantuan', KapdhIcons.helpOutline),
-                      legal(AppRoutes.aboutSlug, 'Tentang KAPDH', KapdhIcons.infoOutline),
-                    ],
-                  ),
-                  const SizedBox(height: KapdhSpace.s5),
-                  AccountSection(
-                    title: 'DATA AKUN',
-                    children: [
-                      AccountMenuTile(
-                        key: const ValueKey('account-menu-delete'),
-                        icon: KapdhIcons.deleteOutline,
-                        label: 'Hapus akun',
-                        subtitle: 'Hapus akun dan data pribadi Anda',
-                        danger: true,
-                        paused: paused(AppRoutes.accountDelete),
-                        onTap: () => _open(AppRoutes.accountDelete, label: 'Hapus akun', icon: KapdhIcons.delete),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: KapdhSpace.s6),
-                  KapdhButton.outlined(
-                    key: const ValueKey('account-logout'),
-                    label: 'Keluar',
-                    busyLabel: 'Keluar...',
-                    busy: _signingOut,
-                    icon: KapdhIcons.logout,
-                    onPressed: _signOut,
-                  ),
-                  const SizedBox(height: KapdhSpace.s4),
-                  Text(
-                    'KAPDH Apps versi ${info.version} (${info.buildNumber})',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
-                  ),
-                ],
+                ),
               ),
             ),
+            BrandStatusBarFill(scrollOffset: _scrollOffset),
           ],
         ),
       ),
@@ -295,11 +337,17 @@ class _Header extends StatelessWidget {
     final subtitleParts = [?me?.cohortCode, if (profile?.city case final city? when city.isNotEmpty) city];
     return Stack(
       children: [
-        const Positioned.fill(bottom: 56, child: BrandHeader(includeTopInset: true)),
+        // [v2] Pita identik dengan header Beranda: mesh tanpa motif, sudut bawah 24, bayangan.
+        const Positioned.fill(bottom: 56, child: BrandHeader(includeTopInset: true, rounded: true)),
         SafeArea(
           bottom: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, 0),
+            padding: EdgeInsets.fromLTRB(
+              ContentWidth.inset(context, KapdhSpace.s5),
+              KapdhSpace.s4,
+              ContentWidth.inset(context, KapdhSpace.s5),
+              0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -318,7 +366,7 @@ class _Header extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(KapdhSpace.s4),
                   decoration: BoxDecoration(
-                    color: KapdhColors.surface,
+                    color: context.kc.surface,
                     borderRadius: BorderRadius.circular(KapdhRadius.xl),
                     boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 12, offset: Offset(0, 4))],
                   ),
@@ -333,21 +381,21 @@ class _Header extends StatelessWidget {
                           children: [
                             Text(
                               name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: KapdhFontSize.h3,
                                 fontWeight: FontWeight.w700,
-                                color: KapdhColors.primary,
+                                color: context.kc.primary,
                               ),
                             ),
                             if (me != null) ...[
                               Text(
                                 me.email,
-                                style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                                style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
                               ),
                               if (subtitleParts.isNotEmpty)
                                 Text(
                                   subtitleParts.join(' · '),
-                                  style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                                  style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
                                 ),
                               if (me.memberNumber case final number?)
                                 Padding(
@@ -364,10 +412,7 @@ class _Header extends StatelessWidget {
                                   padding: const EdgeInsets.only(top: KapdhSpace.s1),
                                   child: Text(
                                     'Berlaku sampai ${formatDate(expires)}',
-                                    style: const TextStyle(
-                                      fontSize: KapdhFontSize.caption,
-                                      color: KapdhColors.textMuted,
-                                    ),
+                                    style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
                                   ),
                                 ),
                             ],

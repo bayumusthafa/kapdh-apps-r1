@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../app/theme/kapdh_tokens.dart';
 import '../../../core/format/formatters.dart';
 import '../../../design/design.dart';
@@ -156,7 +157,7 @@ class _AdjustmentCardState extends State<AdjustmentCard> {
             const SizedBox(height: KapdhSpace.s2),
             Text(
               root.join(' '),
-              style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.danger),
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.danger),
             ),
           ],
           const SizedBox(height: KapdhSpace.s3),

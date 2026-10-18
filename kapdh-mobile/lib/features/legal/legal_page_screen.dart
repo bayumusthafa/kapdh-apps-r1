@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/format/formatters.dart';
@@ -95,18 +96,20 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
     final error = _error;
     if (error != null) {
       if (error.code == ErrorCode.notFound || error.code == ErrorCode.validationError) {
-        return const ScrollColumn(
-          padding: EdgeInsets.all(KapdhSpace.s5),
+        return ScrollColumn(
+          padding: const EdgeInsets.all(KapdhSpace.s5),
           children: [
-            SizedBox(
-              height: 320,
-              child: EmptyState(
+            // Tinggi minimum 320 (bukan tetap) agar pada teks besar kotak ikut tumbuh, sehingga pesan tidak terpotong
+            // menjadi area gulir bersarang di atas SupportSection.
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 320),
+              child: const EmptyState(
                 icon: KapdhIcons.descriptionOutlined,
                 title: 'Halaman belum tersedia',
                 message: 'Halaman ini belum diterbitkan pengurus. Hubungi pengurus bila Anda membutuhkan informasinya.',
               ),
             ),
-            SupportSection(),
+            const SupportSection(),
           ],
         );
       }
@@ -126,14 +129,14 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
         const SizedBox(height: KapdhSpace.s1),
         Text(
           'Versi ${page.version} · diterbitkan ${formatDate(page.publishedAt)}',
-          style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
         ),
         const SizedBox(height: KapdhSpace.s4),
         const Divider(height: 1),
         const SizedBox(height: KapdhSpace.s4),
         HtmlWidget(
           page.bodyHtml,
-          textStyle: const TextStyle(fontSize: KapdhFontSize.body, height: 1.6, color: KapdhColors.text),
+          textStyle: TextStyle(fontSize: KapdhFontSize.body, height: 1.6, color: context.kc.text),
           onTapUrl: _openLink,
         ),
       ],

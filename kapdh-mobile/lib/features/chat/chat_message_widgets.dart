@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/format/formatters.dart';
 import '../../design/design.dart';
@@ -45,17 +46,13 @@ OutgoingReply replyFrom(ChatMessage message) => OutgoingReply(
   hasImage: message.image != null,
 );
 
-/// Warna gelembung (prototipe gaya KAPDH): milik sendiri hijau tua bertulisan putih, orang lain putih bergaris.
+/// Warna gelembung (prototipe gaya KAPDH): milik sendiri hijau tua bertulisan putih, orang lain permukaan tema
+/// (putih di mode terang, hijau gelap di mode gelap) bergaris.
 class _BubbleColors {
   const _BubbleColors(this.background, this.foreground, this.muted, this.border);
 
   static const mine = _BubbleColors(KapdhColors.green700, KapdhColors.onPrimary, KapdhExtraColors.mutedOnDark, null);
-  static const theirs = _BubbleColors(
-    KapdhColors.surface,
-    KapdhColors.text,
-    KapdhColors.textMuted,
-    KapdhColors.divider,
-  );
+  static _BubbleColors theirsOf(KapdhPalette p) => _BubbleColors(p.surface, p.text, p.textMuted, p.divider);
 
   final Color background;
   final Color foreground;
@@ -105,15 +102,15 @@ class ReplyQuote extends StatelessWidget {
     final text = !available
         ? 'Pesan tidak tersedia'
         : [if (hasImage) 'Foto', if (preview != null && preview!.trim().isNotEmpty) preview!.trim()].join(' · ');
-    final fg = onDark ? KapdhColors.onPrimary : KapdhColors.text;
-    final muted = onDark ? KapdhExtraColors.mutedOnDark : KapdhColors.textMuted;
+    final fg = onDark ? KapdhColors.onPrimary : context.kc.text;
+    final muted = onDark ? const Color(0xEBFFFFFF) : context.kc.textMuted;
     return Container(
       margin: const EdgeInsets.only(bottom: KapdhSpace.s1),
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s2, KapdhSpace.s1, KapdhSpace.s2, KapdhSpace.s1),
       decoration: BoxDecoration(
-        color: onDark ? const Color(0x26FFFFFF) : KapdhColors.green50,
+        color: onDark ? const Color(0x1AFFFFFF) : context.kc.tint,
         borderRadius: BorderRadius.circular(KapdhRadius.sm),
-        border: Border(left: BorderSide(color: onDark ? KapdhColors.gold400 : KapdhColors.primary, width: 3)),
+        border: Border(left: BorderSide(color: onDark ? KapdhColors.gold400 : context.kc.primary, width: 3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,7 +175,7 @@ class ChatImageView extends StatelessWidget {
                 image.url,
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => ColoredBox(
-                  color: KapdhColors.neutral100,
+                  color: context.kc.neutral100,
                   child: Center(
                     child: TextButton.icon(
                       onPressed: onReload,
@@ -189,9 +186,9 @@ class ChatImageView extends StatelessWidget {
                 ),
                 loadingBuilder: (_, child, progress) => progress == null
                     ? child
-                    : const ColoredBox(
-                        color: KapdhColors.neutral100,
-                        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    : ColoredBox(
+                        color: context.kc.neutral100,
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
                       ),
               ),
             ),
@@ -229,9 +226,9 @@ class ReactionRow extends StatelessWidget {
                   constraints: const BoxConstraints(minHeight: 32, minWidth: 44),
                   padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s2, vertical: 2),
                   decoration: BoxDecoration(
-                    color: reaction.reactedByMe ? KapdhColors.green100 : KapdhColors.surface,
+                    color: reaction.reactedByMe ? context.kc.tintStrong : context.kc.surface,
                     borderRadius: BorderRadius.circular(KapdhRadius.pill),
-                    border: Border.all(color: reaction.reactedByMe ? KapdhColors.primary : KapdhColors.divider),
+                    border: Border.all(color: reaction.reactedByMe ? context.kc.primary : context.kc.divider),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -263,10 +260,10 @@ class BubbleMeta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final muted = onDark ? KapdhExtraColors.mutedOnDark : KapdhColors.textMuted;
+    final muted = onDark ? KapdhExtraColors.mutedOnDark : context.kc.textMuted;
     final statusColor = switch (status) {
-      DeliveryStatus.failed => onDark ? const Color(0xFFFFB4AB) : KapdhColors.danger,
-      DeliveryStatus.read => onDark ? KapdhColors.gold400 : KapdhColors.info,
+      DeliveryStatus.failed => onDark ? const Color(0xFFFFB4AB) : context.kc.danger,
+      DeliveryStatus.read => onDark ? KapdhColors.gold400 : context.kc.info,
       _ => muted,
     };
     // Wrap, bukan Row: pada teks 200 % waktu dan status ("Gagal terkirim", "Dibaca 12") turun ke baris berikut di
@@ -341,7 +338,7 @@ class ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = mine ? _BubbleColors.mine : _BubbleColors.theirs;
+    final colors = mine ? _BubbleColors.mine : _BubbleColors.theirsOf(context.kc);
     final width = MediaQuery.sizeOf(context).width;
     // Teks gelembung sudah diringkas di [semanticsLabel] sehingga dikecualikan dari pohon semantik; gambar TIDAK,
     // agar tombol "buka foto" dan "Muat ulang foto" (URL bertanda tangan kedaluwarsa) dapat dijangkau pembaca layar
@@ -356,10 +353,10 @@ class ChatBubble extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 2),
               child: Text(
                 senderName!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: KapdhFontSize.caption,
                   fontWeight: FontWeight.w600,
-                  color: KapdhColors.primary,
+                  color: context.kc.primary,
                 ),
               ),
             ),
@@ -458,11 +455,11 @@ class SystemMessageView extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: KapdhSpace.s1),
         padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s3, vertical: KapdhSpace.s1),
-        decoration: BoxDecoration(color: KapdhColors.neutralBg, borderRadius: BorderRadius.circular(KapdhRadius.pill)),
+        decoration: BoxDecoration(color: context.kc.neutralBg, borderRadius: BorderRadius.circular(KapdhRadius.pill)),
         child: Text(
           '$text · ${formatTime(time)}',
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.neutral),
+          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.neutral),
         ),
       ),
     );
@@ -486,7 +483,7 @@ class DateSeparator extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s2),
             child: Text(
               label,
-              style: const TextStyle(fontSize: KapdhFontSize.overline, color: KapdhColors.textMuted),
+              style: TextStyle(fontSize: KapdhFontSize.overline, color: context.kc.textMuted),
             ),
           ),
           const Expanded(child: Divider()),

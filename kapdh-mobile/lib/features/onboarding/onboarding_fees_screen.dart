@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/format/formatters.dart';
@@ -136,9 +137,9 @@ class _OnboardingFeesScreenState extends ConsumerState<OnboardingFeesScreen> {
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'KTA akan aktif setelah iuran pendaftaran diverifikasi pengurus.',
-                style: TextStyle(fontSize: 13, height: 1.5, color: KapdhColors.textMuted),
+                style: TextStyle(fontSize: 13, height: 1.5, color: context.kc.textMuted),
               ),
               if (me != null) ...[
                 const SizedBox(height: 18),

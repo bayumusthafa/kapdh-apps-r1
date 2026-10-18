@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
@@ -189,10 +190,10 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
               ),
             ),
             const SizedBox(height: KapdhSpace.s1),
-            const Center(
+            Center(
               child: Text(
                 'Foto grup (opsional)',
-                style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
               ),
             ),
             const SizedBox(height: KapdhSpace.s5),
@@ -213,9 +214,9 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
               onAction: _busy ? null : _pickInvitees,
             ),
             if (_invitees.isEmpty)
-              const Text(
+              Text(
                 'Belum ada alumni yang dipilih. Anda juga dapat mengundang setelah grup dibuat.',
-                style: TextStyle(color: KapdhColors.textMuted),
+                style: TextStyle(color: context.kc.textMuted),
               )
             else
               Wrap(
@@ -226,6 +227,8 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
                     InputChip(
                       label: Text(member.fullName),
                       deleteButtonTooltipMessage: 'Hapus ${member.fullName}',
+                      // [v2] Ikon silang Phosphor, bukan ikon Material bawaan InputChip.
+                      deleteIcon: const Icon(KapdhIcons.close, size: KapdhIconSize.button),
                       onDeleted: _busy ? null : () => _remove(member),
                       // Seluruh chip menghapus undangan (area ketuk 48 dp), bukan hanya ikon silang.
                       onPressed: _busy ? null : () => _remove(member),

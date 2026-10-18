@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../app/theme/kapdh_focus.dart';
+import '../app/theme/kapdh_palette.dart';
 import '../app/theme/kapdh_tokens.dart';
 import 'kapdh_icons.dart';
 
@@ -32,9 +34,10 @@ class SupportContactCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s3),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: KapdhColors.divider),
+        color: context.kc.surface,
+        border: Border.all(color: context.kc.cardBorder),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
+        boxShadow: context.kc.shadowSm,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,38 +74,48 @@ class _ContactRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(KapdhRadius.md);
     return Semantics(
       button: true,
       label: '$label, $value',
       excludeSemantics: true,
       onTap: onTap,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(KapdhRadius.md),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: KapdhSize.touchTargetMin),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: KapdhColors.primary),
-              const SizedBox(width: KapdhSpace.s3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+      // [v2] Cincin fokus 3 px saat baris kontak terfokus keyboard/akses saklar (WCAG 2.4.7, 1.4.11).
+      child: KapdhFocusRing(
+        radius: radius,
+        // Material transparan: riak dan sorotan InkWell tergambar di atas latar kartu, bukan di Material leluhur.
+        builder: (onFocusChange) => Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            onFocusChange: onFocusChange,
+            borderRadius: radius,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: KapdhSize.touchTargetMin),
+              child: Row(
+                children: [
+                  Icon(icon, size: KapdhIconSize.md, color: context.kc.primary),
+                  const SizedBox(width: KapdhSpace.s3),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+                        ),
+                        Text(
+                          value,
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.kc.primary),
+                        ),
+                      ],
                     ),
-                    Text(
-                      value,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: KapdhColors.primary),
-                    ),
-                  ],
-                ),
+                  ),
+                  Icon(KapdhIcons.openInNew, size: KapdhIconSize.button, color: context.kc.textMuted),
+                ],
               ),
-              const Icon(KapdhIcons.openInNew, size: 18, color: KapdhColors.textMuted),
-            ],
+            ),
           ),
         ),
       ),

@@ -90,6 +90,9 @@ abstract final class KapdhIcons {
   /// Icons.card_membership_outlined -> ph:identification-badge
   static const IconData cardMembershipOutlined = IconData(0xe6f6, fontFamily: 'PhosphorRegular');
 
+  /// Icons.chat_bubble -> ph:chat-circle-dots-fill
+  static const IconData chatBubble = IconData(0xe16c, fontFamily: 'PhosphorFill');
+
   /// Icons.chat_bubble_outline -> ph:chat-circle
   static const IconData chatBubbleOutline = IconData(0xe168, fontFamily: 'PhosphorRegular');
 
@@ -128,6 +131,9 @@ abstract final class KapdhIcons {
 
   /// Icons.computer -> ph:desktop
   static const IconData computer = IconData(0xe560, fontFamily: 'PhosphorRegular');
+
+  /// Icons.confirmation_number -> ph:ticket-fill
+  static const IconData confirmationNumber = IconData(0xe490, fontFamily: 'PhosphorFill');
 
   /// Icons.confirmation_number_outlined -> ph:ticket
   static const IconData confirmationNumberOutlined = IconData(0xe490, fontFamily: 'PhosphorRegular');
@@ -291,6 +297,9 @@ abstract final class KapdhIcons {
   /// Icons.info_outline -> ph:info
   static const IconData infoOutline = IconData(0xe2ce, fontFamily: 'PhosphorRegular');
 
+  /// Icons.instagram_logo -> ph:instagram-logo
+  static const IconData instagramLogo = IconData(0xe2d0, fontFamily: 'PhosphorRegular');
+
   /// Icons.inventory_2_outlined -> ph:archive
   static const IconData inventory2Outlined = IconData(0xe00c, fontFamily: 'PhosphorRegular');
 
@@ -303,8 +312,14 @@ abstract final class KapdhIcons {
   /// Icons.keyboard_arrow_up -> ph:caret-up
   static const IconData keyboardArrowUp = IconData(0xe13c, fontFamily: 'PhosphorRegular');
 
+  /// Icons.language -> ph:globe
+  static const IconData language = IconData(0xe288, fontFamily: 'PhosphorRegular');
+
   /// Icons.link_off -> ph:link-break
   static const IconData linkOff = IconData(0xe2e4, fontFamily: 'PhosphorRegular');
+
+  /// Icons.linkedin_logo -> ph:linkedin-logo
+  static const IconData linkedinLogo = IconData(0xe2ee, fontFamily: 'PhosphorRegular');
 
   /// Icons.location_city_outlined -> ph:buildings
   static const IconData locationCityOutlined = IconData(0xe102, fontFamily: 'PhosphorRegular');
@@ -354,8 +369,14 @@ abstract final class KapdhIcons {
   /// Icons.more_vert -> ph:dots-three-vertical
   static const IconData moreVert = IconData(0xe208, fontFamily: 'PhosphorRegular');
 
+  /// Icons.newspaper -> ph:newspaper-clipping-fill
+  static const IconData newspaper = IconData(0xe346, fontFamily: 'PhosphorFill');
+
   /// Icons.notifications -> ph:bell-simple-fill
   static const IconData notifications = IconData(0xe0d0, fontFamily: 'PhosphorFill');
+
+  /// Icons.notifications_active -> ph:bell-simple-ringing-fill
+  static const IconData notificationsActive = IconData(0xe5ea, fontFamily: 'PhosphorFill');
 
   /// Icons.notifications_active_outlined -> ph:bell-simple-ringing
   static const IconData notificationsActiveOutlined = IconData(0xe5ea, fontFamily: 'PhosphorRegular');
@@ -489,6 +510,15 @@ abstract final class KapdhIcons {
   /// Icons.system_update -> ph:arrow-circle-down
   static const IconData systemUpdate = IconData(0xe028, fontFamily: 'PhosphorRegular');
 
+  /// Icons.telegram_logo -> ph:telegram-logo
+  static const IconData telegramLogo = IconData(0xe5bc, fontFamily: 'PhosphorRegular');
+
+  /// Icons.threads_logo -> ph:threads-logo
+  static const IconData threadsLogo = IconData(0xed9e, fontFamily: 'PhosphorRegular');
+
+  /// Icons.tiktok_logo -> ph:tiktok-logo
+  static const IconData tiktokLogo = IconData(0xeaf2, fontFamily: 'PhosphorRegular');
+
   /// Icons.timer_off_outlined -> ph:timer
   static const IconData timerOffOutlined = IconData(0xe492, fontFamily: 'PhosphorRegular');
 
@@ -527,6 +557,12 @@ abstract final class KapdhIcons {
 
   /// Icons.work_outline -> ph:briefcase
   static const IconData workOutline = IconData(0xe0ee, fontFamily: 'PhosphorRegular');
+
+  /// Icons.x_logo -> ph:x-logo
+  static const IconData xLogo = IconData(0xe4bc, fontFamily: 'PhosphorRegular');
+
+  /// Icons.youtube_logo -> ph:youtube-logo
+  static const IconData youtubeLogo = IconData(0xe4fc, fontFamily: 'PhosphorRegular');
 
   /// Icons.zoom_in -> ph:magnifying-glass-plus
   static const IconData zoomIn = IconData(0xe310, fontFamily: 'PhosphorRegular');

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app/theme/kapdh_palette.dart';
 import '../app/theme/kapdh_tokens.dart';
 import 'design_constants.dart';
 import 'status_badge.dart';
@@ -35,8 +36,8 @@ class StatusHero extends StatelessWidget {
             child: Container(
               width: KapdhComponentSize.heroIcon,
               height: KapdhComponentSize.heroIcon,
-              decoration: BoxDecoration(color: status.background, shape: BoxShape.circle),
-              child: Icon(icon ?? status.icon, size: 34, color: status.foreground),
+              decoration: BoxDecoration(color: context.kc.resolve(status.background), shape: BoxShape.circle),
+              child: Icon(icon ?? status.icon, size: 34, color: context.kc.resolve(status.foreground)),
             ),
           ),
           if (showBadge) ...[const SizedBox(height: KapdhSpace.s3), StatusBadge(status)],
@@ -46,7 +47,7 @@ class StatusHero extends StatelessWidget {
             child: Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w600, height: 1.3),
+              style: const TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w700, height: 1.3),
             ),
           ),
           if (message != null) ...[
@@ -54,7 +55,7 @@ class StatusHero extends StatelessWidget {
             Text(
               message!,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, height: 1.55, color: KapdhColors.textMuted),
+              style: TextStyle(fontSize: 13, height: 1.55, color: context.kc.textMuted),
             ),
           ],
         ],
