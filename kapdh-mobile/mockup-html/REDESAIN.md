@@ -239,6 +239,32 @@ bawahnya. Judul putih di pita 7,9:1 pada titik henti tercerah (green700); pita m
 200 % dan tablet. Flutter nanti: `BrandHeader(minHeight: 132)` + `Transform.translate(offset: Offset(0, -48))`
 untuk avatar.
 
+**Ubah Profil: Profesi & Keahlian, Riwayat Pendidikan dan Media Sosial** (usulan, `akun/profile-edit.html`). Tiga kartu berkepala
+(ikon 24 primary, judul 17 w700, deskripsi 12 abu, garis pemisah) sesuai gambar acuan:
+
+- *Profesi & Keahlian*: label, cip terpilih bernada `--color-tint` yang seluruhnya menghapus (pil 36, area ketuk 48),
+  pemilih "Pilih atau tambah…" (daftar master atau ketik sendiri) dan helper. Profesi kini boleh lebih dari satu;
+  batas keahlian 10 pindah ke helper.
+- *Riwayat Pendidikan* menggantikan *Lulusan Terakhir* (Institusi + Kota). Entri berulang "Pendidikan n" dengan tombol
+  hapus merah, Universitas/Instansi, Jurusan/Program Studi, Strata (pilihan D3/S1/S2/S3/Lainnya, di acuan teks bebas),
+  Tahun Tamat (pilihan, helper "Tahun ijazah terbit.") dan "Tambah Riwayat".
+
+- *Media Sosial* menggantikan 4 field tetap (Instagram, X, Facebook, LinkedIn). Kini baris tautan berulang, maksimal
+  10. Tiap baris punya pemilih platform berlogo, tombol hapus, dan field nama pengguna/tautan. Platform yang tersedia:
+  Instagram, TikTok, X (Twitter), Facebook, LinkedIn, YouTube, Threads, Telegram, Situs web. Logo dari Phosphor bobot
+  regular agar tetap satu keluarga ikon. Helper menyebut batas 10 dan aturan privasi; di bawahnya "Tambah tautan".
+  Frame 17 menampilkan menu platform yang terbuka.
+
+Tombol hapus di kedua daftar berulang (Pendidikan, tautan) sama-sama merah (acuan Media Sosial abu) agar satu makna
+satu warna. Label tetap tampil di atas field (bukan hanya placeholder seperti acuan) agar sesuai bagian lain dan tetap terbaca saat
+terisi. Bagian lain di layar ini masih memakai judul kecil di atas kartu.
+
+Dampak di luar mockup: kontrak profil (C1) perlu `professions: string[]` dan `education: [{institution, major, level,
+graduation_year}]` sebagai ganti `profession`, `last_education_institution` dan `last_education_city`, serta `social_links: [{platform, value}]`
+(maks. 10) sebagai ganti field Instagram/X/Facebook/LinkedIn. Profil Alumni
+(Jejaring) yang kini menampilkan "Lulusan Terakhir" perlu ikut diubah. Lihat juga master profesi/keahlian yang menerima
+nilai ketikan sendiri.
+
 **Akses cepat: Pesan menggantikan KTA** (usulan). Untuk anggota aktif, ubin pertama kini "Pesan" (jumlah percakapan
 belum dibaca, ke tab Jejaring > Pesan), karena KTA sudah bisa dibuka dari tombol tengah navigasi bawah sehingga ubin KTA
 dobel. Pada KTA tidak aktif atau kedaluwarsa ubin KTA tetap (status KTA penting di sana dan Jejaring terkunci). Flutter

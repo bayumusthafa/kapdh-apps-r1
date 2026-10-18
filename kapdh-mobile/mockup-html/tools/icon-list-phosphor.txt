@@ -21,3 +21,13 @@ graduation-cap-fill
 user-circle
 user-circle-fill
 lock-simple-fill
+
+# Media sosial (Ubah Profil, v2 usulan): logo platform bobot regular
+instagram-logo
+tiktok-logo
+x-logo
+linkedin-logo
+youtube-logo
+threads-logo
+telegram-logo
+globe
