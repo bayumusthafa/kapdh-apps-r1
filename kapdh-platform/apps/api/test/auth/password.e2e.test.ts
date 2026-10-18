@@ -5,6 +5,7 @@
 import {
   auditLogs,
   deviceTokens,
+  notificationDeliveries,
   notifications,
   otpCodes,
   otpDecoys,
@@ -478,6 +479,14 @@ describe("AC F02-4: ganti sandi mensyaratkan sandi lama", () => {
     const member = await createAlumni(t, { status: "verified" });
     const current = await signInAlumni(t, member);
     const other = await signInAlumni(t, member);
+    // Perangkat pemanggil mendaftarkan token lewat endpoint nyata (seperti aplikasi setelah login).
+    const currentPushToken = `fcm-uji-sesi-ini-${uuidv7()}`;
+    const registered = await api.put(
+      "/devices",
+      { platform: "android", token: currentPushToken, app_version: "1.0.0" },
+      { token: current.accessToken },
+    );
+    expect(registered.statusCode, registered.body).toBe(204);
     const [otherRow] = await t.db
       .select()
       .from(sessions)
@@ -515,13 +524,41 @@ describe("AC F02-4: ganti sandi mensyaratkan sandi lama", () => {
     );
 
     const [notice] = await t.db.select().from(notifications).where(eq(notifications.userId, member.userId));
-    expect(notice).toMatchObject({ category: "security", data: { event: "password_changed" } });
+    expect(notice).toMatchObject({
+      category: "security",
+      title: "Sandi akun diganti",
+      data: { event: "password_changed" },
+    });
     const [audit] = await t.db
       .select()
       .from(auditLogs)
       .where(and(eq(auditLogs.action, "account.password_changed"), eq(auditLogs.entityId, member.userId)));
     expect(audit).toMatchObject({ effectiveRole: "alumni", after: { other_sessions_revoked: 1 } });
     expect(JSON.stringify(audit)).not.toContain(NEW_PASSWORD);
+
+    // Token perangkat pemanggil TIDAK dicabut, dan notifikasi keamanan sampai ke perangkat itu lewat push (jalur
+    // outbox notification.created → notifications.deliver), sedangkan token sesi lain tidak menerima apa pun.
+    const [kept] = await t.db.select().from(deviceTokens).where(eq(deviceTokens.token, currentPushToken));
+    expect(kept).toMatchObject({ revokedAt: null, appVersion: "1.0.0" });
+    await t.jobs.drainOutbox();
+    const pushes = await t.db
+      .select()
+      .from(notificationDeliveries)
+      .where(
+        and(
+          eq(notificationDeliveries.notificationId, notice!.id),
+          eq(notificationDeliveries.channel, "push"),
+        ),
+      );
+    expect(pushes).toHaveLength(1);
+    expect(pushes[0]).toMatchObject({ deviceTokenId: kept!.id, status: "sent" });
+    expect(t.push.to(currentPushToken)).toEqual([
+      expect.objectContaining({
+        title: "Sandi akun diganti",
+        data: expect.objectContaining({ notification_id: notice!.id, category: "security" }),
+      }),
+    ]);
+    expect(t.push.to(`fcm-uji-${tokenId}`)).toHaveLength(0);
   });
 
   it("sandi lama salah → 400 field_errors.current_password dan dihitung ke batas kegagalan login (429)", async () => {
