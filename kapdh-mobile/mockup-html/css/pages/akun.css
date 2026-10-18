@@ -38,7 +38,7 @@
 .akun-profile-card__body { flex: 1 1 auto; min-width: 0; }
 .akun-profile-card__name { font-size: var(--fs-h3); font-weight: var(--fw-bold); color: var(--color-primary); }
 .akun-profile-card__meta { font-size: var(--fs-caption); color: var(--color-text-muted); }            /* email, angkatan · kota */
-.akun-profile-card__number { padding-top: var(--s1); font-size: 13px; font-weight: var(--fw-semibold); } /* "No. anggota ..." */
+.akun-profile-card__number { padding-top: var(--s1); font-size: calc(13px * var(--ts, 1)); font-weight: var(--fw-semibold); } /* "No. anggota ..." */
 .akun-profile-card__badge { margin-top: var(--s2); }
 .akun-profile-card__validity { padding-top: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
 
@@ -63,7 +63,7 @@
 .akun-avatar-error { font-size: var(--fs-caption); color: var(--color-danger); }
 
 /* _ReadOnlyRow: padding 16 x 12, label 13 muted Expanded, jarak 12, nilai 13 w500 rata kanan Flexible (maks. separuh) */
-.akun-ro-row { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s3) var(--s4); font-size: 13px; }
+.akun-ro-row { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s3) var(--s4); font-size: calc(13px * var(--ts, 1)); }
 .akun-ro-row__label { flex: 1 1 0; min-width: 0; color: var(--color-text-muted); }
 .akun-ro-row__value { flex: 0 1 auto; max-width: calc(50% - 6px); text-align: right; font-weight: var(--fw-medium); overflow-wrap: anywhere; }
 
@@ -111,9 +111,9 @@
 .akun-tile__title { font-size: var(--fs-body); font-weight: var(--fw-medium); letter-spacing: var(--ls-body-lg); color: var(--color-text); }
 .akun-tile__title--strong { font-weight: var(--fw-semibold); }
 .akun-tile__subtitle { font-size: var(--fs-caption); line-height: var(--lh-normal); color: var(--color-text-muted); white-space: pre-line; }
-.akun-switch-tile.is-disabled .akun-tile__title, .akun-switch-tile.is-disabled .akun-tile__subtitle { color: rgba(28, 27, 31, .38); }
+.akun-switch-tile.is-disabled .akun-tile__title, .akun-switch-tile.is-disabled .akun-tile__subtitle { color: var(--color-on-surface-disabled); }
 .akun-always-on { flex: none; display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
-.akun-always-on .ic { --ic-size: 16px; }
+.akun-always-on .ic { --ic-size: var(--ic-sm); }
 .akun-saving { margin-top: var(--s4); font-size: var(--fs-caption); color: var(--color-text-muted); text-align: center; } /* "Menyimpan..." */
 .akun-link-row { display: flex; justify-content: flex-start; }      /* Align(centerLeft) KapdhLinkButton */
 
@@ -133,13 +133,13 @@
    HAPUS AKUN  delete_account_screen.dart
    --------------------------------------------------------------------------------------------------------------------- */
 /* _Bullet: padding 16 x 12, ikon 18 primary, jarak 12, teks 13 / 1.5 */
-.akun-bullet { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s3) var(--s4); font-size: 13px; line-height: 1.5; }
-.akun-bullet > .ic { --ic-size: 18px; color: var(--color-primary); }
+.akun-bullet { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s3) var(--s4); font-size: calc(13px * var(--ts, 1)); line-height: 1.5; }
+.akun-bullet > .ic { --ic-size: var(--ic-btn); color: var(--color-primary); }
 .akun-warn-title { font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--color-danger); } /* "Perhatikan sebelum menghapus" */
 .akun-warn-list > * + * { margin-top: var(--s3); }
 /* CheckboxListTile(contentPadding: zero, leading): kotak 40, jarak 16, judul 13 (bodyLarge ls .5), min 56 */
 .akun-check-tile { display: flex; align-items: center; gap: var(--s4); min-height: 56px; padding: var(--s2) 0; width: 100%; text-align: left; }
-.akun-check-tile__title { flex: 1 1 auto; min-width: 0; font-size: 13px; letter-spacing: var(--ls-body-lg); }
+.akun-check-tile__title { flex: 1 1 auto; min-width: 0; font-size: calc(13px * var(--ts, 1)); letter-spacing: var(--ls-body-lg); }
 .akun-spinner-on-primary { color: var(--color-on-primary); }         /* spinner putih di _DangerButton */
 .akun-delete-hint { margin-top: var(--s3); font-size: var(--fs-caption); color: var(--color-text-muted); text-align: center; }
 

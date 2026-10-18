@@ -33,7 +33,7 @@
 .auth-keypad .keyboard__row { padding: 0 var(--s2); gap: var(--s2); }
 .auth-keypad .keyboard__key {
   max-width: none; display: grid; place-items: center;
-  font-family: Roboto, 'Segoe UI', system-ui, sans-serif; font-size: 20px; line-height: 1; letter-spacing: 0; color: #1C1B1F;
+  font-family: Roboto, 'Segoe UI', system-ui, sans-serif; font-size: calc(20px * var(--ts, 1)); line-height: 1; letter-spacing: 0; color: #1C1B1F;
 }
 .auth-keypad .keyboard__key--fn { background: #D3D6DB; }
 
@@ -46,7 +46,7 @@
    --------------------------------------------------------------------------------------------------------------------- */
 .auth-band-login { padding: calc(var(--s4) + var(--inset-top)) var(--s4) calc(var(--s8) + var(--s4)) var(--s6); }
 .auth-login-logo { width: 84px; height: 84px; object-fit: contain; margin-left: auto; }
-.auth-login-greeting { margin-top: var(--s4); font-size: 22px; font-weight: 600; line-height: 1.3; color: var(--color-text-on-dark); }
+.auth-login-greeting { margin-top: var(--s4); font-size: calc(22px * var(--ts, 1)); font-weight: 600; line-height: 1.3; color: var(--color-text-on-dark); }
 .auth-login-greeting__accent { color: var(--color-accent); }
 .auth-login-tagline { margin-top: var(--s3); font-size: var(--fs-caption); color: var(--color-text-on-dark); }
 .auth-login-body { display: flex; flex-direction: column; padding: var(--s8) var(--s5) var(--s6); } /* fromLTRB(20, 32, 20, 24) */
@@ -63,17 +63,17 @@
 
 /* Wrap rata tengah: "Belum ada akun?" + KapdhLinkButton */
 .auth-wrap { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; }
-.auth-wrap__text { font-size: 13px; color: var(--color-primary); }
+.auth-wrap__text { font-size: calc(13px * var(--ts, 1)); color: var(--color-primary); }
 .auth-links { display: flex; flex-wrap: wrap; gap: 0 var(--s2); }             /* Wrap(spacing: s2) */
 .auth-links--between { justify-content: space-between; gap: 0; }               /* WrapAlignment.spaceBetween */
 
 /* USULAN BERSAMA: KapdhLinkButton nonaktif (onPressed null) memakai warna nonaktif TextButton M3. */
-.btn-link:disabled { color: rgba(28, 27, 31, .38); cursor: default; }
+.btn-link:disabled { color: var(--color-on-surface-disabled); cursor: default; }
 
 /* ---------------------------------------------------------------------------------------------------------------------
    JUDUL DAN TEKS DI DALAM LEMBAR
    --------------------------------------------------------------------------------------------------------------------- */
-.auth-h22 { font-size: 22px; font-weight: 600; line-height: 1.25; }                    /* TextStyle(22, w600, h1.25) */
+.auth-h22 { font-size: calc(22px * var(--ts, 1)); font-weight: 600; line-height: 1.25; }                    /* TextStyle(22, w600, h1.25) */
 .auth-lead { font-size: var(--fs-body); line-height: 1.5; color: var(--color-text-muted); } /* 14 h1.5 muted */
 .auth-lead strong { font-weight: 600; color: var(--color-text); }
 .auth-label { font-size: var(--fs-label); font-weight: 500; }                          /* 'Kode OTP', judul kecil 14 w500 */
@@ -91,9 +91,9 @@
   margin-top: var(--s5);
   display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
   padding: var(--s1) 14px;
-  background: var(--color-green-50); border-radius: var(--r-md);
+  background: var(--color-tint); border-radius: var(--r-md);
 }
-.auth-resend__text { padding: var(--s2) 0; font-size: 13px; }
+.auth-resend__text { padding: var(--s2) 0; font-size: calc(13px * var(--ts, 1)); }
 .auth-resend .btn-text { font-weight: 600; }
 .auth-resend .btn-text:disabled { color: var(--color-text-muted); }                    /* disabledForegroundColor textMuted */
 
@@ -110,7 +110,7 @@
 .auth-years__label { display: block; font-size: var(--fs-overline); }
 /* _ConsentField: CheckboxListTile(contentPadding: zero, leading): kotak 40 di x 0, judul di x 56, 13 ls .5 */
 .auth-consent .list-tile { padding-left: 0; padding-right: 0; gap: var(--s4); }
-.auth-consent__title { font-size: 13px; letter-spacing: var(--ls-body-lg); }
+.auth-consent__title { font-size: calc(13px * var(--ts, 1)); letter-spacing: var(--ls-body-lg); }
 .auth-consent__version { padding-bottom: var(--s1); }
 .auth-consent__error { padding-top: var(--s1); font-size: var(--fs-caption); color: var(--color-danger); }
 .auth-consent .info-box { margin-top: 0; }
@@ -174,7 +174,7 @@
 .auth-panel { padding: 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); }
 .auth-panel__title { font-size: var(--fs-body); font-weight: 600; }
 .auth-panel__text { margin-top: var(--s1); font-size: var(--fs-caption); line-height: 1.5; color: var(--color-text-muted); }
-.auth-check-text { font-size: 13px; line-height: 1.5; }
+.auth-check-text { font-size: calc(13px * var(--ts, 1)); line-height: 1.5; }
 .auth-textarea-5 { min-height: calc(5 * 20.3px + 26px); }      /* maxLines: 5 */
 .auth-right { display: flex; justify-content: flex-end; }       /* Align(centerRight) */
 
@@ -182,7 +182,7 @@
    BIAYA KTA (onboarding_fees_screen.dart): ListView padding fromLTRB(20, 16, 20, 16), jarak 18 dan 6
    --------------------------------------------------------------------------------------------------------------------- */
 .auth-fees-title { font-size: var(--fs-h2); font-weight: 600; }
-.auth-fees-sub { margin-top: 6px; font-size: 13px; line-height: 1.5; color: var(--color-text-muted); }
+.auth-fees-sub { margin-top: 6px; font-size: calc(13px * var(--ts, 1)); line-height: 1.5; color: var(--color-text-muted); }
 .auth-mt-18 { margin-top: 18px; }
 .auth-sheet-banner { padding: var(--s3) var(--s5) 0; }          /* SheetStatusBanner: fromLTRB(20, 12, 20, 0) */
 

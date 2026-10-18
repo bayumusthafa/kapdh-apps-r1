@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Komponen KAPDH</title>
   <meta name="description" content="Etalase komponen bersama mockup HTML aplikasi KAPDH beserta nama kelas CSS dan sumber Dart.">
+  <script src="js/theme.js"></script>
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/components.css">
 </head>
@@ -100,6 +101,21 @@
           <div class="row gap-2"><button class="btn btn--outline" type="button">Batal</button><button class="btn btn--solid" type="button">Simpan</button></div>
           <div class="row gap-2"><button class="choice-chip" type="button">Semua</button><button class="btn-text" type="button">Lihat semua</button></div>
         </div></div><div class="specimen__code">box-shadow: var(--elev), inset 0 0 0 999px color-mix(currentColor 8% | 12%); transisi --dur-press 100 ms, --dur-fast 150 ms, --dur-base 250 ms, --ease-standard</div></div>
+      </div>
+    </section>
+
+    <section class="doc-section" aria-labelledby="h-preview">
+      <h2 id="h-preview">Mode gelap, teks 200 %, tablet dan ukuran ikon (v2, usulan)</h2>
+      <p>Tombol di strip kepala setiap halaman (<code>js/theme.js</code>, satu-satunya JavaScript di mockup) mengganti <strong>Tema</strong> Terang / Gelap / Sistem, <strong>Teks</strong> 100 % / 200 % dan <strong>Perangkat</strong> Ponsel / Tablet untuk semua layar dan spesimen di halaman ini. Pilihan diingat di browser ini; tautan juga bisa memakai <code>?theme=dark</code>, <code>?ts=2</code> dan <code>?device=tablet</code>. Mode gelap memakai varian tonal yang lebih terang (primary <code>#8BD47E</code> di permukaan <code>#172416</code>), bukan warna dibalik; pita hijau merek tetap. Teks 200 % hanya membesarkan huruf (ikon, jarak dan tinggi komponen tetap), sama seperti <code>MediaQuery.textScaler</code>. Tablet 800 x 1280 dp membatasi isi di tengah selebar <code>--content-max-w</code> 600 px.</p>
+      <div class="doc-grid">
+        <div class="specimen"><div class="specimen__name">Token ukuran ikon</div><div class="specimen__stage"><div class="row gap-4" style="align-items:flex-end;color:var(--color-primary)">
+          <div class="col gap-1 center"><span class="ic ph-star ic-s14" aria-hidden="true"></span><span class="fs-11">xs 14</span></div>
+          <div class="col gap-1 center"><span class="ic ph-star ic-s16" aria-hidden="true"></span><span class="fs-11">sm 16</span></div>
+          <div class="col gap-1 center"><span class="ic ph-star ic-s18" aria-hidden="true"></span><span class="fs-11">btn 18</span></div>
+          <div class="col gap-1 center"><span class="ic ph-star ic-s20" aria-hidden="true"></span><span class="fs-11">md 20</span></div>
+          <div class="col gap-1 center"><span class="ic ph-star ic-s24" aria-hidden="true"></span><span class="fs-11">lg 24</span></div>
+          <div class="col gap-1 center"><span class="ic ph-star ic-s28" aria-hidden="true"></span><span class="fs-11">xl 28</span></div>
+        </div></div><div class="specimen__code">--ic-xs meta IconLine, lencana · --ic-sm teks kecil · --ic-btn tombol M3 · --ic-md KapdhButton, prefiks field · --ic-lg app bar, daftar (bawaan) · --ic-xl kartu unggah, placeholder</div></div>
       </div>
     </section>
 

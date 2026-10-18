@@ -22,7 +22,10 @@ Flutter dan tidak masuk aset aplikasi.
 
   Firefox membatasi font dari folder induk pada `file://`, sehingga halaman di dalam subfolder grup bisa tampil
   dengan font sistem bila dibuka langsung. Lewat http semuanya normal, termasuk `<use>` ke sprite `assets/icons.svg`.
-- Tidak ada langkah build, framework, CDN, atau JavaScript. Semua font dan gambar lokal.
+- Tidak ada langkah build, framework, atau CDN. Semua font dan gambar lokal. Satu-satunya JavaScript adalah
+  `js/theme.js` (tombol pratinjau di strip kepala: Tema Terang / Gelap / Sistem, Teks 100 % / 200 %, Ponsel /
+  Tablet; juga lewat `?theme=dark`, `?ts=2`, `?device=tablet`). Tanpa skrip itu halaman tetap tampil terang,
+  teks 100 %, ponsel 360 dp. Keadaan layar tetap frame statis, bukan JavaScript.
 
 ## Struktur
 
@@ -37,6 +40,7 @@ mockup-html/
     components.css        komponen bersama; mengimpor icons.css
     icons.css             DIBANGKITKAN: kelas ikon .ic-<nama Flutter> (mask SVG)
     pages/<grup>.css      gaya khusus satu grup layar (satu berkas per grup)
+  js/theme.js             tombol pratinjau: tema gelap, teks 200 %, tablet (satu-satunya JavaScript)
   <grup>/<slug>.html      halaman layar, mis. auth/login.html, beranda/home.html
   fonts/                  Poppins woff2 (400, 500, 600, 700, 400 italic; latin + latin-ext) + OFL-Poppins.txt
   assets/
@@ -73,7 +77,10 @@ didaftarkan di `GROUPS` dalam skrip).
 
 1. **Satu berkas per layar**: `<grup>/<slug-layar>.html`, mulai dari `_template.html`. Setiap halaman menautkan
    kembali ke `../index.html` dan memuat tepat tiga stylesheet: `../css/tokens.css`, `../css/components.css`,
-   `../css/pages/<grup>.css`.
+   `../css/pages/<grup>.css`, didahului `<script src="../js/theme.js">` di `<head>` (tanpa `defer`, agar tema
+   terpasang sebelum halaman digambar). Warna layar selalu lewat token semantik (`--color-tint`,
+   `--color-surface-raised`, `--color-text-on-dark` dan seterusnya), bukan hex, agar mode gelap ikut; ukuran huruf
+   ditulis `calc(Npx * var(--ts, 1))` atau token `--fs-*` agar ikut pratinjau teks 200 %.
 2. **Strip kepala di luar ponsel** (`.page-header`): nama layar, path Dart, rute, daftar keadaan yang ditampilkan,
    catatan opsional.
 3. **Frame ponsel** `.device` berukuran 360 x 800 px CSS (= dp), status bar Android 24 dp (`.statusbar`, pakai

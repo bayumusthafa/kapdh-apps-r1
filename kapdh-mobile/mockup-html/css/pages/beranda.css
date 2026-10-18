@@ -104,12 +104,12 @@
 /* _LikeBar: OutlinedButton.icon (min 48, ikon 20) + jarak s3 + "N suka" 14 muted */
 .like-bar { display: flex; align-items: center; gap: var(--s3); }
 .like-bar__count { flex: 1 1 auto; min-width: 0; font-size: var(--fs-body); color: var(--color-text-muted); }
-.like-btn .ic { --ic-size: 20px; }
+.like-btn .ic { --ic-size: var(--ic-md); }
 /* liked: foregroundColor + side danger */
 .like-btn.is-liked { color: var(--color-danger); border-color: var(--color-danger); }
 /* busy: onPressed null. styleFrom(side:) berlaku untuk semua keadaan, jadi garis tetap primary/danger; teks
    memakai warna nonaktif M3 (onSurface 38 %). Spinner 18 strokeWidth 2 berwarna progressIndicatorTheme primary. */
-.like-btn:disabled { color: rgba(28, 27, 31, .38); border-color: var(--color-primary); cursor: default; }
+.like-btn:disabled { color: var(--color-on-surface-disabled); border-color: var(--color-primary); cursor: default; }
 .like-btn.is-liked:disabled { border-color: var(--color-danger); }
 
 /* ---------------------------------------------------------------------------------------------------------------------
@@ -135,13 +135,13 @@
 .html-body hr { margin: .5em 0; border: 0; border-top: 1px solid currentColor; }
 
 /* PostBody: textStyle 15 / 1.6 text; customStylesBuilder a (#1A4B17 underline w600), blockquote, h2-h4 primary */
-.post-body { font-size: 15px; line-height: 1.6; }
+.post-body { font-size: calc(15px * var(--ts, 1)); line-height: 1.6; }
 .post-body a { font-weight: 600; }
 .post-body h2, .post-body h3, .post-body h4 { color: var(--color-primary); }
 .post-body blockquote { margin: 8px 0; padding-left: 12px; border-left: 3px solid var(--color-green-500); color: var(--color-neutral-700); }
 /* _ExternalAnchor (data-external="true"): teks 15 / 1.6 w600 primary bergaris bawah + ExternalLinkMark 14, jarak 2 */
 .ext-anchor { color: var(--color-primary); font-weight: 600; text-decoration: underline; }
-.ext-anchor .ic { --ic-size: 14px; margin-left: 2px; vertical-align: -2px; }
+.ext-anchor .ic { --ic-size: var(--ic-xs); margin-left: 2px; vertical-align: -2px; }
 
 /* ---------------------------------------------------------------------------------------------------------------------
    NOTIFIKASI  (lib/features/notifications/notifications_screen.dart)
@@ -153,13 +153,13 @@
 /* NotificationTile: Material green50 (belum dibaca) / surface, padding 20 x 12, ikon 40 green100 + 12, Expanded,
    pil "Baru" (8 + margin atas 6) */
 .notif-tile { display: flex; align-items: flex-start; width: 100%; padding: var(--s3) var(--s5); background: var(--color-surface); text-align: left; }
-.notif-tile.is-unread { background: var(--color-green-50); }
-.notif-tile__icon { flex: none; width: 40px; height: 40px; margin-right: var(--s3); border-radius: 50%; display: grid; place-items: center; background: var(--color-green-100); color: var(--color-primary); }
-.notif-tile__icon .ic { --ic-size: 20px; }
+.notif-tile.is-unread { background: var(--color-tint); }
+.notif-tile__icon { flex: none; width: 40px; height: 40px; margin-right: var(--s3); border-radius: 50%; display: grid; place-items: center; background: var(--color-tint-strong); color: var(--color-primary); }
+.notif-tile__icon .ic { --ic-size: var(--ic-md); }
 .notif-tile__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .notif-tile__title { font-size: var(--fs-body); font-weight: 500; color: var(--color-text); }
 .notif-tile.is-unread .notif-tile__title { font-weight: 600; }
-.notif-tile__text { margin-top: 2px; font-size: 13px; line-height: 1.45; color: var(--color-text-muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.notif-tile__text { margin-top: 2px; font-size: calc(13px * var(--ts, 1)); line-height: 1.45; color: var(--color-text-muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
 .notif-tile__meta { margin-top: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
 .notif-tile__new { flex: none; margin: 6px 0 0 var(--s2); padding: 2px 6px; border-radius: var(--r-pill); background: var(--color-primary); color: var(--color-on-primary); font-size: var(--fs-overline); }
 /* Divider(height: 1, indent: 72) di antara tile */
@@ -191,5 +191,5 @@
    --------------------------------------------------------------------------------------------------------------------- */
 .nav-specimens { display: flex; flex-direction: column; gap: 14px; margin: 10px 0; }
 .nav-specimen { width: var(--device-w); border-radius: 10px; overflow: hidden; background: var(--color-background); box-shadow: 0 0 0 1px #D5D8D1; }
-.nav-specimen__label { display: block; padding: 6px 12px; border-bottom: 1px solid #E3E3E6; background: #FFFFFF; font-size: 12px; line-height: 1.4; letter-spacing: 0; color: #575C55; }
-.nav-specimen__label code { font-family: var(--font-mono); font-size: 11px; }
+.nav-specimen__label { display: block; padding: 6px 12px; border-bottom: 1px solid #E3E3E6; background: #FFFFFF; font-size: calc(12px * var(--ts, 1)); line-height: 1.4; letter-spacing: 0; color: #575C55; }
+.nav-specimen__label code { font-family: var(--font-mono); font-size: calc(11px * var(--ts, 1)); }
