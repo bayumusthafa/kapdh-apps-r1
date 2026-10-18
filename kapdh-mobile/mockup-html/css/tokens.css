@@ -1,0 +1,265 @@
+/* =====================================================================================================================
+   KAPDH mockup HTML: TOKEN DESAIN
+   Sumber kebenaran:
+     - kapdh-mobile/lib/app/theme/kapdh_tokens.dart   (dibangkitkan dari kapdh-platform/packages/design-tokens/tokens.json)
+     - kapdh-mobile/lib/app/theme/kapdh_theme.dart    (ThemeData Material 3 aplikasi)
+     - kapdh-mobile/lib/design/design_constants.dart  (KapdhExtraColors, KapdhComponentSize: nilai prototipe di luar token)
+     - ColorScheme.fromSeed(seedColor: KapdhColors.primary): warna turunan Material 3 yang TIDAK ditimpa tema
+       (diukur dari Flutter 3.47.2 dengan uji widget; dipakai widget Material bawaan: SegmentedButton, ChoiceChip, Switch,
+       FAB, PopupMenu, LinearProgressIndicator)
+   1 px CSS = 1 dp Flutter. Nama variabel memetakan 1:1 ke nama Dart (komentar di tiap baris).
+   File bersama: JANGAN diubah dari grup layar. Usulan perubahan tulis di catatan grup.
+   ===================================================================================================================== */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   Font Poppins lokal (salinan @fontsource/poppins 5.3.0, OFL: fonts/OFL-Poppins.txt). Aplikasi memuat Poppins lewat
+   google_fonts (KapdhTheme._poppins); bobot yang dipakai kode: 400, 500, 600, 700 (+ italic 400 untuk isi berita).
+   --------------------------------------------------------------------------------------------------------------------- */
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../fonts/poppins-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../fonts/poppins-latin-ext-400-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Poppins'; font-style: italic; font-weight: 400; font-display: swap;
+  src: url('../fonts/poppins-latin-400-italic.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Poppins'; font-style: italic; font-weight: 400; font-display: swap;
+  src: url('../fonts/poppins-latin-ext-400-italic.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 500; font-display: swap;
+  src: url('../fonts/poppins-latin-500-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 500; font-display: swap;
+  src: url('../fonts/poppins-latin-ext-500-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('../fonts/poppins-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('../fonts/poppins-latin-ext-600-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url('../fonts/poppins-latin-700-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url('../fonts/poppins-latin-ext-700-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+:root {
+  /* -------------------------------------------------------------------------------------------------------------------
+     WARNA MEREK  (KapdhColors.* | tokens.json color.brand / color.neutral)
+     ------------------------------------------------------------------------------------------------------------------- */
+  --color-green-950: #0E280C;   /* KapdhColors.green950 */
+  --color-green-900: #143A12;   /* KapdhColors.green900 */
+  --color-green-800: #1A4B17;   /* KapdhColors.green800 */
+  --color-green-700: #215E1E;   /* KapdhColors.green700 */
+  --color-green-600: #2D7A28;   /* KapdhColors.green600 */
+  --color-green-500: #3F9A38;   /* KapdhColors.green500 */
+  --color-green-100: #E3F0E1;   /* KapdhColors.green100 */
+  --color-green-50:  #F1F8F0;   /* KapdhColors.green50 */
+  --color-gold-500:  #E6D312;   /* KapdhColors.gold500 */
+  --color-gold-400:  #F0DD19;   /* KapdhColors.gold400 */
+  --color-gold-100:  #FBF6C9;   /* KapdhColors.gold100 */
+  --color-cream:     #FCF8F5;   /* KapdhColors.cream */
+  --color-neutral-0:   #FFFFFF; /* KapdhColors.neutral0 */
+  --color-neutral-50:  #FBFAFF; /* KapdhColors.neutral50 */
+  --color-neutral-100: #F4F4F6; /* KapdhColors.neutral100 */
+  --color-neutral-200: #E3E3E6; /* KapdhColors.neutral200 */
+  --color-neutral-300: #C9C9C9; /* KapdhColors.neutral300 */
+  --color-neutral-500: #8A8F87; /* KapdhColors.neutral500 */
+  --color-neutral-600: #6B6B6B; /* KapdhColors.neutral600 */
+  --color-neutral-700: #3F4A3E; /* KapdhColors.neutral700 */
+  --color-neutral-900: #1C1B1F; /* KapdhColors.neutral900 */
+
+  /* WARNA SEMANTIK  (KapdhColors.* | tokens.json color.semantic) */
+  --color-primary:                #1A4B17; /* KapdhColors.primary (= green800); ColorScheme.primary */
+  --color-on-primary:             #FFFFFF; /* KapdhColors.onPrimary */
+  --color-primary-hover:          #215E1E; /* KapdhColors.primaryHover */
+  --color-accent:                 #E6D312; /* KapdhColors.accent (= gold500); ColorScheme.secondary */
+  --color-on-accent:              #0E280C; /* KapdhColors.onAccent */
+  --color-background:             #FBFAFF; /* KapdhColors.background; scaffoldBackgroundColor */
+  --color-surface:                #FFFFFF; /* KapdhColors.surface; app bar, kartu, field, dialog, sheet */
+  --color-surface-brand:          #FCF8F5; /* KapdhColors.surfaceBrand */
+  --color-surface-dark:           #0E280C; /* KapdhColors.surfaceDark; kotak nominal, modul QR */
+  --color-text:                   #1C1B1F; /* KapdhColors.text; ColorScheme.onSurface */
+  --color-text-muted:             #6B6B6B; /* KapdhColors.textMuted; ColorScheme.onSurfaceVariant */
+  --color-text-on-dark:           #FFFFFF; /* KapdhColors.textOnDark */
+  --color-text-highlight-on-dark: #E6D312; /* KapdhColors.textHighlightOnDark */
+  --color-border:                 #8A8F87; /* KapdhColors.border; ColorScheme.outline, garis field */
+  --color-divider:                #E3E3E6; /* KapdhColors.divider; ColorScheme.outlineVariant, DividerTheme */
+  --color-disabled-bg:            #DCDCE0; /* KapdhColors.disabledBg */
+  --color-disabled-text:          #6B6B6B; /* KapdhColors.disabledText */
+  --color-focus-ring:             #E6D312; /* KapdhColors.focusRing */
+
+  /* WARNA STATUS  (KapdhColors.* | tokens.json color.status) */
+  --color-success:    #1E7A46; /* KapdhColors.success */
+  --color-success-bg: #E8F7F0; /* KapdhColors.successBg */
+  --color-warning:    #8A5A00; /* KapdhColors.warning */
+  --color-warning-bg: #FFF4D6; /* KapdhColors.warningBg */
+  --color-danger:     #B3261E; /* KapdhColors.danger; ColorScheme.error */
+  --color-danger-bg:  #FDECEA; /* KapdhColors.dangerBg; ColorScheme.errorContainer */
+  --color-info:       #1F5FA8; /* KapdhColors.info */
+  --color-info-bg:    #E7F0FB; /* KapdhColors.infoBg */
+  --color-neutral:    #3F4A3E; /* KapdhColors.neutral */
+  --color-neutral-bg: #EEEFEE; /* KapdhColors.neutralBg */
+
+  /* BADGE STATUS KEANGGOTAAN  (KapdhMembershipStatus.* : fg, bg, label, ikon) */
+  --status-verified-fg:       #1E7A46; --status-verified-bg:       #E8F7F0; /* verified: 'KTA Aktif', check_circle */
+  --status-expiring-fg:       #8A5A00; --status-expiring-bg:       #FFF4D6; /* expiring: 'Segera Berakhir', schedule */
+  --status-expired-fg:        #B3261E; --status-expired-bg:        #FDECEA; /* expired: 'KTA Kedaluwarsa', cancel */
+  --status-unverified-fg:     #B3261E; --status-unverified-bg:     #FDECEA; /* unverified: 'KTA Tidak Aktif', cancel */
+  --status-pending-review-fg: #1F5FA8; --status-pending-review-bg: #E7F0FB; /* pendingReview: 'Menunggu Verifikasi', hourglass_top */
+  --status-suspended-fg:      #3F4A3E; --status-suspended-bg:      #EEEFEE; /* suspended: 'Dibatasi', block */
+
+  /* WARNA TAMBAHAN PROTOTIPE  (KapdhExtraColors.* di lib/design/design_constants.dart) */
+  --color-muted-on-dark:          #C9D6C8;                 /* KapdhExtraColors.mutedOnDark */
+  --color-rejection-border:       #F3C3BF;                 /* KapdhExtraColors.rejectionBorder */
+  --color-qr-placeholder-fill:    rgba(255, 255, 255, .08); /* KapdhExtraColors.qrPlaceholderFill (0x14FFFFFF) */
+  --color-qr-placeholder-border:  rgba(255, 255, 255, .25); /* KapdhExtraColors.qrPlaceholderBorder (0x40FFFFFF) */
+  --color-brand-pattern:          rgba(255, 255, 255, .08); /* BrandPatternPainter.color (0x14FFFFFF) */
+  --color-banner-scrim-end:       rgba(0, 0, 0, .70);       /* _BannerTile gradien 0x00000000 -> 0xB3000000 */
+
+  /* TURUNAN MATERIAL 3  (ColorScheme.fromSeed(seedColor: #1A4B17) yang tidak ditimpa KapdhTheme; diukur di Flutter 3.47.2) */
+  --m3-primary-container:      #BFF0B1; /* ColorScheme.primaryContainer: latar FloatingActionButton */
+  --m3-on-primary-container:   #265022; /* ColorScheme.onPrimaryContainer: ikon FAB, teks CircleAvatar bawaan */
+  --m3-secondary-container:    #D6E8CD; /* ColorScheme.secondaryContainer: segmen/ChoiceChip terpilih, trek LinearProgressIndicator */
+  --m3-on-secondary-container: #3C4B37; /* ColorScheme.onSecondaryContainer: label segmen/ChoiceChip terpilih */
+  --m3-surface-container-low:  #F2F5EB; /* ColorScheme.surfaceContainerLow */
+  --m3-surface-container:      #ECEFE5; /* ColorScheme.surfaceContainer: latar PopupMenu */
+  --m3-surface-container-high: #E6E9E0; /* ColorScheme.surfaceContainerHigh */
+  --m3-surface-container-highest: #E0E4DA; /* ColorScheme.surfaceContainerHighest: trek Switch mati */
+  --m3-inverse-surface:        #2E322B; /* ColorScheme.inverseSurface */
+  --m3-on-inverse-surface:     #EFF2E8; /* ColorScheme.onInverseSurface: teks SnackBar */
+  --m3-scrim:                  rgba(0, 0, 0, .54); /* Colors.black54: barrier dialog dan bottom sheet (diukur 0.5412) */
+
+  /* GRADASI  (KapdhGradients.*, KapdhExtraColors.bandGradient | tokens.json gradient) */
+  --gradient-button-primary: linear-gradient(180deg, #215E1E 0%, #1A4B17 100%); /* KapdhGradients.buttonPrimary (topCenter -> bottomCenter) */
+  --gradient-band:           linear-gradient(180deg, #215E1E 0%, #1A4B17 100%); /* KapdhExtraColors.bandGradient = tokens.json gradient.header */
+  --gradient-kta-stops:      #020702 0%, #0E280C 45%, #215E1E 100%;            /* KapdhGradients.ktaCard (topLeft -> bottomRight) */
+  /* Flutter menarik garis gradasi dari sudut kiri atas ke kanan bawah. Di CSS sudut tergantung rasio kotak:
+     sudut = 90deg + atan(tinggi/lebar). .kta-card memakai var(--kta-angle) (bawaan 128deg untuk kartu 320x250). */
+  --gradient-kta-card: linear-gradient(135deg, #020702 0%, #0E280C 45%, #215E1E 100%); /* tokens.json gradient.kta-card (web) */
+
+  /* -------------------------------------------------------------------------------------------------------------------
+     TIPOGRAFI  (KapdhFontSize.* | tokens.json font) + gaya TextTheme KapdhTheme.light()
+     Teks biasa di Flutter mewarisi DefaultTextStyle = textTheme.bodyMedium: Poppins 14, tinggi baris 1.45,
+     letter-spacing 0.25. TextStyle eksplisit di kode HANYA mengganti properti yang disebut (mis. fontSize 13 tetap
+     ls 0.25 dan tinggi 1.45). Karena itu .t-* dan komponen memakai --ls-body / --lh-normal sebagai bawaan.
+     ------------------------------------------------------------------------------------------------------------------- */
+  --font-body:    'Poppins', system-ui, sans-serif;            /* tokens.json font.family.body */
+  --font-heading: 'Poppins', system-ui, sans-serif;            /* KapdhTheme.useTelegraf = false: heading Poppins SemiBold */
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;   /* tokens.json font.family.mono (tidak dipakai aplikasi) */
+
+  --fs-display:  32px; /* KapdhFontSize.display  -> textTheme.displaySmall */
+  --fs-h1:       24px; /* KapdhFontSize.h1       -> headlineSmall (judul AlertDialog) */
+  --fs-h2:       20px; /* KapdhFontSize.h2       -> titleLarge (judul lembar, StatusHero) */
+  --fs-h3:       18px; /* KapdhFontSize.h3       -> titleMedium (judul EmptyState/ErrorState) */
+  --fs-body-lg:  16px; /* KapdhFontSize.bodyLg   -> bodyLarge (judul ListTile, nama di header) */
+  --fs-body:     14px; /* KapdhFontSize.body     -> bodyMedium (teks bawaan) */
+  --fs-label:    14px; /* KapdhFontSize.label    -> labelLarge (tombol) */
+  --fs-caption:  12px; /* KapdhFontSize.caption  -> bodySmall / labelMedium */
+  --fs-overline: 11px; /* KapdhFontSize.overline -> labelSmall */
+  --fs-appbar:   17px; /* AppBarTheme.titleTextStyle fontSize 17 w600 */
+  --fs-title-sm: 15px; /* textTheme.titleSmall 15 w600 h1.3 (label TabBar) */
+  --fs-13:       13px; /* literal 13 di kode: tombol teks, isi InfoBox judul, IconLine, dll. */
+
+  --fw-regular:  400; /* FontWeight.w400 | tokens.json font.weight.regular */
+  --fw-medium:   500; /* FontWeight.w500 */
+  --fw-semibold: 600; /* FontWeight.w600 (heading) */
+  --fw-bold:     700; /* FontWeight.w700 */
+
+  --lh-tight:   1.2;  /* tokens.json font.line-height.tight */
+  --lh-heading: 1.25; /* KapdhTheme heading(): height 1.25 */
+  --lh-normal:  1.45; /* tokens.json normal; bodyLarge/bodyMedium/bodySmall height 1.45 */
+  --lh-relaxed: 1.6;  /* tokens.json font.line-height.relaxed */
+  --lh-poppins: 1.5;  /* tinggi baris alami Poppins bila TextStyle tanpa height (judul app bar, TextButton) */
+
+  --ls-body:    .25px; /* englishLike2021.bodyMedium letterSpacing 0.25 (teks bawaan) */
+  --ls-body-lg: .5px;  /* bodyLarge 0.5: judul ListTile, isi TextField */
+  --ls-body-sm: .4px;  /* bodySmall 0.4: teks galat/helper field */
+  --ls-label:   .1px;  /* labelLarge/titleSmall 0.1: label TabBar, SegmentedButton, ChoiceChip */
+  --ls-label-sm: .5px; /* labelMedium/labelSmall 0.5 */
+  --ls-title-md: .15px; /* titleMedium 0.15 */
+
+  /* -------------------------------------------------------------------------------------------------------------------
+     SPASI  (KapdhSpace.s* | tokens.json space)
+     ------------------------------------------------------------------------------------------------------------------- */
+  --s0: 0px;   /* KapdhSpace.s0 */
+  --s1: 4px;   /* KapdhSpace.s1 */
+  --s2: 8px;   /* KapdhSpace.s2 */
+  --s3: 12px;  /* KapdhSpace.s3 */
+  --s4: 16px;  /* KapdhSpace.s4 */
+  --s5: 20px;  /* KapdhSpace.s5: padding samping layar standar */
+  --s6: 24px;  /* KapdhSpace.s6 */
+  --s8: 32px;  /* KapdhSpace.s8 */
+  --s10: 40px; /* KapdhSpace.s10 */
+  --s12: 48px; /* KapdhSpace.s12 */
+  --s16: 64px; /* KapdhSpace.s16 */
+  /* Alias s7/s9/s11 tidak ada di Dart; jangan dipakai. */
+
+  /* -------------------------------------------------------------------------------------------------------------------
+     RADIUS  (KapdhRadius.* | tokens.json radius) + literal di kode
+     ------------------------------------------------------------------------------------------------------------------- */
+  --r-sm:   6px;   /* KapdhRadius.sm: CategoryChip, TagChip, blok skeleton */
+  --r-md:   10px;  /* KapdhRadius.md: tombol, field, OTP, kartu direktori, cover event */
+  --r-lg:   14px;  /* KapdhRadius.lg: kartu, banner, dialog, CardTheme */
+  --r-xl:   20px;  /* KapdhRadius.xl: lembar (sheet) dan bottom sheet, kartu profil Akun */
+  --r-pill: 999px; /* KapdhRadius.pill: badge, chip, indikator navigasi */
+  --r-12:   12px;  /* literal 12: InfoBox, UploadTile, MethodRadioCard, kotak QR KTA, FAB small */
+  --r-16:   16px;  /* literal 16: KtaCard; indikator NavigationBar (64x32, radius 16) */
+  --r-8:    8px;   /* literal KapdhSpace.s2 sebagai radius: ikon UploadTile 44 px */
+  --r-4:    4px;   /* Material 3: SnackBar, PopupMenu */
+  --r-2:    2px;   /* Material 3: Checkbox */
+
+  /* -------------------------------------------------------------------------------------------------------------------
+     BAYANGAN / ELEVASI
+     Tema aplikasi hampir datar: CardTheme, AppBar, NavigationBar elevation 0; Dialog dan BottomSheet M3 tanpa
+     bayangan (shadowColor transparan, surfaceTint transparan). Bayangan hanya di bawah ini.
+     ------------------------------------------------------------------------------------------------------------------- */
+  --shadow-none: none;
+  --shadow-account-card: 0 4px 12px rgba(0, 0, 0, .08);   /* account_screen.dart kartu profil: 0x14000000 blur 12 (0,4) */
+  --shadow-profile-avatar: 0 2px 8px rgba(0, 0, 0, .12);  /* ProfileAvatar: 0x1F000000 blur 8 (0,2) */
+  --ring-stepper-current: 0 0 0 4px #E3F0E1;               /* KapdhStepper langkah aktif: green100 spreadRadius 4 */
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, .30), 0 1px 3px 1px rgba(0, 0, 0, .15); /* M3 level 1 */
+  --elevation-2: 0 1px 2px rgba(0, 0, 0, .30), 0 2px 6px 2px rgba(0, 0, 0, .15); /* M3 level 2 (3 dp): PopupMenu */
+  --elevation-3: 0 1px 3px rgba(0, 0, 0, .30), 0 4px 8px 3px rgba(0, 0, 0, .15); /* M3 level 3 (6 dp): SnackBar, FAB */
+  --shadow-card:   0 1px 2px rgba(14, 40, 12, .06), 0 4px 12px rgba(14, 40, 12, .08); /* tokens.json shadow.card (web; tidak dipakai Flutter) */
+  --shadow-raised: 0 8px 24px rgba(14, 40, 12, .16);                                  /* tokens.json shadow.raised (web) */
+
+  /* -------------------------------------------------------------------------------------------------------------------
+     UKURAN  (KapdhSize.*, KapdhComponentSize.* | tokens.json size) + ukuran widget Material 3 terukur
+     ------------------------------------------------------------------------------------------------------------------- */
+  --size-touch-target-min: 48px;  /* KapdhSize.touchTargetMin */
+  --size-input-height: 52px;      /* KapdhSize.inputHeight (token; TextField nyata 48 px, Dropdown 52 px) */
+  --size-field: 48px;             /* tinggi TextField terukur: padding 14 + baris 20.3 + 14 */
+  --size-search: 51px;            /* TextField isDense pencarian (Jejaring, Event) terukur */
+  --size-button-height: 48px;     /* KapdhSize.buttonHeight: KapdhButton.solid/outlined */
+  --size-primary-button: 52px;    /* KapdhComponentSize.primaryButtonHeight: KapdhButton (gradasi) */
+  --size-app-bar: 56px;           /* KapdhSize.appBarHeight (+1 px garis bawah) */
+  --size-home-header: 76px;       /* HomeHeader.height */
+  --size-nav-bar: 64px;           /* NavigationBarTheme.height */
+  --size-otp-box: 56px;           /* KapdhComponentSize.otpBoxHeight */
+  --size-hero-icon: 72px;         /* KapdhComponentSize.heroIcon */
+  --size-stepper-dot: 36px;       /* KapdhComponentSize.stepperDot */
+  --size-stepper-dot-compact: 32px; /* KapdhComponentSize.stepperDotCompact */
+  --size-kta-qr: 128px;           /* KapdhComponentSize.ktaQr */
+  --size-tab-bar: 48px;           /* TabBar M3: tab 46 + indikator (terukur 48) */
+  --banner-aspect: 2.2;           /* bannerAspectRatio (1760 x 800 px) */
+  --banner-viewport-fraction: .92; /* bannerViewportFraction */
+
+  /* PERANGKAT (frame ponsel Android) */
+  --device-w: 360px;             /* lebar logis acuan (dp) */
+  --device-h: 800px;             /* tinggi logis acuan (dp) */
+  --sys-status-h: 24px;          /* status bar Android */
+  --sys-nav-h: 20px;             /* inset navigasi gestur Android (perkiraan) */
+  --inset-top: 0px;              /* di dalam .device menjadi --sys-status-h (lihat components.css) */
+  --inset-bottom: 0px;           /* di dalam .device menjadi --sys-nav-h */
+
+  /* BREAKPOINT / AMBANG  (aplikasi hanya ponsel; tidak ada breakpoint lebar di lib/) */
+  --bp-phone: 360px;             /* frame acuan */
+  --bp-sheet-max: 640px;         /* M3 BottomSheet lebar maksimum */
+  --dialog-min-w: 280px;         /* M3 Dialog lebar minimum; inset 40 px kiri-kanan */
+  --dialog-max-w: 560px;         /* M3 Dialog lebar maksimum */
+  --text-scale-stack: 1.3;       /* StatusActionCard & register_screen menumpuk aksi bila skala teks > 1.3 */
+}

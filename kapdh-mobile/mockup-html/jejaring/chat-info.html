@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Info Percakapan - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Info Percakapan (direct dan grup) aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/jejaring.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+      <a href="chat-room.html">Percakapan</a>
+      <a href="member-picker.html">Pemilih alumni</a>
+      <a href="report-sheet.html">Lembar laporan</a>
+    </nav>
+    <h1 class="page-header__title">Info Percakapan</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/chat/chat_info_screen.dart</code> (ChatInfoScreen, _RenameGroupDialog), <code>chat_info_controller.dart</code>, <code>../network/moderation_actions.dart</code>, <code>../network/report_sheet.dart</code>, <code>member_picker.dart</code></dd>
+      <dt>Rute</dt><dd><code>/chat/:roomId/info</code> (navigator akar)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Percakapan langsung</li>
+        <li>Grup, admin (gulir penuh)</li>
+        <li>Grup, admin</li>
+        <li>Grup, anggota biasa</li>
+        <li>Menu anggota (admin)</li>
+        <li>Dialog ubah nama + keyboard</li>
+        <li>Dialog jadikan admin</li>
+        <li>Dialog keluarkan anggota</li>
+        <li>Dialog keluar grup</li>
+        <li>Pilih admin pengganti</li>
+        <li>Hasil undangan</li>
+        <li>Grup ditutup</li>
+        <li>Langsung: diblokir + galat muat ulang</li>
+        <li>Laporkan grup</li>
+        <li>Memuat</li>
+        <li>Galat</li>
+        <li>Percakapan tidak tersedia</li>
+      </ol>
+    </div>
+    <p class="page-header__note">AppScaffold "Info Percakapan". Semua aksi konfirmasi memakai AlertDialog dengan dua TextButton hijau (tanpa penanda bahaya), kecuali baris "Keluar grup" merah. Foto grup contoh memakai gambar sampel.</p>
+  </header>
+
+  <main class="frames">
+
+    <!-- 1. Percakapan langsung -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Percakapan langsung</figcaption>
+      <div class="device" aria-label="Info percakapan langsung">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true">SR</span></div>
+              <h2 class="jj-info__title">Siti Rahmah</h2>
+              <p class="jj-info__sub">Percakapan langsung</p>
+              <div class="mt-4"></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="false" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="member-profile.html"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Lihat profil</span></span></a>
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-block" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Blokir Siti Rahmah</span></span></a>
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan pengguna</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">SingleChildScrollView padding 20. Avatar 88, nama 20 w700 di tengah. SwitchListTile, ListTile dan Divider tanpa padding isi (contentPadding 0): ikon 24 di tepi kiri, judul di x 40.</p>
+    </figure>
+
+    <!-- 2. Grup, admin (gulir penuh) -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Grup, admin (gulir penuh)</figcaption>
+      <div class="device device--tall" aria-label="Info grup sebagai admin, seluruh isi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true"><img class="jj-avatar-img" src="../assets/sample/banner-3-jejaring.jpg" alt=""></span></div>
+              <h2 class="jj-info__title">Angkatan 12</h2>
+              <p class="jj-info__sub">Grup · 6 anggota</p>
+              <div class="jj-info__manage"><button class="btn-text btn-text--icon" type="button"><span class="ic ic-edit_outlined" aria-hidden="true"></span>Ubah nama</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ubah foto</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-hide_image_outlined" aria-hidden="true"></span>Hapus foto</button></div>
+              <div class="mt-4"></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="true" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch is-on" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <div class="section-header"><h3 class="section-header__title">Anggota (6)</h3><button class="btn-text" type="button">Undang</button></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">AF</span></span><span class="jj-tile__body"><span class="jj-tile__title">Ahmad Fauzi (Anda)</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Ahmad Fauzi" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">SR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Siti Rahmah</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Siti Rahmah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">DL</span></span><span class="jj-tile__body"><span class="jj-tile__title">Dewi Lestari</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Dewi Lestari" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">FH</span></span><span class="jj-tile__body"><span class="jj-tile__title">Fajar Hidayat</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Fajar Hidayat" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">MR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Muhammad Rizki</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Muhammad Rizki" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">NA</span></span><span class="jj-tile__body"><span class="jj-tile__title">Nur Aisyah</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Nur Aisyah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="mt-3"></div>
+              <div class="section-header jj-section-header--bare"><h3 class="section-header__title">Undangan tertunda (2)</h3></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">HB</span></span><span class="jj-tile__body"><span class="jj-tile__title">Hasan Basri</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">RM</span></span><span class="jj-tile__body"><span class="jj-tile__title">Rina Marlina</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan grup</span></span></a>
+              <a class="jj-tile jj-tile--danger" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-logout" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Keluar grup</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Admin: tombol Ubah nama / Ubah foto / Hapus foto (bila berfoto), "Undang" di judul Anggota, menu titik tiga per anggota, Undangan tertunda dengan "Batalkan". Anggota diurutkan admin dulu. Grup maksimal 100 anggota, semua baris dibangun sekaligus.</p>
+    </figure>
+
+    <!-- 3. Grup, admin -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Grup, admin</figcaption>
+      <div class="device" aria-label="Info grup sebagai admin">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true"><img class="jj-avatar-img" src="../assets/sample/banner-3-jejaring.jpg" alt=""></span></div>
+              <h2 class="jj-info__title">Angkatan 12</h2>
+              <p class="jj-info__sub">Grup · 6 anggota</p>
+              <div class="jj-info__manage"><button class="btn-text btn-text--icon" type="button"><span class="ic ic-edit_outlined" aria-hidden="true"></span>Ubah nama</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ubah foto</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-hide_image_outlined" aria-hidden="true"></span>Hapus foto</button></div>
+              <div class="mt-4"></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="true" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch is-on" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <div class="section-header"><h3 class="section-header__title">Anggota (6)</h3><button class="btn-text" type="button">Undang</button></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">AF</span></span><span class="jj-tile__body"><span class="jj-tile__title">Ahmad Fauzi (Anda)</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Ahmad Fauzi" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">SR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Siti Rahmah</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Siti Rahmah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">DL</span></span><span class="jj-tile__body"><span class="jj-tile__title">Dewi Lestari</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Dewi Lestari" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">FH</span></span><span class="jj-tile__body"><span class="jj-tile__title">Fajar Hidayat</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Fajar Hidayat" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">MR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Muhammad Rizki</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Muhammad Rizki" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">NA</span></span><span class="jj-tile__body"><span class="jj-tile__title">Nur Aisyah</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Nur Aisyah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="mt-3"></div>
+              <div class="section-header jj-section-header--bare"><h3 class="section-header__title">Undangan tertunda (2)</h3></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">HB</span></span><span class="jj-tile__body"><span class="jj-tile__title">Hasan Basri</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">RM</span></span><span class="jj-tile__body"><span class="jj-tile__title">Rina Marlina</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan grup</span></span></a>
+              <a class="jj-tile jj-tile--danger" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-logout" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Keluar grup</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 4. Grup, anggota biasa -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Grup, anggota biasa</figcaption>
+      <div class="device" aria-label="Info grup sebagai anggota biasa">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true"><span class="ic ic-groups"></span></span></div>
+              <h2 class="jj-info__title">Angkatan 12</h2>
+              <p class="jj-info__sub">Grup · 6 anggota</p>
+              <div class="mt-4"></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="false" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <div class="section-header jj-section-header--bare"><h3 class="section-header__title">Anggota (6)</h3></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">AF</span></span><span class="jj-tile__body"><span class="jj-tile__title">Ahmad Fauzi (Anda)</span></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">SR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Siti Rahmah</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Siti Rahmah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">DL</span></span><span class="jj-tile__body"><span class="jj-tile__title">Dewi Lestari</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Dewi Lestari" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">FH</span></span><span class="jj-tile__body"><span class="jj-tile__title">Fajar Hidayat</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Fajar Hidayat" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">MR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Muhammad Rizki</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Muhammad Rizki" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">NA</span></span><span class="jj-tile__body"><span class="jj-tile__title">Nur Aisyah</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Nur Aisyah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan grup</span></span></a>
+              <a class="jj-tile jj-tile--danger" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-logout" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Keluar grup</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tanpa hak kelola: menu tiap anggota lain hanya "Lihat profil"; baris sendiri tanpa menu; tanpa Undangan tertunda.</p>
+    </figure>
+
+    <!-- 5. Menu anggota (admin) -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Menu anggota (admin)</figcaption>
+      <div class="device" aria-label="Info grup, menu tindakan anggota">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true"><img class="jj-avatar-img" src="../assets/sample/banner-3-jejaring.jpg" alt=""></span></div>
+              <h2 class="jj-info__title">Angkatan 12</h2>
+              <p class="jj-info__sub">Grup · 6 anggota</p>
+              <div class="jj-info__manage"><button class="btn-text btn-text--icon" type="button"><span class="ic ic-edit_outlined" aria-hidden="true"></span>Ubah nama</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ubah foto</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-hide_image_outlined" aria-hidden="true"></span>Hapus foto</button></div>
+              <div class="mt-4"></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="true" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch is-on" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <div class="section-header"><h3 class="section-header__title">Anggota (6)</h3><button class="btn-text" type="button">Undang</button></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">AF</span></span><span class="jj-tile__body"><span class="jj-tile__title">Ahmad Fauzi (Anda)</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Ahmad Fauzi" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">SR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Siti Rahmah</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Siti Rahmah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">DL</span></span><span class="jj-tile__body"><span class="jj-tile__title">Dewi Lestari</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Dewi Lestari" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">FH</span></span><span class="jj-tile__body"><span class="jj-tile__title">Fajar Hidayat</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Fajar Hidayat" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">MR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Muhammad Rizki</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Muhammad Rizki" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">NA</span></span><span class="jj-tile__body"><span class="jj-tile__title">Nur Aisyah</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Nur Aisyah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="mt-3"></div>
+              <div class="section-header jj-section-header--bare"><h3 class="section-header__title">Undangan tertunda (2)</h3></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">HB</span></span><span class="jj-tile__body"><span class="jj-tile__title">Hasan Basri</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">RM</span></span><span class="jj-tile__body"><span class="jj-tile__title">Rina Marlina</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan grup</span></span></a>
+              <a class="jj-tile jj-tile--danger" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-logout" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Keluar grup</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="popup-menu jj-popup jj-popup--member" role="menu" aria-label="Tindakan untuk Dewi Lestari" style="top:612px">
+          <button class="popup-menu__item" type="button" role="menuitem">Lihat profil</button>
+          <button class="popup-menu__item" type="button" role="menuitem">Jadikan admin</button>
+          <button class="popup-menu__item" type="button" role="menuitem">Keluarkan dari grup</button>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Menu menempel tombol titik tiga dan digeser ke atas agar tetap 8 dari tepi bawah. Untuk admin lain: "Jadikan anggota biasa"; untuk diri sendiri yang admin: hanya "Jadikan anggota biasa" (berhenti jadi admin).</p>
+    </figure>
+
+    <!-- 6. Dialog ubah nama + keyboard -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Dialog ubah nama + keyboard</figcaption>
+      <div class="device" aria-label="Dialog ubah nama grup">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true"><img class="jj-avatar-img" src="../assets/sample/banner-3-jejaring.jpg" alt=""></span></div>
+              <h2 class="jj-info__title">Angkatan 12</h2>
+              <p class="jj-info__sub">Grup · 6 anggota</p>
+              <div class="jj-info__manage"><button class="btn-text btn-text--icon" type="button"><span class="ic ic-edit_outlined" aria-hidden="true"></span>Ubah nama</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ubah foto</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-hide_image_outlined" aria-hidden="true"></span>Hapus foto</button></div>
+              <div class="mt-4"></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="true" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch is-on" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <div class="section-header"><h3 class="section-header__title">Anggota (6)</h3><button class="btn-text" type="button">Undang</button></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">AF</span></span><span class="jj-tile__body"><span class="jj-tile__title">Ahmad Fauzi (Anda)</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Ahmad Fauzi" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">SR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Siti Rahmah</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Siti Rahmah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">DL</span></span><span class="jj-tile__body"><span class="jj-tile__title">Dewi Lestari</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Dewi Lestari" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">FH</span></span><span class="jj-tile__body"><span class="jj-tile__title">Fajar Hidayat</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Fajar Hidayat" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">MR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Muhammad Rizki</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Muhammad Rizki" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">NA</span></span><span class="jj-tile__body"><span class="jj-tile__title">Nur Aisyah</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Nur Aisyah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="mt-3"></div>
+              <div class="section-header jj-section-header--bare"><h3 class="section-header__title">Undangan tertunda (2)</h3></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">HB</span></span><span class="jj-tile__body"><span class="jj-tile__title">Hasan Basri</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">RM</span></span><span class="jj-tile__body"><span class="jj-tile__title">Rina Marlina</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan grup</span></span></a>
+              <a class="jj-tile jj-tile--danger" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-logout" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Keluar grup</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog jj-dialog--above-kb" role="dialog" aria-modal="true" aria-labelledby="ci6-title">
+          <h3 class="dialog__title" id="ci6-title">Ubah nama grup</h3>
+          <div class="dialog__content"><div class="input is-focused jj-dialog-field"><input class="input__control" aria-label="Nama grup" placeholder="Nama grup" value="Angkatan 12" maxlength="80"></div></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text" type="button">Simpan</button></div>
+        </div>
+        <div class="keyboard" aria-hidden="true">
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key jj-key-space"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">TextField bawaan (autofocus, maks 80). Nama kosong: snackbar "Nama grup wajib diisi."; berhasil: "Nama grup diperbarui." Konflik versi (409) memuat data terbaru.</p>
+    </figure>
+
+    <!-- 7. Dialog jadikan admin -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Dialog jadikan admin</figcaption>
+      <div class="device" aria-label="Konfirmasi jadikan admin">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true"><img class="jj-avatar-img" src="../assets/sample/banner-3-jejaring.jpg" alt=""></span></div>
+              <h2 class="jj-info__title">Angkatan 12</h2>
+              <p class="jj-info__sub">Grup · 6 anggota</p>
+              <div class="jj-info__manage"><button class="btn-text btn-text--icon" type="button"><span class="ic ic-edit_outlined" aria-hidden="true"></span>Ubah nama</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ubah foto</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-hide_image_outlined" aria-hidden="true"></span>Hapus foto</button></div>
+              <div class="mt-4"></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="true" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch is-on" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <div class="section-header"><h3 class="section-header__title">Anggota (6)</h3><button class="btn-text" type="button">Undang</button></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">AF</span></span><span class="jj-tile__body"><span class="jj-tile__title">Ahmad Fauzi (Anda)</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Ahmad Fauzi" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">SR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Siti Rahmah</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Siti Rahmah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">DL</span></span><span class="jj-tile__body"><span class="jj-tile__title">Dewi Lestari</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Dewi Lestari" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">FH</span></span><span class="jj-tile__body"><span class="jj-tile__title">Fajar Hidayat</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Fajar Hidayat" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">MR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Muhammad Rizki</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Muhammad Rizki" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">NA</span></span><span class="jj-tile__body"><span class="jj-tile__title">Nur Aisyah</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Nur Aisyah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="mt-3"></div>
+              <div class="section-header jj-section-header--bare"><h3 class="section-header__title">Undangan tertunda (2)</h3></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">HB</span></span><span class="jj-tile__body"><span class="jj-tile__title">Hasan Basri</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">RM</span></span><span class="jj-tile__body"><span class="jj-tile__title">Rina Marlina</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan grup</span></span></a>
+              <a class="jj-tile jj-tile--danger" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-logout" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Keluar grup</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ci7-title">
+          <h3 class="dialog__title" id="ci7-title">Jadikan Dewi Lestari admin?</h3>
+          <div class="dialog__content"><p class="c-muted">Dewi Lestari dapat mengubah nama dan foto grup, mengundang, mengeluarkan anggota dan mengatur admin.</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text" type="button">Jadikan admin</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 8. Dialog keluarkan anggota -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Dialog keluarkan anggota</figcaption>
+      <div class="device" aria-label="Konfirmasi keluarkan anggota">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true"><img class="jj-avatar-img" src="../assets/sample/banner-3-jejaring.jpg" alt=""></span></div>
+              <h2 class="jj-info__title">Angkatan 12</h2>
+              <p class="jj-info__sub">Grup · 6 anggota</p>
+              <div class="jj-info__manage"><button class="btn-text btn-text--icon" type="button"><span class="ic ic-edit_outlined" aria-hidden="true"></span>Ubah nama</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ubah foto</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-hide_image_outlined" aria-hidden="true"></span>Hapus foto</button></div>
+              <div class="mt-4"></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="true" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch is-on" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <div class="section-header"><h3 class="section-header__title">Anggota (6)</h3><button class="btn-text" type="button">Undang</button></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">AF</span></span><span class="jj-tile__body"><span class="jj-tile__title">Ahmad Fauzi (Anda)</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Ahmad Fauzi" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">SR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Siti Rahmah</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Siti Rahmah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">DL</span></span><span class="jj-tile__body"><span class="jj-tile__title">Dewi Lestari</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Dewi Lestari" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">FH</span></span><span class="jj-tile__body"><span class="jj-tile__title">Fajar Hidayat</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Fajar Hidayat" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">MR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Muhammad Rizki</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Muhammad Rizki" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">NA</span></span><span class="jj-tile__body"><span class="jj-tile__title">Nur Aisyah</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Nur Aisyah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="mt-3"></div>
+              <div class="section-header jj-section-header--bare"><h3 class="section-header__title">Undangan tertunda (2)</h3></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">HB</span></span><span class="jj-tile__body"><span class="jj-tile__title">Hasan Basri</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">RM</span></span><span class="jj-tile__body"><span class="jj-tile__title">Rina Marlina</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan grup</span></span></a>
+              <a class="jj-tile jj-tile--danger" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-logout" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Keluar grup</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ci8-title">
+          <h3 class="dialog__title" id="ci8-title">Keluarkan Dewi Lestari?</h3>
+          <div class="dialog__content"><p class="c-muted">Dewi Lestari tidak lagi dapat membaca riwayat atau mengirim pesan di grup ini.</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text" type="button">Keluarkan</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Konfirmasi lain dengan pola sama: "Batalkan undangan?", "Hapus foto grup?", "Berhenti menjadi admin?".</p>
+    </figure>
+
+    <!-- 9. Dialog keluar grup -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Dialog keluar grup</figcaption>
+      <div class="device" aria-label="Konfirmasi keluar grup">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true"><span class="ic ic-groups"></span></span></div>
+              <h2 class="jj-info__title">Angkatan 12</h2>
+              <p class="jj-info__sub">Grup · 6 anggota</p>
+              <div class="mt-4"></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="false" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <div class="section-header jj-section-header--bare"><h3 class="section-header__title">Anggota (6)</h3></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">AF</span></span><span class="jj-tile__body"><span class="jj-tile__title">Ahmad Fauzi (Anda)</span></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">SR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Siti Rahmah</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Siti Rahmah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">DL</span></span><span class="jj-tile__body"><span class="jj-tile__title">Dewi Lestari</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Dewi Lestari" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">FH</span></span><span class="jj-tile__body"><span class="jj-tile__title">Fajar Hidayat</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Fajar Hidayat" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">MR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Muhammad Rizki</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Muhammad Rizki" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">NA</span></span><span class="jj-tile__body"><span class="jj-tile__title">Nur Aisyah</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Nur Aisyah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan grup</span></span></a>
+              <a class="jj-tile jj-tile--danger" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-logout" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Keluar grup</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ci9-title">
+          <h3 class="dialog__title" id="ci9-title">Keluar dari grup?</h3>
+          <div class="dialog__content"><p class="c-muted">Anda tidak lagi menerima pesan dan riwayat grup tidak dapat dibuka lagi.</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text" type="button">Keluar</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Anggota terakhir: "Anda anggota terakhir. Grup akan ditutup dan undangan tertunda dibatalkan." Setelah keluar: snackbar "Anda keluar dari grup." dan kembali ke Jejaring.</p>
+    </figure>
+
+    <!-- 10. Pilih admin pengganti -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">10</span> Pilih admin pengganti</figcaption>
+      <div class="device" aria-label="Dialog pilih admin pengganti">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true"><img class="jj-avatar-img" src="../assets/sample/banner-3-jejaring.jpg" alt=""></span></div>
+              <h2 class="jj-info__title">Angkatan 12</h2>
+              <p class="jj-info__sub">Grup · 6 anggota</p>
+              <div class="jj-info__manage"><button class="btn-text btn-text--icon" type="button"><span class="ic ic-edit_outlined" aria-hidden="true"></span>Ubah nama</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ubah foto</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-hide_image_outlined" aria-hidden="true"></span>Hapus foto</button></div>
+              <div class="mt-4"></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="true" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch is-on" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <div class="section-header"><h3 class="section-header__title">Anggota (6)</h3><button class="btn-text" type="button">Undang</button></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">AF</span></span><span class="jj-tile__body"><span class="jj-tile__title">Ahmad Fauzi (Anda)</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Ahmad Fauzi" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">SR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Siti Rahmah</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Siti Rahmah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">DL</span></span><span class="jj-tile__body"><span class="jj-tile__title">Dewi Lestari</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Dewi Lestari" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">FH</span></span><span class="jj-tile__body"><span class="jj-tile__title">Fajar Hidayat</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Fajar Hidayat" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">MR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Muhammad Rizki</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Muhammad Rizki" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">NA</span></span><span class="jj-tile__body"><span class="jj-tile__title">Nur Aisyah</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Nur Aisyah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="mt-3"></div>
+              <div class="section-header jj-section-header--bare"><h3 class="section-header__title">Undangan tertunda (2)</h3></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">HB</span></span><span class="jj-tile__body"><span class="jj-tile__title">Hasan Basri</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">RM</span></span><span class="jj-tile__body"><span class="jj-tile__title">Rina Marlina</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan grup</span></span></a>
+              <a class="jj-tile jj-tile--danger" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-logout" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Keluar grup</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ci10-title">
+          <h3 class="dialog__title" id="ci10-title">Pilih admin pengganti</h3>
+          <div class="dialog__content"><p class="c-muted">Anda admin terakhir. Tunjuk anggota lain sebagai admin sebelum keluar dari grup.</p><div class="mt-2" role="radiogroup" aria-labelledby="ci10-title"><div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Dewi Lestari</span></span></div><div class="jj-tile" role="radio" aria-checked="true" tabindex="0"><span class="radio is-checked" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Fajar Hidayat</span></span></div><div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Muhammad Rizki</span></span></div></div></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text" type="button">Keluar grup</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Admin terakhir yang keluar wajib menunjuk pengganti; "Keluar grup" nonaktif sampai satu anggota dipilih.</p>
+    </figure>
+
+    <!-- 11. Hasil undangan -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">11</span> Hasil undangan</figcaption>
+      <div class="device" aria-label="Dialog hasil undangan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true"><img class="jj-avatar-img" src="../assets/sample/banner-3-jejaring.jpg" alt=""></span></div>
+              <h2 class="jj-info__title">Angkatan 12</h2>
+              <p class="jj-info__sub">Grup · 6 anggota</p>
+              <div class="jj-info__manage"><button class="btn-text btn-text--icon" type="button"><span class="ic ic-edit_outlined" aria-hidden="true"></span>Ubah nama</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ubah foto</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-hide_image_outlined" aria-hidden="true"></span>Hapus foto</button></div>
+              <div class="mt-4"></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="true" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch is-on" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <div class="section-header"><h3 class="section-header__title">Anggota (6)</h3><button class="btn-text" type="button">Undang</button></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">AF</span></span><span class="jj-tile__body"><span class="jj-tile__title">Ahmad Fauzi (Anda)</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Ahmad Fauzi" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">SR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Siti Rahmah</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Siti Rahmah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">DL</span></span><span class="jj-tile__body"><span class="jj-tile__title">Dewi Lestari</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Dewi Lestari" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">FH</span></span><span class="jj-tile__body"><span class="jj-tile__title">Fajar Hidayat</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Fajar Hidayat" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">MR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Muhammad Rizki</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Muhammad Rizki" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">NA</span></span><span class="jj-tile__body"><span class="jj-tile__title">Nur Aisyah</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Nur Aisyah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="mt-3"></div>
+              <div class="section-header jj-section-header--bare"><h3 class="section-header__title">Undangan tertunda (2)</h3></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">HB</span></span><span class="jj-tile__body"><span class="jj-tile__title">Hasan Basri</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">RM</span></span><span class="jj-tile__body"><span class="jj-tile__title">Rina Marlina</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan grup</span></span></a>
+              <a class="jj-tile jj-tile--danger" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-logout" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Keluar grup</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ci11-title">
+          <h3 class="dialog__title" id="ci11-title">2 undangan terkirim</h3>
+          <div class="dialog__content"><p class="c-muted">Zainal Abidin: sudah diundang<br>Hasan Basri: tidak dapat diundang</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Tutup</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Setelah memilih alumni di <a href="member-picker.html">pemilih alumni</a>. Tanpa yang dilewati: snackbar "N undangan terkirim."; grup penuh: snackbar "Grup sudah penuh (100 anggota termasuk undangan tertunda)."</p>
+    </figure>
+
+    <!-- 12. Grup ditutup -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">12</span> Grup ditutup</figcaption>
+      <div class="device" aria-label="Info grup yang sudah ditutup">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true"><span class="ic ic-groups"></span></span></div>
+              <h2 class="jj-info__title">Angkatan 12</h2>
+              <p class="jj-info__sub">Grup · 3 anggota</p>
+              <div class="mt-3"><div class="info-box info-box--warning"><span class="ic ic-lock_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Grup ini sudah ditutup. Riwayat tetap dapat dibaca.</p></div></div></div>
+              <div class="mt-4"></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="false" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <div class="section-header jj-section-header--bare"><h3 class="section-header__title">Anggota (3)</h3></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">AF</span></span><span class="jj-tile__body"><span class="jj-tile__title">Ahmad Fauzi (Anda)</span></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">DL</span></span><span class="jj-tile__body"><span class="jj-tile__title">Dewi Lestari</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Dewi Lestari" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">NA</span></span><span class="jj-tile__body"><span class="jj-tile__title">Nur Aisyah</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Nur Aisyah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan grup</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tanpa "Undang" dan tanpa "Keluar grup".</p>
+    </figure>
+
+    <!-- 13. Langsung: diblokir + galat muat ulang -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">13</span> Langsung: diblokir + galat muat ulang</figcaption>
+      <div class="device" aria-label="Info percakapan langsung, pengguna diblokir">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true">SR</span></div>
+              <h2 class="jj-info__title">Siti Rahmah</h2>
+              <p class="jj-info__sub">Percakapan langsung</p>
+              <div class="mt-4"></div>
+              <div class="mb-3"><div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Data terbaru belum dapat dimuat. Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="true" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch is-on" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="member-profile.html"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Lihat profil</span></span></a>
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-block" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Buka blokir Siti Rahmah</span></span></a>
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan pengguna</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">Siti Rahmah diblokir.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">InfoBox peringatan bila muat ulang gagal (data lama tetap tampil). Blokir/buka blokir memakai dialog yang sama dengan Profil Alumni.</p>
+    </figure>
+
+    <!-- 14. Laporkan grup -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">14</span> Laporkan grup</figcaption>
+      <div class="device" aria-label="Lembar laporkan grup">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body">
+            <div class="jj-info">
+              <div class="jj-info__avatar"><span class="avatar jj-avatar-88" aria-hidden="true"><img class="jj-avatar-img" src="../assets/sample/banner-3-jejaring.jpg" alt=""></span></div>
+              <h2 class="jj-info__title">Angkatan 12</h2>
+              <p class="jj-info__sub">Grup · 6 anggota</p>
+              <div class="jj-info__manage"><button class="btn-text btn-text--icon" type="button"><span class="ic ic-edit_outlined" aria-hidden="true"></span>Ubah nama</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ubah foto</button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-hide_image_outlined" aria-hidden="true"></span>Hapus foto</button></div>
+              <div class="mt-4"></div>
+              <div class="jj-tile jj-tile--two-line" role="switch" aria-checked="true" tabindex="0"><span class="jj-tile__body"><span class="jj-tile__title">Bisukan notifikasi</span><span class="jj-tile__subtitle">Pesan tetap masuk; hanya notifikasi push yang ditahan.</span></span><span class="switch is-on" aria-hidden="true"></span></div>
+              <hr class="divider">
+              <div class="section-header"><h3 class="section-header__title">Anggota (6)</h3><button class="btn-text" type="button">Undang</button></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">AF</span></span><span class="jj-tile__body"><span class="jj-tile__title">Ahmad Fauzi (Anda)</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Ahmad Fauzi" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">SR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Siti Rahmah</span><span class="jj-tile__subtitle">Admin grup</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Siti Rahmah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">DL</span></span><span class="jj-tile__body"><span class="jj-tile__title">Dewi Lestari</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Dewi Lestari" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">FH</span></span><span class="jj-tile__body"><span class="jj-tile__title">Fajar Hidayat</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Fajar Hidayat" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">MR</span></span><span class="jj-tile__body"><span class="jj-tile__title">Muhammad Rizki</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Muhammad Rizki" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="jj-tile"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">NA</span></span><span class="jj-tile__body"><span class="jj-tile__title">Nur Aisyah</span></span><span class="jj-tile__trailing"><button class="icon-btn" type="button" aria-label="Tindakan untuk Nur Aisyah" aria-haspopup="menu"><span class="ic ic-more_vert" aria-hidden="true"></span></button></span></div>
+              <div class="mt-3"></div>
+              <div class="section-header jj-section-header--bare"><h3 class="section-header__title">Undangan tertunda (2)</h3></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">HB</span></span><span class="jj-tile__body"><span class="jj-tile__title">Hasan Basri</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <div class="jj-tile jj-tile--two-line"><span class="jj-tile__leading" aria-hidden="true"><span class="avatar avatar--40" aria-hidden="true">RM</span></span><span class="jj-tile__body"><span class="jj-tile__title">Rina Marlina</span><span class="jj-tile__subtitle">Menunggu jawaban</span></span><span class="jj-tile__trailing"><button class="btn-text" type="button">Batalkan</button></span></div>
+              <hr class="divider">
+              <a class="jj-tile" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Laporkan grup</span></span></a>
+              <a class="jj-tile jj-tile--danger" href="#"><span class="jj-tile__leading" aria-hidden="true"><span class="ic ic-logout" aria-hidden="true"></span></span><span class="jj-tile__body"><span class="jj-tile__title">Keluar grup</span></span></a>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ci14-title">
+          <div class="sheet__body">
+            <h3 class="jj-sheet-title" id="ci14-title">Laporkan grup</h3>
+            <p class="mt-1 c-muted clamp-2">Angkatan 12</p>
+            <p class="mt-3 fw-500" id="ci14-title-cat">Kategori</p>
+            <div role="radiogroup" aria-labelledby="ci14-title-cat">
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Spam</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Pelecehan atau perundungan</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ujaran kebencian</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Konten seksual</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ancaman kekerasan atau keselamatan</span><span class="jj-tile__subtitle">Ditangani paling lambat 24 jam.</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Penipuan</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Lainnya</span><span class="jj-tile__subtitle">Wajib menjelaskan masalahnya.</span></span></div>
+            </div>
+            <div class="field mt-3">
+              <label class="field__label" for="ci14-title-desc">Penjelasan</label>
+              <div class="input input--multiline"><textarea class="input__control" id="ci14-title-desc" rows="4" maxlength="2000" placeholder="Opsional"></textarea></div>
+            </div>
+            <div class="mt-3"><div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Laporan tidak dibuka kepada pihak yang dilaporkan. Pantau statusnya di Akun &gt; Laporan Saya. Dalam keadaan darurat, hubungi pihak berwenang.</p></div></div></div>
+            <div class="mt-4"><button class="btn btn--primary" type="button"><span class="ic ic-flag_outlined" aria-hidden="true"></span>Kirim laporan</button></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 15. Memuat -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">15</span> Memuat</figcaption>
+      <div class="device" aria-label="Info percakapan, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="skeleton" role="status" aria-label="Memuat info percakapan"><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 16. Galat -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">16</span> Galat</figcaption>
+      <div class="device" aria-label="Info percakapan, galat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off"></span></div>
+              <h3 class="state__title">Tidak ada koneksi</h3>
+              <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 17. Percakapan tidak tersedia -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">17</span> Percakapan tidak tersedia</figcaption>
+      <div class="device" aria-label="Info percakapan tidak tersedia">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Info Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-speaker_notes_off_outlined"></span></div>
+              <h3 class="state__title">Percakapan tidak tersedia</h3>
+              <p class="state__message">Anda bukan lagi anggota percakapan ini.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button">Ke Jejaring</button>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+  </main>
+</body>
+</html>

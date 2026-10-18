@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Detail Berita - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Detail Berita aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/beranda.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Detail Berita</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/news/news_detail_screen.dart</code> (NewsDetailScreen, _PostContent, _LikeBar); <code>news/widgets/post_body.dart</code> (PostBody, _ExternalAnchor), <code>home/shared/links.dart</code> (confirmExternalLink)</dd>
+      <dt>Rute</dt><dd><code>/news/:slug</code> (di luar cangkang tab)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama</li>
+        <li>Gulir penuh</li>
+        <li>Tanpa cover</li>
+        <li>Belum disukai (akhir isi)</li>
+        <li>Disukai</li>
+        <li>Sedang memproses</li>
+        <li>Gagal menyukai</li>
+        <li>Dialog tautan luar</li>
+        <li>Memuat</li>
+        <li>Tidak lagi tersedia</li>
+        <li>Galat</li>
+        <li>Khusus anggota aktif</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Isi berita contoh diringkas dari draf Berita 1 (docs/konten/konten-peluncuran.md). Jumlah suka fiktif. Gaya isi HTML ditiru dari gaya bawaan flutter_widget_from_html_core 0.17.4 (dipetakan ke .html-body di css/pages/beranda.css).</p>
+  </header>
+
+  <main class="frames">
+
+<h2 class="frames__group-title">Isi berita</h2>
+
+<figure class="frame" id="frame-1">
+<figcaption class="frame__label"><span class="frame__num">1</span> Utama</figcaption>
+<div class="device" aria-label="Detail Berita, keadaan utama">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Detail Berita</span></h2>
+</header>
+<div class="screen__body">
+<article class="post-detail">
+<div class="post-detail__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt="Cover berita KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah"></div>
+<div class="post-detail__head">
+<span class="category-chip">Pengumuman</span>
+<h3 class="post-detail__title mt-2">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</h3>
+<p class="icon-line mt-2"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Terbit 11 Okt 2026, 08.00 WIB</span></p>
+<div class="html-body post-body mt-4">
+<p>Assalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p>Alhamdulillah, KAPDH Apps, aplikasi resmi Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), kini dapat digunakan di Android dan iOS. Aplikasi ini menjadi wadah digital bagi alumni Pondok Pesantren Darel Hikmah lintas angkatan untuk menjaga silaturahmi, mengikuti kabar organisasi, dan saling terhubung, sejalan dengan semboyan kita: <em>Mengabdi untuk Umat, Menjaga Silaturahmi, Meneladani Akhlak Mulia</em>.</p>
+<h2>Layanan di KAPDH Apps</h2>
+<ul>
+<li><strong>KTA digital berkode QR.</strong> Siapa pun dapat memeriksa keaslian dan status KTA dengan memindai kodenya.</li>
+<li><strong>Beranda</strong> berisi berita, pengumuman organisasi, dan kegiatan mendatang.</li>
+<li><strong>Event</strong> memuat jadwal, lokasi, kuota, dan biaya kegiatan bila ada.</li>
+</ul>
+<h2>Langkah bergabung</h2>
+<ol>
+<li>Pasang aplikasi KAPDH hanya melalui tautan resmi di halaman <a class="ext-anchor" href="#" aria-label="Unduh Aplikasi, tautan luar">Unduh Aplikasi<span class="ic ic-open_in_new" aria-hidden="true"></span></a>.</li>
+<li>Ketuk <strong>Daftar</strong>, lalu isi nama lengkap, jenis kelamin, email, kata sandi, angkatan, serta kelas masuk dan kelas keluar.</li>
+</ol>
+<h2>Butuh bantuan?</h2>
+<p>Panduan penggunaan tersedia di halaman <a class="ext-anchor" href="#" aria-label="Bantuan, tautan luar">Bantuan<span class="ic ic-open_in_new" aria-hidden="true"></span></a>. Anda juga dapat menghubungi kami melalui <a href="#">bantuan@kapdh.or.id</a>.</p>
+<p>Wassalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p><strong>Pengurus KAPDH</strong></p>
+</div>
+<hr class="divider post-detail__divider">
+<div class="like-bar"><button class="btn-m3 btn-m3--outlined btn-m3--icon like-btn" type="button" aria-pressed="false" aria-label="Suka, 23 suka"><span class="ic ic-favorite_border" aria-hidden="true"></span>Suka</button><span class="like-bar__count">23 suka</span></div>
+</div>
+</article>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Cover 16:9 selebar layar, CategoryChip, judul 20 w700 (1.3), IconLine "Terbit ..." (formatDateTime WIB), isi HTML 15 / 1.6.</p>
+</figure>
+
+<figure class="frame" id="frame-2">
+<figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh</figcaption>
+<div class="device device--tall" aria-label="Detail Berita, seluruh isi">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Detail Berita</span></h2>
+</header>
+<div class="screen__body">
+<article class="post-detail">
+<div class="post-detail__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt="Cover berita KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah"></div>
+<div class="post-detail__head">
+<span class="category-chip">Pengumuman</span>
+<h3 class="post-detail__title mt-2">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</h3>
+<p class="icon-line mt-2"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Terbit 11 Okt 2026, 08.00 WIB</span></p>
+<div class="html-body post-body mt-4">
+<p>Assalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p>Alhamdulillah, KAPDH Apps, aplikasi resmi Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), kini dapat digunakan di Android dan iOS. Aplikasi ini menjadi wadah digital bagi alumni Pondok Pesantren Darel Hikmah lintas angkatan untuk menjaga silaturahmi, mengikuti kabar organisasi, dan saling terhubung, sejalan dengan semboyan kita: <em>Mengabdi untuk Umat, Menjaga Silaturahmi, Meneladani Akhlak Mulia</em>.</p>
+<h2>Layanan di KAPDH Apps</h2>
+<ul>
+<li><strong>KTA digital berkode QR.</strong> Siapa pun dapat memeriksa keaslian dan status KTA dengan memindai kodenya.</li>
+<li><strong>Beranda</strong> berisi berita, pengumuman organisasi, dan kegiatan mendatang.</li>
+<li><strong>Event</strong> memuat jadwal, lokasi, kuota, dan biaya kegiatan bila ada.</li>
+</ul>
+<h2>Langkah bergabung</h2>
+<ol>
+<li>Pasang aplikasi KAPDH hanya melalui tautan resmi di halaman <a class="ext-anchor" href="#" aria-label="Unduh Aplikasi, tautan luar">Unduh Aplikasi<span class="ic ic-open_in_new" aria-hidden="true"></span></a>.</li>
+<li>Ketuk <strong>Daftar</strong>, lalu isi nama lengkap, jenis kelamin, email, kata sandi, angkatan, serta kelas masuk dan kelas keluar.</li>
+</ol>
+<h2>Butuh bantuan?</h2>
+<p>Panduan penggunaan tersedia di halaman <a class="ext-anchor" href="#" aria-label="Bantuan, tautan luar">Bantuan<span class="ic ic-open_in_new" aria-hidden="true"></span></a>. Anda juga dapat menghubungi kami melalui <a href="#">bantuan@kapdh.or.id</a>.</p>
+<p>Wassalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p><strong>Pengurus KAPDH</strong></p>
+</div>
+<hr class="divider post-detail__divider">
+<div class="like-bar"><button class="btn-m3 btn-m3--outlined btn-m3--icon like-btn" type="button" aria-pressed="false" aria-label="Suka, 23 suka"><span class="ic ic-favorite_border" aria-hidden="true"></span>Suka</button><span class="like-bar__count">23 suka</span></div>
+</div>
+</article>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Isi HTML tersanitasi server (gaya bawaan flutter_widget_from_html: p 1em, h2 1.5em bold primary, daftar menjorok 40). Tautan https (data-external) bergaris bawah w600 + ikon open_in_new 14; mailto tanpa ikon. Contoh isi dipotong dari draf Berita 1.</p>
+</figure>
+
+<figure class="frame" id="frame-3">
+<figcaption class="frame__label"><span class="frame__num">3</span> Tanpa cover</figcaption>
+<div class="device" aria-label="Detail Berita, tanpa cover">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Detail Berita</span></h2>
+</header>
+<div class="screen__body">
+<article class="post-detail">
+<div class="post-detail__head">
+<span class="category-chip">Pengumuman</span>
+<h3 class="post-detail__title mt-2">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</h3>
+<p class="icon-line mt-2"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Terbit 11 Okt 2026, 08.00 WIB</span></p>
+<div class="html-body post-body mt-4">
+<p>Assalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p>Alhamdulillah, KAPDH Apps, aplikasi resmi Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), kini dapat digunakan di Android dan iOS. Aplikasi ini menjadi wadah digital bagi alumni Pondok Pesantren Darel Hikmah lintas angkatan untuk menjaga silaturahmi, mengikuti kabar organisasi, dan saling terhubung, sejalan dengan semboyan kita: <em>Mengabdi untuk Umat, Menjaga Silaturahmi, Meneladani Akhlak Mulia</em>.</p>
+<h2>Layanan di KAPDH Apps</h2>
+<ul>
+<li><strong>KTA digital berkode QR.</strong> Siapa pun dapat memeriksa keaslian dan status KTA dengan memindai kodenya.</li>
+<li><strong>Beranda</strong> berisi berita, pengumuman organisasi, dan kegiatan mendatang.</li>
+<li><strong>Event</strong> memuat jadwal, lokasi, kuota, dan biaya kegiatan bila ada.</li>
+</ul>
+<h2>Langkah bergabung</h2>
+<ol>
+<li>Pasang aplikasi KAPDH hanya melalui tautan resmi di halaman <a class="ext-anchor" href="#" aria-label="Unduh Aplikasi, tautan luar">Unduh Aplikasi<span class="ic ic-open_in_new" aria-hidden="true"></span></a>.</li>
+<li>Ketuk <strong>Daftar</strong>, lalu isi nama lengkap, jenis kelamin, email, kata sandi, angkatan, serta kelas masuk dan kelas keluar.</li>
+</ol>
+<h2>Butuh bantuan?</h2>
+<p>Panduan penggunaan tersedia di halaman <a class="ext-anchor" href="#" aria-label="Bantuan, tautan luar">Bantuan<span class="ic ic-open_in_new" aria-hidden="true"></span></a>. Anda juga dapat menghubungi kami melalui <a href="#">bantuan@kapdh.or.id</a>.</p>
+<p>Wassalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p><strong>Pengurus KAPDH</strong></p>
+</div>
+<hr class="divider post-detail__divider">
+<div class="like-bar"><button class="btn-m3 btn-m3--outlined btn-m3--icon like-btn" type="button" aria-pressed="false" aria-label="Suka, 23 suka"><span class="ic ic-favorite_border" aria-hidden="true"></span>Suka</button><span class="like-bar__count">23 suka</span></div>
+</div>
+</article>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">coverUrl null: tidak ada area gambar; isi mulai dari padding atas 16.</p>
+</figure>
+
+<h2 class="frames__group-title">Suka (like)</h2>
+
+<figure class="frame" id="frame-4">
+<figcaption class="frame__label"><span class="frame__num">4</span> Belum disukai (akhir isi)</figcaption>
+<div class="device" aria-label="Detail Berita, bilah suka">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Detail Berita</span></h2>
+</header>
+<div class="screen__body scroll-end">
+<article class="post-detail">
+<div class="post-detail__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt="Cover berita KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah"></div>
+<div class="post-detail__head">
+<span class="category-chip">Pengumuman</span>
+<h3 class="post-detail__title mt-2">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</h3>
+<p class="icon-line mt-2"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Terbit 11 Okt 2026, 08.00 WIB</span></p>
+<div class="html-body post-body mt-4">
+<p>Assalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p>Alhamdulillah, KAPDH Apps, aplikasi resmi Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), kini dapat digunakan di Android dan iOS. Aplikasi ini menjadi wadah digital bagi alumni Pondok Pesantren Darel Hikmah lintas angkatan untuk menjaga silaturahmi, mengikuti kabar organisasi, dan saling terhubung, sejalan dengan semboyan kita: <em>Mengabdi untuk Umat, Menjaga Silaturahmi, Meneladani Akhlak Mulia</em>.</p>
+<h2>Layanan di KAPDH Apps</h2>
+<ul>
+<li><strong>KTA digital berkode QR.</strong> Siapa pun dapat memeriksa keaslian dan status KTA dengan memindai kodenya.</li>
+<li><strong>Beranda</strong> berisi berita, pengumuman organisasi, dan kegiatan mendatang.</li>
+<li><strong>Event</strong> memuat jadwal, lokasi, kuota, dan biaya kegiatan bila ada.</li>
+</ul>
+<h2>Langkah bergabung</h2>
+<ol>
+<li>Pasang aplikasi KAPDH hanya melalui tautan resmi di halaman <a class="ext-anchor" href="#" aria-label="Unduh Aplikasi, tautan luar">Unduh Aplikasi<span class="ic ic-open_in_new" aria-hidden="true"></span></a>.</li>
+<li>Ketuk <strong>Daftar</strong>, lalu isi nama lengkap, jenis kelamin, email, kata sandi, angkatan, serta kelas masuk dan kelas keluar.</li>
+</ol>
+<h2>Butuh bantuan?</h2>
+<p>Panduan penggunaan tersedia di halaman <a class="ext-anchor" href="#" aria-label="Bantuan, tautan luar">Bantuan<span class="ic ic-open_in_new" aria-hidden="true"></span></a>. Anda juga dapat menghubungi kami melalui <a href="#">bantuan@kapdh.or.id</a>.</p>
+<p>Wassalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p><strong>Pengurus KAPDH</strong></p>
+</div>
+<hr class="divider post-detail__divider">
+<div class="like-bar"><button class="btn-m3 btn-m3--outlined btn-m3--icon like-btn" type="button" aria-pressed="false" aria-label="Suka, 23 suka"><span class="ic ic-favorite_border" aria-hidden="true"></span>Suka</button><span class="like-bar__count">23 suka</span></div>
+</div>
+</article>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Digulir ke akhir: Divider lalu OutlinedButton.icon "Suka" (favorite_border 20, garis primary) + "N suka" 14 muted.</p>
+</figure>
+
+<figure class="frame" id="frame-5">
+<figcaption class="frame__label"><span class="frame__num">5</span> Disukai</figcaption>
+<div class="device" aria-label="Detail Berita, disukai">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Detail Berita</span></h2>
+</header>
+<div class="screen__body scroll-end">
+<article class="post-detail">
+<div class="post-detail__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt="Cover berita KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah"></div>
+<div class="post-detail__head">
+<span class="category-chip">Pengumuman</span>
+<h3 class="post-detail__title mt-2">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</h3>
+<p class="icon-line mt-2"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Terbit 11 Okt 2026, 08.00 WIB</span></p>
+<div class="html-body post-body mt-4">
+<p>Assalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p>Alhamdulillah, KAPDH Apps, aplikasi resmi Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), kini dapat digunakan di Android dan iOS. Aplikasi ini menjadi wadah digital bagi alumni Pondok Pesantren Darel Hikmah lintas angkatan untuk menjaga silaturahmi, mengikuti kabar organisasi, dan saling terhubung, sejalan dengan semboyan kita: <em>Mengabdi untuk Umat, Menjaga Silaturahmi, Meneladani Akhlak Mulia</em>.</p>
+<h2>Layanan di KAPDH Apps</h2>
+<ul>
+<li><strong>KTA digital berkode QR.</strong> Siapa pun dapat memeriksa keaslian dan status KTA dengan memindai kodenya.</li>
+<li><strong>Beranda</strong> berisi berita, pengumuman organisasi, dan kegiatan mendatang.</li>
+<li><strong>Event</strong> memuat jadwal, lokasi, kuota, dan biaya kegiatan bila ada.</li>
+</ul>
+<h2>Langkah bergabung</h2>
+<ol>
+<li>Pasang aplikasi KAPDH hanya melalui tautan resmi di halaman <a class="ext-anchor" href="#" aria-label="Unduh Aplikasi, tautan luar">Unduh Aplikasi<span class="ic ic-open_in_new" aria-hidden="true"></span></a>.</li>
+<li>Ketuk <strong>Daftar</strong>, lalu isi nama lengkap, jenis kelamin, email, kata sandi, angkatan, serta kelas masuk dan kelas keluar.</li>
+</ol>
+<h2>Butuh bantuan?</h2>
+<p>Panduan penggunaan tersedia di halaman <a class="ext-anchor" href="#" aria-label="Bantuan, tautan luar">Bantuan<span class="ic ic-open_in_new" aria-hidden="true"></span></a>. Anda juga dapat menghubungi kami melalui <a href="#">bantuan@kapdh.or.id</a>.</p>
+<p>Wassalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p><strong>Pengurus KAPDH</strong></p>
+</div>
+<hr class="divider post-detail__divider">
+<div class="like-bar"><button class="btn-m3 btn-m3--outlined btn-m3--icon like-btn is-liked" type="button" aria-pressed="true" aria-label="Batal suka, 24 suka"><span class="ic ic-favorite" aria-hidden="true"></span>Disukai</button><span class="like-bar__count">24 suka</span></div>
+</div>
+</article>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">liked: ikon favorite, teks "Disukai", warna dan garis danger. Jumlah selalu dari server.</p>
+</figure>
+
+<figure class="frame" id="frame-6">
+<figcaption class="frame__label"><span class="frame__num">6</span> Sedang memproses</figcaption>
+<div class="device" aria-label="Detail Berita, memproses suka">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Detail Berita</span></h2>
+</header>
+<div class="screen__body scroll-end">
+<article class="post-detail">
+<div class="post-detail__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt="Cover berita KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah"></div>
+<div class="post-detail__head">
+<span class="category-chip">Pengumuman</span>
+<h3 class="post-detail__title mt-2">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</h3>
+<p class="icon-line mt-2"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Terbit 11 Okt 2026, 08.00 WIB</span></p>
+<div class="html-body post-body mt-4">
+<p>Assalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p>Alhamdulillah, KAPDH Apps, aplikasi resmi Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), kini dapat digunakan di Android dan iOS. Aplikasi ini menjadi wadah digital bagi alumni Pondok Pesantren Darel Hikmah lintas angkatan untuk menjaga silaturahmi, mengikuti kabar organisasi, dan saling terhubung, sejalan dengan semboyan kita: <em>Mengabdi untuk Umat, Menjaga Silaturahmi, Meneladani Akhlak Mulia</em>.</p>
+<h2>Layanan di KAPDH Apps</h2>
+<ul>
+<li><strong>KTA digital berkode QR.</strong> Siapa pun dapat memeriksa keaslian dan status KTA dengan memindai kodenya.</li>
+<li><strong>Beranda</strong> berisi berita, pengumuman organisasi, dan kegiatan mendatang.</li>
+<li><strong>Event</strong> memuat jadwal, lokasi, kuota, dan biaya kegiatan bila ada.</li>
+</ul>
+<h2>Langkah bergabung</h2>
+<ol>
+<li>Pasang aplikasi KAPDH hanya melalui tautan resmi di halaman <a class="ext-anchor" href="#" aria-label="Unduh Aplikasi, tautan luar">Unduh Aplikasi<span class="ic ic-open_in_new" aria-hidden="true"></span></a>.</li>
+<li>Ketuk <strong>Daftar</strong>, lalu isi nama lengkap, jenis kelamin, email, kata sandi, angkatan, serta kelas masuk dan kelas keluar.</li>
+</ol>
+<h2>Butuh bantuan?</h2>
+<p>Panduan penggunaan tersedia di halaman <a class="ext-anchor" href="#" aria-label="Bantuan, tautan luar">Bantuan<span class="ic ic-open_in_new" aria-hidden="true"></span></a>. Anda juga dapat menghubungi kami melalui <a href="#">bantuan@kapdh.or.id</a>.</p>
+<p>Wassalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p><strong>Pengurus KAPDH</strong></p>
+</div>
+<hr class="divider post-detail__divider">
+<div class="like-bar"><button class="btn-m3 btn-m3--outlined btn-m3--icon like-btn" type="button" aria-pressed="false" aria-label="Suka, 23 suka" disabled><span class="spinner spinner--18" aria-hidden="true"></span>Suka</button><span class="like-bar__count">23 suka</span></div>
+</div>
+</article>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">likeBusy: tombol nonaktif (teks 38 %, garis tetap) dengan CircularProgressIndicator 18; ketukan ganda tidak mengirim request kedua.</p>
+</figure>
+
+<figure class="frame" id="frame-7">
+<figcaption class="frame__label"><span class="frame__num">7</span> Gagal menyukai</figcaption>
+<div class="device" aria-label="Detail Berita, gagal menyukai">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Detail Berita</span></h2>
+</header>
+<div class="screen__body scroll-end">
+<article class="post-detail">
+<div class="post-detail__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt="Cover berita KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah"></div>
+<div class="post-detail__head">
+<span class="category-chip">Pengumuman</span>
+<h3 class="post-detail__title mt-2">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</h3>
+<p class="icon-line mt-2"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Terbit 11 Okt 2026, 08.00 WIB</span></p>
+<div class="html-body post-body mt-4">
+<p>Assalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p>Alhamdulillah, KAPDH Apps, aplikasi resmi Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), kini dapat digunakan di Android dan iOS. Aplikasi ini menjadi wadah digital bagi alumni Pondok Pesantren Darel Hikmah lintas angkatan untuk menjaga silaturahmi, mengikuti kabar organisasi, dan saling terhubung, sejalan dengan semboyan kita: <em>Mengabdi untuk Umat, Menjaga Silaturahmi, Meneladani Akhlak Mulia</em>.</p>
+<h2>Layanan di KAPDH Apps</h2>
+<ul>
+<li><strong>KTA digital berkode QR.</strong> Siapa pun dapat memeriksa keaslian dan status KTA dengan memindai kodenya.</li>
+<li><strong>Beranda</strong> berisi berita, pengumuman organisasi, dan kegiatan mendatang.</li>
+<li><strong>Event</strong> memuat jadwal, lokasi, kuota, dan biaya kegiatan bila ada.</li>
+</ul>
+<h2>Langkah bergabung</h2>
+<ol>
+<li>Pasang aplikasi KAPDH hanya melalui tautan resmi di halaman <a class="ext-anchor" href="#" aria-label="Unduh Aplikasi, tautan luar">Unduh Aplikasi<span class="ic ic-open_in_new" aria-hidden="true"></span></a>.</li>
+<li>Ketuk <strong>Daftar</strong>, lalu isi nama lengkap, jenis kelamin, email, kata sandi, angkatan, serta kelas masuk dan kelas keluar.</li>
+</ol>
+<h2>Butuh bantuan?</h2>
+<p>Panduan penggunaan tersedia di halaman <a class="ext-anchor" href="#" aria-label="Bantuan, tautan luar">Bantuan<span class="ic ic-open_in_new" aria-hidden="true"></span></a>. Anda juga dapat menghubungi kami melalui <a href="#">bantuan@kapdh.or.id</a>.</p>
+<p>Wassalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p><strong>Pengurus KAPDH</strong></p>
+</div>
+<hr class="divider post-detail__divider">
+<div class="like-bar"><button class="btn-m3 btn-m3--outlined btn-m3--icon like-btn" type="button" aria-pressed="false" aria-label="Suka, 23 suka"><span class="ic ic-favorite_border" aria-hidden="true"></span>Suka</button><span class="like-bar__count">23 suka</span></div>
+</div>
+</article>
+</div>
+</div>
+<div class="snackbar" role="status"><span class="snackbar__text">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</span><button class="btn-text" type="button">Coba lagi</button></div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">ErrorPresenter: SnackBar pesan galat + aksi emas "Coba lagi" (hanya selama detail terbuka).</p>
+</figure>
+
+<figure class="frame" id="frame-8">
+<figcaption class="frame__label"><span class="frame__num">8</span> Dialog tautan luar</figcaption>
+<div class="device" aria-label="Detail Berita, dialog tautan luar">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Detail Berita</span></h2>
+</header>
+<div class="screen__body">
+<article class="post-detail">
+<div class="post-detail__cover"><img class="img-cover" src="../assets/sample/berita-1-peluncuran.jpg" alt="Cover berita KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah"></div>
+<div class="post-detail__head">
+<span class="category-chip">Pengumuman</span>
+<h3 class="post-detail__title mt-2">KAPDH Apps Resmi Hadir: Wadah Digital Silaturahmi Alumni Darel Hikmah</h3>
+<p class="icon-line mt-2"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Terbit 11 Okt 2026, 08.00 WIB</span></p>
+<div class="html-body post-body mt-4">
+<p>Assalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p>Alhamdulillah, KAPDH Apps, aplikasi resmi Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), kini dapat digunakan di Android dan iOS. Aplikasi ini menjadi wadah digital bagi alumni Pondok Pesantren Darel Hikmah lintas angkatan untuk menjaga silaturahmi, mengikuti kabar organisasi, dan saling terhubung, sejalan dengan semboyan kita: <em>Mengabdi untuk Umat, Menjaga Silaturahmi, Meneladani Akhlak Mulia</em>.</p>
+<h2>Layanan di KAPDH Apps</h2>
+<ul>
+<li><strong>KTA digital berkode QR.</strong> Siapa pun dapat memeriksa keaslian dan status KTA dengan memindai kodenya.</li>
+<li><strong>Beranda</strong> berisi berita, pengumuman organisasi, dan kegiatan mendatang.</li>
+<li><strong>Event</strong> memuat jadwal, lokasi, kuota, dan biaya kegiatan bila ada.</li>
+</ul>
+<h2>Langkah bergabung</h2>
+<ol>
+<li>Pasang aplikasi KAPDH hanya melalui tautan resmi di halaman <a class="ext-anchor" href="#" aria-label="Unduh Aplikasi, tautan luar">Unduh Aplikasi<span class="ic ic-open_in_new" aria-hidden="true"></span></a>.</li>
+<li>Ketuk <strong>Daftar</strong>, lalu isi nama lengkap, jenis kelamin, email, kata sandi, angkatan, serta kelas masuk dan kelas keluar.</li>
+</ol>
+<h2>Butuh bantuan?</h2>
+<p>Panduan penggunaan tersedia di halaman <a class="ext-anchor" href="#" aria-label="Bantuan, tautan luar">Bantuan<span class="ic ic-open_in_new" aria-hidden="true"></span></a>. Anda juga dapat menghubungi kami melalui <a href="#">bantuan@kapdh.or.id</a>.</p>
+<p>Wassalamu'alaikum warahmatullahi wabarakatuh.</p>
+<p><strong>Pengurus KAPDH</strong></p>
+</div>
+<hr class="divider post-detail__divider">
+<div class="like-bar"><button class="btn-m3 btn-m3--outlined btn-m3--icon like-btn" type="button" aria-pressed="false" aria-label="Suka, 23 suka"><span class="ic ic-favorite_border" aria-hidden="true"></span>Suka</button><span class="like-bar__count">23 suka</span></div>
+</div>
+</article>
+</div>
+</div>
+<div class="scrim"></div>
+<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-news-ext">
+  <div class="dialog__icon"><span class="ic ic-open_in_new" aria-hidden="true"></span></div>
+  <h3 class="dialog__title" id="dlg-news-ext">Buka tautan luar?</h3>
+  <div class="dialog__content"><p class="c-muted">Anda akan meninggalkan aplikasi KAPDH menuju <strong>kapdh.or.id</strong>. Isi situs tersebut di luar tanggung jawab pengurus.</p></div>
+  <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text" type="button">Buka</button></div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Mengetuk "Unduh Aplikasi": confirmExternalLink dengan nama host tebal; tautan aplikasi KAPDH dibuka di dalam aplikasi tanpa dialog.</p>
+</figure>
+
+<h2 class="frames__group-title">Memuat, tidak tersedia dan galat</h2>
+
+<figure class="frame" id="frame-9">
+<figcaption class="frame__label"><span class="frame__num">9</span> Memuat</figcaption>
+<div class="device" aria-label="Detail Berita, memuat">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Detail Berita</span></h2>
+</header>
+<div class="screen__body">
+<div class="skeleton" role="status" aria-label="Memuat berita"><div class="skeleton__card"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">LoadingSkeleton(lines: 8) dengan blok kartu.</p>
+</figure>
+
+<figure class="frame" id="frame-10">
+<figcaption class="frame__label"><span class="frame__num">10</span> Tidak lagi tersedia</figcaption>
+<div class="device" aria-label="Detail Berita, berita tidak tersedia">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Detail Berita</span></h2>
+</header>
+<div class="screen__body">
+<div class="state">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-search_off" aria-hidden="true"></span></div>
+  <h3 class="state__title">Berita tidak lagi tersedia</h3>
+  <p class="state__message">Berita ini sudah diarsipkan atau belum diterbitkan pengurus.</p>
+  <button class="btn btn--outline btn--inline state__action" type="button">Lihat berita lain</button>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">404 NOT_FOUND (termasuk dari banner atau notifikasi lama): EmptyState, "Lihat berita lain" ke /news.</p>
+</figure>
+
+<figure class="frame" id="frame-11">
+<figcaption class="frame__label"><span class="frame__num">11</span> Galat</figcaption>
+<div class="device" aria-label="Detail Berita, galat">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Detail Berita</span></h2>
+</header>
+<div class="screen__body">
+<div class="state state--error">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off" aria-hidden="true"></span></div>
+  <h3 class="state__title">Tidak ada koneksi</h3>
+  <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+  <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Galat lain: ErrorState.fromException dengan "Coba lagi" (reload).</p>
+</figure>
+
+<figure class="frame" id="frame-12">
+<figcaption class="frame__label"><span class="frame__num">12</span> Khusus anggota aktif</figcaption>
+<div class="device" aria-label="Detail Berita, khusus anggota aktif">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Detail Berita</span></h2>
+</header>
+<div class="screen__body">
+<div class="pad-screen pt-8 pb-8">
+<div class="status-hero tone-danger">
+  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-lock_outline" aria-hidden="true"></span></div>
+  <span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>KTA Kedaluwarsa</span>
+  <h3 class="status-hero__title">Berita khusus anggota aktif</h3>
+  <p class="status-hero__message">Berita hanya untuk anggota aktif. Perpanjang KTA untuk membukanya kembali. Tiket yang sudah lunas tetap dapat dibuka di Tiket Saya.</p>
+</div>
+<button class="btn btn--primary mt-5" type="button">Perpanjang KTA</button>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">MemberOnlyNotice (expired): judul app bar tetap "Detail Berita", tombol "Perpanjang KTA" ke /renewal.</p>
+</figure>
+
+  </main>
+</body>
+</html>

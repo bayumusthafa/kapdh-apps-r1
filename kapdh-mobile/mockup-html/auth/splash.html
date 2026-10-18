@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Splash - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Splash (SplashScreen) aplikasi KAPDH untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/auth.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Splash</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/system/splash_screen.dart</code> (SplashScreen, _ConnectionProblem)</dd>
+      <dt>Rute</dt><dd><code>/splash</code></dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Memuat</li>
+        <li>Tanpa koneksi</li>
+        <li>Data sesi belum dapat dibaca</li>
+        <li>Server belum dapat dihubungi</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Scaffold surfaceDark (#0E280C), isi terpusat di dalam SafeArea. Gerbang aplikasi (GET /public/config) dan pemulihan sesi berjalan paralel; router berpindah sendiri saat keduanya siap. Saat "Coba lagi" ditekan, spinner tampil lagi (keadaan 1).</p>
+  </header>
+
+  <main class="frames">
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Memuat</figcaption>
+      <div class="device" role="group" aria-label="Splash, memuat">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen auth-dark">
+          <div class="auth-dark__inner">
+            <img class="auth-splash-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="120" height="120">
+            <p class="auth-splash-title">Keluarga Alumni<br>Ponpes Darel Hikmah</p>
+            <span class="spinner auth-splash-spinner" role="status" aria-label="Memuat aplikasi"></span>
+          </div>
+        </div>
+        <div class="sysnav sysnav--on-dark" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">CircularProgressIndicator 32 emas (garis 4).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Tanpa koneksi</figcaption>
+      <div class="device" role="group" aria-label="Splash, tanpa koneksi">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen auth-dark">
+          <div class="auth-dark__inner">
+            <img class="auth-splash-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="120" height="120">
+            <p class="auth-splash-title">Keluarga Alumni<br>Ponpes Darel Hikmah</p>
+            <div class="auth-problem" role="status">
+              <span class="ic ic-cloud_off" aria-hidden="true"></span>
+              <h2 class="auth-dark__title">Tanpa koneksi</h2>
+              <p class="auth-dark__message">Periksa koneksi internet Anda lalu coba lagi. Sesi Anda tetap tersimpan di perangkat ini.</p>
+              <button class="btn-m3 btn-m3--outlined btn-m3--icon auth-btn-accent" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav sysnav--on-dark" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">SessionIssue.offline: ikon cloud_off 40 emas, OutlinedButton.icon emas padding 24.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Data sesi belum dapat dibaca</figcaption>
+      <div class="device" role="group" aria-label="Splash, data sesi belum dapat dibaca">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen auth-dark">
+          <div class="auth-dark__inner">
+            <img class="auth-splash-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="120" height="120">
+            <p class="auth-splash-title">Keluarga Alumni<br>Ponpes Darel Hikmah</p>
+            <div class="auth-problem" role="status">
+              <span class="ic ic-phonelink_lock" aria-hidden="true"></span>
+              <h2 class="auth-dark__title">Data sesi belum dapat dibaca</h2>
+              <p class="auth-dark__message">Penyimpanan aman perangkat sedang tidak dapat dibuka. Coba lagi; bila terus berulang, tutup lalu buka kembali aplikasi. Sesi Anda tidak dihapus.</p>
+              <button class="btn-m3 btn-m3--outlined btn-m3--icon auth-btn-accent" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav sysnav--on-dark" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">SessionIssue.storage (penyimpanan aman tidak dapat dibuka).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Server belum dapat dihubungi</figcaption>
+      <div class="device" role="group" aria-label="Splash, server belum dapat dihubungi">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen auth-dark">
+          <div class="auth-dark__inner">
+            <img class="auth-splash-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="120" height="120">
+            <p class="auth-splash-title">Keluarga Alumni<br>Ponpes Darel Hikmah</p>
+            <div class="auth-problem" role="status">
+              <span class="ic ic-dns_outlined" aria-hidden="true"></span>
+              <h2 class="auth-dark__title">Server belum dapat dihubungi</h2>
+              <p class="auth-dark__message">Layanan sedang sibuk atau bermasalah. Coba lagi beberapa saat lagi; sesi Anda tetap tersimpan.</p>
+              <button class="btn-m3 btn-m3--outlined btn-m3--icon auth-btn-accent" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav sysnav--on-dark" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Masalah lain (server sibuk/5xx).</p>
+    </figure>
+
+  </main>
+</body>
+</html>

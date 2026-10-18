@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Halaman Tidak Ditemukan - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar rute tidak dikenal (NotFoundScreen) aplikasi KAPDH untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/auth.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Halaman Tidak Ditemukan</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/system/not_found_screen.dart</code> (NotFoundScreen), <code>lib/design/app_scaffold.dart</code> (AppScaffold), <code>lib/design/states.dart</code> (EmptyState)</dd>
+      <dt>Rute</dt><dd>Rute tidak dikenal (errorBuilder GoRouter), mis. tautan lama</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama</li>
+        <li>Dengan pita Offline global</li>
+      </ol>
+    </div>
+    <p class="page-header__note">AppScaffold dengan tombol kembali (fallback "/"); EmptyState terpusat di badan. Bukan galat jaringan (PRD 4.5).</p>
+  </header>
+
+  <main class="frames">
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama</figcaption>
+      <div class="device" role="group" aria-label="Halaman tidak ditemukan, utama">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Halaman tidak ditemukan</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-search_off"></span></div>
+              <h3 class="state__title">Halaman tidak ditemukan</h3>
+              <p class="state__message">Tautan ini tidak tersedia atau sudah tidak berlaku.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button">Ke halaman utama</button>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Dengan pita Offline global</figcaption>
+      <div class="device" role="group" aria-label="Halaman tidak ditemukan, dengan pita offline global">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Halaman tidak ditemukan</span></h2>
+          </header>
+          <div class="status-strip" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><span class="status-strip__text"><strong>Offline</strong>. Tersinkron 18 Okt 2026, 09.12 WIB</span><button class="btn-text" type="button">Coba lagi</button></div>
+          <div class="screen__body">
+            <div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-search_off"></span></div>
+              <h3 class="state__title">Halaman tidak ditemukan</h3>
+              <p class="state__message">Tautan ini tidak tersedia atau sudah tidak berlaku.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button">Ke halaman utama</button>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">AppBannerScope: pita Offline (sesi memakai snapshot /me terakhir) tepat di bawah app bar, tidak ikut bergulir.</p>
+    </figure>
+
+  </main>
+</body>
+</html>

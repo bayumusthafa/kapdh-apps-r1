@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privasi Profil - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Privasi Profil aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/akun.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <nav class="page-header__nav" aria-label="Layar grup Akun">
+      <a href="account.html">Akun</a>
+      <a href="profile-edit.html">Ubah Profil</a>
+      <a href="privacy.html" aria-current="page">Privasi Profil</a>
+      <a href="notification-preferences.html">Preferensi Notifikasi</a>
+      <a href="sessions.html">Sesi Perangkat</a>
+      <a href="change-password.html">Ganti Password</a>
+      <a href="delete-account.html">Hapus Akun</a>
+      <a href="blocked-users.html">Pengguna Diblokir</a>
+      <a href="my-reports.html">Laporan Saya</a>
+    </nav>
+    <h1 class="page-header__title">Privasi Profil</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/account/privacy_settings_screen.dart</code> (PrivacySettingsScreen) + <code>widgets/account_section.dart</code></dd>
+      <dt>Rute</dt><dd><code>/account/privacy</code> (di atas cangkang, tanpa navigasi bawah)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama: KTA Aktif, bawaan</li>
+        <li>KTA belum aktif + telepon belum diisi</li>
+        <li>Menyimpan (saklar nonaktif)</li>
+        <li>Konflik versi: nilai terbaru ditampilkan</li>
+        <li>Memuat</li>
+        <li>Galat memuat</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Setiap saklar langsung disimpan (PATCH /me/profile dengan If-Match); selama menyimpan semua saklar nonaktif. SwitchListTile: judul 14 w600, keterangan 12 / 1.45 (catatan tambahan di baris baru), contentPadding 16 x 4. Bawaan: tampil di direktori aktif, kontak dan media sosial tersembunyi.</p>
+  </header>
+
+  <main class="frames">
+
+    <h2 class="frames__group-title">Keadaan utama</h2>
+
+    <figure class="frame" id="frame-1">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama: KTA Aktif, bawaan</figcaption>
+      <div class="device" role="group" aria-label="Privasi Profil, keadaan utama">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Privasi Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kontak dan media sosial Anda tersembunyi sampai Anda mengizinkannya. Data yang disembunyikan tidak dikirim ke perangkat anggota lain. Pengurus berizin tetap dapat melihat data Anda untuk keperluan administrasi yang tercatat.</p></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-1">
+                    <h3 class="account-section__title" id="sec-1">DIREKTORI</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile akun-switch-tile--v4" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampil di direktori Jejaring</span><span class="akun-tile__subtitle">Anggota aktif dapat menemukan nama, foto, angkatan, kota, profesi dan keahlian Anda. Bila dimatikan, profil Anda tidak muncul di pencarian.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-2">
+                    <h3 class="account-section__title" id="sec-2">KONTAK DAN MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile akun-switch-tile--v4" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampilkan nomor telepon</span><span class="akun-tile__subtitle">Nomor telepon terlihat oleh anggota aktif di profil Anda.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile akun-switch-tile--v4" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampilkan email</span><span class="akun-tile__subtitle">Alamat email akun terlihat oleh anggota aktif di profil Anda.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile akun-switch-tile--v4" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampilkan media sosial</span><span class="akun-tile__subtitle">Instagram, X, Facebook dan LinkedIn terlihat oleh anggota aktif di profil Anda.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Bawaan: semua tersembunyi untuk melindungi kontak Anda.</p>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-2">
+      <figcaption class="frame__label"><span class="frame__num">2</span> KTA belum aktif + telepon belum diisi</figcaption>
+      <div class="device device--tall" role="group" aria-label="Privasi Profil, KTA belum aktif">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Privasi Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kontak dan media sosial Anda tersembunyi sampai Anda mengizinkannya. Data yang disembunyikan tidak dikirim ke perangkat anggota lain. Pengurus berizin tetap dapat melihat data Anda untuk keperluan administrasi yang tercatat.</p></div></div>
+                <div class="mt-3"><div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Direktori hanya menampilkan anggota dengan KTA aktif. Profil Anda belum muncul di Jejaring sampai KTA aktif, apa pun pengaturan di bawah.</p></div></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-3">
+                    <h3 class="account-section__title" id="sec-3">DIREKTORI</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile akun-switch-tile--v4" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampil di direktori Jejaring</span><span class="akun-tile__subtitle">Anggota aktif dapat menemukan nama, foto, angkatan, kota, profesi dan keahlian Anda. Bila dimatikan, profil Anda tidak muncul di pencarian.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-4">
+                    <h3 class="account-section__title" id="sec-4">KONTAK DAN MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile akun-switch-tile--v4" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampilkan nomor telepon</span><span class="akun-tile__subtitle">Nomor telepon terlihat oleh anggota aktif di profil Anda.<br>Anda belum mengisi nomor telepon.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile akun-switch-tile--v4" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampilkan email</span><span class="akun-tile__subtitle">Alamat email akun terlihat oleh anggota aktif di profil Anda.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile akun-switch-tile--v4" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampilkan media sosial</span><span class="akun-tile__subtitle">Instagram, X, Facebook dan LinkedIn terlihat oleh anggota aktif di profil Anda.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Bawaan: semua tersembunyi untuk melindungi kontak Anda.</p>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">InfoBox peringatan muncul untuk status selain KTA Aktif / Segera Berakhir. Catatan telepon kosong ditambahkan di bawah keterangan.</p>
+    </figure>
+
+    <figure class="frame" id="frame-3">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Menyimpan (saklar nonaktif)</figcaption>
+      <div class="device" role="group" aria-label="Privasi Profil, sedang menyimpan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Privasi Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kontak dan media sosial Anda tersembunyi sampai Anda mengizinkannya. Data yang disembunyikan tidak dikirim ke perangkat anggota lain. Pengurus berizin tetap dapat melihat data Anda untuk keperluan administrasi yang tercatat.</p></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-5">
+                    <h3 class="account-section__title" id="sec-5">DIREKTORI</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile akun-switch-tile--v4 is-disabled" role="switch" aria-checked="true" tabindex="-1" aria-disabled="true">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampil di direktori Jejaring</span><span class="akun-tile__subtitle">Anggota aktif dapat menemukan nama, foto, angkatan, kota, profesi dan keahlian Anda. Bila dimatikan, profil Anda tidak muncul di pencarian.</span></span>
+                        <span class="switch is-on is-disabled" aria-hidden="true"></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-6">
+                    <h3 class="account-section__title" id="sec-6">KONTAK DAN MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile akun-switch-tile--v4 is-disabled" role="switch" aria-checked="false" tabindex="-1" aria-disabled="true">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampilkan nomor telepon</span><span class="akun-tile__subtitle">Nomor telepon terlihat oleh anggota aktif di profil Anda.</span></span>
+                        <span class="switch is-disabled" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile akun-switch-tile--v4 is-disabled" role="switch" aria-checked="true" tabindex="-1" aria-disabled="true">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampilkan email</span><span class="akun-tile__subtitle">Alamat email akun terlihat oleh anggota aktif di profil Anda.</span></span>
+                        <span class="switch is-on is-disabled" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile akun-switch-tile--v4 is-disabled" role="switch" aria-checked="false" tabindex="-1" aria-disabled="true">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampilkan media sosial</span><span class="akun-tile__subtitle">Instagram, X, Facebook dan LinkedIn terlihat oleh anggota aktif di profil Anda.</span></span>
+                        <span class="switch is-disabled" aria-hidden="true"></span>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Bawaan: semua tersembunyi untuk melindungi kontak Anda.</p>
+                  </section>
+                </div>
+                <p class="akun-saving" role="status">Menyimpan...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Setelah menyalakan "Tampilkan email": semua baris redup sampai respons server, lalu teks "Menyimpan..." hilang.</p>
+    </figure>
+
+    <figure class="frame" id="frame-4">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Konflik versi: nilai terbaru ditampilkan</figcaption>
+      <div class="device" role="group" aria-label="Privasi Profil, konflik versi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Privasi Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kontak dan media sosial Anda tersembunyi sampai Anda mengizinkannya. Data yang disembunyikan tidak dikirim ke perangkat anggota lain. Pengurus berizin tetap dapat melihat data Anda untuk keperluan administrasi yang tercatat.</p></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-7">
+                    <h3 class="account-section__title" id="sec-7">DIREKTORI</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile akun-switch-tile--v4" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampil di direktori Jejaring</span><span class="akun-tile__subtitle">Anggota aktif dapat menemukan nama, foto, angkatan, kota, profesi dan keahlian Anda. Bila dimatikan, profil Anda tidak muncul di pencarian.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-8">
+                    <h3 class="account-section__title" id="sec-8">KONTAK DAN MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile akun-switch-tile--v4" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampilkan nomor telepon</span><span class="akun-tile__subtitle">Nomor telepon terlihat oleh anggota aktif di profil Anda.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile akun-switch-tile--v4" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampilkan email</span><span class="akun-tile__subtitle">Alamat email akun terlihat oleh anggota aktif di profil Anda.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile akun-switch-tile--v4" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title akun-tile__title--strong">Tampilkan media sosial</span><span class="akun-tile__subtitle">Instagram, X, Facebook dan LinkedIn terlihat oleh anggota aktif di profil Anda.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Bawaan: semua tersembunyi untuk melindungi kontak Anda.</p>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">Profil baru saja diubah di perangkat lain. Pengaturan terbaru ditampilkan.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Galat lain memakai ErrorPresenter (snackbar dengan "Coba lagi").</p>
+    </figure>
+
+    <h2 class="frames__group-title">Memuat dan galat</h2>
+
+    <figure class="frame" id="frame-5">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Memuat</figcaption>
+      <div class="device" role="group" aria-label="Privasi Profil, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Privasi Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="skeleton" role="status" aria-label="Memuat pengaturan privasi">
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-6">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Galat memuat</figcaption>
+      <div class="device" role="group" aria-label="Privasi Profil, galat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Privasi Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-error_outline"></span></div>
+              <h3 class="state__title">Terjadi kesalahan</h3>
+              <p class="state__message">Terjadi kesalahan. Coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+              <p class="state__footnote">Kode bantuan: req_7f3a91c2</p>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+  </main>
+</body>
+</html>

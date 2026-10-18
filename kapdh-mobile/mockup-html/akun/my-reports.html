@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Laporan Saya - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Laporan Saya aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/akun.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <nav class="page-header__nav" aria-label="Layar grup Akun">
+      <a href="account.html">Akun</a>
+      <a href="profile-edit.html">Ubah Profil</a>
+      <a href="privacy.html">Privasi Profil</a>
+      <a href="notification-preferences.html">Preferensi Notifikasi</a>
+      <a href="sessions.html">Sesi Perangkat</a>
+      <a href="change-password.html">Ganti Password</a>
+      <a href="delete-account.html">Hapus Akun</a>
+      <a href="blocked-users.html">Pengguna Diblokir</a>
+      <a href="my-reports.html" aria-current="page">Laporan Saya</a>
+    </nav>
+    <h1 class="page-header__title">Laporan Saya</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/network/my_reports_screen.dart</code> (MyReportsScreen, _ReportCard, _ReportDetailSheet, reportStatusStyle, reportOutcomeText, reportTargetText; diekspor ulang oleh <code>lib/features/account/my_reports_screen.dart</code>) + <code>report_sheet.dart</code> (reportCategoryLabel)</dd>
+      <dt>Rute</dt><dd><code>/account/reports</code> (semua status anggota, termasuk Kedaluwarsa dan Dibatasi)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Daftar: 4 laporan dengan status berbeda</li>
+        <li>Kosong</li>
+        <li>Detail: sedang ditinjau</li>
+        <li>Detail: selesai dengan hasil dan pesan pengurus</li>
+        <li>Detail: memuat</li>
+        <li>Memuat</li>
+        <li>Galat memuat</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Status laporan berlabel + ikon: Menunggu tinjauan (info), Sedang ditinjau (peringatan), Selesai (sukses), Ditutup (netral), Status tidak dikenal (netral). Hasil yang terlihat pelapor tanpa merinci tindakan terhadap pihak lain; bukti, identitas pengurus dan catatan internal tidak pernah dikirim server. Ketuk kartu membuka lembar detail (showDragHandle). Isi penjelasan dan pesan pengurus fiktif.</p>
+    <p class="page-header__note page-header__note--dup"><strong>Halaman kembar:</strong> layar yang sama (kode di <code>lib/features/network/</code>, diekspor ulang oleh <code>lib/features/account/</code>) juga dimockup di <a href="../jejaring/my-reports.html">jejaring/my-reports.html</a> dengan gaya grup Jejaring. Saat redesain, jadikan satu halaman acuan lalu samakan yang lain.</p>
+  </header>
+
+  <main class="frames">
+
+    <h2 class="frames__group-title">Daftar</h2>
+
+    <figure class="frame" id="frame-1">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Daftar: 4 laporan dengan status berbeda</figcaption>
+      <div class="device" role="group" aria-label="Laporan Saya, daftar">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Laporan Saya</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="akun-list akun-list--gap-12">
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Spam</span><span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu tinjauan</span></div>
+                  <p class="akun-report-card__target">Pengguna: Budi Santoso</p>
+                  <p class="akun-report-card__date">Dikirim 16 Okt 2026, 10.24 WIB</p>
+                </a>
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Pelecehan atau perundungan</span><span class="status-badge status-badge--warning"><span class="ic ic-visibility_outlined" aria-hidden="true"></span>Sedang ditinjau</span></div>
+                  <p class="akun-report-card__target">Pesan dari Rahmat Hidayat di grup KAPDH 12 Pekanbaru</p>
+                  <p class="akun-report-card__date">Dikirim 14 Okt 2026, 21.03 WIB</p>
+                </a>
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Penipuan</span><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Selesai</span></div>
+                  <p class="akun-report-card__target">Grup: Info Usaha Alumni</p>
+                  <p class="akun-report-card__date">Dikirim 2 Okt 2026, 08.45 WIB</p>
+                  <p class="akun-report-card__outcome">Pengurus telah mengambil tindakan.</p>
+                </a>
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Banding</span><span class="status-badge status-badge--neutral"><span class="ic ic-do_not_disturb_on_outlined" aria-hidden="true"></span>Ditutup</span></div>
+                  <p class="akun-report-card__target">Banding pembatasan akun</p>
+                  <p class="akun-report-card__date">Dikirim 20 Sep 2026, 13.10 WIB</p>
+                  <p class="akun-report-card__outcome">Banding ditolak.</p>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-2">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Kosong</figcaption>
+      <div class="device" role="group" aria-label="Laporan Saya, kosong">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Laporan Saya</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-flag_outlined"></span></div>
+              <h3 class="state__title">Belum ada laporan</h3>
+              <p class="state__message">Laporan pengguna, pesan atau grup yang Anda kirim tampil di sini beserta statusnya. Laporan tidak dibuka kepada pihak yang dilaporkan.</p>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <h2 class="frames__group-title">Lembar detail laporan</h2>
+
+    <figure class="frame" id="frame-3">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Detail: sedang ditinjau</figcaption>
+      <div class="device" role="group" aria-label="Laporan Saya, detail laporan sedang ditinjau">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Laporan Saya</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="akun-list akun-list--gap-12">
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Spam</span><span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu tinjauan</span></div>
+                  <p class="akun-report-card__target">Pengguna: Budi Santoso</p>
+                  <p class="akun-report-card__date">Dikirim 16 Okt 2026, 10.24 WIB</p>
+                </a>
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Pelecehan atau perundungan</span><span class="status-badge status-badge--warning"><span class="ic ic-visibility_outlined" aria-hidden="true"></span>Sedang ditinjau</span></div>
+                  <p class="akun-report-card__target">Pesan dari Rahmat Hidayat di grup KAPDH 12 Pekanbaru</p>
+                  <p class="akun-report-card__date">Dikirim 14 Okt 2026, 21.03 WIB</p>
+                </a>
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Penipuan</span><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Selesai</span></div>
+                  <p class="akun-report-card__target">Grup: Info Usaha Alumni</p>
+                  <p class="akun-report-card__date">Dikirim 2 Okt 2026, 08.45 WIB</p>
+                  <p class="akun-report-card__outcome">Pengurus telah mengambil tindakan.</p>
+                </a>
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Banding</span><span class="status-badge status-badge--neutral"><span class="ic ic-do_not_disturb_on_outlined" aria-hidden="true"></span>Ditutup</span></div>
+                  <p class="akun-report-card__target">Banding pembatasan akun</p>
+                  <p class="akun-report-card__date">Dikirim 20 Sep 2026, 13.10 WIB</p>
+                  <p class="akun-report-card__outcome">Banding ditolak.</p>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rep-review-title">
+          <div class="sheet__body akun-sheet-body--24">
+            <h3 class="sheet__title lh-145" id="rep-review-title">Pelecehan atau perundungan</h3>
+            <div class="mt-2"><span class="status-badge status-badge--warning"><span class="ic ic-visibility_outlined" aria-hidden="true"></span>Sedang ditinjau</span></div>
+            <div class="summary-card mt-4">
+              <h4 class="summary-card__title">Rincian laporan</h4>
+              <div class="summary-row"><span class="summary-row__label">Objek</span><span class="summary-row__value">Pesan dari Rahmat Hidayat di grup KAPDH 12 Pekanbaru</span></div>
+              <div class="summary-row"><span class="summary-row__label">Dikirim</span><span class="summary-row__value">14 Okt 2026, 21.03 WIB</span></div>
+              <div class="summary-row"><span class="summary-row__label">Target penanganan</span><span class="summary-row__value">15 Okt 2026, 21.03 WIB</span></div>
+            </div>
+            <p class="akun-report-detail__label mt-4">Penjelasan Anda</p>
+            <p class="mt-1">Pesan berisi ejekan berulang terhadap anggota lain di grup.</p>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">"Target penanganan" hanya untuk laporan yang masih terbuka/ditinjau.</p>
+    </figure>
+
+    <figure class="frame" id="frame-4">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Detail: selesai dengan hasil dan pesan pengurus</figcaption>
+      <div class="device" role="group" aria-label="Laporan Saya, detail laporan selesai">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Laporan Saya</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="akun-list akun-list--gap-12">
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Spam</span><span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu tinjauan</span></div>
+                  <p class="akun-report-card__target">Pengguna: Budi Santoso</p>
+                  <p class="akun-report-card__date">Dikirim 16 Okt 2026, 10.24 WIB</p>
+                </a>
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Pelecehan atau perundungan</span><span class="status-badge status-badge--warning"><span class="ic ic-visibility_outlined" aria-hidden="true"></span>Sedang ditinjau</span></div>
+                  <p class="akun-report-card__target">Pesan dari Rahmat Hidayat di grup KAPDH 12 Pekanbaru</p>
+                  <p class="akun-report-card__date">Dikirim 14 Okt 2026, 21.03 WIB</p>
+                </a>
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Penipuan</span><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Selesai</span></div>
+                  <p class="akun-report-card__target">Grup: Info Usaha Alumni</p>
+                  <p class="akun-report-card__date">Dikirim 2 Okt 2026, 08.45 WIB</p>
+                  <p class="akun-report-card__outcome">Pengurus telah mengambil tindakan.</p>
+                </a>
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Banding</span><span class="status-badge status-badge--neutral"><span class="ic ic-do_not_disturb_on_outlined" aria-hidden="true"></span>Ditutup</span></div>
+                  <p class="akun-report-card__target">Banding pembatasan akun</p>
+                  <p class="akun-report-card__date">Dikirim 20 Sep 2026, 13.10 WIB</p>
+                  <p class="akun-report-card__outcome">Banding ditolak.</p>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rep-resolved-title">
+          <div class="sheet__body akun-sheet-body--24">
+            <h3 class="sheet__title lh-145" id="rep-resolved-title">Penipuan</h3>
+            <div class="mt-2"><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Selesai</span></div>
+            <div class="summary-card mt-4">
+              <h4 class="summary-card__title">Rincian laporan</h4>
+              <div class="summary-row"><span class="summary-row__label">Objek</span><span class="summary-row__value">Grup: Info Usaha Alumni</span></div>
+              <div class="summary-row"><span class="summary-row__label">Dikirim</span><span class="summary-row__value">2 Okt 2026, 08.45 WIB</span></div>
+              <div class="summary-row"><span class="summary-row__label">Diputus</span><span class="summary-row__value">3 Okt 2026, 16.20 WIB</span></div>
+            </div>
+            <p class="akun-report-detail__label mt-4">Penjelasan Anda</p>
+            <p class="mt-1">Grup ini menawarkan investasi dengan janji keuntungan pasti dan meminta transfer ke rekening pribadi.</p>
+            <div class="mt-4"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Hasil</p><p class="info-box__message">Pengurus telah mengambil tindakan.</p></div></div></div>
+            <p class="akun-report-detail__label mt-3">Pesan pengurus</p>
+            <p class="mt-1">Terima kasih atas laporan Anda. Grup tersebut sudah ditutup karena melanggar Ketentuan komunitas.</p>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">InfoBox "Hasil" bernada info untuk tindakan diambil, peringatan untuk "Tidak ada tindakan yang diperlukan." / "Banding ditolak."</p>
+    </figure>
+
+    <figure class="frame" id="frame-5">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Detail: memuat</figcaption>
+      <div class="device" role="group" aria-label="Laporan Saya, detail laporan memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Laporan Saya</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="akun-list akun-list--gap-12">
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Spam</span><span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu tinjauan</span></div>
+                  <p class="akun-report-card__target">Pengguna: Budi Santoso</p>
+                  <p class="akun-report-card__date">Dikirim 16 Okt 2026, 10.24 WIB</p>
+                </a>
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Pelecehan atau perundungan</span><span class="status-badge status-badge--warning"><span class="ic ic-visibility_outlined" aria-hidden="true"></span>Sedang ditinjau</span></div>
+                  <p class="akun-report-card__target">Pesan dari Rahmat Hidayat di grup KAPDH 12 Pekanbaru</p>
+                  <p class="akun-report-card__date">Dikirim 14 Okt 2026, 21.03 WIB</p>
+                </a>
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Penipuan</span><span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Selesai</span></div>
+                  <p class="akun-report-card__target">Grup: Info Usaha Alumni</p>
+                  <p class="akun-report-card__date">Dikirim 2 Okt 2026, 08.45 WIB</p>
+                  <p class="akun-report-card__outcome">Pengurus telah mengambil tindakan.</p>
+                </a>
+                <a class="card card--md akun-report-card" href="#">
+                  <div class="akun-report-card__head"><span class="akun-report-card__category">Banding</span><span class="status-badge status-badge--neutral"><span class="ic ic-do_not_disturb_on_outlined" aria-hidden="true"></span>Ditutup</span></div>
+                  <p class="akun-report-card__target">Banding pembatasan akun</p>
+                  <p class="akun-report-card__date">Dikirim 20 Sep 2026, 13.10 WIB</p>
+                  <p class="akun-report-card__outcome">Banding ditolak.</p>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-label="Detail laporan">
+          <div class="skeleton" role="status" aria-label="Memuat detail laporan">
+            <div class="skeleton__line"></div>
+            <div class="skeleton__line is-short"></div>
+            <div class="skeleton__line"></div>
+            <div class="skeleton__line is-short"></div>
+            <div class="skeleton__line"></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <h2 class="frames__group-title">Memuat dan galat</h2>
+
+    <figure class="frame" id="frame-6">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Memuat</figcaption>
+      <div class="device" role="group" aria-label="Laporan Saya, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Laporan Saya</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="skeleton" role="status" aria-label="Memuat laporan">
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-7">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Galat memuat</figcaption>
+      <div class="device" role="group" aria-label="Laporan Saya, galat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Laporan Saya</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-error_outline"></span></div>
+              <h3 class="state__title">Terjadi kesalahan</h3>
+              <p class="state__message">Terjadi kesalahan. Coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+              <p class="state__footnote">Kode bantuan: req_7f3a91c2</p>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+  </main>
+</body>
+</html>

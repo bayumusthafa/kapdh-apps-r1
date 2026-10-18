@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pemeliharaan - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Pemeliharaan (MaintenanceScreen) aplikasi KAPDH untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/auth.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Pemeliharaan</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/system/maintenance_screen.dart</code> (MaintenanceScreen), <code>lib/design/status_hero.dart</code>, <code>lib/core/ui/support_section.dart</code></dd>
+      <dt>Rute</dt><dd><code>/maintenance</code> (opsional <code>?from=</code>)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Tanpa sesi + perkiraan selesai</li>
+        <li>Dengan sesi: mode baca + KTA</li>
+        <li>Memeriksa</li>
+        <li>Perkiraan belum tersedia + pesan server</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Scaffold background, SafeArea, gulir dengan padding 20 dan jarak 32 di atas. Tombol "Lanjut dalam mode baca" muncul bila ada tujuan baca untuk status sesi; "Tampilkan KTA" bila rute KTA diizinkan dan bukan tujuan baca itu sendiri. Kontak bantuan dari /public/config (bila belum dimuat hanya email bawaan bantuan@kapdh.or.id).</p>
+  </header>
+
+  <main class="frames">
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Tanpa sesi + perkiraan selesai</figcaption>
+      <div class="device" role="group" aria-label="Pemeliharaan, tanpa sesi + perkiraan selesai">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="auth-system">
+            <div class="status-hero tone-warning">
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-build_outlined"></span></div>
+              <span class="status-badge status-badge--warning"><span class="ic ic-build_outlined" aria-hidden="true"></span>Pemeliharaan</span>
+              <h2 class="status-hero__title">Layanan sedang dalam pemeliharaan</h2>
+              <p class="status-hero__message">Kami sedang meningkatkan layanan. Data Anda aman; pengiriman data baru ditunda sementara.</p>
+            </div>
+            <div class="mt-5">
+              <div class="info-box"><span class="ic ic-schedule" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Perkiraan selesai: 18 Okt 2026, 12.00 WIB. Waktu dapat berubah.</p></div></div>
+            </div>
+            <div class="mt-6">
+              <button class="btn btn--primary" type="button">Coba lagi</button>
+            </div>
+            <div class="mt-6">
+              <div class="support-card">
+                <h3 class="support-card__title">Butuh bantuan?</h3>
+                <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">StatusHero nada peringatan, InfoBox info dengan ikon schedule.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Dengan sesi: mode baca + KTA</figcaption>
+      <div class="device device--tall" role="group" aria-label="Pemeliharaan, dengan sesi: mode baca + kta">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="auth-system">
+            <div class="status-hero tone-warning">
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-build_outlined"></span></div>
+              <span class="status-badge status-badge--warning"><span class="ic ic-build_outlined" aria-hidden="true"></span>Pemeliharaan</span>
+              <h2 class="status-hero__title">Layanan sedang dalam pemeliharaan</h2>
+              <p class="status-hero__message">Kami sedang meningkatkan layanan. Data Anda aman; pengiriman data baru ditunda sementara.</p>
+            </div>
+            <div class="mt-5">
+              <div class="info-box"><span class="ic ic-schedule" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Perkiraan selesai: 18 Okt 2026, 12.00 WIB. Waktu dapat berubah.</p></div></div>
+            </div>
+            <div class="mt-6">
+              <button class="btn btn--primary" type="button">Coba lagi</button>
+            </div>
+            <div class="mt-3">
+              <button class="btn btn--outline" type="button"><span class="ic ic-chrome_reader_mode_outlined" aria-hidden="true"></span>Lanjut dalam mode baca</button>
+            </div>
+            <div class="mt-3">
+              <button class="btn btn--outline" type="button"><span class="ic ic-badge_outlined" aria-hidden="true"></span>Tampilkan KTA</button>
+            </div>
+            <div class="mt-6">
+              <div class="support-card">
+                <h3 class="support-card__title">Butuh bantuan?</h3>
+                <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Anggota masuk dapat lanjut membaca (KTA, tiket, riwayat, berita, kotak masuk).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Memeriksa</figcaption>
+      <div class="device" role="group" aria-label="Pemeliharaan, memeriksa">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="auth-system">
+            <div class="status-hero tone-warning">
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-build_outlined"></span></div>
+              <span class="status-badge status-badge--warning"><span class="ic ic-build_outlined" aria-hidden="true"></span>Pemeliharaan</span>
+              <h2 class="status-hero__title">Layanan sedang dalam pemeliharaan</h2>
+              <p class="status-hero__message">Kami sedang meningkatkan layanan. Data Anda aman; pengiriman data baru ditunda sementara.</p>
+            </div>
+            <div class="mt-5">
+              <div class="info-box"><span class="ic ic-schedule" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Perkiraan selesai: 18 Okt 2026, 12.00 WIB. Waktu dapat berubah.</p></div></div>
+            </div>
+            <div class="mt-6">
+              <button class="btn btn--primary is-busy" type="button" disabled aria-busy="true"><span class="spinner spinner--18" aria-hidden="true"></span>Memeriksa...</button>
+            </div>
+            <div class="mt-6">
+              <div class="support-card">
+                <h3 class="support-card__title">Butuh bantuan?</h3>
+                <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">busyLabel "Memeriksa..." saat GET /public/config diulang.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Perkiraan belum tersedia</figcaption>
+      <div class="device" role="group" aria-label="Pemeliharaan, perkiraan belum tersedia">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="auth-system">
+            <div class="status-hero tone-warning">
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-build_outlined"></span></div>
+              <span class="status-badge status-badge--warning"><span class="ic ic-build_outlined" aria-hidden="true"></span>Pemeliharaan</span>
+              <h2 class="status-hero__title">Layanan sedang dalam pemeliharaan</h2>
+              <p class="status-hero__message">Pembaruan sistem pembayaran sedang berlangsung. Pengiriman bukti transfer dibuka kembali setelah selesai.</p>
+            </div>
+            <div class="mt-5">
+              <div class="info-box"><span class="ic ic-schedule" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Perkiraan waktu selesai belum tersedia. Silakan coba lagi beberapa saat lagi.</p></div></div>
+            </div>
+            <div class="mt-6">
+              <button class="btn btn--primary" type="button">Coba lagi</button>
+            </div>
+            <div class="mt-6">
+              <div class="support-card">
+                <h3 class="support-card__title">Butuh bantuan?</h3>
+                <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">maintenance_message dari server menggantikan pesan bawaan (contoh fiktif); tanpa maintenance_until.</p>
+    </figure>
+
+  </main>
+</body>
+</html>

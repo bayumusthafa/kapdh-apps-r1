@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pengguna Diblokir - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Pengguna Diblokir aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/jejaring.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+      <a href="member-profile.html">Profil Alumni</a>
+      <a href="my-reports.html">Laporan Saya</a>
+    </nav>
+    <h1 class="page-header__title">Pengguna Diblokir</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/network/blocked_users_screen.dart</code> (BlockedUsersScreen), <code>moderation_actions.dart</code> (unblockWithConfirmation); diekspor ulang lewat <code>lib/features/account/blocked_users_screen.dart</code></dd>
+      <dt>Rute</dt><dd><code>/account/blocked</code> (navigator akar)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama</li>
+        <li>Dialog buka blokir</li>
+        <li>Setelah buka blokir</li>
+        <li>Kosong</li>
+        <li>Memuat</li>
+        <li>Galat</li>
+      </ol>
+    </div>
+    <p class="page-header__note">AppScaffold "Pengguna Diblokir", ListView padding 16. Pemanggil tidak pernah diberi tahu siapa yang memblokir dirinya. Data contoh fiktif.</p>
+    <p class="page-header__note page-header__note--dup"><strong>Halaman kembar:</strong> layar yang sama (kode di <code>lib/features/network/</code>, diekspor ulang oleh <code>lib/features/account/</code>) juga dimockup di <a href="../akun/blocked-users.html">akun/blocked-users.html</a> dengan gaya grup Akun. Saat redesain, jadikan satu halaman acuan lalu samakan yang lain.</p>
+  </header>
+
+  <main class="frames">
+
+    <!-- 1. Utama -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama</figcaption>
+      <div class="device" aria-label="Pengguna Diblokir, daftar">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Pengguna Diblokir</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="jj-card-list jj-card-list--tight">
+              <div class="card card--md jj-card-12">
+                <div class="jj-person"><span class="avatar avatar--44" aria-hidden="true">ZA</span><div class="grow"><p class="jj-person__name">Zainal Abidin</p><p class="jj-person__meta">Diblokir sejak 10 Okt 2026</p></div></div>
+                <div class="jj-card-actions-end"><button class="btn-text" type="button">Buka blokir</button></div>
+              </div>
+              <div class="card card--md jj-card-12">
+                <div class="jj-person"><span class="avatar avatar--44" aria-hidden="true">RM</span><div class="grow"><p class="jj-person__name">Rina Marlina</p><p class="jj-person__meta">Diblokir sejak 2 Sep 2026</p></div></div>
+                <div class="jj-card-actions-end"><button class="btn-text" type="button">Buka blokir</button></div>
+              </div>
+              <div class="card card--md jj-card-12">
+                <div class="jj-person"><span class="avatar avatar--44" aria-hidden="true">FH</span><div class="grow"><p class="jj-person__name">Fajar Hidayat</p><p class="jj-person__meta">Diblokir sejak 14 Agu 2026</p></div></div>
+                <div class="jj-card-actions-end"><button class="btn-text" type="button">Buka blokir</button></div>
+              </div>
+              <div class="jj-footer-end"></div>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Kartu padding 12: avatar 44 + nama w600 + "Diblokir sejak ..." 12 abu; TextButton "Buka blokir" di baris sendiri rata kanan (agar tidak meluap pada teks 200 %). Jarak kartu 8.</p>
+    </figure>
+
+    <!-- 2. Dialog buka blokir -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Dialog buka blokir</figcaption>
+      <div class="device" aria-label="Pengguna Diblokir, konfirmasi buka blokir">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Pengguna Diblokir</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="jj-card-list jj-card-list--tight">
+              <div class="card card--md jj-card-12">
+                <div class="jj-person"><span class="avatar avatar--44" aria-hidden="true">ZA</span><div class="grow"><p class="jj-person__name">Zainal Abidin</p><p class="jj-person__meta">Diblokir sejak 10 Okt 2026</p></div></div>
+                <div class="jj-card-actions-end"><button class="btn-text" type="button">Buka blokir</button></div>
+              </div>
+              <div class="card card--md jj-card-12">
+                <div class="jj-person"><span class="avatar avatar--44" aria-hidden="true">RM</span><div class="grow"><p class="jj-person__name">Rina Marlina</p><p class="jj-person__meta">Diblokir sejak 2 Sep 2026</p></div></div>
+                <div class="jj-card-actions-end"><button class="btn-text" type="button">Buka blokir</button></div>
+              </div>
+              <div class="card card--md jj-card-12">
+                <div class="jj-person"><span class="avatar avatar--44" aria-hidden="true">FH</span><div class="grow"><p class="jj-person__name">Fajar Hidayat</p><p class="jj-person__meta">Diblokir sejak 14 Agu 2026</p></div></div>
+                <div class="jj-card-actions-end"><button class="btn-text" type="button">Buka blokir</button></div>
+              </div>
+              <div class="jj-footer-end"></div>
+            </div></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="bu2-title">
+          <h3 class="dialog__title" id="bu2-title">Buka blokir Zainal Abidin?</h3>
+          <div class="dialog__content"><p class="c-muted">Anda dapat kembali saling mengirim pesan langsung dengan Zainal Abidin, kecuali bila Zainal Abidin juga membatasi percakapan. Undangan grup yang sudah dibatalkan tidak dipulihkan.</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text" type="button">Buka blokir</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 3. Setelah buka blokir -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Setelah buka blokir</figcaption>
+      <div class="device" aria-label="Pengguna Diblokir, setelah buka blokir">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Pengguna Diblokir</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="jj-card-list jj-card-list--tight">
+              <div class="card card--md jj-card-12">
+                <div class="jj-person"><span class="avatar avatar--44" aria-hidden="true">RM</span><div class="grow"><p class="jj-person__name">Rina Marlina</p><p class="jj-person__meta">Diblokir sejak 2 Sep 2026</p></div></div>
+                <div class="jj-card-actions-end"><button class="btn-text" type="button">Buka blokir</button></div>
+              </div>
+              <div class="card card--md jj-card-12">
+                <div class="jj-person"><span class="avatar avatar--44" aria-hidden="true">FH</span><div class="grow"><p class="jj-person__name">Fajar Hidayat</p><p class="jj-person__meta">Diblokir sejak 14 Agu 2026</p></div></div>
+                <div class="jj-card-actions-end"><button class="btn-text" type="button">Buka blokir</button></div>
+              </div>
+              <div class="jj-footer-end"></div>
+            </div></div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">Blokir Zainal Abidin dibuka.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Baris dihapus lokal tanpa memuat ulang.</p>
+    </figure>
+
+    <!-- 4. Kosong -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Kosong</figcaption>
+      <div class="device" aria-label="Pengguna Diblokir, kosong">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Pengguna Diblokir</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-block"></span></div>
+              <h3 class="state__title">Tidak ada pengguna yang diblokir</h3>
+              <p class="state__message">Anggota yang Anda blokir tidak dapat saling mengirim pesan langsung atau undangan grup dengan Anda. Blokir dapat dilakukan dari profil alumni atau info percakapan.</p>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 5. Memuat -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Memuat</figcaption>
+      <div class="device" aria-label="Pengguna Diblokir, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Pengguna Diblokir</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="skeleton" role="status" aria-label="Memuat pengguna diblokir"><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 6. Galat -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Galat</figcaption>
+      <div class="device" aria-label="Pengguna Diblokir, galat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Pengguna Diblokir</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off"></span></div>
+              <h3 class="state__title">Tidak ada koneksi</h3>
+              <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+  </main>
+</body>
+</html>

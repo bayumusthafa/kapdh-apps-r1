@@ -1,0 +1,148 @@
+/* =====================================================================================================================
+   KAPDH mockup HTML: GRUP kta (KTA, riwayat pembayaran, pembuatan instruksi, status/instruksi bayar, perpanjangan)
+   Halaman: kta/kta.html            KtaScreen               lib/features/kta/kta_screen.dart
+            kta/payments.html       PaymentsScreen          lib/features/payments/payments_screen.dart
+            kta/new-payment.html    NewPaymentScreen        lib/features/payments/new_payment_screen.dart
+            kta/payment-detail.html PaymentDetailScreen     lib/features/payments/payment_detail_screen.dart
+            kta/renewal.html        RenewalScreen           lib/features/payments/renewal_screen.dart
+   Hanya gaya khusus layar grup ini. Komponen bersama (KtaCard, StatusActionCard, SummaryCard, InfoBox, UploadTile,
+   MethodRadioCard, Timeline, dst.) ada di components.css dan TIDAK diubah dari sini.
+   1 px CSS = 1 dp Flutter. Nilai literal di bawah disalin dari Dart (komentar menyebut sumbernya).
+   ===================================================================================================================== */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   KERANGKA DAFTAR
+   --------------------------------------------------------------------------------------------------------------------- */
+/* ListView(padding: EdgeInsets.all(KapdhSpace.s5)): KTA, riwayat pembayaran, status hasil akhir, perpanjangan */
+.kta-list { padding: var(--s5); }
+/* Posisi gulir tiruan: pakai utilitas bersama .scroll-viewport / .scroll-end / .scroll-offset (components.css). */
+/* EmptyState/ErrorState di dalam ListView: Center tanpa batas tinggi menyusut ke isinya, jadi keadaan tampil di
+   ATAS daftar (bukan di tengah layar). Pembungkus blok membuat .state tidak meregang. */
+.kta-block { display: block; }
+.kta-block > .state { flex: none; }
+
+/* Judul bagian kecil 14 w600 (PaymentSectionTitle; "Riwayat periode" di Perpanjang KTA) */
+.pay-section-title { font-size: var(--fs-body); font-weight: 600; }
+/* Riwayat: SizedBox(18) + judul + SizedBox(10) + Timeline (payment_detail _historySection, renewal) */
+.pay-history { margin-top: 18px; }
+.pay-history > .timeline { margin-top: 10px; }
+.pay-history--24 { margin-top: var(--s6); } /* renewal: SizedBox(KapdhSpace.s6) */
+.pay-history--38 { margin-top: 38px; }      /* hasil akhir tanpa CTA: SizedBox(s5) + SizedBox(18) */
+.pay-mt-18 { margin-top: 18px; }           /* SizedBox(height: 18) di layar menunggu/ditolak */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   KTA (kta_screen.dart)
+   --------------------------------------------------------------------------------------------------------------------- */
+/* _SyncedAt: Row tengah, Icons.sync 14 muted + s1 + teks caption 12 muted */
+.kta-synced { display: flex; align-items: center; justify-content: center; gap: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
+.kta-synced .ic { --ic-size: 14px; }
+
+/* _LockedFeatures "Terbuka setelah KTA aktif": kartu putih 14 x 16, garis divider, radius 14; baris ikon 18 muted + 10 + 13 */
+.kta-locked { padding: 13px 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); }
+.kta-locked__title { font-size: var(--fs-body); font-weight: 600; }
+.kta-locked__item { display: flex; align-items: center; gap: 10px; margin-top: var(--s2); font-size: 13px; }
+.kta-locked__item .ic { --ic-size: 18px; color: var(--color-text-muted); }
+
+/* _OfflineUnavailable: ListView padding 24 + SizedBox 24, lingkaran 64 dangerBg (pakai .state.state--error),
+   tombol Sinkronkan KapdhButton.outlined selebar layar (expand: true). */
+.kta-unavailable { padding-top: calc(var(--s6) + var(--s6)); }
+.kta-unavailable .state__action { align-self: stretch; }
+
+/* Ikon aksi app bar sedang menyinkronkan: SizedBox 20 + CircularProgressIndicator(strokeWidth 2) di IconButton 48 */
+.appbar__actions .icon-btn .spinner { --spinner-size: 20px; --spinner-width: 2px; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   RIWAYAT PEMBAYARAN (payments_screen.dart PaymentTile)
+   Material putih, garis divider, radius 14, padding 14 x 16; ikon 40 green50 radius 10 (ikon 22 primary), jarak 12;
+   judul 14 w600, 2, "$nominal · $tanggal" 12 muted, 8, StatusBadge; chevron_right 24 muted rata atas.
+   --------------------------------------------------------------------------------------------------------------------- */
+.pay-tiles > * + * { margin-top: var(--s3); } /* ListView.separated SizedBox(s3) */
+.pay-tile { display: flex; align-items: flex-start; gap: var(--s3); width: 100%; padding: 13px 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); text-align: left; }
+.pay-tile__icon { flex: none; width: 40px; height: 40px; border-radius: var(--r-md); display: grid; place-items: center; background: var(--color-green-50); color: var(--color-primary); }
+.pay-tile__icon .ic { --ic-size: 22px; }
+.pay-tile__body { flex: 1 1 auto; min-width: 0; }
+.pay-tile__title { display: block; font-size: var(--fs-body); font-weight: 600; }
+.pay-tile__meta { display: block; margin-top: 2px; font-size: var(--fs-caption); color: var(--color-text-muted); }
+.pay-tile .status-badge { display: flex; width: fit-content; margin-top: var(--s2); }
+.pay-tile__chevron { color: var(--color-text-muted); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   PEMBUATAN INSTRUKSI (new_payment_screen.dart _Progress)
+   Center + padding 24: CircularProgressIndicator 36, 16, judul 18 w600 tengah, 8, detail 14 h1.5 muted.
+   --------------------------------------------------------------------------------------------------------------------- */
+.pay-progress { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--s6); }
+.pay-progress__title { margin-top: var(--s4); font-size: var(--fs-h3); font-weight: 600; }
+.pay-progress__detail { margin-top: var(--s2); font-size: var(--fs-body); line-height: 1.5; color: var(--color-text-muted); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   LEMBAR PEMBAYARAN (BrandSheetScaffold + SheetTitleRow / GreetingBand; payment_detail_screen.dart)
+   --------------------------------------------------------------------------------------------------------------------- */
+/* Isi lembar instruksi: ListView padding (20, 16, 20, 16) */
+.pay-sheet-list { padding: var(--s4) var(--s5); }
+/* Isi lembar menunggu/ditolak: ListView padding (20, 24, 20, 16) */
+.pay-sheet-list--hero { padding: var(--s6) var(--s5) var(--s4); }
+/* GreetingBand: BrandHeader padding (20, 20 + inset, 20, 20 + overlap 16) */
+.pay-greeting { padding-bottom: calc(var(--s5) + var(--s4)); }
+/* bottomBar BrandSheetScaffold: padding atas 12, bawah (24 - overlap); lembar digeser naik sejauh overlap dan
+   SafeArea menambah inset gestur, jadi tombol berakhir 24 + inset dari dasar layar (terukur dari tata letak Dart). */
+.pay-bottom { padding: var(--s3) var(--s5) calc(var(--s6) + var(--inset-bottom)); }
+/* Layar menunggu: Row [Expanded(outlined "Ganti bukti"), SizedBox(10), Expanded(solid "Ke Beranda")] */
+.pay-bottom__row { display: flex; gap: 10px; }
+.pay-bottom__row > .btn { flex: 1 1 0; min-width: 0; }
+/* Layar ditolak: KapdhButton + Center(KapdhLinkButton "Hubungi pengurus") */
+.pay-bottom__link { display: flex; justify-content: center; }
+/* paymentTitle di bawah judul lembar untuk iuran perpanjangan/tiket: 13 muted, jarak 8 */
+.pay-kind { margin-top: var(--s2); font-size: 13px; color: var(--color-text-muted); }
+/* Teks aturan berkas di bawah UploadTile: caption 12 muted */
+.pay-rules { margin-top: var(--s2); font-size: var(--fs-caption); color: var(--color-text-muted); }
+/* KapdhTextField(maxLines: 2) catatan untuk pengurus: 14 + 2 x 20.3 + 14 */
+.input--lines-2 { align-items: flex-start; }
+.input--lines-2 .input__control { resize: none; min-height: calc(2 * 20.3px + 26px); }
+.input.is-disabled .input__control::placeholder { color: rgba(28, 27, 31, .38); } /* hint field nonaktif: onSurface 38 % */
+/* Tautan rata kiri (Align centerLeft): "Lihat bukti yang dikirim", "Lihat QRIS", "Ganti rekening tujuan" */
+.pay-link-row { display: flex; justify-content: flex-start; }
+/* KapdhLinkButton dengan ikon: TextButton.icon (padding 0 4, jarak ikon 8) */
+.btn-link.is-busy, .btn-link:disabled { color: rgba(28, 27, 31, .38); }
+
+/* Lembar "Pilih bukti transfer" (showProofSourceSheet): padding (8, 0, 8, 16); judul padding (16, 0, 16, 8);
+   ListTile minTileHeight 56, ikon primary, judul 16, subjudul 14 muted (dua baris = 72). */
+.pay-source { padding: 0 var(--s2) var(--s4); }
+.pay-source__title { padding: 0 var(--s4) var(--s2); }
+.pay-source .list-tile__leading { color: var(--color-primary); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   PENAMPIL LAYAR PENUH
+   --------------------------------------------------------------------------------------------------------------------- */
+/* QrisImageViewer (Dialog.fullscreen putih): kepala padding (20, 8, 8, 0) judul 18 w600 + TextButton.icon "Tutup";
+   gambar di tengah padding 16; petunjuk 14 h1.5 muted tengah padding (20, 8, 20, 20). */
+.qris-viewer { display: flex; flex-direction: column; }
+.qris-viewer__head { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--s2) 0 var(--s5); }
+.qris-viewer__title { flex: 1 1 auto; min-width: 0; font-size: var(--fs-h3); font-weight: 600; line-height: var(--lh-normal); }
+.qris-viewer__image { flex: 1 1 auto; display: grid; place-items: center; padding: var(--s4); }
+.qris-viewer__image .qr-glyph { width: 328px; height: 328px; image-rendering: pixelated; }
+.qris-viewer__hint { padding: var(--s2) var(--s5) var(--s5); text-align: center; font-size: var(--fs-body); line-height: 1.5; color: var(--color-text-muted); }
+
+/* ProofImageViewer (Dialog.fullscreen hitam): SafeArea Row [IconButton close putih, label 14 w600 putih];
+   gambar BoxFit.contain di tengah; galat: teks 14 putih tengah + TextButton.icon "Muat ulang" putih. */
+.proof-viewer { background: #000000; color: var(--color-on-primary); }
+.proof-viewer__bar { position: absolute; z-index: 1; left: 0; right: 0; top: var(--inset-top); display: flex; align-items: center; }
+.proof-viewer__label { flex: 1 1 auto; min-width: 0; font-size: var(--fs-body); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proof-viewer__stage { position: absolute; inset: 0; display: grid; place-items: center; }
+.proof-viewer__message { padding: var(--s5); display: flex; flex-direction: column; align-items: center; text-align: center; font-size: var(--fs-body); }
+.proof-viewer__message .btn-text { margin-top: var(--s3); color: var(--color-on-primary); } /* TextButton.icon: ikon 18, label 13 w500 */
+/* Tiruan foto bukti transfer (BUKAN data nyata): struk abu-abu tanpa angka yang terbaca. */
+.proof-mock { width: 300px; aspect-ratio: 3 / 5; padding: 28px 24px; background: #F4F4F6; display: flex; flex-direction: column; gap: 14px; }
+.proof-mock__logo { width: 64px; height: 64px; border-radius: 50%; background: #C9C9C9; align-self: center; }
+.proof-mock__line { height: 10px; border-radius: 5px; background: #C9C9C9; }
+.proof-mock__line.is-short { width: 55%; }
+.proof-mock__line.is-strong { height: 18px; width: 70%; background: #8A8F87; align-self: center; }
+.proof-mock__check { align-self: center; width: 56px; height: 56px; border-radius: 50%; background: #E3E3E6; display: grid; place-items: center; color: #8A8F87; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   PENYESUAIAN MARKUP (elemen <span> di dalam <button>/<a> perlu tampil sebagai blok; tidak mengubah tampilan komponen)
+   --------------------------------------------------------------------------------------------------------------------- */
+/* (display:block untuk subjudul UploadTile, baris kontak dan judul ListTile kini ada di components.css) */
+/* Lembar di dalam frame 360 x 800: izinkan menyusut agar daftar di dalamnya terpotong (overflow) seperti ListView. */
+.pay-sheet { min-height: 0; overflow: hidden; } /* Material(clipBehavior: antiAlias): isi bergulir terpotong sudut 20 */
+/* StatusActionCard: aksi berlebar intrinsik di samping Expanded(info); tanpa ini tombol inline ikut menyusut. */
+.status-action-card > .btn { flex: none; }

@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wajib Update - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Wajib Update (UpdateRequiredScreen) aplikasi KAPDH untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/auth.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Wajib Update</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/system/update_required_screen.dart</code> (UpdateRequiredScreen), <code>lib/design/status_hero.dart</code>, <code>lib/core/ui/support_section.dart</code></dd>
+      <dt>Rute</dt><dd><code>/update-required</code></dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Android: versi di bawah minimum</li>
+        <li>Tautan toko belum tersedia</li>
+        <li>Status akun belum dikenal</li>
+        <li>Memeriksa</li>
+        <li>Toko tidak dapat dibuka (snackbar)</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Versi minimum dan tautan toko dari /public/config (min_app_version, store_links) per platform: Android "Play Store", iOS "App Store", lainnya "toko aplikasi". Versi contoh 1.0.0 dan minimum 1.1.0 fiktif.</p>
+  </header>
+
+  <main class="frames">
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Android: versi di bawah minimum</figcaption>
+      <div class="device" role="group" aria-label="Wajib update, android: versi di bawah minimum">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="auth-system">
+            <div class="status-hero tone-warning">
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-system_update"></span></div>
+              <span class="status-badge status-badge--warning"><span class="ic ic-system_update" aria-hidden="true"></span>Wajib Update</span>
+              <h2 class="status-hero__title">Perbarui aplikasi KAPDH</h2>
+              <p class="status-hero__message">Versi aplikasi ini (1.0.0) tidak lagi didukung. Perbarui ke versi 1.1.0 atau yang lebih baru untuk melanjutkan.</p>
+            </div>
+            <div class="mt-6">
+              <button class="btn btn--primary" type="button"><span class="ic ic-open_in_new" aria-hidden="true"></span>Perbarui di Play Store</button>
+            </div>
+            <div class="mt-3">
+              <button class="btn btn--outline" type="button">Periksa lagi</button>
+            </div>
+            <div class="mt-6">
+              <div class="support-card">
+                <h3 class="support-card__title">Butuh bantuan?</h3>
+                <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">KapdhButton dengan ikon open_in_new 20.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Tautan toko belum tersedia</figcaption>
+      <div class="device" role="group" aria-label="Wajib update, tautan toko belum tersedia">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="auth-system">
+            <div class="status-hero tone-warning">
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-system_update"></span></div>
+              <span class="status-badge status-badge--warning"><span class="ic ic-system_update" aria-hidden="true"></span>Wajib Update</span>
+              <h2 class="status-hero__title">Perbarui aplikasi KAPDH</h2>
+              <p class="status-hero__message">Versi aplikasi ini (1.0.0) tidak lagi didukung. Perbarui ke versi 1.1.0 atau yang lebih baru untuk melanjutkan.</p>
+            </div>
+            <div class="mt-6">
+              <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Tautan toko aplikasi belum tersedia. Hubungi pengurus untuk mendapatkan versi terbaru.</p></div></div>
+            </div>
+            <div class="mt-3">
+              <button class="btn btn--outline" type="button">Periksa lagi</button>
+            </div>
+            <div class="mt-6">
+              <div class="support-card">
+                <h3 class="support-card__title">Butuh bantuan?</h3>
+                <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">store_links platform kosong: InfoBox peringatan menggantikan tombol utama.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Status akun belum dikenal</figcaption>
+      <div class="device" role="group" aria-label="Wajib update, status akun belum dikenal">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="auth-system">
+            <div class="status-hero tone-warning">
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-system_update"></span></div>
+              <span class="status-badge status-badge--warning"><span class="ic ic-system_update" aria-hidden="true"></span>Wajib Update</span>
+              <h2 class="status-hero__title">Perbarui aplikasi KAPDH</h2>
+              <p class="status-hero__message">Aplikasi perlu diperbarui untuk menampilkan status akun Anda dengan benar.</p>
+            </div>
+            <div class="mt-6">
+              <button class="btn btn--primary" type="button"><span class="ic ic-open_in_new" aria-hidden="true"></span>Perbarui di Play Store</button>
+            </div>
+            <div class="mt-3">
+              <button class="btn btn--outline" type="button">Periksa lagi</button>
+            </div>
+            <div class="mt-6">
+              <div class="support-card">
+                <h3 class="support-card__title">Butuh bantuan?</h3>
+                <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Dipakai juga saat server mengirim effective_status yang belum dikenal versi ini (bukan gerbang versi).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Memeriksa</figcaption>
+      <div class="device" role="group" aria-label="Wajib update, memeriksa">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="auth-system">
+            <div class="status-hero tone-warning">
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-system_update"></span></div>
+              <span class="status-badge status-badge--warning"><span class="ic ic-system_update" aria-hidden="true"></span>Wajib Update</span>
+              <h2 class="status-hero__title">Perbarui aplikasi KAPDH</h2>
+              <p class="status-hero__message">Versi aplikasi ini (1.0.0) tidak lagi didukung. Perbarui ke versi 1.1.0 atau yang lebih baru untuk melanjutkan.</p>
+            </div>
+            <div class="mt-6">
+              <button class="btn btn--primary" type="button"><span class="ic ic-open_in_new" aria-hidden="true"></span>Perbarui di Play Store</button>
+            </div>
+            <div class="mt-3">
+              <button class="btn btn--outline is-busy" type="button" disabled aria-busy="true"><span class="spinner spinner--18" aria-hidden="true"></span>Memeriksa...</button>
+            </div>
+            <div class="mt-6">
+              <div class="support-card">
+                <h3 class="support-card__title">Butuh bantuan?</h3>
+                <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Toko tidak dapat dibuka</figcaption>
+      <div class="device" role="group" aria-label="Wajib update, toko tidak dapat dibuka">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="auth-system">
+            <div class="status-hero tone-warning">
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-system_update"></span></div>
+              <span class="status-badge status-badge--warning"><span class="ic ic-system_update" aria-hidden="true"></span>Wajib Update</span>
+              <h2 class="status-hero__title">Perbarui aplikasi KAPDH</h2>
+              <p class="status-hero__message">Versi aplikasi ini (1.0.0) tidak lagi didukung. Perbarui ke versi 1.1.0 atau yang lebih baru untuk melanjutkan.</p>
+            </div>
+            <div class="mt-6">
+              <button class="btn btn--primary" type="button"><span class="ic ic-open_in_new" aria-hidden="true"></span>Perbarui di Play Store</button>
+            </div>
+            <div class="mt-3">
+              <button class="btn btn--outline" type="button">Periksa lagi</button>
+            </div>
+            <div class="mt-6">
+              <div class="support-card">
+                <h3 class="support-card__title">Butuh bantuan?</h3>
+                <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">Toko aplikasi tidak dapat dibuka.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">SnackBar bila tautan toko gagal dibuka.</p>
+    </figure>
+
+  </main>
+</body>
+</html>

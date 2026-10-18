@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Konfirmasi Pendaftaran - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Konfirmasi Pendaftaran event berbayar aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/event.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+      <a href="events.html">Event</a>
+      <a href="event-detail.html">Detail Event</a>
+      <a href="reservation.html" aria-current="page">Konfirmasi Pendaftaran</a>
+      <a href="tickets.html">Tiket Saya</a>
+      <a href="ticket-detail.html">Detail Tiket</a>
+    </nav>
+    <h1 class="page-header__title">Konfirmasi Pendaftaran</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/events/reservation_screen.dart</code> (ReservationScreen, _Label, _ValueBox, _EventSummaryCard), <code>lib/features/events/reservation.dart</code> (submitReservation, dialog, snackbar)</dd>
+      <dt>Rute</dt><dd>Tanpa rute go_router: <code>MaterialPageRoute</code> dari Detail Event (<code>/events/:eventId</code>) untuk event berbayar</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama: metode belum dipilih</li>
+        <li>Gulir penuh: rekening dipilih</li>
+        <li>QRIS dipilih (digulir ke metode)</li>
+        <li>Harga berubah</li>
+        <li>Mendaftarkan…</li>
+        <li>Metode memuat</li>
+        <li>Metode gagal dimuat</li>
+        <li>Tanpa rekening tujuan</li>
+        <li>Metode ditolak server</li>
+        <li>Gulir penuh: kuota penuh saat pemeliharaan</li>
+        <li>Event kini gratis (digulir ke akhir)</li>
+        <li>Memuat event</li>
+        <li>Dialog: Kuota penuh</li>
+        <li>Snackbar: koneksi terputus</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Data contoh fiktif (nomor rekening dan NMID rekaan). Satu kursi untuk diri sendiri, tanpa tipe atau jumlah tiket. Frame yang "digulir" memotong isi daftar secara statis.</p>
+  </header>
+
+  <main class="frames">
+
+    <h2 class="frames__group-title">Konfirmasi</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama: metode belum dipilih</figcaption>
+      <div class="device" role="group" aria-label="Konfirmasi Pendaftaran, metode belum dipilih">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-form">
+              <p class="ev-label">Nama Event</p>
+              <div class="ev-summary">
+                <div class="ev-summary__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="ev-summary__body"><p class="ev-summary__title">Halal Bihalal dan Silaturahmi Akbar Alumni</p><p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p></div>
+              </div>
+              <p class="ev-label mt-4">Peserta</p>
+              <div class="info-box"><span class="ic ic-person_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak ada pemesanan untuk rombongan atau tamu.</p></div></div>
+              <p class="ev-label mt-4">Harga Tiket</p>
+              <div class="ev-value-box">Rp150.000</div>
+              <p class="ev-label mt-4">Metode Pembayaran</p>
+              <div class="ev-methods" role="radiogroup" aria-label="Metode Pembayaran">
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Nusantara</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">QRIS</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="summary-card summary-card--plain-labels">
+                  <h3 class="summary-card__title">Ringkasan</h3>
+                  <div class="summary-row"><span class="summary-row__label">Tiket untuk 1 orang (Anda sendiri)</span><span class="summary-row__value">Rp150.000</span></div>
+                  <hr class="summary-card__divider">
+                  <div class="summary-row summary-row--total"><span class="summary-row__label">Total Pembayaran</span><span class="summary-row__value">Rp150.000</span></div>
+                </div>
+              </div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup (17 Mar 2027, 23.59 WIB), mana yang lebih dahulu. Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.</p></div></div></div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button" disabled>Daftar dan Lanjut Bayar</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tombol nonaktif sampai metode dipilih (petunjuk pembaca layar: "Pilih metode pembayaran lebih dahulu"). Kartu metode yang belum terpilih menampilkan jenisnya ("Transfer bank"); QRIS tidak mengulang jenis karena namanya sama.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh: rekening dipilih</figcaption>
+      <div class="device device--tall" role="group" aria-label="Konfirmasi Pendaftaran, seluruh isi dengan rekening terpilih">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-form">
+              <p class="ev-label">Nama Event</p>
+              <div class="ev-summary">
+                <div class="ev-summary__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="ev-summary__body"><p class="ev-summary__title">Halal Bihalal dan Silaturahmi Akbar Alumni</p><p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p></div>
+              </div>
+              <p class="ev-label mt-4">Peserta</p>
+              <div class="info-box"><span class="ic ic-person_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak ada pemesanan untuk rombongan atau tamu.</p></div></div>
+              <p class="ev-label mt-4">Harga Tiket</p>
+              <div class="ev-value-box">Rp150.000</div>
+              <p class="ev-label mt-4">Metode Pembayaran</p>
+              <div class="ev-methods" role="radiogroup" aria-label="Metode Pembayaran">
+                <div class="method-card is-selected">
+                  <div class="method-card__main" role="radio" aria-checked="true" tabindex="0">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__number">7001234567</div><div class="method-card__holder">a.n. KAPDH Kas Event</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Nusantara</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">QRIS</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="summary-card summary-card--plain-labels">
+                  <h3 class="summary-card__title">Ringkasan</h3>
+                  <div class="summary-row"><span class="summary-row__label">Tiket untuk 1 orang (Anda sendiri)</span><span class="summary-row__value">Rp150.000</span></div>
+                  <hr class="summary-card__divider">
+                  <div class="summary-row summary-row--total"><span class="summary-row__label">Total Pembayaran</span><span class="summary-row__value">Rp150.000</span></div>
+                </div>
+              </div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup (17 Mar 2027, 23.59 WIB), mana yang lebih dahulu. Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.</p></div></div></div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button">Daftar dan Lanjut Bayar</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">MethodRadioCard terpilih (garis primary 2) menampilkan nomor dan "a.n."; layar ini tidak memberi tombol Salin. SummaryCard labelMuted: false (label 14 warna teks).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> QRIS dipilih (digulir ke metode)</figcaption>
+      <div class="device" role="group" aria-label="Konfirmasi Pendaftaran, QRIS terpilih">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-form scroll-offset" style="--scroll:300px">
+              <p class="ev-label">Nama Event</p>
+              <div class="ev-summary">
+                <div class="ev-summary__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="ev-summary__body"><p class="ev-summary__title">Halal Bihalal dan Silaturahmi Akbar Alumni</p><p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p></div>
+              </div>
+              <p class="ev-label mt-4">Peserta</p>
+              <div class="info-box"><span class="ic ic-person_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak ada pemesanan untuk rombongan atau tamu.</p></div></div>
+              <p class="ev-label mt-4">Harga Tiket</p>
+              <div class="ev-value-box">Rp150.000</div>
+              <p class="ev-label mt-4">Metode Pembayaran</p>
+              <div class="ev-methods" role="radiogroup" aria-label="Metode Pembayaran">
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Nusantara</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card is-selected">
+                  <div class="method-card__main" role="radio" aria-checked="true" tabindex="0">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">QRIS</div><div class="method-card__number">NMID: ID0000000012345</div><div class="method-card__holder">Merchant: KAPDH Pusat</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="summary-card summary-card--plain-labels">
+                  <h3 class="summary-card__title">Ringkasan</h3>
+                  <div class="summary-row"><span class="summary-row__label">Tiket untuk 1 orang (Anda sendiri)</span><span class="summary-row__value">Rp150.000</span></div>
+                  <hr class="summary-card__divider">
+                  <div class="summary-row summary-row--total"><span class="summary-row__label">Total Pembayaran</span><span class="summary-row__value">Rp150.000</span></div>
+                </div>
+              </div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup (17 Mar 2027, 23.59 WIB), mana yang lebih dahulu. Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.</p></div></div></div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button">Daftar dan Lanjut Bayar</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">QRIS (ADR-026): label "NMID" dan "Merchant". Gambar QRIS tampil di instruksi pembayaran sesudah reservasi.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Harga berubah</figcaption>
+      <div class="device" role="group" aria-label="Konfirmasi Pendaftaran, harga tiket berubah">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-form scroll-offset" style="--scroll:150px">
+              <p class="ev-label">Nama Event</p>
+              <div class="ev-summary">
+                <div class="ev-summary__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="ev-summary__body"><p class="ev-summary__title">Halal Bihalal dan Silaturahmi Akbar Alumni</p><p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p></div>
+              </div>
+              <p class="ev-label mt-4">Peserta</p>
+              <div class="info-box"><span class="ic ic-person_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak ada pemesanan untuk rombongan atau tamu.</p></div></div>
+              <p class="ev-label mt-4">Harga Tiket</p>
+              <div class="ev-value-box">Rp175.000</div>
+              <div class="mt-2"><div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Harga tiket berubah</p><p class="info-box__message">Pengurus mengubah harga menjadi Rp175.000. Periksa kembali sebelum melanjutkan; Anda belum terdaftar.</p></div></div></div>
+              <p class="ev-label mt-4">Metode Pembayaran</p>
+              <div class="ev-methods" role="radiogroup" aria-label="Metode Pembayaran">
+                <div class="method-card is-selected">
+                  <div class="method-card__main" role="radio" aria-checked="true" tabindex="0">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__number">7001234567</div><div class="method-card__holder">a.n. KAPDH Kas Event</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Nusantara</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">QRIS</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="summary-card summary-card--plain-labels">
+                  <h3 class="summary-card__title">Ringkasan</h3>
+                  <div class="summary-row"><span class="summary-row__label">Tiket untuk 1 orang (Anda sendiri)</span><span class="summary-row__value">Rp175.000</span></div>
+                  <hr class="summary-card__divider">
+                  <div class="summary-row summary-row--total"><span class="summary-row__label">Total Pembayaran</span><span class="summary-row__value">Rp175.000</span></div>
+                </div>
+              </div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup (17 Mar 2027, 23.59 WIB), mana yang lebih dahulu. Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.</p></div></div></div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button">Setuju Harga Baru dan Daftar</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Server menolak <code>expected_price</code> lama (409) tanpa hold; harga baru ditandai dan label tombol berganti.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Mendaftarkan…</figcaption>
+      <div class="device" role="group" aria-label="Konfirmasi Pendaftaran, sedang mendaftarkan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-form scroll-offset" style="--scroll:150px">
+              <p class="ev-label">Nama Event</p>
+              <div class="ev-summary">
+                <div class="ev-summary__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="ev-summary__body"><p class="ev-summary__title">Halal Bihalal dan Silaturahmi Akbar Alumni</p><p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p></div>
+              </div>
+              <p class="ev-label mt-4">Peserta</p>
+              <div class="info-box"><span class="ic ic-person_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak ada pemesanan untuk rombongan atau tamu.</p></div></div>
+              <p class="ev-label mt-4">Harga Tiket</p>
+              <div class="ev-value-box">Rp150.000</div>
+              <p class="ev-label mt-4">Metode Pembayaran</p>
+              <div class="ev-methods" role="radiogroup" aria-label="Metode Pembayaran">
+                <div class="method-card is-selected">
+                  <div class="method-card__main" role="radio" aria-checked="true" tabindex="0">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__number">7001234567</div><div class="method-card__holder">a.n. KAPDH Kas Event</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Nusantara</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">QRIS</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="summary-card summary-card--plain-labels">
+                  <h3 class="summary-card__title">Ringkasan</h3>
+                  <div class="summary-row"><span class="summary-row__label">Tiket untuk 1 orang (Anda sendiri)</span><span class="summary-row__value">Rp150.000</span></div>
+                  <hr class="summary-card__divider">
+                  <div class="summary-row summary-row--total"><span class="summary-row__label">Total Pembayaran</span><span class="summary-row__value">Rp150.000</span></div>
+                </div>
+              </div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup (17 Mar 2027, 23.59 WIB), mana yang lebih dahulu. Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.</p></div></div></div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary is-busy" type="button" disabled aria-busy="true"><span class="spinner spinner--18" aria-hidden="true"></span>Mendaftarkan…</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Selama terkirim tombol kembali disembunyikan dan gestur kembali ditahan (PopScope). Berhasil: kembali ke Detail Event lalu dibuka layar pembayaran dengan snackbar "Kursi Anda ditahan sampai 19 Okt 2026, 09.15 WIB. Kirim bukti transfer sebelum batas itu."</p>
+    </figure>
+
+    <h2 class="frames__group-title">Metode pembayaran</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Metode memuat</figcaption>
+      <div class="device" role="group" aria-label="Konfirmasi Pendaftaran, metode pembayaran dimuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-form scroll-offset" style="--scroll:150px">
+              <p class="ev-label">Nama Event</p>
+              <div class="ev-summary">
+                <div class="ev-summary__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="ev-summary__body"><p class="ev-summary__title">Halal Bihalal dan Silaturahmi Akbar Alumni</p><p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p></div>
+              </div>
+              <p class="ev-label mt-4">Peserta</p>
+              <div class="info-box"><span class="ic ic-person_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak ada pemesanan untuk rombongan atau tamu.</p></div></div>
+              <p class="ev-label mt-4">Harga Tiket</p>
+              <div class="ev-value-box">Rp150.000</div>
+              <p class="ev-label mt-4">Metode Pembayaran</p>
+              <div class="skeleton" role="status" aria-label="Memuat metode pembayaran"><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div>
+              <div class="mt-4">
+                <div class="summary-card summary-card--plain-labels">
+                  <h3 class="summary-card__title">Ringkasan</h3>
+                  <div class="summary-row"><span class="summary-row__label">Tiket untuk 1 orang (Anda sendiri)</span><span class="summary-row__value">Rp150.000</span></div>
+                  <hr class="summary-card__divider">
+                  <div class="summary-row summary-row--total"><span class="summary-row__label">Total Pembayaran</span><span class="summary-row__value">Rp150.000</span></div>
+                </div>
+              </div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup (17 Mar 2027, 23.59 WIB), mana yang lebih dahulu. Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.</p></div></div></div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button" disabled>Daftar dan Lanjut Bayar</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Metode gagal dimuat</figcaption>
+      <div class="device" role="group" aria-label="Konfirmasi Pendaftaran, metode pembayaran gagal dimuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-form scroll-offset" style="--scroll:150px">
+              <p class="ev-label">Nama Event</p>
+              <div class="ev-summary">
+                <div class="ev-summary__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="ev-summary__body"><p class="ev-summary__title">Halal Bihalal dan Silaturahmi Akbar Alumni</p><p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p></div>
+              </div>
+              <p class="ev-label mt-4">Peserta</p>
+              <div class="info-box"><span class="ic ic-person_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak ada pemesanan untuk rombongan atau tamu.</p></div></div>
+              <p class="ev-label mt-4">Harga Tiket</p>
+              <div class="ev-value-box">Rp150.000</div>
+              <p class="ev-label mt-4">Metode Pembayaran</p>
+              <div class="info-box info-box--danger"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+              <div class="mt-4">
+                <div class="summary-card summary-card--plain-labels">
+                  <h3 class="summary-card__title">Ringkasan</h3>
+                  <div class="summary-row"><span class="summary-row__label">Tiket untuk 1 orang (Anda sendiri)</span><span class="summary-row__value">Rp150.000</span></div>
+                  <hr class="summary-card__divider">
+                  <div class="summary-row summary-row--total"><span class="summary-row__label">Total Pembayaran</span><span class="summary-row__value">Rp150.000</span></div>
+                </div>
+              </div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup (17 Mar 2027, 23.59 WIB), mana yang lebih dahulu. Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.</p></div></div></div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button" disabled>Daftar dan Lanjut Bayar</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Pesan dari ApiException.message; selain itu "Metode pembayaran belum dapat dimuat."</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Tanpa rekening tujuan</figcaption>
+      <div class="device" role="group" aria-label="Konfirmasi Pendaftaran, belum ada rekening tujuan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-form scroll-offset" style="--scroll:150px">
+              <p class="ev-label">Nama Event</p>
+              <div class="ev-summary">
+                <div class="ev-summary__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="ev-summary__body"><p class="ev-summary__title">Halal Bihalal dan Silaturahmi Akbar Alumni</p><p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p></div>
+              </div>
+              <p class="ev-label mt-4">Peserta</p>
+              <div class="info-box"><span class="ic ic-person_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak ada pemesanan untuk rombongan atau tamu.</p></div></div>
+              <p class="ev-label mt-4">Harga Tiket</p>
+              <div class="ev-value-box">Rp150.000</div>
+              <p class="ev-label mt-4">Metode Pembayaran</p>
+              <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Belum ada rekening tujuan aktif. Hubungi pengurus sebelum mendaftar event berbayar.</p></div></div>
+              <div class="mt-4">
+                <div class="summary-card summary-card--plain-labels">
+                  <h3 class="summary-card__title">Ringkasan</h3>
+                  <div class="summary-row"><span class="summary-row__label">Tiket untuk 1 orang (Anda sendiri)</span><span class="summary-row__value">Rp150.000</span></div>
+                  <hr class="summary-card__divider">
+                  <div class="summary-row summary-row--total"><span class="summary-row__label">Total Pembayaran</span><span class="summary-row__value">Rp150.000</span></div>
+                </div>
+              </div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup (17 Mar 2027, 23.59 WIB), mana yang lebih dahulu. Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.</p></div></div></div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button" disabled>Daftar dan Lanjut Bayar</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Metode ditolak server</figcaption>
+      <div class="device" role="group" aria-label="Konfirmasi Pendaftaran, metode pembayaran ditolak">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-form scroll-offset" style="--scroll:300px">
+              <p class="ev-label">Nama Event</p>
+              <div class="ev-summary">
+                <div class="ev-summary__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="ev-summary__body"><p class="ev-summary__title">Halal Bihalal dan Silaturahmi Akbar Alumni</p><p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p></div>
+              </div>
+              <p class="ev-label mt-4">Peserta</p>
+              <div class="info-box"><span class="ic ic-person_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak ada pemesanan untuk rombongan atau tamu.</p></div></div>
+              <p class="ev-label mt-4">Harga Tiket</p>
+              <div class="ev-value-box">Rp150.000</div>
+              <p class="ev-label mt-4">Metode Pembayaran</p>
+              <div class="ev-methods" role="radiogroup" aria-label="Metode Pembayaran">
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Nusantara</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">QRIS</div></div>
+                  </div>
+                </div>
+                <p class="ev-method-error" role="alert">Metode pembayaran tidak aktif. Pilih rekening tujuan lain.</p>
+              </div>
+              <div class="mt-4">
+                <div class="summary-card summary-card--plain-labels">
+                  <h3 class="summary-card__title">Ringkasan</h3>
+                  <div class="summary-row"><span class="summary-row__label">Tiket untuk 1 orang (Anda sendiri)</span><span class="summary-row__value">Rp150.000</span></div>
+                  <hr class="summary-card__divider">
+                  <div class="summary-row summary-row--total"><span class="summary-row__label">Total Pembayaran</span><span class="summary-row__value">Rp150.000</span></div>
+                </div>
+              </div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup (17 Mar 2027, 23.59 WIB), mana yang lebih dahulu. Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.</p></div></div></div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button" disabled>Daftar dan Lanjut Bayar</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">400 <code>field_errors.payment_method_id</code>: pilihan dihapus, daftar metode dimuat ulang dan pesan merah tampil di bawah kartu.</p>
+    </figure>
+
+    <h2 class="frames__group-title">Tidak dapat dilanjutkan</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">10</span> Gulir penuh: kuota penuh saat pemeliharaan</figcaption>
+      <div class="device device--tall" role="group" aria-label="Konfirmasi Pendaftaran, tidak dapat dilanjutkan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="status-strip" role="status"><span class="ic ic-build_outlined" aria-hidden="true"></span><span class="status-strip__text"><strong>Pemeliharaan</strong>. Perubahan data ditunda sementara.</span><button class="btn-text" type="button">Detail</button></div>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-form">
+              <p class="ev-label">Nama Event</p>
+              <div class="ev-summary">
+                <div class="ev-summary__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="ev-summary__body"><p class="ev-summary__title">Halal Bihalal dan Silaturahmi Akbar Alumni</p><p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p></div>
+              </div>
+              <p class="ev-label mt-4">Peserta</p>
+              <div class="info-box"><span class="ic ic-person_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak ada pemesanan untuk rombongan atau tamu.</p></div></div>
+              <p class="ev-label mt-4">Harga Tiket</p>
+              <div class="ev-value-box">Rp150.000</div>
+              <p class="ev-label mt-4">Metode Pembayaran</p>
+              <div class="ev-methods" role="radiogroup" aria-label="Metode Pembayaran">
+                <div class="method-card is-selected">
+                  <div class="method-card__main" role="radio" aria-checked="true" tabindex="0">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__number">7001234567</div><div class="method-card__holder">a.n. KAPDH Kas Event</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Nusantara</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">QRIS</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="summary-card summary-card--plain-labels">
+                  <h3 class="summary-card__title">Ringkasan</h3>
+                  <div class="summary-row"><span class="summary-row__label">Tiket untuk 1 orang (Anda sendiri)</span><span class="summary-row__value">Rp150.000</span></div>
+                  <hr class="summary-card__divider">
+                  <div class="summary-row summary-row--total"><span class="summary-row__label">Total Pembayaran</span><span class="summary-row__value">Rp150.000</span></div>
+                </div>
+              </div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup (17 Mar 2027, 23.59 WIB), mana yang lebih dahulu. Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.</p></div></div></div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="mt-3"><div class="info-box info-box--danger"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Pendaftaran tidak dapat dilanjutkan: Kuota Penuh.</p></div></div></div>
+              <div class="mt-3"><div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Pendaftaran ditunda selama pemeliharaan. Coba lagi setelah layanan normal.</p></div></div></div>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button" disabled>Daftar dan Lanjut Bayar</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Label alasan dari registrationStateStyle (mis. "Pendaftaran Ditutup", "Event Dibatalkan"). Kedua kotak dapat tampil bersamaan; tombol nonaktif.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">11</span> Event kini gratis (digulir ke akhir)</figcaption>
+      <div class="device" role="group" aria-label="Konfirmasi Pendaftaran, event kini gratis">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport scroll-end">
+            <div class="ev-form">
+              <p class="ev-label">Nama Event</p>
+              <div class="ev-summary">
+                <div class="ev-summary__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="ev-summary__body"><p class="ev-summary__title">Halal Bihalal dan Silaturahmi Akbar Alumni</p><p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p></div>
+              </div>
+              <p class="ev-label mt-4">Peserta</p>
+              <div class="info-box"><span class="ic ic-person_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak ada pemesanan untuk rombongan atau tamu.</p></div></div>
+              <p class="ev-label mt-4">Harga Tiket</p>
+              <div class="ev-value-box">Gratis</div>
+              <p class="ev-label mt-4">Metode Pembayaran</p>
+              <div class="ev-methods" role="radiogroup" aria-label="Metode Pembayaran">
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Nusantara</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">QRIS</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="summary-card summary-card--plain-labels">
+                  <h3 class="summary-card__title">Ringkasan</h3>
+                  <div class="summary-row"><span class="summary-row__label">Tiket untuk 1 orang (Anda sendiri)</span><span class="summary-row__value">Gratis</span></div>
+                  <hr class="summary-card__divider">
+                  <div class="summary-row summary-row--total"><span class="summary-row__label">Total Pembayaran</span><span class="summary-row__value">Gratis</span></div>
+                </div>
+              </div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup (17 Mar 2027, 23.59 WIB), mana yang lebih dahulu. Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.</p></div></div></div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Event gratis: batalkan sebelum acara dimulai (21 Mar 2027 08.00 WIB) untuk melepas kursi; tidak ada refund.</p></div></div></div>
+              <div class="mt-3"><div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Event ini kini gratis. Kembali ke detail event untuk mendaftar tanpa pembayaran.</p></div></div></div>
+              
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button" disabled>Daftar dan Lanjut Bayar</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">12</span> Memuat event</figcaption>
+      <div class="device" role="group" aria-label="Konfirmasi Pendaftaran, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="screen__body"><div class="skeleton" role="status" aria-label="Memuat event"><div class="skeleton__card"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div></div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <h2 class="frames__group-title">Penolakan dan jaringan</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">13</span> Dialog: Kuota penuh</figcaption>
+      <div class="device" role="group" aria-label="Konfirmasi Pendaftaran, dialog kuota penuh">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-form">
+              <p class="ev-label">Nama Event</p>
+              <div class="ev-summary">
+                <div class="ev-summary__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="ev-summary__body"><p class="ev-summary__title">Halal Bihalal dan Silaturahmi Akbar Alumni</p><p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p></div>
+              </div>
+              <p class="ev-label mt-4">Peserta</p>
+              <div class="info-box"><span class="ic ic-person_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak ada pemesanan untuk rombongan atau tamu.</p></div></div>
+              <p class="ev-label mt-4">Harga Tiket</p>
+              <div class="ev-value-box">Rp150.000</div>
+              <p class="ev-label mt-4">Metode Pembayaran</p>
+              <div class="ev-methods" role="radiogroup" aria-label="Metode Pembayaran">
+                <div class="method-card is-selected">
+                  <div class="method-card__main" role="radio" aria-checked="true" tabindex="0">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__number">7001234567</div><div class="method-card__holder">a.n. KAPDH Kas Event</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Nusantara</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">QRIS</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="summary-card summary-card--plain-labels">
+                  <h3 class="summary-card__title">Ringkasan</h3>
+                  <div class="summary-row"><span class="summary-row__label">Tiket untuk 1 orang (Anda sendiri)</span><span class="summary-row__value">Rp150.000</span></div>
+                  <hr class="summary-card__divider">
+                  <div class="summary-row summary-row--total"><span class="summary-row__label">Total Pembayaran</span><span class="summary-row__value">Rp150.000</span></div>
+                </div>
+              </div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup (17 Mar 2027, 23.59 WIB), mana yang lebih dahulu. Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.</p></div></div></div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button">Daftar dan Lanjut Bayar</button></div>
+        </div><div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-1">
+          <h3 class="dialog__title" id="dlg-1">Kuota penuh</h3>
+          <div class="dialog__content"><p class="c-muted ev-pre">Kuota event sudah penuh.
+
+Kursi dapat tersedia kembali bila ada reservasi yang berakhir atau dibatalkan.</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Tutup</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">409 EVENT_SOLD_OUT. Dialog lain dengan pola sama: "Pendaftaran tidak dibuka" (pesan server, mis. "Pendaftaran event ini sudah ditutup." + label status) dan "Data event berubah".</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">14</span> Snackbar: koneksi terputus</figcaption>
+      <div class="device" role="group" aria-label="Konfirmasi Pendaftaran, snackbar koneksi terputus">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Konfirmasi Pendaftaran</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-form">
+              <p class="ev-label">Nama Event</p>
+              <div class="ev-summary">
+                <div class="ev-summary__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="ev-summary__body"><p class="ev-summary__title">Halal Bihalal dan Silaturahmi Akbar Alumni</p><p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p></div>
+              </div>
+              <p class="ev-label mt-4">Peserta</p>
+              <div class="info-box"><span class="ic ic-person_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak ada pemesanan untuk rombongan atau tamu.</p></div></div>
+              <p class="ev-label mt-4">Harga Tiket</p>
+              <div class="ev-value-box">Rp150.000</div>
+              <p class="ev-label mt-4">Metode Pembayaran</p>
+              <div class="ev-methods" role="radiogroup" aria-label="Metode Pembayaran">
+                <div class="method-card is-selected">
+                  <div class="method-card__main" role="radio" aria-checked="true" tabindex="0">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__number">7001234567</div><div class="method-card__holder">a.n. KAPDH Kas Event</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">Bank Contoh Nusantara</div><div class="method-card__hint">Transfer bank</div></div>
+                  </div>
+                </div>
+                <div class="method-card">
+                  <div class="method-card__main" role="radio" aria-checked="false" tabindex="-1">
+                    <span class="method-card__dot" aria-hidden="true"></span>
+                    <div><div class="method-card__title">QRIS</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="summary-card summary-card--plain-labels">
+                  <h3 class="summary-card__title">Ringkasan</h3>
+                  <div class="summary-row"><span class="summary-row__label">Tiket untuk 1 orang (Anda sendiri)</span><span class="summary-row__value">Rp150.000</span></div>
+                  <hr class="summary-card__divider">
+                  <div class="summary-row summary-row--total"><span class="summary-row__label">Total Pembayaran</span><span class="summary-row__value">Rp150.000</span></div>
+                </div>
+              </div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup (17 Mar 2027, 23.59 WIB), mana yang lebih dahulu. Kirim bukti transfer sebelum batas itu; reservasi tanpa bukti berakhir otomatis.</p></div></div></div>
+              <div class="mt-3"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button">Daftar dan Lanjut Bayar</button></div>
+        </div><div class="snackbar ev-snackbar--above-bar" role="status"><span class="snackbar__text">Pendaftaran belum terkirim karena koneksi terputus. Anda tidak terdaftar dua kali; coba lagi.</span><button class="btn-text" type="button">Coba lagi</button></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Kirim ulang memakai Idempotency-Key yang sama. Didahului "Koneksi terputus. Memeriksa status pendaftaran Anda…" (snackbar 4 detik).</p>
+    </figure>
+
+  </main>
+</body>
+</html>
