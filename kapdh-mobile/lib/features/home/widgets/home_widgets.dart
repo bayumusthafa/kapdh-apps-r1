@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../app/theme/kapdh_tokens.dart';
 import '../../../design/design.dart';
+import '../../../app/theme/kapdh_focus.dart';
 
 /// Kepala Beranda (prototipe layar 4, 5; guideline hal. 7): pita hijau bergradasi dengan logo, "Assalamu'alaikum,"
 /// dan nama anggota, serta pintasan notifikasi dengan jumlah belum dibaca (PRD 3.8 akses cepat notifikasi).
@@ -74,16 +75,18 @@ class HomeHeader extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
-        IconButton(
-          key: const ValueKey('home-notifications'),
-          tooltip: tooltip,
-          onPressed: onNotifications,
-          icon: Badge(
-            isLabelVisible: count > 0,
-            backgroundColor: KapdhColors.accent,
-            textColor: KapdhColors.onAccent,
-            label: Text(count > 99 ? '99+' : '$count'),
-            child: const Icon(KapdhIcons.notificationsOutlined, color: KapdhColors.textOnDark),
+        DarkSurfaceFocus(
+          child: IconButton(
+            key: const ValueKey('home-notifications'),
+            tooltip: tooltip,
+            onPressed: onNotifications,
+            icon: Badge(
+              isLabelVisible: count > 0,
+              backgroundColor: KapdhColors.accent,
+              textColor: KapdhColors.onAccent,
+              label: Text(count > 99 ? '99+' : '$count'),
+              child: const Icon(KapdhIcons.notificationsOutlined, color: KapdhColors.textOnDark),
+            ),
           ),
         ),
         const SizedBox(width: KapdhSpace.s2),

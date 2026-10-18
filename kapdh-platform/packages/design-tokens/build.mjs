@@ -60,6 +60,8 @@ css.push(".bg-button-primary { background: var(--gradient-button-primary); }");
 css.push(
   ":where(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }",
 );
+// Cincin fokus hijau (focus-ring) di permukaan terang; emas (focus-ring-on-dark) di permukaan hijau gelap (WCAG 1.4.11).
+css.push("[data-surface=\"dark\"] { --color-focus-ring: var(--color-focus-ring-on-dark); }");
 mkdirSync(join(ROOT, "css"), { recursive: true });
 writeFileSync(join(ROOT, "css", "kapdh-theme.css"), css.join("\n") + "\n");
 

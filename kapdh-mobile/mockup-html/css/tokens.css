@@ -91,8 +91,8 @@
   --color-border:                 #8A8F87; /* KapdhColors.border; ColorScheme.outline, garis field */
   --color-divider:                #E1E6DE; /* KapdhColors.divider; ColorScheme.outlineVariant, DividerTheme  [v2; dulu #E3E3E6] */
   --color-disabled-bg:            #E1E5DE; /* KapdhColors.disabledBg  [v2; dulu #DCDCE0] */
-  --color-disabled-text:          #6E766C; /* KapdhColors.disabledText  [v2; dulu #6B6B6B] */
-  --color-focus-ring:             #2D7A28; /* KapdhColors.focusRing  [v2; dulu #E6D312 emas = 1,5:1 di permukaan terang (gagal WCAG 1.4.11).
+  --color-disabled-text:          #5E665C; /* KapdhColors.disabledText  [v2; 4,66:1 di disabled-bg; dulu #6B6B6B 3,9:1] */
+  --color-focus-ring:             #2D7A28; /* KapdhColors.focusRing (tokens.json focus-ring)  [v2; dulu #E6D312 emas = 1,5:1 di permukaan terang (gagal WCAG 1.4.11).
                                               Kini green600 5,4:1; emas tetap dipakai di atas permukaan gelap lewat --color-focus-ring-on-dark] */
   --color-focus-ring-on-dark:     #E6D312; /* [v2 baru] cincin fokus di header hijau, kartu KTA, kotak nominal, snackbar (6,6:1) */
   --color-card-border:            #E6EBE3; /* [v2 baru] garis rambut kartu; kedalaman utama dari --shadow-sm */

@@ -9,6 +9,7 @@ import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/welcome/welcome_gate.dart';
 import '../../design/design.dart';
+import '../../app/theme/kapdh_focus.dart';
 
 /// Welcome setelah splash untuk pemasangan baru atau pembaruan aplikasi (core/welcome): latar mesh zamrud, logo,
 /// sapaan dan dua pilihan, "Daftar KAPDH Apps" ke /register dan "Sudah Punya Akun? Masuk" ke /login. Memilih salah satunya menandai
@@ -34,27 +35,32 @@ class WelcomeScreen extends ConsumerWidget {
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
         backgroundColor: KapdhColors.surfaceDark,
-        body: BrandMeshBackground(
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(KapdhSpace.s6, 0, KapdhSpace.s6, KapdhSpace.s5),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) => SingleChildScrollView(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                          child: const Center(child: _Intro()),
+        body: DarkSurfaceFocus(
+          child: BrandMeshBackground(
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(KapdhSpace.s6, 0, KapdhSpace.s6, KapdhSpace.s5),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => SingleChildScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                            child: const Center(child: _Intro()),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: KapdhSpace.s4),
-                  KapdhButton.accent(label: registerLabel, onPressed: () => _open(context, ref, AppRoutes.register)),
-                  const SizedBox(height: KapdhSpace.s3),
-                  KapdhButton.outlinedOnDark(label: loginLabel, onPressed: () => _open(context, ref, AppRoutes.login)),
-                ],
+                    const SizedBox(height: KapdhSpace.s4),
+                    KapdhButton.accent(label: registerLabel, onPressed: () => _open(context, ref, AppRoutes.register)),
+                    const SizedBox(height: KapdhSpace.s3),
+                    KapdhButton.outlinedOnDark(
+                      label: loginLabel,
+                      onPressed: () => _open(context, ref, AppRoutes.login),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

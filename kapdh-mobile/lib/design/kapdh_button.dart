@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app/theme/kapdh_focus.dart';
 import '../app/theme/kapdh_tokens.dart';
 import 'design_constants.dart';
 
@@ -168,16 +169,24 @@ class KapdhButton extends StatelessWidget {
           minHeight: minHeight,
           minWidth: expand ? double.infinity : KapdhSize.touchTargetMin,
         ),
-        child: DecoratedBox(
-          decoration: decoration,
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(
-              onTap: enabled ? onPressed : null,
-              borderRadius: radius,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s3),
-                child: Center(widthFactor: expand ? null : 1, child: content),
+        child: _FocusRing(
+          // Varian permukaan gelap selalu bercincin emas; lainnya mengikuti tema (hijau, atau emas di DarkSurfaceFocus).
+          ring: variant == KapdhButtonVariant.accent || variant == KapdhButtonVariant.outlinedOnDark
+              ? KapdhColors.focusRingOnDark
+              : KapdhFocusTheme.ringOf(context),
+          radius: radius,
+          builder: (onFocusChange) => DecoratedBox(
+            decoration: decoration,
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                onTap: enabled ? onPressed : null,
+                onFocusChange: onFocusChange,
+                borderRadius: radius,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s3),
+                  child: Center(widthFactor: expand ? null : 1, child: content),
+                ),
               ),
             ),
           ),
@@ -185,6 +194,37 @@ class KapdhButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Cincin fokus 3 px di atas tombol saat terfokus keyboard/akses saklar (WCAG 1.4.11); tidak mengubah tata letak.
+class _FocusRing extends StatefulWidget {
+  const _FocusRing({required this.ring, required this.radius, required this.builder});
+
+  final Color ring;
+  final BorderRadius radius;
+  final Widget Function(ValueChanged<bool> onFocusChange) builder;
+
+  @override
+  State<_FocusRing> createState() => _FocusRingState();
+}
+
+class _FocusRingState extends State<_FocusRing> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    key: const ValueKey('kapdh-button-focus'),
+    position: DecorationPosition.foreground,
+    decoration: _focused
+        ? BoxDecoration(
+            border: Border.all(color: widget.ring, width: KapdhFocusTheme.width),
+            borderRadius: widget.radius,
+          )
+        : const BoxDecoration(),
+    child: widget.builder((focused) {
+      if (mounted && focused != _focused) setState(() => _focused = focused);
+    }),
+  );
 }
 
 /// Tautan teks hijau dengan target sentuh 48 px (prototipe "Salah email? Ubah alamat email", "Hubungi pengurus").
