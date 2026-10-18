@@ -42,7 +42,7 @@
         <li>Masa keanggotaan berakhir</li>
       </ol>
     </div>
-    <p class="page-header__note"><strong>Beranda v2 (usulan):</strong> header zamrud bercincin emas, tab KTA tengah, banner dengan titik di dalam, ubin akses cepat (ubin pertama Pesan menggantikan KTA karena KTA sudah ada di tab tengah; pada KTA tidak aktif/kedaluwarsa ubin KTA tetap karena Jejaring terkunci), kartu event berfooter, berita hero + baris ringkas, skeleton berbentuk Beranda. Diadaptasi dari NewDesign/home.html; rincian di <a href="../REDESAIN.md">REDESAIN.md</a>.</p>
+    <p class="page-header__note"><strong>Beranda v2 (usulan):</strong> header zamrud bercincin emas, tab KTA tengah, banner dengan titik di dalam, akses cepat di atas banner dengan ikon fill bergradasi dalam lingkaran (ubin pertama Pesan menggantikan KTA karena KTA sudah ada di tab tengah; pada KTA tidak aktif/kedaluwarsa ubin KTA tetap karena Jejaring terkunci), kartu event berfooter, berita hero + baris ringkas, skeleton berbentuk Beranda. Diadaptasi dari NewDesign/home.html; rincian di <a href="../REDESAIN.md">REDESAIN.md</a>.</p>
     <p class="page-header__note">Data contoh fiktif: anggota "Ahmad Fauzi" nomor 12.01.01.7, 3 belum dibaca, lencana Jejaring 2. Judul banner, event dan berita diambil dari draf docs/konten/konten-peluncuran.md; tanggal, lokasi dan harga contoh. Tidak ditampilkan: RefreshIndicator (tarik untuk menyegarkan), keadaan status lain "Beranda belum tersedia" (tanpa tombol; status di luar unverified/verified/expiring/expired tidak dapat membuka /home).</p>
   </header>
 
@@ -62,7 +62,13 @@
 </header>
 <div class="screen__body">
 <div class="home-list">
-<div class="mb-4">
+<div class="quick-access mb-4" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">2</span></span><span class="quick-access__label" aria-hidden="true">Pesan</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">3</span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<div>
 <section class="banner-carousel" aria-label="Banner">
   <div class="banner-carousel__track">
     <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
@@ -71,12 +77,6 @@
   </div>
 </section>
 <div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
-</div>
-<div class="quick-access" role="group" aria-label="Akses cepat">
-  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Pesan</span><span class="quick-access__detail" aria-hidden="true">2 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
-  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
 </div>
 <section aria-label="Event Mendatang">
 <div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text section-title__more" href="#">Lihat semua<span class="ic ph-caret-right" aria-hidden="true"></span></a></div>
@@ -153,7 +153,7 @@
 </div>
 <div class="sysnav" aria-hidden="true"></div>
 </div>
-<p class="frame__note">Banner aktif (1 dari 3, banner berikutnya mengintip 9 px), akses cepat (Pesan, Notifikasi, Tiket Saya, Berita), 3 event mendatang, 3 berita terbaru. Lonceng: lencana emas jumlah belum dibaca. Tab Jejaring berlencana jumlah percakapan belum dibaca.</p>
+<p class="frame__note">Akses cepat di atas (Pesan, Notifikasi, Tiket Saya, Berita; lencana emas = belum dibaca), lalu banner aktif (1 dari 3, banner berikutnya mengintip 9 px), 3 event mendatang, 3 berita terbaru. Lonceng: lencana emas jumlah belum dibaca. Tab Jejaring berlencana jumlah percakapan belum dibaca.</p>
 </figure>
 
 <figure class="frame" id="frame-2">
@@ -168,7 +168,13 @@
 </header>
 <div class="screen__body">
 <div class="home-list">
-<div class="mb-4">
+<div class="quick-access mb-4" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">2</span></span><span class="quick-access__label" aria-hidden="true">Pesan</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">3</span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<div>
 <section class="banner-carousel" aria-label="Banner">
   <div class="banner-carousel__track">
     <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
@@ -177,12 +183,6 @@
   </div>
 </section>
 <div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
-</div>
-<div class="quick-access" role="group" aria-label="Akses cepat">
-  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Pesan</span><span class="quick-access__detail" aria-hidden="true">2 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
-  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
 </div>
 <section aria-label="Event Mendatang">
 <div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text section-title__more" href="#">Lihat semua<span class="ic ph-caret-right" aria-hidden="true"></span></a></div>
@@ -274,7 +274,13 @@
 </header>
 <div class="screen__body">
 <div class="home-list">
-<div class="mb-4">
+<div class="quick-access mb-4" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">2</span></span><span class="quick-access__label" aria-hidden="true">Pesan</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">3</span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<div>
 <section class="banner-carousel" aria-label="Banner">
   <div class="banner-carousel__track">
     <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
@@ -283,12 +289,6 @@
   </div>
 </section>
 <div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
-</div>
-<div class="quick-access" role="group" aria-label="Akses cepat">
-  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Pesan</span><span class="quick-access__detail" aria-hidden="true">2 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
-  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
 </div>
 <div class="mt-3"><div class="info-box info-box--warning" role="status"><span class="ic ph-clock" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Masa aktif KTA segera berakhir</p><p class="info-box__message">KTA Anda berakhir pada 13 Nov 2026. Perpanjang sekarang agar akses event, jejaring dan chat tidak terputus.</p></div><button class="btn-text info-box__trailing" type="button">Perpanjang</button></div></div>
 <section aria-label="Event Mendatang">
@@ -366,7 +366,7 @@
 </div>
 <div class="sysnav" aria-hidden="true"></div>
 </div>
-<p class="frame__note">_RenewalReminder (effective_status expiring): InfoBox warning dengan TextButton "Perpanjang" ke /renewal, 12 di bawah akses cepat.</p>
+<p class="frame__note">_RenewalReminder (effective_status expiring): InfoBox warning dengan TextButton "Perpanjang" ke /renewal, di bawah banner.</p>
 </figure>
 
 <h2 class="frames__group-title">Memuat, cache dan galat</h2>
@@ -382,7 +382,7 @@
   <button class="icon-btn" type="button" aria-label="Notifikasi"><span class="badge-host"><span class="ic ph-bell-simple" aria-hidden="true"></span></span></button>
 </header>
 <div class="screen__body">
-<div class="skeleton skeleton--home" role="status" aria-label="Memuat Beranda"><div class="skeleton__block skh-banner"></div><div class="skh-tiles"><div class="skeleton__block"></div><div class="skeleton__block"></div><div class="skeleton__block"></div><div class="skeleton__block"></div></div><div class="skeleton__line skh-title"></div><div class="skeleton__card skh-card"></div><div class="skeleton__card skh-card"></div></div>
+<div class="skeleton skeleton--home" role="status" aria-label="Memuat Beranda"><div class="skh-tiles"><div class="skeleton__block"></div><div class="skeleton__block"></div><div class="skeleton__block"></div><div class="skeleton__block"></div></div><div class="skeleton__block skh-banner"></div><div class="skeleton__line skh-title"></div><div class="skeleton__card skh-card"></div><div class="skeleton__card skh-card"></div></div>
 </div>
 <nav class="bottom-nav" aria-label="Navigasi utama">
   <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ph-house-simple-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
@@ -411,7 +411,13 @@
 <div class="home-list">
 <div class="progress-linear progress-linear--thin" role="progressbar" aria-label="Memperbarui Beranda" style="--value:35%"><span class="progress-linear__bar"></span></div>
 <div class="mb-4"><div class="info-box"><span class="ic ph-clock-counter-clockwise" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Menampilkan data tersimpan</p><p class="info-box__message">Diperbarui 17 Okt 2026, 21.05 WIB. Memperbarui…</p></div></div></div>
-<div class="mb-4">
+<div class="quick-access mb-4" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">2</span></span><span class="quick-access__label" aria-hidden="true">Pesan</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">3</span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<div>
 <section class="banner-carousel" aria-label="Banner">
   <div class="banner-carousel__track">
     <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
@@ -420,12 +426,6 @@
   </div>
 </section>
 <div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
-</div>
-<div class="quick-access" role="group" aria-label="Akses cepat">
-  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Pesan</span><span class="quick-access__detail" aria-hidden="true">2 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
-  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
 </div>
 <section aria-label="Event Mendatang">
 <div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text section-title__more" href="#">Lihat semua<span class="ic ph-caret-right" aria-hidden="true"></span></a></div>
@@ -519,7 +519,13 @@
 <div class="screen__body">
 <div class="home-list">
 <div class="mb-4"><div class="info-box info-box--warning" role="status"><span class="ic ph-cloud-slash" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Offline</p><p class="info-box__message">Diperbarui 17 Okt 2026, 21.05 WIB. Periksa koneksi internet Anda.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div></div>
-<div class="mb-4">
+<div class="quick-access mb-4" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">2</span></span><span class="quick-access__label" aria-hidden="true">Pesan</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">3</span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<div>
 <section class="banner-carousel" aria-label="Banner">
   <div class="banner-carousel__track">
     <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
@@ -528,12 +534,6 @@
   </div>
 </section>
 <div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
-</div>
-<div class="quick-access" role="group" aria-label="Akses cepat">
-  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Pesan</span><span class="quick-access__detail" aria-hidden="true">2 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
-  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
 </div>
 <section aria-label="Event Mendatang">
 <div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text section-title__more" href="#">Lihat semua<span class="ic ph-caret-right" aria-hidden="true"></span></a></div>
@@ -626,7 +626,13 @@
 <div class="screen__body">
 <div class="home-list">
 <div class="mb-4"><div class="info-box info-box--warning" role="status"><span class="ic ph-cloud-warning" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Beranda belum dapat diperbarui</p><p class="info-box__message">Diperbarui 17 Okt 2026, 21.05 WIB. Terjadi kesalahan. Coba lagi.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div></div>
-<div class="mb-4">
+<div class="quick-access mb-4" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">2</span></span><span class="quick-access__label" aria-hidden="true">Pesan</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">3</span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<div>
 <section class="banner-carousel" aria-label="Banner">
   <div class="banner-carousel__track">
     <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
@@ -635,12 +641,6 @@
   </div>
 </section>
 <div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
-</div>
-<div class="quick-access" role="group" aria-label="Akses cepat">
-  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Pesan</span><span class="quick-access__detail" aria-hidden="true">2 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
-  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
 </div>
 <section aria-label="Event Mendatang">
 <div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text section-title__more" href="#">Lihat semua<span class="ic ph-caret-right" aria-hidden="true"></span></a></div>
@@ -796,7 +796,13 @@
 <div class="status-strip" role="status"><span class="ic ph-wrench" aria-hidden="true"></span><span class="status-strip__text"><strong>Pemeliharaan</strong>. Perubahan data ditunda sampai sekitar 18 Okt 2026, 23.00 WIB.</span><button class="btn-text" type="button">Detail</button></div>
 <div class="screen__body">
 <div class="home-list">
-<div class="mb-4">
+<div class="quick-access mb-4" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">2</span></span><span class="quick-access__label" aria-hidden="true">Pesan</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">3</span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<div>
 <section class="banner-carousel" aria-label="Banner">
   <div class="banner-carousel__track">
     <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
@@ -805,12 +811,6 @@
   </div>
 </section>
 <div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
-</div>
-<div class="quick-access" role="group" aria-label="Akses cepat">
-  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Pesan</span><span class="quick-access__detail" aria-hidden="true">2 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
-  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
 </div>
 <section aria-label="Event Mendatang">
 <div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text section-title__more" href="#">Lihat semua<span class="ic ph-caret-right" aria-hidden="true"></span></a></div>
@@ -904,7 +904,13 @@
 </header>
 <div class="screen__body">
 <div class="home-list">
-<div class="mb-4">
+<div class="quick-access mb-4" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">2</span></span><span class="quick-access__label" aria-hidden="true">Pesan</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">3</span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<div>
 <section class="banner-carousel" aria-label="Banner">
   <div class="banner-carousel__track">
     <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
@@ -913,12 +919,6 @@
   </div>
 </section>
 <div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
-</div>
-<div class="quick-access" role="group" aria-label="Akses cepat">
-  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Pesan</span><span class="quick-access__detail" aria-hidden="true">2 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
-  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
 </div>
 <section aria-label="Event Mendatang">
 <div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text section-title__more" href="#">Lihat semua<span class="ic ph-caret-right" aria-hidden="true"></span></a></div>
@@ -960,10 +960,10 @@
 <div class="screen__body">
 <div class="home-list">
 <div class="quick-access" role="group" aria-label="Akses cepat">
-  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Pesan</span><span class="quick-access__detail" aria-hidden="true">2 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Notifikasi, Semua terbaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">Semua terbaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
-  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">2</span></span><span class="quick-access__label" aria-hidden="true">Pesan</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, Semua terbaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
 </div>
 <div class="state mt-5">
   <div class="state__icon" aria-hidden="true"><span class="ic ph-megaphone" aria-hidden="true"></span></div>
@@ -1000,7 +1000,13 @@
 </header>
 <div class="screen__body">
 <div class="home-list">
-<div class="mb-4">
+<div class="quick-access mb-4" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">2</span></span><span class="quick-access__label" aria-hidden="true">Pesan</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">3</span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<div>
 <section class="banner-carousel" aria-label="Banner">
   <div class="banner-carousel__track banner-carousel__track--page-2">
     <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
@@ -1009,12 +1015,6 @@
   </div>
 </section>
 <div class="dots" aria-hidden="true"><span class="dots__dot"></span><span class="dots__dot is-active"></span><span class="dots__dot"></span></div>
-</div>
-<div class="quick-access" role="group" aria-label="Akses cepat">
-  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Pesan</span><span class="quick-access__detail" aria-hidden="true">2 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
-  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
 </div>
 <section aria-label="Event Mendatang">
 <div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text section-title__more" href="#">Lihat semua<span class="ic ph-caret-right" aria-hidden="true"></span></a></div>
@@ -1113,7 +1113,13 @@
 </header>
 <div class="screen__body">
 <div class="home-list">
-<div class="mb-4">
+<div class="quick-access mb-4" role="group" aria-label="Akses cepat">
+  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">2</span></span><span class="quick-access__label" aria-hidden="true">Pesan</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">3</span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
+</div>
+<div>
 <section class="banner-carousel" aria-label="Banner">
   <div class="banner-carousel__track">
     <div class="banner-carousel__page"><a class="banner-tile" href="#" aria-label="Banner 1 dari 3: Ajak Sahabat Alumni Bergabung di KAPDH Apps, membuka detail"><img src="../assets/sample/banner-1-gabung.jpg" alt=""><span class="banner-tile__caption"><span class="banner-tile__title">Ajak Sahabat Alumni Bergabung di KAPDH Apps</span></span></a></div>
@@ -1122,12 +1128,6 @@
   </div>
 </section>
 <div class="dots" aria-hidden="true"><span class="dots__dot is-active"></span><span class="dots__dot"></span><span class="dots__dot"></span></div>
-</div>
-<div class="quick-access" role="group" aria-label="Akses cepat">
-  <a class="quick-access__item" href="#" aria-label="Pesan, 2 belum dibaca"><span class="quick-access__icon"><span class="ic ph-chat-circle-dots-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Pesan</span><span class="quick-access__detail" aria-hidden="true">2 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Notifikasi, 3 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">3 belum dibaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
-  <a class="quick-access__item" href="#" aria-label="Berita"><span class="quick-access__icon"><span class="ic ph-newspaper-clipping-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Berita</span></a>
 </div>
 <section aria-label="Event Mendatang">
 <div class="section-title mt-5"><h3 class="section-title__title">Event Mendatang</h3><a class="btn-text section-title__more" href="#">Lihat semua<span class="ic ph-caret-right" aria-hidden="true"></span></a></div>
@@ -1232,8 +1232,8 @@
 <button class="btn btn--primary" type="button">Selesaikan Iuran Pendaftaran</button>
 </div>
 <div class="quick-access mt-5" role="group" aria-label="Akses cepat">
-  <a class="quick-access__item" href="#" aria-label="KTA, KTA Tidak Aktif"><span class="quick-access__icon"><span class="ic ph-identification-card-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">KTA Tidak Aktif</span></a>
-  <a class="quick-access__item" href="#" aria-label="Notifikasi, 1 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">1 belum dibaca</span></a>
+  <a class="quick-access__item" href="#" aria-label="KTA, KTA Tidak Aktif"><span class="quick-access__icon"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">KTA Tidak Aktif</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, 1 belum dibaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-fill" aria-hidden="true"></span><span class="badge badge--accent quick-access__badge" aria-hidden="true">1</span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span></a>
 </div>
 </div>
 </div>
@@ -1272,9 +1272,9 @@
 <button class="btn btn--primary" type="button">Perpanjang Keanggotaan</button>
 </div>
 <div class="quick-access mt-5" role="group" aria-label="Akses cepat">
-  <a class="quick-access__item" href="#" aria-label="KTA, KTA Kedaluwarsa"><span class="quick-access__icon"><span class="ic ph-identification-card-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">KTA Kedaluwarsa</span></a>
-  <a class="quick-access__item" href="#" aria-label="Notifikasi, Semua terbaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span><span class="quick-access__detail" aria-hidden="true">Semua terbaca</span></a>
-  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-duotone" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
+  <a class="quick-access__item" href="#" aria-label="KTA, KTA Kedaluwarsa"><span class="quick-access__icon"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">KTA</span><span class="quick-access__detail" aria-hidden="true">KTA Kedaluwarsa</span></a>
+  <a class="quick-access__item" href="#" aria-label="Notifikasi, Semua terbaca"><span class="quick-access__icon"><span class="ic ph-bell-simple-ringing-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Notifikasi</span></a>
+  <a class="quick-access__item" href="#" aria-label="Tiket Saya"><span class="quick-access__icon"><span class="ic ph-ticket-fill" aria-hidden="true"></span></span><span class="quick-access__label" aria-hidden="true">Tiket Saya</span></a>
 </div>
 </div>
 </div>

@@ -3,12 +3,16 @@
 # Bangkitkan ulang: node tools/build-icons-phosphor.mjs
 # Flutter: phosphor_flutter, mis. ph-identification-card-duotone = PhosphorIcons.identificationCard(PhosphorIconsStyle.duotone)
 
-# Akses cepat (QuickAccessRow): duotone
+# Akses cepat (QuickAccessRow): duotone (lama) dan fill bergradasi (v2, ikon di lingkaran)
 identification-card-duotone
 chat-circle-dots-duotone
 bell-simple-ringing-duotone
 ticket-duotone
 newspaper-clipping-duotone
+bell-simple-ringing-fill
+chat-circle-dots-fill
+newspaper-clipping-fill
+ticket-fill
 
 # Navigasi bawah (AppShell): regular = tidak aktif, fill = aktif; KTA tengah selalu fill
 house-simple

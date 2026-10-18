@@ -270,6 +270,19 @@ graduation_year}]` sebagai ganti `profession`, `last_education_institution` dan 
 - "Media Sosial" berupa baris 56 dp berlogo platform, nama platform, nama pengguna primary, dan ikon tautan luar. Lihat juga master profesi/keahlian yang menerima
 nilai ketikan sendiri.
 
+**Akses cepat di atas banner, ikon lingkaran** (usulan, sesuai gambar acuan). Menu cepat kini tepat di bawah header
+Beranda, sebelum banner, juga di skeleton memuat. Ikon menjadi lingkaran 56 dp:
+
+- latar gradasi lembut `--qa-circle-bg` dengan sorot kiri atas, garis tipis, bayangan halus;
+- ikon Phosphor *fill* 28 dp berisi gradasi hijau `--qa-icon` (#4A9441 → green800 → green950), lebih terang di mode gelap;
+- label 13 w700;
+- jumlah belum dibaca pindah dari teks kecil ke lencana emas di pojok lingkaran. Teks status KTA (keadaan tidak aktif
+  atau kedaluwarsa) tetap di bawah label.
+
+Isi menu tetap: Pesan, Notifikasi, Tiket Saya, Berita (KTA ada di tab tengah). Flutter nanti: `QuickAccessRow` dipindah
+ke atas `BannerCarousel` di `_ActiveHome`; ikon `Container(shape: circle, gradient)` + `ShaderMask` di atas
+`Icon(KapdhIcons.*Fill)` (codepoint fill keempat ikon perlu ditambah ke `phosphor-codepoints.json`) + `Badge`.
+
 **Akses cepat: Pesan menggantikan KTA** (usulan). Untuk anggota aktif, ubin pertama kini "Pesan" (jumlah percakapan
 belum dibaca, ke tab Jejaring > Pesan), karena KTA sudah bisa dibuka dari tombol tengah navigasi bawah sehingga ubin KTA
 dobel. Pada KTA tidak aktif atau kedaluwarsa ubin KTA tetap (status KTA penting di sana dan Jejaring terkunci). Flutter
