@@ -285,8 +285,9 @@ Alumni). Sekarang semua `.brand-band` memakai dasar yang sama dengan header Bera
 - tombol ikon kaca 48 dp;
 - logo pita sapaan dalam bingkai kaca bercincin emas (48 dp, dulu 44).
 
-Motif tetap menumpuk di atas dasar itu: gelombang di Masuk, quatrefoil di Akun. Profil Alumni tanpa motif agar identik dengan Beranda. Sudut bawah 24 dan
-bayangan hanya untuk pita yang berdiri sendiri (Beranda, Profil Alumni); pita yang ditumpuk lembar terang tetap lurus
+Hanya layar Masuk yang tetap bermotif (gelombang, atas permintaan desain). Akun dan Profil Alumni tanpa motif dan bersudut
+bawah 24, identik dengan header Beranda; kelas `.brand-band--pattern` (quatrefoil) tidak lagi dipakai layar. Sudut bawah 24 dan
+bayangan untuk pita yang berdiri sendiri (Beranda, Profil Alumni, Akun); pita yang ditumpuk lembar terang tetap lurus
 karena lembarnya sudah membulat. Pengisi status bar layar Masuk mengikuti tepi atas mesh. App bar putih di layar
 detail sengaja tidak diubah (pola Material 3). Flutter nanti: `KapdhGradients.brandMesh` dipakai `BrandHeader` dan
 `HomeHeader`, cincin sebagai satu `CustomPainter` bersama.
