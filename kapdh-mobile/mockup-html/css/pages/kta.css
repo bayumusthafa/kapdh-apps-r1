@@ -146,3 +146,15 @@
 .pay-sheet { min-height: 0; overflow: hidden; } /* Material(clipBehavior: antiAlias): isi bergulir terpotong sudut 20 */
 /* StatusActionCard: aksi berlebar intrinsik di samping Expanded(info); tanpa ini tombol inline ikut menyusut. */
 .status-action-card > .btn { flex: none; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   PRATINJAU KTA LAYAR PENUH  (lib/features/kta/kta_fullscreen.dart): perangkat landscape 800 x 360 tanpa bilah sistem,
+   latar #020702, kartu proporsi KTP 85,6 : 54 setinggi area (360 - 2 x 16 = 328 -> 520 x 328), isi 296 diskalakan
+   min(496 / 296, 304 / 191) = 1,59.
+   --------------------------------------------------------------------------------------------------------------------- */
+.frame--landscape { width: 800px; }
+.device--landscape { --inset-top: 0px; --inset-bottom: 0px; width: 800px; height: 360px; }
+.kta-full { background: #020702; display: grid; place-items: center; }
+.kta-card--fill { width: 520px; height: 328px; display: grid; place-items: center; }
+.kta-card__fit { width: 296px; flex: none; transform: scale(1.59); }
+.kta-full__close { position: absolute; top: 0; right: 0; color: var(--color-text-on-dark); }

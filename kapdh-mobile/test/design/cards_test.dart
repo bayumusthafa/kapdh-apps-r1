@@ -40,12 +40,12 @@ void main() {
       expect(find.byType(QrImageView), findsNothing);
       expect(find.text('QR muncul setelah KTA aktif'), findsOneWidget);
       expect(find.text('Berlaku sampai: belum aktif'), findsOneWidget);
-      // Gembok emas 34 px (prototipe layar 6), bukan ikon QR.
+      // Gembok emas 28 px (prototipe layar 6, kartu ringkas), bukan ikon QR.
       final lock = tester.widget<Icon>(
         find.descendant(of: find.byKey(const ValueKey('kta-qr-placeholder')), matching: find.byType(Icon)),
       );
       expect(lock.icon, Icons.lock_outline);
-      expect(lock.size, 34);
+      expect(lock.size, 28);
       expect(lock.color, KapdhColors.accent);
     });
 
@@ -96,13 +96,13 @@ void main() {
       final name = tester.getRect(find.text(longName));
       final qr = tester.getRect(find.byKey(const ValueKey('kta-qr')));
       expect(name.bottom, lessThanOrEqualTo(qr.top), reason: 'nama selalu di atas baris QR');
-      expect(tester.widget<Text>(find.text(longName)).style!.fontSize, lessThan(24));
+      expect(tester.widget<Text>(find.text(longName)).style!.fontSize, lessThan(20));
     });
 
     test('ukuran huruf nama dan sisi QR', () {
-      expect(KtaCard.nameFontSize('Ahmad Fauzi', 230, TextScaler.noScaling), 24);
-      expect(KtaCard.qrSize(324), closeTo(123.1, 0.1));
-      expect(KtaCard.qrSize(500), KapdhComponentSize.ktaQr);
+      expect(KtaCard.nameFontSize('Ahmad Fauzi', 230, TextScaler.noScaling), 20);
+      expect(KtaCard.qrSize(292), closeTo(96.4, 0.1));
+      expect(KtaCard.qrSize(500), 112);
       expect(KtaCard.qrSize(200), 96);
     });
   });
