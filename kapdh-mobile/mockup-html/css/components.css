@@ -349,20 +349,46 @@ a { color: inherit; text-decoration: none; }
 
 /* HomeHeader (lib/features/home/widgets/home_widgets.dart): app bar 76 bergradasi band, logo 44, sapaan + nama,
    lonceng notifikasi dengan Badge emas. */
+/* [v2 Beranda] Header "mesh" zamrud: gradasi diagonal green950 -> green700 dengan cahaya emas di kanan atas dan cahaya hijau
+   di kiri bawah, dua cincin dekoratif, sudut bawah membulat 24 dan bayangan hijau. Logo dalam bingkai kaca bercincin
+   emas, lonceng dalam tombol kaca 48 x 48 (target sentuh tetap 48). Isi (logo, sapaan, nama, lonceng) sama dengan Dart.
+   Flutter: HomeHeader -> Container(decoration: BoxDecoration(gradient + borderRadius.vertical(bottom: 24) + boxShadow))
+   dengan Stack untuk cincin (CustomPaint) dan BackdropFilter tidak diperlukan (kaca = putih 6-16 %). */
 .home-header {
   position: relative; z-index: 2;
   flex: none;
   display: flex; align-items: center; gap: var(--s3);
   height: calc(var(--size-home-header) + var(--inset-top));
-  padding: var(--inset-top) var(--s2) 0 var(--s5);
-  background: var(--gradient-band);
+  padding: var(--inset-top) var(--s4) 0 var(--s5);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(230, 211, 18, .20) 0, transparent 46%),
+    radial-gradient(circle at 6% 100%, rgba(63, 154, 56, .34) 0, transparent 55%),
+    linear-gradient(135deg, var(--color-green-950) 0%, var(--color-green-800) 55%, var(--color-green-700) 100%);
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  box-shadow: 0 12px 28px -10px rgba(14, 40, 12, .55), inset 0 -1px 0 rgba(230, 211, 18, .22);
+  color: var(--color-text-on-dark);
+  overflow: hidden;
+  isolation: isolate;
+}
+.home-header::before, .home-header::after { content: ""; position: absolute; z-index: -1; border-radius: 50%; pointer-events: none; }
+.home-header::before { top: -70px; right: -56px; width: 200px; height: 200px; border: 26px solid rgba(255, 255, 255, .04); }
+.home-header::after { bottom: -96px; left: -48px; width: 170px; height: 170px; border: 16px solid rgba(230, 211, 18, .06); }
+.home-header__logo, .brand-logo { width: 44px; height: 44px; object-fit: contain; flex: none; }
+.home-header .home-header__logo {
+  width: 48px; height: 48px; padding: 5px; border-radius: var(--r-lg);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .05));
+  box-shadow: inset 0 0 0 1.5px rgba(230, 211, 18, .55), 0 6px 16px -4px rgba(0, 0, 0, .35);
+}
+.home-header__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.greeting__hello { font-size: var(--fs-caption); font-weight: 500; letter-spacing: .3px; color: var(--color-green-100); }     /* "Assalamu'alaikum," */
+.greeting__name { font-size: 17px; font-weight: var(--fw-heading); letter-spacing: 0; color: var(--color-text-on-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* [v2: dulu 16 w600] */
+.home-header .icon-btn {
+  --elev: inset 0 0 0 1px rgba(255, 255, 255, .18), 0 4px 12px -2px rgba(0, 0, 0, .22);
+  border-radius: var(--r-lg);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .06));
   color: var(--color-text-on-dark);
 }
-.home-header__logo, .brand-logo { width: 44px; height: 44px; object-fit: contain; flex: none; }
-.home-header__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
-.greeting__hello { font-size: var(--fs-caption); font-weight: 400; color: var(--color-green-100); }     /* "Assalamu'alaikum," */
-.greeting__name { font-size: var(--fs-body-lg); font-weight: 600; color: var(--color-text-on-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.home-header .icon-btn { color: var(--color-text-on-dark); }
+.home-header .badge--accent { min-width: 18px; height: 18px; border-radius: 9px; top: -6px; font-weight: 700; box-shadow: 0 0 0 2px var(--color-green-800); }
 
 /* BrandHeader: pita hijau bergradasi (+ motif quatrefoil BrandPatternPainter, sel 44, r 31.68, garis 1.2 putih 8 %). */
 .brand-band {
@@ -431,6 +457,22 @@ a { color: inherit; text-decoration: none; }
 .bottom-nav__item.is-selected .bottom-nav__indicator { background: var(--color-green-100); }
 .bottom-nav__item.is-selected .bottom-nav__label { font-weight: 600; color: var(--color-primary); }
 .bottom-nav__icon { position: relative; display: inline-flex; }
+/* [v2 Beranda] Tab KTA sebagai tombol tengah menonjol: kotak 56 radius 18 bergradasi hijau, garis putih 4 dan bayangan,
+   naik 20 dp di atas bilah. Kolom tab tetap 72 x 64 (target sentuh tidak berubah); terpilih = cincin emas 2 px.
+   Flutter: AppShell -> NavigationBar diganti Row kustom atau NavigationDestination dengan icon kustom + Stack
+   (clipBehavior: Clip.none) agar tombol dapat keluar dari bilah. */
+.bottom-nav__item--kta .bottom-nav__indicator {
+  width: 56px; height: 56px; margin-top: -26px; border-radius: 18px;
+  background: linear-gradient(45deg, var(--color-green-800) 0%, var(--color-green-600) 100%);
+  color: var(--color-on-primary);
+  border: 4px solid var(--color-surface);
+  box-shadow: 0 8px 18px -4px rgba(26, 75, 23, .45);
+}
+.bottom-nav__item--kta .bottom-nav__label { font-weight: 600; color: var(--color-primary); }
+.bottom-nav__item--kta.is-selected .bottom-nav__indicator { background: linear-gradient(45deg, var(--color-green-800) 0%, var(--color-green-600) 100%); box-shadow: 0 0 0 2px var(--color-accent), 0 8px 18px -4px rgba(26, 75, 23, .45); }
+.bottom-nav__item--kta:hover .bottom-nav__indicator { box-shadow: 0 8px 18px -4px rgba(26, 75, 23, .45), inset 0 0 0 999px rgba(255, 255, 255, .10); }
+.bottom-nav__item--kta:active .bottom-nav__indicator { box-shadow: 0 4px 10px -4px rgba(26, 75, 23, .45), inset 0 0 0 999px rgba(255, 255, 255, .16); }
+.bottom-nav__item--kta.is-selected:hover .bottom-nav__indicator { box-shadow: 0 0 0 2px var(--color-accent), 0 8px 18px -4px rgba(26, 75, 23, .45), inset 0 0 0 999px rgba(255, 255, 255, .10); }
 
 /* ---------------------------------------------------------------------------------------------------------------------
    BADGE  (Badge M3): besar 16 tinggi, padding 0 4, label 11 w500; posisi kiri = lebar ikon - 12, atas -4.
@@ -733,6 +775,10 @@ a { color: inherit; text-decoration: none; }
 /* HomeSectionTitle (content_widgets.dart): 16 w600 + "Lihat semua" */
 .section-title { display: flex; align-items: center; min-height: 48px; }
 .section-title__title { flex: 1 1 auto; font-size: 17px; font-weight: var(--fw-heading); letter-spacing: 0; } /* [v2: dulu 16 w600] */
+/* [v2 Beranda] "Lihat semua": pil tonal green50 32 + chevron_right 16; area sentuh tetap 48 (pseudo-element). */
+.section-title__more { position: relative; min-height: 32px; padding: 0 6px 0 12px; gap: 2px; border-radius: var(--r-md); background: var(--color-green-50); font-weight: 600; }
+.section-title__more::before { content: ""; position: absolute; inset: -8px 0; }
+.section-title__more .ic { --ic-size: 16px; }
 /* SectionEmpty (home_widgets.dart) */
 .section-empty { display: flex; align-items: center; gap: var(--s3); padding: 15px; background: var(--color-surface); border: 1px dashed var(--color-neutral-300); border-radius: var(--r-lg); } /* [v2] garis putus = "belum ada isi", dibedakan dari kartu */
 .section-empty .ic { --ic-size: 20px; color: var(--color-text-muted); }
@@ -749,9 +795,14 @@ a { color: inherit; text-decoration: none; }
 .img-cover { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 /* EventCard (events/widgets/event_card.dart) */
-.event-card { display: flex; align-items: flex-start; gap: var(--s3); }
-.event-card__cover { flex: none; width: 92px; height: 76px; border-radius: var(--r-md); overflow: hidden; }
-.event-card__body { flex: 1 1 auto; min-width: 0; }
+/* [v2 Beranda] EventCard: sampul 80 x 80, ikon meta green600, status + harga pindah ke footer selebar kartu dengan garis
+   pemisah (harga selalu di kanan). Flutter: EventCard -> Column(Row(sampul, isi), Divider, Row(badge..., Spacer, harga)). */
+.event-card { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s3); }
+.event-card__cover { flex: none; width: 80px; height: 80px; border-radius: var(--r-md); overflow: hidden; }
+.event-card .icon-line .ic { color: var(--color-green-600); }
+.event-card__foot { flex: 1 0 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); padding-top: 10px; border-top: 1px solid var(--color-divider); }
+.event-card__foot .price { order: 9; margin-left: auto; font-size: 13px; font-weight: var(--fw-bold); }
+.event-card__body { flex: 1 1 0; min-width: 0; } /* [v2] basis 0: tetap di samping sampul walau kartu flex-wrap */
 .event-card__title { font-size: var(--fs-body); font-weight: 600; }
 .event-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); margin-top: 6px; }
 .price { font-size: var(--fs-caption); font-weight: 600; color: var(--color-primary); }
@@ -765,13 +816,33 @@ a { color: inherit; text-decoration: none; }
 .post-card__foot .icon-line { flex: 1 1 auto; }
 .post-card__like .ic, .post-card__foot > .ic { --ic-size: 14px; }
 .is-liked { color: var(--color-danger); }
+/* [v2 Beranda] PostCard di Beranda: kartu pertama "hero" (sampul 16:9 berscrim, kategori dan tanggal/suka di atas gambar),
+   sisanya baris ringkas (gambar 80 x 80, kategori + suka, judul 2 baris, tanggal). Halaman Berita tetap PostCard biasa.
+   Flutter: PostCard(variant: PostCardVariant.hero | compact). */
+.post-card--hero .post-card__cover { position: relative; }
+.post-card--hero .post-card__cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0, 0, 0, .72) 0%, rgba(0, 0, 0, .18) 42%, transparent 70%); }
+.category-chip--on-image { position: absolute; z-index: 1; top: var(--s3); left: var(--s3); background: rgba(26, 75, 23, .92); color: var(--color-on-primary); }
+.post-card__overlay { position: absolute; z-index: 1; left: var(--s3); right: var(--s3); bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: var(--s2); font-size: var(--fs-caption); color: rgba(255, 255, 255, .92); }
+.post-card__overlay .icon-line, .post-card__overlay .post-card__likes { color: inherit; }
+.post-card__overlay .ic { color: inherit; }
+.post-card__overlay .is-liked { color: #FFB4AB; } /* merah muda: 6,9:1 di scrim gelap */
+.post-card--hero .post-card__body { padding: var(--s3) 14px 14px; }
+.post-card--hero .post-card__title { font-size: 15px; font-weight: var(--fw-heading); letter-spacing: 0; }
+.post-card__likes { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); white-space: nowrap; }
+.post-card__likes .ic { --ic-size: 14px; }
+.post-card--row { display: flex; align-items: flex-start; gap: var(--s3); padding: 11px; }
+.post-card--row .post-card__cover { flex: none; width: 80px; height: 80px; aspect-ratio: auto; border-radius: var(--r-md); overflow: hidden; }
+.post-card--row .post-card__body { flex: 1 1 auto; min-width: 0; padding: 0; }
+.post-card__top { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
+.post-card--row .post-card__title { margin-top: 6px; }
+.post-card__date { margin-top: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
 
 /* QuickAccessRow (home_widgets.dart): kartu 12 x 4, ubin flex: lingkaran 44 green50 ikon 22, label 12 w600, detail 11 */
-.quick-access { display: flex; align-items: flex-start; padding: 11px 3px; background: var(--color-surface); border: 1px solid var(--color-card-border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); }
+.quick-access { display: flex; align-items: flex-start; padding: 15px 3px 13px; background: var(--color-surface); border: 1px solid var(--color-card-border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); } /* [v2 Beranda: padding 16 / 14] */
 .quick-access__item { flex: 1 1 0; min-width: 0; min-height: 48px; padding: var(--s1) 2px; display: flex; flex-direction: column; align-items: center; text-align: center; border-radius: var(--r-md); }
-.quick-access__icon { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--color-green-100); color: var(--color-primary); } /* [v2: dulu lingkaran green50 (1,08:1 di putih)] */
+.quick-access__icon { width: 48px; height: 48px; border-radius: var(--r-lg); display: grid; place-items: center; background: var(--color-green-50); border: 1px solid var(--color-green-100); color: var(--color-primary); } /* [v2: dulu lingkaran 44 green50 tanpa garis] */
 .quick-access__icon .ic { --ic-size: 22px; }
-.quick-access__label { margin-top: 6px; font-size: var(--fs-caption); font-weight: 600; }
+.quick-access__label { margin-top: var(--s2); font-size: var(--fs-caption); font-weight: 600; line-height: 1.3; }
 .quick-access__detail { font-size: var(--fs-overline); color: var(--color-text-muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 
 /* BannerCarousel (home/widgets/banner_carousel.dart): halaman 92 % lebar, padding 4, ubin 2.2:1 radius 14,
@@ -789,6 +860,14 @@ a { color: inherit; text-decoration: none; }
 .dots { display: flex; justify-content: center; margin-top: var(--s2); }
 .dots__dot { width: 6px; height: 6px; margin: 0 3px; border-radius: var(--r-pill); background: var(--color-neutral-500); transition: width var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out); } /* [v2: dulu neutral300, 1,7:1] */
 .dots__dot.is-active { width: 18px; background: var(--color-primary); }
+/* [v2 Beranda] Titik pindah ke dalam banner (kanan bawah, di atas scrim): aktif emas 18, lainnya putih 60 %. Judul banner
+   14 w700 dan memberi ruang 52 di kanan untuk titik. Flutter: BannerCarousel -> Stack(PageView, Positioned(dots)). */
+div:has(> .banner-carousel + .dots) { position: relative; }
+.banner-carousel + .dots { position: absolute; z-index: 2; right: calc(4% + var(--s1) + var(--s3)); bottom: var(--s3); margin: 0; }
+.banner-carousel + .dots .dots__dot { background: rgba(255, 255, 255, .6); }
+.banner-carousel + .dots .dots__dot.is-active { background: var(--color-accent); }
+.banner-carousel .banner-tile__caption { right: 52px; }
+.banner-carousel .banner-tile__title { font-weight: var(--fw-heading); letter-spacing: 0; line-height: 1.35; }
 
 /* DirectoryMemberCard (network/widgets/directory_member_card.dart) */
 .member-card { display: flex; align-items: flex-start; gap: var(--s3); padding: 11px; }
@@ -1083,7 +1162,7 @@ a { color: inherit; text-decoration: none; }
    pesan 14 1.5 muted, aksi outlined (galat + Icons.refresh), catatan kaki 11 "Kode bantuan: ..."
    --------------------------------------------------------------------------------------------------------------------- */
 .state { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--s6); }
-.state__icon { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--color-green-100); color: var(--color-primary); } /* [v2: dulu green50] */
+.state__icon { width: 64px; height: 64px; border-radius: var(--r-xl); /* [v2 Beranda: squircle, dulu lingkaran] */ display: grid; place-items: center; background: var(--color-green-100); color: var(--color-primary); } /* [v2: dulu green50] */
 .state__icon .ic { --ic-size: 30px; }
 .state--error .state__icon { background: var(--color-danger-bg); color: var(--color-danger); }
 .state__title { margin-top: var(--s4); font-size: var(--fs-h3); font-weight: 600; }

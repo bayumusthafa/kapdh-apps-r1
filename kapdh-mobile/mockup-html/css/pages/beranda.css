@@ -38,6 +38,23 @@
 /* EmptyState di dalam ListView Beranda tingginya mengikuti isi (bukan mengisi layar) */
 .home-list .state { flex: none; }
 
+/* [v2 Beranda] Pengingat perpanjangan (_RenewalReminder): TextButton menjadi tombol isi warna warning 36 (putih 5,9:1),
+   area sentuh tetap 48. */
+.home-list .info-box--warning > .info-box__trailing { position: relative; align-self: center; min-height: 36px; padding: 0 14px; border-radius: var(--r-md); background: var(--color-warning); color: var(--color-on-primary); font-weight: 600; }
+.home-list .info-box--warning > .info-box__trailing::before { content: ""; position: absolute; inset: -6px 0; }
+
+/* [v2 Beranda] _GatedHome: StatusHero dan tombol aksi dalam satu kartu putih bergaris danger lembut. */
+.home-gated__card { padding: var(--s6) var(--s5) var(--s5); background: var(--color-surface); border: 1px solid var(--color-rejection-border); border-radius: var(--r-xl); box-shadow: var(--shadow-sm); }
+.home-gated__card > .btn { margin-top: var(--s5); }
+
+/* [v2 Beranda] Skeleton mengikuti bentuk Beranda: banner 2.2:1, 4 ubin akses cepat, judul bagian, 2 kartu event. */
+.skeleton--home { padding: var(--s4) var(--s5); }
+.skh-banner { aspect-ratio: var(--banner-aspect); border-radius: var(--r-lg); }
+.skh-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s3); margin: var(--s5) 0 var(--s6); }
+.skh-tiles > .skeleton__block { height: 72px; border-radius: var(--r-lg); }
+.skh-title { width: 46%; height: 18px; }
+.skh-card { height: 120px; margin-bottom: var(--s3); }
+
 /* ---------------------------------------------------------------------------------------------------------------------
    DAFTAR BERHALAMAN  (lib/features/home/shared/paged_list.dart, dipakai Berita)
    --------------------------------------------------------------------------------------------------------------------- */

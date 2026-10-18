@@ -93,8 +93,33 @@ Kontras diukur dengan rumus WCAG 2.2.
 Etalase `components.html` punya bagian baru **Radius, kedalaman dan interaksi (v2)** untuk mencoba state layer dan
 fokus keyboard.
 
+## Beranda v2: adaptasi desain `NewDesign/home.html`
+
+Sumber: prototipe Tailwind `Unduhan/NewDesign/home.html` (16 keadaan, sama dengan `beranda/home.html`). Bahasa visualnya
+diambil, lalu disesuaikan dengan aturan mockup dan skill. Keputusan pemilik: isi akses cepat tetap sesuai aplikasi,
+tab KTA menjadi tombol tengah yang menonjol di semua layar, dan font tetap Poppins.
+
+| Bagian | Diambil dari desain baru | Disesuaikan (alasan) | Widget Dart |
+| --- | --- | --- | --- |
+| Header | Gradasi "mesh" zamrud + cahaya emas, cincin dekoratif, sudut bawah membulat, bayangan hijau, tombol kaca persegi membulat, lencana emas bercincin | Logo KAPDH tetap ada (dalam bingkai kaca bercincin emas), bukan avatar inisial. Tombol lonceng 48 x 48 (desain 40, di bawah target 48 dp). Tombol Cari dan pil angkatan tidak diambil karena fiturnya belum ada di `HomeHeader` | `HomeHeader` |
+| Navigasi bawah | Tab KTA jadi tombol tengah 56 bergradasi, naik di atas bilah | Label tetap "KTA" (teks Dart). Terpilih = cincin emas. Kolom tab tetap 72 x 64. Berlaku di 7 halaman ber-AppShell | `AppShell` |
+| Banner | Titik di dalam banner (aktif emas), judul tebal | Subjudul dan tombol CTA tidak diambil karena data banner hanya berisi gambar, judul dan tautan. Gradasi kiri tidak dipakai agar ilustrasi banner tidak tertutup | `BannerCarousel` |
+| Akses cepat | Ubin 48 radius 16 `green50` bergaris `green100`, padding kartu 16 | Isi tetap KTA, Notifikasi, Tiket Saya, Berita. Teks detail tetap 11 px (desain 9 px, terlalu kecil) | `QuickAccessRow` |
+| Judul bagian | "Lihat semua" jadi pil tonal + chevron | Area sentuh tetap 48. Subjudul bagian tidak diambil (teks baru) | `HomeSectionTitle` |
+| Kartu event | Sampul 80 x 80, ikon meta hijau, footer bergaris: status di kiri, harga di kanan | Berlaku juga di daftar Event (widget yang sama) | `EventCard` |
+| Berita | Kartu pertama hero (kategori dan tanggal/suka di atas gambar), sisanya baris ringkas 80 x 80 | Hanya di Beranda; halaman Berita tetap `PostCard` biasa | `PostCard` varian hero/compact |
+| Pengingat KTA | Tombol "Perpanjang" berwarna isi | Warna `warning` #8A5A00 dengan teks putih (5,9:1). Amber desain 2,1:1, gagal kontras | `_RenewalReminder` |
+| Memuat | Skeleton mengikuti bentuk Beranda | Shimmer v2 bernada hijau, statis bila *reduce motion* | `LoadingSkeleton` (varian Beranda) |
+| Beranda terkunci | StatusHero + tombol aksi dalam satu kartu | Judul "Akses Tersedia" tidak ditambahkan (teks baru) | `_GatedHome` |
+| Keadaan kosong/galat | Ikon dalam persegi membulat | `EmptyState`/`ErrorState` di semua layar ikut berubah | `states.dart` |
+
+Tidak diambil karena melanggar aturan mockup atau skill: Tailwind, Lucide dan foto Unsplash dari CDN, JavaScript
+pengganti keadaan, teks 9-10 px, teks `slate-400` (2,6:1 di putih), modal KTA (di aplikasi tab KTA membuka layar KTA),
+toast, dan data nyata pada contoh (mockup memakai "Ahmad Fauzi").
+
 ## Verifikasi
 
+- Setelah Beranda v2: 51 halaman tanpa gulir horizontal; footer kartu event dan baris berita tidak meluap.
 - 51 halaman layar diperiksa otomatis di browser. Tidak ada judul yang pindah baris karena bobot w700, tidak ada
   perubahan tinggi pada 305 snackbar dan kotak info, dan tidak ada gulir horizontal di dalam ponsel.
 - Kontras pasangan baru diukur dengan rumus WCAG: teks redup 5,5:1 di latar dan 6,0:1 di putih, cincin fokus 5,4:1
