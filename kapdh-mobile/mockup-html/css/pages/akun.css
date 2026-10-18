@@ -84,6 +84,63 @@
 .akun-chip { display: inline-flex; padding: var(--s1) var(--s2); border-radius: var(--r-sm); background: var(--color-info-bg); color: var(--color-info); font-size: var(--fs-caption); }
 .akun-picker__error { margin-top: var(--s1); font-size: var(--fs-caption); color: var(--color-danger); }
 
+/* [v2, usulan] KARTU FORM BERKEPALA (Profesi & Keahlian, Riwayat Pendidikan): kartu permukaan radius 16 bergaris dan
+   berbayangan seperti AccountSection, kepala ikon 24 primary + judul 17 w700 (+ deskripsi 12 abu), garis pemisah,
+   isi padding 16. Flutter: AccountFormCard(icon, title, description, child). */
+.akun-form-card { background: var(--color-surface); border: 1px solid var(--color-card-border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.akun-form-card__head { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s4); border-bottom: 1px solid var(--color-divider); }
+.akun-form-card__head > .ic { --ic-size: var(--ic-lg); flex: none; color: var(--color-primary); }
+.akun-form-card__text { flex: 1 1 auto; min-width: 0; }
+.akun-form-card__title { font-size: var(--fs-appbar); font-weight: var(--fw-heading); line-height: 1.4; letter-spacing: 0; color: var(--color-text); }
+.akun-form-card__desc { margin-top: 2px; font-size: var(--fs-caption); line-height: var(--lh-normal); color: var(--color-text-muted); }
+.akun-form-card__body { padding: var(--s4); }
+
+/* Profesi / Keahlian: label, cip terpilih yang dapat dihapus (seluruh cip = hapus, pil 36 dalam target 48), pemilih
+   "Pilih atau tambah…" (daftar master + ketik sendiri), helper. Profesi boleh lebih dari satu. */
+.akun-tagfield + .akun-tagfield { margin-top: var(--s5); }
+.akun-tags { display: flex; flex-wrap: wrap; gap: 0 var(--s2); margin-bottom: var(--s1); }
+.akun-tag {
+  display: inline-flex; align-items: center; gap: var(--s2); max-width: 100%;
+  min-height: 36px; margin: 6px 0; padding: 6px var(--s3) 6px var(--s4);
+  border-radius: var(--r-pill); background: var(--color-tint); color: var(--color-primary);
+  font-size: var(--fs-13); font-weight: 500; line-height: 1.35; letter-spacing: 0; text-align: left;
+}
+.akun-tag { position: relative; }
+.akun-tag::before { content: ""; position: absolute; inset: -6px 0; } /* area ketuk 48 tanpa mengubah pil 36 */
+.akun-tag .ic { --ic-size: var(--ic-sm); flex: none; }
+.akun-tagfield .field__helper { margin-top: var(--s2); }
+
+/* RIWAYAT PENDIDIKAN (menggantikan Lulusan Terakhir: Institusi + Kota): entri berulang "Pendidikan n" dalam kotak latar
+   radius 12, judul 14 w600 + tombol hapus 48 merah, field Universitas/Instansi, Jurusan/Program Studi, Strata (pilihan
+   D3/S1/S2/S3/Lainnya), Tahun Tamat (pilihan tahun, helper "Tahun ijazah terbit."), lalu "Tambah Riwayat". */
+.akun-edu { padding-bottom: var(--s2); }
+.akun-edu__item { padding: 0 var(--s3); background: var(--color-background); border: 1px solid var(--color-card-border); border-radius: var(--r-md); }
+.akun-edu__item + .akun-edu__item { margin-top: var(--s3); }
+.akun-edu__head { display: flex; align-items: center; gap: var(--s2); min-height: 48px; margin-right: calc(-1 * var(--s2)); }
+.akun-edu__title { flex: 1 1 auto; min-width: 0; font-size: var(--fs-body); font-weight: var(--fw-semibold); }
+.akun-edu__remove { color: var(--color-danger); }
+.akun-edu__remove .ic { --ic-size: var(--ic-md); }
+.akun-edu__helper { padding-left: 0; }
+.akun-edu__add { margin-top: var(--s2); margin-left: calc(-1 * var(--s3)); }
+
+/* MEDIA SOSIAL (menggantikan 4 field tetap Instagram/X/Facebook/LinkedIn): baris tautan berulang, maksimal 10.
+   Tiap baris: pemilih platform berlogo (DropdownMenu: Instagram, TikTok, X, Facebook, LinkedIn, YouTube, Threads,
+   Telegram, Situs web) + tombol hapus 48 merah, lalu field nama pengguna/tautan. Helper + "Tambah tautan". */
+.akun-social__item { position: relative; }
+.akun-social__item + .akun-social__item { margin-top: var(--s4); padding-top: var(--s4); border-top: 1px solid var(--color-divider); }
+.akun-social__row { display: flex; align-items: center; gap: var(--s1); margin-bottom: var(--s2); margin-right: calc(-1 * var(--s2)); }
+.akun-social__platform { flex: 1 1 auto; min-width: 0; }
+.akun-social__platform .input__prefix { color: var(--color-text); }
+.akun-social__platform .input__prefix + .input__value { padding-left: 3px; }
+.akun-social__help { margin-top: var(--s3); }
+/* Menu terbuka: menumpuk isi di bawahnya, selebar pemilih (tanpa tombol hapus). */
+.akun-social__menu { position: absolute; z-index: 5; top: 54px; left: 0; right: 48px; }
+.akun-form-card:has(.akun-social__item.is-open) { position: relative; z-index: 3; overflow: visible; } /* menu menumpuk keluar kartu */
+.akun-social__option { gap: var(--s3); }
+.akun-social__option .ic { --ic-size: var(--ic-md); color: var(--color-text-muted); }
+.akun-social__option.is-selected { background: var(--color-tint-strong); font-weight: 600; }
+.akun-social__option.is-selected .ic { color: var(--color-primary); }
+
 /* Lembar pilih profesi/keahlian (widgets/master_picker.dart): SizedBox(tinggi layar x 0.85 = 680) di SafeArea. */
 .akun-master { height: 680px; display: flex; flex-direction: column; }
 .akun-master__head { display: flex; align-items: center; padding: var(--s4) var(--s2) 0 var(--s5); }
