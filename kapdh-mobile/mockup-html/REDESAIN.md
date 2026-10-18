@@ -125,7 +125,8 @@ regular, fill dan duotone dalam satu keluarga.
 
 | Tempat | Gaya | Material lama -> Phosphor | Dart |
 | --- | --- | --- | --- |
-| Akses cepat KTA | Duotone | `badge_outlined` -> `identification-card-duotone` | `KapdhIcons.identificationCardDuotone` |
+| Akses cepat Pesan (anggota aktif; menggantikan KTA) | Duotone | `chat_bubble_outline` -> `chat-circle-dots-duotone` | `KapdhIcons.chatCircleDotsDuotone` |
+| Akses cepat KTA (KTA tidak aktif/kedaluwarsa) | Duotone | `badge_outlined` -> `identification-card-duotone` | `KapdhIcons.identificationCardDuotone` |
 | Akses cepat Notifikasi | Duotone | `notifications_outlined` -> `bell-simple-ringing-duotone` | `KapdhIcons.bellSimpleRingingDuotone` |
 | Akses cepat Tiket Saya | Duotone | `confirmation_number_outlined` -> `ticket-duotone` | `KapdhIcons.ticketDuotone` |
 | Akses cepat Berita | Duotone | `article_outlined` -> `newspaper-clipping-duotone` | `KapdhIcons.newspaperClippingDuotone` |
@@ -227,6 +228,37 @@ terasa renggang; pada lebar >= 840 dp sebaiknya pindah ke `NavigationRail` (belu
 text-muted (4,65:1), status bar ikon gelap. Halaman galat konfigurasi tetap hijau tua. Flutter nanti: `Scaffold` dengan
 `DecoratedBox(gradient)` dan `SystemUiOverlayStyle.dark`; splash native (`flutter_native_splash`) perlu warna
 `#FAFAFA` agar transisinya mulus.
+
+**Header Profil Alumni** (usulan, `jejaring/member-profile.html`). Dulu pita hijau bermotif 112 dp yang kosong
+(hanya tombol kembali dan menu), lalu avatar 72 dan nama rata kiri di bawahnya. Sekarang pita zamrud 132 dp dengan
+bahasa visual header Beranda v2: gradasi 135° green950 → green800 → green700, cahaya emas kanan atas dan hijau kiri
+bawah, motif quatrefoil samar, dua cincin dekoratif, sudut bawah 24 dan garis emas tipis. Tombol kembali dan menu
+menjadi tombol kaca 48 dp, dengan judul "Profil Alumni" di tengah agar pengguna tahu sedang di mana. Avatar membesar
+ke 96 dp dengan cincin permukaan 4 dan cincin emas 2, menumpuk tepi pita sejauh 48. Nama dan kontak terpusat di
+bawahnya. Judul putih di pita 7,9:1 pada titik henti tercerah (green700); pita memakai palet merek tetap, jadi sama di mode gelap. Lolos teks
+200 % dan tablet. Flutter nanti: `BrandHeader(minHeight: 132)` + `Transform.translate(offset: Offset(0, -48))`
+untuk avatar.
+
+**Akses cepat: Pesan menggantikan KTA** (usulan). Untuk anggota aktif, ubin pertama kini "Pesan" (jumlah percakapan
+belum dibaca, ke tab Jejaring > Pesan), karena KTA sudah bisa dibuka dari tombol tengah navigasi bawah sehingga ubin KTA
+dobel. Pada KTA tidak aktif atau kedaluwarsa ubin KTA tetap (status KTA penting di sana dan Jejaring terkunci). Flutter
+nanti: `QuickAction` pertama di `_QuickAccess` memakai `KapdhIcons.chatCircleDotsDuotone` dan penghitung belum dibaca
+chat; `HomeQuickAccess` perlu field jumlah pesan belum dibaca (API `/home` atau penghitung chat yang sudah ada).
+
+**Semua pita hijau disamakan** (usulan). Sebelumnya ada empat gaya pita: gradasi datar (Status Akun, Dibatasi,
+alur daftar/OTP/lupa password, pembayaran), quatrefoil (Akun), gelombang (Masuk) dan mesh zamrud (Beranda, Profil
+Alumni). Sekarang semua `.brand-band` memakai dasar yang sama dengan header Beranda:
+
+- token `--gradient-brand-mesh`: 135° green950 → green800 → green700, cahaya emas kanan atas, cahaya hijau kiri bawah;
+- dua cincin dekoratif;
+- tombol ikon kaca 48 dp;
+- logo pita sapaan dalam bingkai kaca bercincin emas (48 dp, dulu 44).
+
+Motif tetap menumpuk di atas dasar itu: gelombang di Masuk, quatrefoil di Akun dan Profil Alumni. Sudut bawah 24 dan
+bayangan hanya untuk pita yang berdiri sendiri (Beranda, Profil Alumni); pita yang ditumpuk lembar terang tetap lurus
+karena lembarnya sudah membulat. Pengisi status bar layar Masuk mengikuti tepi atas mesh. App bar putih di layar
+detail sengaja tidak diubah (pola Material 3). Flutter nanti: `KapdhGradients.brandMesh` dipakai `BrandHeader` dan
+`HomeHeader`, cincin sebagai satu `CustomPainter` bersama.
 
 **Token ukuran ikon** (usulan `KapdhIconSize`): `--ic-xs` 14, `--ic-sm` 16, `--ic-btn` 18, `--ic-md` 20,
 `--ic-lg` 24 (bawaan), `--ic-xl` 28. Kelas `.ic-s14` sampai `.ic-s28` dan 47 nilai `--ic-size` di komponen kini

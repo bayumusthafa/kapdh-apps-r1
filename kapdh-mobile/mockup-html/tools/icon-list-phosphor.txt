@@ -5,6 +5,7 @@
 
 # Akses cepat (QuickAccessRow): duotone
 identification-card-duotone
+chat-circle-dots-duotone
 bell-simple-ringing-duotone
 ticket-duotone
 newspaper-clipping-duotone

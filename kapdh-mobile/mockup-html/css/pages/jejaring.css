@@ -115,13 +115,35 @@
 /* ---------------------------------------------------------------------------------------------------------------------
    PROFIL ALUMNI  member_profile_screen.dart
    --------------------------------------------------------------------------------------------------------------------- */
-/* BrandHeader(minHeight 112, padding 4/4/4/0) + inset status bar: tombol kembali dan menu titik tiga putih. */
+/* [v2, usulan] Header Profil Alumni: pita zamrud bahasa Beranda v2 (cahaya emas kanan atas, cahaya hijau kiri bawah,
+   motif quatrefoil samar, dua cincin dekoratif; dasar dari .brand-band), sudut bawah 24 dan garis emas tipis. Baris atas: tombol kaca 48,
+   judul "Profil Alumni" di tengah (dulu tanpa judul). Avatar 96 bercincin emas menumpuk tepi pita; nama dan kontak
+   terpusat di bawahnya. Pita memakai palet merek tetap, jadi sama di mode gelap.
+   Flutter: BrandHeader(minHeight 132, motif quatrefoil) + Stack avatar Transform.translate(0, -48). */
 .brand-band.jj-profile-band {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  min-height: calc(112px + var(--inset-top));
+  display: grid; grid-template-columns: 48px minmax(0, 1fr) 48px; align-items: start;
+  min-height: calc(132px + var(--inset-top));
   padding: calc(var(--s1) + var(--inset-top)) var(--s1) 0;
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  box-shadow: 0 12px 28px -10px rgba(14, 40, 12, .55), inset 0 -1px 0 rgba(230, 211, 18, .28);
 }
-.jj-profile-band .icon-btn { color: var(--color-text-on-dark); }
+.jj-profile-band .icon-btn:last-child:not(:first-child) { grid-column: 3; }
+.jj-profile-band__title {
+  grid-column: 2; grid-row: 1; min-height: 48px; display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-appbar); font-weight: var(--fw-heading); letter-spacing: 0; line-height: 1.3; text-align: center;
+  color: var(--color-text-on-dark);
+}
+/* Avatar 96 menumpuk tepi pita sejauh 48: cincin permukaan 4 (memisahkan dari pita) + cincin emas 2 + bayangan. */
+.jj-profile-band + .jj-profile-head {
+  position: relative; z-index: 1; flex-direction: column; align-items: center; gap: var(--s3);
+  margin-top: -48px; padding-top: 0; text-align: center;
+}
+.jj-profile-band + .jj-profile-head .avatar {
+  --av: 96px;
+  box-shadow: 0 0 0 4px var(--color-surface), 0 0 0 6px var(--color-accent), 0 12px 24px -6px rgba(14, 40, 12, .45);
+}
+.jj-profile-band + .jj-profile-head .jj-profile-head__text { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.jj-profile-band + .jj-profile-head .jj-icon-line { justify-content: center; }
 /* Baris avatar 72 + nama: padding 20/16, celah 16; nama 20 w700 (tinggi 1.45 diwarisi) */
 .jj-profile-head { display: flex; align-items: flex-start; gap: var(--s4); padding: var(--s4) var(--s5); }
 .jj-profile-head__text { flex: 1 1 auto; min-width: 0; }
