@@ -219,7 +219,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           tooltip: 'Tandai semua dibaca',
           icon: _markingAll
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.done_all),
+              : const Icon(KapdhIcons.doneAll),
           onPressed: _unread > 0 && !_markingAll && _items.isNotEmpty ? _markAll : null,
         ),
       ],
@@ -266,7 +266,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             SizedBox(
               height: 420,
               child: EmptyState(
-                icon: Icons.notifications_none,
+                icon: KapdhIcons.notificationsNone,
                 title: _unreadOnly ? 'Semua notifikasi sudah dibaca' : 'Belum ada notifikasi',
                 message: _unreadOnly
                     ? 'Notifikasi baru akan tampil di sini.'
@@ -314,7 +314,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.danger),
             ),
-            KapdhLinkButton(label: 'Coba lagi', icon: Icons.refresh, onPressed: _loadMore),
+            KapdhLinkButton(label: 'Coba lagi', icon: KapdhIcons.refresh, onPressed: _loadMore),
           ],
         ),
       );

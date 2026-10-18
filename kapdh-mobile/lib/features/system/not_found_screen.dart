@@ -12,7 +12,7 @@ class NotFoundScreen extends StatelessWidget {
     return AppScaffold(
       title: 'Halaman tidak ditemukan',
       body: EmptyState(
-        icon: Icons.search_off,
+        icon: KapdhIcons.searchOff,
         title: 'Halaman tidak ditemukan',
         message: 'Tautan ini tidak tersedia atau sudah tidak berlaku.',
         actionLabel: 'Ke halaman utama',

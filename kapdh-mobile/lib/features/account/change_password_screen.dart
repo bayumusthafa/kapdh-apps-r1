@@ -133,7 +133,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
           padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s8),
           children: [
             const InfoBox(
-              icon: Icons.lock_outline,
+              icon: KapdhIcons.lockOutline,
               message:
                   'Masukkan password saat ini untuk mengonfirmasi bahwa ini Anda. Setelah diganti, perangkat lain '
                   'yang masuk ke akun Anda akan dikeluarkan.',
@@ -237,7 +237,7 @@ class _PasswordRules extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.only(right: KapdhSpace.s1),
                 child: Icon(
-                  ok ? Icons.check_circle : Icons.radio_button_unchecked,
+                  ok ? KapdhIcons.checkCircle : KapdhIcons.radioButtonUnchecked,
                   size: 16,
                   color: ok ? KapdhColors.success : KapdhColors.textMuted,
                 ),

@@ -32,7 +32,7 @@ class DirectoryTab extends ConsumerWidget {
       body = ErrorState.fromException(state.error!, onRetry: controller.refresh);
     } else if (state.isEmpty) {
       body = EmptyState(
-        icon: Icons.person_search_outlined,
+        icon: KapdhIcons.personSearchOutlined,
         title: 'Alumni tidak ditemukan',
         message: filter.isEmpty
             ? 'Belum ada alumni aktif yang menampilkan profilnya di direktori.'

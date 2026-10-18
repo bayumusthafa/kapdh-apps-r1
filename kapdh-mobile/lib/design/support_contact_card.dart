@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/theme/kapdh_tokens.dart';
+import 'kapdh_icons.dart';
 
 /// Kanal dukungan pengurus (PRD 4.5 maintenance/wajib update, 2.2 portal pembatasan; PRD 8.3). Bila kontak belum
 /// dimuat (offline), alamat email bawaan ditampilkan.
@@ -46,9 +47,14 @@ class SupportContactCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: KapdhSpace.s1),
-          _ContactRow(icon: Icons.mail_outline, label: 'Email pengurus', value: mail, onTap: () => onEmail(mail)),
+          _ContactRow(icon: KapdhIcons.mailOutline, label: 'Email pengurus', value: mail, onTap: () => onEmail(mail)),
           if (wa != null && wa.isNotEmpty && onWhatsApp != null)
-            _ContactRow(icon: Icons.chat_outlined, label: 'WhatsApp pengurus', value: wa, onTap: () => onWhatsApp!(wa)),
+            _ContactRow(
+              icon: KapdhIcons.chatOutlined,
+              label: 'WhatsApp pengurus',
+              value: wa,
+              onTap: () => onWhatsApp!(wa),
+            ),
         ],
       ),
     );
@@ -95,7 +101,7 @@ class _ContactRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.open_in_new, size: 18, color: KapdhColors.textMuted),
+              const Icon(KapdhIcons.openInNew, size: 18, color: KapdhColors.textMuted),
             ],
           ),
         ),

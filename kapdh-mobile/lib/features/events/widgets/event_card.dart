@@ -88,7 +88,7 @@ class EventCard extends StatelessWidget {
             width: 92,
             height: 76,
             borderRadius: BorderRadius.circular(KapdhRadius.md),
-            placeholderIcon: Icons.event,
+            placeholderIcon: KapdhIcons.event,
           ),
           const SizedBox(width: KapdhSpace.s3),
           Expanded(
@@ -103,10 +103,10 @@ class EventCard extends StatelessWidget {
                   style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: KapdhSpace.s1),
-                IconLine(icon: Icons.calendar_today_outlined, text: day),
+                IconLine(icon: KapdhIcons.calendarTodayOutlined, text: day),
                 if (locationName != null) ...[
                   const SizedBox(height: 2),
-                  IconLine(icon: Icons.place_outlined, text: locationName!),
+                  IconLine(icon: KapdhIcons.placeOutlined, text: locationName!),
                 ],
                 const SizedBox(height: 6),
                 Wrap(

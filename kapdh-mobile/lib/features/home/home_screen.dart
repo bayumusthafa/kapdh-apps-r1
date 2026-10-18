@@ -132,7 +132,7 @@ class _ActiveHome extends ConsumerWidget {
           const SizedBox(height: KapdhSpace.s5),
           if (allEmpty)
             EmptyState(
-              icon: Icons.campaign_outlined,
+              icon: KapdhIcons.campaignOutlined,
               title: 'Belum ada kabar terbaru',
               message:
                   'Pengurus belum menerbitkan berita atau event. Tarik layar ke bawah untuk memuat ulang; kabar baru '
@@ -145,7 +145,7 @@ class _ActiveHome extends ConsumerWidget {
             const SizedBox(height: KapdhSpace.s2),
             if (home.upcomingEvents.isEmpty)
               const SectionEmpty(
-                icon: Icons.event_outlined,
+                icon: KapdhIcons.eventOutlined,
                 message: 'Belum ada event mendatang. Event baru dari pengurus akan tampil di sini.',
               )
             else
@@ -158,7 +158,7 @@ class _ActiveHome extends ConsumerWidget {
             const SizedBox(height: KapdhSpace.s2),
             if (home.posts.isEmpty)
               const SectionEmpty(
-                icon: Icons.article_outlined,
+                icon: KapdhIcons.articleOutlined,
                 message: 'Belum ada berita terbit. Berita resmi pengurus akan tampil di sini.',
               )
             else
@@ -187,14 +187,14 @@ class _CacheNotice extends StatelessWidget {
     final updated = 'Diperbarui ${formatDateTime(generatedAt)}.';
     final failure = error;
     if (failure == null) {
-      return InfoBox(icon: Icons.history, title: 'Menampilkan data tersimpan', message: '$updated Memperbarui…');
+      return InfoBox(icon: KapdhIcons.history, title: 'Menampilkan data tersimpan', message: '$updated Memperbarui…');
     }
     final offline = failure.isNetwork;
     return Semantics(
       liveRegion: true,
       child: InfoBox(
         tone: InfoBoxTone.warning,
-        icon: offline ? Icons.cloud_off : Icons.sync_problem,
+        icon: offline ? KapdhIcons.cloudOff : KapdhIcons.syncProblem,
         title: offline ? 'Offline' : 'Beranda belum dapat diperbarui',
         message: offline ? '$updated Periksa koneksi internet Anda.' : '$updated ${failure.message}',
         trailing: loading ? null : TextButton(onPressed: onRetry, child: const Text('Coba lagi')),
@@ -220,27 +220,27 @@ class _QuickAccess extends StatelessWidget {
       actions: [
         QuickAction(
           key: const ValueKey('quick-kta'),
-          icon: Icons.badge_outlined,
+          icon: KapdhIcons.identificationCardDuotone,
           label: 'KTA',
           detail: quickAccess.memberNumber ?? membershipLabel(quickAccess.effectiveStatus),
           onTap: () => context.go(AppRoutes.kta),
         ),
         QuickAction(
           key: const ValueKey('quick-notifications'),
-          icon: Icons.notifications_outlined,
+          icon: KapdhIcons.bellSimpleRingingDuotone,
           label: 'Notifikasi',
           detail: _unreadDetail(unread),
           onTap: () => unawaited(context.push(AppRoutes.notifications)),
         ),
         QuickAction(
           key: const ValueKey('quick-tickets'),
-          icon: Icons.confirmation_number_outlined,
+          icon: KapdhIcons.ticketDuotone,
           label: 'Tiket Saya',
           onTap: () => unawaited(context.push(AppRoutes.tickets)),
         ),
         QuickAction(
           key: const ValueKey('quick-news'),
-          icon: Icons.article_outlined,
+          icon: KapdhIcons.newspaperClippingDuotone,
           label: 'Berita',
           onTap: () => unawaited(context.push(AppRoutes.news)),
         ),
@@ -260,7 +260,7 @@ class _RenewalReminder extends StatelessWidget {
     final until = expiresAt == null ? '' : ' pada ${formatDate(expiresAt!)}';
     return InfoBox(
       tone: InfoBoxTone.warning,
-      icon: Icons.schedule,
+      icon: KapdhIcons.schedule,
       title: 'Masa aktif KTA segera berakhir',
       message: 'KTA Anda berakhir$until. Perpanjang sekarang agar akses event, jejaring dan chat tidak terputus.',
       trailing: TextButton(onPressed: () => context.go(AppRoutes.renewal), child: const Text('Perpanjang')),
@@ -303,7 +303,12 @@ class _GatedHome extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s6, KapdhSpace.s5, KapdhSpace.s8),
       children: [
-        StatusHero(status: StatusStyles.membership(current), icon: Icons.lock_outline, title: title, message: message),
+        StatusHero(
+          status: StatusStyles.membership(current),
+          icon: KapdhIcons.lockOutline,
+          title: title,
+          message: message,
+        ),
         if (actionLabel != null && actionRoute != null) ...[
           const SizedBox(height: KapdhSpace.s5),
           KapdhButton(label: actionLabel, onPressed: () => context.go(actionRoute)),
@@ -313,14 +318,14 @@ class _GatedHome extends StatelessWidget {
           actions: [
             QuickAction(
               key: const ValueKey('quick-kta'),
-              icon: Icons.badge_outlined,
+              icon: KapdhIcons.identificationCardDuotone,
               label: 'KTA',
               detail: membershipLabel(current),
               onTap: () => context.go(AppRoutes.kta),
             ),
             QuickAction(
               key: const ValueKey('quick-notifications'),
-              icon: Icons.notifications_outlined,
+              icon: KapdhIcons.bellSimpleRingingDuotone,
               label: 'Notifikasi',
               detail: switch (unread) {
                 final count? => _unreadDetail(count),
@@ -331,7 +336,7 @@ class _GatedHome extends StatelessWidget {
             if (expired)
               QuickAction(
                 key: const ValueKey('quick-tickets'),
-                icon: Icons.confirmation_number_outlined,
+                icon: KapdhIcons.ticketDuotone,
                 label: 'Tiket Saya',
                 onTap: () => unawaited(context.push(AppRoutes.tickets)),
               ),

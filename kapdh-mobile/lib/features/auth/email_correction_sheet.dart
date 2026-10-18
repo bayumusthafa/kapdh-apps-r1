@@ -183,7 +183,7 @@ class _EmailCorrectionSheetState extends ConsumerState<EmailCorrectionSheet> {
                     label: 'Email baru',
                     controller: _email,
                     hint: 'Masukkan email yang benar',
-                    prefixIcon: Icons.mail_outline,
+                    prefixIcon: KapdhIcons.mailOutline,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     autofillHints: const [AutofillHints.email],

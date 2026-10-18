@@ -103,18 +103,18 @@ class _ConnectionProblem extends StatelessWidget {
   Widget build(BuildContext context) {
     final (IconData icon, String title, String message) = switch (issue) {
       SessionIssue.offline => (
-        Icons.cloud_off,
+        KapdhIcons.cloudOff,
         'Tanpa koneksi',
         'Periksa koneksi internet Anda lalu coba lagi. Sesi Anda tetap tersimpan di perangkat ini.',
       ),
       SessionIssue.storage => (
-        Icons.phonelink_lock,
+        KapdhIcons.phonelinkLock,
         'Data sesi belum dapat dibaca',
         'Penyimpanan aman perangkat sedang tidak dapat dibuka. Coba lagi; bila terus berulang, tutup lalu buka '
             'kembali aplikasi. Sesi Anda tidak dihapus.',
       ),
       _ => (
-        Icons.dns_outlined,
+        KapdhIcons.dnsOutlined,
         'Server belum dapat dihubungi',
         'Layanan sedang sibuk atau bermasalah. Coba lagi beberapa saat lagi; sesi Anda tetap tersimpan.',
       ),
@@ -144,7 +144,7 @@ class _ConnectionProblem extends StatelessWidget {
           const SizedBox(height: KapdhSpace.s5),
           OutlinedButton.icon(
             onPressed: onRetry,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(KapdhIcons.refresh),
             label: const Text('Coba lagi'),
             style: OutlinedButton.styleFrom(
               foregroundColor: KapdhColors.accent,

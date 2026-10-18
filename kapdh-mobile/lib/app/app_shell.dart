@@ -34,11 +34,26 @@ class AppShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
 
   static const tabs = [
-    ShellTab(label: 'Beranda', icon: Icons.home_outlined, selectedIcon: Icons.home, location: AppRoutes.home),
-    ShellTab(label: 'Event', icon: Icons.event_outlined, selectedIcon: Icons.event, location: AppRoutes.events),
-    ShellTab(label: 'KTA', icon: Icons.badge_outlined, selectedIcon: Icons.badge, location: AppRoutes.kta),
-    ShellTab(label: 'Jejaring', icon: Icons.school_outlined, selectedIcon: Icons.school, location: AppRoutes.network),
-    ShellTab(label: 'Akun', icon: Icons.person_outline, selectedIcon: Icons.person, location: AppRoutes.account),
+    ShellTab(label: 'Beranda', icon: KapdhIcons.homeOutlined, selectedIcon: KapdhIcons.home, location: AppRoutes.home),
+    ShellTab(
+      label: 'Event',
+      icon: KapdhIcons.eventOutlined,
+      selectedIcon: KapdhIcons.event,
+      location: AppRoutes.events,
+    ),
+    ShellTab(label: 'KTA', icon: KapdhIcons.badgeOutlined, selectedIcon: KapdhIcons.badge, location: AppRoutes.kta),
+    ShellTab(
+      label: 'Jejaring',
+      icon: KapdhIcons.schoolOutlined,
+      selectedIcon: KapdhIcons.school,
+      location: AppRoutes.network,
+    ),
+    ShellTab(
+      label: 'Akun',
+      icon: KapdhIcons.personOutline,
+      selectedIcon: KapdhIcons.person,
+      location: AppRoutes.account,
+    ),
   ];
 
   @override
@@ -110,7 +125,7 @@ class _TabIcon extends StatelessWidget {
     return Badge(
       backgroundColor: KapdhColors.neutral,
       padding: const EdgeInsets.all(2),
-      label: const Icon(Icons.lock, size: 10, color: KapdhColors.onPrimary),
+      label: const Icon(KapdhIcons.lock, size: 10, color: KapdhColors.onPrimary),
       child: Icon(icon),
     );
   }
@@ -152,7 +167,7 @@ Future<void> showLockedTabSheet(BuildContext context, {required ShellTab tab, re
               status: status == null
                   ? StatusStyles.membership(EffectiveStatus.unknown)
                   : StatusStyles.membership(status),
-              icon: Icons.lock_outline,
+              icon: KapdhIcons.lockOutline,
               title: '${tab.label} terkunci',
               message: message,
             ),
@@ -170,7 +185,7 @@ Future<void> showLockedTabSheet(BuildContext context, {required ShellTab tab, re
               KapdhButton.outlined(
                 key: const ValueKey('locked-tab-tickets'),
                 label: 'Lihat Tiket Saya',
-                icon: Icons.confirmation_number_outlined,
+                icon: KapdhIcons.confirmationNumberOutlined,
                 onPressed: () {
                   Navigator.of(sheetContext).pop();
                   unawaited(router.push(AppRoutes.tickets));

@@ -153,7 +153,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
           children: [
             if (notice != null) Padding(padding: const EdgeInsets.all(KapdhSpace.s5), child: notice),
             EmptyState(
-              icon: Icons.receipt_long_outlined,
+              icon: KapdhIcons.receiptLongOutlined,
               title: 'Belum ada pembayaran',
               message: 'Iuran keanggotaan dan pembayaran tiket Anda akan tampil di sini beserta statusnya.',
               actionLabel: unverified ? 'Bayar iuran' : null,
@@ -226,10 +226,10 @@ class PaymentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final icon = switch (payment.type) {
-      PaymentType.registration => Icons.card_membership_outlined,
-      PaymentType.renewal => Icons.autorenew,
-      PaymentType.ticket => Icons.confirmation_number_outlined,
-      PaymentType.unknown => Icons.receipt_long_outlined,
+      PaymentType.registration => KapdhIcons.cardMembershipOutlined,
+      PaymentType.renewal => KapdhIcons.autorenew,
+      PaymentType.ticket => KapdhIcons.confirmationNumberOutlined,
+      PaymentType.unknown => KapdhIcons.receiptLongOutlined,
     };
     final badge = paymentBadge(payment);
     final title = paymentTitle(payment);
@@ -279,7 +279,7 @@ class PaymentTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: KapdhColors.textMuted),
+                const Icon(KapdhIcons.chevronRight, color: KapdhColors.textMuted),
               ],
             ),
           ),

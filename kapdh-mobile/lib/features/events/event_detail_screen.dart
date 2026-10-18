@@ -56,7 +56,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     } else if (event == null && error != null) {
       if (error.code == ErrorCode.notFound) {
         body = EmptyState(
-          icon: Icons.event_busy_outlined,
+          icon: KapdhIcons.eventBusyOutlined,
           title: 'Event tidak tersedia',
           message: 'Event ini belum diterbitkan atau sudah dihapus pengurus.',
           actionLabel: active ? 'Lihat event lain' : 'Lihat tiket saya',
@@ -202,7 +202,7 @@ class _EventContent extends ConsumerWidget {
             url: event.coverUrl,
             semanticLabel: 'Cover event ${event.title}',
             borderRadius: BorderRadius.circular(KapdhRadius.lg),
-            placeholderIcon: Icons.event,
+            placeholderIcon: KapdhIcons.event,
           ),
         ),
         const SizedBox(height: KapdhSpace.s4),
@@ -227,7 +227,7 @@ class _EventContent extends ConsumerWidget {
           const SizedBox(height: KapdhSpace.s3),
           InfoBox(
             tone: InfoBoxTone.danger,
-            icon: Icons.cancel_outlined,
+            icon: KapdhIcons.cancelOutlined,
             title: 'Event dibatalkan',
             message: [
               if (event.cancelReason != null && event.cancelReason!.trim().isNotEmpty)
@@ -245,14 +245,14 @@ class _EventContent extends ConsumerWidget {
         _InfoCard(
           children: [
             IconLine(
-              icon: Icons.calendar_today_outlined,
+              icon: KapdhIcons.calendarTodayOutlined,
               text: formatEventSchedule(event.startsAt, event.endsAt, zone),
               color: KapdhColors.text,
               size: 13,
             ),
             if (event.locationName != null || event.locationAddress != null)
               IconLine(
-                icon: Icons.place_outlined,
+                icon: KapdhIcons.placeOutlined,
                 text: [?event.locationName, ?event.locationAddress].join('\n'),
                 color: KapdhColors.text,
                 size: 13,
@@ -260,14 +260,14 @@ class _EventContent extends ConsumerWidget {
             if (event.locationUrl != null) _MapLink(url: event.locationUrl!),
             _Quota(available: event.seatsAvailable, total: event.seatsTotal),
             IconLine(
-              icon: Icons.payments_outlined,
+              icon: KapdhIcons.paymentsOutlined,
               text:
                   'Harga tiket: ${formatEventPrice(event.price, isFree: event.isFree)} (satu tiket untuk Anda sendiri)',
               color: KapdhColors.text,
               size: 13,
             ),
             IconLine(
-              icon: Icons.how_to_reg_outlined,
+              icon: KapdhIcons.howToRegOutlined,
               text:
                   'Pendaftaran: ${formatDateTime(event.registrationOpensAt, zone: zone)} – '
                   '${formatDateTime(event.registrationClosesAt, zone: zone)}',
@@ -275,7 +275,7 @@ class _EventContent extends ConsumerWidget {
               size: 13,
             ),
             IconLine(
-              icon: Icons.qr_code_scanner,
+              icon: KapdhIcons.qrCodeScanner,
               text:
                   'Check-in: ${formatDateTime(event.checkinOpensAt, zone: zone)} – '
                   '${formatDateTime(event.checkinClosesAt, zone: zone)}',
@@ -286,11 +286,15 @@ class _EventContent extends ConsumerWidget {
         ),
         if (myTicket != null) ...[const SizedBox(height: KapdhSpace.s4), _MyTicketCard(ticket: myTicket)],
         const SizedBox(height: KapdhSpace.s4),
-        InfoBox(icon: Icons.policy_outlined, title: 'Pembatalan dan refund', message: event.cancellationPolicy.summary),
+        InfoBox(
+          icon: KapdhIcons.policyOutlined,
+          title: 'Pembatalan dan refund',
+          message: event.cancellationPolicy.summary,
+        ),
         if (!event.isFree && event.canReserve) ...[
           const SizedBox(height: KapdhSpace.s3),
           InfoBox(
-            icon: Icons.timer_outlined,
+            icon: KapdhIcons.timerOutlined,
             message:
                 'Event berbayar: kursi ditahan maksimal ${event.holdHours} jam atau sampai pendaftaran ditutup, mana '
                 'yang lebih dahulu. Kirim bukti transfer sebelum batas waktu.',
@@ -344,7 +348,7 @@ class _Quota extends StatelessWidget {
       excludeSemantics: true,
       child: Row(
         children: [
-          const Icon(Icons.groups_outlined, size: 18, color: KapdhColors.primary),
+          const Icon(KapdhIcons.groupsOutlined, size: 18, color: KapdhColors.primary),
           const SizedBox(width: 6),
           Text(
             '$available/$total',
@@ -399,7 +403,7 @@ class _MyTicketCard extends StatelessWidget {
       semanticsLabel: 'Tiket Anda: ${style.label}. Buka detail tiket.',
       child: Row(
         children: [
-          const Icon(Icons.confirmation_number_outlined, color: KapdhColors.primary),
+          const Icon(KapdhIcons.confirmationNumberOutlined, color: KapdhColors.primary),
           const SizedBox(width: KapdhSpace.s3),
           Expanded(
             child: Column(
@@ -411,7 +415,7 @@ class _MyTicketCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: KapdhColors.textMuted),
+          const Icon(KapdhIcons.chevronRight, color: KapdhColors.textMuted),
         ],
       ),
     );
@@ -556,7 +560,7 @@ class _ActionBar extends StatelessWidget {
       button = KapdhButton.solid(
         key: const ValueKey('event-open-ticket'),
         label: 'Lihat Tiket Saya',
-        icon: Icons.confirmation_number_outlined,
+        icon: KapdhIcons.confirmationNumberOutlined,
         onPressed: () => unawaited(context.push(AppRoutes.ticket(myTicket.id))),
       );
     } else {

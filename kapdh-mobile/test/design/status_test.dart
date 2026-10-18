@@ -48,7 +48,7 @@ void main() {
 
   testWidgets('StatusBadge menampilkan ikon dan label; diumumkan sebagai status', (tester) async {
     await pumpDesign(tester, StatusBadge(StatusStyles.card(MemberCardStatus.active)));
-    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    expect(find.byIcon(KapdhIcons.checkCircle), findsOneWidget);
     expect(find.textContaining('KTA Aktif'), findsOneWidget);
     expect(find.bySemanticsLabel('Status: KTA Aktif'), findsOneWidget);
   });
@@ -58,7 +58,7 @@ void main() {
       tester,
       StatusHero(
         status: StatusStyles.payment(PaymentStatus.pending, proofSubmitted: true),
-        icon: Icons.hourglass_top,
+        icon: KapdhIcons.hourglassTop,
         title: 'Bukti pembayaran sedang diperiksa',
         message: 'Pengurus akan mencocokkan transfer Anda.',
       ),
@@ -106,8 +106,8 @@ void main() {
         ],
       ),
     );
-    expect(find.byIcon(Icons.check), findsOneWidget);
-    expect(find.byIcon(Icons.close), findsOneWidget);
+    expect(find.byIcon(KapdhIcons.check), findsOneWidget);
+    expect(find.byIcon(KapdhIcons.close), findsOneWidget);
     expect(find.bySemanticsLabel(RegExp('Bukti transfer dikirim, selesai')), findsOneWidget);
     expect(find.bySemanticsLabel(RegExp('Menunggu verifikasi pengurus, sedang berlangsung')), findsOneWidget);
   });
@@ -135,9 +135,9 @@ void main() {
         ],
       ),
     );
-    expect(find.byIcon(Icons.info_outline), findsOneWidget);
-    expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.error_outline), findsOneWidget);
+    expect(find.byIcon(KapdhIcons.infoOutline), findsOneWidget);
+    expect(find.byIcon(KapdhIcons.warningAmberRounded), findsOneWidget);
+    expect(find.byIcon(KapdhIcons.errorOutline), findsOneWidget);
     expect(find.text('Gagal'), findsOneWidget);
   });
 }

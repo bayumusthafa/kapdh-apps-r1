@@ -44,7 +44,7 @@ class MemberOnlyNotice extends StatelessWidget {
       children: [
         StatusHero(
           status: StatusStyles.membership(current),
-          icon: Icons.lock_outline,
+          icon: KapdhIcons.lockOutline,
           title: '$feature khusus anggota aktif',
           message: message,
         ),

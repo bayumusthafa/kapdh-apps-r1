@@ -183,7 +183,7 @@ class _MemberPickerPageState extends ConsumerState<MemberPickerPage> {
       body = ErrorState.fromException(_error!, onRetry: _load);
     } else if (visible.isEmpty && _cursor == null && !_loadingMore && _moreError == null) {
       body = const EmptyState(
-        icon: Icons.person_search_outlined,
+        icon: KapdhIcons.personSearchOutlined,
         title: 'Alumni tidak ditemukan',
         message: 'Cari dengan nama lain. Hanya anggota aktif yang tampil di direktori yang dapat diundang.',
       );
@@ -230,7 +230,7 @@ class _MemberPickerPageState extends ConsumerState<MemberPickerPage> {
         title: Text(widget.title),
         leading: IconButton(
           tooltip: 'Batal',
-          icon: const Icon(Icons.close),
+          icon: const Icon(KapdhIcons.close),
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
@@ -251,7 +251,7 @@ class _MemberPickerPageState extends ConsumerState<MemberPickerPage> {
               onSubmitted: (_) => unawaited(_load()),
               decoration: const InputDecoration(
                 hintText: 'Cari nama alumni (minimal 2 huruf)',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: Icon(KapdhIcons.search),
                 isDense: true,
               ),
             ),
@@ -261,7 +261,8 @@ class _MemberPickerPageState extends ConsumerState<MemberPickerPage> {
               height: 56,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s2),
+                // Padding vertikal 4: chip mendapat target sentuh penuh 48 dp di baris setinggi 56.
+                padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s1),
                 children: [
                   for (final member in _selected.values)
                     Padding(
@@ -269,6 +270,8 @@ class _MemberPickerPageState extends ConsumerState<MemberPickerPage> {
                       child: InputChip(
                         label: Text(member.fullName),
                         onDeleted: () => _toggle(member),
+                        // Seluruh chip membatalkan pilihan, bukan hanya ikon silang.
+                        onPressed: () => _toggle(member),
                         deleteButtonTooltipMessage: 'Hapus ${member.fullName}',
                       ),
                     ),

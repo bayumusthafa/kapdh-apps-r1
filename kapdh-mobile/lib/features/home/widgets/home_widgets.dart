@@ -83,7 +83,7 @@ class HomeHeader extends StatelessWidget implements PreferredSizeWidget {
             backgroundColor: KapdhColors.accent,
             textColor: KapdhColors.onAccent,
             label: Text(count > 99 ? '99+' : '$count'),
-            child: const Icon(Icons.notifications_outlined, color: KapdhColors.textOnDark),
+            child: const Icon(KapdhIcons.notificationsOutlined, color: KapdhColors.textOnDark),
           ),
         ),
         const SizedBox(width: KapdhSpace.s2),
@@ -97,7 +97,8 @@ class HomeHeader extends StatelessWidget implements PreferredSizeWidget {
 class QuickAction {
   const QuickAction({required this.icon, required this.label, required this.onTap, this.detail, this.key});
 
-  final IconData icon;
+  /// Ikon duotone akses cepat (KapdhIcons.*Duotone).
+  final DuotoneIconData icon;
   final String label;
   final String? detail;
   final VoidCallback onTap;
@@ -153,7 +154,7 @@ class _QuickTile extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: const BoxDecoration(color: KapdhColors.green50, shape: BoxShape.circle),
-                  child: Icon(action.icon, color: KapdhColors.primary, size: 22),
+                  child: DuotoneIcon(action.icon, color: KapdhColors.primary, size: 22),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -180,7 +181,7 @@ class _QuickTile extends StatelessWidget {
 
 /// Teks kecil untuk bagian Beranda yang kosong.
 class SectionEmpty extends StatelessWidget {
-  const SectionEmpty({super.key, required this.message, this.icon = Icons.inbox_outlined});
+  const SectionEmpty({super.key, required this.message, this.icon = KapdhIcons.inboxOutlined});
 
   final String message;
   final IconData icon;

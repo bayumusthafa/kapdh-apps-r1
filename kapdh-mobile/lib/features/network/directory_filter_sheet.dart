@@ -221,7 +221,7 @@ class _DirectoryFilterSheetState extends ConsumerState<DirectoryFilterSheet> {
                   ),
                 ),
                 const SizedBox(height: KapdhSpace.s4),
-                KapdhButton(label: 'Terapkan', icon: Icons.check, onPressed: _apply),
+                KapdhButton(label: 'Terapkan', icon: KapdhIcons.check, onPressed: _apply),
               ],
             ),
           ),

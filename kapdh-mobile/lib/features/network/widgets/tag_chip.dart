@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/kapdh_tokens.dart';
+import '../../../design/kapdh_icons.dart';
 
 enum TagChipTone {
   /// Hijau muda: keahlian di kartu direktori dan profesi di profil (guideline hal. 7).
@@ -47,11 +48,13 @@ class TagChip extends StatelessWidget {
       label: text,
       backgroundColor: bg,
       side: BorderSide.none,
-      deleteIcon: Icon(Icons.close, size: 16, color: fg),
+      deleteIcon: Icon(KapdhIcons.close, size: 16, color: fg),
       deleteButtonTooltipMessage: deleteTooltip ?? 'Hapus filter $label',
       onDeleted: onDeleted,
+      // Seluruh chip menghapus filter: ikon silang 16 px saja hanya punya area ketuk sekitar 32 x 40 dp. Kepadatan
+      // standar + target padded memberi area ketuk setinggi 48 dp selebar chip.
+      onPressed: onDeleted,
       materialTapTargetSize: MaterialTapTargetSize.padded,
-      visualDensity: VisualDensity.compact,
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app/theme/kapdh_tokens.dart';
+import 'kapdh_icons.dart';
 
 /// Label di atas field (guideline hal. 5: "Email", "Password", "Jenis Kelamin"). Teks label visual dikecualikan dari
 /// semantics dan dipasang sebagai label field, sehingga pembaca layar membacakan "Email, kolom teks" satu kali
@@ -124,7 +125,7 @@ class _KapdhTextFieldState extends State<KapdhTextField> {
       if (widget.obscurable)
         IconButton(
           tooltip: _obscured ? 'Tampilkan password' : 'Sembunyikan password',
-          icon: Icon(_obscured ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+          icon: Icon(_obscured ? KapdhIcons.visibilityOffOutlined : KapdhIcons.visibilityOutlined),
           onPressed: () => setState(() => _obscured = !_obscured),
         ),
     ];
@@ -204,7 +205,7 @@ class KapdhDropdownField<T> extends StatelessWidget {
         onChanged: onChanged,
         validator: validator,
         isExpanded: true,
-        icon: const Icon(Icons.keyboard_arrow_down),
+        icon: const Icon(KapdhIcons.keyboardArrowDown),
         style: const TextStyle(fontSize: KapdhFontSize.body, color: KapdhColors.text),
         decoration: InputDecoration(hintText: hint, errorText: errorText),
       ),

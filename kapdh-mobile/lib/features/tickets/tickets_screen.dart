@@ -81,7 +81,7 @@ class _TicketList extends ConsumerWidget {
       itemBuilder: (context, ticket) =>
           TicketCard(ticket: ticket, onTap: () => unawaited(context.push(AppRoutes.ticket(ticket.id)))),
       empty: EmptyState(
-        icon: Icons.confirmation_number_outlined,
+        icon: KapdhIcons.confirmationNumberOutlined,
         title: activeView ? 'Belum ada tiket aktif' : 'Belum ada riwayat tiket',
         message: activeView
             ? (canBrowseEvents
@@ -127,7 +127,7 @@ class TicketCard extends StatelessWidget {
             width: 72,
             height: 72,
             borderRadius: BorderRadius.circular(KapdhRadius.md),
-            placeholderIcon: Icons.confirmation_number_outlined,
+            placeholderIcon: KapdhIcons.confirmationNumberOutlined,
           ),
           const SizedBox(width: KapdhSpace.s3),
           Expanded(
@@ -141,10 +141,10 @@ class TicketCard extends StatelessWidget {
                   style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: KapdhSpace.s1),
-                IconLine(icon: Icons.calendar_today_outlined, text: day),
+                IconLine(icon: KapdhIcons.calendarTodayOutlined, text: day),
                 if (event.locationName != null) ...[
                   const SizedBox(height: 2),
-                  IconLine(icon: Icons.place_outlined, text: event.locationName!),
+                  IconLine(icon: KapdhIcons.placeOutlined, text: event.locationName!),
                 ],
                 const SizedBox(height: 6),
                 Wrap(
@@ -157,7 +157,7 @@ class TicketCard extends StatelessWidget {
                 ),
                 if (holdText != null) ...[
                   const SizedBox(height: 6),
-                  IconLine(icon: Icons.timer_outlined, text: holdText, color: KapdhColors.warning),
+                  IconLine(icon: KapdhIcons.timerOutlined, text: holdText, color: KapdhColors.warning),
                 ],
               ],
             ),

@@ -136,7 +136,7 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s8),
       children: [
         const InfoBox(
-          icon: Icons.shield_outlined,
+          icon: KapdhIcons.shieldOutlined,
           message:
               'Kontak dan media sosial Anda tersembunyi sampai Anda mengizinkannya. Data yang disembunyikan tidak '
               'dikirim ke perangkat anggota lain. Pengurus berizin tetap dapat melihat data Anda untuk keperluan '

@@ -189,7 +189,7 @@ class _NewPaymentScreenState extends ConsumerState<NewPaymentScreen> {
           _ => ('Lihat KTA', AppRoutes.kta),
         };
         return EmptyState(
-          icon: Icons.event_available_outlined,
+          icon: KapdhIcons.eventAvailableOutlined,
           title: 'Iuran belum dapat dibayar',
           message: ineligibleMessage(quote),
           actionLabel: label,
@@ -200,7 +200,7 @@ class _NewPaymentScreenState extends ConsumerState<NewPaymentScreen> {
           padding: const EdgeInsets.all(KapdhSpace.s5),
           children: const [
             EmptyState(
-              icon: Icons.account_balance_outlined,
+              icon: KapdhIcons.accountBalanceOutlined,
               title: 'Rekening tujuan belum tersedia',
               message: 'Pengurus belum mengaktifkan rekening tujuan transfer. Silakan hubungi pengurus.',
             ),
@@ -210,7 +210,7 @@ class _NewPaymentScreenState extends ConsumerState<NewPaymentScreen> {
       case _Block.unknownType:
       case null:
         return EmptyState(
-          icon: Icons.search_off,
+          icon: KapdhIcons.searchOff,
           title: 'Jenis pembayaran tidak dikenal',
           message: 'Buka pembayaran dari menu KTA atau riwayat pembayaran.',
           actionLabel: 'Riwayat pembayaran',
@@ -273,14 +273,14 @@ class _UnknownOutcome extends StatelessWidget {
         const InfoBox(
           key: ValueKey('create-checking-status'),
           tone: InfoBoxTone.warning,
-          icon: Icons.sync_problem,
+          icon: KapdhIcons.syncProblem,
           title: 'Memeriksa status',
           message:
               'Koneksi terputus sehingga status instruksi belum dapat dipastikan. Jangan transfer dulu. Coba lagi saat '
               'koneksi kembali; instruksi tidak akan dibuat ganda.',
         ),
         const SizedBox(height: KapdhSpace.s4),
-        KapdhButton.outlined(label: 'Periksa status', icon: Icons.refresh, onPressed: onRetry),
+        KapdhButton.outlined(label: 'Periksa status', icon: KapdhIcons.refresh, onPressed: onRetry),
       ],
     );
   }

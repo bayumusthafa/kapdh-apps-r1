@@ -137,12 +137,12 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> with SingleTicker
                       inputFormatters: [LengthLimitingTextInputFormatter(directoryMaxQueryLength)],
                       decoration: InputDecoration(
                         hintText: 'Cari relasi dengan alumni ...',
-                        prefixIcon: const Icon(Icons.search),
+                        prefixIcon: const Icon(KapdhIcons.search),
                         suffixIcon: _search.text.isEmpty
                             ? null
                             : IconButton(
                                 tooltip: 'Hapus pencarian',
-                                icon: const Icon(Icons.close),
+                                icon: const Icon(KapdhIcons.close),
                                 onPressed: _clearSearch,
                               ),
                         isDense: true,
@@ -163,7 +163,7 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> with SingleTicker
                         minimumSize: const Size(48, 48),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KapdhRadius.md)),
                       ),
-                      icon: const Icon(Icons.tune),
+                      icon: const Icon(KapdhIcons.tune),
                       onPressed: _openFilter,
                     ),
                   ),

@@ -216,7 +216,7 @@ class _MasterSheetState extends State<_MasterSheet> {
                   ),
                   IconButton(
                     tooltip: 'Tutup',
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(KapdhIcons.close),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -226,7 +226,7 @@ class _MasterSheetState extends State<_MasterSheet> {
               padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s5, vertical: KapdhSpace.s2),
               child: TextField(
                 controller: _search,
-                decoration: const InputDecoration(hintText: 'Cari', prefixIcon: Icon(Icons.search)),
+                decoration: const InputDecoration(hintText: 'Cari', prefixIcon: Icon(KapdhIcons.search)),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -277,7 +277,7 @@ class _SingleTile extends StatelessWidget {
         title: Text(label),
         selected: selected,
         selectedColor: KapdhColors.primary,
-        trailing: selected ? const Icon(Icons.check, color: KapdhColors.primary) : null,
+        trailing: selected ? const Icon(KapdhIcons.check, color: KapdhColors.primary) : null,
         onTap: onTap,
       ),
     );

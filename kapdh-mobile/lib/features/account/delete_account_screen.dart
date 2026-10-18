@@ -200,7 +200,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
         const SizedBox(height: KapdhSpace.s5),
         AccountSection(
           title: 'DATA YANG DIHAPUS',
-          children: [for (final item in d.deletedData) _Bullet(icon: Icons.delete_outline, text: item.description)],
+          children: [for (final item in d.deletedData) _Bullet(icon: KapdhIcons.deleteOutline, text: item.description)],
         ),
         const SizedBox(height: KapdhSpace.s5),
         AccountSection(
@@ -209,7 +209,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
               'Catatan ini disimpan tanpa nama, email, telepon, foto atau data identitas lain, hanya jumlah, tanggal, '
               'status dan nomor referensi minimum (D2).',
           children: [
-            for (final item in d.retainedData) _Bullet(icon: Icons.inventory_2_outlined, text: item.description),
+            for (final item in d.retainedData) _Bullet(icon: KapdhIcons.inventory2Outlined, text: item.description),
           ],
         ),
         const SizedBox(height: KapdhSpace.s5),
@@ -217,13 +217,13 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
           title: 'WAKTU DAN BACKUP',
           children: [
             _Bullet(
-              icon: Icons.schedule,
+              icon: KapdhIcons.schedule,
               text:
                   'Penghapusan selesai paling lambat ${d.estimatedCompletionDays} hari kalender setelah permintaan. '
                   'Anda menerima email nomor permintaan dan email saat selesai.',
             ),
             _Bullet(
-              icon: Icons.backup_outlined,
+              icon: KapdhIcons.backupOutlined,
               text:
                   'Backup harian berotasi ${d.backupRetentionDays} hari untuk pemulihan bencana. Data yang sudah '
                   'dihapus tidak diaktifkan kembali saat backup dipulihkan.',
@@ -237,7 +237,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
             label: d.privacyPolicyVersion == null
                 ? 'Baca kebijakan privasi'
                 : 'Baca kebijakan privasi (versi ${d.privacyPolicyVersion})',
-            icon: Icons.privacy_tip_outlined,
+            icon: KapdhIcons.privacyTipOutlined,
             onPressed: () => context.push(AppRoutes.legal(d.privacyPolicySlug)),
           ),
         ),
@@ -406,7 +406,7 @@ class _Warnings extends StatelessWidget {
       cards.add(
         InfoBox(
           tone: InfoBoxTone.warning,
-          icon: Icons.groups_outlined,
+          icon: KapdhIcons.groupsOutlined,
           message:
               'Anda admin tunggal di ${d.soleAdminGroupCount} grup chat. Kewenangan admin dialihkan otomatis ke '
               'anggota aktif atau grup ditutup; penghapusan tidak menunggu respons anggota lain.',
@@ -417,7 +417,7 @@ class _Warnings extends StatelessWidget {
       cards.add(
         const InfoBox(
           tone: InfoBoxTone.warning,
-          icon: Icons.admin_panel_settings_outlined,
+          icon: KapdhIcons.adminPanelSettingsOutlined,
           message:
               'Akun ini terhubung dengan akun pengurus. Akun pengurus tidak ikut terhapus; pengalihan kewenangan '
               'pengurus dilakukan Super Admin.',
@@ -472,7 +472,7 @@ class _DangerButton extends StatelessWidget {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2, color: KapdhColors.onPrimary),
                 )
-              : const Icon(Icons.delete_forever_outlined),
+              : const Icon(KapdhIcons.deleteForeverOutlined),
           label: Text(busy ? 'Memproses...' : label),
         ),
       ),

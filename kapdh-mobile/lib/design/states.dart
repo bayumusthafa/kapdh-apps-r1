@@ -3,6 +3,7 @@ import 'package:kapdh_api/kapdh_api.dart';
 
 import '../app/theme/kapdh_tokens.dart';
 import 'kapdh_button.dart';
+import 'kapdh_icons.dart';
 
 /// Keadaan kosong dengan pesan dan tindakan spesifik (PRD 4.5, N-03).
 class EmptyState extends StatelessWidget {
@@ -10,7 +11,7 @@ class EmptyState extends StatelessWidget {
     super.key,
     required this.title,
     this.message,
-    this.icon = Icons.inbox_outlined,
+    this.icon = KapdhIcons.inboxOutlined,
     this.actionLabel,
     this.onAction,
   });
@@ -43,7 +44,7 @@ class ErrorState extends StatelessWidget {
     super.key,
     required this.title,
     required this.message,
-    this.icon = Icons.error_outline,
+    this.icon = KapdhIcons.errorOutline,
     this.onRetry,
     this.retryLabel = 'Coba lagi',
     this.requestId,
@@ -51,13 +52,13 @@ class ErrorState extends StatelessWidget {
 
   factory ErrorState.fromException(ApiException error, {Key? key, VoidCallback? onRetry}) {
     final (String title, IconData icon) = switch (error.ui.action) {
-      ErrorUiAction.showOffline => ('Tidak ada koneksi', Icons.cloud_off),
-      ErrorUiAction.showNotFound => ('Data tidak ditemukan', Icons.search_off),
-      ErrorUiAction.showForbidden => ('Akses ditolak', Icons.lock_outline),
-      ErrorUiAction.refreshStatus || ErrorUiAction.goToRestricted => ('Akses belum tersedia', Icons.lock_outline),
-      ErrorUiAction.showMaintenance => ('Sedang pemeliharaan', Icons.build_outlined),
-      ErrorUiAction.showCountdown => ('Terlalu banyak permintaan', Icons.timer_outlined),
-      _ => ('Terjadi kesalahan', Icons.error_outline),
+      ErrorUiAction.showOffline => ('Tidak ada koneksi', KapdhIcons.cloudOff),
+      ErrorUiAction.showNotFound => ('Data tidak ditemukan', KapdhIcons.searchOff),
+      ErrorUiAction.showForbidden => ('Akses ditolak', KapdhIcons.lockOutline),
+      ErrorUiAction.refreshStatus || ErrorUiAction.goToRestricted => ('Akses belum tersedia', KapdhIcons.lockOutline),
+      ErrorUiAction.showMaintenance => ('Sedang pemeliharaan', KapdhIcons.buildOutlined),
+      ErrorUiAction.showCountdown => ('Terlalu banyak permintaan', KapdhIcons.timerOutlined),
+      _ => ('Terjadi kesalahan', KapdhIcons.errorOutline),
     };
     // Coba lagi tidak ditawarkan bila mengulang tidak akan mengubah hasil (izin/data tidak ada).
     final retryable = switch (error.ui.action) {
@@ -91,7 +92,7 @@ class ErrorState extends StatelessWidget {
       message: message,
       footnote: requestId == null ? null : 'Kode bantuan: $requestId',
       action: onRetry != null
-          ? KapdhButton.outlined(label: retryLabel, onPressed: onRetry, icon: Icons.refresh, expand: false)
+          ? KapdhButton.outlined(label: retryLabel, onPressed: onRetry, icon: KapdhIcons.refresh, expand: false)
           : null,
     );
   }

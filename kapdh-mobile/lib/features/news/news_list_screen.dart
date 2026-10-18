@@ -56,7 +56,7 @@ class _NewsListScreenState extends ConsumerState<NewsListScreen> {
               itemBuilder: (context, post) =>
                   PostCard(post: post, onTap: () => unawaited(context.push(AppRoutes.newsDetail(post.slug)))),
               empty: EmptyState(
-                icon: Icons.article_outlined,
+                icon: KapdhIcons.articleOutlined,
                 title: _category == null ? 'Belum ada berita' : 'Belum ada berita di kategori ini',
                 message: _category == null
                     ? 'Berita resmi pengurus akan tampil di sini setelah terbit.'

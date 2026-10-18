@@ -25,10 +25,10 @@ final memberProfileProvider = FutureProvider.autoDispose.family<NetworkMemberPro
 
 /// Jaringan sosial di profil (guideline hal. 7 "Social Media").
 enum SocialNetwork {
-  instagram('Instagram', Icons.camera_alt_outlined, 'https://instagram.com/'),
-  x('X', Icons.alternate_email, 'https://x.com/'),
-  facebook('Facebook', Icons.facebook, 'https://facebook.com/'),
-  linkedin('LinkedIn', Icons.work_outline, 'https://www.linkedin.com/in/');
+  instagram('Instagram', KapdhIcons.cameraAltOutlined, 'https://instagram.com/'),
+  x('X', KapdhIcons.alternateEmail, 'https://x.com/'),
+  facebook('Facebook', KapdhIcons.facebook, 'https://facebook.com/'),
+  linkedin('LinkedIn', KapdhIcons.workOutline, 'https://www.linkedin.com/in/');
 
   const SocialNetwork(this.label, this.icon, this.baseUrl);
 
@@ -77,7 +77,7 @@ class MemberProfileScreen extends ConsumerWidget {
             ? (error.code == ErrorCode.notFound
                   // Alasan tidak dibedakan (N-09): tidak aktif, menyembunyikan profil, atau membatasi pemanggil.
                   ? const EmptyState(
-                      icon: Icons.person_off_outlined,
+                      icon: KapdhIcons.personOffOutlined,
                       title: 'Profil tidak tersedia',
                       message: 'Profil alumni ini tidak dapat ditampilkan saat ini.',
                     )
@@ -260,7 +260,7 @@ class _ProfileViewState extends ConsumerState<_ProfileView> {
                             IconButton(
                               tooltip: 'Kembali',
                               color: KapdhColors.onPrimary,
-                              icon: const Icon(Icons.arrow_back),
+                              icon: const Icon(KapdhIcons.arrowBack),
                               onPressed: _back,
                             ),
                             const Spacer(),
@@ -306,12 +306,12 @@ class _ProfileViewState extends ConsumerState<_ProfileView> {
                               // Kunci email hanya ada bila show_email=true (AC F10-2).
                               if (p.email != null && p.email!.isNotEmpty)
                                 _IconLine(
-                                  icon: Icons.mail_outline,
+                                  icon: KapdhIcons.mailOutline,
                                   text: p.email!,
                                   onTap: () => _open(Uri(scheme: 'mailto', path: p.email)),
                                 ),
                               if (p.city != null && p.city!.isNotEmpty)
-                                _IconLine(icon: Icons.place_outlined, text: p.city!),
+                                _IconLine(icon: KapdhIcons.placeOutlined, text: p.city!),
                             ],
                           ),
                         ),
@@ -377,7 +377,7 @@ class _MessageArea extends StatelessWidget {
     if (profile.isBlockedByMe) {
       return InfoBox(
         tone: InfoBoxTone.warning,
-        icon: Icons.block,
+        icon: KapdhIcons.block,
         message: 'Anda memblokir ${profile.fullName}. Buka blokir untuk kembali saling mengirim pesan.',
         trailing: TextButton(onPressed: onUnblock, child: const Text('Buka blokir')),
       );
@@ -388,7 +388,7 @@ class _MessageArea extends StatelessWidget {
     }
     return KapdhButton.outlined(
       label: 'Kirim Pesan',
-      icon: Icons.chat_bubble_outline,
+      icon: KapdhIcons.chatBubbleOutline,
       busy: opening,
       busyLabel: 'Membuka percakapan',
       onPressed: opening ? null : onMessage,
@@ -478,7 +478,7 @@ class _PhoneLink extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.call_outlined, size: 18, color: KapdhColors.primary),
+              const Icon(KapdhIcons.callOutlined, size: 18, color: KapdhColors.primary),
               const SizedBox(width: KapdhSpace.s2),
               Flexible(
                 child: Text(

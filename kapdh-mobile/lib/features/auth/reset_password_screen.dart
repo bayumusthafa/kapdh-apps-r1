@@ -228,7 +228,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       case _ResetOutcome.saved:
         return _scaffold(
           AuthResultPanel(
-            icon: Icons.check_circle,
+            icon: KapdhIcons.checkCircle,
             iconColor: KapdhColors.success,
             title: 'Password berhasil diganti',
             message:
@@ -242,7 +242,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       case _ResetOutcome.maybeSaved:
         return _scaffold(
           AuthResultPanel(
-            icon: Icons.help_outline,
+            icon: KapdhIcons.helpOutline,
             iconColor: KapdhColors.warning,
             title: 'Password baru mungkin sudah tersimpan',
             message:
@@ -271,7 +271,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       case _ResetOutcome.tokenGone:
         return _scaffold(
           AuthResultPanel(
-            icon: Icons.timer_off_outlined,
+            icon: KapdhIcons.timerOffOutlined,
             iconColor: KapdhColors.danger,
             title: 'Sesi pemulihan berakhir',
             message:

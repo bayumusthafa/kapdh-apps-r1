@@ -124,7 +124,7 @@ class _NotificationPreferencesScreenState extends ConsumerState<NotificationPref
         const _DevicePushCard(),
         const SizedBox(height: KapdhSpace.s4),
         const InfoBox(
-          icon: Icons.inbox_outlined,
+          icon: KapdhIcons.inboxOutlined,
           message:
               'Kotak masuk di aplikasi selalu menyimpan seluruh notifikasi, termasuk kategori yang push atau '
               'emailnya Anda matikan.',
@@ -297,7 +297,7 @@ class _MandatoryRow extends StatelessWidget {
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.lock_outline, size: 16, color: KapdhColors.textMuted),
+              Icon(KapdhIcons.lockOutline, size: 16, color: KapdhColors.textMuted),
               SizedBox(width: KapdhSpace.s1),
               ExcludeSemantics(
                 child: Text(
@@ -326,7 +326,7 @@ class _DevicePushCard extends ConsumerWidget {
       content = const InfoBox(message: 'Memeriksa notifikasi push perangkat...');
     } else if (state.available == false) {
       content = const InfoBox(
-        icon: Icons.notifications_off_outlined,
+        icon: KapdhIcons.notificationsOffOutlined,
         title: 'Push tidak tersedia di perangkat ini',
         message:
             'Notifikasi tetap masuk ke kotak masuk aplikasi. Buka menu Notifikasi untuk melihat semua riwayat '
@@ -334,14 +334,14 @@ class _DevicePushCard extends ConsumerWidget {
       );
     } else if (state.granted) {
       content = const InfoBox(
-        icon: Icons.notifications_active_outlined,
+        icon: KapdhIcons.notificationsActiveOutlined,
         title: 'Notifikasi push aktif',
         message: 'Perangkat ini menerima push untuk kategori yang Anda aktifkan di bawah.',
       );
     } else if (state.permission == PushPermission.denied) {
       content = InfoBox(
         tone: InfoBoxTone.warning,
-        icon: Icons.notifications_off_outlined,
+        icon: KapdhIcons.notificationsOffOutlined,
         title: 'Izin notifikasi ditolak',
         message:
             'Aplikasi tetap berfungsi dan semua notifikasi tersimpan di kotak masuk. Untuk menerima push, aktifkan '
@@ -353,7 +353,7 @@ class _DevicePushCard extends ConsumerWidget {
       );
     } else {
       content = InfoBox(
-        icon: Icons.notifications_none,
+        icon: KapdhIcons.notificationsNone,
         title: 'Izinkan notifikasi push',
         message: 'Terima hasil pembayaran, pengingat masa KTA dan event langsung di perangkat ini.',
         trailing: TextButton(
@@ -371,7 +371,7 @@ class _DevicePushCard extends ConsumerWidget {
           alignment: Alignment.centerLeft,
           child: KapdhLinkButton(
             label: 'Buka kotak masuk',
-            icon: Icons.inbox_outlined,
+            icon: KapdhIcons.inboxOutlined,
             onPressed: () => context.push(AppRoutes.notifications),
           ),
         ),

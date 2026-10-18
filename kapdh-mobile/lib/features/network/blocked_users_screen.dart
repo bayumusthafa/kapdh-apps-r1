@@ -45,7 +45,7 @@ class BlockedUsersScreen extends ConsumerWidget {
       body = ErrorState.fromException(state.error!, onRetry: controller.refresh);
     } else if (state.isEmpty) {
       body = const EmptyState(
-        icon: Icons.block,
+        icon: KapdhIcons.block,
         title: 'Tidak ada pengguna yang diblokir',
         message:
             'Anggota yang Anda blokir tidak dapat saling mengirim pesan langsung atau undangan grup dengan Anda. '

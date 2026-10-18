@@ -70,8 +70,8 @@ void main() {
     expect(find.text('Kartu Tanda Anggota'), findsOneWidget);
     expect(find.textContaining('Offline'), findsOneWidget);
     // Panah kiri di app bar (prototipe layar 6, 7; guideline hal. 6).
-    expect(find.byIcon(Icons.arrow_back), findsOneWidget);
-    expect(find.byIcon(Icons.chevron_left), findsNothing);
+    expect(find.byIcon(KapdhIcons.arrowBack), findsOneWidget);
+    expect(find.byIcon(KapdhIcons.chevronLeft), findsNothing);
     await tester.tap(find.byTooltip('Kembali'));
     await tester.pumpAndSettle();
     expect(find.text('beranda'), findsOneWidget);
