@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { sitemapXml } from "../pages/sitemap.xml";
-import { DEV_API_URL, INFO_PAGES, PROD_API_URL, infoPage, isCurrentPath, resolveApiBase } from "./site";
+import { ORGANIZATION } from "./organization";
+import {
+  DEV_API_URL,
+  FOOTER_LINKS,
+  INFO_PAGES,
+  LEGAL_SECTION_HREF,
+  LEGAL_SECTION_ID,
+  PROD_API_URL,
+  infoPage,
+  isCurrentPath,
+  resolveApiBase,
+} from "./site";
 
 describe("resolveApiBase (PUBLIC_API_URL)", () => {
   it("default localhost saat dev dan api.kapdh.or.id saat build (D12)", () => {
@@ -52,6 +63,26 @@ describe("halaman informasi (F-08, PRD 3.8)", () => {
     expect(isCurrentPath("/kontak", "/kontak/")).toBe(true);
     expect(isCurrentPath("/", "/")).toBe(true);
     expect(isCurrentPath("/", "/kontak")).toBe(false);
+  });
+
+  it("footer menautkan bagian Legalitas statis di /tentang tepat setelah dokumen legal", () => {
+    const labels = FOOTER_LINKS.map((l) => l.label);
+    expect(labels.indexOf("Legalitas")).toBe(labels.indexOf("Ketentuan Komunitas") + 1);
+    expect(LEGAL_SECTION_ID).toBe("legalitas");
+    expect(LEGAL_SECTION_HREF).toBe("/tentang#legalitas");
+    expect(FOOTER_LINKS.find((l) => l.label === "Legalitas")?.href).toBe(LEGAL_SECTION_HREF);
+    const slugs: readonly string[] = INFO_PAGES.map((p) => p.slug);
+    for (const link of FOOTER_LINKS) {
+      const path = link.href.split("#")[0]!;
+      expect(path.startsWith("/")).toBe(true);
+      if (link.href.includes("#")) expect(slugs).toContain(path.slice(1));
+    }
+  });
+
+  it("cuplikan /tentang memakai nama badan hukum persis", () => {
+    expect(infoPage("tentang")?.description).toBe(
+      `Tentang ${ORGANIZATION.legalName} (${ORGANIZATION.shortName}) dan KAPDH Apps.`,
+    );
   });
 
   it("sitemap hanya memuat halaman yang boleh diindeks (tanpa /kta dan /delete-account)", () => {

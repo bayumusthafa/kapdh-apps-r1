@@ -1,4 +1,5 @@
 import type { components } from "@kapdh/contracts";
+import { OFFICIAL_EMAIL } from "../lib/site";
 import { requestJson, type ApiResult } from "./api";
 
 /** GET /public/config (public.yaml): tautan toko, kontak bantuan, maintenance, versi legal, jam server. */
@@ -47,8 +48,8 @@ export async function fetchPublicConfigTimed(
   return { result, sentAt, receivedAt: now() };
 }
 
-/** Kanal dukungan awal PRD 8.3 bila konfigurasi belum terbaca. */
-export const DEFAULT_SUPPORT_EMAIL = "bantuan@kapdh.or.id";
+/** Kanal dukungan awal PRD 8.3 bila konfigurasi belum terbaca: email resmi (lib/site, identitas badan hukum). */
+export const DEFAULT_SUPPORT_EMAIL = OFFICIAL_EMAIL;
 
 /** Tautan toko hanya https agar konfigurasi yang salah tidak membuka skema lain (javascript:, http:). */
 export function safeStoreUrl(raw: string | null | undefined): string | null {

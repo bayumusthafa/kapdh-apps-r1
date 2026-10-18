@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import { ORGANIZATION, ORGANIZATION_ADDRESS_LINE, serializeJsonLd } from "../lib/organization";
 import { FOOTER_LINKS, MAIN_NAV, isCurrentPath, resolveApiBase } from "../lib/site";
 
 interface Props {
@@ -9,6 +10,11 @@ interface Props {
   noindex?: boolean;
   /** Tampilkan wadah banner maintenance yang diisi dari /public/config (PRD 4.5). */
   maintenanceBanner?: boolean;
+  /**
+   * Data terstruktur schema.org (mis. organizationJsonLd) yang ditanam sebagai blok data application/ld+json di
+   * <head>. Blok data tidak dieksekusi sehingga tetap lolos CSP `script-src 'self'` (scripts/csp-check.mjs).
+   */
+  structuredData?: object | undefined;
 }
 
 const {
@@ -16,6 +22,7 @@ const {
   description = "Platform alumni Keluarga Alumni Pondok Pesantren Darel Hikmah: KTA digital, jejaring, event dan tiket.",
   noindex = false,
   maintenanceBanner = false,
+  structuredData,
 } = Astro.props;
 // Basis API ditanam saat build; skrip halaman membacanya dari meta (tanpa skrip inline, CSP N-07).
 const apiBase = resolveApiBase({ PUBLIC_API_URL: import.meta.env.PUBLIC_API_URL, DEV: import.meta.env.DEV });
@@ -41,6 +48,7 @@ const year = new Date().getFullYear();
     <meta property="og:locale" content="id_ID" />
     <link rel="icon" type="image/png" href="/logo-kapdh.png" />
     <link rel="apple-touch-icon" href="/logo-kapdh.png" />
+    {structuredData && <script is:inline type="application/ld+json" set:html={serializeJsonLd(structuredData)} />}
   </head>
   <body class="flex min-h-screen flex-col">
     <a
@@ -115,11 +123,12 @@ const year = new Date().getFullYear();
               </span>
               {/* PRD 4.5: maintenance menjelaskan rentang estimasi, retry dan kanal dukungan (diisi dari /public/config). */}
               <span>
-                Butuh bantuan? Hubungi
+                {/* Spasi eksplisit: compressHTML membuang spasi baris baru di antara teks dan tautan. */}
+                Butuh bantuan? Hubungi{" "}
                 <a data-support-email href="mailto:bantuan@kapdh.or.id" class="font-semibold break-all text-primary underline"
                   >bantuan@kapdh.or.id</a
-                ><span data-support-whatsapp hidden>
-                  atau WhatsApp <a target="_blank" rel="noopener noreferrer" class="font-semibold text-primary underline"></a></span
+                ><span data-support-whatsapp hidden
+                  >{" "}atau WhatsApp <a target="_blank" rel="noopener noreferrer" class="font-semibold text-primary underline"></a></span
                 >.
                 <button type="button" data-config-retry data-maintenance-retry class="btn-link min-h-11 text-primary"
                   >Periksa lagi</button
@@ -146,6 +155,22 @@ const year = new Date().getFullYear();
           <p class="max-w-md text-sm text-green-100">
             Media komunikasi dan informasi untuk menghubungkan alumni di seluruh Indonesia.
           </p>
+          {/* Identitas badan hukum di setiap halaman (statis, tanpa JavaScript); data dari lib/organization. */}
+          <div class="flex max-w-md flex-col gap-1 border-t border-white/10 pt-4 text-sm text-green-100">
+            <p><strong class="font-semibold text-white">{ORGANIZATION.legalName} ({ORGANIZATION.shortName})</strong></p>
+            {/* wrap-anywhere: nomor SK boleh dipatah tanpa melebarkan kolom grid footer saat teks diperbesar. */}
+            <p class="wrap-anywhere">
+              Badan hukum perkumpulan, {ORGANIZATION.sk.shortLabel} Nomor {ORGANIZATION.sk.number}
+            </p>
+            <address class="flex flex-col not-italic">
+              <span>{ORGANIZATION_ADDRESS_LINE}</span>
+              <a
+                href={`mailto:${ORGANIZATION.email}`}
+                class="flex min-h-11 items-center self-start break-all text-green-100 underline underline-offset-4 hover:text-accent"
+                >{ORGANIZATION.email}</a
+              >
+            </address>
+          </div>
         </div>
         <nav aria-label="Tautan situs">
           <ul class="grid grid-cols-1 gap-x-6 gap-y-1 text-sm min-[380px]:grid-cols-2">
