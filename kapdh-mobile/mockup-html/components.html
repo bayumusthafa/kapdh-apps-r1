@@ -20,6 +20,7 @@
       <dt>CSS</dt><dd><code>css/tokens.css</code>, <code>css/components.css</code> (mengimpor <code>css/icons.css</code>)</dd>
     </dl>
     <p class="page-header__note">Setiap contoh menampilkan nama kelas dan widget Dart sumbernya. Lihat sumber halaman ini (Ctrl+U) untuk menyalin markup. Data contoh fiktif. Ukuran diukur dari Flutter 3.47.2 pada lebar 360 dp.</p>
+    <p class="page-header__note"><strong>Redesain v2 (usulan):</strong> warna latar, teks redup, radius, bayangan, cincin fokus, state layer tekan dan motion sudah diubah menurut skill flutter-ui-ux, flutter-ui-design dan ui-ux-pro-max. Nilai bertanda <code>dulu</code> di <code>css/tokens.css</code> adalah perilaku aplikasi saat ini; daftar lengkap dan pemetaannya ke Dart ada di <a href="REDESAIN.md">REDESAIN.md</a>. Arahkan kursor dan klik pada tombol, kartu, chip dan menu untuk melihat umpan balik tekan.</p>
   </header>
 
   <main class="doc">
@@ -36,13 +37,16 @@
         <div class="swatch"><div class="swatch__chip" style="background:var(--color-green-100)"></div><div class="swatch__meta">green100<code>--color-green-100 #E3F0E1</code></div></div>
         <div class="swatch"><div class="swatch__chip" style="background:var(--color-green-50)"></div><div class="swatch__meta">green50<code>--color-green-50 #F1F8F0</code></div></div>
         <div class="swatch"><div class="swatch__chip" style="background:var(--color-accent)"></div><div class="swatch__meta">accent / gold500<code>--color-accent #E6D312</code></div></div>
-        <div class="swatch"><div class="swatch__chip" style="background:var(--color-background)"></div><div class="swatch__meta">background<code>--color-background #FBFAFF</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-background)"></div><div class="swatch__meta">background <b>v2</b><code>--color-background #F5F7F3</code></div></div>
         <div class="swatch"><div class="swatch__chip" style="background:var(--color-surface)"></div><div class="swatch__meta">surface<code>--color-surface #FFFFFF</code></div></div>
         <div class="swatch"><div class="swatch__chip" style="background:var(--color-text)"></div><div class="swatch__meta">text<code>--color-text #1C1B1F</code></div></div>
-        <div class="swatch"><div class="swatch__chip" style="background:var(--color-text-muted)"></div><div class="swatch__meta">textMuted<code>--color-text-muted #6B6B6B</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-text-muted)"></div><div class="swatch__meta">textMuted <b>v2</b><code>--color-text-muted #5E665C</code></div></div>
         <div class="swatch"><div class="swatch__chip" style="background:var(--color-border)"></div><div class="swatch__meta">border<code>--color-border #8A8F87</code></div></div>
-        <div class="swatch"><div class="swatch__chip" style="background:var(--color-divider)"></div><div class="swatch__meta">divider<code>--color-divider #E3E3E6</code></div></div>
-        <div class="swatch"><div class="swatch__chip" style="background:var(--color-disabled-bg)"></div><div class="swatch__meta">disabledBg<code>--color-disabled-bg #DCDCE0</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-divider)"></div><div class="swatch__meta">divider <b>v2</b><code>--color-divider #E1E6DE</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-disabled-bg)"></div><div class="swatch__meta">disabledBg <b>v2</b><code>--color-disabled-bg #E1E5DE</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-card-border)"></div><div class="swatch__meta">cardBorder <b>v2 baru</b><code>--color-card-border #E6EBE3</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-focus-ring)"></div><div class="swatch__meta">focusRing <b>v2</b> (terang)<code>--color-focus-ring #2D7A28</code></div></div>
+        <div class="swatch"><div class="swatch__chip" style="background:var(--color-focus-ring-on-dark)"></div><div class="swatch__meta">focusRingOnDark <b>v2 baru</b><code>--color-focus-ring-on-dark #E6D312</code></div></div>
         <div class="swatch"><div class="swatch__chip" style="background:var(--color-success)"></div><div class="swatch__meta">success<code>--color-success #1E7A46</code></div></div>
         <div class="swatch"><div class="swatch__chip" style="background:var(--color-warning)"></div><div class="swatch__meta">warning<code>--color-warning #8A5A00</code></div></div>
         <div class="swatch"><div class="swatch__chip" style="background:var(--color-danger)"></div><div class="swatch__meta">danger<code>--color-danger #B3261E</code></div></div>
@@ -71,6 +75,30 @@
         <div class="type-row"><code>.t-label-lg (labelLarge 14 w600)</code><span class="t-label-lg">Label tombol</span></div>
         <div class="type-row"><code>.t-label-sm (overline 11)</code><span class="t-label-sm">Kode Angkatan</span></div>
         <div class="type-row"><code>.fs-13 / .fw-600 / .c-muted</code><span class="fs-13 fw-600 c-muted">Utilitas literal</span></div>
+      </div>
+    </section>
+
+    <section class="doc-section" aria-labelledby="h-v2">
+      <h2 id="h-v2">Radius, kedalaman dan interaksi (v2)</h2>
+      <p>Skala radius disatukan menjadi 8 / 12 / 16 / 24. Kedalaman memakai bayangan lembut berlapis bernada hijau (gaya "Soft UI Evolution"), bukan garis divider saja. Setiap elemen yang dapat diketuk mendapat state layer 8 % (hover) / 12 % (tekan) yang tidak menggeser tata letak; cincin fokus keyboard hijau di permukaan terang dan emas di permukaan gelap (tekan Tab).</p>
+      <div class="doc-grid">
+        <div class="specimen"><div class="specimen__name">Radius</div><div class="specimen__stage"><div class="row gap-3">
+          <div class="center" style="width:64px;height:64px;background:var(--color-green-100);border-radius:var(--r-sm)">8</div>
+          <div class="center" style="width:64px;height:64px;background:var(--color-green-100);border-radius:var(--r-md)">12</div>
+          <div class="center" style="width:64px;height:64px;background:var(--color-green-100);border-radius:var(--r-lg)">16</div>
+          <div class="center" style="width:64px;height:64px;background:var(--color-green-100);border-radius:var(--r-xl)">24</div>
+        </div></div><div class="specimen__code">--r-sm chip, tag, skeleton · --r-md tombol, field, OTP, menu, snackbar · --r-lg kartu, banner · --r-xl sheet, dialog</div></div>
+        <div class="specimen"><div class="specimen__name">Bayangan</div><div class="specimen__stage"><div class="row gap-4">
+          <div class="center bg-surface" style="width:72px;height:56px;border-radius:var(--r-lg);box-shadow:var(--shadow-xs)">xs</div>
+          <div class="center bg-surface" style="width:72px;height:56px;border-radius:var(--r-lg);box-shadow:var(--shadow-sm)">sm</div>
+          <div class="center bg-surface" style="width:72px;height:56px;border-radius:var(--r-lg);box-shadow:var(--shadow-md)">md</div>
+          <div class="center bg-surface" style="width:72px;height:56px;border-radius:var(--r-lg);box-shadow:var(--shadow-lg)">lg</div>
+        </div></div><div class="specimen__code">--shadow-sm kartu · --shadow-md menu, FAB · --shadow-lg dialog, sheet, snackbar · --shadow-kta kartu KTA · --shadow-primary-btn · --shadow-bar-top navigasi/bilah aksi bawah</div></div>
+        <div class="specimen"><div class="specimen__name">State layer dan fokus (coba hover, klik, Tab)</div><div class="specimen__stage"><div class="col gap-3">
+          <button class="btn btn--primary" type="button">Masuk</button>
+          <div class="row gap-2"><button class="btn btn--outline" type="button">Batal</button><button class="btn btn--solid" type="button">Simpan</button></div>
+          <div class="row gap-2"><button class="choice-chip" type="button">Semua</button><button class="btn-text" type="button">Lihat semua</button></div>
+        </div></div><div class="specimen__code">box-shadow: var(--elev), inset 0 0 0 999px color-mix(currentColor 8% | 12%); transisi --dur-press 100 ms, --dur-fast 150 ms, --dur-base 250 ms, --ease-standard</div></div>
       </div>
     </section>
 

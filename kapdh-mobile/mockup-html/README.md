@@ -1,6 +1,10 @@
 # Mockup HTML aplikasi KAPDH
 
 Tiruan statis (HTML + CSS) dari tampilan aplikasi Flutter `kapdh-mobile` **apa adanya saat ini**, satu halaman per layar.
+
+> **Redesain v2 (usulan) sudah diterapkan** pada token dan komponen bersama: latar, teks redup, radius, bayangan,
+> cincin fokus, state layer tekan, motion dan skeleton. Struktur layar dan teks tetap sama dengan aplikasi. Rincian,
+> alasan dan pemetaan ke Dart: [`REDESAIN.md`](REDESAIN.md). Tampilan apa adanya: commit `89db9f4`.
 Tujuannya memberi desainer bahan yang bisa diubah langsung di browser untuk merancang tampilan baru, lalu hasilnya
 diterjemahkan kembali ke token dan widget Flutter.
 

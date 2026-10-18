@@ -146,7 +146,7 @@
 .jj-social__item { display: inline-flex; align-items: center; gap: var(--s2); min-height: 48px; min-width: 140px; color: var(--color-text-muted); }
 .jj-social__item .ic { --ic-size: 18px; }
 /* Area pesan di bawah (SafeArea): padding 20/8/20/16 di atas inset gestur, latar surface */
-.jj-profile-bottom { flex: none; padding: var(--s2) var(--s5) calc(var(--s4) + var(--inset-bottom)); background: var(--color-surface); }
+.jj-profile-bottom { position: relative; z-index: 2; flex: none; padding: var(--s2) var(--s5) calc(var(--s4) + var(--inset-bottom)); background: var(--color-surface); box-shadow: var(--shadow-bar-top); } /* [v2: + bayangan atas] */
 /* PopupMenuButton di kepala: menu menempel tombol (atas sama), 8 dari tepi kanan, lebar kelipatan 56 (min 112) */
 .jj-popup { position: absolute; z-index: 31; }
 .jj-popup--profile { top: calc(var(--inset-top) + var(--s1)); right: var(--s2); width: 112px; }
