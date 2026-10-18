@@ -38,7 +38,7 @@
 .auth-keypad .keyboard__key--fn { background: var(--color-keyboard-key-fn); }
 
 /* Area status bar tetap hijau saat pita login tergulir (Positioned top, warna pertama bandGradient #215E1E). */
-.auth-statusfill { position: absolute; z-index: 3; top: 0; left: 0; right: 0; height: var(--inset-top); background: var(--color-green-700); }
+.auth-statusfill { position: absolute; z-index: 3; top: 0; left: 0; right: 0; height: var(--inset-top); background: linear-gradient(90deg, var(--color-green-950), var(--color-green-800) 60%, var(--color-green-700)); } /* [v2] mengikuti tepi atas mesh */
 
 /* ---------------------------------------------------------------------------------------------------------------------
    LOGIN (login_screen.dart): BrandSheetScaffold(scrollable: true, overlap: s4), BrandHeader bermotif

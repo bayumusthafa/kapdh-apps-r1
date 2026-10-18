@@ -537,6 +537,12 @@ abstract final class KapdhIcons {
     IconData(0xe2c8, fontFamily: 'PhosphorDuotone'),
   );
 
+  /// ph:chat-circle-dots-duotone
+  static const DuotoneIconData chatCircleDotsDuotone = DuotoneIconData(
+    IconData(0xe16d, fontFamily: 'PhosphorDuotone'),
+    IconData(0xe16c, fontFamily: 'PhosphorDuotone'),
+  );
+
   /// ph:bell-simple-ringing-duotone
   static const DuotoneIconData bellSimpleRingingDuotone = DuotoneIconData(
     IconData(0xe5eb, fontFamily: 'PhosphorDuotone'),

@@ -156,6 +156,10 @@
    "primary": "0xe5eb",
    "secondary": "0xe5ea"
   },
+  "chat-circle-dots": {
+   "primary": "0xe16d",
+   "secondary": "0xe16c"
+  },
   "identification-card": {
    "primary": "0xe2c9",
    "secondary": "0xe2c8"
