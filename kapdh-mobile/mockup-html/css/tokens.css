@@ -161,6 +161,9 @@
     radial-gradient(circle at 92% 0%, rgba(230, 211, 18, .20) 0, transparent 46%),  /* cahaya emas kanan atas */
     radial-gradient(circle at 6% 100%, rgba(63, 154, 56, .34) 0, transparent 55%),  /* cahaya hijau kiri bawah */
     linear-gradient(135deg, #0E280C 0%, #1A4B17 55%, #215E1E 100%);               /* green950 -> green800 -> green700 */
+  --qa-circle-bg:            radial-gradient(circle at 32% 24%, #FFFFFF 0%, #F2F6F0 42%, #E1E9DE 100%); /* [v2] lingkaran ikon akses cepat */
+  --qa-circle-border:        rgba(26, 75, 23, .12);
+  --qa-icon:                 linear-gradient(180deg, #4A9441 0%, #1A4B17 62%, #0E280C 100%);      /* isi ikon fill (mask) */
   --gradient-splash:         linear-gradient(180deg, #FAFAFA 0%, #EEEFED 55%, #E2E4E1 100%); /* [v2, usulan] latar Splash mode terang: abu terang bergradasi */
   --gradient-kta-stops:      #020702 0%, #0E280C 45%, #215E1E 100%;            /* KapdhGradients.ktaCard (topLeft -> bottomRight) */
   /* Flutter menarik garis gradasi dari sudut kiri atas ke kanan bawah. Di CSS sudut tergantung rasio kotak:
@@ -390,7 +393,10 @@
   --color-on-primary:    #0E280C;
   --color-primary-hover: #9EDD92;
   --gradient-button-primary: linear-gradient(180deg, #9EDD92 0%, #8BD47E 100%);
-  --gradient-splash: linear-gradient(180deg, #0E280C 0%, #0E280C 100%); /* Splash gelap tetap hijau tua surfaceDark */
+  --gradient-splash: linear-gradient(180deg, #0E280C 0%, #0E280C 100%);
+  --qa-circle-bg: radial-gradient(circle at 32% 24%, #34452F 0%, #243322 50%, #1B281A 100%);
+  --qa-circle-border: rgba(139, 212, 126, .20);
+  --qa-icon: linear-gradient(180deg, #D4F2CB 0%, #9EDD92 55%, #7CC66F 100%); /* Splash gelap tetap hijau tua surfaceDark */
 
   /* Nonaktif */
   --color-disabled-bg:   #263124;
