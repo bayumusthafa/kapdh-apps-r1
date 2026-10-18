@@ -20,11 +20,11 @@
 
 /* ---------------------------------------------------------------------------------------------------------------------
    TAB AKUN  account_screen.dart
-   _Header: Stack(BrandHeader bermotif Positioned.fill(bottom: 56), SafeArea > Padding(20, 16, 20, 0) >
+   _Header: Stack(BrandHeader [v2: tanpa motif] Positioned.fill(bottom: 56), SafeArea > Padding(20, 16, 20, 0) >
    "Akun" 18 w600 putih, jarak 16, kartu profil putih padding 16 radius 20 bayangan 0x14000000 blur 12 (0,4)).
    --------------------------------------------------------------------------------------------------------------------- */
 .akun-header { position: relative; flex: none; padding: calc(var(--inset-top) + var(--s4)) var(--s5) 0; }
-.akun-header__band { position: absolute; top: 0; right: 0; bottom: 56px; left: 0; padding: 0; } /* .brand-band--pattern tanpa isi */
+.akun-header__band { position: absolute; top: 0; right: 0; bottom: 56px; left: 0; padding: 0; border-radius: 0 0 var(--r-xl) var(--r-xl); box-shadow: 0 12px 28px -10px rgba(14, 40, 12, .55), inset 0 -1px 0 rgba(230, 211, 18, .22); } /* [v2] pita tanpa isi, identik dengan header Beranda (mesh, cincin, sudut bawah 24, tanpa motif) */
 .akun-header__title { position: relative; font-size: var(--fs-h3); font-weight: var(--fw-semibold); color: var(--color-text-on-dark); }
 .akun-profile-card {
   position: relative;
