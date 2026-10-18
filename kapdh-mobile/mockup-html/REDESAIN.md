@@ -232,7 +232,7 @@ text-muted (4,65:1), status bar ikon gelap. Halaman galat konfigurasi tetap hija
 **Header Profil Alumni** (usulan, `jejaring/member-profile.html`). Dulu pita hijau bermotif 112 dp yang kosong
 (hanya tombol kembali dan menu), lalu avatar 72 dan nama rata kiri di bawahnya. Sekarang pita zamrud 132 dp dengan
 bahasa visual header Beranda v2: gradasi 135° green950 → green800 → green700, cahaya emas kanan atas dan hijau kiri
-bawah, motif quatrefoil samar, dua cincin dekoratif, sudut bawah 24 dan garis emas tipis. Tombol kembali dan menu
+bawah, dua cincin dekoratif tanpa motif (identik dengan Beranda), sudut bawah 24 dan garis emas tipis. Tombol kembali dan menu
 menjadi tombol kaca 48 dp, dengan judul "Profil Alumni" di tengah agar pengguna tahu sedang di mana. Avatar membesar
 ke 96 dp dengan cincin permukaan 4 dan cincin emas 2, menumpuk tepi pita sejauh 48. Nama dan kontak terpusat di
 bawahnya. Judul putih di pita 7,9:1 pada titik henti tercerah (green700); pita memakai palet merek tetap, jadi sama di mode gelap. Lolos teks
@@ -285,7 +285,7 @@ Alumni). Sekarang semua `.brand-band` memakai dasar yang sama dengan header Bera
 - tombol ikon kaca 48 dp;
 - logo pita sapaan dalam bingkai kaca bercincin emas (48 dp, dulu 44).
 
-Motif tetap menumpuk di atas dasar itu: gelombang di Masuk, quatrefoil di Akun dan Profil Alumni. Sudut bawah 24 dan
+Motif tetap menumpuk di atas dasar itu: gelombang di Masuk, quatrefoil di Akun. Profil Alumni tanpa motif agar identik dengan Beranda. Sudut bawah 24 dan
 bayangan hanya untuk pita yang berdiri sendiri (Beranda, Profil Alumni); pita yang ditumpuk lembar terang tetap lurus
 karena lembarnya sudah membulat. Pengisi status bar layar Masuk mengikuti tepi atas mesh. App bar putih di layar
 detail sengaja tidak diubah (pola Material 3). Flutter nanti: `KapdhGradients.brandMesh` dipakai `BrandHeader` dan

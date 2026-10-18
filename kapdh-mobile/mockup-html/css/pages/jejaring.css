@@ -116,10 +116,10 @@
    PROFIL ALUMNI  member_profile_screen.dart
    --------------------------------------------------------------------------------------------------------------------- */
 /* [v2, usulan] Header Profil Alumni: pita zamrud bahasa Beranda v2 (cahaya emas kanan atas, cahaya hijau kiri bawah,
-   motif quatrefoil samar, dua cincin dekoratif; dasar dari .brand-band), sudut bawah 24 dan garis emas tipis. Baris atas: tombol kaca 48,
+   dua cincin dekoratif; dasar dari .brand-band, tanpa motif agar identik dengan Beranda), sudut bawah 24 dan garis emas tipis. Baris atas: tombol kaca 48,
    judul "Profil Alumni" di tengah (dulu tanpa judul). Avatar 96 bercincin emas menumpuk tepi pita; nama dan kontak
    terpusat di bawahnya. Pita memakai palet merek tetap, jadi sama di mode gelap.
-   Flutter: BrandHeader(minHeight 132, motif quatrefoil) + Stack avatar Transform.translate(0, -48). */
+   Flutter: BrandHeader(minHeight 132, tanpa motif) + Stack avatar Transform.translate(0, -48). */
 .brand-band.jj-profile-band {
   display: grid; grid-template-columns: 48px minmax(0, 1fr) 48px; align-items: start;
   min-height: calc(132px + var(--inset-top));
