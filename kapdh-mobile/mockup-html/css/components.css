@@ -46,19 +46,19 @@ a { color: inherit; text-decoration: none; }
    Flutter: InkWell / ButtonStyle.overlayColor sudah ada; yang baru hanya durasi transisinya (KapdhMotion.press). */
 :where(.btn, .btn-m3, .btn-text, .btn-link, .icon-btn, .fab-small, .menu-tile, .list-tile, .popup-menu__item,
   .dropdown-menu__item, .quick-access__item, .contact-row, .choice-chip, .segmented__item, .tab, .underline-tab,
-  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card, button.tag-chip--input, button.jj-input-chip, button.akun-tag) {
+  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card, button.tag-chip--input, button.jj-input-chip, button.akun-tag, a.jj-social__item) {
   box-shadow: var(--elev, 0 0 #0000), inset 0 0 0 999px var(--state-color, transparent);
   transition: box-shadow var(--dur-press) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard),
     border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
 }
 :where(.btn, .btn-m3, .btn-text, .btn-link, .icon-btn, .fab-small, .menu-tile, .list-tile, .popup-menu__item,
   .dropdown-menu__item, .quick-access__item, .contact-row, .choice-chip, .segmented__item, .tab, .underline-tab,
-  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card, button.tag-chip--input, button.jj-input-chip, button.akun-tag):not(:disabled, .is-disabled):hover {
+  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card, button.tag-chip--input, button.jj-input-chip, button.akun-tag, a.jj-social__item):not(:disabled, .is-disabled):hover {
   --state-color: color-mix(in srgb, currentColor 8%, transparent);   /* --state-hover */
 }
 :where(.btn, .btn-m3, .btn-text, .btn-link, .icon-btn, .fab-small, .menu-tile, .list-tile, .popup-menu__item,
   .dropdown-menu__item, .quick-access__item, .contact-row, .choice-chip, .segmented__item, .tab, .underline-tab,
-  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card, button.tag-chip--input, button.jj-input-chip, button.akun-tag):not(:disabled, .is-disabled):active {
+  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card, button.tag-chip--input, button.jj-input-chip, button.akun-tag, a.jj-social__item):not(:disabled, .is-disabled):active {
   --state-color: color-mix(in srgb, currentColor 12%, transparent);  /* --state-pressed */
 }
 @media (prefers-reduced-motion: reduce) {

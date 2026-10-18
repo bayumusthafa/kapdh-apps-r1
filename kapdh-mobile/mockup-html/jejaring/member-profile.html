@@ -44,7 +44,7 @@
         <li>Galat</li>
       </ol>
     </div>
-    <p class="page-header__note">Scaffold putih (surface) tanpa app bar: BrandHeader hijau bermotif + status bar, ikut bergulir (SliverToBoxAdapter). <strong>v2 (usulan):</strong> pita zamrud setinggi 132 bergaya Beranda v2 (cahaya emas, cincin dekoratif, sudut bawah 24), tombol kaca, judul "Profil Alumni", avatar 96 bercincin emas menumpuk tepi pita, nama dan kontak terpusat. Pita global Offline/Pemeliharaan, bila ada, tampil tepat di bawah pita hijau. Skill memakai TagChip biru, Profesi TagChip hijau. Data contoh fiktif.</p>
+    <p class="page-header__note">Scaffold putih (surface) tanpa app bar: BrandHeader hijau bermotif + status bar, ikut bergulir (SliverToBoxAdapter). <strong>v2 (usulan):</strong> pita zamrud setinggi 132 bergaya Beranda v2 (cahaya emas, cincin dekoratif, sudut bawah 24), tombol kaca, judul "Profil Alumni", avatar 96 bercincin emas menumpuk tepi pita, nama dan kontak terpusat. Bagian mengikuti data Ubah Profil v2: "Riwayat Pendidikan" (daftar, terbaru di atas) menggantikan "Lulusan Terakhir", Profesi boleh lebih dari satu, "Skill" menjadi "Keahlian", "Media Sosial" berupa daftar baris berlogo platform dengan ikon tautan luar. Pita global Offline/Pemeliharaan, bila ada, tampil tepat di bawah pita hijau. Skill memakai TagChip biru, Profesi TagChip hijau. Data contoh fiktif.</p>
   </header>
 
   <main class="frames">
@@ -71,21 +71,21 @@
             <div class="jj-sections">
               <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Riwayat Pendidikan</h3><div class="jj-section__body"><ul class="jj-edu"><li class="jj-edu__item"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-graduation-cap"></span></span><span class="jj-edu__text"><span class="jj-edu__name">Universitas Contoh</span><span class="jj-edu__meta">S1 · Administrasi Perkantoran · Tamat 2018</span></span></li></ul></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Keahlian</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ph-phone" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
-                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ph-camera" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ph-at" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ph-facebook-logo" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
-                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ph-briefcase" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+              <section class="jj-section"><h3 class="jj-section__title">Media Sosial</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-instagram-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Instagram</span><span class="jj-social__handle ellipsis">@siti.rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="X (Twitter): @sitirahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-x-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">X (Twitter)</span><span class="jj-social__handle ellipsis">@sitirahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-facebook-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Facebook</span><span class="jj-social__handle ellipsis">siti.rahmah.contoh</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: linkedin.com/in/siti-rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-linkedin-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">LinkedIn</span><span class="jj-social__handle ellipsis">linkedin.com/in/siti-rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
                   </div></div></section>
             </div>
           </div>
@@ -118,21 +118,21 @@
             <div class="jj-sections">
               <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Riwayat Pendidikan</h3><div class="jj-section__body"><ul class="jj-edu"><li class="jj-edu__item"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-graduation-cap"></span></span><span class="jj-edu__text"><span class="jj-edu__name">Universitas Contoh</span><span class="jj-edu__meta">S1 · Administrasi Perkantoran · Tamat 2018</span></span></li></ul></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Keahlian</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ph-phone" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
-                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ph-camera" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ph-at" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ph-facebook-logo" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
-                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ph-briefcase" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+              <section class="jj-section"><h3 class="jj-section__title">Media Sosial</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-instagram-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Instagram</span><span class="jj-social__handle ellipsis">@siti.rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="X (Twitter): @sitirahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-x-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">X (Twitter)</span><span class="jj-social__handle ellipsis">@sitirahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-facebook-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Facebook</span><span class="jj-social__handle ellipsis">siti.rahmah.contoh</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: linkedin.com/in/siti-rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-linkedin-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">LinkedIn</span><span class="jj-social__handle ellipsis">linkedin.com/in/siti-rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
                   </div></div></section>
             </div>
           </div>
@@ -165,21 +165,21 @@
             <div class="jj-sections">
               <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Riwayat Pendidikan</h3><div class="jj-section__body"><ul class="jj-edu"><li class="jj-edu__item"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-graduation-cap"></span></span><span class="jj-edu__text"><span class="jj-edu__name">Universitas Contoh</span><span class="jj-edu__meta">S1 · Administrasi Perkantoran · Tamat 2018</span></span></li></ul></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Keahlian</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ph-phone" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
-                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ph-camera" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ph-at" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ph-facebook-logo" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
-                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ph-briefcase" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+              <section class="jj-section"><h3 class="jj-section__title">Media Sosial</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-instagram-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Instagram</span><span class="jj-social__handle ellipsis">@siti.rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="X (Twitter): @sitirahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-x-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">X (Twitter)</span><span class="jj-social__handle ellipsis">@sitirahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-facebook-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Facebook</span><span class="jj-social__handle ellipsis">siti.rahmah.contoh</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: linkedin.com/in/siti-rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-linkedin-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">LinkedIn</span><span class="jj-social__handle ellipsis">linkedin.com/in/siti-rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
                   </div></div></section>
             </div>
           </div>
@@ -216,21 +216,21 @@
             <div class="jj-sections">
               <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Riwayat Pendidikan</h3><div class="jj-section__body"><ul class="jj-edu"><li class="jj-edu__item"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-graduation-cap"></span></span><span class="jj-edu__text"><span class="jj-edu__name">Universitas Contoh</span><span class="jj-edu__meta">S1 · Administrasi Perkantoran · Tamat 2018</span></span></li></ul></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Keahlian</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ph-phone" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
-                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ph-camera" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ph-at" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ph-facebook-logo" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
-                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ph-briefcase" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+              <section class="jj-section"><h3 class="jj-section__title">Media Sosial</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-instagram-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Instagram</span><span class="jj-social__handle ellipsis">@siti.rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="X (Twitter): @sitirahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-x-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">X (Twitter)</span><span class="jj-social__handle ellipsis">@sitirahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-facebook-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Facebook</span><span class="jj-social__handle ellipsis">siti.rahmah.contoh</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: linkedin.com/in/siti-rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-linkedin-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">LinkedIn</span><span class="jj-social__handle ellipsis">linkedin.com/in/siti-rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
                   </div></div></section>
             </div>
           </div>
@@ -269,21 +269,21 @@
             <div class="jj-sections">
               <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Riwayat Pendidikan</h3><div class="jj-section__body"><ul class="jj-edu"><li class="jj-edu__item"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-graduation-cap"></span></span><span class="jj-edu__text"><span class="jj-edu__name">Universitas Contoh</span><span class="jj-edu__meta">S1 · Administrasi Perkantoran · Tamat 2018</span></span></li></ul></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Keahlian</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ph-phone" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
-                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ph-camera" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ph-at" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ph-facebook-logo" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
-                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ph-briefcase" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+              <section class="jj-section"><h3 class="jj-section__title">Media Sosial</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-instagram-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Instagram</span><span class="jj-social__handle ellipsis">@siti.rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="X (Twitter): @sitirahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-x-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">X (Twitter)</span><span class="jj-social__handle ellipsis">@sitirahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-facebook-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Facebook</span><span class="jj-social__handle ellipsis">siti.rahmah.contoh</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: linkedin.com/in/siti-rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-linkedin-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">LinkedIn</span><span class="jj-social__handle ellipsis">linkedin.com/in/siti-rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
                   </div></div></section>
             </div>
           </div>
@@ -317,21 +317,21 @@
             <div class="jj-sections">
               <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Riwayat Pendidikan</h3><div class="jj-section__body"><ul class="jj-edu"><li class="jj-edu__item"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-graduation-cap"></span></span><span class="jj-edu__text"><span class="jj-edu__name">Universitas Contoh</span><span class="jj-edu__meta">S1 · Administrasi Perkantoran · Tamat 2018</span></span></li></ul></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Keahlian</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ph-phone" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
-                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ph-camera" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ph-at" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ph-facebook-logo" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
-                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ph-briefcase" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+              <section class="jj-section"><h3 class="jj-section__title">Media Sosial</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-instagram-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Instagram</span><span class="jj-social__handle ellipsis">@siti.rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="X (Twitter): @sitirahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-x-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">X (Twitter)</span><span class="jj-social__handle ellipsis">@sitirahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-facebook-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Facebook</span><span class="jj-social__handle ellipsis">siti.rahmah.contoh</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: linkedin.com/in/siti-rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-linkedin-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">LinkedIn</span><span class="jj-social__handle ellipsis">linkedin.com/in/siti-rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
                   </div></div></section>
             </div>
           </div>
@@ -367,21 +367,21 @@
             <div class="jj-sections">
               <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Riwayat Pendidikan</h3><div class="jj-section__body"><ul class="jj-edu"><li class="jj-edu__item"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-graduation-cap"></span></span><span class="jj-edu__text"><span class="jj-edu__name">Universitas Contoh</span><span class="jj-edu__meta">S1 · Administrasi Perkantoran · Tamat 2018</span></span></li></ul></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Keahlian</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ph-phone" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
-                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ph-camera" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ph-at" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ph-facebook-logo" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
-                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ph-briefcase" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+              <section class="jj-section"><h3 class="jj-section__title">Media Sosial</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-instagram-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Instagram</span><span class="jj-social__handle ellipsis">@siti.rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="X (Twitter): @sitirahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-x-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">X (Twitter)</span><span class="jj-social__handle ellipsis">@sitirahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-facebook-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Facebook</span><span class="jj-social__handle ellipsis">siti.rahmah.contoh</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: linkedin.com/in/siti-rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-linkedin-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">LinkedIn</span><span class="jj-social__handle ellipsis">linkedin.com/in/siti-rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
                   </div></div></section>
             </div>
           </div>
@@ -420,7 +420,7 @@
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Wiraswasta</span></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Kuliner</span></div></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Keahlian</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Kuliner</span></div></div></section>
             </div>
           </div>
           <div class="jj-profile-bottom"><div class="info-box"><span class="ic ph-info" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Pesan langsung belum tersedia untuk anggota ini.</p></div></div></div>
@@ -452,21 +452,21 @@
             <div class="jj-sections">
               <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Riwayat Pendidikan</h3><div class="jj-section__body"><ul class="jj-edu"><li class="jj-edu__item"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-graduation-cap"></span></span><span class="jj-edu__text"><span class="jj-edu__name">Universitas Contoh</span><span class="jj-edu__meta">S1 · Administrasi Perkantoran · Tamat 2018</span></span></li></ul></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Keahlian</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ph-phone" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
-                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ph-camera" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ph-at" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ph-facebook-logo" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
-                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ph-briefcase" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+              <section class="jj-section"><h3 class="jj-section__title">Media Sosial</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-instagram-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Instagram</span><span class="jj-social__handle ellipsis">@siti.rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="X (Twitter): @sitirahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-x-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">X (Twitter)</span><span class="jj-social__handle ellipsis">@sitirahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-facebook-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Facebook</span><span class="jj-social__handle ellipsis">siti.rahmah.contoh</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: linkedin.com/in/siti-rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-linkedin-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">LinkedIn</span><span class="jj-social__handle ellipsis">linkedin.com/in/siti-rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
                   </div></div></section>
             </div>
           </div>
@@ -500,11 +500,11 @@
             <div class="jj-sections">
               <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Pekanbaru</p></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Riwayat Pendidikan</h3><div class="jj-section__body"><ul class="jj-edu"><li class="jj-edu__item"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-graduation-cap"></span></span><span class="jj-edu__text"><span class="jj-edu__name">UIN Sultan Syarif Kasim Riau</span><span class="jj-edu__meta">S2 · Pendidikan Agama Islam · Tamat 2022</span></span></li><li class="jj-edu__item"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-graduation-cap"></span></span><span class="jj-edu__text"><span class="jj-edu__name">Universitas Riau</span><span class="jj-edu__meta">S1 · Pendidikan Bahasa Arab · Tamat 2019</span></span></li></ul></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Guru</span></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip">Guru</span><span class="tag-chip">Penerjemah</span></div></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Bahasa Arab</span><span class="tag-chip tag-chip--blue">Tahfiz</span></div></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Keahlian</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Bahasa Arab</span><span class="tag-chip tag-chip--blue">Pendidikan dan Pengajaran</span><span class="tag-chip tag-chip--blue">Dakwah dan Public Speaking</span></div></div></section>
             </div>
           </div>
         </div>
@@ -535,21 +535,21 @@
             <div class="jj-sections">
               <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Riwayat Pendidikan</h3><div class="jj-section__body"><ul class="jj-edu"><li class="jj-edu__item"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-graduation-cap"></span></span><span class="jj-edu__text"><span class="jj-edu__name">Universitas Contoh</span><span class="jj-edu__meta">S1 · Administrasi Perkantoran · Tamat 2018</span></span></li></ul></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Keahlian</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ph-phone" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
-                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ph-camera" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ph-at" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ph-facebook-logo" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
-                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ph-briefcase" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+              <section class="jj-section"><h3 class="jj-section__title">Media Sosial</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-instagram-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Instagram</span><span class="jj-social__handle ellipsis">@siti.rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="X (Twitter): @sitirahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-x-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">X (Twitter)</span><span class="jj-social__handle ellipsis">@sitirahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-facebook-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Facebook</span><span class="jj-social__handle ellipsis">siti.rahmah.contoh</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: linkedin.com/in/siti-rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-linkedin-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">LinkedIn</span><span class="jj-social__handle ellipsis">linkedin.com/in/siti-rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
                   </div></div></section>
             </div>
           </div>
@@ -605,21 +605,21 @@
             <div class="jj-sections">
               <section class="jj-section"><h3 class="jj-section__title">Angkatan</h3><div class="jj-section__body"><p class="jj-value">#KAPDH12 · Lulus 2014</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Lulusan Terakhir</h3><div class="jj-section__body"><p class="jj-value">Universitas Contoh • Padang</p></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Riwayat Pendidikan</h3><div class="jj-section__body"><ul class="jj-edu"><li class="jj-edu__item"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-graduation-cap"></span></span><span class="jj-edu__text"><span class="jj-edu__name">Universitas Contoh</span><span class="jj-edu__meta">S1 · Administrasi Perkantoran · Tamat 2018</span></span></li></ul></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Profesi</h3><div class="jj-section__body"><span class="tag-chip">Pegawai Negeri Sipil</span></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Skill</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
+              <section class="jj-section"><h3 class="jj-section__title">Keahlian</h3><div class="jj-section__body"><div class="jj-chips jj-chips--8"><span class="tag-chip tag-chip--blue">Administrasi</span><span class="tag-chip tag-chip--blue">Desain Grafis</span><span class="tag-chip tag-chip--blue">Public Speaking</span></div></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Nomor Telpon</h3><div class="jj-section__body"><a class="jj-phone" href="#" aria-label="Telepon 0812-0000-1234"><span class="ic ph-phone" aria-hidden="true"></span><span class="jj-phone__text">0812-0000-1234</span></a></div></section>
               <hr class="jj-divider-24">
               <section class="jj-section"><h3 class="jj-section__title">Tentang</h3><div class="jj-section__body"><p class="jj-value jj-value--bio">Mengajar administrasi perkantoran dan aktif di kegiatan sosial alumni. Senang berbagi informasi lowongan kerja untuk adik-adik angkatan.</p></div></section>
               <hr class="jj-divider-24">
-              <section class="jj-section"><h3 class="jj-section__title">Social Media</h3><div class="jj-section__body"><div class="jj-social">
-                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah"><span class="ic ph-camera" aria-hidden="true"></span><span class="ellipsis">@siti.rahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="X: sitirahmah"><span class="ic ph-at" aria-hidden="true"></span><span class="ellipsis">sitirahmah</span></a>
-                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh"><span class="ic ph-facebook-logo" aria-hidden="true"></span><span class="ellipsis">siti.rahmah.contoh</span></a>
-                    <a class="jj-social__item" href="#" aria-label="LinkedIn: siti-rahmah"><span class="ic ph-briefcase" aria-hidden="true"></span><span class="ellipsis">siti-rahmah</span></a>
+              <section class="jj-section"><h3 class="jj-section__title">Media Sosial</h3><div class="jj-section__body"><div class="jj-social">
+                    <a class="jj-social__item" href="#" aria-label="Instagram: @siti.rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-instagram-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Instagram</span><span class="jj-social__handle ellipsis">@siti.rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="X (Twitter): @sitirahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-x-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">X (Twitter)</span><span class="jj-social__handle ellipsis">@sitirahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="Facebook: siti.rahmah.contoh (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-facebook-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">Facebook</span><span class="jj-social__handle ellipsis">siti.rahmah.contoh</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
+                    <a class="jj-social__item" href="#" aria-label="LinkedIn: linkedin.com/in/siti-rahmah (tautan luar)"><span class="jj-edu__icon" aria-hidden="true"><span class="ic ph-linkedin-logo"></span></span><span class="jj-social__text"><span class="jj-social__platform">LinkedIn</span><span class="jj-social__handle ellipsis">linkedin.com/in/siti-rahmah</span></span><span class="ic ph-arrow-square-out jj-social__out" aria-hidden="true"></span></a>
                   </div></div></section>
             </div>
           </div>

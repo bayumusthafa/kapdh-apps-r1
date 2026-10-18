@@ -262,7 +262,12 @@ terisi. Bagian lain di layar ini masih memakai judul kecil di atas kartu.
 Dampak di luar mockup: kontrak profil (C1) perlu `professions: string[]` dan `education: [{institution, major, level,
 graduation_year}]` sebagai ganti `profession`, `last_education_institution` dan `last_education_city`, serta `social_links: [{platform, value}]`
 (maks. 10) sebagai ganti field Instagram/X/Facebook/LinkedIn. Profil Alumni
-(Jejaring) yang kini menampilkan "Lulusan Terakhir" perlu ikut diubah. Lihat juga master profesi/keahlian yang menerima
+(Jejaring) sudah ikut diubah di mockup:
+
+- "Riwayat Pendidikan" berupa daftar ikon toga, institusi, dan "Strata · Jurusan · Tamat tahun", terbaru di atas;
+- Profesi bisa lebih dari satu cip;
+- "Skill" menjadi "Keahlian";
+- "Media Sosial" berupa baris 56 dp berlogo platform, nama platform, nama pengguna primary, dan ikon tautan luar. Lihat juga master profesi/keahlian yang menerima
 nilai ketikan sendiri.
 
 **Akses cepat: Pesan menggantikan KTA** (usulan). Untuk anggota aktif, ubin pertama kini "Pesan" (jumlah percakapan
