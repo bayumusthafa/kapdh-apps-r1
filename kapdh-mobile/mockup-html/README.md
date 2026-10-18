@@ -30,6 +30,7 @@ Flutter dan tidak masuk aset aplikasi.
 mockup-html/
   index.html              DIBANGKITKAN: galeri semua halaman per grup + tabel cakupan layar Flutter
   components.html         etalase setiap komponen bersama + nama kelas + widget Dart sumbernya + galeri ikon
+  ikon.html               perbandingan set ikon premium (Phosphor, Solar, Hugeicons, Fluent) untuk akses cepat dan navigasi
   _template.html          kerangka halaman layar (salin ke <grup>/<slug>.html)
   css/
     tokens.css            token desain (warna, tipografi, spasi, radius, bayangan, ukuran) + @font-face Poppins
@@ -198,4 +199,5 @@ dari `<FLUTTER_ROOT>/bin/cache/artifacts/material_fonts/materialicons-regular.ot
 
 - Poppins: SIL Open Font License 1.1 (`fonts/OFL-Poppins.txt`).
 - Material Icons: Apache License 2.0 (`assets/LICENSE-material-icons.txt`).
+- Phosphor Icons (akses cepat dan navigasi bawah, redesain v2): MIT (`assets/LICENSE-phosphor.txt`).
 - Logo dan gambar contoh: milik KAPDH, hanya untuk keperluan desain internal.

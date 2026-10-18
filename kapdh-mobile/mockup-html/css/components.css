@@ -9,6 +9,7 @@
    REDESAIN v2: aturan bertanda [v2] adalah usulan (lihat REDESAIN.md); komentar "dulu ..." = perilaku aplikasi saat ini.
    ===================================================================================================================== */
 @import url('icons.css');
+@import url('icons-phosphor.css'); /* [v2] Phosphor untuk akses cepat dan navigasi bawah */
 
 /* ---------------------------------------------------------------------------------------------------------------------
    DASAR

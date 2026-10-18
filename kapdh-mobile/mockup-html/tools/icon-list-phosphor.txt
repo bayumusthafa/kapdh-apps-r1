@@ -1,0 +1,22 @@
+# Ikon Phosphor (redesain v2) untuk akses cepat dan navigasi bawah. Satu nama Iconify "ph" per baris
+# (bobot regular tanpa akhiran; -fill, -duotone, -bold, -light, -thin untuk bobot lain).
+# Bangkitkan ulang: node tools/build-icons-phosphor.mjs
+# Flutter: phosphor_flutter, mis. ph-identification-card-duotone = PhosphorIcons.identificationCard(PhosphorIconsStyle.duotone)
+
+# Akses cepat (QuickAccessRow): duotone
+identification-card-duotone
+bell-simple-ringing-duotone
+ticket-duotone
+newspaper-clipping-duotone
+
+# Navigasi bawah (AppShell): regular = tidak aktif, fill = aktif; KTA tengah selalu fill
+house-simple
+house-simple-fill
+calendar-dots
+calendar-dots-fill
+identification-card-fill
+graduation-cap
+graduation-cap-fill
+user-circle
+user-circle-fill
+lock-simple-fill
